@@ -20,6 +20,25 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [usageCount, setUsageCount] = useState<number>(0);
+  const [lastResetDate, setLastResetDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const MAX_FREE_GENERATIONS = 10;
+
+useEffect(() => {
+  const today = new Date().toISOString().split('T')[0];
+  const savedResetDate = localStorage.getItem('reset_date');
+  const savedCount = localStorage.getItem('usage_count');
+  
+  if (savedResetDate !== today) {
+    // Nuevo día, reinicia el contador
+    localStorage.setItem('usage_count', '0');
+    localStorage.setItem('reset_date', today);
+    setUsageCount(0);
+  } else if (savedCount) {
+    setUsageCount(parseInt(savedCount));
+  }
+  
+  setLastResetDate(today);
+}, []);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('claude_api_key');
@@ -60,6 +79,15 @@ export default function Home() {
       const result = await callClaudeAPI(apiKey, selectedTemplate, formData);
       setOutput(result);
       setUsageCount((prev) => prev + 1);
+      const newCount = usageCount + 1;
+      setUsageCount(newCount);
+      localStorage.setItem('usage_count', newCount.toString());
+
+      if (newCount >= MAX_FREE_GENERATIONS) {
+        setError(`⚠️ Has alcanzado el límite de ${MAX_FREE_GENERATIONS} generaciones gratis este mes. Actualiza a PRO para ilimitadas.`);
+        setTimeout(() => setError(''), 5000);
+    return;
+}
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
       setError(errorMessage);
@@ -86,7 +114,9 @@ export default function Home() {
             <p className="text-gray-400 text-sm">Genera contenido viral en segundos</p>
           </div>
           <div className="text-right">
-            <div className="text-gray-400 text-sm">Generaciones: {usageCount}</div>
+            <div className="text-gray-400 text-sm">
+              Generaciones: {usageCount}/{MAX_FREE_GENERATIONS}
+            </div>
             <button
               onClick={() => {
                 setShowApiKeyForm(true);
