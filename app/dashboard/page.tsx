@@ -166,7 +166,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex gap-3">
             <a
-              href="/"
+              href="/generate"
               className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition"
             >
               Generar contenido
@@ -307,7 +307,7 @@ export default function DashboardPage() {
           {data?.recentGenerations?.length === 0 ? (
             <p className="text-gray-500 text-sm">
               Aún no has generado contenido.{' '}
-              <a href="/" className="text-purple-400 hover:text-purple-300">
+              <a href="/generate" className="text-purple-400 hover:text-purple-300">
                 Genera tu primer contenido →
               </a>
             </p>
