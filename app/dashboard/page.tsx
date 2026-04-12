@@ -69,8 +69,19 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/stripe/cancel', { method: 'POST' });
       if (res.ok) {
-        const updated = await fetch('/api/user/stats').then((r) => r.json());
-        setData(updated);
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                subscription: prev.subscription
+                  ? { ...prev.subscription, cancelAtPeriodEnd: true }
+                  : null,
+              }
+            : null
+        );
+      } else {
+        const { error } = await res.json();
+        alert(error ?? 'Error al cancelar la suscripción');
       }
     } finally {
       setCancelling(false);
