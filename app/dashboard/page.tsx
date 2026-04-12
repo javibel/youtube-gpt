@@ -32,6 +32,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -61,6 +64,20 @@ export default function DashboardPage() {
     } finally {
       setUpgrading(false);
     }
+  }
+
+  async function handleSaveName() {
+    setSavingName(true);
+    const res = await fetch('/api/user/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nameInput }),
+    });
+    if (res.ok) {
+      setData((prev) => prev ? { ...prev, user: { ...prev.user, name: nameInput.trim() } } : null);
+      setEditingName(false);
+    }
+    setSavingName(false);
   }
 
   async function handleCancel() {
@@ -110,10 +127,37 @@ export default function DashboardPage() {
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-white">
-                {data?.user?.name ?? session.user?.email}
-              </h1>
-              {isPro && (
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
+                    className="bg-gray-800 border border-purple-500 rounded px-3 py-1 text-white text-xl font-bold outline-none w-48"
+                  />
+                  <button onClick={handleSaveName} disabled={savingName} className="text-green-400 hover:text-green-300 text-sm font-medium">
+                    {savingName ? '...' : 'Guardar'}
+                  </button>
+                  <button onClick={() => setEditingName(false)} className="text-gray-500 hover:text-gray-400 text-sm">
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold text-white">
+                    {data?.user?.name ?? session.user?.email}
+                  </h1>
+                  <button
+                    onClick={() => { setNameInput(data?.user?.name ?? ''); setEditingName(true); }}
+                    className="text-gray-500 hover:text-gray-300 text-xs"
+                    title="Editar nombre"
+                  >
+                    ✏️
+                  </button>
+                </>
+              )}
+              {isPro && !editingName && (
                 <span className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black text-xs font-bold px-2 py-1 rounded-full">
                   PRO
                 </span>
