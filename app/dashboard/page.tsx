@@ -110,7 +110,9 @@ export default function DashboardPage() {
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+              <h1 className="text-2xl font-bold text-white">
+                {data?.user?.name ?? session.user?.email}
+              </h1>
               {isPro && (
                 <span className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black text-xs font-bold px-2 py-1 rounded-full">
                   PRO
