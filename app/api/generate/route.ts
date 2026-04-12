@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 
 const FREE_LIMIT = 10;
+const PRO_LIMIT = 200;
 
 export async function POST(request: Request) {
   try {
@@ -35,23 +36,22 @@ export async function POST(request: Request) {
           select: { status: true },
         });
         const isPro = subscription?.status === 'active';
+        const limit = isPro ? PRO_LIMIT : FREE_LIMIT;
 
-        if (!isPro) {
-          // Verificar límite ANTES de llamar a Claude
-          const startOfMonth = new Date();
-          startOfMonth.setDate(1);
-          startOfMonth.setHours(0, 0, 0, 0);
+        // Verificar límite ANTES de llamar a Claude
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
 
-          const usedThisMonth = await prisma.generation.count({
-            where: { userId, createdAt: { gte: startOfMonth } },
-          });
+        const usedThisMonth = await prisma.generation.count({
+          where: { userId, createdAt: { gte: startOfMonth } },
+        });
 
-          if (usedThisMonth >= FREE_LIMIT) {
-            return Response.json(
-              { error: 'Límite del plan gratuito alcanzado', limitReached: true },
-              { status: 429 }
-            );
-          }
+        if (usedThisMonth >= limit) {
+          return Response.json(
+            { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
+            { status: 429 }
+          );
         }
       }
     }

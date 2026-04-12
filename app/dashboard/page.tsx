@@ -17,8 +17,8 @@ type Stats = {
   stats: {
     totalGenerations: number;
     generationsThisMonth: number;
-    limit: number | null;
-    remaining: number | null;
+    limit: number;
+    remaining: number;
     isPro: boolean;
   };
   recentGenerations: { id: string; template: string; createdAt: string; tokensUsed: number }[];
@@ -117,8 +117,8 @@ export default function DashboardPage() {
 
   const stats = data?.stats;
   const isPro = stats?.isPro ?? false;
-  const usedPercent = stats && stats.limit ? (stats.generationsThisMonth / stats.limit) * 100 : 0;
-  const nearLimit = !isPro && (stats?.remaining ?? 10) <= 3;
+  const usedPercent = stats ? (stats.generationsThisMonth / stats.limit) * 100 : 0;
+  const nearLimit = (stats?.remaining ?? 0) <= (isPro ? 20 : 3);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black">
@@ -201,7 +201,7 @@ export default function DashboardPage() {
               <p className="text-gray-400 text-sm mt-1">
                 {nearLimit
                   ? `Solo te quedan ${stats?.remaining ?? 0} generaciones este mes.`
-                  : 'Generaciones ilimitadas, sin restricciones mensuales.'}
+                  : 'Hasta 200 generaciones al mes, sin restricciones diarias.'}
               </p>
             </div>
             <button
@@ -259,16 +259,8 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="bg-gray-900 border border-purple-500/40 rounded-lg p-5">
-            <p className="text-gray-400 text-sm">
-              {isPro ? 'Plan' : 'Restantes este mes'}
-            </p>
-            {isPro ? (
-              <p className="text-2xl font-bold mt-1 bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-                Pro — Ilimitado
-              </p>
-            ) : (
-              <p className="text-4xl font-bold text-white mt-1">{stats?.remaining ?? 10}</p>
-            )}
+            <p className="text-gray-400 text-sm">Restantes este mes</p>
+            <p className="text-4xl font-bold text-white mt-1">{stats?.remaining ?? 0}</p>
           </div>
           <div className="bg-gray-900 border border-purple-500/40 rounded-lg p-5">
             <p className="text-gray-400 text-sm">Total generaciones</p>
@@ -276,35 +268,39 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Progress bar (solo para free) */}
-        {!isPro && (
-          <div className="bg-gray-900 border border-purple-500/40 rounded-lg p-5">
-            <div className="flex justify-between mb-2">
-              <p className="text-white font-semibold">Uso del plan gratuito</p>
-              <span className="text-gray-400 text-sm">
-                {stats?.generationsThisMonth ?? 0} / {stats?.limit ?? 10} generaciones
-              </span>
-            </div>
-            <div className="w-full bg-gray-700 rounded-full h-3">
-              <div
-                className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all"
-                style={{ width: `${Math.min(usedPercent, 100)}%` }}
-              />
-            </div>
-            {(stats?.remaining ?? 10) === 0 && (
-              <p className="text-red-400 text-sm mt-2">
-                Alcanzaste el límite.{' '}
-                <button
-                  onClick={handleUpgrade}
-                  className="text-yellow-400 hover:text-yellow-300 underline"
-                >
-                  Actualiza a Pro
-                </button>{' '}
-                para generaciones ilimitadas.
-              </p>
-            )}
+        {/* Barra de uso mensual */}
+        <div className="bg-gray-900 border border-purple-500/40 rounded-lg p-5">
+          <div className="flex justify-between mb-2">
+            <p className="text-white font-semibold">
+              {isPro ? 'Uso del plan Pro' : 'Uso del plan gratuito'}
+            </p>
+            <span className="text-gray-400 text-sm">
+              {stats?.generationsThisMonth ?? 0} / {stats?.limit ?? 10} generaciones este mes
+            </span>
           </div>
-        )}
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div
+              className={`h-3 rounded-full transition-all bg-gradient-to-r ${
+                nearLimit ? 'from-red-500 to-orange-500' : isPro ? 'from-yellow-400 to-orange-400' : 'from-purple-500 to-blue-500'
+              }`}
+              style={{ width: `${Math.min(usedPercent, 100)}%` }}
+            />
+          </div>
+          {stats?.remaining === 0 && !isPro && (
+            <p className="text-red-400 text-sm mt-2">
+              Alcanzaste el límite.{' '}
+              <button onClick={handleUpgrade} className="text-yellow-400 hover:text-yellow-300 underline">
+                Actualiza a Pro
+              </button>{' '}
+              para hasta 200 generaciones al mes.
+            </p>
+          )}
+          {stats?.remaining === 0 && isPro && (
+            <p className="text-red-400 text-sm mt-2">
+              Alcanzaste el límite del plan Pro este mes. Se restablece el 1 del próximo mes.
+            </p>
+          )}
+        </div>
 
         {/* Recent generations */}
         <div className="bg-gray-900 border border-purple-500/40 rounded-lg p-5">

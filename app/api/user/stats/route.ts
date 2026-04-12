@@ -46,14 +46,16 @@ export async function GET() {
 
   const isPro = subscription?.status === 'active';
   const FREE_LIMIT = 10;
+  const PRO_LIMIT = 200;
+  const limit = isPro ? PRO_LIMIT : FREE_LIMIT;
 
   return NextResponse.json({
     user: { email: user.email, name: user.name, createdAt: user.createdAt },
     stats: {
       totalGenerations,
       generationsThisMonth,
-      limit: isPro ? null : FREE_LIMIT,
-      remaining: isPro ? null : Math.max(0, FREE_LIMIT - generationsThisMonth),
+      limit,
+      remaining: Math.max(0, limit - generationsThisMonth),
       isPro,
     },
     recentGenerations,
