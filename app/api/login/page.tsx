@@ -37,7 +37,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center p-4">
       <div className="bg-gray-900 border border-purple-500 rounded-lg p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-white mb-2">YouTubeGPT</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">YTubViral</h1>
         <p className="text-gray-400 mb-8">Inicia sesión</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

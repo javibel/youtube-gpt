@@ -3,8 +3,8 @@ import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "YouTubeGPT",
-  description: "Genera contenido viral en segundos",
+  title: "YTubViral",
+  description: "Genera contenido viral para YouTube en segundos",
 };
 
 export default function RootLayout({

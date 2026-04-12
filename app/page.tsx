@@ -97,7 +97,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              🚀 YouTubeGPT
+              🚀 YTubViral
             </h1>
             <p className="text-gray-400 text-sm">Genera contenido viral en segundos</p>
           </div>

@@ -29,13 +29,13 @@ export async function POST(request: Request) {
     data: { email, token, expires },
   });
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? 'https://youtube-gpt-alpha.vercel.app';
+  const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
   await resend.emails.send({
     from: 'onboarding@resend.dev',
     to: email,
-    subject: 'Restablecer contraseña - YouTubeGPT',
+    subject: 'Restablecer contraseña - YTubViral',
     html: `
       <p>Hola,</p>
       <p>Recibimos una solicitud para restablecer tu contraseña.</p>
