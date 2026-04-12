@@ -163,7 +163,6 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
-            <p className="text-gray-400 text-sm mt-1">{session.user?.email}</p>
           </div>
           <div className="flex gap-3">
             <a
