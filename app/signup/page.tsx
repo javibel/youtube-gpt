@@ -28,9 +28,19 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      // Por ahora, solo redirige al login
-      // Después conectaremos la BD para guardar usuario
-      router.push('/login');
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Error al crear cuenta');
+      } else {
+        router.push('/login');
+      }
     } catch (err) {
       setError('Error al crear cuenta');
     }
