@@ -2,11 +2,11 @@
 
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { FaUserCircle } from 'react-icons/fa';
-import TemplateSelector from '../components/TemplateSelector';
-import InputForm from '../components/InputForm';
-import OutputDisplay from '../components/OutputDisplay';
-import { TEMPLATES } from '../utils/prompts';
-import { callClaudeAPI } from '../utils/claudeAPI';
+import TemplateSelector from '@/components/TemplateSelector';
+import InputForm from '@/components/InputForm';
+import OutputDisplay from '@/components/OutputDisplay';
+import { TEMPLATES } from '@/utils/prompts';
+import { callClaudeAPI } from '@/utils/claudeAPI';
 
 export default function Home() {
   const [apiKey, setApiKey] = useState<string>('');
