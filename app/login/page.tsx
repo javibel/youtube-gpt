@@ -82,6 +82,12 @@ export default function LoginPage() {
             Regístrate aquí
           </a>
         </p>
+
+        <div className="mt-8 pt-6 border-t border-gray-800 flex justify-center gap-4 text-xs text-gray-600">
+          <a href="/terms" className="hover:text-gray-400">Términos</a>
+          <a href="/privacy" className="hover:text-gray-400">Privacidad</a>
+          <a href="/legal" className="hover:text-gray-400">Aviso Legal</a>
+        </div>
       </div>
     </div>
   );

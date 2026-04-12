@@ -120,6 +120,19 @@ export default function SignupPage() {
             Inicia sesión aquí
           </a>
         </p>
+
+        <p className="text-gray-600 text-xs mt-4 text-center">
+          Al registrarte aceptas nuestros{' '}
+          <a href="/terms" className="hover:text-gray-400 underline">Términos y Condiciones</a>{' '}
+          y la{' '}
+          <a href="/privacy" className="hover:text-gray-400 underline">Política de Privacidad</a>.
+        </p>
+
+        <div className="mt-4 flex justify-center gap-4 text-xs text-gray-600">
+          <a href="/terms" className="hover:text-gray-400">Términos</a>
+          <a href="/privacy" className="hover:text-gray-400">Privacidad</a>
+          <a href="/legal" className="hover:text-gray-400">Aviso Legal</a>
+        </div>
       </div>
     </div>
   );

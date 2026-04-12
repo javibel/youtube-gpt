@@ -339,6 +339,13 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Footer */}
+      <div className="max-w-5xl mx-auto px-6 py-8 flex justify-center gap-6 text-xs text-gray-600">
+        <a href="/terms" className="hover:text-gray-400">Términos y Condiciones</a>
+        <a href="/privacy" className="hover:text-gray-400">Política de Privacidad</a>
+        <a href="/legal" className="hover:text-gray-400">Aviso Legal</a>
+      </div>
     </div>
   );
 }
