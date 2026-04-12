@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
+import { FaUserCircle } from 'react-icons/fa';
 import TemplateSelector from '../components/TemplateSelector';
 import InputForm from '../components/InputForm';
 import OutputDisplay from '../components/OutputDisplay';
@@ -118,9 +119,10 @@ export default function Home() {
             </div>
             <a
               href="/dashboard"
-              className="bg-gray-800 hover:bg-gray-700 border border-purple-500/50 text-white text-sm font-medium py-2 px-4 rounded-lg transition"
+              className="bg-gray-800 hover:bg-gray-700 border border-purple-500/50 text-white py-2 px-3 rounded-lg transition flex items-center"
+              title="Mi perfil"
             >
-              Mi perfil
+              <FaUserCircle size={22} />
             </a>
           </div>
         </div>
