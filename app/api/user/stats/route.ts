@@ -40,7 +40,7 @@ export async function GET() {
       }),
       prisma.subscription.findUnique({
         where: { userId: user.id },
-        select: { status: true, currentPeriodEnd: true },
+        select: { status: true, cancelAtPeriodEnd: true, currentPeriodEnd: true },
       }),
     ]);
 

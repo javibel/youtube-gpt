@@ -22,7 +22,7 @@ type Stats = {
     isPro: boolean;
   };
   recentGenerations: { id: string; template: string; createdAt: string; tokensUsed: number }[];
-  subscription: { status: string; currentPeriodEnd: string | null } | null;
+  subscription: { status: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
 };
 
 export default function DashboardPage() {
@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -59,6 +60,20 @@ export default function DashboardPage() {
       window.location.href = url;
     } finally {
       setUpgrading(false);
+    }
+  }
+
+  async function handleCancel() {
+    if (!confirm('¿Seguro que quieres cancelar tu suscripción Pro? Seguirás teniendo acceso hasta el final del periodo actual.')) return;
+    setCancelling(true);
+    try {
+      const res = await fetch('/api/stripe/cancel', { method: 'POST' });
+      if (res.ok) {
+        const updated = await fetch('/api/user/stats').then((r) => r.json());
+        setData(updated);
+      }
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -139,6 +154,39 @@ export default function DashboardPage() {
             >
               {upgrading ? 'Redirigiendo...' : 'Upgrade a Pro →'}
             </button>
+          </div>
+        )}
+
+        {/* Gestión suscripción Pro */}
+        {isPro && (
+          <div className="rounded-lg p-5 border border-purple-500/40 bg-gray-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-white font-semibold">Plan Pro activo</p>
+              {data?.subscription?.cancelAtPeriodEnd ? (
+                <p className="text-yellow-400 text-sm mt-1">
+                  Tu suscripción no se renovará. Acceso Pro hasta el{' '}
+                  {data.subscription.currentPeriodEnd
+                    ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+                    : '—'}
+                </p>
+              ) : (
+                <p className="text-gray-400 text-sm mt-1">
+                  Generaciones ilimitadas. Se renueva el{' '}
+                  {data?.subscription?.currentPeriodEnd
+                    ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+                    : '—'}
+                </p>
+              )}
+            </div>
+            {!data?.subscription?.cancelAtPeriodEnd && (
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="shrink-0 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white text-sm font-medium py-2 px-4 rounded transition"
+              >
+                {cancelling ? 'Cancelando...' : 'Cancelar suscripción'}
+              </button>
+            )}
           </div>
         )}
 

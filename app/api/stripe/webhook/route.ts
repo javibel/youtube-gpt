@@ -70,6 +70,7 @@ export async function POST(request: Request) {
         where: { stripeCustomerId: customerId },
         data: {
           status: subscription.status,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
           currentPeriodStart: item ? new Date(item.current_period_start * 1000) : undefined,
           currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
         },
