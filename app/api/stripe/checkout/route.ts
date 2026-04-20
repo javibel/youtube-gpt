@@ -3,12 +3,23 @@ import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const session = await auth();
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const plan: 'monthly' | 'yearly' = body.plan === 'yearly' ? 'yearly' : 'monthly';
+
+    const priceId = plan === 'yearly'
+      ? process.env.STRIPE_PRO_YEARLY_PRICE_ID!
+      : process.env.STRIPE_PRO_PRICE_ID!;
+
+    if (!priceId) {
+      return NextResponse.json({ error: `Price ID not configured for plan: ${plan}` }, { status: 500 });
     }
 
     const user = await prisma.user.findUnique({
@@ -32,25 +43,27 @@ export async function POST() {
       customerId = customer.id;
     }
 
+    const isYearly = plan === 'yearly';
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price: process.env.STRIPE_PRO_PRICE_ID!,
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
       success_url: 'https://ytubviral.com/stripe/success',
       cancel_url: 'https://ytubviral.com/dashboard',
       metadata: { userId: user.id },
       subscription_data: {
-        description: 'YTubViral.com — Plan Pro (200 generaciones/mes)',
-        metadata: { userId: user.id, service: 'YTubViral.com' },
+        description: isYearly
+          ? 'YTubViral.com — Plan Pro Anual (200 generaciones/mes · 99,99€/año)'
+          : 'YTubViral.com — Plan Pro (200 generaciones/mes)',
+        metadata: { userId: user.id, service: 'YTubViral.com', plan },
       },
       custom_text: {
-        submit: { message: 'Tu suscripción a YTubViral.com Pro se activa al instante. Puedes cancelar en cualquier momento desde tu panel.' },
+        submit: {
+          message: isYearly
+            ? 'Plan anual — 99,99€/año. Tu acceso Pro se activa al instante. Sin renovaciones sorpresa.'
+            : 'Tu suscripción a YTubViral.com Pro se activa al instante. Puedes cancelar en cualquier momento.',
+        },
       },
     });
 

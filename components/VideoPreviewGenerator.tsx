@@ -464,10 +464,12 @@ function renderTransition(
 
 // ─── Rate limit ───────────────────────────────────────────────────────────────
 
+const DAILY_LIMIT = 50; // PRO-only feature — generous limit
+
 function checkRateLimit() {
   const today = new Date().toISOString().split('T')[0];
   const count = parseInt(localStorage.getItem(`ytv_vp_${today}`) ?? '0', 10);
-  return { allowed: count < 5, remaining: 5 - count };
+  return { allowed: count < DAILY_LIMIT, remaining: DAILY_LIMIT - count };
 }
 function bumpRateLimit() {
   const today = new Date().toISOString().split('T')[0];
@@ -512,7 +514,7 @@ export default function VideoPreviewGenerator({
     const { allowed } = checkRateLimit();
     if (!allowed) {
       setStatus('error');
-      setErrorMsg(t('Límite de 5 videos/día alcanzado.', 'Daily limit of 5 videos reached.'));
+      setErrorMsg(t(`Límite de ${DAILY_LIMIT} videos/día alcanzado.`, `Daily limit of ${DAILY_LIMIT} videos reached.`));
       return;
     }
 

@@ -396,11 +396,29 @@ function Pricing({ lang }: { lang: Lang }) {
           <div className="p-10 relative" style={{ background: 'linear-gradient(180deg,rgba(232,77,91,0.08),rgba(232,77,91,0.02))' }}>
             <div className="absolute -top-3 left-10 red-tape">★ {lang === 'en' ? 'MOST POPULAR' : 'MÁS ELEGIDO'}</div>
             <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-4" style={{ color: 'var(--red)' }}>B · Pro</p>
-            <div className="flex items-baseline gap-1 mb-2">
+
+            {/* Monthly price */}
+            <div className="flex items-baseline gap-1 mb-1">
               <span className="font-display font-bold stat-num" style={{ fontSize: '60px' }}>9,99€</span>
               <span className="text-zinc-500 font-mono-jb text-sm">/{lang === 'en' ? 'mo' : 'mes'}</span>
             </div>
-            <p className="text-zinc-400 text-sm mb-8">
+
+            {/* Yearly option */}
+            <div className="flex items-center gap-2 mb-6 mt-2 p-3 rounded-xl border border-white/10" style={{ background: 'rgba(124,255,0,0.06)', borderColor: 'rgba(124,255,0,0.2)' }}>
+              <div>
+                <p className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: '#7CFF00' }}>
+                  {lang === 'en' ? '★ ANNUAL — SAVE 17%' : '★ ANUAL — AHORRA 17%'}
+                </p>
+                <p className="font-display font-bold text-white text-lg mt-0.5">
+                  99,99€<span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{lang === 'en' ? 'yr' : 'año'}</span>
+                </p>
+                <p className="font-mono-jb text-[10px] text-zinc-400">
+                  {lang === 'en' ? '= €8.33/mo · 2 months free' : '= 8,33€/mes · 2 meses gratis'}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-zinc-400 text-sm mb-6">
               {lang === 'en' ? 'For creators who publish seriously' : 'Para creadores que publican en serio'}
             </p>
             <ul className="space-y-3 mb-10">

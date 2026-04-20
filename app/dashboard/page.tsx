@@ -53,6 +53,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
+  const [billingPlan, setBillingPlan] = useState<'monthly'|'yearly'>('monthly');
   const [cancelling, setCancelling] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
@@ -168,10 +169,10 @@ export default function DashboardPage() {
     setYtDisconnecting(false);
   }
 
-  async function handleUpgrade() {
+  async function handleUpgrade(plan: 'monthly' | 'yearly' = billingPlan) {
     setUpgrading(true);
     try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) });
       const d = await res.json();
       if (d.error) { alert(d.error); return; }
       if (!d.url) { alert(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.')); return; }
@@ -326,7 +327,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-3">
               {!isPro && (
-                <button onClick={handleUpgrade} disabled={upgrading}
+                <button onClick={() => handleUpgrade(billingPlan)} disabled={upgrading}
                   className="btn-offset btn-offset-ghost px-4 py-2.5 text-[13px] font-display gap-2 disabled:opacity-50">
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18M4 8l4 4 4-6 4 6 4-4-1 10H5z" /></svg>
                   {upgrading ? t('Redirigiendo...', 'Redirecting...') : 'Upgrade to Pro'}
@@ -763,10 +764,45 @@ export default function DashboardPage() {
               <div className="absolute inset-0 grid-bg opacity-30" />
               <div className="relative">
                 <div className="red-tape text-[10px] w-fit mb-3">PRO</div>
-                <p className="font-display font-bold text-2xl leading-tight mb-2">{t('200 generaciones/mes', '200 generations/month')}</p>
-                <p className="text-zinc-300 text-sm mb-5">{t('Desbloquea todo por 9,99€/mes. Cancela cuando quieras.', 'Unlock everything for €9.99/month. Cancel anytime.')}</p>
-                <button onClick={handleUpgrade} disabled={upgrading} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
-                  {upgrading ? t('Redirigiendo...', 'Redirecting...') : t('Empezar con Pro →', 'Start with Pro →')}
+                <p className="font-display font-bold text-2xl leading-tight mb-3">{t('200 generaciones/mes', '200 generations/month')}</p>
+
+                {/* Billing toggle */}
+                <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[10px] tracking-wider uppercase overflow-hidden mb-4 w-fit">
+                  <button
+                    onClick={() => setBillingPlan('monthly')}
+                    className="px-3 py-1.5 transition"
+                    style={{ background: billingPlan === 'monthly' ? 'var(--red)' : 'transparent', color: billingPlan === 'monthly' ? '#000' : '#a1a1aa' }}>
+                    {t('Mensual', 'Monthly')}
+                  </button>
+                  <button
+                    onClick={() => setBillingPlan('yearly')}
+                    className="px-3 py-1.5 transition flex items-center gap-1.5"
+                    style={{ background: billingPlan === 'yearly' ? 'var(--red)' : 'transparent', color: billingPlan === 'yearly' ? '#000' : '#a1a1aa' }}>
+                    {t('Anual', 'Yearly')}
+                    <span className="rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ background: billingPlan === 'yearly' ? 'rgba(0,0,0,0.25)' : 'rgba(232,77,91,0.25)', color: billingPlan === 'yearly' ? '#000' : 'var(--red)' }}>
+                      -17%
+                    </span>
+                  </button>
+                </div>
+
+                {/* Price display */}
+                {billingPlan === 'monthly' ? (
+                  <div className="mb-4">
+                    <span className="font-display font-bold text-3xl">9,99€</span>
+                    <span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('mes', 'mo')}</span>
+                  </div>
+                ) : (
+                  <div className="mb-4">
+                    <span className="font-display font-bold text-3xl">99,99€</span>
+                    <span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('año', 'yr')}</span>
+                    <p className="font-mono-jb text-[10px] mt-1" style={{ color: '#7CFF00' }}>
+                      {t('= 8,33€/mes · Ahorras 19,89€', '= €8.33/mo · Save €19.89')}
+                    </p>
+                  </div>
+                )}
+
+                <button onClick={() => handleUpgrade(billingPlan)} disabled={upgrading} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
+                  {upgrading ? t('Redirigiendo...', 'Redirecting...') : billingPlan === 'yearly' ? t('Empezar anual →', 'Start yearly →') : t('Empezar con Pro →', 'Start with Pro →')}
                 </button>
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <button onClick={handleSync} disabled={syncing}
