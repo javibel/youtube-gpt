@@ -659,64 +659,71 @@ export default function VideoPreviewGenerator({
             <p className="font-mono-jb text-[11px] text-zinc-500 mt-1 truncate max-w-xs">"{scriptTitle}"</p>
           </div>
 
-          {/* Canvas preview — inside TV frame */}
+          {/* Canvas preview — TV2 frame ON TOP, video plays behind */}
           <div className="flex justify-center">
-            {/* Hidden canvas renders at full resolution for MediaRecorder */}
+            {/* Hidden canvas at full resolution for MediaRecorder */}
             <canvas
               ref={canvasRef}
               width={CANVAS_W}
               height={CANVAS_H}
               style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }}
             />
-            {/* TV frame */}
-            <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: 480 }}>
-              <img
-                src="/TV.webp"
-                alt=""
-                draggable={false}
-                style={{ width: '100%', display: 'block', userSelect: 'none', pointerEvents: 'none' }}
-              />
-              {/* Screen area — calibrated to TV.png bezel + controls */}
+
+            <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: 500 }}>
+
+              {/* ── Layer 1 (behind): video/canvas content ── */}
               <div style={{
                 position: 'absolute',
-                left: '8%', top: '9%',
-                width: '63%', height: '79%',
+                left: '11%', top: '10%',
+                width: '65%', height: '79%',
+                zIndex: 1,
                 overflow: 'hidden',
                 background: '#000810',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {/* Live canvas mirror (scaled to fit screen area) */}
-                {status !== 'done' && (
-                  <TvCanvasMirror canvasRef={canvasRef} />
-                )}
-                {/* Video playback after recording */}
+                {status !== 'done' && <TvCanvasMirror canvasRef={canvasRef} />}
                 {status === 'done' && videoUrl && (
                   <video src={videoUrl} autoPlay loop muted playsInline
-                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                 )}
-                {/* Idle placeholder */}
                 {status === 'idle' && (
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center', gap: 8, background: 'rgba(3,4,12,0.92)', zIndex: 2 }}>
+                  <div style={{
+                    position: 'absolute', inset: 0, zIndex: 2,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: 8,
+                    background: 'rgba(3,4,12,0.95)',
+                  }}>
                     <span style={{ fontSize: 28 }}>📺</span>
                     <p style={{ fontFamily: 'monospace', fontSize: 10, color: '#52525b', textAlign: 'center', padding: '0 10px', lineHeight: 1.4 }}>
                       {t('La animación aparecerá aquí', 'Animation will appear here')}
                     </p>
                   </div>
                 )}
-                {/* CRT scanlines overlay */}
+                {/* CRT scanlines */}
                 <div style={{
                   position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5,
-                  background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px)',
+                  background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px)',
                 }} />
                 {/* Screen glare */}
                 <div style={{
                   position: 'absolute', top: 0, left: 0, width: '55%', height: '40%',
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%)',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%)',
                   pointerEvents: 'none', zIndex: 6, borderRadius: '0 0 80% 0',
                 }} />
               </div>
+
+              {/* ── Layer 2 (on top): TV2 frame — transparent screen reveals video ── */}
+              <img
+                src="/TV2.webp"
+                alt=""
+                draggable={false}
+                style={{
+                  width: '100%', display: 'block',
+                  position: 'relative', zIndex: 10,
+                  userSelect: 'none', pointerEvents: 'none',
+                }}
+              />
             </div>
           </div>
 
