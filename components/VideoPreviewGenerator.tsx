@@ -52,13 +52,12 @@ import { savePreview } from '@/lib/videoPreviewDB';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Lang   = 'es' | 'en';
-type Format = 'tiktok' | 'youtube' | 'square';
+type Lang       = 'es' | 'en';
 type Transition = 'fade' | 'slideLeft' | 'slideUp' | 'zoom' | 'wipeRight';
 
 interface Slide {
   sectionTitle: string;
-  subtitle: string;      // key idea from script — shown as subtitle
+  subtitle: string;
   emoji: string;
   gradient: [string, string];
   accentColor: string;
@@ -68,19 +67,9 @@ interface Slide {
   total: number;
 }
 
-// ─── Formats ──────────────────────────────────────────────────────────────────
-
-const FORMATS: Record<Format, { w: number; h: number; label: string; icon: string; previewW: number; previewH: number }> = {
-  tiktok:  { w: 1080, h: 1920, label: 'TikTok / Shorts', icon: '📱', previewW: 292, previewH: 520 },
-  youtube: { w: 1920, h: 1080, label: 'YouTube',          icon: '📺', previewW: 520, previewH: 293 },
-  square:  { w: 1080, h: 1080, label: 'Instagram',        icon: '⬛', previewW: 400, previewH: 400 },
-};
-
-const FORMAT_LIST: { key: Format; icon: string; label: string }[] = [
-  { key: 'tiktok',  icon: '📱', label: 'TikTok / Shorts' },
-  { key: 'youtube', icon: '📺', label: 'YouTube' },
-  { key: 'square',  icon: '⬛', label: 'Instagram' },
-];
+// ─── Canvas dimensions — always 4:3 to match the TV ──────────────────────────
+const CANVAS_W = 1200;
+const CANVAS_H = 900;
 
 // ─── Palettes ─────────────────────────────────────────────────────────────────
 
@@ -122,78 +111,101 @@ function pickEmoji(title: string, text: string): string {
 
 // ─── Markdown → Slides ────────────────────────────────────────────────────────
 
+function cleanLine(t: string): string {
+  return t.replace(/\*\*/g, '').replace(/\*/g, '').replace(/`[^`]+`/g, '').replace(/\([\d:]+\s*[-–]\s*[\d:]+\)/g, '').trim();
+}
+
 function parseScript(markdown: string): Slide[] {
   const slides: Slide[] = [];
-  const lines = markdown.split('\n');
-  let sectionTitle = '';
-  let collected: string[] = [];
-  let idx = 0;
 
-  const flush = () => {
-    const subtitle = collected.join(' ').trim().replace(/\s+/g, ' ');
-    if (subtitle.length < 8) return;
-    const [cA, cB, accent] = PALETTES[idx % PALETTES.length];
-    slides.push({
-      sectionTitle: sectionTitle || `Parte ${idx + 1}`,
-      subtitle: subtitle.slice(0, 160),
-      emoji: pickEmoji(sectionTitle, subtitle),
-      gradient: [cA, cB],
-      accentColor: accent,
-      transition: TRANSITIONS[idx % TRANSITIONS.length],
-      duration: 5,
-      index: idx,
-      total: 0,
-    });
-    idx++;
-    collected = [];
-  };
+  // ── Filter noise ──
+  const usableLines = markdown.split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0)
+    .filter(l => !l.startsWith('>'))
+    .filter(l => !/^-{3,}$/.test(l))
+    .filter(l => !/^\[?\d{1,2}:\d{2}/.test(l))
+    .filter(l => !/^\([\d:]+\s*[-–]\s*[\d:]+\)/.test(l));
 
-  for (const line of lines) {
-    const t = line.trim();
-    if (!t) continue;
-    if (t.startsWith('>')) continue;                       // camera directions
-    if (/^-{3,}$/.test(t)) continue;                      // ---
-    if (/^\[?\d{1,2}:\d{2}/.test(t)) continue;            // timestamps like 0:00
-    if (/^\([\d:]+\s*[-–]\s*[\d:]+\)/.test(t)) continue;  // (0:00 - 0:15)
+  const hasHeaders = usableLines.some(l => /^#{1,3}\s/.test(l));
 
-    // Section header
-    if (/^#{1,3}\s/.test(t)) {
-      flush();
-      sectionTitle = t
-        .replace(/^#{1,3}\s*/, '')
-        .replace(/\([\d:]+\s*[-–]\s*[\d:]+\)/g, '')
-        .replace(/\[[\d:]+\s*[-–]\s*[\d:]+\]/g, '')
-        .replace(/[\u{1F300}-\u{1FBFF}]/gu, '')
-        .replace(/\*\*/g, '')
-        .replace(/[📌🎬📝🔑✅⚡🎯]/g, '')
-        .trim();
-      continue;
-    }
+  if (hasHeaders) {
+    // ── Mode A: markdown with ## section headers ──
+    let sectionTitle = '';
+    let collected: string[] = [];
+    let idx = 0;
 
-    // Extract subtitle text — prefer bold, else plain
-    if (collected.length === 0) {
-      const bolds = [...t.matchAll(/\*\*([^*]{6,})\*\*/g)];
-      if (bolds.length > 0) {
+    const flush = () => {
+      const subtitle = collected.join(' ').trim().replace(/\s+/g, ' ');
+      if (subtitle.length < 8) return;
+      const [cA, cB, accent] = PALETTES[idx % PALETTES.length];
+      slides.push({
+        sectionTitle: sectionTitle || `Parte ${idx + 1}`,
+        subtitle: subtitle.slice(0, 140),
+        emoji: pickEmoji(sectionTitle, subtitle),
+        gradient: [cA, cB],
+        accentColor: accent,
+        transition: TRANSITIONS[idx % TRANSITIONS.length],
+        duration: 5, index: idx, total: 0,
+      });
+      idx++;
+      collected = [];
+    };
+
+    for (const t of usableLines) {
+      if (/^#{1,3}\s/.test(t)) {
+        flush();
+        sectionTitle = t
+          .replace(/^#{1,3}\s*/, '')
+          .replace(/\([\d:]+\s*[-–]\s*[\d:]+\)/g, '')
+          .replace(/[\u{1F300}-\u{1FBFF}]/gu, '')
+          .replace(/\*\*/g, '')
+          .replace(/[📌🎬📝🔑✅⚡🎯]/g, '')
+          .trim();
+        continue;
+      }
+      const bolds = [...t.matchAll(/\*\*([^*]{5,})\*\*/g)];
+      if (bolds.length > 0 && collected.join(' ').length < 110) {
         collected.push(...bolds.map(m => m[1]));
         continue;
       }
-    }
-    // Additional bold lines in same section (build richer subtitle)
-    const bolds = [...t.matchAll(/\*\*([^*]{6,})\*\*/g)];
-    if (bolds.length > 0 && collected.join(' ').length < 100) {
-      collected.push(...bolds.map(m => m[1]));
-      continue;
-    }
-
-    // Plain text fallback
-    if (collected.length === 0) {
-      const plain = t.replace(/\*\*/g, '').replace(/\*/g, '').replace(/`[^`]+`/g, '').trim();
-      if (plain.length >= 15 && !plain.startsWith('#') && !plain.startsWith('[')) {
-        collected.push(plain);
+      if (collected.length === 0) {
+        const plain = cleanLine(t);
+        if (plain.length >= 12) collected.push(plain);
       }
     }
+    flush();
+
+  } else {
+    // ── Mode B: plain text — split into individual sentences ──
+    const fullText = usableLines.join(' ');
+
+    // Split on sentence boundaries (., !, ?)
+    const sentences = fullText
+      .split(/(?<=[.!?¡¿])\s+/)
+      .map(s => s.trim())
+      .filter(s => cleanLine(s).length > 10);
+
+    sentences.slice(0, 10).forEach((sentence, idx) => {
+      // Section title pill = bold keywords (if any), else empty string
+      const boldWords = [...sentence.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1].trim());
+      const sectionTitle = boldWords.slice(0, 2).join(' + ').toUpperCase().slice(0, 20);
+
+      // Subtitle = full sentence cleaned (no bold markers, no timestamps)
+      const subtitle = cleanLine(sentence).slice(0, 130);
+
+      const [cA, cB, accent] = PALETTES[idx % PALETTES.length];
+      slides.push({
+        sectionTitle,
+        subtitle,
+        emoji: pickEmoji(sectionTitle, subtitle),
+        gradient: [cA, cB],
+        accentColor: accent,
+        transition: TRANSITIONS[idx % TRANSITIONS.length],
+        duration: 5, index: idx, total: 0,
+      });
+    });
   }
-  flush();
 
   const result = slides.slice(0, 10);
   result.forEach((s, i) => { s.index = i; s.total = result.length; });
@@ -484,14 +496,12 @@ export default function VideoPreviewGenerator({
   const rafRef      = useRef<number>(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
 
-  const [format, setFormat]     = useState<Format>('tiktok');
   const [status, setStatus]     = useState<'idle'|'generating'|'done'|'error'>('idle');
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const t  = (es: string, en: string) => lang === 'en' ? en : es;
-  const fm = FORMATS[format];
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   const generate = useCallback(async () => {
     const canvas = canvasRef.current;
@@ -524,7 +534,7 @@ export default function VideoPreviewGenerator({
     setProgress(0);
     bumpRateLimit();
 
-    const W = fm.w, H = fm.h;
+    const W = CANVAS_W, H = CANVAS_H;
     // Offscreen canvas for previous slide
     const offscreen = document.createElement('canvas');
     offscreen.width = W; offscreen.height = H;
@@ -546,7 +556,7 @@ export default function VideoPreviewGenerator({
       setVideoUrl(URL.createObjectURL(blob));
       setStatus('done'); setProgress(100);
       try {
-        await savePreview({ id: generationId, blob, title: scriptTitle, format, createdAt: new Date().toISOString() });
+        await savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() });
         onSaved?.();
       } catch { /* non-critical */ }
     };
@@ -604,13 +614,13 @@ export default function VideoPreviewGenerator({
       if (recorder.state === 'recording') recorder.stop();
     }, (totalDur + 5) * 1000);
 
-  }, [scriptContent, format, generationId, scriptTitle, lang, fm]);
+  }, [scriptContent, generationId, scriptTitle, lang]);
 
   const handleDownload = () => {
     if (!videoUrl) return;
     const a = document.createElement('a');
     a.href = videoUrl;
-    a.download = `ytubviral-${format}-${generationId.slice(0, 8)}.webm`;
+    a.download = `ytubviral-preview-${generationId.slice(0, 8)}.webm`;
     a.click();
   };
 
@@ -649,35 +659,13 @@ export default function VideoPreviewGenerator({
             <p className="font-mono-jb text-[11px] text-zinc-500 mt-1 truncate max-w-xs">"{scriptTitle}"</p>
           </div>
 
-          {/* Format selector */}
-          <div>
-            <p className="font-mono-jb text-[10px] uppercase tracking-wider text-zinc-600 mb-2">{t('Formato', 'Format')}</p>
-            <div className="flex gap-2">
-              {FORMAT_LIST.map(f => (
-                <button key={f.key}
-                  onClick={() => { if (status === 'idle') setFormat(f.key); }}
-                  disabled={status !== 'idle'}
-                  className="flex-1 py-2 px-3 rounded-lg font-mono-jb text-[11px] transition border flex items-center justify-center gap-1.5"
-                  style={{
-                    background:   format === f.key ? 'rgba(0,217,255,0.1)' : 'rgba(255,255,255,0.03)',
-                    borderColor:  format === f.key ? 'rgba(0,217,255,0.5)' : 'rgba(255,255,255,0.08)',
-                    color:        format === f.key ? '#00D9FF' : '#6b7280',
-                    opacity:      status !== 'idle' ? 0.5 : 1,
-                    cursor:       status !== 'idle' ? 'not-allowed' : 'pointer',
-                  }}>
-                  {f.icon} {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Canvas preview — inside TV frame */}
           <div className="flex justify-center">
             {/* Hidden canvas renders at full resolution for MediaRecorder */}
             <canvas
               ref={canvasRef}
-              width={fm.w}
-              height={fm.h}
+              width={CANVAS_W}
+              height={CANVAS_H}
               style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }}
             />
             {/* TV frame */}
