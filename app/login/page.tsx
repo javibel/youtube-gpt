@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
@@ -10,83 +10,92 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lang, setLang] = useState<'es'|'en'>('es');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
+    if (stored) setLang(stored);
+  }, []);
+
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     try {
-      const result: any = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
-
+      const result: any = await signIn('credentials', { email, password, redirect: false });
       if (result?.error) {
-        setError('Email o contraseña incorrectos');
+        setError(t('Email o contraseña incorrectos', 'Incorrect email or password'));
       } else {
         router.push('/dashboard');
       }
-    } catch (err) {
-      setError('Error al ingresar');
+    } catch {
+      setError(t('Error al ingresar', 'Sign in error'));
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-purple-500 rounded-lg p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-white mb-2">YTubViral</h1>
-        <p className="text-gray-400 mb-8">Inicia sesión</p>
+    <div className="min-h-screen grain grid-bg flex items-center justify-center p-4" style={{ background: 'var(--ink)' }}>
+      <a href="/" className="absolute top-6 left-6 flex items-center gap-2">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
+          <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+        </svg>
+        <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+      </a>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white"
-            placeholder="tu@email.com"
-            required
-          />
+      <div className="w-full max-w-md">
+        <div className="mb-8">
+          <p className="font-mono-jb text-[10px] tracking-widest uppercase mb-3" style={{ color: 'var(--red)' }}>▸ {t('ACCESO', 'SIGN IN')}</p>
+          <h1 className="font-display font-bold text-3xl tracking-tight text-white mb-2">{t('Bienvenido de vuelta', 'Welcome back')}</h1>
+          <p className="text-zinc-400 text-sm">{t('Inicia sesión para seguir creando contenido viral', 'Sign in to keep creating viral content')}</p>
+        </div>
 
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white"
-            placeholder="••••••••"
-            required
-          />
+        <div className="soft-card p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" required />
+            </div>
 
-          {error && <div className="text-red-500 text-sm">{error}</div>}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500">{t('Contraseña', 'Password')}</label>
+                <a href="/forgot-password" className="font-mono-jb text-[10px] tracking-wider text-zinc-500 hover:text-white transition">
+                  {t('¿Olvidaste la contraseña?', 'Forgot password?')}
+                </a>
+              </div>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                className="soft-field py-3 px-4 text-sm" placeholder="••••••••" required />
+            </div>
 
-          <div className="text-right">
-            <a href="/forgot-password" className="text-sm text-purple-400 hover:text-purple-300">
-              ¿Olvidaste tu contraseña?
-            </a>
-          </div>
+            {error && (
+              <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
+                ⚠️ {error}
+              </div>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-bold py-2 rounded transition"
-          >
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </button>
-        </form>
+            <button type="submit" disabled={loading}
+              className="btn-offset w-full py-3.5 font-display font-bold text-[15px] disabled:opacity-60 flex items-center justify-center gap-2">
+              {loading ? (
+                <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r" />{t('Ingresando...', 'Signing in...')}</>
+              ) : t('Entrar →', 'Sign in →')}
+            </button>
+          </form>
+        </div>
 
-        <p className="text-gray-400 text-sm mt-6 text-center">
-          ¿No tienes cuenta?{' '}
-          <a href="/signup" className="text-purple-400 hover:text-purple-300">
-            Regístrate aquí
-          </a>
+        <p className="text-zinc-500 text-sm mt-6 text-center">
+          {t('¿No tienes cuenta?', "Don't have an account?")}{' '}
+          <a href="/signup" className="text-white hover:underline font-medium">{t('Regístrate gratis', 'Sign up for free')}</a>
         </p>
 
-        <div className="mt-8 pt-6 border-t border-gray-800 flex justify-center gap-4 text-xs text-gray-600">
-          <a href="/terms" className="hover:text-gray-400">Términos</a>
-          <a href="/privacy" className="hover:text-gray-400">Privacidad</a>
-          <a href="/legal" className="hover:text-gray-400">Aviso Legal</a>
+        <div className="mt-8 flex justify-center gap-5 text-xs text-zinc-600">
+          <a href="/terms" className="hover:text-zinc-400 transition">{t('Términos', 'Terms')}</a>
+          <a href="/privacy" className="hover:text-zinc-400 transition">{t('Privacidad', 'Privacy')}</a>
+          <a href="/legal" className="hover:text-zinc-400 transition">{t('Aviso Legal', 'Legal Notice')}</a>
         </div>
       </div>
     </div>

@@ -1,11 +1,24 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
 import crypto from 'crypto';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  // Rate limit: máx 5 intentos por IP cada 15 minutos (previene spam de emails)
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
+    ?? request.headers.get('x-real-ip')
+    ?? 'unknown';
+  const rl = checkRateLimit(`forgot-password:${ip}`, 5, 15 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' },
+      { status: 429 }
+    );
+  }
+
   const { email } = await request.json();
 
   if (!email) {
@@ -33,7 +46,7 @@ export async function POST(request: Request) {
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
   await resend.emails.send({
-    from: 'onboarding@resend.dev',
+    from: 'noreply@ytubviral.com',
     to: email,
     subject: 'Restablecer contraseña - YTubViral',
     html: `

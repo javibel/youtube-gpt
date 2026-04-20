@@ -21,6 +21,8 @@ model User {
   sessions      Session[]
   generations   Generation[]
   subscription  Subscription?
+  review        Review?
+  youtubeToken  YoutubeToken?
 
   @@map("users")
 }
@@ -81,11 +83,26 @@ model Generation {
   inputs      Json
   output      String
   tokensUsed  Int
+  ipAddress   String?
   createdAt   DateTime  @default(now())
 
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("generations")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  rating    Int
+  text      String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
 }
 
 model Subscription {
@@ -103,4 +120,32 @@ model Subscription {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
+
+model RateLimit {
+  key         String   @id
+  hits        Int      @default(0)
+  windowStart DateTime @map("window_start")
+
+  @@map("rate_limits")
+}
+
+model YoutubeToken {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime
+  channelId    String?
+  channelName  String?
+  channelThumb String?
+  subscribers  String?
+  totalViews   String?
+  videoCount   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("youtube_tokens")
 }
