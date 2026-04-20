@@ -676,8 +676,8 @@ export default function VideoPreviewGenerator({
               {/* ── Layer 1 (behind): video/canvas content ── */}
               <div style={{
                 position: 'absolute',
-                left: '11%', top: '10%',
-                width: '65%', height: '79%',
+                left: '11%', top: '11%',
+                width: '60%', height: '76%',
                 zIndex: 1,
                 overflow: 'hidden',
                 background: '#000810',
