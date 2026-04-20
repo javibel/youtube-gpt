@@ -683,7 +683,7 @@ export default function VideoPreviewGenerator({
             {/* TV frame */}
             <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: 480 }}>
               <img
-                src="/TV.png"
+                src="/TV.webp"
                 alt=""
                 draggable={false}
                 style={{ width: '100%', display: 'block', userSelect: 'none', pointerEvents: 'none' }}
