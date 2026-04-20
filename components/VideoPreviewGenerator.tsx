@@ -462,6 +462,74 @@ function renderTransition(
   }
 }
 
+// ─── Retro effects ───────────────────────────────────────────────────────────
+
+function drawStaticNoise(ctx: CanvasRenderingContext2D, W: number, H: number, alpha = 1) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const bs = 6;
+  for (let y = 0; y < H; y += bs) {
+    for (let x = 0; x < W; x += bs) {
+      const v = Math.floor(Math.random() * 256);
+      ctx.fillStyle = `rgb(${v},${v},${v})`;
+      ctx.fillRect(x, y, bs, bs);
+    }
+  }
+  // CRT scanlines over noise
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  for (let y = 0; y < H; y += bs) ctx.fillRect(0, y + Math.floor(bs / 2), W, Math.ceil(bs / 2));
+  // Occasional bright horizontal bar
+  if (Math.random() < 0.3) {
+    const barY = Math.random() * H;
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(0, barY, W, 30 + Math.random() * 60);
+  }
+  ctx.restore();
+}
+
+function applyVintageOverlay(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  // Warm sepia tint
+  ctx.save();
+  ctx.fillStyle = 'rgba(100, 60, 10, 0.07)';
+  ctx.fillRect(0, 0, W, H);
+  // Vignette
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.72);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.50)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+  // Film grain
+  for (let i = 0; i < 1200; i++) {
+    const gx = Math.random() * W;
+    const gy = Math.random() * H;
+    const bright = Math.random() > 0.5 ? 220 : 30;
+    ctx.fillStyle = `rgba(${bright},${bright},${bright},${0.02 + Math.random() * 0.04})`;
+    ctx.fillRect(gx, gy, 1.5, 1.5);
+  }
+  // CRT scanlines (subtle)
+  ctx.fillStyle = 'rgba(0,0,0,0.04)';
+  for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2);
+  ctx.restore();
+}
+
+function applyGlitch(ctx: CanvasRenderingContext2D, snapshot: HTMLCanvasElement, W: number, H: number) {
+  ctx.save();
+  const numSlices = 2 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < numSlices; i++) {
+    const sy = Math.random() * H;
+    const sh = 3 + Math.random() * 25;
+    const dx = (Math.random() - 0.5) * 50;
+    ctx.drawImage(snapshot, 0, sy, W, sh, dx, sy, W, sh);
+  }
+  // Red channel bleed
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = 0.08;
+  const gy = Math.random() * H;
+  ctx.fillStyle = '#FF0033';
+  ctx.fillRect(-5, gy, W + 5, 5 + Math.random() * 30);
+  ctx.restore();
+}
+
 // ─── Rate limit ───────────────────────────────────────────────────────────────
 
 const DAILY_LIMIT = 50; // PRO-only feature — generous limit
@@ -543,7 +611,18 @@ export default function VideoPreviewGenerator({
     offscRef.current = offscreen;
     const offCtx = offscreen.getContext('2d')!;
 
-    const totalDur = slides.reduce((s, sl) => s + sl.duration, 0) + slides.length * TRANSITION_DURATION;
+    // Snapshot canvas for glitch effect
+    const snapCanvas = document.createElement('canvas');
+    snapCanvas.width = W; snapCanvas.height = H;
+    const snapCtx = snapCanvas.getContext('2d')!;
+
+    // Retro timing constants
+    const STATIC_DUR = 0.85; // seconds of TV static noise at start/end
+    const SFADE      = 0.30; // seconds of fade between static and first/last slide
+    const slideOffset = STATIC_DUR + SFADE;
+
+    const slideDur = slides.reduce((s, sl) => s + sl.duration, 0) + slides.length * TRANSITION_DURATION;
+    const totalDur = slideOffset + slideDur + SFADE + STATIC_DUR;
 
     const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(30);
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
@@ -579,8 +658,11 @@ export default function VideoPreviewGenerator({
     // Draw first slide onto offscreen initially (blank)
     offCtx.fillStyle = '#000'; offCtx.fillRect(0, 0, W, H);
 
+    let lastGlitch = -999;
+
     const animate = () => {
-      const elapsed = (performance.now() - startTime) / 1000;
+      const elapsed   = (performance.now() - startTime) / 1000;
+      const slideTime = Math.max(0, elapsed - slideOffset);
 
       if (elapsed >= totalDur + 0.3) {
         if (recorder.state === 'recording') recorder.stop();
@@ -589,22 +671,58 @@ export default function VideoPreviewGenerator({
 
       setProgress(Math.min(95, Math.round((elapsed / totalDur) * 100)));
 
-      // Find current segment
-      const seg = timeline.find(s => elapsed >= s.startT && elapsed < s.slideEnd);
+      if (elapsed < STATIC_DUR) {
+        // ── Intro: TV static noise ──
+        drawStaticNoise(ctx, W, H);
 
-      if (!seg) {
-        // Before first or after last — black
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-      } else if (elapsed < seg.transEnd) {
-        // Transition phase
-        const tp = (elapsed - seg.startT) / TRANSITION_DURATION;
-        renderTransition(ctx, offscRef.current, seg.slide, W, H, Math.min(1, tp));
+      } else if (elapsed < STATIC_DUR + SFADE) {
+        // ── Fade-in: noise dissolves into first slide ──
+        const fadeT = (elapsed - STATIC_DUR) / SFADE;
+        if (timeline.length > 0) {
+          drawSlide(ctx, timeline[0].slide, W, H, 1);
+          applyVintageOverlay(ctx, W, H);
+        }
+        drawStaticNoise(ctx, W, H, 1 - fadeT);
+
+      } else if (slideTime >= slideDur && slideTime < slideDur + SFADE) {
+        // ── Fade-out: last slide dissolves into noise ──
+        const fadeT = (slideTime - slideDur) / SFADE;
+        if (timeline.length > 0) {
+          drawSlide(ctx, timeline[timeline.length - 1].slide, W, H, 1);
+          applyVintageOverlay(ctx, W, H);
+        }
+        drawStaticNoise(ctx, W, H, fadeT);
+
+      } else if (slideTime >= slideDur + SFADE) {
+        // ── Outro: TV static noise ──
+        drawStaticNoise(ctx, W, H);
+
       } else {
-        // Static display phase — draw slide and refresh offscreen
-        drawSlide(ctx, seg.slide, W, H);
-        // Update offscreen for next transition
-        offCtx.clearRect(0, 0, W, H);
-        offCtx.drawImage(canvas, 0, 0);
+        // ── Normal slide rendering ──
+        const seg = timeline.find(s => slideTime >= s.startT && slideTime < s.slideEnd);
+
+        if (!seg) {
+          ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+        } else if (slideTime < seg.transEnd) {
+          // Transition phase
+          const tp = (slideTime - seg.startT) / TRANSITION_DURATION;
+          renderTransition(ctx, offscRef.current, seg.slide, W, H, Math.min(1, tp));
+        } else {
+          // Static display phase — draw slide and refresh offscreen
+          drawSlide(ctx, seg.slide, W, H);
+          offCtx.clearRect(0, 0, W, H);
+          offCtx.drawImage(canvas, 0, 0);
+        }
+
+        // Vintage overlay on every slide frame
+        applyVintageOverlay(ctx, W, H);
+
+        // Random glitch (~1.8% per frame, min 0.5s between glitches)
+        if (Math.random() < 0.018 && elapsed - lastGlitch > 0.5) {
+          snapCtx.drawImage(canvas, 0, 0);
+          applyGlitch(ctx, snapCanvas, W, H);
+          lastGlitch = elapsed;
+        }
       }
 
       rafRef.current = requestAnimationFrame(animate);
@@ -676,8 +794,8 @@ export default function VideoPreviewGenerator({
               {/* ── Layer 1 (behind): video/canvas content ── */}
               <div style={{
                 position: 'absolute',
-                left: '11%', top: '11%',
-                width: '60%', height: '76%',
+                left: '11%', top: '16%',
+                width: '62%', height: '67%',
                 zIndex: 1,
                 overflow: 'hidden',
                 background: '#000810',
