@@ -7,7 +7,11 @@ type RefreshResult =
   | { ok: false; permanent: boolean }; // permanent=true → invalid_grant, delete token
 
 async function refreshAccessToken(yt: { refreshToken: string | null; userId: string }): Promise<RefreshResult> {
-  if (!yt.refreshToken) return { ok: false, permanent: true };
+  if (!yt.refreshToken) {
+    // No refresh token stored — treat as transient so cached data is shown, not deleted
+    console.error('[youtube/refresh] no refresh token for user', yt.userId);
+    return { ok: false, permanent: false };
+  }
 
   let data: Record<string, unknown>;
   try {
@@ -28,8 +32,8 @@ async function refreshAccessToken(yt: { refreshToken: string | null; userId: str
   }
 
   if (!data.access_token) {
-    // Only revoke stored token if Google explicitly says it's dead
     const permanent = data.error === 'invalid_grant' || data.error === 'invalid_client';
+    console.error('[youtube/refresh] token refresh failed', data.error, 'permanent:', permanent, 'userId:', yt.userId);
     return { ok: false, permanent };
   }
 
@@ -53,14 +57,23 @@ export async function GET() {
     return NextResponse.json({ connected: false });
   }
 
+  // Token was marked as permanently invalid (accessToken cleared, expiresAt set to epoch)
+  if (!yt.accessToken && yt.expiresAt.getTime() === 0) {
+    return NextResponse.json({ connected: false, expired: true });
+  }
+
   // Refresh token if expired (with 60s margin)
   let accessToken = yt.accessToken;
   if (yt.expiresAt < new Date(Date.now() + 60_000)) {
     const refreshResult = await refreshAccessToken({ refreshToken: yt.refreshToken, userId: yt.userId });
     if (!refreshResult.ok) {
       if (refreshResult.permanent) {
-        // Google explicitly revoked the token (invalid_grant) — safe to delete
-        await prisma.youtubeToken.delete({ where: { userId: session.user.id } });
+        // Google revoked the token — mark as expired but keep the record so user can reconnect
+        // (deleting it would lose channel info and make the reconnect prompt less clear)
+        await prisma.youtubeToken.update({
+          where: { userId: session.user.id },
+          data: { accessToken: '', expiresAt: new Date(0) },
+        });
         return NextResponse.json({ connected: false, expired: true });
       }
       // Transient error (network, Google API down) — return cached data so UI stays connected
