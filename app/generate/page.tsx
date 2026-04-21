@@ -59,6 +59,9 @@ export default function GeneratePage() {
   const [copied, setCopied] = useState(false);
   const [showVideoPreview, setShowVideoPreview] = useState(false);
   const [videoPreviewId, setVideoPreviewId] = useState('');
+  const [previewScript, setPreviewScript] = useState('');
+  const [previewTitle, setPreviewTitle] = useState('');
+  const [previewSaved, setPreviewSaved] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -97,7 +100,10 @@ export default function GeneratePage() {
   const handleGenerate = async () => {
     // Video Preview is client-side — no API call needed
     if (selectedTemplate === 'video_preview') {
+      setPreviewScript(formData.tema);
+      setPreviewTitle(formData.tema.slice(0, 60) || 'Video Tips');
       setVideoPreviewId(`vp-${Date.now()}`);
+      setPreviewSaved(false);
       setShowVideoPreview(true);
       return;
     }
@@ -414,6 +420,26 @@ export default function GeneratePage() {
                     <button onClick={handleGenerate} className="btn-offset btn-offset-ghost px-4 py-2 text-[12px] font-display">
                       ⟳ {t('Regenerar', 'Regenerate')}
                     </button>
+                    {selectedTemplate === 'script' && isPro && (
+                      <button
+                        onClick={() => {
+                          setPreviewScript(output);
+                          setPreviewTitle(formData.tema.slice(0, 60) || 'Script Preview');
+                          setVideoPreviewId(`vp-${Date.now()}`);
+                          setPreviewSaved(false);
+                          setShowVideoPreview(true);
+                        }}
+                        className="btn-offset btn-offset-ghost px-4 py-2 text-[12px] font-display"
+                        style={{ borderColor: '#00D9FF', color: '#00D9FF' }}
+                      >
+                        📺 {t('Generar Preview', 'Generate Preview')}
+                      </button>
+                    )}
+                    {previewSaved && (
+                      <span className="text-[11px] font-mono-jb" style={{ color: '#7CFF00' }}>
+                        ✓ {t('Preview guardada', 'Preview saved')}
+                      </span>
+                    )}
                     <a href="/dashboard" className="ml-auto font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
                       {t('Ver en panel', 'View in dashboard')} →
                     </a>
@@ -427,11 +453,12 @@ export default function GeneratePage() {
       {showVideoPreview && (
         <Suspense fallback={null}>
           <VideoPreviewGenerator
-            scriptContent={formData.tema}
+            scriptContent={previewScript}
             generationId={videoPreviewId}
-            scriptTitle={formData.tema.slice(0, 60) || 'Video Tips'}
+            scriptTitle={previewTitle}
             lang={lang}
             onClose={() => setShowVideoPreview(false)}
+            onSaved={() => setPreviewSaved(true)}
           />
         </Suspense>
       )}

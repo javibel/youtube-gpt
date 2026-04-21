@@ -712,12 +712,16 @@ export default function VideoPreviewGenerator({
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
-          await fetch('/api/video-previews', {
+          const saveRes = await fetch('/api/video-previews', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title: scriptTitle, videoData: base64, mimeType }),
           });
-        } catch { /* non-critical */ }
+          if (!saveRes.ok) {
+            const errText = await saveRes.text().catch(() => '');
+            console.error('[VideoPreview] save failed', saveRes.status, errText);
+          }
+        } catch (err) { console.error('[VideoPreview] save error', err); }
       }
 
       onSaved?.();
