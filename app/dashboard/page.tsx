@@ -407,7 +407,7 @@ function handleCopy(id: string, out: string) {
               { id: 'fifty',   icon: '⚡', label: t('50 generados',  '50 generated'), desc: t('Alcanza 50 generaciones en total', 'Reach 50 total generations'),          earned: total >= 50 },
               { id: 'streak',  icon: '🔥', label: t('Racha 7d',      '7d streak'),    desc: t('Usa YTubViral 7 días seguidos',    'Use YTubViral 7 days in a row'),       earned: streak >= 7 },
               { id: 'pro',     icon: '👑', label: 'Pro',                              desc: t('Activa el plan Pro',               'Activate Pro plan'),                  earned: isPro },
-              { id: 'yt',      icon: '📺', label: t('Canal YT',      'YT Channel'),   desc: t('Conecta tu canal de YouTube',      'Connect your YouTube channel'),       earned: ytConnected },
+              { id: 'yt',      icon: '📺', label: t('Canal YT',      'YT Channel'),   desc: t('Conecta tu canal de YouTube',      'Connect your YouTube channel'),       earned: isPro && ytConnected === true },
             ];
             const earnedCount = badges.filter(b => b.earned).length;
             return (
