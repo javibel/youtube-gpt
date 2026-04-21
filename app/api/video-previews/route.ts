@@ -17,10 +17,18 @@ export async function GET() {
   return NextResponse.json({ previews });
 }
 
-// Save a new preview (base64 encoded video)
+// Save a new preview (base64 encoded video) — Pro only
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId: session.user.id },
+    select: { status: true },
+  });
+  if (subscription?.status !== 'active') {
+    return NextResponse.json({ error: 'Pro required' }, { status: 403 });
+  }
 
   let title: string, videoData: string, mimeType: string;
   try {
@@ -34,6 +42,11 @@ export async function POST(request: Request) {
 
   if (!title || !videoData) {
     return NextResponse.json({ error: 'Missing title or videoData' }, { status: 400 });
+  }
+
+  // ~11MB in base64 ≈ 8MB binary — reject before allocating the buffer
+  if (videoData.length > 11 * 1024 * 1024) {
+    return NextResponse.json({ error: 'File too large' }, { status: 413 });
   }
 
   const buffer = Buffer.from(videoData, 'base64');

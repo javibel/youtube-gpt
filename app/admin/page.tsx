@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FaUsers, FaCrown, FaChartBar, FaBolt, FaArrowUp, FaArrowDown, FaMinus, FaStar } from 'react-icons/fa';
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'ytbeviral@gmail.com';
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos',

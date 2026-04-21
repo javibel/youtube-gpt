@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ytbeviral@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 export async function GET() {
   const session = await auth();
 
-  if (session?.user?.email !== ADMIN_EMAIL) {
+  if (!ADMIN_EMAIL || session?.user?.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 

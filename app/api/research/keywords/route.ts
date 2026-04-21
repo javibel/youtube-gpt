@@ -28,6 +28,9 @@ export async function POST(request: Request) {
   if (!keyword?.trim()) {
     return NextResponse.json({ error: 'Missing keyword' }, { status: 400 });
   }
+  if (keyword.trim().length > 200) {
+    return NextResponse.json({ error: 'Keyword too long (max 200 characters)' }, { status: 400 });
+  }
 
   try {
     // 1. Search top videos for keyword

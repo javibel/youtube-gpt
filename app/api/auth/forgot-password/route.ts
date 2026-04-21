@@ -2,17 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
 import crypto from 'crypto';
-import { checkRateLimit } from '@/lib/rate-limit';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(request: NextRequest) {
-  // Rate limit: máx 5 intentos por IP cada 15 minutos (previene spam de emails)
+  // Rate limit: máx 5 intentos por IP cada 15 minutos — upsert atómico en BD (cross-instance safe)
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
     ?? request.headers.get('x-real-ip')
     ?? 'unknown';
-  const rl = checkRateLimit(`forgot-password:${ip}`, 5, 15 * 60 * 1000);
-  if (!rl.allowed) {
+  const rlKey = `forgot-password:${ip}`;
+  const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
+    INSERT INTO rate_limits (key, hits, window_start)
+    VALUES (${rlKey}, 1, NOW())
+    ON CONFLICT (key) DO UPDATE
+    SET
+      hits = CASE
+        WHEN rate_limits.window_start < NOW() - INTERVAL '15 minutes'
+        THEN 1
+        ELSE rate_limits.hits + 1
+      END,
+      window_start = CASE
+        WHEN rate_limits.window_start < NOW() - INTERVAL '15 minutes'
+        THEN NOW()
+        ELSE rate_limits.window_start
+      END
+    RETURNING hits
+  `;
+  if (Number(rlResult[0].hits) > 5) {
     return NextResponse.json(
       { error: 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' },
       { status: 429 }
@@ -84,12 +100,12 @@ export async function POST(request: NextRequest) {
     </body></html>
   `;
 
-  await resend?.emails.send({
+  resend?.emails.send({
     from: 'noreply@ytubviral.com',
     to: email,
     subject,
     html,
-  });
+  }).catch(err => console.error('forgot-password email error:', err));
 
   return NextResponse.json({ ok: true });
 }

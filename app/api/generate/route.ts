@@ -14,6 +14,12 @@ function getIp(request: Request): string | null {
 
 export async function POST(request: Request) {
   try {
+    // Require authentication — unauthenticated calls would bypass all limits and incur API cost
+    const session = await auth();
+    if (!session?.user?.id) {
+      return Response.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const { template, inputs, lang } = await request.json();
 
     // Validar longitud de inputs (previene prompts gigantes y costes desorbitados)
@@ -38,12 +44,11 @@ export async function POST(request: Request) {
     if (!templateData) {
       return Response.json({ error: 'Template no válido' }, { status: 400 });
     }
-
-    const session = await auth();
     let userId: string | null = null;
     let isPro = false;
 
-    if (session?.user?.email) {
+    // session is guaranteed non-null here (checked above)
+    if (session.user.email) {
       const user = await prisma.user.findUnique({
         where: { email: session.user.email },
         select: { id: true },

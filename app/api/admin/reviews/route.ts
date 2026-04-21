@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ytbeviral@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 // GET — listar todas las reseñas pendientes
 export async function GET() {
   const session = await auth();
-  if (session?.user?.email !== ADMIN_EMAIL) {
+  if (!ADMIN_EMAIL || session?.user?.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }
 
@@ -29,7 +29,7 @@ export async function GET() {
 // PATCH — aprobar o rechazar
 export async function PATCH(req: NextRequest) {
   const session = await auth();
-  if (session?.user?.email !== ADMIN_EMAIL) {
+  if (!ADMIN_EMAIL || session?.user?.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }
 

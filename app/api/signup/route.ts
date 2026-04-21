@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { isDisposableEmail } from "@/lib/disposable-domains";
 import { Resend } from "resend";
-import { checkRateLimit } from "@/lib/rate-limit";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -118,12 +117,29 @@ function welcomeEmail(name: string, lang: 'es' | 'en'): string {
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limit: máx 5 signups por IP cada 15 minutos (previene spam y abuso de Resend)
+    // Rate limit: máx 5 signups por IP cada 15 minutos — upsert atómico en BD (cross-instance safe)
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
       ?? req.headers.get('x-real-ip')
       ?? 'unknown';
-    const rl = checkRateLimit(`signup:${ip}`, 5, 15 * 60 * 1000);
-    if (!rl.allowed) {
+    const rlKey = `signup:${ip}`;
+    const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
+      INSERT INTO rate_limits (key, hits, window_start)
+      VALUES (${rlKey}, 1, NOW())
+      ON CONFLICT (key) DO UPDATE
+      SET
+        hits = CASE
+          WHEN rate_limits.window_start < NOW() - INTERVAL '15 minutes'
+          THEN 1
+          ELSE rate_limits.hits + 1
+        END,
+        window_start = CASE
+          WHEN rate_limits.window_start < NOW() - INTERVAL '15 minutes'
+          THEN NOW()
+          ELSE rate_limits.window_start
+        END
+      RETURNING hits
+    `;
+    if (Number(rlResult[0].hits) > 5) {
       return NextResponse.json(
         { error: 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' },
         { status: 429 }
