@@ -118,10 +118,50 @@ function cleanLine(t: string): string {
 function parseScript(markdown: string): Slide[] {
   const slides: Slide[] = [];
 
-  // ── Filter noise ──
-  const usableLines = markdown.split('\n')
-    .map(l => l.trim())
-    .filter(l => l.length > 0)
+  // ── Mode C: storyboard format  "0-5s: LABEL | Description" ──────────────
+  const allLines = markdown.split('\n').map(l => l.trim()).filter(Boolean);
+  const storyboardLines = allLines.filter(l => /^\d+\s*s?[-–]\s*\d+\s*s?\s*:/.test(l));
+
+  if (storyboardLines.length >= 2) {
+    storyboardLines.slice(0, 10).forEach((line, idx) => {
+      const m = line.match(/^(\d+)\s*s?[-–]\s*(\d+)\s*s?\s*:\s*(.+)/);
+      if (!m) return;
+      const rawDur = Math.max(3, Math.min(8, parseInt(m[2]) - parseInt(m[1])));
+      const content = m[3].trim();
+
+      let sectionTitle = `SCENE ${idx + 1}`;
+      let subtitle = content;
+      const pipeIdx = content.indexOf('|');
+      if (pipeIdx > 0) {
+        sectionTitle = content.slice(0, pipeIdx).trim();
+        subtitle = content.slice(pipeIdx + 1).trim();
+      }
+
+      const cleaned = cleanLine(subtitle).slice(0, 130);
+      if (cleaned.length < 4) return;
+
+      const [cA, cB, accent] = PALETTES[idx % PALETTES.length];
+      slides.push({
+        sectionTitle: sectionTitle.replace(/[^\w\s]/g, '').trim().toUpperCase().slice(0, 20),
+        subtitle: cleaned,
+        emoji: pickEmoji(sectionTitle, cleaned),
+        gradient: [cA, cB],
+        accentColor: accent,
+        transition: TRANSITIONS[idx % TRANSITIONS.length],
+        duration: rawDur,
+        index: idx, total: 0,
+      });
+    });
+
+    if (slides.length > 0) {
+      const result = slides.slice(0, 10);
+      result.forEach((s, i) => { s.index = i; s.total = result.length; });
+      return result;
+    }
+  }
+
+  // ── Filter noise (Modes A & B) ─────────────────────────────────────────
+  const usableLines = allLines
     .filter(l => !l.startsWith('>'))
     .filter(l => !/^-{3,}$/.test(l))
     .filter(l => !/^\[?\d{1,2}:\d{2}/.test(l))
@@ -566,7 +606,7 @@ export default function VideoPreviewGenerator({
   const rafRef      = useRef<number>(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
 
-  const [status, setStatus]     = useState<'idle'|'generating'|'done'|'error'>('idle');
+  const [status, setStatus]     = useState<'idle'|'adapting'|'generating'|'done'|'error'>('idle');
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -593,7 +633,22 @@ export default function VideoPreviewGenerator({
       return;
     }
 
-    const slides = parseScript(scriptContent);
+    // ── Adapt script to storyboard format via AI ──────────────────────────
+    setStatus('adapting');
+    let scriptForSlides = scriptContent;
+    try {
+      const sbRes = await fetch('/api/storyboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: scriptContent, lang }),
+      });
+      if (sbRes.ok) {
+        const sbData = await sbRes.json();
+        if (sbData.storyboard?.trim()) scriptForSlides = sbData.storyboard;
+      }
+    } catch { /* fall back to original script */ }
+
+    const slides = parseScript(scriptForSlides);
     if (slides.length === 0) {
       setStatus('error');
       setErrorMsg(t('El script no tiene texto suficiente.', 'The script does not have enough text.'));
@@ -874,6 +929,18 @@ export default function VideoPreviewGenerator({
           </div>
 
           {/* Progress bar */}
+          {status === 'adapting' && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 font-mono-jb text-[10px] text-zinc-500">
+                <svg className="animate-spin flex-shrink-0" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                {t('Adaptando guión a storyboard visual...', 'Adapting script to visual storyboard...')}
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <div className="h-full rounded-full animate-pulse" style={{ width: '40%', background: 'linear-gradient(90deg,#FFE800,#FF8A00)' }} />
+              </div>
+            </div>
+          )}
+
           {status === 'generating' && (
             <div className="space-y-2">
               <div className="flex justify-between font-mono-jb text-[10px] text-zinc-500">
@@ -904,10 +971,10 @@ export default function VideoPreviewGenerator({
                 🎬 {t('Generar storyboard', 'Generate storyboard')}
               </button>
             )}
-            {status === 'generating' && (
+            {(status === 'adapting' || status === 'generating') && (
               <button disabled className="btn-offset flex-1 py-3 text-[13px] font-display gap-2 opacity-50 cursor-not-allowed flex items-center justify-center">
                 <svg className="animate-spin" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                {t('Procesando...', 'Processing...')}
+                {status === 'adapting' ? t('Adaptando...', 'Adapting...') : t('Procesando...', 'Processing...')}
               </button>
             )}
             {status === 'done' && (
