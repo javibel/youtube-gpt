@@ -919,7 +919,8 @@ function handleCopy(id: string, out: string) {
               }}>
                 <video
                   src={playingPreview.url}
-                  autoPlay loop muted playsInline
+                  autoPlay muted playsInline
+                  onEnded={e => { const v = e.currentTarget; v.currentTime = 0; void v.play(); }}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
                 {/* CRT scanlines */}

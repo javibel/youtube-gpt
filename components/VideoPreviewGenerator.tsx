@@ -626,7 +626,9 @@ export default function VideoPreviewGenerator({
 
     const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(30);
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 3_000_000 });
+    // 200 Kbps: VP9 compresses static slides to ~1-2 MB for a 60 s animation,
+    // keeping the base64 payload well under the 4 MB Next.js body limit.
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 200_000 });
     recorderRef.current = recorder;
     const chunks: Blob[] = [];
 
