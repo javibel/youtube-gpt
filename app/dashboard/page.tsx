@@ -70,10 +70,9 @@ export default function DashboardPage() {
   const [previewGen, setPreviewGen] = useState<{ id: string; output: string; title?: string } | null>(null);
 
   type DbPreview = { id: string; title: string; mimeType: string; createdAt: string };
-  const [dbPreviews, setDbPreviews]             = useState<DbPreview[]>([]);
-  const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
-  const [selectedVideoUrl, setSelectedVideoUrl]   = useState<string | null>(null);
-  const [loadingPreview, setLoadingPreview]       = useState(false);
+  const [dbPreviews, setDbPreviews]         = useState<DbPreview[]>([]);
+  const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
+  const [playingPreview, setPlayingPreview] = useState<{ id: string; title: string; url: string } | null>(null);
 
   const loadDbPreviews = useCallback(async () => {
     try {
@@ -83,25 +82,21 @@ export default function DashboardPage() {
     } catch { /* non-critical */ }
   }, []);
 
-  const handleSelectPreview = useCallback(async (id: string) => {
-    if (selectedPreviewId === id) {
-      setSelectedPreviewId(null);
-      if (selectedVideoUrl) URL.revokeObjectURL(selectedVideoUrl);
-      setSelectedVideoUrl(null);
-      return;
-    }
-    setSelectedPreviewId(id);
-    setLoadingPreview(true);
+  const handleSelectPreview = useCallback(async (preview: DbPreview) => {
+    setLoadingPreviewId(preview.id);
     try {
-      const res = await fetch(`/api/video-previews/${id}`);
+      const res = await fetch(`/api/video-previews/${preview.id}`);
       const blob = await res.blob();
-      if (selectedVideoUrl) URL.revokeObjectURL(selectedVideoUrl);
-      setSelectedVideoUrl(URL.createObjectURL(blob));
+      setPlayingPreview({ id: preview.id, title: preview.title, url: URL.createObjectURL(blob) });
     } catch { /* non-critical */ } finally {
-      setLoadingPreview(false);
+      setLoadingPreviewId(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPreviewId, selectedVideoUrl]);
+  }, []);
+
+  const closePlayingPreview = useCallback(() => {
+    if (playingPreview?.url) URL.revokeObjectURL(playingPreview.url);
+    setPlayingPreview(null);
+  }, [playingPreview]);
 
   type YtChannel = { id: string; name: string; thumbnail: string; subscribers: number; totalViews: number; videoCount: number };
   type YtVideo  = { videoId: string; title: string; thumbnail: string; publishedAt: string; views: number };
@@ -462,7 +457,7 @@ function handleCopy(id: string, out: string) {
             </div>
           </div>
 
-          {/* My Previews — TV3 section (always shown for Pro, or when previews exist) */}
+          {/* My Previews — TV3 decorative + title list */}
           {(isPro || dbPreviews.length > 0) && (
             <div>
               <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: '#00D9FF' }}>VIDEO TIPS</p>
@@ -470,64 +465,13 @@ function handleCopy(id: string, out: string) {
               <div className="soft-card p-5">
                 <div className="flex gap-6 items-start flex-wrap sm:flex-nowrap">
 
-                  {/* TV — screen overlay behind TV3.webp frame */}
-                  <div style={{ position: 'relative', width: 240, flexShrink: 0 }}>
-                    {/* Screen area: adjust left/top/width/height to match the TV3.webp CRT bezel */}
-                    <div style={{
-                      position: 'absolute',
-                      left: '17%', top: '9%',
-                      width: '64%', height: '52%',
-                      zIndex: 1, overflow: 'hidden',
-                      background: '#000',
-                      borderRadius: '4px',
-                    }}>
-                      {selectedVideoUrl ? (
-                        <>
-                          <video src={selectedVideoUrl} autoPlay loop muted playsInline
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                          />
-                          {/* CRT scanlines */}
-                          <div style={{
-                            position: 'absolute', inset: 0, pointerEvents: 'none',
-                            background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px)',
-                          }} />
-                          {/* Screen glare */}
-                          <div style={{
-                            position: 'absolute', top: 0, left: 0, width: '50%', height: '40%',
-                            background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)',
-                            pointerEvents: 'none', borderRadius: '0 0 80% 0',
-                          }} />
-                        </>
-                      ) : (
-                        <div style={{
-                          width: '100%', height: '100%',
-                          background: 'radial-gradient(ellipse at center, #0d0d0d 0%, #000 100%)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6,
-                        }}>
-                          {loadingPreview ? (
-                            <svg className="animate-spin" style={{ width: 18, height: 18, color: '#00D9FF' }} viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12"/>
-                            </svg>
-                          ) : (
-                            <>
-                              <span style={{ fontSize: 20 }}>📺</span>
-                              <p style={{ fontFamily: 'monospace', fontSize: 8, color: '#2a2a2a', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', padding: '0 8px' }}>
-                                {dbPreviews.length > 0 ? t('SELECCIONA', 'SELECT') : t('SIN DATOS', 'NO DATA')}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* TV3 frame on top (screen hole reveals content behind) */}
-                    <img
-                      src="/TV3.webp"
-                      alt=""
-                      draggable={false}
-                      style={{ width: '100%', display: 'block', position: 'relative', zIndex: 2, userSelect: 'none', pointerEvents: 'none' }}
-                    />
-                  </div>
+                  {/* TV3 — decorative only */}
+                  <img
+                    src="/TV3.webp"
+                    alt=""
+                    draggable={false}
+                    style={{ width: 200, flexShrink: 0, userSelect: 'none', pointerEvents: 'none', opacity: 0.9 }}
+                  />
 
                   {/* Preview list */}
                   <div className="flex-1 min-w-0 pt-1">
@@ -549,31 +493,32 @@ function handleCopy(id: string, out: string) {
                         {dbPreviews.map((p, i) => (
                           <button
                             key={p.id}
-                            onClick={() => handleSelectPreview(p.id)}
-                            className="w-full text-left flex items-center gap-3 p-3 rounded-xl transition group"
+                            onClick={() => handleSelectPreview(p)}
+                            disabled={loadingPreviewId === p.id}
+                            className="w-full text-left flex items-center gap-3 p-3 rounded-xl transition group disabled:opacity-60"
                             style={{
-                              background: selectedPreviewId === p.id ? 'rgba(0,217,255,0.08)' : 'rgba(255,255,255,0.02)',
-                              border: `1px solid ${selectedPreviewId === p.id ? 'rgba(0,217,255,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                              background: 'rgba(255,255,255,0.02)',
+                              border: '1px solid rgba(255,255,255,0.06)',
                             }}
                           >
-                            <span className="font-mono-jb text-[10px] w-5 text-center flex-shrink-0"
-                              style={{ color: selectedPreviewId === p.id ? '#00D9FF' : '#3f3f46' }}>
-                              {i + 1}
+                            <span className="font-mono-jb text-[10px] w-5 text-center flex-shrink-0" style={{ color: '#3f3f46' }}>
+                              {loadingPreviewId === p.id ? (
+                                <svg className="animate-spin inline" width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="#00D9FF" strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                              ) : i + 1}
                             </span>
                             <span className="flex-1 font-mono-jb text-[11px] text-zinc-400 truncate group-hover:text-white transition">
                               {p.title}
                             </span>
-                            <span style={{ color: selectedPreviewId === p.id ? '#00D9FF' : '#27272a', fontSize: 10, flexShrink: 0 }}>▶</span>
+                            <span className="font-mono-jb text-[10px] flex-shrink-0 flex items-center gap-1 transition group-hover:opacity-100 opacity-40"
+                              style={{ color: '#00D9FF' }}>
+                              <svg width={9} height={9} viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                              {t('ver', 'play')}
+                            </span>
                           </button>
                         ))}
                       </div>
                     )}
 
-                    {selectedPreviewId && (
-                      <p className="font-mono-jb text-[9px] text-zinc-700 mt-3">
-                        {t('Clic en la misma preview para apagar la TV', 'Click the same preview to turn off the TV')}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -930,7 +875,7 @@ function handleCopy(id: string, out: string) {
         </div>
       </footer>
 
-      {/* Video Preview Modal */}
+      {/* Video Preview Modal (generate new) */}
       {previewGen && (
         <Suspense fallback={null}>
           <VideoPreviewGenerator
@@ -942,6 +887,60 @@ function handleCopy(id: string, out: string) {
             onSaved={() => loadDbPreviews()}
           />
         </Suspense>
+      )}
+
+      {/* Playback modal — TV2 */}
+      {playingPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(14px)' }}
+          onClick={closePlayingPreview}>
+          <div className="relative w-full my-auto" style={{ maxWidth: 560 }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Close */}
+            <button onClick={closePlayingPreview}
+              className="absolute -top-9 right-0 font-mono-jb text-[12px] text-zinc-500 hover:text-white transition flex items-center gap-1.5">
+              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M18 6 6 18M6 6l12 12"/></svg>
+              {t('Cerrar', 'Close')}
+            </button>
+
+            {/* Title */}
+            <p className="font-mono-jb text-[11px] text-zinc-500 truncate mb-3 text-center">"{playingPreview.title}"</p>
+
+            {/* TV2 with video playing inside */}
+            <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+              {/* Video behind the TV frame */}
+              <div style={{
+                position: 'absolute',
+                left: '11%', top: '16%',
+                width: '62%', height: '67%',
+                zIndex: 1, overflow: 'hidden',
+                background: '#000810',
+              }}>
+                <video
+                  src={playingPreview.url}
+                  autoPlay loop muted playsInline
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+                {/* CRT scanlines */}
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5,
+                  background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px)',
+                }} />
+                {/* Screen glare */}
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, width: '55%', height: '40%',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%)',
+                  pointerEvents: 'none', zIndex: 6, borderRadius: '0 0 80% 0',
+                }} />
+              </div>
+              {/* TV2 frame on top */}
+              <img src="/TV2.webp" alt="" draggable={false}
+                style={{ width: '100%', display: 'block', position: 'relative', zIndex: 10, userSelect: 'none', pointerEvents: 'none' }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
