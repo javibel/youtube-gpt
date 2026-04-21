@@ -103,6 +103,7 @@ export default function DashboardPage() {
   const [ytChannel, setYtChannel]       = useState<YtChannel | null>(null);
   const [ytVideos, setYtVideos]         = useState<YtVideo[]>([]);
   const [ytConnected, setYtConnected]   = useState<boolean | null>(null); // null = loading
+  const [ytExpired, setYtExpired]       = useState(false);
   const [ytConnecting, setYtConnecting] = useState(false);
   const [ytDisconnecting, setYtDisconnecting] = useState(false);
   const [ytToast, setYtToast]           = useState<string | null>(null);
@@ -123,10 +124,12 @@ export default function DashboardPage() {
       fetch('/api/youtube/channel').then((r) => r.json()).then((d) => {
         if (d.connected) {
           setYtConnected(true);
+          setYtExpired(false);
           setYtChannel(d.channel);
           setYtVideos(d.videos || []);
         } else {
           setYtConnected(false);
+          setYtExpired(!!d.expired);
         }
       }).catch(() => setYtConnected(false));
     }
@@ -143,6 +146,10 @@ export default function DashboardPage() {
     } else if (yt === 'error') {
       setYtToast(lang === 'en' ? '✗ Could not connect YouTube' : '✗ No se pudo conectar YouTube');
       setTimeout(() => setYtToast(null), 4000);
+      window.history.replaceState({}, '', '/dashboard');
+    } else if (yt === 'pro_required') {
+      setYtToast(lang === 'en' ? '✗ YouTube connect requires Pro plan' : '✗ Conectar YouTube requiere plan Pro');
+      setTimeout(() => setYtToast(null), 5000);
       window.history.replaceState({}, '', '/dashboard');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -690,7 +697,23 @@ function handleCopy(id: string, out: string) {
               {t('CANAL DE YOUTUBE', 'YOUTUBE CHANNEL')}
             </p>
 
-            {ytConnected === null && (
+            {/* Free users — upsell */}
+            {!isPro && (
+              <div className="space-y-3">
+                <p className="text-zinc-500 text-xs leading-relaxed">
+                  {t('Conecta tu canal de YouTube y analiza tus estadísticas en tiempo real.', 'Connect your YouTube channel and track your stats in real time.')}
+                </p>
+                <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}>
+                  <p className="font-mono-jb text-[10px] text-zinc-500 mb-2">{t('Función exclusiva Pro', 'Pro exclusive feature')}</p>
+                  <button onClick={() => handleUpgrade(billingPlan)}
+                    className="btn-offset px-4 py-1.5 text-[11px] font-display">
+                    {t('Activar Pro →', 'Activate Pro →')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isPro && ytConnected === null && (
               <div className="h-16 flex items-center justify-center">
                 <svg className="animate-spin w-5 h-5 text-zinc-600" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12"/>
@@ -698,8 +721,13 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {ytConnected === false && (
+            {isPro && ytConnected === false && (
               <div className="space-y-3">
+                {ytExpired && (
+                  <div className="rounded-lg px-3 py-2 font-mono-jb text-[10px]" style={{ background: 'rgba(255,200,0,0.07)', border: '1px solid rgba(255,200,0,0.2)', color: '#FFE800' }}>
+                    {t('Sesión expirada. Vuelve a conectar tu canal.', 'Session expired. Please reconnect your channel.')}
+                  </div>
+                )}
                 <p className="text-zinc-400 text-xs leading-relaxed">
                   {t('Conecta tu canal para ver tus estadísticas y los vídeos más recientes.', 'Connect your channel to see your stats and most recent videos.')}
                 </p>
@@ -711,7 +739,7 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {ytConnected && ytChannel && (
+            {isPro && ytConnected && ytChannel && (
               <div className="space-y-4">
                 {/* Channel info */}
                 <div className="flex items-center gap-3">

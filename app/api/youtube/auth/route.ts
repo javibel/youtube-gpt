@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.redirect(new URL('/login', process.env.NEXTAUTH_URL!));
+  }
+
+  // YouTube connect is a Pro-only feature
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId: session.user.id },
+    select: { status: true },
+  });
+  if (subscription?.status !== 'active') {
+    return NextResponse.redirect(new URL('/dashboard?yt=pro_required', process.env.NEXTAUTH_URL!));
   }
 
   const params = new URLSearchParams({
