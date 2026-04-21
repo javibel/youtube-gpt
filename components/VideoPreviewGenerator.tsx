@@ -636,10 +636,34 @@ export default function VideoPreviewGenerator({
       const blob = new Blob(chunks, { type: mimeType });
       setVideoUrl(URL.createObjectURL(blob));
       setStatus('done'); setProgress(100);
+
+      // Save to IndexedDB (local, for immediate re-access)
       try {
         await savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() });
-        onSaved?.();
       } catch { /* non-critical */ }
+
+      // Save to DB — base64-encode via FileReader (safe for large blobs)
+      // Skip if blob is clearly too large for a single request (>8MB)
+      if (blob.size <= 8 * 1024 * 1024) {
+        try {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              resolve(result.slice(result.indexOf(',') + 1));
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          await fetch('/api/video-previews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: scriptTitle, videoData: base64, mimeType }),
+          });
+        } catch { /* non-critical */ }
+      }
+
+      onSaved?.();
     };
 
     recorder.start(200);
@@ -773,7 +797,7 @@ export default function VideoPreviewGenerator({
           {/* Header */}
           <div>
             <p className="font-mono-jb text-[11px] tracking-[0.2em] uppercase mb-1" style={{ color: '#00D9FF' }}>
-              VIDEO PREVIEW · PRO
+              VIDEO TIPS · PRO
             </p>
             <h2 className="font-display font-bold text-xl">{t('Storyboard animado', 'Animated storyboard')}</h2>
             <p className="font-mono-jb text-[11px] text-zinc-500 mt-1 truncate max-w-xs">"{scriptTitle}"</p>

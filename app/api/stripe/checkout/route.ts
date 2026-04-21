@@ -15,8 +15,8 @@ export async function POST(request: Request) {
     const plan: 'monthly' | 'yearly' = body.plan === 'yearly' ? 'yearly' : 'monthly';
 
     const priceId = plan === 'yearly'
-      ? process.env.STRIPE_PRO_YEARLY_PRICE_ID!
-      : process.env.STRIPE_PRO_PRICE_ID!;
+      ? process.env.STRIPE_PRO_YEARLY_PRICE_ID!.trim()
+      : process.env.STRIPE_PRO_PRICE_ID!.trim();
 
     if (!priceId) {
       return NextResponse.json({ error: `Price ID not configured for plan: ${plan}` }, { status: 500 });

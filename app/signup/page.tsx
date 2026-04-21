@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import PasswordInput from '@/components/PasswordInput';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function SignupPage() {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, lang }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -54,13 +55,23 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen grain grid-bg flex items-center justify-center p-4" style={{ background: 'var(--ink)' }}>
-      <a href="/" className="absolute top-6 left-6 flex items-center gap-2">
-        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-          <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-        </svg>
-        <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-      </a>
+      <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
+            <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+          </svg>
+          <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+        </a>
+        <button
+          onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
+          className="flex items-center gap-1 font-mono-jb text-[10px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
+        >
+          <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
+          <span className="text-zinc-700 mx-0.5">|</span>
+          <span style={{ color: lang === 'en' ? 'white' : '#52525b', fontWeight: lang === 'en' ? 700 : 400 }}>EN</span>
+        </button>
+      </div>
 
       <div className="w-full max-w-md">
         <div className="mb-8">
@@ -86,15 +97,15 @@ export default function SignupPage() {
 
             <div>
               <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Contraseña', 'Password')}</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                className="soft-field py-3 px-4 text-sm"
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
+                className="py-3 px-4 text-sm"
                 placeholder={t('Mínimo 6 caracteres', 'At least 6 characters')} required />
             </div>
 
             <div>
               <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Confirmar contraseña', 'Confirm password')}</label>
-              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                className="soft-field py-3 px-4 text-sm" placeholder="••••••••" required />
+              <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                className="py-3 px-4 text-sm" required />
             </div>
 
             {error && (

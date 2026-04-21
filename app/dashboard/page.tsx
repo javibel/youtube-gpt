@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
+import { getLangClient } from '@/lib/get-lang-client';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 
@@ -57,9 +58,6 @@ export default function DashboardPage() {
   const [cancelling, setCancelling] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState('');
-  const [savingName, setSavingName] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState('all');
@@ -71,30 +69,39 @@ export default function DashboardPage() {
   const [lang, setLang] = useState<'es'|'en'>('es');
   const [previewGen, setPreviewGen] = useState<{ id: string; output: string; title?: string } | null>(null);
 
-  type StoredPreview = { id: string; blob: Blob; title: string; format: string; createdAt: string };
-  const [videoHistory, setVideoHistory] = useState<StoredPreview[]>([]);
-  const [videoUrls, setVideoUrls]       = useState<Record<string, string>>({});
+  type DbPreview = { id: string; title: string; mimeType: string; createdAt: string };
+  const [dbPreviews, setDbPreviews]             = useState<DbPreview[]>([]);
+  const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
+  const [selectedVideoUrl, setSelectedVideoUrl]   = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview]       = useState(false);
 
-  const loadVideoHistory = useCallback(async () => {
+  const loadDbPreviews = useCallback(async () => {
     try {
-      const { loadPreviews } = await import('@/lib/videoPreviewDB');
-      const items = await loadPreviews();
-      setVideoHistory(items);
-      // Create object URLs for playback
-      const urls: Record<string, string> = {};
-      items.forEach(p => { urls[p.id] = URL.createObjectURL(p.blob); });
-      setVideoUrls(prev => { Object.values(prev).forEach(u => URL.revokeObjectURL(u)); return urls; });
-    } catch { /* IndexedDB not available */ }
-  }, []);
-
-  const deleteVideoFromHistory = useCallback(async (id: string) => {
-    try {
-      const { deletePreview } = await import('@/lib/videoPreviewDB');
-      await deletePreview(id);
-      setVideoUrls(prev => { if (prev[id]) URL.revokeObjectURL(prev[id]); const n = { ...prev }; delete n[id]; return n; });
-      setVideoHistory(prev => prev.filter(p => p.id !== id));
+      const res = await fetch('/api/video-previews');
+      const data = await res.json();
+      if (data.previews) setDbPreviews(data.previews);
     } catch { /* non-critical */ }
   }, []);
+
+  const handleSelectPreview = useCallback(async (id: string) => {
+    if (selectedPreviewId === id) {
+      setSelectedPreviewId(null);
+      if (selectedVideoUrl) URL.revokeObjectURL(selectedVideoUrl);
+      setSelectedVideoUrl(null);
+      return;
+    }
+    setSelectedPreviewId(id);
+    setLoadingPreview(true);
+    try {
+      const res = await fetch(`/api/video-previews/${id}`);
+      const blob = await res.blob();
+      if (selectedVideoUrl) URL.revokeObjectURL(selectedVideoUrl);
+      setSelectedVideoUrl(URL.createObjectURL(blob));
+    } catch { /* non-critical */ } finally {
+      setLoadingPreview(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPreviewId, selectedVideoUrl]);
 
   type YtChannel = { id: string; name: string; thumbnail: string; subscribers: number; totalViews: number; videoCount: number };
   type YtVideo  = { videoId: string; title: string; thumbnail: string; publishedAt: string; views: number };
@@ -109,15 +116,12 @@ export default function DashboardPage() {
     if (status === 'unauthenticated') router.push('/login');
   }, [status, router]);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
-    if (stored) setLang(stored);
-  }, []);
+  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     if (status === 'authenticated') {
       fetch('/api/user/stats').then((r) => r.json()).then(setData).finally(() => setLoading(false));
-      loadVideoHistory();
+      loadDbPreviews();
       fetch('/api/reviews').then((r) => r.json()).then((d) => {
         if (d.review) { setExistingReview(d.review); setReviewRating(d.review.rating); setReviewText(d.review.text); }
       });
@@ -181,14 +185,7 @@ export default function DashboardPage() {
     finally { setUpgrading(false); }
   }
 
-  async function handleSaveName() {
-    setSavingName(true);
-    const res = await fetch('/api/user/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nameInput }) });
-    if (res.ok) { setData((prev) => prev ? { ...prev, user: { ...prev.user, name: nameInput.trim() } } : null); setEditingName(false); }
-    setSavingName(false);
-  }
-
-  function handleCopy(id: string, out: string) {
+function handleCopy(id: string, out: string) {
     navigator.clipboard.writeText(out).then(() => { setCopiedId(id); setTimeout(() => setCopiedId(null), 2000); });
   }
 
@@ -253,12 +250,6 @@ export default function DashboardPage() {
     ? data?.recentGenerations ?? []
     : (data?.recentGenerations ?? []).filter((g) => g.template === filterType);
 
-  const toggleLang = () => {
-    const next = lang === 'es' ? 'en' : 'es';
-    setLang(next);
-    localStorage.setItem('ytubviral_lang', next);
-  };
-
   const t = (es: string, en: string) => lang === 'en' ? en : es;
   const tpl = (key: string) => TPL_LABELS[key]?.[lang] ?? key;
 
@@ -288,29 +279,13 @@ export default function DashboardPage() {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               {t('Competidores', 'Competitors')}
             </a>
-            {editingName ? (
-              <div className="flex items-center gap-2">
-                <input autoFocus value={nameInput} onChange={(e) => setNameInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
-                  className="soft-field py-1.5 px-3 text-sm w-36" style={{ borderRadius: '8px' }} />
-                <button onClick={handleSaveName} disabled={savingName} className="text-sm font-mono-jb" style={{ color: 'var(--red)' }}>
-                  {savingName ? '...' : t('Guardar', 'Save')}
-                </button>
-                <button onClick={() => setEditingName(false)} className="text-zinc-600 text-sm">✕</button>
-              </div>
-            ) : (
-              <button onClick={() => { setNameInput(data?.user?.name ?? ''); setEditingName(true); }}
-                className="flex items-center gap-2 text-zinc-400 hover:text-white transition text-sm">
-                <span>{displayName}</span>
-                {isPro && <span className="red-tape text-[9px] py-0.5">PRO</span>}
-                <span className="text-zinc-600 text-xs">✏</span>
-              </button>
-            )}
-            <button onClick={toggleLang} className="flex items-center gap-1 font-mono-jb text-[10px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition">
-              <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
-              <span className="text-zinc-700 mx-0.5">|</span>
-              <span style={{ color: lang === 'en' ? 'white' : '#52525b', fontWeight: lang === 'en' ? 700 : 400 }}>EN</span>
-            </button>
+            <span className="flex items-center gap-2 text-zinc-400 text-sm">
+              <span>{displayName}</span>
+              {isPro && <span className="red-tape text-[9px] py-0.5">PRO</span>}
+            </span>
+            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            </a>
             <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">{t('Salir', 'Sign out')}</button>
           </div>
         </div>
@@ -487,29 +462,120 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Video Preview History */}
-          {videoHistory.length > 0 && (
+          {/* My Previews — TV3 section (always shown for Pro, or when previews exist) */}
+          {(isPro || dbPreviews.length > 0) && (
             <div>
-              <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: '#00D9FF' }}>VIDEO PREVIEWS</p>
+              <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: '#00D9FF' }}>VIDEO TIPS</p>
               <h2 className="font-display font-bold text-2xl mb-4">{t('Mis previews', 'My previews')}</h2>
-              <div className="flex gap-4 overflow-x-auto pb-2">
-                {videoHistory.map(p => (
-                  <div key={p.id} className="soft-card flex-shrink-0 overflow-hidden" style={{ width: 160 }}>
-                    <video src={videoUrls[p.id]} muted loop
-                      onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
-                      onMouseLeave={e => { const v = e.currentTarget as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                      style={{ width: 160, height: 284, objectFit: 'cover', display: 'block', cursor: 'pointer' }}
-                    />
-                    <div className="p-2">
-                      <p className="font-mono-jb text-[9px] text-zinc-500 truncate">{p.title}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="font-mono-jb text-[8px] text-zinc-700 uppercase">{p.format}</span>
-                        <button onClick={() => deleteVideoFromHistory(p.id)}
-                          className="font-mono-jb text-[9px] text-zinc-700 hover:text-red-400 transition">✕</button>
-                      </div>
+              <div className="soft-card p-5">
+                <div className="flex gap-6 items-start flex-wrap sm:flex-nowrap">
+
+                  {/* TV — screen overlay behind TV3.webp frame */}
+                  <div style={{ position: 'relative', width: 240, flexShrink: 0 }}>
+                    {/* Screen area: adjust left/top/width/height to match the TV3.webp CRT bezel */}
+                    <div style={{
+                      position: 'absolute',
+                      left: '17%', top: '9%',
+                      width: '64%', height: '52%',
+                      zIndex: 1, overflow: 'hidden',
+                      background: '#000',
+                      borderRadius: '4px',
+                    }}>
+                      {selectedVideoUrl ? (
+                        <>
+                          <video src={selectedVideoUrl} autoPlay loop muted playsInline
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                          {/* CRT scanlines */}
+                          <div style={{
+                            position: 'absolute', inset: 0, pointerEvents: 'none',
+                            background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px)',
+                          }} />
+                          {/* Screen glare */}
+                          <div style={{
+                            position: 'absolute', top: 0, left: 0, width: '50%', height: '40%',
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)',
+                            pointerEvents: 'none', borderRadius: '0 0 80% 0',
+                          }} />
+                        </>
+                      ) : (
+                        <div style={{
+                          width: '100%', height: '100%',
+                          background: 'radial-gradient(ellipse at center, #0d0d0d 0%, #000 100%)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6,
+                        }}>
+                          {loadingPreview ? (
+                            <svg className="animate-spin" style={{ width: 18, height: 18, color: '#00D9FF' }} viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12"/>
+                            </svg>
+                          ) : (
+                            <>
+                              <span style={{ fontSize: 20 }}>📺</span>
+                              <p style={{ fontFamily: 'monospace', fontSize: 8, color: '#2a2a2a', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', padding: '0 8px' }}>
+                                {dbPreviews.length > 0 ? t('SELECCIONA', 'SELECT') : t('SIN DATOS', 'NO DATA')}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
+
+                    {/* TV3 frame on top (screen hole reveals content behind) */}
+                    <img
+                      src="/TV3.webp"
+                      alt=""
+                      draggable={false}
+                      style={{ width: '100%', display: 'block', position: 'relative', zIndex: 2, userSelect: 'none', pointerEvents: 'none' }}
+                    />
                   </div>
-                ))}
+
+                  {/* Preview list */}
+                  <div className="flex-1 min-w-0 pt-1">
+                    <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-600 mb-3">
+                      {t('Últimas generaciones', 'Latest previews')}
+                    </p>
+
+                    {dbPreviews.length === 0 ? (
+                      <div className="py-6">
+                        <p className="font-mono-jb text-[11px] text-zinc-600 leading-relaxed">
+                          {t(
+                            'Genera un script y pulsa "Generar Preview" para ver tu animación aquí.',
+                            'Generate a script and click "Generate Preview" to see your animation here.',
+                          )}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {dbPreviews.map((p, i) => (
+                          <button
+                            key={p.id}
+                            onClick={() => handleSelectPreview(p.id)}
+                            className="w-full text-left flex items-center gap-3 p-3 rounded-xl transition group"
+                            style={{
+                              background: selectedPreviewId === p.id ? 'rgba(0,217,255,0.08)' : 'rgba(255,255,255,0.02)',
+                              border: `1px solid ${selectedPreviewId === p.id ? 'rgba(0,217,255,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                            }}
+                          >
+                            <span className="font-mono-jb text-[10px] w-5 text-center flex-shrink-0"
+                              style={{ color: selectedPreviewId === p.id ? '#00D9FF' : '#3f3f46' }}>
+                              {i + 1}
+                            </span>
+                            <span className="flex-1 font-mono-jb text-[11px] text-zinc-400 truncate group-hover:text-white transition">
+                              {p.title}
+                            </span>
+                            <span style={{ color: selectedPreviewId === p.id ? '#00D9FF' : '#27272a', fontSize: 10, flexShrink: 0 }}>▶</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedPreviewId && (
+                      <p className="font-mono-jb text-[9px] text-zinc-700 mt-3">
+                        {t('Clic en la misma preview para apagar la TV', 'Click the same preview to turn off the TV')}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -870,8 +936,10 @@ export default function DashboardPage() {
           <VideoPreviewGenerator
             scriptContent={previewGen.output}
             generationId={previewGen.id}
+            scriptTitle={previewGen.title ?? 'Script'}
             lang={lang}
             onClose={() => setPreviewGen(null)}
+            onSaved={() => loadDbPreviews()}
           />
         </Suspense>
       )}

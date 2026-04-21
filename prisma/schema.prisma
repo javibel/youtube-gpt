@@ -17,12 +17,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  generations   Generation[]
-  subscription  Subscription?
-  review        Review?
-  youtubeToken  YoutubeToken?
+  accounts       Account[]
+  sessions       Session[]
+  generations    Generation[]
+  subscription   Subscription?
+  review         Review?
+  youtubeToken   YoutubeToken?
+  videoPreviews  VideoPreview[]
 
   @@map("users")
 }
@@ -148,4 +149,17 @@ model YoutubeToken {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("youtube_tokens")
+}
+
+model VideoPreview {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  videoData Bytes
+  mimeType  String   @default("video/webm")
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("video_previews")
 }

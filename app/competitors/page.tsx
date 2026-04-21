@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { getLangClient } from '@/lib/get-lang-client';
 
 type Lang = 'es' | 'en';
 
@@ -51,11 +51,13 @@ export default function CompetitorsPage() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<CompetitorResult | null>(null);
 
+  useEffect(() => { setLang(getLangClient()); }, []);
+
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
   }, [status, router]);
 
-  const t = (es: string, en: string) => lang === 'es' ? es : en;
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   async function handleAnalyze(e: React.FormEvent) {
     e.preventDefault();
@@ -89,14 +91,13 @@ export default function CompetitorsPage() {
   if (status === 'loading') return null;
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--fg)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
       {/* Header */}
-      <header style={{ borderBottom: '1px solid var(--line)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)' }}
-        className="sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <header className="border-b sticky top-0 z-40" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)' }}>
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/dashboard" className="flex items-center gap-2.5">
-            <svg width="22" height="22" viewBox="0 0 32 32">
-              <circle cx="16" cy="16" r="16" fill="#e84d5b"/>
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
               <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
             </svg>
             <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
@@ -110,10 +111,9 @@ export default function CompetitorsPage() {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
               {t('Generar', 'Generate')}
             </a>
-            <button onClick={() => setLang(l => l === 'es' ? 'en' : 'es')}
-              className="font-mono-jb text-[11px] tracking-wider px-2.5 py-1.5 rounded border border-white/10 text-zinc-500 hover:text-white hover:border-white/25 transition">
-              {lang === 'es' ? 'EN' : 'ES'}
-            </button>
+            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            </a>
           </div>
         </div>
       </header>

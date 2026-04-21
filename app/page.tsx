@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import LandingHeroDemo from '@/components/LandingHeroDemo';
 import LandingFeatures from '@/components/LandingFeatures';
 import LandingFAQ from '@/components/LandingFAQ';
 import LangToggle from '@/components/LangToggle';
-import LangSync from '@/components/LangSync';
 
 export const metadata: Metadata = {
   title: 'YTubViral — Genera contenido viral para YouTube con IA',
@@ -69,7 +69,7 @@ function TopNav({ lang }: { lang: Lang }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <LangToggle urlMode currentLang={lang} />
+          <LangToggle currentLang={lang} />
           <Link href="/login" className="hidden sm:block text-sm text-zinc-400 hover:text-white transition">
             {lang === 'en' ? 'Log in' : 'Iniciar sesión'}
           </Link>
@@ -563,9 +563,9 @@ function Footer({ lang }: { lang: Lang }) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function LandingPage({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
-  const { lang: langParam } = await searchParams;
-  const lang: Lang = langParam === 'en' ? 'en' : 'es';
+export default async function LandingPage() {
+  const cookieStore = await cookies();
+  const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
 
   let approvedReviews: { id: string; rating: number; text: string; user: { name: string | null } }[] = [];
   try {
@@ -581,7 +581,6 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      <LangSync lang={lang} />
       <TopNav lang={lang} />
       <LiveTicker lang={lang} />
       <Hero lang={lang} />

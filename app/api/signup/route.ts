@@ -5,11 +5,36 @@ import { isDisposableEmail } from "@/lib/disposable-domains";
 import { Resend } from "resend";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-function welcomeEmail(name: string): string {
+function welcomeEmail(name: string, lang: 'es' | 'en'): string {
+  const isEn = lang === 'en';
+  const eyebrow = isEn ? 'WELCOME TO YTUBVIRAL' : 'BIENVENIDO A YTUBVIRAL';
+  const greeting = isEn ? `Hi, ${name}.` : `Hola, ${name}.`;
+  const intro = isEn
+    ? 'You now have access to the AI tools that top creators use to generate viral YouTube content.'
+    : 'Ya tienes acceso a las herramientas de IA que usan los mejores creadores para generar contenido viral en YouTube.';
+  const steps: [string, string][] = isEn
+    ? [
+        ['01', 'Open the generator — no setup needed'],
+        ['02', 'Choose your content type: title, description, script, caption, or thumbnail'],
+        ['03', 'Enter your video topic and generate your first viral content'],
+      ]
+    : [
+        ['01', 'Entra al generador — no necesitas configurar nada'],
+        ['02', 'Elige el tipo de contenido: título, descripción, script, caption o miniatura'],
+        ['03', 'Escribe el tema de tu vídeo y genera tu primer contenido viral'],
+      ];
+  const cta = isEn ? 'Start generating →' : 'Empezar a generar →';
+  const planLabel = isEn
+    ? `FREE PLAN · 10 generations/month · <a href="https://ytubviral.com/dashboard" style="color:#e84d5b;text-decoration:none;">Upgrade to Pro for €9.99/mo</a>`
+    : `PLAN FREE · 10 generaciones/mes · <a href="https://ytubviral.com/dashboard" style="color:#e84d5b;text-decoration:none;">Upgrade a Pro por 9,99€/mes</a>`;
+  const footer = isEn
+    ? `© 2026 YTubViral.com · <a href="https://ytubviral.com/terms" style="color:#52525b;text-decoration:none;">Terms</a> · <a href="https://ytubviral.com/privacy" style="color:#52525b;text-decoration:none;">Privacy</a>`
+    : `© 2026 YTubViral.com · <a href="https://ytubviral.com/terms" style="color:#52525b;text-decoration:none;">Términos</a> · <a href="https://ytubviral.com/privacy" style="color:#52525b;text-decoration:none;">Privacidad</a>`;
+
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${lang}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:48px 0;">
@@ -35,20 +60,14 @@ function welcomeEmail(name: string): string {
           <td style="background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
 
             <!-- Eyebrow -->
-            <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">BIENVENIDO A YTUBVIRAL</p>
+            <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">${eyebrow}</p>
 
-            <p style="margin:0 0 8px;font-size:24px;font-weight:800;color:#ffffff;line-height:1.2;">Hola, ${name}.</p>
-            <p style="margin:0 0 32px;font-size:15px;color:#71717a;line-height:1.7;">
-              Ya tienes acceso a las herramientas de IA que usan los mejores creadores para generar contenido viral en YouTube.
-            </p>
+            <p style="margin:0 0 8px;font-size:24px;font-weight:800;color:#ffffff;line-height:1.2;">${greeting}</p>
+            <p style="margin:0 0 32px;font-size:15px;color:#71717a;line-height:1.7;">${intro}</p>
 
             <!-- Steps -->
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
-              ${[
-                ['01', 'Entra al generador — no necesitas configurar nada'],
-                ['02', 'Elige el tipo de contenido: título, descripción, script, caption o miniatura'],
-                ['03', 'Escribe el tema de tu vídeo y genera tu primer contenido viral'],
-              ].map(([num, text], i, arr) => `
+              ${steps.map(([num, text], i, arr) => `
               <tr>
                 <td style="padding:14px 0;${i < arr.length - 1 ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : ''}">
                   <table cellpadding="0" cellspacing="0"><tr>
@@ -65,7 +84,7 @@ function welcomeEmail(name: string): string {
                 <td>
                   <a href="https://ytubviral.com/generate"
                     style="display:inline-block;background:#e84d5b;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:6px;text-decoration:none;letter-spacing:-0.01em;box-shadow:3px 3px 0 #000;">
-                    Empezar a generar →
+                    ${cta}
                   </a>
                 </td>
               </tr>
@@ -78,8 +97,7 @@ function welcomeEmail(name: string): string {
         <tr>
           <td style="padding:16px 40px;background:#0d0d0d;border-radius:0 0 12px 12px;border:1px solid rgba(255,255,255,0.06);border-top:none;">
             <p style="margin:0;font-size:12px;color:#52525b;text-align:center;font-family:monospace;">
-              PLAN FREE · 10 generaciones/mes ·
-              <a href="https://ytubviral.com/dashboard" style="color:#e84d5b;text-decoration:none;">Upgrade a Pro por 9,99€/mes</a>
+              ${planLabel}
             </p>
           </td>
         </tr>
@@ -87,11 +105,7 @@ function welcomeEmail(name: string): string {
         <!-- Footer -->
         <tr>
           <td align="center" style="padding:28px 0 0;">
-            <p style="margin:0;font-size:11px;color:#3f3f46;font-family:monospace;">
-              © 2026 YTubViral.com ·
-              <a href="https://ytubviral.com/terms" style="color:#52525b;text-decoration:none;">Términos</a> ·
-              <a href="https://ytubviral.com/privacy" style="color:#52525b;text-decoration:none;">Privacidad</a>
-            </p>
+            <p style="margin:0;font-size:11px;color:#3f3f46;font-family:monospace;">${footer}</p>
           </td>
         </tr>
 
@@ -116,7 +130,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { email, password, name } = await req.json();
+    const { email, password, name, lang = 'es' } = await req.json();
+    const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -146,11 +161,14 @@ export async function POST(req: NextRequest) {
     });
 
     // Enviar email de bienvenida (sin bloquear la respuesta)
-    resend.emails.send({
+    const subject = emailLang === 'en'
+      ? `Welcome to YTubViral.com, ${name}!`
+      : `¡Bienvenido a YTubViral.com, ${name}! 🚀`;
+    resend?.emails.send({
       from: 'noreply@ytubviral.com',
       to: email,
-      subject: `¡Bienvenido a YTubViral.com, ${name}! 🚀`,
-      html: welcomeEmail(name),
+      subject,
+      html: welcomeEmail(name, emailLang),
     }).catch((err) => console.error('Welcome email error:', err));
 
     return NextResponse.json({ success: true }, { status: 201 });

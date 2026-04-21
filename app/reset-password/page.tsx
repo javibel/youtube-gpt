@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PasswordInput from '@/components/PasswordInput';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -33,7 +34,7 @@ function ResetPasswordForm() {
     const res = await fetch('/api/auth/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, password }),
+      body: JSON.stringify({ token, password, lang }),
     });
     const data = await res.json();
     setLoading(false);
@@ -59,15 +60,15 @@ function ResetPasswordForm() {
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nueva contraseña', 'New password')}</label>
-        <input type="password" required placeholder={t('Mínimo 8 caracteres', 'At least 8 characters')}
+        <PasswordInput required placeholder={t('Mínimo 8 caracteres', 'At least 8 characters')}
           value={password} onChange={(e) => setPassword(e.target.value)}
-          className="soft-field py-3 px-4 text-sm" />
+          className="py-3 px-4 text-sm" />
       </div>
       <div>
         <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Confirmar contraseña', 'Confirm password')}</label>
-        <input type="password" required placeholder="••••••••"
+        <PasswordInput required
           value={confirm} onChange={(e) => setConfirm(e.target.value)}
-          className="soft-field py-3 px-4 text-sm" />
+          className="py-3 px-4 text-sm" />
       </div>
       {error && (
         <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
@@ -96,13 +97,23 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen grain grid-bg flex items-center justify-center p-4" style={{ background: 'var(--ink)' }}>
-      <a href="/" className="absolute top-6 left-6 flex items-center gap-2">
-        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-          <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-        </svg>
-        <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-      </a>
+      <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
+            <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+          </svg>
+          <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+        </a>
+        <button
+          onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
+          className="flex items-center gap-1 font-mono-jb text-[10px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
+        >
+          <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
+          <span className="text-zinc-700 mx-0.5">|</span>
+          <span style={{ color: lang === 'en' ? 'white' : '#52525b', fontWeight: lang === 'en' ? 700 : 400 }}>EN</span>
+        </button>
+      </div>
 
       <div className="w-full max-w-md">
         <div className="mb-8">

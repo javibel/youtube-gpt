@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
+import { getLangClient } from '@/lib/get-lang-client';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -83,10 +84,7 @@ function ResearchPageInner() {
   const [noApiKey, setNoApiKey] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('ytubviral_lang') as Lang | null;
-    if (stored === 'en' || stored === 'es') setLang(stored);
-  }, []);
+  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -140,14 +138,14 @@ function ResearchPageInner() {
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
       {/* Header */}
       <header className="border-b sticky top-0 z-40" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <a href="/dashboard" className="flex items-center gap-2">
-              <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+            <a href="/dashboard" className="flex items-center gap-2.5">
+              <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
                 <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
                 <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
               </svg>
-              <span className="font-display font-bold text-[14px] text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+              <span className="font-display font-bold text-[16px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
             </a>
             <nav className="hidden md:flex items-center gap-5">
               <a href="/generate" className="font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition">{t('Generar', 'Generate')}</a>
@@ -161,7 +159,9 @@ function ResearchPageInner() {
             <span className="font-mono-jb text-[10px] tracking-[0.2em] uppercase px-2 py-1 rounded" style={{ background: 'rgba(232,77,91,0.15)', color: 'var(--red)', border: '1px solid rgba(232,77,91,0.3)' }}>
               BETA
             </span>
-            <span className="font-mono-jb text-xs text-zinc-500">{session?.user?.name || session?.user?.email}</span>
+            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            </a>
           </div>
         </div>
       </header>

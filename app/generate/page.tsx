@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import LimitReachedModal from '@/components/LimitReachedModal';
 import { TEMPLATES } from '@/utils/prompts';
 import { callClaudeAPI } from '@/utils/claudeAPI';
+import { getLangClient } from '@/lib/get-lang-client';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 
@@ -31,7 +32,7 @@ const TPL_NAMES: Record<string, Record<'es'|'en', string>> = {
   niche_analysis: { es: 'Análisis de nicho',en: 'Niche Analysis' },
   series:         { es: 'Plan de serie',    en: 'Series Plan' },
   shorts_hook:    { es: 'Hook para Shorts', en: 'Shorts Hook' },
-  video_preview:  { es: 'Video Preview',    en: 'Video Preview' },
+  video_preview:  { es: 'Video Tips',        en: 'Video Tips' },
 };
 
 const NICHES_ES = [['tech','Tech'],['gaming','Gaming'],['life','Lifestyle'],['edu','EDU'],['fit','Fitness'],['food','Cocina']];
@@ -63,10 +64,7 @@ export default function GeneratePage() {
     if (status === 'unauthenticated') router.push('/login');
   }, [status, router]);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
-    if (stored) setLang(stored);
-  }, []);
+  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     fetch('/api/user/stats')
@@ -141,12 +139,6 @@ export default function GeneratePage() {
 
   const remainingDisplay = remaining ?? Math.max(0, limit - usageCount);
 
-  const toggleLang = () => {
-    const next = lang === 'es' ? 'en' : 'es';
-    setLang(next);
-    localStorage.setItem('ytubviral_lang', next);
-  };
-
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   return (
@@ -165,16 +157,14 @@ export default function GeneratePage() {
             <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
           </a>
           <div className="flex items-center gap-4">
-            <span className="font-mono-jb text-[11px] text-zinc-500 hidden sm:block">
-              {t('Créditos', 'Credits')}: <span style={{ color: remainingDisplay > 0 ? 'var(--red)' : '#ef4444' }}>{remainingDisplay}</span> / {limit}
+            <span className="font-mono-jb text-[11px] font-semibold px-2.5 py-1 rounded-full border" style={{ borderColor: remainingDisplay > 3 ? 'rgba(255,255,255,0.12)' : 'rgba(232,77,91,0.4)', color: remainingDisplay > 3 ? '#a1a1aa' : '#e84d5b', background: remainingDisplay > 3 ? 'transparent' : 'rgba(232,77,91,0.08)' }}>
+              {remainingDisplay} / {limit} {t('créditos', 'credits')}
             </span>
-            <button onClick={toggleLang} className="flex items-center gap-1 font-mono-jb text-[10px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition">
-              <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
-              <span className="text-zinc-700 mx-0.5">|</span>
-              <span style={{ color: lang === 'en' ? 'white' : '#52525b', fontWeight: lang === 'en' ? 700 : 400 }}>EN</span>
-            </button>
             <a href="/research" className="soft-pill px-3 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 hover:text-white">{t('Investigar', 'Research')}</a>
             <a href="/dashboard" className="soft-pill px-3 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase text-zinc-300 hover:text-white">{t('Panel', 'Dashboard')}</a>
+            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            </a>
             <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">{t('Salir', 'Sign out')}</button>
           </div>
         </div>
@@ -231,8 +221,7 @@ export default function GeneratePage() {
         </div>
 
         {/* Main layout */}
-        <div className="grid lg:grid-cols-[1fr_300px] gap-8">
-          <div className="space-y-5">
+        <div className="max-w-3xl space-y-5">
             {/* Topic */}
             <div className="soft-card p-6">
               <div className="flex items-center justify-between mb-3">
@@ -358,7 +347,7 @@ export default function GeneratePage() {
                 ) : selectedTemplate === 'video_preview' ? (
                   <>
                     <span>📺</span>
-                    {t('Crear Video Preview', 'Create Video Preview')}
+                    {t('Crear Video Tips', 'Create Video Tips')}
                   </>
                 ) : (
                   <>
@@ -367,14 +356,17 @@ export default function GeneratePage() {
                   </>
                 )}
               </button>
-              {selectedTemplate !== 'video_preview' && (
-                <p className="font-mono-jb text-[10px] text-zinc-500">
-                  {t('Coste: 1 crédito · Restantes:', 'Cost: 1 credit · Remaining:')} <span style={{ color: remainingDisplay > 0 ? 'var(--red)' : '#ef4444' }}>{remainingDisplay}</span>
+              {selectedTemplate === 'video_preview' ? (
+                <p className="font-mono-jb text-[11px] text-zinc-500">
+                  📺 {t('Sin créditos · local', '0 credits · local')}
                 </p>
-              )}
-              {selectedTemplate === 'video_preview' && (
-                <p className="font-mono-jb text-[10px] text-zinc-500">
-                  📺 {t('Se genera en tu navegador · 0 créditos', 'Generated in your browser · 0 credits')}
+              ) : remainingDisplay === 0 ? (
+                <p className="font-mono-jb text-[11px]" style={{ color: '#e84d5b' }}>
+                  ⚠ {t('Sin créditos este mes', 'No credits left this month')}
+                </p>
+              ) : (
+                <p className="font-mono-jb text-[11px] text-zinc-500">
+                  {t('Te quedan', 'You have')} <span className="text-white font-semibold">{remainingDisplay}</span> {t('créditos', 'credits')}
                 </p>
               )}
             </div>
@@ -429,40 +421,6 @@ export default function GeneratePage() {
                 )}
               </div>
             )}
-          </div>
-
-          {/* Sidebar */}
-          <aside className="space-y-5">
-            <div className="soft-card p-5 sticky top-24">
-              <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4" style={{ color: 'var(--red)' }}>▸ CONFIG</p>
-              <div className="space-y-3 font-mono-jb text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">{t('Tipo', 'Type')}</span>
-                  <span className="text-white uppercase">{TPL_NAMES[selectedTemplate]?.[lang] ?? selectedTemplate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">{t('Tono', 'Tone')}</span>
-                  <span className="text-white uppercase">{formData.tono}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">{t('Motor', 'Engine')}</span>
-                  <span style={{ color: 'var(--red)' }}>Claude Sonnet</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">{t('Plan', 'Plan')}</span>
-                  <span className="text-white">{isPro ? 'PRO ★' : 'Free'}</span>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="rounded-2xl border border-dashed border-white/15 p-5 bg-[#0C0C0E]">
-              <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yellow)' }}>★ TIP</p>
-              <p className="text-xs leading-relaxed text-zinc-400">
-                {t('Para mejores títulos: añade un número específico, una promesa y un giro inesperado. El motor detectará el patrón.', 'For better titles: add a specific number, a promise and an unexpected twist. The engine will detect the pattern.')}
-              </p>
-            </div>
-          </aside>
         </div>
       </div>
       {/* Video Preview Modal */}
@@ -471,7 +429,7 @@ export default function GeneratePage() {
           <VideoPreviewGenerator
             scriptContent={formData.tema}
             generationId={videoPreviewId}
-            scriptTitle={formData.tema.slice(0, 60) || 'Video Preview'}
+            scriptTitle={formData.tema.slice(0, 60) || 'Video Tips'}
             lang={lang}
             onClose={() => setShowVideoPreview(false)}
           />

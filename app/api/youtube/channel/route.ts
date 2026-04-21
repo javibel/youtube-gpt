@@ -2,30 +2,44 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 
-async function refreshAccessToken(yt: { refreshToken: string | null; userId: string }) {
-  if (!yt.refreshToken) return null;
+type RefreshResult =
+  | { ok: true; accessToken: string }
+  | { ok: false; permanent: boolean }; // permanent=true → invalid_grant, delete token
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      refresh_token: yt.refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
+async function refreshAccessToken(yt: { refreshToken: string | null; userId: string }): Promise<RefreshResult> {
+  if (!yt.refreshToken) return { ok: false, permanent: true };
 
-  const data = await res.json();
-  if (!data.access_token) return null;
+  let data: Record<string, unknown>;
+  try {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        refresh_token: yt.refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+    data = await res.json();
+  } catch {
+    // Network error — don't delete the token, let the caller use cached data
+    return { ok: false, permanent: false };
+  }
 
-  const expiresAt = new Date(Date.now() + (data.expires_in || 3600) * 1000);
+  if (!data.access_token) {
+    // Only revoke stored token if Google explicitly says it's dead
+    const permanent = data.error === 'invalid_grant' || data.error === 'invalid_client';
+    return { ok: false, permanent };
+  }
+
+  const expiresAt = new Date(Date.now() + ((data.expires_in as number) || 3600) * 1000);
   await prisma.youtubeToken.update({
     where: { userId: yt.userId },
-    data: { accessToken: data.access_token, expiresAt },
+    data: { accessToken: data.access_token as string, expiresAt },
   });
 
-  return data.access_token as string;
+  return { ok: true, accessToken: data.access_token as string };
 }
 
 export async function GET() {
@@ -42,13 +56,29 @@ export async function GET() {
   // Refresh token if expired (with 60s margin)
   let accessToken = yt.accessToken;
   if (yt.expiresAt < new Date(Date.now() + 60_000)) {
-    const refreshed = await refreshAccessToken({ refreshToken: yt.refreshToken, userId: yt.userId });
-    if (!refreshed) {
-      // Token is dead — remove and ask user to reconnect
-      await prisma.youtubeToken.delete({ where: { userId: session.user.id } });
-      return NextResponse.json({ connected: false, expired: true });
+    const refreshResult = await refreshAccessToken({ refreshToken: yt.refreshToken, userId: yt.userId });
+    if (!refreshResult.ok) {
+      if (refreshResult.permanent) {
+        // Google explicitly revoked the token (invalid_grant) — safe to delete
+        await prisma.youtubeToken.delete({ where: { userId: session.user.id } });
+        return NextResponse.json({ connected: false, expired: true });
+      }
+      // Transient error (network, Google API down) — return cached data so UI stays connected
+      return NextResponse.json({
+        connected: true,
+        cached: true,
+        channel: {
+          id: yt.channelId,
+          name: yt.channelName,
+          thumbnail: yt.channelThumb,
+          subscribers: parseInt(String(yt.subscribers ?? '0'), 10),
+          totalViews: parseInt(String(yt.totalViews ?? '0'), 10),
+          videoCount: parseInt(String(yt.videoCount ?? '0'), 10),
+        },
+        videos: [],
+      });
     }
-    accessToken = refreshed;
+    accessToken = refreshResult.accessToken;
   }
 
   try {

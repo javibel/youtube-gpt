@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 import crypto from 'crypto';
 import { checkRateLimit } from '@/lib/rate-limit';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(request: NextRequest) {
   // Rate limit: máx 5 intentos por IP cada 15 minutos (previene spam de emails)
@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { email } = await request.json();
+  const { email, lang = 'es' } = await request.json();
+  const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
 
   if (!email) {
     return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
@@ -45,16 +46,49 @@ export async function POST(request: NextRequest) {
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-  await resend.emails.send({
+  const isEn = emailLang === 'en';
+  const subject = isEn ? 'Reset your password - YTubViral' : 'Restablecer contraseña - YTubViral';
+  const html = isEn ? `
+    <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:48px 0;">
+        <tr><td align="center">
+          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
+            <tr><td style="padding:40px;">
+              <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">PASSWORD RESET</p>
+              <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">Reset your password</p>
+              <p style="margin:0 0 28px;font-size:15px;color:#71717a;line-height:1.7;">We received a request to reset your password. Click the button below — the link expires in 1 hour.</p>
+              <a href="${resetUrl}" style="display:inline-block;background:#e84d5b;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:6px;text-decoration:none;box-shadow:3px 3px 0 #000;">Reset password →</a>
+              <p style="margin:28px 0 0;font-size:12px;color:#52525b;">If you didn't request this, you can safely ignore this email.</p>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>
+  ` : `
+    <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:48px 0;">
+        <tr><td align="center">
+          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
+            <tr><td style="padding:40px;">
+              <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">RESTABLECER CONTRASEÑA</p>
+              <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">Restablece tu contraseña</p>
+              <p style="margin:0 0 28px;font-size:15px;color:#71717a;line-height:1.7;">Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón — el enlace expira en 1 hora.</p>
+              <a href="${resetUrl}" style="display:inline-block;background:#e84d5b;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:6px;text-decoration:none;box-shadow:3px 3px 0 #000;">Restablecer contraseña →</a>
+              <p style="margin:28px 0 0;font-size:12px;color:#52525b;">Si no solicitaste esto, puedes ignorar este email.</p>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>
+  `;
+
+  await resend?.emails.send({
     from: 'noreply@ytubviral.com',
     to: email,
-    subject: 'Restablecer contraseña - YTubViral',
-    html: `
-      <p>Hola,</p>
-      <p>Recibimos una solicitud para restablecer tu contraseña.</p>
-      <p><a href="${resetUrl}" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Restablecer contraseña</a></p>
-      <p>Este enlace expira en 1 hora. Si no solicitaste esto, ignora este email.</p>
-    `,
+    subject,
+    html,
   });
 
   return NextResponse.json({ ok: true });

@@ -1,40 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
-interface Props {
-  /** URL mode: clicking navigates to /?lang=en (for server-rendered pages) */
-  urlMode?: boolean;
-  /** Initial lang when urlMode is true — passed from server searchParams */
-  currentLang?: 'es' | 'en';
-}
-
-export default function LangToggle({ urlMode = false, currentLang = 'es' }: Props) {
-  const [lang, setLang] = useState<'es' | 'en'>(urlMode ? currentLang : 'es');
+export default function LangToggle({ currentLang = 'es' }: { currentLang?: 'es' | 'en' }) {
+  const [lang, setLangState] = useState<'es' | 'en'>(currentLang);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
-    if (!urlMode) {
-      const stored = localStorage.getItem('ytubviral_lang') as 'es' | 'en' | null;
-      if (stored === 'en' || stored === 'es') setLang(stored);
+    const stored = localStorage.getItem('ytubviral_lang') as 'es' | 'en' | null;
+    if (stored === 'en' || stored === 'es') {
+      setLangState(stored);
+      // Bootstrap cookie from localStorage so server reads it on next request
+      document.cookie = `ytubviral_lang=${stored};path=/;max-age=31536000;samesite=lax`;
     }
-  }, [urlMode]);
+  }, []);
 
   const toggle = () => {
     const next = lang === 'es' ? 'en' : 'es';
+    setLangState(next);
     localStorage.setItem('ytubviral_lang', next);
-    if (urlMode) {
-      router.push(pathname + (next === 'en' ? '?lang=en' : ''));
-    } else {
-      setLang(next);
-    }
+    document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`;
+    router.refresh();
   };
 
-  const activeLang = urlMode ? currentLang : (mounted ? lang : 'es');
+  const activeLang = mounted ? lang : currentLang;
 
   return (
     <button
