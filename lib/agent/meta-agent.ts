@@ -122,6 +122,21 @@ export async function publishToInstagram(
 
     const creationId: string = containerData.id;
 
+    // Wait for container to be ready (poll status_code until FINISHED)
+    let ready = false;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const statusRes = await fetch(
+        `${IG_GRAPH}/${creationId}?fields=status_code&access_token=${token}`
+      );
+      const statusData = await statusRes.json();
+      if (statusData.status_code === 'FINISHED') { ready = true; break; }
+      if (statusData.status_code === 'ERROR' || statusData.status_code === 'EXPIRED') {
+        throw new Error(`Instagram container status: ${statusData.status_code}`);
+      }
+    }
+    if (!ready) throw new Error('Instagram container timed out (not FINISHED after 30s)');
+
     // Step 2: publish
     const publishRes = await fetch(`${IG_GRAPH}/${igId}/media_publish`, {
       method: 'POST',
