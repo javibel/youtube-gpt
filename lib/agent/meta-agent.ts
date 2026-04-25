@@ -15,7 +15,8 @@ function stripMarkdown(text: string): string {
 }
 
 function buildInstagramImageUrl(text: string): string {
-  const clean = stripMarkdown(text).slice(0, 220);
+  // Keep URL short — Instagram rejects long URIs
+  const clean = stripMarkdown(text).slice(0, 80);
   const encoded = encodeURIComponent(clean);
   return `${BASE_URL}/api/og/instagram?text=${encoded}`;
 }
