@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
 const FB_GRAPH = 'https://graph.facebook.com/v19.0';
-const IG_GRAPH = 'https://graph.instagram.com/v21.0';
+const IG_GRAPH = 'https://graph.instagram.com/v19.0';
 const BASE_URL = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
 
 function buildInstagramImageUrl(text: string): string {
