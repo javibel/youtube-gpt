@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
-import { publishToAllChannels } from '@/lib/agent/buffer-agent';
+import { publishToFacebook, publishToInstagram } from '@/lib/agent/meta-agent';
 import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { prisma } from '@/lib/prisma';
@@ -42,12 +42,15 @@ export async function GET(request: Request) {
     if (tiktok.status === 'rejected') errors.push(`TikTok content: ${tiktok.reason}`);
     if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
-    // 2. Publish Facebook + Instagram via Buffer
-    const bufferResults = await publishToAllChannels({
-      facebook: fb ?? undefined,
-      instagram: ig ?? undefined,
-    });
-    results.buffer = bufferResults;
+    // 2. Publish Facebook + Instagram via Meta Graph API
+    const [fbResult, igResult] = await Promise.all([
+      fb ? publishToFacebook(fb) : Promise.resolve(null),
+      ig ? publishToInstagram(ig) : Promise.resolve(null),
+    ]);
+    results.facebook = fbResult;
+    results.instagram = igResult;
+    if (fbResult && !fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
+    if (igResult && !igResult.success) errors.push(`Instagram: ${igResult.error}`);
 
     // 3. Publish LinkedIn via direct API
     if (li) {

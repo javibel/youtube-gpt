@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { generateSocialPost } from '@/lib/agent/content-generator';
-import { publishToAllChannels } from '@/lib/agent/buffer-agent';
+import { publishToFacebook, publishToInstagram } from '@/lib/agent/meta-agent';
 import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
 import { runGmailAgent, sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
@@ -39,10 +39,10 @@ export async function POST(request: Request) {
       const tt = tiktok.status === 'fulfilled' ? tiktok.value : null;
       const tw = twitter.status === 'fulfilled' ? twitter.value : null;
 
-      const bufferResults = await publishToAllChannels({
-        facebook: fb ?? undefined,
-        instagram: ig ?? undefined,
-      });
+      const [fbResult, igResult] = await Promise.all([
+        fb ? publishToFacebook(fb) : Promise.resolve(null),
+        ig ? publishToInstagram(ig) : Promise.resolve(null),
+      ]);
       if (li) await publishToLinkedIn(li);
 
       if (tt || tw) {
@@ -56,7 +56,8 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         ok: true,
-        buffer: bufferResults,
+        facebook: fbResult,
+        instagram: igResult,
         tiktok: tt,
         twitter: tw,
       });

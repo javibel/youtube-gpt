@@ -25,12 +25,11 @@ export async function GET() {
   const status = {
     youtube: !!(process.env.YOUTUBE_API_KEY && process.env.YOUTUBE_CHANNEL_ID),
     gmail: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REFRESH_TOKEN),
-    facebook: !!process.env.BUFFER_FACEBOOK_ID,
-    instagram: !!process.env.BUFFER_INSTAGRAM_ID,
-    linkedin: !!process.env.BUFFER_LINKEDIN_ID,
-    buffer: !!process.env.BUFFER_ACCESS_TOKEN,
-    tiktok: false, // manual
-    twitter: false, // manual
+    facebook: !!(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN),
+    instagram: !!(process.env.INSTAGRAM_ACCOUNT_ID && process.env.META_PAGE_ACCESS_TOKEN),
+    linkedin: !!(process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_MEMBER_ID),
+    tiktok: false, // manual via email
+    twitter: false, // manual via email
   };
 
   return NextResponse.json({ posts, messages, status });
