@@ -14,11 +14,29 @@ function stripMarkdown(text: string): string {
     .replace(/#{1,6}\s/g, '');
 }
 
-function buildInstagramImageUrl(text: string): string {
-  // Keep URL short — Instagram rejects long URIs
-  const clean = stripMarkdown(text).slice(0, 80);
-  const encoded = encodeURIComponent(clean);
-  return `${BASE_URL}/api/og/instagram?text=${encoded}`;
+// Day of week → image category folder (0=Sun, 1=Mon, ...)
+const DAY_CATEGORY: Record<number, string> = {
+  0: 'inspiracion',
+  1: 'motivacion',
+  2: 'tips-youtube',
+  3: 'casos-exito',
+  4: 'herramientas',
+  5: 'reflexion',
+  6: 'comunidad',
+};
+
+function getInstagramImageUrl(): string {
+  const day = new Date().getDay();
+  const category = DAY_CATEGORY[day] ?? 'motivacion';
+  // Convention: images named 01.jpg, 02.jpg... up to 08.jpg per category
+  // Falls back to default.jpg if category folder is empty
+  const num = String((Math.floor(Math.random() * 8) + 1)).padStart(2, '0');
+  // Use default until bank images are added
+  return `${BASE_URL}/social-images/${category}/${num}.jpg`;
+}
+
+function getFallbackImageUrl(): string {
+  return `${BASE_URL}/social-images/default.jpg`;
 }
 
 export async function publishToFacebook(
@@ -79,20 +97,24 @@ export async function publishToInstagram(
   }
 
   try {
-    const imageUrl = buildInstagramImageUrl(content);
+    const caption = stripMarkdown(content);
 
-    // Step 1: create media container (newer Instagram API via graph.instagram.com)
-    const containerRes = await fetch(`${IG_GRAPH}/${igId}/media`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        caption: content,
-        access_token: token,
-      }),
-    });
+    // Try category image first, fall back to default.jpg
+    async function createContainer(imageUrl: string) {
+      return fetch(`${IG_GRAPH}/${igId}/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: imageUrl, caption, access_token: token }),
+      });
+    }
 
-    const containerData = await containerRes.json();
+    let containerRes = await createContainer(getInstagramImageUrl());
+    let containerData = await containerRes.json();
+
+    if (!containerRes.ok && (containerData?.error?.code === 9004 || containerRes.status === 400)) {
+      containerRes = await createContainer(getFallbackImageUrl());
+      containerData = await containerRes.json();
+    }
 
     if (!containerRes.ok) {
       throw new Error(`Instagram container error ${containerRes.status}: ${JSON.stringify(containerData)}`);
