@@ -36,7 +36,6 @@ type Status = {
   facebook: boolean;
   instagram: boolean;
   linkedin: boolean;
-  buffer: boolean;
   tiktok: boolean;
   twitter: boolean;
 };
@@ -257,9 +256,9 @@ export default function SocialAdminPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
             <StatusCard label="YouTube" connected={data?.status.youtube ?? false} />
             <StatusCard label="Gmail" connected={data?.status.gmail ?? false} />
-            <StatusCard label="Facebook" connected={!!(data?.status.facebook && data?.status.buffer)} />
-            <StatusCard label="Instagram" connected={!!(data?.status.instagram && data?.status.buffer)} />
-            <StatusCard label="LinkedIn" connected={!!(data?.status.linkedin && data?.status.buffer)} />
+            <StatusCard label="Facebook" connected={!!data?.status.facebook} />
+            <StatusCard label="Instagram" connected={!!data?.status.instagram} />
+            <StatusCard label="LinkedIn" connected={!!data?.status.linkedin} />
             <StatusCard label="TikTok" connected={false} manual />
             <StatusCard label="Twitter" connected={false} manual />
           </div>
@@ -336,8 +335,8 @@ export default function SocialAdminPage() {
                             {post.status}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-red-400/70 max-w-[160px] truncate text-xs">
-                          {post.errorMsg ?? '—'}
+                        <td className="px-4 py-2 text-red-400/70 max-w-[160px] text-xs" title={post.errorMsg ?? ''}>
+                          <span className="truncate block">{post.errorMsg ? post.errorMsg.slice(0, 40) + '…' : '—'}</span>
                         </td>
                         <td className="px-4 py-2 text-white/40">{formatDate(post.createdAt)}</td>
                       </tr>
