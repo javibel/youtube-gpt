@@ -36,7 +36,7 @@ function getInstagramImageUrl(): string {
 }
 
 function getFallbackImageUrl(): string {
-  return `${BASE_URL}/social-images/default.jpg`;
+  return `${BASE_URL}/social-images/default.png`;
 }
 
 export async function publishToFacebook(
