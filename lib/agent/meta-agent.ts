@@ -2,10 +2,21 @@ import { prisma } from '@/lib/prisma';
 
 const FB_GRAPH = 'https://graph.facebook.com/v19.0';
 const IG_GRAPH = 'https://graph.instagram.com/v19.0';
-const BASE_URL = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
+const BASE_URL = (process.env.NEXTAUTH_URL ?? 'https://ytubviral.com').trim().replace(/\/$/, '');
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/#{1,6}\s/g, '');
+}
 
 function buildInstagramImageUrl(text: string): string {
-  const encoded = encodeURIComponent(text.slice(0, 220));
+  const clean = stripMarkdown(text).slice(0, 220);
+  const encoded = encodeURIComponent(clean);
   return `${BASE_URL}/api/og/instagram?text=${encoded}`;
 }
 
@@ -20,10 +31,11 @@ export async function publishToFacebook(
   }
 
   try {
+    const message = stripMarkdown(content);
     const res = await fetch(`${FB_GRAPH}/${pageId}/feed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: content, access_token: token }),
+      body: JSON.stringify({ message, access_token: token }),
     });
 
     const data = await res.json();
