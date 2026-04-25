@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
-const GRAPH = 'https://graph.facebook.com/v19.0';
+const FB_GRAPH = 'https://graph.facebook.com/v19.0';
+const IG_GRAPH = 'https://graph.instagram.com/v21.0';
 const BASE_URL = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
 
 function buildInstagramImageUrl(text: string): string {
@@ -19,7 +20,7 @@ export async function publishToFacebook(
   }
 
   try {
-    const res = await fetch(`${GRAPH}/${pageId}/feed`, {
+    const res = await fetch(`${FB_GRAPH}/${pageId}/feed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: content, access_token: token }),
@@ -58,17 +59,17 @@ export async function publishToInstagram(
   content: string
 ): Promise<{ success: boolean; postId?: string; error?: string }> {
   const igId = process.env.INSTAGRAM_ACCOUNT_ID;
-  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  const token = process.env.INSTAGRAM_ACCESS_TOKEN;
 
   if (!igId || !token) {
-    return { success: false, error: 'INSTAGRAM_ACCOUNT_ID or META_PAGE_ACCESS_TOKEN not configured' };
+    return { success: false, error: 'INSTAGRAM_ACCOUNT_ID or INSTAGRAM_ACCESS_TOKEN not configured' };
   }
 
   try {
     const imageUrl = buildInstagramImageUrl(content);
 
-    // Step 1: create media container
-    const containerRes = await fetch(`${GRAPH}/${igId}/media`, {
+    // Step 1: create media container (newer Instagram API via graph.instagram.com)
+    const containerRes = await fetch(`${IG_GRAPH}/${igId}/media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -87,7 +88,7 @@ export async function publishToInstagram(
     const creationId: string = containerData.id;
 
     // Step 2: publish
-    const publishRes = await fetch(`${GRAPH}/${igId}/media_publish`, {
+    const publishRes = await fetch(`${IG_GRAPH}/${igId}/media_publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ creation_id: creationId, access_token: token }),
