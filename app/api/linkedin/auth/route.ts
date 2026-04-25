@@ -13,7 +13,7 @@ export async function GET() {
   if (!clientId) return NextResponse.json({ error: 'LINKEDIN_CLIENT_ID not set' }, { status: 500 });
 
   const redirectUri = 'https://ytubviral.com/api/linkedin/callback';
-  const scope = 'w_member_social r_liteprofile';
+  const scope = 'openid profile w_member_social';
   const state = Math.random().toString(36).slice(2);
 
   const url = new URL('https://www.linkedin.com/oauth/v2/authorization');

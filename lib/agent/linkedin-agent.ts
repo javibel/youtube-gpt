@@ -3,20 +3,22 @@ import { prisma } from '@/lib/prisma';
 const LI_API = 'https://api.linkedin.com/v2';
 
 async function getAuthorUrn(): Promise<string> {
+  // Prefer env var (set once after OAuth) to avoid extra API call + scope issues
+  const envId = process.env.LINKEDIN_MEMBER_ID;
+  if (envId) return `urn:li:person:${envId}`;
+
   const token = process.env.LINKEDIN_ACCESS_TOKEN;
   if (!token) throw new Error('LINKEDIN_ACCESS_TOKEN not configured');
 
-  const res = await fetch(`${LI_API}/me`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'X-Restli-Protocol-Version': '2.0.0',
-    },
+  // Fallback: try OpenID userinfo (requires openid scope)
+  const res = await fetch(`${LI_API}/userinfo`, {
+    headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (!res.ok) throw new Error(`LinkedIn /me error: ${res.status}`);
+  if (!res.ok) throw new Error(`LinkedIn /userinfo error: ${res.status} — set LINKEDIN_MEMBER_ID env var`);
   const data = await res.json();
-  const id: string = data.id ?? '';
-  if (!id) throw new Error('LinkedIn /me returned no id');
+  const id: string = data.sub ?? '';
+  if (!id) throw new Error('LinkedIn /userinfo returned no sub — set LINKEDIN_MEMBER_ID env var');
   return `urn:li:person:${id}`;
 }
 

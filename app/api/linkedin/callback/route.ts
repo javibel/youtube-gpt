@@ -31,12 +31,29 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Token exchange failed', detail: data }, { status: 500 });
   }
 
-  // Return token info so admin can copy it
+  // Fetch member ID via OpenID userinfo
+  let memberId: string | null = null;
+  try {
+    const userinfo = await fetch('https://api.linkedin.com/v2/userinfo', {
+      headers: { Authorization: `Bearer ${data.access_token}` },
+    });
+    if (userinfo.ok) {
+      const ui = await userinfo.json();
+      memberId = ui.sub ?? null;
+    }
+  } catch {}
+
   return NextResponse.json({
     ok: true,
     access_token: data.access_token,
     expires_in: data.expires_in,
     expires_days: Math.floor((data.expires_in ?? 0) / 86400),
-    instructions: 'Copia el access_token y añádelo a Vercel como LINKEDIN_ACCESS_TOKEN',
+    member_id: memberId,
+    instructions: [
+      '1. Añade access_token a Vercel como LINKEDIN_ACCESS_TOKEN',
+      memberId
+        ? `2. Añade "${memberId}" a Vercel como LINKEDIN_MEMBER_ID`
+        : '2. member_id es null — el token no tiene scope openid',
+    ],
   });
 }
