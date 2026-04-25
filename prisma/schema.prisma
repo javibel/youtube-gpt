@@ -17,13 +17,14 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts       Account[]
-  sessions       Session[]
-  generations    Generation[]
-  subscription   Subscription?
-  review         Review?
-  youtubeToken   YoutubeToken?
-  videoPreviews  VideoPreview[]
+  accounts        Account[]
+  sessions        Session[]
+  generations     Generation[]
+  subscription    Subscription?
+  review          Review?
+  youtubeToken    YoutubeToken?
+  videoPreviews   VideoPreview[]
+  extensionTokens ExtensionToken[]
 
   @@map("users")
 }
@@ -75,6 +76,16 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@map("email_verification_tokens")
 }
 
 model Generation {
@@ -159,9 +170,56 @@ model VideoPreview {
   title     String
   videoData Bytes
   mimeType  String   @default("video/webm")
+  size      Int      @default(0)
   createdAt DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("video_previews")
+}
+
+model YoutubeCache {
+  key       String   @id
+  data      Json
+  expiresAt DateTime
+
+  @@map("youtube_cache")
+}
+
+model ExtensionToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("extension_tokens")
+}
+
+model SocialPost {
+  id          String    @id @default(cuid())
+  platform    String
+  content     String
+  status      String    @default("pending")
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  errorMsg    String?
+  bufferId    String?
+
+  @@map("social_posts")
+}
+
+model SocialMessage {
+  id           String    @id @default(cuid())
+  platform     String
+  fromUser     String
+  content      String
+  receivedAt   DateTime  @default(now())
+  replied      Boolean   @default(false)
+  replyContent String?
+  repliedAt    DateTime?
+
+  @@map("social_messages")
 }

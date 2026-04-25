@@ -6,6 +6,7 @@ import LandingHeroDemo from '@/components/LandingHeroDemo';
 import LandingFeatures from '@/components/LandingFeatures';
 import LandingFAQ from '@/components/LandingFAQ';
 import LangToggle from '@/components/LangToggle';
+import ChatWidgetPreview from '@/components/ChatWidgetPreview';
 
 export const metadata: Metadata = {
   title: 'YTubViral — Genera contenido viral para YouTube con IA',
@@ -159,8 +160,8 @@ function Hero({ lang }: { lang: Lang }) {
 
         <p className="max-w-2xl mx-auto text-center text-zinc-400 text-lg md:text-xl mt-8 leading-relaxed">
           {lang === 'en'
-            ? "Titles, descriptions, scripts, captions and thumbnails that YouTube's algorithm wants to see. Generated in 8 seconds. Optimized for your niche."
-            : 'Títulos, descripciones, scripts, captions y miniaturas que el algoritmo de YouTube quiere ver. Generados en 8 segundos. Optimizados para tu nicho.'}
+            ? "Titles, scripts, SEO descriptions, captions, thumbnails, keyword research and competitor analysis. Everything in one tool, generated in seconds."
+            : 'Títulos, scripts, descripciones SEO, captions, miniaturas, keyword research y análisis de competidores. Todo en una herramienta, generado en segundos.'}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
@@ -288,7 +289,7 @@ function ComparisonTable({ lang }: { lang: Lang }) {
   const rows = lang === 'en'
     ? [
         { label: 'Write 10 candidate titles', manual: '45 min', us: '8 sec' },
-        { label: 'Research niche keywords', manual: '2 h', us: 'Automatic' },
+        { label: 'Research niche keywords', manual: '2 h', us: 'Built-in tool' },
         { label: 'Structure a 10-min script', manual: '3 h', us: '30 sec' },
         { label: 'Adapt to Reels/TikTok/Tweet', manual: '1 h', us: 'Included' },
         { label: 'Thumbnail visual brief', manual: '40 min', us: '5 sec' },
@@ -296,7 +297,7 @@ function ComparisonTable({ lang }: { lang: Lang }) {
       ]
     : [
         { label: 'Escribir 10 títulos candidatos', manual: '45 min', us: '8 seg' },
-        { label: 'Investigar keywords del nicho', manual: '2 h', us: 'Automático' },
+        { label: 'Investigar keywords del nicho', manual: '2 h', us: 'Herramienta propia' },
         { label: 'Estructurar un guion de 10 min', manual: '3 h', us: '30 seg' },
         { label: 'Adaptar a Reels/TikTok/Tweet', manual: '1 h', us: 'Incluido' },
         { label: 'Brief visual para miniatura', manual: '40 min', us: '5 seg' },
@@ -353,8 +354,8 @@ function Pricing({ lang }: { lang: Lang }) {
     ? ['10 generations/month', '5 content types', '30-day history', 'No credit card']
     : ['10 generaciones al mes', '5 tipos de contenido', 'Historial 30 días', 'Sin tarjeta de crédito'];
   const proFeatures = lang === 'en'
-    ? ['200 generations/month', 'All content types', 'Full history', '24h priority support', 'Early access to new features', 'CSV export']
-    : ['200 generaciones al mes', 'Todos los tipos de contenido', 'Historial completo', 'Soporte prioritario 24h', 'Acceso anticipado a nuevas funciones', 'Exportación a CSV'];
+    ? ['200 generations/month', 'All content types', 'Keyword Research', 'Competitor Analysis', 'Full history', '24h priority support', 'Early access to new features', 'CSV export']
+    : ['200 generaciones al mes', 'Todos los tipos de contenido', 'Keyword Research', 'Análisis de competidores', 'Historial completo', 'Soporte prioritario 24h', 'Acceso anticipado a nuevas funciones', 'Exportación a CSV'];
 
   return (
     <section id="pricing" className="border-b border-white/10 relative overflow-hidden">
@@ -594,6 +595,7 @@ export default async function LandingPage() {
       <LandingFAQ lang={lang} />
       <FinalCTA lang={lang} />
       <Footer lang={lang} />
+      <ChatWidgetPreview />
     </div>
   );
 }
