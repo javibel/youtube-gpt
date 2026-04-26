@@ -12,9 +12,9 @@ async function getAccessToken(): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
+      client_id: process.env.GMAIL_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GMAIL_CLIENT_SECRET ?? process.env.GOOGLE_CLIENT_SECRET!,
+      refresh_token: process.env.GMAIL_REFRESH_TOKEN ?? process.env.GOOGLE_REFRESH_TOKEN!,
       grant_type: 'refresh_token',
     }),
   });
@@ -84,6 +84,21 @@ function getHeader(headers: { name: string; value: string }[], name: string): st
 
 // ── MIME email builder ────────────────────────────────────────────────────────
 
+const OWNER_EMAIL = 'javijimenoplata@gmail.com';
+
+const IMPORTANT_KEYWORDS = [
+  'cancelar', 'cancel', 'baja', 'unsubscribe', 'reembolso', 'refund',
+  'pago', 'payment', 'cobro', 'charge', 'factura', 'invoice',
+  'queja', 'complaint', 'problema grave', 'urgent', 'urgente',
+  'legal', 'abogado', 'lawyer', 'demanda', 'lawsuit',
+  'partnership', 'colaboración', 'prensa', 'press', 'media', 'inversión', 'investment',
+];
+
+function isImportant(subject: string, body: string): boolean {
+  const text = `${subject} ${body}`.toLowerCase();
+  return IMPORTANT_KEYWORDS.some(kw => text.includes(kw));
+}
+
 function buildMimeEmail({
   to,
   from,
@@ -91,6 +106,7 @@ function buildMimeEmail({
   body,
   inReplyTo,
   references,
+  bcc,
 }: {
   to: string;
   from: string;
@@ -98,6 +114,7 @@ function buildMimeEmail({
   body: string;
   inReplyTo?: string;
   references?: string;
+  bcc?: string;
 }): string {
   const lines = [
     `From: ${from}`,
@@ -106,6 +123,7 @@ function buildMimeEmail({
     `Content-Type: text/plain; charset=utf-8`,
     `MIME-Version: 1.0`,
   ];
+  if (bcc) lines.push(`Bcc: ${bcc}`);
   if (inReplyTo) lines.push(`In-Reply-To: ${inReplyTo}`);
   if (references) lines.push(`References: ${references}`);
   lines.push('', body);
@@ -164,6 +182,9 @@ export async function runGmailAgent(): Promise<GmailAgentResult> {
       // Generate reply with Claude
       const replyBody = await generateGmailReply(subject, body, senderName);
 
+      // Check if important — BCC owner
+      const important = isImportant(subject, body);
+
       // Send reply
       const rawEmail = buildMimeEmail({
         to: senderEmail,
@@ -172,6 +193,7 @@ export async function runGmailAgent(): Promise<GmailAgentResult> {
         body: replyBody,
         inReplyTo: messageId,
         references: references ? `${references} ${messageId}` : messageId,
+        bcc: important ? OWNER_EMAIL : undefined,
       });
 
       await gmailPost('/messages/send', token, {
@@ -216,6 +238,20 @@ export async function sendNotificationEmail(
   const token = await getAccessToken();
   const rawEmail = buildMimeEmail({
     to: AGENT_EMAIL,
+    from: `YTubViral Agent <${AGENT_EMAIL}>`,
+    subject,
+    body,
+  });
+  await gmailPost('/messages/send', token, { raw: rawEmail });
+}
+
+export async function sendOwnerEmail(
+  subject: string,
+  body: string
+): Promise<void> {
+  const token = await getAccessToken();
+  const rawEmail = buildMimeEmail({
+    to: OWNER_EMAIL,
     from: `YTubViral Agent <${AGENT_EMAIL}>`,
     subject,
     body,
