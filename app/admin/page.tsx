@@ -76,6 +76,9 @@ export default function AdminPage() {
   const [grantEmail, setGrantEmail] = useState('');
   const [granting, setGranting] = useState(false);
   const [grantMsg, setGrantMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [feedbackEmail, setFeedbackEmail] = useState('');
+  const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [feedbackSendMsg, setFeedbackSendMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
@@ -108,6 +111,17 @@ export default function AdminPage() {
       else setCreateMsg({ ok: false, text: d.error ?? 'Error' });
     } catch { setCreateMsg({ ok: false, text: 'Error de conexión' }); }
     finally { setCreating(false); }
+  }
+
+  async function handleSendFeedback(e: React.FormEvent) {
+    e.preventDefault(); setSendingFeedback(true); setFeedbackSendMsg(null);
+    try {
+      const res = await fetch('/api/admin/send-feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: feedbackEmail }) });
+      const d = await res.json();
+      if (d.ok) { setFeedbackSendMsg({ ok: true, text: `Email enviado a ${d.email} (${d.lang.toUpperCase()})` }); setFeedbackEmail(''); }
+      else setFeedbackSendMsg({ ok: false, text: d.error ?? 'Error' });
+    } catch { setFeedbackSendMsg({ ok: false, text: 'Error de conexión' }); }
+    finally { setSendingFeedback(false); }
   }
 
   async function handleGrantPro(e: React.FormEvent) {
@@ -426,7 +440,7 @@ export default function AdminPage() {
         </div>
 
         {/* Gestión manual */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="soft-card rounded-2xl p-5">
             <p className="text-sm font-display font-semibold mb-1">Crear usuario</p>
             <p className="text-xs mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Registra manualmente una cuenta nueva.</p>
@@ -452,6 +466,19 @@ export default function AdminPage() {
               {grantMsg && <p className="text-xs font-mono-jb" style={{ color: grantMsg.ok ? '#22c55e' : '#f87171' }}>{grantMsg.text}</p>}
             </form>
           </div>
+
+          <div className="soft-card rounded-2xl p-5">
+            <p className="text-sm font-display font-semibold mb-1">Enviar feedback</p>
+            <p className="text-xs mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Envía el email de valoración a cualquier usuario (ignora el límite de 3 días).</p>
+            <form onSubmit={handleSendFeedback} className="space-y-3">
+              <input type="email" required placeholder="Email del usuario" value={feedbackEmail} onChange={e => setFeedbackEmail(e.target.value)} className="soft-field" />
+              <button type="submit" disabled={sendingFeedback} className="btn-offset w-full py-2.5 text-sm rounded-xl">
+                {sendingFeedback ? 'Enviando...' : 'Enviar email de feedback'}
+              </button>
+              {feedbackSendMsg && <p className="text-xs font-mono-jb" style={{ color: feedbackSendMsg.ok ? '#22c55e' : '#f87171' }}>{feedbackSendMsg.text}</p>}
+            </form>
+          </div>
+
         </div>
 
       </div>
