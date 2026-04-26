@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { Resend } from 'resend';
 import { passwordChangedEmail } from '@/lib/emails';
+import { validatePassword } from '@/lib/password';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -15,8 +16,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Datos incompletos' }, { status: 400 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: emailLang === 'en' ? 'Password must be at least 8 characters' : 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 });
+    const pwError = validatePassword(password, emailLang);
+    if (pwError) {
+      return NextResponse.json({ error: pwError }, { status: 400 });
     }
 
     const resetToken = await prisma.passwordResetToken.findUnique({ where: { token } });

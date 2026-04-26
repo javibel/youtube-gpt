@@ -28,15 +28,16 @@ export async function POST(request: NextRequest) {
       END
     RETURNING hits
   `;
+  const { email, lang = 'es' } = await request.json();
+  const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
+  const isEn = emailLang === 'en';
+
   if (Number(rlResult[0].hits) > 5) {
     return NextResponse.json(
-      { error: 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' },
+      { error: isEn ? 'Too many attempts. Please wait a few minutes before trying again.' : 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' },
       { status: 429 }
     );
   }
-
-  const { email, lang = 'es' } = await request.json();
-  const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
 
   if (!email) {
     return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
@@ -62,7 +63,6 @@ export async function POST(request: NextRequest) {
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-  const isEn = emailLang === 'en';
   const subject = isEn ? 'Reset your password - YTubViral' : 'Restablecer contraseña - YTubViral';
   const html = isEn ? `
     <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head>

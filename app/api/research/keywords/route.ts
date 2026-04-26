@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+import { getExtensionUser } from '@/lib/extension-auth';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY;
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -16,8 +19,23 @@ interface VideoItem {
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user) {
+  const extAuth = !session?.user ? await getExtensionUser(request) : null;
+  if (!session?.user && !extAuth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (extAuth && !extAuth.isPro) {
+    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+  }
+
+  if (session?.user?.email) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { subscription: { select: { status: true } } },
+    });
+    if (user?.subscription?.status !== 'active') {
+      return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+    }
   }
 
   if (!YT_API_KEY) {
@@ -30,6 +48,12 @@ export async function POST(request: Request) {
   }
   if (keyword.trim().length > 200) {
     return NextResponse.json({ error: 'Keyword too long (max 200 characters)' }, { status: 400 });
+  }
+
+  const cacheKey = `kw:${keyword.trim().toLowerCase()}`;
+  const cached = await prisma.youtubeCache.findUnique({ where: { key: cacheKey } });
+  if (cached && cached.expiresAt > new Date()) {
+    return NextResponse.json(cached.data);
   }
 
   try {
@@ -116,7 +140,7 @@ export async function POST(request: Request) {
       // Autocomplete is unofficial — fail silently
     }
 
-    return NextResponse.json({
+    const result = {
       keyword,
       totalResults,
       competition,
@@ -125,7 +149,17 @@ export async function POST(request: Request) {
       avgViews: Math.round(avgViews),
       topVideos,
       relatedKeywords,
+    };
+
+    // Cache for 24h (upsert so concurrent requests don't error)
+    const cacheData = result as unknown as Prisma.InputJsonValue;
+    await prisma.youtubeCache.upsert({
+      where: { key: cacheKey },
+      create: { key: cacheKey, data: cacheData, expiresAt: new Date(Date.now() + 24 * 3600 * 1000) },
+      update: { data: cacheData, expiresAt: new Date(Date.now() + 24 * 3600 * 1000) },
     });
+
+    return NextResponse.json(result);
   } catch (err) {
     console.error('[research/keywords]', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

@@ -63,7 +63,6 @@ export async function GET(req: NextRequest) {
         id: true,
         template: true,
         tokensUsed: true,
-        ipAddress: true,
         createdAt: true,
         user: { select: { email: true } },
       },
@@ -74,7 +73,6 @@ export async function GET(req: NextRequest) {
       user_email: g.user.email,
       template: g.template,
       tokens_used: g.tokensUsed,
-      ip_address: g.ipAddress ?? '',
       created_at: g.createdAt.toISOString(),
     })));
     filename = `ytubviral_generations_${new Date().toISOString().split('T')[0]}.csv`;

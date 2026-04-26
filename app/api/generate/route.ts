@@ -1,6 +1,7 @@
 import { TEMPLATES } from '@/utils/prompts';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { getExtensionUser } from '@/lib/extension-auth';
 
 const FREE_LIMIT = 10;
 const PRO_LIMIT = 200;
@@ -16,8 +17,12 @@ export async function POST(request: Request) {
   try {
     // Require authentication — unauthenticated calls would bypass all limits and incur API cost
     const session = await auth();
-    if (!session?.user?.id) {
+    const extAuth = !session?.user?.id ? await getExtensionUser(request) : null;
+    if (!session?.user?.id && !extAuth) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
+    }
+    if (extAuth && !extAuth.isPro) {
+      return Response.json({ error: 'pro_required' }, { status: 403 });
     }
 
     const { template, inputs, lang } = await request.json();
@@ -47,8 +52,58 @@ export async function POST(request: Request) {
     let userId: string | null = null;
     let isPro = false;
 
-    // session is guaranteed non-null here (checked above)
-    if (session.user.email) {
+    if (extAuth) {
+      // Extension Bearer token auth
+      userId = extAuth.user.id;
+      isPro = extAuth.isPro;
+      const limit = isPro ? PRO_LIMIT : FREE_LIMIT;
+
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const usedThisMonth = await prisma.generation.count({
+        where: { userId, createdAt: { gte: startOfMonth } },
+      });
+      if (usedThisMonth >= limit) {
+        return Response.json(
+          { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
+          { status: 429 }
+        );
+      }
+
+      if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
+        return Response.json(
+          { error: 'Este template es exclusivo del plan Pro', limitReached: true },
+          { status: 403 }
+        );
+      }
+
+      const rlKey = `generate:${userId}`;
+      const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
+        INSERT INTO rate_limits (key, hits, window_start)
+        VALUES (${rlKey}, 1, NOW())
+        ON CONFLICT (key) DO UPDATE
+        SET
+          hits = CASE
+            WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
+            THEN 1
+            ELSE rate_limits.hits + 1
+          END,
+          window_start = CASE
+            WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
+            THEN NOW()
+            ELSE rate_limits.window_start
+          END
+        RETURNING hits
+      `;
+      if (Number(rlResult[0].hits) > 5) {
+        return Response.json(
+          { error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' },
+          { status: 429 }
+        );
+      }
+    } else if (session?.user?.email) {
       const user = await prisma.user.findUnique({
         where: { email: session.user.email },
         select: { id: true },

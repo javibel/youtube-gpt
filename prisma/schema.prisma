@@ -211,6 +211,14 @@ model SocialPost {
   @@map("social_posts")
 }
 
+model DailyTip {
+  date String @id  // formato YYYY-MM-DD
+  es   String
+  en   String
+
+  @@map("daily_tips")
+}
+
 model SocialMessage {
   id           String    @id @default(cuid())
   platform     String

@@ -73,7 +73,9 @@ export default function CompetitorsPage() {
       });
       const data = await res.json();
       if (!res.ok || data.error) {
-        if (data.error === 'channel_not_found') {
+        if (data.error === 'pro_required') {
+          setError(t('Esta función es exclusiva del Plan Pro. Actualiza tu cuenta desde el dashboard.', 'This feature is exclusive to the Pro Plan. Upgrade your account from the dashboard.'));
+        } else if (data.error === 'channel_not_found') {
           setError(t('No se encontró el canal. Comprueba la URL.', 'Channel not found. Check the URL.'));
         } else {
           setError(t('Error al analizar el canal. Inténtalo de nuevo.', 'Error analysing channel. Please try again.'));

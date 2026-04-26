@@ -20,7 +20,7 @@ export async function GET() {
 
   const [
     totalUsers,
-    proUsers,
+    proSubscriptions,
     newUsersThisMonth,
     newUsersLastMonth,
     totalGenerations,
@@ -34,8 +34,11 @@ export async function GET() {
     // Usuarios totales
     prisma.user.count(),
 
-    // Usuarios Pro activos
-    prisma.subscription.count({ where: { status: "active" } }),
+    // Suscripciones Pro activas (con priceId para calcular MRR correctamente)
+    prisma.subscription.findMany({
+      where: { status: "active" },
+      select: { stripePriceId: true },
+    }),
 
     // Nuevos usuarios este mes
     prisma.user.count({ where: { createdAt: { gte: startOfMonth } } }),
@@ -111,7 +114,12 @@ export async function GET() {
     if (key in dailyMap) dailyMap[key]++;
   }
 
-  const mrr = proUsers * 9.99;
+  const yearlyPriceId = process.env.STRIPE_PRO_YEARLY_PRICE_ID;
+  const proUsers = proSubscriptions.length;
+  const mrr = proSubscriptions.reduce((sum, s) => {
+    const isYearly = yearlyPriceId && s.stripePriceId === yearlyPriceId;
+    return sum + (isYearly ? 99.99 / 12 : 9.99);
+  }, 0);
   const freeUsers = totalUsers - proUsers;
   const conversionRate = totalUsers > 0 ? (proUsers / totalUsers) * 100 : 0;
 

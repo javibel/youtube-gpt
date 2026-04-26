@@ -21,6 +21,9 @@ const FEATURES_ES = [
   { k: 'script', t: 'Scripts completos', d: 'Gancho de 15s, desarrollo modular y CTA. Estructura probada en +2M de vídeos virales.', tag: '8 min ahorro', preview: null },
   { k: 'caption', t: 'Captions multi-plataforma', d: 'Reels, TikToks, Tweets. Adapta tu contenido de YouTube a cada red sin perder el alma.', tag: '4 redes', preview: null },
   { k: 'thumb', t: 'Conceptos de miniaturas', d: 'Briefs visuales con colores, pose facial, texto y referencias. Envía a tu diseñador y listo.', tag: '×3 clics', preview: null },
+  { k: 'research', t: 'Keyword Research', d: 'Datos reales de YouTube Data API. Volumen estimado, competencia y CPC. Encuentra temas antes que tu competencia y posiciona cada vídeo desde el primer día. Exclusivo Plan Pro.', tag: 'Pro · SEO', preview: null },
+  { k: 'competitors', t: 'Análisis de competidores', d: 'Introduce cualquier URL de canal. Stats completos, top 10 vídeos por vistas, frecuencia de publicación y las keywords que más usa. Copia lo que funciona. Exclusivo Plan Pro.', tag: 'Pro · Intel', preview: null },
+  { k: 'extension', t: 'Extensión Chrome', d: 'Analiza canales, investiga keywords y genera títulos con IA sin salir de YouTube. El panel aparece directamente en la página. Solo en Plan Pro.', tag: 'Pro · Chrome', preview: null },
 ];
 
 const FEATURES_EN = [
@@ -40,6 +43,9 @@ const FEATURES_EN = [
   { k: 'script', t: 'Full scripts', d: '15s hook, modular development and CTA. Structure proven across 2M+ viral videos.', tag: '8 min saved', preview: null },
   { k: 'caption', t: 'Multi-platform captions', d: 'Reels, TikToks, Tweets. Repurpose your YouTube content to every network without losing its soul.', tag: '4 networks', preview: null },
   { k: 'thumb', t: 'Thumbnail concepts', d: 'Visual briefs with colors, facial pose, text and references. Send to your designer and you\'re done.', tag: '×3 clicks', preview: null },
+  { k: 'research', t: 'Keyword Research', d: 'Real YouTube Data API data. Estimated volume, competition and CPC. Find topics before your competitors and rank every video from day one. Pro plan only.', tag: 'Pro · SEO', preview: null },
+  { k: 'competitors', t: 'Competitor Analysis', d: 'Enter any channel URL. Full stats, top 10 videos by views, upload frequency and the keywords they use most. Copy what works. Pro plan only.', tag: 'Pro · Intel', preview: null },
+  { k: 'extension', t: 'Chrome Extension', d: 'Analyze channels, research keywords and generate AI titles without leaving YouTube. The panel appears directly on the page. Pro plan only.', tag: 'Pro · Chrome', preview: null },
 ];
 
 function PreviewDesc({ lang }: { lang: Lang }) {
@@ -107,6 +113,75 @@ function PreviewThumb({ lang }: { lang: Lang }) {
   );
 }
 
+function PreviewResearch({ lang }: { lang: Lang }) {
+  const items = lang === 'en' ? [
+    { kw: 'how to grow on youtube fast', vol: '22K', comp: 'Med', cpc: '$1.20' },
+    { kw: 'youtube algorithm 2024', vol: '18K', comp: 'Low', cpc: '$0.90' },
+    { kw: 'youtube shorts monetization', vol: '40K', comp: 'High', cpc: '$2.10' },
+    { kw: 'best camera for youtube beginners', vol: '12K', comp: 'Med', cpc: '$3.40' },
+  ] : [
+    { kw: 'cómo crecer en youtube rápido', vol: '22K', comp: 'Med', cpc: '1,20€' },
+    { kw: 'algoritmo de youtube 2024', vol: '18K', comp: 'Bajo', cpc: '0,90€' },
+    { kw: 'monetización youtube shorts', vol: '40K', comp: 'Alto', cpc: '2,10€' },
+    { kw: 'mejor cámara youtube principiantes', vol: '12K', comp: 'Med', cpc: '3,40€' },
+  ];
+  return (
+    <div className="col-span-2 border border-white/10 bg-black overflow-hidden">
+      <div className="grid px-4 py-2 border-b border-white/10 font-mono-jb text-[9px] tracking-wider uppercase text-zinc-600" style={{ gridTemplateColumns: '1fr auto auto' }}>
+        <span>Keyword</span>
+        <span className="pr-6">Vol.</span>
+        <span>CPC</span>
+      </div>
+      {items.map((r, i) => (
+        <div key={i} className="grid px-4 py-2.5 border-b border-white/5 items-center hover:bg-white/[0.02] transition" style={{ gridTemplateColumns: '1fr auto auto' }}>
+          <span className="text-[11px] text-zinc-200 truncate pr-4">{r.kw}</span>
+          <span className="font-mono-jb text-[11px] pr-6" style={{ color: 'var(--red)' }}>{r.vol}</span>
+          <span className="font-mono-jb text-[11px] text-zinc-400">{r.cpc}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PreviewCompetitors({ lang }: { lang: Lang }) {
+  const keywords = lang === 'en'
+    ? ['last to leave', '$10,000', 'survive', 'challenge']
+    : ['último en salir', '10.000€', 'sobrevivir', 'reto'];
+  return (
+    <div className="col-span-2 border border-white/10 bg-black p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-display font-bold text-sm">@MrBeast</p>
+          <p className="font-mono-jb text-[10px] text-zinc-500 mt-0.5">youtube.com/@MrBeast</p>
+        </div>
+        <span className="font-mono-jb text-[11px] px-2 py-0.5 border" style={{ color: 'var(--red)', borderColor: 'rgba(232,77,91,0.4)' }}>320M {lang === 'en' ? 'subs' : 'subs'}</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 font-mono-jb text-[10px]">
+        <div className="bg-white/5 p-2 text-center">
+          <p className="text-zinc-500 text-[9px] uppercase">{lang === 'en' ? 'Videos' : 'Vídeos'}</p>
+          <p className="text-white font-bold mt-0.5">847</p>
+        </div>
+        <div className="bg-white/5 p-2 text-center">
+          <p className="text-zinc-500 text-[9px] uppercase">{lang === 'en' ? 'Freq.' : 'Frec.'}</p>
+          <p className="text-white font-bold mt-0.5">2/sem</p>
+        </div>
+        <div className="bg-white/5 p-2 text-center">
+          <p className="text-zinc-500 text-[9px] uppercase">{lang === 'en' ? 'Views' : 'Vistas'}</p>
+          <p className="text-white font-bold mt-0.5">51B</p>
+        </div>
+      </div>
+      <div>
+        <p className="font-mono-jb text-[9px] uppercase text-zinc-600 mb-1.5">{lang === 'en' ? '↗ Top keywords' : '↗ Keywords top'}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {keywords.map((k) => (
+            <span key={k} className="font-mono-jb text-[10px] px-2 py-0.5 border border-white/10 text-zinc-300 cursor-pointer hover:border-[rgba(232,77,91,0.5)] transition">{k}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
   const [active, setActive] = useState(0);
   const FEATURES = lang === 'en' ? FEATURES_EN : FEATURES_ES;
@@ -125,6 +200,8 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
     if (f.k === 'script') return <PreviewScript lang={lang} />;
     if (f.k === 'caption') return <PreviewCaption lang={lang} />;
     if (f.k === 'thumb') return <PreviewThumb lang={lang} />;
+    if (f.k === 'research') return <PreviewResearch lang={lang} />;
+    if (f.k === 'competitors') return <PreviewCompetitors lang={lang} />;
     return null;
   };
 
@@ -134,7 +211,7 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
         <div className="mb-14">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>04 · TOOLS</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
-            {lang === 'en' ? <>Five tools.<br />One superpower.</> : <>Cinco herramientas.<br />Un superpoder.</>}
+            {lang === 'en' ? <>Eight tools.<br />One superpower.</> : <>Ocho herramientas.<br />Un superpoder.</>}
           </h2>
         </div>
 
@@ -164,7 +241,7 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
           <div className="border border-white/10 bg-[#0B0B0D] p-6 md:p-10 relative overflow-hidden">
             <div className="absolute top-0 right-0 red-tape">{f.tag}</div>
             <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-4">
-              FEATURE · 0{active + 1} / 05
+              FEATURE · {String(active + 1).padStart(2, '0')} / {String(FEATURES.length).padStart(2, '0')}
             </p>
             <h3 className="font-display font-bold text-3xl md:text-5xl leading-tight mb-4">{f.t}</h3>
             <p className="text-zinc-400 text-lg max-w-lg leading-relaxed">{f.d}</p>

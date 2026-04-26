@@ -44,9 +44,10 @@ type Stats = {
     isPro: boolean;
     streak: number;
   };
-  recentGenerations: { id: string; template: string; createdAt: string; tokensUsed: number; output: string; inputs: Record<string, string> }[];
   subscription: { status: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
 };
+
+type Generation = { id: string; template: string; createdAt: string; tokensUsed: number; output: string; inputs: Record<string, string> };
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -61,6 +62,10 @@ export default function DashboardPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState('all');
+  const [historyGens, setHistoryGens] = useState<Generation[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -68,8 +73,9 @@ export default function DashboardPage() {
   const [existingReview, setExistingReview] = useState<{ rating: number; text: string; status: string } | null>(null);
   const [lang, setLang] = useState<'es'|'en'>('es');
   const [previewGen, setPreviewGen] = useState<{ id: string; output: string; title?: string } | null>(null);
+  const [dailyTip, setDailyTip] = useState<{ es: string; en: string } | null>(null);
 
-  type DbPreview = { id: string; title: string; mimeType: string; createdAt: string };
+  type DbPreview = { id: string; title: string; mimeType: string; size: number; createdAt: string };
   const [dbPreviews, setDbPreviews]         = useState<DbPreview[]>([]);
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
   const [playingPreview, setPlayingPreview] = useState<{ id: string; title: string; url: string } | null>(null);
@@ -88,6 +94,27 @@ export default function DashboardPage() {
       const res = await fetch(`/api/video-previews/${preview.id}`);
       const blob = await res.blob();
       setPlayingPreview({ id: preview.id, title: preview.title, url: URL.createObjectURL(blob) });
+    } catch { /* non-critical */ } finally {
+      setLoadingPreviewId(null);
+    }
+  }, []);
+
+  const handleDeletePreview = useCallback(async (id: string) => {
+    await fetch(`/api/video-previews/${id}`, { method: 'DELETE' });
+    setDbPreviews((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const handleDownloadPreview = useCallback(async (p: DbPreview) => {
+    setLoadingPreviewId(p.id);
+    try {
+      const res = await fetch(`/api/video-previews/${p.id}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${p.title}.webm`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch { /* non-critical */ } finally {
       setLoadingPreviewId(null);
     }
@@ -117,6 +144,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (status === 'authenticated') {
       fetch('/api/user/stats').then((r) => r.json()).then(setData).finally(() => setLoading(false));
+      fetch('/api/daily-tip').then((r) => r.json()).then((d) => { if (d.es) setDailyTip(d); });
+      fetch('/api/user/generations?page=1').then((r) => r.json()).then((d) => {
+        if (d.generations) { setHistoryGens(d.generations); setHistoryHasMore(d.hasMore); }
+      });
       loadDbPreviews();
       fetch('/api/reviews').then((r) => r.json()).then((d) => {
         if (d.review) { setExistingReview(d.review); setReviewRating(d.review.rating); setReviewText(d.review.text); }
@@ -178,7 +209,7 @@ export default function DashboardPage() {
   async function handleUpgrade(plan: 'monthly' | 'yearly' = billingPlan) {
     setUpgrading(true);
     try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) });
+      const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, lang }) });
       const d = await res.json();
       if (d.error) { alert(d.error); return; }
       if (!d.url) { alert(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.')); return; }
@@ -249,8 +280,8 @@ function handleCopy(id: string, out: string) {
   const dateLocale = lang === 'en' ? 'en-US' : 'es-ES';
 
   const filtered = filterType === 'all'
-    ? data?.recentGenerations ?? []
-    : (data?.recentGenerations ?? []).filter((g) => g.template === filterType);
+    ? historyGens
+    : historyGens.filter((g) => g.template === filterType);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
   const tpl = (key: string) => TPL_LABELS[key]?.[lang] ?? key;
@@ -470,14 +501,14 @@ function handleCopy(id: string, out: string) {
               <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: '#00D9FF' }}>VIDEO TIPS</p>
               <h2 className="font-display font-bold text-2xl mb-4">{t('Mis previews', 'My previews')}</h2>
               <div className="soft-card p-5">
-                <div className="flex gap-6 items-start flex-wrap sm:flex-nowrap">
+                <div className="flex gap-6 items-stretch flex-wrap sm:flex-nowrap">
 
-                  {/* TV3 — decorative only */}
+                  {/* TV3 — decorative only, grows with list height */}
                   <img
                     src="/TV3.webp"
                     alt=""
                     draggable={false}
-                    style={{ width: 200, flexShrink: 0, userSelect: 'none', pointerEvents: 'none', opacity: 0.9 }}
+                    style={{ width: 'auto', maxWidth: 260, minWidth: 120, flexShrink: 0, userSelect: 'none', pointerEvents: 'none', opacity: 0.9, objectFit: 'contain', alignSelf: 'stretch' }}
                   />
 
                   {/* Preview list */}
@@ -498,11 +529,9 @@ function handleCopy(id: string, out: string) {
                     ) : (
                       <div className="space-y-2">
                         {dbPreviews.map((p, i) => (
-                          <button
+                          <div
                             key={p.id}
-                            onClick={() => handleSelectPreview(p)}
-                            disabled={loadingPreviewId === p.id}
-                            className="w-full text-left flex items-center gap-3 p-3 rounded-xl transition group disabled:opacity-60"
+                            className="w-full flex items-center gap-3 p-3 rounded-xl transition group"
                             style={{
                               background: 'rgba(255,255,255,0.02)',
                               border: '1px solid rgba(255,255,255,0.06)',
@@ -513,15 +542,40 @@ function handleCopy(id: string, out: string) {
                                 <svg className="animate-spin inline" width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="#00D9FF" strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                               ) : i + 1}
                             </span>
-                            <span className="flex-1 font-mono-jb text-[11px] text-zinc-400 truncate group-hover:text-white transition">
+                            <button
+                              onClick={() => handleSelectPreview(p)}
+                              disabled={loadingPreviewId === p.id}
+                              className="flex-1 text-left font-mono-jb text-[11px] text-zinc-400 truncate hover:text-white transition disabled:opacity-60"
+                            >
                               {p.title}
+                            </button>
+                            <span className="font-mono-jb text-[10px] flex-shrink-0 text-zinc-600">
+                              {p.size > 0 ? `${(p.size / 1024).toFixed(0)}KB` : '—'}
                             </span>
-                            <span className="font-mono-jb text-[10px] flex-shrink-0 flex items-center gap-1 transition group-hover:opacity-100 opacity-40"
-                              style={{ color: '#00D9FF' }}>
-                              <svg width={9} height={9} viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-                              {t('ver', 'play')}
-                            </span>
-                          </button>
+                            {/* Download */}
+                            <button
+                              onClick={() => handleDownloadPreview(p)}
+                              disabled={loadingPreviewId === p.id}
+                              title={t('Descargar', 'Download')}
+                              className="flex-shrink-0 opacity-30 hover:opacity-100 transition disabled:opacity-20"
+                              style={{ color: '#00D9FF' }}
+                            >
+                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                              </svg>
+                            </button>
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleDeletePreview(p.id)}
+                              disabled={loadingPreviewId === p.id}
+                              title={t('Eliminar', 'Delete')}
+                              className="flex-shrink-0 opacity-30 hover:opacity-100 transition disabled:opacity-20 hover:text-red-400"
+                            >
+                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                              </svg>
+                            </button>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -618,6 +672,31 @@ function handleCopy(id: string, out: string) {
                 })
               )}
             </div>
+
+            {historyHasMore && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={async () => {
+                    setHistoryLoading(true);
+                    const nextPage = historyPage + 1;
+                    try {
+                      const res = await fetch(`/api/user/generations?page=${nextPage}`);
+                      const d = await res.json();
+                      if (d.generations) {
+                        setHistoryGens((prev) => [...prev, ...d.generations]);
+                        setHistoryPage(nextPage);
+                        setHistoryHasMore(d.hasMore);
+                      }
+                    } finally {
+                      setHistoryLoading(false);
+                    }
+                  }}
+                  disabled={historyLoading}
+                  className="soft-pill px-5 py-2.5 text-sm font-mono-jb tracking-wider uppercase text-zinc-300 hover:text-white disabled:opacity-50">
+                  {historyLoading ? t('Cargando...', 'Loading...') : t('Cargar más', 'Load more')}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Review */}
@@ -877,7 +956,7 @@ function handleCopy(id: string, out: string) {
           <div className="rounded-2xl border border-dashed border-white/15 p-5" style={{ background: '#0C0C0E' }}>
             <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yellow)' }}>★ {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
             <p className="text-sm leading-relaxed text-zinc-300">
-              {t(
+              {dailyTip ? t(dailyTip.es, dailyTip.en) : t(
                 'Los títulos con un número específico (7, 23, 147) superan a los genéricos en un 36% de CTR. Prueba \u201c7 errores...\u201d la próxima vez.',
                 'Titles with a specific number (7, 23, 147) outperform generic ones by 36% CTR. Try \u201c7 mistakes...\u201d next time.'
               )}

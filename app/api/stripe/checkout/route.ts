@@ -8,11 +8,13 @@ export async function POST(request: Request) {
     const session = await auth();
 
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json().catch(() => ({}));
     const plan: 'monthly' | 'yearly' = body.plan === 'yearly' ? 'yearly' : 'monthly';
+    const lang: 'es' | 'en' = body.lang === 'en' ? 'en' : 'es';
+    const isEn = lang === 'en';
 
     const priceId = plan === 'yearly'
       ? process.env.STRIPE_PRO_YEARLY_PRICE_ID!.trim()
@@ -49,20 +51,21 @@ export async function POST(request: Request) {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
+      locale: lang === 'en' ? 'en' : 'es',
       success_url: 'https://ytubviral.com/stripe/success',
       cancel_url: 'https://ytubviral.com/dashboard',
       metadata: { userId: user.id },
       subscription_data: {
         description: isYearly
-          ? 'YTubViral.com — Plan Pro Anual (200 generaciones/mes · 99,99€/año)'
-          : 'YTubViral.com — Plan Pro (200 generaciones/mes)',
+          ? (isEn ? 'YTubViral.com — Pro Annual Plan (200 gen/mo · €99.99/yr)' : 'YTubViral.com — Plan Pro Anual (200 generaciones/mes · 99,99€/año)')
+          : (isEn ? 'YTubViral.com — Pro Plan (200 gen/mo)' : 'YTubViral.com — Plan Pro (200 generaciones/mes)'),
         metadata: { userId: user.id, service: 'YTubViral.com', plan },
       },
       custom_text: {
         submit: {
           message: isYearly
-            ? 'Plan anual — 99,99€/año. Tu acceso Pro se activa al instante. Sin renovaciones sorpresa.'
-            : 'Tu suscripción a YTubViral.com Pro se activa al instante. Puedes cancelar en cualquier momento.',
+            ? (isEn ? 'Annual plan — €99.99/yr. Your Pro access activates instantly. No surprise renewals.' : 'Plan anual — 99,99€/año. Tu acceso Pro se activa al instante. Sin renovaciones sorpresa.')
+            : (isEn ? 'Your YTubViral.com Pro subscription activates instantly. Cancel anytime.' : 'Tu suscripción a YTubViral.com Pro se activa al instante. Puedes cancelar en cualquier momento.'),
         },
       },
     });

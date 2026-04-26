@@ -22,7 +22,18 @@ async function getAuthorUrn(): Promise<string> {
   return `urn:li:person:${id}`;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/#{1,6}\s/g, '');
+}
+
 export async function publishToLinkedIn(content: string): Promise<{ success: boolean; postId?: string; error?: string }> {
+  content = stripMarkdown(content);
   const token = process.env.LINKEDIN_ACCESS_TOKEN;
   if (!token) {
     return { success: false, error: 'LINKEDIN_ACCESS_TOKEN not configured' };

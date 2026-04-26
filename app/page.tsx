@@ -354,8 +354,8 @@ function Pricing({ lang }: { lang: Lang }) {
     ? ['10 generations/month', '5 content types', '30-day history', 'No credit card']
     : ['10 generaciones al mes', '5 tipos de contenido', 'Historial 30 días', 'Sin tarjeta de crédito'];
   const proFeatures = lang === 'en'
-    ? ['200 generations/month', 'All content types', 'Keyword Research', 'Competitor Analysis', 'Full history', '24h priority support', 'Early access to new features', 'CSV export']
-    : ['200 generaciones al mes', 'Todos los tipos de contenido', 'Keyword Research', 'Análisis de competidores', 'Historial completo', 'Soporte prioritario 24h', 'Acceso anticipado a nuevas funciones', 'Exportación a CSV'];
+    ? ['200 generations/month', 'All content types', 'Keyword Research', 'Competitor Analysis', 'Chrome Extension', 'Full history', '24h priority support', 'Early access to new features', 'CSV export']
+    : ['200 generaciones al mes', 'Todos los tipos de contenido', 'Keyword Research', 'Análisis de competidores', 'Extensión de Chrome', 'Historial completo', 'Soporte prioritario 24h', 'Acceso anticipado a nuevas funciones', 'Exportación a CSV'];
 
   return (
     <section id="pricing" className="border-b border-white/10 relative overflow-hidden">

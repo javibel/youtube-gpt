@@ -53,7 +53,8 @@ import { savePreview } from '@/lib/videoPreviewDB';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Lang       = 'es' | 'en';
-type Transition = 'fade' | 'slideLeft' | 'slideUp' | 'zoom' | 'wipeRight';
+type Transition = 'fade' | 'slideLeft' | 'slideUp' | 'zoom' | 'wipeRight' | 'pushRight' | 'slideDown' | 'curtain' | 'zoomOut' | 'blinds' | 'dissolve';
+type Layout = 'left' | 'right' | 'center';
 
 interface Slide {
   sectionTitle: string;
@@ -62,6 +63,7 @@ interface Slide {
   gradient: [string, string];
   accentColor: string;
   transition: Transition;
+  layout: Layout;
   duration: number;
   index: number;
   total: number;
@@ -84,32 +86,112 @@ const PALETTES: Array<[string, string, string]> = [
   ['#0a2a2a', '#004a4a', '#00FFA3'],
 ];
 
-const TRANSITIONS: Transition[] = ['fade', 'slideLeft', 'slideUp', 'zoom', 'wipeRight'];
+const TRANSITIONS: Transition[] = ['fade', 'slideLeft', 'slideUp', 'zoom', 'wipeRight', 'pushRight', 'slideDown', 'curtain', 'zoomOut', 'blinds', 'dissolve'];
+const LAYOUTS: Layout[] = ['left', 'right', 'center'];
 
 // ─── Emoji detection ──────────────────────────────────────────────────────────
 
-function pickEmoji(title: string, text: string): string {
+const FALLBACK_EMOJIS = ['🎯', '✨', '💥', '🔥', '⭐', '💫', '🏆', '🌟', '🎪', '⚡', '🎭', '🌀', '🔮', '🎲', '🧩', '🦋'];
+
+function pickEmoji(title: string, text: string, idx = 0): string {
   const s = (title + ' ' + text).toLowerCase();
-  if (/hook|gancho|atenci/.test(s))                     return '🎣';
-  if (/intro|bienvenid|hola|quién soy/.test(s))         return '👋';
-  if (/tip|consejo|truco|secreto|clave/.test(s))        return '💡';
-  if (/error|problema|evit|fallo|mal /.test(s))         return '❌';
-  if (/éxito|exito|result|funciona|crecer|logr/.test(s))return '🚀';
-  if (/dinero|monetiz|ganar|ingreso|paga/.test(s))      return '💰';
-  if (/cámara|video|film|grab|content/.test(s))         return '🎬';
-  if (/suscript|audiencia|comunidad|canal/.test(s))     return '👥';
-  if (/aprend|paso|tutori|cómo|guía/.test(s))           return '📚';
-  if (/acción|click|suscrib|comenta|like/.test(s))      return '👆';
-  if (/dato|estadístic|número|cifra/.test(s))           return '📊';
-  if (/tiempo|duración|segundo|minuto/.test(s))         return '⏱️';
-  if (/herramienta|app|software/.test(s))               return '🛠️';
-  if (/historia|anécdota|cuando/.test(s))               return '📖';
-  if (/pregunta|duda|¿/.test(s))                        return '❓';
-  if (/siguiente|paso|next|ahora/.test(s))              return '➡️';
-  return '🎯';
+
+  // Hooks / atención
+  if (/hook|gancho|atenci|captura|primer|opening|start/.test(s))  return '🎣';
+  // Intro / presentación
+  if (/intro|bienvenid|hola|quién soy|welcome|who am i|presento|about me/.test(s)) return '👋';
+  // Consejos / tips
+  if (/\btip\b|consejo|truco|secreto|hack|pro tip|clave|advice/.test(s)) return '💡';
+  // Errores / advertencias
+  if (/error|evita|fallo|mal |mistake|avoid|wrong|no hagas|don't|warning|cuidado/.test(s)) return '⚠️';
+  // Problemas / bugs
+  if (/problema|bug|issue|falla|crash|roto|broken/.test(s))        return '🔧';
+  // Éxito / resultados / crecer
+  if (/éxito|exito|result|funciona|crecer|logr|success|grow|achiev/.test(s)) return '🚀';
+  // Viral / tendencia
+  if (/viral|trending|tenden|explod|boom|millón|million/.test(s))  return '📈';
+  // Dinero / monetización
+  if (/dinero|monetiz|ganar|ingreso|pago|sueldo|money|earn|revenue|income|dollar|euro/.test(s)) return '💰';
+  // Patrocinios / brand deals
+  if (/patrocin|sponsor|brand deal|partner|colabor/.test(s))       return '🤝';
+  // Cámara / grabación
+  if (/cámara|camera|grab|record|shoot|filma/.test(s))             return '📷';
+  // Vídeo / contenido
+  if (/\bvideo\b|\bvídeo\b|content|contenido|film/.test(s))        return '🎬';
+  // Edición / post-producción
+  if (/edic|edit|corte|cut|premiere|davinci|after effect/.test(s)) return '✂️';
+  // Miniatura / thumbnail
+  if (/miniatura|thumbnail|portada|cover|ctr/.test(s))             return '🖼️';
+  // Título / headline
+  if (/título|title|headline|titular/.test(s))                     return '📝';
+  // Descripción / SEO
+  if (/descripci|description|seo|keyword|palabr clave/.test(s))    return '🔑';
+  // Suscriptores / audiencia / comunidad
+  if (/suscript|subscriber|audiencia|audience|comunidad|community|fans/.test(s)) return '👥';
+  // Canal / plataforma
+  if (/canal|channel|youtube|plataforma|platform/.test(s))         return '📺';
+  // Aprender / guía / tutorial
+  if (/aprend|learn|tutori|guía|guide|paso a paso|step by step/.test(s)) return '📚';
+  // Estrategia / plan
+  if (/estrategia|strategy|plan|método|method|sistema|system/.test(s)) return '🗺️';
+  // Call to action / interacción
+  if (/cta|call to action|suscrib|subscribe|comenta|comment|like|comparte|share/.test(s)) return '👆';
+  // Estadísticas / datos / analytics
+  if (/estadístic|analytics|analítica|metric|dato|data|cifra|número|stat/.test(s)) return '📊';
+  // Algoritmo / recomendación
+  if (/algoritmo|algorithm|recomend|recommend|suggest|suggest/.test(s)) return '🤖';
+  // Tiempo / duración / velocidad
+  if (/tiempo|duración|rápido|fast|quick|veloc|second|minuto|minute/.test(s)) return '⏱️';
+  // Herramientas / apps / software
+  if (/herramienta|tool|app|software|plugin|extensión|extension/.test(s)) return '🛠️';
+  // IA / inteligencia artificial
+  if (/ia\b|ai\b|inteligencia artificial|artificial intelligence|chatgpt|claude|gpt/.test(s)) return '🧠';
+  // Historia / narrativa / storytelling
+  if (/historia|story|narrativa|narrative|anécdota|experiencia|experience/.test(s)) return '📖';
+  // Pregunta / curiosidad
+  if (/pregunta|question|¿|ask|wonder|curiosid|curious|por qué|why/.test(s)) return '❓';
+  // Siguiente / CTA de cierre
+  if (/siguiente|next step|ahora|now|conclu|final|summary|resumen|wrap/.test(s)) return '➡️';
+  // Música / audio / sonido
+  if (/música|music|sound|audio|beat|canción|song|melodía/.test(s)) return '🎵';
+  // Viajes / lugares
+  if (/viaj|travel|trip|lugar|place|destino|destination|ciudad|city/.test(s)) return '✈️';
+  // Comida / recetas
+  if (/comid|food|receta|recipe|cocin|cook|restaurante|restaurant/.test(s)) return '🍕';
+  // Fitness / deporte / salud
+  if (/fitness|gym|ejercicio|exercise|sport|deporte|salud|health|entrena/.test(s)) return '💪';
+  // Motivación / mentalidad
+  if (/motivac|motivation|mindset|mentalidad|actitud|attitude/.test(s)) return '🔥';
+  // Reto / competición
+  if (/reto|challenge|versus|vs |compet|torneo|tournament/.test(s)) return '🏅';
+  // Humor / entretenimiento
+  if (/divertid|funny|humor|gracia|joke|entreteni|entertain/.test(s)) return '😂';
+  // Misterio / revelación / descubrimiento
+  if (/secret|misterio|mystery|reveal|descubr|discover|sorpresa|surprise/.test(s)) return '🔍';
+  // Tecnología / gadgets / setup
+  if (/tecnolog|tech|gadget|setup|equipo|gear|dispositivo|device/.test(s)) return '💻';
+  // Redes sociales / social media
+  if (/instagram|tiktok|twitter|redes sociales|social media/.test(s)) return '📱';
+  // Colaboración / collab
+  if (/colabo|collab|featuring|ft\.|con |with /.test(s))            return '🎤';
+  // Fans / comunidad activa
+  if (/fan|seguidor|follower|comments section/.test(s))              return '❤️';
+  // Final / conclusión / despedida
+  if (/adiós|bye|despedida|farewell|hasta pronto|see you/.test(s))  return '👊';
+
+  return FALLBACK_EMOJIS[idx % FALLBACK_EMOJIS.length];
 }
 
 // ─── Markdown → Slides ────────────────────────────────────────────────────────
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 function cleanLine(t: string): string {
   return t.replace(/\*\*/g, '').replace(/\*/g, '').replace(/`[^`]+`/g, '').replace(/\([\d:]+\s*[-–]\s*[\d:]+\)/g, '').trim();
@@ -117,13 +199,15 @@ function cleanLine(t: string): string {
 
 function parseScript(markdown: string): Slide[] {
   const slides: Slide[] = [];
+  const transitionOrder = shuffleArray(TRANSITIONS);
+  const layoutOrder = shuffleArray([...LAYOUTS, ...LAYOUTS, ...LAYOUTS, 'left', 'right'] as Layout[]);
 
   // ── Mode C: storyboard format  "0-5s: LABEL | Description" ──────────────
   const allLines = markdown.split('\n').map(l => l.trim()).filter(Boolean);
   const storyboardLines = allLines.filter(l => /^\d+\s*s?[-–]\s*\d+\s*s?\s*:/.test(l));
 
   if (storyboardLines.length >= 2) {
-    storyboardLines.slice(0, 10).forEach((line, idx) => {
+    storyboardLines.slice(0, 15).forEach((line, idx) => {
       const m = line.match(/^(\d+)\s*s?[-–]\s*(\d+)\s*s?\s*:\s*(.+)/);
       if (!m) return;
       const rawDur = Math.max(3, Math.min(8, parseInt(m[2]) - parseInt(m[1])));
@@ -144,17 +228,18 @@ function parseScript(markdown: string): Slide[] {
       slides.push({
         sectionTitle: sectionTitle.replace(/[^\w\s]/g, '').trim().toUpperCase().slice(0, 20),
         subtitle: cleaned,
-        emoji: pickEmoji(sectionTitle, cleaned),
+        emoji: pickEmoji(sectionTitle, cleaned, idx),
         gradient: [cA, cB],
         accentColor: accent,
-        transition: TRANSITIONS[idx % TRANSITIONS.length],
-        duration: rawDur,
+        transition: transitionOrder[idx % transitionOrder.length],
+        layout: layoutOrder[idx % layoutOrder.length],
+        duration: Math.max(5, rawDur),
         index: idx, total: 0,
       });
     });
 
     if (slides.length > 0) {
-      const result = slides.slice(0, 10);
+      const result = slides.slice(0, 15);
       result.forEach((s, i) => { s.index = i; s.total = result.length; });
       return result;
     }
@@ -182,11 +267,12 @@ function parseScript(markdown: string): Slide[] {
       slides.push({
         sectionTitle: sectionTitle || `Parte ${idx + 1}`,
         subtitle: subtitle.slice(0, 140),
-        emoji: pickEmoji(sectionTitle, subtitle),
+        emoji: pickEmoji(sectionTitle, subtitle, idx),
         gradient: [cA, cB],
         accentColor: accent,
-        transition: TRANSITIONS[idx % TRANSITIONS.length],
-        duration: 5, index: idx, total: 0,
+        transition: transitionOrder[idx % transitionOrder.length],
+        layout: layoutOrder[idx % layoutOrder.length],
+        duration: 7, index: idx, total: 0,
       });
       idx++;
       collected = [];
@@ -226,7 +312,7 @@ function parseScript(markdown: string): Slide[] {
       .map(s => s.trim())
       .filter(s => cleanLine(s).length > 10);
 
-    sentences.slice(0, 10).forEach((sentence, idx) => {
+    sentences.slice(0, 15).forEach((sentence, idx) => {
       // Section title pill = bold keywords (if any), else empty string
       const boldWords = [...sentence.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1].trim());
       const sectionTitle = boldWords.slice(0, 2).join(' + ').toUpperCase().slice(0, 20);
@@ -238,16 +324,17 @@ function parseScript(markdown: string): Slide[] {
       slides.push({
         sectionTitle,
         subtitle,
-        emoji: pickEmoji(sectionTitle, subtitle),
+        emoji: pickEmoji(sectionTitle, subtitle, idx),
         gradient: [cA, cB],
         accentColor: accent,
-        transition: TRANSITIONS[idx % TRANSITIONS.length],
-        duration: 5, index: idx, total: 0,
+        transition: transitionOrder[idx % transitionOrder.length],
+        layout: layoutOrder[idx % layoutOrder.length],
+        duration: 7, index: idx, total: 0,
       });
     });
   }
 
-  const result = slides.slice(0, 10);
+  const result = slides.slice(0, 15);
   result.forEach((s, i) => { s.index = i; s.total = result.length; });
   return result;
 }
@@ -315,53 +402,108 @@ function drawSlide(
   const isLandscape = W > H;
 
   if (isLandscape) {
-    // ── LANDSCAPE (YouTube 16:9) ──────────────────────────────────
+    // ── LANDSCAPE ─────────────────────────────────────────────────
 
     // Top bar
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fillRect(0, 0, W, H * 0.09);
-
-    // Logo
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.font = `bold ${Math.round(H * 0.04)}px monospace`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('YTubViral.com', W * 0.025, H * 0.045);
-
-    // Counter
     ctx.fillStyle = slide.accentColor; ctx.textAlign = 'right';
     ctx.fillText(`${slide.index + 1} / ${slide.total}`, W * 0.975, H * 0.045);
 
-    // Left panel: emoji
-    const panelW = W * 0.40;
-    ctx.font = `${Math.round(H * 0.38)}px serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(slide.emoji, panelW / 2, H * 0.52);
+    const layout = slide.layout ?? 'left';
 
-    // Section title under emoji
-    ctx.fillStyle = slide.accentColor;
-    ctx.font = `bold ${Math.round(H * 0.048)}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText(slide.sectionTitle.toUpperCase().slice(0, 18), panelW / 2, H * 0.80);
+    if (layout === 'center') {
+      // ── CENTER: emoji arriba centrado, texto centrado debajo ──
+      // Glow de fondo en el centro
+      const glow = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, H * 0.4);
+      glow.addColorStop(0, `rgba(${ar},${ag},${ab},0.12)`);
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
 
-    // Vertical divider
-    ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.3)`;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(panelW, H * 0.1); ctx.lineTo(panelW, H * 0.92); ctx.stroke();
+      // Emoji (más pequeño, centrado)
+      ctx.font = `${Math.round(H * 0.22)}px serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(slide.emoji, W / 2, H * 0.32);
 
-    // Subtitle area (right panel)
-    const textX   = panelW + W * 0.04;
-    const textMaxW = W - panelW - W * 0.06;
-    const fs = slide.subtitle.length > 90 ? Math.round(H * 0.066) : Math.round(H * 0.082);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${fs}px "Arial", sans-serif`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 12;
-    const lines = wrapLines(ctx, slide.subtitle, textMaxW);
-    const lineH = fs * 1.48;
-    const totalH = lines.length * lineH;
-    let startY = (H - totalH) / 2;
-    lines.forEach((l, i) => ctx.fillText(l, textX, startY + i * lineH));
-    ctx.shadowBlur = 0;
+      // Section title pill centrado
+      const titleTxtC = slide.sectionTitle.toUpperCase().slice(0, 22);
+      ctx.font = `bold ${Math.round(H * 0.042)}px monospace`;
+      const pillWC = ctx.measureText(titleTxtC).width + 36;
+      ctx.fillStyle = `rgba(${ar},${ag},${ab},0.18)`;
+      ctx.beginPath(); ctx.roundRect(W / 2 - pillWC / 2, H * 0.50 - 18, pillWC, 36, 18); ctx.fill();
+      ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.45)`; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = slide.accentColor; ctx.textBaseline = 'middle';
+      ctx.fillText(titleTxtC, W / 2, H * 0.50);
+
+      // Texto centrado — font adaptativo con shrink suave
+      const textMaxWC = W * 0.82;
+      let fsC = Math.round(H * 0.075);
+      ctx.font = `bold ${fsC}px "Arial", sans-serif`;
+      let linesC = wrapLines(ctx, slide.subtitle, textMaxWC);
+      while (linesC.length > 3 && fsC > Math.round(H * 0.055)) {
+        fsC = Math.round(fsC * 0.93);
+        ctx.font = `bold ${fsC}px "Arial", sans-serif`;
+        linesC = wrapLines(ctx, slide.subtitle, textMaxWC);
+      }
+      linesC = linesC.slice(0, 3);
+      const lineHC = fsC * 1.45;
+      const totalHC = linesC.length * lineHC;
+      const startYC = Math.min(H * 0.62, H * 0.90 - totalHC);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 14;
+      linesC.forEach((l, i) => ctx.fillText(l, W / 2, startYC + i * lineHC));
+      ctx.shadowBlur = 0;
+
+    } else {
+      // ── LEFT / RIGHT: dos paneles ──
+      const emojiOnLeft = layout !== 'right';
+      const panelW  = W * 0.40;
+      const textPanelW = W - panelW;
+      const emojiCX = emojiOnLeft ? panelW / 2 : W - panelW / 2;
+      const divX    = emojiOnLeft ? panelW : W - panelW;
+      const textX   = emojiOnLeft ? panelW + W * 0.04 : W * 0.04;
+      const textMaxW = textPanelW - W * 0.08;  // usa el panel correcto (60% canvas)
+
+      // Emoji grande en el panel correspondiente
+      ctx.font = `${Math.round(H * 0.38)}px serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(slide.emoji, emojiCX, H * 0.52);
+
+      // Section title bajo el emoji
+      ctx.fillStyle = slide.accentColor;
+      ctx.font = `bold ${Math.round(H * 0.048)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(slide.sectionTitle.toUpperCase().slice(0, 18), emojiCX, H * 0.80);
+
+      // Divisor vertical
+      ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.3)`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(divX, H * 0.1); ctx.lineTo(divX, H * 0.92); ctx.stroke();
+
+      // Texto — font adaptativo con shrink suave para homogeneidad
+      let fs = Math.round(H * 0.075);
+      ctx.font = `bold ${fs}px "Arial", sans-serif`;
+      let lines = wrapLines(ctx, slide.subtitle, textMaxW);
+      while (lines.length > 4 && fs > Math.round(H * 0.055)) {
+        fs = Math.round(fs * 0.93);
+        ctx.font = `bold ${fs}px "Arial", sans-serif`;
+        lines = wrapLines(ctx, slide.subtitle, textMaxW);
+      }
+      lines = lines.slice(0, 4);
+      const lineH = fs * 1.48;
+      const totalH = lines.length * lineH;
+      const startY = Math.max(H * 0.11, Math.min((H - totalH) / 2, H * 0.90 - totalH));
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 12;
+      lines.forEach((l, i) => ctx.fillText(l, textX, startY + i * lineH));
+      ctx.shadowBlur = 0;
+    }
 
   } else {
     // ── PORTRAIT / SQUARE (TikTok / Instagram) ───────────────────
@@ -499,6 +641,99 @@ function renderTransition(
       ctx.beginPath(); ctx.moveTo(wipeW, 0); ctx.lineTo(wipeW, H); ctx.stroke();
       break;
     }
+
+    case 'pushRight': {
+      // Old slide exits right, new comes from left
+      if (prevOffscreen) ctx.drawImage(prevOffscreen, W * t, 0);
+      drawSlide(ctx, currentSlide, W, H, 1, -W * (1 - t));
+      break;
+    }
+
+    case 'slideDown': {
+      // Old slide exits down, new comes from top
+      if (prevOffscreen) ctx.drawImage(prevOffscreen, 0, H * t);
+      drawSlide(ctx, currentSlide, W, H, 1, 0, -H * (1 - t));
+      break;
+    }
+
+    case 'curtain': {
+      // Reveal new slide from center outward, like opening curtains
+      if (prevOffscreen) ctx.drawImage(prevOffscreen, 0, 0);
+      const halfW = (W * t) / 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(W / 2 - halfW, 0, halfW * 2, H);
+      ctx.clip();
+      drawSlide(ctx, currentSlide, W, H, 1);
+      ctx.restore();
+      if (t < 0.98) {
+        ctx.strokeStyle = currentSlide.accentColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - halfW, 0); ctx.lineTo(W / 2 - halfW, H);
+        ctx.moveTo(W / 2 + halfW, 0); ctx.lineTo(W / 2 + halfW, H);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'zoomOut': {
+      // Current slide shrinks away while new one fades in behind it
+      drawSlide(ctx, currentSlide, W, H, 1);
+      if (prevOffscreen) {
+        ctx.save();
+        ctx.globalAlpha = 1 - t;
+        const sc = 1 + t * 0.18;
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(sc, sc);
+        ctx.translate(-W / 2, -H / 2);
+        ctx.drawImage(prevOffscreen, 0, 0);
+        ctx.restore();
+      }
+      break;
+    }
+
+    case 'blinds': {
+      // Venetian blinds: new slide revealed through horizontal strips
+      if (prevOffscreen) ctx.drawImage(prevOffscreen, 0, 0);
+      const strips = 10;
+      const stripH = H / strips;
+      ctx.save();
+      ctx.beginPath();
+      for (let i = 0; i < strips; i++) {
+        const visH = stripH * t;
+        const y = i * stripH + (stripH - visH) / 2;
+        ctx.rect(0, y, W, visH);
+      }
+      ctx.clip();
+      drawSlide(ctx, currentSlide, W, H, 1);
+      ctx.restore();
+      break;
+    }
+
+    case 'dissolve': {
+      // Pixel-block dissolve: random blocks reveal the new slide
+      if (prevOffscreen) ctx.drawImage(prevOffscreen, 0, 0);
+      const bs = 30;
+      const cols = Math.ceil(W / bs);
+      const rows = Math.ceil(H / bs);
+      const totalBlocks = cols * rows;
+      const revealCount = Math.floor(totalBlocks * t);
+      // Deterministic pseudo-random order based on position
+      ctx.save();
+      ctx.beginPath();
+      for (let n = 0; n < revealCount; n++) {
+        // Simple LCG-like scramble for deterministic order
+        const scrambled = (n * 2654435761) % totalBlocks;
+        const col = scrambled % cols;
+        const row = Math.floor(scrambled / cols);
+        ctx.rect(col * bs, row * bs, bs, bs);
+      }
+      ctx.clip();
+      drawSlide(ctx, currentSlide, W, H, 1);
+      ctx.restore();
+      break;
+    }
   }
 }
 
@@ -554,19 +789,42 @@ function applyVintageOverlay(ctx: CanvasRenderingContext2D, W: number, H: number
 
 function applyGlitch(ctx: CanvasRenderingContext2D, snapshot: HTMLCanvasElement, W: number, H: number) {
   ctx.save();
-  const numSlices = 2 + Math.floor(Math.random() * 4);
+
+  // Horizontal slice displacement (more slices, bigger offsets)
+  const numSlices = 4 + Math.floor(Math.random() * 6);
   for (let i = 0; i < numSlices; i++) {
     const sy = Math.random() * H;
-    const sh = 3 + Math.random() * 25;
-    const dx = (Math.random() - 0.5) * 50;
+    const sh = 2 + Math.random() * 40;
+    const dx = (Math.random() - 0.5) * 90;
     ctx.drawImage(snapshot, 0, sy, W, sh, dx, sy, W, sh);
   }
-  // Red channel bleed
+
+  // RGB channel split — red shifted right, blue shifted left
   ctx.globalCompositeOperation = 'screen';
-  ctx.globalAlpha = 0.08;
-  const gy = Math.random() * H;
-  ctx.fillStyle = '#FF0033';
-  ctx.fillRect(-5, gy, W + 5, 5 + Math.random() * 30);
+  ctx.globalAlpha = 0.18;
+  ctx.drawImage(snapshot, 6 + Math.random() * 10, 0);   // red offset
+  ctx.globalAlpha = 0.12;
+  ctx.drawImage(snapshot, -(4 + Math.random() * 8), 0); // blue offset
+
+  // Colored horizontal bar bleeds
+  ctx.globalCompositeOperation = 'screen';
+  const numBars = 1 + Math.floor(Math.random() * 3);
+  for (let b = 0; b < numBars; b++) {
+    const barColors = ['#FF0033', '#00FFFF', '#FF00FF', '#FFE800'];
+    ctx.globalAlpha = 0.06 + Math.random() * 0.10;
+    ctx.fillStyle = barColors[Math.floor(Math.random() * barColors.length)];
+    const gy = Math.random() * H;
+    ctx.fillRect(0, gy, W, 4 + Math.random() * 50);
+  }
+
+  // Occasional full-frame color flash
+  if (Math.random() < 0.25) {
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.04;
+    ctx.fillStyle = Math.random() < 0.5 ? '#00FFFF' : '#FF0033';
+    ctx.fillRect(0, 0, W, H);
+  }
+
   ctx.restore();
 }
 
@@ -679,11 +937,9 @@ export default function VideoPreviewGenerator({
     const slideDur = slides.reduce((s, sl) => s + sl.duration, 0) + slides.length * TRANSITION_DURATION;
     const totalDur = slideOffset + slideDur + SFADE + STATIC_DUR;
 
-    const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(30);
+    const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(15);
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
-    // 200 Kbps: VP9 compresses static slides to ~1-2 MB for a 60 s animation,
-    // keeping the base64 payload well under the 4 MB Next.js body limit.
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 200_000 });
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 80_000 });
     recorderRef.current = recorder;
     const chunks: Blob[] = [];
 
@@ -699,30 +955,17 @@ export default function VideoPreviewGenerator({
         await savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() });
       } catch { /* non-critical */ }
 
-      // Save to DB — base64-encode via FileReader (safe for large blobs)
-      // Skip if blob is clearly too large for a single request (>8MB)
-      if (blob.size <= 8 * 1024 * 1024) {
-        try {
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const result = reader.result as string;
-              resolve(result.slice(result.indexOf(',') + 1));
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          const saveRes = await fetch('/api/video-previews', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: scriptTitle, videoData: base64, mimeType }),
-          });
-          if (!saveRes.ok) {
-            const errText = await saveRes.text().catch(() => '');
-            console.error('[VideoPreview] save failed', saveRes.status, errText);
-          }
-        } catch (err) { console.error('[VideoPreview] save error', err); }
-      }
+      // Save to DB — binary FormData (no base64 overhead)
+      try {
+        const form = new FormData();
+        form.append('video', blob, 'preview.webm');
+        form.append('title', scriptTitle);
+        const saveRes = await fetch('/api/video-previews', { method: 'POST', body: form });
+        if (!saveRes.ok) {
+          const errText = await saveRes.text().catch(() => '');
+          console.error('[VideoPreview] save failed', saveRes.status, errText);
+        }
+      } catch (err) { console.error('[VideoPreview] save error', err); }
 
       onSaved?.();
     };
@@ -788,8 +1031,8 @@ export default function VideoPreviewGenerator({
 
         if (!seg) {
           ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-        } else if (slideTime < seg.transEnd) {
-          // Transition phase
+        } else if (slideTime < seg.transEnd && seg.slide.index > 0) {
+          // Transition phase (skip for first slide — it appears from static intro)
           const tp = (slideTime - seg.startT) / TRANSITION_DURATION;
           renderTransition(ctx, offscRef.current, seg.slide, W, H, Math.min(1, tp));
         } else {
@@ -802,8 +1045,8 @@ export default function VideoPreviewGenerator({
         // Vintage overlay on every slide frame
         applyVintageOverlay(ctx, W, H);
 
-        // Random glitch (~1.8% per frame, min 0.5s between glitches)
-        if (Math.random() < 0.018 && elapsed - lastGlitch > 0.5) {
+        // Random glitch (~2.2% per frame, min 0.4s between glitches)
+        if (Math.random() < 0.022 && elapsed - lastGlitch > 0.4) {
           snapCtx.drawImage(canvas, 0, 0);
           applyGlitch(ctx, snapCanvas, W, H);
           lastGlitch = elapsed;

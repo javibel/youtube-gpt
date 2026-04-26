@@ -6,11 +6,16 @@ const BASE = process.env.NEXTAUTH_URL!;
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get('code');
-  const userId = searchParams.get('state');
+  const state = searchParams.get('state');
   const error = searchParams.get('error');
 
-  if (error || !code || !userId) {
-    return NextResponse.redirect(`${BASE}/dashboard?yt=error`);
+  const cookieValue = request.cookies.get('yt_oauth_state')?.value ?? '';
+  const [userId, expectedNonce] = cookieValue.split(':');
+
+  if (error || !code || !state || !userId || !expectedNonce || state !== expectedNonce) {
+    const response = NextResponse.redirect(`${BASE}/dashboard?yt=error`);
+    response.cookies.delete('yt_oauth_state');
+    return response;
   }
 
   try {
@@ -70,9 +75,13 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.redirect(`${BASE}/dashboard?yt=connected`);
+    const success = NextResponse.redirect(`${BASE}/dashboard?yt=connected`);
+    success.cookies.delete('yt_oauth_state');
+    return success;
   } catch (err) {
     console.error('[youtube/callback]', err);
-    return NextResponse.redirect(`${BASE}/dashboard?yt=error`);
+    const errResponse = NextResponse.redirect(`${BASE}/dashboard?yt=error`);
+    errResponse.cookies.delete('yt_oauth_state');
+    return errResponse;
   }
 }

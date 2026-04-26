@@ -25,14 +25,12 @@ const DAY_CATEGORY: Record<number, string> = {
   6: 'comunidad',
 };
 
-function getInstagramImageUrl(): string {
+export function getSocialImageUrl(): string {
   const day = new Date().getDay();
   const category = DAY_CATEGORY[day] ?? 'motivacion';
-  // Convention: images named 01.jpg, 02.jpg... up to 08.jpg per category
-  // Falls back to default.jpg if category folder is empty
-  const num = String((Math.floor(Math.random() * 8) + 1)).padStart(2, '0');
-  // Use default until bank images are added
-  return `${BASE_URL}/social-images/${category}/${num}.jpg`;
+  // Convention: images named 01.png, 02.png... up to 05.png per category
+  const num = String((Math.floor(Math.random() * 5) + 1)).padStart(2, '0');
+  return `${BASE_URL}/social-images/${category}/${num}.png`;
 }
 
 function getFallbackImageUrl(): string {
@@ -86,6 +84,56 @@ export async function publishToFacebook(
   }
 }
 
+export async function publishToFacebookWithImage(
+  content: string,
+  imageUrl: string
+): Promise<{ success: boolean; postId?: string; error?: string }> {
+  const pageId = process.env.META_PAGE_ID;
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+
+  if (!pageId || !token) {
+    return { success: false, error: 'META_PAGE_ID or META_PAGE_ACCESS_TOKEN not configured' };
+  }
+
+  try {
+    const caption = stripMarkdown(content);
+    const res = await fetch(`${FB_GRAPH}/${pageId}/photos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caption, url: imageUrl, access_token: token }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      // Fallback to text-only on image error
+      console.warn('[meta-agent/facebook] Image post failed, falling back to text-only:', JSON.stringify(data));
+      return publishToFacebook(content);
+    }
+
+    await prisma.socialPost.create({
+      data: {
+        platform: 'facebook',
+        content,
+        status: 'published',
+        publishedAt: new Date(),
+        bufferId: data.post_id ?? data.id ?? '',
+      },
+    });
+
+    return { success: true, postId: data.post_id ?? data.id };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[meta-agent/facebook/image]', errorMsg);
+
+    await prisma.socialPost.create({
+      data: { platform: 'facebook', content, status: 'failed', errorMsg },
+    });
+
+    return { success: false, error: errorMsg };
+  }
+}
+
 export async function publishToInstagram(
   content: string
 ): Promise<{ success: boolean; postId?: string; error?: string }> {
@@ -108,7 +156,7 @@ export async function publishToInstagram(
       });
     }
 
-    let containerRes = await createContainer(getInstagramImageUrl());
+    let containerRes = await createContainer(getSocialImageUrl());
     let containerData = await containerRes.json();
 
     if (!containerRes.ok && (containerData?.error?.code === 9004 || containerRes.status === 400)) {

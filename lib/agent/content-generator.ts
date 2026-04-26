@@ -56,21 +56,36 @@ Requisitos ESTRICTOS:
 Devuelve SOLO el caption con hashtags, sin comentarios.
 `.trim();
 
-const LINKEDIN_PROMPT = (type: PostType) => `
+const LINKEDIN_TOPICS = [
+  'el tiempo que pierden los creadores en tareas repetitivas',
+  'cómo el SEO de YouTube cambia las reglas del juego para canales pequeños',
+  'por qué el 90% de los vídeos no llegan a 1000 vistas y cómo evitarlo',
+  'la diferencia entre creadores que crecen y los que se estancan',
+  'cómo analizar a la competencia en YouTube sin perder horas',
+  'el papel de la IA en la producción de contenido en 2025',
+  'por qué el título es más importante que el contenido del vídeo',
+  'métricas que importan vs métricas que distraen en YouTube',
+];
+
+const LINKEDIN_PROMPT = (type: PostType) => {
+  const topic = LINKEDIN_TOPICS[Math.floor(Math.random() * LINKEDIN_TOPICS.length)];
+  return `
 Eres el responsable de marketing de YTubViral (ytubviral.com), herramienta de IA para creadores de contenido.
-Genera un post de LinkedIn para el turno de ${type === 'morning' ? 'mañana' : 'tarde'}.
+Genera un post de LinkedIn para el turno de ${type === 'morning' ? 'mañana' : 'tarde'} sobre el tema: ${topic}
 
 Requisitos ESTRICTOS:
 - Entre 200-300 palabras
 - Tono profesional y analítico
-- Datos o estadísticas cuando sea relevante (ej: "los creadores pierden 10+ horas/mes")
+- Datos o estadísticas concretos cuando sea relevante
 - 3-5 hashtags relevantes al final
 - CTA con enlace a ytubviral.com
-- Estructura con párrafos cortos, fácil de leer
-- Sin bullets con guiones — usa saltos de línea
+- Párrafos cortos, fácil de leer
+- CERO markdown: no uses asteriscos, guiones bajos, almohadillas ni ningún símbolo de formato
+- Solo texto plano con saltos de línea
 
-Devuelve SOLO el texto del post, sin comentarios.
+Devuelve SOLO el texto del post, sin comentarios ni explicaciones.
 `.trim();
+};
 
 const TIKTOK_PROMPT = (type: PostType) => `
 Eres el community manager de YTubViral (ytubviral.com).

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { isDisposableEmail } from "@/lib/disposable-domains";
 import { Resend } from "resend";
+import { validatePassword } from "@/lib/password";
+import { verificationEmail } from "@/lib/emails";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -139,26 +142,32 @@ export async function POST(req: NextRequest) {
         END
       RETURNING hits
     `;
+    const { email, password, name, lang = 'es' } = await req.json();
+    const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
+    const isEn = emailLang === 'en';
+
     if (Number(rlResult[0].hits) > 5) {
       return NextResponse.json(
-        { error: 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' },
+        { error: isEn ? 'Too many attempts. Please wait a few minutes before trying again.' : 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' },
         { status: 429 }
       );
     }
 
-    const { email, password, name, lang = 'es' } = await req.json();
-    const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
-
     if (!email || !password || !name) {
       return NextResponse.json(
-        { error: "Nombre, email y contraseña son requeridos" },
+        { error: isEn ? 'Name, email and password are required.' : 'Nombre, email y contraseña son requeridos.' },
         { status: 400 }
       );
     }
 
+    const pwError = validatePassword(password, emailLang);
+    if (pwError) {
+      return NextResponse.json({ error: pwError }, { status: 400 });
+    }
+
     if (isDisposableEmail(email)) {
       return NextResponse.json(
-        { error: "No se permiten direcciones de email temporales o desechables" },
+        { error: isEn ? 'Disposable or temporary email addresses are not allowed.' : 'No se permiten direcciones de email temporales o desechables.' },
         { status: 400 }
       );
     }
@@ -166,7 +175,7 @@ export async function POST(req: NextRequest) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return NextResponse.json(
-        { error: "Ya existe una cuenta con ese email" },
+        { error: isEn ? 'An account with that email already exists.' : 'Ya existe una cuenta con ese email.' },
         { status: 400 }
       );
     }
@@ -176,21 +185,29 @@ export async function POST(req: NextRequest) {
       data: { email, password: hashedPassword, name },
     });
 
-    // Enviar email de bienvenida (sin bloquear la respuesta)
+    // Create email verification token (24h)
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    await prisma.emailVerificationToken.create({
+      data: { email, token: verifyToken, expires: new Date(Date.now() + 24 * 3600 * 1000) },
+    });
+
+    // Send verification email (non-blocking)
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
+    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
     const subject = emailLang === 'en'
-      ? `Welcome to YTubViral.com, ${name}!`
-      : `¡Bienvenido a YTubViral.com, ${name}! 🚀`;
+      ? `Verify your email - YTubViral`
+      : `Verifica tu email - YTubViral`;
     resend?.emails.send({
       from: 'noreply@ytubviral.com',
       to: email,
       subject,
-      html: welcomeEmail(name, emailLang),
-    }).catch((err) => console.error('Welcome email error:', err));
+      html: verificationEmail(name, verifyUrl, emailLang),
+    }).catch((err) => console.error('Verification email error:', err));
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Error al crear la cuenta" },
+      { error: "Error creating account. Please try again." },
       { status: 500 }
     );
   }

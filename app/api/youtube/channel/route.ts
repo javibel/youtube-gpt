@@ -62,6 +62,24 @@ export async function GET() {
     return NextResponse.json({ connected: false, expired: true });
   }
 
+  // Return cached data if stats are fresh (< 1 hour old)
+  const oneHourAgo = new Date(Date.now() - 3600 * 1000);
+  if (yt.updatedAt > oneHourAgo && yt.channelName) {
+    return NextResponse.json({
+      connected: true,
+      cached: true,
+      channel: {
+        id: yt.channelId,
+        name: yt.channelName,
+        thumbnail: yt.channelThumb,
+        subscribers: parseInt(String(yt.subscribers ?? '0'), 10),
+        totalViews: parseInt(String(yt.totalViews ?? '0'), 10),
+        videoCount: parseInt(String(yt.videoCount ?? '0'), 10),
+      },
+      videos: [],
+    });
+  }
+
   // Refresh token if expired (with 60s margin)
   let accessToken = yt.accessToken;
   if (yt.expiresAt < new Date(Date.now() + 60_000)) {

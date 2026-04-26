@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { prisma } from '@/lib/prisma';
+import { getExtensionUser } from '@/lib/extension-auth';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY;
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -91,8 +93,22 @@ async function resolveChannelId(input: string): Promise<string | null> {
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user) {
+  const extAuth = !session?.user ? await getExtensionUser(request) : null;
+  if (!session?.user && !extAuth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (extAuth && !extAuth.isPro) {
+    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+  }
+
+  if (session?.user?.email) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { subscription: { select: { status: true } } },
+    });
+    if (user?.subscription?.status !== 'active') {
+      return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+    }
   }
   if (!YT_API_KEY) {
     return NextResponse.json({ error: 'no_api_key' }, { status: 503 });

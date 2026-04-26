@@ -119,6 +119,10 @@ function ResearchPageInner() {
 
       if (!res.ok) {
         if (data.error === 'no_api_key') { setNoApiKey(true); return; }
+        if (data.error === 'pro_required') {
+          setError(t('Esta función es exclusiva del Plan Pro. Actualiza tu cuenta desde el dashboard.', 'This feature is exclusive to the Pro Plan. Upgrade your account from the dashboard.'));
+          return;
+        }
         setError(data.error || t('Error desconocido', 'Unknown error'));
         return;
       }

@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
-import { publishToFacebook, publishToInstagram } from '@/lib/agent/meta-agent';
+import {
+  publishToFacebook,
+  publishToFacebookWithImage,
+  publishToInstagram,
+  getSocialImageUrl,
+} from '@/lib/agent/meta-agent';
 import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
-import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
+import { runGmailAgent, sendNotificationEmail, sendOwnerEmail } from '@/lib/agent/gmail-agent';
+import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { prisma } from '@/lib/prisma';
+
+export const maxDuration = 60;
 
 function verifyCronSecret(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  const auth = request.headers.get('authorization');
-  return auth === `Bearer ${secret}`;
+  return request.headers.get('authorization') === `Bearer ${secret}`;
 }
 
 export async function GET(request: Request) {
@@ -21,14 +28,17 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
 
   try {
-    // 1. Generate evening content (more reflective/inspirational)
-    const [facebook, instagram, linkedin, tiktok, twitter] = await Promise.allSettled([
-      generateSocialPost('facebook', 'evening'),
-      generateSocialPost('instagram', 'evening'),
-      generateSocialPost('linkedin', 'evening'),
-      generateSocialPost('tiktok', 'evening'),
-      generateSocialPost('twitter', 'evening'),
-    ]);
+    // 1. Generate evening content (more reflective/inspirational) + run agents in parallel
+    const [facebook, instagram, linkedin, tiktok, twitter, gmailResult, youtubeResult] =
+      await Promise.allSettled([
+        generateSocialPost('facebook', 'evening'),
+        generateSocialPost('instagram', 'evening'),
+        generateSocialPost('linkedin', 'evening'),
+        generateSocialPost('tiktok', 'evening'),
+        generateSocialPost('twitter', 'evening'),
+        runGmailAgent(),
+        runYoutubeAgent(),
+      ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;
     const ig = instagram.status === 'fulfilled' ? instagram.value : null;
@@ -42,9 +52,28 @@ export async function GET(request: Request) {
     if (tiktok.status === 'rejected') errors.push(`TikTok content: ${tiktok.reason}`);
     if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
-    // 2. Publish Facebook + Instagram via Meta Graph API
+    // Gmail agent results
+    const gmail = gmailResult.status === 'fulfilled'
+      ? gmailResult.value
+      : { processed: 0, replied: 0, errors: [`Gmail agent failed: ${gmailResult.reason}`] };
+    errors.push(...gmail.errors);
+    results.gmail = { processed: gmail.processed, replied: gmail.replied };
+
+    // YouTube agent results
+    const youtube = youtubeResult.status === 'fulfilled'
+      ? youtubeResult.value
+      : { processed: 0, replied: 0, errors: [`YouTube agent failed: ${youtubeResult.reason}`] };
+    errors.push(...youtube.errors);
+    results.youtube = { processed: youtube.processed, replied: youtube.replied };
+
+    // 2. Publish Facebook (30% with image) + Instagram
+    const useImage = Math.random() < 0.3;
     const [fbResult, igResult] = await Promise.all([
-      fb ? publishToFacebook(fb) : Promise.resolve(null),
+      fb
+        ? useImage
+          ? publishToFacebookWithImage(fb, getSocialImageUrl())
+          : publishToFacebook(fb)
+        : Promise.resolve(null),
       ig ? publishToInstagram(ig) : Promise.resolve(null),
     ]);
     results.facebook = fbResult;
@@ -52,27 +81,26 @@ export async function GET(request: Request) {
     if (fbResult && !fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
     if (igResult && !igResult.success) errors.push(`Instagram: ${igResult.error}`);
 
-    // 3. Publish LinkedIn via direct API
+    // 3. Publish LinkedIn
     if (li) {
       const liResult = await publishToLinkedIn(li);
       results.linkedin = liResult;
       if (!liResult.success) errors.push(`LinkedIn: ${liResult.error}`);
     }
 
-    // 3. Send TikTok + X by email
+    // 4. TikTok + X by email (manual)
     if (tt || tw) {
       const emailBody = [
-        '🤖 AGENTE YTUBVIRAL — POST VESPERTINO (MANUAL)',
+        'AGENTE YTUBVIRAL - POST VESPERTINO (MANUAL)',
         '='.repeat(50),
-        '',
-        tt ? ['📱 TIKTOK', '-'.repeat(30), tt, ''].join('\n') : '',
-        tw ? ['🐦 X/TWITTER', '-'.repeat(30), tw, ''].join('\n') : '',
+        tt ? `TIKTOK\n${'-'.repeat(30)}\n${tt}\n` : '',
+        tw ? `X/TWITTER\n${'-'.repeat(30)}\n${tw}\n` : '',
         '='.repeat(50),
         'Copia el contenido y publícalo directamente en cada plataforma.',
       ].filter(Boolean).join('\n');
 
-      await sendNotificationEmail('[YTubViral Agent] Post vespertino — TikTok + X', emailBody).catch(
-        err => errors.push(`Email: ${err instanceof Error ? err.message : err}`)
+      await sendOwnerEmail('[YTubViral Agent] Post vespertino - TikTok + X', emailBody).catch(
+        err => errors.push(`Email TikTok/X: ${err instanceof Error ? err.message : err}`)
       );
 
       for (const [platform, content] of [['tiktok', tt], ['twitter', tw]] as [string, string | null][]) {
@@ -86,7 +114,7 @@ export async function GET(request: Request) {
 
     if (errors.length > 0) {
       await sendNotificationEmail(
-        '[YTubViral Agent] ⚠️ Errores en cron vespertino',
+        '[YTubViral Agent] Errores en cron vespertino',
         errors.join('\n')
       ).catch(() => {});
     }

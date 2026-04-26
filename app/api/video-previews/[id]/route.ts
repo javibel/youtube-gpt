@@ -25,3 +25,20 @@ export async function GET(
     },
   });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) return new Response('Unauthorized', { status: 401 });
+
+  const { id } = await params;
+
+  const deleted = await prisma.videoPreview.deleteMany({
+    where: { id, userId: session.user.id },
+  });
+
+  if (deleted.count === 0) return new Response('Not found', { status: 404 });
+  return new Response(null, { status: 204 });
+}

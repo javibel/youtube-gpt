@@ -50,24 +50,11 @@ export async function GET() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [totalGenerations, generationsThisMonth, recentGenerations, subscription, allDates] =
+  const [totalGenerations, generationsThisMonth, subscription, allDates] =
     await Promise.all([
       prisma.generation.count({ where: { userId: user.id } }),
       prisma.generation.count({
         where: { userId: user.id, createdAt: { gte: startOfMonth } },
-      }),
-      prisma.generation.findMany({
-        where: { userId: user.id },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-        select: {
-          id: true,
-          template: true,
-          createdAt: true,
-          tokensUsed: true,
-          output: true,
-          inputs: true,
-        },
       }),
       prisma.subscription.findUnique({
         where: { userId: user.id },
@@ -99,7 +86,6 @@ export async function GET() {
       isPro,
       streak,
     },
-    recentGenerations,
     subscription: subscription ?? null,
   });
 }
