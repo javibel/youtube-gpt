@@ -364,12 +364,13 @@ export default function SocialAdminPage() {
                       <th className="text-left px-4 py-2 text-white/40">De</th>
                       <th className="text-left px-4 py-2 text-white/40">Mensaje</th>
                       <th className="text-left px-4 py-2 text-white/40">Estado</th>
+                      <th className="text-left px-4 py-2 text-white/40">Hora</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.messages.map(msg => {
                       const gmailUrl = msg.platform === 'gmail' && msg.externalId
-                        ? `https://mail.google.com/mail/u/0/#all/${msg.externalId}`
+                        ? `https://mail.google.com/mail/u/0/#inbox/${msg.externalId}`
                         : null;
                       return (
                         <tr
@@ -396,6 +397,9 @@ export default function SocialAdminPage() {
                             >
                               {msg.replied ? 'Respondido' : 'Pendiente'}
                             </span>
+                          </td>
+                          <td className="px-4 py-2 text-white/40 whitespace-nowrap">
+                            {formatDate(msg.receivedAt)}
                           </td>
                         </tr>
                       );

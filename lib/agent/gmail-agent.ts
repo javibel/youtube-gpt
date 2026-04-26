@@ -233,7 +233,7 @@ export async function runGmailAgent(): Promise<GmailAgentResult> {
           platform: 'gmail',
           fromUser: from,
           content: body.slice(0, 1000),
-          externalId: msg.id,
+          externalId: msg.threadId,
           replied: true,
           replyContent: replyBody,
           repliedAt: new Date(),
@@ -260,7 +260,7 @@ export async function sendNotificationEmail(
   const token = await getAccessToken();
   const rawEmail = buildMimeEmail({
     to: AGENT_EMAIL,
-    from: `YTubViral Agent <${AGENT_EMAIL}>`,
+    from: `YTubViral <${AGENT_EMAIL}>`,
     subject,
     body,
   });
@@ -274,7 +274,7 @@ export async function sendOwnerEmail(
   const token = await getAccessToken();
   const rawEmail = buildMimeEmail({
     to: OWNER_EMAIL,
-    from: `YTubViral Agent <${AGENT_EMAIL}>`,
+    from: `YTubViral <${AGENT_EMAIL}>`,
     subject,
     body,
   });

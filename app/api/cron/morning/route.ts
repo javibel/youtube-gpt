@@ -59,7 +59,11 @@ Responde SOLO con JSON en este formato exacto, sin texto adicional:
 
   if (!res.ok) throw new Error(`Claude API error ${res.status}`);
   const aiData = await res.json();
-  const raw: string = aiData.content?.[0]?.text?.trim() ?? '';
+  const raw: string = (aiData.content?.[0]?.text ?? '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
   const parsed = JSON.parse(raw);
   const { es, en } = parsed as { es: string; en: string };
 
