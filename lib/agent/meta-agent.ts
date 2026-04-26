@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
 const FB_GRAPH = 'https://graph.facebook.com/v19.0';
-const IG_GRAPH = 'https://graph.instagram.com/v19.0';
+const IG_GRAPH = 'https://graph.facebook.com/v19.0';
 const BASE_URL = (process.env.NEXTAUTH_URL ?? 'https://ytubviral.com').trim().replace(/\/$/, '');
 
 function stripMarkdown(text: string): string {
@@ -37,6 +37,15 @@ function getFallbackImageUrl(): string {
   return `${BASE_URL}/social-images/default.png`;
 }
 
+async function alreadyPublishedToday(platform: string): Promise<boolean> {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const count = await prisma.socialPost.count({
+    where: { platform, status: 'published', publishedAt: { gte: start } },
+  });
+  return count > 0;
+}
+
 export async function publishToFacebook(
   content: string
 ): Promise<{ success: boolean; postId?: string; error?: string }> {
@@ -45,6 +54,10 @@ export async function publishToFacebook(
 
   if (!pageId || !token) {
     return { success: false, error: 'META_PAGE_ID or META_PAGE_ACCESS_TOKEN not configured' };
+  }
+
+  if (await alreadyPublishedToday('facebook')) {
+    return { success: false, error: 'Already published to Facebook today — skipping to avoid duplicate' };
   }
 
   try {
@@ -95,6 +108,10 @@ export async function publishToFacebookWithImage(
     return { success: false, error: 'META_PAGE_ID or META_PAGE_ACCESS_TOKEN not configured' };
   }
 
+  if (await alreadyPublishedToday('facebook')) {
+    return { success: false, error: 'Already published to Facebook today — skipping to avoid duplicate' };
+  }
+
   try {
     const caption = stripMarkdown(content);
     const res = await fetch(`${FB_GRAPH}/${pageId}/photos`, {
@@ -142,6 +159,10 @@ export async function publishToInstagram(
 
   if (!igId || !token) {
     return { success: false, error: 'INSTAGRAM_ACCOUNT_ID or INSTAGRAM_ACCESS_TOKEN not configured' };
+  }
+
+  if (await alreadyPublishedToday('instagram')) {
+    return { success: false, error: 'Already published to Instagram today — skipping to avoid duplicate' };
   }
 
   try {
