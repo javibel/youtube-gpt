@@ -290,3 +290,18 @@ export async function sendOwnerEmail(
   });
   await gmailPost('/messages/send', token, { raw: rawEmail });
 }
+
+export async function sendEmailTo(
+  to: string,
+  subject: string,
+  body: string
+): Promise<void> {
+  const token = await getAccessToken();
+  const rawEmail = buildMimeEmail({
+    to,
+    from: `YTubViral <${AGENT_EMAIL}>`,
+    subject,
+    body,
+  });
+  await gmailPost('/messages/send', token, { raw: rawEmail });
+}

@@ -9,6 +9,7 @@ import {
 import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
 import { runGmailAgent, sendNotificationEmail, sendOwnerEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
+import { runFeedbackAgent } from '@/lib/agent/feedback-agent';
 import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 60;
@@ -51,6 +52,14 @@ export async function GET(request: Request) {
     if (linkedin.status === 'rejected') errors.push(`LinkedIn content: ${linkedin.reason}`);
     if (tiktok.status === 'rejected') errors.push(`TikTok content: ${tiktok.reason}`);
     if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
+
+    // 0. Send feedback emails to users registered 3 days ago
+    const feedbackResult = await runFeedbackAgent().catch(err => ({
+      sent: 0,
+      errors: [`Feedback agent: ${err instanceof Error ? err.message : err}`],
+    }));
+    errors.push(...feedbackResult.errors);
+    results.feedback = { sent: feedbackResult.sent };
 
     // Gmail agent results
     const gmail = gmailResult.status === 'fulfilled'

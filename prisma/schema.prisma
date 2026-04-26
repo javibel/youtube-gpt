@@ -17,6 +17,8 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  feedbackEmailSentAt DateTime?
+
   accounts        Account[]
   sessions        Session[]
   generations     Generation[]
@@ -25,6 +27,7 @@ model User {
   youtubeToken    YoutubeToken?
   videoPreviews   VideoPreview[]
   extensionTokens ExtensionToken[]
+  feedback        UserFeedback?
 
   @@map("users")
 }
@@ -217,6 +220,21 @@ model DailyTip {
   en   String
 
   @@map("daily_tips")
+}
+
+model UserFeedback {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  token       String    @unique
+  lang        String    @default("es")
+  rating      Int?
+  comment     String?
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_feedbacks")
 }
 
 model SocialMessage {
