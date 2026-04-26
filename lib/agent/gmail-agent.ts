@@ -111,6 +111,14 @@ function isNoReply(from: string): boolean {
   return NO_REPLY_PATTERNS.some(p => p.test(from));
 }
 
+// Encode header value as RFC 2047 Base64 if it contains non-ASCII characters
+function encodeHeader(value: string): string {
+  if (/[^\x00-\x7F]/.test(value)) {
+    return `=?UTF-8?B?${Buffer.from(value, 'utf-8').toString('base64')}?=`;
+  }
+  return value;
+}
+
 function buildMimeEmail({
   to,
   from,
@@ -129,16 +137,18 @@ function buildMimeEmail({
   bcc?: string;
 }): string {
   const lines = [
-    `From: ${from}`,
+    `From: ${encodeHeader(from)}`,
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodeHeader(subject)}`,
     `Content-Type: text/plain; charset=utf-8`,
+    `Content-Transfer-Encoding: base64`,
     `MIME-Version: 1.0`,
   ];
   if (bcc) lines.push(`Bcc: ${bcc}`);
   if (inReplyTo) lines.push(`In-Reply-To: ${inReplyTo}`);
   if (references) lines.push(`References: ${references}`);
-  lines.push('', body);
+  const encodedBody = Buffer.from(body, 'utf-8').toString('base64');
+  lines.push('', encodedBody);
   const raw = lines.join('\r\n');
   return Buffer.from(raw).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
