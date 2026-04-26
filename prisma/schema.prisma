@@ -224,6 +224,7 @@ model SocialMessage {
   platform     String
   fromUser     String
   content      String
+  externalId   String?
   receivedAt   DateTime  @default(now())
   replied      Boolean   @default(false)
   replyContent String?

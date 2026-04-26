@@ -99,6 +99,18 @@ function isImportant(subject: string, body: string): boolean {
   return IMPORTANT_KEYWORDS.some(kw => text.includes(kw));
 }
 
+const NO_REPLY_PATTERNS = [
+  /no.?reply/i, /do.?not.?reply/i, /noreply/i,
+  /notifications?@/i, /automated@/i, /bounce@/i,
+  /mailer.?daemon/i, /postmaster@/i,
+  /newsletter/i, /unsubscribe/i, /digest@/i,
+  /updates?@/i, /alerts?@/i, /info@.*\.(sendgrid|mailchimp|mailgun|sparkpost)/i,
+];
+
+function isNoReply(from: string): boolean {
+  return NO_REPLY_PATTERNS.some(p => p.test(from));
+}
+
 function buildMimeEmail({
   to,
   from,
@@ -171,6 +183,14 @@ export async function runGmailAgent(): Promise<GmailAgentResult> {
       const senderName = fromMatch[1].trim() || fromMatch[2];
       const senderEmail = fromMatch[2];
 
+      // Skip no-reply senders
+      if (isNoReply(from)) {
+        await gmailPost(`/messages/${msg.id}/modify`, token, {
+          removeLabelIds: ['UNREAD'],
+        });
+        continue;
+      }
+
       // Skip if no meaningful body
       if (!body.trim()) {
         await gmailPost(`/messages/${msg.id}/modify`, token, {
@@ -212,6 +232,7 @@ export async function runGmailAgent(): Promise<GmailAgentResult> {
           platform: 'gmail',
           fromUser: from,
           content: body.slice(0, 1000),
+          externalId: msg.id,
           replied: true,
           replyContent: replyBody,
           repliedAt: new Date(),

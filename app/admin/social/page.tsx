@@ -24,6 +24,7 @@ type SocialMessage = {
   platform: string;
   fromUser: string;
   content: string;
+  externalId: string | null;
   receivedAt: string;
   replied: boolean;
   replyContent: string | null;
@@ -366,28 +367,39 @@ export default function SocialAdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.messages.map(msg => (
-                      <tr key={msg.id} className="border-b border-white/5 hover:bg-white/5">
-                        <td className="px-4 py-2">
-                          {PLATFORM_EMOJI[msg.platform] ?? '🔗'} {msg.platform}
-                        </td>
-                        <td className="px-4 py-2 text-white/60 max-w-[100px] truncate">{msg.fromUser}</td>
-                        <td className="px-4 py-2 text-white/60 max-w-[160px] truncate">
-                          {msg.content.slice(0, 60)}...
-                        </td>
-                        <td className="px-4 py-2">
-                          <span
-                            className="px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{
-                              background: msg.replied ? '#22c55e20' : '#f59e0b20',
-                              color: msg.replied ? '#22c55e' : '#f59e0b',
-                            }}
-                          >
-                            {msg.replied ? 'Respondido' : 'Pendiente'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {data.messages.map(msg => {
+                      const gmailUrl = msg.platform === 'gmail' && msg.externalId
+                        ? `https://mail.google.com/mail/u/0/#all/${msg.externalId}`
+                        : null;
+                      return (
+                        <tr
+                          key={msg.id}
+                          className="border-b border-white/5 hover:bg-white/5"
+                          style={{ cursor: gmailUrl ? 'pointer' : 'default' }}
+                          onClick={() => gmailUrl && window.open(gmailUrl, '_blank')}
+                        >
+                          <td className="px-4 py-2">
+                            {PLATFORM_EMOJI[msg.platform] ?? '🔗'} {msg.platform}
+                            {gmailUrl && <span className="ml-1 text-white/30">↗</span>}
+                          </td>
+                          <td className="px-4 py-2 text-white/60 max-w-[100px] truncate">{msg.fromUser}</td>
+                          <td className="px-4 py-2 text-white/60 max-w-[160px] truncate">
+                            {msg.content.slice(0, 60)}...
+                          </td>
+                          <td className="px-4 py-2">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{
+                                background: msg.replied ? '#22c55e20' : '#f59e0b20',
+                                color: msg.replied ? '#22c55e' : '#f59e0b',
+                              }}
+                            >
+                              {msg.replied ? 'Respondido' : 'Pendiente'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
