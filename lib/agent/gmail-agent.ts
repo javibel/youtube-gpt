@@ -183,8 +183,9 @@ export async function runGmailAgent(): Promise<GmailAgentResult> {
       const senderName = fromMatch[1].trim() || fromMatch[2];
       const senderEmail = fromMatch[2];
 
-      // Skip no-reply senders
-      if (isNoReply(from)) {
+      // Skip no-reply senders and newsletters
+      const listUnsubscribe = getHeader(headers, 'list-unsubscribe');
+      if (isNoReply(from) || listUnsubscribe) {
         await gmailPost(`/messages/${msg.id}/modify`, token, {
           removeLabelIds: ['UNREAD'],
         });
