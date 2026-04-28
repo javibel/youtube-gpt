@@ -343,7 +343,7 @@ const ART_DESCRIPCIONES_SEO: BlockType[] = [
 
 // Featured article from the prototype (kept as-is)
 const ART_7_FRAMEWORKS_ES: BlockType[] = [
-  { type: 'p', t: 'Analizamos 12.480 vídeos publicados entre enero y febrero de 2026 que superaron las 500.000 visualizaciones. El objetivo: entender si los frameworks de titulación que funcionaban en 2024 siguen vigentes, o si el algoritmo ha movido la regla.' },
+  { type: 'p', t: 'Analizamos 12.480 vídeos publicados entre julio y diciembre de 2025 que superaron las 500.000 visualizaciones. El objetivo: entender si los frameworks de titulación que funcionaban en 2024 siguen vigentes, o si el algoritmo ha movido la regla.' },
   { type: 'p', t: 'La respuesta corta: cinco frameworks siguen funcionando, dos están muriendo, y han aparecido dos nuevos que casi nadie está usando todavía. Este artículo es un mapa concreto, con ejemplos reales y plantillas que puedes pasar por nuestro motor.' },
   { type: 'h2', t: '1. El framework numérico específico' },
   { type: 'p', t: 'Sigue siendo el rey. Pero el truco está en la palabra "específico". "5 errores comunes" dejó de funcionar a finales de 2024. "23 errores" o "147 trucos" rinden un 36% más en CTR según nuestro dataset.' },
