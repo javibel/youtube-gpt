@@ -80,13 +80,13 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'Your video description is the most underrated YouTube SEO element. Videos with optimized descriptions are 78% more likely to appear on the first page. Here is everything you need to know.',
     },
   },
-  // ── Placeholder articles ──────────────────────────────────────────────────
   {
     slug: '7-frameworks-titulos-virales-youtube',
     cat: 'youtube',
     readMin: 9,
     date: { es: '14 Mar 2026', en: 'Mar 14, 2026' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/frameworks-titulos-virales.png',
     title: {
       es: '7 frameworks para títulos virales que YouTube premia en 2026',
       en: '7 viral title frameworks YouTube rewards in 2026',
@@ -95,60 +95,6 @@ export const BLOG_POSTS: BlogPost[] = [
       es: 'Analizamos 12.480 vídeos con más de 500K visualizaciones para destilar los patrones de titulación que el algoritmo prioriza este año. Spoiler: los números específicos siguen ganando.',
       en: 'We analyzed 12,480 videos with 500K+ views to distill the title patterns the algorithm prioritizes this year. Spoiler: specific numbers still win.',
     },
-  },
-  {
-    slug: 'algoritmo-youtube-2026',
-    cat: 'youtube',
-    readMin: 12,
-    date: { es: '11 Mar 2026', en: 'Mar 11, 2026' },
-    author: { name: 'Lucía Vega', role: { es: 'Especialista en contenido', en: 'Content specialist' }, avatar: 'LV' },
-    title: { es: 'El algoritmo de YouTube en 2026: lo que cambió y lo que no', en: "The YouTube algorithm in 2026: what changed and what didn't" },
-    excerpt: { es: 'Watch time bajó al puesto 4. Lo que ocupa los puestos 1, 2 y 3 te va a sorprender — y a cambiar la forma en que escribes tus primeros 30 segundos.', en: "Watch time dropped to position 4. What sits at 1, 2, and 3 will surprise you — and change how you write your first 30 seconds." },
-  },
-  {
-    slug: 'shorts-vs-long-form-2026',
-    cat: 'marketing',
-    readMin: 7,
-    date: { es: '08 Mar 2026', en: 'Mar 8, 2026' },
-    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
-    title: { es: 'Shorts vs. long-form: la nueva matemática del CPM en 2026', en: 'Shorts vs. long-form: the new CPM math in 2026' },
-    excerpt: { es: 'Hicimos cuentas con 24 canales de tech, gaming y lifestyle. La respuesta no es ni Shorts ni vídeos largos — es una proporción concreta que casi nadie está aplicando.', en: "We crunched numbers across 24 tech, gaming, and lifestyle channels. The answer isn't Shorts or long-form — it's a specific ratio almost no one applies." },
-  },
-  {
-    slug: 'prompts-ia-script-youtube',
-    cat: 'ai',
-    readMin: 8,
-    date: { es: '04 Mar 2026', en: 'Mar 4, 2026' },
-    author: { name: 'Diego Soto', role: { es: 'Colaborador · Experto en IA', en: 'Contributor · AI expert' }, avatar: 'DS' },
-    title: { es: '12 prompts de IA para escribir scripts que retienen audiencia', en: '12 AI prompts for scripts that hold attention' },
-    excerpt: { es: 'Plantillas que usamos a diario. Cada una con su input, su output esperado y los ajustes para que funcione en tu nicho — pásalas por cualquier modelo.', en: 'Templates we use daily. Each one with its input, expected output, and tweaks for your niche — works on any model.' },
-  },
-  {
-    slug: 'thumbnails-que-convierten',
-    cat: 'tutorials',
-    readMin: 11,
-    date: { es: '01 Mar 2026', en: 'Mar 1, 2026' },
-    author: { name: 'Lucía Vega', role: { es: 'Especialista en contenido', en: 'Content specialist' }, avatar: 'LV' },
-    title: { es: 'Cómo diseñar miniaturas que convierten (con ejemplos)', en: 'How to design thumbnails that convert (with examples)' },
-    excerpt: { es: 'Tutorial paso a paso con 9 ejemplos comentados. Capa por capa: composición, color, tipografía y la regla del "3-second test" que separa el 8% del CTR del 12%.', en: 'Step-by-step tutorial with 9 annotated examples. Layer by layer: composition, color, type, and the "3-second test" rule that separates 8% CTR from 12%.' },
-  },
-  {
-    slug: 'monetizacion-canales-pequenos',
-    cat: 'marketing',
-    readMin: 10,
-    date: { es: '26 Feb 2026', en: 'Feb 26, 2026' },
-    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
-    title: { es: 'Monetizar con menos de 10K subs: 6 vías que sí funcionan', en: 'Monetizing under 10K subs: 6 paths that actually work' },
-    excerpt: { es: 'AdSense ya no es la ruta principal. Estos 6 caminos generan ingresos antes de los 1.000 suscriptores — algunos exigen 0 audiencia para empezar.', en: "AdSense isn't the main route anymore. These 6 paths generate revenue before 1,000 subs — some need zero audience to start." },
-  },
-  {
-    slug: 'ia-creadores-2026-tendencias',
-    cat: 'ai',
-    readMin: 13,
-    date: { es: '18 Feb 2026', en: 'Feb 18, 2026' },
-    author: { name: 'Lucía Vega', role: { es: 'Especialista en contenido', en: 'Content specialist' }, avatar: 'LV' },
-    title: { es: 'IA para creadores en 2026: 8 tendencias que importan', en: 'AI for creators in 2026: 8 trends that matter' },
-    excerpt: { es: 'Más allá del hype. Qué herramientas se quedan, cuáles ya están muertas y dónde poner tu tiempo si te dedicas a esto en serio.', en: "Past the hype. Which tools are sticking, which are already dead, and where to invest your time if you're serious about this." },
   },
 ];
 
@@ -397,7 +343,7 @@ const ART_DESCRIPCIONES_SEO: BlockType[] = [
 
 // Featured article from the prototype (kept as-is)
 const ART_7_FRAMEWORKS_ES: BlockType[] = [
-  { type: 'p', t: 'Hace seis meses analizamos 12.480 vídeos publicados entre enero y febrero de 2026 que superaron las 500.000 visualizaciones. El objetivo: entender si los frameworks de titulación que funcionaban en 2024 siguen vigentes, o si el algoritmo ha movido la regla.' },
+  { type: 'p', t: 'Analizamos 12.480 vídeos publicados entre enero y febrero de 2026 que superaron las 500.000 visualizaciones. El objetivo: entender si los frameworks de titulación que funcionaban en 2024 siguen vigentes, o si el algoritmo ha movido la regla.' },
   { type: 'p', t: 'La respuesta corta: cinco frameworks siguen funcionando, dos están muriendo, y han aparecido dos nuevos que casi nadie está usando todavía. Este artículo es un mapa concreto, con ejemplos reales y plantillas que puedes pasar por nuestro motor.' },
   { type: 'h2', t: '1. El framework numérico específico' },
   { type: 'p', t: 'Sigue siendo el rey. Pero el truco está en la palabra "específico". "5 errores comunes" dejó de funcionar a finales de 2024. "23 errores" o "147 trucos" rinden un 36% más en CTR según nuestro dataset.' },
