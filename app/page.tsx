@@ -45,8 +45,8 @@ const STATIC_TESTIMONIALS = {
 
 function TopNav({ lang }: { lang: Lang }) {
   const nav = lang === 'en'
-    ? [['#how', 'How it works'], ['/signup', 'Generate'], ['#pricing', 'Pricing']]
-    : [['#how', 'Cómo funciona'], ['/signup', 'Generar'], ['#pricing', 'Precios']];
+    ? [['#how', 'How it works'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog']]
+    : [['#how', 'Cómo funciona'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog']];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
