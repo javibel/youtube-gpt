@@ -11,6 +11,7 @@ export interface BlogPost {
   author: { name: string; role: { es: string; en: string }; avatar: string };
   title: { es: string; en: string };
   excerpt: { es: string; en: string };
+  image?: string;
 }
 
 export type BlockType =
@@ -37,6 +38,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 8,
     date: { es: '15 Oct 2025', en: 'Oct 15, 2025' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/herramientas-ia-youtubers.png',
     title: {
       es: '10 Herramientas de IA para YouTubers en 2026 (Gratis y de Pago)',
       en: '10 AI Tools for YouTubers in 2026 (Free and Paid)',
@@ -52,6 +54,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 7,
     date: { es: '22 Nov 2025', en: 'Nov 22, 2025' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/titulos-virales-youtube.png',
     title: {
       es: 'Cómo Escribir Títulos Virales para YouTube en 2026 (Guía Completa)',
       en: 'How to Write Viral YouTube Titles in 2026 (Complete Guide)',
@@ -67,6 +70,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 9,
     date: { es: '8 Ene 2026', en: 'Jan 8, 2026' },
     author: { name: 'Lucía Vega', role: { es: 'Especialista en contenido', en: 'Content specialist' }, avatar: 'LV' },
+    image: '/blog/descripciones-seo-youtube.png',
     title: {
       es: 'Descripciones SEO para YouTube: La Guía Definitiva 2026',
       en: 'SEO Descriptions for YouTube: The Definitive Guide 2026',

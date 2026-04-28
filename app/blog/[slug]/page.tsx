@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { cookies } from 'next/headers';
 import {
   BLOG_POSTS, BLOG_CATEGORIES, ARTICLE_BODIES,
@@ -26,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       type: 'article',
       publishedTime: post.date.es,
       authors: [post.author.name],
+      ...(post.image ? { images: [{ url: `https://ytubviral.com${post.image}`, width: 1200, height: 630 }] } : {}),
     },
   };
 }
@@ -213,15 +215,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
         {/* Cover image area */}
         <div className="mt-10 mb-12 h-64 md:h-80 relative overflow-hidden border border-white/10">
-          <div className="w-full h-full flex items-center justify-center relative"
-            style={{ background: COVER_GRADIENTS[post.cat] ?? COVER_GRADIENTS.youtube }}>
-            <span className="font-display font-bold opacity-15 select-none"
-              style={{ fontSize: 'clamp(96px, 18vw, 180px)', color: catData?.color ?? '#fff', lineHeight: 1 }}>
-              {post.cat === 'youtube' ? '▲' : post.cat === 'ai' ? '◆' : post.cat === 'marketing' ? '●' : '■'}
-            </span>
-            <div className="absolute inset-0"
-              style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
-          </div>
+          {post.image ? (
+            <Image src={post.image} alt={post.title[lang]} fill className="object-cover" sizes="(max-width: 768px) 100vw, 768px" priority />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center relative"
+              style={{ background: COVER_GRADIENTS[post.cat] ?? COVER_GRADIENTS.youtube }}>
+              <span className="font-display font-bold opacity-15 select-none"
+                style={{ fontSize: 'clamp(96px, 18vw, 180px)', color: catData?.color ?? '#fff', lineHeight: 1 }}>
+                {post.cat === 'youtube' ? '▲' : post.cat === 'ai' ? '◆' : post.cat === 'marketing' ? '●' : '■'}
+              </span>
+              <div className="absolute inset-0"
+                style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+            </div>
+          )}
         </div>
 
         {/* Excerpt / intro */}

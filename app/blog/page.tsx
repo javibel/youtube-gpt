@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { cookies } from 'next/headers';
 import { BLOG_POSTS, BLOG_CATEGORIES, type Lang } from '@/lib/blog-data';
 
@@ -23,7 +24,14 @@ const COVER_GRADIENTS: Record<string, string> = {
   tutorials: 'linear-gradient(135deg, #7CFF00 0%, #001a00 100%)',
 };
 
-function BlogCover({ cat, index }: { cat: string; index: number }) {
+function BlogCover({ cat, index, image }: { cat: string; index: number; image?: string }) {
+  if (image) {
+    return (
+      <div className="w-full h-full relative overflow-hidden">
+        <Image src={image} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" />
+      </div>
+    );
+  }
   const gradient = COVER_GRADIENTS[cat] ?? COVER_GRADIENTS.youtube;
   const catData = BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES];
   const symbols = ['▲', '●', '◆', '■', '▼', '◉', '▸', '⬡', '◈'];
@@ -120,7 +128,7 @@ export default async function BlogListPage() {
           </p>
           <Link href={`/blog/${featured.slug}`} className="group grid md:grid-cols-2 gap-0 border border-white/10 hover:border-white/20 transition-colors bg-black">
             <div className="h-64 md:h-auto relative overflow-hidden">
-              <BlogCover cat={featured.cat} index={0} />
+              <BlogCover cat={featured.cat} index={0} image={featured.image} />
             </div>
             <div className="p-8 md:p-10 flex flex-col justify-between">
               <div>
@@ -168,7 +176,7 @@ export default async function BlogListPage() {
               <Link key={post.slug} href={`/blog/${post.slug}`}
                 className="group flex flex-col border border-white/10 bg-black hover:border-white/20 transition-colors">
                 <div className="h-44 relative overflow-hidden">
-                  <BlogCover cat={post.cat} index={i + 1} />
+                  <BlogCover cat={post.cat} index={i + 1} image={post.image} />
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-3">
