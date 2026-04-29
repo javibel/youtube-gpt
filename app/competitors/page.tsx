@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { getLangClient } from '@/lib/get-lang-client';
 
@@ -53,9 +53,7 @@ export default function CompetitorsPage() {
 
   useEffect(() => { setLang(getLangClient()); }, []);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login');
-  }, [status, router]);
+  // No redirect — show public landing if unauthenticated
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
@@ -92,10 +90,73 @@ export default function CompetitorsPage() {
 
   if (status === 'loading') return null;
 
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+        <header className="border-b" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)' }}>
+          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <a href="/" className="flex items-center gap-2.5">
+              <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
+                <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+              </svg>
+              <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+            </a>
+            <div className="flex items-center gap-3">
+              <a href="/login" className="font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition">{t('Iniciar sesión', 'Sign in')}</a>
+              <a href="/signup" className="btn-offset px-4 py-1.5 text-[11px] font-display">{t('Crear cuenta gratis', 'Sign up free')}</a>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--red)' }}>{t('ANÁLISIS DE COMPETIDORES', 'COMPETITOR ANALYSIS')}</p>
+          <h1 className="font-display font-bold text-4xl md:text-5xl mb-6 leading-tight">
+            {t('Analiza a tu competencia en', 'Analyze your competition on')}
+            <span style={{ color: 'var(--red)' }}> YouTube</span>
+          </h1>
+          <p className="text-zinc-400 text-lg max-w-2xl mx-auto mb-12 leading-relaxed">
+            {t(
+              'Descubre que hace crecer a otros canales. Analiza sus videos mas exitosos, frecuencia de subida, keywords principales y estrategias de crecimiento.',
+              'Discover what makes other channels grow. Analyze their most successful videos, upload frequency, main keywords and growth strategies.'
+            )}
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-5 mb-14 text-left">
+            {[
+              { icon: '📈', title: t('Métricas del canal', 'Channel metrics'), desc: t('Suscriptores, vistas totales, frecuencia de publicación y país', 'Subscribers, total views, upload frequency and country') },
+              { icon: '🏆', title: t('Top videos', 'Top videos'), desc: t('Los videos con mas vistas, likes y engagement de cualquier canal', 'The most viewed, liked and engaging videos from any channel') },
+              { icon: '🔑', title: t('Keywords y estrategia', 'Keywords & strategy'), desc: t('Las keywords que usa tu competencia para posicionar sus videos', 'The keywords your competition uses to rank their videos') },
+            ].map(f => (
+              <div key={f.title} className="soft-card p-5">
+                <div className="text-2xl mb-3">{f.icon}</div>
+                <h3 className="font-display font-bold text-sm mb-1">{f.title}</h3>
+                <p className="text-zinc-500 text-xs leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Mock URL input */}
+          <div className="max-w-xl mx-auto mb-8">
+            <div className="soft-card p-1.5 flex items-center gap-2" style={{ opacity: 0.6 }}>
+              <div className="flex-1 px-4 py-3 text-zinc-600 text-sm text-left">https://www.youtube.com/@MrBeast</div>
+              <div className="px-5 py-3 rounded-lg font-display font-bold text-sm" style={{ background: 'var(--red)', color: '#fff' }}>{t('Analizar', 'Analyze')}</div>
+            </div>
+          </div>
+
+          <a href="/signup" className="btn-offset inline-flex px-8 py-3 text-sm font-display">
+            {t('Empieza gratis →', 'Start free →')}
+          </a>
+          <p className="text-zinc-600 text-xs mt-4">{t('Sin tarjeta de crédito. 10 generaciones/mes gratis.', 'No credit card. 10 generations/month free.')}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
       {/* Header */}
-      <header className="border-b sticky top-0 z-40" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)' }}>
+      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/dashboard" className="flex items-center gap-2.5">
             <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
@@ -105,20 +166,25 @@ export default function CompetitorsPage() {
             <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
           </a>
           <div className="flex items-center gap-3">
+            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              {t('Panel', 'Dashboard')}
+            </a>
+            <a href="/generate" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+              {t('Generar', 'Generate')}
+            </a>
             <a href="/research" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               {t('Investigar', 'Research')}
             </a>
-            <a href="/generate" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
-              {t('Generar', 'Generate')}
-            </a>
             <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </a>
+            <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">{t('Salir', 'Sign out')}</button>
           </div>
         </div>
-      </header>
+      </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* Title */}

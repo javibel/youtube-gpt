@@ -155,19 +155,29 @@ export default function GeneratePage() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5">
+          <a href="/dashboard" className="flex items-center gap-2.5">
             <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
               <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
               <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
             </svg>
             <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
           </a>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="font-mono-jb text-[11px] font-semibold px-2.5 py-1 rounded-full border" style={{ borderColor: remainingDisplay > 3 ? 'rgba(255,255,255,0.12)' : 'rgba(232,77,91,0.4)', color: remainingDisplay > 3 ? '#a1a1aa' : '#e84d5b', background: remainingDisplay > 3 ? 'transparent' : 'rgba(232,77,91,0.08)' }}>
               {remainingDisplay} / {limit} {t('créditos', 'credits')}
             </span>
-            <a href="/research" className="soft-pill px-3 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 hover:text-white">{t('Investigar', 'Research')}</a>
-            <a href="/dashboard" className="soft-pill px-3 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase text-zinc-300 hover:text-white">{t('Panel', 'Dashboard')}</a>
+            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              {t('Panel', 'Dashboard')}
+            </a>
+            <a href="/research" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              {t('Investigar', 'Research')}
+            </a>
+            <a href="/competitors" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              {t('Competidores', 'Competitors')}
+            </a>
             <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </a>

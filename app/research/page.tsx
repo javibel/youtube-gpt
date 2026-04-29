@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { getLangClient } from '@/lib/get-lang-client';
-import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 
 type Lang = 'es' | 'en';
 
@@ -74,7 +74,6 @@ function ScoreRing({ score, color, label }: { score: number; color: string; labe
 
 function ResearchPageInner() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [lang, setLang] = useState<Lang>('es');
   const [keyword, setKeyword] = useState('');
@@ -86,9 +85,7 @@ function ResearchPageInner() {
 
   useEffect(() => { setLang(getLangClient()); }, []);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login');
-  }, [status, router]);
+  // No redirect — show public landing if unauthenticated
 
   useEffect(() => {
     const q = searchParams.get('q');
@@ -136,39 +133,104 @@ function ResearchPageInner() {
 
   if (status === 'loading') return null;
 
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+        <header className="border-b" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)' }}>
+          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <a href="/" className="flex items-center gap-2.5">
+              <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
+                <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+              </svg>
+              <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+            </a>
+            <div className="flex items-center gap-3">
+              <a href="/login" className="font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition">{t('Iniciar sesión', 'Sign in')}</a>
+              <a href="/signup" className="btn-offset px-4 py-1.5 text-[11px] font-display">{t('Crear cuenta gratis', 'Sign up free')}</a>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--red)' }}>KEYWORD RESEARCH</p>
+          <h1 className="font-display font-bold text-4xl md:text-5xl mb-6 leading-tight">
+            {t('Encuentra las keywords que', 'Find the keywords that')}
+            <span style={{ color: 'var(--red)' }}> {t('disparan tus vistas', 'skyrocket your views')}</span>
+          </h1>
+          <p className="text-zinc-400 text-lg max-w-2xl mx-auto mb-12 leading-relaxed">
+            {t(
+              'Analiza volumen de búsqueda, competencia y oportunidad de cualquier keyword en YouTube. Descubre los vídeos top y keywords relacionadas para posicionar tus vídeos.',
+              'Analyze search volume, competition and opportunity for any YouTube keyword. Discover top videos and related keywords to rank your videos.'
+            )}
+          </p>
+
+          {/* Feature highlights */}
+          <div className="grid md:grid-cols-3 gap-5 mb-14 text-left">
+            {[
+              { icon: '🔍', title: t('Análisis de competencia', 'Competition analysis'), desc: t('Score de competencia y oportunidad para cada keyword', 'Competition and opportunity score for each keyword') },
+              { icon: '📊', title: t('Vídeos top', 'Top videos'), desc: t('Los vídeos mejor posicionados con sus métricas reales', 'Top ranking videos with their real metrics') },
+              { icon: '💡', title: t('Keywords relacionadas', 'Related keywords'), desc: t('Descubre términos que tu audiencia también busca', 'Discover terms your audience also searches for') },
+            ].map(f => (
+              <div key={f.title} className="soft-card p-5">
+                <div className="text-2xl mb-3">{f.icon}</div>
+                <h3 className="font-display font-bold text-sm mb-1">{f.title}</h3>
+                <p className="text-zinc-500 text-xs leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Mock search bar */}
+          <div className="max-w-xl mx-auto mb-8">
+            <div className="soft-card p-1.5 flex items-center gap-2" style={{ opacity: 0.6 }}>
+              <div className="flex-1 px-4 py-3 text-zinc-600 text-sm text-left">{t('Ej: "como ganar dinero en YouTube"', 'E.g. "how to make money on YouTube"')}</div>
+              <div className="px-5 py-3 rounded-lg font-display font-bold text-sm" style={{ background: 'var(--red)', color: '#fff' }}>{t('Buscar', 'Search')}</div>
+            </div>
+          </div>
+
+          <a href="/signup" className="btn-offset inline-flex px-8 py-3 text-sm font-display">
+            {t('Empieza gratis →', 'Start free →')}
+          </a>
+          <p className="text-zinc-600 text-xs mt-4">{t('Sin tarjeta de crédito. 10 generaciones/mes gratis.', 'No credit card. 10 generations/month free.')}</p>
+        </div>
+      </div>
+    );
+  }
+
   const comp = result ? COMPETITION_CONFIG[result.competition] : null;
 
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
       {/* Header */}
-      <header className="border-b sticky top-0 z-40" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)' }}>
+      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <a href="/dashboard" className="flex items-center gap-2.5">
-              <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-                <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-              </svg>
-              <span className="font-display font-bold text-[16px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-            </a>
-            <nav className="hidden md:flex items-center gap-5">
-              <a href="/generate" className="font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition">{t('Generar', 'Generate')}</a>
-              <a href="/dashboard" className="font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition">{t('Dashboard', 'Dashboard')}</a>
-              <span className="font-mono-jb text-[11px] tracking-wider text-white border-b" style={{ borderColor: 'var(--red)' }}>
-                {t('Investigar', 'Research')}
-              </span>
-            </nav>
-          </div>
+          <a href="/dashboard" className="flex items-center gap-2.5">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
+              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+            </svg>
+            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+          </a>
           <div className="flex items-center gap-3">
-            <span className="font-mono-jb text-[10px] tracking-[0.2em] uppercase px-2 py-1 rounded" style={{ background: 'rgba(232,77,91,0.15)', color: 'var(--red)', border: '1px solid rgba(232,77,91,0.3)' }}>
-              BETA
-            </span>
+            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              {t('Panel', 'Dashboard')}
+            </a>
+            <a href="/generate" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+              {t('Generar', 'Generate')}
+            </a>
+            <a href="/competitors" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              {t('Competidores', 'Competitors')}
+            </a>
             <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </a>
+            <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">{t('Salir', 'Sign out')}</button>
           </div>
         </div>
-      </header>
+      </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-12">
 
