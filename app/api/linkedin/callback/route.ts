@@ -1,12 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const state = searchParams.get('state') ?? '';
 
   if (error || !code) {
     return NextResponse.json({ error: error ?? 'No code received' }, { status: 400 });
+  }
+
+  // Validate OAuth state to prevent CSRF
+  const expectedState = request.cookies.get('li_oauth_state')?.value ?? '';
+  if (!state || !expectedState || state !== expectedState) {
+    return NextResponse.json({ error: 'Invalid OAuth state' }, { status: 403 });
   }
 
   const clientId = process.env.LINKEDIN_CLIENT_ID!;

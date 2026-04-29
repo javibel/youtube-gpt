@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
@@ -6,8 +6,37 @@ import { randomBytes } from 'crypto';
 // 90 days token validity
 const TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Rate limit: max 5 attempts per IP per 15 minutes — atomic upsert in DB (cross-instance safe)
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
+      ?? request.headers.get('x-real-ip')
+      ?? 'unknown';
+    const rlKey = `ext-login:${ip}`;
+    const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
+      INSERT INTO rate_limits (key, hits, window_start)
+      VALUES (${rlKey}, 1, NOW())
+      ON CONFLICT (key) DO UPDATE
+      SET
+        hits = CASE
+          WHEN rate_limits.window_start < NOW() - INTERVAL '15 minutes'
+          THEN 1
+          ELSE rate_limits.hits + 1
+        END,
+        window_start = CASE
+          WHEN rate_limits.window_start < NOW() - INTERVAL '15 minutes'
+          THEN NOW()
+          ELSE rate_limits.window_start
+        END
+      RETURNING hits
+    `;
+    if (Number(rlResult[0].hits) > 5) {
+      return NextResponse.json(
+        { error: 'Demasiados intentos. Espera unos minutos.' },
+        { status: 429 }
+      );
+    }
+
     const { email, password } = await request.json();
 
     if (!email || !password) {

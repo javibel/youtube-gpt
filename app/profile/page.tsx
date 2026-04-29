@@ -56,8 +56,11 @@ export default function ProfilePage() {
       setPwdError(t('Las contraseñas no coinciden', 'Passwords do not match'));
       return;
     }
-    if (newPwd.length < 8) {
-      setPwdError(t('Mínimo 8 caracteres', 'At least 8 characters'));
+    if (newPwd.length < 10 || !/[a-z]/.test(newPwd) || !/[A-Z]/.test(newPwd) || !/[0-9]/.test(newPwd) || !/[^a-zA-Z0-9]/.test(newPwd)) {
+      setPwdError(t(
+        'Mínimo 10 caracteres, con mayúscula, minúscula, número y carácter especial',
+        'At least 10 characters, with uppercase, lowercase, number and special character'
+      ));
       return;
     }
     setPwdLoading(true);

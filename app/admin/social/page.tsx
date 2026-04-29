@@ -4,8 +4,6 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '';
-
 type SocialPost = {
   id: string; platform: string; content: string; status: string;
   publishedAt: string | null; createdAt: string; errorMsg: string | null; bufferId: string | null;
@@ -90,7 +88,7 @@ export default function SocialAdminPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
-    if (status === 'authenticated' && session?.user?.email !== ADMIN_EMAIL) { router.push('/dashboard'); return; }
+    if (status === 'authenticated' && !(session?.user as { isAdmin?: boolean })?.isAdmin) { router.push('/dashboard'); return; }
     if (status === 'authenticated') fetchData();
   }, [status, session, router, fetchData]);
 

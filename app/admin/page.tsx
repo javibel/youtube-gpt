@@ -4,8 +4,6 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '';
-
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos', description: 'Descripciones', caption: 'Captions',
   thumbnail: 'Thumbnails', script: 'Scripts',
@@ -82,7 +80,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
-    if (status === 'authenticated' && session?.user?.email !== ADMIN_EMAIL) { router.push('/dashboard'); return; }
+    if (status === 'authenticated' && !(session?.user as { isAdmin?: boolean })?.isAdmin) { router.push('/dashboard'); return; }
     if (status === 'authenticated') {
       fetch('/api/admin/stats')
         .then(r => r.json())
@@ -321,7 +319,7 @@ export default function AdminPage() {
                         {u.isPro
                           ? <span className="text-xs font-mono-jb font-bold px-2 py-0.5 rounded" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>PRO</span>
                           : <span className="text-xs font-mono-jb px-2 py-0.5 rounded" style={{ background: 'var(--ink-3)', color: 'var(--text-faint)' }}>Free</span>}
-                        {u.email !== ADMIN_EMAIL && (
+                        {u.email !== session?.user?.email && (
                           <button onClick={() => setConfirmDeleteId(u.id)}
                             className="text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
                             Eliminar
