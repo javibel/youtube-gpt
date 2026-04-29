@@ -952,6 +952,62 @@ function handleCopy(id: string, out: string) {
             </div>
           </div>
 
+          {/* Chrome Extension card */}
+          <div className="soft-card p-5">
+            <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-4 flex items-center gap-2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h3v3H7z"/><path d="M14 7h3"/><path d="M14 11h3"/><path d="M7 14h10"/><path d="M7 18h10"/></svg>
+              {t('EXTENSIÓN CHROME', 'CHROME EXTENSION')}
+            </p>
+            {isPro ? (
+              <div className="space-y-3">
+                <p className="text-zinc-400 text-xs leading-relaxed">
+                  {t(
+                    'Analiza canales, investiga keywords y genera títulos con IA directamente en YouTube, sin cambiar de pestaña.',
+                    'Analyze channels, research keywords and generate titles with AI directly on YouTube, without switching tabs.'
+                  )}
+                </p>
+                <div className="space-y-2">
+                  {[
+                    t('Keywords y competencia en cada búsqueda', 'Keywords & competition on every search'),
+                    t('Métricas de cualquier canal en un clic', 'Any channel metrics in one click'),
+                    t('5 títulos virales con IA al instante', '5 viral AI titles instantly'),
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[11px]">
+                      <span className="mt-0.5 shrink-0" style={{ color: 'var(--red)' }}>&#10003;</span>
+                      <span className="text-zinc-300">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <a
+                  href="https://chromewebstore.google.com/detail/ytubviral-para-youtube/gkjecjfhdmfbhhcemcjdkjkcdbljkcfh"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-offset w-full py-2.5 text-[11px] font-display flex items-center justify-center gap-2"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                  {t('Instalar extensión', 'Install extension')}
+                </a>
+                <p className="font-mono-jb text-[9px] text-zinc-600 text-center">{t('Gratis con tu plan Pro', 'Free with your Pro plan')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-zinc-500 text-xs leading-relaxed">
+                  {t(
+                    'Usa YTubViral directamente en YouTube: keywords, análisis de canales y títulos con IA sin cambiar de pestaña.',
+                    'Use YTubViral directly on YouTube: keywords, channel analysis and AI titles without switching tabs.'
+                  )}
+                </p>
+                <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}>
+                  <p className="font-mono-jb text-[10px] text-zinc-500 mb-2">{t('Función exclusiva Pro', 'Pro exclusive feature')}</p>
+                  <button onClick={() => handleUpgrade(billingPlan)}
+                    className="btn-offset px-4 py-1.5 text-[11px] font-display">
+                    {t('Activar Pro →', 'Activate Pro →')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Tip */}
           <div className="rounded-2xl border border-dashed border-white/15 p-5" style={{ background: '#0C0C0E' }}>
             <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yellow)' }}>★ {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
