@@ -31,7 +31,7 @@ export const GEAR_CATEGORIES: GearCategory[] = [
 
 // Amazon affiliate tag — replace with your real tag
 const TAG_ES = 'ytubviral-21';
-const TAG_EN = 'ytubviral-20';
+const TAG_EN = 'ytubviral0b-21';
 
 export const GEAR_ITEMS: GearItem[] = [
   // ── Cameras ──────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B0BHKL2BRM',
-      en: 'https://www.amazon.com/dp/B0BHKL2BRM',
+      en: 'https://www.amazon.co.uk/dp/B0BHKL2BRM',
     },
   },
   {
@@ -65,7 +65,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B0D79H2Q3Y',
-      en: 'https://www.amazon.com/dp/B0D79H2Q3Y',
+      en: 'https://www.amazon.co.uk/dp/B0D79H2Q3Y',
     },
   },
   {
@@ -82,7 +82,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B09JZT6YK5',
-      en: 'https://www.amazon.com/dp/B09JZT6YK5',
+      en: 'https://www.amazon.co.uk/dp/B09JZT6YK5',
     },
   },
 
@@ -101,7 +101,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B084P1CXFD',
-      en: 'https://www.amazon.com/dp/B084P1CXFD',
+      en: 'https://www.amazon.co.uk/dp/B084P1CXFD',
     },
   },
   {
@@ -117,7 +117,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B0BJ4Q3514',
-      en: 'https://www.amazon.com/dp/B0BJ4Q3514',
+      en: 'https://www.amazon.co.uk/dp/B0BJ4Q3514',
     },
   },
   {
@@ -133,7 +133,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B0CXLHKL3Q',
-      en: 'https://www.amazon.com/dp/B0CXLHKL3Q',
+      en: 'https://www.amazon.co.uk/dp/B0CXLHKL3Q',
     },
   },
 
@@ -152,7 +152,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B07T8FBZC2',
-      en: 'https://www.amazon.com/dp/B07T8FBZC2',
+      en: 'https://www.amazon.co.uk/dp/B07T8FBZC2',
     },
   },
   {
@@ -168,7 +168,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B07L755X9G',
-      en: 'https://www.amazon.com/dp/B07L755X9G',
+      en: 'https://www.amazon.co.uk/dp/B07L755X9G',
     },
   },
 
@@ -186,7 +186,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B0743Z892W',
-      en: 'https://www.amazon.com/dp/B0743Z892W',
+      en: 'https://www.amazon.co.uk/dp/B0743Z892W',
     },
   },
   {
@@ -203,7 +203,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B08ZH2SNG8',
-      en: 'https://www.amazon.com/dp/B08ZH2SNG8',
+      en: 'https://www.amazon.co.uk/dp/B08ZH2SNG8',
     },
   },
   {
@@ -219,7 +219,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B0874XN4D8',
-      en: 'https://www.amazon.com/dp/B0874XN4D8',
+      en: 'https://www.amazon.co.uk/dp/B0874XN4D8',
     },
   },
   {
@@ -235,7 +235,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B00D76RNLS',
-      en: 'https://www.amazon.com/dp/B00D76RNLS',
+      en: 'https://www.amazon.co.uk/dp/B00D76RNLS',
     },
   },
 
@@ -254,7 +254,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B0016MNAAI',
-      en: 'https://www.amazon.com/dp/B0016MNAAI',
+      en: 'https://www.amazon.co.uk/dp/B0016MNAAI',
     },
   },
   {
@@ -270,7 +270,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B07QR6Z1JB',
-      en: 'https://www.amazon.com/dp/B07QR6Z1JB',
+      en: 'https://www.amazon.co.uk/dp/B07QR6Z1JB',
     },
   },
 
@@ -288,7 +288,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B08LDFNFWJ',
-      en: 'https://www.amazon.com/dp/B08LDFNFWJ',
+      en: 'https://www.amazon.co.uk/dp/B08LDFNFWJ',
     },
   },
   {
@@ -305,7 +305,7 @@ export const GEAR_ITEMS: GearItem[] = [
     amazonTag: TAG_ES,
     amazonUrl: {
       es: 'https://www.amazon.es/dp/B09738CJVN',
-      en: 'https://www.amazon.com/dp/B09738CJVN',
+      en: 'https://www.amazon.co.uk/dp/B09738CJVN',
     },
   },
 ];
