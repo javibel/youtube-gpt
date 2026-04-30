@@ -24,7 +24,11 @@ export async function GET() {
     client_id: process.env.GOOGLE_CLIENT_ID!.trim(),
     redirect_uri: `${process.env.NEXTAUTH_URL!.trim()}/api/youtube/callback`,
     response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/youtube.readonly',
+    scope: [
+      'https://www.googleapis.com/auth/youtube.readonly',
+      'https://www.googleapis.com/auth/yt-analytics.readonly',
+      'https://www.googleapis.com/auth/yt-analytics-monetary.readonly',
+    ].join(' '),
     access_type: 'offline',
     prompt: 'consent',
     state: nonce,
