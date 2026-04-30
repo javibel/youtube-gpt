@@ -96,6 +96,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'We analyzed 12,480 videos with 500K+ views to distill the title patterns the algorithm prioritizes this year. Spoiler: specific numbers still win.',
     },
   },
+  {
+    slug: 'cuanto-gana-un-youtuber-en-espana',
+    cat: 'marketing',
+    readMin: 14,
+    date: { es: '30 Abr 2026', en: 'Apr 30, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/cuanto-gana-youtuber-espana.png',
+    title: {
+      es: 'Cuánto Gana Realmente un YouTuber en España (y Por Qué Nadie Te Cuenta la Verdad)',
+      en: 'How Much Does a YouTuber Really Earn in Spain (And Why Nobody Tells the Truth)',
+    },
+    excerpt: {
+      es: 'CPMs reales por nicho, impuestos de autónomos, el Valle de la Muerte entre los 100 y los 10.000 suscriptores, y por qué YouTube no es un billete de lotería sino un negocio de márgenes estrechos. Sin edulcorar.',
+      en: 'Real CPMs by niche, freelancer taxes, the Valley of Death between 100 and 10,000 subscribers, and why YouTube isn\'t a lottery ticket but a thin-margin business. No sugar-coating.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -372,6 +388,140 @@ const ART_7_FRAMEWORKS_ES: BlockType[] = [
   { type: 'callout-final', t: 'Genera títulos virales con IA', sub: 'Plantillas optimizadas, score de viralidad y análisis de framework. En 6 segundos.', cta: 'Prueba gratis — Sin tarjeta' },
 ];
 
+const ART_CUANTO_GANA_YOUTUBER: BlockType[] = [
+  { type: 'p', t: 'Voy a ser directo: si estás leyendo esto esperando que te diga que puedes hacerte rico subiendo vídeos a YouTube, este artículo te va a decepcionar. Pero si quieres entender de verdad cómo funciona el dinero en YouTube España en 2026 — con números reales, no los de los vídeos de "gané 50.000€ en un mes" — entonces quédate.' },
+  { type: 'p', t: 'Llevo años trabajando con creadores de contenido y hay una cosa que me frustra profundamente: la cantidad de desinformación que circula sobre cuánto se gana en YouTube. Se habla de facturación bruta como si fuera beneficio neto. Se omiten los impuestos. Se ignora que el 90% de los canales abandonan antes de cobrar su primer cheque de 100€. Y sobre todo, nadie te cuenta lo que pasa entre el mes 1 y el mes 18.' },
+
+  { type: 'h2', t: 'Lo primero: CPM y RPM no son lo mismo (y la diferencia importa mucho)' },
+  { type: 'p', t: 'Cuando alguien dice "YouTube paga X por cada mil visitas", casi siempre está mezclando dos métricas que significan cosas muy distintas.' },
+  { type: 'p', t: 'El CPM (Coste por Mil impresiones) es lo que paga el anunciante. El RPM (Ingreso por Mil reproducciones) es lo que te llega a ti después de que YouTube se quede su parte y se descuenten las visualizaciones que no mostraron anuncios. La diferencia es brutal.' },
+  { type: 'p', t: 'YouTube retiene el 45% de los ingresos publicitarios en vídeos largos. En Shorts, el reparto es todavía peor para el creador. Si tu estrategia es vivir solo de Shorts, los números no cuadran en España.' },
+
+  { type: 'h2', t: 'No todas las visitas valen lo mismo: el mapa de RPMs en España' },
+  { type: 'p', t: 'Esto es algo que descubres cuando empiezas a mirar tus analytics de verdad: un vídeo de finanzas con 50.000 visitas puede generar más dinero que un vídeo de gaming con 2 millones. ¿Por qué? Porque los anunciantes pagan según el valor del espectador, no según la cantidad.' },
+  { type: 'p', t: 'Un banco que quiere captar un cliente con 50.000€ para invertir pagará mucho más por aparecer en un vídeo de inversiones que una marca de snacks por aparecer en un canal de reacciones. Así de simple.' },
+  { type: 'p', t: 'Estos son los RPMs reales que se manejan en el mercado español en 2025-2026:' },
+  { type: 'list', items: [
+    'Finanzas e inversiones: 6€ – 30€ RPM — los bancos, brókers y fintechs pagan primas altísimas',
+    'Negocios y emprendimiento: 5€ – 15€ RPM — SaaS, marketing digital, e-commerce',
+    'Tecnología y software: 4€ – 12€ RPM — hardware, IA, gadgets',
+    'Salud y fitness: 2,50€ – 8€ RPM — suplementación, equipamiento',
+    'Educación y tutoriales: 2€ – 6€ RPM — formación online, idiomas',
+    'Motor y estilo de vida: 1,50€ – 4€ RPM — automoción, moda',
+    'Gaming y reacciones: 0,50€ – 2,50€ RPM — videojuegos, bebidas energéticas',
+    'Entretenimiento general: 0,30€ – 1,80€ RPM — consumo masivo, cine',
+  ]},
+  { type: 'p', t: 'Lee esa lista otra vez. Un creador de finanzas puede ganar lo mismo con 100.000 visitas que un creador de gaming con 2.000.000. Esto subvierte completamente la idea de que el éxito en YouTube se mide por suscriptores o visualizaciones. En términos contables, lo que importa es quién te ve, no cuántos te ven.' },
+
+  { type: 'h2', t: 'La trampa de la audiencia latinoamericana' },
+  { type: 'p', t: 'Hay algo que muy pocos creadores españoles entienden hasta que les pasa: si tu contenido se vuelve viral en Latinoamérica, tus ingresos por publicidad caen por un precipicio.' },
+  { type: 'p', t: 'No es discriminación ni conspiración. Es economía básica. Los presupuestos publicitarios en México, Argentina o Colombia son una fracción de los españoles, que a su vez son una fracción de los estadounidenses. El mismo vídeo, con las mismas visitas, genera ingresos radicalmente distintos según desde dónde se ve:' },
+  { type: 'list', items: [
+    'Estados Unidos: 15€ – 20€ CPM bruto',
+    'Australia / Suiza: 13€ – 16€',
+    'España: 6€ – 14€',
+    'México: 1€ – 2,50€',
+    'Argentina / Colombia: 0,40€ – 1,20€',
+  ]},
+  { type: 'p', t: 'Conozco creadores españoles con millones de suscriptores que facturan menos por AdSense que profesionales con audiencias de 50.000 personas pero 100% españolas. Si tu contenido es en español, tienes que asumir que una parte significativa de tu audiencia vendrá de países con CPMs bajos. Tu estrategia de crecimiento debe equilibrar alcance masivo con retención de audiencia de alto valor.' },
+
+  { type: 'h2', t: 'AdSense no da para vivir (a menos que seas enorme)' },
+  { type: 'p', t: 'Vamos a hacer cuentas reales. Supongamos que eres un creador de tecnología en España con un RPM de 6€ (que es bastante decente). Para ganar 2.000€ brutos al mes por AdSense necesitarías unas 333.000 visualizaciones mensuales. Cada mes. Sin fallar.' },
+  { type: 'p', t: 'Y esos 2.000€ son brutos. Después vienen los impuestos, la cuota de autónomos, el software, la gestoría... Pero llegaremos a eso.' },
+  { type: 'p', t: 'La realidad contable de 2025-2026 es clara: los ingresos de AdSense solos son insuficientes para sostener una actividad profesional en España, a menos que muevas volúmenes de tráfico extraordinarios. Los creadores que realmente viven de esto han convertido sus canales en plataformas de marketing multicanal donde la publicidad es solo una fracción del total.' },
+
+  { type: 'h2', t: 'Donde está el dinero de verdad: patrocinios' },
+  { type: 'p', t: 'Los patrocinios representan entre el 60% y el 80% de los ingresos netos de un creador consolidado en España. Las marcas han profesionalizado sus departamentos de marketing de influencers: ya no pagan por seguidores, pagan por resultados medibles.' },
+  { type: 'p', t: 'Estas son las tarifas que se mueven en el mercado español en 2026:' },
+  { type: 'list', items: [
+    'Nano-creador (1K – 10K subs): 50€ – 300€ por integración — suele ser intercambio de producto o pago simbólico',
+    'Micro-influencer (10K – 100K): 500€ – 4.000€ — tarifa plana + comisión por ventas',
+    'Nivel medio (100K – 500K): 4.000€ – 15.000€ — CPM pactado o fee fijo',
+    'Macro-influencer (500K – 1M): 15.000€ – 30.000€ — campañas integrales',
+    'Mega-influencer (>1M): >30.000€ — contratos de embajador anuales',
+  ]},
+  { type: 'p', t: 'Los creadores en nichos premium (finanzas, tecnología profesional) pueden pedir entre un 20% y un 50% más porque su audiencia convierte mejor. Una mención en un canal de inversiones puede generar cientos de clientes de alto valor para una fintech. Eso se paga.' },
+
+  { type: 'h2', t: 'Afiliación y productos propios: el pilar que nadie menciona' },
+  { type: 'p', t: 'El marketing de afiliación — links de Amazon, plataformas de software, servicios financieros — genera ingresos que no dependen de publicar vídeos constantemente. Para muchos canales de tecnología o cocina, es el colchón que amortigua los meses malos.' },
+  { type: 'p', t: 'Pero la tendencia real en 2026 es la creación de productos propios. Eliminar al intermediario:' },
+  { type: 'list', items: [
+    'Cursos y membresías: especialmente comunes en educación y fitness',
+    'Software y herramientas: extensiones, apps de productividad, recursos descargables',
+    'Comunidades de pago: grupos de Telegram o Discord con acceso exclusivo',
+  ]},
+  { type: 'p', t: 'Un curso de 49€ vendido a 200 alumnos son 9.800€ en una semana. Sin intermediarios, sin algoritmo, sin que YouTube se quede nada. Por eso los creadores más listos construyen productos, no solo contenido.' },
+
+  { type: 'callout-mid', t: 'YTubViral te ayuda a crecer más rápido', sub: 'Genera títulos, descripciones SEO y scripts para tus vídeos con IA. Gratis.', cta: 'Prueba YTubViral gratis' },
+
+  { type: 'h2', t: 'El Valle de la Muerte: de 0 a 10.000 suscriptores' },
+  { type: 'p', t: 'Y aquí viene la parte que la industria del "yo lo logré y tú también puedes" se esfuerza en esconder.' },
+  { type: 'p', t: 'Existe una etapa donde trabajas a tiempo completo con ingresos literalmente de cero. En España, alcanzar los requisitos de monetización — 1.000 suscriptores y 4.000 horas de visualización — requiere una media de 6 a 18 meses de actividad ininterrumpida. Durante ese tiempo, tú pagas todo: equipo, software, cuota de autónomos (si ya te has dado de alta) y tu propia vida. YouTube no te da nada.' },
+  { type: 'p', t: 'Y lo peor no es eso. Lo peor es el estancamiento algorítmico.' },
+  { type: 'p', t: 'Muchos canales captan suscriptores a través de un vídeo viral o de Shorts que nunca más interactúan con el contenido regular. Estos "suscriptores fantasma" dañan tu CTR y tu retención, enviando señales negativas al algoritmo. Es una espiral descendente: menos alcance → menos motivación → menos constancia → abandono.' },
+  { type: 'p', t: 'El 90% de los canales abandonan antes de cobrar su primer pago de 100€. No es una estadística inventada para dramatizar. Es la realidad del Valle de la Muerte.' },
+
+  { type: 'h2', t: 'La bofetada fiscal: autónomos, IRPF y lo que Hacienda se lleva' },
+  { type: 'p', t: 'Ser YouTuber en España no es solo una actividad creativa. Es una actividad empresarial sujeta a uno de los marcos fiscales más estrictos de la Unión Europea. Y la falta de planificación aquí es la principal causa de ruina de creadores emergentes.' },
+
+  { type: 'h3', t: 'Cuota de autónomos: ya no hay cuota mínima fija' },
+  { type: 'p', t: 'Desde 2025, la cuota de autónomos se calcula en función de tus beneficios netos reales. Se acabó lo de pagar 80€/mes de tarifa plana mientras facturas 5.000€:' },
+  { type: 'list', items: [
+    'Beneficio neto < 670€/mes: 200€/mes de cuota',
+    '1.166€ – 1.300€/mes: ~292€/mes',
+    '1.850€ – 2.030€/mes: ~373€/mes',
+    '3.621€ – 4.050€/mes: ~496€/mes',
+    '> 6.000€/mes: ~597€/mes',
+  ]},
+
+  { type: 'h3', t: 'IRPF: el impuesto que más duele' },
+  { type: 'p', t: 'El IRPF es progresivo. Suena justo hasta que ves los tramos. Con un beneficio anual de 50.000€ (que parece mucho pero no lo es tanto cuando eres autónomo), la liquidación se estructura así: los primeros 12.450€ al 19%, los siguientes 7.750€ al 24%, los siguientes 15.000€ al 30%, y el resto al 37%.' },
+  { type: 'p', t: 'Resultado: unos 14.200€ de IRPF. Tipo efectivo del 28-30%. Y eso antes de variaciones autonómicas — en algunas comunidades como Cataluña o Andalucía, los tramos autonómicos elevan la cifra para rentas altas.' },
+
+  { type: 'h3', t: 'Lo que Hacienda te deja deducir (y lo que no)' },
+  { type: 'list', items: [
+    'Deducible al 100%: equipo de grabación, software de edición, gestoría, licencias de música, publicidad',
+    'Deducible con limitaciones: suministros del hogar (hasta 30% de la parte proporcional si trabajas desde casa), seguros de salud (hasta 500€/año)',
+    'Prácticamente no deducible: vehículo (a menos que demuestres uso 100% profesional), viajes que mezclen ocio y trabajo',
+  ]},
+
+  { type: 'h2', t: 'El coste real de la profesionalidad' },
+  { type: 'p', t: 'La calidad técnica mínima para competir en 2026 ha subido exponencialmente. Un canal que quiera captar marcas premium necesita una inversión base:' },
+  { type: 'list', items: [
+    'Cámara y ópticas (Sony ZV-E10, Canon R7 o similar): 700€ – 1.800€',
+    'Audio (micro de condensador e interfaz): 150€ – 400€',
+    'Iluminación (LED + softboxes): 200€ – 600€',
+    'Adobe Creative Cloud: 25€ – 50€/mes',
+    'Música y SFX (Epidemic Sound, Artlist): 10€ – 35€/mes',
+    'Gestoría: 60€ – 150€/mes',
+    'Cuota de autónomos: 200€ – 400€/mes',
+  ]},
+  { type: 'p', t: 'Suma esas cifras. Un creador medio en España necesita facturar al menos 1.500€ mensuales solo para cubrir gastos operativos, seguridad social e impuestos básicos. Antes de tener un solo euro de sueldo.' },
+
+  { type: 'h2', t: 'La opción Andorra: ya no es lo que era' },
+  { type: 'p', t: 'Muchos creadores que superan los 100.000€ de facturación anual consideran mudarse a Andorra para pagar menos impuestos. Pero desde abril de 2025, el principado ha endurecido radicalmente los requisitos:' },
+  { type: 'list', items: [
+    'Inversión en vivienda: el depósito mínimo ha alcanzado en algunos supuestos el millón de euros',
+    'Depósitos no reembolsables: 50.000€ en la Autoridad Financiera Andorrana como garantía',
+    'Control de presencia: España ha intensificado la vigilancia sobre residencias simuladas — tienes que vivir allí de verdad más de 183 días al año',
+  ]},
+  { type: 'p', t: 'Andorra ha dejado de ser una solución accesible. Es una opción para los que facturan cifras muy altas y están dispuestos a mudarse de verdad, no para el creador medio que busca ahorrarse unos miles de euros al año.' },
+
+  { type: 'h2', t: 'La "Cuesta de Enero" y la estacionalidad del dinero' },
+  { type: 'p', t: 'Algo que nadie te avisa cuando empiezas: los ingresos de YouTube son brutalmente estacionales.' },
+  { type: 'p', t: 'Diciembre suele ser el mejor mes del año. Las marcas gastan los presupuestos de Q4, el Black Friday dispara los CPMs, y todo el mundo compra. Pero el 1 de enero se cae todo. Los presupuestos se resetean, el consumo baja, y las subastas de anuncios se vacían.' },
+  { type: 'p', t: 'Es perfectamente normal ganar en enero un 50% menos que en diciembre con las mismas visualizaciones. Si no tienes contratos de patrocinio anuales que garanticen flujo constante, enero y febrero pueden ser meses de auténtica sequía.' },
+
+  { type: 'h2', t: 'Entonces, ¿cuánto gana realmente un YouTuber en España?' },
+  { type: 'p', t: 'La respuesta honesta es: depende de si actúas como creador o como empresario.' },
+  { type: 'p', t: 'Un creador que solo confía en las visitas de YouTube está jugando a una lotería con muy pocas papeletas ganadoras. Un creador que profesionaliza su gestión, entiende sus métricas por nicho, diversifica con productos propios y optimiza sus impuestos puede construir algo realmente rentable.' },
+  { type: 'p', t: 'La industria española en 2026 va hacia una polarización clara: canales de alta calidad técnica y especialización económica, frente a una masa de creadores de entretenimiento que luchan por sobrevivir con CPMs decrecientes y costes operativos crecientes.' },
+  { type: 'p', t: 'La verdad que nadie te cuenta es que YouTube no es un billete de lotería. Es un negocio de márgenes estrechos donde la creatividad es el 20% del éxito. El otro 80% es contabilidad, estrategia fiscal y gestión comercial.' },
+  { type: 'p', t: 'Y no hay nada de malo en eso. De hecho, es una buena noticia: significa que si haces las cosas bien, el éxito no depende de la suerte ni del algoritmo. Depende de ti.' },
+
+  { type: 'callout-final', t: 'Optimiza tu canal con datos, no con suerte', sub: 'YTubViral analiza tu nicho, genera contenido optimizado y te ayuda a crecer con estrategia. Gratis para empezar.', cta: 'Empieza gratis — Sin tarjeta' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -388,6 +538,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   '7-frameworks-titulos-virales-youtube': {
     es: ART_7_FRAMEWORKS_ES,
     en: ART_7_FRAMEWORKS_ES,
+  },
+  'cuanto-gana-un-youtuber-en-espana': {
+    es: ART_CUANTO_GANA_YOUTUBER,
+    en: ART_CUANTO_GANA_YOUTUBER,
   },
 };
 
