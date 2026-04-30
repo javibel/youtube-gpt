@@ -5,7 +5,7 @@ export type Lang = 'es' | 'en';
 
 export interface BlogPost {
   slug: string;
-  cat: 'ai' | 'youtube' | 'marketing' | 'tutorials';
+  cat: 'ai' | 'youtube' | 'marketing' | 'tutorials' | 'gear';
   readMin: number;
   date: { es: string; en: string };
   author: { name: string; role: { es: string; en: string }; avatar: string };
@@ -21,13 +21,15 @@ export type BlockType =
   | { type: 'list'; items: string[] }
   | { type: 'callout'; t: string }
   | { type: 'callout-mid'; t: string; sub: string; cta: string }
-  | { type: 'callout-final'; t: string; sub: string; cta: string };
+  | { type: 'callout-final'; t: string; sub: string; cta: string }
+  | { type: 'callout-gear'; t: string; sub: string; cta: string };
 
 export const BLOG_CATEGORIES = {
   ai:        { color: '#00E5FF', name: { es: 'IA',          en: 'AI' } },
   youtube:   { color: '#FF0033', name: { es: 'YouTube',     en: 'YouTube' } },
   marketing: { color: '#FF00AA', name: { es: 'Marketing',   en: 'Marketing' } },
   tutorials: { color: '#7CFF00', name: { es: 'Tutoriales',  en: 'Tutorials' } },
+  gear:      { color: '#FF8A00', name: { es: 'Equipamiento', en: 'Gear' } },
 } as const;
 
 export const BLOG_POSTS: BlogPost[] = [
@@ -38,7 +40,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 8,
     date: { es: '15 Oct 2025', en: 'Oct 15, 2025' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
-    image: '/blog/herramientas-ia-youtubers.png',
+    image: '/blog/herramientas-ia-youtubers.webp',
     title: {
       es: '10 Herramientas de IA para YouTubers en 2026 (Gratis y de Pago)',
       en: '10 AI Tools for YouTubers in 2026 (Free and Paid)',
@@ -54,7 +56,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 7,
     date: { es: '22 Nov 2025', en: 'Nov 22, 2025' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
-    image: '/blog/titulos-virales-youtube.png',
+    image: '/blog/titulos-virales-youtube.webp',
     title: {
       es: 'Cómo Escribir Títulos Virales para YouTube en 2026 (Guía Completa)',
       en: 'How to Write Viral YouTube Titles in 2026 (Complete Guide)',
@@ -70,7 +72,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 9,
     date: { es: '8 Ene 2026', en: 'Jan 8, 2026' },
     author: { name: 'Lucía Vega', role: { es: 'Especialista en contenido', en: 'Content specialist' }, avatar: 'LV' },
-    image: '/blog/descripciones-seo-youtube.png',
+    image: '/blog/descripciones-seo-youtube.webp',
     title: {
       es: 'Descripciones SEO para YouTube: La Guía Definitiva 2026',
       en: 'SEO Descriptions for YouTube: The Definitive Guide 2026',
@@ -86,7 +88,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 9,
     date: { es: '14 Mar 2026', en: 'Mar 14, 2026' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
-    image: '/blog/frameworks-titulos-virales.png',
+    image: '/blog/frameworks-titulos-virales.webp',
     title: {
       es: '7 frameworks para títulos virales que YouTube premia en 2026',
       en: '7 viral title frameworks YouTube rewards in 2026',
@@ -102,7 +104,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 14,
     date: { es: '30 Abr 2026', en: 'Apr 30, 2026' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
-    image: '/blog/cuanto-gana-youtuber-espana.png',
+    image: '/blog/cuanto-gana-youtuber-espana.webp',
     title: {
       es: 'Cuánto Gana Realmente un YouTuber en España (y Por Qué Nadie Te Cuenta la Verdad)',
       en: 'How Much Does a YouTuber Really Earn in Spain (And Why Nobody Tells the Truth)',
@@ -112,10 +114,203 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'Real CPMs by niche, freelancer taxes, the Valley of Death between 100 and 10,000 subscribers, and why YouTube isn\'t a lottery ticket but a thin-margin business. No sugar-coating.',
     },
   },
+  {
+    slug: 'setup-youtube-menos-500-euros',
+    cat: 'gear',
+    readMin: 11,
+    date: { es: '1 May 2026', en: 'May 1, 2026' },
+    author: { name: 'Marcos Ruiz', role: { es: 'Editor técnico, YTubViral', en: 'Technical Editor, YTubViral' }, avatar: 'MR' },
+    title: {
+      es: 'Tu Primer Setup de YouTube por Menos de 500€ (Guía de Compra 2026)',
+      en: 'Your First YouTube Setup for Under €500 (2026 Buying Guide)',
+    },
+    excerpt: {
+      es: 'No necesitas gastar miles de euros para empezar en YouTube con calidad profesional. Te monto un setup completo — cámara, micrófono, iluminación y accesorios — por menos de 500€, pieza a pieza.',
+      en: 'You don\'t need to spend thousands to start YouTube with professional quality. I\'ll build you a complete setup — camera, mic, lighting and accessories — for under €500, piece by piece.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
 // Add full body for each slug. English version shares Spanish content until translated.
+
+const ART_SETUP_500_ES: BlockType[] = [
+  { type: 'p', t: 'Uno de los errores más comunes al empezar en YouTube es pensar que necesitas el mejor equipo del mercado. No es verdad. Los mejores creadores del mundo empezaron con lo que tenían — y muchos de ellos hoy siguen usando equipo que cuesta menos de lo que imaginas.' },
+  { type: 'p', t: 'En esta guía te voy a montar un setup completo de grabación por menos de 500€. No es un setup de compromiso: es un kit que te dará calidad profesional real, suficiente para que nadie pueda distinguir tus vídeos de un canal con millones de suscriptores.' },
+
+  { type: 'h2', t: 'La Regla de Oro: Audio > Vídeo > Iluminación' },
+  { type: 'p', t: 'Antes de desglosar el presupuesto, hay un principio que todo creador debe entender: el audio es más importante que el vídeo. Un espectador perdona una imagen mediocre, pero abandona un vídeo con mal sonido en 5 segundos. El orden de prioridad siempre es audio primero, vídeo segundo, iluminación tercero.' },
+  { type: 'p', t: 'Con 500€ vamos a cubrir los tres con margen, y además te sobrará para los accesorios esenciales.' },
+
+  { type: 'h2', t: 'Micrófono: Samson Q2U (~65€)' },
+  { type: 'p', t: 'El Samson Q2U es el micrófono más recomendado para empezar en 2026, y lo digo sin titubear. Es dinámico (rechaza el ruido de la habitación), tiene conexión USB y XLR (empiezas con USB, y el día que compres una interfaz de audio ya tienes el cable XLR incluido), y suena sorprendentemente bien para su precio.' },
+  { type: 'list', items: [
+    'Dinámico: no necesitas tratar acústicamente tu habitación',
+    'USB + XLR: doble conexión para crecer sin cambiar de micro',
+    'Incluye trípode de mesa, cable USB, cable XLR y paravientos',
+    'Patrón cardioide: graba lo que está delante, rechaza lo de atrás',
+  ]},
+  { type: 'p', t: 'Lo uso personalmente como micro de backup y cada vez que lo enchufo me sigue sorprendiendo. Por 65€ es imbatible.' },
+
+  { type: 'h2', t: 'Cámara: Tu Smartphone (0€) o DJI Osmo Pocket 3 (~430€)' },
+  { type: 'p', t: 'Aquí hay dos caminos. Si tienes un smartphone de gama media-alta de los últimos 2-3 años, ya tienes una cámara que graba en 4K. No necesitas comprar nada más. MKBHD grabó algunos de sus primeros vídeos con un móvil. Casey Neistat usó un Canon T3i que hoy es peor que cualquier iPhone.' },
+  { type: 'p', t: 'Si quieres dar el salto y dispones del presupuesto, el DJI Osmo Pocket 3 es la revelación de los últimos dos años. Gimbal estabilizado de 3 ejes, sensor de 1 pulgada, 4K/120fps, pantalla táctil giratoria de 2 pulgadas. Cabe en un bolsillo y graba como una cámara de 1000€. Para vlogs y contenido en movimiento, no hay nada que se le acerque por ese precio.' },
+  { type: 'p', t: 'En esta guía asumo que usas tu smartphone para mantener el presupuesto bajo 500€. Si ya tienes resuelto lo demás y quieres invertir en cámara, el DJI Osmo Pocket 3 está en nuestra guía de equipo recomendado.' },
+
+  { type: 'callout-gear', t: 'Todas las cámaras recomendadas para 2026', sub: 'Desde principiante hasta profesional, con precios y comparativa.', cta: 'Ver equipo recomendado' },
+
+  { type: 'h2', t: 'Iluminación: Neewer 660 LED Panel x2 (~90€)' },
+  { type: 'p', t: 'La iluminación es lo que separa un vídeo amateur de uno profesional. Puedes tener la mejor cámara del mundo, pero si tu cara está a contraluz o con sombras duras, tu vídeo se verá barato.' },
+  { type: 'p', t: 'El kit de dos paneles Neewer 660 es el estándar para empezar: bicolor (3200-5600K para ajustar a la luz de tu habitación), CRI 96+ (reproduce colores fielmente), y viene con trípodes incluidos. Coloca uno a cada lado a 45 grados y tendrás una iluminación de estudio profesional por menos de 100€.' },
+  { type: 'list', items: [
+    'Kit de 2 paneles: iluminación key + fill con una sola compra',
+    'Bicolor ajustable: adapta la temperatura a tu entorno',
+    'CRI 96+: colores naturales en cámara',
+    'Trípodes de 190cm incluidos',
+    'Cada panel funciona con adaptador AC o baterías NP-F (opcionales)',
+  ]},
+
+  { type: 'h2', t: 'Trípode: Manfrotto PIXI (~30€)' },
+  { type: 'p', t: 'Si grabas en escritorio (tutoriales, gaming, cámara frontal), el Manfrotto PIXI es perfecto: mini trípode de mesa, se abre con una mano, soporta una mirrorless sin problema. Si grabas de pie, cualquier trípode de 25€ de Amazon te servirá para empezar — no necesitas un Manfrotto de 200€ hasta que estés ganando dinero.' },
+
+  { type: 'h2', t: 'Accesorios Imprescindibles (~45€)' },
+  { type: 'p', t: 'Hay pequeños extras que marcan una diferencia enorme en tu flujo de trabajo:' },
+  { type: 'list', items: [
+    'Tarjeta microSD de 128GB (~15€): Para el Osmo Pocket o como almacenamiento extra',
+    'Cable USB-C largo de 3m (~10€): Para conectar el micro al PC sin que se quede corto',
+    'Gaffer tape negro (~8€): Para fijar cables y que tu setup se vea limpio',
+    'Fondo liso (~12€): Una tela negra o gris de 2x3m transforma cualquier pared',
+  ]},
+
+  { type: 'h2', t: 'El Presupuesto Total' },
+  { type: 'p', t: 'Desglosemos el setup completo:' },
+  { type: 'list', items: [
+    'Micrófono: Samson Q2U — ~65€',
+    'Cámara: tu smartphone — 0€',
+    'Iluminación: Neewer 660 x2 — ~90€',
+    'Trípode: Manfrotto PIXI — ~30€',
+    'Accesorios varios — ~45€',
+    'TOTAL: ~230€',
+  ]},
+  { type: 'p', t: 'Sí, has leído bien. Puedes tener un setup profesional completo por 230€. Te sobran 270€ para invertir en formación, software de edición (DaVinci Resolve es gratis y profesional), o para ahorrar hasta que puedas dar el salto a una cámara dedicada como la Sony ZV-E10 II.' },
+
+  { type: 'callout-gear', t: 'Todo el equipo mencionado con enlaces directos', sub: 'Cámaras, micrófonos, luces y accesorios — recomendaciones por nivel y presupuesto.', cta: 'Ver guía completa de equipo' },
+
+  { type: 'h2', t: 'Cuándo (y Cuándo NO) Hacer Upgrade' },
+  { type: 'p', t: 'Esto es importante: no compres equipo nuevo hasta que el equipo actual sea el cuello de botella real. Si tienes 50 suscriptores, tu problema no es la cámara — es el contenido, la consistencia y la estrategia SEO. He visto canales con 500K suscriptores grabando con un iPhone y un Samson Q2U.' },
+  { type: 'p', t: 'Haz upgrade cuando:' },
+  { type: 'list', items: [
+    'Tu audio tiene problemas que no puedes resolver con el micro actual (eco, ruido de fondo excesivo → interfaz de audio + micro XLR)',
+    'Necesitas grabar en condiciones de poca luz frecuentemente (→ cámara con sensor grande)',
+    'Tu contenido requiere movilidad que tu setup actual no permite (→ gimbal o cámara compacta)',
+    'Estás editando profesionalmente y tu monitor no reproduce colores fieles (→ monitor 4K calibrado)',
+  ]},
+
+  { type: 'h2', t: 'El Setup de 500€ "Sin Límites"' },
+  { type: 'p', t: 'Si quieres gastar los 500€ completos, aquí va mi recomendación para maximizar cada euro:' },
+  { type: 'list', items: [
+    'Micrófono: Samson Q2U — ~65€',
+    'Cámara: DJI Osmo Pocket 3 — ~430€ (o smartphone + auriculares de monitorización)',
+    'Iluminación: lámpara de escritorio LED (ya la tienes) + luz natural de ventana — 0€',
+    'Total: ~495€',
+  ]},
+  { type: 'p', t: 'Este setup prioriza un audio excelente + la mejor cámara compacta del mercado. La iluminación la resuelves con luz natural (graba de día, cara hacia la ventana) hasta que puedas añadir los paneles Neewer.' },
+
+  { type: 'h2', t: 'Conclusión' },
+  { type: 'p', t: 'No dejes que la falta de equipo te pare. El mejor equipo es el que ya tienes, y el segundo mejor es el que te permite empezar hoy sin endeudarte. Un smartphone, un Samson Q2U y dos paneles Neewer te dan más calidad de la que necesitas para tus primeros 1000 suscriptores.' },
+  { type: 'p', t: 'Empieza con lo mínimo. Publica consistentemente. Mejora el equipo solo cuando sea tu verdadero cuello de botella — y cuando lo hagas, consulta nuestra guía de equipo recomendado donde actualizamos las mejores opciones cada mes.' },
+
+  { type: 'callout-final', t: 'Genera contenido que haga justicia a tu equipo', sub: 'Títulos virales, descripciones SEO, scripts... todo optimizado con IA.', cta: 'Empieza gratis con YTubViral' },
+];
+
+const ART_SETUP_500_EN: BlockType[] = [
+  { type: 'p', t: 'One of the most common mistakes when starting on YouTube is thinking you need the best gear money can buy. That\'s not true. The best creators in the world started with what they had — and many of them still use equipment that costs less than you\'d think.' },
+  { type: 'p', t: 'In this guide, I\'ll build you a complete recording setup for under €500. This isn\'t a compromise setup: it\'s a kit that will give you real professional quality, enough so nobody can tell your videos apart from a channel with millions of subscribers.' },
+
+  { type: 'h2', t: 'The Golden Rule: Audio > Video > Lighting' },
+  { type: 'p', t: 'Before breaking down the budget, there\'s a principle every creator must understand: audio is more important than video. A viewer will forgive mediocre image quality, but will abandon a video with bad sound in 5 seconds. The priority order is always audio first, video second, lighting third.' },
+  { type: 'p', t: 'With €500, we\'ll cover all three with room to spare, plus essential accessories.' },
+
+  { type: 'h2', t: 'Microphone: Samson Q2U (~€65)' },
+  { type: 'p', t: 'The Samson Q2U is the most recommended microphone for beginners in 2026, and I say that without hesitation. It\'s dynamic (rejects room noise), has both USB and XLR connections (start with USB, and when you buy an audio interface you already have the XLR cable included), and sounds surprisingly good for its price.' },
+  { type: 'list', items: [
+    'Dynamic: no need to acoustically treat your room',
+    'USB + XLR: dual connection to grow without changing mics',
+    'Includes desk tripod, USB cable, XLR cable and windscreen',
+    'Cardioid pattern: records what\'s in front, rejects what\'s behind',
+  ]},
+  { type: 'p', t: 'I personally use it as a backup mic and every time I plug it in, it still surprises me. At €65, it\'s unbeatable.' },
+
+  { type: 'h2', t: 'Camera: Your Smartphone (€0) or DJI Osmo Pocket 3 (~€430)' },
+  { type: 'p', t: 'There are two paths here. If you have a mid-to-high range smartphone from the last 2-3 years, you already have a camera that shoots 4K. You don\'t need to buy anything else. MKBHD shot some of his first videos on a phone. Casey Neistat used a Canon T3i that\'s now worse than any iPhone.' },
+  { type: 'p', t: 'If you want to level up and have the budget, the DJI Osmo Pocket 3 has been the revelation of the last two years. 3-axis stabilized gimbal, 1-inch sensor, 4K/120fps, 2-inch rotating touchscreen. Fits in a pocket and shoots like a €1000 camera. For vlogs and on-the-go content, nothing comes close at this price.' },
+  { type: 'p', t: 'In this guide, I\'ll assume you\'re using your smartphone to keep the budget under €500. If you\'ve already got everything else sorted and want to invest in a camera, the DJI Osmo Pocket 3 is in our recommended gear guide.' },
+
+  { type: 'callout-gear', t: 'All recommended cameras for 2026', sub: 'From beginner to professional, with prices and comparisons.', cta: 'View recommended gear' },
+
+  { type: 'h2', t: 'Lighting: Neewer 660 LED Panel x2 (~€90)' },
+  { type: 'p', t: 'Lighting is what separates an amateur video from a professional one. You can have the best camera in the world, but if your face is backlit or has harsh shadows, your video will look cheap.' },
+  { type: 'p', t: 'The Neewer 660 two-panel kit is the standard for beginners: bi-color (3200-5600K to match your room\'s light), CRI 96+ (reproduces colors faithfully), and comes with stands included. Place one on each side at 45 degrees and you\'ll have professional studio lighting for under €100.' },
+  { type: 'list', items: [
+    '2-panel kit: key + fill lighting in a single purchase',
+    'Adjustable bi-color: adapt color temperature to your environment',
+    'CRI 96+: natural colors on camera',
+    '190cm stands included',
+    'Each panel works with AC adapter or NP-F batteries (optional)',
+  ]},
+
+  { type: 'h2', t: 'Tripod: Manfrotto PIXI (~€30)' },
+  { type: 'p', t: 'If you shoot at a desk (tutorials, gaming, front-facing camera), the Manfrotto PIXI is perfect: mini tabletop tripod, opens with one hand, holds a mirrorless no problem. If you shoot standing up, any €25 Amazon tripod will do to start — you don\'t need a €200 Manfrotto until you\'re making money.' },
+
+  { type: 'h2', t: 'Essential Accessories (~€45)' },
+  { type: 'p', t: 'There are small extras that make an enormous difference in your workflow:' },
+  { type: 'list', items: [
+    '128GB microSD card (~€15): For the Osmo Pocket or as extra storage',
+    '3m USB-C cable (~€10): To connect your mic to PC without it being too short',
+    'Black gaffer tape (~€8): To secure cables and keep your setup looking clean',
+    'Plain backdrop (~€12): A 2x3m black or grey fabric transforms any wall',
+  ]},
+
+  { type: 'h2', t: 'The Total Budget' },
+  { type: 'p', t: 'Let\'s break down the complete setup:' },
+  { type: 'list', items: [
+    'Microphone: Samson Q2U — ~€65',
+    'Camera: your smartphone — €0',
+    'Lighting: Neewer 660 x2 — ~€90',
+    'Tripod: Manfrotto PIXI — ~€30',
+    'Various accessories — ~€45',
+    'TOTAL: ~€230',
+  ]},
+  { type: 'p', t: 'Yes, you read that right. You can have a complete professional setup for €230. You\'ve got €270 left to invest in education, editing software (DaVinci Resolve is free and professional), or to save until you can upgrade to a dedicated camera like the Sony ZV-E10 II.' },
+
+  { type: 'callout-gear', t: 'All mentioned gear with direct links', sub: 'Cameras, microphones, lights and accessories — recommendations by level and budget.', cta: 'View complete gear guide' },
+
+  { type: 'h2', t: 'When (and When NOT) to Upgrade' },
+  { type: 'p', t: 'This is important: don\'t buy new gear until your current equipment is the actual bottleneck. If you have 50 subscribers, your problem isn\'t the camera — it\'s the content, consistency and SEO strategy. I\'ve seen channels with 500K subscribers shooting with an iPhone and a Samson Q2U.' },
+  { type: 'p', t: 'Upgrade when:' },
+  { type: 'list', items: [
+    'Your audio has problems you can\'t solve with the current mic (echo, excessive background noise → audio interface + XLR mic)',
+    'You need to shoot in low light frequently (→ camera with large sensor)',
+    'Your content requires mobility your current setup can\'t handle (→ gimbal or compact camera)',
+    'You\'re editing professionally and your monitor doesn\'t reproduce colors accurately (→ calibrated 4K monitor)',
+  ]},
+
+  { type: 'h2', t: 'The Full €500 "No Limits" Setup' },
+  { type: 'p', t: 'If you want to spend the full €500, here\'s my recommendation to maximize every euro:' },
+  { type: 'list', items: [
+    'Microphone: Samson Q2U — ~€65',
+    'Camera: DJI Osmo Pocket 3 — ~€430 (or smartphone + monitoring headphones)',
+    'Lighting: desk LED lamp (you already have one) + natural window light — €0',
+    'Total: ~€495',
+  ]},
+  { type: 'p', t: 'This setup prioritizes excellent audio + the best compact camera on the market. Lighting is solved with natural light (shoot during daytime, face toward the window) until you can add the Neewer panels.' },
+
+  { type: 'h2', t: 'Conclusion' },
+  { type: 'p', t: 'Don\'t let lack of gear stop you. The best equipment is what you already have, and the second best is what lets you start today without going into debt. A smartphone, a Samson Q2U and two Neewer panels give you more quality than you need for your first 1,000 subscribers.' },
+  { type: 'p', t: 'Start with the minimum. Publish consistently. Upgrade gear only when it\'s your real bottleneck — and when you do, check our recommended gear guide where we update the best options every month.' },
+
+  { type: 'callout-final', t: 'Generate content that does justice to your gear', sub: 'Viral titles, SEO descriptions, scripts... all optimized with AI.', cta: 'Get started free with YTubViral' },
+];
 
 const ART_HERRAMIENTAS_IA: BlockType[] = [
   { type: 'p', t: '¿Eres YouTuber y sientes que pierdes demasiado tiempo en tareas repetitivas? La inteligencia artificial ha revolucionado la forma en que los creadores de contenido trabajan. En 2026, existen herramientas increíbles que te permiten ahorrar horas cada semana.' },
@@ -946,6 +1141,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'cuanto-gana-un-youtuber-en-espana': {
     es: ART_CUANTO_GANA_YOUTUBER,
     en: ART_CUANTO_GANA_YOUTUBER_EN,
+  },
+  'setup-youtube-menos-500-euros': {
+    es: ART_SETUP_500_ES,
+    en: ART_SETUP_500_EN,
   },
 };
 

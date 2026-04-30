@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { cookies } from 'next/headers';
-import { GEAR_ITEMS, GEAR_CATEGORIES, TIER_LABELS, TIER_COLORS, type Lang } from '@/lib/gear-data';
+import { GEAR_ITEMS, GEAR_CATEGORIES, TIER_LABELS, TIER_COLORS, AMAZON_TAGS, type Lang } from '@/lib/gear-data';
 
 export const metadata: Metadata = {
   title: 'Equipo para YouTubers — YTubViral | Las mejores herramientas para crear contenido',
@@ -125,7 +126,7 @@ export default async function GearPage() {
                 {items.map(item => {
                   const tierLabel = TIER_LABELS[item.tier]?.[lang] ?? item.tier;
                   const tierColor = TIER_COLORS[item.tier] ?? '#888';
-                  const url = buildAffiliateUrl(item.amazonUrl[lang], item.amazonTag);
+                  const url = buildAffiliateUrl(item.amazonUrl[lang], AMAZON_TAGS[lang]);
 
                   return (
                     <div
@@ -141,6 +142,21 @@ export default async function GearPage() {
                         >
                           {t('Recomendado', 'Recommended')}
                         </div>
+                      )}
+
+                      {/* Product image */}
+                      {item.image && (
+                        <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="block">
+                          <div className="h-48 relative p-6" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                            <Image
+                              src={item.image}
+                              alt={item.name[lang]}
+                              fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              className="object-contain group-hover:scale-105 transition-transform duration-300 p-4"
+                            />
+                          </div>
+                        </a>
                       )}
 
                       <div className="p-6">
