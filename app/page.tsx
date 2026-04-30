@@ -45,8 +45,8 @@ const STATIC_TESTIMONIALS = {
 
 function TopNav({ lang }: { lang: Lang }) {
   const nav = lang === 'en'
-    ? [['#how', 'How it works'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog']]
-    : [['#how', 'Cómo funciona'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog']];
+    ? [['#how', 'How it works'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear']]
+    : [['#how', 'Cómo funciona'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo']];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
@@ -553,6 +553,7 @@ function Footer({ lang }: { lang: Lang }) {
           <div className="flex gap-6 text-zinc-500 font-mono-jb text-xs">
             <Link href="/terms" className="hover:text-white transition">{lang === 'en' ? 'Terms' : 'Términos'}</Link>
             <Link href="/privacy" className="hover:text-white transition">{lang === 'en' ? 'Privacy' : 'Privacidad'}</Link>
+            <Link href="/gear" className="hover:text-white transition">{lang === 'en' ? 'Gear' : 'Equipo'}</Link>
             <Link href="/legal" className="hover:text-white transition">{lang === 'en' ? 'Legal Notice' : 'Aviso Legal'}</Link>
           </div>
           <p className="font-mono-jb text-xs text-zinc-600">MADRID · REMOTE · 40°24′N 3°41′W</p>
