@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
-import {
-  publishToFacebook,
-  publishToFacebookWithImage,
-  publishToInstagram,
-  getSocialImageUrl,
-} from '@/lib/agent/meta-agent';
-import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
-import { runGmailAgent, sendNotificationEmail, sendOwnerEmail } from '@/lib/agent/gmail-agent';
+import { publishToInstagram, retryPendingFacebookPost } from '@/lib/agent/meta-agent';
+import { runGmailAgent, sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { runFeedbackAgent } from '@/lib/agent/feedback-agent';
 import { prisma } from '@/lib/prisma';
@@ -29,29 +23,26 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
 
   try {
-    // 1. Generate evening content (more reflective/inspirational) + run agents in parallel
-    const [facebook, instagram, linkedin, tiktok, twitter, gmailResult, youtubeResult] =
+    // 1. Generate Instagram content + run agents in parallel (evening = Instagram only)
+    const [instagram, gmailResult, youtubeResult] =
       await Promise.allSettled([
-        generateSocialPost('facebook', 'evening'),
         generateSocialPost('instagram', 'evening'),
-        generateSocialPost('linkedin', 'evening'),
-        generateSocialPost('tiktok', 'evening'),
-        generateSocialPost('twitter', 'evening'),
         runGmailAgent(),
         runYoutubeAgent(),
       ]);
 
-    const fb = facebook.status === 'fulfilled' ? facebook.value : null;
     const ig = instagram.status === 'fulfilled' ? instagram.value : null;
-    const li = linkedin.status === 'fulfilled' ? linkedin.value : null;
-    const tt = tiktok.status === 'fulfilled' ? tiktok.value : null;
-    const tw = twitter.status === 'fulfilled' ? twitter.value : null;
 
-    if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
-    if (linkedin.status === 'rejected') errors.push(`LinkedIn content: ${linkedin.reason}`);
-    if (tiktok.status === 'rejected') errors.push(`TikTok content: ${tiktok.reason}`);
-    if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
+
+    // Retry Facebook posts that failed with error 190 (Meta block) during morning cron
+    const fbRetry = await retryPendingFacebookPost().catch(err => ({
+      success: false as const,
+      skipped: false,
+      error: err instanceof Error ? err.message : String(err),
+    }));
+    results.facebookRetry = fbRetry;
+    if (!fbRetry.success && !fbRetry.skipped) errors.push(`Facebook retry: ${fbRetry.error}`);
 
     // 0. Send feedback emails to users registered 3 days ago
     const feedbackResult = await runFeedbackAgent().catch(err => ({
@@ -75,50 +66,11 @@ export async function GET(request: Request) {
     errors.push(...youtube.errors);
     results.youtube = { processed: youtube.processed, replied: youtube.replied };
 
-    // 2. Publish Facebook (30% with image) + Instagram
-    const useImage = Math.random() < 0.3;
-    const [fbResult, igResult] = await Promise.all([
-      fb
-        ? useImage
-          ? publishToFacebookWithImage(fb, getSocialImageUrl())
-          : publishToFacebook(fb)
-        : Promise.resolve(null),
-      ig ? publishToInstagram(ig) : Promise.resolve(null),
-    ]);
-    results.facebook = fbResult;
-    results.instagram = igResult;
-    if (fbResult && !fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
-    if (igResult && !igResult.success) errors.push(`Instagram: ${igResult.error}`);
-
-    // 3. Publish LinkedIn
-    if (li) {
-      const liResult = await publishToLinkedIn(li);
-      results.linkedin = liResult;
-      if (!liResult.success) errors.push(`LinkedIn: ${liResult.error}`);
-    }
-
-    // 4. TikTok + X by email (manual)
-    if (tt || tw) {
-      const emailBody = [
-        'AGENTE YTUBVIRAL - POST VESPERTINO (MANUAL)',
-        '='.repeat(50),
-        tt ? `TIKTOK\n${'-'.repeat(30)}\n${tt}\n` : '',
-        tw ? `X/TWITTER\n${'-'.repeat(30)}\n${tw}\n` : '',
-        '='.repeat(50),
-        'Copia el contenido y publícalo directamente en cada plataforma.',
-      ].filter(Boolean).join('\n');
-
-      await sendOwnerEmail('[YTubViral Agent] Post vespertino - TikTok + X', emailBody).catch(
-        err => errors.push(`Email TikTok/X: ${err instanceof Error ? err.message : err}`)
-      );
-
-      for (const [platform, content] of [['tiktok', tt], ['twitter', tw]] as [string, string | null][]) {
-        if (content) {
-          await prisma.socialPost.create({
-            data: { platform, content, status: 'email_sent', publishedAt: new Date() },
-          }).catch(() => {});
-        }
-      }
+    // 2. Publish Instagram (evening slot — 18:30 Madrid)
+    if (ig) {
+      const igResult = await publishToInstagram(ig);
+      results.instagram = igResult;
+      if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
     }
 
     if (errors.length > 0) {

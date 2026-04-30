@@ -106,11 +106,6 @@ export default function RootLayout({
                   "description": "200 generaciones al mes, todas las herramientas"
                 }
               ],
-              "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": "4.8",
-                "reviewCount": "127"
-              },
               "creator": {
                 "@type": "Organization",
                 "name": "YTubViral",

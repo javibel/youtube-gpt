@@ -6,6 +6,7 @@ import {
   publishToInstagram,
   getSocialImageUrl,
 } from '@/lib/agent/meta-agent';
+import { getHumanImageUrl } from '@/lib/agent/linkedin-agent';
 import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
 import { sendNotificationEmail, sendOwnerEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
@@ -90,41 +91,43 @@ export async function GET(request: Request) {
       errors.push(`Daily tip: ${err instanceof Error ? err.message : err}`)
     );
 
-    // 2. Generate content for all platforms
-    const [facebook, instagram, linkedin, tiktok, twitter] = await Promise.allSettled([
+    // 2. Generate content for Facebook + LinkedIn + TikTok + Twitter (morning networks)
+    const [facebook, linkedin, tiktok, twitter] = await Promise.allSettled([
       generateSocialPost('facebook', 'morning'),
-      generateSocialPost('instagram', 'morning'),
       generateSocialPost('linkedin', 'morning'),
       generateSocialPost('tiktok', 'morning'),
       generateSocialPost('twitter', 'morning'),
     ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;
-    const ig = instagram.status === 'fulfilled' ? instagram.value : null;
     const li = linkedin.status === 'fulfilled' ? linkedin.value : null;
     const tt = tiktok.status === 'fulfilled' ? tiktok.value : null;
     const tw = twitter.status === 'fulfilled' ? twitter.value : null;
 
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
-    if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
     if (linkedin.status === 'rejected') errors.push(`LinkedIn content: ${linkedin.reason}`);
     if (tiktok.status === 'rejected') errors.push(`TikTok content: ${tiktok.reason}`);
     if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
-    // 3. Publish Facebook (30% with image) + Instagram
+    // 3. Publish Facebook (30% with image)
     const useImage = Math.random() < 0.3;
-    const [fbResult, igResult] = await Promise.all([
-      fb
-        ? useImage
-          ? publishToFacebookWithImage(fb, getSocialImageUrl())
-          : publishToFacebook(fb)
-        : Promise.resolve(null),
-      ig ? publishToInstagram(ig) : Promise.resolve(null),
-    ]);
+    // Para Facebook: prioriza imagen humana (16:9 permitido), si no hay usa la abstracta
+    const fbImageUrl = (await getHumanImageUrl('facebook')) ?? getSocialImageUrl();
+    const fbResult = fb
+      ? useImage
+        ? await publishToFacebookWithImage(fb, fbImageUrl)
+        : await publishToFacebook(fb)
+      : null;
     results.facebook = fbResult;
-    results.instagram = igResult;
-    if (fbResult && !fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
-    if (igResult && !igResult.success) errors.push(`Instagram: ${igResult.error}`);
+    if (fbResult && !fbResult.success) {
+      errors.push(`Facebook: ${fbResult.error}`);
+      if (fbResult.blocked) {
+        await sendNotificationEmail(
+          '[YTubViral Agent] Facebook bloqueado por Meta',
+          'Meta ha bloqueado temporalmente las llamadas a la API. Entra en developers.facebook.com y verifica tu sesion. El post se reintentara automaticamente en el cron vespertino.\n\nError: ' + (fbResult.error ?? '')
+        ).catch(() => {});
+      }
+    }
 
     // 4. Publish LinkedIn
     if (li) {

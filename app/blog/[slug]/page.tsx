@@ -149,8 +149,32 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     tutorials: 'linear-gradient(135deg, #7CFF00 0%, #001a00 100%)',
   };
 
+  // Build Article JSON-LD for SEO
+  const dateStr = post.date.en; // "Oct 15, 2025" format
+  const isoDate = new Date(dateStr).toISOString().split('T')[0];
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title.es,
+    description: post.excerpt.es,
+    image: post.image ? `https://ytubviral.com${post.image}` : undefined,
+    datePublished: isoDate,
+    dateModified: isoDate,
+    author: { '@type': 'Person', name: post.author.name },
+    publisher: {
+      '@type': 'Organization',
+      name: 'YTubViral',
+      url: 'https://ytubviral.com',
+    },
+    mainEntityOfPage: `https://ytubviral.com/blog/${slug}`,
+  };
+
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">

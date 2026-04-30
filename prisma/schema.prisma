@@ -210,6 +210,7 @@ model SocialPost {
   createdAt   DateTime  @default(now())
   errorMsg    String?
   bufferId    String?
+  imageUrl    String?
 
   @@map("social_posts")
 }
@@ -249,4 +250,70 @@ model SocialMessage {
   repliedAt    DateTime?
 
   @@map("social_messages")
+}
+model NarrativeBible {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("narrative_bible")
+}
+
+// ── YCML tables (local agent, raw SQL) ──────────────────────────────
+// These tables are queried via raw SQL in local-agent/db.js.
+// Column names MUST stay snake_case — do NOT remove @map directives.
+
+model LinkedinProspect {
+  id         Int      @id @default(autoincrement())
+  profileUrl String   @unique @map("profile_url")
+  name       String?
+  headline   String?
+  followers  Int?
+  status     String?  @default("discovered")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @map("updated_at")
+
+  @@map("linkedin_prospects")
+}
+
+model LinkedinAction {
+  id         Int      @id @default(autoincrement())
+  type       String
+  profileUrl String?  @map("profile_url")
+  content    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("linkedin_actions")
+}
+
+model TwitterAction {
+  id        Int      @id @default(autoincrement())
+  type      String
+  tweetUrl  String?  @map("tweet_url")
+  content   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("twitter_actions")
+}
+
+model InstagramAction {
+  id        Int      @id @default(autoincrement())
+  type      String
+  postUrl   String?  @map("post_url")
+  content   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("instagram_actions")
+}
+
+model FacebookAction {
+  id        Int      @id @default(autoincrement())
+  type      String
+  postUrl   String?  @map("post_url")
+  content   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("facebook_actions")
 }

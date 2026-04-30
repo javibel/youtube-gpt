@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: 'Extensión de Chrome — YTubViral',
   description:
     'Instala la extensión de YTubViral para Chrome y analiza canales, keywords y genera títulos directamente desde YouTube.',
+  alternates: { canonical: 'https://ytubviral.com/extension' },
 };
 
 const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/ytubviral-para-youtube/gkjecjfhdmfbhhcemcjdkjkcdbljkcfh';
@@ -29,39 +30,67 @@ const steps = [
 
 const features = [
   {
-    icon: '📊',
     title: 'Análisis de canales',
     desc: 'Desde cualquier vídeo o canal: suscriptores, vistas totales, frecuencia de publicación y keywords que usa el canal.',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3 3v18h18"/><path d="m7 16 4-8 4 5 5-7"/>
+      </svg>
+    ),
   },
   {
-    icon: '🔍',
     title: 'Keywords en búsquedas',
     desc: 'Al buscar en YouTube, ves al instante la competencia, oportunidad y keywords relacionadas para ese término.',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+    ),
   },
   {
-    icon: '✨',
     title: 'Títulos con IA',
     desc: 'Genera 5 títulos virales para cualquier vídeo con un solo clic, sin salir de YouTube.',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+      </svg>
+    ),
   },
 ];
 
 export default function ExtensionPage() {
   return (
-    <main className="min-h-screen bg-black text-white">
+    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+
+      {/* Nav */}
+      <header className="border-b" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)' }}>
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
+              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+            </svg>
+            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition">Iniciar sesión</Link>
+            <Link href="/signup" className="btn-offset px-4 py-1.5 text-[11px] font-display">Crear cuenta gratis</Link>
+          </div>
+        </div>
+      </header>
 
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <div className="inline-flex items-center gap-2 bg-red-950 border border-red-800 text-red-400 text-sm px-4 py-1.5 rounded-full mb-8">
-          <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-          Extensión para Chrome
-        </div>
+        <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--red)' }}>
+          CHROME EXTENSION
+        </p>
 
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
+        <h1 className="font-display font-bold text-4xl md:text-5xl mb-6 leading-tight">
           YTubViral directamente
-          <span className="text-red-500"> en YouTube</span>
+          <span style={{ color: 'var(--red)' }}> en YouTube</span>
         </h1>
 
-        <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+        <p className="text-zinc-400 text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
           Analiza canales, investiga keywords y genera títulos con IA sin salir de YouTube.
           Instálalo en segundos, funciona con tu cuenta de ytubviral.com.
         </p>
@@ -70,10 +99,10 @@ export default function ExtensionPage() {
           href={CHROME_STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white font-bold text-lg px-8 py-4 rounded-xl transition-colors"
+          className="btn-offset inline-flex items-center gap-3 px-8 py-3.5 text-sm font-display"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
           </svg>
           Instalar extensión — Es gratis
         </a>
@@ -81,13 +110,15 @@ export default function ExtensionPage() {
 
       {/* Features */}
       <section className="max-w-4xl mx-auto px-6 pb-20">
-        <h2 className="text-2xl font-bold text-center mb-10">¿Qué hace la extensión?</h2>
-        <div className="grid md:grid-cols-3 gap-6">
+        <h2 className="font-display font-bold text-2xl text-center mb-10">¿Qué hace la extensión?</h2>
+        <div className="grid md:grid-cols-3 gap-5">
           {features.map(f => (
-            <div key={f.title} className="bg-gray-950 border border-gray-800 rounded-2xl p-6">
-              <div className="text-3xl mb-4">{f.icon}</div>
-              <h3 className="font-bold text-lg mb-2">{f.title}</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+            <div key={f.title} className="soft-card p-6">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: 'rgba(232,77,91,0.12)', color: 'var(--red)' }}>
+                {f.icon}
+              </div>
+              <h3 className="font-display font-bold text-sm mb-2">{f.title}</h3>
+              <p className="text-zinc-500 text-xs leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -95,16 +126,17 @@ export default function ExtensionPage() {
 
       {/* How it works */}
       <section className="max-w-4xl mx-auto px-6 pb-20">
-        <h2 className="text-2xl font-bold text-center mb-10">Cómo instalarla</h2>
-        <div className="flex flex-col gap-4">
+        <h2 className="font-display font-bold text-2xl text-center mb-10">Cómo instalarla</h2>
+        <div className="flex flex-col gap-5 max-w-xl mx-auto">
           {steps.map(s => (
             <div key={s.num} className="flex gap-5 items-start">
-              <div className="flex-shrink-0 w-10 h-10 bg-red-600 rounded-full flex items-center justify-center font-bold text-lg">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-lg"
+                style={{ background: 'var(--red)', color: '#fff', boxShadow: '0 6px 18px -6px rgba(232,77,91,0.6)' }}>
                 {s.num}
               </div>
               <div>
-                <div className="font-semibold text-base mb-1">{s.title}</div>
-                <div className="text-gray-400 text-sm leading-relaxed">{s.desc}</div>
+                <div className="font-display font-semibold text-sm mb-1">{s.title}</div>
+                <div className="text-zinc-500 text-xs leading-relaxed">{s.desc}</div>
               </div>
             </div>
           ))}
@@ -112,28 +144,22 @@ export default function ExtensionPage() {
       </section>
 
       {/* CTA bottom */}
-      <section className="border-t border-gray-900 py-16">
+      <section className="border-t py-16" style={{ borderColor: 'var(--line)' }}>
         <div className="max-w-2xl mx-auto px-6 text-center">
-          <p className="text-gray-500 text-sm mb-4">
+          <p className="text-zinc-600 text-xs mb-5">
             Necesitas una cuenta en ytubviral.com para usar la extensión.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/signup"
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
-            >
+            <Link href="/signup" className="btn-offset px-6 py-2.5 text-sm font-display">
               Crear cuenta gratis
             </Link>
-            <Link
-              href="/dashboard"
-              className="border border-gray-700 hover:border-gray-500 text-gray-300 font-semibold px-6 py-3 rounded-xl transition-colors"
-            >
+            <Link href="/dashboard" className="btn-offset-ghost px-6 py-2.5 text-sm font-display" style={{ background: 'transparent', color: 'var(--text)' }}>
               Ir al dashboard
             </Link>
           </div>
         </div>
       </section>
 
-    </main>
+    </div>
   );
 }
