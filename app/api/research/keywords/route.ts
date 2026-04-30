@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getExtensionUser } from '@/lib/extension-auth';
+import { fetchGoogleTrends, estimateSearchVolume } from '@/lib/volume-estimate';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY;
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -50,13 +51,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Keyword too long (max 200 characters)' }, { status: 400 });
   }
 
-  const cacheKey = `kw:${keyword.trim().toLowerCase()}`;
+  const kwNorm = keyword.trim().toLowerCase();
+  const cacheKey = `kw:${kwNorm}`;
   const cached = await prisma.youtubeCache.findUnique({ where: { key: cacheKey } });
   if (cached && cached.expiresAt > new Date()) {
     return NextResponse.json(cached.data);
   }
 
   try {
+    // Start Google Trends fetch early (runs in parallel with YouTube calls)
+    const volCacheKey = `vol:${kwNorm}`;
+    const volCached = await prisma.youtubeCache.findUnique({ where: { key: volCacheKey } });
+    const trendsPromise = volCached && volCached.expiresAt > new Date()
+      ? Promise.resolve((volCached.data as { trendsScore?: number })?.trendsScore ?? null)
+      : fetchGoogleTrends(keyword).catch(() => null);
+
     // 1. Search top videos for keyword
     const searchRes = await fetch(
       `${YT_BASE}/search?part=snippet&q=${encodeURIComponent(keyword)}&type=video&maxResults=5&order=viewCount&key=${YT_API_KEY}`
@@ -140,6 +149,26 @@ export async function POST(request: Request) {
       // Autocomplete is unofficial — fail silently
     }
 
+    // 6. Search volume estimation
+    const trendsScore = await trendsPromise;
+    const volumeEstimate = await estimateSearchVolume({
+      keyword,
+      totalResults,
+      avgViews: Math.round(avgViews),
+      relatedKeywords,
+      trendsScore,
+    });
+
+    // Cache volume estimate separately (7-day TTL — volume changes slowly)
+    if (!volCached || volCached.expiresAt <= new Date()) {
+      const volData = { ...volumeEstimate, trendsScore } as unknown as Prisma.InputJsonValue;
+      await prisma.youtubeCache.upsert({
+        where: { key: volCacheKey },
+        create: { key: volCacheKey, data: volData, expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000) },
+        update: { data: volData, expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000) },
+      });
+    }
+
     const result = {
       keyword,
       totalResults,
@@ -149,6 +178,7 @@ export async function POST(request: Request) {
       avgViews: Math.round(avgViews),
       topVideos,
       relatedKeywords,
+      volumeEstimate,
     };
 
     // Cache for 24h (upsert so concurrent requests don't error)

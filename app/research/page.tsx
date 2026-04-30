@@ -17,6 +17,14 @@ interface VideoResult {
   likes: number;
 }
 
+interface VolumeEstimate {
+  score: number;
+  label: string;
+  labelEn: string;
+  range: string;
+  rangeEn: string;
+}
+
 interface ResearchResult {
   keyword: string;
   totalResults: number;
@@ -26,6 +34,7 @@ interface ResearchResult {
   avgViews: number;
   topVideos: VideoResult[];
   relatedKeywords: string[];
+  volumeEstimate?: VolumeEstimate;
 }
 
 const COMPETITION_CONFIG = {
@@ -336,7 +345,26 @@ function ResearchPageInner() {
             </div>
 
             {/* Score cards row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+              {/* Search Volume */}
+              {result.volumeEstimate && (
+                <div className="soft-card p-6 flex flex-col items-center gap-4" style={{ borderColor: 'rgba(129,140,248,0.25)' }}>
+                  <ScoreRing
+                    score={result.volumeEstimate.score}
+                    color="#818cf8"
+                    label={t('Volumen', 'Volume')}
+                  />
+                  <div className="text-center">
+                    <div className="font-display font-bold text-lg" style={{ color: '#818cf8' }}>
+                      {lang === 'en' ? result.volumeEstimate.labelEn : result.volumeEstimate.label}
+                    </div>
+                    <p className="font-mono-jb text-[10px] tracking-wider text-zinc-600 mt-1">
+                      {lang === 'en' ? result.volumeEstimate.rangeEn : result.volumeEstimate.range}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Competition */}
               <div className="soft-card p-6 flex flex-col items-center gap-4" style={{ borderColor: comp?.border }}>
