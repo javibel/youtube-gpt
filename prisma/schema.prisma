@@ -26,6 +26,7 @@ model User {
   review          Review?
   youtubeToken    YoutubeToken?
   videoPreviews   VideoPreview[]
+  videoSeoScores  VideoSeoScore[]
   extensionTokens ExtensionToken[]
   feedback        UserFeedback?
 
@@ -199,6 +200,20 @@ model ExtensionToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("extension_tokens")
+}
+
+model VideoSeoScore {
+  id         String   @id @default(cuid())
+  userId     String
+  videoId    String
+  score      Int
+  checklist  Json
+  analyzedAt DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@map("video_seo_scores")
 }
 
 model SocialPost {

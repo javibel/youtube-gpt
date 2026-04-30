@@ -316,6 +316,10 @@ function handleCopy(id: string, out: string) {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               {t('Competidores', 'Competitors')}
             </a>
+            <a href="/seo-score" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              SEO Score
+            </a>
             <span className="flex items-center gap-2 text-zinc-400 text-sm">
               <span>{displayName}</span>
               {isPro && <span className="red-tape text-[9px] py-0.5">PRO</span>}
