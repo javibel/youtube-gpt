@@ -140,6 +140,8 @@ export default function DashboardPage() {
   const [ytSparkline, setYtSparkline] = useState<StatsPoint[]>([]);
   type VideoIdea = { title_es: string; title_en: string; idea_es: string; idea_en: string };
   const [dailyIdeas, setDailyIdeas] = useState<VideoIdea[] | null>(null);
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
+  const [onboardingName, setOnboardingName] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -158,6 +160,10 @@ export default function DashboardPage() {
       fetch('/api/reviews').then((r) => r.json()).then((d) => {
         if (d.review) { setExistingReview(d.review); setReviewRating(d.review.rating); setReviewText(d.review.text); }
       });
+      fetch('/api/onboarding').then(r => r.json()).then(d => {
+        setOnboardingStep(d.step ?? 0);
+        setOnboardingName(d.name || '');
+      }).catch(() => {});
       fetch('/api/youtube/channel').then((r) => r.json()).then((d) => {
         if (d.connected) {
           setYtConnected(true);
@@ -278,6 +284,15 @@ function handleCopy(id: string, out: string) {
     } finally { setCancelling(false); }
   }
 
+  async function advanceOnboarding(step: number) {
+    setOnboardingStep(step);
+    await fetch('/api/onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step }),
+    }).catch(() => {});
+  }
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--ink)' }}>
@@ -308,6 +323,131 @@ function handleCopy(id: string, out: string) {
 
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+
+      {/* Onboarding modal */}
+      {onboardingStep !== null && onboardingStep < 3 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
+          <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/10 p-8" style={{ background: '#111114' }}>
+
+            {/* Step 0: Welcome */}
+            {onboardingStep === 0 && (
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
+                    <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+                  </svg>
+                </div>
+                <h2 className="font-display font-bold text-2xl text-white mb-2">
+                  {t(`Bienvenid@ a YTubViral${onboardingName ? `, ${onboardingName.split(' ')[0]}` : ''}`, `Welcome to YTubViral${onboardingName ? `, ${onboardingName.split(' ')[0]}` : ''}`)}
+                </h2>
+                <p className="text-zinc-400 text-sm mb-8 max-w-sm mx-auto">
+                  {t(
+                    'Tu asistente de IA para crecer en YouTube. Vamos a configurar todo en 30 segundos.',
+                    'Your AI assistant to grow on YouTube. Let\'s set everything up in 30 seconds.'
+                  )}
+                </p>
+
+                {/* Progress dots */}
+                <div className="flex justify-center gap-2 mb-6">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i === 0 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
+                  ))}
+                </div>
+
+                {/* 3 features */}
+                <div className="grid grid-cols-3 gap-3 mb-8 text-left">
+                  {[
+                    { icon: 'M13 2L3 14h7l-1 8 10-12h-7l1-8z', es: 'Genera títulos, scripts y descripciones con IA', en: 'Generate titles, scripts & descriptions with AI' },
+                    { icon: 'M11 11L11 2M11 11L2 11M11 11L20 11M11 11L11 20', es: 'Investiga keywords y analiza competidores', en: 'Research keywords & analyze competitors' },
+                    { icon: 'M22 12h-4l-3 9L9 3l-3 9H2', es: 'SEO Score, mejor hora y más con tu canal conectado', en: 'SEO Score, best time & more with your channel connected' },
+                  ].map((f, i) => (
+                    <div key={i} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" className="mb-2"><path d={f.icon}/></svg>
+                      <p className="text-[11px] text-zinc-400 leading-snug">{t(f.es, f.en)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <button onClick={() => advanceOnboarding(1)} className="btn-offset px-10 py-3 text-sm font-display">
+                  {t('Empezar', 'Get started')}
+                </button>
+              </div>
+            )}
+
+            {/* Step 1: First generation */}
+            {onboardingStep === 1 && (
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                </div>
+                <div className="flex justify-center gap-2 mb-4">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 1 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
+                  ))}
+                </div>
+                <h2 className="font-display font-bold text-xl text-white mb-2">
+                  {t('Tu primera generación', 'Your first generation')}
+                </h2>
+                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                  {t(
+                    'Usa los botones de generación rápida en tu panel para crear tu primer título, script o descripción. Tienes 10 generaciones gratis al mes.',
+                    'Use the quick launch buttons on your dashboard to create your first title, script or description. You get 10 free generations per month.'
+                  )}
+                </p>
+                <div className="flex flex-col gap-2">
+                  <a href="/generate" className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                    {t('Ir al generador', 'Go to generator')}
+                  </a>
+                  <button onClick={() => advanceOnboarding(2)} className="text-zinc-600 text-[11px] font-mono-jb hover:text-zinc-400 transition py-2">
+                    {t('Saltar por ahora', 'Skip for now')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Explore tools */}
+            {onboardingStep === 2 && (
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </div>
+                <div className="flex justify-center gap-2 mb-4">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: 'var(--red)' }} />
+                  ))}
+                </div>
+                <h2 className="font-display font-bold text-xl text-white mb-2">
+                  {t('Explora tus herramientas', 'Explore your tools')}
+                </h2>
+                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                  {t(
+                    'Investiga keywords, analiza competidores, revisa el SEO de tus vídeos y descubre tu mejor hora para publicar. Todo desde el menú superior.',
+                    'Research keywords, analyze competitors, check your video SEO scores and discover your best time to publish. All from the top menu.'
+                  )}
+                </p>
+                <div className="grid grid-cols-2 gap-2 mb-6 max-w-xs mx-auto">
+                  {[
+                    { href: '/research',    label: t('Keywords', 'Keywords'),     icon: 'M21 21l-4.35-4.35M11 3a8 8 0 110 16 8 8 0 010-16z' },
+                    { href: '/competitors', label: t('Competidores', 'Competitors'), icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 3a4 4 0 110 8 4 4 0 010-8z' },
+                    { href: '/seo-score',   label: 'SEO Score',                    icon: 'M22 12h-4l-3 9L9 3l-3 9H2' },
+                    { href: '/best-time',   label: t('Mejor Hora', 'Best Time'),   icon: 'M12 2a10 10 0 110 20 10 10 0 010-20zM12 6v6l4 2' },
+                  ].map((tool, i) => (
+                    <a key={i} href={tool.href} className="flex items-center gap-2 p-2.5 rounded-lg text-[11px] font-mono-jb text-zinc-400 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={tool.icon}/></svg>
+                      {tool.label}
+                    </a>
+                  ))}
+                </div>
+                <button onClick={() => advanceOnboarding(3)} className="btn-offset px-10 py-3 text-sm font-display">
+                  {t('Listo, empezar a usar YTubViral', 'Done, start using YTubViral')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>

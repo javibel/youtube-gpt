@@ -18,6 +18,7 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   feedbackEmailSentAt DateTime?
+  onboardingStep      Int       @default(0)
 
   accounts        Account[]
   sessions        Session[]
