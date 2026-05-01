@@ -476,6 +476,10 @@ function handleCopy(id: string, out: string) {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
               SEO Score
             </a>
+            <a href="/coach" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              AI Coach
+            </a>
             <span className="flex items-center gap-2 text-zinc-400 text-sm">
               <span>{displayName}</span>
               {isPro && <span className="red-tape text-[9px] py-0.5">PRO</span>}
