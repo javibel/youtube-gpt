@@ -3,7 +3,6 @@ import { generateSocialPost } from '@/lib/agent/content-generator';
 import {
   publishToFacebook,
   publishToFacebookWithImage,
-  publishToInstagram,
   getSocialImageUrl,
 } from '@/lib/agent/meta-agent';
 import { getHumanImageUrl } from '@/lib/agent/linkedin-agent';
