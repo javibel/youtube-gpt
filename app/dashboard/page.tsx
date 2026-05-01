@@ -134,6 +134,10 @@ export default function DashboardPage() {
   const [ytConnecting, setYtConnecting] = useState(false);
   const [ytDisconnecting, setYtDisconnecting] = useState(false);
   const [ytToast, setYtToast]           = useState<string | null>(null);
+  type GrowthData = { subs7d: number; subs30d: number; views7d: number; views30d: number; videos7d: number; videos30d: number };
+  type StatsPoint = { subscribers: number; totalViews: number; recordedAt: string };
+  const [ytGrowth, setYtGrowth] = useState<GrowthData | null>(null);
+  const [ytSparkline, setYtSparkline] = useState<StatsPoint[]>([]);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -158,6 +162,13 @@ export default function DashboardPage() {
           setYtExpired(false);
           setYtChannel(d.channel);
           setYtVideos(d.videos || []);
+          // Fetch growth stats
+          fetch('/api/youtube/stats').then(r => r.json()).then(s => {
+            if (s.data) {
+              setYtGrowth(s.data.growth);
+              setYtSparkline(s.data.points);
+            }
+          }).catch(() => {});
         } else {
           setYtConnected(false);
           setYtExpired(!!d.expired);
@@ -843,19 +854,43 @@ function handleCopy(id: string, out: string) {
                   </div>
                 </div>
 
-                {/* Stats */}
+                {/* Stats with growth */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: t('Subs', 'Subs'),    value: fmtNum(ytChannel.subscribers) },
-                    { label: t('Vistas', 'Views'),  value: fmtNum(ytChannel.totalViews) },
-                    { label: t('Vídeos', 'Videos'), value: fmtNum(ytChannel.videoCount) },
+                    { label: t('Subs', 'Subs'),    value: fmtNum(ytChannel.subscribers), delta: ytGrowth?.subs30d },
+                    { label: t('Vistas', 'Views'),  value: fmtNum(ytChannel.totalViews), delta: ytGrowth?.views30d },
+                    { label: t('Vídeos', 'Videos'), value: fmtNum(ytChannel.videoCount), delta: ytGrowth?.videos30d },
                   ].map((s, i) => (
                     <div key={i} className="text-center p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }}>
                       <p className="font-display font-bold text-white text-base">{s.value}</p>
                       <p className="font-mono-jb text-[9px] text-zinc-600 uppercase">{s.label}</p>
+                      {s.delta != null && s.delta !== 0 && (
+                        <p className="font-mono-jb text-[9px] mt-0.5" style={{ color: s.delta > 0 ? '#22c55e' : '#e84d5b' }}>
+                          {s.delta > 0 ? '+' : ''}{fmtNum(s.delta)} <span className="text-zinc-600">30d</span>
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
+
+                {/* Subscriber sparkline */}
+                {ytSparkline.length > 2 && (() => {
+                  const vals = ytSparkline.map(p => p.subscribers);
+                  const min = Math.min(...vals);
+                  const max = Math.max(...vals);
+                  const range = max - min || 1;
+                  const w = 200;
+                  const h = 32;
+                  const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ');
+                  return (
+                    <div>
+                      <p className="font-mono-jb text-[9px] tracking-wider uppercase text-zinc-600 mb-1">{t('SUSCRIPTORES (90 DÍAS)', 'SUBSCRIBERS (90 DAYS)')}</p>
+                      <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="32" preserveAspectRatio="none" className="rounded">
+                        <polyline points={pts} fill="none" stroke="#9B2020" strokeWidth="1.5" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  );
+                })()}
 
                 {/* Recent videos */}
                 {ytVideos.length > 0 && (
