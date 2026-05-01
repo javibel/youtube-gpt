@@ -26,8 +26,9 @@ model User {
   review          Review?
   youtubeToken    YoutubeToken?
   videoPreviews   VideoPreview[]
-  videoSeoScores  VideoSeoScore[]
-  extensionTokens ExtensionToken[]
+  videoSeoScores    VideoSeoScore[]
+  bestTimeAnalysis  BestTimeAnalysis?
+  extensionTokens   ExtensionToken[]
   feedback        UserFeedback?
 
   @@map("users")
@@ -214,6 +215,20 @@ model VideoSeoScore {
 
   @@unique([userId, videoId])
   @@map("video_seo_scores")
+}
+
+model BestTimeAnalysis {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  heatmap    Json
+  topSlots   Json
+  videoCount Int
+  aiTip      Json?
+  analyzedAt DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("best_time_analyses")
 }
 
 model SocialPost {
