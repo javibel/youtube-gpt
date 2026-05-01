@@ -117,6 +117,7 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'setup-youtube-menos-500-euros',
     cat: 'gear',
+    image: '/blog/setup-youtube-menos-500-euros.webp',
     readMin: 11,
     date: { es: '1 May 2026', en: 'May 1, 2026' },
     author: { name: 'Marcos Ruiz', role: { es: 'Editor técnico, YTubViral', en: 'Technical Editor, YTubViral' }, avatar: 'MR' },
