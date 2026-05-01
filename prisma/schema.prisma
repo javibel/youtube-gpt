@@ -29,6 +29,7 @@ model User {
   videoSeoScores    VideoSeoScore[]
   bestTimeAnalysis  BestTimeAnalysis?
   channelSnapshots  ChannelSnapshot[]
+  dailyIdeas        DailyIdea[]
   extensionTokens   ExtensionToken[]
   feedback        UserFeedback?
 
@@ -216,6 +217,19 @@ model VideoSeoScore {
 
   @@unique([userId, videoId])
   @@map("video_seo_scores")
+}
+
+model DailyIdea {
+  id         String   @id @default(cuid())
+  userId     String
+  date       String
+  ideas      Json
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_ideas")
 }
 
 model ChannelSnapshot {

@@ -138,6 +138,8 @@ export default function DashboardPage() {
   type StatsPoint = { subscribers: number; totalViews: number; recordedAt: string };
   const [ytGrowth, setYtGrowth] = useState<GrowthData | null>(null);
   const [ytSparkline, setYtSparkline] = useState<StatsPoint[]>([]);
+  type VideoIdea = { title_es: string; title_en: string; idea_es: string; idea_en: string };
+  const [dailyIdeas, setDailyIdeas] = useState<VideoIdea[] | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -162,12 +164,15 @@ export default function DashboardPage() {
           setYtExpired(false);
           setYtChannel(d.channel);
           setYtVideos(d.videos || []);
-          // Fetch growth stats
+          // Fetch growth stats + daily ideas
           fetch('/api/youtube/stats').then(r => r.json()).then(s => {
             if (s.data) {
               setYtGrowth(s.data.growth);
               setYtSparkline(s.data.points);
             }
+          }).catch(() => {});
+          fetch('/api/daily-ideas').then(r => r.json()).then(d => {
+            if (d.ideas) setDailyIdeas(d.ideas);
           }).catch(() => {});
         } else {
           setYtConnected(false);
@@ -1051,16 +1056,36 @@ function handleCopy(id: string, out: string) {
             )}
           </div>
 
-          {/* Tip */}
-          <div className="rounded-2xl border border-dashed border-white/15 p-5" style={{ background: '#0C0C0E' }}>
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yellow)' }}>★ {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
-            <p className="text-sm leading-relaxed text-zinc-300">
-              {dailyTip ? t(dailyTip.es, dailyTip.en) : t(
-                'Los títulos con un número específico (7, 23, 147) superan a los genéricos en un 36% de CTR. Prueba \u201c7 errores...\u201d la próxima vez.',
-                'Titles with a specific number (7, 23, 147) outperform generic ones by 36% CTR. Try \u201c7 mistakes...\u201d next time.'
-              )}
-            </p>
-          </div>
+          {/* Daily Ideas (personalized for Pro) or generic Tip */}
+          {dailyIdeas && dailyIdeas.length > 0 ? (
+            <div className="rounded-2xl border border-white/10 p-5" style={{ background: 'rgba(155,32,32,0.06)' }}>
+              <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-3" style={{ color: 'var(--red)' }}>
+                {t('IDEAS PARA HOY', 'IDEAS FOR TODAY')}
+              </p>
+              <div className="space-y-3">
+                {dailyIdeas.slice(0, 5).map((idea, i) => (
+                  <div key={i} className="group">
+                    <p className="text-sm font-semibold text-white leading-tight">
+                      {t(idea.title_es, idea.title_en)}
+                    </p>
+                    <p className="text-[12px] text-zinc-500 leading-snug mt-0.5">
+                      {t(idea.idea_es, idea.idea_en)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/15 p-5" style={{ background: '#0C0C0E' }}>
+              <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yellow)' }}>★ {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
+              <p className="text-sm leading-relaxed text-zinc-300">
+                {dailyTip ? t(dailyTip.es, dailyTip.en) : t(
+                  'Los títulos con un número específico (7, 23, 147) superan a los genéricos en un 36% de CTR. Prueba \u201c7 errores...\u201d la próxima vez.',
+                  'Titles with a specific number (7, 23, 147) outperform generic ones by 36% CTR. Try \u201c7 mistakes...\u201d next time.'
+                )}
+              </p>
+            </div>
+          )}
         </aside>
       </div>
 

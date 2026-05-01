@@ -76,6 +76,107 @@ Responde SOLO con JSON en este formato exacto, sin texto adicional:
   return { skipped: false };
 }
 
+async function generateDailyIdeas(): Promise<number> {
+  const date = todayUTC();
+
+  // Find Pro users with connected YouTube channel who don't have ideas for today
+  const users = await prisma.youtubeToken.findMany({
+    where: {
+      channelId: { not: null },
+      user: {
+        subscription: { status: 'active' },
+        dailyIdeas: { none: { date } },
+      },
+    },
+    select: {
+      userId: true,
+      channelName: true,
+      subscribers: true,
+      videoCount: true,
+    },
+  });
+
+  if (users.length === 0) return 0;
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return 0;
+
+  let generated = 0;
+
+  for (const user of users) {
+    try {
+      // Fetch user's recent video titles for context
+      const recentGens = await prisma.generation.findMany({
+        where: { userId: user.userId, template: { in: ['title', 'description'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { output: true },
+      });
+      const recentTitles = recentGens.map(g => g.output.slice(0, 80)).join('\n');
+
+      const subs = user.subscribers ? parseInt(user.subscribers, 10) : 0;
+      const vids = user.videoCount ? parseInt(user.videoCount, 10) : 0;
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 600,
+          messages: [{
+            role: 'user',
+            content: `You are a YouTube growth advisor. Generate 5 personalized video ideas for this creator.
+
+Channel: ${user.channelName || 'Unknown'}
+Subscribers: ${subs}
+Total videos: ${vids}
+Recent content: ${recentTitles || 'No recent titles available'}
+
+Rules:
+- Each idea must be specific and actionable, not generic
+- Ideas should match the channel's apparent niche and size
+- For small channels (<1K subs): focus on searchable, niche topics
+- For medium channels (1K-50K): mix of search and trending topics
+- For large channels (50K+): trending, collab ideas, series concepts
+- Include a suggested title for each idea
+- Each idea: 1 sentence max explaining the angle
+
+Respond ONLY with JSON array, no other text:
+[{"title_es":"título sugerido","title_en":"suggested title","idea_es":"explicación breve","idea_en":"brief explanation"}]`,
+          }],
+        }),
+      });
+
+      if (!res.ok) continue;
+      const aiData = await res.json();
+      const raw: string = (aiData.content?.[0]?.text ?? '')
+        .trim()
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '')
+        .trim();
+      const ideas = JSON.parse(raw);
+      if (!Array.isArray(ideas) || ideas.length === 0) continue;
+
+      await prisma.dailyIdea.create({
+        data: {
+          userId: user.userId,
+          date,
+          ideas: ideas as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        },
+      });
+      generated++;
+    } catch {
+      // Skip this user on error, continue with next
+    }
+  }
+
+  return generated;
+}
+
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -89,6 +190,13 @@ export async function GET(request: Request) {
     await generateAndSaveDailyTip().catch(err =>
       errors.push(`Daily tip: ${err instanceof Error ? err.message : err}`)
     );
+
+    // 1b. Generate personalized daily ideas for Pro users
+    const ideasGenerated = await generateDailyIdeas().catch(err => {
+      errors.push(`Daily ideas: ${err instanceof Error ? err.message : err}`);
+      return 0;
+    });
+    results.dailyIdeas = ideasGenerated;
 
     // 2. Generate content for Facebook + LinkedIn + TikTok + Twitter (morning networks)
     const [facebook, linkedin, tiktok, twitter] = await Promise.allSettled([
