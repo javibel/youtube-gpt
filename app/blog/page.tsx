@@ -51,12 +51,21 @@ function BlogCover({ cat, index, image }: { cat: string; index: number; image?: 
   );
 }
 
-export default async function BlogListPage() {
+export default async function BlogListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const cookieStore = await cookies();
   const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const { cat: activeCat } = await searchParams;
+  const selectedCat = typeof activeCat === 'string' ? activeCat : undefined;
 
-  const featured = BLOG_POSTS[0];
-  const rest = BLOG_POSTS.slice(1);
+  const filtered = selectedCat
+    ? BLOG_POSTS.filter((p) => p.cat === selectedCat)
+    : BLOG_POSTS;
+  const featured = filtered[0];
+  const rest = filtered.slice(1);
 
   const catLabel = (cat: string) => BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES]?.name[lang] ?? cat;
   const catColor = (cat: string) => BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES]?.color ?? '#FF0033';
@@ -107,21 +116,22 @@ export default async function BlogListPage() {
 
           {/* Category pills */}
           <div className="flex flex-wrap gap-2 mt-8">
-            <span className="soft-chip px-4 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase soft-chip-active">
+            <Link href="/blog" className={`soft-chip px-4 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase ${!selectedCat ? 'soft-chip-active' : 'text-zinc-400'}`}>
               {lang === 'en' ? 'All' : 'Todos'}
-            </span>
+            </Link>
             {Object.entries(BLOG_CATEGORIES).map(([key, val]) => (
-              <span key={key} className="soft-chip px-4 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase text-zinc-400"
+              <Link key={key} href={`/blog?cat=${key}`}
+                className={`soft-chip px-4 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase ${selectedCat === key ? 'soft-chip-active' : 'text-zinc-400'}`}
                 style={{ borderColor: val.color + '33' }}>
                 {val.name[lang]}
-              </span>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
       {/* ── Featured post ── */}
-      <section className="border-b border-white/10">
+      {featured && <section className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-12">
           <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-6">
             {lang === 'en' ? 'Featured' : 'Destacado'}
@@ -162,7 +172,20 @@ export default async function BlogListPage() {
             </div>
           </Link>
         </div>
-      </section>
+      </section>}
+
+      {!featured && (
+        <section className="border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-6 py-16 text-center">
+            <p className="text-zinc-500 font-mono-jb text-sm">
+              {lang === 'en' ? 'No articles in this category yet.' : 'Aún no hay artículos en esta categoría.'}
+            </p>
+            <Link href="/blog" className="inline-block mt-4 text-sm font-mono-jb" style={{ color: 'var(--red)' }}>
+              {lang === 'en' ? '← All articles' : '← Todos los artículos'}
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* ── Post grid + sidebar ── */}
       <section className="max-w-7xl mx-auto px-6 py-12 grid lg:grid-cols-[1fr_300px] gap-12">
@@ -251,13 +274,13 @@ export default async function BlogListPage() {
               {Object.entries(BLOG_CATEGORIES).map(([key, val]) => {
                 const count = BLOG_POSTS.filter((p) => p.cat === key).length;
                 return (
-                  <div key={key} className="flex items-center justify-between py-2 border-b border-white/5">
+                  <Link key={key} href={`/blog?cat=${key}`} className={`flex items-center justify-between py-2 border-b border-white/5 hover:bg-white/[0.03] transition ${selectedCat === key ? 'bg-white/[0.04]' : ''}`}>
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: val.color }} />
                       <span className="text-sm text-zinc-300">{val.name[lang]}</span>
                     </div>
                     <span className="font-mono-jb text-[10px] text-zinc-600">{count}</span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

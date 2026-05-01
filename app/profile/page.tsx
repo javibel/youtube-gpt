@@ -80,6 +80,12 @@ export default function ProfilePage() {
   function handleLangChange(next: Lang) {
     setLang(next);
     setLangClient(next);
+    // Persist to DB so server-side emails use the correct language
+    fetch('/api/user/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lang: next }),
+    }).catch(() => {});
   }
 
   async function handleSaveName() {

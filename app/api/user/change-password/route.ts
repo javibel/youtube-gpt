@@ -2,11 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { Resend } from 'resend';
 import { passwordChangedEmail } from '@/lib/emails';
 import { validatePassword } from '@/lib/password';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { sendTransactionalEmail } from '@/lib/send-email';
 
 
 export async function POST(request: Request) {
@@ -42,8 +40,7 @@ export async function POST(request: Request) {
 
   const name = user.name ?? session.user.email;
   const subject = emailLang === 'en' ? 'Your password was changed - YTubViral' : 'Tu contraseña ha sido cambiada - YTubViral';
-  resend?.emails.send({
-    from: 'noreply@ytubviral.com',
+  sendTransactionalEmail({
     to: session.user.email,
     subject,
     html: passwordChangedEmail(name, emailLang),

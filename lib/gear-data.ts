@@ -306,8 +306,8 @@ export const GEAR_ITEMS: GearItem[] = [
     priceRange: '€1400-1600',
     recommended: true,
     amazonUrl: {
-      es: 'https://www.amazon.es/dp/B0CX22ZW1T',
-      en: 'https://www.amazon.co.uk/dp/B0CX22ZW1T',
+      es: 'https://www.amazon.es/dp/B0CX254C49',
+      en: 'https://www.amazon.co.uk/dp/B0CX2549J4',
     },
     image: 'https://www.apple.com/v/macbook-air/z/images/overview/design/design_hero_static__e56c1v71mr6u_large.png',
   },
@@ -322,8 +322,8 @@ export const GEAR_ITEMS: GearItem[] = [
     tier: 'pro',
     priceRange: '€2200-3000',
     amazonUrl: {
-      es: 'https://www.amazon.es/dp/B0DLHC76D7',
-      en: 'https://www.amazon.co.uk/dp/B0DLHC76D7',
+      es: 'https://www.amazon.es/dp/B0DLJGSLV5',
+      en: 'https://www.amazon.co.uk/dp/B0DLHWDGSR',
     },
     image: 'https://www.apple.com/v/macbook-pro/ax/images/overview/product-viewer/pv_hero_endframe__gc89p7dw1syi_large.jpg',
   },
@@ -339,7 +339,7 @@ export const GEAR_ITEMS: GearItem[] = [
     priceRange: '€300-400',
     recommended: true,
     amazonUrl: {
-      es: 'https://www.amazon.es/dp/B09DTDRJWP',
+      es: 'https://www.amazon.es/dp/B09CGY99X5',
       en: 'https://www.amazon.co.uk/dp/B09DTDRJWP',
     },
     image: 'https://i.dell.com/is/image/DellContent//content/dam/ss2/product-images/dell-client-products/peripherals/monitors/s-series/s2722qc/spi/ng/monitor-s2722qc-relsize-500-ng.psd?fmt=jpg&wid=500&hei=381',
@@ -356,8 +356,8 @@ export const GEAR_ITEMS: GearItem[] = [
     priceRange: '€90-110',
     recommended: true,
     amazonUrl: {
-      es: 'https://www.amazon.es/dp/B0B2GC36YG',
-      en: 'https://www.amazon.co.uk/dp/B0B2GC36YG',
+      es: 'https://www.amazon.es/dp/B07W5JKHFZ',
+      en: 'https://www.amazon.co.uk/dp/B07W5JKHFZ',
     },
     image: 'https://resource.logitech.com/c_fill,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/mice/mx-master-3s/2025-update/mx-master-3s-bluetooth-edition-top-view-black-new-1.png',
   },
@@ -372,8 +372,8 @@ export const GEAR_ITEMS: GearItem[] = [
     tier: 'mid',
     priceRange: '€100-120',
     amazonUrl: {
-      es: 'https://www.amazon.es/dp/B0BKW2LK3V',
-      en: 'https://www.amazon.co.uk/dp/B0BKW2LK3V',
+      es: 'https://www.amazon.es/dp/B07W6JPM9R',
+      en: 'https://www.amazon.co.uk/dp/B07W5JK38Y',
     },
     image: 'https://resource.logitech.com/w_544,h_466,ar_7:6,c_pad,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/keyboards/mx-keys-s/migration-assets-for-delorean-2025/gallery/mx-keys-s-top-view-black-us.png',
   },

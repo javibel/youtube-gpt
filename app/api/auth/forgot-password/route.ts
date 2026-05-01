@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Resend } from 'resend';
+import { sendTransactionalEmail } from '@/lib/send-email';
 import crypto from 'crypto';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(request: NextRequest) {
   // Rate limit: máx 5 intentos por IP cada 15 minutos — upsert atómico en BD (cross-instance safe)
@@ -60,7 +58,7 @@ export async function POST(request: NextRequest) {
     data: { email, token, expires },
   });
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
+  const baseUrl = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
   const subject = isEn ? 'Reset your password - YTubViral' : 'Restablecer contraseña - YTubViral';
@@ -100,12 +98,8 @@ export async function POST(request: NextRequest) {
     </body></html>
   `;
 
-  resend?.emails.send({
-    from: 'noreply@ytubviral.com',
-    to: email,
-    subject,
-    html,
-  }).catch(err => console.error('forgot-password email error:', err));
+  sendTransactionalEmail({ to: email, subject, html })
+    .catch(err => console.error('forgot-password email error:', err));
 
   return NextResponse.json({ ok: true });
 }

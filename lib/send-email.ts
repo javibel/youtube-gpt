@@ -1,0 +1,63 @@
+/**
+ * Shared email sending with Resend + Gmail fallback.
+ * Tries Resend first (noreply@ytubviral.com). If Resend is not configured
+ * or fails, falls back to sending via the Gmail agent (ytbeviral@gmail.com).
+ */
+import { Resend } from 'resend';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+export async function sendTransactionalEmail({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<void> {
+  // Try Resend first
+  if (resend) {
+    try {
+      const result = await resend.emails.send({
+        from: 'noreply@ytubviral.com',
+        to,
+        subject,
+        html,
+      });
+      if (result.error) {
+        console.error('[send-email] Resend error:', result.error);
+        throw new Error(result.error.message);
+      }
+      console.log(`[send-email] Sent via Resend to ${to}: "${subject}"`);
+      return;
+    } catch (err) {
+      console.error('[send-email] Resend failed, trying Gmail fallback:', err);
+    }
+  } else {
+    console.warn('[send-email] RESEND_API_KEY not set, using Gmail fallback');
+  }
+
+  // Fallback: send via Gmail agent
+  const { sendEmailTo } = await import('@/lib/agent/gmail-agent');
+  // Convert HTML to plain text for Gmail agent (which sends text/plain)
+  const plainText = html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/tr>/gi, '\n')
+    .replace(/<\/td>/gi, ' ')
+    .replace(/<a[^>]*href="([^"]*)"[^>]*>[^<]*<\/a>/gi, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&middot;/g, '·')
+    .replace(/&copy;/g, '(c)')
+    .replace(/&#\d+;/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  await sendEmailTo(to, subject, plainText);
+  console.log(`[send-email] Sent via Gmail fallback to ${to}: "${subject}"`);
+}

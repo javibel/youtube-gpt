@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sendEmailTo } from '@/lib/agent/gmail-agent';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? '';
-const APP_URL = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
+const APP_URL = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
 
 const COPY = {
   es: {
@@ -19,10 +19,12 @@ const COPY = {
   },
 };
 
-function detectLang(email: string): 'es' | 'en' {
+function detectLang(email: string, name?: string | null): 'es' | 'en' {
   const domain = email.split('@')[1]?.toLowerCase() ?? '';
   const esIds = ['.es','.mx','.ar','.co','.pe','.cl','.ve','.uy','.py','.bo','.ec','.gt','.sv','.hn','.ni','.cr','.pa','.do','.cu','.pr'];
-  return esIds.some(t => domain.endsWith(t)) ? 'es' : 'en';
+  if (esIds.some(t => domain.endsWith(t))) return 'es';
+  if (name && /[áéíóúñü¿¡]/i.test(name)) return 'es';
+  return 'en';
 }
 
 export async function POST(request: Request) {
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
   const { email } = await request.json() as { email: string };
   if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 });
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true, lang: true } });
   if (!user) return NextResponse.json({ error: `Usuario no encontrado: ${email}` }, { status: 404 });
 
   // Si ya tiene feedback enviado, borrar el registro anterior para poder reenviar
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
     await prisma.userFeedback.delete({ where: { userId: user.id } });
   }
 
-  const lang = detectLang(email);
+  const lang: 'es' | 'en' = user.lang === 'en' ? 'en' : 'es';
   const token = crypto.randomUUID();
 
   await prisma.userFeedback.create({ data: { userId: user.id, token, lang } });

@@ -17,21 +17,23 @@ interface CheckItem {
 
 interface VideoScore {
   videoId: string;
-  title: string;
-  thumbnail: string;
-  publishedAt: string;
-  views: number;
+  title?: string;
+  thumbnail?: string;
+  publishedAt?: string;
+  views?: number;
   score: number;
   checklist: CheckItem[];
 }
 
-function fmtNum(n: number): string {
+function fmtNum(n: number | null | undefined): string {
+  if (n == null || isNaN(n)) return '0';
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
   return n.toString();
 }
 
-function fmtDate(iso: string, lang: Lang): string {
+function fmtDate(iso: string | null | undefined, lang: Lang): string {
+  if (!iso) return '';
   try {
     return new Date(iso).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
   } catch { return ''; }
@@ -267,7 +269,7 @@ export default function SeoScorePage() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-display font-semibold text-sm truncate">{video.title}</p>
+                    <p className="text-white font-display font-semibold text-sm truncate">{video.title || video.videoId}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-zinc-500 font-mono-jb text-[11px]">
                         {fmtNum(video.views)} {t('vistas', 'views')}

@@ -1,17 +1,19 @@
 import { prisma } from '@/lib/prisma';
 import { sendEmailTo } from './gmail-agent';
 
-const APP_URL = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
+const APP_URL = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
 const FEEDBACK_DELAY_DAYS = 3;
 
-function detectLang(email: string): 'es' | 'en' {
+function detectLang(email: string, name?: string | null): 'es' | 'en' {
   const domain = email.split('@')[1]?.toLowerCase() ?? '';
   const spanishTlds = [
     '.es', '.mx', '.ar', '.co', '.pe', '.cl', '.ve', '.uy',
     '.py', '.bo', '.ec', '.gt', '.sv', '.hn', '.ni', '.cr',
     '.pa', '.do', '.cu', '.pr',
   ];
-  return spanishTlds.some(tld => domain.endsWith(tld)) ? 'es' : 'en';
+  if (spanishTlds.some(tld => domain.endsWith(tld))) return 'es';
+  if (name && /[áéíóúñü¿¡]/i.test(name)) return 'es';
+  return 'en';
 }
 
 const COPY = {
@@ -43,13 +45,13 @@ export async function runFeedbackAgent(): Promise<FeedbackAgentResult> {
       createdAt: { lte: cutoff },
       feedbackEmailSentAt: null,
     },
-    select: { id: true, email: true, name: true },
+    select: { id: true, email: true, name: true, lang: true },
     take: 10,
   });
 
   for (const user of users) {
     try {
-      const lang = detectLang(user.email);
+      const lang: 'es' | 'en' = user.lang === 'en' ? 'en' : 'es';
       const token = crypto.randomUUID();
 
       await prisma.userFeedback.create({

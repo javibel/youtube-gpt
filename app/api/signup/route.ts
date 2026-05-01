@@ -3,11 +3,9 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { isDisposableEmail } from "@/lib/disposable-domains";
-import { Resend } from "resend";
 import { validatePassword } from "@/lib/password";
 import { verificationEmail } from "@/lib/emails";
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { sendTransactionalEmail } from "@/lib/send-email";
 
 function welcomeEmail(name: string, lang: 'es' | 'en'): string {
   const isEn = lang === 'en';
@@ -182,7 +180,7 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     await prisma.user.create({
-      data: { email, password: hashedPassword, name },
+      data: { email, password: hashedPassword, name, lang: emailLang },
     });
 
     // Create email verification token (24h)
@@ -192,13 +190,12 @@ export async function POST(req: NextRequest) {
     });
 
     // Send verification email (non-blocking)
-    const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
+    const baseUrl = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
     const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
     const subject = emailLang === 'en'
       ? `Verify your email - YTubViral`
       : `Verifica tu email - YTubViral`;
-    resend?.emails.send({
-      from: 'noreply@ytubviral.com',
+    sendTransactionalEmail({
       to: email,
       subject,
       html: verificationEmail(name, verifyUrl, emailLang),

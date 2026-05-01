@@ -326,15 +326,28 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
       }
 
       // Upsert score in DB
+      const videoTitle = video.snippet?.title || '';
+      const videoThumb = video.snippet?.thumbnails?.medium?.url || '';
+      const videoPubAt = video.snippet?.publishedAt || '';
+      const videoViews = parseInt(video.statistics?.viewCount || '0', 10);
+
       await prisma.videoSeoScore.upsert({
         where: { userId_videoId: { userId: session.user.id, videoId: video.id } },
         create: {
           userId: session.user.id,
           videoId: video.id,
+          title: videoTitle,
+          thumbnail: videoThumb,
+          publishedAt: videoPubAt,
+          views: videoViews,
           score,
           checklist: JSON.parse(JSON.stringify(checklist)),
         },
         update: {
+          title: videoTitle,
+          thumbnail: videoThumb,
+          publishedAt: videoPubAt,
+          views: videoViews,
           score,
           checklist: JSON.parse(JSON.stringify(checklist)),
           analyzedAt: new Date(),

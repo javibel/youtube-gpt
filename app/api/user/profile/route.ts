@@ -9,15 +9,27 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 
-  const { name } = await request.json();
+  const body = await request.json();
+  const data: { name?: string; lang?: string } = {};
 
-  if (!name || name.trim().length === 0) {
-    return NextResponse.json({ error: 'El nombre no puede estar vacío' }, { status: 400 });
+  if (body.name !== undefined) {
+    if (!body.name || body.name.trim().length === 0) {
+      return NextResponse.json({ error: 'El nombre no puede estar vacío' }, { status: 400 });
+    }
+    data.name = body.name.trim();
+  }
+
+  if (body.lang === 'es' || body.lang === 'en') {
+    data.lang = body.lang;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
   }
 
   await prisma.user.update({
     where: { email: session.user.email },
-    data: { name: name.trim() },
+    data,
   });
 
   return NextResponse.json({ ok: true });

@@ -14,6 +14,7 @@ model User {
   image         String?
   emailVerified DateTime?
   password      String?
+  lang          String    @default("es")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -210,14 +211,18 @@ model ExtensionToken {
 }
 
 model VideoSeoScore {
-  id         String   @id @default(cuid())
-  userId     String
-  videoId    String
-  score      Int
-  checklist  Json
-  analyzedAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  videoId     String
+  title       String?
+  thumbnail   String?
+  publishedAt String?
+  views       Int?
+  score       Int
+  checklist   Json
+  analyzedAt  DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, videoId])
   @@map("video_seo_scores")
