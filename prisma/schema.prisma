@@ -30,8 +30,9 @@ model User {
   videoSeoScores    VideoSeoScore[]
   bestTimeAnalysis  BestTimeAnalysis?
   channelSnapshots  ChannelSnapshot[]
-  dailyIdeas        DailyIdea[]
-  extensionTokens   ExtensionToken[]
+  dailyIdeas           DailyIdea[]
+  trackedCompetitors   TrackedCompetitor[]
+  extensionTokens      ExtensionToken[]
   feedback        UserFeedback?
 
   @@map("users")
@@ -218,6 +219,39 @@ model VideoSeoScore {
 
   @@unique([userId, videoId])
   @@map("video_seo_scores")
+}
+
+model TrackedCompetitor {
+  id          String   @id @default(cuid())
+  userId      String
+  channelId   String
+  channelName String
+  channelThumb String?
+  subscribers  Int      @default(0)
+  totalViews   BigInt   @default(0)
+  videoCount   Int      @default(0)
+  addedAt     DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots   CompetitorSnapshot[]
+
+  @@unique([userId, channelId])
+  @@map("tracked_competitors")
+}
+
+model CompetitorSnapshot {
+  id            String   @id @default(cuid())
+  competitorId  String
+  subscribers   Int
+  totalViews    BigInt
+  videoCount    Int
+  recordedAt    DateTime @default(now())
+
+  competitor    TrackedCompetitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([competitorId, recordedAt])
+  @@map("competitor_snapshots")
 }
 
 model DailyIdea {

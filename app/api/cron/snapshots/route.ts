@@ -75,5 +75,56 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, users: users.length, snapped, errors });
+  // ── Competitor snapshots ──────────────────────────────────────────────────
+  const YT_API_KEY = process.env.YOUTUBE_API_KEY;
+  let compSnapped = 0;
+
+  if (YT_API_KEY) {
+    const competitors = await prisma.trackedCompetitor.findMany({
+      select: { id: true, channelId: true },
+    });
+
+    // Batch channel IDs (max 50 per API call)
+    for (let i = 0; i < competitors.length; i += 50) {
+      const batch = competitors.slice(i, i + 50);
+      const ids = batch.map(c => c.channelId).join(',');
+
+      try {
+        const res = await fetch(
+          `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${ids}&key=${YT_API_KEY}`,
+        );
+        if (!res.ok) continue;
+        const data = await res.json();
+
+        for (const item of data.items || []) {
+          const comp = batch.find(c => c.channelId === item.id);
+          if (!comp) continue;
+
+          const subs = parseInt(item.statistics.subscriberCount || '0', 10);
+          const views = BigInt(item.statistics.viewCount || '0');
+          const vids = parseInt(item.statistics.videoCount || '0', 10);
+
+          await prisma.competitorSnapshot.create({
+            data: {
+              competitorId: comp.id,
+              subscribers: subs,
+              totalViews: views,
+              videoCount: vids,
+            },
+          });
+
+          await prisma.trackedCompetitor.update({
+            where: { id: comp.id },
+            data: { subscribers: subs, totalViews: views, videoCount: vids },
+          });
+
+          compSnapped++;
+        }
+      } catch {
+        // Skip batch on error
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, users: users.length, snapped, errors, compSnapped });
 }
