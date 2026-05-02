@@ -64,10 +64,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    // Reutilizar customer de Stripe si ya existe
-    let customerId = user.subscription?.stripeCustomerId ?? undefined;
-
-    if (!customerId) {
+    // Reutilizar customer de Stripe si ya existe (must start with 'cus_' to be a real Stripe ID)
+    let customerId = user.subscription?.stripeCustomerId;
+    if (!customerId || !customerId.startsWith('cus_')) {
       const customer = await stripe.customers.create({
         email: user.email,
         name: user.name ?? undefined,
