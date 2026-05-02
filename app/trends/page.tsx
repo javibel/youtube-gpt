@@ -40,6 +40,7 @@ interface TrendingItem {
   vph: number;
   engagementRate: number;
   lang: string;
+  durationSec: number;
 }
 
 interface ExplorerData {
@@ -93,6 +94,15 @@ function timeAgo(dateStr: string, lang: Lang): string {
   return lang === 'en' ? `${days}d ago` : `Hace ${days}d`;
 }
 
+function fmtDuration(sec: number): string {
+  if (sec <= 0) return '0:00';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function vphColor(vph: number): string {
   if (vph >= 100000) return '#22c55e';
   if (vph >= 10000) return '#eab308';
@@ -118,8 +128,10 @@ export default function TrendsPage() {
   const [explorerError, setExplorerError] = useState('');
   const [region, setRegion] = useState('US');
   const [category, setCategory] = useState('');
-  const [sortBy, setSortBy] = useState<'vph' | 'views' | 'engagement'>('vph');
+  const [sortBy, setSortBy] = useState<'vph' | 'views' | 'engagement' | 'likes'>('vph');
   const [langFilter, setLangFilter] = useState<string>('all');
+  const [durationFilter, setDurationFilter] = useState<string>('all');
+  const [minLikes, setMinLikes] = useState<string>('0');
 
   useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -188,16 +200,26 @@ export default function TrendsPage() {
     setAlerts(prev => prev.map(a => ({ ...a, read: true })));
   }
 
-  // Filter by language, then sort
+  // Filter by language, duration, likes — then sort
   const filteredItems = explorer?.items
-    ? (langFilter === 'all'
-        ? explorer.items
-        : explorer.items.filter(item => item.lang.startsWith(langFilter)))
+    ? explorer.items.filter(item => {
+        // Language filter
+        if (langFilter !== 'all' && !item.lang.startsWith(langFilter)) return false;
+        // Duration filter
+        if (durationFilter === 'short' && item.durationSec >= 240) return false;
+        if (durationFilter === 'medium' && (item.durationSec < 240 || item.durationSec > 1200)) return false;
+        if (durationFilter === 'long' && item.durationSec <= 1200) return false;
+        // Min likes filter
+        const minL = parseInt(minLikes);
+        if (minL > 0 && item.likes < minL) return false;
+        return true;
+      })
     : [];
 
   const sortedItems = [...filteredItems].sort((a, b) => {
     if (sortBy === 'vph') return b.vph - a.vph;
     if (sortBy === 'views') return b.views - a.views;
+    if (sortBy === 'likes') return b.likes - a.likes;
     return b.engagementRate - a.engagementRate;
   });
 
@@ -317,7 +339,7 @@ export default function TrendsPage() {
             {/* Sort */}
             <select
               value={sortBy}
-              onChange={e => setSortBy(e.target.value as 'vph' | 'views' | 'engagement')}
+              onChange={e => setSortBy(e.target.value as 'vph' | 'views' | 'engagement' | 'likes')}
               className="font-mono-jb text-[11px] rounded border border-white/10 px-3 py-2 transition hover:border-white/25 focus:border-red-500/50 focus:outline-none"
               style={{ background: '#141416', color: '#f1f1f1' }}
             >
@@ -327,8 +349,53 @@ export default function TrendsPage() {
               <option value="views" style={{ background: '#141416', color: '#f1f1f1' }}>
                 {t('Total views', 'Total views')}
               </option>
+              <option value="likes" style={{ background: '#141416', color: '#f1f1f1' }}>
+                Likes
+              </option>
               <option value="engagement" style={{ background: '#141416', color: '#f1f1f1' }}>
                 Engagement %
+              </option>
+            </select>
+
+            {/* Duration filter */}
+            <select
+              value={durationFilter}
+              onChange={e => setDurationFilter(e.target.value)}
+              className="font-mono-jb text-[11px] rounded border border-white/10 px-3 py-2 transition hover:border-white/25 focus:border-red-500/50 focus:outline-none"
+              style={{ background: '#141416', color: '#f1f1f1' }}
+            >
+              <option value="all" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Cualquier duración', 'Any duration')}
+              </option>
+              <option value="short" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Corto (< 4 min)', 'Short (< 4 min)')}
+              </option>
+              <option value="medium" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Medio (4-20 min)', 'Medium (4-20 min)')}
+              </option>
+              <option value="long" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Largo (> 20 min)', 'Long (> 20 min)')}
+              </option>
+            </select>
+
+            {/* Min likes filter */}
+            <select
+              value={minLikes}
+              onChange={e => setMinLikes(e.target.value)}
+              className="font-mono-jb text-[11px] rounded border border-white/10 px-3 py-2 transition hover:border-white/25 focus:border-red-500/50 focus:outline-none"
+              style={{ background: '#141416', color: '#f1f1f1' }}
+            >
+              <option value="0" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Sin mín. likes', 'No min likes')}
+              </option>
+              <option value="1000" style={{ background: '#141416', color: '#f1f1f1' }}>
+                1K+ likes
+              </option>
+              <option value="10000" style={{ background: '#141416', color: '#f1f1f1' }}>
+                10K+ likes
+              </option>
+              <option value="100000" style={{ background: '#141416', color: '#f1f1f1' }}>
+                100K+ likes
               </option>
             </select>
 
@@ -439,6 +506,12 @@ export default function TrendsPage() {
                     <span className="absolute top-2 left-2 font-mono-jb text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.75)', color: idx < 3 ? '#FFE800' : '#fff' }}>
                       #{idx + 1}
                     </span>
+                    {/* Duration badge */}
+                    {item.durationSec > 0 && (
+                      <span className="absolute bottom-2 right-2 font-mono-jb text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.85)', color: '#fff' }}>
+                        {fmtDuration(item.durationSec)}
+                      </span>
+                    )}
                     {/* VPH badge */}
                     <span className="absolute top-2 right-2 font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1" style={{ background: 'rgba(0,0,0,0.80)', color: vphColor(item.vph) }}>
                       <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
@@ -459,9 +532,12 @@ export default function TrendsPage() {
                     <p className="font-mono-jb text-[10px] text-zinc-500 mt-1 truncate">{item.channelTitle}</p>
 
                     {/* Stats row */}
-                    <div className="flex items-center gap-3 mt-3">
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
                       <span className="font-mono-jb text-[10px] text-zinc-400">
                         {fmtNum(item.views)} views
+                      </span>
+                      <span className="font-mono-jb text-[10px] text-zinc-400">
+                        👍 {fmtNum(item.likes)}
                       </span>
                       <span className="font-mono-jb text-[10px] text-zinc-400">
                         {item.engagementRate}% eng

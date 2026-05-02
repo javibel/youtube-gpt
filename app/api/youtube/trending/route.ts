@@ -55,6 +55,7 @@ interface TrendingItem {
   vph: number; // views per hour since publish
   engagementRate: number;
   lang: string; // ISO language code from video metadata
+  durationSec: number; // video duration in seconds
 }
 
 export async function GET(request: Request) {
@@ -92,17 +93,26 @@ export async function GET(request: Request) {
     }
 
     const data = await res.json();
-    const items: (TrendingItem & { _lang: string })[] = (data.items || []).map((item: {
+
+    // Parse ISO 8601 duration (PT1H2M3S → seconds)
+    function parseDuration(iso: string | undefined): number {
+      if (!iso) return 0;
+      const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      if (!m) return 0;
+      return (parseInt(m[1] || '0') * 3600) + (parseInt(m[2] || '0') * 60) + parseInt(m[3] || '0');
+    }
+
+    const items: TrendingItem[] = (data.items || []).map((item: {
       id: string;
       snippet: { title: string; channelTitle: string; channelId: string; thumbnails?: { medium?: { url: string } }; publishedAt: string; categoryId: string; defaultLanguage?: string; defaultAudioLanguage?: string };
       statistics: { viewCount?: string; likeCount?: string; commentCount?: string };
+      contentDetails?: { duration?: string };
     }) => {
       const views = parseInt(item.statistics.viewCount || '0', 10);
       const likes = parseInt(item.statistics.likeCount || '0', 10);
       const comments = parseInt(item.statistics.commentCount || '0', 10);
       const hoursAge = Math.max(1, (Date.now() - new Date(item.snippet.publishedAt).getTime()) / 3600000);
       const catId = item.snippet.categoryId || '22';
-
       const lang = item.snippet.defaultAudioLanguage || item.snippet.defaultLanguage || '';
 
       return {
@@ -120,6 +130,7 @@ export async function GET(request: Request) {
         vph: Math.round(views / hoursAge),
         engagementRate: views > 0 ? Math.round(((likes + comments) / views) * 10000) / 100 : 0,
         lang: lang || 'unknown',
+        durationSec: parseDuration(item.contentDetails?.duration),
       };
     });
 

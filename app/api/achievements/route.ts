@@ -37,7 +37,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: 'coach_5', icon: '🧠', label: { es: 'Aprendiz', en: 'Learner' }, desc: { es: 'Envía 5 mensajes al AI Coach', en: 'Send 5 messages to AI Coach' }, category: 'learning' },
   { key: 'coach_50', icon: '🎓', label: { es: 'Estudiante avanzado', en: 'Advanced Student' }, desc: { es: 'Envía 50 mensajes al AI Coach', en: 'Send 50 messages to AI Coach' }, category: 'learning' },
   { key: 'all_tools', icon: '🛠️', label: { es: 'Herramientas dominadas', en: 'Tool Master' }, desc: { es: 'Usa todas las herramientas al menos una vez', en: 'Use every tool at least once' }, category: 'learning' },
-  { key: 'business_plan', icon: '💎', label: { es: 'Nivel Business', en: 'Business Level' }, desc: { es: 'Suscríbete al plan Business', en: 'Subscribe to the Business plan' }, category: 'milestone' },
 ];
 
 // ── Check and unlock achievements ─────────────────────────────────────────
@@ -72,10 +71,6 @@ async function checkAndUnlock(userId: string): Promise<string[]> {
   await tryUnlock('ten_videos', videoCount >= 10);
   await tryUnlock('hundred_subs', subscribers >= 100);
   await tryUnlock('thousand_subs', subscribers >= 1000);
-
-  // Check business plan
-  const sub = await prisma.subscription.findUnique({ where: { userId }, select: { plan: true, status: true } });
-  await tryUnlock('business_plan', sub?.plan === 'business' && sub?.status === 'active');
 
   // ── Check improvement ──
   const optimizeCount = await prisma.optimizeHistory.count({ where: { userId } });
