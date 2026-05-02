@@ -147,14 +147,13 @@ export default async function GearPage() {
                       {/* Product image */}
                       {item.image && (
                         <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="block">
-                          <div className="h-48 relative p-6 overflow-hidden rounded-t-xl" style={{ background: '#111113' }}>
+                          <div className="h-48 relative p-6 overflow-hidden rounded-t-xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
                             <Image
                               src={item.image}
                               alt={item.name[lang]}
                               fill
                               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                               className="object-contain group-hover:scale-105 transition-transform duration-300 p-4"
-                              style={{ filter: 'brightness(0.88) contrast(1.1)' }}
                             />
                           </div>
                         </a>

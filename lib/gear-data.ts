@@ -51,7 +51,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0CG19QXWD',
       en: 'https://www.amazon.co.uk/dp/B0CG19QXWD',
     },
-    image: 'https://m.media-amazon.com/images/I/61tukvVUMiL._AC_SL1500_.jpg',
+    image: '/gear/dji-osmo-pocket-3.png',
   },
   {
     id: 'sony-zv-e10ii',
@@ -68,7 +68,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0D8QRHQNL',
       en: 'https://www.amazon.co.uk/dp/B0D8QRHQNL',
     },
-    image: 'https://m.media-amazon.com/images/I/81ww9NIIRRL._AC_SL1500_.jpg',
+    image: '/gear/sony-zv-e10ii.png',
   },
   {
     id: 'sony-a6700',
@@ -84,7 +84,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0CB8T476W',
       en: 'https://www.amazon.co.uk/dp/B0CB8T476W',
     },
-    image: 'https://m.media-amazon.com/images/I/61plU2NSrEL._AC_SL1500_.jpg',
+    image: '/gear/sony-a6700.png',
   },
 
   // ── Microphones (updated May 2026) ───────────────────────────────
@@ -103,7 +103,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B001R747SG',
       en: 'https://www.amazon.co.uk/dp/B001R747SG',
     },
-    image: 'https://m.media-amazon.com/images/I/81OmG6409ML._AC_SL1500_.jpg',
+    image: '/gear/samson-q2u.png',
   },
   {
     id: 'rode-podmic-usb',
@@ -119,7 +119,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0BQM4TKF7',
       en: 'https://www.amazon.co.uk/dp/B0BQM4TKF7',
     },
-    image: 'https://m.media-amazon.com/images/I/61ElAcEsHiL._AC_SL1080_.jpg',
+    image: '/gear/rode-podmic-usb.png',
   },
   {
     id: 'shure-mv7plus',
@@ -136,7 +136,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0CTJ7PVN1',
       en: 'https://www.amazon.co.uk/dp/B0CTJ7PVN1',
     },
-    image: 'https://m.media-amazon.com/images/I/81SkpwyPZnL._AC_SL1500_.jpg',
+    image: '/gear/shure-mv7plus.png',
   },
   {
     id: 'shure-sm7db',
@@ -152,7 +152,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0CCSVYWMH',
       en: 'https://www.amazon.co.uk/dp/B0CCSVYWMH',
     },
-    image: 'https://m.media-amazon.com/images/I/51Wvs2GxZ1L._AC_SL1000_.jpg',
+    image: '/gear/shure-sm7db.png',
   },
 
   // ── Lighting ─────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B073XJN7XL',
       en: 'https://www.amazon.co.uk/dp/B073PV3RXD',
     },
-    image: 'https://m.media-amazon.com/images/I/71DZvCEIFOL._AC_SL1500_.jpg',
+    image: '/gear/neewer-660.png',
   },
   {
     id: 'elgato-key-light',
@@ -187,7 +187,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B07L755X9G',
       en: 'https://www.amazon.co.uk/dp/B07L755X9G',
     },
-    image: 'https://m.media-amazon.com/images/I/617mzv+iKjL._AC_SL1500_.jpg',
+    image: '/gear/elgato-key-light.png',
   },
 
   // ── Accessories ──────────────────────────────────────────────────
@@ -205,7 +205,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0743Z892W',
       en: 'https://www.amazon.co.uk/dp/B0743Z892W',
     },
-    image: 'https://m.media-amazon.com/images/I/61GlaHCM85L._AC_SL1500_.jpg',
+    image: '/gear/elgato-green-screen.png',
   },
   {
     id: 'rode-wireless-go-ii',
@@ -222,7 +222,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B08XFQ6KP9',
       en: 'https://www.amazon.co.uk/dp/B08XFQ6KP9',
     },
-    image: 'https://m.media-amazon.com/images/I/519TvRDJyYL._AC_SL1080_.jpg',
+    image: '/gear/rode-wireless-go-ii.png',
   },
   {
     id: 'samsung-t7',
@@ -238,7 +238,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B087DFLF9S',
       en: 'https://www.amazon.co.uk/dp/B087DFLF9S',
     },
-    image: 'https://m.media-amazon.com/images/I/A1sHjPpz6fL._AC_SL1500_.jpg',
+    image: '/gear/samsung-t7.png',
   },
   {
     id: 'manfrotto-pixi',
@@ -254,7 +254,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B00D76RNLS',
       en: 'https://www.amazon.co.uk/dp/B00D76RNLS',
     },
-    image: 'https://cdn.manfrotto.com/media/catalog/product/cache/16a7253a27a4188a5cc006d92677ae2a/m/t/mtpixi-b-v4.jpg',
+    image: '/gear/manfrotto-pixi.png',
   },
 
   // ── Audio ────────────────────────────────────────────────────────
@@ -273,7 +273,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0016MNAAI',
       en: 'https://www.amazon.co.uk/dp/B0016MNAAI',
     },
-    image: 'https://m.media-amazon.com/images/I/61e306LgiuL._AC_SL1438_.jpg',
+    image: '/gear/beyerdynamic-dt770.png',
   },
   {
     id: 'focusrite-scarlett-2i2',
@@ -290,7 +290,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0C5JRTS3Y',
       en: 'https://www.amazon.co.uk/dp/B0C5JRTS3Y',
     },
-    image: 'https://cdn11.bigcommerce.com/s-7exlzlf13h/images/stencil/1280x1280/products/307/785/scarlett-2i2-top-image-2400-2400__78159.1693324453.png',
+    image: '/gear/focusrite-scarlett-2i2.png',
   },
 
   // ── Hardware ─────────────────────────────────────────────────────
@@ -309,7 +309,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0CX254C49',
       en: 'https://www.amazon.co.uk/dp/B0CX2549J4',
     },
-    image: 'https://www.apple.com/v/macbook-air/z/images/overview/design/design_hero_static__e56c1v71mr6u_large.png',
+    image: '/gear/apple-macbook-air-m3.png',
   },
   {
     id: 'apple-macbook-pro-m4',
@@ -325,7 +325,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0DLJGSLV5',
       en: 'https://www.amazon.co.uk/dp/B0DLHWDGSR',
     },
-    image: 'https://www.apple.com/v/macbook-pro/ax/images/overview/product-viewer/pv_hero_endframe__gc89p7dw1syi_large.jpg',
+    image: '/gear/apple-macbook-pro-m4.png',
   },
   {
     id: 'dell-s2722qc',
@@ -342,7 +342,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B09CGY99X5',
       en: 'https://www.amazon.co.uk/dp/B09DTDRJWP',
     },
-    image: 'https://i.dell.com/is/image/DellContent//content/dam/ss2/product-images/dell-client-products/peripherals/monitors/s-series/s2722qc/spi/ng/monitor-s2722qc-relsize-500-ng.psd?fmt=jpg&wid=500&hei=381',
+    image: '/gear/dell-s2722qc.png',
   },
   {
     id: 'logitech-mx-master-3s',
@@ -359,7 +359,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B07W5JKHFZ',
       en: 'https://www.amazon.co.uk/dp/B07W5JKHFZ',
     },
-    image: 'https://resource.logitech.com/c_fill,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/mice/mx-master-3s/2025-update/mx-master-3s-bluetooth-edition-top-view-black-new-1.png',
+    image: '/gear/logitech-mx-master-3s.png',
   },
   {
     id: 'logitech-mx-keys-s',
@@ -375,7 +375,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B07W6JPM9R',
       en: 'https://www.amazon.co.uk/dp/B07W5JK38Y',
     },
-    image: 'https://resource.logitech.com/w_544,h_466,ar_7:6,c_pad,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/keyboards/mx-keys-s/migration-assets-for-delorean-2025/gallery/mx-keys-s-top-view-black-us.png',
+    image: '/gear/logitech-mx-keys-s.png',
   },
 
   // ── Software / Tools ────────────────────────────────────────────
@@ -394,7 +394,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B09738CV2G',
       en: 'https://www.amazon.co.uk/dp/B09738CV2G',
     },
-    image: 'https://m.media-amazon.com/images/I/61gtdFnK+UL._AC_SL1500_.jpg',
+    image: '/gear/elgato-stream-deck.png',
   },
   {
     id: 'davinci-resolve',
@@ -410,7 +410,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B08N5LTPWZ',
       en: 'https://www.amazon.co.uk/dp/B08N5LTPWZ',
     },
-    image: 'https://images.blackmagicdesign.com/images/products/davinciresolve/product-grid/davinci-resolve-speed-editor.jpg',
+    image: '/gear/davinci-resolve.png',
   },
 ];
 
