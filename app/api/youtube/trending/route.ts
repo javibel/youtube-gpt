@@ -54,6 +54,7 @@ interface TrendingItem {
   comments: number;
   vph: number; // views per hour since publish
   engagementRate: number;
+  lang: string; // ISO language code from video metadata
 }
 
 export async function GET(request: Request) {
@@ -118,20 +119,16 @@ export async function GET(request: Request) {
         comments,
         vph: Math.round(views / hoursAge),
         engagementRate: views > 0 ? Math.round(((likes + comments) / views) * 10000) / 100 : 0,
-        _lang: lang, // internal: used for sorting, stripped before response
+        lang: lang || 'unknown',
       };
     });
 
     // Relevance boost: videos whose language matches the region's hl appear first
     items.sort((a, b) => {
-      const aMatch = a._lang.startsWith(hl) ? 0 : 1;
-      const bMatch = b._lang.startsWith(hl) ? 0 : 1;
+      const aMatch = a.lang.startsWith(hl) ? 0 : 1;
+      const bMatch = b.lang.startsWith(hl) ? 0 : 1;
       return aMatch - bMatch;
     });
-
-    // Strip internal _lang field
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const cleanItems = items.map(({ _lang, ...rest }) => rest);
 
     // Get user's channel data for relevance scoring
     const yt = await prisma.youtubeToken.findUnique({
@@ -152,11 +149,11 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      items: cleanItems,
+      items,
       region,
       categoryId: categoryId || null,
       categories: CATEGORY_MAP,
-      totalResults: cleanItems.length,
+      totalResults: items.length,
     });
   } catch (e) {
     console.error('[youtube/trending] error', e);

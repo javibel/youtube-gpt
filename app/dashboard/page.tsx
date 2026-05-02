@@ -498,7 +498,7 @@ function handleCopy(id: string, out: string) {
                 <p className="font-display font-bold stat-num" style={{ fontSize: '36px', color: '#fff' }}>
                   {s.num}<span className="text-lg text-zinc-500 ml-1">{s.sub}</span>
                 </p>
-                <p className="font-mono-jb text-[12px] tracking-wider uppercase text-zinc-400 mt-2">{s.label}</p>
+                <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-300 mt-2">{s.label}</p>
               </div>
             ))}
           </div>

@@ -39,6 +39,7 @@ interface TrendingItem {
   comments: number;
   vph: number;
   engagementRate: number;
+  lang: string;
 }
 
 interface ExplorerData {
@@ -57,18 +58,18 @@ const ALERT_ICONS: Record<string, string> = {
 };
 
 const REGIONS = [
-  { code: 'US', label: { es: '🇺🇸 EE.UU.', en: '🇺🇸 USA' } },
-  { code: 'ES', label: { es: '🇪🇸 España', en: '🇪🇸 Spain' } },
-  { code: 'MX', label: { es: '🇲🇽 México', en: '🇲🇽 Mexico' } },
-  { code: 'GB', label: { es: '🇬🇧 Reino Unido', en: '🇬🇧 UK' } },
-  { code: 'AR', label: { es: '🇦🇷 Argentina', en: '🇦🇷 Argentina' } },
-  { code: 'CO', label: { es: '🇨🇴 Colombia', en: '🇨🇴 Colombia' } },
-  { code: 'FR', label: { es: '🇫🇷 Francia', en: '🇫🇷 France' } },
-  { code: 'DE', label: { es: '🇩🇪 Alemania', en: '🇩🇪 Germany' } },
-  { code: 'BR', label: { es: '🇧🇷 Brasil', en: '🇧🇷 Brazil' } },
-  { code: 'JP', label: { es: '🇯🇵 Japón', en: '🇯🇵 Japan' } },
-  { code: 'IN', label: { es: '🇮🇳 India', en: '🇮🇳 India' } },
-  { code: 'CA', label: { es: '🇨🇦 Canadá', en: '🇨🇦 Canada' } },
+  { code: 'US', label: { es: '🇺🇸 EE.UU.', en: '🇺🇸 USA' }, lang: 'en' },
+  { code: 'ES', label: { es: '🇪🇸 España', en: '🇪🇸 Spain' }, lang: 'es' },
+  { code: 'MX', label: { es: '🇲🇽 México', en: '🇲🇽 Mexico' }, lang: 'es' },
+  { code: 'GB', label: { es: '🇬🇧 Reino Unido', en: '🇬🇧 UK' }, lang: 'en' },
+  { code: 'AR', label: { es: '🇦🇷 Argentina', en: '🇦🇷 Argentina' }, lang: 'es' },
+  { code: 'CO', label: { es: '🇨🇴 Colombia', en: '🇨🇴 Colombia' }, lang: 'es' },
+  { code: 'FR', label: { es: '🇫🇷 Francia', en: '🇫🇷 France' }, lang: 'fr' },
+  { code: 'DE', label: { es: '🇩🇪 Alemania', en: '🇩🇪 Germany' }, lang: 'de' },
+  { code: 'BR', label: { es: '🇧🇷 Brasil', en: '🇧🇷 Brazil' }, lang: 'pt' },
+  { code: 'JP', label: { es: '🇯🇵 Japón', en: '🇯🇵 Japan' }, lang: 'ja' },
+  { code: 'IN', label: { es: '🇮🇳 India', en: '🇮🇳 India' }, lang: 'hi' },
+  { code: 'CA', label: { es: '🇨🇦 Canadá', en: '🇨🇦 Canada' }, lang: 'en' },
 ];
 
 function fmtNum(n: number): string {
@@ -118,6 +119,7 @@ export default function TrendsPage() {
   const [region, setRegion] = useState('US');
   const [category, setCategory] = useState('');
   const [sortBy, setSortBy] = useState<'vph' | 'views' | 'engagement'>('vph');
+  const [langFilter, setLangFilter] = useState<string>('all');
 
   useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -186,14 +188,18 @@ export default function TrendsPage() {
     setAlerts(prev => prev.map(a => ({ ...a, read: true })));
   }
 
-  // Sort explorer items
-  const sortedItems = explorer?.items
-    ? [...explorer.items].sort((a, b) => {
-        if (sortBy === 'vph') return b.vph - a.vph;
-        if (sortBy === 'views') return b.views - a.views;
-        return b.engagementRate - a.engagementRate;
-      })
+  // Filter by language, then sort
+  const filteredItems = explorer?.items
+    ? (langFilter === 'all'
+        ? explorer.items
+        : explorer.items.filter(item => item.lang.startsWith(langFilter)))
     : [];
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    if (sortBy === 'vph') return b.vph - a.vph;
+    if (sortBy === 'views') return b.views - a.views;
+    return b.engagementRate - a.engagementRate;
+  });
 
   const unread = alerts.filter(a => !a.read).length;
   const categories = explorer?.categories || {};
@@ -275,7 +281,12 @@ export default function TrendsPage() {
             {/* Region */}
             <select
               value={region}
-              onChange={e => setRegion(e.target.value)}
+              onChange={e => {
+                const newRegion = e.target.value;
+                setRegion(newRegion);
+                const regionDef = REGIONS.find(r => r.code === newRegion);
+                if (regionDef) setLangFilter(regionDef.lang);
+              }}
               className="font-mono-jb text-[11px] rounded border border-white/10 px-3 py-2 transition hover:border-white/25 focus:border-red-500/50 focus:outline-none"
               style={{ background: '#141416', color: '#f1f1f1' }}
             >
@@ -318,6 +329,42 @@ export default function TrendsPage() {
               </option>
               <option value="engagement" style={{ background: '#141416', color: '#f1f1f1' }}>
                 Engagement %
+              </option>
+            </select>
+
+            {/* Language filter */}
+            <select
+              value={langFilter}
+              onChange={e => setLangFilter(e.target.value)}
+              className="font-mono-jb text-[11px] rounded border border-white/10 px-3 py-2 transition hover:border-white/25 focus:border-red-500/50 focus:outline-none"
+              style={{ background: '#141416', color: '#f1f1f1' }}
+            >
+              <option value="all" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Todos los idiomas', 'All languages')}
+              </option>
+              <option value="es" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Español', 'Spanish')}
+              </option>
+              <option value="en" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Inglés', 'English')}
+              </option>
+              <option value="pt" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Portugués', 'Portuguese')}
+              </option>
+              <option value="fr" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Francés', 'French')}
+              </option>
+              <option value="de" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Alemán', 'German')}
+              </option>
+              <option value="ja" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Japonés', 'Japanese')}
+              </option>
+              <option value="ko" style={{ background: '#141416', color: '#f1f1f1' }}>
+                {t('Coreano', 'Korean')}
+              </option>
+              <option value="hi" style={{ background: '#141416', color: '#f1f1f1' }}>
+                Hindi
               </option>
             </select>
 
