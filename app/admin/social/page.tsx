@@ -130,7 +130,7 @@ export default function SocialAdminPage() {
     <DashboardShell>
       {preview && <PreviewModal data={preview} onClose={() => setPreview(null)} />}
 
-      <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-8">
+      <div className="yv-page yv-page--wide space-y-8">
 
         {/* Header */}
         <div>

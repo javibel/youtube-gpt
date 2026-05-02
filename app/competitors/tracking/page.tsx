@@ -219,7 +219,7 @@ export default function CompetitorTrackingPage() {
 
   return (
     <DashboardShell>
-      <div className="max-w-[1400px] mx-auto px-6 py-12">
+      <div className="yv-page yv-page--wide">
         {/* Title */}
         <div className="mb-8">
           <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>

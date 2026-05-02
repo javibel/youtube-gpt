@@ -162,7 +162,7 @@ export default function BulkGeneratePage() {
   return (
     <DashboardShell>
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <div className="yv-page">
 
         {/* Page title */}
         <div className="mb-10">

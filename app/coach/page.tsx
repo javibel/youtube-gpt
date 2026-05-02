@@ -168,7 +168,7 @@ export default function CoachPage() {
   return (
     <DashboardShell>
       {/* Chat area */}
-      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 py-6">
+      <div className="yv-page flex-1 flex flex-col">
         {/* Title */}
         <div className="text-center mb-4">
           <h1 className="font-display font-bold text-2xl md:text-3xl text-white mb-1">

@@ -222,7 +222,7 @@ export default function TrendsPage() {
     <DashboardShell>
       {/* Header + Tabs */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-[1400px] mx-auto px-6 pt-8 pb-0">
+        <div className="yv-page yv-page--wide pb-0">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
             {t('TENDENCIAS YOUTUBE', 'YOUTUBE TRENDS')}
           </p>
@@ -269,7 +269,7 @@ export default function TrendsPage() {
 
       {/* ── EXPLORE TAB ──────────────────────────────────────────────── */}
       {tab === 'explore' && (
-        <div className="max-w-[1400px] mx-auto px-6 py-6">
+        <div className="yv-page yv-page--wide">
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             {/* Region */}

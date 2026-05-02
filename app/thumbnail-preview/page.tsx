@@ -248,7 +248,7 @@ export default function ThumbnailPreviewPage() {
     <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="yv-page yv-page--wide">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
             THUMBNAIL PREVIEW
           </p>
@@ -264,7 +264,7 @@ export default function ThumbnailPreviewPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="yv-page yv-page--wide">
 
         {/* Controls */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">

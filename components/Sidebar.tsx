@@ -235,8 +235,9 @@ export default function Sidebar() {
           width: var(--yv-sidebar-w);
         }
         .yv-sidebar--desktop {
-          position: fixed;
-          left: 0; top: 0; bottom: 0;
+          position: sticky;
+          top: 0;
+          height: 100vh;
           z-index: 40;
           display: none;
         }

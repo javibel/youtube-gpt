@@ -102,7 +102,7 @@ export default function AchievementsPage() {
     <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="yv-page">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
             {t('LOGROS', 'ACHIEVEMENTS')}
           </p>
@@ -128,7 +128,7 @@ export default function AchievementsPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+      <div className="yv-page space-y-8">
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

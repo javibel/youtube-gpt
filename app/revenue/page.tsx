@@ -104,7 +104,7 @@ export default function RevenuePage() {
     <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-[1400px] mx-auto px-6 py-6">
+        <div className="yv-page">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: '#22c55e' }}>
             {t('ESTIMADOR DE INGRESOS', 'REVENUE ESTIMATOR')}
           </p>
@@ -124,7 +124,7 @@ export default function RevenuePage() {
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+      <div className="yv-page">
         {error && (
           <div className="text-center py-12">
             <p className="text-red-400 font-mono-jb text-sm">{error}</p>

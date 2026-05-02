@@ -456,7 +456,7 @@ function handleCopy(id: string, out: string) {
 
       {/* Page header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-[1400px] mx-auto px-6 py-10">
+        <div className="yv-page">
           <div className="flex items-start justify-between flex-wrap gap-6">
             <div>
               <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>{t('PANEL DE CONTROL', 'DASHBOARD')}</p>
@@ -479,7 +479,7 @@ function handleCopy(id: string, out: string) {
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-6 py-10 grid lg:grid-cols-[1fr_320px] gap-8">
+      <div className="yv-page grid lg:grid-cols-[1fr_320px] gap-8">
         <main className="space-y-8">
 
           {/* Stat cards */}
@@ -1243,7 +1243,7 @@ function handleCopy(id: string, out: string) {
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-6 mt-4">
-        <div className="max-w-[1400px] mx-auto flex justify-center gap-6 font-mono-jb text-xs text-zinc-700">
+        <div className="yv-page flex justify-center gap-6 font-mono-jb text-xs text-zinc-700">
           <a href="/terms" className="hover:text-zinc-500 transition">{t('Términos', 'Terms')}</a>
           <a href="/privacy" className="hover:text-zinc-500 transition">{t('Privacidad', 'Privacy')}</a>
           <a href="/legal" className="hover:text-zinc-500 transition">{t('Aviso Legal', 'Legal Notice')}</a>

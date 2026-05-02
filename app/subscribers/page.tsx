@@ -137,7 +137,7 @@ export default function SubscribersPage() {
     <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="yv-page yv-page--wide">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
             {t('ANÁLISIS DE AUDIENCIA', 'AUDIENCE ANALYSIS')}
           </p>
@@ -150,7 +150,7 @@ export default function SubscribersPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="yv-page yv-page--wide">
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

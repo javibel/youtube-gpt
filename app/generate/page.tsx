@@ -153,7 +153,7 @@ export default function GeneratePage() {
 
       {showLimitModal && <LimitReachedModal onClose={() => setShowLimitModal(false)} reason={modalReason} />}
 
-      <div className="max-w-[1400px] mx-auto px-6 py-10">
+      <div className="yv-page">
         {/* Breadcrumb */}
         <div className="flex items-center gap-3 font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 mb-8">
           <a href="/dashboard" className="hover:text-white transition">{t('Panel', 'Dashboard')}</a>

@@ -182,7 +182,7 @@ export default function AdminPage() {
   return (
     <DashboardShell>
 
-      <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-8">
+      <div className="yv-page yv-page--wide space-y-8">
 
         {/* Header + exports */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

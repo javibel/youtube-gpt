@@ -195,7 +195,7 @@ export default function AuditPage() {
     <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-[1400px] mx-auto px-6 py-8">
+        <div className="yv-page">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
             {t('AUDITORÍA DE CANAL', 'CHANNEL AUDIT')}
           </p>
@@ -210,7 +210,7 @@ export default function AuditPage() {
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-8">
+      <div className="yv-page space-y-8">
         {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center gap-3 justify-center py-20">

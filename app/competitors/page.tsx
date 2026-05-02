@@ -189,7 +189,7 @@ export default function CompetitorsPage() {
 
   return (
     <DashboardShell>
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-10 space-y-8">
+      <main className="yv-page yv-page--wide space-y-8">
         {/* Title */}
         <div>
           <div className="flex items-center gap-2 mb-1">

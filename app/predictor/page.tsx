@@ -113,7 +113,7 @@ export default function PredictorPage() {
     <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="yv-page">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
             {t('PREDICTOR DE RENDIMIENTO', 'PERFORMANCE PREDICTOR')}
           </p>
@@ -126,7 +126,7 @@ export default function PredictorPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="yv-page">
         {/* Input form */}
         <div className="rounded-xl border border-white/10 p-6 mb-8" style={{ background: 'rgba(255,255,255,0.02)' }}>
           <div className="space-y-4">

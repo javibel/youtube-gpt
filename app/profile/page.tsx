@@ -123,7 +123,7 @@ export default function ProfilePage() {
   return (
     <DashboardShell>
 
-      <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+      <main className="yv-page space-y-6">
 
         {/* Page title */}
         <div>

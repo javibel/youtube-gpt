@@ -273,7 +273,7 @@ function ResearchPageInner() {
 
   return (
     <DashboardShell>
-      <div className="max-w-[1400px] mx-auto px-6 py-12">
+      <div className="yv-page yv-page--wide">
 
         {/* Page title */}
         <div className="mb-10">

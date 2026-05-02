@@ -233,7 +233,7 @@ export default function LearnPage() {
     <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-4xl mx-auto px-6 py-10 text-center">
+        <div className="yv-page text-center">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
             {t('CENTRO DE APRENDIZAJE', 'LEARNING HUB')}
           </p>
@@ -246,7 +246,7 @@ export default function LearnPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-4">
+      <div className="yv-page space-y-4">
         {GUIDES.map(guide => {
           const isExpanded = expanded.has(guide.id);
           return (

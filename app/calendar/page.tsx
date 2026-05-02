@@ -239,7 +239,7 @@ export default function CalendarPage() {
     <DashboardShell>
       {/* Header with month nav */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-[1400px] mx-auto px-6 py-6">
+        <div className="yv-page">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
             {t('CALENDARIO DE CONTENIDO', 'CONTENT CALENDAR')}
           </p>
@@ -284,7 +284,7 @@ export default function CalendarPage() {
       {/* AI Suggestions Panel */}
       {showSuggestions && (
         <div className="border-b border-white/10" style={{ background: 'rgba(168,85,247,0.03)' }}>
-          <div className="max-w-[1400px] mx-auto px-6 py-5">
+          <div className="yv-page">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
@@ -366,7 +366,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+      <div className="yv-page">
         {error && (
           <div className="text-center py-8">
             <p className="text-red-400 font-mono-jb text-sm">{error}</p>
