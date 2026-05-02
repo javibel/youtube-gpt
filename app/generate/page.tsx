@@ -204,7 +204,7 @@ export default function GeneratePage() {
         </div>
 
         {/* Main layout */}
-        <div className="max-w-3xl space-y-5">
+        <div className="space-y-5">
             {/* Topic */}
             <div className="soft-card p-6">
               <div className="flex items-center justify-between mb-3">
@@ -387,7 +387,7 @@ export default function GeneratePage() {
                     </div>
                   )}
                   {output && (
-                    <pre className="text-[14px] leading-relaxed whitespace-pre-wrap font-sans text-zinc-200 max-h-[520px] overflow-y-auto">
+                    <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans text-zinc-200 max-h-[600px] overflow-y-auto">
                       {output}
                     </pre>
                   )}
