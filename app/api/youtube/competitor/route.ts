@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getExtensionUser } from '@/lib/extension-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY;
+const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
 
 const STOP_WORDS = new Set([

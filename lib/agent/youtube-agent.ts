@@ -4,8 +4,8 @@ import { generateYoutubeReply } from './content-generator';
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
-const API_KEY = () => process.env.YOUTUBE_API_KEY ?? '';
-const CHANNEL_ID = () => process.env.YOUTUBE_CHANNEL_ID ?? '';
+const API_KEY = () => (process.env.YOUTUBE_API_KEY ?? '').trim();
+const CHANNEL_ID = () => (process.env.YOUTUBE_CHANNEL_ID ?? '').trim();
 
 // ── OAuth helper (for posting replies) ───────────────────────────────────────
 
@@ -14,9 +14,9 @@ async function getAccessToken(): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
+      client_id: (process.env.GOOGLE_CLIENT_ID ?? '').trim(),
+      client_secret: (process.env.GOOGLE_CLIENT_SECRET ?? '').trim(),
+      refresh_token: (process.env.GOOGLE_REFRESH_TOKEN ?? '').trim(),
       grant_type: 'refresh_token',
     }),
   });

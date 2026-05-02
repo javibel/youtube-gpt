@@ -6,7 +6,7 @@ import { getUserPlan, isPaid } from '@/lib/plans';
 export const maxDuration = 60;
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
-const YT_API_KEY = process.env.YOUTUBE_API_KEY;
+const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 
 const DAY_NAMES_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

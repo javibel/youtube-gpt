@@ -87,9 +87,25 @@ TEAM / AGENCY (/team) — Pro plan only:
 DAILY IDEAS (dashboard) — Pro plan only:
 - 5 personalized video ideas per day based on your channel, niche, and history.
 
+THUMBNAILS (/thumbnail-preview) — Pro plan only:
+- Upload or generate thumbnail previews to see how they look in YouTube search results and suggested videos.
+
+ACHIEVEMENTS (/achievements) — all users:
+- Gamified achievement system. Unlock badges for milestones (channel connection, subscriber counts), improvement (SEO scores, A/B tests), streaks (consecutive days), and learning (coach messages, tool usage).
+
+CHROME EXTENSION:
+- YTubViral Chrome Extension available on Chrome Web Store. Adds YTubViral tools directly into YouTube Studio pages.
+
+BLOG (/blog):
+- Educational blog with articles about YouTube growth, SEO, content strategy, and gear reviews.
+
+GEAR (/gear):
+- Curated page of recommended equipment for content creators (cameras, microphones, lighting, etc.) with Amazon affiliate links.
+
 PLANS:
 - Free: 10 generations/month, 5 chat messages/day.
 - Pro: 9.99 EUR/month or 99.99 EUR/year. 200 generations/month, 20 chat messages/day. Adds Shorts Hook, Series Plan, Niche Analysis, Video Preview, and all Pro features listed above.
+- Business: 29.99 EUR/month or 299 EUR/year. Unlimited generations, 50 chat messages/day. Includes all Pro features plus team features.
 
 Rules:
 - Reply in the same language the user writes in (Spanish or English).

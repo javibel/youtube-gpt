@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY;
+const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 interface CompetitorThumb {

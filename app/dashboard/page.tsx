@@ -492,13 +492,13 @@ function handleCopy(id: string, out: string) {
             ].map((s, i) => (
               <div key={i} className="soft-card p-5 relative">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-2xl">{s.icon}</span>
+                  <span className="text-2xl" style={{ filter: `drop-shadow(0 0 6px ${s.color}40)` }}>{s.icon}</span>
                   <span className="font-mono-jb text-[10px] text-zinc-600">0{i + 1}</span>
                 </div>
                 <p className="font-display font-bold stat-num" style={{ fontSize: '36px', color: '#fff' }}>
                   {s.num}<span className="text-lg text-zinc-500 ml-1">{s.sub}</span>
                 </p>
-                <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mt-2">{s.label}</p>
+                <p className="font-mono-jb text-[12px] tracking-wider uppercase text-zinc-400 mt-2">{s.label}</p>
               </div>
             ))}
           </div>
@@ -1073,47 +1073,97 @@ function handleCopy(id: string, out: string) {
             <div className="relative rounded-2xl border p-6 overflow-hidden" style={{ borderColor: 'var(--red)', background: 'linear-gradient(180deg,rgba(232,77,91,0.15),rgba(0,0,0,0.6))', boxShadow: '0 18px 40px -16px rgba(232,77,91,0.5)' }}>
               <div className="absolute inset-0 grid-bg opacity-30" />
               <div className="relative">
-                <div className="red-tape text-[10px] w-fit mb-3">PRO</div>
-                <p className="font-display font-bold text-2xl leading-tight mb-3">{t('200 generaciones/mes', '200 generations/month')}</p>
+                <p className="font-display font-bold text-2xl leading-tight mb-4">{t('Elige tu plan', 'Choose your plan')}</p>
 
-                {/* Billing toggle */}
-                <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[10px] tracking-wider uppercase overflow-hidden mb-4 w-fit">
-                  <button
-                    onClick={() => setBillingPlan('monthly')}
-                    className="px-3 py-1.5 transition"
-                    style={{ background: billingPlan === 'monthly' ? 'var(--red)' : 'transparent', color: billingPlan === 'monthly' ? '#000' : '#a1a1aa' }}>
-                    {t('Mensual', 'Monthly')}
-                  </button>
-                  <button
-                    onClick={() => setBillingPlan('yearly')}
-                    className="px-3 py-1.5 transition flex items-center gap-1.5"
-                    style={{ background: billingPlan === 'yearly' ? 'var(--red)' : 'transparent', color: billingPlan === 'yearly' ? '#000' : '#a1a1aa' }}>
-                    {t('Anual', 'Yearly')}
-                    <span className="rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ background: billingPlan === 'yearly' ? 'rgba(0,0,0,0.25)' : 'rgba(232,77,91,0.25)', color: billingPlan === 'yearly' ? '#000' : 'var(--red)' }}>
-                      -17%
-                    </span>
-                  </button>
+                {/* Pro tier */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="red-tape text-[10px] w-fit">PRO</span>
+                    <span className="font-mono-jb text-[10px] text-zinc-500">{t('200 generaciones/mes', '200 generations/month')}</span>
+                  </div>
+                  <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[10px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
+                    <button
+                      onClick={() => setBillingPlan('monthly')}
+                      className="px-3 py-1.5 transition"
+                      style={{ background: billingPlan === 'monthly' ? 'var(--red)' : 'transparent', color: billingPlan === 'monthly' ? '#000' : '#a1a1aa' }}>
+                      {t('Mensual', 'Monthly')}
+                    </button>
+                    <button
+                      onClick={() => setBillingPlan('yearly')}
+                      className="px-3 py-1.5 transition flex items-center gap-1.5"
+                      style={{ background: billingPlan === 'yearly' ? 'var(--red)' : 'transparent', color: billingPlan === 'yearly' ? '#000' : '#a1a1aa' }}>
+                      {t('Anual', 'Yearly')}
+                      <span className="rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ background: billingPlan === 'yearly' ? 'rgba(0,0,0,0.25)' : 'rgba(232,77,91,0.25)', color: billingPlan === 'yearly' ? '#000' : 'var(--red)' }}>
+                        -17%
+                      </span>
+                    </button>
+                  </div>
+                  {billingPlan === 'monthly' && (
+                    <div className="mb-2">
+                      <span className="font-display font-bold text-2xl">9,99€</span>
+                      <span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('mes', 'mo')}</span>
+                    </div>
+                  )}
+                  {billingPlan === 'yearly' && (
+                    <div className="mb-2">
+                      <span className="font-display font-bold text-2xl">99,99€</span>
+                      <span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('año', 'yr')}</span>
+                      <p className="font-mono-jb text-[10px] mt-1" style={{ color: '#7CFF00' }}>
+                        {t('= 8,33€/mes · Ahorras 19,89€', '= €8.33/mo · Save €19.89')}
+                      </p>
+                    </div>
+                  )}
+                  {(billingPlan === 'monthly' || billingPlan === 'yearly') && (
+                    <button onClick={() => handleUpgrade(billingPlan)} disabled={upgrading} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
+                      {upgrading ? t('Redirigiendo...', 'Redirecting...') : billingPlan === 'yearly' ? t('Empezar Pro anual →', 'Start Pro yearly →') : t('Empezar con Pro →', 'Start with Pro →')}
+                    </button>
+                  )}
                 </div>
 
-                {/* Price display */}
-                {billingPlan === 'monthly' ? (
-                  <div className="mb-4">
-                    <span className="font-display font-bold text-3xl">9,99€</span>
-                    <span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('mes', 'mo')}</span>
+                {/* Business tier */}
+                <div className="mb-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="rounded px-2 py-0.5 text-[10px] font-bold font-mono-jb tracking-wider uppercase" style={{ background: 'linear-gradient(90deg,#B388FF,#7C4DFF)', color: '#000' }}>BUSINESS</span>
+                    <span className="font-mono-jb text-[10px] text-zinc-500">{t('1000 generaciones/mes', '1000 generations/month')}</span>
                   </div>
-                ) : (
-                  <div className="mb-4">
-                    <span className="font-display font-bold text-3xl">99,99€</span>
-                    <span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('año', 'yr')}</span>
-                    <p className="font-mono-jb text-[10px] mt-1" style={{ color: '#7CFF00' }}>
-                      {t('= 8,33€/mes · Ahorras 19,89€', '= €8.33/mo · Save €19.89')}
-                    </p>
+                  <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[10px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
+                    <button
+                      onClick={() => setBillingPlan('business_monthly')}
+                      className="px-3 py-1.5 transition"
+                      style={{ background: billingPlan === 'business_monthly' ? '#7C4DFF' : 'transparent', color: billingPlan === 'business_monthly' ? '#000' : '#a1a1aa' }}>
+                      {t('Mensual', 'Monthly')}
+                    </button>
+                    <button
+                      onClick={() => setBillingPlan('business_yearly')}
+                      className="px-3 py-1.5 transition flex items-center gap-1.5"
+                      style={{ background: billingPlan === 'business_yearly' ? '#7C4DFF' : 'transparent', color: billingPlan === 'business_yearly' ? '#000' : '#a1a1aa' }}>
+                      {t('Anual', 'Yearly')}
+                      <span className="rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ background: billingPlan === 'business_yearly' ? 'rgba(0,0,0,0.25)' : 'rgba(124,77,255,0.25)', color: billingPlan === 'business_yearly' ? '#000' : '#7C4DFF' }}>
+                        -17%
+                      </span>
+                    </button>
                   </div>
-                )}
-
-                <button onClick={() => handleUpgrade(billingPlan)} disabled={upgrading} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
-                  {upgrading ? t('Redirigiendo...', 'Redirecting...') : billingPlan === 'yearly' ? t('Empezar anual →', 'Start yearly →') : t('Empezar con Pro →', 'Start with Pro →')}
-                </button>
+                  {billingPlan === 'business_monthly' && (
+                    <div className="mb-2">
+                      <span className="font-display font-bold text-2xl">29,99€</span>
+                      <span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('mes', 'mo')}</span>
+                    </div>
+                  )}
+                  {billingPlan === 'business_yearly' && (
+                    <div className="mb-2">
+                      <span className="font-display font-bold text-2xl">299€</span>
+                      <span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('año', 'yr')}</span>
+                      <p className="font-mono-jb text-[10px] mt-1" style={{ color: '#7CFF00' }}>
+                        {t('= 24,92€/mes · Ahorras 60,88€', '= €24.92/mo · Save €60.88')}
+                      </p>
+                    </div>
+                  )}
+                  {(billingPlan === 'business_monthly' || billingPlan === 'business_yearly') && (
+                    <button onClick={() => handleUpgrade(billingPlan)} disabled={upgrading} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50" style={{ background: 'linear-gradient(90deg,#B388FF,#7C4DFF)' }}>
+                      {upgrading ? t('Redirigiendo...', 'Redirecting...') : billingPlan === 'business_yearly' ? t('Empezar Business anual →', 'Start Business yearly →') : t('Empezar con Business →', 'Start with Business →')}
+                    </button>
+                  )}
+                </div>
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <button onClick={handleSync} disabled={syncing}
                     className="w-full font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 hover:text-zinc-300 disabled:opacity-50 transition py-1">

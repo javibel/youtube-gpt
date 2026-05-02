@@ -12,9 +12,9 @@ async function getAccessToken(): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: process.env.GMAIL_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GMAIL_CLIENT_SECRET ?? process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: process.env.GMAIL_REFRESH_TOKEN ?? process.env.GOOGLE_REFRESH_TOKEN!,
+      client_id: (process.env.GMAIL_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID ?? '').trim(),
+      client_secret: (process.env.GMAIL_CLIENT_SECRET ?? process.env.GOOGLE_CLIENT_SECRET ?? '').trim(),
+      refresh_token: (process.env.GMAIL_REFRESH_TOKEN ?? process.env.GOOGLE_REFRESH_TOKEN ?? '').trim(),
       grant_type: 'refresh_token',
     }),
   });

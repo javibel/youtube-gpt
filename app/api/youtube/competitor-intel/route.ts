@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY;
+const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 

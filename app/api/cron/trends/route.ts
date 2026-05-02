@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 
 export const maxDuration = 60;
 
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!.trim();
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
 
 interface TrendingVideo {

@@ -31,8 +31,8 @@ async function upsertSubscription(
       plan,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : new Date(),
+      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date(),
     },
     update: {
       stripeCustomerId: customerId,
@@ -40,8 +40,8 @@ async function upsertSubscription(
       plan,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : new Date(),
+      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date(),
     },
   });
 }
@@ -125,8 +125,8 @@ export async function POST(request: Request) {
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
             stripePriceId: item?.price?.id,
             ...(plan ? { plan } : {}),
-            currentPeriodStart: new Date(subscription.current_period_start * 1000),
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : new Date(),
+            currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date(),
           },
         });
         console.log(`${event.type}: updated subscription for customerId=${customerId}, status=${subscription.status}`);

@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'videoId required' }, { status: 400 });
   }
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
+  const apiKey = process.env.YOUTUBE_API_KEY?.trim();
   if (!apiKey) {
     return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
   }

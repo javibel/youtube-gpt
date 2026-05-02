@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getUserPlan, isPaid } from '@/lib/plans';
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY;
+const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
 
 const QUESTION_PREFIXES_ES = ['cómo', 'qué', 'por qué', 'cuándo', 'cuál es', 'dónde', 'es posible', 'se puede'];

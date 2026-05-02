@@ -6,7 +6,7 @@ import { getUserPlan, isPaid } from '@/lib/plans';
 
 export const maxDuration = 60;
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY;
+const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 // Average CPM by country (USD) — conservative estimates

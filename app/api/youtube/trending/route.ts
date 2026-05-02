@@ -5,7 +5,22 @@ import { getUserPlan, isPaid } from '@/lib/plans';
 
 export const maxDuration = 30;
 
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!.trim();
+
+// Region → hl (host language) mapping for YouTube API
+const REGION_TO_HL: Record<string, string> = {
+  ES: 'es', MX: 'es', AR: 'es', CL: 'es', CO: 'es', PE: 'es', VE: 'es',
+  EC: 'es', UY: 'es', PY: 'es', BO: 'es', CR: 'es', GT: 'es', HN: 'es',
+  SV: 'es', NI: 'es', PA: 'es', DO: 'es', CU: 'es', PR: 'es',
+  US: 'en', GB: 'en', AU: 'en', NZ: 'en', CA: 'en',
+  BR: 'pt', PT: 'pt',
+  FR: 'fr',
+  DE: 'de', AT: 'de',
+  IT: 'it',
+  JP: 'ja',
+  KR: 'ko',
+  IN: 'hi',
+};
 
 // YouTube category IDs → labels
 const CATEGORY_MAP: Record<string, { es: string; en: string }> = {
@@ -63,7 +78,8 @@ export async function GET(request: Request) {
 
   try {
     // Fetch trending from YouTube
-    let apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&chart=mostPopular&regionCode=${region}&maxResults=50&key=${YOUTUBE_API_KEY}`;
+    const hl = REGION_TO_HL[region] || 'en';
+    let apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&chart=mostPopular&regionCode=${region}&hl=${hl}&maxResults=50&key=${YOUTUBE_API_KEY}`;
     if (categoryId && CATEGORY_MAP[categoryId]) {
       apiUrl += `&videoCategoryId=${categoryId}`;
     }
@@ -75,9 +91,9 @@ export async function GET(request: Request) {
     }
 
     const data = await res.json();
-    const items: TrendingItem[] = (data.items || []).map((item: {
+    const items: (TrendingItem & { _lang: string })[] = (data.items || []).map((item: {
       id: string;
-      snippet: { title: string; channelTitle: string; channelId: string; thumbnails?: { medium?: { url: string } }; publishedAt: string; categoryId: string };
+      snippet: { title: string; channelTitle: string; channelId: string; thumbnails?: { medium?: { url: string } }; publishedAt: string; categoryId: string; defaultLanguage?: string; defaultAudioLanguage?: string };
       statistics: { viewCount?: string; likeCount?: string; commentCount?: string };
     }) => {
       const views = parseInt(item.statistics.viewCount || '0', 10);
@@ -85,6 +101,8 @@ export async function GET(request: Request) {
       const comments = parseInt(item.statistics.commentCount || '0', 10);
       const hoursAge = Math.max(1, (Date.now() - new Date(item.snippet.publishedAt).getTime()) / 3600000);
       const catId = item.snippet.categoryId || '22';
+
+      const lang = item.snippet.defaultAudioLanguage || item.snippet.defaultLanguage || '';
 
       return {
         videoId: item.id,
@@ -100,8 +118,20 @@ export async function GET(request: Request) {
         comments,
         vph: Math.round(views / hoursAge),
         engagementRate: views > 0 ? Math.round(((likes + comments) / views) * 10000) / 100 : 0,
+        _lang: lang, // internal: used for sorting, stripped before response
       };
     });
+
+    // Relevance boost: videos whose language matches the region's hl appear first
+    items.sort((a, b) => {
+      const aMatch = a._lang.startsWith(hl) ? 0 : 1;
+      const bMatch = b._lang.startsWith(hl) ? 0 : 1;
+      return aMatch - bMatch;
+    });
+
+    // Strip internal _lang field
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const cleanItems = items.map(({ _lang, ...rest }) => rest);
 
     // Get user's channel data for relevance scoring
     const yt = await prisma.youtubeToken.findUnique({
@@ -122,11 +152,11 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      items,
+      items: cleanItems,
       region,
       categoryId: categoryId || null,
       categories: CATEGORY_MAP,
-      totalResults: items.length,
+      totalResults: cleanItems.length,
     });
   } catch (e) {
     console.error('[youtube/trending] error', e);

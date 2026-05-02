@@ -19,8 +19,8 @@ async function refreshAccessToken(yt: { refreshToken: string | null; userId: str
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        client_id: process.env.GOOGLE_CLIENT_ID?.trim(),
+        client_secret: process.env.GOOGLE_CLIENT_SECRET?.trim(),
         refresh_token: yt.refreshToken,
         grant_type: 'refresh_token',
       }),

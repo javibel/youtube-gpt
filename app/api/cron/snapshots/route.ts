@@ -76,7 +76,7 @@ export async function GET(request: Request) {
   }
 
   // ── Competitor snapshots ──────────────────────────────────────────────────
-  const YT_API_KEY = process.env.YOUTUBE_API_KEY;
+  const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
   let compSnapped = 0;
 
   if (YT_API_KEY) {
