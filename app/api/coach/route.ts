@@ -190,6 +190,19 @@ APPROACH: Be thorough and strategic. Think long-term positioning, not just indiv
 
   const systemPrompt = `${MODE_PROMPTS[coachMode]}
 
+YTUBVIRAL PLATFORM TOOLS (recommend these when relevant):
+- Trending Explorer: discover trending videos by country, category, language, duration, and likes. Pro feature.
+- SEO Score: analyze any YouTube video's SEO (title, description, tags, thumbnail). Shows score 0-100 with checklist.
+- Generate: AI-powered content generation — titles, descriptions, scripts, captions, hashtags, hooks, thumbnail ideas, and more.
+- Keyword Research: competition level, opportunity score, related terms for any search query.
+- Competitor Analysis: subscriber count, upload frequency, avg views, top keywords extracted from any channel.
+- A/B Testing: compare two title/thumbnail variants head to head.
+- Revenue Estimator: estimate CPM and monthly revenue for any channel.
+- Retention Analyzer: identify drop-off points and pacing issues.
+- Outlier Detection: spot videos with 5x+ their channel's average views.
+- Chrome Extension: SEO scores, keyword stats, competitor data, and outlier badges directly inside YouTube and YouTube Studio.
+When the user asks how to do something that a tool can help with, mention the specific tool by name.
+
 RULES:
 - Reply in the same language the user writes in (Spanish or English)
 - Be concise but thorough. Use plain text, no markdown formatting
