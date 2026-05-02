@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-
-const FREE_DAILY_LIMIT = 5;
-const PRO_DAILY_LIMIT = 20;
+import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_CONTEXT_MESSAGES = 4;
 const MAX_TOKENS = 350;
@@ -38,15 +36,86 @@ COMPETITOR ANALYSIS (/competitors) — all users:
 CHANNEL ANALYTICS (dashboard) — all users:
 - Connect your YouTube channel via Google OAuth to see: subscriber count, total views, video count.
 
+SEO SCORE (/seo-score) — all users (YouTube channel required):
+- Analyzes any of your videos with a 15-point checklist: title length, description, tags, thumbnail, etc.
+- Returns a 0-100 score with an AI optimization tip.
+
+BEST TIME TO PUBLISH (/best-time) — Pro plan only:
+- Analyzes your last 50 videos to find optimal publishing windows.
+- Shows a 7x24 heatmap and top 3 recommended time slots with AI tip.
+
+ANALYTICS INTELLIGENCE (/analytics) — Pro plan only:
+- Private YouTube Analytics data: watch time, retention, traffic sources, countries, top videos.
+- Requires YouTube channel connected via OAuth.
+
+CONTENT CALENDAR (/calendar) — Pro plan only:
+- Monthly calendar view to plan content. Create entries with title, description, date, and status (idea/draft/scheduled/published).
+
+A/B TESTING (/ab-test) — Pro plan only:
+- Run A/B tests on video titles: set two title variants (A and B) and a duration per variant (24/48/72 hours).
+- The system automatically switches between titles and tracks views for each variant.
+- After both variants run, determines a winner and generates an AI insight.
+- Requires YouTube channel connected with write permissions.
+
+TREND ALERTS (/trends) — Pro plan only:
+- Daily trending video alerts from US, ES, MX, GB.
+- AI evaluates relevance to your channel. Mark alerts as read.
+
+PREDICTOR (/predictor) — Pro plan only:
+- Predicts performance (views, engagement, viral potential) for a video idea using AI analysis of your channel baseline.
+
+RETENTION OPTIMIZER (/retention) — Pro plan only:
+- Analyzes audience retention curves from YouTube Analytics.
+- Identifies drop-off points and provides AI tips to improve retention.
+
+AI COACH (/coach) — Pro plan only:
+- Personal AI growth coach that has access to your real channel data (videos, SEO, growth, competitors).
+- Ask questions about improving CTR, growth strategies, content optimization, etc.
+
+COMPETITOR TRACKING (/competitors) — all users:
+- Paste any YouTube channel URL. Get: channel stats, top 10 videos by views, publishing frequency, recurring topic keywords.
+- Pro users can track up to 10 competitor channels with periodic snapshots and growth sparklines.
+
+BULK OPERATIONS (/generate/bulk) — Pro plan only:
+- Generate content for up to 10 topics at once using any template (titles, descriptions, captions, thumbnails, shorts hooks).
+- Export results as CSV.
+
+TEAM / AGENCY (/team) — Pro plan only:
+- Create a team and invite members by email with roles: owner, admin, member.
+- Team plan supports up to 5 members, Agency up to 25.
+
+DAILY IDEAS (dashboard) — Pro plan only:
+- 5 personalized video ideas per day based on your channel, niche, and history.
+
 PLANS:
 - Free: 10 generations/month, 5 chat messages/day.
-- Pro: 9.99 EUR/month or 99.99 EUR/year. 200 generations/month, 20 chat messages/day. Adds Shorts Hook, Series Plan, Niche Analysis, and Video Preview with download.
+- Pro: 9.99 EUR/month or 99.99 EUR/year. 200 generations/month, 20 chat messages/day. Adds Shorts Hook, Series Plan, Niche Analysis, Video Preview, and all Pro features listed above.
 
 Rules:
 - Reply in the same language the user writes in (Spanish or English).
 - Be concise and practical. Plain text only, no markdown, no asterisks, no dashes as bullets.
 - Only answer about YTubViral or content creation for YouTube, TikTok, Instagram, etc. Politely decline unrelated requests.
 - If you are unsure about something not listed above, say so instead of guessing.`;
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true },
+  });
+  if (!user) return NextResponse.json({ messages: [] });
+
+  const messages = await prisma.chatMessage.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: 'asc' },
+    take: 50,
+    select: { role: true, content: true, createdAt: true },
+  });
+  return NextResponse.json({ messages });
+}
 
 export async function POST(request: Request) {
   try {
@@ -64,8 +133,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    const isPro = user.subscription?.status === 'active';
-    const dailyLimit = isPro ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT;
+    const plan = await getUserPlan(user.id);
+    const isPro = isPaid(plan);
+    const dailyLimit = getLimits(plan).chatMessagesPerDay;
 
     const body = await request.json();
     const { message, context } = body;
@@ -141,13 +211,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Construir mensajes para Claude (contexto + nuevo mensaje)
-    const contextMessages = Array.isArray(context)
-      ? context.slice(-MAX_CONTEXT_MESSAGES).map((m: { role: string; content: string }) => ({
-          role: m.role === 'user' ? 'user' : 'assistant',
-          content: String(m.content).slice(0, MAX_MESSAGE_LENGTH),
-        }))
-      : [];
+    // Load recent messages from DB for context
+    const recentMessages = await prisma.chatMessage.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: MAX_CONTEXT_MESSAGES,
+      select: { role: true, content: true },
+    });
+    const contextMessages = recentMessages.reverse().map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content.slice(0, MAX_MESSAGE_LENGTH),
+    }));
 
     const messages = [
       ...contextMessages,
@@ -185,6 +259,28 @@ export async function POST(request: Request) {
     const data = await response.json();
     const reply: string = data.content?.[0]?.text ?? '';
     const remaining = Math.max(0, dailyLimit - hitsToday);
+
+    // Save both messages to DB (non-blocking)
+    prisma.chatMessage.createMany({
+      data: [
+        { userId: user.id, role: 'user', content: message.trim().slice(0, MAX_MESSAGE_LENGTH) },
+        { userId: user.id, role: 'assistant', content: reply.slice(0, 2000) },
+      ],
+    }).then(() =>
+      // Trim old messages: keep last 50 per user
+      prisma.chatMessage.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        skip: 50,
+        select: { id: true },
+      }).then(old => {
+        if (old.length > 0) {
+          prisma.chatMessage.deleteMany({
+            where: { id: { in: old.map(m => m.id) } },
+          }).catch(() => {});
+        }
+      })
+    ).catch(err => console.error('[chat] save error:', err));
 
     return NextResponse.json({ reply, remaining, isPro });
   } catch (err) {

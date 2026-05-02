@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { getUserPlan, isPaid } from '@/lib/plans';
 
 // List last 3 previews for the current user (no video data)
 export async function GET() {
@@ -22,12 +23,9 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const subscription = await prisma.subscription.findUnique({
-    where: { userId: session.user.id },
-    select: { status: true },
-  });
-  if (subscription?.status !== 'active') {
-    return NextResponse.json({ error: 'Pro required' }, { status: 403 });
+  const plan = await getUserPlan(session.user.id);
+  if (!isPaid(plan)) {
+    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
   let title: string, buffer: Buffer, mimeType: string;

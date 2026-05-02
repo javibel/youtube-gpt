@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getExtensionUser } from '@/lib/extension-auth';
+import { getUserPlan, isPaid } from '@/lib/plans';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY;
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -104,9 +105,13 @@ export async function POST(request: Request) {
   if (session?.user?.email) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { subscription: { select: { status: true } } },
+      select: { id: true },
     });
-    if (user?.subscription?.status !== 'active') {
+    if (!user) {
+      return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+    }
+    const plan = await getUserPlan(user.id);
+    if (!isPaid(plan)) {
       return NextResponse.json({ error: 'pro_required' }, { status: 403 });
     }
   }

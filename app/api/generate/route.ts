@@ -2,9 +2,8 @@ import { TEMPLATES } from '@/utils/prompts';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getExtensionUser } from '@/lib/extension-auth';
+import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 
-const FREE_LIMIT = 10;
-const PRO_LIMIT = 200;
 const IP_FREE_LIMIT = 30; // máximo por IP/mes para usuarios free (anti multi-cuenta)
 
 function getIp(request: Request): string | null {
@@ -56,7 +55,8 @@ export async function POST(request: Request) {
       // Extension Bearer token auth
       userId = extAuth.user.id;
       isPro = extAuth.isPro;
-      const limit = isPro ? PRO_LIMIT : FREE_LIMIT;
+      const extPlan = await getUserPlan(userId);
+      const limit = getLimits(extPlan).generationsPerMonth;
 
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
@@ -111,12 +111,9 @@ export async function POST(request: Request) {
       if (user) {
         userId = user.id;
 
-        const subscription = await prisma.subscription.findUnique({
-          where: { userId: user.id },
-          select: { status: true },
-        });
-        isPro = subscription?.status === 'active';
-        const limit = isPro ? PRO_LIMIT : FREE_LIMIT;
+        const plan = await getUserPlan(user.id);
+        isPro = isPaid(plan);
+        const limit = getLimits(plan).generationsPerMonth;
 
         const startOfMonth = new Date();
         startOfMonth.setDate(1);

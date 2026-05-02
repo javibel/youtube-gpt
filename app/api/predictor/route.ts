@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
+import { getUserPlan, isPaid } from '@/lib/plans';
 
 export const maxDuration = 60;
 
@@ -23,11 +24,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const sub = await prisma.subscription.findUnique({
-    where: { userId: session.user.id },
-    select: { status: true },
-  });
-  if (sub?.status !== 'active') {
+  const plan = await getUserPlan(session.user.id);
+  if (!isPaid(plan)) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
@@ -164,7 +162,7 @@ Be realistic. Base predictions on actual channel metrics, not optimistic guesses
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 600,
         messages: [{ role: 'user', content: prompt }],
       }),

@@ -1,21 +1,85 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { getLangClient } from '@/lib/get-lang-client';
+import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
+type CoachMode = 'create' | 'analyze' | 'optimize' | 'research';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
+const MODES: { key: CoachMode; icon: string; label: { es: string; en: string }; desc: { es: string; en: string } }[] = [
+  {
+    key: 'create',
+    icon: 'M12 5v14M5 12h14',
+    label: { es: 'Crear', en: 'Create' },
+    desc: { es: 'Ideas, títulos, scripts, hooks', en: 'Ideas, titles, scripts, hooks' },
+  },
+  {
+    key: 'analyze',
+    icon: 'M18 20V10M12 20V4M6 20v-6',
+    label: { es: 'Analizar', en: 'Analyze' },
+    desc: { es: 'Rendimiento, métricas, crecimiento', en: 'Performance, metrics, growth' },
+  },
+  {
+    key: 'optimize',
+    icon: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
+    label: { es: 'Optimizar', en: 'Optimize' },
+    desc: { es: 'SEO, títulos, descripciones, tags', en: 'SEO, titles, descriptions, tags' },
+  },
+  {
+    key: 'research',
+    icon: 'M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z',
+    label: { es: 'Investigar', en: 'Research' },
+    desc: { es: 'Nicho, competencia, keywords, gaps', en: 'Niche, competition, keywords, gaps' },
+  },
+];
+
+const MODE_SUGGESTIONS: Record<CoachMode, { es: string; en: string }[]> = {
+  create: [
+    { es: 'Dame 5 ideas de vídeos para mi nicho', en: 'Give me 5 video ideas for my niche' },
+    { es: 'Escribe un guión para un vídeo tutorial', en: 'Write a script for a tutorial video' },
+    { es: 'Dame hooks para los primeros 5 segundos', en: 'Give me hooks for the first 5 seconds' },
+    { es: 'Sugiere 3 formatos que funcionen en mi canal', en: 'Suggest 3 formats that work for my channel' },
+  ],
+  analyze: [
+    { es: 'Analiza mis últimos vídeos', en: 'Analyze my recent videos' },
+    { es: '¿Qué patrón tienen mis vídeos más exitosos?', en: 'What pattern do my most successful videos have?' },
+    { es: '¿Cómo está creciendo mi canal?', en: 'How is my channel growing?' },
+    { es: 'Compara mi canal con mis competidores', en: 'Compare my channel with my competitors' },
+  ],
+  optimize: [
+    { es: '¿Cómo puedo mejorar mi CTR?', en: 'How can I improve my CTR?' },
+    { es: 'Sugiere mejores títulos para mis últimos vídeos', en: 'Suggest better titles for my recent videos' },
+    { es: '¿Qué vídeos debería optimizar primero?', en: 'Which videos should I optimize first?' },
+    { es: 'Mejora la descripción de mi último vídeo', en: 'Improve the description of my last video' },
+  ],
+  research: [
+    { es: '¿Qué oportunidades hay en mi nicho?', en: 'What opportunities are there in my niche?' },
+    { es: '¿Qué hacen mis competidores que yo no?', en: 'What do my competitors do that I don\'t?' },
+    { es: 'Investiga keywords para mi próximo vídeo', en: 'Research keywords for my next video' },
+    { es: '¿Qué temas tienen poca competencia?', en: 'What topics have low competition?' },
+  ],
+};
+
+const MODE_COLORS: Record<CoachMode, string> = {
+  create: '#22c55e',
+  analyze: '#3b82f6',
+  optimize: '#f59e0b',
+  research: '#8b5cf6',
+};
+
 export default function CoachPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [lang, setLang] = useState<Lang>('es');
+  const [mode, setMode] = useState<CoachMode>('analyze');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,7 +108,7 @@ export default function CoachPage() {
       const res = await fetch('/api/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, context: messages }),
+        body: JSON.stringify({ message: text, context: messages, mode }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -92,58 +156,56 @@ export default function CoachPage() {
     );
   }
 
-  const suggestions = [
-    t('¿Cómo puedo mejorar mi CTR?', 'How can I improve my CTR?'),
-    t('¿Qué tipo de contenido debería crear?', 'What type of content should I create?'),
-    t('Analiza mis últimos vídeos', 'Analyze my recent videos'),
-    t('¿Cómo compito con otros canales?', 'How do I compete with other channels?'),
-  ];
+  const suggestions = MODE_SUGGESTIONS[mode].map(s => t(s.es, s.en));
+
+  function switchMode(newMode: CoachMode) {
+    if (newMode !== mode) {
+      setMode(newMode);
+      // Don't clear messages — they can continue in a different mode
+    }
+  }
 
   return (
-    <div className="min-h-screen grain flex flex-col" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      {/* Header */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-            </svg>
-            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              {t('Panel', 'Dashboard')}
-            </a>
-            <a href="/seo-score" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              SEO Score
-            </a>
-            <a href="/research" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              {t('Investigar', 'Research')}
-            </a>
-            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </a>
-            <button onClick={() => signOut({ callbackUrl: '/' })} title={t('Cerrar sesión', 'Sign out')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-red-500/50 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            </button>
-          </div>
-        </div>
-      </nav>
-
+    <DashboardShell>
       {/* Chat area */}
       <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 py-6">
         {/* Title */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-4">
           <h1 className="font-display font-bold text-2xl md:text-3xl text-white mb-1">
             AI Coach
           </h1>
           <p className="text-zinc-500 font-mono-jb text-xs">
             {t('Tu asesor personal de crecimiento en YouTube', 'Your personal YouTube growth advisor')}
           </p>
+        </div>
+
+        {/* Mode Selector */}
+        <div className="grid grid-cols-4 gap-2 mb-5">
+          {MODES.map(m => {
+            const active = mode === m.key;
+            const color = MODE_COLORS[m.key];
+            return (
+              <button
+                key={m.key}
+                onClick={() => switchMode(m.key)}
+                className={`rounded-lg border px-3 py-2.5 text-left transition ${active ? 'border-opacity-50' : 'border-white/8 hover:border-white/20'}`}
+                style={{
+                  background: active ? `${color}12` : 'rgba(255,255,255,0.02)',
+                  borderColor: active ? `${color}40` : undefined,
+                }}
+              >
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={active ? color : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={m.icon} />
+                  </svg>
+                  <span className="font-display font-bold text-[11px]" style={{ color: active ? color : '#d4d4d8' }}>
+                    {m.label[lang]}
+                  </span>
+                </div>
+                <span className="font-mono-jb text-[9px] text-zinc-600 hidden sm:block">{m.desc[lang]}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Messages */}
@@ -236,10 +298,15 @@ export default function CoachPage() {
             </button>
           </div>
           <p className="text-zinc-600 text-[10px] font-mono-jb mt-2 text-center">
-            {t('El coach usa los datos reales de tu canal para darte consejos personalizados.', 'The coach uses your real channel data to give you personalized advice.')}
+            <span className="inline-flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: MODE_COLORS[mode] }} />
+              {t('Modo', 'Mode')}: {MODES.find(m => m.key === mode)?.label[lang]}
+            </span>
+            {' — '}
+            {t('Datos reales de tu canal', 'Real channel data')}
           </p>
         </div>
       </div>
-    </div>
+    </DashboardShell>
   );
 }

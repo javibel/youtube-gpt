@@ -16,14 +16,37 @@ export async function sendTransactionalEmail({
   subject: string;
   html: string;
 }): Promise<void> {
+  // Plain-text version for multipart emails (improves deliverability)
+  const text = html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/tr>/gi, '\n')
+    .replace(/<\/td>/gi, ' ')
+    .replace(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/gi, '$2 ($1)')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&middot;/g, '·')
+    .replace(/&copy;/g, '(c)')
+    .replace(/&#\d+;/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
   // Try Resend first
   if (resend) {
     try {
       const result = await resend.emails.send({
-        from: 'noreply@ytubviral.com',
+        from: 'YTubViral <hello@ytubviral.com>',
+        replyTo: 'ytbeviral@gmail.com',
         to,
         subject,
         html,
+        text,
+        headers: {
+          'List-Unsubscribe': '<mailto:ytbeviral@gmail.com?subject=unsubscribe>',
+        },
       });
       if (result.error) {
         console.error('[send-email] Resend error:', result.error);
@@ -40,24 +63,6 @@ export async function sendTransactionalEmail({
 
   // Fallback: send via Gmail agent
   const { sendEmailTo } = await import('@/lib/agent/gmail-agent');
-  // Convert HTML to plain text for Gmail agent (which sends text/plain)
-  const plainText = html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/tr>/gi, '\n')
-    .replace(/<\/td>/gi, ' ')
-    .replace(/<a[^>]*href="([^"]*)"[^>]*>[^<]*<\/a>/gi, '$1')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&middot;/g, '·')
-    .replace(/&copy;/g, '(c)')
-    .replace(/&#\d+;/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-
-  await sendEmailTo(to, subject, plainText);
+  await sendEmailTo(to, subject, text);
   console.log(`[send-email] Sent via Gmail fallback to ${to}: "${subject}"`);
 }

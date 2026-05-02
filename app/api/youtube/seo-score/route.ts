@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
+import { getUserPlan, isPaid } from '@/lib/plans';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
@@ -216,11 +217,8 @@ export async function POST(request: Request) {
   }
 
   // Pro check
-  const sub = await prisma.subscription.findUnique({
-    where: { userId: session.user.id },
-    select: { status: true },
-  });
-  if (sub?.status !== 'active') {
+  const plan = await getUserPlan(session.user.id);
+  if (!isPaid(plan)) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 

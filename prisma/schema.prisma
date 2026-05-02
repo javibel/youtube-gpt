@@ -37,6 +37,11 @@ model User {
   calendarEntries      CalendarEntry[]
   trendAlerts          TrendAlert[]
   feedback        UserFeedback?
+  abTests         AbTest[]
+  teamMemberships TeamMember[]
+  chatMessages      ChatMessage[]
+  achievements      Achievement[]
+  optimizeHistory   OptimizeHistory[]
 
   @@map("users")
 }
@@ -136,6 +141,7 @@ model Subscription {
   userId          String    @unique
   stripeCustomerId String?
   stripePriceId   String?
+  plan            String    @default("pro")
   status          String    @default("active")
   cancelAtPeriodEnd Boolean  @default(false)
   currentPeriodStart DateTime?
@@ -302,6 +308,73 @@ model BestTimeAnalysis {
   @@map("best_time_analyses")
 }
 
+model Team {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  plan        String           @default("team") // team, agency
+  maxMembers  Int              @default(5)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  members     TeamMember[]
+  invitations TeamInvitation[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     String   @default("member") // owner, admin, member
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model TeamInvitation {
+  id        String   @id @default(cuid())
+  teamId    String
+  email     String
+  role      String   @default("member")
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, email])
+  @@map("team_invitations")
+}
+
+model AbTest {
+  id              String    @id @default(cuid())
+  userId          String
+  videoId         String
+  thumbnail       String?
+  originalTitle   String
+  variantA        String
+  variantB        String
+  status          String    @default("variant_a") // variant_a, variant_b, completed, cancelled
+  hoursPerVariant Int       @default(48)
+  startedAt       DateTime  @default(now())
+  switchedAt      DateTime?
+  completedAt     DateTime?
+  initialViews    Int       @default(0)
+  switchViews     Int?
+  endViews        Int?
+  winner          String?
+  aiInsight       Json?
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("ab_tests")
+}
+
 model SocialPost {
   id          String    @id @default(cuid())
   platform    String
@@ -451,4 +524,49 @@ model TrendAlert {
 
   @@index([userId, createdAt])
   @@map("trend_alerts")
+}
+
+model OptimizeHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  videoId     String
+  field       String   // "title" | "description" | "tags"
+  oldValue    String
+  newValue    String
+  scoreBefore Int?
+  scoreAfter  Int?
+  viewsBefore Int?
+  viewsAfter  Int?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, videoId, createdAt])
+  @@map("optimize_history")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String   // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
+
+model Achievement {
+  id         String   @id @default(cuid())
+  userId     String
+  key        String   // e.g. "first_optimize", "seo_70", "streak_7"
+  unlockedAt DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("achievements")
 }

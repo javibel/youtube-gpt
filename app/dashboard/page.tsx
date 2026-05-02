@@ -1,6 +1,7 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import DashboardShell from '@/components/DashboardShell';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { getLangClient } from '@/lib/get-lang-client';
@@ -42,9 +43,10 @@ type Stats = {
     limit: number;
     remaining: number;
     isPro: boolean;
+    plan: 'free' | 'pro' | 'business';
     streak: number;
   };
-  subscription: { status: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
+  subscription: { status: string; plan?: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
 };
 
 type Generation = { id: string; template: string; createdAt: string; tokensUsed: number; output: string; inputs: Record<string, string> };
@@ -55,7 +57,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
-  const [billingPlan, setBillingPlan] = useState<'monthly'|'yearly'>('monthly');
+  const [billingPlan, setBillingPlan] = useState<'monthly'|'yearly'|'business_monthly'|'business_yearly'>('monthly');
   const [cancelling, setCancelling] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
@@ -228,7 +230,7 @@ export default function DashboardPage() {
     setYtDisconnecting(false);
   }
 
-  async function handleUpgrade(plan: 'monthly' | 'yearly' = billingPlan) {
+  async function handleUpgrade(plan: 'monthly' | 'yearly' | 'business_monthly' | 'business_yearly' = billingPlan) {
     setUpgrading(true);
     try {
       const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, lang }) });
@@ -305,6 +307,8 @@ function handleCopy(id: string, out: string) {
 
   const stats = data?.stats;
   const isPro = stats?.isPro ?? false;
+  const userPlan = stats?.plan ?? 'free';
+  const isBusiness = userPlan === 'business';
   const usedPct = stats ? Math.min((stats.generationsThisMonth / stats.limit) * 100, 100) : 0;
   const displayName = data?.user?.name ?? session.user?.email ?? 'User';
   const firstName = displayName.split(' ')[0];
@@ -322,7 +326,7 @@ function handleCopy(id: string, out: string) {
     : [['all','Todo'],['title','Título'],['script','Script'],['description','Desc'],['thumbnail','Thumb'],['caption','Caption']];
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+    <DashboardShell>
 
       {/* Onboarding modal */}
       {onboardingStep !== null && onboardingStep < 3 && (
@@ -433,6 +437,7 @@ function handleCopy(id: string, out: string) {
                     { href: '/competitors', label: t('Competidores', 'Competitors'), icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 3a4 4 0 110 8 4 4 0 010-8z' },
                     { href: '/seo-score',   label: 'SEO Score',                    icon: 'M22 12h-4l-3 9L9 3l-3 9H2' },
                     { href: '/best-time',   label: t('Mejor Hora', 'Best Time'),   icon: 'M12 2a10 10 0 110 20 10 10 0 010-20zM12 6v6l4 2' },
+                    { href: '/ab-test',     label: 'A/B Test',                     icon: 'M16 3H8a2 2 0 00-2 2v14l6-3 6 3V5a2 2 0 00-2-2z' },
                   ].map((tool, i) => (
                     <a key={i} href={tool.href} className="flex items-center gap-2 p-2.5 rounded-lg text-[11px] font-mono-jb text-zinc-400 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={tool.icon}/></svg>
@@ -449,60 +454,9 @@ function handleCopy(id: string, out: string) {
         </div>
       )}
 
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-            </svg>
-            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <a href="/generate" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-              {t('Generar', 'Generate')}
-            </a>
-            <a href="/research" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              {t('Investigar', 'Research')}
-            </a>
-            <a href="/competitors" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              {t('Competidores', 'Competitors')}
-            </a>
-            <a href="/seo-score" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              SEO Score
-            </a>
-            <a href="/analytics" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-              Analytics
-            </a>
-            <a href="/calendar" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              {t('Calendario', 'Calendar')}
-            </a>
-            <a href="/coach" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              AI Coach
-            </a>
-            <span className="flex items-center gap-2 text-zinc-400 text-sm">
-              <span>{displayName}</span>
-              {isPro && <span className="red-tape text-[9px] py-0.5">PRO</span>}
-            </span>
-            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            </a>
-            <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">{t('Salir', 'Sign out')}</button>
-          </div>
-        </div>
-      </nav>
-
       {/* Page header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-7xl mx-auto px-6 py-10">
+        <div className="max-w-[1400px] mx-auto px-6 py-10">
           <div className="flex items-start justify-between flex-wrap gap-6">
             <div>
               <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>{t('PANEL DE CONTROL', 'DASHBOARD')}</p>
@@ -525,7 +479,7 @@ function handleCopy(id: string, out: string) {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-10 grid lg:grid-cols-[1fr_320px] gap-8">
+      <div className="max-w-[1400px] mx-auto px-6 py-10 grid lg:grid-cols-[1fr_320px] gap-8">
         <main className="space-y-8">
 
           {/* Stat cards */}
@@ -574,15 +528,17 @@ function handleCopy(id: string, out: string) {
             </div>
           </div>
 
-          {/* Pro subscription active */}
+          {/* Subscription active */}
           {isPro && data?.subscription && (
-            <div className="soft-card p-5 flex items-center justify-between gap-4" style={{ borderColor: 'rgba(232,77,91,0.3)' }}>
+            <div className="soft-card p-5 flex items-center justify-between gap-4" style={{ borderColor: isBusiness ? 'rgba(0,229,255,0.3)' : 'rgba(232,77,91,0.3)' }}>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--red)' }}>
-                  <svg width={15} height={15} viewBox="0 0 24 24" fill="white"><path d="M3 18h18M4 8l4 4 4-6 4 6 4-4-1 10H5z" /></svg>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: isBusiness ? '#00E5FF' : 'var(--red)' }}>
+                  <svg width={15} height={15} viewBox="0 0 24 24" fill={isBusiness ? 'black' : 'white'}><path d="M3 18h18M4 8l4 4 4-6 4 6 4-4-1 10H5z" /></svg>
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">{t('Plan Pro activo', 'Active Pro plan')}</p>
+                  <p className="font-semibold text-sm">
+                    {isBusiness ? t('Plan Business activo', 'Active Business plan') : t('Plan Pro activo', 'Active Pro plan')}
+                  </p>
                   {data.subscription.cancelAtPeriodEnd ? (
                     <p className="text-yellow-400 text-xs mt-0.5">
                       {t('No se renovará · Acceso hasta el', 'Will not renew · Access until')}{' '}
@@ -596,11 +552,18 @@ function handleCopy(id: string, out: string) {
                   )}
                 </div>
               </div>
-              {!data.subscription.cancelAtPeriodEnd && (
-                <button onClick={handleCancel} disabled={cancelling} className="font-mono-jb text-[11px] text-zinc-600 hover:text-zinc-400 disabled:opacity-50 transition">
-                  {cancelling ? t('Cancelando...', 'Cancelling...') : t('Cancelar suscripción', 'Cancel subscription')}
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {isPro && !isBusiness && !data.subscription.cancelAtPeriodEnd && (
+                  <button onClick={() => handleUpgrade('business_monthly')} disabled={upgrading} className="font-mono-jb text-[11px] transition" style={{ color: '#00E5FF' }}>
+                    {upgrading ? '...' : t('Subir a Business', 'Upgrade to Business')}
+                  </button>
+                )}
+                {!data.subscription.cancelAtPeriodEnd && (
+                  <button onClick={handleCancel} disabled={cancelling} className="font-mono-jb text-[11px] text-zinc-600 hover:text-zinc-400 disabled:opacity-50 transition">
+                    {cancelling ? t('Cancelando...', 'Cancelling...') : t('Cancelar suscripción', 'Cancel subscription')}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -1030,21 +993,50 @@ function handleCopy(id: string, out: string) {
                   ))}
                 </div>
 
-                {/* Subscriber sparkline */}
+                {/* Subscriber sparkline — interactive */}
                 {ytSparkline.length > 2 && (() => {
                   const vals = ytSparkline.map(p => p.subscribers);
                   const min = Math.min(...vals);
                   const max = Math.max(...vals);
                   const range = max - min || 1;
                   const w = 200;
-                  const h = 32;
-                  const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ');
+                  const h = 48;
+                  const pad = 4;
+                  const chartPoints = vals.map((v, i) => ({
+                    x: (i / (vals.length - 1)) * w,
+                    y: pad + (h - 2 * pad) - ((v - min) / range) * (h - 2 * pad),
+                    val: v,
+                    date: new Date(ytSparkline[i].recordedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' }),
+                  }));
+                  const pts = chartPoints.map(p => `${p.x},${p.y}`).join(' ');
                   return (
                     <div>
                       <p className="font-mono-jb text-[9px] tracking-wider uppercase text-zinc-600 mb-1">{t('SUSCRIPTORES (90 DÍAS)', 'SUBSCRIBERS (90 DAYS)')}</p>
-                      <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="32" preserveAspectRatio="none" className="rounded">
-                        <polyline points={pts} fill="none" stroke="#9B2020" strokeWidth="1.5" strokeLinejoin="round" />
-                      </svg>
+                      <div className="relative" style={{ height: 48 }}>
+                        <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="48" preserveAspectRatio="none" className="rounded absolute inset-0">
+                          <defs>
+                            <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#9B2020" stopOpacity="0.25" />
+                              <stop offset="100%" stopColor="#9B2020" stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          <polygon points={`0,${h} ${pts} ${w},${h}`} fill="url(#sparkFill)" />
+                          <polyline points={pts} fill="none" stroke="#9B2020" strokeWidth="1.5" strokeLinejoin="round" />
+                        </svg>
+                        {/* Hover hitboxes */}
+                        <div className="absolute inset-0 flex">
+                          {chartPoints.map((p, i) => (
+                            <div key={i} className="flex-1 relative group/dot" style={{ cursor: 'crosshair' }}>
+                              {/* Tooltip */}
+                              <div className="invisible group-hover/dot:visible absolute bottom-full mb-1 left-1/2 -translate-x-1/2 whitespace-nowrap z-10 px-2 py-1 rounded text-[9px] font-mono-jb pointer-events-none" style={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}>
+                                <span style={{ color: '#9B2020' }}>{fmtNum(p.val)}</span> · {p.date}
+                              </div>
+                              {/* Dot indicator */}
+                              <div className="invisible group-hover/dot:visible absolute w-[5px] h-[5px] rounded-full pointer-events-none" style={{ background: '#9B2020', border: '1.5px solid #0a0a0a', left: '50%', transform: 'translateX(-50%)', top: `${(p.y / h) * 100}%` }} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}
@@ -1251,7 +1243,7 @@ function handleCopy(id: string, out: string) {
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-6 mt-4">
-        <div className="max-w-7xl mx-auto flex justify-center gap-6 font-mono-jb text-xs text-zinc-700">
+        <div className="max-w-[1400px] mx-auto flex justify-center gap-6 font-mono-jb text-xs text-zinc-700">
           <a href="/terms" className="hover:text-zinc-500 transition">{t('Términos', 'Terms')}</a>
           <a href="/privacy" className="hover:text-zinc-500 transition">{t('Privacidad', 'Privacy')}</a>
           <a href="/legal" className="hover:text-zinc-500 transition">{t('Aviso Legal', 'Legal Notice')}</a>
@@ -1326,6 +1318,6 @@ function handleCopy(id: string, out: string) {
           </div>
         </div>
       )}
-    </div>
+    </DashboardShell>
   );
 }

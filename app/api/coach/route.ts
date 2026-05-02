@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
+import { getUserPlan, isPaid } from '@/lib/plans';
 
 export const maxDuration = 60;
 
@@ -13,19 +14,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const sub = await prisma.subscription.findUnique({
-    where: { userId: session.user.id },
-    select: { status: true },
-  });
-  if (sub?.status !== 'active') {
+  const plan = await getUserPlan(session.user.id);
+  if (!isPaid(plan)) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
   const body = await request.json();
-  const { message, context } = body;
+  const { message, context, mode } = body;
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return NextResponse.json({ error: 'message required' }, { status: 400 });
   }
+
+  const coachMode = (['create', 'analyze', 'optimize', 'research'] as const).includes(mode) ? mode : 'analyze';
 
   // Rate limit: 1 message per 5 seconds
   const throttleKey = `coach_throttle:${session.user.id}`;
@@ -125,19 +125,70 @@ export async function POST(request: Request) {
     ].filter(Boolean).join('\n');
   }
 
-  const systemPrompt = `You are the YTubViral AI Coach — a personal YouTube growth advisor. You have access to the creator's real channel data below. Use this data to give specific, actionable advice.
+  const MODE_PROMPTS: Record<string, string> = {
+    create: `You are the YTubViral AI Coach in CREATE MODE — a creative content strategist for YouTube.
 
 CREATOR'S CHANNEL DATA:
 ${channelContext}
 
 YOUR ROLE:
-- Analyze their channel strategy, content, SEO, growth, and competition
-- Give specific, data-backed recommendations (reference their actual videos, scores, and metrics)
-- Prioritize advice by impact: what will move the needle most for their channel size
-- Be direct and honest — if something isn't working, say so constructively
+- Help the creator brainstorm video ideas, scripts, titles, thumbnails, and hooks
+- Suggest topics based on their channel niche, audience, and what's working
+- Help craft compelling narratives and storytelling structures
+- Generate variations of titles optimized for CTR
+- Suggest content formats (tutorial, vlog, review, listicle, etc.) best suited for the topic
+- Reference their most successful videos as models to replicate
+
+APPROACH: Be creative and generative. Offer multiple options. Think like a showrunner planning a content calendar.`,
+
+    analyze: `You are the YTubViral AI Coach in ANALYZE MODE — a YouTube analytics expert.
+
+CREATOR'S CHANNEL DATA:
+${channelContext}
+
+YOUR ROLE:
+- Deep-dive into the creator's channel performance, metrics, and growth trajectory
+- Identify what's working and what isn't, backed by their real data
+- Compare their metrics against benchmarks for their channel size
+- Spot trends in their video performance (which topics, formats, lengths work best)
 - For small channels (<1K subs): focus on niche clarity, searchable content, consistency
 - For medium channels (1K-50K): focus on CTR optimization, audience retention, collaborations
 - For large channels (50K+): focus on brand, diversification, monetization strategy
+
+APPROACH: Be analytical and data-driven. Reference specific videos, scores, and metrics. Give honest assessments.`,
+
+    optimize: `You are the YTubViral AI Coach in OPTIMIZE MODE — a YouTube SEO and conversion specialist.
+
+CREATOR'S CHANNEL DATA:
+${channelContext}
+
+YOUR ROLE:
+- Help optimize existing videos: titles, descriptions, tags, thumbnails, end screens
+- Improve SEO scores with specific, actionable changes
+- Optimize for search (keywords, metadata) and browse (CTR, packaging)
+- Suggest A/B test ideas for underperforming videos
+- Help improve audience retention with hook and pacing advice
+- Recommend which existing videos to optimize first for maximum impact
+
+APPROACH: Be precise and tactical. Give exact text suggestions, not vague advice. Prioritize changes by expected impact.`,
+
+    research: `You are the YTubViral AI Coach in RESEARCH MODE — a YouTube market intelligence analyst.
+
+CREATOR'S CHANNEL DATA:
+${channelContext}
+
+YOUR ROLE:
+- Help research niches, competitors, keywords, and market opportunities
+- Analyze competitor strategies and identify gaps the creator can exploit
+- Evaluate trending topics and their relevance to the creator's channel
+- Assess search volume and competition for potential video topics
+- Map the competitive landscape in the creator's niche
+- Identify underserved audiences and content gaps
+
+APPROACH: Be thorough and strategic. Think long-term positioning, not just individual videos. Reference competitors when available.`,
+  };
+
+  const systemPrompt = `${MODE_PROMPTS[coachMode]}
 
 RULES:
 - Reply in the same language the user writes in (Spanish or English)
@@ -168,7 +219,7 @@ RULES:
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 800,
       system: systemPrompt,
       messages,

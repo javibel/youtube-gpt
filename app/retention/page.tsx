@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import DashboardShell from '@/components/DashboardShell';
 import { getLangClient } from '@/lib/get-lang-client';
 
 type Lang = 'es' | 'en';
 
-interface DropOff { time: number; drop: number }
+interface DropOff { time: number; drop: number; retentionBefore: number; retentionAfter: number }
+interface DropOffReason { timestamp: string; reason: string }
 
 interface VideoRetention {
   videoId: string;
@@ -15,6 +17,7 @@ interface VideoRetention {
   duration: number;
   retention: number[];
   avgRetention: number;
+  hookScore: number;
   dropOffPoints: DropOff[];
 }
 
@@ -36,6 +39,170 @@ function retentionColor(pct: number): string {
   return '#ef4444';
 }
 
+function hookScoreLabel(score: number, lang: Lang): string {
+  if (score >= 80) return lang === 'en' ? 'Excellent hook' : 'Hook excelente';
+  if (score >= 60) return lang === 'en' ? 'Good hook' : 'Buen hook';
+  if (score >= 40) return lang === 'en' ? 'Average hook' : 'Hook medio';
+  return lang === 'en' ? 'Weak hook' : 'Hook débil';
+}
+
+const COMPARE_COLORS = ['#9B2020', '#818cf8', '#22c55e', '#eab308', '#f472b6'];
+
+function InteractiveRetentionCurve({
+  videos,
+  compareMode,
+  duration,
+  lang,
+}: {
+  videos: VideoRetention[];
+  compareMode: boolean;
+  duration: number;
+  lang: Lang;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hover, setHover] = useState<{ x: number; pct: number; values: { title: string; ret: number; color: string }[] } | null>(null);
+
+  const w = 700;
+  const h = 180;
+  const padL = 40;
+  const padR = 10;
+  const padT = 10;
+  const padB = 25;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / rect.width;
+    const xInChart = xRatio * w - padL;
+    if (xInChart < 0 || xInChart > chartW) { setHover(null); return; }
+    const pct = xInChart / chartW;
+
+    const values = (compareMode ? videos : videos.slice(0, 1)).map((v, i) => {
+      const idx = Math.min(Math.floor(pct * v.retention.length), v.retention.length - 1);
+      return { title: v.title, ret: v.retention[idx], color: COMPARE_COLORS[i % COMPARE_COLORS.length] };
+    });
+
+    setHover({ x: padL + pct * chartW, pct, values });
+  }, [videos, compareMode, chartW, w]);
+
+  const renderCurve = (retention: number[], color: string, fill: boolean) => {
+    if (retention.length < 2) return null;
+    const pts = retention.map((v, i) => {
+      const x = padL + (i / (retention.length - 1)) * chartW;
+      const y = padT + chartH - (v / 100) * chartH;
+      return `${x},${y}`;
+    }).join(' ');
+
+    return (
+      <>
+        {fill && (
+          <polyline
+            points={`${padL},${padT + chartH} ${pts} ${padL + chartW},${padT + chartH}`}
+            fill={color.replace(')', ',0.12)').replace('rgb', 'rgba').replace('#', '')}
+            style={{ fill: `${color}15` }}
+            stroke="none"
+          />
+        )}
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" />
+      </>
+    );
+  };
+
+  const displayVideos = compareMode ? videos : videos.slice(0, 1);
+
+  return (
+    <div className="relative">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full"
+        style={{ height: 220 }}
+        preserveAspectRatio="none"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHover(null)}
+      >
+        {/* Grid lines + labels */}
+        {[0, 25, 50, 75, 100].map(pct => {
+          const y = padT + chartH - (pct / 100) * chartH;
+          return (
+            <g key={pct}>
+              <line x1={padL} y1={y} x2={padL + chartW} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+              <text x={padL - 6} y={y + 3} fill="rgba(255,255,255,0.25)" fontSize="9" textAnchor="end" fontFamily="monospace">{pct}%</text>
+            </g>
+          );
+        })}
+
+        {/* 50% reference dashed */}
+        <line x1={padL} y1={padT + chartH / 2} x2={padL + chartW} y2={padT + chartH / 2} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4,4" />
+
+        {/* Curves */}
+        {displayVideos.map((v, i) => (
+          <g key={v.videoId}>
+            {renderCurve(v.retention, COMPARE_COLORS[i % COMPARE_COLORS.length], i === 0 && !compareMode)}
+          </g>
+        ))}
+
+        {/* Time labels */}
+        <text x={padL} y={h - 4} fill="rgba(255,255,255,0.3)" fontSize="9" fontFamily="monospace">0:00</text>
+        <text x={padL + chartW / 2} y={h - 4} fill="rgba(255,255,255,0.3)" fontSize="9" textAnchor="middle" fontFamily="monospace">{fmtTime(duration / 2)}</text>
+        <text x={padL + chartW} y={h - 4} fill="rgba(255,255,255,0.3)" fontSize="9" textAnchor="end" fontFamily="monospace">{fmtTime(duration)}</text>
+
+        {/* Hover line */}
+        {hover && (
+          <>
+            <line x1={hover.x} y1={padT} x2={hover.x} y2={padT + chartH} stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="3,3" />
+            {hover.values.map((v, i) => {
+              const y = padT + chartH - (v.ret / 100) * chartH;
+              return <circle key={i} cx={hover.x} cy={y} r="4" fill={v.color} stroke="#111" strokeWidth="1.5" />;
+            })}
+          </>
+        )}
+      </svg>
+
+      {/* Hover tooltip */}
+      {hover && (
+        <div
+          className="absolute pointer-events-none px-3 py-2 rounded-lg border"
+          style={{
+            left: `${(hover.x / w) * 100}%`,
+            top: 8,
+            transform: hover.x > w * 0.7 ? 'translateX(-100%)' : 'translateX(0)',
+            background: 'rgba(15,15,17,0.95)',
+            borderColor: 'rgba(255,255,255,0.12)',
+            zIndex: 10,
+          }}
+        >
+          <div className="font-mono-jb text-[10px] text-zinc-500 mb-1">
+            {fmtTime(Math.round(hover.pct * duration))}
+          </div>
+          {hover.values.map((v, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: v.color }} />
+              <span className="text-white font-display font-bold">{v.ret}%</span>
+              {compareMode && <span className="text-zinc-600 truncate max-w-[120px] text-[10px]">{v.title}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Compare legend */}
+      {compareMode && displayVideos.length > 1 && (
+        <div className="flex flex-wrap gap-3 mt-2 px-1">
+          {displayVideos.map((v, i) => (
+            <div key={v.videoId} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: COMPARE_COLORS[i % COMPARE_COLORS.length] }} />
+              <span className="font-mono-jb text-[10px] text-zinc-500 truncate max-w-[180px]">{v.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RetentionPage() {
   const { data: session, status } = useSession();
   const [lang, setLang] = useState<Lang>('es');
@@ -43,7 +210,10 @@ export default function RetentionPage() {
   const [error, setError] = useState('');
   const [videos, setVideos] = useState<VideoRetention[]>([]);
   const [aiTips, setAiTips] = useState<string[]>([]);
+  const [dropOffReasons, setDropOffReasons] = useState<Record<string, DropOffReason[]>>({});
   const [selected, setSelected] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -67,6 +237,7 @@ export default function RetentionPage() {
       }
       setVideos(json.videos || []);
       setAiTips(json.aiTips || []);
+      setDropOffReasons(json.dropOffReasons || {});
       if (json.videos?.length > 0) setSelected(json.videos[0].videoId);
     } catch {
       setError(t('Error de conexión', 'Connection error'));
@@ -77,33 +248,15 @@ export default function RetentionPage() {
 
   useEffect(() => {
     if (status === 'authenticated') analyze();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   const selectedVideo = videos.find(v => v.videoId === selected);
+  const compareVideos = compareMode ? videos.filter(v => compareIds.includes(v.videoId)) : [];
 
-  function renderRetentionCurve(retention: number[]) {
-    if (retention.length < 2) return null;
-    const w = 600;
-    const h = 150;
-    const pts = retention.map((v, i) => {
-      const x = (i / (retention.length - 1)) * w;
-      const y = h - (v / 100) * h;
-      return `${x},${y}`;
-    }).join(' ');
-
-    return (
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-40" preserveAspectRatio="none">
-        {/* Grid lines */}
-        {[25, 50, 75].map(pct => (
-          <line key={pct} x1="0" y1={h - (pct / 100) * h} x2={w} y2={h - (pct / 100) * h} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-        ))}
-        {/* Fill */}
-        <polyline points={`0,${h} ${pts} ${w},${h}`} fill="rgba(155,32,32,0.15)" stroke="none" />
-        {/* Line */}
-        <polyline points={pts} fill="none" stroke="#9B2020" strokeWidth="2.5" />
-        {/* 50% reference line */}
-        <line x1="0" y1={h / 2} x2={w} y2={h / 2} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4,4" />
-      </svg>
+  function toggleCompare(videoId: string) {
+    setCompareIds(prev =>
+      prev.includes(videoId) ? prev.filter(id => id !== videoId) : [...prev, videoId].slice(0, 5)
     );
   }
 
@@ -128,51 +281,18 @@ export default function RetentionPage() {
   }
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-            </svg>
-            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              {t('Panel', 'Dashboard')}
-            </a>
-            <a href="/analytics" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-              Analytics
-            </a>
-            <a href="/predictor" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              Predictor
-            </a>
-            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </a>
-            <button onClick={() => signOut({ callbackUrl: '/' })} title={t('Cerrar sesión', 'Sign out')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-red-500/50 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            </button>
-          </div>
-        </div>
-      </nav>
-
+    <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
         <div className="max-w-5xl mx-auto px-6 py-8">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
-            {t('OPTIMIZADOR DE RETENCIÓN', 'RETENTION OPTIMIZER')}
+            {t('OPTIMIZADOR DE RETENCIÓN V2', 'RETENTION OPTIMIZER V2')}
           </p>
           <h1 className="font-display font-bold text-3xl text-white">
             {t('¿Dónde pierdes audiencia?', 'Where are you losing viewers?')}
           </h1>
           <p className="text-zinc-500 font-mono-jb text-xs mt-1">
-            {t('Datos privados de retención — solo accesibles con OAuth.', 'Private retention data — only accessible with OAuth.')}
+            {t('Hook Score + curva interactiva + AI drop-off analysis — datos privados OAuth.', 'Hook Score + interactive curve + AI drop-off analysis — private OAuth data.')}
           </p>
         </div>
       </div>
@@ -196,118 +316,189 @@ export default function RetentionPage() {
 
         {!loading && !error && videos.length > 0 && (
           <div className="space-y-6">
-            {/* Video selector */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
+
+            {/* Hook Score cards row */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {videos.map(v => (
                 <button
                   key={v.videoId}
-                  onClick={() => setSelected(v.videoId)}
-                  className={`flex-shrink-0 text-left px-4 py-2.5 rounded-lg border transition text-xs font-mono-jb ${
-                    selected === v.videoId ? 'border-red-500/40 text-white' : 'border-white/8 text-zinc-500 hover:text-white hover:border-white/20'
-                  }`}
+                  onClick={() => { setSelected(v.videoId); setCompareMode(false); }}
+                  className="text-left rounded-xl border p-4 transition group"
                   style={{
-                    background: selected === v.videoId ? 'rgba(155,32,32,0.12)' : 'rgba(255,255,255,0.02)',
+                    background: selected === v.videoId && !compareMode ? 'rgba(155,32,32,0.08)' : 'rgba(255,255,255,0.02)',
+                    borderColor: selected === v.videoId && !compareMode ? 'rgba(155,32,32,0.3)' : 'rgba(255,255,255,0.06)',
                   }}
                 >
-                  <div className="truncate max-w-[200px]">{v.title}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span style={{ color: retentionColor(v.avgRetention) }}>{v.avgRetention}%</span>
-                    <span className="text-zinc-600">{fmtNum(v.views)} {t('vistas', 'views')}</span>
+                  {/* Hook Score badge */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="font-display font-bold text-2xl" style={{ color: retentionColor(v.hookScore) }}>
+                      {v.hookScore}
+                    </div>
+                    <div className="font-mono-jb text-[9px] tracking-wider text-zinc-600 uppercase">Hook</div>
+                  </div>
+                  <div className="font-mono-jb text-[10px] text-zinc-500 truncate" title={v.title}>
+                    {v.title}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 font-mono-jb text-[10px]">
+                    <span style={{ color: retentionColor(v.avgRetention) }}>{v.avgRetention}% avg</span>
+                    <span className="text-zinc-700">{fmtNum(v.views)}</span>
                   </div>
                 </button>
               ))}
             </div>
 
-            {/* Selected video retention */}
-            {selectedVideo && (
-              <div className="rounded-xl border border-white/10 p-6" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <a
-                      href={`https://www.youtube.com/watch?v=${selectedVideo.videoId}`}
-                      target="_blank"
-                      rel="noopener"
-                      className="font-display font-bold text-lg text-white hover:underline"
-                    >
-                      {selectedVideo.title}
-                    </a>
-                    <div className="flex gap-4 mt-1 font-mono-jb text-[11px] text-zinc-500">
-                      <span>{fmtNum(selectedVideo.views)} {t('vistas', 'views')}</span>
-                      <span>{fmtTime(selectedVideo.duration)}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-display font-bold text-2xl" style={{ color: retentionColor(selectedVideo.avgRetention) }}>
-                      {selectedVideo.avgRetention}%
-                    </div>
-                    <div className="font-mono-jb text-[10px] text-zinc-500">{t('Retención media', 'Avg retention')}</div>
-                  </div>
-                </div>
+            {/* Compare toggle */}
+            {videos.length > 1 && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setCompareMode(!compareMode);
+                    if (!compareMode) setCompareIds(videos.slice(0, 2).map(v => v.videoId));
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border font-mono-jb text-[11px] tracking-wider transition"
+                  style={{
+                    background: compareMode ? 'rgba(129,140,248,0.1)' : 'rgba(255,255,255,0.02)',
+                    borderColor: compareMode ? 'rgba(129,140,248,0.3)' : 'rgba(255,255,255,0.08)',
+                    color: compareMode ? '#818cf8' : 'var(--text-dim)',
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>
+                  </svg>
+                  {t('Comparar curvas', 'Compare curves')}
+                </button>
 
-                {/* Retention curve */}
-                <div className="mb-2">
-                  {renderRetentionCurve(selectedVideo.retention)}
-                  <div className="flex justify-between font-mono-jb text-[10px] text-zinc-600 mt-1">
-                    <span>0:00</span>
-                    <span className="text-zinc-700">— 50% —</span>
-                    <span>{fmtTime(selectedVideo.duration)}</span>
-                  </div>
-                </div>
-
-                {/* Drop-off points */}
-                {selectedVideo.dropOffPoints.length > 0 && (
-                  <div className="mt-4">
-                    <h3 className="font-mono-jb text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
-                      {t('Puntos de abandono', 'Drop-off points')}
-                    </h3>
-                    <div className="flex gap-2 flex-wrap">
-                      {selectedVideo.dropOffPoints.map((d, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono-jb border"
-                          style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.2)' }}
-                        >
-                          <span className="text-red-400">{fmtTime(d.time)}</span>
-                          <span className="text-zinc-600">-{d.drop}%</span>
-                        </div>
-                      ))}
-                    </div>
+                {compareMode && (
+                  <div className="flex gap-2 flex-wrap">
+                    {videos.map(v => (
+                      <button
+                        key={v.videoId}
+                        onClick={() => toggleCompare(v.videoId)}
+                        className="px-3 py-1 rounded-full border font-mono-jb text-[10px] transition"
+                        style={{
+                          background: compareIds.includes(v.videoId) ? 'rgba(129,140,248,0.12)' : 'transparent',
+                          borderColor: compareIds.includes(v.videoId) ? 'rgba(129,140,248,0.3)' : 'rgba(255,255,255,0.08)',
+                          color: compareIds.includes(v.videoId) ? '#818cf8' : 'var(--text-dim)',
+                        }}
+                      >
+                        {v.title.slice(0, 25)}{v.title.length > 25 ? '...' : ''}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Retention overview */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              {videos.map(v => (
-                <div
-                  key={v.videoId}
-                  className="rounded-lg border border-white/8 p-3 text-center cursor-pointer hover:border-white/20 transition"
-                  style={{ background: 'rgba(255,255,255,0.02)' }}
-                  onClick={() => setSelected(v.videoId)}
-                >
-                  <div className="font-display font-bold text-xl" style={{ color: retentionColor(v.avgRetention) }}>
-                    {v.avgRetention}%
+            {/* Interactive retention curve */}
+            {(compareMode ? compareVideos.length > 0 : selectedVideo) && (
+              <div className="soft-card p-6">
+                {!compareMode && selectedVideo && (
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <a
+                        href={`https://www.youtube.com/watch?v=${selectedVideo.videoId}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="font-display font-bold text-lg text-white hover:underline"
+                      >
+                        {selectedVideo.title}
+                      </a>
+                      <div className="flex gap-4 mt-1 font-mono-jb text-[11px] text-zinc-500">
+                        <span>{fmtNum(selectedVideo.views)} {t('vistas', 'views')}</span>
+                        <span>{fmtTime(selectedVideo.duration)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      {/* Hook Score */}
+                      <div className="text-center">
+                        <div className="font-display font-bold text-3xl" style={{ color: retentionColor(selectedVideo.hookScore) }}>
+                          {selectedVideo.hookScore}%
+                        </div>
+                        <div className="font-mono-jb text-[10px] text-zinc-500">
+                          {hookScoreLabel(selectedVideo.hookScore, lang)}
+                        </div>
+                      </div>
+                      {/* Avg Retention */}
+                      <div className="text-center">
+                        <div className="font-display font-bold text-3xl" style={{ color: retentionColor(selectedVideo.avgRetention) }}>
+                          {selectedVideo.avgRetention}%
+                        </div>
+                        <div className="font-mono-jb text-[10px] text-zinc-500">{t('Retención media', 'Avg retention')}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="font-mono-jb text-[9px] text-zinc-600 truncate mt-0.5" title={v.title}>
-                    {v.title}
+                )}
+
+                {compareMode && (
+                  <div className="mb-4">
+                    <h3 className="font-display font-bold text-white text-lg">{t('Comparación de curvas', 'Curve comparison')}</h3>
+                    <p className="font-mono-jb text-[11px] text-zinc-500 mt-1">{t('Hover para ver retención en cada punto', 'Hover to see retention at each point')}</p>
                   </div>
+                )}
+
+                <InteractiveRetentionCurve
+                  videos={compareMode ? compareVideos : (selectedVideo ? [selectedVideo] : [])}
+                  compareMode={compareMode}
+                  duration={compareMode ? Math.max(...compareVideos.map(v => v.duration)) : (selectedVideo?.duration || 0)}
+                  lang={lang}
+                />
+              </div>
+            )}
+
+            {/* Drop-off points with AI reasons */}
+            {!compareMode && selectedVideo && selectedVideo.dropOffPoints.length > 0 && (
+              <div className="soft-card p-6">
+                <h3 className="font-mono-jb text-[10px] tracking-[0.25em] uppercase text-zinc-500 mb-4">
+                  {t('PUNTOS DE ABANDONO', 'DROP-OFF POINTS')}
+                </h3>
+                <div className="space-y-3">
+                  {selectedVideo.dropOffPoints.map((d, i) => {
+                    const reasons = dropOffReasons[selectedVideo.videoId] || [];
+                    const reason = reasons.find(r => r.timestamp === fmtTime(d.time));
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-start gap-4 p-3 rounded-lg border"
+                        style={{ background: 'rgba(239,68,68,0.04)', borderColor: 'rgba(239,68,68,0.15)' }}
+                      >
+                        <div className="flex-shrink-0 text-center w-16">
+                          <div className="font-display font-bold text-lg text-red-400">{fmtTime(d.time)}</div>
+                          <div className="font-mono-jb text-[10px] text-red-400/60">-{d.drop}%</div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 font-mono-jb text-xs text-zinc-400">
+                            <span>{d.retentionBefore}%</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                            <span style={{ color: retentionColor(d.retentionAfter) }}>{d.retentionAfter}%</span>
+                          </div>
+                          {reason && (
+                            <p className="text-zinc-400 text-xs mt-1.5 leading-relaxed">
+                              <span className="text-purple-400 font-mono-jb text-[10px] mr-1">AI:</span>
+                              {reason.reason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
             {/* AI Tips */}
             {aiTips.length > 0 && (
-              <div className="rounded-lg border p-5" style={{ background: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.2)' }}>
-                <h3 className="font-display font-bold text-sm text-purple-300 mb-3 flex items-center gap-2">
+              <div className="soft-card p-6" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
+                <h3 className="font-display font-bold text-sm text-purple-300 mb-4 flex items-center gap-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
                   {t('Consejos para mejorar retención', 'Tips to improve retention')}
                 </h3>
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {aiTips.map((tip, i) => (
-                    <li key={i} className="text-sm font-mono-jb text-zinc-300 flex items-start gap-2">
-                      <span className="text-purple-400 mt-0.5">{i + 1}.</span>
-                      <span>{tip}</span>
+                    <li key={i} className="text-sm text-zinc-300 flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center font-mono-jb text-[10px] font-bold" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
+                        {i + 1}
+                      </span>
+                      <span className="leading-relaxed">{tip}</span>
                     </li>
                   ))}
                 </ul>
@@ -324,6 +515,6 @@ export default function RetentionPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardShell>
   );
 }

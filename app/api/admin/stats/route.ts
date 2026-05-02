@@ -149,6 +149,7 @@ export async function GET() {
       name: u.name,
       createdAt: u.createdAt,
       isPro: u.subscription?.status === "active",
+      plan: u.subscription?.status === "active" ? ((u.subscription as { plan?: string })?.plan || 'pro') : 'free',
       generationCount: u._count.generations,
     })),
     recentGenerations: recentGenerations.map((g) => ({

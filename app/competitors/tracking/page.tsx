@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { getLangClient } from '@/lib/get-lang-client';
+import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
 
@@ -34,10 +35,39 @@ interface Competitor {
   growth: GrowthData | null;
 }
 
+interface OutlierVideo {
+  videoId: string; title: string; thumbnail: string;
+  publishedAt: string; views: number; multiplier: number;
+  type: 'viral' | 'evergreen';
+}
+interface OutlierData {
+  medianViews: number;
+  totalVideosAnalyzed: number;
+  outliers: OutlierVideo[];
+}
+
+interface TrendingVideo {
+  videoId: string; title: string; thumbnail: string;
+  channelName: string; channelId: string; publishedAt: string;
+  views: number; likes: number; vph: number; ageHours: number;
+}
+interface MissedOpportunity {
+  topic: string; coveredBy: string[];
+  totalViews: number; suggestion: string;
+}
+type IntelTab = 'trending' | 'new' | 'opportunities';
+
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
   return n.toString();
+}
+
+function fmtHours(h: number, lang: Lang): string {
+  if (h < 1) return lang === 'en' ? 'just now' : 'ahora';
+  if (h < 24) return `${Math.round(h)}h`;
+  const days = Math.round(h / 24);
+  return lang === 'en' ? `${days}d ago` : `hace ${days}d`;
 }
 
 function GrowthBadge({ value, suffix }: { value: number; suffix: string }) {
@@ -74,6 +104,13 @@ export default function CompetitorTrackingPage() {
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [outlierMap, setOutlierMap] = useState<Record<string, OutlierData>>({});
+  const [expandedOutliers, setExpandedOutliers] = useState<string | null>(null);
+  const [intelTab, setIntelTab] = useState<IntelTab>('trending');
+  const [trending, setTrending] = useState<TrendingVideo[]>([]);
+  const [newUploads, setNewUploads] = useState<TrendingVideo[]>([]);
+  const [opportunities, setOpportunities] = useState<MissedOpportunity[]>([]);
+  const [intelLoading, setIntelLoading] = useState(false);
 
   useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -86,6 +123,37 @@ export default function CompetitorTrackingPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [status]);
+
+  // Fetch outliers for all competitors
+  useEffect(() => {
+    if (competitors.length === 0) return;
+    competitors.forEach(comp => {
+      if (outlierMap[comp.channelId]) return;
+      fetch(`/api/youtube/outliers?channelId=${comp.channelId}&period=90d`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) setOutlierMap(prev => ({ ...prev, [comp.channelId]: data }));
+        })
+        .catch(() => {});
+    });
+  }, [competitors.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch competitor intel
+  useEffect(() => {
+    if (competitors.length === 0) return;
+    setIntelLoading(true);
+    fetch(`/api/youtube/competitor-intel?lang=${lang}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
+          setTrending(data.trending || []);
+          setNewUploads(data.newUploads || []);
+          setOpportunities(data.opportunities || []);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIntelLoading(false));
+  }, [competitors.length, lang]);
 
   async function addCompetitor() {
     if (!urlInput.trim()) return;
@@ -150,35 +218,8 @@ export default function CompetitorTrackingPage() {
   }
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-            </svg>
-            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              {t('Panel', 'Dashboard')}
-            </a>
-            <a href="/competitors" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-              {t('Análisis', 'Analysis')}
-            </a>
-            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            </a>
-            <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">{t('Salir', 'Sign out')}</button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-6 py-12">
+    <DashboardShell>
+      <div className="max-w-[1400px] mx-auto px-6 py-12">
         {/* Title */}
         <div className="mb-8">
           <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
@@ -301,11 +342,70 @@ export default function CompetitorTrackingPage() {
                     </div>
                   </div>
 
-                  {/* Sparkline */}
-                  {comp.snapshots.length > 2 && (
+                  {/* Sparkline + Outlier badge row */}
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono-jb text-[9px] text-zinc-600">{t('Subs', 'Subs')}</span>
-                      <Sparkline points={comp.snapshots.map(s => s.subscribers)} />
+                      {comp.snapshots.length > 2 && (
+                        <>
+                          <span className="font-mono-jb text-[9px] text-zinc-600">{t('Subs', 'Subs')}</span>
+                          <Sparkline points={comp.snapshots.map(s => s.subscribers)} />
+                        </>
+                      )}
+                    </div>
+                    {(() => {
+                      const od = outlierMap[comp.channelId];
+                      if (!od || od.outliers.length === 0) return null;
+                      return (
+                        <button
+                          onClick={() => setExpandedOutliers(expandedOutliers === comp.channelId ? null : comp.channelId)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full transition hover:opacity-80"
+                          style={{ background: 'rgba(255,107,0,0.12)', border: '1px solid rgba(255,107,0,0.25)' }}
+                        >
+                          <span style={{ color: '#FF6B00', fontSize: '11px' }}>🔥</span>
+                          <span className="font-mono-jb text-[10px] font-bold" style={{ color: '#FF6B00' }}>
+                            {od.outliers.length} outlier{od.outliers.length > 1 ? 's' : ''}
+                          </span>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" strokeWidth="2.5"
+                            style={{ transform: expandedOutliers === comp.channelId ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </button>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Expanded outlier videos */}
+                  {expandedOutliers === comp.channelId && outlierMap[comp.channelId]?.outliers.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                      <p className="font-mono-jb text-[10px] text-zinc-600 mb-2">
+                        {t('Vídeos con 10x+ vistas sobre la mediana (90d)', 'Videos with 10x+ views above median (90d)')}
+                      </p>
+                      {outlierMap[comp.channelId].outliers.slice(0, 5).map(v => (
+                        <a key={v.videoId} href={`https://www.youtube.com/watch?v=${v.videoId}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition">
+                          <div className="relative flex-shrink-0">
+                            <img src={v.thumbnail} alt="" className="w-16 h-9 rounded object-cover" />
+                            <span className="absolute -top-1 -right-1 font-mono-jb text-[8px] font-bold px-1 py-0.5 rounded-full"
+                              style={{ background: '#FF6B00', color: '#000' }}>
+                              {v.multiplier}x
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] text-zinc-300 truncate">{v.title}</p>
+                            <span className="font-mono-jb text-[9px] px-1.5 py-0.5 rounded mt-0.5 inline-block"
+                              style={{
+                                background: v.type === 'viral' ? 'rgba(232,77,91,0.12)' : 'rgba(0,229,255,0.12)',
+                                color: v.type === 'viral' ? '#e84d5b' : '#00E5FF',
+                              }}>
+                              {v.type === 'viral' ? '⚡ Viral' : '🌿 Evergreen'}
+                            </span>
+                          </div>
+                          <p className="font-mono-jb text-[10px] font-bold flex-shrink-0" style={{ color: '#FF6B00' }}>
+                            {fmtNum(v.views)}
+                          </p>
+                        </a>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -313,6 +413,188 @@ export default function CompetitorTrackingPage() {
             </div>
           ))}
         </div>
+
+        {/* Competitor Intelligence v2 */}
+        {competitors.length > 0 && (trending.length > 0 || newUploads.length > 0 || opportunities.length > 0 || intelLoading) && (
+          <div className="mt-10 space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-1" style={{ color: '#818cf8' }}>
+                  {t('INTELIGENCIA COMPETITIVA', 'COMPETITIVE INTELLIGENCE')}
+                </p>
+                <h2 className="font-display font-bold text-2xl text-white">
+                  {t('¿Qué hacen tus competidores?', 'What are your competitors doing?')}
+                </h2>
+              </div>
+            </div>
+
+            {/* Intel tabs */}
+            <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line)' }}>
+              {([
+                { key: 'trending' as IntelTab, label: t('Trending', 'Trending'), count: trending.length },
+                { key: 'new' as IntelTab, label: t('Nuevos', 'New'), count: newUploads.length },
+                { key: 'opportunities' as IntelTab, label: t('Oportunidades', 'Opportunities'), count: opportunities.length },
+              ]).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setIntelTab(tab.key)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg font-mono-jb text-[11px] tracking-wider transition-all"
+                  style={{
+                    background: intelTab === tab.key ? 'rgba(255,255,255,0.08)' : 'transparent',
+                    color: intelTab === tab.key ? '#fff' : 'var(--text-dim)',
+                    border: intelTab === tab.key ? '1px solid rgba(255,255,255,0.12)' : '1px solid transparent',
+                  }}
+                >
+                  {tab.label}
+                  {tab.count > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px]" style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {intelLoading && (
+              <div className="flex items-center gap-3 py-10 justify-center">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="text-zinc-500 font-mono-jb text-xs">{t('Analizando competidores...', 'Analyzing competitors...')}</span>
+              </div>
+            )}
+
+            {/* Trending videos */}
+            {!intelLoading && intelTab === 'trending' && trending.length > 0 && (
+              <div className="soft-card overflow-hidden">
+                <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--line)' }}>
+                  <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase">
+                    {t('VÍDEOS TRENDING DE COMPETIDORES (7 DÍAS)', 'COMPETITOR TRENDING VIDEOS (7 DAYS)')}
+                  </p>
+                </div>
+                <div className="divide-y" style={{ borderColor: 'var(--line)' }}>
+                  {trending.map((v, i) => (
+                    <a key={v.videoId} href={`https://youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition group">
+                      <span className="font-display font-bold text-lg w-6 flex-shrink-0 text-center" style={{ color: i < 3 ? '#818cf8' : 'var(--text-faint)' }}>
+                        {i + 1}
+                      </span>
+                      <img src={v.thumbnail} alt="" className="w-20 h-11 rounded object-cover flex-shrink-0" style={{ border: '1px solid var(--line)' }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] text-white line-clamp-1 group-hover:text-zinc-200">{v.title}</p>
+                        <p className="font-mono-jb text-[10px] text-zinc-600">{v.channelName} · {fmtHours(v.ageHours, lang)}</p>
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="font-display font-bold text-sm" style={{ color: '#818cf8' }}>{fmtNum(v.vph)}</p>
+                          <p className="font-mono-jb text-[9px] text-zinc-600">VPH</p>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                          <p className="font-mono-jb text-xs text-zinc-400">{fmtNum(v.views)}</p>
+                          <p className="font-mono-jb text-[9px] text-zinc-600">{t('vistas', 'views')}</p>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* New uploads */}
+            {!intelLoading && intelTab === 'new' && newUploads.length > 0 && (
+              <div className="soft-card overflow-hidden">
+                <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--line)' }}>
+                  <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase">
+                    {t('NUEVOS VÍDEOS (ÚLTIMAS 48H)', 'NEW UPLOADS (LAST 48H)')}
+                  </p>
+                </div>
+                <div className="divide-y" style={{ borderColor: 'var(--line)' }}>
+                  {newUploads.map(v => (
+                    <a key={v.videoId} href={`https://youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition group">
+                      <div className="relative flex-shrink-0">
+                        <img src={v.thumbnail} alt="" className="w-20 h-11 rounded object-cover" style={{ border: '1px solid var(--line)' }} />
+                        {v.ageHours <= 6 && (
+                          <span className="absolute -top-1 -left-1 px-1.5 py-0.5 rounded-full font-mono-jb text-[8px] font-bold" style={{ background: '#22c55e', color: '#000' }}>
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] text-white line-clamp-1 group-hover:text-zinc-200">{v.title}</p>
+                        <p className="font-mono-jb text-[10px] text-zinc-600">{v.channelName} · {fmtHours(v.ageHours, lang)}</p>
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="font-display font-bold text-sm text-white">{fmtNum(v.views)}</p>
+                          <p className="font-mono-jb text-[9px] text-zinc-600">{fmtNum(v.vph)} VPH</p>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty new uploads */}
+            {!intelLoading && intelTab === 'new' && newUploads.length === 0 && (
+              <div className="soft-card p-8 text-center">
+                <p className="text-zinc-500 text-sm">{t('Ningún competidor ha subido vídeos en las últimas 48 horas.', 'No competitors uploaded videos in the last 48 hours.')}</p>
+              </div>
+            )}
+
+            {/* Missed opportunities */}
+            {!intelLoading && intelTab === 'opportunities' && opportunities.length > 0 && (
+              <div className="grid gap-3">
+                {opportunities.map((opp, i) => (
+                  <div key={i} className="soft-card p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-mono-jb text-[10px] font-bold" style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}>
+                            {i + 1}
+                          </span>
+                          <h4 className="font-display font-bold text-white text-sm">{opp.topic}</h4>
+                        </div>
+                        <p className="text-zinc-400 text-xs leading-relaxed mb-2">{opp.suggestion}</p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="font-mono-jb text-[10px] text-zinc-600">
+                            {t('Cubierto por:', 'Covered by:')}
+                          </span>
+                          {opp.coveredBy.map(ch => (
+                            <span key={ch} className="font-mono-jb text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line)', color: 'var(--text-dim)' }}>
+                              {ch}
+                            </span>
+                          ))}
+                          {opp.totalViews > 0 && (
+                            <span className="font-mono-jb text-[10px]" style={{ color: '#818cf8' }}>
+                              {fmtNum(opp.totalViews)} {t('vistas', 'views')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <a
+                        href={`/generate?prefill=${encodeURIComponent(opp.topic)}`}
+                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono-jb text-[10px] tracking-wider hover:bg-white/[0.06] transition"
+                        style={{ border: '1px solid var(--line)', color: 'var(--text-dim)' }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+                        </svg>
+                        {t('Crear', 'Create')}
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Empty opportunities */}
+            {!intelLoading && intelTab === 'opportunities' && opportunities.length === 0 && (
+              <div className="soft-card p-8 text-center">
+                <p className="text-zinc-500 text-sm">{t('Conecta tu canal YouTube para descubrir oportunidades perdidas.', 'Connect your YouTube channel to discover missed opportunities.')}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Link to one-off analysis */}
         {competitors.length > 0 && (
@@ -327,6 +609,6 @@ export default function CompetitorTrackingPage() {
           {competitors.length}/10 {t('competidores', 'competitors')}
         </p>
       </div>
-    </div>
+    </DashboardShell>
   );
 }

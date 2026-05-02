@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getExtensionUser } from '@/lib/extension-auth';
 import { fetchGoogleTrends, estimateSearchVolume } from '@/lib/volume-estimate';
+import { getUserPlan, isPaid } from '@/lib/plans';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY;
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -25,16 +26,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (extAuth && !extAuth.isPro) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
-
+  // Extension: keywords open to all users (no Claude API cost)
+  // Web: still requires Pro
   if (session?.user?.email) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { subscription: { select: { status: true } } },
+      select: { id: true },
     });
-    if (user?.subscription?.status !== 'active') {
+    if (!user) {
+      return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+    }
+    const plan = await getUserPlan(user.id);
+    if (!isPaid(plan)) {
       return NextResponse.json({ error: 'pro_required' }, { status: 403 });
     }
   }

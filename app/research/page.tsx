@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { getLangClient } from '@/lib/get-lang-client';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
+import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
 
@@ -36,6 +37,23 @@ interface ResearchResult {
   relatedKeywords: string[];
   volumeEstimate?: VolumeEstimate;
 }
+
+interface QuestionItem {
+  question: string;
+  competition: 'low' | 'medium' | 'high';
+  competitionScore: number;
+  totalResults: number;
+  topVideo: {
+    videoId: string; title: string; channelName: string;
+    thumbnail: string; views: number;
+  } | null;
+}
+interface QuestionsResult {
+  keyword: string;
+  questions: QuestionItem[];
+}
+
+type ResearchTab = 'keywords' | 'questions';
 
 const COMPETITION_CONFIG = {
   low:    { label: { es: 'Baja',   en: 'Low'    }, color: '#22c55e', bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.3)'  },
@@ -92,15 +110,22 @@ function ResearchPageInner() {
   const [noApiKey, setNoApiKey] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [activeTab, setActiveTab] = useState<ResearchTab>('keywords');
+  const [questionsResult, setQuestionsResult] = useState<QuestionsResult | null>(null);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+
   useEffect(() => { setLang(getLangClient()); }, []);
 
   // No redirect — show public landing if unauthenticated
 
   useEffect(() => {
     const q = searchParams.get('q');
+    const tab = searchParams.get('tab');
+    if (tab === 'questions') setActiveTab('questions');
     if (q && status === 'authenticated') {
       setKeyword(q);
-      handleSearch(q);
+      if (tab === 'questions') handleQuestionsSearch(q);
+      else handleSearch(q);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
@@ -138,6 +163,44 @@ function ResearchPageInner() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleQuestionsSearch = async (kw?: string) => {
+    const q = (kw ?? keyword).trim();
+    if (!q) return;
+    setQuestionsLoading(true);
+    setQuestionsResult(null);
+    setError(null);
+    setNoApiKey(false);
+
+    try {
+      const res = await fetch('/api/research/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: q, lang }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error === 'no_api_key') { setNoApiKey(true); return; }
+        if (data.error === 'pro_required') {
+          setError(t('Esta función es exclusiva del Plan Pro. Actualiza tu cuenta desde el dashboard.', 'This feature is exclusive to the Pro Plan. Upgrade your account from the dashboard.'));
+          return;
+        }
+        setError(data.error || t('Error desconocido', 'Unknown error'));
+        return;
+      }
+      setQuestionsResult(data);
+    } catch {
+      setError(t('Error de conexión', 'Connection error'));
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
+
+  const handleTabSearch = (kw?: string) => {
+    if (activeTab === 'keywords') handleSearch(kw);
+    else handleQuestionsSearch(kw);
   };
 
   if (status === 'loading') return null;
@@ -209,39 +272,8 @@ function ResearchPageInner() {
   const comp = result ? COMPETITION_CONFIG[result.competition] : null;
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      {/* Header */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-            </svg>
-            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              {t('Panel', 'Dashboard')}
-            </a>
-            <a href="/generate" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-              {t('Generar', 'Generate')}
-            </a>
-            <a href="/competitors" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              {t('Competidores', 'Competitors')}
-            </a>
-            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            </a>
-            <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">{t('Salir', 'Sign out')}</button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-6 py-12">
+    <DashboardShell>
+      <div className="max-w-[1400px] mx-auto px-6 py-12">
 
         {/* Page title */}
         <div className="mb-10">
@@ -260,6 +292,26 @@ function ResearchPageInner() {
           </p>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex gap-1 mb-6 p-1 rounded-xl max-w-xs" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line)' }}>
+          {(['keywords', 'questions'] as ResearchTab[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="flex-1 px-4 py-2 rounded-lg font-mono-jb text-[11px] tracking-wider transition-all"
+              style={{
+                background: activeTab === tab ? 'rgba(255,255,255,0.08)' : 'transparent',
+                color: activeTab === tab ? '#fff' : 'var(--text-dim)',
+                border: activeTab === tab ? '1px solid rgba(255,255,255,0.12)' : '1px solid transparent',
+              }}
+            >
+              {tab === 'keywords'
+                ? t('Keywords', 'Keywords')
+                : t('Preguntas', 'Questions')}
+            </button>
+          ))}
+        </div>
+
         {/* Search bar */}
         <div className="flex gap-3 mb-10 max-w-2xl">
           <input
@@ -267,18 +319,20 @@ function ResearchPageInner() {
             type="text"
             value={keyword}
             onChange={e => setKeyword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            placeholder={t('Ej: cómo ganar dinero en YouTube', 'Eg: how to grow a YouTube channel')}
+            onKeyDown={e => e.key === 'Enter' && handleTabSearch()}
+            placeholder={activeTab === 'keywords'
+              ? t('Ej: cómo ganar dinero en YouTube', 'Eg: how to grow a YouTube channel')
+              : t('Ej: minecraft, cocina vegana, fitness', 'Eg: minecraft, vegan cooking, fitness')}
             className="soft-field flex-1 text-base"
             style={{ borderRadius: '10px' }}
           />
           <button
-            onClick={() => handleSearch()}
-            disabled={loading || !keyword.trim()}
+            onClick={() => handleTabSearch()}
+            disabled={(loading || questionsLoading) || !keyword.trim()}
             className="btn-offset px-6 py-3 text-sm font-mono-jb tracking-wider"
             style={{ borderRadius: '10px', minWidth: 120 }}
           >
-            {loading ? (
+            {(loading || questionsLoading) ? (
               <span className="flex items-center gap-2">
                 <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12" />
@@ -329,8 +383,123 @@ function ResearchPageInner() {
           </div>
         )}
 
-        {/* Results */}
-        {result && (
+        {/* Questions Results */}
+        {activeTab === 'questions' && questionsResult && questionsResult.questions.length > 0 && (
+          <div className="space-y-4 animate-in fade-in duration-500">
+            <div className="flex items-center gap-3 pb-4 border-b" style={{ borderColor: 'var(--line)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-500">
+                <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span className="font-display font-bold text-xl text-white">
+                {t('Preguntas sobre', 'Questions about')} "{questionsResult.keyword}"
+              </span>
+              <span className="font-mono-jb text-xs text-zinc-600">
+                {questionsResult.questions.length} {t('preguntas encontradas', 'questions found')}
+              </span>
+            </div>
+
+            <div className="grid gap-3">
+              {questionsResult.questions.map((q, i) => {
+                const qComp = COMPETITION_CONFIG[q.competition];
+                return (
+                  <div key={i} className="soft-card p-4 flex items-start gap-4 hover:border-white/15 transition">
+                    {/* Competition badge */}
+                    <div className="flex flex-col items-center gap-1 flex-shrink-0 w-16 pt-1">
+                      <div
+                        className="font-display font-bold text-lg"
+                        style={{ color: qComp.color }}
+                      >
+                        {q.competitionScore}
+                      </div>
+                      <span
+                        className="font-mono-jb text-[9px] tracking-wider px-2 py-0.5 rounded-full"
+                        style={{ background: qComp.bg, color: qComp.color, border: `1px solid ${qComp.border}` }}
+                      >
+                        {qComp.label[lang]}
+                      </span>
+                    </div>
+
+                    {/* Question text + top video */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display font-bold text-sm text-white leading-snug mb-2">
+                        {q.question}
+                      </p>
+                      {q.topVideo && (
+                        <a
+                          href={`https://youtube.com/watch?v=${q.topVideo.videoId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 group"
+                        >
+                          <img
+                            src={q.topVideo.thumbnail}
+                            alt=""
+                            className="w-16 h-11 object-cover rounded flex-shrink-0 opacity-80 group-hover:opacity-100 transition"
+                            style={{ border: '1px solid var(--line)' }}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-zinc-400 text-xs line-clamp-1 group-hover:text-zinc-300 transition">
+                              {q.topVideo.title}
+                            </p>
+                            <p className="font-mono-jb text-[10px] text-zinc-600">
+                              {q.topVideo.channelName} · {formatViews(q.topVideo.views, lang)} {t('vistas', 'views')}
+                            </p>
+                          </div>
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Create video button */}
+                    <a
+                      href={`/generate?prefill=${encodeURIComponent(q.question)}`}
+                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono-jb text-[10px] tracking-wider hover:bg-white/[0.06] transition"
+                      style={{ border: '1px solid var(--line)', color: 'var(--text-dim)' }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+                      </svg>
+                      {t('Crear', 'Create')}
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Generate CTA */}
+            <div className="soft-card p-6 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(232,77,91,0.2)', background: 'rgba(232,77,91,0.03)' }}>
+              <div>
+                <p className="font-display font-bold text-white text-lg">
+                  {t('Preguntas = oportunidades de vídeo', 'Questions = video opportunities')}
+                </p>
+                <p className="text-zinc-500 text-sm mt-1">
+                  {t('Las preguntas con competencia baja son las mejores para posicionar rápido.', 'Low competition questions are the best for ranking fast.')}
+                </p>
+              </div>
+              <a
+                href={`/generate?prefill=${encodeURIComponent(questionsResult.keyword)}`}
+                className="btn-offset px-6 py-3 text-sm font-mono-jb tracking-wider flex-shrink-0"
+                style={{ borderRadius: '10px' }}
+              >
+                {t('Generar contenido →', 'Generate content →')}
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Questions empty result */}
+        {activeTab === 'questions' && questionsResult && questionsResult.questions.length === 0 && (
+          <div className="text-center py-16">
+            <p className="font-display font-bold text-lg text-white mb-2">
+              {t('No se encontraron preguntas', 'No questions found')}
+            </p>
+            <p className="text-zinc-600 text-sm font-mono-jb">
+              {t('Prueba con otra keyword más general.', 'Try a more general keyword.')}
+            </p>
+          </div>
+        )}
+
+        {/* Keywords Results */}
+        {activeTab === 'keywords' && result && (
           <div className="space-y-6 animate-in fade-in duration-500">
 
             {/* Keyword header */}
@@ -514,7 +683,7 @@ function ResearchPageInner() {
         )}
 
         {/* Empty state */}
-        {!result && !loading && !noApiKey && !error && (
+        {!result && !questionsResult && !loading && !questionsLoading && !noApiKey && !error && (
           <div className="text-center py-20">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: 'rgba(232,77,91,0.1)', border: '1px solid rgba(232,77,91,0.2)' }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="1.5">
@@ -531,7 +700,7 @@ function ResearchPageInner() {
         )}
 
       </div>
-    </div>
+    </DashboardShell>
   );
 }
 

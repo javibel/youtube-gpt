@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getLangClient } from '@/lib/get-lang-client';
+import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
 
@@ -229,28 +230,7 @@ export default function LearnPage() {
   }
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-            </svg>
-            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              {t('Panel', 'Dashboard')}
-            </a>
-            <a href="/blog" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              Blog
-            </a>
-          </div>
-        </div>
-      </nav>
-
+    <DashboardShell>
       {/* Header */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
         <div className="max-w-4xl mx-auto px-6 py-10 text-center">
@@ -328,6 +308,6 @@ export default function LearnPage() {
           );
         })}
       </div>
-    </div>
+    </DashboardShell>
   );
 }

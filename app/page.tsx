@@ -9,9 +9,9 @@ import LangToggle from '@/components/LangToggle';
 import ChatWidgetPreview from '@/components/ChatWidgetPreview';
 
 export const metadata: Metadata = {
-  title: 'YTubViral — Genera contenido viral para YouTube con IA',
+  title: 'YTubViral — 14 herramientas de IA para crecer en YouTube',
   description:
-    'La herramienta de IA para YouTubers. Genera títulos que disparan el CTR, descripciones SEO, scripts completos, captions y conceptos de miniaturas en segundos. Empieza gratis.',
+    'Títulos virales, scripts, SEO, keyword research, análisis de competidores, estimador de ingresos, calendario IA, retención y más. 14 herramientas en una plataforma. Empieza gratis.',
   alternates: { canonical: 'https://ytubviral.com' },
 };
 
@@ -160,8 +160,8 @@ function Hero({ lang }: { lang: Lang }) {
 
         <p className="max-w-2xl mx-auto text-center text-zinc-400 text-lg md:text-xl mt-8 leading-relaxed">
           {lang === 'en'
-            ? "Titles, scripts, SEO descriptions, captions, thumbnails, keyword research and competitor analysis. Everything in one tool, generated in seconds."
-            : 'Títulos, scripts, descripciones SEO, captions, miniaturas, keyword research y análisis de competidores. Todo en una herramienta, generado en segundos.'}
+            ? "Titles, scripts, thumbnails, SEO, keyword research, competitor analysis, revenue estimator, AI calendar, retention optimizer and more. 14 tools, one platform."
+            : 'Títulos, scripts, miniaturas, SEO, keyword research, análisis de competidores, estimador de ingresos, calendario IA, optimizador de retención y más. 14 herramientas, una plataforma.'}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
@@ -292,7 +292,9 @@ function ComparisonTable({ lang }: { lang: Lang }) {
         { label: 'Research niche keywords', manual: '2 h', us: 'Built-in tool' },
         { label: 'Structure a 10-min script', manual: '3 h', us: '30 sec' },
         { label: 'Adapt to Reels/TikTok/Tweet', manual: '1 h', us: 'Included' },
-        { label: 'Thumbnail visual brief', manual: '40 min', us: '5 sec' },
+        { label: 'Plan what to publish and when', manual: 'Guesswork', us: 'AI Calendar' },
+        { label: 'Estimate revenue per video', manual: 'No data', us: 'Real CPM' },
+        { label: 'Detect retention drop-offs', manual: 'Manual review', us: 'AI analysis' },
         { label: 'Consistency week after week', manual: 'Variable', us: 'Guaranteed' },
       ]
     : [
@@ -300,7 +302,9 @@ function ComparisonTable({ lang }: { lang: Lang }) {
         { label: 'Investigar keywords del nicho', manual: '2 h', us: 'Herramienta propia' },
         { label: 'Estructurar un guion de 10 min', manual: '3 h', us: '30 seg' },
         { label: 'Adaptar a Reels/TikTok/Tweet', manual: '1 h', us: 'Incluido' },
-        { label: 'Brief visual para miniatura', manual: '40 min', us: '5 seg' },
+        { label: 'Planificar qué publicar y cuándo', manual: 'A ojo', us: 'Calendario IA' },
+        { label: 'Estimar ingresos por vídeo', manual: 'Sin datos', us: 'CPM real' },
+        { label: 'Detectar caídas de retención', manual: 'Revisión manual', us: 'Análisis IA' },
         { label: 'Consistencia semana tras semana', manual: 'Variable', us: 'Garantizada' },
       ];
 
@@ -350,96 +354,145 @@ function ComparisonTable({ lang }: { lang: Lang }) {
 }
 
 function Pricing({ lang }: { lang: Lang }) {
-  const freeFeatures = lang === 'en'
-    ? ['10 generations/month', '5 content types', '30-day history', 'No credit card']
-    : ['10 generaciones al mes', '5 tipos de contenido', 'Historial 30 días', 'Sin tarjeta de crédito'];
-  const proFeatures = lang === 'en'
-    ? ['200 generations/month', 'All content types', 'Keyword Research', 'Competitor Analysis', 'Chrome Extension', 'Full history', '24h priority support', 'Early access to new features', 'CSV export']
-    : ['200 generaciones al mes', 'Todos los tipos de contenido', 'Keyword Research', 'Análisis de competidores', 'Extensión de Chrome', 'Historial completo', 'Soporte prioritario 24h', 'Acceso anticipado a nuevas funciones', 'Exportación a CSV'];
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const Check = ({ color = 'text-zinc-500' }: { color?: string }) => (
+    <svg className={`shrink-0 mt-0.5 ${color}`} width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 13l4 4L19 7" /></svg>
+  );
+
+  const freeFeatures = [
+    t('10 generaciones al mes', '10 generations/month'),
+    t('5 tipos de contenido', '5 content types'),
+    t('Historial 30 días', '30-day history'),
+    t('Sin tarjeta de crédito', 'No credit card'),
+  ];
+  const proFeatures = [
+    t('200 generaciones al mes', '200 generations/month'),
+    t('Todos los tipos de contenido', 'All content types'),
+    t('AI Coach (50 msg/mes)', 'AI Coach (50 msg/mo)'),
+    t('Keyword Research + Outliers', 'Keyword Research + Outliers'),
+    t('5 competidores + Intel avanzado', '5 competitors + Advanced Intel'),
+    t('3 A/B tests simultáneos', '3 simultaneous A/B tests'),
+    t('Estimador de ingresos', 'Revenue Estimator'),
+    t('Calendario IA · Preview miniaturas', 'AI Calendar · Thumbnail Preview'),
+    t('Retención · Suscriptores · Predictor', 'Retention · Subscribers · Predictor'),
+    t('Extensión de Chrome', 'Chrome Extension'),
+    t('Soporte prioritario 24h', '24h priority support'),
+  ];
+  const businessFeatures = [
+    t('Generaciones ilimitadas', 'Unlimited generations'),
+    t('AI Coach ilimitado', 'Unlimited AI Coach'),
+    t('Predictor y Auditoría ilimitados', 'Unlimited Predictor & Audit'),
+    t('20 competidores + Tracking', '20 competitors + Tracking'),
+    t('10 A/B tests simultáneos', '10 simultaneous A/B tests'),
+    t('Revenue + Analytics avanzados', 'Revenue + Advanced Analytics'),
+    t('Trending: 12 países', 'Trending: 12 countries'),
+    t('Equipo: 5 miembros incluidos', 'Team: 5 members included'),
+    t('Bulk: 10 temas por lote', 'Bulk: 10 topics per batch'),
+    t('Todo de Pro incluido', 'Everything in Pro included'),
+  ];
 
   return (
     <section id="pricing" className="border-b border-white/10 relative overflow-hidden">
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%,rgba(232,77,91,0.10),transparent 60%)' }} />
-      <div className="relative max-w-5xl mx-auto px-6 py-24">
+      <div className="relative max-w-6xl mx-auto px-6 py-24">
         <div className="text-center mb-14">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>06 · PRICING</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
-            {lang === 'en' ? 'One price. No surprises.' : 'Un precio. Ninguna sorpresa.'}
+            {t('Elige tu plan. Sin sorpresas.', 'Pick your plan. No surprises.')}
           </h2>
           <p className="text-zinc-400 text-lg mt-4 max-w-xl mx-auto">
-            {lang === 'en' ? 'Start free. Go Pro when you\'re ready to scale.' : 'Empieza gratis. Sube a Pro cuando quieras escalar en serio.'}
+            {t('Empieza gratis. Escala cuando estés listo.', 'Start free. Scale when you\'re ready.')}
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-0 border border-white/10">
-          <div className="p-10 bg-black border-b md:border-b-0 md:border-r border-white/10">
+        <div className="grid md:grid-cols-3 gap-0 border border-white/10">
+          {/* Free */}
+          <div className="p-8 bg-black border-b md:border-b-0 md:border-r border-white/10">
             <p className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 mb-4">
-              A · {lang === 'en' ? 'Free' : 'Gratuito'}
+              A · {t('Gratuito', 'Free')}
             </p>
             <div className="flex items-baseline gap-1 mb-2">
-              <span className="font-display font-bold stat-num" style={{ fontSize: '60px' }}>0€</span>
-              <span className="text-zinc-500 font-mono-jb text-sm">/{lang === 'en' ? 'mo' : 'mes'}</span>
+              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>0€</span>
+              <span className="text-zinc-500 font-mono-jb text-sm">/{t('mes', 'mo')}</span>
             </div>
-            <p className="text-zinc-500 text-sm mb-8">{lang === 'en' ? 'To explore and validate' : 'Para explorar y validar'}</p>
+            <p className="text-zinc-500 text-sm mb-8">{t('Para explorar y validar', 'To explore and validate')}</p>
             <ul className="space-y-3 mb-10">
               {freeFeatures.map((f) => (
                 <li key={f} className="flex items-start gap-3 text-zinc-300 text-sm">
-                  <svg className="shrink-0 mt-0.5 text-zinc-500" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 13l4 4L19 7" /></svg>
-                  {f}
+                  <Check />{f}
                 </li>
               ))}
             </ul>
             <Link href="/signup" className="btn-offset btn-offset-ghost w-full px-5 py-3 text-sm font-display block text-center">
-              {lang === 'en' ? 'Start free' : 'Empezar gratis'}
+              {t('Empezar gratis', 'Start free')}
             </Link>
           </div>
 
-          <div className="p-10 relative" style={{ background: 'linear-gradient(180deg,rgba(232,77,91,0.08),rgba(232,77,91,0.02))' }}>
-            <div className="absolute -top-3 left-10 red-tape">★ {lang === 'en' ? 'MOST POPULAR' : 'MÁS ELEGIDO'}</div>
+          {/* Pro */}
+          <div className="p-8 relative" style={{ background: 'linear-gradient(180deg,rgba(232,77,91,0.08),rgba(232,77,91,0.02))' }}>
+            <div className="absolute -top-3 left-8 red-tape">★ {t('MÁS ELEGIDO', 'MOST POPULAR')}</div>
             <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-4" style={{ color: 'var(--red)' }}>B · Pro</p>
-
-            {/* Monthly price */}
             <div className="flex items-baseline gap-1 mb-1">
-              <span className="font-display font-bold stat-num" style={{ fontSize: '60px' }}>9,99€</span>
-              <span className="text-zinc-500 font-mono-jb text-sm">/{lang === 'en' ? 'mo' : 'mes'}</span>
+              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>9,99€</span>
+              <span className="text-zinc-500 font-mono-jb text-sm">/{t('mes', 'mo')}</span>
             </div>
-
-            {/* Yearly option */}
-            <div className="flex items-center gap-2 mb-6 mt-2 p-3 rounded-xl border border-white/10" style={{ background: 'rgba(124,255,0,0.06)', borderColor: 'rgba(124,255,0,0.2)' }}>
+            <div className="flex items-center gap-2 mb-6 mt-2 p-2.5 rounded-xl border border-white/10" style={{ background: 'rgba(124,255,0,0.06)', borderColor: 'rgba(124,255,0,0.2)' }}>
               <div>
                 <p className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: '#7CFF00' }}>
-                  {lang === 'en' ? '★ ANNUAL — SAVE 17%' : '★ ANUAL — AHORRA 17%'}
+                  {t('★ ANUAL — AHORRA 17%', '★ ANNUAL — SAVE 17%')}
                 </p>
-                <p className="font-display font-bold text-white text-lg mt-0.5">
-                  99,99€<span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{lang === 'en' ? 'yr' : 'año'}</span>
-                </p>
-                <p className="font-mono-jb text-[10px] text-zinc-400">
-                  {lang === 'en' ? '= €8.33/mo · 2 months free' : '= 8,33€/mes · 2 meses gratis'}
+                <p className="font-display font-bold text-white text-base mt-0.5">
+                  99,99€<span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('año', 'yr')}</span>
                 </p>
               </div>
             </div>
-
-            <p className="text-zinc-400 text-sm mb-6">
-              {lang === 'en' ? 'For creators who publish seriously' : 'Para creadores que publican en serio'}
-            </p>
+            <p className="text-zinc-400 text-sm mb-6">{t('Para creadores que publican en serio', 'For creators who publish seriously')}</p>
             <ul className="space-y-3 mb-10">
               {proFeatures.map((f) => (
                 <li key={f} className="flex items-start gap-3 text-zinc-200 text-sm">
-                  <svg className="shrink-0 mt-0.5" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} style={{ color: 'var(--red)' }}><path d="M5 13l4 4L19 7" /></svg>
-                  {f}
+                  <Check color="" />{f}
                 </li>
               ))}
             </ul>
             <Link href="/signup" className="btn-offset w-full px-5 py-3 text-sm font-display block text-center">
-              {lang === 'en' ? 'Get Pro →' : 'Empezar con Pro →'}
+              {t('Empezar con Pro →', 'Get Pro →')}
+            </Link>
+          </div>
+
+          {/* Business */}
+          <div className="p-8 border-t md:border-t-0 md:border-l border-white/10 relative" style={{ background: 'linear-gradient(180deg,rgba(0,229,255,0.05),transparent)' }}>
+            <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-4" style={{ color: '#00E5FF' }}>C · Business</p>
+            <div className="flex items-baseline gap-1 mb-1">
+              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>29,99€</span>
+              <span className="text-zinc-500 font-mono-jb text-sm">/{t('mes', 'mo')}</span>
+            </div>
+            <div className="flex items-center gap-2 mb-6 mt-2 p-2.5 rounded-xl border border-white/10" style={{ background: 'rgba(0,229,255,0.06)', borderColor: 'rgba(0,229,255,0.2)' }}>
+              <div>
+                <p className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: '#00E5FF' }}>
+                  {t('★ ANUAL — AHORRA 17%', '★ ANNUAL — SAVE 17%')}
+                </p>
+                <p className="font-display font-bold text-white text-base mt-0.5">
+                  299€<span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('año', 'yr')}</span>
+                </p>
+              </div>
+            </div>
+            <p className="text-zinc-400 text-sm mb-6">{t('Para equipos y canales grandes', 'For teams and large channels')}</p>
+            <ul className="space-y-3 mb-10">
+              {businessFeatures.map((f) => (
+                <li key={f} className="flex items-start gap-3 text-zinc-200 text-sm">
+                  <Check color="" />{f}
+                </li>
+              ))}
+            </ul>
+            <Link href="/signup" className="btn-offset w-full px-5 py-3 text-sm font-display block text-center" style={{ borderColor: 'rgba(0,229,255,0.5)' }}>
+              {t('Empezar con Business →', 'Get Business →')}
             </Link>
           </div>
         </div>
 
         <p className="text-center text-zinc-500 text-xs font-mono-jb mt-6">
-          {lang === 'en'
-            ? '30-day guarantee · Cancel anytime · Transparent billing'
-            : '30 días de garantía · Cancela cuando quieras · Facturación transparente'}
+          {t('30 días de garantía · Cancela cuando quieras · Facturación transparente',
+            '30-day guarantee · Cancel anytime · Transparent billing')}
         </p>
       </div>
     </section>

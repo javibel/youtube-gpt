@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import DashboardShell from '@/components/DashboardShell';
 import { getLangClient } from '@/lib/get-lang-client';
 
 type Lang = 'es' | 'en';
@@ -67,6 +68,12 @@ export default function CalendarPage() {
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; entry?: Entry; date?: string } | null>(null);
   const [form, setForm] = useState({ title: '', description: '', status: 'idea', date: '' });
   const [saving, setSaving] = useState(false);
+
+  // AI suggestions state
+  const [suggestions, setSuggestions] = useState<{ title: string; date: string; hour: number; reason: string; description: string }[]>([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null);
 
   useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -146,6 +153,51 @@ export default function CalendarPage() {
     setSaving(false);
   }
 
+  async function fetchSuggestions() {
+    setSuggestLoading(true);
+    setShowSuggestions(true);
+    try {
+      const res = await fetch('/api/calendar/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lang }),
+      });
+      const json = await res.json();
+      if (res.ok && json.suggestions) {
+        setSuggestions(json.suggestions);
+      } else {
+        setSuggestions([]);
+      }
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setSuggestLoading(false);
+    }
+  }
+
+  async function addSuggestionToCalendar(idx: number) {
+    const s = suggestions[idx];
+    if (!s) return;
+    setAddingSuggestion(idx);
+    try {
+      const res = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: s.title,
+          description: `${s.description}\n\n⏰ ${t('Hora sugerida', 'Suggested time')}: ${s.hour}:00 UTC\n💡 ${s.reason}`,
+          date: s.date,
+          status: 'idea',
+        }),
+      });
+      if (res.ok) {
+        setSuggestions(prev => prev.filter((_, i) => i !== idx));
+        fetchEntries();
+      }
+    } catch { /* */ }
+    setAddingSuggestion(null);
+  }
+
   async function cycleStatus(entry: Entry) {
     const order = ['idea', 'draft', 'scheduled', 'published'];
     const nextIdx = (order.indexOf(entry.status) + 1) % order.length;
@@ -184,43 +236,10 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-            </svg>
-            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              {t('Panel', 'Dashboard')}
-            </a>
-            <a href="/analytics" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-              Analytics
-            </a>
-            <a href="/coach" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              AI Coach
-            </a>
-            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </a>
-            <button onClick={() => signOut({ callbackUrl: '/' })} title={t('Cerrar sesión', 'Sign out')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-red-500/50 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            </button>
-          </div>
-        </div>
-      </nav>
-
+    <DashboardShell>
       {/* Header with month nav */}
       <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-[1400px] mx-auto px-6 py-6">
           <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
             {t('CALENDARIO DE CONTENIDO', 'CONTENT CALENDAR')}
           </p>
@@ -235,19 +254,119 @@ export default function CalendarPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
             </button>
           </div>
-          {/* Status legend */}
-          <div className="flex gap-4 mt-3 flex-wrap">
-            {Object.entries(STATUS_LABELS).map(([key, labels]) => (
-              <div key={key} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLORS[key] }} />
-                <span className="font-mono-jb text-[10px] text-zinc-500">{labels[lang]}</span>
-              </div>
-            ))}
+          {/* Status legend + AI button */}
+          <div className="flex items-center justify-between mt-3 flex-wrap gap-3">
+            <div className="flex gap-4 flex-wrap">
+              {Object.entries(STATUS_LABELS).map(([key, labels]) => (
+                <div key={key} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLORS[key] }} />
+                  <span className="font-mono-jb text-[10px] text-zinc-500">{labels[lang]}</span>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={fetchSuggestions}
+              disabled={suggestLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-mono-jb transition hover:border-purple-500/40 disabled:opacity-50"
+              style={{ borderColor: 'rgba(168,85,247,0.3)', background: 'rgba(168,85,247,0.08)', color: '#c084fc' }}
+            >
+              {suggestLoading ? (
+                <div className="w-3.5 h-3.5 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              )}
+              {suggestLoading ? t('Analizando...', 'Analyzing...') : t('AI Planificador', 'AI Scheduler')}
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      {/* AI Suggestions Panel */}
+      {showSuggestions && (
+        <div className="border-b border-white/10" style={{ background: 'rgba(168,85,247,0.03)' }}>
+          <div className="max-w-[1400px] mx-auto px-6 py-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <h2 className="font-display font-bold text-white text-sm">
+                  {t('Sugerencias AI', 'AI Suggestions')}
+                </h2>
+                <span className="font-mono-jb text-[10px] text-purple-400/70">
+                  {t('basado en Best Time + tendencias + competidores', 'based on Best Time + trends + competitors')}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowSuggestions(false)}
+                className="text-zinc-600 hover:text-white transition p-1"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+
+            {suggestLoading && (
+              <div className="flex items-center gap-3 py-6 justify-center">
+                <div className="w-4 h-4 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+                <span className="font-mono-jb text-sm text-zinc-500">{t('Analizando tu canal, tendencias y competidores...', 'Analyzing your channel, trends and competitors...')}</span>
+              </div>
+            )}
+
+            {!suggestLoading && suggestions.length === 0 && (
+              <p className="text-zinc-600 font-mono-jb text-sm py-4 text-center">
+                {t('No hay sugerencias disponibles. Asegúrate de tener Best Time analizado y canal conectado.', 'No suggestions available. Make sure you have Best Time analyzed and channel connected.')}
+              </p>
+            )}
+
+            {!suggestLoading && suggestions.length > 0 && (
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                {suggestions.map((s, i) => {
+                  const dayName = (() => {
+                    const d = new Date(s.date + 'T00:00:00');
+                    const names = lang === 'en'
+                      ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                      : ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                    return names[d.getDay()];
+                  })();
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-lg border p-3 flex flex-col gap-2"
+                      style={{ borderColor: 'rgba(168,85,247,0.15)', background: 'rgba(168,85,247,0.04)' }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-mono-jb text-[12px] text-white leading-tight line-clamp-2">{s.title}</h3>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc' }}>
+                          {dayName} {s.date.slice(5)}
+                        </span>
+                        <span className="font-mono-jb text-[10px] text-zinc-500">
+                          {s.hour}:00 UTC
+                        </span>
+                      </div>
+                      <p className="font-mono-jb text-[10px] text-zinc-500 leading-relaxed line-clamp-2">{s.reason}</p>
+                      <button
+                        onClick={() => addSuggestionToCalendar(i)}
+                        disabled={addingSuggestion === i}
+                        className="mt-auto flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-mono-jb transition border hover:border-purple-500/40 disabled:opacity-40"
+                        style={{ borderColor: 'rgba(168,85,247,0.2)', color: '#c084fc' }}
+                      >
+                        {addingSuggestion === i ? (
+                          <div className="w-3 h-3 border border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+                        ) : (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                        )}
+                        {t('Añadir', 'Add')}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-[1400px] mx-auto px-6 py-6">
         {error && (
           <div className="text-center py-8">
             <p className="text-red-400 font-mono-jb text-sm">{error}</p>
@@ -386,7 +505,7 @@ export default function CalendarPage() {
                     style={{ background: 'rgba(255,255,255,0.04)' }}
                   >
                     {Object.entries(STATUS_LABELS).map(([key, labels]) => (
-                      <option key={key} value={key}>{labels[lang]}</option>
+                      <option key={key} value={key} style={{ background: '#1a1a1e', color: '#fff' }}>{labels[lang]}</option>
                     ))}
                   </select>
                 </div>
@@ -420,6 +539,6 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardShell>
   );
 }

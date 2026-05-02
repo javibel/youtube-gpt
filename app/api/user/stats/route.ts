@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserPlan, getLimits, isPaid, type PlanType } from "@/lib/plans";
 
 function calcStreak(dates: Date[]): number {
   if (!dates.length) return 0;
@@ -58,7 +59,7 @@ export async function GET() {
       }),
       prisma.subscription.findUnique({
         where: { userId: user.id },
-        select: { status: true, cancelAtPeriodEnd: true, currentPeriodEnd: true },
+        select: { status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodEnd: true },
       }),
       prisma.generation.findMany({
         where: {
@@ -70,10 +71,12 @@ export async function GET() {
       }),
     ]);
 
-  const isPro = subscription?.status === 'active';
-  const FREE_LIMIT = 10;
-  const PRO_LIMIT = 200;
-  const limit = isPro ? PRO_LIMIT : FREE_LIMIT;
+  const plan: PlanType = subscription?.status === 'active'
+    ? (subscription.plan === 'business' ? 'business' : 'pro')
+    : 'free';
+  const isProUser = isPaid(plan);
+  const limits = getLimits(plan);
+  const limit = limits.generationsPerMonth;
   const streak = calcStreak(allDates.map((g) => g.createdAt));
 
   return NextResponse.json({
@@ -83,7 +86,8 @@ export async function GET() {
       generationsThisMonth,
       limit,
       remaining: Math.max(0, limit - generationsThisMonth),
-      isPro,
+      isPro: isProUser,
+      plan,
       streak,
     },
     subscription: subscription ?? null,

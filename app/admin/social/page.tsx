@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import DashboardShell from '@/components/DashboardShell';
 import { useEffect, useState, useCallback } from 'react';
 
 type SocialPost = {
@@ -126,25 +127,10 @@ export default function SocialAdminPage() {
   const logColors = { info: 'var(--text-faint)', success: '#22c55e', error: '#f87171' };
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+    <DashboardShell>
       {preview && <PreviewModal data={preview} onClose={() => setPreview(null)} />}
 
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.9)', borderBottom: '1px solid var(--line)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <a href="/" className="font-display font-bold text-base tracking-tight">
-              YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
-            </a>
-            <span className="red-tape">Social</span>
-          </div>
-          <button onClick={() => router.push('/admin')} className="text-xs transition" style={{ color: 'var(--text-faint)' }}>
-            ← Admin
-          </button>
-        </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-8">
 
         {/* Header */}
         <div>
@@ -305,6 +291,6 @@ export default function SocialAdminPage() {
       <footer className="mt-8 py-6" style={{ borderTop: '1px solid var(--line)' }}>
         <p className="text-center text-xs font-mono-jb" style={{ color: 'var(--text-faint)' }}>Panel privado · YTubViral</p>
       </footer>
-    </div>
+    </DashboardShell>
   );
 }

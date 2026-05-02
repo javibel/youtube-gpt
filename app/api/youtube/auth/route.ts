@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
+import { getUserPlan, isPaid } from '@/lib/plans';
 import crypto from 'crypto';
 
 export async function GET() {
@@ -10,11 +10,8 @@ export async function GET() {
   }
 
   // YouTube connect is a Pro-only feature
-  const subscription = await prisma.subscription.findUnique({
-    where: { userId: session.user.id },
-    select: { status: true },
-  });
-  if (subscription?.status !== 'active') {
+  const plan = await getUserPlan(session.user.id);
+  if (!isPaid(plan)) {
     return NextResponse.redirect(new URL('/dashboard?yt=pro_required', process.env.NEXTAUTH_URL!));
   }
 
@@ -26,6 +23,7 @@ export async function GET() {
     response_type: 'code',
     scope: [
       'https://www.googleapis.com/auth/youtube.readonly',
+      'https://www.googleapis.com/auth/youtube.force-ssl',
       'https://www.googleapis.com/auth/yt-analytics.readonly',
       'https://www.googleapis.com/auth/yt-analytics-monetary.readonly',
     ].join(' '),

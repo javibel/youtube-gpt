@@ -5,18 +5,30 @@ import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
 
+const BUSINESS_PRICE_IDS = new Set(
+  [process.env.STRIPE_BUSINESS_PRICE_ID, process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID]
+    .filter(Boolean)
+    .map(id => id!.trim())
+);
+
+function detectPlan(priceId: string): string {
+  return BUSINESS_PRICE_IDS.has(priceId) ? 'business' : 'pro';
+}
+
 async function upsertSubscription(
   userId: string,
   customerId: string,
   subscription: Stripe.Subscription
 ) {
   const item = subscription.items.data[0];
+  const plan = detectPlan(item.price.id);
   await prisma.subscription.upsert({
     where: { userId },
     create: {
       userId,
       stripeCustomerId: customerId,
       stripePriceId: item.price.id,
+      plan,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
@@ -25,6 +37,7 @@ async function upsertSubscription(
     update: {
       stripeCustomerId: customerId,
       stripePriceId: item.price.id,
+      plan,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
@@ -104,12 +117,14 @@ export async function POST(request: Request) {
         const customerId = subscription.customer as string;
         const item = subscription.items.data[0];
 
+        const plan = item?.price?.id ? detectPlan(item.price.id) : undefined;
         await prisma.subscription.updateMany({
           where: { stripeCustomerId: customerId },
           data: {
             status: subscription.status,
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
             stripePriceId: item?.price?.id,
+            ...(plan ? { plan } : {}),
             currentPeriodStart: new Date(subscription.current_period_start * 1000),
             currentPeriodEnd: new Date(subscription.current_period_end * 1000),
           },

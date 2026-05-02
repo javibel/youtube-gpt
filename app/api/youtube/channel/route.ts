@@ -32,39 +32,57 @@ async function refreshAccessToken(yt: { refreshToken: string | null; userId: str
   }
 
   if (!data.access_token) {
-    const permanent = data.error === 'invalid_grant' || data.error === 'invalid_client';
-    console.error('[youtube/refresh] token refresh failed', data.error, 'permanent:', permanent, 'userId:', yt.userId);
+    // Only treat as permanent if user actually revoked access, not just a transient invalid_grant
+    const desc = String(data.error_description || '');
+    const permanent = data.error === 'invalid_client' ||
+      (data.error === 'invalid_grant' && (desc.includes('revoked') || desc.includes('expired')));
+    console.error('[youtube/refresh] token refresh failed', data.error, data.error_description || '', 'permanent:', permanent, 'userId:', yt.userId);
     return { ok: false, permanent };
   }
 
   const expiresAt = new Date(Date.now() + ((data.expires_in as number) || 3600) * 1000);
+  // Save new token + rotated refresh token if provided
+  const updateData: { accessToken: string; expiresAt: Date; refreshToken?: string } = {
+    accessToken: data.access_token as string,
+    expiresAt,
+  };
+  if (data.refresh_token) {
+    updateData.refreshToken = data.refresh_token as string;
+  }
   await prisma.youtubeToken.update({
     where: { userId: yt.userId },
-    data: { accessToken: data.access_token as string, expiresAt },
+    data: updateData,
   });
 
   return { ok: true, accessToken: data.access_token as string };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const { searchParams } = new URL(request.url);
+  const forceFresh = searchParams.get('fresh') === '1';
 
   const yt = await prisma.youtubeToken.findUnique({ where: { userId: session.user.id } });
   if (!yt) {
     return NextResponse.json({ connected: false });
   }
 
-  // Token was marked as permanently invalid (accessToken cleared, expiresAt set to epoch)
-  if (!yt.accessToken && yt.expiresAt.getTime() === 0) {
+  // Token was permanently revoked (both accessToken AND refreshToken cleared)
+  if (!yt.accessToken && !yt.refreshToken) {
     return NextResponse.json({ connected: false, expired: true });
   }
 
-  // Return cached data if stats are fresh (< 1 hour old)
+  // Return cached data if stats are fresh (< 1 hour old) — unless fresh=1
   const oneHourAgo = new Date(Date.now() - 3600 * 1000);
-  if (yt.updatedAt > oneHourAgo && yt.channelName) {
+  if (!forceFresh && yt.updatedAt > oneHourAgo && yt.channelName) {
+    // Proactively refresh token if expired — other routes depend on a fresh token in DB
+    if (yt.expiresAt < new Date(Date.now() + 120_000) && yt.refreshToken) {
+      refreshAccessToken({ refreshToken: yt.refreshToken, userId: yt.userId }).catch(() => {});
+    }
     return NextResponse.json({
       connected: true,
       cached: true,

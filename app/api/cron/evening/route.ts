@@ -4,6 +4,7 @@ import { publishToInstagram, retryPendingFacebookPost } from '@/lib/agent/meta-a
 import { runGmailAgent, sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { runFeedbackAgent } from '@/lib/agent/feedback-agent';
+import { processAbTests } from '@/lib/ab-test-processor';
 import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 60;
@@ -72,6 +73,15 @@ export async function GET(request: Request) {
       results.instagram = igResult;
       if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
     }
+
+    // Process A/B tests (switch variants, complete tests)
+    const abResult = await processAbTests().catch(err => ({
+      switched: 0,
+      completed: 0,
+      errors: [`A/B test processor: ${err instanceof Error ? err.message : String(err)}`],
+    }));
+    results.abTests = { switched: abResult.switched, completed: abResult.completed };
+    errors.push(...abResult.errors);
 
     if (errors.length > 0) {
       await sendNotificationEmail(

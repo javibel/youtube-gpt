@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
+import { getUserPlan, isPaid } from '@/lib/plans';
 
 export const maxDuration = 60;
 
@@ -13,11 +14,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const sub = await prisma.subscription.findUnique({
-    where: { userId: session.user.id },
-    select: { status: true },
-  });
-  if (sub?.status !== 'active') {
+  const plan = await getUserPlan(session.user.id);
+  if (!isPaid(plan)) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
@@ -90,9 +88,10 @@ export async function POST(request: Request) {
     title: string;
     views: number;
     duration: number;
-    retention: number[]; // audience watch ratio at each point
+    retention: number[];
     avgRetention: number;
-    dropOffPoints: { time: number; drop: number }[];
+    hookScore: number;
+    dropOffPoints: { time: number; drop: number; retentionBefore: number; retentionAfter: number }[];
   }[] = [];
 
   for (const vid of videoIds.slice(0, 5)) {
@@ -121,16 +120,25 @@ export async function POST(request: Request) {
       const retentionValues = rows.map(r => r.audienceWatchRatio);
       const avgRetention = retentionValues.reduce((s, v) => s + v, 0) / retentionValues.length;
 
-      // Find significant drop-off points (>15% drop between consecutive points)
-      const dropOffs: { time: number; drop: number }[] = [];
+      // Hook Score: retention in the first ~5% of the video (approx first 30s for a 10min video)
+      const hookWindow = Math.max(1, Math.ceil(rows.length * 0.05));
+      const hookValues = retentionValues.slice(0, hookWindow);
+      const hookScore = hookValues.length > 0
+        ? Math.round((hookValues.reduce((s, v) => s + v, 0) / hookValues.length) * 100)
+        : 0;
+
+      // Find significant drop-off points (>10% drop between consecutive points)
+      const dropOffs: { time: number; drop: number; retentionBefore: number; retentionAfter: number }[] = [];
       for (let i = 1; i < retentionValues.length; i++) {
         const drop = retentionValues[i - 1] - retentionValues[i];
-        if (drop > 0.15) {
+        if (drop > 0.10) {
           const timePct = rows[i].elapsedVideoTimeRatio;
           const detail = videoDetails[vid];
           dropOffs.push({
             time: detail ? Math.round(timePct * detail.duration) : Math.round(timePct * 100),
             drop: Math.round(drop * 100),
+            retentionBefore: Math.round(retentionValues[i - 1] * 100),
+            retentionAfter: Math.round(retentionValues[i] * 100),
           });
         }
       }
@@ -144,7 +152,8 @@ export async function POST(request: Request) {
         duration: detail.duration,
         retention: retentionValues.map(v => Math.round(v * 100)),
         avgRetention: Math.round(avgRetention * 100),
-        dropOffPoints: dropOffs.slice(0, 3),
+        hookScore,
+        dropOffPoints: dropOffs.slice(0, 5),
       });
     } catch { /* continue */ }
   }
@@ -156,11 +165,14 @@ export async function POST(request: Request) {
   // Generate AI tips
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   let aiTips: string[] = [];
+  let dropOffReasons: Record<string, { timestamp: string; reason: string }[]> = {};
 
   if (apiKey && videoRetentions.length > 0) {
     const context = videoRetentions.map(v => {
-      const drops = v.dropOffPoints.map(d => `drop ${d.drop}% at ${Math.floor(d.time / 60)}:${(d.time % 60).toString().padStart(2, '0')}`).join(', ');
-      return `"${v.title}" — avg retention ${v.avgRetention}%, ${v.views} views, ${drops || 'no major drops'}`;
+      const drops = v.dropOffPoints.map(d =>
+        `drop ${d.drop}% at ${Math.floor(d.time / 60)}:${(d.time % 60).toString().padStart(2, '0')} (${d.retentionBefore}%→${d.retentionAfter}%)`
+      ).join(', ');
+      return `"${v.title}" — hook score ${v.hookScore}%, avg retention ${v.avgRetention}%, ${v.views} views, duration ${Math.floor(v.duration / 60)}min, ${drops || 'no major drops'}`;
     }).join('\n');
 
     try {
@@ -173,10 +185,15 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 400,
+          max_tokens: 800,
           messages: [{
             role: 'user',
-            content: `Based on these YouTube video retention data, give 3-4 specific, actionable tips to improve audience retention. Reply in ${userLang === 'en' ? 'English' : 'Spanish'}. Output ONLY a JSON array of strings.\n\n${context}`,
+            content: `Analyze these YouTube video retention data. Reply in ${userLang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON with this structure:
+{"tips":["tip1","tip2","tip3"],"dropOffReasons":{"VIDEO_ID":[{"timestamp":"M:SS","reason":"short explanation"}]}}
+
+For each video's drop-off points, explain the likely reason (intro too long, topic change, dead air, CTA placement, pacing issue, etc). Give 3-4 actionable tips based on patterns across all videos. Focus on the hook score (first 30s) and biggest drops.
+
+${context}`,
           }],
         }),
       });
@@ -185,12 +202,19 @@ export async function POST(request: Request) {
         const data = await res.json();
         const text = data.content?.[0]?.text || '';
         try {
-          aiTips = JSON.parse(text);
-          if (!Array.isArray(aiTips)) aiTips = [];
-        } catch { /* */ }
+          const parsed = JSON.parse(text);
+          aiTips = Array.isArray(parsed.tips) ? parsed.tips : [];
+          dropOffReasons = parsed.dropOffReasons || {};
+        } catch {
+          // Fallback: try parsing as plain array
+          try {
+            const arr = JSON.parse(text);
+            if (Array.isArray(arr)) aiTips = arr;
+          } catch { /* */ }
+        }
       }
     } catch { /* */ }
   }
 
-  return NextResponse.json({ videos: videoRetentions, aiTips });
+  return NextResponse.json({ videos: videoRetentions, aiTips, dropOffReasons });
 }

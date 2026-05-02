@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
+import { getUserPlan, isPaid } from '@/lib/plans';
 
 const ES_PROMPT = (script: string) => `Convierte este script de YouTube en un storyboard visual de 8-12 escenas. Adapta la cantidad al tamaño del script: scripts cortos → 8 escenas, scripts largos → hasta 12.
 
@@ -39,12 +39,9 @@ export async function POST(request: Request) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Pro-only feature
-  const subscription = await prisma.subscription.findUnique({
-    where: { userId: session.user.id },
-    select: { status: true },
-  });
-  if (subscription?.status !== 'active') {
-    return NextResponse.json({ error: 'Pro required' }, { status: 403 });
+  const plan = await getUserPlan(session.user.id);
+  if (!isPaid(plan)) {
+    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();

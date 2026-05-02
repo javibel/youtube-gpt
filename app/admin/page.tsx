@@ -1,6 +1,7 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import DashboardShell from '@/components/DashboardShell';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -18,7 +19,7 @@ type AdminData = {
   thisMonth: { newUsers: number; newUsersLastMonth: number; generations: number; generationsLastMonth: number };
   templateBreakdown: { template: string; count: number }[];
   daily: { date: string; count: number }[];
-  recentUsers: { id: string; email: string; name: string | null; createdAt: string; isPro: boolean; generationCount: number }[];
+  recentUsers: { id: string; email: string; name: string | null; createdAt: string; isPro: boolean; plan: string; generationCount: number }[];
   recentGenerations: { id: string; template: string; createdAt: string; tokensUsed: number; userEmail: string }[];
 };
 type FeedbackItem = {
@@ -72,6 +73,7 @@ export default function AdminPage() {
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [grantEmail, setGrantEmail] = useState('');
+  const [grantPlan, setGrantPlan] = useState<'pro' | 'business' | 'free'>('pro');
   const [granting, setGranting] = useState(false);
   const [grantMsg, setGrantMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [feedbackEmail, setFeedbackEmail] = useState('');
@@ -122,12 +124,17 @@ export default function AdminPage() {
     finally { setSendingFeedback(false); }
   }
 
-  async function handleGrantPro(e: React.FormEvent) {
+  async function handleGrantPlan(e: React.FormEvent) {
     e.preventDefault(); setGranting(true); setGrantMsg(null);
     try {
-      const res = await fetch('/api/admin/grant-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: grantEmail }) });
+      const res = await fetch('/api/admin/grant-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: grantEmail, plan: grantPlan }) });
       const d = await res.json();
-      if (d.ok) { setGrantMsg({ ok: true, text: `Pro activado para ${grantEmail}.` }); setGrantEmail(''); fetch('/api/admin/stats').then(r => r.json()).then(d => { if (!d.error) setData(d); }); }
+      if (d.ok) {
+        const labels: Record<string, string> = { free: 'Free', pro: 'Pro', business: 'Business' };
+        setGrantMsg({ ok: true, text: `${labels[d.plan]} activado para ${grantEmail}.` });
+        setGrantEmail('');
+        fetch('/api/admin/stats').then(r => r.json()).then(d => { if (!d.error) setData(d); });
+      }
       else setGrantMsg({ ok: false, text: d.error ?? 'Error' });
     } catch { setGrantMsg({ ok: false, text: 'Error de conexión' }); }
     finally { setGranting(false); }
@@ -173,28 +180,9 @@ export default function AdminPage() {
   const avgRating = feedbacks.length > 0 ? feedbacks.reduce((s, f) => s + (f.rating ?? 0), 0) / feedbacks.length : 0;
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+    <DashboardShell>
 
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.9)', borderBottom: '1px solid var(--line)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <a href="/" className="font-display font-bold text-base tracking-tight">
-              YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
-            </a>
-            <span className="red-tape">Admin</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <a href="/admin/social" className="text-xs font-mono-jb transition" style={{ color: 'var(--text-faint)' }}>
-              Agente Social →
-            </a>
-            <a href="/dashboard" className="text-xs transition" style={{ color: 'var(--text-faint)' }}>Mi cuenta</a>
-            <button onClick={() => signOut({ callbackUrl: '/' })} className="text-xs transition" style={{ color: 'var(--text-faint)' }}>Salir</button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-8">
 
         {/* Header + exports */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -316,7 +304,9 @@ export default function AdminPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {u.isPro
+                        {u.plan === 'business'
+                          ? <span className="text-xs font-mono-jb font-bold px-2 py-0.5 rounded" style={{ background: 'rgba(0,229,255,0.15)', color: '#00E5FF' }}>BIZ</span>
+                          : u.plan === 'pro'
                           ? <span className="text-xs font-mono-jb font-bold px-2 py-0.5 rounded" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>PRO</span>
                           : <span className="text-xs font-mono-jb px-2 py-0.5 rounded" style={{ background: 'var(--ink-3)', color: 'var(--text-faint)' }}>Free</span>}
                         {u.email !== session?.user?.email && (
@@ -454,12 +444,29 @@ export default function AdminPage() {
           </div>
 
           <div className="soft-card rounded-2xl p-5">
-            <p className="text-sm font-display font-semibold mb-1">Activar plan Pro</p>
-            <p className="text-xs mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Asigna Pro manualmente sin pasar por Stripe.</p>
-            <form onSubmit={handleGrantPro} className="space-y-3">
+            <p className="text-sm font-display font-semibold mb-1">Gestionar plan</p>
+            <p className="text-xs mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Asigna Free, Pro o Business manualmente.</p>
+            <form onSubmit={handleGrantPlan} className="space-y-3">
               <input type="email" required placeholder="Email del usuario" value={grantEmail} onChange={e => setGrantEmail(e.target.value)} className="soft-field" />
+              <div className="flex gap-2">
+                {(['free', 'pro', 'business'] as const).map(p => {
+                  const colors: Record<string, { bg: string; border: string; color: string }> = {
+                    free: { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.12)', color: 'var(--text-dim)' },
+                    pro: { bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)', color: '#fbbf24' },
+                    business: { bg: 'rgba(0,229,255,0.1)', border: 'rgba(0,229,255,0.3)', color: '#00E5FF' },
+                  };
+                  const c = grantPlan === p ? colors[p] : { bg: 'transparent', border: 'var(--line)', color: 'var(--text-faint)' };
+                  return (
+                    <button key={p} type="button" onClick={() => setGrantPlan(p)}
+                      className="flex-1 text-xs font-mono-jb font-bold py-2 rounded-lg transition"
+                      style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color }}>
+                      {p === 'free' ? 'Free' : p === 'pro' ? 'Pro' : 'Business'}
+                    </button>
+                  );
+                })}
+              </div>
               <button type="submit" disabled={granting} className="btn-offset w-full py-2.5 text-sm rounded-xl">
-                {granting ? 'Activando...' : 'Activar Pro ★'}
+                {granting ? 'Aplicando...' : grantPlan === 'free' ? 'Quitar plan pagado' : `Activar ${grantPlan === 'pro' ? 'Pro ★' : 'Business ◆'}`}
               </button>
               {grantMsg && <p className="text-xs font-mono-jb" style={{ color: grantMsg.ok ? '#22c55e' : '#f87171' }}>{grantMsg.text}</p>}
             </form>
@@ -484,6 +491,6 @@ export default function AdminPage() {
       <footer className="mt-8 py-6" style={{ borderTop: '1px solid var(--line)' }}>
         <p className="text-center text-xs font-mono-jb" style={{ color: 'var(--text-faint)' }}>Panel privado · YTubViral</p>
       </footer>
-    </div>
+    </DashboardShell>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { getLangClient, setLangClient } from '@/lib/get-lang-client';
+import DashboardShell from '@/components/DashboardShell';
 import PasswordInput from '@/components/PasswordInput';
 
 type Lang = 'es' | 'en';
@@ -120,20 +121,7 @@ export default function ProfilePage() {
   const dateLocale = lang === 'en' ? 'en-US' : 'es-ES';
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-2 text-zinc-400 hover:text-white transition font-mono-jb text-[11px] tracking-wider uppercase">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-            {t('Volver al panel', 'Back to dashboard')}
-          </a>
-          <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">
-            {t('Salir', 'Sign out')}
-          </button>
-        </div>
-      </nav>
+    <DashboardShell>
 
       <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
 
@@ -336,6 +324,6 @@ export default function ProfilePage() {
         </div>
 
       </main>
-    </div>
+    </DashboardShell>
   );
 }

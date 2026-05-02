@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { getLangClient } from '@/lib/get-lang-client';
+import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
 
@@ -21,6 +22,17 @@ interface CompetitorResult {
   keywords: string[];
   uploadFrequency: string;
   avgViews: number;
+}
+interface OutlierVideo {
+  videoId: string; title: string; thumbnail: string;
+  publishedAt: string; views: number; likes: number;
+  multiplier: number; type: 'viral' | 'evergreen';
+}
+interface OutlierResult {
+  channelId: string;
+  medianViews: number;
+  totalVideosAnalyzed: number;
+  outliers: OutlierVideo[];
 }
 
 function fmtNum(n: number, lang: Lang): string {
@@ -50,8 +62,30 @@ export default function CompetitorsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<CompetitorResult | null>(null);
+  const [outliers, setOutliers] = useState<OutlierResult | null>(null);
+  const [outliersLoading, setOutliersLoading] = useState(false);
+  const [outlierPeriod, setOutlierPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('all');
 
   useEffect(() => { setLang(getLangClient()); }, []);
+
+  // Fetch outliers when we have a result or period changes
+  useEffect(() => {
+    if (!result?.channel?.id) { setOutliers(null); return; }
+    let cancelled = false;
+    async function fetchOutliers() {
+      setOutliersLoading(true);
+      try {
+        const res = await fetch(`/api/youtube/outliers?channelId=${result!.channel.id}&period=${outlierPeriod}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setOutliers(data);
+        }
+      } catch { /* ignore */ }
+      finally { if (!cancelled) setOutliersLoading(false); }
+    }
+    fetchOutliers();
+    return () => { cancelled = true; };
+  }, [result?.channel?.id, outlierPeriod]);
 
   // No redirect — show public landing if unauthenticated
 
@@ -154,43 +188,8 @@ export default function CompetitorsPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      {/* Header */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-              <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
-            </svg>
-            <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <a href="/dashboard" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              {t('Panel', 'Dashboard')}
-            </a>
-            <a href="/generate" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-              {t('Generar', 'Generate')}
-            </a>
-            <a href="/research" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              {t('Investigar', 'Research')}
-            </a>
-            <a href="/competitors/tracking" className="hidden md:flex items-center gap-1.5 font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition border border-white/10 rounded px-3 py-1.5 hover:border-white/25">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              Tracking
-            </a>
-            <a href="/profile" title={t('Mi perfil', 'My profile')} className="flex items-center justify-center w-8 h-8 rounded-full border border-white/15 hover:border-white/30 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            </a>
-            <button onClick={() => signOut({ callbackUrl: '/' })} className="font-mono-jb text-[11px] text-zinc-500 hover:text-zinc-300 transition">{t('Salir', 'Sign out')}</button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+    <DashboardShell>
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* Title */}
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -367,9 +366,94 @@ export default function CompetitorsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Outlier Detection */}
+            <div className="soft-card p-5 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <h3 className="font-display font-bold text-base text-white flex items-center gap-2">
+                  <span style={{ color: '#FF6B00' }}>🔥</span>
+                  {t('Outlier Detection', 'Outlier Detection')}
+                  {outliers && outliers.outliers.length > 0 && (
+                    <span className="font-mono-jb text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,107,0,0.15)', color: '#FF6B00' }}>
+                      {outliers.outliers.length} {t('detectados', 'detected')}
+                    </span>
+                  )}
+                </h3>
+                <div className="flex items-center gap-1 font-mono-jb text-[10px]">
+                  {(['7d', '30d', '90d', 'all'] as const).map(p => (
+                    <button key={p} onClick={() => setOutlierPeriod(p)}
+                      className="px-2.5 py-1 rounded transition"
+                      style={{
+                        background: outlierPeriod === p ? 'rgba(255,107,0,0.15)' : 'transparent',
+                        color: outlierPeriod === p ? '#FF6B00' : '#6b7280',
+                        border: outlierPeriod === p ? '1px solid rgba(255,107,0,0.3)' : '1px solid transparent',
+                      }}>
+                      {p === 'all' ? t('Todo', 'All') : p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {outliers?.medianViews ? (
+                <p className="font-mono-jb text-[10px] text-zinc-600">
+                  {t('Mediana de vistas', 'Median views')}: <span className="text-zinc-400">{fmtNum(outliers.medianViews, lang)}</span>
+                  {' · '}{outliers.totalVideosAnalyzed} {t('vídeos analizados', 'videos analyzed')}
+                  {' · '}{t('Umbral', 'Threshold')}: 10x
+                </p>
+              ) : null}
+
+              {outliersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 rounded-full border-2 border-transparent spin-r" style={{ borderTopColor: '#FF6B00' }} />
+                </div>
+              ) : outliers && outliers.outliers.length > 0 ? (
+                <div className="space-y-2">
+                  {outliers.outliers.map((v) => (
+                    <a key={v.videoId} href={`https://www.youtube.com/watch?v=${v.videoId}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 rounded-lg group hover:bg-white/5 transition"
+                      style={{ border: '1px solid rgba(255,107,0,0.15)' }}>
+                      <div className="relative flex-shrink-0">
+                        <img src={v.thumbnail} alt="" className="w-20 h-[45px] rounded object-cover" />
+                        <span className="absolute -top-1.5 -right-1.5 font-mono-jb text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ background: '#FF6B00', color: '#000' }}>
+                          {v.multiplier}x
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-zinc-300 truncate group-hover:text-white transition">{v.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded"
+                            style={{
+                              background: v.type === 'viral' ? 'rgba(232,77,91,0.12)' : 'rgba(0,229,255,0.12)',
+                              color: v.type === 'viral' ? '#e84d5b' : '#00E5FF',
+                            }}>
+                            {v.type === 'viral' ? '⚡ Viral' : '🌿 Evergreen'}
+                          </span>
+                          <span className="font-mono-jb text-[10px] text-zinc-600">{fmtDate(v.publishedAt, lang)}</span>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-mono-jb text-[11px] font-bold" style={{ color: '#FF6B00' }}>{fmtNum(v.views, lang)}</p>
+                        <p className="font-mono-jb text-[9px] text-zinc-600">{t('vistas', 'views')}</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              ) : outliers ? (
+                <div className="text-center py-8">
+                  <p className="text-zinc-600 font-mono-jb text-xs">
+                    {t('No se detectaron outliers (10x+) en este período.', 'No outliers (10x+) detected in this period.')}
+                  </p>
+                  <p className="text-zinc-700 font-mono-jb text-[10px] mt-1">
+                    {t('Prueba con "Todo" para ver el historial completo.', 'Try "All" to see the full history.')}
+                  </p>
+                </div>
+              ) : null}
+            </div>
           </div>
         )}
       </main>
-    </div>
+    </DashboardShell>
   );
 }

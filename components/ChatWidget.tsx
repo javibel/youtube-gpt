@@ -12,6 +12,7 @@ export default function ChatWidget() {
   const { status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -24,9 +25,24 @@ export default function ChatWidget() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  // Load chat history when first opened
   useEffect(() => {
+    if (isOpen && !historyLoaded) {
+      fetch('/api/chat')
+        .then(r => r.json())
+        .then(data => {
+          if (data.messages?.length > 0) {
+            setMessages(data.messages.map((m: { role: string; content: string }) => ({
+              role: m.role as 'user' | 'assistant',
+              content: m.content,
+            })));
+          }
+          setHistoryLoaded(true);
+        })
+        .catch(() => setHistoryLoaded(true));
+    }
     if (isOpen) inputRef.current?.focus();
-  }, [isOpen]);
+  }, [isOpen, historyLoaded]);
 
   if (status !== 'authenticated') return null;
 
@@ -57,11 +73,10 @@ export default function ChatWidget() {
     setIsLoading(true);
 
     try {
-      const context = prevMessages.slice(-4);
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, context }),
+        body: JSON.stringify({ message: text }),
       });
 
       const data = await res.json();
