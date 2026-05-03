@@ -74,7 +74,7 @@ function GrowthBadge({ value, suffix }: { value: number; suffix: string }) {
   if (value === 0) return null;
   return (
     <span className="font-mono-jb text-[9px]" style={{ color: value > 0 ? '#22c55e' : '#e84d5b' }}>
-      {value > 0 ? '+' : ''}{fmtNum(value)} <span className="text-zinc-600">{suffix}</span>
+      {value > 0 ? '+' : ''}{fmtNum(value)} <span style={{ color: 'var(--yv-text-4)' }}>{suffix}</span>
     </span>
   );
 }
@@ -199,7 +199,7 @@ export default function CompetitorTrackingPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-2)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -207,10 +207,10 @@ export default function CompetitorTrackingPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-2)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Tracking', 'Tracking')}</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para continuar.', 'Sign in to continue.')}</p>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para continuar.', 'Sign in to continue.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
@@ -221,20 +221,22 @@ export default function CompetitorTrackingPage() {
     <DashboardShell>
       <div className="yv-page yv-page--wide">
         {/* Title */}
-        <div className="mb-8">
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            {t('SEGUIMIENTO DE COMPETIDORES', 'COMPETITOR TRACKING')}
-          </p>
-          <h1 className="font-display font-bold text-4xl md:text-5xl text-white leading-tight">
-            {t('Tracking', 'Tracking')}<br />
-            <span style={{ color: 'var(--red)' }}>{t('de competidores.', 'competitors.')}</span>
-          </h1>
-          <p className="text-zinc-500 mt-3 text-sm font-mono-jb max-w-xl">
-            {t(
-              'Sigue hasta 10 canales competidores. Monitorizamos suscriptores, vistas y vídeos cada 6 horas.',
-              'Track up to 10 competitor channels. We monitor subscribers, views and videos every 6 hours.'
-            )}
-          </p>
+        <div className="yv-page-header mb-8">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">
+              {t('SEGUIMIENTO DE COMPETIDORES', 'COMPETITOR TRACKING')}
+            </span>
+            <h1 className="yv-page-header__title">
+              {t('Tracking', 'Tracking')}<br />
+              <span style={{ color: 'var(--yv-brand)' }}>{t('de competidores.', 'competitors.')}</span>
+            </h1>
+            <p className="yv-page-header__desc">
+              {t(
+                'Sigue hasta 10 canales competidores. Monitorizamos suscriptores, vistas y vídeos cada 6 horas.',
+                'Track up to 10 competitor channels. We monitor subscribers, views and videos every 6 hours.'
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Add competitor */}
@@ -245,8 +247,7 @@ export default function CompetitorTrackingPage() {
             onChange={e => setUrlInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addCompetitor()}
             placeholder={t('youtube.com/@canal o ID del canal', 'youtube.com/@channel or channel ID')}
-            className="flex-1 px-4 py-3 rounded-xl border border-white/10 font-mono-jb text-sm text-white placeholder:text-zinc-600 focus:border-white/25 focus:outline-none transition"
-            style={{ background: 'rgba(255,255,255,0.03)' }}
+            className="soft-field flex-1 px-4 py-3 font-mono-jb text-sm"
           />
           <button
             onClick={addCompetitor}
@@ -272,7 +273,7 @@ export default function CompetitorTrackingPage() {
         {competitors.length === 0 && !loading && (
           <div className="text-center py-20">
             <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.1)' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="1.5">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="1.5">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
@@ -280,7 +281,7 @@ export default function CompetitorTrackingPage() {
             <h3 className="font-display font-bold text-xl text-white mb-2">
               {t('Sin competidores', 'No competitors yet')}
             </h3>
-            <p className="text-zinc-500 font-mono-jb text-sm max-w-md mx-auto">
+            <p className="font-mono-jb text-sm max-w-md mx-auto" style={{ color: 'var(--yv-text-3)' }}>
               {t(
                 'Añade la URL de un canal de YouTube para empezar a seguir su crecimiento.',
                 'Add a YouTube channel URL to start tracking their growth.'
@@ -291,13 +292,13 @@ export default function CompetitorTrackingPage() {
 
         <div className="space-y-4">
           {competitors.map(comp => (
-            <div key={comp.id} className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <div key={comp.id} className="yv-card p-5">
               <div className="flex items-start gap-4">
                 {/* Avatar */}
                 {comp.channelThumb ? (
                   <img src={comp.channelThumb} alt="" className="w-12 h-12 rounded-full flex-shrink-0" />
                 ) : (
-                  <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg" style={{ background: 'var(--red)' }}>
+                  <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-lg" style={{ background: 'var(--yv-brand)' }}>
                     {comp.channelName[0]?.toUpperCase()}
                   </div>
                 )}
@@ -310,14 +311,14 @@ export default function CompetitorTrackingPage() {
                         className="font-display font-bold text-white hover:underline">
                         {comp.channelName}
                       </a>
-                      <p className="font-mono-jb text-[10px] text-zinc-600">
+                      <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
                         {t('Seguido desde', 'Tracked since')} {new Date(comp.addedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' })}
                       </p>
                     </div>
                     <button
                       onClick={() => removeCompetitor(comp.id)}
                       disabled={deleting === comp.id}
-                      className="text-zinc-700 hover:text-red-400 transition p-1"
+                      className="hover:text-red-400 transition p-1" style={{ color: 'var(--yv-text-4)' }}
                       title={t('Dejar de seguir', 'Untrack')}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -328,17 +329,17 @@ export default function CompetitorTrackingPage() {
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
                       <p className="font-display font-bold text-white">{fmtNum(comp.subscribers)}</p>
-                      <p className="font-mono-jb text-[9px] text-zinc-600 uppercase">{t('Subs', 'Subs')}</p>
+                      <p className="font-mono-jb text-[9px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('Subs', 'Subs')}</p>
                       {comp.growth && <GrowthBadge value={comp.growth.subs30d} suffix="30d" />}
                     </div>
                     <div>
                       <p className="font-display font-bold text-white">{fmtNum(comp.totalViews)}</p>
-                      <p className="font-mono-jb text-[9px] text-zinc-600 uppercase">{t('Vistas', 'Views')}</p>
+                      <p className="font-mono-jb text-[9px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('Vistas', 'Views')}</p>
                       {comp.growth && <GrowthBadge value={comp.growth.views30d} suffix="30d" />}
                     </div>
                     <div>
                       <p className="font-display font-bold text-white">{fmtNum(comp.videoCount)}</p>
-                      <p className="font-mono-jb text-[9px] text-zinc-600 uppercase">{t('Vídeos', 'Videos')}</p>
+                      <p className="font-mono-jb text-[9px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('Vídeos', 'Videos')}</p>
                     </div>
                   </div>
 
@@ -347,7 +348,7 @@ export default function CompetitorTrackingPage() {
                     <div className="flex items-center gap-3">
                       {comp.snapshots.length > 2 && (
                         <>
-                          <span className="font-mono-jb text-[9px] text-zinc-600">{t('Subs', 'Subs')}</span>
+                          <span className="font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>{t('Subs', 'Subs')}</span>
                           <Sparkline points={comp.snapshots.map(s => s.subscribers)} />
                         </>
                       )}
@@ -377,7 +378,7 @@ export default function CompetitorTrackingPage() {
                   {/* Expanded outlier videos */}
                   {expandedOutliers === comp.channelId && outlierMap[comp.channelId]?.outliers.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
-                      <p className="font-mono-jb text-[10px] text-zinc-600 mb-2">
+                      <p className="font-mono-jb text-[10px] mb-2" style={{ color: 'var(--yv-text-4)' }}>
                         {t('Vídeos con 10x+ vistas sobre la mediana (90d)', 'Videos with 10x+ views above median (90d)')}
                       </p>
                       {outlierMap[comp.channelId].outliers.slice(0, 5).map(v => (
@@ -458,15 +459,15 @@ export default function CompetitorTrackingPage() {
             {intelLoading && (
               <div className="flex items-center gap-3 py-10 justify-center">
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span className="text-zinc-500 font-mono-jb text-xs">{t('Analizando competidores...', 'Analyzing competitors...')}</span>
+                <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-3)' }}>{t('Analizando competidores...', 'Analyzing competitors...')}</span>
               </div>
             )}
 
             {/* Trending videos */}
             {!intelLoading && intelTab === 'trending' && trending.length > 0 && (
-              <div className="soft-card overflow-hidden">
+              <div className="yv-card overflow-hidden">
                 <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--line)' }}>
-                  <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase">
+                  <p className="font-mono-jb text-[10px] tracking-[0.2em] uppercase" style={{ color: 'var(--yv-text-3)' }}>
                     {t('VÍDEOS TRENDING DE COMPETIDORES (7 DÍAS)', 'COMPETITOR TRENDING VIDEOS (7 DAYS)')}
                   </p>
                 </div>
@@ -480,16 +481,16 @@ export default function CompetitorTrackingPage() {
                       <img src={v.thumbnail} alt="" className="w-20 h-11 rounded object-cover flex-shrink-0" style={{ border: '1px solid var(--line)' }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[12px] text-white line-clamp-1 group-hover:text-zinc-200">{v.title}</p>
-                        <p className="font-mono-jb text-[10px] text-zinc-600">{v.channelName} · {fmtHours(v.ageHours, lang)}</p>
+                        <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{v.channelName} · {fmtHours(v.ageHours, lang)}</p>
                       </div>
                       <div className="flex items-center gap-4 flex-shrink-0">
                         <div className="text-right">
                           <p className="font-display font-bold text-sm" style={{ color: '#818cf8' }}>{fmtNum(v.vph)}</p>
-                          <p className="font-mono-jb text-[9px] text-zinc-600">VPH</p>
+                          <p className="font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>VPH</p>
                         </div>
                         <div className="text-right hidden sm:block">
-                          <p className="font-mono-jb text-xs text-zinc-400">{fmtNum(v.views)}</p>
-                          <p className="font-mono-jb text-[9px] text-zinc-600">{t('vistas', 'views')}</p>
+                          <p className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.views)}</p>
+                          <p className="font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>{t('vistas', 'views')}</p>
                         </div>
                       </div>
                     </a>
@@ -500,9 +501,9 @@ export default function CompetitorTrackingPage() {
 
             {/* New uploads */}
             {!intelLoading && intelTab === 'new' && newUploads.length > 0 && (
-              <div className="soft-card overflow-hidden">
+              <div className="yv-card overflow-hidden">
                 <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--line)' }}>
-                  <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase">
+                  <p className="font-mono-jb text-[10px] tracking-[0.2em] uppercase" style={{ color: 'var(--yv-text-3)' }}>
                     {t('NUEVOS VÍDEOS (ÚLTIMAS 48H)', 'NEW UPLOADS (LAST 48H)')}
                   </p>
                 </div>
@@ -520,12 +521,12 @@ export default function CompetitorTrackingPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[12px] text-white line-clamp-1 group-hover:text-zinc-200">{v.title}</p>
-                        <p className="font-mono-jb text-[10px] text-zinc-600">{v.channelName} · {fmtHours(v.ageHours, lang)}</p>
+                        <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{v.channelName} · {fmtHours(v.ageHours, lang)}</p>
                       </div>
                       <div className="flex items-center gap-4 flex-shrink-0">
                         <div className="text-right">
                           <p className="font-display font-bold text-sm text-white">{fmtNum(v.views)}</p>
-                          <p className="font-mono-jb text-[9px] text-zinc-600">{fmtNum(v.vph)} VPH</p>
+                          <p className="font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.vph)} VPH</p>
                         </div>
                       </div>
                     </a>
@@ -536,8 +537,8 @@ export default function CompetitorTrackingPage() {
 
             {/* Empty new uploads */}
             {!intelLoading && intelTab === 'new' && newUploads.length === 0 && (
-              <div className="soft-card p-8 text-center">
-                <p className="text-zinc-500 text-sm">{t('Ningún competidor ha subido vídeos en las últimas 48 horas.', 'No competitors uploaded videos in the last 48 hours.')}</p>
+              <div className="yv-card p-8 text-center">
+                <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Ningún competidor ha subido vídeos en las últimas 48 horas.', 'No competitors uploaded videos in the last 48 hours.')}</p>
               </div>
             )}
 
@@ -545,7 +546,7 @@ export default function CompetitorTrackingPage() {
             {!intelLoading && intelTab === 'opportunities' && opportunities.length > 0 && (
               <div className="grid gap-3">
                 {opportunities.map((opp, i) => (
-                  <div key={i} className="soft-card p-5">
+                  <div key={i} className="yv-card p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
@@ -554,9 +555,9 @@ export default function CompetitorTrackingPage() {
                           </span>
                           <h4 className="font-display font-bold text-white text-sm">{opp.topic}</h4>
                         </div>
-                        <p className="text-zinc-400 text-xs leading-relaxed mb-2">{opp.suggestion}</p>
+                        <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--yv-text-2)' }}>{opp.suggestion}</p>
                         <div className="flex items-center gap-3 flex-wrap">
-                          <span className="font-mono-jb text-[10px] text-zinc-600">
+                          <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
                             {t('Cubierto por:', 'Covered by:')}
                           </span>
                           {opp.coveredBy.map(ch => (
@@ -589,8 +590,8 @@ export default function CompetitorTrackingPage() {
 
             {/* Empty opportunities */}
             {!intelLoading && intelTab === 'opportunities' && opportunities.length === 0 && (
-              <div className="soft-card p-8 text-center">
-                <p className="text-zinc-500 text-sm">{t('Conecta tu canal YouTube para descubrir oportunidades perdidas.', 'Connect your YouTube channel to discover missed opportunities.')}</p>
+              <div className="yv-card p-8 text-center">
+                <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Conecta tu canal YouTube para descubrir oportunidades perdidas.', 'Connect your YouTube channel to discover missed opportunities.')}</p>
               </div>
             )}
           </div>
@@ -599,13 +600,13 @@ export default function CompetitorTrackingPage() {
         {/* Link to one-off analysis */}
         {competitors.length > 0 && (
           <div className="mt-8 text-center">
-            <a href="/competitors" className="font-mono-jb text-[11px] text-zinc-600 hover:text-zinc-400 transition">
+            <a href="/competitors" className="font-mono-jb text-[11px] hover:opacity-80 transition" style={{ color: 'var(--yv-text-4)' }}>
               {t('Ir al análisis detallado de competidores', 'Go to detailed competitor analysis')} →
             </a>
           </div>
         )}
 
-        <p className="mt-6 font-mono-jb text-[11px] text-zinc-700">
+        <p className="mt-6 font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
           {competitors.length}/10 {t('competidores', 'competitors')}
         </p>
       </div>

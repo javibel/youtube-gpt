@@ -175,14 +175,14 @@ function InteractiveRetentionCurve({
             zIndex: 10,
           }}
         >
-          <div className="font-mono-jb text-[10px] text-zinc-500 mb-1">
+          <div className="font-mono-jb text-[10px] mb-1" style={{ color: 'var(--yv-text-3)' }}>
             {fmtTime(Math.round(hover.pct * duration))}
           </div>
           {hover.values.map((v, i) => (
             <div key={i} className="flex items-center gap-2 text-xs">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: v.color }} />
               <span className="text-white font-display font-bold">{v.ret}%</span>
-              {compareMode && <span className="text-zinc-600 truncate max-w-[120px] text-[10px]">{v.title}</span>}
+              {compareMode && <span className="truncate max-w-[120px] text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{v.title}</span>}
             </div>
           ))}
         </div>
@@ -194,7 +194,7 @@ function InteractiveRetentionCurve({
           {displayVideos.map((v, i) => (
             <div key={v.videoId} className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: COMPARE_COLORS[i % COMPARE_COLORS.length] }} />
-              <span className="font-mono-jb text-[10px] text-zinc-500 truncate max-w-[180px]">{v.title}</span>
+              <span className="font-mono-jb text-[10px] truncate max-w-[180px]" style={{ color: 'var(--yv-text-3)' }}>{v.title}</span>
             </div>
           ))}
         </div>
@@ -273,7 +273,7 @@ export default function RetentionPage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Retención', 'Retention')}</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para analizar retención.', 'Sign in to analyze retention.')}</p>
+          <p className="font-mono-jb text-sm mb-6" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para analizar retención.', 'Sign in to analyze retention.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
@@ -283,15 +283,15 @@ export default function RetentionPage() {
   return (
     <DashboardShell>
       {/* Header */}
-      <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="yv-page yv-page--wide">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
+      <div className="yv-page-header" style={{ background: 'var(--yv-bg-1)' }}>
+        <div className="yv-page-header__left">
+          <span className="yv-page-header__eyebrow" style={{ color: 'var(--yv-brand)' }}>
             {t('OPTIMIZADOR DE RETENCIÓN V2', 'RETENTION OPTIMIZER V2')}
-          </p>
-          <h1 className="font-display font-bold text-3xl text-white">
+          </span>
+          <h1 className="yv-page-header__title">
             {t('¿Dónde pierdes audiencia?', 'Where are you losing viewers?')}
           </h1>
-          <p className="text-zinc-500 font-mono-jb text-xs mt-1">
+          <p className="yv-page-header__desc" style={{ color: 'var(--yv-text-3)' }}>
             {t('Hook Score + curva interactiva + AI drop-off analysis — datos privados OAuth.', 'Hook Score + interactive curve + AI drop-off analysis — private OAuth data.')}
           </p>
         </div>
@@ -301,7 +301,7 @@ export default function RetentionPage() {
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            <span className="text-zinc-500 font-mono-jb text-sm">{t('Analizando retención...', 'Analyzing retention...')}</span>
+            <span className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Analizando retención...', 'Analyzing retention...')}</span>
           </div>
         )}
 
@@ -334,14 +334,14 @@ export default function RetentionPage() {
                     <div className="font-display font-bold text-2xl" style={{ color: retentionColor(v.hookScore) }}>
                       {v.hookScore}
                     </div>
-                    <div className="font-mono-jb text-[9px] tracking-wider text-zinc-600 uppercase">Hook</div>
+                    <div className="font-mono-jb text-[9px] tracking-wider uppercase" style={{ color: 'var(--yv-text-4)' }}>Hook</div>
                   </div>
-                  <div className="font-mono-jb text-[10px] text-zinc-500 truncate" title={v.title}>
+                  <div className="font-mono-jb text-[10px] truncate" style={{ color: 'var(--yv-text-3)' }} title={v.title}>
                     {v.title}
                   </div>
                   <div className="flex items-center gap-2 mt-1 font-mono-jb text-[10px]">
                     <span style={{ color: retentionColor(v.avgRetention) }}>{v.avgRetention}% avg</span>
-                    <span className="text-zinc-700">{fmtNum(v.views)}</span>
+                    <span style={{ color: 'var(--yv-text-5)' }}>{fmtNum(v.views)}</span>
                   </div>
                 </button>
               ))}
@@ -391,7 +391,7 @@ export default function RetentionPage() {
 
             {/* Interactive retention curve */}
             {(compareMode ? compareVideos.length > 0 : selectedVideo) && (
-              <div className="soft-card p-6">
+              <div className="yv-card p-6">
                 {!compareMode && selectedVideo && (
                   <div className="flex items-start justify-between mb-4">
                     <div>
@@ -399,11 +399,12 @@ export default function RetentionPage() {
                         href={`https://www.youtube.com/watch?v=${selectedVideo.videoId}`}
                         target="_blank"
                         rel="noopener"
-                        className="font-display font-bold text-lg text-white hover:underline"
+                        className="font-display font-bold text-lg hover:underline"
+                        style={{ color: 'var(--yv-text-1)' }}
                       >
                         {selectedVideo.title}
                       </a>
-                      <div className="flex gap-4 mt-1 font-mono-jb text-[11px] text-zinc-500">
+                      <div className="flex gap-4 mt-1 font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
                         <span>{fmtNum(selectedVideo.views)} {t('vistas', 'views')}</span>
                         <span>{fmtTime(selectedVideo.duration)}</span>
                       </div>
@@ -414,7 +415,7 @@ export default function RetentionPage() {
                         <div className="font-display font-bold text-3xl" style={{ color: retentionColor(selectedVideo.hookScore) }}>
                           {selectedVideo.hookScore}%
                         </div>
-                        <div className="font-mono-jb text-[10px] text-zinc-500">
+                        <div className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>
                           {hookScoreLabel(selectedVideo.hookScore, lang)}
                         </div>
                       </div>
@@ -423,7 +424,7 @@ export default function RetentionPage() {
                         <div className="font-display font-bold text-3xl" style={{ color: retentionColor(selectedVideo.avgRetention) }}>
                           {selectedVideo.avgRetention}%
                         </div>
-                        <div className="font-mono-jb text-[10px] text-zinc-500">{t('Retención media', 'Avg retention')}</div>
+                        <div className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{t('Retención media', 'Avg retention')}</div>
                       </div>
                     </div>
                   </div>
@@ -431,8 +432,8 @@ export default function RetentionPage() {
 
                 {compareMode && (
                   <div className="mb-4">
-                    <h3 className="font-display font-bold text-white text-lg">{t('Comparación de curvas', 'Curve comparison')}</h3>
-                    <p className="font-mono-jb text-[11px] text-zinc-500 mt-1">{t('Hover para ver retención en cada punto', 'Hover to see retention at each point')}</p>
+                    <h3 className="font-display font-bold text-lg" style={{ color: 'var(--yv-text-1)' }}>{t('Comparación de curvas', 'Curve comparison')}</h3>
+                    <p className="font-mono-jb text-[11px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{t('Hover para ver retención en cada punto', 'Hover to see retention at each point')}</p>
                   </div>
                 )}
 
@@ -447,8 +448,8 @@ export default function RetentionPage() {
 
             {/* Drop-off points with AI reasons */}
             {!compareMode && selectedVideo && selectedVideo.dropOffPoints.length > 0 && (
-              <div className="soft-card p-6">
-                <h3 className="font-mono-jb text-[10px] tracking-[0.25em] uppercase text-zinc-500 mb-4">
+              <div className="yv-card p-6">
+                <h3 className="font-mono-jb text-[10px] tracking-[0.25em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
                   {t('PUNTOS DE ABANDONO', 'DROP-OFF POINTS')}
                 </h3>
                 <div className="space-y-3">
@@ -466,13 +467,13 @@ export default function RetentionPage() {
                           <div className="font-mono-jb text-[10px] text-red-400/60">-{d.drop}%</div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 font-mono-jb text-xs text-zinc-400">
+                          <div className="flex items-center gap-2 font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>
                             <span>{d.retentionBefore}%</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                             <span style={{ color: retentionColor(d.retentionAfter) }}>{d.retentionAfter}%</span>
                           </div>
                           {reason && (
-                            <p className="text-zinc-400 text-xs mt-1.5 leading-relaxed">
+                            <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
                               <span className="text-purple-400 font-mono-jb text-[10px] mr-1">AI:</span>
                               {reason.reason}
                             </p>
@@ -487,14 +488,14 @@ export default function RetentionPage() {
 
             {/* AI Tips */}
             {aiTips.length > 0 && (
-              <div className="soft-card p-6" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
+              <div className="yv-card p-6" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
                 <h3 className="font-display font-bold text-sm text-purple-300 mb-4 flex items-center gap-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
                   {t('Consejos para mejorar retención', 'Tips to improve retention')}
                 </h3>
                 <ul className="space-y-3">
                   {aiTips.map((tip, i) => (
-                    <li key={i} className="text-sm text-zinc-300 flex items-start gap-3">
+                    <li key={i} className="text-sm flex items-start gap-3" style={{ color: 'var(--yv-text-2)' }}>
                       <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center font-mono-jb text-[10px] font-bold" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
                         {i + 1}
                       </span>
@@ -507,7 +508,7 @@ export default function RetentionPage() {
 
             {/* Private data badge */}
             <div className="text-center py-4">
-              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] text-zinc-600 border border-white/8 rounded-full px-4 py-1.5">
+              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 {t('Datos privados de retención — inaccesibles para herramientas sin OAuth', 'Private retention data — inaccessible to tools without OAuth')}
               </span>

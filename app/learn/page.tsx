@@ -232,17 +232,19 @@ export default function LearnPage() {
   return (
     <DashboardShell>
       {/* Header */}
-      <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="yv-page text-center">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            {t('CENTRO DE APRENDIZAJE', 'LEARNING HUB')}
-          </p>
-          <h1 className="font-display font-bold text-3xl md:text-4xl text-white mb-3">
-            {t('Aprende a crecer en YouTube', 'Learn to Grow on YouTube')}
-          </h1>
-          <p className="text-zinc-400 font-mono-jb text-sm max-w-lg mx-auto">
-            {t('Guías prácticas basadas en datos reales. Cada guía incluye pasos concretos que puedes aplicar hoy.', 'Practical data-driven guides. Each guide includes concrete steps you can apply today.')}
-          </p>
+      <div className="yv-page">
+        <div className="yv-page-header" style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div className="yv-page-header__left" style={{ alignItems: 'center' }}>
+            <span className="yv-page-header__eyebrow">
+              {t('CENTRO DE APRENDIZAJE', 'LEARNING HUB')}
+            </span>
+            <h1 className="yv-page-header__title">
+              {t('Aprende a crecer en YouTube', 'Learn to Grow on YouTube')}
+            </h1>
+            <p className="yv-page-header__desc" style={{ textAlign: 'center' }}>
+              {t('Guías prácticas basadas en datos reales. Cada guía incluye pasos concretos que puedes aplicar hoy.', 'Practical data-driven guides. Each guide includes concrete steps you can apply today.')}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -252,8 +254,7 @@ export default function LearnPage() {
           return (
             <div
               key={guide.id}
-              className="rounded-xl border border-white/8 overflow-hidden transition hover:border-white/15"
-              style={{ background: 'rgba(255,255,255,0.02)' }}
+              className="yv-card overflow-hidden transition hover:border-white/15"
             >
               <div
                 className="flex items-start gap-4 p-5 cursor-pointer"
@@ -262,7 +263,7 @@ export default function LearnPage() {
                 <span className="text-2xl flex-shrink-0">{guide.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h2 className="font-display font-bold text-base text-white">{guide.title[lang]}</h2>
+                    <h2 className="font-display font-bold text-base" style={{ color: 'var(--yv-text-1)' }}>{guide.title[lang]}</h2>
                     <span
                       className="font-mono-jb text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full"
                       style={{ background: `${LEVEL_COLORS[guide.level]}22`, color: LEVEL_COLORS[guide.level] }}
@@ -270,11 +271,12 @@ export default function LearnPage() {
                       {LEVEL_LABELS[guide.level][lang]}
                     </span>
                   </div>
-                  <p className="text-zinc-400 text-xs font-mono-jb">{guide.description[lang]}</p>
+                  <p className="text-xs font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>{guide.description[lang]}</p>
                 </div>
                 <svg
                   width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                  className={`text-zinc-600 flex-shrink-0 mt-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  className={`flex-shrink-0 mt-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  style={{ color: 'var(--yv-text-4)' }}
                 >
                   <path d="m6 9 6 6 6-6" />
                 </svg>
@@ -285,18 +287,17 @@ export default function LearnPage() {
                   <ol className="space-y-3">
                     {guide.steps[lang].map((step, i) => (
                       <li key={i} className="flex items-start gap-3">
-                        <span className="font-display font-bold text-sm mt-0.5 flex-shrink-0" style={{ color: 'var(--red)' }}>
+                        <span className="font-mono-jb font-bold text-sm mt-0.5 flex-shrink-0" style={{ color: 'var(--yv-brand)' }}>
                           {i + 1}
                         </span>
-                        <span className="text-sm font-mono-jb text-zinc-300 leading-relaxed">{step}</span>
+                        <span className="text-sm font-mono-jb leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>{step}</span>
                       </li>
                     ))}
                   </ol>
                   {guide.tool && (
                     <a
                       href={guide.tool}
-                      className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg text-xs font-mono-jb border border-white/10 text-zinc-400 hover:text-white hover:border-white/25 transition"
-                      style={{ background: 'rgba(255,255,255,0.03)' }}
+                      className="yv-btn yv-btn--ghost inline-flex items-center gap-2 mt-4"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                       {t('Usar herramienta', 'Use tool')} →

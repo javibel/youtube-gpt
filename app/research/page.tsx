@@ -94,7 +94,7 @@ function ScoreRing({ score, color, label }: { score: number; color: string; labe
           {score}
         </span>
       </div>
-      <span className="font-mono-jb text-[10px] tracking-[0.2em] uppercase text-zinc-500">{label}</span>
+      <span className="font-mono-jb text-[10px] tracking-[0.2em] uppercase" style={{ color: 'var(--yv-text-3)' }}>{label}</span>
     </div>
   );
 }
@@ -215,22 +215,22 @@ function ResearchPageInner() {
                 <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
                 <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
               </svg>
-              <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+              <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
             </a>
             <div className="flex items-center gap-3">
-              <a href="/login" className="font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition">{t('Iniciar sesión', 'Sign in')}</a>
+              <a href="/login" className="font-mono-jb text-[11px] tracking-wider hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>{t('Iniciar sesión', 'Sign in')}</a>
               <a href="/signup" className="btn-offset px-4 py-1.5 text-[11px] font-display">{t('Crear cuenta gratis', 'Sign up free')}</a>
             </div>
           </div>
         </header>
 
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--red)' }}>KEYWORD RESEARCH</p>
+          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--yv-brand)' }}>KEYWORD RESEARCH</p>
           <h1 className="font-display font-bold text-4xl md:text-5xl mb-6 leading-tight">
             {t('Encuentra las keywords que', 'Find the keywords that')}
-            <span style={{ color: 'var(--red)' }}> {t('disparan tus vistas', 'skyrocket your views')}</span>
+            <span style={{ color: 'var(--yv-brand)' }}> {t('disparan tus vistas', 'skyrocket your views')}</span>
           </h1>
-          <p className="text-zinc-400 text-lg max-w-2xl mx-auto mb-12 leading-relaxed">
+          <p className="text-lg max-w-2xl mx-auto mb-12 leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
             {t(
               'Analiza volumen de búsqueda, competencia y oportunidad de cualquier keyword en YouTube. Descubre los vídeos top y keywords relacionadas para posicionar tus vídeos.',
               'Analyze search volume, competition and opportunity for any YouTube keyword. Discover top videos and related keywords to rank your videos.'
@@ -244,26 +244,26 @@ function ResearchPageInner() {
               { icon: '📊', title: t('Vídeos top', 'Top videos'), desc: t('Los vídeos mejor posicionados con sus métricas reales', 'Top ranking videos with their real metrics') },
               { icon: '💡', title: t('Keywords relacionadas', 'Related keywords'), desc: t('Descubre términos que tu audiencia también busca', 'Discover terms your audience also searches for') },
             ].map(f => (
-              <div key={f.title} className="soft-card p-5">
+              <div key={f.title} className="yv-card p-5">
                 <div className="text-2xl mb-3">{f.icon}</div>
                 <h3 className="font-display font-bold text-sm mb-1">{f.title}</h3>
-                <p className="text-zinc-500 text-xs leading-relaxed">{f.desc}</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>{f.desc}</p>
               </div>
             ))}
           </div>
 
           {/* Mock search bar */}
           <div className="max-w-xl mx-auto mb-8">
-            <div className="soft-card p-1.5 flex items-center gap-2" style={{ opacity: 0.6 }}>
-              <div className="flex-1 px-4 py-3 text-zinc-600 text-sm text-left">{t('Ej: "como ganar dinero en YouTube"', 'E.g. "how to make money on YouTube"')}</div>
-              <div className="px-5 py-3 rounded-lg font-display font-bold text-sm" style={{ background: 'var(--red)', color: '#fff' }}>{t('Buscar', 'Search')}</div>
+            <div className="yv-card p-1.5 flex items-center gap-2" style={{ opacity: 0.6 }}>
+              <div className="flex-1 px-4 py-3 text-sm text-left" style={{ color: 'var(--yv-text-4)' }}>{t('Ej: "como ganar dinero en YouTube"', 'E.g. "how to make money on YouTube"')}</div>
+              <div className="px-5 py-3 rounded-lg font-display font-bold text-sm" style={{ background: 'var(--yv-brand)', color: '#fff' }}>{t('Buscar', 'Search')}</div>
             </div>
           </div>
 
           <a href="/signup" className="btn-offset inline-flex px-8 py-3 text-sm font-display">
             {t('Empieza gratis →', 'Start free →')}
           </a>
-          <p className="text-zinc-600 text-xs mt-4">{t('Sin tarjeta de crédito. 10 generaciones/mes gratis.', 'No credit card. 10 generations/month free.')}</p>
+          <p className="text-xs mt-4" style={{ color: 'var(--yv-text-4)' }}>{t('Sin tarjeta de crédito. 10 generaciones/mes gratis.', 'No credit card. 10 generations/month free.')}</p>
         </div>
       </div>
     );
@@ -275,21 +275,21 @@ function ResearchPageInner() {
     <DashboardShell>
       <div className="yv-page yv-page--wide">
 
-        {/* Page title */}
-        <div className="mb-10">
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            {t('INVESTIGACIÓN DE PALABRAS CLAVE', 'KEYWORD RESEARCH')}
-          </p>
-          <h1 className="font-display font-bold text-4xl md:text-5xl text-white leading-tight">
-            {t('Encuentra keywords', 'Find keywords')}<br />
-            <span style={{ color: 'var(--red)' }}>{t('que posicionan.', 'that rank.')}</span>
-          </h1>
-          <p className="text-zinc-500 mt-3 text-sm font-mono-jb">
-            {t(
-              'Datos reales de YouTube: competencia, vistas medias y los 5 vídeos más vistos para cualquier keyword.',
-              'Real YouTube data: competition level, average views, and the top 5 ranking videos for any keyword.'
-            )}
-          </p>
+        {/* Page header */}
+        <div className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('INVESTIGACIÓN DE PALABRAS CLAVE', 'KEYWORD RESEARCH')}</span>
+            <h1 className="yv-page-header__title">
+              {t('Encuentra keywords ', 'Find keywords ')}
+              <span style={{ color: 'var(--yv-brand)' }}>{t('que posicionan.', 'that rank.')}</span>
+            </h1>
+            <p className="yv-page-header__desc">
+              {t(
+                'Datos reales de YouTube: competencia, vistas medias y los 5 vídeos más vistos para cualquier keyword.',
+                'Real YouTube data: competition level, average views, and the top 5 ranking videos for any keyword.'
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Tab switcher */}
@@ -352,20 +352,20 @@ function ResearchPageInner() {
 
         {/* No API key banner */}
         {noApiKey && (
-          <div className="soft-card p-6 max-w-2xl mb-8" style={{ borderColor: 'rgba(255,232,0,0.25)', background: 'rgba(255,232,0,0.04)' }}>
+          <div className="yv-card p-6 max-w-2xl mb-8" style={{ borderColor: 'rgba(255,232,0,0.25)', background: 'rgba(255,232,0,0.04)' }}>
             <div className="flex gap-4">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFE800" strokeWidth="2" className="flex-shrink-0 mt-0.5">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
               <div>
                 <p className="font-display font-bold text-white mb-1">{t('API key de YouTube no configurada', 'YouTube API key not configured')}</p>
-                <p className="text-zinc-400 text-sm mb-3">
+                <p className="text-sm mb-3" style={{ color: 'var(--yv-text-2)' }}>
                   {t(
                     'Para usar esta función necesitas una clave de la YouTube Data API v3. Es gratuita y tarda ~10 minutos en configurarse.',
                     'To use this feature you need a YouTube Data API v3 key. It\'s free and takes ~10 minutes to set up.'
                   )}
                 </p>
-                <div className="font-mono-jb text-xs text-zinc-500 space-y-1">
+                <div className="font-mono-jb text-xs space-y-1" style={{ color: 'var(--yv-text-3)' }}>
                   <p>1. {t('Accede a', 'Go to')} console.cloud.google.com</p>
                   <p>2. {t('Activa "YouTube Data API v3"', 'Enable "YouTube Data API v3"')}</p>
                   <p>3. {t('Crea una API Key en Credentials', 'Create an API Key under Credentials')}</p>
@@ -378,8 +378,8 @@ function ResearchPageInner() {
 
         {/* Error */}
         {error && (
-          <div className="soft-card p-4 max-w-2xl mb-8" style={{ borderColor: 'rgba(232,77,91,0.3)' }}>
-            <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>
+          <div className="yv-card p-4 max-w-2xl mb-8" style={{ borderColor: 'rgba(232,77,91,0.3)' }}>
+            <p className="text-sm" style={{ color: 'var(--yv-brand)' }}>{error}</p>
           </div>
         )}
 
@@ -387,13 +387,13 @@ function ResearchPageInner() {
         {activeTab === 'questions' && questionsResult && questionsResult.questions.length > 0 && (
           <div className="space-y-4 animate-in fade-in duration-500">
             <div className="flex items-center gap-3 pb-4 border-b" style={{ borderColor: 'var(--line)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-500">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--yv-text-3)' }}>
                 <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
               <span className="font-display font-bold text-xl text-white">
                 {t('Preguntas sobre', 'Questions about')} "{questionsResult.keyword}"
               </span>
-              <span className="font-mono-jb text-xs text-zinc-600">
+              <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>
                 {questionsResult.questions.length} {t('preguntas encontradas', 'questions found')}
               </span>
             </div>
@@ -402,7 +402,7 @@ function ResearchPageInner() {
               {questionsResult.questions.map((q, i) => {
                 const qComp = COMPETITION_CONFIG[q.competition];
                 return (
-                  <div key={i} className="soft-card p-4 flex items-start gap-4 hover:border-white/15 transition">
+                  <div key={i} className="yv-card p-4 flex items-start gap-4 hover:border-white/15 transition">
                     {/* Competition badge */}
                     <div className="flex flex-col items-center gap-1 flex-shrink-0 w-16 pt-1">
                       <div
@@ -438,10 +438,10 @@ function ResearchPageInner() {
                             style={{ border: '1px solid var(--line)' }}
                           />
                           <div className="min-w-0">
-                            <p className="text-zinc-400 text-xs line-clamp-1 group-hover:text-zinc-300 transition">
+                            <p className="text-xs line-clamp-1 group-hover:text-zinc-300 transition" style={{ color: 'var(--yv-text-2)' }}>
                               {q.topVideo.title}
                             </p>
-                            <p className="font-mono-jb text-[10px] text-zinc-600">
+                            <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
                               {q.topVideo.channelName} · {formatViews(q.topVideo.views, lang)} {t('vistas', 'views')}
                             </p>
                           </div>
@@ -466,12 +466,12 @@ function ResearchPageInner() {
             </div>
 
             {/* Generate CTA */}
-            <div className="soft-card p-6 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(232,77,91,0.2)', background: 'rgba(232,77,91,0.03)' }}>
+            <div className="yv-card p-6 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(232,77,91,0.2)', background: 'rgba(232,77,91,0.03)' }}>
               <div>
                 <p className="font-display font-bold text-white text-lg">
                   {t('Preguntas = oportunidades de vídeo', 'Questions = video opportunities')}
                 </p>
-                <p className="text-zinc-500 text-sm mt-1">
+                <p className="text-sm mt-1" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Las preguntas con competencia baja son las mejores para posicionar rápido.', 'Low competition questions are the best for ranking fast.')}
                 </p>
               </div>
@@ -492,7 +492,7 @@ function ResearchPageInner() {
             <p className="font-display font-bold text-lg text-white mb-2">
               {t('No se encontraron preguntas', 'No questions found')}
             </p>
-            <p className="text-zinc-600 text-sm font-mono-jb">
+            <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
               {t('Prueba con otra keyword más general.', 'Try a more general keyword.')}
             </p>
           </div>
@@ -504,11 +504,11 @@ function ResearchPageInner() {
 
             {/* Keyword header */}
             <div className="flex items-center gap-3 pb-4 border-b" style={{ borderColor: 'var(--line)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-500">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--yv-text-3)' }}>
                 <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
               </svg>
               <span className="font-display font-bold text-xl text-white">"{result.keyword}"</span>
-              <span className="font-mono-jb text-xs text-zinc-600">
+              <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>
                 {result.totalResults.toLocaleString(lang === 'en' ? 'en-US' : 'es-ES')} {t('resultados', 'results')}
               </span>
             </div>
@@ -518,7 +518,7 @@ function ResearchPageInner() {
 
               {/* Search Volume */}
               {result.volumeEstimate && (
-                <div className="soft-card p-6 flex flex-col items-center gap-4" style={{ borderColor: 'rgba(129,140,248,0.25)' }}>
+                <div className="yv-card p-6 flex flex-col items-center gap-4" style={{ borderColor: 'rgba(129,140,248,0.25)' }}>
                   <ScoreRing
                     score={result.volumeEstimate.score}
                     color="#818cf8"
@@ -528,7 +528,7 @@ function ResearchPageInner() {
                     <div className="font-display font-bold text-lg" style={{ color: '#818cf8' }}>
                       {lang === 'en' ? result.volumeEstimate.labelEn : result.volumeEstimate.label}
                     </div>
-                    <p className="font-mono-jb text-[10px] tracking-wider text-zinc-600 mt-1">
+                    <p className="font-mono-jb text-[10px] tracking-wider mt-1" style={{ color: 'var(--yv-text-4)' }}>
                       {lang === 'en' ? result.volumeEstimate.rangeEn : result.volumeEstimate.range}
                     </p>
                   </div>
@@ -536,7 +536,7 @@ function ResearchPageInner() {
               )}
 
               {/* Competition */}
-              <div className="soft-card p-6 flex flex-col items-center gap-4" style={{ borderColor: comp?.border }}>
+              <div className="yv-card p-6 flex flex-col items-center gap-4" style={{ borderColor: comp?.border }}>
                 <ScoreRing
                   score={result.competitionScore}
                   color={comp?.color || '#e84d5b'}
@@ -546,14 +546,14 @@ function ResearchPageInner() {
                   <div className="font-display font-bold text-lg" style={{ color: comp?.color }}>
                     {comp?.label[lang]}
                   </div>
-                  <p className="font-mono-jb text-[10px] tracking-wider text-zinc-600 mt-1">
+                  <p className="font-mono-jb text-[10px] tracking-wider mt-1" style={{ color: 'var(--yv-text-4)' }}>
                     {t('NIVEL DE COMPETENCIA', 'COMPETITION LEVEL')}
                   </p>
                 </div>
               </div>
 
               {/* Opportunity */}
-              <div className="soft-card p-6 flex flex-col items-center gap-4" style={{ borderColor: 'rgba(34,197,94,0.25)' }}>
+              <div className="yv-card p-6 flex flex-col items-center gap-4" style={{ borderColor: 'rgba(34,197,94,0.25)' }}>
                 <ScoreRing
                   score={result.opportunityScore}
                   color="#22c55e"
@@ -567,22 +567,22 @@ function ResearchPageInner() {
                       ? t('Oportunidad media', 'Medium opportunity')
                       : t('Nicho saturado', 'Saturated niche')}
                   </div>
-                  <p className="font-mono-jb text-[10px] tracking-wider text-zinc-600 mt-1">
+                  <p className="font-mono-jb text-[10px] tracking-wider mt-1" style={{ color: 'var(--yv-text-4)' }}>
                     {t('POTENCIAL DE POSICIONAMIENTO', 'RANKING POTENTIAL')}
                   </p>
                 </div>
               </div>
 
               {/* Avg views */}
-              <div className="soft-card p-6 flex flex-col justify-center items-center gap-3">
+              <div className="yv-card p-6 flex flex-col justify-center items-center gap-3">
                 <div className="font-display font-bold text-5xl text-white">
                   {formatViews(result.avgViews, lang)}
                 </div>
                 <div className="text-center">
-                  <p className="font-mono-jb text-[10px] tracking-wider text-zinc-600">
+                  <p className="font-mono-jb text-[10px] tracking-wider" style={{ color: 'var(--yv-text-4)' }}>
                     {t('VISTAS MEDIAS (TOP 5)', 'AVG VIEWS (TOP 5)')}
                   </p>
-                  <p className="text-zinc-500 text-xs mt-1">
+                  <p className="text-xs mt-1" style={{ color: 'var(--yv-text-3)' }}>
                     {result.avgViews > 500_000
                       ? t('Keyword con mucha demanda', 'High demand keyword')
                       : result.avgViews > 50_000
@@ -595,9 +595,9 @@ function ResearchPageInner() {
 
             {/* Top 5 videos */}
             {result.topVideos.length > 0 && (
-              <div className="soft-card overflow-hidden">
+              <div className="yv-card overflow-hidden">
                 <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--line)' }}>
-                  <p className="font-mono-jb text-[10px] tracking-[0.25em] uppercase text-zinc-500">
+                  <p className="font-mono-jb text-[10px] tracking-[0.25em] uppercase" style={{ color: 'var(--yv-text-3)' }}>
                     {t('TOP 5 VÍDEOS PARA ESTA KEYWORD', 'TOP 5 VIDEOS FOR THIS KEYWORD')}
                   </p>
                 </div>
@@ -611,7 +611,7 @@ function ResearchPageInner() {
                       className="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition group"
                     >
                       {/* Rank */}
-                      <span className="font-display font-bold text-2xl w-8 flex-shrink-0" style={{ color: i === 0 ? 'var(--red)' : 'var(--text-faint)' }}>
+                      <span className="font-display font-bold text-2xl w-8 flex-shrink-0" style={{ color: i === 0 ? 'var(--yv-brand)' : 'var(--yv-text-5)' }}>
                         {i + 1}
                       </span>
                       {/* Thumbnail */}
@@ -623,14 +623,14 @@ function ResearchPageInner() {
                         <p className="text-white text-sm font-medium leading-snug line-clamp-2 group-hover:text-zinc-200 transition">
                           {v.title}
                         </p>
-                        <p className="font-mono-jb text-[10px] text-zinc-600 mt-1">{v.channelName} · {formatDate(v.publishedAt, lang)}</p>
+                        <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{v.channelName} · {formatDate(v.publishedAt, lang)}</p>
                       </div>
                       {/* Stats */}
                       <div className="flex-shrink-0 text-right hidden sm:block">
                         <p className="font-display font-bold text-lg text-white">{formatViews(v.views, lang)}</p>
-                        <p className="font-mono-jb text-[10px] text-zinc-600">{t('vistas', 'views')}</p>
+                        <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{t('vistas', 'views')}</p>
                       </div>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-700 group-hover:text-zinc-400 transition flex-shrink-0">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="group-hover:text-zinc-400 transition flex-shrink-0" style={{ color: 'var(--yv-text-5)' }}>
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                       </svg>
                     </a>
@@ -641,8 +641,8 @@ function ResearchPageInner() {
 
             {/* Related keywords */}
             {result.relatedKeywords.length > 0 && (
-              <div className="soft-card p-6">
-                <p className="font-mono-jb text-[10px] tracking-[0.25em] uppercase text-zinc-500 mb-4">
+              <div className="yv-card p-6">
+                <p className="font-mono-jb text-[10px] tracking-[0.25em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
                   {t('KEYWORDS RELACIONADAS', 'RELATED KEYWORDS')}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -661,12 +661,12 @@ function ResearchPageInner() {
             )}
 
             {/* Generate CTA */}
-            <div className="soft-card p-6 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(232,77,91,0.2)', background: 'rgba(232,77,91,0.03)' }}>
+            <div className="yv-card p-6 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(232,77,91,0.2)', background: 'rgba(232,77,91,0.03)' }}>
               <div>
                 <p className="font-display font-bold text-white text-lg">
                   {t('¿Listo para crear contenido con esta keyword?', 'Ready to create content with this keyword?')}
                 </p>
-                <p className="text-zinc-500 text-sm mt-1">
+                <p className="text-sm mt-1" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Genera un título viral, descripción SEO o script completo en segundos.', 'Generate a viral title, SEO description or full script in seconds.')}
                 </p>
               </div>
@@ -686,14 +686,14 @@ function ResearchPageInner() {
         {!result && !questionsResult && !loading && !questionsLoading && !noApiKey && !error && (
           <div className="text-center py-20">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: 'rgba(232,77,91,0.1)', border: '1px solid rgba(232,77,91,0.2)' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="1.5">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="1.5">
                 <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
               </svg>
             </div>
             <p className="font-display font-bold text-xl text-white mb-2">
               {t('Escribe una keyword para analizar', 'Enter a keyword to analyze')}
             </p>
-            <p className="text-zinc-600 text-sm font-mono-jb">
+            <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
               {t('Ejemplos: "recetas veganas fáciles", "aprender inglés", "ejercicio en casa"', '"vegan recipes", "learn english", "home workout"')}
             </p>
           </div>

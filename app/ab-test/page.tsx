@@ -192,7 +192,7 @@ export default function AbTestPage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">A/B Testing</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesion para usar A/B testing.', 'Sign in to use A/B testing.')}</p>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesion para usar A/B testing.', 'Sign in to use A/B testing.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesion', 'Sign in')}</a>
         </div>
       </div>
@@ -204,21 +204,21 @@ export default function AbTestPage() {
 
       <div className="yv-page yv-page--wide">
 
-        {/* Page title */}
-        <div className="mb-10">
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            A/B TESTING
-          </p>
-          <h1 className="font-display font-bold text-4xl md:text-5xl text-white leading-tight">
-            {t('Encuentra el', 'Find the')}<br />
-            <span style={{ color: 'var(--red)' }}>{t('titulo ganador.', 'winning title.')}</span>
-          </h1>
-          <p className="text-zinc-500 mt-3 text-sm font-mono-jb max-w-xl">
-            {t(
-              'Prueba 2 variantes de titulo en un video real. El sistema cambia automaticamente entre ellas y mide cual consigue mas vistas.',
-              'Test 2 title variants on a real video. The system automatically switches between them and measures which gets more views.',
-            )}
-          </p>
+        {/* Page header */}
+        <div className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">A/B TESTING</span>
+            <h1 className="yv-page-header__title">
+              {t('Encuentra el ', 'Find the ')}
+              <span style={{ color: 'var(--yv-brand)' }}>{t('titulo ganador.', 'winning title.')}</span>
+            </h1>
+            <p className="yv-page-header__desc">
+              {t(
+                'Prueba 2 variantes de titulo en un video real. El sistema cambia automaticamente entre ellas y mide cual consigue mas vistas.',
+                'Test 2 title variants on a real video. The system automatically switches between them and measures which gets more views.',
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Error */}
@@ -231,7 +231,7 @@ export default function AbTestPage() {
         {/* Active Tests */}
         {activeTests.length > 0 && (
           <div className="mb-10">
-            <h2 className="font-display font-bold text-lg text-white mb-4">{t('Tests activos', 'Active tests')} <span className="text-zinc-500 text-sm font-mono-jb">({activeTests.length}/3)</span></h2>
+            <h2 className="font-display font-bold text-lg text-white mb-4">{t('Tests activos', 'Active tests')} <span className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-3)' }}>({activeTests.length}/3)</span></h2>
             <div className="space-y-4">
               {activeTests.map(at => (
                 <ActiveTestCard key={at.id} test={at} lang={lang} t={t} onCancel={cancelTest} />
@@ -242,22 +242,22 @@ export default function AbTestPage() {
 
         {/* Create new test */}
         {activeTests.length < 3 && (
-          <div className="mb-10 rounded-xl border border-white/10 p-6" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <div className="yv-card mb-10">
             <h2 className="font-display font-bold text-lg text-white mb-6">{t('Nuevo test', 'New test')}</h2>
 
             {/* Video selector */}
             {loadingVideos ? (
-              <div className="flex items-center gap-2 text-zinc-500 font-mono-jb text-sm">
+              <div className="flex items-center gap-2 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 {t('Cargando videos...', 'Loading videos...')}
               </div>
             ) : !channelConnected ? (
-              <p className="text-zinc-500 font-mono-jb text-sm">
+              <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>
                 {t('Conecta tu canal de YouTube desde el panel para ver tus videos.', 'Connect your YouTube channel from the dashboard to see your videos.')}
               </p>
             ) : (
               <>
-                <p className="font-mono-jb text-[11px] text-zinc-500 mb-3 uppercase tracking-wider">{t('Selecciona un video', 'Select a video')}</p>
+                <p className="font-mono-jb text-[11px] mb-3 uppercase tracking-wider" style={{ color: 'var(--yv-text-3)' }}>{t('Selecciona un video', 'Select a video')}</p>
                 <div className="grid gap-2 mb-6">
                   {videos.filter(v => !activeVideoIds.has(v.videoId)).map(v => (
                     <button
@@ -269,7 +269,7 @@ export default function AbTestPage() {
                       }}
                       className="flex items-center gap-3 p-3 rounded-lg border transition text-left"
                       style={{
-                        borderColor: selectedVideo?.videoId === v.videoId ? 'var(--red)' : 'rgba(255,255,255,0.08)',
+                        borderColor: selectedVideo?.videoId === v.videoId ? 'var(--yv-brand)' : 'rgba(255,255,255,0.08)',
                         background: selectedVideo?.videoId === v.videoId ? 'rgba(155,32,32,0.1)' : 'rgba(255,255,255,0.02)',
                       }}
                     >
@@ -278,7 +278,7 @@ export default function AbTestPage() {
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-white font-medium truncate">{v.title}</p>
-                        <p className="font-mono-jb text-[11px] text-zinc-600">{fmtNum(v.views)} views</p>
+                        <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} views</p>
                       </div>
                     </button>
                   ))}
@@ -289,7 +289,7 @@ export default function AbTestPage() {
                   <>
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
                       <div>
-                        <label className="font-mono-jb text-[11px] text-zinc-500 uppercase tracking-wider block mb-2">
+                        <label className="font-mono-jb text-[11px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
                           {t('Variante A', 'Variant A')}
                         </label>
                         <input
@@ -299,10 +299,10 @@ export default function AbTestPage() {
                           className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
                           placeholder={t('Titulo variante A...', 'Variant A title...')}
                         />
-                        <p className="font-mono-jb text-[10px] text-zinc-600 mt-1">{variantA.length}/100</p>
+                        <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantA.length}/100</p>
                       </div>
                       <div>
-                        <label className="font-mono-jb text-[11px] text-zinc-500 uppercase tracking-wider block mb-2">
+                        <label className="font-mono-jb text-[11px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
                           {t('Variante B', 'Variant B')}
                         </label>
                         <input
@@ -312,7 +312,7 @@ export default function AbTestPage() {
                           className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
                           placeholder={t('Titulo variante B...', 'Variant B title...')}
                         />
-                        <p className="font-mono-jb text-[10px] text-zinc-600 mt-1">{variantB.length}/100</p>
+                        <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantB.length}/100</p>
                       </div>
                     </div>
 
@@ -334,7 +334,7 @@ export default function AbTestPage() {
 
                     {/* Duration selector */}
                     <div className="mb-6">
-                      <label className="font-mono-jb text-[11px] text-zinc-500 uppercase tracking-wider block mb-2">
+                      <label className="font-mono-jb text-[11px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
                         {t('Duracion por variante', 'Duration per variant')}
                       </label>
                       <div className="flex gap-2">
@@ -344,7 +344,7 @@ export default function AbTestPage() {
                             onClick={() => setHours(h)}
                             className="px-4 py-2 rounded-lg border text-sm font-mono-jb transition"
                             style={{
-                              borderColor: hours === h ? 'var(--red)' : 'rgba(255,255,255,0.08)',
+                              borderColor: hours === h ? 'var(--yv-brand)' : 'rgba(255,255,255,0.08)',
                               background: hours === h ? 'rgba(155,32,32,0.15)' : 'rgba(255,255,255,0.02)',
                               color: hours === h ? 'white' : '#71717a',
                             }}
@@ -353,7 +353,7 @@ export default function AbTestPage() {
                           </button>
                         ))}
                       </div>
-                      <p className="font-mono-jb text-[10px] text-zinc-600 mt-1">
+                      <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
                         {t(`Test total: ${hours * 2}h (${Math.round(hours * 2 / 24)} dias)`, `Total test: ${hours * 2}h (${Math.round(hours * 2 / 24)} days)`)}
                       </p>
                     </div>
@@ -407,7 +407,7 @@ export default function AbTestPage() {
         {activeTests.length === 0 && pastTests.length === 0 && !loadingVideos && videos.length > 0 && !selectedVideo && (
           <div className="text-center py-16">
             <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.1)' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="1.5">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="1.5">
                 <path d="M16 3H8a2 2 0 0 0-2 2v14l6-3 6 3V5a2 2 0 0 0-2-2z"/>
                 <path d="M10 8h4"/><path d="M12 6v4"/>
               </svg>
@@ -415,7 +415,7 @@ export default function AbTestPage() {
             <h3 className="font-display font-bold text-xl text-white mb-2">
               {t('Tu primer A/B test', 'Your first A/B test')}
             </h3>
-            <p className="text-zinc-500 font-mono-jb text-sm max-w-md mx-auto">
+            <p className="font-mono-jb text-sm max-w-md mx-auto" style={{ color: 'var(--yv-text-3)' }}>
               {t(
                 'Selecciona un video arriba para probar 2 titulos diferentes y descubrir cual consigue mas vistas.',
                 'Select a video above to test 2 different titles and discover which gets more views.',
@@ -454,16 +454,16 @@ function ActiveTestCard({
   const left = timeLeft(currentPhaseEnd);
 
   return (
-    <div className="rounded-xl border border-white/10 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
+    <div className="yv-card yv-card--flush overflow-hidden">
       <div className="flex items-center gap-4 p-5 border-b border-white/5">
         {test.thumbnail && (
           <img src={test.thumbnail} alt="" className="w-28 h-16 rounded object-cover flex-shrink-0" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="font-mono-jb text-[10px] tracking-wider mb-1" style={{ color: 'var(--red)' }}>
+          <p className="font-mono-jb text-[10px] tracking-wider mb-1" style={{ color: 'var(--yv-brand)' }}>
             {isA ? t('VARIANTE A EN CURSO', 'VARIANT A RUNNING') : t('VARIANTE B EN CURSO', 'VARIANT B RUNNING')}
           </p>
-          <p className="text-sm text-zinc-400 font-mono-jb truncate">
+          <p className="text-sm font-mono-jb truncate" style={{ color: 'var(--yv-text-2)' }}>
             {t('Original:', 'Original:')} {test.originalTitle}
           </p>
         </div>
@@ -474,7 +474,7 @@ function ActiveTestCard({
           <div className="flex items-center gap-2 mb-2">
             <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{
               background: isA ? 'rgba(155,32,32,0.2)' : 'rgba(255,255,255,0.05)',
-              color: isA ? 'var(--red)' : '#52525b',
+              color: isA ? 'var(--yv-brand)' : '#52525b',
             }}>A</span>
             {isA && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
           </div>
@@ -484,7 +484,7 @@ function ActiveTestCard({
           <div className="flex items-center gap-2 mb-2">
             <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{
               background: !isA ? 'rgba(155,32,32,0.2)' : 'rgba(255,255,255,0.05)',
-              color: !isA ? 'var(--red)' : '#52525b',
+              color: !isA ? 'var(--yv-brand)' : '#52525b',
             }}>B</span>
             {!isA && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
           </div>
@@ -495,23 +495,24 @@ function ActiveTestCard({
       {/* Progress */}
       <div className="p-5 border-t border-white/5">
         <div className="flex items-center justify-between mb-2">
-          <span className="font-mono-jb text-[11px] text-zinc-500">
+          <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
             {isA ? t('Fase 1/2', 'Phase 1/2') : t('Fase 2/2', 'Phase 2/2')}
           </span>
-          <span className="font-mono-jb text-[11px] text-zinc-400">
+          <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>
             {left} {t('restante', 'remaining')}
           </span>
         </div>
         <div className="w-full h-1.5 rounded-full bg-white/5">
           <div
             className="h-full rounded-full transition-all duration-1000"
-            style={{ width: `${pct}%`, background: 'var(--red)' }}
+            style={{ width: `${pct}%`, background: 'var(--yv-brand)' }}
           />
         </div>
         <div className="flex justify-end mt-3">
           <button
             onClick={() => onCancel(test.id)}
-            className="font-mono-jb text-[11px] text-zinc-600 hover:text-red-400 transition"
+            className="font-mono-jb text-[11px] hover:text-red-400 transition"
+            style={{ color: 'var(--yv-text-4)' }}
           >
             {t('Cancelar test', 'Cancel test')}
           </button>
@@ -537,7 +538,7 @@ function PastTestCard({
   const viewsB = (test.endViews ?? 0) - (test.switchViews ?? 0);
 
   return (
-    <div className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
+    <div className="yv-card">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {test.thumbnail && (
@@ -548,7 +549,7 @@ function PastTestCard({
               className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded"
               style={{
                 background: cancelled ? 'rgba(255,255,255,0.05)' : 'rgba(155,32,32,0.15)',
-                color: cancelled ? '#52525b' : 'var(--red)',
+                color: cancelled ? '#52525b' : 'var(--yv-brand)',
               }}
             >
               {cancelled ? t('CANCELADO', 'CANCELLED') : `${t('GANADOR', 'WINNER')}: ${test.winner}`}
@@ -556,7 +557,7 @@ function PastTestCard({
           </div>
         </div>
         {test.completedAt && (
-          <span className="font-mono-jb text-[10px] text-zinc-600">
+          <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
             {new Date(test.completedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', {
               month: 'short',
               day: 'numeric',
@@ -575,7 +576,7 @@ function PastTestCard({
             }}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="font-mono-jb text-[10px] font-bold text-zinc-500">A</span>
+              <span className="font-mono-jb text-[10px] font-bold" style={{ color: 'var(--yv-text-3)' }}>A</span>
               <span className="font-mono-jb text-[12px] font-bold" style={{ color: test.winner === 'A' ? '#22c55e' : '#71717a' }}>
                 +{fmtNum(viewsA)} views
               </span>
@@ -590,7 +591,7 @@ function PastTestCard({
             }}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="font-mono-jb text-[10px] font-bold text-zinc-500">B</span>
+              <span className="font-mono-jb text-[10px] font-bold" style={{ color: 'var(--yv-text-3)' }}>B</span>
               <span className="font-mono-jb text-[12px] font-bold" style={{ color: test.winner === 'B' ? '#22c55e' : '#71717a' }}>
                 +{fmtNum(viewsB)} views
               </span>
@@ -601,8 +602,8 @@ function PastTestCard({
       )}
 
       {cancelled && (
-        <p className="text-sm text-zinc-500 mb-2">
-          <span className="text-zinc-600">A:</span> {test.variantA} <span className="mx-2 text-zinc-700">|</span> <span className="text-zinc-600">B:</span> {test.variantB}
+        <p className="text-sm mb-2" style={{ color: 'var(--yv-text-3)' }}>
+          <span style={{ color: 'var(--yv-text-4)' }}>A:</span> {test.variantA} <span className="mx-2" style={{ color: 'var(--yv-text-5)' }}>|</span> <span style={{ color: 'var(--yv-text-4)' }}>B:</span> {test.variantB}
         </p>
       )}
 
@@ -613,7 +614,7 @@ function PastTestCard({
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" className="mt-0.5 flex-shrink-0">
               <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
             </svg>
-            <p className="text-[12px] text-zinc-400 leading-relaxed">
+            <p className="text-[12px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
               {lang === 'en' ? test.aiInsight.en : test.aiInsight.es}
             </p>
           </div>

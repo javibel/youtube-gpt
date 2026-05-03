@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">Analytics</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para ver tus analytics.', 'Sign in to view your analytics.')}</p>
+          <p className="font-mono-jb text-sm mb-6" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para ver tus analytics.', 'Sign in to view your analytics.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
@@ -129,16 +129,16 @@ export default function AnalyticsPage() {
   return (
     <DashboardShell>
       {/* Header */}
-      <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="yv-page">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
+      <div className="yv-page-header" style={{ background: 'var(--yv-bg-1)' }}>
+        <div className="yv-page-header__left">
+          <span className="yv-page-header__eyebrow" style={{ color: 'var(--yv-brand)' }}>
             {t('ANALYTICS PRIVADOS', 'PRIVATE ANALYTICS')}
-          </p>
-          <h1 className="font-display font-bold text-3xl md:text-4xl text-white">
+          </span>
+          <h1 className="yv-page-header__title">
             {data?.channelName || 'Analytics'}
           </h1>
           {data?.period && (
-            <p className="text-zinc-500 font-mono-jb text-xs mt-1">
+            <p className="yv-page-header__desc" style={{ color: 'var(--yv-text-3)' }}>
               {data.period.start} — {data.period.end} (28 {t('días', 'days')})
             </p>
           )}
@@ -149,7 +149,7 @@ export default function AnalyticsPage() {
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            <span className="text-zinc-500 font-mono-jb text-sm">{t('Cargando analytics...', 'Loading analytics...')}</span>
+            <span className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Cargando analytics...', 'Loading analytics...')}</span>
           </div>
         )}
 
@@ -176,21 +176,21 @@ export default function AnalyticsPage() {
                 { label: 'Likes', value: fmtNum(ov.likes || 0) },
                 { label: t('Comentarios', 'Comments'), value: fmtNum(ov.comments || 0) },
               ].map((card, i) => (
-                <div key={i} className="rounded-lg p-4 border border-white/8" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <div className="font-display font-bold text-xl text-white">{card.value}</div>
-                  <div className="font-mono-jb text-[10px] text-zinc-500 mt-1">{card.label}</div>
+                <div key={i} className="yv-card p-4">
+                  <div className="font-display font-bold text-xl" style={{ color: 'var(--yv-text-1)' }}>{card.value}</div>
+                  <div className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{card.label}</div>
                 </div>
               ))}
             </div>
 
             {/* Daily views sparkline */}
             {data.daily.length > 2 && (
-              <div className="rounded-lg border border-white/8 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <h2 className="font-display font-bold text-lg text-white mb-3">
+              <div className="yv-card p-5">
+                <h2 className="font-display font-bold text-lg mb-3" style={{ color: 'var(--yv-text-1)' }}>
                   {t('Visualizaciones diarias (90 días)', 'Daily views (90 days)')}
                 </h2>
                 {renderSparkline(data.daily, 'views')}
-                <div className="flex justify-between text-zinc-600 font-mono-jb text-[10px] mt-1">
+                <div className="flex justify-between font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
                   <span>{data.daily[0]?.day}</span>
                   <span>{data.daily[data.daily.length - 1]?.day}</span>
                 </div>
@@ -201,8 +201,8 @@ export default function AnalyticsPage() {
             <div className="grid md:grid-cols-2 gap-6">
               {/* Traffic sources */}
               {data.traffic.length > 0 && (
-                <div className="rounded-lg border border-white/8 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                  <h2 className="font-display font-bold text-lg text-white mb-4">
+                <div className="yv-card p-5">
+                  <h2 className="font-display font-bold text-lg mb-4" style={{ color: 'var(--yv-text-1)' }}>
                     {t('Fuentes de tráfico', 'Traffic sources')}
                   </h2>
                   <div className="space-y-2">
@@ -213,8 +213,8 @@ export default function AnalyticsPage() {
                       return (
                         <div key={i}>
                           <div className="flex justify-between font-mono-jb text-xs mb-0.5">
-                            <span className="text-zinc-300">{label}</span>
-                            <span className="text-zinc-500">{fmtNum(src.views)} ({pct.toFixed(1)}%)</span>
+                            <span style={{ color: 'var(--yv-text-2)' }}>{label}</span>
+                            <span style={{ color: 'var(--yv-text-3)' }}>{fmtNum(src.views)} ({pct.toFixed(1)}%)</span>
                           </div>
                           <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
                             <div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor(i) }} />
@@ -228,8 +228,8 @@ export default function AnalyticsPage() {
 
               {/* Top countries */}
               {data.countries.length > 0 && (
-                <div className="rounded-lg border border-white/8 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                  <h2 className="font-display font-bold text-lg text-white mb-4">
+                <div className="yv-card p-5">
+                  <h2 className="font-display font-bold text-lg mb-4" style={{ color: 'var(--yv-text-1)' }}>
                     {t('Países principales', 'Top countries')}
                   </h2>
                   <div className="space-y-2">
@@ -239,8 +239,8 @@ export default function AnalyticsPage() {
                       return (
                         <div key={i}>
                           <div className="flex justify-between font-mono-jb text-xs mb-0.5">
-                            <span className="text-zinc-300">{c.country}</span>
-                            <span className="text-zinc-500">{fmtNum(c.views)} ({pct.toFixed(1)}%)</span>
+                            <span style={{ color: 'var(--yv-text-2)' }}>{c.country}</span>
+                            <span style={{ color: 'var(--yv-text-3)' }}>{fmtNum(c.views)} ({pct.toFixed(1)}%)</span>
                           </div>
                           <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
                             <div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor(i) }} />
@@ -255,14 +255,14 @@ export default function AnalyticsPage() {
 
             {/* Top Videos */}
             {data.topVideos.length > 0 && (
-              <div className="rounded-lg border border-white/8 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <h2 className="font-display font-bold text-lg text-white mb-4">
+              <div className="yv-card p-5">
+                <h2 className="font-display font-bold text-lg mb-4" style={{ color: 'var(--yv-text-1)' }}>
                   {t('Vídeos principales (28 días)', 'Top videos (28 days)')}
                 </h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="font-mono-jb text-[10px] text-zinc-500 uppercase tracking-wider border-b border-white/8">
+                      <tr className="font-mono-jb text-[10px] uppercase tracking-wider border-b border-white/8" style={{ color: 'var(--yv-text-3)' }}>
                         <th className="pb-2 pr-4">{t('Vídeo', 'Video')}</th>
                         <th className="pb-2 pr-4 text-right">{t('Vistas', 'Views')}</th>
                         <th className="pb-2 pr-4 text-right">{t('Duración media', 'Avg duration')}</th>
@@ -278,15 +278,16 @@ export default function AnalyticsPage() {
                               href={`https://www.youtube.com/watch?v=${v.video}`}
                               target="_blank"
                               rel="noopener"
-                              className="text-sm text-zinc-200 hover:text-white transition line-clamp-1"
+                              className="text-sm transition line-clamp-1"
+                              style={{ color: 'var(--yv-text-2)' }}
                               title={v.title}
                             >
                               {v.title}
                             </a>
                           </td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs text-zinc-300">{fmtNum(v.views)}</td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs text-zinc-400">{fmtDuration(v.averageViewDuration)}</td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs text-zinc-400">{fmtNum(v.likes)}</td>
+                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.views)}</td>
+                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{fmtDuration(v.averageViewDuration)}</td>
+                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.likes)}</td>
                           <td className="py-2.5 text-right font-mono-jb text-xs" style={{ color: v.subscribersGained > 0 ? '#22c55e' : '#888' }}>
                             +{v.subscribersGained}
                           </td>
@@ -300,7 +301,7 @@ export default function AnalyticsPage() {
 
             {/* Private data badge */}
             <div className="text-center py-4">
-              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] text-zinc-600 border border-white/8 rounded-full px-4 py-1.5">
+              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 {t('Datos privados — solo accesibles con tu autorización OAuth', 'Private data — only accessible with your OAuth authorization')}
               </span>

@@ -138,8 +138,8 @@ export default function GeneratePage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--ink)' }}>
-        <div className="w-8 h-8 rounded-full border-2 border-transparent spin-r" style={{ borderTopColor: 'var(--red)' }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-bg-0)' }}>
+        <div className="w-8 h-8 rounded-full border-2 border-transparent spin-r" style={{ borderTopColor: 'var(--yv-brand)' }} />
       </div>
     );
   }
@@ -154,16 +154,26 @@ export default function GeneratePage() {
       {showLimitModal && <LimitReachedModal onClose={() => setShowLimitModal(false)} reason={modalReason} />}
 
       <div className="yv-page">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-3 font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 mb-8">
-          <a href="/dashboard" className="hover:text-white transition">{t('Panel', 'Dashboard')}</a>
-          <span>/</span>
-          <span className="text-white">{t('Nueva generación', 'New generation')}</span>
-        </div>
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">
+              <a href="/dashboard" className="hover:text-white transition">{t('Panel', 'Dashboard')}</a>
+              {' / '}
+              {t('Nueva generación', 'New generation')}
+            </span>
+            <h1 className="yv-page-header__title">{t('Nueva generación', 'New generation')}</h1>
+            <p className="yv-page-header__desc">{t('Elige una plantilla y describe tu idea', 'Pick a template and describe your idea')}</p>
+          </div>
+          <div className="yv-page-header__actions">
+            <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
+              {t('Te quedan', 'You have')} <span className="text-white font-semibold">{remainingDisplay}</span> {t('créditos', 'credits')}
+            </p>
+          </div>
+        </header>
 
         {/* Template picker */}
         <div className="mb-8">
-          <p className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 mb-3">01 · {t('¿Qué necesitas?', 'What do you need?')}</p>
+          <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>01 · {t('¿Qué necesitas?', 'What do you need?')}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {([...Object.keys(TEMPLATES), 'video_preview'] as string[]).map((key) => {
               const tplMeta = TPL_META[key] ?? { icon: '📄', color: '#e84d5b', est: '~' };
@@ -175,7 +185,7 @@ export default function GeneratePage() {
                 <button
                   key={key}
                   onClick={() => handleSelect(key)}
-                  className="soft-card p-4 text-left transition relative group"
+                  className="yv-card p-4 text-left transition relative group"
                   style={active ? { borderColor: tplMeta.color, boxShadow: `0 0 0 2px ${tplMeta.color}22, 0 12px 30px -8px ${tplMeta.color}66` } : {}}
                 >
                   {locked && (
@@ -188,13 +198,13 @@ export default function GeneratePage() {
                   )}
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xl">{tplMeta.icon}</span>
-                    <span className="font-mono-jb text-[9px] text-zinc-600">~{tplMeta.est}</span>
+                    <span className="font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>~{tplMeta.est}</span>
                   </div>
                   <p className="font-display font-semibold text-sm" style={{ color: active ? '#fff' : '#d4d4d8' }}>
                     {TPL_NAMES[key]?.[lang] ?? key}
                   </p>
                   {isVideoPreview && (
-                    <p className="font-mono-jb text-[9px] text-zinc-600 mt-1">Canvas · local</p>
+                    <p className="font-mono-jb text-[9px] mt-1" style={{ color: 'var(--yv-text-4)' }}>Canvas · local</p>
                   )}
                   {active && <span className="absolute top-3 right-3 live-dot" />}
                 </button>
@@ -206,10 +216,10 @@ export default function GeneratePage() {
         {/* Main layout */}
         <div className="space-y-5">
             {/* Topic */}
-            <div className="soft-card p-6">
+            <div className="yv-card p-6">
               <div className="flex items-center justify-between mb-3">
-                <p className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500">02 · {t('Cuéntanos tu idea', 'Tell us your idea')}</p>
-                <p className="font-mono-jb text-[10px] text-zinc-600">{(formData.tema || '').length} / 500</p>
+                <p className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>02 · {t('Cuéntanos tu idea', 'Tell us your idea')}</p>
+                <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{(formData.tema || '').length} / 500</p>
               </div>
               <textarea
                 rows={5}
@@ -219,12 +229,12 @@ export default function GeneratePage() {
                 placeholder={t('Describe tu vídeo, canal o idea. Cuanto más específico, mejor.', 'Describe your video, channel or idea. The more specific, the better.')}
               />
               <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <span className="font-mono-jb text-[10px] text-zinc-500">{t('Prueba:', 'Try:')}</span>
+                <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{t('Prueba:', 'Try:')}</span>
                 {(lang === 'en'
                   ? ['Morning routine', 'Office tour', 'Q&A with followers']
                   : ['Rutina de mañana', 'Tour de mi oficina', 'Q&A con seguidores']
                 ).map((s) => (
-                  <button key={s} onClick={() => set('tema', s)} className="soft-pill font-mono-jb text-[10px] px-3 py-1 text-zinc-300 hover:text-white">
+                  <button key={s} onClick={() => set('tema', s)} className="soft-pill font-mono-jb text-[10px] px-3 py-1 hover:text-white" style={{ color: 'var(--yv-text-2)' }}>
                     {s}
                   </button>
                 ))}
@@ -233,16 +243,16 @@ export default function GeneratePage() {
 
             {/* Secondary fields based on template */}
             {(inputs.includes('tono') || inputs.includes('nicho') || inputs.includes('plataforma') || inputs.includes('duracion') || inputs.includes('estilo') || inputs.includes('num_videos') || inputs.includes('keywords') || inputs.includes('cta')) && (
-              <div className="soft-card p-6">
-                <p className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 mb-4">03 · {t('Ajustes', 'Settings')}</p>
+              <div className="yv-card p-6">
+                <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>03 · {t('Ajustes', 'Settings')}</p>
                 <div className="space-y-5">
                   {inputs.includes('tono') && (
                     <div>
-                      <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Tono', 'Tone')}</p>
+                      <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Tono', 'Tone')}</p>
                       <div className="flex flex-wrap gap-2">
                         {(lang === 'en' ? TONES_EN : TONES_ES).map(([k, label]) => (
                           <button key={k} onClick={() => set('tono', k)}
-                            className={`soft-chip px-3 py-2 text-[11px] font-mono-jb tracking-wider uppercase ${formData.tono === k ? 'soft-chip-active' : 'text-zinc-400 hover:text-white'}`}>
+                            className={`soft-chip px-3 py-2 text-[11px] font-mono-jb tracking-wider uppercase ${formData.tono === k ? 'soft-chip-active' : 'hover:text-white'}`}>
                             {label}
                           </button>
                         ))}
@@ -251,11 +261,11 @@ export default function GeneratePage() {
                   )}
                   {inputs.includes('nicho') && (
                     <div>
-                      <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nicho', 'Niche')}</p>
+                      <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Nicho', 'Niche')}</p>
                       <div className="flex flex-wrap gap-2">
                         {(lang === 'en' ? NICHES_EN : NICHES_ES).map(([k, label]) => (
                           <button key={k} onClick={() => set('nicho', k)}
-                            className={`soft-chip px-3 py-2 text-[11px] font-mono-jb tracking-wider uppercase ${formData.nicho === k ? 'soft-chip-active' : 'text-zinc-400 hover:text-white'}`}>
+                            className={`soft-chip px-3 py-2 text-[11px] font-mono-jb tracking-wider uppercase ${formData.nicho === k ? 'soft-chip-active' : 'hover:text-white'}`}>
                             {label}
                           </button>
                         ))}
@@ -264,7 +274,7 @@ export default function GeneratePage() {
                   )}
                   {inputs.includes('plataforma') && (
                     <div>
-                      <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Plataforma', 'Platform')}</p>
+                      <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Plataforma', 'Platform')}</p>
                       <select value={formData.plataforma} onChange={(e) => set('plataforma', e.target.value)} className="soft-field py-2 px-3 text-sm">
                         <option value="youtube">YouTube</option>
                         <option value="youtube-shorts">YouTube Shorts</option>
@@ -275,7 +285,7 @@ export default function GeneratePage() {
                   )}
                   {inputs.includes('estilo') && (
                     <div>
-                      <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Estilo visual', 'Visual style')}</p>
+                      <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Estilo visual', 'Visual style')}</p>
                       <select value={formData.estilo} onChange={(e) => set('estilo', e.target.value)} className="soft-field py-2 px-3 text-sm">
                         {(lang === 'en'
                           ? [['viral','Viral'],['cómico','Comic'],['dramático','Dramatic'],['sorpresa','Surprise'],['mysterious','Mysterious']]
@@ -288,25 +298,25 @@ export default function GeneratePage() {
                   )}
                   {inputs.includes('duracion') && (
                     <div>
-                      <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Duración (minutos)', 'Duration (minutes)')}</p>
+                      <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Duración (minutos)', 'Duration (minutes)')}</p>
                       <input type="number" min={1} max={240} value={formData.duracion} onChange={(e) => set('duracion', e.target.value)} className="soft-field py-2 px-3 text-sm w-28" />
                     </div>
                   )}
                   {inputs.includes('num_videos') && (
                     <div>
-                      <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nº de episodios', 'No. of episodes')}</p>
+                      <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Nº de episodios', 'No. of episodes')}</p>
                       <input type="number" min={3} max={20} value={formData.num_videos} onChange={(e) => set('num_videos', e.target.value)} className="soft-field py-2 px-3 text-sm w-28" />
                     </div>
                   )}
                   {inputs.includes('keywords') && (
                     <div>
-                      <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">Keywords</p>
+                      <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>Keywords</p>
                       <textarea rows={2} value={formData.keywords} onChange={(e) => set('keywords', e.target.value)} className="soft-field resize-none text-sm" placeholder={t('Ej: programación, tutorial, principiantes', 'E.g. programming, tutorial, beginners')} />
                     </div>
                   )}
                   {inputs.includes('cta') && (
                     <div>
-                      <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">Call to Action</p>
+                      <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>Call to Action</p>
                       <textarea rows={2} value={formData.cta} onChange={(e) => set('cta', e.target.value)} className="soft-field resize-none text-sm" placeholder={t('Ej: Suscribirse, ver la parte 2...', 'E.g. Subscribe, watch part 2...')} />
                     </div>
                   )}
@@ -340,15 +350,15 @@ export default function GeneratePage() {
                 )}
               </button>
               {selectedTemplate === 'video_preview' ? (
-                <p className="font-mono-jb text-[11px] text-zinc-500">
+                <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
                   📺 {t('Sin créditos · local', '0 credits · local')}
                 </p>
               ) : remainingDisplay === 0 ? (
-                <p className="font-mono-jb text-[11px]" style={{ color: '#e84d5b' }}>
+                <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-brand)' }}>
                   ⚠ {t('Sin créditos este mes', 'No credits left this month')}
                 </p>
               ) : (
-                <p className="font-mono-jb text-[11px] text-zinc-500">
+                <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Te quedan', 'You have')} <span className="text-white font-semibold">{remainingDisplay}</span> {t('créditos', 'credits')}
                 </p>
               )}
@@ -363,11 +373,11 @@ export default function GeneratePage() {
 
             {/* Output */}
             {(loading || output) && (
-              <div className="soft-card overflow-hidden page-enter">
-                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10" style={{ background: '#0B0B0D' }}>
+              <div className="yv-card overflow-hidden page-enter">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
                   <div className="flex items-center gap-3">
                     <span className="live-dot" />
-                    <p className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-400">
+                    <p className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
                       {loading ? t('Procesando', 'Processing') : t('Resultado', 'Result')}
                     </p>
                   </div>
@@ -380,14 +390,14 @@ export default function GeneratePage() {
                 </div>
                 <div className="p-5">
                   {loading && (
-                    <div className="space-y-2 font-mono-jb text-xs text-zinc-500">
-                      <p><span style={{ color: 'var(--red)' }}>▸</span> {t('Analizando nicho y tono...', 'Analysing niche and tone...')}</p>
-                      <p><span style={{ color: 'var(--red)' }}>▸</span> {t('Aplicando frameworks virales...', 'Applying viral frameworks...')}</p>
-                      <p className="text-zinc-300"><span style={{ color: 'var(--red)' }}>▸</span> {t('Optimizando para el algoritmo', 'Optimising for the algorithm')}<span className="typing-cursor" /></p>
+                    <div className="space-y-2 font-mono-jb text-xs" style={{ color: 'var(--yv-text-3)' }}>
+                      <p><span style={{ color: 'var(--yv-brand)' }}>▸</span> {t('Analizando nicho y tono...', 'Analysing niche and tone...')}</p>
+                      <p><span style={{ color: 'var(--yv-brand)' }}>▸</span> {t('Aplicando frameworks virales...', 'Applying viral frameworks...')}</p>
+                      <p style={{ color: 'var(--yv-text-2)' }}><span style={{ color: 'var(--yv-brand)' }}>▸</span> {t('Optimizando para el algoritmo', 'Optimising for the algorithm')}<span className="typing-cursor" /></p>
                     </div>
                   )}
                   {output && (
-                    <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans text-zinc-200 max-h-[600px] overflow-y-auto">
+                    <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans max-h-[600px] overflow-y-auto" style={{ color: 'var(--yv-text-1)' }}>
                       {output}
                     </pre>
                   )}
@@ -417,7 +427,7 @@ export default function GeneratePage() {
                         ✓ {t('Preview guardada', 'Preview saved')}
                       </span>
                     )}
-                    <a href="/dashboard" className="ml-auto font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
+                    <a href="/dashboard" className="ml-auto font-mono-jb text-[11px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                       {t('Ver en panel', 'View in dashboard')} →
                     </a>
                   </div>

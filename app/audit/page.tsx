@@ -184,7 +184,7 @@ export default function AuditPage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">Channel Audit</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para auditar tu canal.', 'Sign in to audit your channel.')}</p>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para auditar tu canal.', 'Sign in to audit your channel.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
@@ -194,19 +194,21 @@ export default function AuditPage() {
   return (
     <DashboardShell>
       {/* Header */}
-      <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
+      <div className="border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
         <div className="yv-page">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
-            {t('AUDITORÍA DE CANAL', 'CHANNEL AUDIT')}
-          </p>
-          <h1 className="font-display font-bold text-3xl md:text-4xl text-white">
-            {data ? data.channelName : t('Auditoría', 'Audit')}
-          </h1>
-          {data && (
-            <p className="text-zinc-500 font-mono-jb text-xs mt-1">
-              {data.videosAnalyzed} {t('vídeos analizados', 'videos analyzed')} &middot; {data.period.start} — {data.period.end}
-            </p>
-          )}
+          <header className="yv-page-header">
+            <div className="yv-page-header__left">
+              <span className="yv-page-header__eyebrow">{t('AUDITORÍA DE CANAL', 'CHANNEL AUDIT')}</span>
+              <h1 className="yv-page-header__title">
+                {data ? data.channelName : t('Auditoría', 'Audit')}
+              </h1>
+              {data && (
+                <p className="yv-page-header__desc" style={{ fontSize: 'var(--yv-text-xs)' }}>
+                  {data.videosAnalyzed} {t('vídeos analizados', 'videos analyzed')} &middot; {data.period.start} — {data.period.end}
+                </p>
+              )}
+            </div>
+          </header>
         </div>
       </div>
 
@@ -215,8 +217,8 @@ export default function AuditPage() {
         {loading && (
           <div className="flex flex-col items-center gap-3 justify-center py-20">
             <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            <span className="text-zinc-500 font-mono-jb text-sm">{t('Analizando tu canal...', 'Analyzing your channel...')}</span>
-            <span className="text-zinc-600 font-mono-jb text-xs">{t('Esto puede tardar unos segundos', 'This may take a few seconds')}</span>
+            <span className="yv-muted font-mono-jb text-sm">{t('Analizando tu canal...', 'Analyzing your channel...')}</span>
+            <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>{t('Esto puede tardar unos segundos', 'This may take a few seconds')}</span>
           </div>
         )}
 
@@ -233,7 +235,7 @@ export default function AuditPage() {
         {data && (
           <>
             {/* ── Health Score Hero ───────────────────────────────────────── */}
-            <div className="rounded-xl border border-white/10 p-8" style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <div className="yv-card p-8">
               <div className="flex flex-col md:flex-row items-center gap-8">
                 {/* Score Ring */}
                 <div className="relative shrink-0">
@@ -242,7 +244,7 @@ export default function AuditPage() {
                     <span className="font-display font-bold text-4xl" style={{ color: scoreColor(data.healthScore) }}>
                       {data.healthScore}
                     </span>
-                    <span className="font-mono-jb text-[10px] tracking-wider text-zinc-500 uppercase">
+                    <span className="font-mono-jb text-[10px] tracking-wider yv-muted uppercase">
                       {t('SALUD', 'HEALTH')}
                     </span>
                   </div>
@@ -253,7 +255,7 @@ export default function AuditPage() {
                   <h2 className="font-display font-bold text-2xl text-white mb-1">
                     {scoreLabel(data.healthScore, lang)}
                   </h2>
-                  <p className="text-zinc-500 font-mono-jb text-sm mb-4">
+                  <p className="yv-muted font-mono-jb text-sm mb-4">
                     {data.subscribers > 0 && <>{fmtNum(data.subscribers)} {t('suscriptores', 'subscribers')} &middot; </>}
                     {data.videosAnalyzed} {t('vídeos analizados', 'videos analyzed')}
                   </p>
@@ -268,7 +270,7 @@ export default function AuditPage() {
                             style={{ width: `${cat.score}%`, background: scoreColor(cat.score) }}
                           />
                         </div>
-                        <span className="font-mono-jb text-[9px] text-zinc-500 mt-1 block">{cat.label[lang]}</span>
+                        <span className="font-mono-jb text-[9px] yv-muted mt-1 block">{cat.label[lang]}</span>
                       </div>
                     ))}
                   </div>
@@ -278,12 +280,12 @@ export default function AuditPage() {
 
             {/* ── AI Summary ─────────────────────────────────────────────── */}
             {data.aiSummary && (
-              <div className="rounded-xl border border-white/10 p-6" style={{ background: 'rgba(155,32,32,0.06)', borderColor: 'rgba(155,32,32,0.20)' }}>
+              <div className="yv-card p-6" style={{ background: 'var(--yv-brand-soft)', borderColor: 'var(--yv-brand-border)' }}>
                 <div className="flex items-center gap-2 mb-3">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9B2020" strokeWidth="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                   <span className="font-display font-bold text-sm text-white">AI Insights</span>
                 </div>
-                <p className="font-mono-jb text-sm text-zinc-300 whitespace-pre-line leading-relaxed">
+                <p className="font-mono-jb text-sm text-[color:var(--yv-text-2)] whitespace-pre-line leading-relaxed">
                   {data.aiSummary[lang]}
                 </p>
               </div>
@@ -301,8 +303,7 @@ export default function AuditPage() {
                     <button
                       key={cat.key}
                       onClick={() => setExpandedCat(isExpanded ? null : cat.key)}
-                      className="rounded-xl border border-white/10 p-5 text-left transition hover:border-white/20"
-                      style={{ background: 'rgba(255,255,255,0.02)' }}
+                      className="yv-card p-5 text-left transition hover:border-white/20"
                     >
                       <div className="flex items-center gap-3 mb-3">
                         <div className="relative">
@@ -318,13 +319,13 @@ export default function AuditPage() {
                             </svg>
                             <span className="font-display font-bold text-sm text-white">{cat.label[lang]}</span>
                           </div>
-                          <span className="font-mono-jb text-[10px] text-zinc-500">
+                          <span className="font-mono-jb text-[10px] yv-muted">
                             {cat.checks.filter(c => c.passed).length}/{cat.checks.length} {t('checks', 'checks')}
                           </span>
                         </div>
                         <svg
                           width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                          className={`text-zinc-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          className={`yv-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         >
                           <polyline points="6 9 12 15 18 9" />
                         </svg>
@@ -338,7 +339,7 @@ export default function AuditPage() {
                               <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] ${check.passed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                                 {check.passed ? '✓' : '✗'}
                               </span>
-                              <span className="font-mono-jb text-xs text-zinc-400">{check.label[lang]}</span>
+                              <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{check.label[lang]}</span>
                             </div>
                           ))}
                         </div>
@@ -355,7 +356,7 @@ export default function AuditPage() {
                 <h2 className="font-display font-bold text-xl text-white mb-1">
                   {t('Quick Wins', 'Quick Wins')}
                 </h2>
-                <p className="text-zinc-500 font-mono-jb text-xs mb-4">
+                <p className="yv-muted font-mono-jb text-xs mb-4">
                   {t('Acciones concretas para mejorar tu canal ahora mismo', 'Concrete actions to improve your channel right now')}
                 </p>
                 <div className="space-y-3">
@@ -377,7 +378,7 @@ export default function AuditPage() {
                             </span>
                             <span className="font-display font-bold text-sm text-white truncate">{win.label[lang]}</span>
                           </div>
-                          <p className="font-mono-jb text-xs text-zinc-400">{win.detail[lang]}</p>
+                          <p className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{win.detail[lang]}</p>
                         </div>
                         <a
                           href={win.action.href}
@@ -399,7 +400,7 @@ export default function AuditPage() {
                 <h2 className="font-display font-bold text-xl text-white mb-1">
                   {t('Patrones detectados', 'Detected patterns')}
                 </h2>
-                <p className="text-zinc-500 font-mono-jb text-xs mb-4">
+                <p className="yv-muted font-mono-jb text-xs mb-4">
                   {t('Qué tienen en común tus TOP vídeos vs los que menos funcionan', 'What your TOP videos have in common vs your underperformers')}
                 </p>
 
@@ -408,7 +409,7 @@ export default function AuditPage() {
                   {data.patterns.patterns.map((p, i) => (
                     <div key={i} className="flex items-start gap-3 rounded-lg border border-white/8 p-3" style={{ background: 'rgba(255,255,255,0.02)' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9B2020" strokeWidth="2" className="shrink-0 mt-0.5"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                      <span className="font-mono-jb text-sm text-zinc-300">{p[lang]}</span>
+                      <span className="font-mono-jb text-sm text-[color:var(--yv-text-2)]">{p[lang]}</span>
                     </div>
                   ))}
                 </div>
@@ -416,7 +417,7 @@ export default function AuditPage() {
                 {/* Top vs Bottom videos */}
                 <div className="grid md:grid-cols-2 gap-4">
                   {/* Top */}
-                  <div className="rounded-lg border border-white/10 p-4" style={{ background: 'rgba(34,197,94,0.04)' }}>
+                  <div className="yv-card p-4" style={{ background: 'rgba(34,197,94,0.04)' }}>
                     <h3 className="font-display font-bold text-sm text-green-400 mb-3 flex items-center gap-2">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
                       TOP {t('vídeos', 'videos')}
@@ -428,10 +429,10 @@ export default function AuditPage() {
                           href={`/optimize?videoId=${v.videoId}`}
                           className="flex items-center gap-3 rounded p-2 hover:bg-white/5 transition"
                         >
-                          <span className="font-mono-jb text-[10px] text-zinc-600 w-4">{i + 1}</span>
+                          <span className="font-mono-jb text-[10px] w-4" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
                           <div className="flex-1 min-w-0">
                             <div className="font-mono-jb text-xs text-white truncate">{v.title}</div>
-                            <div className="font-mono-jb text-[10px] text-zinc-500">{fmtNum(v.views)} views &middot; SEO {v.seoScore}</div>
+                            <div className="font-mono-jb text-[10px] yv-muted">{fmtNum(v.views)} views &middot; SEO {v.seoScore}</div>
                           </div>
                           <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded" style={{ background: scoreBg(v.seoScore), color: scoreColor(v.seoScore) }}>
                             {v.seoScore}
@@ -442,7 +443,7 @@ export default function AuditPage() {
                   </div>
 
                   {/* Bottom */}
-                  <div className="rounded-lg border border-white/10 p-4" style={{ background: 'rgba(232,77,91,0.04)' }}>
+                  <div className="yv-card p-4" style={{ background: 'rgba(232,77,91,0.04)' }}>
                     <h3 className="font-display font-bold text-sm text-red-400 mb-3 flex items-center gap-2">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                       {t('Peor rendimiento', 'Underperformers')}
@@ -454,10 +455,10 @@ export default function AuditPage() {
                           href={`/optimize?videoId=${v.videoId}`}
                           className="flex items-center gap-3 rounded p-2 hover:bg-white/5 transition"
                         >
-                          <span className="font-mono-jb text-[10px] text-zinc-600 w-4">{i + 1}</span>
+                          <span className="font-mono-jb text-[10px] w-4" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
                           <div className="flex-1 min-w-0">
                             <div className="font-mono-jb text-xs text-white truncate">{v.title}</div>
-                            <div className="font-mono-jb text-[10px] text-zinc-500">{fmtNum(v.views)} views &middot; SEO {v.seoScore}</div>
+                            <div className="font-mono-jb text-[10px] yv-muted">{fmtNum(v.views)} views &middot; SEO {v.seoScore}</div>
                           </div>
                           <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded" style={{ background: scoreBg(v.seoScore), color: scoreColor(v.seoScore) }}>
                             {v.seoScore}

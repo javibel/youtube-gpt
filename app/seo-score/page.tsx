@@ -123,7 +123,7 @@ export default function SeoScorePage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">SEO Score</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para analizar tus vídeos.', 'Sign in to analyze your videos.')}</p>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para analizar tus vídeos.', 'Sign in to analyze your videos.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
@@ -137,20 +137,22 @@ export default function SeoScorePage() {
       <div className="yv-page">
 
         {/* Page title */}
-        <div className="mb-10">
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            {t('ANÁLISIS SEO', 'SEO ANALYSIS')}
-          </p>
-          <h1 className="font-display font-bold text-4xl md:text-5xl text-white leading-tight">
-            {t('SEO Score', 'SEO Score')}<br />
-            <span style={{ color: 'var(--red)' }}>{t('de tus vídeos.', 'for your videos.')}</span>
-          </h1>
-          <p className="text-zinc-500 mt-3 text-sm font-mono-jb max-w-xl">
-            {t(
-              'Analiza título, descripción, tags, subtítulos, engagement y más. Cada vídeo recibe un score de 0 a 100 con recomendaciones específicas.',
-              'Analyze title, description, tags, captions, engagement and more. Each video gets a score from 0 to 100 with specific recommendations.'
-            )}
-          </p>
+        <div className="yv-page-header mb-10">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">
+              {t('ANÁLISIS SEO', 'SEO ANALYSIS')}
+            </span>
+            <h1 className="yv-page-header__title">
+              {t('SEO Score', 'SEO Score')}{' '}
+              <span style={{ color: 'var(--yv-brand)' }}>{t('de tus vídeos.', 'for your videos.')}</span>
+            </h1>
+            <p className="yv-page-header__desc">
+              {t(
+                'Analiza título, descripción, tags, subtítulos, engagement y más. Cada vídeo recibe un score de 0 a 100 con recomendaciones específicas.',
+                'Analyze title, description, tags, captions, engagement and more. Each video gets a score from 0 to 100 with specific recommendations.'
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Analyze button */}
@@ -178,7 +180,7 @@ export default function SeoScorePage() {
               >
                 {t('Media', 'Average')}: {avgScore}/100
               </div>
-              <span className="text-zinc-600 text-xs font-mono-jb">
+              <span className="text-xs font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
                 {scores.length} {t('vídeos', 'videos')}
               </span>
             </div>
@@ -195,7 +197,7 @@ export default function SeoScorePage() {
         {hasLoaded && scores.length === 0 && !loading && (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">📊</div>
-            <p className="text-zinc-400 font-mono-jb text-sm">
+            <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
               {t(
                 'Pulsa "Analizar mis vídeos" para obtener el SEO Score de tus últimos 10 vídeos.',
                 'Click "Analyze my videos" to get the SEO Score for your last 10 videos.'
@@ -216,8 +218,7 @@ export default function SeoScorePage() {
             return (
               <div
                 key={video.videoId}
-                className="rounded-xl border border-white/10 overflow-hidden transition-all"
-                style={{ background: 'rgba(255,255,255,0.02)' }}
+                className="yv-card overflow-hidden transition-all p-0"
               >
                 {/* Video header row */}
                 <button
@@ -237,15 +238,15 @@ export default function SeoScorePage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-display font-semibold text-sm truncate">{video.title || video.videoId}</p>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-zinc-500 font-mono-jb text-[11px]">
+                      <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
                         {fmtNum(video.views)} {t('vistas', 'views')}
                       </span>
                       {video.publishedAt && (
-                        <span className="text-zinc-600 font-mono-jb text-[11px]">
+                        <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
                           {fmtDate(video.publishedAt, lang)}
                         </span>
                       )}
-                      <span className="text-zinc-600 font-mono-jb text-[11px]">
+                      <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
                         {passed}/{total} {t('checks', 'checks')}
                       </span>
                     </div>
@@ -262,7 +263,8 @@ export default function SeoScorePage() {
                     </div>
                     <svg
                       width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                      className={`text-zinc-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      style={{ color: 'var(--yv-text-3)' }}
                     >
                       <path d="M6 9l6 6 6-6" />
                     </svg>
@@ -271,7 +273,7 @@ export default function SeoScorePage() {
 
                 {/* Expanded checklist */}
                 {isExpanded && (
-                  <div className="border-t border-white/10 p-4 space-y-2">
+                  <div className="border-t p-4 space-y-2" style={{ borderColor: 'var(--yv-border)' }}>
                     {/* AI Tip */}
                     {aiTip && (
                       <div className="mb-4 p-3 rounded-lg border border-purple-500/30" style={{ background: 'rgba(139,92,246,0.08)' }}>
@@ -283,7 +285,7 @@ export default function SeoScorePage() {
                             {t('Consejo IA', 'AI Tip')}
                           </span>
                         </div>
-                        <p className="text-zinc-300 text-sm font-mono-jb">
+                        <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>
                           {lang === 'en' ? aiTip.detail.en : aiTip.detail.es}
                         </p>
                       </div>
@@ -311,12 +313,12 @@ export default function SeoScorePage() {
                           <p className="text-white text-sm font-display font-medium">
                             {lang === 'en' ? check.label.en : check.label.es}
                           </p>
-                          <p className="text-zinc-500 text-xs font-mono-jb mt-0.5">
+                          <p className="text-xs font-mono-jb mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
                             {lang === 'en' ? check.detail.en : check.detail.es}
                           </p>
                         </div>
                         {check.weight > 0 && (
-                          <span className="flex-shrink-0 text-zinc-600 font-mono-jb text-[10px]">
+                          <span className="flex-shrink-0 font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
                             {t('peso', 'weight')}: {check.weight}
                           </span>
                         )}

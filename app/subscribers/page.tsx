@@ -49,8 +49,8 @@ function BarChart({ items, colorFn }: { items: { label: string; value: number; p
       {items.map((item, i) => (
         <div key={item.label}>
           <div className="flex justify-between mb-0.5">
-            <span className="font-mono-jb text-[11px] text-zinc-400">{item.label}</span>
-            <span className="font-mono-jb text-[11px] text-zinc-500">{item.pct.toFixed(1)}%</span>
+            <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>{item.label}</span>
+            <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>{item.pct.toFixed(1)}%</span>
           </div>
           <div className="h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }}>
             <div
@@ -136,15 +136,15 @@ export default function SubscribersPage() {
   return (
     <DashboardShell>
       {/* Header */}
-      <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="yv-page yv-page--wide">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
+      <div className="yv-page-header" style={{ background: 'var(--yv-bg-1)' }}>
+        <div className="yv-page-header__left">
+          <span className="yv-page-header__eyebrow" style={{ color: 'var(--yv-brand)' }}>
             {t('ANÁLISIS DE AUDIENCIA', 'AUDIENCE ANALYSIS')}
-          </p>
-          <h1 className="font-display font-bold text-3xl text-white">
+          </span>
+          <h1 className="yv-page-header__title">
             {t('¿Quién ve tus vídeos?', 'Who watches your videos?')}
           </h1>
-          <p className="text-zinc-500 font-mono-jb text-xs mt-1">
+          <p className="yv-page-header__desc" style={{ color: 'var(--yv-text-3)' }}>
             {t('Demografía, geografía, fuentes de suscriptores y oportunidades de colaboración.', 'Demographics, geography, subscriber sources, and collaboration opportunities.')}
           </p>
         </div>
@@ -154,7 +154,7 @@ export default function SubscribersPage() {
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            <span className="text-zinc-500 font-mono-jb text-sm">{t('Analizando audiencia...', 'Analyzing audience...')}</span>
+            <span className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Analizando audiencia...', 'Analyzing audience...')}</span>
           </div>
         )}
 
@@ -172,26 +172,26 @@ export default function SubscribersPage() {
 
             {/* Summary cards */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="soft-card p-5 text-center">
+              <div className="yv-card p-5 text-center">
                 <p className="font-display font-bold text-3xl" style={{ color: '#22c55e' }}>+{fmtNum(summary.totalSubsGained)}</p>
-                <p className="font-mono-jb text-[10px] text-zinc-500 mt-1">{t('SUBS GANADOS (90D)', 'SUBS GAINED (90D)')}</p>
+                <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{t('SUBS GANADOS (90D)', 'SUBS GAINED (90D)')}</p>
               </div>
-              <div className="soft-card p-5 text-center">
+              <div className="yv-card p-5 text-center">
                 <p className="font-display font-bold text-3xl" style={{ color: '#e84d5b' }}>-{fmtNum(summary.totalSubsLost)}</p>
-                <p className="font-mono-jb text-[10px] text-zinc-500 mt-1">{t('SUBS PERDIDOS (90D)', 'SUBS LOST (90D)')}</p>
+                <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{t('SUBS PERDIDOS (90D)', 'SUBS LOST (90D)')}</p>
               </div>
-              <div className="soft-card p-5 text-center">
+              <div className="yv-card p-5 text-center">
                 <p className="font-display font-bold text-3xl" style={{ color: summary.netGrowth >= 0 ? '#22c55e' : '#e84d5b' }}>
                   {summary.netGrowth >= 0 ? '+' : ''}{fmtNum(summary.netGrowth)}
                 </p>
-                <p className="font-mono-jb text-[10px] text-zinc-500 mt-1">{t('CRECIMIENTO NETO', 'NET GROWTH')}</p>
+                <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{t('CRECIMIENTO NETO', 'NET GROWTH')}</p>
               </div>
             </div>
 
             {/* Subs timeline */}
             {subsTimeline.length > 5 && (
-              <div className="soft-card p-5">
-                <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase mb-3">
+              <div className="yv-card p-5">
+                <p className="font-mono-jb text-[10px] tracking-[0.2em] uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>
                   {t('SUSCRIPTORES GANADOS POR DÍA (90D)', 'SUBSCRIBERS GAINED PER DAY (90D)')}
                 </p>
                 <div className="flex items-end gap-px h-20">
@@ -208,7 +208,7 @@ export default function SubscribersPage() {
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between font-mono-jb text-[9px] text-zinc-700 mt-1">
+                <div className="flex justify-between font-mono-jb text-[9px] mt-1" style={{ color: 'var(--yv-text-5)' }}>
                   <span>{subsTimeline[0]?.day}</span>
                   <span>{subsTimeline[subsTimeline.length - 1]?.day}</span>
                 </div>
@@ -219,8 +219,8 @@ export default function SubscribersPage() {
             <div className="grid md:grid-cols-2 gap-4">
               {/* Age groups */}
               {ageGroups.length > 0 && (
-                <div className="soft-card p-5">
-                  <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase mb-4">
+                <div className="yv-card p-5">
+                  <p className="font-mono-jb text-[10px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
                     {t('EDAD', 'AGE')}
                   </p>
                   <BarChart
@@ -232,8 +232,8 @@ export default function SubscribersPage() {
 
               {/* Gender */}
               {genderSplit.length > 0 && (
-                <div className="soft-card p-5">
-                  <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase mb-4">
+                <div className="yv-card p-5">
+                  <p className="font-mono-jb text-[10px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
                     {t('GÉNERO', 'GENDER')}
                   </p>
                   <div className="flex items-center gap-6 mb-4">
@@ -242,7 +242,7 @@ export default function SubscribersPage() {
                         <p className="font-display font-bold text-3xl" style={{ color: GENDER_COLORS[g.gender] || '#a3a3a3' }}>
                           {g.percentage.toFixed(1)}%
                         </p>
-                        <p className="font-mono-jb text-[10px] text-zinc-500 mt-1">
+                        <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-3)' }}>
                           {GENDER_LABELS[g.gender]?.[lang] || g.gender}
                         </p>
                       </div>
@@ -266,8 +266,8 @@ export default function SubscribersPage() {
             <div className="grid md:grid-cols-2 gap-4">
               {/* Countries */}
               {countries.length > 0 && (
-                <div className="soft-card p-5">
-                  <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase mb-4">
+                <div className="yv-card p-5">
+                  <p className="font-mono-jb text-[10px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
                     {t('PAÍSES TOP', 'TOP COUNTRIES')}
                   </p>
                   <div className="space-y-2">
@@ -275,15 +275,15 @@ export default function SubscribersPage() {
                       const pct = totalCountryViews > 0 ? (c.views / totalCountryViews) * 100 : 0;
                       return (
                         <div key={c.country} className="flex items-center gap-3">
-                          <span className="font-display font-bold text-sm w-5 text-center" style={{ color: i < 3 ? 'var(--red)' : 'var(--text-faint)' }}>
+                          <span className="font-display font-bold text-sm w-5 text-center" style={{ color: i < 3 ? 'var(--yv-brand)' : 'var(--text-faint)' }}>
                             {i + 1}
                           </span>
-                          <span className="font-mono-jb text-[11px] text-zinc-400 w-8">{c.country}</span>
+                          <span className="font-mono-jb text-[11px] w-8" style={{ color: 'var(--yv-text-2)' }}>{c.country}</span>
                           <div className="flex-1 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: i < 3 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: i < 3 ? 'var(--yv-brand)' : 'rgba(255,255,255,0.15)' }} />
                           </div>
-                          <span className="font-mono-jb text-[10px] text-zinc-500 w-12 text-right">{pct.toFixed(1)}%</span>
-                          <span className="font-mono-jb text-[10px] text-zinc-600 w-16 text-right">{fmtNum(c.views)}</span>
+                          <span className="font-mono-jb text-[10px] w-12 text-right" style={{ color: 'var(--yv-text-3)' }}>{pct.toFixed(1)}%</span>
+                          <span className="font-mono-jb text-[10px] w-16 text-right" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(c.views)}</span>
                         </div>
                       );
                     })}
@@ -293,8 +293,8 @@ export default function SubscribersPage() {
 
               {/* Subscriber sources */}
               {subsSources.length > 0 && (
-                <div className="soft-card p-5">
-                  <p className="font-mono-jb text-[10px] tracking-[0.2em] text-zinc-500 uppercase mb-4">
+                <div className="yv-card p-5">
+                  <p className="font-mono-jb text-[10px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
                     {t('FUENTES DE SUSCRIPTORES', 'SUBSCRIBER SOURCES')}
                   </p>
                   <BarChart
@@ -313,19 +313,19 @@ export default function SubscribersPage() {
             {aiInsights && (
               <div className="space-y-4">
                 {/* Audience profile */}
-                <div className="soft-card p-5" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
+                <div className="yv-card p-5" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
                   <div className="flex items-center gap-2 mb-3">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.5">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                     </svg>
                     <h3 className="font-display font-bold text-sm text-purple-300">{t('Perfil de tu audiencia', 'Your audience profile')}</h3>
                   </div>
-                  <p className="text-zinc-300 text-sm leading-relaxed">{aiInsights.audienceProfile}</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>{aiInsights.audienceProfile}</p>
 
                   {/* Interests */}
                   {aiInsights.interests.length > 0 && (
                     <div className="mt-4">
-                      <p className="font-mono-jb text-[10px] text-zinc-600 uppercase mb-2">{t('INTERESES', 'INTERESTS')}</p>
+                      <p className="font-mono-jb text-[10px] uppercase mb-2" style={{ color: 'var(--yv-text-4)' }}>{t('INTERESES', 'INTERESTS')}</p>
                       <div className="flex flex-wrap gap-2">
                         {aiInsights.interests.map((interest, i) => (
                           <span key={i} className="font-mono-jb text-[11px] px-3 py-1 rounded-full" style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', color: '#c4b5fd' }}>
@@ -339,7 +339,7 @@ export default function SubscribersPage() {
 
                 {/* Collaboration suggestions */}
                 {aiInsights.collaborationSuggestions.length > 0 && (
-                  <div className="soft-card p-5" style={{ borderColor: 'rgba(34,197,94,0.2)' }}>
+                  <div className="yv-card p-5" style={{ borderColor: 'rgba(34,197,94,0.2)' }}>
                     <div className="flex items-center gap-2 mb-3">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -355,7 +355,7 @@ export default function SubscribersPage() {
                           </span>
                           <div>
                             <p className="font-display font-bold text-sm text-white">{collab.channel}</p>
-                            <p className="text-zinc-400 text-xs mt-0.5">{collab.reason}</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--yv-text-2)' }}>{collab.reason}</p>
                           </div>
                         </div>
                       ))}
@@ -365,7 +365,7 @@ export default function SubscribersPage() {
 
                 {/* Growth tips */}
                 {aiInsights.growthTips.length > 0 && (
-                  <div className="soft-card p-5" style={{ borderColor: 'rgba(129,140,248,0.2)' }}>
+                  <div className="yv-card p-5" style={{ borderColor: 'rgba(129,140,248,0.2)' }}>
                     <div className="flex items-center gap-2 mb-3">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5">
                         <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/><line x1="9" y1="21" x2="15" y2="21"/>
@@ -374,7 +374,7 @@ export default function SubscribersPage() {
                     </div>
                     <ul className="space-y-2">
                       {aiInsights.growthTips.map((tip, i) => (
-                        <li key={i} className="text-zinc-300 text-sm flex items-start gap-2">
+                        <li key={i} className="text-sm flex items-start gap-2" style={{ color: 'var(--yv-text-2)' }}>
                           <span className="text-indigo-400 font-mono-jb text-[10px] mt-0.5">{i + 1}.</span>
                           <span className="leading-relaxed">{tip}</span>
                         </li>
@@ -387,7 +387,7 @@ export default function SubscribersPage() {
 
             {/* Private data badge */}
             <div className="text-center py-4">
-              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] text-zinc-600 border border-white/8 rounded-full px-4 py-1.5">
+              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 {t('Datos privados de YouTube Analytics — solo accesibles con OAuth', 'Private YouTube Analytics data — only accessible with OAuth')}
               </span>

@@ -292,7 +292,7 @@ export default function OptimizePage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Optimizar Vídeo', 'Optimize Video')}</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para optimizar tus vídeos.', 'Sign in to optimize your videos.')}</p>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para optimizar tus vídeos.', 'Sign in to optimize your videos.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
@@ -304,21 +304,21 @@ export default function OptimizePage() {
       <div className="yv-page">
 
         {/* Page title */}
-        <div className="mb-10">
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            {t('OPTIMIZACIÓN', 'OPTIMIZATION')}
-          </p>
-          <h1 className="font-display font-bold text-4xl md:text-5xl text-white leading-tight">
-            {t('Optimizar', 'Optimize')}{' '}
-            <span style={{ color: 'var(--red)' }}>{t('y guardar.', '& save.')}</span>
-          </h1>
-          <p className="text-zinc-500 mt-3 text-sm font-mono-jb max-w-xl">
-            {t(
-              'Edita título, descripción y tags con score en tiempo real. Guarda directamente en YouTube con un click.',
-              'Edit title, description and tags with real-time score. Save directly to YouTube with one click.'
-            )}
-          </p>
-        </div>
+        <header className="yv-page-header mb-10">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('OPTIMIZACIÓN', 'OPTIMIZATION')}</span>
+            <h1 className="yv-page-header__title">
+              {t('Optimizar', 'Optimize')}{' '}
+              <span style={{ color: 'var(--yv-brand)' }}>{t('y guardar.', '& save.')}</span>
+            </h1>
+            <p className="yv-page-header__desc">
+              {t(
+                'Edita título, descripción y tags con score en tiempo real. Guarda directamente en YouTube con un click.',
+                'Edit title, description and tags with real-time score. Save directly to YouTube with one click.'
+              )}
+            </p>
+          </div>
+        </header>
 
         {error && (
           <div className="mb-6 px-4 py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-mono-jb">
@@ -335,19 +335,18 @@ export default function OptimizePage() {
               </div>
             ) : videos.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-zinc-400 font-mono-jb text-sm">
+                <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
                   {t('No se encontraron vídeos. Conecta tu canal desde el Dashboard.', 'No videos found. Connect your channel from the Dashboard.')}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-zinc-400 font-mono-jb text-xs mb-4">{t('Selecciona un vídeo para optimizar:', 'Select a video to optimize:')}</p>
+                <p className="font-mono-jb text-xs mb-4" style={{ color: 'var(--yv-text-2)' }}>{t('Selecciona un vídeo para optimizar:', 'Select a video to optimize:')}</p>
                 {videos.map(v => (
                   <button
                     key={v.videoId}
                     onClick={() => selectVideo(v.videoId)}
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-white/25 transition text-left"
-                    style={{ background: 'rgba(255,255,255,0.02)' }}
+                    className="yv-card w-full flex items-center gap-4 p-4 hover:border-white/25 transition text-left"
                   >
                     {v.thumbnail && (
                       <img src={v.thumbnail} alt="" className="w-32 h-18 rounded-lg object-cover flex-shrink-0" />
@@ -355,8 +354,8 @@ export default function OptimizePage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-display font-semibold text-sm truncate">{v.title}</p>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-zinc-500 font-mono-jb text-[11px]">{fmtNum(v.views)} {t('vistas', 'views')}</span>
-                        <span className="text-zinc-600 font-mono-jb text-[11px]">{fmtDate(v.publishedAt, lang)}</span>
+                        <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>{fmtNum(v.views)} {t('vistas', 'views')}</span>
+                        <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{fmtDate(v.publishedAt, lang)}</span>
                       </div>
                     </div>
                     <div
@@ -385,7 +384,8 @@ export default function OptimizePage() {
             {/* Back button */}
             <button
               onClick={() => { setSelectedVideo(null); setSaveResult(null); }}
-              className="flex items-center gap-2 text-zinc-500 hover:text-white font-mono-jb text-xs mb-6 transition"
+              className="flex items-center gap-2 hover:text-white font-mono-jb text-xs mb-6 transition"
+              style={{ color: 'var(--yv-text-3)' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
               {t('Volver a la lista', 'Back to list')}
@@ -398,7 +398,7 @@ export default function OptimizePage() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-white font-display font-bold text-lg truncate">{selectedVideo.title}</p>
-                <div className="flex items-center gap-4 mt-2 text-zinc-500 font-mono-jb text-[11px]">
+                <div className="flex items-center gap-4 mt-2 font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
                   <span>{fmtNum(selectedVideo.views)} {t('vistas', 'views')}</span>
                   <span>{fmtNum(selectedVideo.likes)} likes</span>
                   <span>{fmtNum(selectedVideo.comments)} {t('comentarios', 'comments')}</span>
@@ -414,9 +414,9 @@ export default function OptimizePage() {
               <div className="lg:col-span-2 space-y-6">
 
                 {/* Title */}
-                <div className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <div className="yv-card p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <label className="font-mono-jb text-[11px] tracking-wider text-zinc-400 uppercase">
+                    <label className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
                       {t('Título', 'Title')}
                     </label>
                     <span className="font-mono-jb text-[11px]" style={{ color: editTitle.length >= 30 && editTitle.length <= 70 ? '#22c55e' : '#e84d5b' }}>
@@ -434,7 +434,7 @@ export default function OptimizePage() {
                   {/* Title checks inline */}
                   <div className="flex flex-wrap gap-3 mt-3">
                     {checks.filter(c => c.key.startsWith('title_')).map(c => (
-                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] text-zinc-500">
+                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] yv-muted">
                         <CheckDot ok={c.ok} />
                         {c.key === 'title_length' ? t('Longitud', 'Length') :
                          c.key === 'title_number' ? t('Números', 'Numbers') :
@@ -447,12 +447,12 @@ export default function OptimizePage() {
                 </div>
 
                 {/* Description */}
-                <div className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <div className="yv-card p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <label className="font-mono-jb text-[11px] tracking-wider text-zinc-400 uppercase">
+                    <label className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
                       {t('Descripción', 'Description')}
                     </label>
-                    <span className="font-mono-jb text-[11px] text-zinc-600">
+                    <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
                       {editDesc.split(/\s+/).filter(Boolean).length} {t('palabras', 'words')}
                     </span>
                   </div>
@@ -460,12 +460,12 @@ export default function OptimizePage() {
                     value={editDesc}
                     onChange={e => onDescChange(e.target.value)}
                     rows={10}
-                    className="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-zinc-300 font-mono-jb text-sm focus:outline-none focus:border-white/30 transition resize-y"
+                    className="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-[color:var(--yv-text-2)] font-mono-jb text-sm focus:outline-none focus:border-white/30 transition resize-y"
                     placeholder={t('Descripción del vídeo...', 'Video description...')}
                   />
                   <div className="flex flex-wrap gap-3 mt-3">
                     {checks.filter(c => c.key.startsWith('desc_')).map(c => (
-                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] text-zinc-500">
+                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] yv-muted">
                         <CheckDot ok={c.ok} />
                         {c.key === 'desc_length' ? t('100+ palabras', '100+ words') :
                          c.key === 'desc_links' ? 'Links' :
@@ -478,12 +478,12 @@ export default function OptimizePage() {
                 </div>
 
                 {/* Tags */}
-                <div className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <div className="yv-card p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <label className="font-mono-jb text-[11px] tracking-wider text-zinc-400 uppercase">
+                    <label className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
                       Tags
                     </label>
-                    <span className="font-mono-jb text-[11px] text-zinc-600">
+                    <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
                       {editTags.split(',').filter(t => t.trim()).length} tags
                     </span>
                   </div>
@@ -491,12 +491,12 @@ export default function OptimizePage() {
                     value={editTags}
                     onChange={e => onTagsChange(e.target.value)}
                     rows={3}
-                    className="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-zinc-300 font-mono-jb text-sm focus:outline-none focus:border-white/30 transition resize-y"
+                    className="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-[color:var(--yv-text-2)] font-mono-jb text-sm focus:outline-none focus:border-white/30 transition resize-y"
                     placeholder={t('tag1, tag2, tag3...', 'tag1, tag2, tag3...')}
                   />
                   <div className="flex flex-wrap gap-3 mt-3">
                     {checks.filter(c => c.key.startsWith('tags_')).map(c => (
-                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] text-zinc-500">
+                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] yv-muted">
                         <CheckDot ok={c.ok} />
                         {c.key === 'tags_count' ? t('5-20 tags', '5-20 tags') :
                          c.key === 'tags_long' ? t('Tags largos', 'Long-tail') :
@@ -531,7 +531,7 @@ export default function OptimizePage() {
                     )}
                   </button>
                   {!hasChanges && selectedVideo && (
-                    <span className="text-zinc-600 font-mono-jb text-xs">{t('Sin cambios', 'No changes')}</span>
+                    <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>{t('Sin cambios', 'No changes')}</span>
                   )}
                 </div>
 
@@ -548,8 +548,8 @@ export default function OptimizePage() {
                     </div>
                     {saveResult.aiSuggestion && (
                       <div className="mt-3 p-3 rounded-lg border border-purple-500/20" style={{ background: 'rgba(139,92,246,0.06)' }}>
-                        <p className="text-zinc-400 font-mono-jb text-[10px] tracking-wider uppercase mb-1">{t('Siguiente paso', 'Next step')}</p>
-                        <p className="text-zinc-300 font-mono-jb text-sm">
+                        <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-2)' }}>{t('Siguiente paso', 'Next step')}</p>
+                        <p className="text-[color:var(--yv-text-2)] font-mono-jb text-sm">
                           {lang === 'en' ? saveResult.aiSuggestion.en : saveResult.aiSuggestion.es}
                         </p>
                       </div>
@@ -562,8 +562,8 @@ export default function OptimizePage() {
               <div className="space-y-6">
 
                 {/* Score card */}
-                <div className="rounded-xl border border-white/10 p-6 text-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                  <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase text-zinc-500 mb-4">SEO SCORE</p>
+                <div className="yv-card p-6 text-center">
+                  <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase yv-muted mb-4">SEO SCORE</p>
                   <div className="flex justify-center">
                     <ScoreRing score={score} size={120} />
                   </div>
@@ -575,58 +575,58 @@ export default function OptimizePage() {
                 </div>
 
                 {/* Checklist summary */}
-                <div className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                  <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase text-zinc-500 mb-3">CHECKLIST</p>
+                <div className="yv-card p-5">
+                  <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase yv-muted mb-3">CHECKLIST</p>
                   <div className="space-y-2">
                     {checks.map(c => (
                       <div key={c.key} className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 font-mono-jb text-xs text-zinc-400">
+                        <span className="flex items-center gap-2 font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>
                           <CheckDot ok={c.ok} />
                           {c.key.replace(/_/g, ' ')}
                         </span>
-                        <span className="font-mono-jb text-[10px] text-zinc-600">{c.w}pt</span>
+                        <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{c.w}pt</span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-3 pt-3 border-t border-white/10 flex justify-between font-mono-jb text-xs">
-                    <span className="text-zinc-400">{checks.filter(c => c.ok).length}/{checks.length} {t('pasados', 'passed')}</span>
+                    <span style={{ color: 'var(--yv-text-2)' }}>{checks.filter(c => c.ok).length}/{checks.length} {t('pasados', 'passed')}</span>
                     <span style={{ color: scoreColor(score) }}>{score}/100</span>
                   </div>
                 </div>
 
                 {/* History */}
                 {history.length > 0 && (
-                  <div className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                    <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase text-zinc-500 mb-3">
+                  <div className="yv-card p-5">
+                    <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase yv-muted mb-3">
                       {t('HISTORIAL DE CAMBIOS', 'CHANGE HISTORY')}
                     </p>
                     <div className="space-y-3 max-h-80 overflow-y-auto">
                       {history.map(h => (
                         <div key={h.id} className="p-3 rounded-lg border border-white/5" style={{ background: 'rgba(255,255,255,0.015)' }}>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-mono-jb text-[10px] uppercase tracking-wider" style={{ color: 'var(--red)' }}>
+                            <span className="font-mono-jb text-[10px] uppercase tracking-wider" style={{ color: 'var(--yv-brand)' }}>
                               {h.field}
                             </span>
-                            <span className="font-mono-jb text-[10px] text-zinc-600">
+                            <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
                               {fmtDate(h.createdAt, lang)}
                             </span>
                           </div>
                           {h.field === 'title' && (
                             <>
-                              <p className="text-zinc-600 font-mono-jb text-[11px] line-through truncate">{h.oldValue}</p>
-                              <p className="text-zinc-300 font-mono-jb text-[11px] truncate">{h.newValue}</p>
+                              <p className="font-mono-jb text-[11px] line-through truncate" style={{ color: 'var(--yv-text-4)' }}>{h.oldValue}</p>
+                              <p className="text-[color:var(--yv-text-2)] font-mono-jb text-[11px] truncate">{h.newValue}</p>
                             </>
                           )}
                           {h.field === 'description' && (
-                            <p className="text-zinc-400 font-mono-jb text-[11px]">{t('Descripción actualizada', 'Description updated')}</p>
+                            <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>{t('Descripción actualizada', 'Description updated')}</p>
                           )}
                           {h.field === 'tags' && (
-                            <p className="text-zinc-400 font-mono-jb text-[11px]">{t('Tags actualizados', 'Tags updated')}</p>
+                            <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>{t('Tags actualizados', 'Tags updated')}</p>
                           )}
                           {h.scoreBefore != null && h.scoreAfter != null && (
                             <div className="mt-1 font-mono-jb text-[10px]">
-                              <span className="text-zinc-600">{h.scoreBefore}</span>
-                              <span className="text-zinc-600 mx-1">&rarr;</span>
+                              <span style={{ color: 'var(--yv-text-4)' }}>{h.scoreBefore}</span>
+                              <span className="mx-1" style={{ color: 'var(--yv-text-4)' }}>&rarr;</span>
                               <span style={{ color: scoreColor(h.scoreAfter) }}>{h.scoreAfter}</span>
                             </div>
                           )}

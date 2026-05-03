@@ -62,9 +62,9 @@ function YTSearchResult({ thumb, title, channel, views, date, isUser, lang }: {
   return (
     <div className="flex gap-3 py-2.5 group" style={{ opacity: isUser ? 1 : 0.85 }}>
       <div className="relative flex-shrink-0" style={{ width: 246, height: 138 }}>
-        <img src={thumb} alt="" className="w-full h-full object-cover rounded-xl" style={{ border: isUser ? '2px solid var(--red)' : '1px solid rgba(255,255,255,0.06)' }} />
+        <img src={thumb} alt="" className="w-full h-full object-cover rounded-xl" style={{ border: isUser ? '2px solid var(--yv-brand)' : '1px solid rgba(255,255,255,0.06)' }} />
         {isUser && (
-          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-mono-jb font-bold tracking-wider" style={{ background: 'var(--red)', color: '#fff' }}>
+          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-mono-jb font-bold tracking-wider" style={{ background: 'var(--yv-brand)', color: '#fff' }}>
             YOU
           </span>
         )}
@@ -74,8 +74,8 @@ function YTSearchResult({ thumb, title, channel, views, date, isUser, lang }: {
       </div>
       <div className="flex-1 min-w-0 pt-0.5">
         <h3 className="text-[13px] font-medium text-white leading-snug line-clamp-2 mb-1">{title}</h3>
-        <p className="text-[11px] text-zinc-500 mb-0.5">{channel}</p>
-        <p className="text-[11px] text-zinc-600">{fmtViews(views, lang)} · {timeAgo(date, lang)}</p>
+        <p className="text-[11px] yv-muted mb-0.5">{channel}</p>
+        <p className="text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{fmtViews(views, lang)} · {timeAgo(date, lang)}</p>
       </div>
     </div>
   );
@@ -86,10 +86,10 @@ function YTHomeCard({ thumb, title, channel, views, date, isUser, lang }: {
 }) {
   return (
     <div className="group" style={{ opacity: isUser ? 1 : 0.85 }}>
-      <div className="relative aspect-video rounded-xl overflow-hidden mb-2" style={{ border: isUser ? '2px solid var(--red)' : '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="relative aspect-video rounded-xl overflow-hidden mb-2" style={{ border: isUser ? '2px solid var(--yv-brand)' : '1px solid rgba(255,255,255,0.04)' }}>
         <img src={thumb} alt="" className="w-full h-full object-cover" />
         {isUser && (
-          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-mono-jb font-bold tracking-wider" style={{ background: 'var(--red)', color: '#fff' }}>
+          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-mono-jb font-bold tracking-wider" style={{ background: 'var(--yv-brand)', color: '#fff' }}>
             YOU
           </span>
         )}
@@ -98,11 +98,11 @@ function YTHomeCard({ thumb, title, channel, views, date, isUser, lang }: {
         </span>
       </div>
       <div className="flex gap-2.5">
-        <div className="w-8 h-8 rounded-full flex-shrink-0" style={{ background: isUser ? 'var(--red)' : 'rgba(255,255,255,0.08)' }} />
+        <div className="w-8 h-8 rounded-full flex-shrink-0" style={{ background: isUser ? 'var(--yv-brand)' : 'rgba(255,255,255,0.08)' }} />
         <div className="min-w-0">
           <h3 className="text-[13px] font-medium text-white leading-snug line-clamp-2 mb-0.5">{title}</h3>
-          <p className="text-[11px] text-zinc-500">{channel}</p>
-          <p className="text-[11px] text-zinc-600">{fmtViews(views, lang)} · {timeAgo(date, lang)}</p>
+          <p className="text-[11px] yv-muted">{channel}</p>
+          <p className="text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{fmtViews(views, lang)} · {timeAgo(date, lang)}</p>
         </div>
       </div>
     </div>
@@ -115,17 +115,17 @@ function YTSuggestedItem({ thumb, title, channel, views, date, isUser, lang }: {
   return (
     <div className="flex gap-2 py-1 group" style={{ opacity: isUser ? 1 : 0.85 }}>
       <div className="relative flex-shrink-0" style={{ width: 168, height: 94 }}>
-        <img src={thumb} alt="" className="w-full h-full object-cover rounded-lg" style={{ border: isUser ? '2px solid var(--red)' : '1px solid rgba(255,255,255,0.04)' }} />
+        <img src={thumb} alt="" className="w-full h-full object-cover rounded-lg" style={{ border: isUser ? '2px solid var(--yv-brand)' : '1px solid rgba(255,255,255,0.04)' }} />
         {isUser && (
-          <span className="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-mono-jb font-bold tracking-wider" style={{ background: 'var(--red)', color: '#fff' }}>
+          <span className="absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-mono-jb font-bold tracking-wider" style={{ background: 'var(--yv-brand)', color: '#fff' }}>
             YOU
           </span>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="text-[12px] font-medium text-white leading-snug line-clamp-2 mb-0.5">{title}</h3>
-        <p className="text-[10px] text-zinc-500">{channel}</p>
-        <p className="text-[10px] text-zinc-600">{fmtViews(views, lang)}</p>
+        <p className="text-[10px] yv-muted">{channel}</p>
+        <p className="text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{fmtViews(views, lang)}</p>
       </div>
     </div>
   );
@@ -215,7 +215,7 @@ export default function ThumbnailPreviewPage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">Thumbnail Preview</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para usar el previsualizador.', 'Sign in to use the previewer.')}</p>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para usar el previsualizador.', 'Sign in to use the previewer.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
@@ -247,20 +247,22 @@ export default function ThumbnailPreviewPage() {
   return (
     <DashboardShell>
       {/* Header */}
-      <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
+      <div className="border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
         <div className="yv-page yv-page--wide">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
-            THUMBNAIL PREVIEW
-          </p>
-          <h1 className="font-display font-bold text-3xl text-white">
-            {t('¿Tu thumbnail destaca?', 'Does your thumbnail stand out?')}
-          </h1>
-          <p className="text-zinc-500 font-mono-jb text-xs mt-1">
-            {t(
-              'Visualiza cómo se ve tu thumbnail junto a competidores reales en YouTube.',
-              'See how your thumbnail looks next to real competitors on YouTube.'
-            )}
-          </p>
+          <header className="yv-page-header">
+            <div className="yv-page-header__left">
+              <span className="yv-page-header__eyebrow">THUMBNAIL PREVIEW</span>
+              <h1 className="yv-page-header__title">
+                {t('¿Tu thumbnail destaca?', 'Does your thumbnail stand out?')}
+              </h1>
+              <p className="yv-page-header__desc" style={{ fontSize: 'var(--yv-text-xs)' }}>
+                {t(
+                  'Visualiza cómo se ve tu thumbnail junto a competidores reales en YouTube.',
+                  'See how your thumbnail looks next to real competitors on YouTube.'
+                )}
+              </p>
+            </div>
+          </header>
         </div>
       </div>
 
@@ -269,7 +271,7 @@ export default function ThumbnailPreviewPage() {
         {/* Controls */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Thumbnail input */}
-          <div className="soft-card p-5">
+          <div className="yv-card p-5">
             <h3 className="font-display font-bold text-sm text-white mb-3">{t('Tu thumbnail', 'Your thumbnail')}</h3>
             <div className="space-y-3">
               {/* Upload */}
@@ -285,7 +287,7 @@ export default function ThumbnailPreviewPage() {
                 </button>
               </div>
               {/* Or URL */}
-              <div className="flex items-center gap-2 text-zinc-600 text-[10px] font-mono-jb">
+              <div className="flex items-center gap-2 text-[10px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
                 <div className="flex-1 h-px" style={{ background: 'var(--line)' }} />
                 {t('o pega URL', 'or paste URL')}
                 <div className="flex-1 h-px" style={{ background: 'var(--line)' }} />
@@ -295,11 +297,11 @@ export default function ThumbnailPreviewPage() {
                 value={thumbnailUrl}
                 onChange={e => handleUrlInput(e.target.value)}
                 placeholder="https://i.ytimg.com/vi/..."
-                className="soft-field w-full text-xs"
+                className="yv-input w-full text-xs"
               />
               {/* Preview */}
               {thumbnailPreview && (
-                <div className="relative aspect-video rounded-lg overflow-hidden" style={{ border: '2px solid var(--red)' }}>
+                <div className="relative aspect-video rounded-lg overflow-hidden" style={{ border: '2px solid var(--yv-brand)' }}>
                   <img src={thumbnailPreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     onClick={() => { setThumbnailPreview(null); setThumbnailUrl(''); }}
@@ -314,7 +316,7 @@ export default function ThumbnailPreviewPage() {
           </div>
 
           {/* Keyword + action */}
-          <div className="soft-card p-5">
+          <div className="yv-card p-5">
             <h3 className="font-display font-bold text-sm text-white mb-3">{t('Keyword objetivo', 'Target keyword')}</h3>
             <input
               type="text"
@@ -322,7 +324,7 @@ export default function ThumbnailPreviewPage() {
               onChange={e => setKeyword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && analyze()}
               placeholder={t('Ej: cómo editar vídeos', 'Eg: how to edit videos')}
-              className="soft-field w-full text-sm mb-4"
+              className="yv-input w-full text-sm mb-4"
             />
             <button
               onClick={analyze}
@@ -348,7 +350,7 @@ export default function ThumbnailPreviewPage() {
             </button>
 
             {!thumbnailPreview && (
-              <p className="text-zinc-600 text-[10px] font-mono-jb mt-3 text-center">
+              <p className="text-[10px] font-mono-jb mt-3 text-center" style={{ color: 'var(--yv-text-4)' }}>
                 {t('Puedes analizar sin thumbnail — verás solo los competidores', 'You can analyze without a thumbnail — you\'ll only see competitors')}
               </p>
             )}
@@ -356,8 +358,8 @@ export default function ThumbnailPreviewPage() {
         </div>
 
         {error && (
-          <div className="soft-card p-4 mb-6" style={{ borderColor: 'rgba(232,77,91,0.3)' }}>
-            <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>
+          <div className="yv-card p-4 mb-6" style={{ borderColor: 'rgba(232,77,91,0.3)' }}>
+            <p className="text-sm" style={{ color: 'var(--yv-brand)' }}>{error}</p>
           </div>
         )}
 
@@ -387,7 +389,7 @@ export default function ThumbnailPreviewPage() {
 
               {userThumb && (
                 <div className="flex items-center gap-3">
-                  <span className="font-mono-jb text-[10px] text-zinc-600">{t('Posición:', 'Position:')}</span>
+                  <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{t('Posición:', 'Position:')}</span>
                   <input
                     type="range"
                     min={0}
@@ -396,17 +398,17 @@ export default function ThumbnailPreviewPage() {
                     onChange={e => setInsertPosition(Number(e.target.value))}
                     className="w-24 accent-red-600"
                   />
-                  <span className="font-mono-jb text-[11px] text-zinc-400">#{insertPosition + 1}</span>
+                  <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>#{insertPosition + 1}</span>
                 </div>
               )}
             </div>
 
             {/* YouTube simulation */}
-            <div className="soft-card p-5 overflow-hidden" style={{ background: '#0f0f0f' }}>
+            <div className="yv-card p-5 overflow-hidden" style={{ background: '#0f0f0f' }}>
               {/* Fake YouTube search bar */}
               <div className="flex items-center gap-2 mb-5 px-3 py-2 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                <span className="text-zinc-400 text-sm">{keyword}</span>
+                <span className="text-sm" style={{ color: 'var(--yv-text-2)' }}>{keyword}</span>
               </div>
 
               {/* Search view */}
@@ -453,12 +455,12 @@ export default function ThumbnailPreviewPage() {
                     <div className="aspect-video rounded-xl mb-4 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <div className="text-center">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 8 6 4-6 4z"/></svg>
-                        <p className="text-zinc-600 text-xs font-mono-jb mt-2">{t('Vídeo principal', 'Main video')}</p>
+                        <p className="text-xs font-mono-jb mt-2" style={{ color: 'var(--yv-text-4)' }}>{t('Vídeo principal', 'Main video')}</p>
                       </div>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <p className="font-mono-jb text-[10px] text-zinc-600 uppercase tracking-wider mb-2">{t('Sugeridos', 'Up next')}</p>
+                    <p className="font-mono-jb text-[10px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-4)' }}>{t('Sugeridos', 'Up next')}</p>
                     {feedItems.map(item => (
                       <YTSuggestedItem
                         key={item.videoId}
@@ -478,7 +480,7 @@ export default function ThumbnailPreviewPage() {
 
             {/* CTR Analysis */}
             {ctrAnalysis && (
-              <div className="soft-card p-6">
+              <div className="yv-card p-6">
                 <div className="flex items-start justify-between mb-5">
                   <div>
                     <h3 className="font-display font-bold text-lg text-white flex items-center gap-2">
@@ -487,13 +489,13 @@ export default function ThumbnailPreviewPage() {
                       </svg>
                       {t('Análisis CTR', 'CTR Analysis')}
                     </h3>
-                    <p className="text-zinc-500 text-xs font-mono-jb mt-1">{ctrAnalysis.summary}</p>
+                    <p className="yv-muted text-xs font-mono-jb mt-1">{ctrAnalysis.summary}</p>
                   </div>
                   <div className="text-center flex-shrink-0 ml-4">
                     <div className="font-display font-bold text-4xl" style={{ color: scoreColor(ctrAnalysis.score) }}>
                       {ctrAnalysis.score}
                     </div>
-                    <div className="font-mono-jb text-[10px] text-zinc-500 tracking-wider">CTR SCORE</div>
+                    <div className="font-mono-jb text-[10px] yv-muted tracking-wider">CTR SCORE</div>
                   </div>
                 </div>
 
@@ -501,7 +503,7 @@ export default function ThumbnailPreviewPage() {
                   {ctrAnalysis.breakdown.map((b, i) => (
                     <div key={i} className="rounded-lg border p-3" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)' }}>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono-jb text-[10px] text-zinc-500 truncate">{b.category}</span>
+                        <span className="font-mono-jb text-[10px] yv-muted truncate">{b.category}</span>
                         <span className="font-display font-bold text-sm" style={{ color: scoreColor(b.score) }}>{b.score}</span>
                       </div>
                       {/* Score bar */}
@@ -511,7 +513,7 @@ export default function ThumbnailPreviewPage() {
                           style={{ width: `${b.score}%`, background: scoreColor(b.score) }}
                         />
                       </div>
-                      <p className="text-zinc-400 text-[10px] leading-relaxed">{b.tip}</p>
+                      <p className="text-[10px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>{b.tip}</p>
                     </div>
                   ))}
                 </div>
@@ -520,8 +522,8 @@ export default function ThumbnailPreviewPage() {
 
             {/* No thumbnail notice */}
             {!thumbnailPreview && (
-              <div className="soft-card p-5 text-center" style={{ borderColor: 'rgba(255,232,0,0.2)', background: 'rgba(255,232,0,0.03)' }}>
-                <p className="text-zinc-400 text-sm">
+              <div className="yv-card p-5 text-center" style={{ borderColor: 'rgba(255,232,0,0.2)', background: 'rgba(255,232,0,0.03)' }}>
+                <p className="text-sm" style={{ color: 'var(--yv-text-2)' }}>
                   {t(
                     'Sube tu thumbnail para verlo insertado entre los competidores y obtener análisis CTR con IA.',
                     'Upload your thumbnail to see it inserted among competitors and get AI CTR analysis.'
@@ -536,14 +538,14 @@ export default function ThumbnailPreviewPage() {
         {competitors.length === 0 && !loading && !error && (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: 'rgba(232,77,91,0.1)', border: '1px solid rgba(232,77,91,0.2)' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="1.5">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="1.5">
                 <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
               </svg>
             </div>
             <p className="font-display font-bold text-xl text-white mb-2">
               {t('Compara tu thumbnail', 'Compare your thumbnail')}
             </p>
-            <p className="text-zinc-600 text-sm font-mono-jb max-w-md mx-auto">
+            <p className="text-sm font-mono-jb max-w-md mx-auto" style={{ color: 'var(--yv-text-4)' }}>
               {t(
                 'Sube tu thumbnail, escribe la keyword objetivo, y visualiza cómo se ve junto a los competidores reales en YouTube.',
                 'Upload your thumbnail, enter the target keyword, and see how it looks next to real competitors on YouTube.'

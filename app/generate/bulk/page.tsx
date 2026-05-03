@@ -152,7 +152,7 @@ export default function BulkGeneratePage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Generacion masiva', 'Bulk generation')}</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesion para usar esta herramienta.', 'Sign in to use this tool.')}</p>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesion para usar esta herramienta.', 'Sign in to use this tool.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesion', 'Sign in')}</a>
         </div>
       </div>
@@ -165,20 +165,20 @@ export default function BulkGeneratePage() {
       <div className="yv-page">
 
         {/* Page title */}
-        <div className="mb-10">
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            {t('GENERACION MASIVA', 'BULK GENERATION')}
-          </p>
-          <h1 className="font-display font-bold text-4xl md:text-5xl text-white leading-tight">
-            {t('Genera contenido', 'Generate content')}<br />
-            <span style={{ color: 'var(--red)' }}>{t('en lote.', 'in bulk.')}</span>
-          </h1>
-          <p className="text-zinc-500 mt-3 text-sm font-mono-jb max-w-xl">
-            {t(
-              'Introduce hasta 10 temas y genera contenido para todos a la vez. Cada generacion usa 1 credito.',
-              'Enter up to 10 topics and generate content for all at once. Each generation uses 1 credit.',
-            )}
-          </p>
+        <div className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('GENERACION MASIVA', 'BULK GENERATION')}</span>
+            <h1 className="yv-page-header__title">
+              {t('Genera contenido', 'Generate content')}{' '}
+              <span style={{ color: 'var(--yv-brand)' }}>{t('en lote.', 'in bulk.')}</span>
+            </h1>
+            <p className="yv-page-header__desc">
+              {t(
+                'Introduce hasta 10 temas y genera contenido para todos a la vez. Cada generacion usa 1 credito.',
+                'Enter up to 10 topics and generate content for all at once. Each generation uses 1 credit.',
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Error */}
@@ -189,10 +189,10 @@ export default function BulkGeneratePage() {
         )}
 
         {/* Form */}
-        <div className="rounded-xl border border-white/10 p-6 mb-8" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <div className="yv-card p-6 mb-8">
 
           {/* Template selector */}
-          <p className="font-mono-jb text-[11px] text-zinc-500 uppercase tracking-wider mb-3">
+          <p className="font-mono-jb text-[11px] uppercase tracking-wider mb-3" style={{ color: 'var(--yv-text-3)' }}>
             {t('Tipo de contenido', 'Content type')}
           </p>
           <div className="flex flex-wrap gap-2 mb-6">
@@ -202,8 +202,8 @@ export default function BulkGeneratePage() {
                 onClick={() => setTemplate(key)}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-mono-jb transition"
                 style={{
-                  borderColor: template === key ? 'var(--red)' : 'rgba(255,255,255,0.08)',
-                  background: template === key ? 'rgba(155,32,32,0.15)' : 'rgba(255,255,255,0.02)',
+                  borderColor: template === key ? 'var(--yv-brand-border)' : 'var(--yv-border)',
+                  background: template === key ? 'var(--yv-brand-soft)' : 'var(--yv-bg-2)',
                   color: template === key ? 'white' : '#71717a',
                 }}
               >
@@ -219,7 +219,7 @@ export default function BulkGeneratePage() {
           <div className="flex flex-wrap gap-4 mb-6">
             {tmpl.options.includes('tono') && (
               <div>
-                <p className="font-mono-jb text-[10px] text-zinc-600 mb-1.5">{t('Tono', 'Tone')}</p>
+                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Tono', 'Tone')}</p>
                 <div className="flex gap-1.5">
                   {TONE_OPTIONS.map(o => (
                     <button
@@ -240,7 +240,7 @@ export default function BulkGeneratePage() {
             )}
             {tmpl.options.includes('plataforma') && (
               <div>
-                <p className="font-mono-jb text-[10px] text-zinc-600 mb-1.5">{t('Plataforma', 'Platform')}</p>
+                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Plataforma', 'Platform')}</p>
                 <div className="flex gap-1.5">
                   {PLATFORM_OPTIONS.map(p => (
                     <button
@@ -261,7 +261,7 @@ export default function BulkGeneratePage() {
             )}
             {tmpl.options.includes('estilo') && (
               <div>
-                <p className="font-mono-jb text-[10px] text-zinc-600 mb-1.5">{t('Estilo', 'Style')}</p>
+                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Estilo', 'Style')}</p>
                 <div className="flex gap-1.5">
                   {STYLE_OPTIONS.map(o => (
                     <button
@@ -282,7 +282,7 @@ export default function BulkGeneratePage() {
             )}
             {tmpl.options.includes('nicho') && (
               <div>
-                <p className="font-mono-jb text-[10px] text-zinc-600 mb-1.5">{t('Nicho', 'Niche')}</p>
+                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Nicho', 'Niche')}</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {NICHE_OPTIONS.map(o => (
                     <button
@@ -303,19 +303,19 @@ export default function BulkGeneratePage() {
             )}
             {tmpl.options.includes('keywords') && (
               <div className="w-full">
-                <p className="font-mono-jb text-[10px] text-zinc-600 mb-1.5">Keywords</p>
+                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>Keywords</p>
                 <input
                   value={keywords}
                   onChange={e => setKeywords(e.target.value)}
                   placeholder={t('keyword1, keyword2, keyword3...', 'keyword1, keyword2, keyword3...')}
-                  className="w-full px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
+                  className="w-full px-4 py-2.5 yv-input text-sm font-mono-jb"
                 />
               </div>
             )}
           </div>
 
           {/* Topics textarea */}
-          <p className="font-mono-jb text-[11px] text-zinc-500 uppercase tracking-wider mb-2">
+          <p className="font-mono-jb text-[11px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>
             {t('Temas (uno por linea)', 'Topics (one per line)')}
           </p>
           <textarea
@@ -326,9 +326,9 @@ export default function BulkGeneratePage() {
               'Como ganar dinero en YouTube\nMejor camara para YouTube 2026\n10 errores de YouTubers principiantes\n...',
               'How to make money on YouTube\nBest camera for YouTube 2026\n10 beginner YouTuber mistakes\n...',
             )}
-            className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30 resize-none mb-2"
+            className="w-full px-4 py-3 yv-input text-sm font-mono-jb resize-none mb-2"
           />
-          <p className="font-mono-jb text-[10px] text-zinc-600 mb-6">
+          <p className="font-mono-jb text-[10px] mb-6" style={{ color: 'var(--yv-text-4)' }}>
             {topics.length}/10 {t('temas', 'topics')}
           </p>
 
@@ -360,19 +360,21 @@ export default function BulkGeneratePage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-bold text-lg text-white">
                 {t('Resultados', 'Results')}
-                <span className="ml-2 font-mono-jb text-[11px] text-zinc-500">{progress}</span>
+                <span className="ml-2 font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>{progress}</span>
               </h2>
               <div className="flex gap-2">
                 <button
                   onClick={copyAll}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-mono-jb text-zinc-400 hover:text-white hover:border-white/25 transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono-jb hover:text-white transition"
+                  style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                   {copied === -1 ? t('Copiado!', 'Copied!') : t('Copiar todo', 'Copy all')}
                 </button>
                 <button
                   onClick={exportCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-mono-jb text-zinc-400 hover:text-white hover:border-white/25 transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono-jb hover:text-white transition"
+                  style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   CSV
@@ -384,12 +386,11 @@ export default function BulkGeneratePage() {
               {results.map((r, i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-white/10 overflow-hidden"
-                  style={{ background: 'rgba(255,255,255,0.02)' }}
+                  className="yv-card yv-card--flush overflow-hidden"
                 >
-                  <div className="flex items-center justify-between p-4 border-b border-white/5">
+                  <div className="yv-card__header">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: 'rgba(155,32,32,0.15)', color: 'var(--red)' }}>
+                      <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: 'var(--yv-brand-soft)', color: 'var(--yv-brand)' }}>
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <span className="text-sm text-white font-medium">{r.topic}</span>
@@ -397,17 +398,18 @@ export default function BulkGeneratePage() {
                     {!r.error && (
                       <button
                         onClick={() => copyOne(i)}
-                        className="font-mono-jb text-[10px] text-zinc-500 hover:text-white transition"
+                        className="font-mono-jb text-[10px] hover:text-white transition"
+                        style={{ color: 'var(--yv-text-3)' }}
                       >
                         {copied === i ? t('Copiado!', 'Copied!') : t('Copiar', 'Copy')}
                       </button>
                     )}
                   </div>
-                  <div className="p-4">
+                  <div className="yv-card__body">
                     {r.error ? (
                       <p className="text-sm text-red-400 font-mono-jb">Error: {r.error}</p>
                     ) : (
-                      <pre className="text-sm text-zinc-300 whitespace-pre-wrap font-mono-jb leading-relaxed max-h-64 overflow-y-auto">
+                      <pre className="text-sm whitespace-pre-wrap font-mono-jb leading-relaxed max-h-64 overflow-y-auto" style={{ color: 'var(--yv-text-2)' }}>
                         {r.content}
                       </pre>
                     )}

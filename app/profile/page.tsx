@@ -107,8 +107,8 @@ export default function ProfilePage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--ink)' }}>
-        <div className="w-8 h-8 rounded-full border-2 border-transparent spin-r" style={{ borderTopColor: 'var(--red)' }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-bg-1)' }}>
+        <div className="w-8 h-8 rounded-full border-2 border-transparent spin-r" style={{ borderTopColor: 'var(--yv-brand)' }} />
       </div>
     );
   }
@@ -126,31 +126,31 @@ export default function ProfilePage() {
       <main className="yv-page space-y-6">
 
         {/* Page title */}
-        <div>
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
-            {t('AJUSTES', 'SETTINGS')}
-          </p>
-          <h1 className="font-display font-bold text-3xl">{t('Mi perfil', 'My profile')}</h1>
+        <div className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('AJUSTES', 'SETTINGS')}</span>
+            <h1 className="yv-page-header__title">{t('Mi perfil', 'My profile')}</h1>
+          </div>
         </div>
 
         {/* Avatar + name */}
-        <div className="soft-card p-6">
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-5">{t('Información personal', 'Personal information')}</p>
+        <div className="yv-card">
+          <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-5" style={{ color: 'var(--yv-text-3)' }}>{t('Información personal', 'Personal information')}</p>
           <div className="flex items-center gap-5 mb-6">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-2xl flex-shrink-0"
-              style={{ background: 'var(--red)', color: '#fff', boxShadow: '0 8px 24px -8px rgba(232,77,91,0.6)' }}>
+              style={{ background: 'var(--yv-brand)', color: '#fff', boxShadow: '0 8px 24px -8px rgba(232,77,91,0.6)' }}>
               {initials}
             </div>
             <div>
               <p className="font-display font-bold text-xl text-white">{displayName}</p>
-              <p className="font-mono-jb text-xs text-zinc-500 mt-0.5">{data?.user?.email}</p>
+              <p className="font-mono-jb text-xs mt-0.5" style={{ color: 'var(--yv-text-3)' }}>{data?.user?.email}</p>
               {isPro && <span className="red-tape text-[9px] mt-1 inline-block">PRO</span>}
             </div>
           </div>
 
           {/* Name field */}
           <div className="space-y-2">
-            <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500">{t('Nombre', 'Name')}</label>
+            <label className="block font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Nombre', 'Name')}</label>
             {editingName ? (
               <div className="flex gap-2">
                 <input
@@ -158,20 +158,20 @@ export default function ProfilePage() {
                   value={nameInput}
                   onChange={e => setNameInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
-                  className="soft-field flex-1 py-2.5 px-3 text-sm"
+                  className="yv-input flex-1 py-2.5 px-3 text-sm"
                   style={{ borderRadius: '10px' }}
                 />
                 <button onClick={handleSaveName} disabled={savingName || !nameInput.trim()}
                   className="btn-offset px-4 py-2.5 text-[12px] font-display disabled:opacity-50">
                   {savingName ? '...' : t('Guardar', 'Save')}
                 </button>
-                <button onClick={() => setEditingName(false)} className="px-3 text-zinc-500 hover:text-white transition font-mono-jb text-sm">✕</button>
+                <button onClick={() => setEditingName(false)} className="px-3 hover:text-white transition font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>✕</button>
               </div>
             ) : (
               <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }}>
-                <span className="text-sm text-zinc-300">{data?.user?.name || <span className="text-zinc-600">{t('Sin nombre', 'No name set')}</span>}</span>
+                <span className="text-sm" style={{ color: 'var(--yv-text-2)' }}>{data?.user?.name || <span style={{ color: 'var(--yv-text-4)' }}>{t('Sin nombre', 'No name set')}</span>}</span>
                 <button onClick={() => { setNameInput(data?.user?.name ?? ''); setEditingName(true); }}
-                  className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
+                  className="font-mono-jb text-[10px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Editar', 'Edit')}
                 </button>
               </div>
@@ -183,17 +183,17 @@ export default function ProfilePage() {
 
           {/* Email (read-only) */}
           <div className="mt-4 space-y-2">
-            <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500">Email</label>
+            <label className="block font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>Email</label>
             <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)' }}>
-              <span className="text-sm text-zinc-500">{data?.user?.email}</span>
-              <span className="font-mono-jb text-[9px] text-zinc-700 uppercase">{t('No editable', 'Read only')}</span>
+              <span className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{data?.user?.email}</span>
+              <span className="font-mono-jb text-[9px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('No editable', 'Read only')}</span>
             </div>
           </div>
         </div>
 
         {/* Language */}
-        <div className="soft-card p-6">
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-4">{t('Idioma', 'Language')}</p>
+        <div className="yv-card">
+          <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Idioma', 'Language')}</p>
           <div className="flex gap-3">
             {(['es', 'en'] as Lang[]).map(l => (
               <button
@@ -201,8 +201,8 @@ export default function ProfilePage() {
                 onClick={() => handleLangChange(l)}
                 className="flex-1 py-3 rounded-xl font-display font-bold text-sm transition"
                 style={{
-                  background: lang === l ? 'var(--red)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${lang === l ? 'var(--red)' : 'var(--line)'}`,
+                  background: lang === l ? 'var(--yv-brand)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${lang === l ? 'var(--yv-brand)' : 'var(--line)'}`,
                   color: lang === l ? '#fff' : '#71717a',
                   boxShadow: lang === l ? '0 6px 20px -8px rgba(232,77,91,0.6)' : 'none',
                 }}
@@ -211,18 +211,18 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
-          <p className="font-mono-jb text-[10px] text-zinc-600 mt-3">
+          <p className="font-mono-jb text-[10px] mt-3" style={{ color: 'var(--yv-text-4)' }}>
             {t('El idioma se aplica a toda la aplicación.', 'Language applies across the entire app.')}
           </p>
         </div>
 
         {/* Plan */}
-        <div className="soft-card p-6">
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-4">{t('Plan', 'Plan')}</p>
+        <div className="yv-card">
+          <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</p>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display font-bold text-lg text-white">{isPro ? 'Pro' : 'Free'}</p>
-              <p className="font-mono-jb text-[11px] text-zinc-500 mt-1">
+              <p className="font-mono-jb text-[11px] mt-1" style={{ color: 'var(--yv-text-3)' }}>
                 {isPro
                   ? (data?.subscription?.cancelAtPeriodEnd
                       ? t('Cancela el ', 'Cancels on ') + (data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—')
@@ -239,12 +239,12 @@ export default function ProfilePage() {
         </div>
 
         {/* Security */}
-        <div className="soft-card p-6">
+        <div className="yv-card">
           <div className="flex items-center justify-between mb-4">
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500">{t('Seguridad', 'Security')}</p>
+            <p className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Seguridad', 'Security')}</p>
             {!showPwdForm && (
               <button onClick={() => setShowPwdForm(true)}
-                className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
+                className="font-mono-jb text-[10px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                 {t('Cambiar contraseña', 'Change password')}
               </button>
             )}
@@ -252,8 +252,8 @@ export default function ProfilePage() {
 
           {!showPwdForm && !pwdSuccess && (
             <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)' }}>
-              <span className="text-sm text-zinc-500">••••••••••••</span>
-              <span className="font-mono-jb text-[9px] text-zinc-700 uppercase">{t('Protegida', 'Protected')}</span>
+              <span className="text-sm" style={{ color: 'var(--yv-text-3)' }}>••••••••••••</span>
+              <span className="font-mono-jb text-[9px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('Protegida', 'Protected')}</span>
             </div>
           )}
 
@@ -266,28 +266,28 @@ export default function ProfilePage() {
           {showPwdForm && !pwdSuccess && (
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
-                <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-1.5">
+                <label className="block font-mono-jb text-[10px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Contraseña actual', 'Current password')}
                 </label>
                 <PasswordInput required value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
                   className="py-2.5 px-3 text-sm" />
               </div>
               <div>
-                <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-1.5">
+                <label className="block font-mono-jb text-[10px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Nueva contraseña', 'New password')}
                 </label>
                 <PasswordInput required value={newPwd} onChange={e => setNewPwd(e.target.value)}
                   className="py-2.5 px-3 text-sm" placeholder={t('Mínimo 8 caracteres', 'At least 8 characters')} />
               </div>
               <div>
-                <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-1.5">
+                <label className="block font-mono-jb text-[10px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Confirmar contraseña', 'Confirm password')}
                 </label>
                 <PasswordInput required value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
                   className="py-2.5 px-3 text-sm" />
               </div>
               {pwdError && (
-                <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
+                <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'var(--yv-brand-soft)', border: '1px solid var(--yv-brand-border)', color: '#f87171' }}>
                   ⚠️ {pwdError}
                 </div>
               )}
@@ -299,7 +299,7 @@ export default function ProfilePage() {
                     : t('Guardar contraseña', 'Save password')}
                 </button>
                 <button type="button" onClick={() => { setShowPwdForm(false); setPwdError(''); setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }}
-                  className="px-4 py-2.5 font-mono-jb text-[11px] text-zinc-500 hover:text-white transition">
+                  className="px-4 py-2.5 font-mono-jb text-[11px] hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Cancelar', 'Cancel')}
                 </button>
               </div>
@@ -308,19 +308,19 @@ export default function ProfilePage() {
         </div>
 
         {/* Danger zone */}
-        <div className="soft-card p-6" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
+        <div className="yv-card" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
           <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4" style={{ color: '#ef4444' }}>{t('Zona peligrosa', 'Danger zone')}</p>
           <button onClick={() => signOut({ callbackUrl: '/' })}
-            className="font-mono-jb text-[12px] text-zinc-500 hover:text-white transition">
+            className="font-mono-jb text-[12px] hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
             {t('Cerrar sesión en todos los dispositivos', 'Sign out of all devices')}
           </button>
         </div>
 
         {/* Footer links */}
-        <div className="flex justify-center gap-6 font-mono-jb text-xs text-zinc-700 pt-2">
-          <a href="/terms" className="hover:text-zinc-400 transition">{t('Términos', 'Terms')}</a>
-          <a href="/privacy" className="hover:text-zinc-400 transition">{t('Privacidad', 'Privacy')}</a>
-          <a href="/legal" className="hover:text-zinc-400 transition">{t('Aviso Legal', 'Legal Notice')}</a>
+        <div className="flex justify-center gap-6 font-mono-jb text-xs pt-2" style={{ color: 'var(--yv-text-4)' }}>
+          <a href="/terms" className="hover:opacity-80 transition">{t('Términos', 'Terms')}</a>
+          <a href="/privacy" className="hover:opacity-80 transition">{t('Privacidad', 'Privacy')}</a>
+          <a href="/legal" className="hover:opacity-80 transition">{t('Aviso Legal', 'Legal Notice')}</a>
         </div>
 
       </main>

@@ -46,7 +46,7 @@ function StatusBadge({ status }: { status: string }) {
 function PreviewModal({ data, onClose }: { data: Record<string, string | null>; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.9)' }}>
-      <div className="w-full max-w-2xl rounded-2xl overflow-hidden soft-card" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+      <div className="w-full max-w-2xl rounded-2xl overflow-hidden yv-card" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--line)' }}>
           <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--text)' }}>Preview — sin publicar</h3>
           <button onClick={onClose} className="text-sm" style={{ color: 'var(--text-faint)' }}>✕</button>
@@ -119,7 +119,7 @@ export default function SocialAdminPage() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen grid-bg grain flex items-center justify-center" style={{ background: 'var(--ink)' }}>
-        <div className="w-6 h-6 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: 'var(--red)' }} />
+        <div className="w-6 h-6 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: 'var(--yv-brand)' }} />
       </div>
     );
   }
@@ -133,9 +133,11 @@ export default function SocialAdminPage() {
       <div className="yv-page yv-page--wide space-y-8">
 
         {/* Header */}
-        <div>
-          <h1 className="font-display text-2xl font-bold">Agente Social</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-faint)' }}>Panel de control del agente de redes sociales</p>
+        <div className="yv-page-header">
+          <div className="yv-page-header__left">
+            <h1 className="yv-page-header__title">Agente Social</h1>
+            <p className="yv-page-header__desc">Panel de control del agente de redes sociales</p>
+          </div>
         </div>
 
         {/* Estado */}
@@ -147,7 +149,7 @@ export default function SocialAdminPage() {
               Facebook: data.status.facebook, Instagram: data.status.instagram,
               LinkedIn: data.status.linkedin, TikTok: null, Twitter: null,
             }) as [string, boolean | null][]).map(([label, connected]) => (
-              <div key={label} className="soft-card rounded-xl p-3">
+              <div key={label} className="yv-card p-3">
                 <div className="text-xs mb-1" style={{ color: 'var(--text-faint)' }}>
                   {PLATFORM_EMOJI[label.toLowerCase()] ?? '🔗'} {label}
                 </div>
@@ -181,7 +183,7 @@ export default function SocialAdminPage() {
         {/* Publicaciones */}
         <section>
           <p className="text-xs font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Historial de publicaciones</p>
-          <div className="soft-card rounded-2xl overflow-hidden">
+          <div className="yv-card overflow-hidden">
             {!data?.posts.length ? (
               <p className="p-6 text-sm" style={{ color: 'var(--text-faint)' }}>Sin publicaciones aún.</p>
             ) : (
@@ -222,7 +224,7 @@ export default function SocialAdminPage() {
         {/* Mensajes */}
         <section>
           <p className="text-xs font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Mensajes recibidos</p>
-          <div className="soft-card rounded-2xl overflow-hidden">
+          <div className="yv-card overflow-hidden">
             {!data?.messages.length ? (
               <p className="p-6 text-sm" style={{ color: 'var(--text-faint)' }}>Sin mensajes procesados aún.</p>
             ) : (

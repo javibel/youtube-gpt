@@ -70,7 +70,7 @@ export default function AchievementsPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-2)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -78,11 +78,11 @@ export default function AchievementsPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-2)' }}>
         <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Logros', 'Achievements')}</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para ver tus logros.', 'Sign in to view your achievements.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
+          <h1 className="yv-h1" style={{ marginBottom: 16 }}>{t('Logros', 'Achievements')}</h1>
+          <p style={{ color: 'var(--yv-text-3)', fontFamily: 'var(--yv-font-mono)', fontSize: 'var(--yv-text-sm)', marginBottom: 24 }}>{t('Inicia sesión para ver tus logros.', 'Sign in to view your achievements.')}</p>
+          <a href="/login" className="yv-btn yv-btn--primary" style={{ padding: '0 32px', height: 42 }}>{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
     );
@@ -100,47 +100,53 @@ export default function AchievementsPage() {
 
   return (
     <DashboardShell>
-      {/* Header */}
-      <div className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
-        <div className="yv-page">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--red)' }}>
-            {t('LOGROS', 'ACHIEVEMENTS')}
-          </p>
-          <h1 className="font-display font-bold text-3xl md:text-4xl text-white">
-            {t('Tus logros', 'Your Achievements')}
-          </h1>
+      <div className="yv-page" style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+        {/* §3 Page header */}
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('Gamificación', 'Gamification')}</span>
+            <h1 className="yv-page-header__title">{t('Tus logros', 'Your Achievements')}</h1>
+            {data && (
+              <p className="yv-page-header__desc">
+                {t(
+                  `Has conseguido ${data.totalUnlocked} de ${data.totalAvailable} logros. Sigue creando para desbloquear el resto.`,
+                  `You've unlocked ${data.totalUnlocked} of ${data.totalAvailable} achievements. Keep creating to unlock the rest.`
+                )}
+              </p>
+            )}
+          </div>
           {data && (
-            <div className="flex items-center gap-4 mt-3">
-              <div className="flex-1 max-w-xs">
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${pct}%`, background: pct >= 80 ? '#22c55e' : pct >= 40 ? '#FFE800' : 'var(--red)' }}
-                  />
-                </div>
-              </div>
-              <span className="font-mono-jb text-sm text-zinc-400">
+            <div className="yv-page-header__actions">
+              <span style={{
+                fontFamily: 'var(--yv-font-mono)', fontSize: 'var(--yv-text-xs)',
+                color: 'var(--yv-text-3)',
+                background: 'var(--yv-bg-3)',
+                border: '1px solid var(--yv-border-subtle)',
+                padding: '2px 8px', borderRadius: 999,
+              }}>
                 {data.totalUnlocked}/{data.totalAvailable}
-                <span className="text-zinc-600 ml-1">({pct}%)</span>
               </span>
             </div>
           )}
-        </div>
-      </div>
+        </header>
 
-      <div className="yv-page space-y-8">
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           </div>
         )}
 
-        {error && <p className="text-red-400 font-mono-jb text-sm text-center py-8">{error}</p>}
+        {error && <p style={{ color: 'var(--yv-brand)', fontFamily: 'var(--yv-font-mono)', fontSize: 'var(--yv-text-sm)', textAlign: 'center', padding: '32px 0' }}>{error}</p>}
 
-        {/* Newly unlocked toast */}
+        {/* §4.2 Newly unlocked toast — highlighted card state */}
         {data && data.newlyUnlocked.length > 0 && (
-          <div className="rounded-xl border p-4" style={{ background: 'rgba(34,197,94,0.08)', borderColor: 'rgba(34,197,94,0.25)' }}>
-            <p className="font-display font-bold text-sm text-green-400 mb-2">
+          <div style={{
+            background: 'var(--yv-success-soft)',
+            border: '1px solid rgba(34,197,94,0.25)',
+            borderRadius: 'var(--yv-radius-lg)',
+            padding: 'var(--yv-space-4)',
+          }}>
+            <p style={{ fontWeight: 600, fontSize: 'var(--yv-text-base)', color: 'var(--yv-success)', marginBottom: 8 }}>
               {t('Nuevos logros desbloqueados!', 'New achievements unlocked!')}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -148,7 +154,7 @@ export default function AchievementsPage() {
                 const def = data.achievements.find(a => a.key === key);
                 if (!def) return null;
                 return (
-                  <span key={key} className="inline-flex items-center gap-1.5 font-mono-jb text-xs px-3 py-1.5 rounded-lg" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                  <span key={key} className="yv-badge yv-badge--success">
                     <span>{def.icon}</span> {def.label[lang]}
                   </span>
                 );
@@ -157,53 +163,87 @@ export default function AchievementsPage() {
           </div>
         )}
 
-        {/* Achievement categories */}
-        {grouped.map(group => (
-          <div key={group.category}>
-            <div className="flex items-center gap-2 mb-4">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d={CATEGORY_ICONS[group.category]} />
-              </svg>
-              <h2 className="font-display font-bold text-lg text-white">
-                {CATEGORY_LABELS[group.category][lang]}
-              </h2>
-              <span className="font-mono-jb text-[10px] text-zinc-600">
-                {group.items.filter(a => a.unlocked).length}/{group.items.length}
-              </span>
-            </div>
+        {/* §7 Achievement categories as sections */}
+        {grouped.map(group => {
+          const unlockedCount = group.items.filter(a => a.unlocked).length;
+          return (
+            <section key={group.category}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={CATEGORY_ICONS[group.category]} />
+                </svg>
+                <h2 style={{
+                  font: '600 17px/1.2 var(--yv-font-sans)',
+                  color: 'var(--yv-text-1)', margin: 0,
+                }}>
+                  {CATEGORY_LABELS[group.category][lang]}
+                </h2>
+                {/* §6.2 Counter badge */}
+                <span style={{
+                  fontFamily: 'var(--yv-font-mono)', fontSize: 11,
+                  color: 'var(--yv-text-3)',
+                  background: 'var(--yv-bg-3)',
+                  border: '1px solid var(--yv-border-subtle)',
+                  padding: '2px 8px', borderRadius: 999,
+                }}>{unlockedCount}/{group.items.length}</span>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {group.items.map(achievement => (
-                <div
-                  key={achievement.key}
-                  className={`rounded-xl border p-4 transition ${achievement.unlocked ? 'border-white/15' : 'border-white/5 opacity-50'}`}
-                  style={{ background: achievement.unlocked ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)' }}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className={`text-2xl ${achievement.unlocked ? '' : 'grayscale'}`}>
-                      {achievement.icon}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-display font-bold text-sm text-white">{achievement.label[lang]}</h3>
-                      <p className="font-mono-jb text-[10px] text-zinc-500 mt-0.5">{achievement.desc[lang]}</p>
-                      {achievement.unlocked && achievement.unlockedAt && (
-                        <p className="font-mono-jb text-[9px] text-zinc-600 mt-1.5">
-                          {fmtDate(achievement.unlockedAt, lang)}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 14,
+              }}>
+                {group.items.map(achievement => (
+                  <div
+                    key={achievement.key}
+                    style={achievement.unlocked ? {
+                      /* §4.2 Active/earned state */
+                      background: 'var(--yv-bg-2)',
+                      border: '1px solid var(--yv-brand-border)',
+                      boxShadow: '0 0 0 1px var(--yv-brand-soft) inset, 0 12px 24px -16px rgba(232,77,91,.5)',
+                      borderRadius: 12, padding: 16,
+                    } : {
+                      /* §4.2 Locked/empty state */
+                      background: 'transparent',
+                      border: '1px dashed var(--yv-border)',
+                      borderRadius: 12, padding: 16,
+                      opacity: 0.6,
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span style={{ fontSize: 24 }} className={achievement.unlocked ? '' : 'grayscale'}>
+                        {achievement.icon}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <h3 style={{ font: '600 14px/1.3 var(--yv-font-sans)', color: 'var(--yv-text-1)' }}>
+                          {achievement.label[lang]}
+                        </h3>
+                        <p style={{ fontFamily: 'var(--yv-font-mono)', fontSize: 'var(--yv-text-xs)', color: 'var(--yv-text-2)', marginTop: 4 }}>
+                          {achievement.desc[lang]}
                         </p>
-                      )}
-                      {!achievement.unlocked && (
-                        <div className="mt-1.5 flex items-center gap-1">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                          <span className="font-mono-jb text-[9px] text-zinc-600">{t('Bloqueado', 'Locked')}</span>
-                        </div>
-                      )}
+                        {achievement.unlocked && achievement.unlockedAt && (
+                          <p style={{ fontFamily: 'var(--yv-font-mono)', fontSize: 11, color: 'var(--yv-text-3)', marginTop: 6 }}>
+                            {fmtDate(achievement.unlockedAt, lang)}
+                          </p>
+                        )}
+                        {!achievement.unlocked && (
+                          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--yv-text-4)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <span style={{
+                              fontFamily: 'var(--yv-font-mono)', fontSize: 10, fontWeight: 600,
+                              color: 'var(--yv-text-4)',
+                              textTransform: 'uppercase', letterSpacing: '0.08em',
+                            }}>{t('Bloqueado', 'Locked')}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </DashboardShell>
   );

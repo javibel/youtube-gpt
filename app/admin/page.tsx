@@ -43,9 +43,9 @@ function Stars({ rating }: { rating: number }) {
   return <span className="text-sm">{[1,2,3,4,5].map(s => <span key={s} style={{ opacity: s <= rating ? 1 : 0.15 }}>⭐</span>)}</span>;
 }
 
-function StatCard({ label, value, sub, color = 'var(--red)' }: { label: string; value: string | number; sub?: string; color?: string }) {
+function StatCard({ label, value, sub, color = 'var(--yv-brand)' }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
-    <div className="soft-card rounded-2xl p-5">
+    <div className="yv-card p-5">
       <p className="text-2xl font-display font-bold stat-num" style={{ color }}>{value}</p>
       <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>{label}</p>
       {sub && <p className="text-xs mt-0.5 font-mono-jb" style={{ color: 'var(--text-faint)' }}>{sub}</p>}
@@ -164,7 +164,7 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen grid-bg grain flex items-center justify-center" style={{ background: 'var(--ink)' }}>
         <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: 'var(--red)' }} />
+          <div className="w-6 h-6 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: 'var(--yv-brand)' }} />
           <p className="text-xs font-mono-jb" style={{ color: 'var(--text-faint)' }}>Cargando panel...</p>
         </div>
       </div>
@@ -185,12 +185,12 @@ export default function AdminPage() {
       <div className="yv-page yv-page--wide space-y-8">
 
         {/* Header + exports */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-bold">Panel de administración</h1>
-            <p className="text-sm mt-1" style={{ color: 'var(--text-faint)' }}>Métricas en tiempo real de YTubViral</p>
+        <div className="yv-page-header">
+          <div className="yv-page-header__left">
+            <h1 className="yv-page-header__title">Panel de administración</h1>
+            <p className="yv-page-header__desc">Métricas en tiempo real de YTubViral</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="yv-page-header__actions flex-wrap">
             {[{ type: 'users', label: 'Usuarios' }, { type: 'generations', label: 'Generaciones' }, { type: 'subscriptions', label: 'Suscripciones' }].map(({ type, label }) => (
               <a key={type} href={`/api/admin/export?type=${type}`}
                 className="text-xs font-mono-jb px-3 py-2 rounded-lg transition"
@@ -211,15 +211,15 @@ export default function AdminPage() {
 
         {/* Este mes */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="soft-card rounded-2xl p-5">
+          <div className="yv-card p-5">
             <div className="flex items-center justify-between mb-1">
               <p className="text-sm font-display font-semibold">Nuevos usuarios este mes</p>
               <Trend current={thisMonth.newUsers} previous={thisMonth.newUsersLastMonth} />
             </div>
-            <p className="text-3xl font-display font-bold stat-num" style={{ color: 'var(--red)' }}>{thisMonth.newUsers}</p>
+            <p className="text-3xl font-display font-bold stat-num" style={{ color: 'var(--yv-brand)' }}>{thisMonth.newUsers}</p>
             <p className="text-xs mt-1 font-mono-jb" style={{ color: 'var(--text-faint)' }}>{thisMonth.newUsersLastMonth} el mes pasado</p>
           </div>
-          <div className="soft-card rounded-2xl p-5">
+          <div className="yv-card p-5">
             <div className="flex items-center justify-between mb-1">
               <p className="text-sm font-display font-semibold">Generaciones este mes</p>
               <Trend current={thisMonth.generations} previous={thisMonth.generationsLastMonth} />
@@ -231,13 +231,13 @@ export default function AdminPage() {
 
         {/* Actividad + templates */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="soft-card rounded-2xl p-5 lg:col-span-2">
+          <div className="yv-card p-5 lg:col-span-2">
             <p className="text-sm font-display font-semibold mb-4">Actividad últimos 7 días</p>
             <div className="flex items-end gap-2 h-28">
               {daily.map(d => (
                 <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-xs font-mono-jb" style={{ color: 'var(--text-faint)' }}>{d.count}</span>
-                  <div className="w-full rounded-t" style={{ height: `${Math.max((d.count / maxDaily) * 80, d.count > 0 ? 4 : 2)}px`, background: d.count > 0 ? 'var(--red)' : 'var(--line)', opacity: d.count === 0 ? 0.3 : 1 }} />
+                  <div className="w-full rounded-t" style={{ height: `${Math.max((d.count / maxDaily) * 80, d.count > 0 ? 4 : 2)}px`, background: d.count > 0 ? 'var(--yv-brand)' : 'var(--line)', opacity: d.count === 0 ? 0.3 : 1 }} />
                   <span className="text-xs font-mono-jb" style={{ color: 'var(--text-faint)' }}>
                     {new Date(d.date).toLocaleDateString('es-ES', { weekday: 'short' })}
                   </span>
@@ -245,7 +245,7 @@ export default function AdminPage() {
               ))}
             </div>
           </div>
-          <div className="soft-card rounded-2xl p-5">
+          <div className="yv-card p-5">
             <p className="text-sm font-display font-semibold mb-4">Templates este mes</p>
             {templateBreakdown.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--text-faint)' }}>Sin datos aún</p>
@@ -273,7 +273,7 @@ export default function AdminPage() {
 
         {/* Últimos usuarios + generaciones */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="soft-card rounded-2xl p-5">
+          <div className="yv-card p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-display font-semibold">Últimos registros</p>
               <span className="text-xs font-mono-jb" style={{ color: 'var(--text-faint)' }}>{overview.totalUsers} total</span>
@@ -323,7 +323,7 @@ export default function AdminPage() {
             </ul>
           </div>
 
-          <div className="soft-card rounded-2xl p-5">
+          <div className="yv-card p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-display font-semibold">Últimas generaciones</p>
               <span className="text-xs font-mono-jb" style={{ color: 'var(--text-faint)' }}>{overview.totalGenerations} total</span>
@@ -347,7 +347,7 @@ export default function AdminPage() {
         </div>
 
         {/* Feedback */}
-        <div className="soft-card rounded-2xl p-5">
+        <div className="yv-card p-5">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div>
               <p className="text-sm font-display font-semibold">Feedback de usuarios</p>
@@ -381,7 +381,7 @@ export default function AdminPage() {
         </div>
 
         {/* Reseñas */}
-        <div className="soft-card rounded-2xl p-5">
+        <div className="yv-card p-5">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <p className="text-sm font-display font-semibold">Reseñas de usuarios</p>
             <div className="flex gap-3 text-xs font-mono-jb">
@@ -429,7 +429,7 @@ export default function AdminPage() {
 
         {/* Gestión manual */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="soft-card rounded-2xl p-5">
+          <div className="yv-card p-5">
             <p className="text-sm font-display font-semibold mb-1">Crear usuario</p>
             <p className="text-xs mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Registra manualmente una cuenta nueva.</p>
             <form onSubmit={handleCreateUser} className="space-y-3">
@@ -443,7 +443,7 @@ export default function AdminPage() {
             </form>
           </div>
 
-          <div className="soft-card rounded-2xl p-5">
+          <div className="yv-card p-5">
             <p className="text-sm font-display font-semibold mb-1">Gestionar plan</p>
             <p className="text-xs mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Asigna Free, Pro o Business manualmente.</p>
             <form onSubmit={handleGrantPlan} className="space-y-3">
@@ -472,7 +472,7 @@ export default function AdminPage() {
             </form>
           </div>
 
-          <div className="soft-card rounded-2xl p-5">
+          <div className="yv-card p-5">
             <p className="text-sm font-display font-semibold mb-1">Enviar feedback</p>
             <p className="text-xs mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Envía el email de valoración a cualquier usuario (ignora el límite de 3 días).</p>
             <form onSubmit={handleSendFeedback} className="space-y-3">

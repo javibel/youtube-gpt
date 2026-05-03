@@ -207,13 +207,13 @@ export default function TeamPage() {
       <div className="yv-page">
 
         {/* Page title */}
-        <div className="mb-10">
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            {t('EQUIPO', 'TEAM')}
-          </p>
-          <h1 className="font-display font-bold text-4xl md:text-5xl text-white leading-tight">
-            {team ? team.name : t('Tu equipo', 'Your team')}<span style={{ color: 'var(--red)' }}>.</span>
-          </h1>
+        <div className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('EQUIPO', 'TEAM')}</span>
+            <h1 className="yv-page-header__title">
+              {team ? team.name : t('Tu equipo', 'Your team')}<span style={{ color: 'var(--yv-brand)' }}>.</span>
+            </h1>
+          </div>
         </div>
 
         {/* Error */}
@@ -225,9 +225,9 @@ export default function TeamPage() {
 
         {/* No team — create one */}
         {!team && (
-          <div className="rounded-xl border border-white/10 p-8 text-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.1)' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="1.5">
+          <div className="yv-card p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'var(--yv-brand-soft)' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="1.5">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                 <line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/>
               </svg>
@@ -235,7 +235,7 @@ export default function TeamPage() {
             <h3 className="font-display font-bold text-xl text-white mb-2">
               {t('Crea tu equipo', 'Create your team')}
             </h3>
-            <p className="text-zinc-500 font-mono-jb text-sm max-w-md mx-auto mb-6">
+            <p className="font-mono-jb text-sm max-w-md mx-auto mb-6" style={{ color: 'var(--yv-text-3)' }}>
               {t(
                 'Colabora con tu equipo de contenido. Invita hasta 5 miembros (Team) o 25 (Agency).',
                 'Collaborate with your content team. Invite up to 5 members (Team) or 25 (Agency).',
@@ -247,7 +247,7 @@ export default function TeamPage() {
                 onChange={e => setTeamName(e.target.value)}
                 placeholder={t('Nombre del equipo...', 'Team name...')}
                 maxLength={50}
-                className="flex-1 px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
+                className="flex-1 px-4 py-3 yv-input text-sm font-mono-jb"
                 onKeyDown={e => e.key === 'Enter' && createTeam()}
               />
               <button
@@ -266,13 +266,13 @@ export default function TeamPage() {
           <div className="space-y-8">
 
             {/* Team info bar */}
-            <div className="flex items-center gap-4 p-4 rounded-xl border border-white/10" style={{ background: 'rgba(255,255,255,0.02)' }}>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg" style={{ background: 'rgba(155,32,32,0.15)', color: 'var(--red)' }}>
+            <div className="yv-card flex items-center gap-4 p-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold text-lg" style={{ background: 'var(--yv-brand-soft)', color: 'var(--yv-brand)' }}>
                 {team.name[0].toUpperCase()}
               </div>
               <div className="flex-1">
                 <p className="font-display font-bold text-white">{team.name}</p>
-                <p className="font-mono-jb text-[11px] text-zinc-500">
+                <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
                   {team.members.length}/{team.maxMembers} {t('miembros', 'members')} · {team.plan.toUpperCase()}
                 </p>
               </div>
@@ -282,9 +282,9 @@ export default function TeamPage() {
             </div>
 
             {/* Members */}
-            <div className="rounded-xl border border-white/10 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
-              <div className="px-5 py-4 border-b border-white/5">
-                <h2 className="font-display font-bold text-white">{t('Miembros', 'Members')}</h2>
+            <div className="yv-card yv-card--flush">
+              <div className="yv-card__header">
+                <h2 className="yv-card__title">{t('Miembros', 'Members')}</h2>
               </div>
               <div className="divide-y divide-white/5">
                 {team.members.map(member => (
@@ -294,7 +294,7 @@ export default function TeamPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">{member.user.name || member.user.email}</p>
-                      <p className="font-mono-jb text-[10px] text-zinc-600 truncate">{member.user.email}</p>
+                      <p className="font-mono-jb text-[10px] truncate" style={{ color: 'var(--yv-text-4)' }}>{member.user.email}</p>
                     </div>
                     <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: `${ROLE_COLORS[member.role]}15`, color: ROLE_COLORS[member.role] }}>
                       {ROLE_LABELS[member.role]?.[lang] || member.role}
@@ -304,14 +304,16 @@ export default function TeamPage() {
                         <select
                           value={member.role}
                           onChange={e => changeRole(member.id, e.target.value)}
-                          className="text-[10px] font-mono-jb bg-transparent border border-white/10 rounded px-1.5 py-1 text-zinc-400 focus:outline-none"
+                          className="text-[10px] font-mono-jb bg-transparent rounded px-1.5 py-1 focus:outline-none"
+                          style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}
                         >
                           <option value="member">{t('Miembro', 'Member')}</option>
                           <option value="admin">Admin</option>
                         </select>
                         <button
                           onClick={() => removeMember(member.id)}
-                          className="text-zinc-600 hover:text-red-400 transition p-1"
+                          className="hover:text-red-400 transition p-1"
+                          style={{ color: 'var(--yv-text-4)' }}
                           title={t('Eliminar', 'Remove')}
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -325,9 +327,9 @@ export default function TeamPage() {
 
             {/* Pending invitations */}
             {team.invitations.length > 0 && (
-              <div className="rounded-xl border border-white/10 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <div className="px-5 py-4 border-b border-white/5">
-                  <h2 className="font-display font-bold text-white">{t('Invitaciones pendientes', 'Pending invitations')}</h2>
+              <div className="yv-card yv-card--flush">
+                <div className="yv-card__header">
+                  <h2 className="yv-card__title">{t('Invitaciones pendientes', 'Pending invitations')}</h2>
                 </div>
                 <div className="divide-y divide-white/5">
                   {team.invitations.map(inv => (
@@ -336,15 +338,16 @@ export default function TeamPage() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525b" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-zinc-400 truncate">{inv.email}</p>
-                        <p className="font-mono-jb text-[10px] text-zinc-600">
+                        <p className="text-sm truncate" style={{ color: 'var(--yv-text-2)' }}>{inv.email}</p>
+                        <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
                           {t('Expira', 'Expires')} {new Date(inv.expiresAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' })}
                         </p>
                       </div>
                       {isOwnerOrAdmin && (
                         <button
                           onClick={() => revokeInvitation(inv.id)}
-                          className="font-mono-jb text-[10px] text-zinc-600 hover:text-red-400 transition"
+                          className="font-mono-jb text-[10px] hover:text-red-400 transition"
+                          style={{ color: 'var(--yv-text-4)' }}
                         >
                           {t('Revocar', 'Revoke')}
                         </button>
@@ -357,27 +360,27 @@ export default function TeamPage() {
 
             {/* Invite form */}
             {isOwnerOrAdmin && team.members.length + team.invitations.length < team.maxMembers && (
-              <div className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <h2 className="font-display font-bold text-white mb-4">{t('Invitar miembro', 'Invite member')}</h2>
+              <div className="yv-card p-5">
+                <h2 className="font-display font-bold mb-4" style={{ color: 'var(--yv-text-1)' }}>{t('Invitar miembro', 'Invite member')}</h2>
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
-                    <label className="font-mono-jb text-[10px] text-zinc-600 block mb-1.5">Email</label>
+                    <label className="font-mono-jb text-[10px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>Email</label>
                     <input
                       type="email"
                       value={inviteEmail}
                       onChange={e => setInviteEmail(e.target.value)}
                       placeholder="colleague@example.com"
-                      className="w-full px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
+                      className="w-full px-4 py-2.5 yv-input text-sm font-mono-jb"
                       onKeyDown={e => e.key === 'Enter' && inviteMember()}
                     />
                   </div>
                   {myRole === 'owner' && (
                     <div>
-                      <label className="font-mono-jb text-[10px] text-zinc-600 block mb-1.5">{t('Rol', 'Role')}</label>
+                      <label className="font-mono-jb text-[10px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Rol', 'Role')}</label>
                       <select
                         value={inviteRole}
                         onChange={e => setInviteRole(e.target.value)}
-                        className="px-3 py-2.5 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none"
+                        className="px-3 py-2.5 yv-input text-sm font-mono-jb"
                       >
                         <option value="member">{t('Miembro', 'Member')}</option>
                         <option value="admin">Admin</option>
@@ -396,8 +399,8 @@ export default function TeamPage() {
             )}
 
             {/* Danger zone */}
-            <div className="rounded-xl border border-white/10 p-5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-              <h2 className="font-mono-jb text-[11px] text-zinc-500 uppercase tracking-wider mb-3">
+            <div className="yv-card p-5">
+              <h2 className="font-mono-jb text-[11px] uppercase tracking-wider mb-3" style={{ color: 'var(--yv-text-3)' }}>
                 {t('Zona de peligro', 'Danger zone')}
               </h2>
               <button

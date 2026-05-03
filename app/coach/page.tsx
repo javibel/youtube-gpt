@@ -149,7 +149,7 @@ export default function CoachPage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">{t('AI Coach', 'AI Coach')}</h1>
-          <p className="text-zinc-500 mb-6 font-mono-jb text-sm">{t('Inicia sesión para hablar con tu coach.', 'Sign in to talk to your coach.')}</p>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para hablar con tu coach.', 'Sign in to talk to your coach.')}</p>
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
@@ -174,7 +174,7 @@ export default function CoachPage() {
           <h1 className="font-display font-bold text-2xl md:text-3xl text-white mb-1">
             AI Coach
           </h1>
-          <p className="text-zinc-500 font-mono-jb text-xs">
+          <p className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-3)' }}>
             {t('Tu asesor personal de crecimiento en YouTube', 'Your personal YouTube growth advisor')}
           </p>
         </div>
@@ -202,7 +202,7 @@ export default function CoachPage() {
                     {m.label[lang]}
                   </span>
                 </div>
-                <span className="font-mono-jb text-[9px] text-zinc-600 hidden sm:block">{m.desc[lang]}</span>
+                <span className="font-mono-jb text-[9px] hidden sm:block" style={{ color: 'var(--yv-text-4)' }}>{m.desc[lang]}</span>
               </button>
             );
           })}
@@ -212,7 +212,7 @@ export default function CoachPage() {
         <div className="flex-1 space-y-4 mb-4 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 280px)' }}>
           {messages.length === 0 && (
             <div className="space-y-3 mt-8">
-              <p className="text-zinc-500 font-mono-jb text-xs text-center mb-4">
+              <p className="font-mono-jb text-xs text-center mb-4" style={{ color: 'var(--yv-text-3)' }}>
                 {t('Pregúntame sobre tu canal, estrategia, SEO, competencia...', 'Ask me about your channel, strategy, SEO, competition...')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -220,8 +220,8 @@ export default function CoachPage() {
                   <button
                     key={i}
                     onClick={() => { setInput(s); }}
-                    className="text-left text-sm font-mono-jb px-4 py-3 rounded-lg border border-white/10 hover:border-white/25 transition text-zinc-400 hover:text-white"
-                    style={{ background: 'rgba(255,255,255,0.03)' }}
+                    className="text-left text-sm font-mono-jb px-4 py-3 rounded-lg hover:text-white transition"
+                    style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)', background: 'rgba(255,255,255,0.03)' }}
                   >
                     {s}
                   </button>
@@ -233,15 +233,13 @@ export default function CoachPage() {
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[85%] rounded-xl px-4 py-3 text-sm font-mono-jb leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'text-white'
-                    : 'text-zinc-300 border border-white/10'
-                }`}
+                className="max-w-[85%] rounded-xl px-4 py-3 text-sm font-mono-jb leading-relaxed"
                 style={{
                   background: msg.role === 'user'
                     ? 'rgba(155, 32, 32, 0.35)'
-                    : 'rgba(255,255,255,0.04)',
+                    : 'var(--yv-bg-2)',
+                  color: msg.role === 'user' ? 'var(--yv-text-1)' : 'var(--yv-text-2)',
+                  border: msg.role === 'user' ? 'none' : '1px solid var(--yv-border)',
                 }}
               >
                 <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -251,11 +249,11 @@ export default function CoachPage() {
 
           {loading && (
             <div className="flex justify-start">
-              <div className="rounded-xl px-4 py-3 border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <div className="rounded-xl px-4 py-3" style={{ background: 'var(--yv-bg-2)', border: '1px solid var(--yv-border)' }}>
                 <div className="flex gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             </div>
@@ -273,7 +271,7 @@ export default function CoachPage() {
         </div>
 
         {/* Input */}
-        <div className="border-t border-white/10 pt-4">
+        <div className="pt-4" style={{ borderTop: '1px solid var(--yv-border)' }}>
           <div className="flex gap-2">
             <textarea
               value={input}
@@ -281,8 +279,8 @@ export default function CoachPage() {
               onKeyDown={handleKeyDown}
               placeholder={t('Escribe tu pregunta...', 'Type your question...')}
               rows={1}
-              className="flex-1 resize-none rounded-lg border border-white/15 px-4 py-3 text-sm font-mono-jb text-white placeholder-zinc-600 focus:outline-none focus:border-white/30 transition"
-              style={{ background: 'rgba(255,255,255,0.04)' }}
+              className="flex-1 resize-none rounded-lg px-4 py-3 text-sm font-mono-jb focus:outline-none transition yv-input"
+              style={{ background: 'var(--yv-bg-1)' }}
               disabled={loading}
             />
             <button
@@ -297,7 +295,7 @@ export default function CoachPage() {
               )}
             </button>
           </div>
-          <p className="text-zinc-600 text-[10px] font-mono-jb mt-2 text-center">
+          <p className="text-[10px] font-mono-jb mt-2 text-center" style={{ color: 'var(--yv-text-4)' }}>
             <span className="inline-flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: MODE_COLORS[mode] }} />
               {t('Modo', 'Mode')}: {MODES.find(m => m.key === mode)?.label[lang]}
