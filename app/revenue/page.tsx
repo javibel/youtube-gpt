@@ -85,30 +85,41 @@ export default function RevenuePage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
-          <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Estimando ingresos...', 'Estimating revenue...')}</p>
+      <DashboardShell>
+        <div className="yv-page">
+          <div className="flex items-center justify-center py-24">
+            <div className="text-center">
+              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
+              <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Estimando ingresos...', 'Estimating revenue...')}</p>
+            </div>
+          </div>
         </div>
-      </div>
+      </DashboardShell>
     );
   }
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Revenue Estimator', 'Revenue Estimator')}</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para ver tus estimaciones.', 'Sign in to view your estimates.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
+      <DashboardShell>
+        <div className="yv-page">
+          <div className="flex items-center justify-center py-24">
+            <div className="text-center">
+              <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Revenue Estimator', 'Revenue Estimator')}</h1>
+              <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para ver tus estimaciones.', 'Sign in to view your estimates.')}</p>
+              <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
+            </div>
+          </div>
         </div>
-      </div>
+      </DashboardShell>
     );
   }
 
-  const maxRevCountry = data ? Math.max(...data.countries.map(c => c.estimatedRevenue), 1) : 1;
-  const maxRevVideo = data ? Math.max(...data.videos.map(v => v.estimatedRevenue), 1) : 1;
-  const maxMonthRev = data ? Math.max(...data.months.map(m => m.estimatedRevenue), 1) : 1;
+  const countries = data?.countries ?? [];
+  const videos = data?.videos ?? [];
+  const months = data?.months ?? [];
+  const maxRevCountry = countries.length ? Math.max(...countries.map(c => c.estimatedRevenue), 1) : 1;
+  const maxRevVideo = videos.length ? Math.max(...videos.map(v => v.estimatedRevenue), 1) : 1;
+  const maxMonthRev = months.length ? Math.max(...months.map(m => m.estimatedRevenue), 1) : 1;
 
   return (
     <DashboardShell>
@@ -151,10 +162,10 @@ export default function RevenuePage() {
             {/* Projection cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
               {[
-                { label: t('Ingresos 28d', 'Revenue 28d'), value: fmt$(data.revenue28d), color: '#22c55e' },
-                { label: t('Proyección mensual', 'Monthly projection'), value: fmt$(data.projection.monthly), color: '#3b82f6' },
-                { label: t('Proyección anual', 'Yearly projection'), value: fmt$(data.projection.yearly), color: '#a855f7' },
-                { label: t('CPM medio', 'Avg CPM'), value: `$${data.weightedCPM.toFixed(2)}`, color: '#eab308' },
+                { label: t('Ingresos 28d', 'Revenue 28d'), value: fmt$(data.revenue28d ?? 0), color: '#22c55e' },
+                { label: t('Proyección mensual', 'Monthly projection'), value: fmt$(data.projection?.monthly ?? 0), color: '#3b82f6' },
+                { label: t('Proyección anual', 'Yearly projection'), value: fmt$(data.projection?.yearly ?? 0), color: '#a855f7' },
+                { label: t('CPM medio', 'Avg CPM'), value: `$${(data.weightedCPM ?? 0).toFixed(2)}`, color: '#eab308' },
               ].map((card, i) => (
                 <div key={i} className="yv-card p-4">
                   <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{card.label}</p>
@@ -168,7 +179,7 @@ export default function RevenuePage() {
               <div className="yv-card">
                 <h2 className="font-display font-bold text-white text-sm mb-4">{t('Ingresos por país', 'Revenue by Country')}</h2>
                 <div className="space-y-2">
-                  {data.countries.slice(0, 12).map(c => (
+                  {countries.slice(0, 12).map(c => (
                     <div key={c.country} className="flex items-center gap-2">
                       <span className="text-sm w-6 text-center">{COUNTRY_FLAGS[c.country] || '🌍'}</span>
                       <span className="font-mono-jb text-[13px] w-8" style={{ color: 'var(--yv-text-2)' }}>{c.country}</span>
@@ -191,9 +202,9 @@ export default function RevenuePage() {
               {/* Monthly trend */}
               <div className="yv-card">
                 <h2 className="font-display font-bold text-white text-sm mb-4">{t('Tendencia mensual', 'Monthly Trend')}</h2>
-                {data.months.length > 0 ? (
+                {months.length > 0 ? (
                   <div className="space-y-3">
-                    {data.months.map(m => (
+                    {months.map(m => (
                       <div key={m.month}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{m.month}</span>
@@ -224,7 +235,7 @@ export default function RevenuePage() {
             <div className="yv-card mb-8">
               <h2 className="font-display font-bold text-white text-sm mb-4">{t('Top vídeos por ingresos (28d)', 'Top Videos by Revenue (28d)')}</h2>
               <div className="space-y-2">
-                {data.videos.map((v, i) => (
+                {videos.map((v, i) => (
                   <div key={v.videoId} className="flex items-center gap-3 group">
                     <span className="font-mono-jb text-[13px] w-5 text-right" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
                     {v.thumbnail && (
@@ -302,10 +313,10 @@ export default function RevenuePage() {
             {/* Summary stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: t('Views 28d', 'Views 28d'), value: fmtNum(data.totalViews28) },
-                { label: t('Watch time 28d', 'Watch time 28d'), value: `${(data.totalWatchTime28 / 60).toFixed(0)}h` },
-                { label: t('Ingresos/día', 'Revenue/day'), value: fmt$(data.projection.daily) },
-                { label: t('Ingresos/1K views', 'Revenue/1K views'), value: data.totalViews28 > 0 ? fmt$(data.revenue28d / (data.totalViews28 / 1000)) : '$0' },
+                { label: t('Views 28d', 'Views 28d'), value: fmtNum(data.totalViews28 ?? 0) },
+                { label: t('Watch time 28d', 'Watch time 28d'), value: `${((data.totalWatchTime28 ?? 0) / 60).toFixed(0)}h` },
+                { label: t('Ingresos/día', 'Revenue/day'), value: fmt$(data.projection?.daily ?? 0) },
+                { label: t('Ingresos/1K views', 'Revenue/1K views'), value: (data.totalViews28 ?? 0) > 0 ? fmt$((data.revenue28d ?? 0) / ((data.totalViews28 ?? 0) / 1000)) : '$0' },
               ].map((s, i) => (
                 <div key={i} className="yv-card p-3 text-center">
                   <p className="font-mono-jb text-[13px] uppercase tracking-wider" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
