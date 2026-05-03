@@ -114,7 +114,7 @@ export default function BestTimePage() {
 
   return (
     <DashboardShell>
-      <div className="yv-page yv-page--wide">
+      <div className="yv-page">
 
         {/* Page title */}
         <div className="yv-page-header">

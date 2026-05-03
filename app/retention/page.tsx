@@ -282,7 +282,7 @@ export default function RetentionPage() {
 
   return (
     <DashboardShell>
-      <div className="yv-page yv-page--wide">
+      <div className="yv-page">
         <header className="yv-page-header">
           <div className="yv-page-header__left">
             <span className="yv-page-header__eyebrow">{t('Optimizador de retención', 'Retention Optimizer')}</span>

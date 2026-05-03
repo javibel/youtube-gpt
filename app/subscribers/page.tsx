@@ -135,7 +135,7 @@ export default function SubscribersPage() {
 
   return (
     <DashboardShell>
-      <div className="yv-page yv-page--wide">
+      <div className="yv-page">
         <header className="yv-page-header">
           <div className="yv-page-header__left">
             <span className="yv-page-header__eyebrow">{t('Análisis de audiencia', 'Audience Analysis')}</span>

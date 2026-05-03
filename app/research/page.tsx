@@ -273,7 +273,7 @@ function ResearchPageInner() {
 
   return (
     <DashboardShell>
-      <div className="yv-page yv-page--wide">
+      <div className="yv-page">
 
         {/* Page header */}
         <div className="yv-page-header">
