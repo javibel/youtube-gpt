@@ -61,18 +61,14 @@ export async function GET(request: Request) {
   const startDate = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10);
 
   try {
-    // Parallel queries: age groups, gender, countries, subscriber sources, subs timeline
-    const [ageRes, genderRes, countryRes, subsSourceRes, subsTimelineRes] = await Promise.all([
+    // Parallel queries: demographics (ageGroup+gender combined), countries, traffic sources, subs timeline
+    const [demoRes, countryRes, trafficRes, subsTimelineRes] = await Promise.all([
+      // Demographics requires both ageGroup AND gender dimensions together
       queryAnalytics(token, yt.channelId, {
         startDate, endDate,
         metrics: 'viewerPercentage',
-        dimensions: 'ageGroup',
+        dimensions: 'ageGroup,gender',
         sort: 'ageGroup',
-      }),
-      queryAnalytics(token, yt.channelId, {
-        startDate, endDate,
-        metrics: 'viewerPercentage',
-        dimensions: 'gender',
       }),
       queryAnalytics(token, yt.channelId, {
         startDate, endDate,
@@ -81,11 +77,12 @@ export async function GET(request: Request) {
         sort: '-views',
         maxResults: '15',
       }),
+      // Traffic source reports support views, not subscribersGained
       queryAnalytics(token, yt.channelId, {
         startDate, endDate,
-        metrics: 'subscribersGained',
+        metrics: 'views,estimatedMinutesWatched',
         dimensions: 'insightTrafficSourceType',
-        sort: '-subscribersGained',
+        sort: '-views',
       }),
       queryAnalytics(token, yt.channelId, {
         startDate, endDate,
@@ -95,15 +92,19 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    const ageGroups = toRows(ageRes).map(r => ({
-      group: String(r.ageGroup || '').replace('age', ''),
-      percentage: Number(r.viewerPercentage || 0),
-    }));
-
-    const genderSplit = toRows(genderRes).map(r => ({
-      gender: String(r.gender || ''),
-      percentage: Number(r.viewerPercentage || 0),
-    }));
+    // Aggregate demographics: rows have both ageGroup and gender
+    const demoRows = toRows(demoRes);
+    const ageMap: Record<string, number> = {};
+    const genderMap: Record<string, number> = {};
+    for (const r of demoRows) {
+      const age = String(r.ageGroup || '').replace('age', '');
+      const gender = String(r.gender || '');
+      const pct = Number(r.viewerPercentage || 0);
+      ageMap[age] = (ageMap[age] || 0) + pct;
+      genderMap[gender] = (genderMap[gender] || 0) + pct;
+    }
+    const ageGroups = Object.entries(ageMap).map(([group, percentage]) => ({ group, percentage }));
+    const genderSplit = Object.entries(genderMap).map(([gender, percentage]) => ({ gender, percentage }));
 
     const countries = toRows(countryRes).map(r => ({
       country: String(r.country || ''),
@@ -112,9 +113,10 @@ export async function GET(request: Request) {
       subsGained: Number(r.subscribersGained || 0),
     }));
 
-    const subsSources = toRows(subsSourceRes).map(r => ({
+    // Traffic sources (views-based, not subscriber-based)
+    const subsSources = toRows(trafficRes).map(r => ({
       source: String(r.insightTrafficSourceType || ''),
-      subsGained: Number(r.subscribersGained || 0),
+      subsGained: Number(r.views || 0),
     })).filter(s => s.subsGained > 0);
 
     const subsTimeline = toRows(subsTimelineRes).map(r => ({
