@@ -64,10 +64,20 @@ export default function RevenuePage() {
     if (status !== 'authenticated') return;
     setLoading(true);
     fetch(`/api/youtube/revenue?lang=${lang}`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) return r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+        return r.json();
+      })
       .then(json => {
-        if (json.error) setError(json.error === 'pro_required' ? t('Plan Pro requerido.', 'Pro plan required.') : json.error);
-        else setData(json);
+        if (!json || json.error) {
+          const err = json?.error || 'unknown';
+          if (err === 'pro_required') setError(t('Plan Pro requerido.', 'Pro plan required.'));
+          else if (err === 'youtube_not_connected') setError('youtube_not_connected');
+          else if (err === 'token_expired' || err === 'unauthorized') setError(t('Sesión expirada. Reconecta tu canal.', 'Session expired. Reconnect your channel.'));
+          else setError(err);
+        } else {
+          setData(json);
+        }
       })
       .catch(() => setError(t('Error de conexión', 'Connection error')))
       .finally(() => setLoading(false));

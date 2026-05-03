@@ -233,19 +233,19 @@ export default function LearnPage() {
     <DashboardShell>
       {/* Header */}
       <div className="yv-page">
-        <div className="yv-page-header" style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div className="yv-page-header__left" style={{ alignItems: 'center' }}>
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
             <span className="yv-page-header__eyebrow">
               {t('CENTRO DE APRENDIZAJE', 'LEARNING HUB')}
             </span>
             <h1 className="yv-page-header__title">
               {t('Aprende a crecer en YouTube', 'Learn to Grow on YouTube')}
             </h1>
-            <p className="yv-page-header__desc" style={{ textAlign: 'center' }}>
+            <p className="yv-page-header__desc">
               {t('Guías prácticas basadas en datos reales. Cada guía incluye pasos concretos que puedes aplicar hoy.', 'Practical data-driven guides. Each guide includes concrete steps you can apply today.')}
             </p>
           </div>
-        </div>
+        </header>
       </div>
 
       <div className="yv-page space-y-4">
