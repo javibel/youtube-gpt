@@ -40,14 +40,16 @@ const COUNTRY_FLAGS: Record<string, string> = {
   ZA: '🇿🇦', EG: '🇪🇬', NG: '🇳🇬', KE: '🇰🇪',
 };
 
-function fmt$(n: number): string {
-  return n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${n.toFixed(2)}`;
+function fmt$(n: number | null | undefined): string {
+  const v = n ?? 0;
+  return v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : `$${v.toFixed(2)}`;
 }
 
-function fmtNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
+function fmtNum(n: number | null | undefined): string {
+  const v = n ?? 0;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  return String(v);
 }
 
 export default function RevenuePage() {
@@ -252,7 +254,7 @@ export default function RevenuePage() {
                       </a>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} views</span>
-                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{(v.watchTime / 60).toFixed(0)}h watch</span>
+                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{((v.watchTime ?? 0) / 60).toFixed(0)}h watch</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
