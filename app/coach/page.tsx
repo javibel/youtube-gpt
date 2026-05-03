@@ -167,20 +167,22 @@ export default function CoachPage() {
 
   return (
     <DashboardShell>
-      {/* Chat area */}
-      <div className="yv-page flex-1 flex flex-col">
-        {/* Title */}
-        <div className="text-center mb-4">
-          <h1 className="font-display font-bold text-2xl md:text-3xl text-white mb-1">
-            AI Coach
-          </h1>
-          <p className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-3)' }}>
-            {t('Tu asesor personal de crecimiento en YouTube', 'Your personal YouTube growth advisor')}
-          </p>
-        </div>
+      <div className="yv-page flex-1 flex flex-col" style={{ height: 'calc(100vh - 56px)', minHeight: 0 }}>
+        {/* Header — left-aligned like all other pages */}
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">AI COACH</span>
+            <h1 className="yv-page-header__title">
+              {t('Tu asesor de crecimiento', 'Your growth advisor')}
+            </h1>
+            <p className="yv-page-header__desc">
+              {t('Pregúntame sobre tu canal, estrategia, SEO, competencia...', 'Ask me about your channel, strategy, SEO, competition...')}
+            </p>
+          </div>
+        </header>
 
         {/* Mode Selector */}
-        <div className="grid grid-cols-4 gap-2 mb-5">
+        <div className="grid grid-cols-4 gap-3 mb-6">
           {MODES.map(m => {
             const active = mode === m.key;
             const color = MODE_COLORS[m.key];
@@ -188,39 +190,36 @@ export default function CoachPage() {
               <button
                 key={m.key}
                 onClick={() => switchMode(m.key)}
-                className={`rounded-lg border px-3 py-2.5 text-left transition ${active ? 'border-opacity-50' : 'border-white/8 hover:border-white/20'}`}
+                className={`rounded-lg border px-4 py-3 text-left transition ${active ? 'border-opacity-50' : 'border-white/8 hover:border-white/20'}`}
                 style={{
                   background: active ? `${color}12` : 'rgba(255,255,255,0.02)',
                   borderColor: active ? `${color}40` : undefined,
                 }}
               >
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={active ? color : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div className="flex items-center gap-2 mb-1">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={active ? color : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d={m.icon} />
                   </svg>
-                  <span className="font-display font-bold text-[11px]" style={{ color: active ? color : '#d4d4d8' }}>
+                  <span className="font-display font-bold text-xs" style={{ color: active ? color : '#d4d4d8' }}>
                     {m.label[lang]}
                   </span>
                 </div>
-                <span className="font-mono-jb text-[9px] hidden sm:block" style={{ color: 'var(--yv-text-4)' }}>{m.desc[lang]}</span>
+                <span className="font-mono-jb text-[10px] hidden sm:block" style={{ color: 'var(--yv-text-4)' }}>{m.desc[lang]}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 space-y-4 mb-4 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+        {/* Messages — fills all remaining space */}
+        <div className="flex-1 space-y-4 mb-4 overflow-y-auto min-h-0">
           {messages.length === 0 && (
-            <div className="space-y-3 mt-8">
-              <p className="font-mono-jb text-xs text-center mb-4" style={{ color: 'var(--yv-text-3)' }}>
-                {t('Pregúntame sobre tu canal, estrategia, SEO, competencia...', 'Ask me about your channel, strategy, SEO, competition...')}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
                 {suggestions.map((s, i) => (
                   <button
                     key={i}
                     onClick={() => { setInput(s); }}
-                    className="text-left text-sm font-mono-jb px-4 py-3 rounded-lg hover:text-white transition"
+                    className="text-left font-mono-jb px-5 py-4 rounded-lg hover:text-white transition text-[13px] leading-snug"
                     style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)', background: 'rgba(255,255,255,0.03)' }}
                   >
                     {s}
@@ -233,7 +232,7 @@ export default function CoachPage() {
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className="max-w-[85%] rounded-xl px-4 py-3 text-sm font-mono-jb leading-relaxed"
+                className="max-w-[80%] rounded-xl px-5 py-3.5 font-mono-jb leading-relaxed text-[13px]"
                 style={{
                   background: msg.role === 'user'
                     ? 'rgba(155, 32, 32, 0.35)'
@@ -249,7 +248,7 @@ export default function CoachPage() {
 
           {loading && (
             <div className="flex justify-start">
-              <div className="rounded-xl px-4 py-3" style={{ background: 'var(--yv-bg-2)', border: '1px solid var(--yv-border)' }}>
+              <div className="rounded-xl px-5 py-3.5" style={{ background: 'var(--yv-bg-2)', border: '1px solid var(--yv-border)' }}>
                 <div className="flex gap-1.5">
                   <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -270,9 +269,9 @@ export default function CoachPage() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="pt-4" style={{ borderTop: '1px solid var(--yv-border)' }}>
-          <div className="flex gap-2">
+        {/* Input — pinned at bottom */}
+        <div className="pt-4 mt-auto" style={{ borderTop: '1px solid var(--yv-border)' }}>
+          <div className="flex gap-3">
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -295,7 +294,7 @@ export default function CoachPage() {
               )}
             </button>
           </div>
-          <p className="text-[10px] font-mono-jb mt-2 text-center" style={{ color: 'var(--yv-text-4)' }}>
+          <p className="text-[11px] font-mono-jb mt-2" style={{ color: 'var(--yv-text-4)' }}>
             <span className="inline-flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: MODE_COLORS[mode] }} />
               {t('Modo', 'Mode')}: {MODES.find(m => m.key === mode)?.label[lang]}
