@@ -193,26 +193,20 @@ export default function AuditPage() {
 
   return (
     <DashboardShell>
-      {/* Header */}
-      <div className="border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
-        <div className="yv-page">
-          <header className="yv-page-header">
-            <div className="yv-page-header__left">
-              <span className="yv-page-header__eyebrow">{t('AUDITORÍA DE CANAL', 'CHANNEL AUDIT')}</span>
-              <h1 className="yv-page-header__title">
-                {data ? data.channelName : t('Auditoría', 'Audit')}
-              </h1>
-              {data && (
-                <p className="yv-page-header__desc" style={{ fontSize: 'var(--yv-text-xs)' }}>
-                  {data.videosAnalyzed} {t('vídeos analizados', 'videos analyzed')} &middot; {data.period.start} — {data.period.end}
-                </p>
-              )}
-            </div>
-          </header>
-        </div>
-      </div>
-
       <div className="yv-page space-y-8">
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('Auditoría de canal', 'Channel Audit')}</span>
+            <h1 className="yv-page-header__title">
+              {data ? data.channelName : t('Auditoría', 'Audit')}
+            </h1>
+            {data && (
+              <p className="yv-page-header__desc">
+                {data.videosAnalyzed} {t('vídeos analizados', 'videos analyzed')} &middot; {data.period.start} — {data.period.end}
+              </p>
+            )}
+          </div>
+        </header>
         {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center gap-3 justify-center py-20">

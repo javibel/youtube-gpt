@@ -237,33 +237,24 @@ export default function CalendarPage() {
 
   return (
     <DashboardShell>
-      {/* Header with month nav */}
-      <div style={{ background: 'var(--yv-bg-1)', borderBottom: '1px solid var(--yv-border-subtle)' }}>
-        <div className="yv-page">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>
-            {t('CALENDARIO DE CONTENIDO', 'CONTENT CALENDAR')}
-          </p>
-          <div className="flex items-center gap-4">
-            <button onClick={prevMonth} className="hover:text-white transition p-1" style={{ color: 'var(--yv-text-2)' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
-            <h1 className="font-display font-bold text-2xl md:text-3xl text-white min-w-[220px] text-center">
-              {MONTH_NAMES[lang][month]} {year}
-            </h1>
-            <button onClick={nextMonth} className="hover:text-white transition p-1" style={{ color: 'var(--yv-text-2)' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
-          </div>
-          {/* Status legend + AI button */}
-          <div className="flex items-center justify-between mt-3 flex-wrap gap-3">
-            <div className="flex gap-4 flex-wrap">
-              {Object.entries(STATUS_LABELS).map(([key, labels]) => (
-                <div key={key} className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLORS[key] }} />
-                  <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{labels[lang]}</span>
-                </div>
-              ))}
+      <div className="yv-page">
+        {/* Header with month nav */}
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('CALENDARIO DE CONTENIDO', 'CONTENT CALENDAR')}</span>
+            <div className="flex items-center gap-4">
+              <button onClick={prevMonth} className="hover:text-white transition p-1" style={{ color: 'var(--yv-text-2)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <h1 className="yv-page-header__title min-w-[220px] text-center">
+                {MONTH_NAMES[lang][month]} {year}
+              </h1>
+              <button onClick={nextMonth} className="hover:text-white transition p-1" style={{ color: 'var(--yv-text-2)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
             </div>
+          </div>
+          <div className="yv-page-header__actions">
             <button
               onClick={fetchSuggestions}
               disabled={suggestLoading}
@@ -278,13 +269,22 @@ export default function CalendarPage() {
               {suggestLoading ? t('Analizando...', 'Analyzing...') : t('AI Planificador', 'AI Scheduler')}
             </button>
           </div>
+        </header>
+
+        {/* Status legend */}
+        <div className="flex gap-4 flex-wrap mb-6">
+          {Object.entries(STATUS_LABELS).map(([key, labels]) => (
+            <div key={key} className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLORS[key] }} />
+              <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{labels[lang]}</span>
+            </div>
+          ))}
         </div>
-      </div>
 
       {/* AI Suggestions Panel */}
       {showSuggestions && (
-        <div style={{ background: 'rgba(168,85,247,0.03)', borderBottom: '1px solid var(--yv-border-subtle)' }}>
-          <div className="yv-page">
+        <div className="yv-card mb-6 p-5" style={{ background: 'rgba(168,85,247,0.03)', borderColor: 'rgba(168,85,247,0.15)' }}>
+          <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
@@ -367,7 +367,6 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="yv-page">
         {error && (
           <div className="text-center py-8">
             <p className="text-red-400 font-mono-jb text-sm">{error}</p>

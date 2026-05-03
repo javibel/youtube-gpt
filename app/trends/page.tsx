@@ -248,56 +248,54 @@ export default function TrendsPage() {
 
   return (
     <DashboardShell>
-      {/* Header + Tabs */}
-      <div style={{ background: 'var(--yv-bg-1)', borderBottom: '1px solid var(--yv-border-subtle)' }}>
-        <div className="yv-page yv-page--wide pb-0">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>
-            {t('TENDENCIAS YOUTUBE', 'YOUTUBE TRENDS')}
-          </p>
-          <h1 className="font-display font-bold text-3xl md:text-4xl text-white mb-6">
-            {t('Tendencias', 'Trends')}
-          </h1>
-
-          {/* Tabs */}
-          <div className="flex gap-0">
-            <button
-              onClick={() => setTab('explore')}
-              className="px-5 py-3 font-mono-jb text-[11px] tracking-wider border-b-2 transition"
-              style={{
-                color: tab === 'explore' ? 'var(--yv-text-1)' : 'var(--yv-text-3)',
-                borderColor: tab === 'explore' ? 'var(--yv-brand)' : 'transparent',
-              }}
-            >
-              <span className="flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                {t('Explorar', 'Explore')}
-              </span>
-            </button>
-            <button
-              onClick={() => setTab('alerts')}
-              className="px-5 py-3 font-mono-jb text-[11px] tracking-wider border-b-2 transition"
-              style={{
-                color: tab === 'alerts' ? 'var(--yv-text-1)' : 'var(--yv-text-3)',
-                borderColor: tab === 'alerts' ? 'var(--yv-brand)' : 'transparent',
-              }}
-            >
-              <span className="flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                {t('Alertas', 'Alerts')}
-                {unread > 0 && (
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold" style={{ background: 'var(--yv-brand)', color: '#fff' }}>
-                    {unread}
-                  </span>
-                )}
-              </span>
-            </button>
+      {/* Shared header + tabs */}
+      <div className="yv-page yv-page--wide" style={{ paddingBottom: 0 }}>
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('TENDENCIAS YOUTUBE', 'YOUTUBE TRENDS')}</span>
+            <h1 className="yv-page-header__title">{t('Tendencias', 'Trends')}</h1>
           </div>
-        </div>
+          <div className="yv-page-header__actions">
+            <div className="flex gap-0">
+              <button
+                onClick={() => setTab('explore')}
+                className="px-5 py-3 font-mono-jb text-[11px] tracking-wider border-b-2 transition"
+                style={{
+                  color: tab === 'explore' ? 'var(--yv-text-1)' : 'var(--yv-text-3)',
+                  borderColor: tab === 'explore' ? 'var(--yv-brand)' : 'transparent',
+                }}
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  {t('Explorar', 'Explore')}
+                </span>
+              </button>
+              <button
+                onClick={() => setTab('alerts')}
+                className="px-5 py-3 font-mono-jb text-[11px] tracking-wider border-b-2 transition"
+                style={{
+                  color: tab === 'alerts' ? 'var(--yv-text-1)' : 'var(--yv-text-3)',
+                  borderColor: tab === 'alerts' ? 'var(--yv-brand)' : 'transparent',
+                }}
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  {t('Alertas', 'Alerts')}
+                  {unread > 0 && (
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold" style={{ background: 'var(--yv-brand)', color: '#fff' }}>
+                      {unread}
+                    </span>
+                  )}
+                </span>
+              </button>
+            </div>
+          </div>
+        </header>
       </div>
 
       {/* ── EXPLORE TAB ──────────────────────────────────────────────── */}
       {tab === 'explore' && (
-        <div className="yv-page yv-page--wide">
+        <div className="yv-page yv-page--wide" style={{ paddingTop: 0 }}>
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             {/* Region */}
@@ -580,7 +578,7 @@ export default function TrendsPage() {
 
       {/* ── ALERTS TAB ───────────────────────────────────────────────── */}
       {tab === 'alerts' && (
-        <div className="max-w-4xl mx-auto px-6 py-6 space-y-3">
+        <div className="yv-page yv-page--wide" style={{ paddingTop: 0 }}>
           {/* Mark all read */}
           {unread > 0 && (
             <div className="flex justify-end mb-2">

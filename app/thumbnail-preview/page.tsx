@@ -247,26 +247,21 @@ export default function ThumbnailPreviewPage() {
   return (
     <DashboardShell>
       {/* Header */}
-      <div className="border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
-        <div className="yv-page yv-page--wide">
-          <header className="yv-page-header">
-            <div className="yv-page-header__left">
-              <span className="yv-page-header__eyebrow">THUMBNAIL PREVIEW</span>
-              <h1 className="yv-page-header__title">
-                {t('¿Tu thumbnail destaca?', 'Does your thumbnail stand out?')}
-              </h1>
-              <p className="yv-page-header__desc" style={{ fontSize: 'var(--yv-text-xs)' }}>
-                {t(
-                  'Visualiza cómo se ve tu thumbnail junto a competidores reales en YouTube.',
-                  'See how your thumbnail looks next to real competitors on YouTube.'
-                )}
-              </p>
-            </div>
-          </header>
-        </div>
-      </div>
-
       <div className="yv-page yv-page--wide">
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">THUMBNAIL PREVIEW</span>
+            <h1 className="yv-page-header__title">
+              {t('¿Tu thumbnail destaca?', 'Does your thumbnail stand out?')}
+            </h1>
+            <p className="yv-page-header__desc" style={{ fontSize: 'var(--yv-text-xs)' }}>
+              {t(
+                'Visualiza cómo se ve tu thumbnail junto a competidores reales en YouTube.',
+                'See how your thumbnail looks next to real competitors on YouTube.'
+              )}
+            </p>
+          </div>
+        </header>
 
         {/* Controls */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">

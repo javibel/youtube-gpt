@@ -282,22 +282,18 @@ export default function RetentionPage() {
 
   return (
     <DashboardShell>
-      {/* Header */}
-      <div className="yv-page-header" style={{ background: 'var(--yv-bg-1)' }}>
-        <div className="yv-page-header__left">
-          <span className="yv-page-header__eyebrow" style={{ color: 'var(--yv-brand)' }}>
-            {t('OPTIMIZADOR DE RETENCIÓN V2', 'RETENTION OPTIMIZER V2')}
-          </span>
-          <h1 className="yv-page-header__title">
-            {t('¿Dónde pierdes audiencia?', 'Where are you losing viewers?')}
-          </h1>
-          <p className="yv-page-header__desc" style={{ color: 'var(--yv-text-3)' }}>
-            {t('Hook Score + curva interactiva + AI drop-off analysis — datos privados OAuth.', 'Hook Score + interactive curve + AI drop-off analysis — private OAuth data.')}
-          </p>
-        </div>
-      </div>
-
       <div className="yv-page yv-page--wide">
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('Optimizador de retención', 'Retention Optimizer')}</span>
+            <h1 className="yv-page-header__title">
+              {t('¿Dónde pierdes audiencia?', 'Where are you losing viewers?')}
+            </h1>
+            <p className="yv-page-header__desc">
+              {t('Hook Score + curva interactiva + AI drop-off analysis — datos privados OAuth.', 'Hook Score + interactive curve + AI drop-off analysis — private OAuth data.')}
+            </p>
+          </div>
+        </header>
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

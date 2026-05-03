@@ -111,24 +111,19 @@ export default function PredictorPage() {
 
   return (
     <DashboardShell>
-      {/* Header */}
-      <div className="border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
-        <div className="yv-page">
-          <header className="yv-page-header">
-            <div className="yv-page-header__left">
-              <span className="yv-page-header__eyebrow">{t('PREDICTOR DE RENDIMIENTO', 'PERFORMANCE PREDICTOR')}</span>
-              <h1 className="yv-page-header__title">
-                {t('¿Cómo rendirá tu vídeo?', 'How will your video perform?')}
-              </h1>
-              <p className="yv-page-header__desc" style={{ fontSize: 'var(--yv-text-xs)' }}>
-                {t('Predicción basada en los datos reales de tu canal.', 'Prediction based on your real channel data.')}
-              </p>
-            </div>
-          </header>
-        </div>
-      </div>
-
       <div className="yv-page">
+        {/* Header */}
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('PREDICTOR DE RENDIMIENTO', 'PERFORMANCE PREDICTOR')}</span>
+            <h1 className="yv-page-header__title">
+              {t('¿Cómo rendirá tu vídeo?', 'How will your video perform?')}
+            </h1>
+            <p className="yv-page-header__desc" style={{ fontSize: 'var(--yv-text-xs)' }}>
+              {t('Predicción basada en los datos reales de tu canal.', 'Prediction based on your real channel data.')}
+            </p>
+          </div>
+        </header>
         {/* Input form */}
         <div className="yv-card p-6 mb-8">
           <div className="space-y-4">

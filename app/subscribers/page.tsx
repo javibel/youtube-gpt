@@ -135,22 +135,18 @@ export default function SubscribersPage() {
 
   return (
     <DashboardShell>
-      {/* Header */}
-      <div className="yv-page-header" style={{ background: 'var(--yv-bg-1)' }}>
-        <div className="yv-page-header__left">
-          <span className="yv-page-header__eyebrow" style={{ color: 'var(--yv-brand)' }}>
-            {t('ANÁLISIS DE AUDIENCIA', 'AUDIENCE ANALYSIS')}
-          </span>
-          <h1 className="yv-page-header__title">
-            {t('¿Quién ve tus vídeos?', 'Who watches your videos?')}
-          </h1>
-          <p className="yv-page-header__desc" style={{ color: 'var(--yv-text-3)' }}>
-            {t('Demografía, geografía, fuentes de suscriptores y oportunidades de colaboración.', 'Demographics, geography, subscriber sources, and collaboration opportunities.')}
-          </p>
-        </div>
-      </div>
-
       <div className="yv-page yv-page--wide">
+        <header className="yv-page-header">
+          <div className="yv-page-header__left">
+            <span className="yv-page-header__eyebrow">{t('Análisis de audiencia', 'Audience Analysis')}</span>
+            <h1 className="yv-page-header__title">
+              {t('¿Quién ve tus vídeos?', 'Who watches your videos?')}
+            </h1>
+            <p className="yv-page-header__desc">
+              {t('Demografía, geografía, fuentes de suscriptores y oportunidades de colaboración.', 'Demographics, geography, subscriber sources, and collaboration opportunities.')}
+            </p>
+          </div>
+        </header>
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
