@@ -321,7 +321,7 @@ export default function BulkGeneratePage() {
           <textarea
             value={topicsText}
             onChange={e => setTopicsText(e.target.value)}
-            rows={6}
+            rows={10}
             placeholder={t(
               'Como ganar dinero en YouTube\nMejor camara para YouTube 2026\n10 errores de YouTubers principiantes\n...',
               'How to make money on YouTube\nBest camera for YouTube 2026\n10 beginner YouTuber mistakes\n...',
