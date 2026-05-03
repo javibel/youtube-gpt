@@ -19,7 +19,7 @@ interface Entry {
 const STATUS_COLORS: Record<string, string> = {
   idea: '#6366f1',
   draft: '#eab308',
-  scheduled: '#3b82f6',
+  scheduled: '#ef4444',
   published: '#22c55e',
 };
 
@@ -511,6 +511,18 @@ export default function CalendarPage() {
                 </div>
               </div>
             </div>
+
+            {/* Link to Generate page for ideas/drafts */}
+            {(form.status === 'idea' || form.status === 'draft') && form.title.trim() && (
+              <a
+                href={`/generate?topic=${encodeURIComponent(form.title.trim())}`}
+                className="flex items-center justify-center gap-2 mt-4 py-2.5 rounded-lg border text-sm font-mono-jb transition hover:border-white/30"
+                style={{ borderColor: 'var(--yv-border)', color: 'var(--yv-text-2)', background: 'rgba(255,255,255,0.03)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                {t('Generar contenido', 'Generate content')}
+              </a>
+            )}
 
             <div className="flex gap-2 mt-5">
               <button

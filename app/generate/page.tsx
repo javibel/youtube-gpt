@@ -70,6 +70,13 @@ export default function GeneratePage() {
 
   useEffect(() => { setLang(getLangClient()); }, []);
 
+  // Pre-fill topic from query param (e.g. from Calendar)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const topic = params.get('topic');
+    if (topic) setFormData(prev => ({ ...prev, tema: topic }));
+  }, []);
+
   useEffect(() => {
     fetch('/api/user/stats')
       .then((r) => r.ok ? r.json() : null)
