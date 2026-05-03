@@ -502,6 +502,7 @@ body {
   transition: border-color var(--yv-transition), box-shadow var(--yv-transition);
   outline: none;
 }
+textarea.yv-input { height: auto; padding: 10px 12px; }
 .yv-input:focus { border-color: var(--yv-brand-border); box-shadow: var(--yv-ring); }
 .yv-input::placeholder { color: var(--yv-text-4); }
 
