@@ -76,9 +76,9 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
             className="rounded-xl p-4"
             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
           >
-            <p className="text-xs text-gray-600 uppercase tracking-widest mb-2">Gratis</p>
+            <p className="text-[13px] text-gray-600 uppercase tracking-widest mb-2">Gratis</p>
             <p className="text-xl font-bold text-gray-400 mb-3">0 €</p>
-            <ul className="space-y-1.5 text-xs text-gray-600">
+            <ul className="space-y-1.5 text-[13px] text-gray-600">
               <li className="flex items-center gap-1.5"><span className="text-gray-700">✗</span> 10 gen/mes</li>
               <li className="flex items-center gap-1.5"><span className="text-gray-700">✗</span> Sin soporte</li>
             </ul>
@@ -103,10 +103,10 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
             >
               PRO
             </div>
-            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: isPro ? 'rgba(0,217,255,0.7)' : '#71717a' }}>Pro</p>
+            <p className="text-[13px] uppercase tracking-widest mb-2" style={{ color: isPro ? 'rgba(0,217,255,0.7)' : '#71717a' }}>Pro</p>
             <p className="text-xl font-bold text-white mb-1">9,99 €</p>
-            <p className="text-[10px] text-gray-500 mb-3">/mes · 200 gen</p>
-            <ul className="space-y-1 text-[10px]">
+            <p className="text-[13px] text-gray-500 mb-3">/mes · 200 gen</p>
+            <ul className="space-y-1 text-[13px]">
               <li className="text-gray-300">⚡ 200 gen/mes</li>
               <li className="text-gray-300">🎯 Todos los templates</li>
               <li className="text-gray-300">💬 Soporte prioritario</li>
@@ -132,10 +132,10 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
             >
               BIZ
             </div>
-            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: !isPro ? '#B388FF' : '#71717a' }}>Business</p>
+            <p className="text-[13px] uppercase tracking-widest mb-2" style={{ color: !isPro ? '#B388FF' : '#71717a' }}>Business</p>
             <p className="text-xl font-bold text-white mb-1">29,99 €</p>
-            <p className="text-[10px] text-gray-500 mb-3">/mes · Ilimitado</p>
-            <ul className="space-y-1 text-[10px]">
+            <p className="text-[13px] text-gray-500 mb-3">/mes · Ilimitado</p>
+            <ul className="space-y-1 text-[13px]">
               <li className="text-gray-300">♾️ Ilimitado</li>
               <li className="text-gray-300">👥 5 miembros</li>
               <li className="text-gray-300">🏆 Todo incluido</li>
@@ -145,7 +145,7 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
 
         {/* Billing toggle */}
         <div className="flex justify-center mb-4">
-          <div className="flex items-center rounded-full border border-white/10 bg-black/40 text-[10px] tracking-wider uppercase overflow-hidden">
+          <div className="flex items-center rounded-full border border-white/10 bg-black/40 text-[13px] tracking-wider uppercase overflow-hidden">
             <button
               onClick={() => setSelectedPlan(isPro ? 'monthly' : 'business_monthly')}
               className="px-4 py-1.5 transition font-bold"
@@ -172,8 +172,8 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
 
         {/* Price summary */}
         <div className="text-center mb-4">
-          {selectedPlan === 'yearly' && <p className="text-[11px]" style={{ color: '#7CFF00' }}>99,99€/año = 8,33€/mes</p>}
-          {selectedPlan === 'business_yearly' && <p className="text-[11px]" style={{ color: '#7CFF00' }}>299€/año = 24,92€/mes</p>}
+          {selectedPlan === 'yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>99,99€/año = 8,33€/mes</p>}
+          {selectedPlan === 'business_yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>299€/año = 24,92€/mes</p>}
         </div>
 
         {/* CTA */}
@@ -200,7 +200,7 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
           )}
         </button>
 
-        <p className="text-center text-xs text-gray-700 mt-3">
+        <p className="text-center text-[13px] text-gray-700 mt-3">
           Cancela cuando quieras · Sin permanencia
         </p>
       </div>

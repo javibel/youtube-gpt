@@ -58,15 +58,15 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
             <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--red)' }} />
           </div>
-          <span className="font-mono-jb text-[10px] text-zinc-500 tracking-wider">{lang === 'en' ? 'LIVE DEMO · 8.2s' : 'DEMO EN VIVO · 8.2s'}</span>
+          <span className="font-mono-jb text-[13px] text-zinc-500 tracking-wider">{lang === 'en' ? 'LIVE DEMO · 8.2s' : 'DEMO EN VIVO · 8.2s'}</span>
           <span className="live-dot" />
         </div>
 
         <div className="p-6 md:p-8">
           <div className="flex items-start gap-3">
-            <span className="font-mono-jb text-xs text-zinc-500 mt-3">01</span>
+            <span className="font-mono-jb text-[13px] text-zinc-500 mt-3">01</span>
             <div className="flex-1">
-              <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">
+              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
                 {d.label}
               </label>
               <textarea
@@ -87,7 +87,7 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
               ).map((k, i) => (
                 <span
                   key={k}
-                  className="font-mono-jb text-[10px] tracking-wider uppercase px-2 py-1"
+                  className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-1"
                   style={{ background: i === 0 ? 'var(--red)' : undefined, color: i === 0 ? '#fff' : '#71717a', border: i === 0 ? undefined : '1px solid rgba(255,255,255,0.12)' }}
                 >
                   {k}
@@ -106,9 +106,9 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
           {state !== 'idle' && (
             <div className="mt-6 pt-6 border-t border-white/10 pl-8">
               <div className="flex items-center justify-between mb-3">
-                <span className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500">{d.resultsLabel}</span>
+                <span className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500">{d.resultsLabel}</span>
                 {state === 'loading' && (
-                  <span className="font-mono-jb text-[10px] flex items-center gap-2" style={{ color: 'var(--red)' }}>
+                  <span className="font-mono-jb text-[13px] flex items-center gap-2" style={{ color: 'var(--red)' }}>
                     <span className="w-3 h-3 border border-current border-t-transparent rounded-full spin-r" />
                     {lang === 'en' ? 'Processing' : 'Procesando'}
                   </span>
@@ -117,7 +117,7 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
               <ul className="space-y-2">
                 {results.map((r, i) => (
                   <li key={i} className="group flex items-start gap-3 p-3 border border-white/10 hover:border-[var(--red)] bg-black/40 transition cursor-pointer page-enter">
-                    <span className="font-mono-jb text-[11px] mt-0.5 shrink-0" style={{ color: 'var(--red)' }}>
+                    <span className="font-mono-jb text-[13px] mt-0.5 shrink-0" style={{ color: 'var(--red)' }}>
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span className="text-[15px] leading-snug">{r}</span>
@@ -132,7 +132,7 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
         </div>
       </div>
       <div className="relative -mt-3 ml-auto w-fit pr-4 text-right hidden md:block">
-        <span className="inline-block px-3 py-1.5 font-mono-jb text-[11px] text-black rotate-[-2deg]" style={{ background: 'var(--yellow)', boxShadow: '2px 2px 0 #000' }}>
+        <span className="inline-block px-3 py-1.5 font-mono-jb text-[13px] text-black rotate-[-2deg]" style={{ background: 'var(--yellow)', boxShadow: '2px 2px 0 #000' }}>
           {lang === 'en' ? '↗ Try it yourself' : '↗ Pruébalo tú mismo'}
         </span>
       </div>

@@ -59,7 +59,7 @@ export default function ChatWidgetPreview() {
             {PREVIEW_MESSAGES.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className="max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed"
+                  className="max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed"
                   style={{
                     background: msg.role === 'user' ? '#9B2020' : '#222',
                     color: '#fff',
@@ -76,12 +76,12 @@ export default function ChatWidgetPreview() {
             className="px-4 py-4 border-t border-white/10 flex-shrink-0"
             style={{ background: '#1a1a1a' }}
           >
-            <p className="text-xs text-white/50 text-center mb-3">
+            <p className="text-[13px] text-white/50 text-center mb-3">
               Crea una cuenta gratis para usar el asistente
             </p>
             <a
               href="/signup"
-              className="block w-full text-center text-xs font-semibold py-2.5 rounded-lg text-white transition-opacity hover:opacity-90"
+              className="block w-full text-center text-[13px] font-semibold py-2.5 rounded-lg text-white transition-opacity hover:opacity-90"
               style={{ background: '#9B2020' }}
             >
               Empezar gratis

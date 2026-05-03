@@ -192,7 +192,7 @@ export default function BulkGeneratePage() {
         <div className="yv-card p-6 mb-8">
 
           {/* Template selector */}
-          <p className="font-mono-jb text-[11px] uppercase tracking-wider mb-3" style={{ color: 'var(--yv-text-3)' }}>
+          <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-3" style={{ color: 'var(--yv-text-3)' }}>
             {t('Tipo de contenido', 'Content type')}
           </p>
           <div className="flex flex-wrap gap-2 mb-6">
@@ -219,13 +219,13 @@ export default function BulkGeneratePage() {
           <div className="flex flex-wrap gap-4 mb-6">
             {tmpl.options.includes('tono') && (
               <div>
-                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Tono', 'Tone')}</p>
+                <p className="font-mono-jb text-[13px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Tono', 'Tone')}</p>
                 <div className="flex gap-1.5">
                   {TONE_OPTIONS.map(o => (
                     <button
                       key={o.value}
                       onClick={() => setTone(o.value)}
-                      className="px-3 py-1.5 rounded text-[11px] font-mono-jb transition"
+                      className="px-3 py-1.5 rounded text-[13px] font-mono-jb transition"
                       style={{
                         background: tone === o.value ? 'rgba(155,32,32,0.2)' : 'rgba(255,255,255,0.04)',
                         color: tone === o.value ? 'white' : '#52525b',
@@ -240,13 +240,13 @@ export default function BulkGeneratePage() {
             )}
             {tmpl.options.includes('plataforma') && (
               <div>
-                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Plataforma', 'Platform')}</p>
+                <p className="font-mono-jb text-[13px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Plataforma', 'Platform')}</p>
                 <div className="flex gap-1.5">
                   {PLATFORM_OPTIONS.map(p => (
                     <button
                       key={p}
                       onClick={() => setPlatform(p)}
-                      className="px-3 py-1.5 rounded text-[11px] font-mono-jb transition capitalize"
+                      className="px-3 py-1.5 rounded text-[13px] font-mono-jb transition capitalize"
                       style={{
                         background: platform === p ? 'rgba(155,32,32,0.2)' : 'rgba(255,255,255,0.04)',
                         color: platform === p ? 'white' : '#52525b',
@@ -261,13 +261,13 @@ export default function BulkGeneratePage() {
             )}
             {tmpl.options.includes('estilo') && (
               <div>
-                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Estilo', 'Style')}</p>
+                <p className="font-mono-jb text-[13px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Estilo', 'Style')}</p>
                 <div className="flex gap-1.5">
                   {STYLE_OPTIONS.map(o => (
                     <button
                       key={o.value}
                       onClick={() => setStyle(o.value)}
-                      className="px-3 py-1.5 rounded text-[11px] font-mono-jb transition"
+                      className="px-3 py-1.5 rounded text-[13px] font-mono-jb transition"
                       style={{
                         background: style === o.value ? 'rgba(155,32,32,0.2)' : 'rgba(255,255,255,0.04)',
                         color: style === o.value ? 'white' : '#52525b',
@@ -282,13 +282,13 @@ export default function BulkGeneratePage() {
             )}
             {tmpl.options.includes('nicho') && (
               <div>
-                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Nicho', 'Niche')}</p>
+                <p className="font-mono-jb text-[13px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Nicho', 'Niche')}</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {NICHE_OPTIONS.map(o => (
                     <button
                       key={o.value}
                       onClick={() => setNiche(o.value)}
-                      className="px-3 py-1.5 rounded text-[11px] font-mono-jb transition"
+                      className="px-3 py-1.5 rounded text-[13px] font-mono-jb transition"
                       style={{
                         background: niche === o.value ? 'rgba(155,32,32,0.2)' : 'rgba(255,255,255,0.04)',
                         color: niche === o.value ? 'white' : '#52525b',
@@ -303,7 +303,7 @@ export default function BulkGeneratePage() {
             )}
             {tmpl.options.includes('keywords') && (
               <div className="w-full">
-                <p className="font-mono-jb text-[10px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>Keywords</p>
+                <p className="font-mono-jb text-[13px] mb-1.5" style={{ color: 'var(--yv-text-4)' }}>Keywords</p>
                 <input
                   value={keywords}
                   onChange={e => setKeywords(e.target.value)}
@@ -315,7 +315,7 @@ export default function BulkGeneratePage() {
           </div>
 
           {/* Topics textarea */}
-          <p className="font-mono-jb text-[11px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>
+          <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>
             {t('Temas (uno por linea)', 'Topics (one per line)')}
           </p>
           <textarea
@@ -328,7 +328,7 @@ export default function BulkGeneratePage() {
             )}
             className="w-full px-4 py-3 yv-input text-sm font-mono-jb resize-none mb-2"
           />
-          <p className="font-mono-jb text-[10px] mb-6" style={{ color: 'var(--yv-text-4)' }}>
+          <p className="font-mono-jb text-[13px] mb-6" style={{ color: 'var(--yv-text-4)' }}>
             {topics.length}/10 {t('temas', 'topics')}
           </p>
 
@@ -360,12 +360,12 @@ export default function BulkGeneratePage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-bold text-lg text-white">
                 {t('Resultados', 'Results')}
-                <span className="ml-2 font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>{progress}</span>
+                <span className="ml-2 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{progress}</span>
               </h2>
               <div className="flex gap-2">
                 <button
                   onClick={copyAll}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono-jb hover:text-white transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-mono-jb hover:text-white transition"
                   style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
@@ -373,7 +373,7 @@ export default function BulkGeneratePage() {
                 </button>
                 <button
                   onClick={exportCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono-jb hover:text-white transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-mono-jb hover:text-white transition"
                   style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -390,7 +390,7 @@ export default function BulkGeneratePage() {
                 >
                   <div className="yv-card__header">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: 'var(--yv-brand-soft)', color: 'var(--yv-brand)' }}>
+                      <span className="font-mono-jb text-[13px] font-bold px-2 py-0.5 rounded" style={{ background: 'var(--yv-brand-soft)', color: 'var(--yv-brand)' }}>
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <span className="text-sm text-white font-medium">{r.topic}</span>
@@ -398,7 +398,7 @@ export default function BulkGeneratePage() {
                     {!r.error && (
                       <button
                         onClick={() => copyOne(i)}
-                        className="font-mono-jb text-[10px] hover:text-white transition"
+                        className="font-mono-jb text-[13px] hover:text-white transition"
                         style={{ color: 'var(--yv-text-3)' }}
                       >
                         {copied === i ? t('Copiado!', 'Copied!') : t('Copiar', 'Copy')}

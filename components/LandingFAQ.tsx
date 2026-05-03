@@ -31,7 +31,7 @@ export default function LandingFAQ({ lang = 'es' }: { lang?: Lang }) {
     <section className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
       <div className="max-w-4xl mx-auto px-6 py-24">
         <div className="mb-12">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>08 · FAQ</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>08 · FAQ</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
             {lang === 'en' ? <>Questions before<br />you hit the button.</> : <>Preguntas antes<br />de apretar el botón.</>}
           </h2>
@@ -44,7 +44,7 @@ export default function LandingFAQ({ lang = 'es' }: { lang?: Lang }) {
                 onClick={() => setOpen(open === i ? null : i)}
                 className="w-full text-left py-6 flex items-center gap-5 group"
               >
-                <span className="font-mono-jb text-[10px] text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
+                <span className="font-mono-jb text-[13px] text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
                 <span className="font-display font-semibold text-lg md:text-xl flex-1 transition" style={{ color: open === i ? 'var(--red)' : '#f4f4f5' }}>
                   {item.q}
                 </span>

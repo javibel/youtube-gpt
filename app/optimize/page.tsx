@@ -341,7 +341,7 @@ export default function OptimizePage() {
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="font-mono-jb text-xs mb-4" style={{ color: 'var(--yv-text-2)' }}>{t('Selecciona un vídeo para optimizar:', 'Select a video to optimize:')}</p>
+                <p className="font-mono-jb text-[13px] mb-4" style={{ color: 'var(--yv-text-2)' }}>{t('Selecciona un vídeo para optimizar:', 'Select a video to optimize:')}</p>
                 {videos.map(v => (
                   <button
                     key={v.videoId}
@@ -354,8 +354,8 @@ export default function OptimizePage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-display font-semibold text-sm truncate">{v.title}</p>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>{fmtNum(v.views)} {t('vistas', 'views')}</span>
-                        <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{fmtDate(v.publishedAt, lang)}</span>
+                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{fmtNum(v.views)} {t('vistas', 'views')}</span>
+                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtDate(v.publishedAt, lang)}</span>
                       </div>
                     </div>
                     <div
@@ -384,7 +384,7 @@ export default function OptimizePage() {
             {/* Back button */}
             <button
               onClick={() => { setSelectedVideo(null); setSaveResult(null); }}
-              className="flex items-center gap-2 hover:text-white font-mono-jb text-xs mb-6 transition"
+              className="flex items-center gap-2 hover:text-white font-mono-jb text-[13px] mb-6 transition"
               style={{ color: 'var(--yv-text-3)' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -398,7 +398,7 @@ export default function OptimizePage() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-white font-display font-bold text-lg truncate">{selectedVideo.title}</p>
-                <div className="flex items-center gap-4 mt-2 font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
+                <div className="flex items-center gap-4 mt-2 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                   <span>{fmtNum(selectedVideo.views)} {t('vistas', 'views')}</span>
                   <span>{fmtNum(selectedVideo.likes)} likes</span>
                   <span>{fmtNum(selectedVideo.comments)} {t('comentarios', 'comments')}</span>
@@ -416,10 +416,10 @@ export default function OptimizePage() {
                 {/* Title */}
                 <div className="yv-card p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <label className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
+                    <label className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
                       {t('Título', 'Title')}
                     </label>
-                    <span className="font-mono-jb text-[11px]" style={{ color: editTitle.length >= 30 && editTitle.length <= 70 ? '#22c55e' : '#e84d5b' }}>
+                    <span className="font-mono-jb text-[13px]" style={{ color: editTitle.length >= 30 && editTitle.length <= 70 ? '#22c55e' : '#e84d5b' }}>
                       {editTitle.length}/70
                     </span>
                   </div>
@@ -434,7 +434,7 @@ export default function OptimizePage() {
                   {/* Title checks inline */}
                   <div className="flex flex-wrap gap-3 mt-3">
                     {checks.filter(c => c.key.startsWith('title_')).map(c => (
-                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] yv-muted">
+                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[13px] yv-muted">
                         <CheckDot ok={c.ok} />
                         {c.key === 'title_length' ? t('Longitud', 'Length') :
                          c.key === 'title_number' ? t('Números', 'Numbers') :
@@ -449,10 +449,10 @@ export default function OptimizePage() {
                 {/* Description */}
                 <div className="yv-card p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <label className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
+                    <label className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
                       {t('Descripción', 'Description')}
                     </label>
-                    <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
+                    <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                       {editDesc.split(/\s+/).filter(Boolean).length} {t('palabras', 'words')}
                     </span>
                   </div>
@@ -465,7 +465,7 @@ export default function OptimizePage() {
                   />
                   <div className="flex flex-wrap gap-3 mt-3">
                     {checks.filter(c => c.key.startsWith('desc_')).map(c => (
-                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] yv-muted">
+                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[13px] yv-muted">
                         <CheckDot ok={c.ok} />
                         {c.key === 'desc_length' ? t('100+ palabras', '100+ words') :
                          c.key === 'desc_links' ? 'Links' :
@@ -480,10 +480,10 @@ export default function OptimizePage() {
                 {/* Tags */}
                 <div className="yv-card p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <label className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
+                    <label className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
                       Tags
                     </label>
-                    <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
+                    <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                       {editTags.split(',').filter(t => t.trim()).length} tags
                     </span>
                   </div>
@@ -496,7 +496,7 @@ export default function OptimizePage() {
                   />
                   <div className="flex flex-wrap gap-3 mt-3">
                     {checks.filter(c => c.key.startsWith('tags_')).map(c => (
-                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[10px] yv-muted">
+                      <span key={c.key} className="flex items-center gap-1.5 font-mono-jb text-[13px] yv-muted">
                         <CheckDot ok={c.ok} />
                         {c.key === 'tags_count' ? t('5-20 tags', '5-20 tags') :
                          c.key === 'tags_long' ? t('Tags largos', 'Long-tail') :
@@ -531,7 +531,7 @@ export default function OptimizePage() {
                     )}
                   </button>
                   {!hasChanges && selectedVideo && (
-                    <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>{t('Sin cambios', 'No changes')}</span>
+                    <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{t('Sin cambios', 'No changes')}</span>
                   )}
                 </div>
 
@@ -548,7 +548,7 @@ export default function OptimizePage() {
                     </div>
                     {saveResult.aiSuggestion && (
                       <div className="mt-3 p-3 rounded-lg border border-purple-500/20" style={{ background: 'rgba(139,92,246,0.06)' }}>
-                        <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-2)' }}>{t('Siguiente paso', 'Next step')}</p>
+                        <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-2)' }}>{t('Siguiente paso', 'Next step')}</p>
                         <p className="text-[color:var(--yv-text-2)] font-mono-jb text-sm">
                           {lang === 'en' ? saveResult.aiSuggestion.en : saveResult.aiSuggestion.es}
                         </p>
@@ -563,7 +563,7 @@ export default function OptimizePage() {
 
                 {/* Score card */}
                 <div className="yv-card p-6 text-center">
-                  <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase yv-muted mb-4">SEO SCORE</p>
+                  <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase yv-muted mb-4">SEO SCORE</p>
                   <div className="flex justify-center">
                     <ScoreRing score={score} size={120} />
                   </div>
@@ -576,19 +576,19 @@ export default function OptimizePage() {
 
                 {/* Checklist summary */}
                 <div className="yv-card p-5">
-                  <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase yv-muted mb-3">CHECKLIST</p>
+                  <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase yv-muted mb-3">CHECKLIST</p>
                   <div className="space-y-2">
                     {checks.map(c => (
                       <div key={c.key} className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>
+                        <span className="flex items-center gap-2 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>
                           <CheckDot ok={c.ok} />
                           {c.key.replace(/_/g, ' ')}
                         </span>
-                        <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{c.w}pt</span>
+                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{c.w}pt</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 pt-3 border-t border-white/10 flex justify-between font-mono-jb text-xs">
+                  <div className="mt-3 pt-3 border-t border-white/10 flex justify-between font-mono-jb text-[13px]">
                     <span style={{ color: 'var(--yv-text-2)' }}>{checks.filter(c => c.ok).length}/{checks.length} {t('pasados', 'passed')}</span>
                     <span style={{ color: scoreColor(score) }}>{score}/100</span>
                   </div>
@@ -597,34 +597,34 @@ export default function OptimizePage() {
                 {/* History */}
                 {history.length > 0 && (
                   <div className="yv-card p-5">
-                    <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase yv-muted mb-3">
+                    <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase yv-muted mb-3">
                       {t('HISTORIAL DE CAMBIOS', 'CHANGE HISTORY')}
                     </p>
                     <div className="space-y-3 max-h-80 overflow-y-auto">
                       {history.map(h => (
                         <div key={h.id} className="p-3 rounded-lg border border-white/5" style={{ background: 'rgba(255,255,255,0.015)' }}>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-mono-jb text-[10px] uppercase tracking-wider" style={{ color: 'var(--yv-brand)' }}>
+                            <span className="font-mono-jb text-[13px] uppercase tracking-wider" style={{ color: 'var(--yv-brand)' }}>
                               {h.field}
                             </span>
-                            <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
+                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                               {fmtDate(h.createdAt, lang)}
                             </span>
                           </div>
                           {h.field === 'title' && (
                             <>
-                              <p className="font-mono-jb text-[11px] line-through truncate" style={{ color: 'var(--yv-text-4)' }}>{h.oldValue}</p>
-                              <p className="text-[color:var(--yv-text-2)] font-mono-jb text-[11px] truncate">{h.newValue}</p>
+                              <p className="font-mono-jb text-[13px] line-through truncate" style={{ color: 'var(--yv-text-4)' }}>{h.oldValue}</p>
+                              <p className="text-[color:var(--yv-text-2)] font-mono-jb text-[13px] truncate">{h.newValue}</p>
                             </>
                           )}
                           {h.field === 'description' && (
-                            <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>{t('Descripción actualizada', 'Description updated')}</p>
+                            <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{t('Descripción actualizada', 'Description updated')}</p>
                           )}
                           {h.field === 'tags' && (
-                            <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>{t('Tags actualizados', 'Tags updated')}</p>
+                            <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{t('Tags actualizados', 'Tags updated')}</p>
                           )}
                           {h.scoreBefore != null && h.scoreAfter != null && (
-                            <div className="mt-1 font-mono-jb text-[10px]">
+                            <div className="mt-1 font-mono-jb text-[13px]">
                               <span style={{ color: 'var(--yv-text-4)' }}>{h.scoreBefore}</span>
                               <span className="mx-1" style={{ color: 'var(--yv-text-4)' }}>&rarr;</span>
                               <span style={{ color: scoreColor(h.scoreAfter) }}>{h.scoreAfter}</span>

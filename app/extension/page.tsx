@@ -74,15 +74,15 @@ export default function ExtensionPage() {
             <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="font-mono-jb text-[11px] tracking-wider text-zinc-500 hover:text-white transition">Iniciar sesión</Link>
-            <Link href="/signup" className="btn-offset px-4 py-1.5 text-[11px] font-display">Crear cuenta gratis</Link>
+            <Link href="/login" className="font-mono-jb text-[13px] tracking-wider text-zinc-500 hover:text-white transition">Iniciar sesión</Link>
+            <Link href="/signup" className="btn-offset px-4 py-1.5 text-[13px] font-display">Crear cuenta gratis</Link>
           </div>
         </div>
       </header>
 
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--red)' }}>
+        <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--red)' }}>
           CHROME EXTENSION
         </p>
 
@@ -113,7 +113,7 @@ export default function ExtensionPage() {
                 {f.icon}
               </div>
               <h3 className="font-display font-bold text-sm mb-2">{f.title}</h3>
-              <p className="text-zinc-500 text-xs leading-relaxed">{f.desc}</p>
+              <p className="text-zinc-500 text-[13px] leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -131,7 +131,7 @@ export default function ExtensionPage() {
               </div>
               <div>
                 <div className="font-display font-semibold text-sm mb-1">{s.title}</div>
-                <div className="text-zinc-500 text-xs leading-relaxed">{s.desc}</div>
+                <div className="text-zinc-500 text-[13px] leading-relaxed">{s.desc}</div>
               </div>
             </div>
           ))}
@@ -141,7 +141,7 @@ export default function ExtensionPage() {
       {/* CTA bottom */}
       <section className="border-t py-16" style={{ borderColor: 'var(--line)' }}>
         <div className="max-w-2xl mx-auto px-6 text-center">
-          <p className="text-zinc-600 text-xs mb-5">
+          <p className="text-zinc-600 text-[13px] mb-5">
             Necesitas una cuenta en ytubviral.com para usar la extensión.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">

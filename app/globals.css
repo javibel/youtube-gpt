@@ -159,11 +159,11 @@ body {
   --yv-font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
   --yv-font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
 
-  --yv-text-xs: 12px;
-  --yv-text-sm: 13px;
-  --yv-text-base: 14px;
-  --yv-text-md: 15px;
-  --yv-text-lg: 17px;
+  --yv-text-xs: 13px;
+  --yv-text-sm: 14px;
+  --yv-text-base: 15px;
+  --yv-text-md: 16px;
+  --yv-text-lg: 18px;
   --yv-text-xl: 20px;
   --yv-text-2xl: 28px;
   --yv-text-3xl: 36px;

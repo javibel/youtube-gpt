@@ -128,7 +128,7 @@ export default function PredictorPage() {
         <div className="yv-card p-6 mb-8">
           <div className="space-y-4">
             <div>
-              <label className="font-mono-jb text-[10px] yv-muted uppercase tracking-wider block mb-1.5">
+              <label className="font-mono-jb text-[13px] yv-muted uppercase tracking-wider block mb-1.5">
                 {t('Título del vídeo', 'Video title')} *
               </label>
               <input
@@ -139,11 +139,11 @@ export default function PredictorPage() {
                 style={{ background: 'rgba(255,255,255,0.04)' }}
                 maxLength={200}
               />
-              <div className="text-right font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{title.length}/200</div>
+              <div className="text-right font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{title.length}/200</div>
             </div>
 
             <div>
-              <label className="font-mono-jb text-[10px] yv-muted uppercase tracking-wider block mb-1.5">
+              <label className="font-mono-jb text-[13px] yv-muted uppercase tracking-wider block mb-1.5">
                 {t('Descripción (opcional)', 'Description (optional)')}
               </label>
               <textarea
@@ -157,7 +157,7 @@ export default function PredictorPage() {
             </div>
 
             <div>
-              <label className="font-mono-jb text-[10px] yv-muted uppercase tracking-wider block mb-1.5">
+              <label className="font-mono-jb text-[13px] yv-muted uppercase tracking-wider block mb-1.5">
                 {t('Tags (separados por coma)', 'Tags (comma separated)')}
               </label>
               <input
@@ -189,7 +189,7 @@ export default function PredictorPage() {
           </div>
 
           {error && (
-            <p className="text-red-400 font-mono-jb text-xs mt-3 text-center">{error}</p>
+            <p className="text-red-400 font-mono-jb text-[13px] mt-3 text-center">{error}</p>
           )}
         </div>
 
@@ -203,15 +203,15 @@ export default function PredictorPage() {
               </h2>
               <div className="flex items-end justify-center gap-8 mb-4">
                 <div className="text-center">
-                  <div className="font-mono-jb text-[10px] mb-1" style={{ color: 'var(--yv-text-4)' }}>{t('Pesimista', 'Low')}</div>
+                  <div className="font-mono-jb text-[13px] mb-1" style={{ color: 'var(--yv-text-4)' }}>{t('Pesimista', 'Low')}</div>
                   <div className="font-display font-bold text-xl" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(prediction.estimatedViews.low)}</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-mono-jb text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-brand)' }}>{t('Estimado', 'Expected')}</div>
+                  <div className="font-mono-jb text-[13px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-brand)' }}>{t('Estimado', 'Expected')}</div>
                   <div className="font-display font-bold text-4xl text-white">{fmtNum(prediction.estimatedViews.mid)}</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-mono-jb text-[10px] mb-1" style={{ color: 'var(--yv-text-4)' }}>{t('Optimista', 'High')}</div>
+                  <div className="font-mono-jb text-[13px] mb-1" style={{ color: 'var(--yv-text-4)' }}>{t('Optimista', 'High')}</div>
                   <div className="font-display font-bold text-xl" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(prediction.estimatedViews.high)}</div>
                 </div>
               </div>
@@ -230,7 +230,7 @@ export default function PredictorPage() {
                   );
                 })()}
               </div>
-              <div className="flex justify-between font-mono-jb text-[10px] mt-2 mx-8" style={{ color: 'var(--yv-text-4)' }}>
+              <div className="flex justify-between font-mono-jb text-[13px] mt-2 mx-8" style={{ color: 'var(--yv-text-4)' }}>
                 <span>0</span>
                 <span>{t('Tu media', 'Your avg')}: {fmtNum(baseline.avgViews)}</span>
                 <span>{t('Tu mejor', 'Your best')}: {fmtNum(baseline.topVideoViews)}</span>
@@ -243,25 +243,25 @@ export default function PredictorPage() {
                 <div className="font-display font-bold text-2xl" style={{ color: scoreColor(prediction.titleScore) }}>
                   {prediction.titleScore}
                 </div>
-                <div className="font-mono-jb text-[10px] yv-muted mt-1">{t('Título', 'Title')}</div>
+                <div className="font-mono-jb text-[13px] yv-muted mt-1">{t('Título', 'Title')}</div>
               </div>
               <div className="yv-card p-4 text-center">
                 <div className="font-display font-bold text-2xl" style={{ color: scoreColor(prediction.seoScore) }}>
                   {prediction.seoScore}
                 </div>
-                <div className="font-mono-jb text-[10px] yv-muted mt-1">SEO</div>
+                <div className="font-mono-jb text-[13px] yv-muted mt-1">SEO</div>
               </div>
               <div className="yv-card p-4 text-center">
                 <div className="font-display font-bold text-2xl text-white">
                   {prediction.estimatedEngagement}%
                 </div>
-                <div className="font-mono-jb text-[10px] yv-muted mt-1">Engagement</div>
+                <div className="font-mono-jb text-[13px] yv-muted mt-1">Engagement</div>
               </div>
               <div className="yv-card p-4 text-center">
                 <div className="font-display font-bold text-lg" style={{ color: VIRAL_COLORS[prediction.viralPotential] || '#888' }}>
                   {VIRAL_LABELS[prediction.viralPotential]?.[lang] || prediction.viralPotential}
                 </div>
-                <div className="font-mono-jb text-[10px] yv-muted mt-1">{t('Potencial viral', 'Viral potential')}</div>
+                <div className="font-mono-jb text-[13px] yv-muted mt-1">{t('Potencial viral', 'Viral potential')}</div>
               </div>
             </div>
 
@@ -310,7 +310,7 @@ export default function PredictorPage() {
 
             {/* Baseline reference */}
             <div className="text-center">
-              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
+              <span className="inline-flex items-center gap-2 font-mono-jb text-[13px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
                 {t(`Basado en tus últimos ${baseline.videoCount} vídeos · ${fmtNum(baseline.subscribers)} subs`, `Based on your last ${baseline.videoCount} videos · ${fmtNum(baseline.subscribers)} subs`)}
               </span>
             </div>

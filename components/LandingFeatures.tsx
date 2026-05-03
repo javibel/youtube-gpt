@@ -62,7 +62,7 @@ const FEATURES_EN = [
 
 function PreviewDesc({ lang }: { lang: Lang }) {
   return (
-    <div className="col-span-2 font-mono-jb text-[11px] bg-black border border-white/10 p-4 leading-relaxed text-zinc-300">
+    <div className="col-span-2 font-mono-jb text-[13px] bg-black border border-white/10 p-4 leading-relaxed text-zinc-300">
       <p style={{ color: 'var(--red)' }}>⚡ TIMESTAMPS</p>
       <p>0:00 · Intro</p>
       <p>0:42 · {lang === 'en' ? 'Full setup' : 'El setup completo'}</p>
@@ -77,13 +77,13 @@ function PreviewDesc({ lang }: { lang: Lang }) {
 function PreviewScript({ lang }: { lang: Lang }) {
   return (
     <div className="col-span-2 border border-white/10 bg-black p-4">
-      <p className="font-mono-jb text-[10px] tracking-wider mb-2" style={{ color: 'var(--red)' }}>HOOK · 00:00—00:15</p>
+      <p className="font-mono-jb text-[13px] tracking-wider mb-2" style={{ color: 'var(--red)' }}>HOOK · 00:00—00:15</p>
       <p className="text-[13px] leading-relaxed">
         {lang === 'en'
           ? '"This setup cost under $500 and I edit 4K without a single lag. Before you tell me that\'s impossible, let me show you exactly what I bought, why, and what I didn\'t buy."'
           : '"Este setup costó menos de 500€ y edito 4K sin un solo lag. Antes de que me digas que es imposible, déjame enseñarte exactamente qué compré, por qué, y lo que NO compré."'}
       </p>
-      <p className="font-mono-jb text-[10px] text-zinc-500 mt-4 tracking-wider">→ BODY · 4 {lang === 'en' ? 'BLOCKS' : 'BLOQUES'} · CTA</p>
+      <p className="font-mono-jb text-[13px] text-zinc-500 mt-4 tracking-wider">→ BODY · 4 {lang === 'en' ? 'BLOCKS' : 'BLOQUES'} · CTA</p>
     </div>
   );
 }
@@ -100,8 +100,8 @@ function PreviewCaption({ lang }: { lang: Lang }) {
     <>
       {platforms.map((p) => (
         <div key={p} className="border border-white/10 p-3 bg-black">
-          <p className="font-mono-jb text-[10px] mb-1" style={{ color: 'var(--red)' }}>{p.toUpperCase()}</p>
-          <p className="text-[11px] leading-snug text-zinc-300">{texts[p][lang]}</p>
+          <p className="font-mono-jb text-[13px] mb-1" style={{ color: 'var(--red)' }}>{p.toUpperCase()}</p>
+          <p className="text-[13px] leading-snug text-zinc-300">{texts[p][lang]}</p>
         </div>
       ))}
     </>
@@ -112,9 +112,9 @@ function PreviewThumb({ lang }: { lang: Lang }) {
   return (
     <>
       <div className="col-span-1 aspect-video bg-[#1a0008] flex items-center justify-center" style={{ backgroundImage: 'repeating-linear-gradient(135deg,rgba(232,77,91,0.15) 0 2px,transparent 2px 14px)' }}>
-        <span className="font-mono-jb text-[10px] tracking-widest uppercase" style={{ color: 'var(--red)' }}>THUMBNAIL</span>
+        <span className="font-mono-jb text-[13px] tracking-widest uppercase" style={{ color: 'var(--red)' }}>THUMBNAIL</span>
       </div>
-      <div className="col-span-1 font-mono-jb text-[11px] bg-black border border-white/10 p-3 leading-relaxed">
+      <div className="col-span-1 font-mono-jb text-[13px] bg-black border border-white/10 p-3 leading-relaxed">
         <p style={{ color: 'var(--red)' }}>BRIEF</p>
         <p className="mt-1 text-zinc-400">{lang === 'en' ? 'Pose: surprised' : 'Pose: sorpresa'}</p>
         <p className="text-zinc-400">{lang === 'en' ? 'Text: "$500"' : 'Texto: "500€"'}</p>
@@ -139,16 +139,16 @@ function PreviewResearch({ lang }: { lang: Lang }) {
   ];
   return (
     <div className="col-span-2 border border-white/10 bg-black overflow-hidden">
-      <div className="grid px-4 py-2 border-b border-white/10 font-mono-jb text-[9px] tracking-wider uppercase text-zinc-600" style={{ gridTemplateColumns: '1fr auto auto' }}>
+      <div className="grid px-4 py-2 border-b border-white/10 font-mono-jb text-[13px] tracking-wider uppercase text-zinc-600" style={{ gridTemplateColumns: '1fr auto auto' }}>
         <span>Keyword</span>
         <span className="pr-6">Vol.</span>
         <span>CPC</span>
       </div>
       {items.map((r, i) => (
         <div key={i} className="grid px-4 py-2.5 border-b border-white/5 items-center hover:bg-white/[0.02] transition" style={{ gridTemplateColumns: '1fr auto auto' }}>
-          <span className="text-[11px] text-zinc-200 truncate pr-4">{r.kw}</span>
-          <span className="font-mono-jb text-[11px] pr-6" style={{ color: 'var(--red)' }}>{r.vol}</span>
-          <span className="font-mono-jb text-[11px] text-zinc-400">{r.cpc}</span>
+          <span className="text-[13px] text-zinc-200 truncate pr-4">{r.kw}</span>
+          <span className="font-mono-jb text-[13px] pr-6" style={{ color: 'var(--red)' }}>{r.vol}</span>
+          <span className="font-mono-jb text-[13px] text-zinc-400">{r.cpc}</span>
         </div>
       ))}
     </div>
@@ -164,29 +164,29 @@ function PreviewCompetitors({ lang }: { lang: Lang }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="font-display font-bold text-sm">@MrBeast</p>
-          <p className="font-mono-jb text-[10px] text-zinc-500 mt-0.5">youtube.com/@MrBeast</p>
+          <p className="font-mono-jb text-[13px] text-zinc-500 mt-0.5">youtube.com/@MrBeast</p>
         </div>
-        <span className="font-mono-jb text-[11px] px-2 py-0.5 border" style={{ color: 'var(--red)', borderColor: 'rgba(232,77,91,0.4)' }}>320M {lang === 'en' ? 'subs' : 'subs'}</span>
+        <span className="font-mono-jb text-[13px] px-2 py-0.5 border" style={{ color: 'var(--red)', borderColor: 'rgba(232,77,91,0.4)' }}>320M {lang === 'en' ? 'subs' : 'subs'}</span>
       </div>
-      <div className="grid grid-cols-3 gap-2 font-mono-jb text-[10px]">
+      <div className="grid grid-cols-3 gap-2 font-mono-jb text-[13px]">
         <div className="bg-white/5 p-2 text-center">
-          <p className="text-zinc-500 text-[9px] uppercase">{lang === 'en' ? 'Videos' : 'Vídeos'}</p>
+          <p className="text-zinc-500 text-[13px] uppercase">{lang === 'en' ? 'Videos' : 'Vídeos'}</p>
           <p className="text-white font-bold mt-0.5">847</p>
         </div>
         <div className="bg-white/5 p-2 text-center">
-          <p className="text-zinc-500 text-[9px] uppercase">{lang === 'en' ? 'Freq.' : 'Frec.'}</p>
+          <p className="text-zinc-500 text-[13px] uppercase">{lang === 'en' ? 'Freq.' : 'Frec.'}</p>
           <p className="text-white font-bold mt-0.5">2/sem</p>
         </div>
         <div className="bg-white/5 p-2 text-center">
-          <p className="text-zinc-500 text-[9px] uppercase">{lang === 'en' ? 'Views' : 'Vistas'}</p>
+          <p className="text-zinc-500 text-[13px] uppercase">{lang === 'en' ? 'Views' : 'Vistas'}</p>
           <p className="text-white font-bold mt-0.5">51B</p>
         </div>
       </div>
       <div>
-        <p className="font-mono-jb text-[9px] uppercase text-zinc-600 mb-1.5">{lang === 'en' ? '↗ Top keywords' : '↗ Keywords top'}</p>
+        <p className="font-mono-jb text-[13px] uppercase text-zinc-600 mb-1.5">{lang === 'en' ? '↗ Top keywords' : '↗ Keywords top'}</p>
         <div className="flex flex-wrap gap-1.5">
           {keywords.map((k) => (
-            <span key={k} className="font-mono-jb text-[10px] px-2 py-0.5 border border-white/10 text-zinc-300 cursor-pointer hover:border-[rgba(232,77,91,0.5)] transition">{k}</span>
+            <span key={k} className="font-mono-jb text-[13px] px-2 py-0.5 border border-white/10 text-zinc-300 cursor-pointer hover:border-[rgba(232,77,91,0.5)] transition">{k}</span>
           ))}
         </div>
       </div>
@@ -200,25 +200,25 @@ function PreviewRevenue({ lang }: { lang: Lang }) {
     : [{ c: '🇺🇸 Estados Unidos', cpm: '7,50€', pct: 85 }, { c: '🇬🇧 Reino Unido', cpm: '6,20€', pct: 70 }, { c: '🇩🇪 Alemania', cpm: '5,80€', pct: 65 }, { c: '🇪🇸 España', cpm: '2,10€', pct: 24 }];
   return (
     <div className="col-span-2 border border-white/10 bg-black p-4 space-y-3">
-      <div className="grid grid-cols-3 gap-2 font-mono-jb text-[10px]">
+      <div className="grid grid-cols-3 gap-2 font-mono-jb text-[13px]">
         <div className="bg-white/5 p-2 text-center">
-          <p className="text-zinc-500 text-[9px] uppercase">{lang === 'en' ? 'Monthly' : 'Mensual'}</p>
+          <p className="text-zinc-500 text-[13px] uppercase">{lang === 'en' ? 'Monthly' : 'Mensual'}</p>
           <p className="font-bold mt-0.5" style={{ color: 'var(--red)' }}>$842</p>
         </div>
         <div className="bg-white/5 p-2 text-center">
-          <p className="text-zinc-500 text-[9px] uppercase">{lang === 'en' ? 'Yearly' : 'Anual'}</p>
+          <p className="text-zinc-500 text-[13px] uppercase">{lang === 'en' ? 'Yearly' : 'Anual'}</p>
           <p className="font-bold mt-0.5" style={{ color: 'var(--red)' }}>$10,104</p>
         </div>
         <div className="bg-white/5 p-2 text-center">
-          <p className="text-zinc-500 text-[9px] uppercase">CPM</p>
+          <p className="text-zinc-500 text-[13px] uppercase">CPM</p>
           <p className="font-bold mt-0.5" style={{ color: 'var(--red)' }}>$4.82</p>
         </div>
       </div>
       {countries.map((c) => (
         <div key={c.c} className="flex items-center gap-3">
-          <span className="text-[11px] text-zinc-300 w-28 truncate">{c.c}</span>
+          <span className="text-[13px] text-zinc-300 w-28 truncate">{c.c}</span>
           <div className="flex-1 h-2 bg-white/5 overflow-hidden"><div className="h-full" style={{ width: `${c.pct}%`, background: 'var(--red)' }} /></div>
-          <span className="font-mono-jb text-[10px] text-zinc-400 w-12 text-right">{c.cpm}</span>
+          <span className="font-mono-jb text-[13px] text-zinc-400 w-12 text-right">{c.cpm}</span>
         </div>
       ))}
     </div>
@@ -239,12 +239,12 @@ function PreviewCalendar({ lang }: { lang: Lang }) {
       ];
   return (
     <div className="col-span-2 border border-white/10 bg-black p-4 space-y-2">
-      <p className="font-mono-jb text-[9px] tracking-wider uppercase text-zinc-600 mb-2">{lang === 'en' ? '↗ AI suggestions this week' : '↗ Sugerencias IA esta semana'}</p>
+      <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-600 mb-2">{lang === 'en' ? '↗ AI suggestions this week' : '↗ Sugerencias IA esta semana'}</p>
       {suggestions.map((s) => (
         <div key={s.day} className="flex items-center gap-3 p-2 border border-white/5 hover:border-[rgba(232,77,91,0.3)] transition">
-          <span className="font-mono-jb text-[10px] w-16 shrink-0" style={{ color: 'var(--red)' }}>{s.day}</span>
-          <span className="text-[11px] text-zinc-200 flex-1 truncate">{s.title}</span>
-          <span className="font-mono-jb text-[9px] text-zinc-500 shrink-0">{s.reason}</span>
+          <span className="font-mono-jb text-[13px] w-16 shrink-0" style={{ color: 'var(--red)' }}>{s.day}</span>
+          <span className="text-[13px] text-zinc-200 flex-1 truncate">{s.title}</span>
+          <span className="font-mono-jb text-[13px] text-zinc-500 shrink-0">{s.reason}</span>
         </div>
       ))}
     </div>
@@ -266,11 +266,11 @@ function PreviewThumbPreview({ lang }: { lang: Lang }) {
       </div>
       <div className="mt-3 flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-green-500" />
-        <span className="font-mono-jb text-[10px] text-zinc-400">{lang === 'en' ? 'Text readable at all sizes' : 'Texto legible en todos los tamaños'}</span>
+        <span className="font-mono-jb text-[13px] text-zinc-400">{lang === 'en' ? 'Text readable at all sizes' : 'Texto legible en todos los tamaños'}</span>
       </div>
       <div className="flex items-center gap-2 mt-1">
         <span className="w-2 h-2 rounded-full" style={{ background: 'var(--red)' }} />
-        <span className="font-mono-jb text-[10px] text-zinc-400">{lang === 'en' ? 'Face too small on mobile' : 'Cara muy pequeña en móvil'}</span>
+        <span className="font-mono-jb text-[13px] text-zinc-400">{lang === 'en' ? 'Face too small on mobile' : 'Cara muy pequeña en móvil'}</span>
       </div>
     </div>
   );
@@ -289,8 +289,8 @@ function PreviewRetention({ lang }: { lang: Lang }) {
         <span>0:00</span><span>2:30</span><span>5:00</span><span>7:30</span><span>10:00</span>
       </div>
       <div className="mt-3 p-2 border border-white/5">
-        <p className="font-mono-jb text-[9px]" style={{ color: 'var(--red)' }}>{lang === 'en' ? '⚠ DROP at 7:30 — 38%' : '⚠ CAÍDA en 7:30 — 38%'}</p>
-        <p className="text-[10px] text-zinc-400 mt-1">{lang === 'en' ? 'AI: Move CTA before this point. Add a pattern interrupt at 7:00.' : 'IA: Mueve el CTA antes de este punto. Añade cambio de patrón en 7:00.'}</p>
+        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>{lang === 'en' ? '⚠ DROP at 7:30 — 38%' : '⚠ CAÍDA en 7:30 — 38%'}</p>
+        <p className="text-[13px] text-zinc-400 mt-1">{lang === 'en' ? 'AI: Move CTA before this point. Add a pattern interrupt at 7:00.' : 'IA: Mueve el CTA antes de este punto. Añade cambio de patrón en 7:00.'}</p>
       </div>
     </div>
   );
@@ -299,14 +299,14 @@ function PreviewRetention({ lang }: { lang: Lang }) {
 function PreviewSubscribers({ lang }: { lang: Lang }) {
   return (
     <div className="col-span-2 border border-white/10 bg-black p-4">
-      <div className="grid grid-cols-2 gap-2 font-mono-jb text-[10px] mb-3">
-        <div className="bg-white/5 p-2"><span className="text-zinc-500 text-[9px]">{lang === 'en' ? '7d growth' : 'Crec. 7d'}</span><p className="font-bold mt-0.5" style={{ color: '#00E5FF' }}>+847</p></div>
-        <div className="bg-white/5 p-2"><span className="text-zinc-500 text-[9px]">{lang === 'en' ? 'Subs/views' : 'Subs/vistas'}</span><p className="font-bold mt-0.5" style={{ color: '#00E5FF' }}>3.2%</p></div>
+      <div className="grid grid-cols-2 gap-2 font-mono-jb text-[13px] mb-3">
+        <div className="bg-white/5 p-2"><span className="text-zinc-500 text-[13px]">{lang === 'en' ? '7d growth' : 'Crec. 7d'}</span><p className="font-bold mt-0.5" style={{ color: '#00E5FF' }}>+847</p></div>
+        <div className="bg-white/5 p-2"><span className="text-zinc-500 text-[13px]">{lang === 'en' ? 'Subs/views' : 'Subs/vistas'}</span><p className="font-bold mt-0.5" style={{ color: '#00E5FF' }}>3.2%</p></div>
       </div>
-      <p className="font-mono-jb text-[9px] text-zinc-600 uppercase tracking-wider mb-1">{lang === 'en' ? '↗ 30-day forecast' : '↗ Previsión 30 días'}</p>
+      <p className="font-mono-jb text-[13px] text-zinc-600 uppercase tracking-wider mb-1">{lang === 'en' ? '↗ 30-day forecast' : '↗ Previsión 30 días'}</p>
       <div className="flex items-center gap-2">
         <div className="flex-1 h-2 bg-white/5 overflow-hidden"><div className="h-full" style={{ width: '72%', background: 'linear-gradient(90deg,#00E5FF,var(--red))' }} /></div>
-        <span className="font-mono-jb text-[11px] font-bold" style={{ color: 'var(--red)' }}>+3,420</span>
+        <span className="font-mono-jb text-[13px] font-bold" style={{ color: 'var(--red)' }}>+3,420</span>
       </div>
     </div>
   );
@@ -324,10 +324,10 @@ function PreviewOutliers({ lang }: { lang: Lang }) {
             <span className="font-mono-jb text-[7px]" style={{ color: 'var(--red)' }}>▶</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-zinc-200 truncate">{v.t}</p>
-            <p className="font-mono-jb text-[9px] text-zinc-500">{v.views} views · avg {v.avg}</p>
+            <p className="text-[13px] text-zinc-200 truncate">{v.t}</p>
+            <p className="font-mono-jb text-[13px] text-zinc-500">{v.views} views · avg {v.avg}</p>
           </div>
-          <span className="font-mono-jb text-[11px] font-bold shrink-0" style={{ color: 'var(--red)' }}>{v.mult}</span>
+          <span className="font-mono-jb text-[13px] font-bold shrink-0" style={{ color: 'var(--red)' }}>{v.mult}</span>
         </div>
       ))}
     </div>
@@ -342,8 +342,8 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
   const renderPreview = () => {
     if (f.k === 'titles' && f.preview) {
       return f.preview.map((title, i) => (
-        <div key={i} className="border border-white/10 p-3 text-[12px] leading-snug bg-black hover:border-[var(--red)]/50 transition">
-          <span className="font-mono-jb text-[10px]" style={{ color: 'var(--red)' }}>#{i + 1}</span>
+        <div key={i} className="border border-white/10 p-3 text-[13px] leading-snug bg-black hover:border-[var(--red)]/50 transition">
+          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>#{i + 1}</span>
           <p className="mt-1">{title}</p>
         </div>
       ));
@@ -367,7 +367,7 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
     <section className="border-b border-white/10 bg-black">
       <div className="max-w-7xl mx-auto px-6 py-24">
         <div className="mb-14">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>04 · TOOLS</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>04 · TOOLS</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
             {lang === 'en' ? <>14 tools.<br />One superpower.</> : <>14 herramientas.<br />Un superpoder.</>}
           </h2>
@@ -386,10 +386,10 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
                 }}
               >
                 <span className="flex items-center gap-3">
-                  <span className="font-mono-jb text-[11px] text-zinc-500">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="font-mono-jb text-[13px] text-zinc-500">{String(i + 1).padStart(2, '0')}</span>
                   <span className="font-display font-semibold text-[15px]" style={{ color: active === i ? '#fff' : '#d4d4d8' }}>{feat.t}</span>
                 </span>
-                <span className="font-mono-jb text-[10px]" style={{ color: active === i ? 'var(--red)' : '#52525b' }}>
+                <span className="font-mono-jb text-[13px]" style={{ color: active === i ? 'var(--red)' : '#52525b' }}>
                   {active === i ? '→' : '·'}
                 </span>
               </button>
@@ -398,7 +398,7 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
 
           <div className="border border-white/10 bg-[#0B0B0D] p-6 md:p-10 relative overflow-hidden">
             <div className="absolute top-0 right-0 red-tape">{f.tag}</div>
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-4">
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-4">
               FEATURE · {String(active + 1).padStart(2, '0')} / {String(FEATURES.length).padStart(2, '0')}
             </p>
             <h3 className="font-display font-bold text-3xl md:text-5xl leading-tight mb-4">{f.t}</h3>

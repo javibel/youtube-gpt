@@ -12,19 +12,19 @@ export default function OutputDisplay({ output, loading, onRegenerate, onCopy })
   return (
     <div className="neon-card rounded-2xl p-6 min-h-[420px] flex flex-col">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-500">Resultado</h3>
+        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-gray-500">Resultado</h3>
         {output && !loading && (
           <div className="flex gap-2">
             <button
               onClick={handleCopy}
-              className={`btn-neon text-xs px-4 py-1.5 rounded-lg font-medium ${copied ? 'opacity-70' : ''}`}
+              className={`btn-neon text-[13px] px-4 py-1.5 rounded-lg font-medium ${copied ? 'opacity-70' : ''}`}
             >
               {copied ? '✓ Copiado' : '⎘ Copiar'}
             </button>
             <button
               onClick={onRegenerate}
               style={{ borderColor: 'rgba(204,0,255,0.5)', color: '#CC00FF', boxShadow: '0 0 8px rgba(204,0,255,0.15)' }}
-              className="text-xs px-4 py-1.5 rounded-lg font-medium border transition hover:bg-purple-900/20"
+              className="text-[13px] px-4 py-1.5 rounded-lg font-medium border transition hover:bg-purple-900/20"
             >
               ↺ Regenerar
             </button>

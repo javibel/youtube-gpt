@@ -276,7 +276,7 @@ export default function CalendarPage() {
           {Object.entries(STATUS_LABELS).map(([key, labels]) => (
             <div key={key} className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLORS[key] }} />
-              <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{labels[lang]}</span>
+              <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{labels[lang]}</span>
             </div>
           ))}
         </div>
@@ -291,7 +291,7 @@ export default function CalendarPage() {
                 <h2 className="font-display font-bold text-white text-sm">
                   {t('Sugerencias AI', 'AI Suggestions')}
                 </h2>
-                <span className="font-mono-jb text-[10px] text-purple-400/70">
+                <span className="font-mono-jb text-[13px] text-purple-400/70">
                   {t('basado en Best Time + tendencias + competidores', 'based on Best Time + trends + competitors')}
                 </span>
               </div>
@@ -334,21 +334,21 @@ export default function CalendarPage() {
                       style={{ borderColor: 'rgba(168,85,247,0.15)', background: 'rgba(168,85,247,0.04)' }}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-mono-jb text-[12px] text-white leading-tight line-clamp-2">{s.title}</h3>
+                        <h3 className="font-mono-jb text-[13px] text-white leading-tight line-clamp-2">{s.title}</h3>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc' }}>
+                        <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc' }}>
                           {dayName} {s.date.slice(5)}
                         </span>
-                        <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>
+                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                           {s.hour}:00 UTC
                         </span>
                       </div>
-                      <p className="font-mono-jb text-[10px] leading-relaxed line-clamp-2" style={{ color: 'var(--yv-text-3)' }}>{s.reason}</p>
+                      <p className="font-mono-jb text-[13px] leading-relaxed line-clamp-2" style={{ color: 'var(--yv-text-3)' }}>{s.reason}</p>
                       <button
                         onClick={() => addSuggestionToCalendar(i)}
                         disabled={addingSuggestion === i}
-                        className="mt-auto flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-mono-jb transition border hover:border-purple-500/40 disabled:opacity-40"
+                        className="mt-auto flex items-center justify-center gap-1.5 py-1.5 rounded text-[13px] font-mono-jb transition border hover:border-purple-500/40 disabled:opacity-40"
                         style={{ borderColor: 'rgba(168,85,247,0.2)', color: '#c084fc' }}
                       >
                         {addingSuggestion === i ? (
@@ -384,7 +384,7 @@ export default function CalendarPage() {
             {/* Day headers */}
             <div className="grid grid-cols-7 gap-1 mb-1">
               {DAY_HEADERS[lang].map(d => (
-                <div key={d} className="text-center font-mono-jb text-[10px] uppercase tracking-wider py-1" style={{ color: 'var(--yv-text-4)' }}>
+                <div key={d} className="text-center font-mono-jb text-[13px] uppercase tracking-wider py-1" style={{ color: 'var(--yv-text-4)' }}>
                   {d}
                 </div>
               ))}
@@ -411,16 +411,16 @@ export default function CalendarPage() {
                     onClick={() => openAdd(dateStr)}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono-jb text-[11px]" style={{ color: isToday ? 'var(--yv-brand)' : 'var(--yv-text-3)', fontWeight: isToday ? 700 : 400 }}>
+                      <span className="font-mono-jb text-[13px]" style={{ color: isToday ? 'var(--yv-brand)' : 'var(--yv-text-3)', fontWeight: isToday ? 700 : 400 }}>
                         {dayNum}
                       </span>
-                      <span className="opacity-0 group-hover:opacity-100 transition text-[10px]" style={{ color: 'var(--yv-text-5)' }}>+</span>
+                      <span className="opacity-0 group-hover:opacity-100 transition text-[13px]" style={{ color: 'var(--yv-text-5)' }}>+</span>
                     </div>
                     <div className="space-y-0.5">
                       {dayEntries.map(entry => (
                         <div
                           key={entry.id}
-                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono-jb truncate cursor-pointer hover:brightness-125 transition"
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[13px] font-mono-jb truncate cursor-pointer hover:brightness-125 transition"
                           style={{ background: `${STATUS_COLORS[entry.status]}22`, color: STATUS_COLORS[entry.status] }}
                           onClick={e => { e.stopPropagation(); openEdit(entry); }}
                           title={entry.title}
@@ -453,7 +453,7 @@ export default function CalendarPage() {
 
             <div className="space-y-3">
               <div>
-                <label className="font-mono-jb text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--yv-text-3)' }}>
+                <label className="font-mono-jb text-[13px] uppercase tracking-wider block mb-1" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Título', 'Title')}
                 </label>
                 <input
@@ -468,7 +468,7 @@ export default function CalendarPage() {
               </div>
 
               <div>
-                <label className="font-mono-jb text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--yv-text-3)' }}>
+                <label className="font-mono-jb text-[13px] uppercase tracking-wider block mb-1" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Descripción', 'Description')}
                 </label>
                 <textarea
@@ -483,7 +483,7 @@ export default function CalendarPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-mono-jb text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--yv-text-3)' }}>
+                  <label className="font-mono-jb text-[13px] uppercase tracking-wider block mb-1" style={{ color: 'var(--yv-text-3)' }}>
                     {t('Fecha', 'Date')}
                   </label>
                   <input
@@ -495,7 +495,7 @@ export default function CalendarPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-mono-jb text-[10px] uppercase tracking-wider block mb-1" style={{ color: 'var(--yv-text-3)' }}>
+                  <label className="font-mono-jb text-[13px] uppercase tracking-wider block mb-1" style={{ color: 'var(--yv-text-3)' }}>
                     {t('Estado', 'Status')}
                   </label>
                   <select

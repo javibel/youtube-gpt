@@ -42,10 +42,10 @@ export default async function GearPage() {
             </span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/blog" className="hidden md:block font-mono-jb text-[11px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
+            <Link href="/blog" className="hidden md:block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
               Blog
             </Link>
-            <Link href="/" className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
+            <Link href="/" className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
               {t('Inicio', 'Home')}
             </Link>
             <Link href="/signup" className="btn-offset px-4 py-2 text-[13px] font-display">
@@ -60,7 +60,7 @@ export default async function GearPage() {
         <div className="absolute inset-0 grid-bg opacity-30" />
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 40% 0%, rgba(232,77,91,0.12), transparent 60%)' }} />
         <div className="relative max-w-7xl mx-auto px-6 py-20 md:py-28">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>
             {t('EQUIPO RECOMENDADO', 'RECOMMENDED GEAR')}
           </p>
           <h1 className="font-display font-bold leading-[0.95] max-w-3xl" style={{ fontSize: 'clamp(36px,6vw,72px)' }}>
@@ -81,7 +81,7 @@ export default async function GearPage() {
               <a
                 key={cat.key}
                 href={`#${cat.key}`}
-                className="soft-chip px-4 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase text-zinc-400 hover:text-white transition"
+                className="soft-chip px-4 py-1.5 font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400 hover:text-white transition"
                 style={{ borderColor: cat.color + '33' }}
               >
                 <span className="mr-1.5">{cat.icon}</span>
@@ -94,7 +94,7 @@ export default async function GearPage() {
 
       {/* ── Affiliate disclosure ── */}
       <div className="max-w-7xl mx-auto px-6 pt-8">
-        <p className="text-zinc-600 text-xs font-mono-jb border border-white/5 rounded-lg px-4 py-3" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <p className="text-zinc-600 text-[13px] font-mono-jb border border-white/5 rounded-lg px-4 py-3" style={{ background: 'rgba(255,255,255,0.02)' }}>
           {t(
             '* Esta página contiene enlaces de afiliados. Si compras a través de ellos, recibimos una pequeña comisión sin coste adicional para ti. Esto nos ayuda a mantener YTubViral gratuito.',
             '* This page contains affiliate links. If you buy through them, we receive a small commission at no extra cost to you. This helps us keep YTubViral free.'
@@ -137,7 +137,7 @@ export default async function GearPage() {
                       {/* Recommended badge */}
                       {item.recommended && (
                         <div
-                          className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-md font-mono-jb text-[9px] tracking-wider uppercase font-bold"
+                          className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-md font-mono-jb text-[13px] tracking-wider uppercase font-bold"
                           style={{ background: 'rgba(232,77,91,0.15)', color: '#e84d5b', border: '1px solid rgba(232,77,91,0.3)' }}
                         >
                           {t('Recomendado', 'Recommended')}
@@ -163,7 +163,7 @@ export default async function GearPage() {
                         {/* Tier + Price */}
                         <div className="flex items-center justify-between mb-3">
                           <span
-                            className="font-mono-jb text-[10px] tracking-wider uppercase px-2 py-0.5 rounded border"
+                            className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-0.5 rounded border"
                             style={{ color: tierColor, borderColor: tierColor + '44', background: tierColor + '11' }}
                           >
                             {tierLabel}
@@ -188,7 +188,7 @@ export default async function GearPage() {
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer nofollow"
-                          className="inline-flex items-center gap-2 font-mono-jb text-[12px] tracking-wider px-5 py-2.5 rounded-lg transition-all hover:scale-[1.02]"
+                          className="inline-flex items-center gap-2 font-mono-jb text-[13px] tracking-wider px-5 py-2.5 rounded-lg transition-all hover:scale-[1.02]"
                           style={{
                             background: `${cat.color}15`,
                             color: cat.color,
@@ -213,7 +213,7 @@ export default async function GearPage() {
       {/* ── CTA section ── */}
       <section className="border-t border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-20 text-center">
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>
             {t('CREA CONTENIDO PROFESIONAL', 'CREATE PROFESSIONAL CONTENT')}
           </p>
           <h2 className="font-display font-bold text-3xl md:text-4xl text-white mb-4">
@@ -236,7 +236,7 @@ export default async function GearPage() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-white/10 py-8">
-        <div className="max-w-7xl mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-zinc-600 font-mono-jb text-[11px]">
+        <div className="max-w-7xl mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-zinc-600 font-mono-jb text-[13px]">
           <span>&copy; {new Date().getFullYear()} YTubViral.com</span>
           <div className="flex gap-4">
             <Link href="/blog" className="hover:text-white transition">Blog</Link>

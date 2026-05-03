@@ -30,7 +30,7 @@ export default function TemplateSelector({ selected, onSelect, templates, isPro,
             {/* Badge PRO */}
             {template.proOnly && (
               <span
-                className="absolute top-2 right-2 text-xs font-bold px-1.5 py-0.5 rounded-full"
+                className="absolute top-2 right-2 text-[13px] font-bold px-1.5 py-0.5 rounded-full"
                 style={{
                   background: isPro
                     ? 'linear-gradient(90deg,#00D9FF,#CC00FF)'
@@ -48,7 +48,7 @@ export default function TemplateSelector({ selected, onSelect, templates, isPro,
             <div className={`font-semibold text-sm ${isSelected ? 'text-cyan-glow' : isLocked ? 'text-gray-500' : 'text-gray-300'}`}>
               {template.name.replace(/^[^\s]+\s/, '')}
             </div>
-            <div className="text-gray-600 text-xs mt-0.5 line-clamp-1">{template.description}</div>
+            <div className="text-gray-600 text-[13px] mt-0.5 line-clamp-1">{template.description}</div>
           </button>
         );
       })}

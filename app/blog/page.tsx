@@ -85,7 +85,7 @@ export default async function BlogListPage({
             </span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/" className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
+            <Link href="/" className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
               {lang === 'en' ? '← Home' : '← Inicio'}
             </Link>
             <Link href="/signup" className="btn-offset px-4 py-2 text-[13px] font-display">
@@ -100,7 +100,7 @@ export default async function BlogListPage({
         <div className="absolute inset-0 grid-bg opacity-30" />
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 60% 0%, rgba(232,77,91,0.12), transparent 60%)' }} />
         <div className="relative max-w-7xl mx-auto px-6 py-20 md:py-28">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>
             {lang === 'en' ? 'Blog · Knowledge base' : 'Blog · Base de conocimiento'}
           </p>
           <h1 className="font-display font-bold leading-[0.95] max-w-3xl" style={{ fontSize: 'clamp(36px,6vw,80px)' }}>
@@ -116,12 +116,12 @@ export default async function BlogListPage({
 
           {/* Category pills */}
           <div className="flex flex-wrap gap-2 mt-8">
-            <Link href="/blog" className={`soft-chip px-4 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase ${!selectedCat ? 'soft-chip-active' : 'text-zinc-400'}`}>
+            <Link href="/blog" className={`soft-chip px-4 py-1.5 font-mono-jb text-[13px] tracking-wider uppercase ${!selectedCat ? 'soft-chip-active' : 'text-zinc-400'}`}>
               {lang === 'en' ? 'All' : 'Todos'}
             </Link>
             {Object.entries(BLOG_CATEGORIES).map(([key, val]) => (
               <Link key={key} href={`/blog?cat=${key}`}
-                className={`soft-chip px-4 py-1.5 font-mono-jb text-[11px] tracking-wider uppercase ${selectedCat === key ? 'soft-chip-active' : 'text-zinc-400'}`}
+                className={`soft-chip px-4 py-1.5 font-mono-jb text-[13px] tracking-wider uppercase ${selectedCat === key ? 'soft-chip-active' : 'text-zinc-400'}`}
                 style={{ borderColor: val.color + '33' }}>
                 {val.name[lang]}
               </Link>
@@ -133,7 +133,7 @@ export default async function BlogListPage({
       {/* ── Featured post ── */}
       {featured && <section className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-12">
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-6">
+          <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-6">
             {lang === 'en' ? 'Featured' : 'Destacado'}
           </p>
           <Link href={`/blog/${featured.slug}`} className="group grid md:grid-cols-2 gap-0 border border-white/10 hover:border-white/20 transition-colors bg-black">
@@ -143,11 +143,11 @@ export default async function BlogListPage({
             <div className="p-8 md:p-10 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="font-mono-jb text-[10px] tracking-wider uppercase px-2.5 py-1 border"
+                  <span className="font-mono-jb text-[13px] tracking-wider uppercase px-2.5 py-1 border"
                     style={{ color: catColor(featured.cat), borderColor: catColor(featured.cat) + '55', background: catColor(featured.cat) + '11' }}>
                     {catLabel(featured.cat)}
                   </span>
-                  <span className="font-mono-jb text-[10px] text-zinc-600">{featured.readMin} min read</span>
+                  <span className="font-mono-jb text-[13px] text-zinc-600">{featured.readMin} min read</span>
                 </div>
                 <h2 className="font-display font-bold text-2xl md:text-3xl leading-tight mb-4 group-hover:text-zinc-100 transition-colors">
                   {featured.title[lang]}
@@ -156,16 +156,16 @@ export default async function BlogListPage({
               </div>
               <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/10">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 flex items-center justify-center font-display font-bold text-xs"
+                  <div className="w-8 h-8 flex items-center justify-center font-display font-bold text-[13px]"
                     style={{ background: 'var(--red)', color: '#000' }}>
                     {featured.author.avatar}
                   </div>
                   <div>
                     <p className="text-sm font-semibold">{featured.author.name}</p>
-                    <p className="font-mono-jb text-[10px] text-zinc-500">{featured.date[lang]}</p>
+                    <p className="font-mono-jb text-[13px] text-zinc-500">{featured.date[lang]}</p>
                   </div>
                 </div>
-                <span className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--red)' }}>
+                <span className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--red)' }}>
                   {lang === 'en' ? 'Read →' : 'Leer →'}
                 </span>
               </div>
@@ -191,7 +191,7 @@ export default async function BlogListPage({
       <section className="max-w-7xl mx-auto px-6 py-12 grid lg:grid-cols-[1fr_300px] gap-12">
         {/* Posts grid */}
         <div>
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-6">
+          <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-6">
             {lang === 'en' ? 'Latest articles' : 'Últimos artículos'}
           </p>
           <div className="grid sm:grid-cols-2 gap-6">
@@ -203,19 +203,19 @@ export default async function BlogListPage({
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="font-mono-jb text-[10px] tracking-wider uppercase px-2 py-0.5 border"
+                    <span className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-0.5 border"
                       style={{ color: catColor(post.cat), borderColor: catColor(post.cat) + '55', background: catColor(post.cat) + '11' }}>
                       {catLabel(post.cat)}
                     </span>
-                    <span className="font-mono-jb text-[10px] text-zinc-600">{post.readMin} min</span>
+                    <span className="font-mono-jb text-[13px] text-zinc-600">{post.readMin} min</span>
                   </div>
                   <h3 className="font-display font-bold text-lg leading-tight mb-3 group-hover:text-zinc-100 transition-colors flex-1">
                     {post.title[lang]}
                   </h3>
                   <p className="text-zinc-500 text-sm leading-relaxed line-clamp-3">{post.excerpt[lang]}</p>
                   <div className="flex items-center justify-between mt-5 pt-4 border-t border-white/8">
-                    <span className="font-mono-jb text-[10px] text-zinc-600">{post.date[lang]}</span>
-                    <span className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: 'var(--red)' }}>
+                    <span className="font-mono-jb text-[13px] text-zinc-600">{post.date[lang]}</span>
+                    <span className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--red)' }}>
                       {lang === 'en' ? 'Read →' : 'Leer →'}
                     </span>
                   </div>
@@ -231,7 +231,7 @@ export default async function BlogListPage({
           <div className="border border-white/10 p-6 bg-black relative overflow-hidden">
             <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.15), transparent 70%)' }} />
             <div className="relative">
-              <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-3" style={{ color: 'var(--red)' }}>
+              <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--red)' }}>
                 {lang === 'en' ? 'Try it free' : 'Pruébalo gratis'}
               </p>
               <p className="font-display font-bold text-xl mb-3">
@@ -250,13 +250,13 @@ export default async function BlogListPage({
 
           {/* Popular */}
           <div className="border border-white/10 p-6 bg-black">
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-4">
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-4">
               {lang === 'en' ? 'Popular this week' : 'Popular esta semana'}
             </p>
             <div className="space-y-4">
               {BLOG_POSTS.slice(0, 4).map((p, i) => (
                 <Link key={p.slug} href={`/blog/${p.slug}`} className="flex gap-3 group">
-                  <span className="font-mono-jb text-[11px] text-zinc-700 mt-0.5 shrink-0">0{i + 1}</span>
+                  <span className="font-mono-jb text-[13px] text-zinc-700 mt-0.5 shrink-0">0{i + 1}</span>
                   <p className="font-display font-bold text-sm leading-tight group-hover:text-zinc-300 transition-colors">
                     {p.title[lang]}
                   </p>
@@ -267,7 +267,7 @@ export default async function BlogListPage({
 
           {/* Categories */}
           <div className="border border-white/10 p-6 bg-black">
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-4">
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-4">
               {lang === 'en' ? 'Categories' : 'Categorías'}
             </p>
             <div className="space-y-2">
@@ -279,7 +279,7 @@ export default async function BlogListPage({
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: val.color }} />
                       <span className="text-sm text-zinc-300">{val.name[lang]}</span>
                     </div>
-                    <span className="font-mono-jb text-[10px] text-zinc-600">{count}</span>
+                    <span className="font-mono-jb text-[13px] text-zinc-600">{count}</span>
                   </Link>
                 );
               })}
@@ -291,10 +291,10 @@ export default async function BlogListPage({
       {/* ── Footer ── */}
       <footer className="border-t border-white/10 bg-black mt-8">
         <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
-          <p className="text-zinc-500 font-mono-jb text-xs">
+          <p className="text-zinc-500 font-mono-jb text-[13px]">
             © 2026 YTubViral · {lang === 'en' ? 'Made by creators, for creators.' : 'Hecho por creadores, para creadores.'}
           </p>
-          <div className="flex gap-6 text-zinc-500 font-mono-jb text-xs">
+          <div className="flex gap-6 text-zinc-500 font-mono-jb text-[13px]">
             <Link href="/terms" className="hover:text-white transition">{lang === 'en' ? 'Terms' : 'Términos'}</Link>
             <Link href="/privacy" className="hover:text-white transition">{lang === 'en' ? 'Privacy' : 'Privacidad'}</Link>
           </div>

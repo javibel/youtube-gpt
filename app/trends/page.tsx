@@ -259,7 +259,7 @@ export default function TrendsPage() {
             <div className="flex gap-0">
               <button
                 onClick={() => setTab('explore')}
-                className="px-5 py-3 font-mono-jb text-[11px] tracking-wider border-b-2 transition"
+                className="px-5 py-3 font-mono-jb text-[13px] tracking-wider border-b-2 transition"
                 style={{
                   color: tab === 'explore' ? 'var(--yv-text-1)' : 'var(--yv-text-3)',
                   borderColor: tab === 'explore' ? 'var(--yv-brand)' : 'transparent',
@@ -272,7 +272,7 @@ export default function TrendsPage() {
               </button>
               <button
                 onClick={() => setTab('alerts')}
-                className="px-5 py-3 font-mono-jb text-[11px] tracking-wider border-b-2 transition"
+                className="px-5 py-3 font-mono-jb text-[13px] tracking-wider border-b-2 transition"
                 style={{
                   color: tab === 'alerts' ? 'var(--yv-text-1)' : 'var(--yv-text-3)',
                   borderColor: tab === 'alerts' ? 'var(--yv-brand)' : 'transparent',
@@ -282,7 +282,7 @@ export default function TrendsPage() {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                   {t('Alertas', 'Alerts')}
                   {unread > 0 && (
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold" style={{ background: 'var(--yv-brand)', color: '#fff' }}>
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[13px] font-bold" style={{ background: 'var(--yv-brand)', color: '#fff' }}>
                       {unread}
                     </span>
                   )}
@@ -307,7 +307,7 @@ export default function TrendsPage() {
                 const regionDef = REGIONS.find(r => r.code === newRegion);
                 if (regionDef) setLangFilter(regionDef.lang);
               }}
-              className="font-mono-jb text-[11px] rounded px-3 py-2 transition focus:outline-none"
+              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
               style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
             >
               {REGIONS.map(r => (
@@ -321,7 +321,7 @@ export default function TrendsPage() {
             <select
               value={category}
               onChange={e => setCategory(e.target.value)}
-              className="font-mono-jb text-[11px] rounded px-3 py-2 transition focus:outline-none"
+              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
               style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
             >
               <option value="" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>
@@ -338,7 +338,7 @@ export default function TrendsPage() {
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as 'vph' | 'views' | 'engagement' | 'likes')}
-              className="font-mono-jb text-[11px] rounded px-3 py-2 transition focus:outline-none"
+              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
               style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
             >
               <option value="vph" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>
@@ -359,7 +359,7 @@ export default function TrendsPage() {
             <select
               value={durationFilter}
               onChange={e => setDurationFilter(e.target.value)}
-              className="font-mono-jb text-[11px] rounded px-3 py-2 transition focus:outline-none"
+              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
               style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
             >
               <option value="all" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>
@@ -380,7 +380,7 @@ export default function TrendsPage() {
             <select
               value={minLikes}
               onChange={e => setMinLikes(e.target.value)}
-              className="font-mono-jb text-[11px] rounded px-3 py-2 transition focus:outline-none"
+              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
               style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
             >
               <option value="0" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>
@@ -401,7 +401,7 @@ export default function TrendsPage() {
             <select
               value={langFilter}
               onChange={e => setLangFilter(e.target.value)}
-              className="font-mono-jb text-[11px] rounded px-3 py-2 transition focus:outline-none"
+              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
               style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
             >
               <option value="all" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>
@@ -437,7 +437,7 @@ export default function TrendsPage() {
             <button
               onClick={fetchExplorer}
               disabled={explorerLoading}
-              className="font-mono-jb text-[11px] tracking-wider hover:text-white transition rounded px-3 py-2 disabled:opacity-40"
+              className="font-mono-jb text-[13px] tracking-wider hover:text-white transition rounded px-3 py-2 disabled:opacity-40"
               style={{ color: 'var(--yv-text-3)', border: '1px solid var(--yv-border)' }}
             >
               {explorerLoading ? (
@@ -454,7 +454,7 @@ export default function TrendsPage() {
             </button>
 
             {explorer && (
-              <span className="font-mono-jb text-[10px] ml-auto" style={{ color: 'var(--yv-text-4)' }}>
+              <span className="font-mono-jb text-[13px] ml-auto" style={{ color: 'var(--yv-text-4)' }}>
                 {explorer.totalResults} {t('resultados', 'results')}
               </span>
             )}
@@ -502,17 +502,17 @@ export default function TrendsPage() {
                       />
                     </a>
                     {/* Rank badge */}
-                    <span className="absolute top-2 left-2 font-mono-jb text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.75)', color: idx < 3 ? '#FFE800' : '#fff' }}>
+                    <span className="absolute top-2 left-2 font-mono-jb text-[13px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.75)', color: idx < 3 ? '#FFE800' : '#fff' }}>
                       #{idx + 1}
                     </span>
                     {/* Duration badge */}
                     {item.durationSec > 0 && (
-                      <span className="absolute bottom-2 right-2 font-mono-jb text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.85)', color: '#fff' }}>
+                      <span className="absolute bottom-2 right-2 font-mono-jb text-[13px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.85)', color: '#fff' }}>
                         {fmtDuration(item.durationSec)}
                       </span>
                     )}
                     {/* VPH badge */}
-                    <span className="absolute top-2 right-2 font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1" style={{ background: 'rgba(0,0,0,0.80)', color: vphColor(item.vph) }}>
+                    <span className="absolute top-2 right-2 font-mono-jb text-[13px] font-bold px-2 py-0.5 rounded flex items-center gap-1" style={{ background: 'rgba(0,0,0,0.80)', color: vphColor(item.vph) }}>
                       <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                       {fmtNum(item.vph)}/h
                     </span>
@@ -528,33 +528,33 @@ export default function TrendsPage() {
                     >
                       {item.title}
                     </a>
-                    <p className="font-mono-jb text-[10px] mt-1 truncate" style={{ color: 'var(--yv-text-3)' }}>{item.channelTitle}</p>
+                    <p className="font-mono-jb text-[13px] mt-1 truncate" style={{ color: 'var(--yv-text-3)' }}>{item.channelTitle}</p>
 
                     {/* Stats row */}
                     <div className="flex flex-wrap items-center gap-2 mt-3">
-                      <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-2)' }}>
+                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>
                         {fmtNum(item.views)} views
                       </span>
-                      <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-2)' }}>
+                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>
                         👍 {fmtNum(item.likes)}
                       </span>
-                      <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-2)' }}>
+                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>
                         {item.engagementRate}% eng
                       </span>
-                      <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--yv-text-3)' }}>
+                      <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--yv-text-3)' }}>
                         {item.categoryLabel[lang]}
                       </span>
                     </div>
 
                     {/* Age */}
-                    <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
+                    <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
                       {timeAgo(item.publishedAt, lang)}
                     </p>
 
                     {/* Action: Create video */}
                     <a
                       href={`/generate?topic=${encodeURIComponent(item.title)}`}
-                      className="mt-3 flex items-center justify-center gap-1.5 w-full font-mono-jb text-[11px] tracking-wider px-3 py-2 rounded hover:text-white transition"
+                      className="mt-3 flex items-center justify-center gap-1.5 w-full font-mono-jb text-[13px] tracking-wider px-3 py-2 rounded hover:text-white transition"
                       style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--yv-text-2)', border: '1px solid var(--yv-border)' }}
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -582,7 +582,7 @@ export default function TrendsPage() {
           {/* Mark all read */}
           {unread > 0 && (
             <div className="flex justify-end mb-2">
-              <button onClick={markAllRead} className="font-mono-jb text-[11px] hover:text-white transition rounded px-3 py-1.5" style={{ color: 'var(--yv-text-3)', border: '1px solid var(--yv-border)' }}>
+              <button onClick={markAllRead} className="font-mono-jb text-[13px] hover:text-white transition rounded px-3 py-1.5" style={{ color: 'var(--yv-text-3)', border: '1px solid var(--yv-border)' }}>
                 {t('Marcar todo leído', 'Mark all read')}
               </button>
             </div>
@@ -626,15 +626,15 @@ export default function TrendsPage() {
                       <span className="font-display font-bold text-sm text-white">{alert.title}</span>
                       {!alert.read && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--yv-brand)' }} />}
                     </div>
-                    <p className="text-xs font-mono-jb line-clamp-2" style={{ color: 'var(--yv-text-2)' }}>{alert.description}</p>
+                    <p className="text-[13px] font-mono-jb line-clamp-2" style={{ color: 'var(--yv-text-2)' }}>{alert.description}</p>
                     <div className="flex items-center gap-3 mt-2">
-                      <span className="font-mono-jb text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${relevanceColor(alert.relevance)}22`, color: relevanceColor(alert.relevance) }}>
+                      <span className="font-mono-jb text-[13px] px-2 py-0.5 rounded-full" style={{ background: `${relevanceColor(alert.relevance)}22`, color: relevanceColor(alert.relevance) }}>
                         {t('Relevancia', 'Relevance')}: {alert.relevance}%
                       </span>
-                      <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
+                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                         {timeAgo(alert.createdAt, lang)}
                       </span>
-                      <span className="font-mono-jb text-[10px] capitalize" style={{ color: 'var(--yv-text-4)' }}>
+                      <span className="font-mono-jb text-[13px] capitalize" style={{ color: 'var(--yv-text-4)' }}>
                         {alert.category}
                       </span>
                     </div>
@@ -650,12 +650,12 @@ export default function TrendsPage() {
 
                 {isExpanded && videos.length > 0 && (
                   <div className="px-4 pb-4 pt-3" style={{ borderTop: '1px solid var(--yv-border-subtle)' }}>
-                    <p className="font-mono-jb text-[10px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-4)' }}>
+                    <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-4)' }}>
                       {t('Vídeos en tendencia', 'Trending videos')}
                     </p>
                     <div className="space-y-1.5">
                       {videos.map((v, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs font-mono-jb">
+                        <div key={i} className="flex items-center gap-2 text-[13px] font-mono-jb">
                           <span style={{ color: 'var(--yv-text-4)' }}>{i + 1}.</span>
                           <span className="truncate flex-1" style={{ color: 'var(--yv-text-2)' }}>{v.title}</span>
                           <span className="flex-shrink-0" style={{ color: 'var(--yv-text-4)' }}>{v.channelName}</span>

@@ -178,7 +178,7 @@ export default function AnalyticsPage() {
               ].map((card, i) => (
                 <div key={i} className="yv-card p-4">
                   <div className="font-display font-bold text-xl" style={{ color: 'var(--yv-text-1)' }}>{card.value}</div>
-                  <div className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{card.label}</div>
+                  <div className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{card.label}</div>
                 </div>
               ))}
             </div>
@@ -190,7 +190,7 @@ export default function AnalyticsPage() {
                   {t('Visualizaciones diarias (90 días)', 'Daily views (90 days)')}
                 </h2>
                 {renderSparkline(data.daily, 'views')}
-                <div className="flex justify-between font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
+                <div className="flex justify-between font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
                   <span>{data.daily[0]?.day}</span>
                   <span>{data.daily[data.daily.length - 1]?.day}</span>
                 </div>
@@ -212,7 +212,7 @@ export default function AnalyticsPage() {
                       const label = TRAFFIC_LABELS[src.insightTrafficSourceType]?.[lang] || src.insightTrafficSourceType;
                       return (
                         <div key={i}>
-                          <div className="flex justify-between font-mono-jb text-xs mb-0.5">
+                          <div className="flex justify-between font-mono-jb text-[13px] mb-0.5">
                             <span style={{ color: 'var(--yv-text-2)' }}>{label}</span>
                             <span style={{ color: 'var(--yv-text-3)' }}>{fmtNum(src.views)} ({pct.toFixed(1)}%)</span>
                           </div>
@@ -238,7 +238,7 @@ export default function AnalyticsPage() {
                       const pct = totalViews > 0 ? (c.views / totalViews) * 100 : 0;
                       return (
                         <div key={i}>
-                          <div className="flex justify-between font-mono-jb text-xs mb-0.5">
+                          <div className="flex justify-between font-mono-jb text-[13px] mb-0.5">
                             <span style={{ color: 'var(--yv-text-2)' }}>{c.country}</span>
                             <span style={{ color: 'var(--yv-text-3)' }}>{fmtNum(c.views)} ({pct.toFixed(1)}%)</span>
                           </div>
@@ -262,7 +262,7 @@ export default function AnalyticsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="font-mono-jb text-[10px] uppercase tracking-wider border-b border-white/8" style={{ color: 'var(--yv-text-3)' }}>
+                      <tr className="font-mono-jb text-[13px] uppercase tracking-wider border-b border-white/8" style={{ color: 'var(--yv-text-3)' }}>
                         <th className="pb-2 pr-4">{t('Vídeo', 'Video')}</th>
                         <th className="pb-2 pr-4 text-right">{t('Vistas', 'Views')}</th>
                         <th className="pb-2 pr-4 text-right">{t('Duración media', 'Avg duration')}</th>
@@ -285,10 +285,10 @@ export default function AnalyticsPage() {
                               {v.title}
                             </a>
                           </td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.views)}</td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{fmtDuration(v.averageViewDuration)}</td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.likes)}</td>
-                          <td className="py-2.5 text-right font-mono-jb text-xs" style={{ color: v.subscribersGained > 0 ? '#22c55e' : '#888' }}>
+                          <td className="py-2.5 pr-4 text-right font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.views)}</td>
+                          <td className="py-2.5 pr-4 text-right font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{fmtDuration(v.averageViewDuration)}</td>
+                          <td className="py-2.5 pr-4 text-right font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.likes)}</td>
+                          <td className="py-2.5 text-right font-mono-jb text-[13px]" style={{ color: v.subscribersGained > 0 ? '#22c55e' : '#888' }}>
                             +{v.subscribersGained}
                           </td>
                         </tr>
@@ -301,7 +301,7 @@ export default function AnalyticsPage() {
 
             {/* Private data badge */}
             <div className="text-center py-4">
-              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
+              <span className="inline-flex items-center gap-2 font-mono-jb text-[13px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 {t('Datos privados — solo accesibles con tu autorización OAuth', 'Private data — only accessible with your OAuth authorization')}
               </span>

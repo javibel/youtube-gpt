@@ -37,7 +37,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   const s = map[status] ?? { bg: 'rgba(255,255,255,0.06)', color: '#a1a1aa' };
   return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-mono-jb font-semibold" style={{ background: s.bg, color: s.color }}>
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[13px] font-mono-jb font-semibold" style={{ background: s.bg, color: s.color }}>
       {status}
     </span>
   );
@@ -54,10 +54,10 @@ function PreviewModal({ data, onClose }: { data: Record<string, string | null>; 
         <div className="p-6 space-y-5">
           {Object.entries(data).map(([platform, content]) => content ? (
             <div key={platform}>
-              <div className="text-xs font-mono-jb mb-2 uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
+              <div className="text-[13px] font-mono-jb mb-2 uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
                 {PLATFORM_EMOJI[platform]} {platform}
               </div>
-              <div className="rounded-xl p-4 text-xs leading-relaxed whitespace-pre-wrap" style={{ background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--text-dim)' }}>
+              <div className="rounded-xl p-4 text-[13px] leading-relaxed whitespace-pre-wrap" style={{ background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--text-dim)' }}>
                 {content}
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function SocialAdminPage() {
 
         {/* Estado */}
         <section>
-          <p className="text-xs font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Estado de integraciones</p>
+          <p className="text-[13px] font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Estado de integraciones</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
             {data?.status && (Object.entries({
               YouTube: data.status.youtube, Gmail: data.status.gmail,
@@ -150,10 +150,10 @@ export default function SocialAdminPage() {
               LinkedIn: data.status.linkedin, TikTok: null, Twitter: null,
             }) as [string, boolean | null][]).map(([label, connected]) => (
               <div key={label} className="yv-card p-3">
-                <div className="text-xs mb-1" style={{ color: 'var(--text-faint)' }}>
+                <div className="text-[13px] mb-1" style={{ color: 'var(--text-faint)' }}>
                   {PLATFORM_EMOJI[label.toLowerCase()] ?? '🔗'} {label}
                 </div>
-                <div className="text-xs font-semibold font-mono-jb" style={{ color: connected === null ? '#fbbf24' : connected ? '#22c55e' : '#f87171' }}>
+                <div className="text-[13px] font-semibold font-mono-jb" style={{ color: connected === null ? '#fbbf24' : connected ? '#22c55e' : '#f87171' }}>
                   {connected === null ? 'Manual' : connected ? 'OK' : 'Error'}
                 </div>
               </div>
@@ -163,7 +163,7 @@ export default function SocialAdminPage() {
 
         {/* Acciones */}
         <section>
-          <p className="text-xs font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Acciones rápidas</p>
+          <p className="text-[13px] font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Acciones rápidas</p>
           <div className="flex flex-wrap gap-3">
             <button onClick={() => runAction('publish', 'morning')} disabled={loading === 'publish'} className="btn-offset px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
               {loading === 'publish' ? 'Publicando...' : 'Publicar mañana'}
@@ -182,7 +182,7 @@ export default function SocialAdminPage() {
 
         {/* Publicaciones */}
         <section>
-          <p className="text-xs font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Historial de publicaciones</p>
+          <p className="text-[13px] font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Historial de publicaciones</p>
           <div className="yv-card overflow-hidden">
             {!data?.posts.length ? (
               <p className="p-6 text-sm" style={{ color: 'var(--text-faint)' }}>Sin publicaciones aún.</p>
@@ -192,7 +192,7 @@ export default function SocialAdminPage() {
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--line)' }}>
                       {['Plataforma', 'Contenido', 'Estado', 'Error', 'Fecha'].map(h => (
-                        <th key={h} className="text-left px-5 py-3 text-xs font-mono-jb uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>{h}</th>
+                        <th key={h} className="text-left px-5 py-3 text-[13px] font-mono-jb uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -203,15 +203,15 @@ export default function SocialAdminPage() {
                           {PLATFORM_EMOJI[post.platform] ?? '🔗'} {post.platform}
                         </td>
                         <td className="px-5 py-3" style={{ color: 'var(--text-dim)' }}>
-                          <span className="block max-w-xs truncate text-xs" title={post.content}>{post.content}</span>
+                          <span className="block max-w-xs truncate text-[13px]" title={post.content}>{post.content}</span>
                         </td>
                         <td className="px-5 py-3"><StatusBadge status={post.status} /></td>
                         <td className="px-5 py-3">
                           {post.errorMsg
-                            ? <span className="text-xs block max-w-[160px] truncate" style={{ color: '#f87171' }} title={post.errorMsg}>{post.errorMsg}</span>
+                            ? <span className="text-[13px] block max-w-[160px] truncate" style={{ color: '#f87171' }} title={post.errorMsg}>{post.errorMsg}</span>
                             : <span style={{ color: 'var(--line-2)' }}>—</span>}
                         </td>
-                        <td className="px-5 py-3 text-xs whitespace-nowrap font-mono-jb" style={{ color: 'var(--text-faint)' }}>{fmt(post.createdAt)}</td>
+                        <td className="px-5 py-3 text-[13px] whitespace-nowrap font-mono-jb" style={{ color: 'var(--text-faint)' }}>{fmt(post.createdAt)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -223,7 +223,7 @@ export default function SocialAdminPage() {
 
         {/* Mensajes */}
         <section>
-          <p className="text-xs font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Mensajes recibidos</p>
+          <p className="text-[13px] font-mono-jb uppercase tracking-widest mb-3" style={{ color: 'var(--text-faint)' }}>Mensajes recibidos</p>
           <div className="yv-card overflow-hidden">
             {!data?.messages.length ? (
               <p className="p-6 text-sm" style={{ color: 'var(--text-faint)' }}>Sin mensajes procesados aún.</p>
@@ -233,7 +233,7 @@ export default function SocialAdminPage() {
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--line)' }}>
                       {['Red', 'Remitente', 'Mensaje', 'Estado', 'Hora'].map(h => (
-                        <th key={h} className="text-left px-5 py-3 text-xs font-mono-jb uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>{h}</th>
+                        <th key={h} className="text-left px-5 py-3 text-[13px] font-mono-jb uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -247,21 +247,21 @@ export default function SocialAdminPage() {
                           onClick={() => gmailUrl && window.open(gmailUrl, '_blank')}>
                           <td className="px-5 py-3 font-medium whitespace-nowrap text-sm" style={{ color: 'var(--text)' }}>
                             {PLATFORM_EMOJI[msg.platform] ?? '🔗'} {msg.platform}
-                            {gmailUrl && <span className="ml-1 text-xs" style={{ color: 'var(--text-faint)' }}>↗</span>}
+                            {gmailUrl && <span className="ml-1 text-[13px]" style={{ color: 'var(--text-faint)' }}>↗</span>}
                           </td>
                           <td className="px-5 py-3">
-                            <span className="block max-w-[140px] truncate text-xs" style={{ color: 'var(--text-dim)' }} title={msg.fromUser}>{msg.fromUser}</span>
+                            <span className="block max-w-[140px] truncate text-[13px]" style={{ color: 'var(--text-dim)' }} title={msg.fromUser}>{msg.fromUser}</span>
                           </td>
                           <td className="px-5 py-3">
-                            <span className="block max-w-xs truncate text-xs" style={{ color: 'var(--text-dim)' }} title={msg.content}>{msg.content}</span>
+                            <span className="block max-w-xs truncate text-[13px]" style={{ color: 'var(--text-dim)' }} title={msg.content}>{msg.content}</span>
                           </td>
                           <td className="px-5 py-3">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-mono-jb font-semibold"
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[13px] font-mono-jb font-semibold"
                               style={{ background: msg.replied ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.12)', color: msg.replied ? '#22c55e' : '#fbbf24' }}>
                               {msg.replied ? 'Respondido' : 'Pendiente'}
                             </span>
                           </td>
-                          <td className="px-5 py-3 text-xs whitespace-nowrap font-mono-jb" style={{ color: 'var(--text-faint)' }}>{fmt(msg.receivedAt)}</td>
+                          <td className="px-5 py-3 text-[13px] whitespace-nowrap font-mono-jb" style={{ color: 'var(--text-faint)' }}>{fmt(msg.receivedAt)}</td>
                         </tr>
                       );
                     })}
@@ -275,10 +275,10 @@ export default function SocialAdminPage() {
         {/* Logs */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-mono-jb uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Logs</p>
-            <button onClick={() => setLogs([])} className="text-xs transition" style={{ color: 'var(--text-faint)' }}>Limpiar</button>
+            <p className="text-[13px] font-mono-jb uppercase tracking-widest" style={{ color: 'var(--text-faint)' }}>Logs</p>
+            <button onClick={() => setLogs([])} className="text-[13px] transition" style={{ color: 'var(--text-faint)' }}>Limpiar</button>
           </div>
-          <div className="rounded-2xl p-4 h-40 overflow-y-auto font-mono-jb text-xs space-y-1" style={{ background: 'var(--ink-3)', border: '1px solid var(--line)' }}>
+          <div className="rounded-2xl p-4 h-40 overflow-y-auto font-mono-jb text-[13px] space-y-1" style={{ background: 'var(--ink-3)', border: '1px solid var(--line)' }}>
             {logs.length === 0 && <p style={{ color: 'var(--text-faint)' }}>Sin actividad...</p>}
             {logs.map((l, i) => (
               <div key={i} style={{ color: logColors[l.type] }}>
@@ -291,7 +291,7 @@ export default function SocialAdminPage() {
       </div>
 
       <footer className="mt-8 py-6" style={{ borderTop: '1px solid var(--line)' }}>
-        <p className="text-center text-xs font-mono-jb" style={{ color: 'var(--text-faint)' }}>Panel privado · YTubViral</p>
+        <p className="text-center text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>Panel privado · YTubViral</p>
       </footer>
     </DashboardShell>
   );

@@ -135,14 +135,14 @@ export default function ChatWidget() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
             {messages.length === 0 && (
-              <p className="text-white/40 text-xs text-center mt-6 leading-relaxed">
+              <p className="text-white/40 text-[13px] text-center mt-6 leading-relaxed">
                 Pregúntame sobre YTubViral o sobre cómo crear contenido para YouTube, TikTok o Instagram.
               </p>
             )}
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className="max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed"
+                  className="max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed"
                   style={{
                     background: msg.role === 'user' ? '#9B2020' : '#222',
                     color: '#fff',
@@ -155,7 +155,7 @@ export default function ChatWidget() {
             {isLoading && (
               <div className="flex justify-start">
                 <div
-                  className="rounded-xl px-3 py-2 text-xs"
+                  className="rounded-xl px-3 py-2 text-[13px]"
                   style={{ background: '#222', color: '#fff' }}
                 >
                   <span className="inline-flex gap-1">
@@ -172,7 +172,7 @@ export default function ChatWidget() {
           {/* Error */}
           {error && (
             <div
-              className="px-4 py-2 text-xs text-red-400 border-t border-white/10 flex-shrink-0"
+              className="px-4 py-2 text-[13px] text-red-400 border-t border-white/10 flex-shrink-0"
               style={{ background: '#1a1a1a' }}
             >
               {error}
@@ -182,7 +182,7 @@ export default function ChatWidget() {
           {/* Remaining notice (solo cuando queden pocos) */}
           {remaining !== null && remaining <= 2 && remaining > 0 && (
             <div
-              className="px-4 py-1.5 text-xs text-yellow-400/80 border-t border-white/10 flex-shrink-0"
+              className="px-4 py-1.5 text-[13px] text-yellow-400/80 border-t border-white/10 flex-shrink-0"
               style={{ background: '#1a1a1a' }}
             >
               {remaining === 1 ? '1 mensaje restante hoy.' : `${remaining} mensajes restantes hoy.`}
@@ -190,7 +190,7 @@ export default function ChatWidget() {
           )}
           {remaining === 0 && (
             <div
-              className="px-4 py-1.5 text-xs text-red-400/80 border-t border-white/10 flex-shrink-0"
+              className="px-4 py-1.5 text-[13px] text-red-400/80 border-t border-white/10 flex-shrink-0"
               style={{ background: '#1a1a1a' }}
             >
               Límite diario alcanzado. Vuelve mañana o actualiza a Pro.
@@ -211,7 +211,7 @@ export default function ChatWidget() {
               placeholder={isDisabled ? 'Sin mensajes disponibles hoy.' : 'Escribe tu pregunta...'}
               maxLength={500}
               disabled={isDisabled}
-              className="flex-1 bg-white/5 rounded-lg px-3 py-2 text-xs text-white placeholder-white/30 border border-white/10 focus:outline-none focus:border-white/30 disabled:opacity-40 min-w-0"
+              className="flex-1 bg-white/5 rounded-lg px-3 py-2 text-[13px] text-white placeholder-white/30 border border-white/10 focus:outline-none focus:border-white/30 disabled:opacity-40 min-w-0"
             />
             <button
               onClick={sendMessage}

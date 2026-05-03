@@ -70,7 +70,7 @@ function VerifyEmailContent() {
           {success ? (
             <div className="text-center">
               <div className="text-5xl mb-4">✓</div>
-              <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+              <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
                 {t('EMAIL VERIFICADO', 'EMAIL VERIFIED')}
               </p>
               <h1 className="font-display font-bold text-2xl text-white mb-3">
@@ -82,7 +82,7 @@ function VerifyEmailContent() {
             </div>
           ) : error ? (
             <div>
-              <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+              <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
                 {t('ENLACE INVÁLIDO', 'INVALID LINK')}
               </p>
               <h1 className="font-display font-bold text-2xl text-white mb-3">
@@ -115,7 +115,7 @@ function VerifyEmailContent() {
             </div>
           ) : (
             <div>
-              <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+              <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
                 {t('VERIFICA TU EMAIL', 'VERIFY YOUR EMAIL')}
               </p>
               <h1 className="font-display font-bold text-2xl text-white mb-3">
@@ -133,7 +133,7 @@ function VerifyEmailContent() {
                 </div>
               ) : (
                 <div>
-                  <p className="text-zinc-500 text-xs mb-4">{t('¿No lo recibiste?', "Didn't receive it?")}</p>
+                  <p className="text-zinc-500 text-[13px] mb-4">{t('¿No lo recibiste?', "Didn't receive it?")}</p>
                   <form onSubmit={handleResend} className="flex flex-col gap-3">
                     <input
                       type="email"
@@ -150,7 +150,7 @@ function VerifyEmailContent() {
                 </div>
               )}
               <div className="mt-6 pt-6 border-t border-white/5">
-                <a href="/login" className="text-zinc-500 text-xs hover:text-zinc-300 transition">
+                <a href="/login" className="text-zinc-500 text-[13px] hover:text-zinc-300 transition">
                   ← {t('Volver al login', 'Back to login')}
                 </a>
               </div>

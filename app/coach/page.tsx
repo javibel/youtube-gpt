@@ -200,11 +200,11 @@ export default function CoachPage() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={active ? color : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d={m.icon} />
                   </svg>
-                  <span className="font-display font-bold text-xs" style={{ color: active ? color : '#d4d4d8' }}>
+                  <span className="font-display font-bold text-[13px]" style={{ color: active ? color : '#d4d4d8' }}>
                     {m.label[lang]}
                   </span>
                 </div>
-                <span className="font-mono-jb text-[10px] hidden sm:block" style={{ color: 'var(--yv-text-4)' }}>{m.desc[lang]}</span>
+                <span className="font-mono-jb text-[13px] hidden sm:block" style={{ color: 'var(--yv-text-4)' }}>{m.desc[lang]}</span>
               </button>
             );
           })}
@@ -260,7 +260,7 @@ export default function CoachPage() {
 
           {error && (
             <div className="text-center">
-              <span className="inline-block text-red-400 text-xs font-mono-jb px-3 py-2 rounded border border-red-500/20" style={{ background: 'rgba(155,32,32,0.15)' }}>
+              <span className="inline-block text-red-400 text-[13px] font-mono-jb px-3 py-2 rounded border border-red-500/20" style={{ background: 'rgba(155,32,32,0.15)' }}>
                 {error}
               </span>
             </div>
@@ -294,7 +294,7 @@ export default function CoachPage() {
               )}
             </button>
           </div>
-          <p className="text-[11px] font-mono-jb mt-2" style={{ color: 'var(--yv-text-4)' }}>
+          <p className="text-[13px] font-mono-jb mt-2" style={{ color: 'var(--yv-text-4)' }}>
             <span className="inline-flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: MODE_COLORS[mode] }} />
               {t('Modo', 'Mode')}: {MODES.find(m => m.key === mode)?.label[lang]}

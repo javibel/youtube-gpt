@@ -22,7 +22,7 @@ export default function TermsPage() {
             </svg>
             <span className="font-display font-bold text-[14px] text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
           </a>
-          <p className="font-mono-jb text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>{t('LEGAL', 'LEGAL')}</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>{t('LEGAL', 'LEGAL')}</p>
           <h1 className="font-display font-bold text-4xl text-white">{t('Términos y Condiciones', 'Terms and Conditions')}</h1>
           <p className="text-zinc-500 text-sm mt-2 font-mono-jb">{t('Última actualización: abril de 2026', 'Last updated: April 2026')}</p>
         </div>
@@ -109,7 +109,7 @@ export default function TermsPage() {
           </section>
         ))}
 
-        <div className="flex gap-5 font-mono-jb text-xs text-zinc-600 pt-4">
+        <div className="flex gap-5 font-mono-jb text-[13px] text-zinc-600 pt-4">
           <a href="/privacy" className="hover:text-zinc-400 transition">{t('Privacidad', 'Privacy')}</a>
           <a href="/legal" className="hover:text-zinc-400 transition">{t('Aviso Legal', 'Legal Notice')}</a>
           <a href="/" className="hover:text-zinc-400 transition">{t('Volver al inicio', 'Back to home')}</a>

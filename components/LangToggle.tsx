@@ -31,7 +31,7 @@ export default function LangToggle({ currentLang = 'es' }: { currentLang?: 'es' 
   return (
     <button
       onClick={toggle}
-      className="flex items-center gap-1 font-mono-jb text-[10px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
+      className="flex items-center gap-1 font-mono-jb text-[13px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
       title={activeLang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
     >
       <span style={{ color: activeLang === 'es' ? 'white' : '#52525b', fontWeight: activeLang === 'es' ? 700 : 400 }}>ES</span>

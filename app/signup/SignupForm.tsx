@@ -68,7 +68,7 @@ export default function SignupForm() {
         </a>
         <button
           onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
-          className="flex items-center gap-1 font-mono-jb text-[10px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
+          className="flex items-center gap-1 font-mono-jb text-[13px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
           <span className="text-zinc-700 mx-0.5">|</span>
@@ -78,7 +78,7 @@ export default function SignupForm() {
 
       <div className="w-full max-w-md">
         <div className="mb-8">
-          <p className="font-mono-jb text-[10px] tracking-widest uppercase mb-3" style={{ color: 'var(--red)' }}>▸ {t('REGISTRO GRATIS', 'FREE SIGN UP')}</p>
+          <p className="font-mono-jb text-[13px] tracking-widest uppercase mb-3" style={{ color: 'var(--red)' }}>▸ {t('REGISTRO GRATIS', 'FREE SIGN UP')}</p>
           <h1 className="font-display font-bold text-3xl tracking-tight text-white mb-2">{t('Empieza a crecer hoy', 'Start growing today')}</h1>
           <p className="text-zinc-400 text-sm">{t('10 generaciones al mes gratis. Sin tarjeta de crédito.', '10 free generations per month. No credit card required.')}</p>
         </div>
@@ -86,27 +86,27 @@ export default function SignupForm() {
         <div className="soft-card p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nombre', 'Name')}</label>
+              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nombre', 'Name')}</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)}
                 className="soft-field py-3 px-4 text-sm"
                 placeholder={t('Tu nombre', 'Your name')} required />
             </div>
 
             <div>
-              <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
+              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" required />
             </div>
 
             <div>
-              <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Contraseña', 'Password')}</label>
+              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Contraseña', 'Password')}</label>
               <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm"
                 placeholder={t('Mínimo 6 caracteres', 'At least 6 characters')} required />
             </div>
 
             <div>
-              <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">{t('Confirmar contraseña', 'Confirm password')}</label>
+              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Confirmar contraseña', 'Confirm password')}</label>
               <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                 className="py-3 px-4 text-sm" required />
             </div>
@@ -125,7 +125,7 @@ export default function SignupForm() {
             </button>
           </form>
 
-          <p className="text-zinc-600 text-xs mt-5 text-center leading-relaxed">
+          <p className="text-zinc-600 text-[13px] mt-5 text-center leading-relaxed">
             {t('Al registrarte aceptas nuestros', 'By signing up you agree to our')}{' '}
             <a href="/terms" className="text-zinc-400 hover:text-white transition underline">{t('Términos y Condiciones', 'Terms and Conditions')}</a>{' '}
             {t('y la', 'and our')}{' '}
@@ -138,7 +138,7 @@ export default function SignupForm() {
           <a href="/login" className="text-white hover:underline font-medium">{t('Inicia sesión aquí', 'Sign in here')}</a>
         </p>
 
-        <div className="mt-6 flex justify-center gap-5 text-xs text-zinc-600">
+        <div className="mt-6 flex justify-center gap-5 text-[13px] text-zinc-600">
           <a href="/terms" className="hover:text-zinc-400 transition">{t('Términos', 'Terms')}</a>
           <a href="/privacy" className="hover:text-zinc-400 transition">{t('Privacidad', 'Privacy')}</a>
           <a href="/legal" className="hover:text-zinc-400 transition">{t('Aviso Legal', 'Legal Notice')}</a>

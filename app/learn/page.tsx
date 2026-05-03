@@ -265,13 +265,13 @@ export default function LearnPage() {
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h2 className="font-display font-bold text-base" style={{ color: 'var(--yv-text-1)' }}>{guide.title[lang]}</h2>
                     <span
-                      className="font-mono-jb text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full"
+                      className="font-mono-jb text-[13px] uppercase tracking-wider px-2 py-0.5 rounded-full"
                       style={{ background: `${LEVEL_COLORS[guide.level]}22`, color: LEVEL_COLORS[guide.level] }}
                     >
                       {LEVEL_LABELS[guide.level][lang]}
                     </span>
                   </div>
-                  <p className="text-xs font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>{guide.description[lang]}</p>
+                  <p className="text-[13px] font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>{guide.description[lang]}</p>
                 </div>
                 <svg
                   width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"

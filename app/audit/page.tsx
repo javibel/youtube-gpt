@@ -212,7 +212,7 @@ export default function AuditPage() {
           <div className="flex flex-col items-center gap-3 justify-center py-20">
             <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             <span className="yv-muted font-mono-jb text-sm">{t('Analizando tu canal...', 'Analyzing your channel...')}</span>
-            <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>{t('Esto puede tardar unos segundos', 'This may take a few seconds')}</span>
+            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{t('Esto puede tardar unos segundos', 'This may take a few seconds')}</span>
           </div>
         )}
 
@@ -238,7 +238,7 @@ export default function AuditPage() {
                     <span className="font-display font-bold text-4xl" style={{ color: scoreColor(data.healthScore) }}>
                       {data.healthScore}
                     </span>
-                    <span className="font-mono-jb text-[10px] tracking-wider yv-muted uppercase">
+                    <span className="font-mono-jb text-[13px] tracking-wider yv-muted uppercase">
                       {t('SALUD', 'HEALTH')}
                     </span>
                   </div>
@@ -264,7 +264,7 @@ export default function AuditPage() {
                             style={{ width: `${cat.score}%`, background: scoreColor(cat.score) }}
                           />
                         </div>
-                        <span className="font-mono-jb text-[9px] yv-muted mt-1 block">{cat.label[lang]}</span>
+                        <span className="font-mono-jb text-[13px] yv-muted mt-1 block">{cat.label[lang]}</span>
                       </div>
                     ))}
                   </div>
@@ -302,7 +302,7 @@ export default function AuditPage() {
                       <div className="flex items-center gap-3 mb-3">
                         <div className="relative">
                           <MiniRing score={cat.score} size={48} />
-                          <span className="absolute inset-0 flex items-center justify-center font-display font-bold text-xs" style={{ color: scoreColor(cat.score) }}>
+                          <span className="absolute inset-0 flex items-center justify-center font-display font-bold text-[13px]" style={{ color: scoreColor(cat.score) }}>
                             {cat.score}
                           </span>
                         </div>
@@ -313,7 +313,7 @@ export default function AuditPage() {
                             </svg>
                             <span className="font-display font-bold text-sm text-white">{cat.label[lang]}</span>
                           </div>
-                          <span className="font-mono-jb text-[10px] yv-muted">
+                          <span className="font-mono-jb text-[13px] yv-muted">
                             {cat.checks.filter(c => c.passed).length}/{cat.checks.length} {t('checks', 'checks')}
                           </span>
                         </div>
@@ -330,10 +330,10 @@ export default function AuditPage() {
                         <div className="mt-3 pt-3 border-t border-white/8 space-y-2">
                           {cat.checks.map(check => (
                             <div key={check.key} className="flex items-center gap-2">
-                              <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] ${check.passed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[13px] ${check.passed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                                 {check.passed ? '✓' : '✗'}
                               </span>
-                              <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{check.label[lang]}</span>
+                              <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{check.label[lang]}</span>
                             </div>
                           ))}
                         </div>
@@ -350,7 +350,7 @@ export default function AuditPage() {
                 <h2 className="font-display font-bold text-xl text-white mb-1">
                   {t('Quick Wins', 'Quick Wins')}
                 </h2>
-                <p className="yv-muted font-mono-jb text-xs mb-4">
+                <p className="yv-muted font-mono-jb text-[13px] mb-4">
                   {t('Acciones concretas para mejorar tu canal ahora mismo', 'Concrete actions to improve your channel right now')}
                 </p>
                 <div className="space-y-3">
@@ -365,18 +365,18 @@ export default function AuditPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span
-                              className="font-mono-jb text-[9px] tracking-wider uppercase px-1.5 py-0.5 rounded"
+                              className="font-mono-jb text-[13px] tracking-wider uppercase px-1.5 py-0.5 rounded"
                               style={{ background: colors.border, color: colors.text }}
                             >
                               {win.priority === 'high' ? t('ALTA', 'HIGH') : win.priority === 'medium' ? t('MEDIA', 'MED') : t('BAJA', 'LOW')}
                             </span>
                             <span className="font-display font-bold text-sm text-white truncate">{win.label[lang]}</span>
                           </div>
-                          <p className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>{win.detail[lang]}</p>
+                          <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{win.detail[lang]}</p>
                         </div>
                         <a
                           href={win.action.href}
-                          className="shrink-0 font-mono-jb text-[11px] tracking-wider px-4 py-2 rounded border border-white/15 text-white hover:border-white/30 transition text-center"
+                          className="shrink-0 font-mono-jb text-[13px] tracking-wider px-4 py-2 rounded border border-white/15 text-white hover:border-white/30 transition text-center"
                           style={{ background: 'rgba(255,255,255,0.05)' }}
                         >
                           {win.action.label[lang]} &rarr;
@@ -394,7 +394,7 @@ export default function AuditPage() {
                 <h2 className="font-display font-bold text-xl text-white mb-1">
                   {t('Patrones detectados', 'Detected patterns')}
                 </h2>
-                <p className="yv-muted font-mono-jb text-xs mb-4">
+                <p className="yv-muted font-mono-jb text-[13px] mb-4">
                   {t('Qué tienen en común tus TOP vídeos vs los que menos funcionan', 'What your TOP videos have in common vs your underperformers')}
                 </p>
 
@@ -423,12 +423,12 @@ export default function AuditPage() {
                           href={`/optimize?videoId=${v.videoId}`}
                           className="flex items-center gap-3 rounded p-2 hover:bg-white/5 transition"
                         >
-                          <span className="font-mono-jb text-[10px] w-4" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
+                          <span className="font-mono-jb text-[13px] w-4" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
                           <div className="flex-1 min-w-0">
-                            <div className="font-mono-jb text-xs text-white truncate">{v.title}</div>
-                            <div className="font-mono-jb text-[10px] yv-muted">{fmtNum(v.views)} views &middot; SEO {v.seoScore}</div>
+                            <div className="font-mono-jb text-[13px] text-white truncate">{v.title}</div>
+                            <div className="font-mono-jb text-[13px] yv-muted">{fmtNum(v.views)} views &middot; SEO {v.seoScore}</div>
                           </div>
-                          <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded" style={{ background: scoreBg(v.seoScore), color: scoreColor(v.seoScore) }}>
+                          <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded" style={{ background: scoreBg(v.seoScore), color: scoreColor(v.seoScore) }}>
                             {v.seoScore}
                           </span>
                         </a>
@@ -449,12 +449,12 @@ export default function AuditPage() {
                           href={`/optimize?videoId=${v.videoId}`}
                           className="flex items-center gap-3 rounded p-2 hover:bg-white/5 transition"
                         >
-                          <span className="font-mono-jb text-[10px] w-4" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
+                          <span className="font-mono-jb text-[13px] w-4" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
                           <div className="flex-1 min-w-0">
-                            <div className="font-mono-jb text-xs text-white truncate">{v.title}</div>
-                            <div className="font-mono-jb text-[10px] yv-muted">{fmtNum(v.views)} views &middot; SEO {v.seoScore}</div>
+                            <div className="font-mono-jb text-[13px] text-white truncate">{v.title}</div>
+                            <div className="font-mono-jb text-[13px] yv-muted">{fmtNum(v.views)} views &middot; SEO {v.seoScore}</div>
                           </div>
-                          <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded" style={{ background: scoreBg(v.seoScore), color: scoreColor(v.seoScore) }}>
+                          <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded" style={{ background: scoreBg(v.seoScore), color: scoreColor(v.seoScore) }}>
                             {v.seoScore}
                           </span>
                         </a>

@@ -113,12 +113,12 @@ export default function RevenuePage() {
               {data?.channelName || t('Tu canal', 'Your channel')}
             </h1>
             {data && !data.hasRealRevenue && (
-              <p className="yv-page-header__desc font-mono-jb text-[11px]">
+              <p className="yv-page-header__desc font-mono-jb text-[13px]">
                 {t('Estimaciones basadas en CPM por país. Los datos reales aparecerán si el canal está monetizado.', 'Estimates based on country CPM. Real data will appear if channel is monetized.')}
               </p>
             )}
             {data?.hasRealRevenue && (
-              <p className="font-mono-jb text-[11px] text-green-400/80">
+              <p className="font-mono-jb text-[13px] text-green-400/80">
                 {t('Datos de ingresos reales de YouTube Analytics', 'Real revenue data from YouTube Analytics')}
               </p>
             )}
@@ -147,7 +147,7 @@ export default function RevenuePage() {
                 { label: t('CPM medio', 'Avg CPM'), value: `$${data.weightedCPM.toFixed(2)}`, color: '#eab308' },
               ].map((card, i) => (
                 <div key={i} className="yv-card p-4">
-                  <p className="font-mono-jb text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{card.label}</p>
+                  <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{card.label}</p>
                   <p className="font-display font-bold text-xl md:text-2xl" style={{ color: card.color }}>{card.value}</p>
                 </div>
               ))}
@@ -161,7 +161,7 @@ export default function RevenuePage() {
                   {data.countries.slice(0, 12).map(c => (
                     <div key={c.country} className="flex items-center gap-2">
                       <span className="text-sm w-6 text-center">{COUNTRY_FLAGS[c.country] || '🌍'}</span>
-                      <span className="font-mono-jb text-[11px] w-8" style={{ color: 'var(--yv-text-2)' }}>{c.country}</span>
+                      <span className="font-mono-jb text-[13px] w-8" style={{ color: 'var(--yv-text-2)' }}>{c.country}</span>
                       <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
                         <div
                           className="h-full rounded-full"
@@ -171,8 +171,8 @@ export default function RevenuePage() {
                           }}
                         />
                       </div>
-                      <span className="font-mono-jb text-[11px] text-green-400 w-16 text-right">{fmt$(c.estimatedRevenue)}</span>
-                      <span className="font-mono-jb text-[10px] w-14 text-right" style={{ color: 'var(--yv-text-4)' }}>${c.cpm} CPM</span>
+                      <span className="font-mono-jb text-[13px] text-green-400 w-16 text-right">{fmt$(c.estimatedRevenue)}</span>
+                      <span className="font-mono-jb text-[13px] w-14 text-right" style={{ color: 'var(--yv-text-4)' }}>${c.cpm} CPM</span>
                     </div>
                   ))}
                 </div>
@@ -186,10 +186,10 @@ export default function RevenuePage() {
                     {data.months.map(m => (
                       <div key={m.month}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>{m.month}</span>
+                          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{m.month}</span>
                           <div className="flex items-center gap-3">
-                            <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(m.views)} views</span>
-                            <span className="font-mono-jb text-[11px] text-green-400 font-bold">{fmt$(m.estimatedRevenue)}</span>
+                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(m.views)} views</span>
+                            <span className="font-mono-jb text-[13px] text-green-400 font-bold">{fmt$(m.estimatedRevenue)}</span>
                           </div>
                         </div>
                         <div className="h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
@@ -216,7 +216,7 @@ export default function RevenuePage() {
               <div className="space-y-2">
                 {data.videos.map((v, i) => (
                   <div key={v.videoId} className="flex items-center gap-3 group">
-                    <span className="font-mono-jb text-[11px] w-5 text-right" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
+                    <span className="font-mono-jb text-[13px] w-5 text-right" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
                     {v.thumbnail && (
                       <img src={v.thumbnail} alt="" className="w-16 h-9 rounded object-cover flex-shrink-0" />
                     )}
@@ -225,13 +225,13 @@ export default function RevenuePage() {
                         href={`https://youtube.com/watch?v=${v.videoId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-mono-jb text-[11px] text-white hover:text-green-400 transition truncate block"
+                        className="font-mono-jb text-[13px] text-white hover:text-green-400 transition truncate block"
                       >
                         {v.title}
                       </a>
                       <div className="flex items-center gap-3 mt-0.5">
-                        <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} views</span>
-                        <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{(v.watchTime / 60).toFixed(0)}h watch</span>
+                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} views</span>
+                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{(v.watchTime / 60).toFixed(0)}h watch</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export default function RevenuePage() {
                           }}
                         />
                       </div>
-                      <span className="font-mono-jb text-[12px] text-green-400 font-bold w-16 text-right">{fmt$(v.estimatedRevenue)}</span>
+                      <span className="font-mono-jb text-[13px] text-green-400 font-bold w-16 text-right">{fmt$(v.estimatedRevenue)}</span>
                     </div>
                   </div>
                 ))}
@@ -261,27 +261,27 @@ export default function RevenuePage() {
 
                 <div className="grid md:grid-cols-2 gap-4 mb-4">
                   <div className="yv-card p-3">
-                    <p className="font-mono-jb text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{t('Potencial', 'Potential')}</p>
-                    <p className="font-mono-jb text-[12px] text-white leading-relaxed">{data.aiInsights.optimizationPotential}</p>
+                    <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{t('Potencial', 'Potential')}</p>
+                    <p className="font-mono-jb text-[13px] text-white leading-relaxed">{data.aiInsights.optimizationPotential}</p>
                   </div>
                   <div className="yv-card p-3">
-                    <p className="font-mono-jb text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{t('Ingresos que dejas de ganar', 'Revenue left on the table')}</p>
+                    <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{t('Ingresos que dejas de ganar', 'Revenue left on the table')}</p>
                     <p className="font-mono-jb text-[14px] text-yellow-400 font-bold">{data.aiInsights.missedRevenue}</p>
                   </div>
                 </div>
 
                 <div className="mb-4">
-                  <p className="font-mono-jb text-[10px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Estrategia CPM', 'CPM Strategy')}</p>
-                  <p className="font-mono-jb text-[12px] text-purple-300/80 leading-relaxed">{data.aiInsights.cpmStrategy}</p>
+                  <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Estrategia CPM', 'CPM Strategy')}</p>
+                  <p className="font-mono-jb text-[13px] text-purple-300/80 leading-relaxed">{data.aiInsights.cpmStrategy}</p>
                 </div>
 
                 <div>
-                  <p className="font-mono-jb text-[10px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Tips de monetización', 'Monetization Tips')}</p>
+                  <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Tips de monetización', 'Monetization Tips')}</p>
                   <div className="space-y-1.5">
                     {data.aiInsights.tips.map((tip, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <span className="font-mono-jb text-[10px] text-green-400 mt-0.5">{i + 1}.</span>
-                        <p className="font-mono-jb text-[11px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>{tip}</p>
+                        <span className="font-mono-jb text-[13px] text-green-400 mt-0.5">{i + 1}.</span>
+                        <p className="font-mono-jb text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>{tip}</p>
                       </div>
                     ))}
                   </div>
@@ -298,7 +298,7 @@ export default function RevenuePage() {
                 { label: t('Ingresos/1K views', 'Revenue/1K views'), value: data.totalViews28 > 0 ? fmt$(data.revenue28d / (data.totalViews28 / 1000)) : '$0' },
               ].map((s, i) => (
                 <div key={i} className="yv-card p-3 text-center">
-                  <p className="font-mono-jb text-[10px] uppercase tracking-wider" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
+                  <p className="font-mono-jb text-[13px] uppercase tracking-wider" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
                   <p className="font-mono-jb text-[14px] text-white font-bold mt-1">{s.value}</p>
                 </div>
               ))}

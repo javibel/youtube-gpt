@@ -135,7 +135,7 @@ export default function ProfilePage() {
 
         {/* Avatar + name */}
         <div className="yv-card">
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-5" style={{ color: 'var(--yv-text-3)' }}>{t('Información personal', 'Personal information')}</p>
+          <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-5" style={{ color: 'var(--yv-text-3)' }}>{t('Información personal', 'Personal information')}</p>
           <div className="flex items-center gap-5 mb-6">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-2xl flex-shrink-0"
               style={{ background: 'var(--yv-brand)', color: '#fff', boxShadow: '0 8px 24px -8px rgba(232,77,91,0.6)' }}>
@@ -143,14 +143,14 @@ export default function ProfilePage() {
             </div>
             <div>
               <p className="font-display font-bold text-xl text-white">{displayName}</p>
-              <p className="font-mono-jb text-xs mt-0.5" style={{ color: 'var(--yv-text-3)' }}>{data?.user?.email}</p>
-              {isPro && <span className="red-tape text-[9px] mt-1 inline-block">PRO</span>}
+              <p className="font-mono-jb text-[13px] mt-0.5" style={{ color: 'var(--yv-text-3)' }}>{data?.user?.email}</p>
+              {isPro && <span className="red-tape text-[13px] mt-1 inline-block">PRO</span>}
             </div>
           </div>
 
           {/* Name field */}
           <div className="space-y-2">
-            <label className="block font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Nombre', 'Name')}</label>
+            <label className="block font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Nombre', 'Name')}</label>
             {editingName ? (
               <div className="flex gap-2">
                 <input
@@ -162,7 +162,7 @@ export default function ProfilePage() {
                   style={{ borderRadius: '10px' }}
                 />
                 <button onClick={handleSaveName} disabled={savingName || !nameInput.trim()}
-                  className="btn-offset px-4 py-2.5 text-[12px] font-display disabled:opacity-50">
+                  className="btn-offset px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
                   {savingName ? '...' : t('Guardar', 'Save')}
                 </button>
                 <button onClick={() => setEditingName(false)} className="px-3 hover:text-white transition font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>✕</button>
@@ -171,29 +171,29 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }}>
                 <span className="text-sm" style={{ color: 'var(--yv-text-2)' }}>{data?.user?.name || <span style={{ color: 'var(--yv-text-4)' }}>{t('Sin nombre', 'No name set')}</span>}</span>
                 <button onClick={() => { setNameInput(data?.user?.name ?? ''); setEditingName(true); }}
-                  className="font-mono-jb text-[10px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
+                  className="font-mono-jb text-[13px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Editar', 'Edit')}
                 </button>
               </div>
             )}
             {nameSaved && (
-              <p className="font-mono-jb text-[11px]" style={{ color: '#22c55e' }}>✓ {t('Nombre actualizado', 'Name updated')}</p>
+              <p className="font-mono-jb text-[13px]" style={{ color: '#22c55e' }}>✓ {t('Nombre actualizado', 'Name updated')}</p>
             )}
           </div>
 
           {/* Email (read-only) */}
           <div className="mt-4 space-y-2">
-            <label className="block font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>Email</label>
+            <label className="block font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>Email</label>
             <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)' }}>
               <span className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{data?.user?.email}</span>
-              <span className="font-mono-jb text-[9px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('No editable', 'Read only')}</span>
+              <span className="font-mono-jb text-[13px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('No editable', 'Read only')}</span>
             </div>
           </div>
         </div>
 
         {/* Language */}
         <div className="yv-card">
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Idioma', 'Language')}</p>
+          <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Idioma', 'Language')}</p>
           <div className="flex gap-3">
             {(['es', 'en'] as Lang[]).map(l => (
               <button
@@ -211,18 +211,18 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
-          <p className="font-mono-jb text-[10px] mt-3" style={{ color: 'var(--yv-text-4)' }}>
+          <p className="font-mono-jb text-[13px] mt-3" style={{ color: 'var(--yv-text-4)' }}>
             {t('El idioma se aplica a toda la aplicación.', 'Language applies across the entire app.')}
           </p>
         </div>
 
         {/* Plan */}
         <div className="yv-card">
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</p>
+          <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</p>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display font-bold text-lg text-white">{isPro ? 'Pro' : 'Free'}</p>
-              <p className="font-mono-jb text-[11px] mt-1" style={{ color: 'var(--yv-text-3)' }}>
+              <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>
                 {isPro
                   ? (data?.subscription?.cancelAtPeriodEnd
                       ? t('Cancela el ', 'Cancels on ') + (data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—')
@@ -231,7 +231,7 @@ export default function ProfilePage() {
               </p>
             </div>
             {!isPro && (
-              <a href="/dashboard" className="btn-offset px-4 py-2 text-[12px] font-display">
+              <a href="/dashboard" className="btn-offset px-4 py-2 text-[13px] font-display">
                 Upgrade →
               </a>
             )}
@@ -241,10 +241,10 @@ export default function ProfilePage() {
         {/* Security */}
         <div className="yv-card">
           <div className="flex items-center justify-between mb-4">
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Seguridad', 'Security')}</p>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Seguridad', 'Security')}</p>
             {!showPwdForm && (
               <button onClick={() => setShowPwdForm(true)}
-                className="font-mono-jb text-[10px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
+                className="font-mono-jb text-[13px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                 {t('Cambiar contraseña', 'Change password')}
               </button>
             )}
@@ -253,12 +253,12 @@ export default function ProfilePage() {
           {!showPwdForm && !pwdSuccess && (
             <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)' }}>
               <span className="text-sm" style={{ color: 'var(--yv-text-3)' }}>••••••••••••</span>
-              <span className="font-mono-jb text-[9px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('Protegida', 'Protected')}</span>
+              <span className="font-mono-jb text-[13px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('Protegida', 'Protected')}</span>
             </div>
           )}
 
           {pwdSuccess && (
-            <p className="font-mono-jb text-[12px] py-2" style={{ color: '#22c55e' }}>
+            <p className="font-mono-jb text-[13px] py-2" style={{ color: '#22c55e' }}>
               ✓ {t('Contraseña actualizada. Te hemos enviado un email de confirmación.', 'Password updated. A confirmation email has been sent.')}
             </p>
           )}
@@ -266,21 +266,21 @@ export default function ProfilePage() {
           {showPwdForm && !pwdSuccess && (
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
-                <label className="block font-mono-jb text-[10px] tracking-wider uppercase mb-1.5 yv-muted">
+                <label className="block font-mono-jb text-[13px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Contraseña actual', 'Current password')}
                 </label>
                 <PasswordInput required value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
                   className="py-2.5 px-3 text-sm" />
               </div>
               <div>
-                <label className="block font-mono-jb text-[10px] tracking-wider uppercase mb-1.5 yv-muted">
+                <label className="block font-mono-jb text-[13px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Nueva contraseña', 'New password')}
                 </label>
                 <PasswordInput required value={newPwd} onChange={e => setNewPwd(e.target.value)}
                   className="py-2.5 px-3 text-sm" placeholder={t('Mínimo 8 caracteres', 'At least 8 characters')} />
               </div>
               <div>
-                <label className="block font-mono-jb text-[10px] tracking-wider uppercase mb-1.5 yv-muted">
+                <label className="block font-mono-jb text-[13px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Confirmar contraseña', 'Confirm password')}
                 </label>
                 <PasswordInput required value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
@@ -293,13 +293,13 @@ export default function ProfilePage() {
               )}
               <div className="flex gap-3">
                 <button type="submit" disabled={pwdLoading}
-                  className="btn-offset px-5 py-2.5 text-[12px] font-display disabled:opacity-50 flex items-center gap-2">
+                  className="btn-offset px-5 py-2.5 text-[13px] font-display disabled:opacity-50 flex items-center gap-2">
                   {pwdLoading
                     ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full spin-r" />{t('Guardando...', 'Saving...')}</>
                     : t('Guardar contraseña', 'Save password')}
                 </button>
                 <button type="button" onClick={() => { setShowPwdForm(false); setPwdError(''); setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }}
-                  className="px-4 py-2.5 font-mono-jb text-[11px] hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
+                  className="px-4 py-2.5 font-mono-jb text-[13px] hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Cancelar', 'Cancel')}
                 </button>
               </div>
@@ -309,15 +309,15 @@ export default function ProfilePage() {
 
         {/* Danger zone */}
         <div className="yv-card" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
-          <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4" style={{ color: '#ef4444' }}>{t('Zona peligrosa', 'Danger zone')}</p>
+          <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: '#ef4444' }}>{t('Zona peligrosa', 'Danger zone')}</p>
           <button onClick={() => signOut({ callbackUrl: '/' })}
-            className="font-mono-jb text-[12px] hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
+            className="font-mono-jb text-[13px] hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
             {t('Cerrar sesión en todos los dispositivos', 'Sign out of all devices')}
           </button>
         </div>
 
         {/* Footer links */}
-        <div className="flex justify-center gap-6 font-mono-jb text-xs pt-2" style={{ color: 'var(--yv-text-4)' }}>
+        <div className="flex justify-center gap-6 font-mono-jb text-[13px] pt-2" style={{ color: 'var(--yv-text-4)' }}>
           <a href="/terms" className="hover:opacity-80 transition">{t('Términos', 'Terms')}</a>
           <a href="/privacy" className="hover:opacity-80 transition">{t('Privacidad', 'Privacy')}</a>
           <a href="/legal" className="hover:opacity-80 transition">{t('Aviso Legal', 'Legal Notice')}</a>

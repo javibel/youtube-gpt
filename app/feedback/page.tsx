@@ -149,7 +149,7 @@ function FeedbackForm() {
               style={{ background: '#050505' }}
             />
 
-            {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
+            {error && <p className="text-red-400 text-[13px] mt-2">{error}</p>}
 
             <button
               onClick={handleSubmit}

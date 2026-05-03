@@ -61,7 +61,7 @@ function TopNav({ lang }: { lang: Lang }) {
           </span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 font-mono-jb text-[11px] tracking-wider uppercase">
+        <div className="hidden md:flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 font-mono-jb text-[13px] tracking-wider uppercase">
           {nav.map(([href, label]) => (
             <a key={href} href={href} className="px-3 py-1.5 rounded-full transition text-zinc-400 hover:text-white hover:bg-white/10">
               {label}
@@ -108,9 +108,9 @@ function LiveTicker({ lang }: { lang: Lang }) {
       <div className="relative h-8 flex items-center">
         <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center px-4" style={{ background: 'var(--red)' }}>
           <span className="live-dot mr-2" />
-          <span className="font-mono-jb text-[10px] font-bold tracking-wider text-white">{lang === 'en' ? 'LIVE' : 'EN VIVO'}</span>
+          <span className="font-mono-jb text-[13px] font-bold tracking-wider text-white">{lang === 'en' ? 'LIVE' : 'EN VIVO'}</span>
         </div>
-        <div className="marquee-track pl-36 gap-12 font-mono-jb text-[11px] text-zinc-400">
+        <div className="marquee-track pl-36 gap-12 font-mono-jb text-[13px] text-zinc-400">
           {items.map((f, i) => (
             <span key={i} className="flex items-center gap-2 shrink-0 mr-12">
               <span className="w-1 h-1 bg-zinc-600 rounded-full" />
@@ -136,7 +136,7 @@ function Hero({ lang }: { lang: Lang }) {
         <div className="flex justify-center mb-6">
           <div className="inline-flex items-center gap-2 border border-white/15 rounded-full pl-1 pr-4 py-1 backdrop-blur" style={{ background: 'rgba(0,0,0,0.6)' }}>
             <span className="red-tape py-1">v4.2</span>
-            <span className="font-mono-jb text-[10px] tracking-wider text-zinc-400 uppercase">
+            <span className="font-mono-jb text-[13px] tracking-wider text-zinc-400 uppercase">
               {lang === 'en' ? 'AI for creators · Engine v4.2' : 'IA para creadores · Motor v4.2'}
             </span>
           </div>
@@ -173,7 +173,7 @@ function Hero({ lang }: { lang: Lang }) {
             {lang === 'en' ? 'See how it works' : 'Ver cómo funciona'}
           </a>
         </div>
-        <p className="text-center text-zinc-500 text-xs font-mono-jb mt-5">
+        <p className="text-center text-zinc-500 text-[13px] font-mono-jb mt-5">
           {lang === 'en'
             ? 'No credit card · 10 free generations · Cancel anytime'
             : 'Sin tarjeta · 10 generaciones gratis · Cancela cuando quieras'}
@@ -205,10 +205,10 @@ function StatsStrip({ lang }: { lang: Lang }) {
       <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4">
         {items.map((s, i) => (
           <div key={i} className={`p-8 md:p-10 relative overflow-hidden ${i < 3 ? 'md:border-r' : ''} ${i < 2 ? 'border-r' : ''} ${i < 2 ? 'border-b md:border-b-0' : ''} border-white/10`}>
-            <span className="absolute top-2 right-3 font-mono-jb text-[10px] text-zinc-700">0{i + 1}</span>
+            <span className="absolute top-2 right-3 font-mono-jb text-[13px] text-zinc-700">0{i + 1}</span>
             <p className="font-display font-bold stat-num" style={{ fontSize: 'clamp(28px,4vw,48px)' }}>{s.n}</p>
             <p className="text-zinc-400 text-sm mt-2">{s.l}</p>
-            <p className="font-mono-jb text-[10px] mt-3 tracking-wider uppercase" style={{ color: 'var(--red)' }}>{s.sub}</p>
+            <p className="font-mono-jb text-[13px] mt-3 tracking-wider uppercase" style={{ color: 'var(--red)' }}>{s.sub}</p>
           </div>
         ))}
       </div>
@@ -220,7 +220,7 @@ function LogoMarquee({ lang }: { lang: Lang }) {
   const logos = [...LOGO_CREATORS, ...LOGO_CREATORS];
   return (
     <section className="py-12 border-b border-white/10 bg-black overflow-hidden">
-      <p className="text-center font-mono-jb text-[10px] tracking-[0.3em] text-zinc-500 uppercase mb-8">
+      <p className="text-center font-mono-jb text-[13px] tracking-[0.3em] text-zinc-500 uppercase mb-8">
         {lang === 'en' ? 'Used by creators who move the needle' : 'Usado por creadores que mueven la aguja'}
       </p>
       <div className="relative">
@@ -258,7 +258,7 @@ function HowItWorks({ lang }: { lang: Lang }) {
       <div className="relative max-w-7xl mx-auto px-6 py-24">
         <div className="flex items-end justify-between flex-wrap gap-4 mb-14">
           <div>
-            <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>03 · FLOW</p>
+            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>03 · FLOW</p>
             <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95] max-w-2xl">
               {lang === 'en' ? 'Three steps. Zero creative blocks.' : 'Tres pasos. Cero bloqueos creativos.'}
             </h2>
@@ -312,7 +312,7 @@ function ComparisonTable({ lang }: { lang: Lang }) {
     <section className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
       <div className="max-w-7xl mx-auto px-6 py-24">
         <div className="mb-12">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>05 · VERSUS</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>05 · VERSUS</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
             {lang === 'en' ? 'Manual vs. YTubViral.' : 'El método manual vs. YTubViral.'}
           </h2>
@@ -324,11 +324,11 @@ function ComparisonTable({ lang }: { lang: Lang }) {
         <div className="grid border border-white/10 bg-black" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
           <div className="p-5 border-r border-white/10" />
           <div className="p-5 border-r border-white/10 text-center">
-            <p className="font-mono-jb text-[10px] tracking-wider text-zinc-500 uppercase mb-2">A</p>
+            <p className="font-mono-jb text-[13px] tracking-wider text-zinc-500 uppercase mb-2">A</p>
             <p className="font-display font-bold text-lg">{lang === 'en' ? 'Manual method' : 'Método manual'}</p>
           </div>
           <div className="p-5 text-center relative" style={{ background: 'rgba(232,77,91,0.05)' }}>
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--red)' }}>B</p>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--red)' }}>B</p>
             <p className="font-display font-bold text-lg">Con YTubViral</p>
             <span className="absolute -top-3 right-4 red-tape">WINNER</span>
           </div>
@@ -336,7 +336,7 @@ function ComparisonTable({ lang }: { lang: Lang }) {
           {rows.map((row, i) => (
             <>
               <div key={`l${i}`} className="p-5 border-t border-r border-white/10 flex items-center gap-3">
-                <span className="font-mono-jb text-[10px] text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
+                <span className="font-mono-jb text-[13px] text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
                 <span className="text-zinc-300 text-sm">{row.label}</span>
               </div>
               <div key={`m${i}`} className="p-5 border-t border-r border-white/10 text-center">
@@ -396,7 +396,7 @@ function Pricing({ lang }: { lang: Lang }) {
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%,rgba(232,77,91,0.10),transparent 60%)' }} />
       <div className="relative max-w-6xl mx-auto px-6 py-24">
         <div className="text-center mb-14">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>06 · PRICING</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>06 · PRICING</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
             {t('Elige tu plan. Sin sorpresas.', 'Pick your plan. No surprises.')}
           </h2>
@@ -408,7 +408,7 @@ function Pricing({ lang }: { lang: Lang }) {
         <div className="grid md:grid-cols-3 gap-0 border border-white/10">
           {/* Free */}
           <div className="p-8 bg-black border-b md:border-b-0 md:border-r border-white/10">
-            <p className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 mb-4">
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-4">
               A · {t('Gratuito', 'Free')}
             </p>
             <div className="flex items-baseline gap-1 mb-2">
@@ -431,18 +431,18 @@ function Pricing({ lang }: { lang: Lang }) {
           {/* Pro */}
           <div className="p-8 relative" style={{ background: 'linear-gradient(180deg,rgba(232,77,91,0.08),rgba(232,77,91,0.02))' }}>
             <div className="absolute -top-3 left-8 red-tape">★ {t('MÁS ELEGIDO', 'MOST POPULAR')}</div>
-            <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-4" style={{ color: 'var(--red)' }}>B · Pro</p>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--red)' }}>B · Pro</p>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>9,99€</span>
               <span className="text-zinc-500 font-mono-jb text-sm">/{t('mes', 'mo')}</span>
             </div>
             <div className="flex items-center gap-2 mb-6 mt-2 p-2.5 rounded-xl border border-white/10" style={{ background: 'rgba(124,255,0,0.06)', borderColor: 'rgba(124,255,0,0.2)' }}>
               <div>
-                <p className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: '#7CFF00' }}>
+                <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: '#7CFF00' }}>
                   {t('★ ANUAL — AHORRA 17%', '★ ANNUAL — SAVE 17%')}
                 </p>
                 <p className="font-display font-bold text-white text-base mt-0.5">
-                  99,99€<span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('año', 'yr')}</span>
+                  99,99€<span className="text-zinc-400 font-mono-jb text-[13px] ml-1">/{t('año', 'yr')}</span>
                 </p>
               </div>
             </div>
@@ -461,18 +461,18 @@ function Pricing({ lang }: { lang: Lang }) {
 
           {/* Business */}
           <div className="p-8 border-t md:border-t-0 md:border-l border-white/10 relative" style={{ background: 'linear-gradient(180deg,rgba(0,229,255,0.05),transparent)' }}>
-            <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-4" style={{ color: '#00E5FF' }}>C · Business</p>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: '#00E5FF' }}>C · Business</p>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>29,99€</span>
               <span className="text-zinc-500 font-mono-jb text-sm">/{t('mes', 'mo')}</span>
             </div>
             <div className="flex items-center gap-2 mb-6 mt-2 p-2.5 rounded-xl border border-white/10" style={{ background: 'rgba(0,229,255,0.06)', borderColor: 'rgba(0,229,255,0.2)' }}>
               <div>
-                <p className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: '#00E5FF' }}>
+                <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: '#00E5FF' }}>
                   {t('★ ANUAL — AHORRA 17%', '★ ANNUAL — SAVE 17%')}
                 </p>
                 <p className="font-display font-bold text-white text-base mt-0.5">
-                  299€<span className="text-zinc-400 font-mono-jb text-[11px] ml-1">/{t('año', 'yr')}</span>
+                  299€<span className="text-zinc-400 font-mono-jb text-[13px] ml-1">/{t('año', 'yr')}</span>
                 </p>
               </div>
             </div>
@@ -490,7 +490,7 @@ function Pricing({ lang }: { lang: Lang }) {
           </div>
         </div>
 
-        <p className="text-center text-zinc-500 text-xs font-mono-jb mt-6">
+        <p className="text-center text-zinc-500 text-[13px] font-mono-jb mt-6">
           {t('30 días de garantía · Cancela cuando quieras · Facturación transparente',
             '30-day guarantee · Cancel anytime · Transparent billing')}
         </p>
@@ -514,7 +514,7 @@ function Testimonials({ reviews, lang }: { reviews: { id: string; rating: number
       <div className="max-w-7xl mx-auto px-6 py-24">
         <div className="flex items-end justify-between flex-wrap gap-4 mb-12">
           <div>
-            <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>07 · CREATORS</p>
+            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>07 · CREATORS</p>
             <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95] max-w-2xl">
               {lang === 'en' ? "Creators who stopped guessing." : "Creadores que ya no escriben a ciegas."}
             </h2>
@@ -539,19 +539,19 @@ function Testimonials({ reviews, lang }: { reviews: { id: string; rating: number
                   ))}
                 </div>
                 {it.metric && (
-                  <span className="font-mono-jb text-[10px] tracking-wider uppercase px-2 py-0.5 border" style={{ color: it.color, borderColor: it.color + '66' }}>
+                  <span className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-0.5 border" style={{ color: it.color, borderColor: it.color + '66' }}>
                     {it.metric}
                   </span>
                 )}
               </div>
               <p className="text-zinc-200 text-[15px] leading-relaxed mb-5">&ldquo;{it.text}&rdquo;</p>
               <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-                <div className="w-9 h-9 flex items-center justify-center font-display font-bold text-xs shrink-0" style={{ background: it.color, color: '#000' }}>
+                <div className="w-9 h-9 flex items-center justify-center font-display font-bold text-[13px] shrink-0" style={{ background: it.color, color: '#000' }}>
                   {it.avatar}
                 </div>
                 <div>
                   <p className="font-semibold text-sm">{it.name}</p>
-                  {it.channel && <p className="font-mono-jb text-[10px] text-zinc-500 tracking-wider">{it.channel}</p>}
+                  {it.channel && <p className="font-mono-jb text-[13px] text-zinc-500 tracking-wider">{it.channel}</p>}
                 </div>
               </div>
             </div>
@@ -600,16 +600,16 @@ function Footer({ lang }: { lang: Lang }) {
       </div>
       <div className="border-t border-white/10 px-6 py-8 mt-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
-          <p className="text-zinc-500 font-mono-jb text-xs">
+          <p className="text-zinc-500 font-mono-jb text-[13px]">
             © 2026 YTubViral · {lang === 'en' ? 'Made by creators, for creators.' : 'Hecho por creadores, para creadores.'}
           </p>
-          <div className="flex gap-6 text-zinc-500 font-mono-jb text-xs">
+          <div className="flex gap-6 text-zinc-500 font-mono-jb text-[13px]">
             <Link href="/terms" className="hover:text-white transition">{lang === 'en' ? 'Terms' : 'Términos'}</Link>
             <Link href="/privacy" className="hover:text-white transition">{lang === 'en' ? 'Privacy' : 'Privacidad'}</Link>
             <Link href="/gear" className="hover:text-white transition">{lang === 'en' ? 'Gear' : 'Equipo'}</Link>
             <Link href="/legal" className="hover:text-white transition">{lang === 'en' ? 'Legal Notice' : 'Aviso Legal'}</Link>
           </div>
-          <p className="font-mono-jb text-xs text-zinc-600">MADRID · REMOTE · 40°24′N 3°41′W</p>
+          <p className="font-mono-jb text-[13px] text-zinc-600">MADRID · REMOTE · 40°24′N 3°41′W</p>
         </div>
       </div>
     </footer>

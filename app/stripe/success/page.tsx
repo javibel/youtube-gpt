@@ -71,7 +71,7 @@ export default function StripeSuccessPage() {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>{t('BIENVENIDO A PRO', 'WELCOME TO PRO')}</p>
+            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>{t('BIENVENIDO A PRO', 'WELCOME TO PRO')}</p>
             <h1 className="font-display font-bold text-3xl mb-3">{t('¡Todo listo!', 'You\'re all set!')}</h1>
             <p className="text-zinc-400 text-sm mb-6">{t('Tu cuenta está activa con 200 generaciones al mes. Redirigiendo al panel...', 'Your account is active with 200 generations per month. Redirecting to dashboard...')}</p>
             <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">

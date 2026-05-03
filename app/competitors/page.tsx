@@ -137,14 +137,14 @@ export default function CompetitorsPage() {
               <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
             </a>
             <div className="flex items-center gap-3">
-              <a href="/login" className="font-mono-jb text-[11px] tracking-wider hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>{t('Iniciar sesión', 'Sign in')}</a>
-              <a href="/signup" className="btn-offset px-4 py-1.5 text-[11px] font-display">{t('Crear cuenta gratis', 'Sign up free')}</a>
+              <a href="/login" className="font-mono-jb text-[13px] tracking-wider hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>{t('Iniciar sesión', 'Sign in')}</a>
+              <a href="/signup" className="btn-offset px-4 py-1.5 text-[13px] font-display">{t('Crear cuenta gratis', 'Sign up free')}</a>
             </div>
           </div>
         </header>
 
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--yv-brand)' }}>{t('ANÁLISIS DE COMPETIDORES', 'COMPETITOR ANALYSIS')}</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-6" style={{ color: 'var(--yv-brand)' }}>{t('ANÁLISIS DE COMPETIDORES', 'COMPETITOR ANALYSIS')}</p>
           <h1 className="font-display font-bold text-4xl md:text-5xl mb-6 leading-tight">
             {t('Analiza a tu competencia en', 'Analyze your competition on')}
             <span style={{ color: 'var(--yv-brand)' }}> YouTube</span>
@@ -165,7 +165,7 @@ export default function CompetitorsPage() {
               <div key={f.title} className="yv-card p-5">
                 <div className="text-2xl mb-3">{f.icon}</div>
                 <h3 className="font-display font-bold text-sm mb-1">{f.title}</h3>
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>{f.desc}</p>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -181,7 +181,7 @@ export default function CompetitorsPage() {
           <a href="/signup" className="btn-offset inline-flex px-8 py-3 text-sm font-display">
             {t('Empieza gratis →', 'Start free →')}
           </a>
-          <p className="text-xs mt-4" style={{ color: 'var(--yv-text-4)' }}>{t('Sin tarjeta de crédito. 10 generaciones/mes gratis.', 'No credit card. 10 generations/month free.')}</p>
+          <p className="text-[13px] mt-4" style={{ color: 'var(--yv-text-4)' }}>{t('Sin tarjeta de crédito. 10 generaciones/mes gratis.', 'No credit card. 10 generations/month free.')}</p>
         </div>
       </div>
     );
@@ -218,7 +218,7 @@ export default function CompetitorsPage() {
               style={{ borderRadius: '10px' }}
             />
             <button type="submit" disabled={loading || !url.trim()}
-              className="btn-offset px-6 py-3 text-[12px] font-mono-jb tracking-wider disabled:opacity-50 flex items-center gap-2 whitespace-nowrap">
+              className="btn-offset px-6 py-3 text-[13px] font-mono-jb tracking-wider disabled:opacity-50 flex items-center gap-2 whitespace-nowrap">
               {loading ? (
                 <>
                   <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -238,10 +238,10 @@ export default function CompetitorsPage() {
           </div>
           {/* Example URLs */}
           <div className="flex flex-wrap gap-2">
-            <span className="font-mono-jb text-[10px] self-center" style={{ color: 'var(--yv-text-4)' }}>{t('Ejemplos:', 'Examples:')}</span>
+            <span className="font-mono-jb text-[13px] self-center" style={{ color: 'var(--yv-text-4)' }}>{t('Ejemplos:', 'Examples:')}</span>
             {EXAMPLE_URLS.map(u => (
               <button key={u} type="button" onClick={() => setUrl(u)}
-                className="font-mono-jb text-[10px] px-2 py-1 rounded border border-white/10 hover:text-white hover:border-white/20 transition" style={{ color: 'var(--yv-text-3)' }}>
+                className="font-mono-jb text-[13px] px-2 py-1 rounded border border-white/10 hover:text-white hover:border-white/20 transition" style={{ color: 'var(--yv-text-3)' }}>
                 {u.replace('https://www.youtube.com/', '')}
               </button>
             ))}
@@ -273,13 +273,13 @@ export default function CompetitorsPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="font-display font-bold text-xl text-white">{result.channel.name}</h2>
                     {result.channel.country && (
-                      <span className="font-mono-jb text-[10px] px-2 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--yv-text-2)' }}>
+                      <span className="font-mono-jb text-[13px] px-2 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--yv-text-2)' }}>
                         {result.channel.country}
                       </span>
                     )}
                   </div>
                   {result.channel.description && (
-                    <p className="text-xs mt-1 font-mono-jb line-clamp-2" style={{ color: 'var(--yv-text-3)' }}>{result.channel.description}</p>
+                    <p className="text-[13px] mt-1 font-mono-jb line-clamp-2" style={{ color: 'var(--yv-text-3)' }}>{result.channel.description}</p>
                   )}
                 </div>
               </div>
@@ -294,7 +294,7 @@ export default function CompetitorsPage() {
                 ].map((s, i) => (
                   <div key={i} className="text-center p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }}>
                     <p className="font-display font-black text-2xl" style={{ color: s.color }}>{s.value}</p>
-                    <p className="font-mono-jb text-[10px] uppercase mt-0.5" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
+                    <p className="font-mono-jb text-[13px] uppercase mt-0.5" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
                   </div>
                 ))}
               </div>
@@ -312,15 +312,15 @@ export default function CompetitorsPage() {
                     <a key={v.videoId} href={`https://www.youtube.com/watch?v=${v.videoId}`}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-3 p-2.5 rounded-lg group hover:bg-white/5 transition">
-                      <span className="font-mono-jb text-[11px] w-4 flex-shrink-0" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
+                      <span className="font-mono-jb text-[13px] w-4 flex-shrink-0" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
                       <img src={v.thumbnail} alt="" className="w-16 h-9 rounded object-cover flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-zinc-300 truncate group-hover:text-white transition">{v.title}</p>
-                        <p className="font-mono-jb text-[10px] mt-0.5" style={{ color: 'var(--yv-text-4)' }}>{fmtDate(v.publishedAt, lang)}</p>
+                        <p className="text-[13px] font-semibold text-zinc-300 truncate group-hover:text-white transition">{v.title}</p>
+                        <p className="font-mono-jb text-[13px] mt-0.5" style={{ color: 'var(--yv-text-4)' }}>{fmtDate(v.publishedAt, lang)}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="font-mono-jb text-[11px] font-bold text-white">{fmtNum(v.views, lang)}</p>
-                        <p className="font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>{t('vistas', 'views')}</p>
+                        <p className="font-mono-jb text-[13px] font-bold text-white">{fmtNum(v.views, lang)}</p>
+                        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{t('vistas', 'views')}</p>
                       </div>
                     </a>
                   ))}
@@ -337,7 +337,7 @@ export default function CompetitorsPage() {
                   </h3>
                   <div className="text-center py-4">
                     <p className="font-display font-black text-3xl" style={{ color: '#FFE800' }}>{result.uploadFrequency}</p>
-                    <p className="font-mono-jb text-[10px] mt-1 uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('publicación', 'publishing')}</p>
+                    <p className="font-mono-jb text-[13px] mt-1 uppercase" style={{ color: 'var(--yv-text-4)' }}>{t('publicación', 'publishing')}</p>
                   </div>
                 </div>
 
@@ -350,7 +350,7 @@ export default function CompetitorsPage() {
                   <div className="flex flex-wrap gap-2">
                     {result.keywords.map((kw, i) => (
                       <button key={kw} onClick={() => router.push(`/research?q=${encodeURIComponent(kw)}`)}
-                        className="font-mono-jb text-[11px] px-2.5 py-1 rounded-full border transition hover:border-white/30 hover:text-white cursor-pointer"
+                        className="font-mono-jb text-[13px] px-2.5 py-1 rounded-full border transition hover:border-white/30 hover:text-white cursor-pointer"
                         style={{
                           border: '1px solid rgba(0,255,163,0.2)',
                           color: i < 3 ? '#00FFA3' : '#6b7280',
@@ -360,7 +360,7 @@ export default function CompetitorsPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="font-mono-jb text-[10px] mt-3" style={{ color: 'var(--yv-text-4)' }}>
+                  <p className="font-mono-jb text-[13px] mt-3" style={{ color: 'var(--yv-text-4)' }}>
                     {t('Haz clic en una keyword para investigarla', 'Click a keyword to research it')}
                   </p>
                 </div>
@@ -374,12 +374,12 @@ export default function CompetitorsPage() {
                   <span style={{ color: '#FF6B00' }}>🔥</span>
                   {t('Outlier Detection', 'Outlier Detection')}
                   {outliers && outliers.outliers.length > 0 && (
-                    <span className="font-mono-jb text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,107,0,0.15)', color: '#FF6B00' }}>
+                    <span className="font-mono-jb text-[13px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,107,0,0.15)', color: '#FF6B00' }}>
                       {outliers.outliers.length} {t('detectados', 'detected')}
                     </span>
                   )}
                 </h3>
-                <div className="flex items-center gap-1 font-mono-jb text-[10px]">
+                <div className="flex items-center gap-1 font-mono-jb text-[13px]">
                   {(['7d', '30d', '90d', 'all'] as const).map(p => (
                     <button key={p} onClick={() => setOutlierPeriod(p)}
                       className="px-2.5 py-1 rounded transition"
@@ -395,7 +395,7 @@ export default function CompetitorsPage() {
               </div>
 
               {outliers?.medianViews ? (
-                <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
+                <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                   {t('Mediana de vistas', 'Median views')}: <span style={{ color: 'var(--yv-text-2)' }}>{fmtNum(outliers.medianViews, lang)}</span>
                   {' · '}{outliers.totalVideosAnalyzed} {t('vídeos analizados', 'videos analyzed')}
                   {' · '}{t('Umbral', 'Threshold')}: 10x
@@ -415,37 +415,37 @@ export default function CompetitorsPage() {
                       style={{ border: '1px solid rgba(255,107,0,0.15)' }}>
                       <div className="relative flex-shrink-0">
                         <img src={v.thumbnail} alt="" className="w-20 h-[45px] rounded object-cover" />
-                        <span className="absolute -top-1.5 -right-1.5 font-mono-jb text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        <span className="absolute -top-1.5 -right-1.5 font-mono-jb text-[13px] font-bold px-1.5 py-0.5 rounded-full"
                           style={{ background: '#FF6B00', color: '#000' }}>
                           {v.multiplier}x
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-zinc-300 truncate group-hover:text-white transition">{v.title}</p>
+                        <p className="text-[13px] font-semibold text-zinc-300 truncate group-hover:text-white transition">{v.title}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="font-mono-jb text-[10px] px-1.5 py-0.5 rounded"
+                          <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded"
                             style={{
                               background: v.type === 'viral' ? 'rgba(232,77,91,0.12)' : 'rgba(0,229,255,0.12)',
                               color: v.type === 'viral' ? '#e84d5b' : '#00E5FF',
                             }}>
                             {v.type === 'viral' ? '⚡ Viral' : '🌿 Evergreen'}
                           </span>
-                          <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{fmtDate(v.publishedAt, lang)}</span>
+                          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtDate(v.publishedAt, lang)}</span>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="font-mono-jb text-[11px] font-bold" style={{ color: '#FF6B00' }}>{fmtNum(v.views, lang)}</p>
-                        <p className="font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>{t('vistas', 'views')}</p>
+                        <p className="font-mono-jb text-[13px] font-bold" style={{ color: '#FF6B00' }}>{fmtNum(v.views, lang)}</p>
+                        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{t('vistas', 'views')}</p>
                       </div>
                     </a>
                   ))}
                 </div>
               ) : outliers ? (
                 <div className="text-center py-8">
-                  <p className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>
+                  <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                     {t('No se detectaron outliers (10x+) en este período.', 'No outliers (10x+) detected in this period.')}
                   </p>
-                  <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
+                  <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
                     {t('Prueba con "Todo" para ver el historial completo.', 'Try "All" to see the full history.')}
                   </p>
                 </div>

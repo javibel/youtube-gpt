@@ -49,7 +49,7 @@ export default function LoginForm() {
         </a>
         <button
           onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
-          className="flex items-center gap-1 font-mono-jb text-[10px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
+          className="flex items-center gap-1 font-mono-jb text-[13px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
           <span className="text-zinc-700 mx-0.5">|</span>
@@ -59,7 +59,7 @@ export default function LoginForm() {
 
       <div className="w-full max-w-md">
         <div className="mb-8">
-          <p className="font-mono-jb text-[10px] tracking-widest uppercase mb-3" style={{ color: 'var(--red)' }}>▸ {t('ACCESO', 'SIGN IN')}</p>
+          <p className="font-mono-jb text-[13px] tracking-widest uppercase mb-3" style={{ color: 'var(--red)' }}>▸ {t('ACCESO', 'SIGN IN')}</p>
           <h1 className="font-display font-bold text-3xl tracking-tight text-white mb-2">{t('Bienvenido de vuelta', 'Welcome back')}</h1>
           <p className="text-zinc-400 text-sm">{t('Inicia sesión para seguir creando contenido viral', 'Sign in to keep creating viral content')}</p>
         </div>
@@ -67,15 +67,15 @@ export default function LoginForm() {
         <div className="soft-card p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
+              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" required />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500">{t('Contraseña', 'Password')}</label>
-                <a href="/forgot-password" className="font-mono-jb text-[10px] tracking-wider text-zinc-500 hover:text-white transition">
+                <label className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500">{t('Contraseña', 'Password')}</label>
+                <a href="/forgot-password" className="font-mono-jb text-[13px] tracking-wider text-zinc-500 hover:text-white transition">
                   {t('¿Olvidaste la contraseña?', 'Forgot password?')}
                 </a>
               </div>
@@ -103,7 +103,7 @@ export default function LoginForm() {
           <a href="/signup" className="text-white hover:underline font-medium">{t('Regístrate gratis', 'Sign up for free')}</a>
         </p>
 
-        <div className="mt-8 flex justify-center gap-5 text-xs text-zinc-600">
+        <div className="mt-8 flex justify-center gap-5 text-[13px] text-zinc-600">
           <a href="/terms" className="hover:text-zinc-400 transition">{t('Términos', 'Terms')}</a>
           <a href="/privacy" className="hover:text-zinc-400 transition">{t('Privacidad', 'Privacy')}</a>
           <a href="/legal" className="hover:text-zinc-400 transition">{t('Aviso Legal', 'Legal Notice')}</a>

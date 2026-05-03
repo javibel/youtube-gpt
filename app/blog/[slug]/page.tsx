@@ -108,7 +108,7 @@ function ArticleBlock({ block, lang }: { block: BlockType; lang: Lang }) {
       <div className="mt-14 border border-white/15 p-10 text-center relative overflow-hidden" style={{ background: '#0E0E10' }}>
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.18), transparent 70%)' }} />
         <div className="relative">
-          <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>YTubViral</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>YTubViral</p>
           <p className="font-display font-bold text-3xl mb-2">{block.t}</p>
           <p className="text-zinc-400 mb-8">{block.sub}</p>
           <Link href="/signup" className="btn-offset inline-flex px-10 py-4 text-base font-display font-bold">
@@ -131,11 +131,11 @@ function RelatedCard({ post, lang, catColor, catLabel }: {
   return (
     <Link href={`/blog/${post.slug}`} className="group block border border-white/10 p-6 bg-black hover:border-white/20 transition-colors">
       <div className="flex items-center gap-2 mb-3">
-        <span className="font-mono-jb text-[10px] tracking-wider uppercase px-2 py-0.5 border"
+        <span className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-0.5 border"
           style={{ color: catColor(post.cat), borderColor: catColor(post.cat) + '55', background: catColor(post.cat) + '11' }}>
           {catLabel(post.cat)}
         </span>
-        <span className="font-mono-jb text-[10px] text-zinc-600">{post.readMin} min</span>
+        <span className="font-mono-jb text-[13px] text-zinc-600">{post.readMin} min</span>
       </div>
       <h4 className="font-display font-bold text-base leading-tight mb-2 group-hover:text-zinc-100 transition-colors">
         {post.title[lang]}
@@ -206,7 +206,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             </span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/blog" className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
+            <Link href="/blog" className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
               {lang === 'en' ? '← Blog' : '← Blog'}
             </Link>
             <Link href="/signup" className="btn-offset px-4 py-2 text-[13px] font-display">
@@ -219,7 +219,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       {/* ── Article header ── */}
       <article className="max-w-3xl mx-auto px-6 pt-16 pb-8">
         {/* Breadcrumbs */}
-        <nav className="flex items-center gap-2 font-mono-jb text-[11px] text-zinc-600 mb-10" aria-label="breadcrumb">
+        <nav className="flex items-center gap-2 font-mono-jb text-[13px] text-zinc-600 mb-10" aria-label="breadcrumb">
           <Link href="/" className="hover:text-zinc-400 transition">Home</Link>
           <span>/</span>
           <Link href="/blog" className="hover:text-zinc-400 transition">Blog</Link>
@@ -229,11 +229,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
         {/* Category + read time */}
         <div className="flex items-center gap-3 mb-6">
-          <span className="font-mono-jb text-[11px] tracking-wider uppercase px-3 py-1 border"
+          <span className="font-mono-jb text-[13px] tracking-wider uppercase px-3 py-1 border"
             style={{ color: catData?.color, borderColor: (catData?.color ?? '#FF0033') + '55', background: (catData?.color ?? '#FF0033') + '11' }}>
             {catLabel(post.cat)}
           </span>
-          <span className="font-mono-jb text-[11px] text-zinc-600">{post.readMin} min read</span>
+          <span className="font-mono-jb text-[13px] text-zinc-600">{post.readMin} min read</span>
         </div>
 
         {/* Title */}
@@ -249,7 +249,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </div>
           <div>
             <p className="font-semibold text-sm">{post.author.name}</p>
-            <p className="font-mono-jb text-[10px] text-zinc-500">
+            <p className="font-mono-jb text-[13px] text-zinc-500">
               {post.author.role[lang]} · {post.date[lang]}
             </p>
           </div>
@@ -282,7 +282,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           body.map((block, i) => <ArticleBlock key={i} block={block} lang={lang} />)
         ) : (
           <div className="border border-white/10 p-10 text-center bg-black">
-            <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-3" style={{ color: 'var(--red)' }}>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--red)' }}>
               {lang === 'en' ? 'Coming soon' : 'Próximamente'}
             </p>
             <p className="text-zinc-400">
@@ -313,7 +313,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       {related.length > 0 && (
         <section className="border-t border-white/10 mt-8">
           <div className="max-w-7xl mx-auto px-6 py-12">
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-6">
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-6">
               {lang === 'en' ? 'Related articles' : 'Artículos relacionados'}
             </p>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -330,7 +330,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         <div className="max-w-4xl mx-auto px-6 py-20 text-center relative overflow-hidden">
           <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.18), transparent 70%)' }} />
           <div className="relative">
-            <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>YTubViral</p>
+            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>YTubViral</p>
             <h2 className="font-display font-bold text-4xl md:text-5xl leading-[0.95] mb-6">
               {lang === 'en' ? 'Put this into practice.' : 'Ponlo en práctica.'}
             </h2>
@@ -348,10 +348,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
       <footer className="border-t border-white/10 bg-black">
         <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-zinc-500 font-mono-jb text-xs">
+          <p className="text-zinc-500 font-mono-jb text-[13px]">
             © 2026 YTubViral · {lang === 'en' ? 'Made by creators, for creators.' : 'Hecho por creadores, para creadores.'}
           </p>
-          <div className="flex gap-6 text-zinc-500 font-mono-jb text-xs">
+          <div className="flex gap-6 text-zinc-500 font-mono-jb text-[13px]">
             <Link href="/terms" className="hover:text-white transition">{lang === 'en' ? 'Terms' : 'Términos'}</Link>
             <Link href="/privacy" className="hover:text-white transition">{lang === 'en' ? 'Privacy' : 'Privacidad'}</Link>
           </div>

@@ -175,14 +175,14 @@ function InteractiveRetentionCurve({
             zIndex: 10,
           }}
         >
-          <div className="font-mono-jb text-[10px] mb-1" style={{ color: 'var(--yv-text-3)' }}>
+          <div className="font-mono-jb text-[13px] mb-1" style={{ color: 'var(--yv-text-3)' }}>
             {fmtTime(Math.round(hover.pct * duration))}
           </div>
           {hover.values.map((v, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
+            <div key={i} className="flex items-center gap-2 text-[13px]">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: v.color }} />
               <span className="text-white font-display font-bold">{v.ret}%</span>
-              {compareMode && <span className="truncate max-w-[120px] text-[10px]" style={{ color: 'var(--yv-text-4)' }}>{v.title}</span>}
+              {compareMode && <span className="truncate max-w-[120px] text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{v.title}</span>}
             </div>
           ))}
         </div>
@@ -194,7 +194,7 @@ function InteractiveRetentionCurve({
           {displayVideos.map((v, i) => (
             <div key={v.videoId} className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: COMPARE_COLORS[i % COMPARE_COLORS.length] }} />
-              <span className="font-mono-jb text-[10px] truncate max-w-[180px]" style={{ color: 'var(--yv-text-3)' }}>{v.title}</span>
+              <span className="font-mono-jb text-[13px] truncate max-w-[180px]" style={{ color: 'var(--yv-text-3)' }}>{v.title}</span>
             </div>
           ))}
         </div>
@@ -330,12 +330,12 @@ export default function RetentionPage() {
                     <div className="font-display font-bold text-2xl" style={{ color: retentionColor(v.hookScore) }}>
                       {v.hookScore}
                     </div>
-                    <div className="font-mono-jb text-[9px] tracking-wider uppercase" style={{ color: 'var(--yv-text-4)' }}>Hook</div>
+                    <div className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-4)' }}>Hook</div>
                   </div>
-                  <div className="font-mono-jb text-[10px] truncate" style={{ color: 'var(--yv-text-3)' }} title={v.title}>
+                  <div className="font-mono-jb text-[13px] truncate" style={{ color: 'var(--yv-text-3)' }} title={v.title}>
                     {v.title}
                   </div>
-                  <div className="flex items-center gap-2 mt-1 font-mono-jb text-[10px]">
+                  <div className="flex items-center gap-2 mt-1 font-mono-jb text-[13px]">
                     <span style={{ color: retentionColor(v.avgRetention) }}>{v.avgRetention}% avg</span>
                     <span style={{ color: 'var(--yv-text-5)' }}>{fmtNum(v.views)}</span>
                   </div>
@@ -351,7 +351,7 @@ export default function RetentionPage() {
                     setCompareMode(!compareMode);
                     if (!compareMode) setCompareIds(videos.slice(0, 2).map(v => v.videoId));
                   }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border font-mono-jb text-[11px] tracking-wider transition"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border font-mono-jb text-[13px] tracking-wider transition"
                   style={{
                     background: compareMode ? 'rgba(129,140,248,0.1)' : 'rgba(255,255,255,0.02)',
                     borderColor: compareMode ? 'rgba(129,140,248,0.3)' : 'rgba(255,255,255,0.08)',
@@ -370,7 +370,7 @@ export default function RetentionPage() {
                       <button
                         key={v.videoId}
                         onClick={() => toggleCompare(v.videoId)}
-                        className="px-3 py-1 rounded-full border font-mono-jb text-[10px] transition"
+                        className="px-3 py-1 rounded-full border font-mono-jb text-[13px] transition"
                         style={{
                           background: compareIds.includes(v.videoId) ? 'rgba(129,140,248,0.12)' : 'transparent',
                           borderColor: compareIds.includes(v.videoId) ? 'rgba(129,140,248,0.3)' : 'rgba(255,255,255,0.08)',
@@ -400,7 +400,7 @@ export default function RetentionPage() {
                       >
                         {selectedVideo.title}
                       </a>
-                      <div className="flex gap-4 mt-1 font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
+                      <div className="flex gap-4 mt-1 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                         <span>{fmtNum(selectedVideo.views)} {t('vistas', 'views')}</span>
                         <span>{fmtTime(selectedVideo.duration)}</span>
                       </div>
@@ -411,7 +411,7 @@ export default function RetentionPage() {
                         <div className="font-display font-bold text-3xl" style={{ color: retentionColor(selectedVideo.hookScore) }}>
                           {selectedVideo.hookScore}%
                         </div>
-                        <div className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>
+                        <div className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                           {hookScoreLabel(selectedVideo.hookScore, lang)}
                         </div>
                       </div>
@@ -420,7 +420,7 @@ export default function RetentionPage() {
                         <div className="font-display font-bold text-3xl" style={{ color: retentionColor(selectedVideo.avgRetention) }}>
                           {selectedVideo.avgRetention}%
                         </div>
-                        <div className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{t('Retención media', 'Avg retention')}</div>
+                        <div className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{t('Retención media', 'Avg retention')}</div>
                       </div>
                     </div>
                   </div>
@@ -429,7 +429,7 @@ export default function RetentionPage() {
                 {compareMode && (
                   <div className="mb-4">
                     <h3 className="font-display font-bold text-lg" style={{ color: 'var(--yv-text-1)' }}>{t('Comparación de curvas', 'Curve comparison')}</h3>
-                    <p className="font-mono-jb text-[11px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{t('Hover para ver retención en cada punto', 'Hover to see retention at each point')}</p>
+                    <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{t('Hover para ver retención en cada punto', 'Hover to see retention at each point')}</p>
                   </div>
                 )}
 
@@ -445,7 +445,7 @@ export default function RetentionPage() {
             {/* Drop-off points with AI reasons */}
             {!compareMode && selectedVideo && selectedVideo.dropOffPoints.length > 0 && (
               <div className="yv-card p-6">
-                <h3 className="font-mono-jb text-[10px] tracking-[0.25em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
+                <h3 className="font-mono-jb text-[13px] tracking-[0.25em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
                   {t('PUNTOS DE ABANDONO', 'DROP-OFF POINTS')}
                 </h3>
                 <div className="space-y-3">
@@ -460,17 +460,17 @@ export default function RetentionPage() {
                       >
                         <div className="flex-shrink-0 text-center w-16">
                           <div className="font-display font-bold text-lg text-red-400">{fmtTime(d.time)}</div>
-                          <div className="font-mono-jb text-[10px] text-red-400/60">-{d.drop}%</div>
+                          <div className="font-mono-jb text-[13px] text-red-400/60">-{d.drop}%</div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>
+                          <div className="flex items-center gap-2 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>
                             <span>{d.retentionBefore}%</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                             <span style={{ color: retentionColor(d.retentionAfter) }}>{d.retentionAfter}%</span>
                           </div>
                           {reason && (
-                            <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
-                              <span className="text-purple-400 font-mono-jb text-[10px] mr-1">AI:</span>
+                            <p className="text-[13px] mt-1.5 leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
+                              <span className="text-purple-400 font-mono-jb text-[13px] mr-1">AI:</span>
                               {reason.reason}
                             </p>
                           )}
@@ -492,7 +492,7 @@ export default function RetentionPage() {
                 <ul className="space-y-3">
                   {aiTips.map((tip, i) => (
                     <li key={i} className="text-sm flex items-start gap-3" style={{ color: 'var(--yv-text-2)' }}>
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center font-mono-jb text-[10px] font-bold" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center font-mono-jb text-[13px] font-bold" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
                         {i + 1}
                       </span>
                       <span className="leading-relaxed">{tip}</span>
@@ -504,7 +504,7 @@ export default function RetentionPage() {
 
             {/* Private data badge */}
             <div className="text-center py-4">
-              <span className="inline-flex items-center gap-2 font-mono-jb text-[10px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
+              <span className="inline-flex items-center gap-2 font-mono-jb text-[13px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 {t('Datos privados de retención — inaccesibles para herramientas sin OAuth', 'Private retention data — inaccessible to tools without OAuth')}
               </span>

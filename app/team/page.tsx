@@ -272,11 +272,11 @@ export default function TeamPage() {
               </div>
               <div className="flex-1">
                 <p className="font-display font-bold text-white">{team.name}</p>
-                <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
+                <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                   {team.members.length}/{team.maxMembers} {t('miembros', 'members')} · {team.plan.toUpperCase()}
                 </p>
               </div>
-              <span className="font-mono-jb text-[10px] font-bold px-2.5 py-1 rounded" style={{ background: `${ROLE_COLORS[myRole]}22`, color: ROLE_COLORS[myRole] }}>
+              <span className="font-mono-jb text-[13px] font-bold px-2.5 py-1 rounded" style={{ background: `${ROLE_COLORS[myRole]}22`, color: ROLE_COLORS[myRole] }}>
                 {ROLE_LABELS[myRole]?.[lang] || myRole}
               </span>
             </div>
@@ -289,14 +289,14 @@ export default function TeamPage() {
               <div className="divide-y divide-white/5">
                 {team.members.map(member => (
                   <div key={member.id} className="flex items-center gap-3 px-5 py-3.5">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: '#a1a1aa' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: '#a1a1aa' }}>
                       {(member.user.name?.[0] || member.user.email[0]).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">{member.user.name || member.user.email}</p>
-                      <p className="font-mono-jb text-[10px] truncate" style={{ color: 'var(--yv-text-4)' }}>{member.user.email}</p>
+                      <p className="font-mono-jb text-[13px] truncate" style={{ color: 'var(--yv-text-4)' }}>{member.user.email}</p>
                     </div>
-                    <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: `${ROLE_COLORS[member.role]}15`, color: ROLE_COLORS[member.role] }}>
+                    <span className="font-mono-jb text-[13px] font-bold px-2 py-0.5 rounded" style={{ background: `${ROLE_COLORS[member.role]}15`, color: ROLE_COLORS[member.role] }}>
                       {ROLE_LABELS[member.role]?.[lang] || member.role}
                     </span>
                     {myRole === 'owner' && member.user.id !== session?.user?.id && (
@@ -304,7 +304,7 @@ export default function TeamPage() {
                         <select
                           value={member.role}
                           onChange={e => changeRole(member.id, e.target.value)}
-                          className="text-[10px] font-mono-jb bg-transparent rounded px-1.5 py-1 focus:outline-none"
+                          className="text-[13px] font-mono-jb bg-transparent rounded px-1.5 py-1 focus:outline-none"
                           style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}
                         >
                           <option value="member">{t('Miembro', 'Member')}</option>
@@ -339,14 +339,14 @@ export default function TeamPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm truncate" style={{ color: 'var(--yv-text-2)' }}>{inv.email}</p>
-                        <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
+                        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                           {t('Expira', 'Expires')} {new Date(inv.expiresAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' })}
                         </p>
                       </div>
                       {isOwnerOrAdmin && (
                         <button
                           onClick={() => revokeInvitation(inv.id)}
-                          className="font-mono-jb text-[10px] hover:text-red-400 transition"
+                          className="font-mono-jb text-[13px] hover:text-red-400 transition"
                           style={{ color: 'var(--yv-text-4)' }}
                         >
                           {t('Revocar', 'Revoke')}
@@ -364,7 +364,7 @@ export default function TeamPage() {
                 <h2 className="font-display font-bold mb-4" style={{ color: 'var(--yv-text-1)' }}>{t('Invitar miembro', 'Invite member')}</h2>
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
-                    <label className="font-mono-jb text-[10px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>Email</label>
+                    <label className="font-mono-jb text-[13px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>Email</label>
                     <input
                       type="email"
                       value={inviteEmail}
@@ -376,7 +376,7 @@ export default function TeamPage() {
                   </div>
                   {myRole === 'owner' && (
                     <div>
-                      <label className="font-mono-jb text-[10px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Rol', 'Role')}</label>
+                      <label className="font-mono-jb text-[13px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Rol', 'Role')}</label>
                       <select
                         value={inviteRole}
                         onChange={e => setInviteRole(e.target.value)}
@@ -400,12 +400,12 @@ export default function TeamPage() {
 
             {/* Danger zone */}
             <div className="yv-card p-5">
-              <h2 className="font-mono-jb text-[11px] uppercase tracking-wider mb-3" style={{ color: 'var(--yv-text-3)' }}>
+              <h2 className="font-mono-jb text-[13px] uppercase tracking-wider mb-3" style={{ color: 'var(--yv-text-3)' }}>
                 {t('Zona de peligro', 'Danger zone')}
               </h2>
               <button
                 onClick={leaveOrDeleteTeam}
-                className="font-mono-jb text-[11px] text-red-400 hover:text-red-300 transition"
+                className="font-mono-jb text-[13px] text-red-400 hover:text-red-300 transition"
               >
                 {myRole === 'owner'
                   ? t('Eliminar equipo', 'Delete team')

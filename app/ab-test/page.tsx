@@ -257,7 +257,7 @@ export default function AbTestPage() {
               </p>
             ) : (
               <>
-                <p className="font-mono-jb text-[11px] mb-3 uppercase tracking-wider" style={{ color: 'var(--yv-text-3)' }}>{t('Selecciona un video', 'Select a video')}</p>
+                <p className="font-mono-jb text-[13px] mb-3 uppercase tracking-wider" style={{ color: 'var(--yv-text-3)' }}>{t('Selecciona un video', 'Select a video')}</p>
                 <div className="grid gap-2 mb-6">
                   {videos.filter(v => !activeVideoIds.has(v.videoId)).map(v => (
                     <button
@@ -278,7 +278,7 @@ export default function AbTestPage() {
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-white font-medium truncate">{v.title}</p>
-                        <p className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} views</p>
+                        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} views</p>
                       </div>
                     </button>
                   ))}
@@ -289,7 +289,7 @@ export default function AbTestPage() {
                   <>
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
                       <div>
-                        <label className="font-mono-jb text-[11px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
+                        <label className="font-mono-jb text-[13px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
                           {t('Variante A', 'Variant A')}
                         </label>
                         <input
@@ -299,10 +299,10 @@ export default function AbTestPage() {
                           className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
                           placeholder={t('Titulo variante A...', 'Variant A title...')}
                         />
-                        <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantA.length}/100</p>
+                        <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantA.length}/100</p>
                       </div>
                       <div>
-                        <label className="font-mono-jb text-[11px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
+                        <label className="font-mono-jb text-[13px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
                           {t('Variante B', 'Variant B')}
                         </label>
                         <input
@@ -312,7 +312,7 @@ export default function AbTestPage() {
                           className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
                           placeholder={t('Titulo variante B...', 'Variant B title...')}
                         />
-                        <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantB.length}/100</p>
+                        <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantB.length}/100</p>
                       </div>
                     </div>
 
@@ -334,7 +334,7 @@ export default function AbTestPage() {
 
                     {/* Duration selector */}
                     <div className="mb-6">
-                      <label className="font-mono-jb text-[11px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
+                      <label className="font-mono-jb text-[13px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>
                         {t('Duracion por variante', 'Duration per variant')}
                       </label>
                       <div className="flex gap-2">
@@ -353,7 +353,7 @@ export default function AbTestPage() {
                           </button>
                         ))}
                       </div>
-                      <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
+                      <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
                         {t(`Test total: ${hours * 2}h (${Math.round(hours * 2 / 24)} dias)`, `Total test: ${hours * 2}h (${Math.round(hours * 2 / 24)} days)`)}
                       </p>
                     </div>
@@ -380,7 +380,7 @@ export default function AbTestPage() {
                     </button>
 
                     {variantA.trim() && variantB.trim() && variantA.trim() === variantB.trim() && (
-                      <p className="text-red-400 font-mono-jb text-[11px] mt-2">
+                      <p className="text-red-400 font-mono-jb text-[13px] mt-2">
                         {t('Las variantes deben ser diferentes.', 'Variants must be different.')}
                       </p>
                     )}
@@ -460,7 +460,7 @@ function ActiveTestCard({
           <img src={test.thumbnail} alt="" className="w-28 h-16 rounded object-cover flex-shrink-0" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="font-mono-jb text-[10px] tracking-wider mb-1" style={{ color: 'var(--yv-brand)' }}>
+          <p className="font-mono-jb text-[13px] tracking-wider mb-1" style={{ color: 'var(--yv-brand)' }}>
             {isA ? t('VARIANTE A EN CURSO', 'VARIANT A RUNNING') : t('VARIANTE B EN CURSO', 'VARIANT B RUNNING')}
           </p>
           <p className="text-sm font-mono-jb truncate" style={{ color: 'var(--yv-text-2)' }}>
@@ -472,7 +472,7 @@ function ActiveTestCard({
       <div className="grid md:grid-cols-2 gap-0 divide-x divide-white/5">
         <div className={`p-5 ${isA ? 'bg-white/[0.03]' : ''}`}>
           <div className="flex items-center gap-2 mb-2">
-            <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{
+            <span className="font-mono-jb text-[13px] font-bold px-2 py-0.5 rounded" style={{
               background: isA ? 'rgba(155,32,32,0.2)' : 'rgba(255,255,255,0.05)',
               color: isA ? 'var(--yv-brand)' : '#52525b',
             }}>A</span>
@@ -482,7 +482,7 @@ function ActiveTestCard({
         </div>
         <div className={`p-5 ${!isA ? 'bg-white/[0.03]' : ''}`}>
           <div className="flex items-center gap-2 mb-2">
-            <span className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded" style={{
+            <span className="font-mono-jb text-[13px] font-bold px-2 py-0.5 rounded" style={{
               background: !isA ? 'rgba(155,32,32,0.2)' : 'rgba(255,255,255,0.05)',
               color: !isA ? 'var(--yv-brand)' : '#52525b',
             }}>B</span>
@@ -495,10 +495,10 @@ function ActiveTestCard({
       {/* Progress */}
       <div className="p-5 border-t border-white/5">
         <div className="flex items-center justify-between mb-2">
-          <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
+          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
             {isA ? t('Fase 1/2', 'Phase 1/2') : t('Fase 2/2', 'Phase 2/2')}
           </span>
-          <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-2)' }}>
+          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>
             {left} {t('restante', 'remaining')}
           </span>
         </div>
@@ -511,7 +511,7 @@ function ActiveTestCard({
         <div className="flex justify-end mt-3">
           <button
             onClick={() => onCancel(test.id)}
-            className="font-mono-jb text-[11px] hover:text-red-400 transition"
+            className="font-mono-jb text-[13px] hover:text-red-400 transition"
             style={{ color: 'var(--yv-text-4)' }}
           >
             {t('Cancelar test', 'Cancel test')}
@@ -546,7 +546,7 @@ function PastTestCard({
           )}
           <div>
             <span
-              className="font-mono-jb text-[10px] font-bold px-2 py-0.5 rounded"
+              className="font-mono-jb text-[13px] font-bold px-2 py-0.5 rounded"
               style={{
                 background: cancelled ? 'rgba(255,255,255,0.05)' : 'rgba(155,32,32,0.15)',
                 color: cancelled ? '#52525b' : 'var(--yv-brand)',
@@ -557,7 +557,7 @@ function PastTestCard({
           </div>
         </div>
         {test.completedAt && (
-          <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
+          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
             {new Date(test.completedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', {
               month: 'short',
               day: 'numeric',
@@ -576,8 +576,8 @@ function PastTestCard({
             }}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="font-mono-jb text-[10px] font-bold" style={{ color: 'var(--yv-text-3)' }}>A</span>
-              <span className="font-mono-jb text-[12px] font-bold" style={{ color: test.winner === 'A' ? '#22c55e' : '#71717a' }}>
+              <span className="font-mono-jb text-[13px] font-bold" style={{ color: 'var(--yv-text-3)' }}>A</span>
+              <span className="font-mono-jb text-[13px] font-bold" style={{ color: test.winner === 'A' ? '#22c55e' : '#71717a' }}>
                 +{fmtNum(viewsA)} views
               </span>
             </div>
@@ -591,8 +591,8 @@ function PastTestCard({
             }}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="font-mono-jb text-[10px] font-bold" style={{ color: 'var(--yv-text-3)' }}>B</span>
-              <span className="font-mono-jb text-[12px] font-bold" style={{ color: test.winner === 'B' ? '#22c55e' : '#71717a' }}>
+              <span className="font-mono-jb text-[13px] font-bold" style={{ color: 'var(--yv-text-3)' }}>B</span>
+              <span className="font-mono-jb text-[13px] font-bold" style={{ color: test.winner === 'B' ? '#22c55e' : '#71717a' }}>
                 +{fmtNum(viewsB)} views
               </span>
             </div>
@@ -614,7 +614,7 @@ function PastTestCard({
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" className="mt-0.5 flex-shrink-0">
               <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
             </svg>
-            <p className="text-[12px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
+            <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
               {lang === 'en' ? test.aiInsight.en : test.aiInsight.es}
             </p>
           </div>

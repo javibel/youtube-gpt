@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
         </a>
         <button
           onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
-          className="flex items-center gap-1 font-mono-jb text-[10px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
+          className="flex items-center gap-1 font-mono-jb text-[13px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
           <span className="text-zinc-700 mx-0.5">|</span>
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
 
       <div className="w-full max-w-md">
         <div className="mb-8">
-          <p className="font-mono-jb text-[10px] tracking-widest uppercase mb-3" style={{ color: 'var(--red)' }}>▸ {t('RECUPERAR ACCESO', 'RECOVER ACCESS')}</p>
+          <p className="font-mono-jb text-[13px] tracking-widest uppercase mb-3" style={{ color: 'var(--red)' }}>▸ {t('RECUPERAR ACCESO', 'RECOVER ACCESS')}</p>
           <h1 className="font-display font-bold text-3xl tracking-tight text-white mb-2">
             {t('¿Olvidaste tu contraseña?', 'Forgot your password?')}
           </h1>
@@ -69,14 +69,14 @@ export default function ForgotPasswordPage() {
               <p className="text-zinc-400 text-sm leading-relaxed">
                 {t('Si ese email está registrado, recibirás un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada.', 'If that email is registered, you will receive a link to reset your password. Check your inbox.')}
               </p>
-              <Link href="/login" className="mt-6 inline-block font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
+              <Link href="/login" className="mt-6 inline-block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
                 ← {t('Volver al login', 'Back to sign in')}
               </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block font-mono-jb text-[10px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
+                <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
                 <input type="email" required placeholder="you@email.com" value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="soft-field py-3 px-4 text-sm" />
@@ -88,7 +88,7 @@ export default function ForgotPasswordPage() {
                 ) : t('Enviar enlace →', 'Send link →')}
               </button>
               <div className="text-center">
-                <Link href="/login" className="font-mono-jb text-[11px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
+                <Link href="/login" className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
                   ← {t('Volver al login', 'Back to sign in')}
                 </Link>
               </div>
@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
           )}
         </div>
 
-        <div className="mt-8 flex justify-center gap-5 text-xs text-zinc-600">
+        <div className="mt-8 flex justify-center gap-5 text-[13px] text-zinc-600">
           <a href="/terms" className="hover:text-zinc-400 transition">{t('Términos', 'Terms')}</a>
           <a href="/privacy" className="hover:text-zinc-400 transition">{t('Privacidad', 'Privacy')}</a>
           <a href="/legal" className="hover:text-zinc-400 transition">{t('Aviso Legal', 'Legal Notice')}</a>

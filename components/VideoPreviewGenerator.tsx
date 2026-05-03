@@ -1092,7 +1092,7 @@ export default function VideoPreviewGenerator({
 
         {/* Close */}
         <button onClick={handleClose}
-          className="absolute -top-10 right-0 font-mono-jb text-[12px] text-zinc-500 hover:text-white transition flex items-center gap-1.5">
+          className="absolute -top-10 right-0 font-mono-jb text-[13px] text-zinc-500 hover:text-white transition flex items-center gap-1.5">
           <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M18 6 6 18M6 6l12 12"/></svg>
           {t('Cerrar', 'Close')}
         </button>
@@ -1100,11 +1100,11 @@ export default function VideoPreviewGenerator({
         <div className="soft-card p-6 space-y-5">
           {/* Header */}
           <div>
-            <p className="font-mono-jb text-[11px] tracking-[0.2em] uppercase mb-1" style={{ color: '#00D9FF' }}>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-1" style={{ color: '#00D9FF' }}>
               VIDEO TIPS · PRO
             </p>
             <h2 className="font-display font-bold text-xl">{t('Storyboard animado', 'Animated storyboard')}</h2>
-            <p className="font-mono-jb text-[11px] text-zinc-500 mt-1 truncate max-w-xs">"{scriptTitle}"</p>
+            <p className="font-mono-jb text-[13px] text-zinc-500 mt-1 truncate max-w-xs">"{scriptTitle}"</p>
           </div>
 
           {/* Canvas preview — TV2 frame ON TOP, video plays behind */}
@@ -1178,7 +1178,7 @@ export default function VideoPreviewGenerator({
           {/* Progress bar */}
           {status === 'adapting' && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 font-mono-jb text-[10px] text-zinc-500">
+              <div className="flex items-center gap-2 font-mono-jb text-[13px] text-zinc-500">
                 <svg className="animate-spin flex-shrink-0" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                 {t('Adaptando guión a storyboard visual...', 'Adapting script to visual storyboard...')}
               </div>
@@ -1190,7 +1190,7 @@ export default function VideoPreviewGenerator({
 
           {status === 'generating' && (
             <div className="space-y-2">
-              <div className="flex justify-between font-mono-jb text-[10px] text-zinc-500">
+              <div className="flex justify-between font-mono-jb text-[13px] text-zinc-500">
                 <span>{t('Renderizando slides...', 'Rendering slides...')}</span>
                 <span>{progress}%</span>
               </div>
@@ -1202,11 +1202,11 @@ export default function VideoPreviewGenerator({
           )}
 
           {status === 'error' && (
-            <p className="font-mono-jb text-[12px]" style={{ color: 'var(--red)' }}>{errorMsg}</p>
+            <p className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>{errorMsg}</p>
           )}
 
           {status === 'idle' && (
-            <p className="font-mono-jb text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            <p className="font-mono-jb text-[13px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
               {t(`${remaining} generaciones restantes hoy`, `${remaining} remaining today`)}
             </p>
           )}

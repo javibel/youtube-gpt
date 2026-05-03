@@ -27,7 +27,7 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
     <div className="space-y-5">
       {inputs.map((input) => (
         <div key={input} className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-widest text-gray-500">
+          <label className="block text-[13px] font-semibold uppercase tracking-widest text-gray-500">
             {FIELD_LABELS[input] ?? input}
           </label>
 

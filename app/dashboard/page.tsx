@@ -368,7 +368,7 @@ function handleCopy(id: string, out: string) {
                   ].map((f, i) => (
                     <div key={i} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" className="mb-2"><path d={f.icon}/></svg>
-                      <p className="text-[11px] text-zinc-400 leading-snug">{t(f.es, f.en)}</p>
+                      <p className="text-[13px] text-zinc-400 leading-snug">{t(f.es, f.en)}</p>
                     </div>
                   ))}
                 </div>
@@ -404,7 +404,7 @@ function handleCopy(id: string, out: string) {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
                     {t('Ir al generador', 'Go to generator')}
                   </a>
-                  <button onClick={() => advanceOnboarding(2)} className="text-zinc-600 text-[11px] font-mono-jb hover:text-zinc-400 transition py-2">
+                  <button onClick={() => advanceOnboarding(2)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
                     {t('Saltar por ahora', 'Skip for now')}
                   </button>
                 </div>
@@ -439,7 +439,7 @@ function handleCopy(id: string, out: string) {
                     { href: '/best-time',   label: t('Mejor Hora', 'Best Time'),   icon: 'M12 2a10 10 0 110 20 10 10 0 010-20zM12 6v6l4 2' },
                     { href: '/ab-test',     label: 'A/B Test',                     icon: 'M16 3H8a2 2 0 00-2 2v14l6-3 6 3V5a2 2 0 00-2-2z' },
                   ].map((tool, i) => (
-                    <a key={i} href={tool.href} className="flex items-center gap-2 p-2.5 rounded-lg text-[11px] font-mono-jb text-zinc-400 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <a key={i} href={tool.href} className="flex items-center gap-2 p-2.5 rounded-lg text-[13px] font-mono-jb text-zinc-400 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={tool.icon}/></svg>
                       {tool.label}
                     </a>
@@ -489,7 +489,7 @@ function handleCopy(id: string, out: string) {
               <div key={i} className="yv-card p-5 relative">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-2xl" style={{ filter: `drop-shadow(0 0 6px ${s.color}40)` }}>{s.icon}</span>
-                  <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>0{i + 1}</span>
+                  <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>0{i + 1}</span>
                 </div>
                 <p className="font-display font-bold stat-num" style={{ fontSize: '36px', color: '#fff' }}>
                   {s.num}<span className="text-lg ml-1" style={{ color: 'var(--yv-text-3)' }}>{s.sub}</span>
@@ -502,10 +502,10 @@ function handleCopy(id: string, out: string) {
           {/* Usage bar */}
           <div className="yv-card p-6">
             <div className="flex items-center justify-between mb-3">
-              <p className="font-mono-jb text-[11px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
+              <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
                 {t('Uso del plan', 'Plan usage')} · {isPro ? 'PRO' : 'FREE'}
               </p>
-              <p className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-2)' }}>
+              <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>
                 {stats?.generationsThisMonth ?? 0}/{stats?.limit ?? 10} ·{' '}
                 <span style={{ color: 'var(--yv-brand)' }}>{stats?.remaining ?? 0} {t('restantes', 'remaining')}</span>
               </p>
@@ -519,7 +519,7 @@ function handleCopy(id: string, out: string) {
                 }}
               />
             </div>
-            <div className="flex justify-between mt-2 font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>
+            <div className="flex justify-between mt-2 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
               <span>0</span><span>{Math.round((stats?.limit ?? 10) * 0.5)}</span><span>{stats?.limit ?? 10}</span>
             </div>
           </div>
@@ -536,12 +536,12 @@ function handleCopy(id: string, out: string) {
                     {isBusiness ? t('Plan Business activo', 'Active Business plan') : t('Plan Pro activo', 'Active Pro plan')}
                   </p>
                   {data.subscription.cancelAtPeriodEnd ? (
-                    <p className="text-yellow-400 text-xs mt-0.5">
+                    <p className="text-yellow-400 text-[13px] mt-0.5">
                       {t('No se renovará · Acceso hasta el', 'Will not renew · Access until')}{' '}
                       {data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long' }) : '—'}
                     </p>
                   ) : (
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
+                    <p className="text-[13px] mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
                       {t('Renovación el', 'Renews on')}{' '}
                       {data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long' }) : '—'}
                     </p>
@@ -550,12 +550,12 @@ function handleCopy(id: string, out: string) {
               </div>
               <div className="flex items-center gap-3">
                 {isPro && !isBusiness && !data.subscription.cancelAtPeriodEnd && (
-                  <button onClick={() => handleUpgrade('business_monthly')} disabled={upgrading} className="font-mono-jb text-[11px] transition" style={{ color: '#00E5FF' }}>
+                  <button onClick={() => handleUpgrade('business_monthly')} disabled={upgrading} className="font-mono-jb text-[13px] transition" style={{ color: '#00E5FF' }}>
                     {upgrading ? '...' : t('Subir a Business', 'Upgrade to Business')}
                   </button>
                 )}
                 {!data.subscription.cancelAtPeriodEnd && (
-                  <button onClick={handleCancel} disabled={cancelling} className="font-mono-jb text-[11px] hover:opacity-80 disabled:opacity-50 transition" style={{ color: 'var(--yv-text-4)' }}>
+                  <button onClick={handleCancel} disabled={cancelling} className="font-mono-jb text-[13px] hover:opacity-80 disabled:opacity-50 transition" style={{ color: 'var(--yv-text-4)' }}>
                     {cancelling ? t('Cancelando...', 'Cancelling...') : t('Cancelar suscripción', 'Cancel subscription')}
                   </button>
                 )}
@@ -581,10 +581,10 @@ function handleCopy(id: string, out: string) {
               <div className="yv-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--yv-brand)' }}>ACHIEVEMENTS</p>
+                    <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--yv-brand)' }}>ACHIEVEMENTS</p>
                     <h2 className="font-display font-bold text-lg">{t('Logros', 'Badges')}</h2>
                   </div>
-                  <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>{earnedCount}/{badges.length}</span>
+                  <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{earnedCount}/{badges.length}</span>
                 </div>
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-3">
                   {badges.map(b => (
@@ -597,7 +597,7 @@ function handleCopy(id: string, out: string) {
                         filter: b.earned ? 'none' : 'grayscale(1)',
                       }}>
                       <span className="text-2xl">{b.icon}</span>
-                      <p className="font-mono-jb text-[9px] text-center leading-tight" style={{ color: b.earned ? '#fff' : '#6b7280' }}>{b.label}</p>
+                      <p className="font-mono-jb text-[13px] text-center leading-tight" style={{ color: b.earned ? '#fff' : '#6b7280' }}>{b.label}</p>
                       {b.earned && <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--yv-brand)' }} />}
                     </div>
                   ))}
@@ -610,7 +610,7 @@ function handleCopy(id: string, out: string) {
           <div>
             <div className="flex items-end justify-between mb-4">
               <div>
-                <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>QUICK · LAUNCH</p>
+                <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>QUICK · LAUNCH</p>
                 <h2 className="font-display font-bold text-2xl">{t('¿Qué generamos hoy?', "What are we generating today?")}</h2>
               </div>
             </div>
@@ -625,7 +625,7 @@ function handleCopy(id: string, out: string) {
                     {tplItem.icon}
                   </div>
                   <p className="font-display font-bold text-sm">{tpl(tplItem.k)}</p>
-                  <p className="font-mono-jb text-[10px] mt-1" style={{ color: 'var(--yv-text-3)' }}>~{tplItem.est}</p>
+                  <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>~{tplItem.est}</p>
                 </a>
               ))}
             </div>
@@ -634,7 +634,7 @@ function handleCopy(id: string, out: string) {
           {/* My Previews — TV3 decorative + title list */}
           {(isPro || dbPreviews.length > 0) && (
             <div>
-              <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: '#00D9FF' }}>VIDEO TIPS</p>
+              <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: '#00D9FF' }}>VIDEO TIPS</p>
               <h2 className="font-display font-bold text-2xl mb-4">{t('Mis previews', 'My previews')}</h2>
               <div className="yv-card p-5">
                 <div className="flex gap-6 items-stretch flex-wrap sm:flex-nowrap">
@@ -649,13 +649,13 @@ function handleCopy(id: string, out: string) {
 
                   {/* Preview list */}
                   <div className="flex-1 min-w-0 pt-1">
-                    <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-4)' }}>
+                    <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-4)' }}>
                       {t('Últimas generaciones', 'Latest previews')}
                     </p>
 
                     {dbPreviews.length === 0 ? (
                       <div className="py-6">
-                        <p className="font-mono-jb text-[11px] leading-relaxed" style={{ color: 'var(--yv-text-4)' }}>
+                        <p className="font-mono-jb text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-4)' }}>
                           {t(
                             'Genera un script y pulsa "Generar Preview" para ver tu animación aquí.',
                             'Generate a script and click "Generate Preview" to see your animation here.',
@@ -673,7 +673,7 @@ function handleCopy(id: string, out: string) {
                               border: '1px solid rgba(255,255,255,0.06)',
                             }}
                           >
-                            <span className="font-mono-jb text-[10px] w-5 text-center flex-shrink-0" style={{ color: '#3f3f46' }}>
+                            <span className="font-mono-jb text-[13px] w-5 text-center flex-shrink-0" style={{ color: '#3f3f46' }}>
                               {loadingPreviewId === p.id ? (
                                 <svg className="animate-spin inline" width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="#00D9FF" strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                               ) : i + 1}
@@ -681,12 +681,12 @@ function handleCopy(id: string, out: string) {
                             <button
                               onClick={() => handleSelectPreview(p)}
                               disabled={loadingPreviewId === p.id}
-                              className="flex-1 text-left font-mono-jb text-[11px] truncate hover:text-white transition disabled:opacity-60"
+                              className="flex-1 text-left font-mono-jb text-[13px] truncate hover:text-white transition disabled:opacity-60"
                               style={{ color: 'var(--yv-text-2)' }}
                             >
                               {p.title}
                             </button>
-                            <span className="font-mono-jb text-[10px] flex-shrink-0" style={{ color: 'var(--yv-text-4)' }}>
+                            <span className="font-mono-jb text-[13px] flex-shrink-0" style={{ color: 'var(--yv-text-4)' }}>
                               {p.size > 0 ? `${(p.size / 1024).toFixed(0)}KB` : '—'}
                             </span>
                             {/* Download */}
@@ -727,10 +727,10 @@ function handleCopy(id: string, out: string) {
           <div>
             <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
               <div>
-                <p className="font-mono-jb text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>HISTORY</p>
+                <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>HISTORY</p>
                 <h2 className="font-display font-bold text-2xl">{t('Generaciones recientes', 'Recent generations')}</h2>
               </div>
-              <div className="flex items-center rounded-full border border-white/10 bg-black font-mono-jb text-[10px] tracking-wider uppercase overflow-hidden">
+              <div className="flex items-center rounded-full border border-white/10 bg-black font-mono-jb text-[13px] tracking-wider uppercase overflow-hidden">
                 {FILTERS.map(([k, label]) => (
                   <button key={k} onClick={() => setFilterType(k)}
                     className="px-3 py-2 transition"
@@ -763,42 +763,42 @@ function handleCopy(id: string, out: string) {
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color }}>
+                            <span className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color }}>
                               {tpl(gen.template)}
                             </span>
-                            <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>·</span>
-                            <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>
+                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>·</span>
+                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                               {new Date(gen.createdAt).toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </span>
-                            <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>·</span>
-                            <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{gen.tokensUsed} tokens</span>
+                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>·</span>
+                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{gen.tokensUsed} tokens</span>
                           </div>
                           {gen.inputs?.tema && <p className="font-display font-semibold mt-0.5 truncate">{gen.inputs.tema}</p>}
                           <p className="text-sm mt-0.5 truncate" style={{ color: 'var(--yv-text-3)' }}>{gen.output?.slice(0, 80)}</p>
                         </div>
-                        <span className="font-mono-jb text-xs transition shrink-0" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', color: 'var(--yv-text-3)' }}>▾</span>
+                        <span className="font-mono-jb text-[13px] transition shrink-0" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', color: 'var(--yv-text-3)' }}>▾</span>
                       </button>
                       {isOpen && (
                         <div className="px-5 pb-5 page-enter">
-                          <div className="ml-14 p-4 rounded-xl border border-white/10 bg-black font-mono-jb text-[12px] leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--yv-text-2)' }}>
+                          <div className="ml-14 p-4 rounded-xl border border-white/10 bg-black font-mono-jb text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--yv-text-2)' }}>
                             {gen.output}
                           </div>
                           <div className="ml-14 mt-3 flex items-center gap-2 flex-wrap">
-                            <button onClick={() => handleCopy(gen.id, gen.output)} className="btn-offset btn-offset-white px-3 py-1.5 text-[11px] font-display gap-1.5">
+                            <button onClick={() => handleCopy(gen.id, gen.output)} className="btn-offset btn-offset-white px-3 py-1.5 text-[13px] font-display gap-1.5">
                               <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
                               {isCopied ? t('¡Copiado!', 'Copied!') : t('Copiar', 'Copy')}
                             </button>
                             {isPro && gen.template === 'script' && (
                               <button
                                 onClick={() => setPreviewGen({ id: gen.id, output: gen.output, title: gen.inputs?.tema ?? 'Script' })}
-                                className="px-3 py-1.5 text-[11px] font-display gap-1.5 rounded-lg border transition flex items-center"
+                                className="px-3 py-1.5 text-[13px] font-display gap-1.5 rounded-lg border transition flex items-center"
                                 style={{ borderColor: 'rgba(0,217,255,0.35)', color: '#00D9FF', background: 'rgba(0,217,255,0.06)' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,217,255,0.12)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,217,255,0.06)')}>
                                 🎬 {t('Generar Preview', 'Generate Preview')}
                               </button>
                             )}
-                            <a href="/generate" className="soft-pill px-3 py-1.5 text-[11px] font-mono-jb tracking-wider uppercase hover:text-white" style={{ color: 'var(--yv-text-2)' }}>
+                            <a href="/generate" className="soft-pill px-3 py-1.5 text-[13px] font-mono-jb tracking-wider uppercase hover:text-white" style={{ color: 'var(--yv-text-2)' }}>
                               {t('Nueva generación', 'New generation')}
                             </a>
                           </div>
@@ -841,7 +841,7 @@ function handleCopy(id: string, out: string) {
             <p className="font-display font-bold text-lg mb-1">
               {existingReview ? t('Tu reseña', 'Your review') : t('Deja tu reseña', 'Leave a review')}
             </p>
-            <p className="font-mono-jb text-[11px] mb-5" style={{ color: 'var(--yv-text-3)' }}>
+            <p className="font-mono-jb text-[13px] mb-5" style={{ color: 'var(--yv-text-3)' }}>
               {existingReview
                 ? existingReview.status === 'approved'
                   ? t('Tu reseña está publicada en la página principal.', 'Your review is published on the homepage.')
@@ -863,7 +863,7 @@ function handleCopy(id: string, out: string) {
                 maxLength={400} rows={3}
                 className="soft-field resize-none text-sm" />
               <div className="flex items-center justify-between">
-                <span className="font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>{reviewText.length}/400</span>
+                <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{reviewText.length}/400</span>
                 <button type="submit" disabled={reviewSubmitting || !reviewRating || reviewText.trim().length < 10}
                   className="btn-offset px-5 py-2 text-sm font-display disabled:opacity-40"
                   style={reviewSaved ? { background: '#16a34a' } : {}}>
@@ -885,7 +885,7 @@ function handleCopy(id: string, out: string) {
         <aside className="space-y-6">
           {/* Profile card */}
           <div className="yv-card p-5">
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Cuenta', 'Account')}</p>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Cuenta', 'Account')}</p>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center font-display font-bold text-xl shrink-0"
                 style={{ background: 'var(--yv-brand)', color: '#fff', boxShadow: '0 6px 18px -6px rgba(232,77,91,0.6)' }}>
@@ -893,10 +893,10 @@ function handleCopy(id: string, out: string) {
               </div>
               <div className="min-w-0">
                 <p className="font-semibold truncate">{displayName}</p>
-                <p className="font-mono-jb text-[10px] truncate" style={{ color: 'var(--yv-text-3)' }}>{data?.user?.email}</p>
+                <p className="font-mono-jb text-[13px] truncate" style={{ color: 'var(--yv-text-3)' }}>{data?.user?.email}</p>
               </div>
             </div>
-            <div className="space-y-1.5 font-mono-jb text-[11px]">
+            <div className="space-y-1.5 font-mono-jb text-[13px]">
               <div className="flex justify-between"><span style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</span><span className="text-white">{isPro ? 'PRO ★' : 'FREE'}</span></div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--yv-text-3)' }}>{t('Miembro desde', 'Member since')}</span>
@@ -908,7 +908,7 @@ function handleCopy(id: string, out: string) {
 
           {/* YouTube channel card */}
           <div className="yv-card p-5">
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4 flex items-center gap-2" style={{ color: 'var(--yv-text-3)' }}>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4 flex items-center gap-2" style={{ color: 'var(--yv-text-3)' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--yv-brand)"><path d="M19.6 3H4.4C2.6 3 1 4.4 1 6.3v11.4C1 19.6 2.6 21 4.4 21h15.2c1.8 0 3.4-1.4 3.4-3.3V6.3C23 4.4 21.4 3 19.6 3zm-5.5 9.3l-6.3 3.5c-.3.2-.8 0-.8-.4V8.6c0-.4.5-.6.8-.4l6.3 3.5c.3.2.3.6 0 .6z"/></svg>
               {t('CANAL DE YOUTUBE', 'YOUTUBE CHANNEL')}
             </p>
@@ -916,13 +916,13 @@ function handleCopy(id: string, out: string) {
             {/* Free users — upsell */}
             {!isPro && (
               <div className="space-y-3">
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Conecta tu canal de YouTube y analiza tus estadísticas en tiempo real.', 'Connect your YouTube channel and track your stats in real time.')}
                 </p>
                 <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}>
-                  <p className="font-mono-jb text-[10px] mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Función exclusiva Pro', 'Pro exclusive feature')}</p>
+                  <p className="font-mono-jb text-[13px] mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Función exclusiva Pro', 'Pro exclusive feature')}</p>
                   <button onClick={() => handleUpgrade(billingPlan)}
-                    className="btn-offset px-4 py-1.5 text-[11px] font-display">
+                    className="btn-offset px-4 py-1.5 text-[13px] font-display">
                     {t('Activar Pro →', 'Activate Pro →')}
                   </button>
                 </div>
@@ -940,15 +940,15 @@ function handleCopy(id: string, out: string) {
             {isPro && ytConnected === false && (
               <div className="space-y-3">
                 {ytExpired && (
-                  <div className="rounded-lg px-3 py-2 font-mono-jb text-[10px]" style={{ background: 'rgba(255,200,0,0.07)', border: '1px solid rgba(255,200,0,0.2)', color: '#FFE800' }}>
+                  <div className="rounded-lg px-3 py-2 font-mono-jb text-[13px]" style={{ background: 'rgba(255,200,0,0.07)', border: '1px solid rgba(255,200,0,0.2)', color: '#FFE800' }}>
                     {t('Sesión expirada. Vuelve a conectar tu canal.', 'Session expired. Please reconnect your channel.')}
                   </div>
                 )}
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
                   {t('Conecta tu canal para ver tus estadísticas y los vídeos más recientes.', 'Connect your channel to see your stats and most recent videos.')}
                 </p>
                 <button onClick={handleYtConnect} disabled={ytConnecting}
-                  className="btn-offset w-full py-2.5 text-[12px] font-mono-jb tracking-wider disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="btn-offset w-full py-2.5 text-[13px] font-mono-jb tracking-wider disabled:opacity-50 flex items-center justify-center gap-2">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M19.6 3H4.4C2.6 3 1 4.4 1 6.3v11.4C1 19.6 2.6 21 4.4 21h15.2c1.8 0 3.4-1.4 3.4-3.3V6.3C23 4.4 21.4 3 19.6 3zm-5.5 9.3l-6.3 3.5c-.3.2-.8 0-.8-.4V8.6c0-.4.5-.6.8-.4l6.3 3.5c.3.2.3.6 0 .6z"/></svg>
                   {ytConnecting ? t('Conectando...', 'Connecting...') : t('Conectar canal', 'Connect channel')}
                 </button>
@@ -968,7 +968,7 @@ function handleCopy(id: string, out: string) {
                   )}
                   <div className="min-w-0">
                     <p className="font-semibold text-sm truncate text-white">{ytChannel.name}</p>
-                    <p className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{t('Canal verificado', 'Verified channel')}</p>
+                    <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{t('Canal verificado', 'Verified channel')}</p>
                   </div>
                 </div>
 
@@ -981,9 +981,9 @@ function handleCopy(id: string, out: string) {
                   ].map((s, i) => (
                     <div key={i} className="text-center p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }}>
                       <p className="font-display font-bold text-white text-base">{s.value}</p>
-                      <p className="font-mono-jb text-[9px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
+                      <p className="font-mono-jb text-[13px] uppercase" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
                       {s.delta != null && s.delta !== 0 && (
-                        <p className="font-mono-jb text-[9px] mt-0.5" style={{ color: s.delta > 0 ? '#22c55e' : '#e84d5b' }}>
+                        <p className="font-mono-jb text-[13px] mt-0.5" style={{ color: s.delta > 0 ? '#22c55e' : '#e84d5b' }}>
                           {s.delta > 0 ? '+' : ''}{fmtNum(s.delta)} <span style={{ color: 'var(--yv-text-4)' }}>30d</span>
                         </p>
                       )}
@@ -1009,7 +1009,7 @@ function handleCopy(id: string, out: string) {
                   const pts = chartPoints.map(p => `${p.x},${p.y}`).join(' ');
                   return (
                     <div>
-                      <p className="font-mono-jb text-[9px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-4)' }}>{t('SUSCRIPTORES (90 DÍAS)', 'SUBSCRIBERS (90 DAYS)')}</p>
+                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-4)' }}>{t('SUSCRIPTORES (90 DÍAS)', 'SUBSCRIBERS (90 DAYS)')}</p>
                       <div className="relative" style={{ height: 48 }}>
                         <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="48" preserveAspectRatio="none" className="rounded absolute inset-0">
                           <defs>
@@ -1026,7 +1026,7 @@ function handleCopy(id: string, out: string) {
                           {chartPoints.map((p, i) => (
                             <div key={i} className="flex-1 relative group/dot" style={{ cursor: 'crosshair' }}>
                               {/* Tooltip */}
-                              <div className="invisible group-hover/dot:visible absolute bottom-full mb-1 left-1/2 -translate-x-1/2 whitespace-nowrap z-10 px-2 py-1 rounded text-[9px] font-mono-jb pointer-events-none" style={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}>
+                              <div className="invisible group-hover/dot:visible absolute bottom-full mb-1 left-1/2 -translate-x-1/2 whitespace-nowrap z-10 px-2 py-1 rounded text-[13px] font-mono-jb pointer-events-none" style={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}>
                                 <span style={{ color: '#9B2020' }}>{fmtNum(p.val)}</span> · {p.date}
                               </div>
                               {/* Dot indicator */}
@@ -1042,15 +1042,15 @@ function handleCopy(id: string, out: string) {
                 {/* Recent videos */}
                 {ytVideos.length > 0 && (
                   <div>
-                    <p className="font-mono-jb text-[9px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-4)' }}>{t('ÚLTIMOS VÍDEOS', 'RECENT VIDEOS')}</p>
+                    <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-4)' }}>{t('ÚLTIMOS VÍDEOS', 'RECENT VIDEOS')}</p>
                     <div className="space-y-2">
                       {ytVideos.slice(0, 3).map((v) => (
                         <a key={v.videoId} href={`https://youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-2 group hover:bg-white/[0.02] rounded-lg p-1.5 transition">
                           {v.thumbnail && <img src={v.thumbnail} alt="" className="w-12 h-8 object-cover rounded flex-shrink-0" />}
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs line-clamp-1 group-hover:text-white transition leading-tight" style={{ color: 'var(--yv-text-2)' }}>{v.title}</p>
-                            <p className="font-mono-jb text-[9px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} {t('vistas', 'views')}</p>
+                            <p className="text-[13px] line-clamp-1 group-hover:text-white transition leading-tight" style={{ color: 'var(--yv-text-2)' }}>{v.title}</p>
+                            <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} {t('vistas', 'views')}</p>
                           </div>
                         </a>
                       ))}
@@ -1059,7 +1059,7 @@ function handleCopy(id: string, out: string) {
                 )}
 
                 <button onClick={handleYtDisconnect} disabled={ytDisconnecting}
-                  className="font-mono-jb text-[10px] hover:opacity-80 transition disabled:opacity-50" style={{ color: 'var(--yv-text-4)' }}>
+                  className="font-mono-jb text-[13px] hover:opacity-80 transition disabled:opacity-50" style={{ color: 'var(--yv-text-4)' }}>
                   {ytDisconnecting ? t('Desconectando...', 'Disconnecting...') : t('Desconectar canal', 'Disconnect channel')}
                 </button>
               </div>
@@ -1076,10 +1076,10 @@ function handleCopy(id: string, out: string) {
                 {/* Pro tier */}
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="red-tape text-[10px] w-fit">PRO</span>
-                    <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{t('200 generaciones/mes', '200 generations/month')}</span>
+                    <span className="red-tape text-[13px] w-fit">PRO</span>
+                    <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{t('200 generaciones/mes', '200 generations/month')}</span>
                   </div>
-                  <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[10px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
+                  <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[13px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
                     <button
                       onClick={() => setBillingPlan('monthly')}
                       className="px-3 py-1.5 transition"
@@ -1099,14 +1099,14 @@ function handleCopy(id: string, out: string) {
                   {billingPlan === 'monthly' && (
                     <div className="mb-2">
                       <span className="font-display font-bold text-2xl">9,99€</span>
-                      <span className="font-mono-jb text-[11px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('mes', 'mo')}</span>
+                      <span className="font-mono-jb text-[13px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('mes', 'mo')}</span>
                     </div>
                   )}
                   {billingPlan === 'yearly' && (
                     <div className="mb-2">
                       <span className="font-display font-bold text-2xl">99,99€</span>
-                      <span className="font-mono-jb text-[11px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('año', 'yr')}</span>
-                      <p className="font-mono-jb text-[10px] mt-1" style={{ color: '#7CFF00' }}>
+                      <span className="font-mono-jb text-[13px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('año', 'yr')}</span>
+                      <p className="font-mono-jb text-[13px] mt-1" style={{ color: '#7CFF00' }}>
                         {t('= 8,33€/mes · Ahorras 19,89€', '= €8.33/mo · Save €19.89')}
                       </p>
                     </div>
@@ -1121,10 +1121,10 @@ function handleCopy(id: string, out: string) {
                 {/* Business tier */}
                 <div className="mb-4 pt-4 border-t border-white/10">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="rounded px-2 py-0.5 text-[10px] font-bold font-mono-jb tracking-wider uppercase" style={{ background: 'linear-gradient(90deg,#B388FF,#7C4DFF)', color: '#000' }}>BUSINESS</span>
-                    <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-3)' }}>{t('1000 generaciones/mes', '1000 generations/month')}</span>
+                    <span className="rounded px-2 py-0.5 text-[13px] font-bold font-mono-jb tracking-wider uppercase" style={{ background: 'linear-gradient(90deg,#B388FF,#7C4DFF)', color: '#000' }}>BUSINESS</span>
+                    <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{t('1000 generaciones/mes', '1000 generations/month')}</span>
                   </div>
-                  <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[10px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
+                  <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[13px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
                     <button
                       onClick={() => setBillingPlan('business_monthly')}
                       className="px-3 py-1.5 transition"
@@ -1144,14 +1144,14 @@ function handleCopy(id: string, out: string) {
                   {billingPlan === 'business_monthly' && (
                     <div className="mb-2">
                       <span className="font-display font-bold text-2xl">29,99€</span>
-                      <span className="font-mono-jb text-[11px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('mes', 'mo')}</span>
+                      <span className="font-mono-jb text-[13px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('mes', 'mo')}</span>
                     </div>
                   )}
                   {billingPlan === 'business_yearly' && (
                     <div className="mb-2">
                       <span className="font-display font-bold text-2xl">299€</span>
-                      <span className="font-mono-jb text-[11px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('año', 'yr')}</span>
-                      <p className="font-mono-jb text-[10px] mt-1" style={{ color: '#7CFF00' }}>
+                      <span className="font-mono-jb text-[13px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('año', 'yr')}</span>
+                      <p className="font-mono-jb text-[13px] mt-1" style={{ color: '#7CFF00' }}>
                         {t('= 24,92€/mes · Ahorras 60,88€', '= €24.92/mo · Save €60.88')}
                       </p>
                     </div>
@@ -1164,11 +1164,11 @@ function handleCopy(id: string, out: string) {
                 </div>
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <button onClick={handleSync} disabled={syncing}
-                    className="w-full font-mono-jb text-[10px] tracking-wider uppercase hover:opacity-80 disabled:opacity-50 transition py-1" style={{ color: 'var(--yv-text-3)' }}>
+                    className="w-full font-mono-jb text-[13px] tracking-wider uppercase hover:opacity-80 disabled:opacity-50 transition py-1" style={{ color: 'var(--yv-text-3)' }}>
                     {syncing ? t('Sincronizando...', 'Syncing...') : t('¿Ya pagaste? Sincronizar suscripción', 'Already paid? Sync subscription')}
                   </button>
                   {syncMsg && (
-                    <p className="font-mono-jb text-[10px] mt-2 text-center" style={{ color: syncMsg.startsWith('✓') ? '#16a34a' : '#f87171' }}>
+                    <p className="font-mono-jb text-[13px] mt-2 text-center" style={{ color: syncMsg.startsWith('✓') ? '#16a34a' : '#f87171' }}>
                       {syncMsg}
                     </p>
                   )}
@@ -1180,8 +1180,8 @@ function handleCopy(id: string, out: string) {
           {/* Activity sparkline */}
           <div className="yv-card p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="font-mono-jb text-[10px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Últimos 14 días', 'Last 14 days')}</p>
-              <span className="font-mono-jb text-[10px]" style={{ color: 'var(--yv-brand)' }}>↗ {t('activo', 'active')}</span>
+              <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Últimos 14 días', 'Last 14 days')}</p>
+              <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-brand)' }}>↗ {t('activo', 'active')}</span>
             </div>
             <div className="flex items-end gap-1 h-20">
               {[3,5,2,7,4,8,6,9,5,11,7,12,8,14].map((v, i) => (
@@ -1194,13 +1194,13 @@ function handleCopy(id: string, out: string) {
 
           {/* Chrome Extension card */}
           <div className="yv-card p-5">
-            <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-4 flex items-center gap-2" style={{ color: 'var(--yv-text-3)' }}>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4 flex items-center gap-2" style={{ color: 'var(--yv-text-3)' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h3v3H7z"/><path d="M14 7h3"/><path d="M14 11h3"/><path d="M7 14h10"/><path d="M7 18h10"/></svg>
               {t('EXTENSIÓN CHROME', 'CHROME EXTENSION')}
             </p>
             {isPro ? (
               <div className="space-y-3">
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
                   {t(
                     'Analiza canales, investiga keywords y genera títulos con IA directamente en YouTube, sin cambiar de pestaña.',
                     'Analyze channels, research keywords and generate titles with AI directly on YouTube, without switching tabs.'
@@ -1212,7 +1212,7 @@ function handleCopy(id: string, out: string) {
                     t('Métricas de cualquier canal en un clic', 'Any channel metrics in one click'),
                     t('5 títulos virales con IA al instante', '5 viral AI titles instantly'),
                   ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-2 text-[11px]">
+                    <div key={i} className="flex items-start gap-2 text-[13px]">
                       <span className="mt-0.5 shrink-0" style={{ color: 'var(--yv-brand)' }}>&#10003;</span>
                       <span style={{ color: 'var(--yv-text-2)' }}>{item}</span>
                     </div>
@@ -1222,25 +1222,25 @@ function handleCopy(id: string, out: string) {
                   href="https://chromewebstore.google.com/detail/ytubviral-para-youtube/gkjecjfhdmfbhhcemcjdkjkcdbljkcfh"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn-offset w-full py-2.5 text-[11px] font-display flex items-center justify-center gap-2"
+                  className="btn-offset w-full py-2.5 text-[13px] font-display flex items-center justify-center gap-2"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                   {t('Instalar extensión', 'Install extension')}
                 </a>
-                <p className="font-mono-jb text-[9px] text-center" style={{ color: 'var(--yv-text-4)' }}>{t('Gratis con tu plan Pro', 'Free with your Pro plan')}</p>
+                <p className="font-mono-jb text-[13px] text-center" style={{ color: 'var(--yv-text-4)' }}>{t('Gratis con tu plan Pro', 'Free with your Pro plan')}</p>
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
                   {t(
                     'Usa YTubViral directamente en YouTube: keywords, análisis de canales y títulos con IA sin cambiar de pestaña.',
                     'Use YTubViral directly on YouTube: keywords, channel analysis and AI titles without switching tabs.'
                   )}
                 </p>
                 <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}>
-                  <p className="font-mono-jb text-[10px] mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Función exclusiva Pro', 'Pro exclusive feature')}</p>
+                  <p className="font-mono-jb text-[13px] mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Función exclusiva Pro', 'Pro exclusive feature')}</p>
                   <button onClick={() => handleUpgrade(billingPlan)}
-                    className="btn-offset px-4 py-1.5 text-[11px] font-display">
+                    className="btn-offset px-4 py-1.5 text-[13px] font-display">
                     {t('Activar Pro →', 'Activate Pro →')}
                   </button>
                 </div>
@@ -1251,7 +1251,7 @@ function handleCopy(id: string, out: string) {
           {/* Daily Ideas (personalized for Pro) or generic Tip */}
           {dailyIdeas && dailyIdeas.length > 0 ? (
             <div className="rounded-2xl border border-white/10 p-5" style={{ background: 'rgba(155,32,32,0.06)' }}>
-              <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-brand)' }}>
+              <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-brand)' }}>
                 {t('IDEAS PARA HOY', 'IDEAS FOR TODAY')}
               </p>
               <div className="space-y-3">
@@ -1260,7 +1260,7 @@ function handleCopy(id: string, out: string) {
                     <p className="text-sm font-semibold text-white leading-tight">
                       {t(idea.title_es, idea.title_en)}
                     </p>
-                    <p className="text-[12px] leading-snug mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
+                    <p className="text-[13px] leading-snug mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
                       {t(idea.idea_es, idea.idea_en)}
                     </p>
                   </div>
@@ -1269,7 +1269,7 @@ function handleCopy(id: string, out: string) {
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-white/15 p-5" style={{ background: '#0C0C0E' }}>
-              <p className="font-mono-jb text-[10px] tracking-wider uppercase mb-2" style={{ color: 'var(--yellow)' }}>★ {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
+              <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yellow)' }}>★ {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
                 {dailyTip ? t(dailyTip.es, dailyTip.en) : t(
                   'Los títulos con un número específico (7, 23, 147) superan a los genéricos en un 36% de CTR. Prueba \u201c7 errores...\u201d la próxima vez.',
@@ -1292,7 +1292,7 @@ function handleCopy(id: string, out: string) {
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-6 mt-4">
-        <div className="yv-page flex justify-center gap-6 font-mono-jb text-xs" style={{ color: 'var(--yv-text-4)' }}>
+        <div className="yv-page flex justify-center gap-6 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
           <a href="/terms" className="hover:opacity-80 transition">{t('Términos', 'Terms')}</a>
           <a href="/privacy" className="hover:opacity-80 transition">{t('Privacidad', 'Privacy')}</a>
           <a href="/legal" className="hover:opacity-80 transition">{t('Aviso Legal', 'Legal Notice')}</a>
@@ -1323,13 +1323,13 @@ function handleCopy(id: string, out: string) {
 
             {/* Close */}
             <button onClick={closePlayingPreview}
-              className="absolute -top-9 right-0 font-mono-jb text-[12px] text-zinc-500 hover:text-white transition flex items-center gap-1.5">
+              className="absolute -top-9 right-0 font-mono-jb text-[13px] text-zinc-500 hover:text-white transition flex items-center gap-1.5">
               <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M18 6 6 18M6 6l12 12"/></svg>
               {t('Cerrar', 'Close')}
             </button>
 
             {/* Title */}
-            <p className="font-mono-jb text-[11px] text-zinc-500 truncate mb-3 text-center">"{playingPreview.title}"</p>
+            <p className="font-mono-jb text-[13px] text-zinc-500 truncate mb-3 text-center">"{playingPreview.title}"</p>
 
             {/* TV2 with video playing inside */}
             <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>

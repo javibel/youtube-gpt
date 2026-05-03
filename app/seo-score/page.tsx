@@ -180,7 +180,7 @@ export default function SeoScorePage() {
               >
                 {t('Media', 'Average')}: {avgScore}/100
               </div>
-              <span className="text-xs font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
+              <span className="text-[13px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
                 {scores.length} {t('vídeos', 'videos')}
               </span>
             </div>
@@ -238,15 +238,15 @@ export default function SeoScorePage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-display font-semibold text-sm truncate">{video.title || video.videoId}</p>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-3)' }}>
+                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                         {fmtNum(video.views)} {t('vistas', 'views')}
                       </span>
                       {video.publishedAt && (
-                        <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
+                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                           {fmtDate(video.publishedAt, lang)}
                         </span>
                       )}
-                      <span className="font-mono-jb text-[11px]" style={{ color: 'var(--yv-text-4)' }}>
+                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                         {passed}/{total} {t('checks', 'checks')}
                       </span>
                     </div>
@@ -259,7 +259,7 @@ export default function SeoScorePage() {
                       style={{ background: scoreBg(video.score), border: `1px solid ${scoreColor(video.score)}33` }}
                     >
                       <span className="text-lg font-bold" style={{ color: scoreColor(video.score) }}>{video.score}</span>
-                      <span className="text-[9px]" style={{ color: scoreColor(video.score), opacity: 0.7 }}>{scoreLabel(video.score, lang)}</span>
+                      <span className="text-[13px]" style={{ color: scoreColor(video.score), opacity: 0.7 }}>{scoreLabel(video.score, lang)}</span>
                     </div>
                     <svg
                       width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -281,7 +281,7 @@ export default function SeoScorePage() {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2">
                             <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
                           </svg>
-                          <span className="font-mono-jb text-[11px] tracking-wider text-purple-400 uppercase">
+                          <span className="font-mono-jb text-[13px] tracking-wider text-purple-400 uppercase">
                             {t('Consejo IA', 'AI Tip')}
                           </span>
                         </div>
@@ -313,12 +313,12 @@ export default function SeoScorePage() {
                           <p className="text-white text-sm font-display font-medium">
                             {lang === 'en' ? check.label.en : check.label.es}
                           </p>
-                          <p className="text-xs font-mono-jb mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
+                          <p className="text-[13px] font-mono-jb mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
                             {lang === 'en' ? check.detail.en : check.detail.es}
                           </p>
                         </div>
                         {check.weight > 0 && (
-                          <span className="flex-shrink-0 font-mono-jb text-[10px]" style={{ color: 'var(--yv-text-4)' }}>
+                          <span className="flex-shrink-0 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
                             {t('peso', 'weight')}: {check.weight}
                           </span>
                         )}
