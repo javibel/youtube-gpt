@@ -189,7 +189,7 @@ export default function CompetitorsPage() {
 
   return (
     <DashboardShell>
-      <main className="yv-page yv-page--wide space-y-8">
+      <main className="yv-page space-y-8">
         {/* Title */}
         <div className="yv-page-header">
           <div className="yv-page-header__left">

@@ -249,7 +249,7 @@ export default function TrendsPage() {
   return (
     <DashboardShell>
       {/* Shared header + tabs */}
-      <div className="yv-page yv-page--wide" style={{ paddingBottom: 0 }}>
+      <div className="yv-page" style={{ paddingBottom: 0 }}>
         <header className="yv-page-header">
           <div className="yv-page-header__left">
             <span className="yv-page-header__eyebrow">{t('TENDENCIAS YOUTUBE', 'YOUTUBE TRENDS')}</span>
@@ -295,7 +295,7 @@ export default function TrendsPage() {
 
       {/* ── EXPLORE TAB ──────────────────────────────────────────────── */}
       {tab === 'explore' && (
-        <div className="yv-page yv-page--wide" style={{ paddingTop: 0 }}>
+        <div className="yv-page" style={{ paddingTop: 0 }}>
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             {/* Region */}
@@ -578,7 +578,7 @@ export default function TrendsPage() {
 
       {/* ── ALERTS TAB ───────────────────────────────────────────────── */}
       {tab === 'alerts' && (
-        <div className="yv-page yv-page--wide" style={{ paddingTop: 0 }}>
+        <div className="yv-page" style={{ paddingTop: 0 }}>
           {/* Mark all read */}
           {unread > 0 && (
             <div className="flex justify-end mb-2">

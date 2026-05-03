@@ -219,7 +219,7 @@ export default function CompetitorTrackingPage() {
 
   return (
     <DashboardShell>
-      <div className="yv-page yv-page--wide">
+      <div className="yv-page">
         {/* Title */}
         <div className="yv-page-header mb-8">
           <div className="yv-page-header__left">
