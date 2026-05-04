@@ -6,33 +6,37 @@ Publicar cuando se tengan al menos 10-15 comentarios/karma en el sub para no par
 
 ## Title
 
-I built a free tool that does keyword research, SEO scoring, and competitor analysis for YouTube — no credit card needed
+I built a free YouTube growth tool with 14 features — keyword research, SEO scoring, competitor analysis, revenue estimates, and more. No credit card needed.
 
 ## Body
 
 Hey everyone,
 
-I've been working on a tool called YTubViral that helps YouTube creators optimize their content with AI and real data. I built it because VidIQ and TubeBuddy are great but expensive ($19-$50/month) and missing some features I wanted.
+I've been working on a tool called YTubViral that helps YouTube creators grow with AI and real data. I built it because VidIQ and TubeBuddy are solid but expensive ($19-$50/month) and I wanted features they don't have.
 
-**What's free (no limits, no credit card):**
-- Keyword Research — see competition level, opportunity score, and related search terms for any keyword
-- SEO Score — paste any video URL and get a 0-100 score with a checklist of what to fix (title length, tags, description, thumbnail)
-- Competitor Analysis — enter any channel and see their upload frequency, average views, and the keywords they use most
+**What's free (no limits on core features, no credit card):**
+- **Keyword Research** — search volume, competition score, opportunity rating, and related terms
+- **SEO Score** — paste any video URL, get a 0-100 score with an actionable checklist (title, tags, description, thumbnail)
+- **Competitor Analysis** — enter any channel, see upload frequency, average views, top keywords, and trending videos
+- **Trending Explorer** — discover what's blowing up right now by country and category
+- **Questions Tool** — find real questions people search on YouTube for your niche
 
-**What's in Pro (9.99 EUR/month):**
-- AI title generator (5 viral options per video)
-- Full video scripts with hooks and sections
-- SEO descriptions with timestamps
-- Trending videos explorer by country and category
-- Revenue estimator for any channel
-- A/B testing for titles
-- AI Coach that knows your channel data and gives personalized advice
-- + 8 more tools (14 total)
+**What's in Pro ($9.99/month):**
+- **AI Title Generator** — 5 optimized options per video based on your topic
+- **AI Description Generator** — full SEO descriptions with timestamps
+- **Optimize & Save** — edit title, description, and tags and push directly to YouTube
+- **A/B Testing** — automatically swap titles and track which performs better
+- **Revenue Estimator** — CPM data for 40+ countries, revenue projections for any channel
+- **Subscriber Analysis** — demographics, growth trends, and AI audience profile
+- **Retention Optimizer** — compare videos, hook score, AI analysis of where viewers drop off
+- **AI Calendar** — suggested upload schedule based on your niche trends and competitor activity
+- **AI Coach** — knows your channel data and gives personalized advice in 4 modes (growth, SEO, content, monetization)
+- **Chrome Extension** — shows SEO scores, channel stats, and outlier badges right inside YouTube and YouTube Studio
 
-There's also a Chrome extension that shows SEO scores and keyword stats directly inside YouTube and YouTube Studio while you browse.
+14 tools total. Fully bilingual (English + Spanish). Built by a solo developer.
 
-It's fully bilingual (English + Spanish) and built by a solo developer.
+I'm not going to pretend it's perfect — it's still early and I'm improving it every week based on feedback. But the free tier is genuinely useful and there's no catch.
 
-Would love honest feedback from creators at any stage. What features would actually help you? What's missing from tools you've tried?
+Would love honest feedback from creators at any stage. What features would actually help you grow? What's missing from tools you've tried?
 
 Link: https://ytubviral.com (free signup, no card needed)

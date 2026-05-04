@@ -401,106 +401,116 @@ function drawSlide(
   const [ar, ag, ab] = hexToRgb(slide.accentColor);
   const isLandscape = W > H;
 
+  // ── Unified text sizing constants (relative to H) ──
+  const FONT_BASE    = Math.round(H * 0.052);   // base subtitle font
+  const FONT_MIN     = Math.round(H * 0.038);   // minimum after shrink
+  const FONT_HEADER  = Math.round(H * 0.032);   // top bar / section title
+  const FONT_EMOJI_L = Math.round(H * 0.28);    // emoji in left/right layout
+  const FONT_EMOJI_C = Math.round(H * 0.18);    // emoji in center layout
+  const MAX_LINES    = 5;                        // max text lines any layout
+  const LINE_H_MULT  = 1.38;                     // line height multiplier
+
   if (isLandscape) {
     // ── LANDSCAPE ─────────────────────────────────────────────────
 
     // Top bar
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(0, 0, W, H * 0.09);
+    ctx.fillRect(0, 0, W, H * 0.08);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = `bold ${Math.round(H * 0.04)}px monospace`;
+    ctx.font = `bold ${FONT_HEADER}px monospace`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('YTubViral.com', W * 0.025, H * 0.045);
+    ctx.fillText('YTubViral.com', W * 0.025, H * 0.04);
     ctx.fillStyle = slide.accentColor; ctx.textAlign = 'right';
-    ctx.fillText(`${slide.index + 1} / ${slide.total}`, W * 0.975, H * 0.045);
+    ctx.fillText(`${slide.index + 1} / ${slide.total}`, W * 0.975, H * 0.04);
 
     const layout = slide.layout ?? 'left';
 
     if (layout === 'center') {
       // ── CENTER: emoji arriba centrado, texto centrado debajo ──
-      // Glow de fondo en el centro
-      const glow = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, H * 0.4);
+      const glow = ctx.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.35, H * 0.35);
       glow.addColorStop(0, `rgba(${ar},${ag},${ab},0.12)`);
       glow.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
 
-      // Emoji (más pequeño, centrado)
-      ctx.font = `${Math.round(H * 0.22)}px serif`;
+      // Emoji
+      ctx.font = `${FONT_EMOJI_C}px serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(slide.emoji, W / 2, H * 0.32);
+      ctx.fillText(slide.emoji, W / 2, H * 0.28);
 
-      // Section title pill centrado
+      // Section title pill
       const titleTxtC = slide.sectionTitle.toUpperCase().slice(0, 22);
-      ctx.font = `bold ${Math.round(H * 0.042)}px monospace`;
-      const pillWC = ctx.measureText(titleTxtC).width + 36;
+      ctx.font = `bold ${FONT_HEADER}px monospace`;
+      const pillPad = Math.round(W * 0.015);
+      const pillWC = ctx.measureText(titleTxtC).width + pillPad * 2;
+      const pillH = Math.round(H * 0.032);
       ctx.fillStyle = `rgba(${ar},${ag},${ab},0.18)`;
-      ctx.beginPath(); ctx.roundRect(W / 2 - pillWC / 2, H * 0.50 - 18, pillWC, 36, 18); ctx.fill();
-      ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.45)`; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(W / 2 - pillWC / 2, H * 0.44 - pillH / 2, pillWC, pillH, pillH / 2); ctx.fill();
+      ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.45)`; ctx.lineWidth = 2; ctx.stroke();
       ctx.fillStyle = slide.accentColor; ctx.textBaseline = 'middle';
-      ctx.fillText(titleTxtC, W / 2, H * 0.50);
+      ctx.fillText(titleTxtC, W / 2, H * 0.44);
 
-      // Texto centrado — font adaptativo con shrink suave
+      // Subtitle text — adaptive shrink
       const textMaxWC = W * 0.82;
-      let fsC = Math.round(H * 0.075);
+      let fsC = FONT_BASE;
       ctx.font = `bold ${fsC}px "Arial", sans-serif`;
       let linesC = wrapLines(ctx, slide.subtitle, textMaxWC);
-      while (linesC.length > 3 && fsC > Math.round(H * 0.055)) {
-        fsC = Math.round(fsC * 0.93);
+      while (linesC.length > MAX_LINES && fsC > FONT_MIN) {
+        fsC = Math.round(fsC * 0.92);
         ctx.font = `bold ${fsC}px "Arial", sans-serif`;
         linesC = wrapLines(ctx, slide.subtitle, textMaxWC);
       }
-      linesC = linesC.slice(0, 3);
-      const lineHC = fsC * 1.45;
+      linesC = linesC.slice(0, MAX_LINES);
+      const lineHC = Math.round(fsC * LINE_H_MULT);
       const totalHC = linesC.length * lineHC;
-      const startYC = Math.min(H * 0.62, H * 0.90 - totalHC);
+      const startYC = Math.min(H * 0.54, H * 0.92 - totalHC);
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 14;
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 16;
       linesC.forEach((l, i) => ctx.fillText(l, W / 2, startYC + i * lineHC));
       ctx.shadowBlur = 0;
 
     } else {
       // ── LEFT / RIGHT: dos paneles ──
       const emojiOnLeft = layout !== 'right';
-      const panelW  = W * 0.40;
+      const panelW  = W * 0.38;
       const textPanelW = W - panelW;
       const emojiCX = emojiOnLeft ? panelW / 2 : W - panelW / 2;
       const divX    = emojiOnLeft ? panelW : W - panelW;
       const textX   = emojiOnLeft ? panelW + W * 0.04 : W * 0.04;
-      const textMaxW = textPanelW - W * 0.08;  // usa el panel correcto (60% canvas)
+      const textMaxW = textPanelW - W * 0.08;
 
-      // Emoji grande en el panel correspondiente
-      ctx.font = `${Math.round(H * 0.38)}px serif`;
+      // Emoji
+      ctx.font = `${FONT_EMOJI_L}px serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(slide.emoji, emojiCX, H * 0.52);
+      ctx.fillText(slide.emoji, emojiCX, H * 0.48);
 
       // Section title bajo el emoji
       ctx.fillStyle = slide.accentColor;
-      ctx.font = `bold ${Math.round(H * 0.048)}px monospace`;
+      ctx.font = `bold ${FONT_HEADER}px monospace`;
       ctx.textAlign = 'center';
-      ctx.fillText(slide.sectionTitle.toUpperCase().slice(0, 18), emojiCX, H * 0.80);
+      ctx.fillText(slide.sectionTitle.toUpperCase().slice(0, 18), emojiCX, H * 0.76);
 
       // Divisor vertical
       ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.3)`;
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(divX, H * 0.1); ctx.lineTo(divX, H * 0.92); ctx.stroke();
 
-      // Texto — font adaptativo con shrink suave para homogeneidad
-      let fs = Math.round(H * 0.075);
+      // Subtitle text — adaptive shrink (same logic all layouts)
+      let fs = FONT_BASE;
       ctx.font = `bold ${fs}px "Arial", sans-serif`;
       let lines = wrapLines(ctx, slide.subtitle, textMaxW);
-      while (lines.length > 4 && fs > Math.round(H * 0.055)) {
-        fs = Math.round(fs * 0.93);
+      while (lines.length > MAX_LINES && fs > FONT_MIN) {
+        fs = Math.round(fs * 0.92);
         ctx.font = `bold ${fs}px "Arial", sans-serif`;
         lines = wrapLines(ctx, slide.subtitle, textMaxW);
       }
-      lines = lines.slice(0, 4);
-      const lineH = fs * 1.48;
+      lines = lines.slice(0, MAX_LINES);
+      const lineH = Math.round(fs * LINE_H_MULT);
       const totalH = lines.length * lineH;
-      const startY = Math.max(H * 0.11, Math.min((H - totalH) / 2, H * 0.90 - totalH));
+      const startY = Math.max(H * 0.10, Math.min((H - totalH) / 2, H * 0.92 - totalH));
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 12;
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 14;
       lines.forEach((l, i) => ctx.fillText(l, textX, startY + i * lineH));
       ctx.shadowBlur = 0;
     }
@@ -514,7 +524,7 @@ function drawSlide(
 
     // Logo
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = `bold ${Math.round(W * 0.032)}px monospace`;
+    ctx.font = `bold ${FONT_HEADER}px monospace`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('YTubViral.com', W * 0.038, H * 0.03);
 
@@ -524,7 +534,7 @@ function drawSlide(
 
     // Section title pill
     const titleY = H * 0.11;
-    ctx.font = `bold ${Math.round(W * 0.034)}px monospace`;
+    ctx.font = `bold ${FONT_HEADER}px monospace`;
     ctx.textAlign = 'center';
     const titleTxt = slide.sectionTitle.toUpperCase().slice(0, 20);
     const pillW    = ctx.measureText(titleTxt).width + 44;
@@ -535,7 +545,7 @@ function drawSlide(
     ctx.fillText(titleTxt, W / 2, titleY);
 
     // Emoji (centered in upper visual area)
-    ctx.font = `${Math.round(W * 0.30)}px serif`;
+    ctx.font = `${FONT_EMOJI_C}px serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(slide.emoji, W / 2, H * 0.36);
 
@@ -554,17 +564,23 @@ function drawSlide(
     ctx.fillStyle = slide.accentColor;
     ctx.beginPath(); ctx.roundRect(cardX + 20, cardY, 60, 4, 2); ctx.fill();
 
-    // Subtitle text
-    const fs = slide.subtitle.length > 100 ? Math.round(W * 0.048) : Math.round(W * 0.058);
+    // Subtitle text — adaptive shrink (same logic all layouts)
+    let pfs = FONT_BASE;
+    ctx.font = `bold ${pfs}px "Arial", sans-serif`;
+    let plines = wrapLines(ctx, slide.subtitle, cardW - cardPad * 2);
+    while (plines.length > MAX_LINES && pfs > FONT_MIN) {
+      pfs = Math.round(pfs * 0.92);
+      ctx.font = `bold ${pfs}px "Arial", sans-serif`;
+      plines = wrapLines(ctx, slide.subtitle, cardW - cardPad * 2);
+    }
+    plines = plines.slice(0, MAX_LINES);
+    const pLineH   = Math.round(pfs * LINE_H_MULT);
+    const totalTH  = plines.length * pLineH;
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${fs}px "Arial", sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
-    const lines    = wrapLines(ctx, slide.subtitle, cardW - cardPad * 2);
-    const lineH    = fs * 1.46;
-    const totalTH  = lines.length * lineH;
     const startY   = cardY + (cardH - totalTH) / 2;
-    lines.slice(0, 4).forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lineH));
+    plines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * pLineH));
     ctx.shadowBlur = 0;
   }
 
@@ -1088,7 +1104,7 @@ export default function VideoPreviewGenerator({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
       style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(14px)' }}>
-      <div className="relative w-full my-auto" style={{ maxWidth: 620 }}>
+      <div className="relative w-full my-auto" style={{ maxWidth: 1100 }}>
 
         {/* Close */}
         <button onClick={handleClose}
@@ -1117,7 +1133,7 @@ export default function VideoPreviewGenerator({
               style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }}
             />
 
-            <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: 500 }}>
+            <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
 
               {/* ── Layer 1 (behind): video/canvas content ── */}
               <div style={{
