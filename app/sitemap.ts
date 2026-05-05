@@ -11,10 +11,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
+  const featurePages: MetadataRoute.Sitemap = [
+    { slug: 'keyword-research', date: '2026-05-05' },
+    { slug: 'seo-score', date: '2026-05-05' },
+    { slug: 'competitor-analysis', date: '2026-05-05' },
+    { slug: 'revenue-estimator', date: '2026-05-05' },
+    { slug: 'ab-testing', date: '2026-05-05' },
+  ].map((f) => ({
+    url: `${BASE_URL}/features/${f.slug}`,
+    lastModified: new Date(f.date),
+    changeFrequency: 'monthly' as const,
+    priority: 0.9,
+  }));
+
   return [
     {
       url: BASE_URL,
-      lastModified: new Date('2026-04-29'),
+      lastModified: new Date('2026-05-05'),
       changeFrequency: 'weekly',
       priority: 1,
     },
@@ -25,6 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     ...blogEntries,
+    ...featurePages,
     {
       url: `${BASE_URL}/research`,
       lastModified: new Date('2026-04-01'),
