@@ -45,8 +45,8 @@ const STATIC_TESTIMONIALS = {
 
 function TopNav({ lang }: { lang: Lang }) {
   const nav = lang === 'en'
-    ? [['#how', 'How it works'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear']]
-    : [['#how', 'Cómo funciona'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo']];
+    ? [['#how', 'How it works'], ['#tools', 'Tools'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear']]
+    : [['#how', 'Cómo funciona'], ['#tools', 'Herramientas'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo']];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
@@ -588,6 +588,15 @@ function FinalCTA({ lang }: { lang: Lang }) {
 }
 
 function Footer({ lang }: { lang: Lang }) {
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const toolLinks = [
+    { href: '/features/keyword-research', label: t('Keyword Research', 'Keyword Research') },
+    { href: '/features/seo-score', label: t('SEO Score', 'SEO Score') },
+    { href: '/features/competitor-analysis', label: t('Análisis de competencia', 'Competitor Analysis') },
+    { href: '/features/revenue-estimator', label: t('Estimador de ingresos', 'Revenue Estimator') },
+    { href: '/features/ab-testing', label: 'A/B Testing' },
+  ];
+
   return (
     <footer className="bg-black">
       <div className="px-6 pt-16 overflow-hidden">
@@ -598,17 +607,45 @@ function Footer({ lang }: { lang: Lang }) {
           YTUBVIRAL<span style={{ color: 'var(--red)', WebkitTextFillColor: 'var(--red)' }}>.</span>
         </p>
       </div>
-      <div className="border-t border-white/10 px-6 py-8 mt-8">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
+      <div className="border-t border-white/10 px-6 py-12 mt-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+          <div>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+              {t('Herramientas', 'Tools')}
+            </p>
+            <ul className="space-y-2">
+              {toolLinks.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-zinc-500 text-sm hover:text-white transition">{l.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+              {t('Recursos', 'Resources')}
+            </p>
+            <ul className="space-y-2">
+              <li><Link href="/blog" className="text-zinc-500 text-sm hover:text-white transition">Blog</Link></li>
+              <li><Link href="/gear" className="text-zinc-500 text-sm hover:text-white transition">{t('Equipo recomendado', 'Recommended gear')}</Link></li>
+              <li><a href="#pricing" className="text-zinc-500 text-sm hover:text-white transition">{t('Precios', 'Pricing')}</a></li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+              {t('Legal', 'Legal')}
+            </p>
+            <ul className="space-y-2">
+              <li><Link href="/terms" className="text-zinc-500 text-sm hover:text-white transition">{t('Términos', 'Terms')}</Link></li>
+              <li><Link href="/privacy" className="text-zinc-500 text-sm hover:text-white transition">{t('Privacidad', 'Privacy')}</Link></li>
+              <li><Link href="/legal" className="text-zinc-500 text-sm hover:text-white transition">{t('Aviso Legal', 'Legal Notice')}</Link></li>
+            </ul>
+          </div>
+        </div>
+        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
           <p className="text-zinc-500 font-mono-jb text-[13px]">
             © 2026 YTubViral · {lang === 'en' ? 'Made by creators, for creators.' : 'Hecho por creadores, para creadores.'}
           </p>
-          <div className="flex gap-6 text-zinc-500 font-mono-jb text-[13px]">
-            <Link href="/terms" className="hover:text-white transition">{lang === 'en' ? 'Terms' : 'Términos'}</Link>
-            <Link href="/privacy" className="hover:text-white transition">{lang === 'en' ? 'Privacy' : 'Privacidad'}</Link>
-            <Link href="/gear" className="hover:text-white transition">{lang === 'en' ? 'Gear' : 'Equipo'}</Link>
-            <Link href="/legal" className="hover:text-white transition">{lang === 'en' ? 'Legal Notice' : 'Aviso Legal'}</Link>
-          </div>
           <p className="font-mono-jb text-[13px] text-zinc-600">MADRID · REMOTE · 40°24′N 3°41′W</p>
         </div>
       </div>

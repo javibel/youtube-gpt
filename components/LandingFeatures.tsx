@@ -1,8 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 type Lang = 'es' | 'en';
+
+const FEATURE_LINKS: Record<string, string> = {
+  research: '/features/keyword-research',
+  competitors: '/features/competitor-analysis',
+  revenue: '/features/revenue-estimator',
+};
 
 const FEATURES_ES = [
   {
@@ -364,7 +371,7 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
   };
 
   return (
-    <section className="border-b border-white/10 bg-black">
+    <section id="tools" className="border-b border-white/10 bg-black">
       <div className="max-w-7xl mx-auto px-6 py-24">
         <div className="mb-14">
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>04 · TOOLS</p>
@@ -403,6 +410,11 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
             </p>
             <h3 className="font-display font-bold text-3xl md:text-5xl leading-tight mb-4">{f.t}</h3>
             <p className="text-zinc-400 text-lg max-w-lg leading-relaxed">{f.d}</p>
+            {FEATURE_LINKS[f.k] && (
+              <Link href={FEATURE_LINKS[f.k]} className="inline-flex items-center gap-2 mt-4 font-display font-bold text-sm transition hover:opacity-80" style={{ color: 'var(--red)' }}>
+                {lang === 'en' ? 'Learn more' : 'Saber más'} →
+              </Link>
+            )}
             <div className="mt-10 grid grid-cols-2 gap-3 max-w-xl">
               {renderPreview()}
             </div>
