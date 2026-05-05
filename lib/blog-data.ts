@@ -130,6 +130,38 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'You don\'t need to spend thousands to start YouTube with professional quality. I\'ll build you a complete setup — camera, mic, lighting and accessories — for under €500, piece by piece.',
     },
   },
+  {
+    slug: 'keyword-research-youtube-guia',
+    cat: 'tutorials',
+    readMin: 12,
+    date: { es: '5 May 2026', en: 'May 5, 2026' },
+    author: { name: 'Lucía Vega', role: { es: 'Especialista en contenido', en: 'Content specialist' }, avatar: 'LV' },
+    image: '/blog/keyword-research-youtube-guia.webp',
+    title: {
+      es: 'Keyword Research para YouTube Paso a Paso: La Guía Definitiva 2026',
+      en: 'YouTube Keyword Research Step by Step: The Definitive Guide 2026',
+    },
+    excerpt: {
+      es: 'Aprende a encontrar keywords con alto volumen y baja competencia para tus vídeos. Método completo con herramientas gratuitas, ejemplos reales y los errores que cometen el 90% de creadores.',
+      en: 'Learn how to find high-volume, low-competition keywords for your videos. Complete method with free tools, real examples, and the mistakes 90% of creators make.',
+    },
+  },
+  {
+    slug: 'ab-testing-youtube-titulos-guia',
+    cat: 'youtube',
+    readMin: 11,
+    date: { es: '5 May 2026', en: 'May 5, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/ab-testing-youtube-titulos.webp',
+    title: {
+      es: 'A/B Testing en YouTube: Cómo Testear Títulos y Miniaturas en 2026 (Guía Completa)',
+      en: 'YouTube A/B Testing: How to Test Titles & Thumbnails in 2026 (Complete Guide)',
+    },
+    excerpt: {
+      es: 'YouTube ya permite A/B testing nativo de títulos y miniaturas. Te enseñamos cómo funciona, sus limitaciones, y cómo combinarlo con herramientas externas para optimizar tu CTR al máximo.',
+      en: 'YouTube now allows native A/B testing for titles and thumbnails. We show you how it works, its limitations, and how to combine it with external tools to maximize your CTR.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -1122,6 +1154,372 @@ const ART_TITULOS_VIRALES_EN: BlockType[] = [
   { type: 'callout-final', t: 'Generate viral titles with AI in seconds', sub: 'Try YTubViral for free and stop losing views to a bad title.', cta: 'Generate titles for free →' },
 ];
 
+// ── Keyword Research Guide ───────────────────────────────────────────────────
+
+const ART_KEYWORD_RESEARCH_ES: BlockType[] = [
+  { type: 'p', t: 'Si publicas vídeos sin investigar keywords antes, estás tirando dados. Puede que aciertes de vez en cuando, pero la mayoría de tus vídeos morirán con menos de 100 visualizaciones porque nadie los busca.' },
+  { type: 'p', t: 'El keyword research es la diferencia entre publicar y rezar, y publicar sabiendo que hay demanda. En esta guía te enseño el proceso completo, paso a paso, con herramientas gratuitas y ejemplos reales.' },
+
+  { type: 'h2', t: 'Por qué el keyword research importa más de lo que crees' },
+  { type: 'p', t: 'YouTube es el segundo buscador más grande del mundo después de Google. Cada minuto se realizan más de 700.000 búsquedas en YouTube. Cuando alguien escribe "cómo editar vídeos gratis", YouTube tiene que decidir qué 10 vídeos mostrar primero. Si tu título, descripción y etiquetas no contienen esa keyword, no existes para esa búsqueda.' },
+  { type: 'p', t: 'El tráfico de búsqueda es el más valioso porque tiene intención. Un viewer que busca "mejor cámara para YouTube 2026" quiere exactamente eso — si tu vídeo lo cubre, la retención será alta y YouTube te recompensará con más impresiones.' },
+  { type: 'list', items: [
+    'Los vídeos posicionados en búsqueda generan vistas pasivas durante meses o años',
+    'El tráfico de búsqueda tiene mayor retención media que el de recomendaciones',
+    'Un buen posicionamiento en YouTube mejora tu posición en Google (los vídeos aparecen en resultados de Google)',
+    'Las keywords de cola larga permiten a canales pequeños competir contra canales de millones de suscriptores',
+  ]},
+
+  { type: 'h2', t: 'Paso 1: Genera una lista de ideas con autocompletado' },
+  { type: 'p', t: 'El autocompletado de YouTube es tu primer aliado. Escribe una palabra genérica en la barra de búsqueda y mira las sugerencias. Esas sugerencias son búsquedas reales que la gente hace.' },
+  { type: 'p', t: 'Si tu nicho es cocina, escribe "cómo hacer" y verás: "cómo hacer tortilla de patatas", "cómo hacer pan casero", "cómo hacer sushi". Cada sugerencia es un vídeo potencial con demanda comprobada.' },
+  { type: 'list', items: [
+    'Escribe tu tema principal y deja que YouTube sugiera',
+    'Añade letras después: "cómo hacer a...", "cómo hacer b..." para descubrir variaciones',
+    'Prueba con preguntas: "por qué", "cuánto", "cuál es el mejor"',
+    'Repite en inglés si tu audiencia es internacional',
+  ]},
+  { type: 'p', t: 'Apunta todas las sugerencias relevantes. No filtres todavía — queremos volumen bruto de ideas.' },
+
+  { type: 'h2', t: 'Paso 2: Valida el volumen de búsqueda' },
+  { type: 'p', t: 'No todas las sugerencias de autocompletado tienen el mismo volumen. "Cómo hacer pan casero" puede tener 50.000 búsquedas al mes, mientras que "cómo hacer pan de centeno con masa madre" puede tener 500. Ambas son válidas, pero la estrategia es diferente.' },
+  { type: 'p', t: 'Para conocer el volumen estimado necesitas una herramienta. Las opciones son:' },
+  { type: 'list', items: [
+    'YTubViral Keyword Research: volumen estimado, competencia y puntuación de oportunidad. Gratis sin límites.',
+    'Google Trends (sección YouTube Search): no da números absolutos, pero muestra tendencia y comparativa entre términos',
+    'VidIQ/TubeBuddy: datos similares pero requieren extensión de navegador y plan de pago para datos completos',
+  ]},
+
+  { type: 'callout-mid', t: 'Prueba el keyword research de YTubViral', sub: 'Volumen, competencia y oportunidad en una búsqueda. Gratis.', cta: 'Investigar keywords →' },
+
+  { type: 'h2', t: 'Paso 3: Evalúa la competencia' },
+  { type: 'p', t: 'Una keyword con 100.000 búsquedas al mes suena genial, pero si los primeros 10 resultados son de canales con +1M de suscriptores, no vas a posicionar. La clave está en encontrar keywords donde la competencia sea baja relativa a tu tamaño de canal.' },
+  { type: 'p', t: 'Indicadores de baja competencia:' },
+  { type: 'list', items: [
+    'Los primeros resultados tienen menos de 50K suscriptores',
+    'Hay vídeos con pocas vistas en la primera página (señal de poca oferta)',
+    'Los títulos no están bien optimizados para esa keyword exacta',
+    'No hay vídeos recientes (último año) — oportunidad de contenido fresco',
+  ]},
+  { type: 'p', t: 'La fórmula es simple: alto volumen + baja competencia = tu mejor oportunidad. En la práctica, estas gemas son raras para keywords genéricas, pero abundan en las de cola larga.' },
+
+  { type: 'h2', t: 'Paso 4: Keywords de cola larga — tu arma secreta' },
+  { type: 'p', t: 'Las keywords de cola larga son frases más largas y específicas. En vez de "editar vídeos", sería "cómo editar vídeos en DaVinci Resolve gratis para principiantes". Menos volumen individual, pero:' },
+  { type: 'list', items: [
+    'Mucha menos competencia — puedes posicionar con un canal de 100 suscriptores',
+    'Mayor intención — el viewer sabe exactamente lo que busca y tu vídeo lo resuelve',
+    'Mayor retención — porque el contenido encaja perfectamente con la búsqueda',
+    'Efecto acumulativo — 20 vídeos de cola larga generan más tráfico total que 1 vídeo genérico',
+  ]},
+  { type: 'p', t: 'La estrategia para canales pequeños (menos de 10K suscriptores) debería ser 80% cola larga, 20% keywords genéricas. A medida que creces y ganas autoridad, puedes ir atacando keywords más competitivas.' },
+
+  { type: 'h2', t: 'Paso 5: Analiza las tendencias' },
+  { type: 'p', t: 'Una keyword puede tener buen volumen hoy pero estar en declive. Antes de invertir horas en un vídeo, verifica la dirección de la tendencia. Google Trends te permite ver si un término sube, se mantiene o baja.' },
+  { type: 'p', t: 'Los tres escenarios:' },
+  { type: 'list', items: [
+    'Tendencia al alza: prioridad máxima. Serás de los primeros en cubrir un tema creciente.',
+    'Estable: seguro. Tráfico predecible y constante. Ideal para contenido evergreen.',
+    'En declive: cuidado. Solo merece la pena si la competencia también ha abandonado el tema.',
+  ]},
+
+  { type: 'h2', t: 'Paso 6: Organiza tu calendario de contenido' },
+  { type: 'p', t: 'Con tu lista de keywords validadas, el siguiente paso es priorizarlas. Ordena por puntuación de oportunidad (volumen/competencia) y planifica tu calendario:' },
+  { type: 'list', items: [
+    'Semana 1-2: Empieza por las 3-5 keywords con mayor oportunidad y menor competencia',
+    'Semana 3-4: Ataca 2-3 keywords con volumen medio y competencia media',
+    'Mes 2+: Intercala keywords de alto volumen (aunque más competidas) con long-tail',
+  ]},
+  { type: 'p', t: 'El error número uno es investigar keywords, hacer un vídeo, y no volver a investigar en semanas. El keyword research debería ser un hábito semanal, no una tarea puntual.' },
+
+  { type: 'h2', t: 'Los 5 errores más comunes en keyword research' },
+  { type: 'list', items: [
+    'Elegir keywords solo por volumen, ignorando la competencia. 100K búsquedas no valen nada si nunca vas a posicionar.',
+    'No usar la keyword exacta en el título. YouTube necesita ver la coincidencia textual.',
+    'Investigar solo en un idioma. Si tu audiencia es hispana, busca en español Y en inglés — muchos hispanohablantes buscan en inglés.',
+    'Ignorar las keywords que ya te traen tráfico. YouTube Analytics > Fuentes de tráfico > Búsqueda de YouTube te muestra las keywords reales por las que la gente te encuentra.',
+    'No actualizar vídeos antiguos con keywords nuevas. Si un vídeo ya tiene buena retención, optimizar su título y descripción con una keyword mejor puede duplicar sus vistas.',
+  ]},
+
+  { type: 'h2', t: 'Keyword research para Shorts' },
+  { type: 'p', t: 'Los Shorts también aparecen en búsquedas. La diferencia es que las keywords para Shorts tienden a ser más cortas y orientadas a tendencias. Busca términos que aparecen en el hashtag #Shorts, en trending topics y en sonidos virales.' },
+  { type: 'p', t: 'Consejo práctico: si un tema tiene buenas keywords en formato largo, probablemente también funcione como Short. Haz ambos: un vídeo largo optimizado para búsqueda + un Short del mismo tema para captar tráfico de feed.' },
+
+  { type: 'h2', t: 'Conclusión' },
+  { type: 'p', t: 'El keyword research no es complicado. Es un proceso de 6 pasos que puedes hacer en 20 minutos y que determina si tu vídeo será visto por 100 o por 100.000 personas. La herramienta importa menos que el hábito — pero una buena herramienta te ahorra tiempo y te da mejores datos.' },
+  { type: 'callout-final', t: 'Encuentra tu próxima keyword ganadora', sub: 'Volumen, competencia y oportunidad. Gratis, sin límite de búsquedas.', cta: 'Empezar keyword research →' },
+];
+
+const ART_KEYWORD_RESEARCH_EN: BlockType[] = [
+  { type: 'p', t: 'If you publish videos without researching keywords first, you\'re rolling dice. You might get lucky sometimes, but most of your videos will die with under 100 views because nobody is searching for them.' },
+  { type: 'p', t: 'Keyword research is the difference between publishing and praying, and publishing knowing there\'s demand. In this guide I\'ll show you the complete process, step by step, with free tools and real examples.' },
+
+  { type: 'h2', t: 'Why keyword research matters more than you think' },
+  { type: 'p', t: 'YouTube is the second largest search engine in the world after Google. Over 700,000 searches happen on YouTube every minute. When someone types "how to edit videos free," YouTube has to decide which 10 videos to show first. If your title, description, and tags don\'t contain that keyword, you don\'t exist for that search.' },
+  { type: 'p', t: 'Search traffic is the most valuable because it has intent. A viewer searching "best camera for YouTube 2026" wants exactly that — if your video covers it, retention will be high and YouTube will reward you with more impressions.' },
+  { type: 'list', items: [
+    'Search-ranked videos generate passive views for months or years',
+    'Search traffic has higher average retention than browse/suggested traffic',
+    'Good YouTube rankings improve your Google position (videos appear in Google results)',
+    'Long-tail keywords let small channels compete against million-subscriber channels',
+  ]},
+
+  { type: 'h2', t: 'Step 1: Generate ideas with autocomplete' },
+  { type: 'p', t: 'YouTube\'s autocomplete is your first ally. Type a generic word in the search bar and look at the suggestions. Those suggestions are real searches people make.' },
+  { type: 'p', t: 'If your niche is cooking, type "how to make" and you\'ll see: "how to make sourdough bread," "how to make sushi at home," "how to make pasta from scratch." Each suggestion is a potential video with proven demand.' },
+  { type: 'list', items: [
+    'Type your main topic and let YouTube suggest',
+    'Add letters after: "how to make a...", "how to make b..." to discover variations',
+    'Try questions: "why does", "how much", "what is the best"',
+    'Repeat in Spanish if you have a Spanish-speaking audience',
+  ]},
+  { type: 'p', t: 'Write down all relevant suggestions. Don\'t filter yet — we want raw volume of ideas.' },
+
+  { type: 'h2', t: 'Step 2: Validate search volume' },
+  { type: 'p', t: 'Not all autocomplete suggestions have the same volume. "How to make bread" might get 50,000 searches per month, while "how to make rye bread with sourdough starter" might get 500. Both are valid, but the strategy is different.' },
+  { type: 'p', t: 'To know the estimated volume you need a tool. Your options:' },
+  { type: 'list', items: [
+    'YTubViral Keyword Research: estimated volume, competition, and opportunity score. Free with no limits.',
+    'Google Trends (YouTube Search section): doesn\'t give absolute numbers but shows trends and comparisons between terms',
+    'VidIQ/TubeBuddy: similar data but require a browser extension and paid plan for complete data',
+  ]},
+
+  { type: 'callout-mid', t: 'Try YTubViral keyword research', sub: 'Volume, competition, and opportunity in one search. Free.', cta: 'Research keywords →' },
+
+  { type: 'h2', t: 'Step 3: Evaluate the competition' },
+  { type: 'p', t: 'A keyword with 100,000 monthly searches sounds great, but if the top 10 results are from channels with 1M+ subscribers, you won\'t rank. The key is finding keywords where competition is low relative to your channel size.' },
+  { type: 'p', t: 'Low competition indicators:' },
+  { type: 'list', items: [
+    'Top results have fewer than 50K subscribers',
+    'There are low-view videos on the first page (sign of low supply)',
+    'Titles aren\'t well optimized for that exact keyword',
+    'No recent videos (last year) — opportunity for fresh content',
+  ]},
+  { type: 'p', t: 'The formula is simple: high volume + low competition = your best opportunity. In practice, these gems are rare for generic keywords but abundant in long-tail.' },
+
+  { type: 'h2', t: 'Step 4: Long-tail keywords — your secret weapon' },
+  { type: 'p', t: 'Long-tail keywords are longer, more specific phrases. Instead of "edit videos," it would be "how to edit videos in DaVinci Resolve free for beginners." Less individual volume, but:' },
+  { type: 'list', items: [
+    'Much less competition — you can rank with a 100-subscriber channel',
+    'Higher intent — the viewer knows exactly what they\'re looking for and your video solves it',
+    'Higher retention — because the content perfectly matches the search',
+    'Cumulative effect — 20 long-tail videos generate more total traffic than 1 generic video',
+  ]},
+  { type: 'p', t: 'The strategy for small channels (under 10K subscribers) should be 80% long-tail, 20% generic keywords. As you grow and gain authority, you can target more competitive keywords.' },
+
+  { type: 'h2', t: 'Step 5: Analyze trends' },
+  { type: 'p', t: 'A keyword might have good volume today but be declining. Before investing hours in a video, check the trend direction. Google Trends lets you see if a term is rising, stable, or falling.' },
+  { type: 'p', t: 'The three scenarios:' },
+  { type: 'list', items: [
+    'Rising trend: top priority. You\'ll be among the first to cover a growing topic.',
+    'Stable: safe. Predictable, steady traffic. Ideal for evergreen content.',
+    'Declining: careful. Only worth it if the competition has also abandoned the topic.',
+  ]},
+
+  { type: 'h2', t: 'Step 6: Organize your content calendar' },
+  { type: 'p', t: 'With your list of validated keywords, the next step is to prioritize. Sort by opportunity score (volume/competition) and plan your calendar:' },
+  { type: 'list', items: [
+    'Week 1-2: Start with the 3-5 keywords with highest opportunity and lowest competition',
+    'Week 3-4: Target 2-3 keywords with medium volume and medium competition',
+    'Month 2+: Alternate high-volume keywords (even if more competitive) with long-tail',
+  ]},
+  { type: 'p', t: 'The number one mistake is researching keywords, making one video, and not researching again for weeks. Keyword research should be a weekly habit, not a one-time task.' },
+
+  { type: 'h2', t: 'The 5 most common keyword research mistakes' },
+  { type: 'list', items: [
+    'Choosing keywords based only on volume, ignoring competition. 100K searches are worthless if you\'ll never rank.',
+    'Not using the exact keyword in the title. YouTube needs to see the textual match.',
+    'Researching in only one language. If your audience is international, search in both languages — many Spanish speakers search in English.',
+    'Ignoring keywords that already bring you traffic. YouTube Analytics > Traffic sources > YouTube search shows the actual keywords people find you with.',
+    'Not updating old videos with better keywords. If a video already has good retention, optimizing its title and description with a better keyword can double its views.',
+  ]},
+
+  { type: 'h2', t: 'Keyword research for Shorts' },
+  { type: 'p', t: 'Shorts also appear in search results. The difference is that Shorts keywords tend to be shorter and trend-oriented. Look for terms that appear in the #Shorts hashtag, trending topics, and viral sounds.' },
+  { type: 'p', t: 'Pro tip: if a topic has good keywords in long-form, it\'ll probably work as a Short too. Do both: a long video optimized for search + a Short on the same topic to capture feed traffic.' },
+
+  { type: 'h2', t: 'Conclusion' },
+  { type: 'p', t: 'Keyword research isn\'t complicated. It\'s a 6-step process you can do in 20 minutes that determines whether your video will be seen by 100 or 100,000 people. The tool matters less than the habit — but a good tool saves time and gives you better data.' },
+  { type: 'callout-final', t: 'Find your next winning keyword', sub: 'Volume, competition, and opportunity. Free, no search limits.', cta: 'Start keyword research →' },
+];
+
+// ── A/B Testing Guide ────────────────────────────────────────────────────────
+
+const ART_AB_TESTING_ES: BlockType[] = [
+  { type: 'p', t: 'YouTube ha lanzado A/B testing nativo para títulos y miniaturas en 2026. Esto cambia las reglas del juego para cualquier creador que quiera dejar de adivinar y empezar a tomar decisiones basadas en datos. Pero la herramienta nativa tiene limitaciones importantes que necesitas conocer.' },
+  { type: 'p', t: 'En esta guía te explico cómo funciona el A/B testing en YouTube, qué puedes hacer con la herramienta nativa, qué no puedes hacer, y cómo las herramientas externas rellenan esos huecos.' },
+
+  { type: 'h2', t: '¿Qué es A/B testing y por qué importa en YouTube?' },
+  { type: 'p', t: 'Un A/B test compara dos versiones de algo para ver cuál funciona mejor. En YouTube, esto se aplica a los dos elementos que determinan si alguien hace clic en tu vídeo: el título y la miniatura.' },
+  { type: 'p', t: 'La diferencia entre un título bueno y un título excelente puede ser un 30-50% más de CTR. En un vídeo con 100.000 impresiones, eso significa 3.000-5.000 clics extra. Y más clics significa más watch time, lo que hace que YouTube te recomiende más. Es un efecto compuesto.' },
+  { type: 'list', items: [
+    'Un 1% de mejora en CTR puede significar miles de clics extra al mes',
+    'YouTube recompensa el CTR alto con más impresiones (efecto compuesto)',
+    'El A/B testing elimina el sesgo de "yo creo que este título es mejor" — los datos deciden',
+    'Puedes testear tu catálogo existente, no solo vídeos nuevos',
+  ]},
+
+  { type: 'h2', t: 'A/B testing nativo de YouTube: cómo funciona' },
+  { type: 'p', t: 'Desde principios de 2026, YouTube permite testear hasta 3 variaciones de título y miniatura directamente desde YouTube Studio. Así funciona:' },
+  { type: 'list', items: [
+    'Ve a YouTube Studio → selecciona un vídeo → haz clic en "Prueba A/B" en el título',
+    'Elige "Solo título", "Solo miniatura" o "Título y miniatura"',
+    'Sube hasta 3 variaciones',
+    'YouTube muestra cada variación a una porción aleatoria de tu audiencia',
+    'Tras 1-2 semanas, YouTube declara un ganador basado en horas de reproducción',
+  ]},
+  { type: 'p', t: 'La métrica ganadora es watch time (horas de reproducción), no CTR. Esto es importante: YouTube prefiere el vídeo que genera más tiempo de visionado total, que no siempre es el que tiene mayor CTR.' },
+
+  { type: 'h2', t: 'Limitaciones del A/B testing nativo' },
+  { type: 'p', t: 'La herramienta nativa es un gran avance, pero tiene restricciones que debes conocer antes de depender solo de ella:' },
+  { type: 'list', items: [
+    'Solo disponible en escritorio (YouTube Studio web) — no en la app móvil',
+    'No funciona con Shorts, directos ni estrenos',
+    'Necesitas tener "funciones avanzadas" habilitadas en tu canal',
+    'La métrica es watch time, no CTR — no puedes elegir qué optimizar',
+    'No muestra datos granulares por variación (impresiones, CTR exacto de cada versión)',
+    'No puedes testear solo cambios de texto en miniatura — es toda la imagen o nada',
+    'El test puede tardar hasta 2 semanas en completarse',
+  ]},
+  { type: 'p', t: 'Para la mayoría de creadores, la herramienta nativa es suficiente para miniaturas. Pero para tests de títulos con datos más detallados, necesitas una herramienta externa.' },
+
+  { type: 'h2', t: 'A/B testing de títulos con herramientas externas' },
+  { type: 'p', t: 'Las herramientas externas como YTubViral y TubeBuddy abordan el A/B testing de forma diferente. En vez de mostrar variaciones a distintas audiencias simultáneamente, rotan los títulos a intervalos fijos (cada 12h, 24h o 48h) y miden el rendimiento de cada versión.' },
+  { type: 'list', items: [
+    'Rotación automática vía API de YouTube — configuras una vez y te olvidas',
+    'Datos granulares: impresiones, CTR y vistas por cada variación',
+    'Significancia estadística calculada — sabes cuándo el resultado es fiable',
+    'Funciona con cualquier vídeo, incluidos Shorts y vídeos antiguos',
+    'Optimiza por CTR (no watch time) — ideal para maximizar clics en búsqueda',
+  ]},
+  { type: 'p', t: 'La diferencia de precio es notable: TubeBuddy solo ofrece A/B testing en su plan Legend a $49/mes. YTubViral lo incluye en Pro a €9,99/mes.' },
+
+  { type: 'callout-mid', t: 'Testea tus títulos con datos reales', sub: 'A/B testing de títulos con rotación automática y significancia estadística.', cta: 'Empezar A/B testing →' },
+
+  { type: 'h2', t: 'La estrategia óptima: combina ambos' },
+  { type: 'p', t: 'La mejor estrategia en 2026 es usar ambas herramientas para lo que hacen mejor:' },
+  { type: 'list', items: [
+    'Miniaturas: usa el A/B testing nativo de YouTube. Tiene la ventaja de mostrar variaciones simultáneamente a audiencias distintas, lo que da resultados más limpios para elementos visuales.',
+    'Títulos: usa una herramienta externa como YTubViral. El nativo de YouTube optimiza por watch time, pero para títulos lo que quieres es maximizar CTR. Además, la herramienta nativa no da datos granulares de impresiones por título.',
+    'Catálogo antiguo: usa herramientas externas. El A/B testing nativo está pensado para vídeos recientes. Para optimizar tu catálogo existente (donde el verdadero dinero está), necesitas una herramienta que rote títulos y mida el impacto.',
+  ]},
+
+  { type: 'h2', t: 'Cómo diseñar un buen A/B test' },
+  { type: 'p', t: 'Un test mal diseñado produce datos basura. Sigue estas reglas para obtener resultados útiles:' },
+  { type: 'list', items: [
+    'Cambia solo una variable a la vez. Si cambias título Y miniatura, no sabrás cuál causó la diferencia.',
+    'Las variaciones deben ser significativamente diferentes. "Cómo editar vídeos" vs "Cómo editar vídeos gratis" no es un test útil. Prueba "Cómo editar vídeos" vs "Editaste tu vídeo MAL (haz esto en su lugar)".',
+    'Deja correr el test mínimo 7 días para tener datos estadísticamente significativos.',
+    'No hagas tests en vídeos con muy pocas impresiones (<1.000/semana). No hay suficientes datos para sacar conclusiones.',
+    'Documenta tus hipótesis antes del test. "Creo que un título con número específico tendrá +15% CTR." Esto evita el sesgo de confirmación.',
+  ]},
+
+  { type: 'h2', t: 'Ideas de A/B tests que funcionan' },
+  { type: 'p', t: 'Si no sabes por dónde empezar, aquí van 5 tests que suelen dar resultados claros:' },
+  { type: 'list', items: [
+    'Número específico vs genérico: "7 errores que matan tu canal" vs "Los errores que matan tu canal"',
+    'Pregunta vs afirmación: "¿Por qué tu canal no crece?" vs "Tu canal no crece por esto"',
+    'Con paréntesis vs sin paréntesis: "Cómo editar vídeos (guía completa 2026)" vs "Cómo editar vídeos: guía completa 2026"',
+    'Primera persona vs genérico: "Gané 5.000€ con YouTube en un mes" vs "Cómo ganar 5.000€/mes con YouTube"',
+    'Con emoji vs sin emoji: algunos nichos responden bien, otros no. Testéalo.',
+  ]},
+
+  { type: 'h2', t: '¿El A/B testing perjudica al algoritmo?' },
+  { type: 'p', t: 'No. Este es el mito más extendido y es falso. Cambiar un título no "reseteea" el algoritmo ni pierde las impresiones acumuladas. YouTube trata los cambios de título y miniatura como actualizaciones de metadatos — tu vídeo conserva su historial de rendimiento completo.' },
+  { type: 'p', t: 'De hecho, muchos creadores top cambian títulos y miniaturas varias veces después de publicar. MrBeast ha dicho públicamente que cambia thumbnails de vídeos existentes si no están rindiendo. Si un canal de 300M de suscriptores lo hace, probablemente sea seguro para ti también.' },
+
+  { type: 'h2', t: 'Conclusión' },
+  { type: 'p', t: '2026 es el primer año en que cualquier creador, independientemente de su presupuesto, puede hacer A/B testing real en YouTube. La herramienta nativa cubre lo básico para miniaturas. Para tests de títulos con datos detallados y optimización de CTR, las herramientas externas son el complemento perfecto. Deja de adivinar — testea.' },
+  { type: 'callout-final', t: 'Tu primer A/B test en 30 segundos', sub: 'Configura, olvídate, revisa los datos. Sin cambios manuales.', cta: 'Empezar A/B testing →' },
+];
+
+const ART_AB_TESTING_EN: BlockType[] = [
+  { type: 'p', t: 'YouTube launched native A/B testing for titles and thumbnails in 2026. This changes the game for any creator who wants to stop guessing and start making data-driven decisions. But the native tool has important limitations you need to know about.' },
+  { type: 'p', t: 'In this guide I\'ll explain how A/B testing works on YouTube, what you can do with the native tool, what you can\'t, and how external tools fill those gaps.' },
+
+  { type: 'h2', t: 'What is A/B testing and why does it matter on YouTube?' },
+  { type: 'p', t: 'An A/B test compares two versions of something to see which performs better. On YouTube, this applies to the two elements that determine whether someone clicks your video: the title and the thumbnail.' },
+  { type: 'p', t: 'The difference between a good title and a great title can be 30-50% more CTR. On a video with 100,000 impressions, that means 3,000-5,000 extra clicks. And more clicks means more watch time, which makes YouTube recommend you more. It\'s a compounding effect.' },
+  { type: 'list', items: [
+    'A 1% CTR improvement can mean thousands of extra clicks per month',
+    'YouTube rewards high CTR with more impressions (compounding effect)',
+    'A/B testing removes the bias of "I think this title is better" — data decides',
+    'You can test your existing catalog, not just new videos',
+  ]},
+
+  { type: 'h2', t: 'YouTube\'s native A/B testing: how it works' },
+  { type: 'p', t: 'Since early 2026, YouTube allows testing up to 3 title and thumbnail variations directly from YouTube Studio. Here\'s how:' },
+  { type: 'list', items: [
+    'Go to YouTube Studio → select a video → click "A/B Test" on the title',
+    'Choose "Title only," "Thumbnail only," or "Title and thumbnail"',
+    'Upload up to 3 variations',
+    'YouTube shows each variation to a random portion of your audience',
+    'After 1-2 weeks, YouTube declares a winner based on watch hours',
+  ]},
+  { type: 'p', t: 'The winning metric is watch time (hours of viewing), not CTR. This is important: YouTube prefers the video that generates the most total viewing time, which isn\'t always the one with the highest CTR.' },
+
+  { type: 'h2', t: 'Limitations of native A/B testing' },
+  { type: 'p', t: 'The native tool is a major step forward, but it has restrictions you should know before relying solely on it:' },
+  { type: 'list', items: [
+    'Only available on desktop (YouTube Studio web) — not on the mobile app',
+    'Doesn\'t work with Shorts, livestreams, or premieres',
+    'You need "advanced features" enabled on your channel',
+    'The metric is watch time, not CTR — you can\'t choose what to optimize for',
+    'Doesn\'t show granular data per variation (impressions, exact CTR per version)',
+    'You can\'t test text-only changes in thumbnails — it\'s the whole image or nothing',
+    'Tests can take up to 2 weeks to complete',
+  ]},
+  { type: 'p', t: 'For most creators, the native tool is enough for thumbnails. But for title tests with detailed data, you need an external tool.' },
+
+  { type: 'h2', t: 'Title A/B testing with external tools' },
+  { type: 'p', t: 'External tools like YTubViral and TubeBuddy approach A/B testing differently. Instead of showing variations to different audiences simultaneously, they rotate titles at fixed intervals (every 12h, 24h, or 48h) and measure each version\'s performance.' },
+  { type: 'list', items: [
+    'Automatic rotation via YouTube API — set it up once and forget',
+    'Granular data: impressions, CTR, and views for each variation',
+    'Statistical significance calculated — you know when the result is reliable',
+    'Works with any video, including Shorts and old videos',
+    'Optimizes for CTR (not watch time) — ideal for maximizing search clicks',
+  ]},
+  { type: 'p', t: 'The price difference is notable: TubeBuddy only offers A/B testing in their Legend plan at $49/month. YTubViral includes it in Pro at €9.99/month.' },
+
+  { type: 'callout-mid', t: 'Test your titles with real data', sub: 'Title A/B testing with automatic rotation and statistical significance.', cta: 'Start A/B testing →' },
+
+  { type: 'h2', t: 'The optimal strategy: combine both' },
+  { type: 'p', t: 'The best strategy in 2026 is to use both tools for what they do best:' },
+  { type: 'list', items: [
+    'Thumbnails: use YouTube\'s native A/B testing. It has the advantage of showing variations simultaneously to different audiences, giving cleaner results for visual elements.',
+    'Titles: use an external tool like YTubViral. YouTube\'s native tool optimizes for watch time, but for titles what you want is to maximize CTR. Plus, the native tool doesn\'t give granular impression data per title.',
+    'Existing catalog: use external tools. Native A/B testing is designed for recent videos. To optimize your existing catalog (where the real money is), you need a tool that rotates titles and measures impact.',
+  ]},
+
+  { type: 'h2', t: 'How to design a good A/B test' },
+  { type: 'p', t: 'A poorly designed test produces garbage data. Follow these rules to get useful results:' },
+  { type: 'list', items: [
+    'Change only one variable at a time. If you change title AND thumbnail, you won\'t know which caused the difference.',
+    'Variations must be significantly different. "How to edit videos" vs "How to edit videos free" isn\'t a useful test. Try "How to edit videos" vs "You\'re editing your video WRONG (do this instead)."',
+    'Let the test run for at least 7 days to get statistically significant data.',
+    'Don\'t test on videos with very low impressions (<1,000/week). There isn\'t enough data to draw conclusions.',
+    'Document your hypotheses before the test. "I believe a title with a specific number will get +15% CTR." This prevents confirmation bias.',
+  ]},
+
+  { type: 'h2', t: 'A/B test ideas that work' },
+  { type: 'p', t: 'If you don\'t know where to start, here are 5 tests that usually give clear results:' },
+  { type: 'list', items: [
+    'Specific number vs generic: "7 mistakes killing your channel" vs "The mistakes killing your channel"',
+    'Question vs statement: "Why isn\'t your channel growing?" vs "Your channel isn\'t growing because of this"',
+    'With parentheses vs without: "How to edit videos (complete guide 2026)" vs "How to edit videos: complete guide 2026"',
+    'First person vs generic: "I earned $5,000 on YouTube in one month" vs "How to earn $5,000/month on YouTube"',
+    'With emoji vs without: some niches respond well, others don\'t. Test it.',
+  ]},
+
+  { type: 'h2', t: 'Does A/B testing hurt the algorithm?' },
+  { type: 'p', t: 'No. This is the most widespread myth and it\'s false. Changing a title doesn\'t "reset" the algorithm or lose accumulated impressions. YouTube treats title and thumbnail changes as metadata updates — your video keeps its complete performance history.' },
+  { type: 'p', t: 'In fact, many top creators change titles and thumbnails multiple times after publishing. MrBeast has publicly said he changes thumbnails on existing videos if they\'re not performing. If a channel with 300M subscribers does it, it\'s probably safe for you too.' },
+
+  { type: 'h2', t: 'Conclusion' },
+  { type: 'p', t: '2026 is the first year when any creator, regardless of budget, can do real A/B testing on YouTube. The native tool covers the basics for thumbnails. For title tests with detailed data and CTR optimization, external tools are the perfect complement. Stop guessing — test.' },
+  { type: 'callout-final', t: 'Your first A/B test in 30 seconds', sub: 'Set up, forget about it, check the data. No manual switching.', cta: 'Start A/B testing →' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -1146,6 +1544,14 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'setup-youtube-menos-500-euros': {
     es: ART_SETUP_500_ES,
     en: ART_SETUP_500_EN,
+  },
+  'keyword-research-youtube-guia': {
+    es: ART_KEYWORD_RESEARCH_ES,
+    en: ART_KEYWORD_RESEARCH_EN,
+  },
+  'ab-testing-youtube-titulos-guia': {
+    es: ART_AB_TESTING_ES,
+    en: ART_AB_TESTING_EN,
   },
 };
 
