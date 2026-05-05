@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { getLangClient } from '@/lib/get-lang-client';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
+const PlaybackModal = lazy(() => import('@/components/PlaybackModal'));
 
 const TPL_ICONS: Record<string, string> = {
   title: '🎯', description: '📄', caption: '💬', thumbnail: '🖼️',
@@ -1315,57 +1316,14 @@ function handleCopy(id: string, out: string) {
 
       {/* Playback modal — TV2 */}
       {playingPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(14px)' }}
-          onClick={closePlayingPreview}>
-          <div className="relative w-full my-auto" style={{ maxWidth: 560 }}
-            onClick={e => e.stopPropagation()}>
-
-            {/* Close */}
-            <button onClick={closePlayingPreview}
-              className="absolute -top-9 right-0 font-mono-jb text-[13px] text-zinc-500 hover:text-white transition flex items-center gap-1.5">
-              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M18 6 6 18M6 6l12 12"/></svg>
-              {t('Cerrar', 'Close')}
-            </button>
-
-            {/* Title */}
-            <p className="font-mono-jb text-[13px] text-zinc-500 truncate mb-3 text-center">"{playingPreview.title}"</p>
-
-            {/* TV2 with video playing inside */}
-            <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
-              {/* Video behind the TV frame */}
-              <div style={{
-                position: 'absolute',
-                left: '11%', top: '16%',
-                width: '62%', height: '67%',
-                zIndex: 1, overflow: 'hidden',
-                background: '#000810',
-              }}>
-                <video
-                  src={playingPreview.url}
-                  autoPlay muted playsInline
-                  onEnded={e => { const v = e.currentTarget; v.currentTime = 0; void v.play(); }}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                />
-                {/* CRT scanlines */}
-                <div style={{
-                  position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5,
-                  background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px)',
-                }} />
-                {/* Screen glare */}
-                <div style={{
-                  position: 'absolute', top: 0, left: 0, width: '55%', height: '40%',
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%)',
-                  pointerEvents: 'none', zIndex: 6, borderRadius: '0 0 80% 0',
-                }} />
-              </div>
-              {/* TV2 frame on top */}
-              <img src="/TV2.webp" alt="" draggable={false}
-                style={{ width: '100%', display: 'block', position: 'relative', zIndex: 10, userSelect: 'none', pointerEvents: 'none' }}
-              />
-            </div>
-          </div>
-        </div>
+        <Suspense fallback={null}>
+          <PlaybackModal
+            url={playingPreview.url}
+            title={playingPreview.title}
+            lang={lang}
+            onClose={closePlayingPreview}
+          />
+        </Suspense>
       )}
     </DashboardShell>
   );
