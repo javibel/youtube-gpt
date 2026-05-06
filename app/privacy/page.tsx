@@ -24,7 +24,7 @@ export default function PrivacyPage() {
           </a>
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>LEGAL</p>
           <h1 className="font-display font-bold text-4xl text-white">{t('Política de Privacidad', 'Privacy Policy')}</h1>
-          <p className="text-zinc-500 text-sm mt-2 font-mono-jb">{t('Última actualización: abril de 2026', 'Last updated: April 2026')}</p>
+          <p className="text-zinc-500 text-sm mt-2 font-mono-jb">{t('Última actualización: mayo de 2026', 'Last updated: May 2026')}</p>
         </div>
 
         {[
@@ -85,14 +85,49 @@ export default function PrivacyPage() {
             ),
           },
           {
-            title: t('9. Cookies', '9. Cookies'),
+            title: t('9. Extensión de Chrome — YTubViral para YouTube', '9. Chrome Extension — YTubViral for YouTube'),
+            body: t(
+              'La extensión de Chrome "YTubViral para YouTube" es una herramienta complementaria al servicio web. A continuación detallamos cómo gestiona los datos de usuario.',
+              'The Chrome extension "YTubViral for YouTube" is a companion tool to the web service. Below we detail how it handles user data.'
+            ),
+          },
+          {
+            title: t('9.1. Datos que recoge la extensión', '9.1. Data collected by the extension'),
+            body: t(
+              'La extensión recoge y gestiona los siguientes datos: (a) Credenciales de inicio de sesión: tu email y contraseña se envían al servidor de YTubViral (ytubviral.com) para autenticarte; no se almacenan en texto plano, solo el token de sesión resultante. (b) Token de autenticación: se guarda en el almacenamiento local de la extensión (chrome.storage.local) para mantener tu sesión activa. (c) Preferencia de idioma: tu selección de idioma (español/inglés) se almacena localmente. (d) IDs de vídeos de YouTube: cuando visitas un vídeo o YouTube Studio, la extensión envía el ID del vídeo a nuestro servidor para obtener datos de análisis (SEO score, estadísticas del canal, keywords). (e) URLs de canales de YouTube: cuando visitas un canal, la extensión puede enviar el identificador del canal para obtener estadísticas. No recogemos tu historial de navegación general, datos personales adicionales, ni información de otros sitios web.',
+              'The extension collects and handles the following data: (a) Login credentials: your email and password are sent to the YTubViral server (ytubviral.com) to authenticate you; they are not stored in plain text, only the resulting session token. (b) Authentication token: stored in the extension\'s local storage (chrome.storage.local) to keep your session active. (c) Language preference: your language selection (Spanish/English) is stored locally. (d) YouTube video IDs: when you visit a video or YouTube Studio, the extension sends the video ID to our server to retrieve analysis data (SEO score, channel stats, keywords). (e) YouTube channel URLs: when you visit a channel, the extension may send the channel identifier to get statistics. We do not collect your general browsing history, additional personal data, or information from other websites.'
+            ),
+          },
+          {
+            title: t('9.2. Permisos de la extensión', '9.2. Extension permissions'),
+            body: t(
+              'La extensión solicita los siguientes permisos: (a) "storage": para guardar tu token de sesión y preferencia de idioma localmente en tu navegador. (b) Acceso a youtube.com y studio.youtube.com: para inyectar los paneles de análisis SEO, estadísticas y herramientas directamente en las páginas de YouTube. (c) Acceso a ytubviral.com: para detectar si tienes sesión activa en la web y sincronizar el estado de login. La extensión no accede a ningún otro sitio web ni recoge datos de navegación fuera de estos dominios.',
+              'The extension requests the following permissions: (a) "storage": to save your session token and language preference locally in your browser. (b) Access to youtube.com and studio.youtube.com: to inject SEO analysis panels, statistics and tools directly into YouTube pages. (c) Access to ytubviral.com: to detect if you have an active session on the web and sync login state. The extension does not access any other website or collect browsing data outside these domains.'
+            ),
+          },
+          {
+            title: t('9.3. Cómo se almacenan y comparten los datos de la extensión', '9.3. How extension data is stored and shared'),
+            body: t(
+              'Los datos locales (token, idioma) se almacenan exclusivamente en chrome.storage.local de tu navegador y no se transmiten a terceros. Los IDs de vídeos y canales se envían únicamente al servidor de YTubViral (ytubviral.com) a través de conexiones HTTPS cifradas para obtener los datos de análisis. No compartimos estos datos con terceros, no los usamos para publicidad y no los vendemos. Los datos de análisis obtenidos del servidor no se almacenan permanentemente en la extensión — se muestran en tiempo real y se descartan al cambiar de página.',
+              'Local data (token, language) is stored exclusively in your browser\'s chrome.storage.local and is not transmitted to third parties. Video and channel IDs are sent only to the YTubViral server (ytubviral.com) via encrypted HTTPS connections to retrieve analysis data. We do not share this data with third parties, do not use it for advertising and do not sell it. Analysis data retrieved from the server is not permanently stored in the extension — it is displayed in real time and discarded when you navigate away.'
+            ),
+          },
+          {
+            title: t('9.4. Eliminación de datos de la extensión', '9.4. Deleting extension data'),
+            body: t(
+              'Puedes eliminar todos los datos almacenados por la extensión en cualquier momento cerrando sesión desde el popup de la extensión (esto borra el token y los datos de usuario) o desinstalando la extensión (esto elimina todos los datos de chrome.storage.local). Si eliminas tu cuenta de YTubViral, todos los datos asociados en nuestro servidor también se eliminarán.',
+              'You can delete all data stored by the extension at any time by logging out from the extension popup (this deletes the token and user data) or by uninstalling the extension (this removes all chrome.storage.local data). If you delete your YTubViral account, all associated data on our server will also be deleted.'
+            ),
+          },
+          {
+            title: t('10. Cookies', '10. Cookies'),
             body: t(
               'YTubViral utiliza únicamente cookies técnicas estrictamente necesarias para el funcionamiento del servicio (gestión de sesión). No utilizamos cookies de seguimiento ni publicitarias.',
               'YTubViral uses only technically necessary cookies for the operation of the service (session management). We do not use tracking or advertising cookies.'
             ),
           },
           {
-            title: t('10. Contacto', '10. Contact'),
+            title: t('11. Contacto', '11. Contact'),
             body: t('Para cualquier consulta sobre privacidad: ytbeviral@gmail.com', 'For any privacy enquiries: ytbeviral@gmail.com'),
           },
         ].map((s, i) => (
