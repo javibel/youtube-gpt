@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
 import { publishToInstagram, retryPendingFacebookPost } from '@/lib/agent/meta-agent';
-import { runGmailAgent, sendNotificationEmail } from '@/lib/agent/gmail-agent';
+import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { runFeedbackAgent } from '@/lib/agent/feedback-agent';
 import { processAbTests } from '@/lib/ab-test-processor';
@@ -25,10 +25,10 @@ export async function GET(request: Request) {
 
   try {
     // 1. Generate Instagram content + run agents in parallel (evening = Instagram only)
-    const [instagram, gmailResult, youtubeResult] =
+    // Gmail agent disabled here — YCML (local PM2 agent) handles inbox every 30min
+    const [instagram, youtubeResult] =
       await Promise.allSettled([
         generateSocialPost('instagram', 'evening'),
-        runGmailAgent(),
         runYoutubeAgent(),
       ]);
 
@@ -52,13 +52,6 @@ export async function GET(request: Request) {
     }));
     errors.push(...feedbackResult.errors);
     results.feedback = { sent: feedbackResult.sent };
-
-    // Gmail agent results
-    const gmail = gmailResult.status === 'fulfilled'
-      ? gmailResult.value
-      : { processed: 0, replied: 0, errors: [`Gmail agent failed: ${gmailResult.reason}`] };
-    errors.push(...gmail.errors);
-    results.gmail = { processed: gmail.processed, replied: gmail.replied };
 
     // YouTube agent results
     const youtube = youtubeResult.status === 'fulfilled'
