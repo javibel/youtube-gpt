@@ -24,6 +24,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9,
   }));
 
+  // Only include publicly accessible pages (200 OK, no auth redirect).
+  // Excluded: /seo-score, /ab-test (307→/login), /login (no SEO value),
+  // and internal tool pages that require auth.
   return [
     {
       url: BASE_URL,
@@ -40,81 +43,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...blogEntries,
     ...featurePages,
     {
-      url: `${BASE_URL}/research`,
-      lastModified: new Date('2026-04-01'),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/competitors`,
-      lastModified: new Date('2026-04-01'),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/seo-score`,
-      lastModified: new Date('2026-04-20'),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/best-time`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/ab-test`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/competitors/tracking`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
       url: `${BASE_URL}/learn`,
       lastModified: new Date('2026-05-01'),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${BASE_URL}/retention`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/predictor`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
       url: `${BASE_URL}/trends`,
       lastModified: new Date('2026-05-01'),
       changeFrequency: 'daily',
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/calendar`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/analytics`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/coach`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
@@ -136,12 +73,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/login`,
-      lastModified: new Date('2026-01-01'),
-      changeFrequency: 'yearly',
-      priority: 0.3,
-    },
-    {
       url: `${BASE_URL}/terms`,
       lastModified: new Date('2025-10-01'),
       changeFrequency: 'yearly',
@@ -149,7 +80,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${BASE_URL}/privacy`,
-      lastModified: new Date('2025-10-01'),
+      lastModified: new Date('2026-05-06'),
       changeFrequency: 'yearly',
       priority: 0.2,
     },
