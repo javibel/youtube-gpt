@@ -546,6 +546,7 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
   width: 100%;
   max-width: var(--yv-content-max);
   margin: 0 auto;
+  overflow: hidden;
 }
 .yv-page--wide { max-width: var(--yv-content-max-wide); }
 .yv-page--full { max-width: none; }

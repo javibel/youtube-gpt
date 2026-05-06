@@ -476,8 +476,8 @@ function handleCopy(id: string, out: string) {
           </div>
         </header>
 
-        <div className="grid lg:grid-cols-[1fr_320px] gap-8">
-        <main className="space-y-8">
+        <div className="grid lg:grid-cols-[1fr_320px] gap-8 min-w-0">
+        <main className="space-y-8 min-w-0">
 
           {/* Stat cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -774,14 +774,14 @@ function handleCopy(id: string, out: string) {
                             <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>·</span>
                             <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{gen.tokensUsed} tokens</span>
                           </div>
-                          {gen.inputs?.tema && <p className="font-display font-semibold mt-0.5 truncate">{gen.inputs.tema}</p>}
-                          <p className="text-sm mt-0.5 truncate" style={{ color: 'var(--yv-text-3)' }}>{gen.output?.slice(0, 80)}</p>
+                          {gen.inputs?.tema && <p className="font-display font-semibold mt-0.5 truncate break-all">{gen.inputs.tema}</p>}
+                          <p className="text-sm mt-0.5 truncate break-all" style={{ color: 'var(--yv-text-3)' }}>{gen.output?.slice(0, 80)}</p>
                         </div>
                         <span className="font-mono-jb text-[13px] transition shrink-0" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', color: 'var(--yv-text-3)' }}>▾</span>
                       </button>
                       {isOpen && (
                         <div className="px-5 pb-5 page-enter">
-                          <div className="ml-14 p-4 rounded-xl border border-white/10 bg-black font-mono-jb text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--yv-text-2)' }}>
+                          <div className="ml-14 p-4 rounded-xl border border-white/10 bg-black font-mono-jb text-[13px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--yv-text-2)' }}>
                             {gen.output}
                           </div>
                           <div className="ml-14 mt-3 flex items-center gap-2 flex-wrap">

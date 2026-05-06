@@ -11,7 +11,7 @@ export default function DashboardShell({ children }: Props) {
   return (
     <div className="yv-shell">
       <Sidebar />
-      <main className="min-w-0">{children}</main>
+      <main className="min-w-0 overflow-hidden">{children}</main>
     </div>
   );
 }
