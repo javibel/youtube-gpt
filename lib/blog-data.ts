@@ -162,6 +162,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'YouTube now allows native A/B testing for titles and thumbnails. We show you how it works, its limitations, and how to combine it with external tools to maximize your CTR.',
     },
   },
+  {
+    slug: 'algoritmo-youtube-2026-como-funciona',
+    cat: 'youtube',
+    readMin: 14,
+    date: { es: '6 May 2026', en: 'May 6, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/algoritmo-youtube-2026.webp',
+    title: {
+      es: 'El Algoritmo de YouTube en 2026: Cómo Funciona Realmente (y Cómo Aprovecharlo)',
+      en: 'The YouTube Algorithm in 2026: How It Really Works (and How to Use It)',
+    },
+    excerpt: {
+      es: 'YouTube ya no premia solo el tiempo de visualización. En 2026, la satisfacción del espectador, los LLMs y las señales contextuales han cambiado las reglas. Te explicamos qué ha cambiado, qué métricas importan de verdad y cómo adaptar tu estrategia con datos reales.',
+      en: 'YouTube no longer rewards watch time alone. In 2026, viewer satisfaction, LLMs, and contextual signals have changed the rules. We explain what\'s changed, which metrics truly matter, and how to adapt your strategy with real data.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -1520,6 +1536,230 @@ const ART_AB_TESTING_EN: BlockType[] = [
   { type: 'callout-final', t: 'Your first A/B test in 30 seconds', sub: 'Set up, forget about it, check the data. No manual switching.', cta: 'Start A/B testing →' },
 ];
 
+// ── Algoritmo YouTube 2026 ───────────────────────────────────────────────────
+
+const ART_ALGORITMO_2026_ES: BlockType[] = [
+  { type: 'p', t: 'Cada año alguien publica "así funciona el algoritmo de YouTube" y cada año el artículo envejece en tres meses. Esto no pretende ser diferente — pretende ser honesto: te voy a contar lo que YouTube ha confirmado públicamente en 2025-2026, lo que los datos muestran, y lo que todavía no sabemos. Sin fórmulas mágicas.' },
+  { type: 'p', t: 'Si llevas tiempo creando contenido, probablemente ya intuyes algo que YouTube lleva años confirmando: no existe "un algoritmo". Hay varios sistemas de recomendación (home, búsqueda, Shorts, sugeridos, notificaciones) y cada uno funciona con reglas ligeramente diferentes. Pero en 2026 hay un hilo conductor claro que los une a todos: la satisfacción del espectador.' },
+
+  { type: 'h2', t: 'El cambio más importante: de "watch time" a "satisfacción"' },
+  { type: 'p', t: 'Durante años, YouTube optimizó para una métrica dominante: el tiempo de visualización total. La lógica era simple — si alguien ve más, es que le gusta más. Pero esto tenía un problema: un vídeo mediocre de 40 minutos podía superar a uno brillante de 8 simplemente por duración.' },
+  { type: 'p', t: 'En 2025-2026, YouTube ha dado un giro significativo. Todd Beaupré, responsable del equipo de recomendaciones, ha explicado que el sistema ahora incorpora encuestas y señales directas de satisfacción para entender cómo se siente el espectador después de ver un vídeo. No basta con que lo vean — tiene que gustarles.' },
+  { type: 'p', t: 'En la práctica, YouTube mide el "tiempo de valor" mediante encuestas integradas: solo las sesiones que los usuarios valoran con 4-5 estrellas se cuentan como valiosas. Con millones de respuestas, entrenan modelos de IA que predicen la satisfacción para cada vídeo. Beaupré confirma que añadir estas señales al ranking hace que los usuarios regresen más a YouTube a largo plazo, en lugar de solo maximizar el tiempo total de sesión.' },
+  { type: 'p', t: 'Lo que esto significa para ti: un vídeo corto que entrega valor rápido y mantiene al espectador enganchado puede superar a uno largo con retención mediocre. La calidad real importa más que nunca.' },
+
+  { type: 'h2', t: 'Las métricas que importan (confirmadas por YouTube)' },
+  { type: 'p', t: 'YouTube ha confirmado que estas métricas influyen directamente en cómo se distribuye tu contenido:' },
+
+  { type: 'h3', t: 'CTR (Click-Through Rate)' },
+  { type: 'p', t: 'El porcentaje de personas que ven tu miniatura y hacen clic. El CTR medio en YouTube está entre el 2% y el 10%. Si tu vídeo supera el 10%, el algoritmo lo amplifica con fuerza. Pero cuidado: un CTR alto con retención baja es peor que un CTR medio con buena retención. Los títulos clickbait generan muchos clics pero abandonos rápidos, y YouTube penaliza exactamente eso.' },
+
+  { type: 'h3', t: 'AVD (Average View Duration)' },
+  { type: 'p', t: 'La duración media de visualización sigue siendo una métrica fundamental. No se trata de que el vídeo sea largo — se trata de que el espectador lo vea hasta el final. Un vídeo de 8 minutos con 70% de retención le dice al algoritmo mucho más que uno de 20 minutos con 30%.' },
+
+  { type: 'h3', t: 'Average Views Per Viewer (AVPV)' },
+  { type: 'p', t: 'Esta métrica, disponible en YouTube Analytics, indica cuántas veces en promedio cada espectador ve contenido de tu canal por sesión. Es una señal directa de que tu contenido genera "enganche" — si alguien ve un vídeo tuyo y luego otro y otro, YouTube entiende que tu canal entrega valor consistente y lo recomienda más agresivamente.' },
+
+  { type: 'h3', t: 'Señales de engagement' },
+  { type: 'p', t: 'Likes, comentarios, shares y tiempo de sesión aportan información sobre el interés real de la audiencia. Los vídeos que generan shares reciben un boost significativo. Los comentarios en la primera hora son especialmente valiosos. No se trata de pedir "dale like" en cada vídeo — se trata de hacer contenido que la gente quiera compartir naturalmente.' },
+
+  { type: 'h3', t: 'Señales de satisfacción' },
+  { type: 'p', t: 'Encuestas post-vídeo, ratio like/dislike, frecuencia de retorno del espectador. Todo esto alimenta los modelos de IA que deciden si tu vídeo se recomienda a más personas.' },
+
+  { type: 'callout-mid', t: 'Analiza tus métricas con precisión', sub: 'SEO Score, análisis de competidores y keyword research — todo en un solo dashboard.', cta: 'Probar YTubViral gratis' },
+
+  { type: 'h2', t: 'Cómo funciona la recomendación en 2026' },
+  { type: 'p', t: 'YouTube describe su sistema como "automatizar el boca a boca". En lugar de que tu amigo te diga "mira este vídeo", el algoritmo aprende de lo que espectadores similares a ti ven y disfrutan, y adapta las recomendaciones a cada usuario individual.' },
+  { type: 'p', t: 'El sistema tiene en cuenta factores contextuales que muchos creadores ignoran:' },
+  { type: 'list', items: [
+    'Hora del día: vídeos de noticias por la mañana, entretenimiento por la noche. El algoritmo adapta las recomendaciones según los hábitos horarios de cada espectador.',
+    'Tipo de dispositivo: el contenido sugerido en un móvil es diferente al de una smart TV. Los Shorts dominan en móvil; en TV se priorizan vídeos largos.',
+    'Historial reciente: lo que el espectador ha visto en las últimas horas influye más que lo que vio hace un mes.',
+    'Formato preferido: si un usuario rara vez ve Shorts, YouTube dejará de mostrárselos. Si los ve constantemente, aparecerán más en su feed.',
+  ]},
+
+  { type: 'h2', t: 'La revolución de los LLMs en las recomendaciones' },
+  { type: 'p', t: 'Este es probablemente el cambio técnico más importante y del que menos se habla. YouTube ahora usa modelos de lenguaje avanzados (LLMs) para entender mejor el contenido de los vídeos. Todd Beaupré lo explica con una analogía: antes, el algoritmo funcionaba como un catador que memoriza "a este usuario le gusta el sushi". Ahora, con LLMs, actúa como un chef experto que entiende los ingredientes y el estilo de cada plato.' },
+  { type: 'p', t: 'En términos prácticos: el algoritmo ya no se limita a recomendar "vídeos que vieron personas que también vieron tu vídeo". Ahora puede identificar la temática, el tono, el estilo y la profundidad de tu contenido para encontrar audiencias nuevas que probablemente lo disfrutarán, incluso sin historial de visualización similar.' },
+  { type: 'p', t: 'Esto es una gran noticia para creadores pequeños con contenido de calidad en nichos específicos: el algoritmo es ahora mejor para encontrar tu audiencia, aunque todavía no exista un patrón de visualización establecido.' },
+
+  { type: 'h2', t: 'Shorts vs. vídeos largos: la convivencia en 2026' },
+  { type: 'p', t: 'YouTube ha confirmado algo que muchos creadores temían: publicar Shorts y vídeos largos en el mismo canal no perjudica el rendimiento. De hecho, los canales que combinan ambos formatos tienden a crecer más rápido.' },
+  { type: 'p', t: 'El dato más interesante viene de la propia YouTube: el 59% de la Generación Z usa Shorts para descubrir contenido largo. Es decir, tus Shorts pueden funcionar como funnel hacia tus vídeos principales.' },
+  { type: 'p', t: 'El canal brasileño Manual do Mundo (ciencia y experimentos) es un buen ejemplo: al integrar Shorts que plantean curiosidades rápidas, logró captar nuevos espectadores y acelerar sus suscripciones. YouTube destaca este caso específicamente como ejemplo del poder de usar Shorts como puerta de entrada al contenido largo.' },
+  { type: 'p', t: 'Eso sí, el algoritmo de Shorts funciona de forma independiente al de vídeo largo. Cada formato se evalúa por separado, y las recomendaciones son "conscientes del formato": cada espectador recibe el tipo de contenido que prefiere consumir.' },
+
+  { type: 'h2', t: 'Lo que dicen los datos: frecuencia de publicación' },
+  { type: 'p', t: 'vidIQ analizó más de 5 millones de canales entre junio 2024 y junio 2025, y los números son claros:' },
+  { type: 'list', items: [
+    'Canales que subieron 12+ vídeos/mes obtuvieron un 53% más de vistas y un 66% más de suscriptores que los que subían 1-3 vídeos/mes.',
+    'Publicar al menos 1 vídeo/semana generó aproximadamente 5 veces más vistas y el doble de suscriptores que publicar menos de 1 vídeo/mes.',
+    'La inactividad (menos de 1 vídeo al mes) hizo caer la tasa de crecimiento mensual de ~9,9% a solo ~1,9%.',
+  ]},
+  { type: 'p', t: 'Pero hay un matiz importante: frecuencia sin calidad no funciona. Publicar mucho contenido mediocre puede dañar tu Average Views Per Viewer y señalar al algoritmo que tu canal no satisface a la audiencia. La consistencia importa, pero la calidad importa más.' },
+
+  { type: 'h2', t: 'Oportunidades para canales pequeños en 2026' },
+  { type: 'p', t: 'Si tienes menos de 1.000 suscriptores, hay buenas noticias. YouTube está promocionando activamente el contenido de creadores nuevos y canales pequeños. Los vídeos de pequeños creadores ahora representan alrededor del 30% de los nuevos vídeos que llegan al top de tendencias en categorías de nicho.' },
+  { type: 'p', t: 'El sistema funciona así: cuando publicas un vídeo, YouTube lo muestra primero a una audiencia limitada. Si la retención y las señales de satisfacción son buenas, expande la distribución rápidamente. Si no, lo frena. Esto significa que un canal con 200 suscriptores puede tener un vídeo viral si el contenido es genuinamente bueno — el algoritmo no necesita que tengas millones de suscriptores para darte una oportunidad.' },
+  { type: 'p', t: 'El caso de Midnight Prayer Retreat lo ilustra: un canal de nicho (videos de oración y música) que creció de 1.400 a 16.600 suscriptores en cinco meses. No hizo nada especial excepto publicar contenido consistente, maximizar la retención y ser extremadamente relevante para su audiencia. El algoritmo hizo el resto.' },
+
+  { type: 'h2', t: 'Multilenguaje: la oportunidad que muchos ignoran' },
+  { type: 'p', t: 'Todd Beaupré ha mencionado que los creadores que ofrecen doblajes o subtítulos en otro idioma en al menos el 80% de su catálogo tienden a lograr mejor desempeño. Tiene sentido: estás multiplicando tu audiencia potencial sin crear contenido nuevo.' },
+  { type: 'p', t: 'Si tu contenido funciona en español, subtitularlo en inglés (o viceversa) puede abrirte un mercado enorme con un esfuerzo relativamente pequeño. YouTube ya ofrece herramientas de doblaje automático que, aunque no son perfectas, están mejorando rápidamente.' },
+
+  { type: 'callout-mid', t: 'Optimiza cada vídeo para el algoritmo', sub: 'Títulos, descripciones SEO y keywords optimizados con IA en segundos.', cta: 'Probar gratis →' },
+
+  { type: 'h2', t: 'Estrategia práctica: cómo adaptar tu canal al algoritmo de 2026' },
+  { type: 'p', t: 'Basándome en todo lo anterior, estas son las acciones concretas que puedes implementar:' },
+
+  { type: 'h3', t: '1. Prioriza la satisfacción sobre la duración' },
+  { type: 'p', t: 'Si puedes contar algo en 8 minutos, no lo estires a 15. Un vídeo que mantiene al 70% de la audiencia hasta el final es infinitamente más valioso que uno que pierde al 50% en el primer tercio. Revisa tu gráfica de retención: los picos de abandono son la información más valiosa que tienes.' },
+
+  { type: 'h3', t: '2. Invierte en los primeros 30 segundos' },
+  { type: 'p', t: 'La retención en el segundo 30 es la métrica más predictiva del éxito del vídeo. Si pierdes a la audiencia ahí, nada de lo que hagas después importa. Ve al grano desde el segundo 1: presenta el problema, genera curiosidad, promete valor concreto.' },
+
+  { type: 'h3', t: '3. Usa Shorts como funnel' },
+  { type: 'p', t: 'Crea Shorts que planteen una pregunta o curiosidad rápida, y menciona que la respuesta completa está en tu vídeo largo. El 59% de la Gen Z descubre contenido largo así — no ignores este canal.' },
+
+  { type: 'h3', t: '4. Publica consistentemente (mínimo 1/semana)' },
+  { type: 'p', t: 'Los datos son claros: la inactividad mata el crecimiento. Si no puedes publicar varias veces por semana, al menos mantén un ritmo semanal constante. YouTube premia la consistencia porque los espectadores también la valoran.' },
+
+  { type: 'h3', t: '5. Optimiza título, miniatura y descripción como un sistema' },
+  { type: 'p', t: 'El CTR depende del combo título + miniatura. La descripción alimenta el SEO. Los tres deben trabajar juntos. No pongas el mejor título del mundo con una miniatura genérica — y no escribas una descripción sin keywords relevantes.' },
+
+  { type: 'h3', t: '6. Genera engagement real' },
+  { type: 'p', t: 'Haz preguntas genuinas al final del vídeo. Responde comentarios en la primera hora. Fija un comentario que invite al debate. Los shares son la señal más potente que puedes generar — haz contenido que la gente quiera enviar a un amigo.' },
+
+  { type: 'h3', t: '7. Considera el multilenguaje' },
+  { type: 'p', t: 'Si tu contenido es relevante para más de un idioma, subtitula o dobla el 80% de tu catálogo. Es trabajo que se hace una vez y multiplica tu audiencia potencial indefinidamente.' },
+
+  { type: 'h2', t: 'Lo que NO funciona en 2026' },
+  { type: 'list', items: [
+    'Clickbait puro: CTR alto + retención baja = penalización. YouTube lo ha confirmado explícitamente.',
+    'Subir vídeos sin consistencia: menos de 1/mes destruye tu tasa de crecimiento.',
+    'Ignorar Analytics: las métricas están ahí para algo. Si no revisas tu retención, CTR y fuentes de tráfico, estás adivinando.',
+    'Copiar tendencias sin aportar valor: el algoritmo puede identificar contenido derivativo gracias a los LLMs. Haz tu versión, no una copia.',
+    'Optimizar solo para búsqueda: el 70% de las visualizaciones vienen de recomendaciones, no de búsquedas. El SEO importa, pero el contenido que satisface importa más.',
+  ]},
+
+  { type: 'h2', t: 'Conclusión' },
+  { type: 'p', t: 'El algoritmo de YouTube en 2026 es más sofisticado que nunca, pero paradójicamente, lo que premia es más simple que nunca: haz contenido que la gente disfrute de verdad, publícalo consistentemente, y optimiza la presentación (título, miniatura, descripción) para que llegue a quien lo va a valorar.' },
+  { type: 'p', t: 'No hay atajos. No hay trucos secretos. El algoritmo se ha vuelto demasiado inteligente para eso. Pero si haces contenido genuinamente bueno para tu nicho, el sistema de 2026 es mejor que nunca para encontrar tu audiencia — incluso si empiezas desde cero.' },
+
+  { type: 'callout-final', t: 'Dale al algoritmo lo que quiere: contenido optimizado', sub: 'Títulos virales, descripciones SEO, keywords de baja competencia y más — todo impulsado por IA.', cta: 'Empieza gratis con YTubViral' },
+];
+
+const ART_ALGORITMO_2026_EN: BlockType[] = [
+  { type: 'p', t: 'Every year someone publishes "this is how the YouTube algorithm works" and every year the article ages in three months. This one doesn\'t aim to be different — it aims to be honest: I\'ll tell you what YouTube has publicly confirmed in 2025-2026, what the data shows, and what we still don\'t know. No magic formulas.' },
+  { type: 'p', t: 'If you\'ve been creating content for a while, you probably already sense something YouTube has been confirming for years: there is no single "algorithm." There are multiple recommendation systems (home, search, Shorts, suggested, notifications) and each works with slightly different rules. But in 2026, there\'s one clear thread that unites them all: viewer satisfaction.' },
+
+  { type: 'h2', t: 'The biggest change: from "watch time" to "satisfaction"' },
+  { type: 'p', t: 'For years, YouTube optimized for one dominant metric: total watch time. The logic was simple — if someone watches more, they must like it more. But this had a problem: a mediocre 40-minute video could outperform a brilliant 8-minute one simply due to length.' },
+  { type: 'p', t: 'In 2025-2026, YouTube has made a significant shift. Todd Beaupré, head of the recommendations team, has explained that the system now incorporates surveys and direct satisfaction signals to understand how the viewer feels after watching a video. It\'s not enough that they watch — they have to enjoy it.' },
+  { type: 'p', t: 'In practice, YouTube measures "value time" through integrated surveys: only sessions rated 4-5 stars by users count as valuable. With millions of responses, they train AI models that predict satisfaction for each video. Beaupré confirms that adding these signals to the ranking makes users return to YouTube more in the long term, rather than just maximizing total session time.' },
+  { type: 'p', t: 'What this means for you: a short video that delivers value quickly and keeps the viewer hooked can outperform a long one with mediocre retention. Real quality matters more than ever.' },
+
+  { type: 'h2', t: 'The metrics that matter (confirmed by YouTube)' },
+  { type: 'p', t: 'YouTube has confirmed these metrics directly influence how your content is distributed:' },
+
+  { type: 'h3', t: 'CTR (Click-Through Rate)' },
+  { type: 'p', t: 'The percentage of people who see your thumbnail and click. Average YouTube CTR ranges between 2% and 10%. If your video exceeds 10%, the algorithm amplifies it aggressively. But be careful: high CTR with low retention is worse than moderate CTR with good retention. Clickbait titles generate many clicks but quick drop-offs, and YouTube penalizes exactly that.' },
+
+  { type: 'h3', t: 'AVD (Average View Duration)' },
+  { type: 'p', t: 'Average view duration remains a fundamental metric. It\'s not about making long videos — it\'s about viewers watching until the end. An 8-minute video with 70% retention tells the algorithm far more than a 20-minute one with 30%.' },
+
+  { type: 'h3', t: 'Average Views Per Viewer (AVPV)' },
+  { type: 'p', t: 'This metric, available in YouTube Analytics, indicates how many times on average each viewer watches content from your channel per session. It\'s a direct signal that your content generates "stickiness" — if someone watches one of your videos and then another and another, YouTube understands that your channel delivers consistent value and recommends it more aggressively.' },
+
+  { type: 'h3', t: 'Engagement signals' },
+  { type: 'p', t: 'Likes, comments, shares, and session time provide information about real audience interest. Videos that generate shares receive a significant boost. Comments in the first hour are especially valuable. It\'s not about asking "please like" in every video — it\'s about making content people naturally want to share.' },
+
+  { type: 'h3', t: 'Satisfaction signals' },
+  { type: 'p', t: 'Post-video surveys, like/dislike ratio, viewer return frequency. All of this feeds the AI models that decide whether your video gets recommended to more people.' },
+
+  { type: 'callout-mid', t: 'Analyze your metrics with precision', sub: 'SEO Score, competitor analysis, and keyword research — all in one dashboard.', cta: 'Try YTubViral free' },
+
+  { type: 'h2', t: 'How recommendations work in 2026' },
+  { type: 'p', t: 'YouTube describes its system as "automating word of mouth." Instead of your friend telling you "watch this video," the algorithm learns from what similar viewers watch and enjoy, adapting recommendations to each individual user.' },
+  { type: 'p', t: 'The system accounts for contextual factors many creators overlook:' },
+  { type: 'list', items: [
+    'Time of day: news videos in the morning, entertainment at night. The algorithm adapts recommendations to each viewer\'s time habits.',
+    'Device type: suggested content on mobile differs from smart TV. Shorts dominate on mobile; long-form videos are prioritized on TV.',
+    'Recent history: what the viewer watched in the last few hours influences more than what they watched a month ago.',
+    'Format preference: if a user rarely watches Shorts, YouTube will stop showing them. If they watch them constantly, more Shorts will appear in their feed.',
+  ]},
+
+  { type: 'h2', t: 'The LLM revolution in recommendations' },
+  { type: 'p', t: 'This is probably the most important technical change and the least discussed. YouTube now uses advanced language models (LLMs) to better understand video content. Todd Beaupré explains it with an analogy: before, the algorithm worked like a taster who memorizes "this user likes sushi." Now, with LLMs, it acts like an expert chef who understands the ingredients and style of each dish.' },
+  { type: 'p', t: 'In practical terms: the algorithm no longer limits itself to recommending "videos watched by people who also watched your video." It can now identify the theme, tone, style, and depth of your content to find new audiences that will likely enjoy it, even without a similar viewing history.' },
+  { type: 'p', t: 'This is great news for small creators with quality content in specific niches: the algorithm is now better at finding your audience, even when there\'s no established viewing pattern yet.' },
+
+  { type: 'h2', t: 'Shorts vs. long-form: coexistence in 2026' },
+  { type: 'p', t: 'YouTube has confirmed something many creators feared: publishing Shorts and long-form videos on the same channel does not hurt performance. In fact, channels that combine both formats tend to grow faster.' },
+  { type: 'p', t: 'The most interesting data point comes from YouTube itself: 59% of Gen Z uses Shorts to discover long-form content. In other words, your Shorts can work as a funnel to your main videos.' },
+  { type: 'p', t: 'The Brazilian channel Manual do Mundo (science and experiments) is a good example: by integrating Shorts that pose quick curiosities, they captured new viewers and accelerated their subscriptions. YouTube specifically highlights this case as an example of using Shorts as a gateway to long-form content.' },
+  { type: 'p', t: 'That said, the Shorts algorithm operates independently from the long-form one. Each format is evaluated separately, and recommendations are "format-aware": each viewer receives the type of content they prefer to consume.' },
+
+  { type: 'h2', t: 'What the data says: publishing frequency' },
+  { type: 'p', t: 'vidIQ analyzed over 5 million channels between June 2024 and June 2025, and the numbers are clear:' },
+  { type: 'list', items: [
+    'Channels that uploaded 12+ videos/month got 53% more views and 66% more subscribers than those uploading 1-3 videos/month.',
+    'Publishing at least 1 video/week generated roughly 5x more views and double the subscribers compared to less than 1 video/month.',
+    'Inactivity (less than 1 video/month) caused monthly growth rate to drop from ~9.9% to just ~1.9%.',
+  ]},
+  { type: 'p', t: 'But there\'s an important nuance: frequency without quality doesn\'t work. Flooding your channel with mediocre content can damage your Average Views Per Viewer and signal the algorithm that your channel isn\'t satisfying its audience. Consistency matters, but quality matters more.' },
+
+  { type: 'h2', t: 'Opportunities for small channels in 2026' },
+  { type: 'p', t: 'If you have fewer than 1,000 subscribers, there\'s good news. YouTube is actively promoting content from new creators and small channels. Videos from small creators now represent about 30% of new videos reaching trending in niche categories.' },
+  { type: 'p', t: 'The system works like this: when you publish a video, YouTube shows it first to a limited audience. If retention and satisfaction signals are good, it rapidly expands distribution. If not, it pulls back. This means a channel with 200 subscribers can have a viral video if the content is genuinely good — the algorithm doesn\'t need millions of subscribers to give you a chance.' },
+  { type: 'p', t: 'The case of Midnight Prayer Retreat illustrates this: a niche channel (prayer and music videos) that grew from 1,400 to 16,600 subscribers in five months. They didn\'t do anything special except publish consistent content, maximize retention, and be extremely relevant to their audience. The algorithm did the rest.' },
+
+  { type: 'h2', t: 'Multilingual: the opportunity many ignore' },
+  { type: 'p', t: 'Todd Beaupré has mentioned that creators who offer dubbing or subtitles in another language for at least 80% of their catalog tend to achieve better performance. It makes sense: you\'re multiplying your potential audience without creating new content.' },
+  { type: 'p', t: 'If your content works in one language, subtitling it in another can open an enormous market with relatively little effort. YouTube already offers automatic dubbing tools that, while not perfect, are improving rapidly.' },
+
+  { type: 'callout-mid', t: 'Optimize every video for the algorithm', sub: 'AI-optimized titles, SEO descriptions, and keywords in seconds.', cta: 'Try free →' },
+
+  { type: 'h2', t: 'Practical strategy: how to adapt your channel to the 2026 algorithm' },
+  { type: 'p', t: 'Based on everything above, here are the concrete actions you can implement:' },
+
+  { type: 'h3', t: '1. Prioritize satisfaction over duration' },
+  { type: 'p', t: 'If you can tell something in 8 minutes, don\'t stretch it to 15. A video that keeps 70% of the audience until the end is infinitely more valuable than one that loses 50% in the first third. Check your retention graph: drop-off peaks are the most valuable information you have.' },
+
+  { type: 'h3', t: '2. Invest in the first 30 seconds' },
+  { type: 'p', t: 'Retention at second 30 is the most predictive metric of video success. If you lose the audience there, nothing you do afterward matters. Get to the point from second 1: present the problem, create curiosity, promise concrete value.' },
+
+  { type: 'h3', t: '3. Use Shorts as a funnel' },
+  { type: 'p', t: 'Create Shorts that pose a quick question or curiosity, and mention that the full answer is in your long-form video. 59% of Gen Z discovers long-form content this way — don\'t ignore this channel.' },
+
+  { type: 'h3', t: '4. Publish consistently (minimum 1/week)' },
+  { type: 'p', t: 'The data is clear: inactivity kills growth. If you can\'t publish multiple times a week, at least maintain a consistent weekly schedule. YouTube rewards consistency because viewers value it too.' },
+
+  { type: 'h3', t: '5. Optimize title, thumbnail, and description as a system' },
+  { type: 'p', t: 'CTR depends on the title + thumbnail combo. The description feeds SEO. All three must work together. Don\'t put the best title in the world with a generic thumbnail — and don\'t write a description without relevant keywords.' },
+
+  { type: 'h3', t: '6. Generate real engagement' },
+  { type: 'p', t: 'Ask genuine questions at the end of your video. Reply to comments in the first hour. Pin a comment that invites debate. Shares are the most powerful signal you can generate — make content people want to send to a friend.' },
+
+  { type: 'h3', t: '7. Consider going multilingual' },
+  { type: 'p', t: 'If your content is relevant to more than one language, subtitle or dub 80% of your catalog. It\'s work you do once that multiplies your potential audience indefinitely.' },
+
+  { type: 'h2', t: 'What does NOT work in 2026' },
+  { type: 'list', items: [
+    'Pure clickbait: high CTR + low retention = penalty. YouTube has explicitly confirmed this.',
+    'Uploading without consistency: less than 1/month destroys your growth rate.',
+    'Ignoring Analytics: the metrics are there for a reason. If you\'re not reviewing retention, CTR, and traffic sources, you\'re guessing.',
+    'Copying trends without adding value: the algorithm can identify derivative content thanks to LLMs. Make your version, not a copy.',
+    'Optimizing only for search: 70% of views come from recommendations, not searches. SEO matters, but satisfying content matters more.',
+  ]},
+
+  { type: 'h2', t: 'Conclusion' },
+  { type: 'p', t: 'The YouTube algorithm in 2026 is more sophisticated than ever, but paradoxically, what it rewards is simpler than ever: make content people genuinely enjoy, publish it consistently, and optimize the presentation (title, thumbnail, description) so it reaches those who will value it.' },
+  { type: 'p', t: 'There are no shortcuts. No secret tricks. The algorithm has become too intelligent for that. But if you make genuinely good content for your niche, the 2026 system is better than ever at finding your audience — even if you\'re starting from zero.' },
+
+  { type: 'callout-final', t: 'Give the algorithm what it wants: optimized content', sub: 'Viral titles, SEO descriptions, low-competition keywords and more — all powered by AI.', cta: 'Start free with YTubViral' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -1552,6 +1792,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'ab-testing-youtube-titulos-guia': {
     es: ART_AB_TESTING_ES,
     en: ART_AB_TESTING_EN,
+  },
+  'algoritmo-youtube-2026-como-funciona': {
+    es: ART_ALGORITMO_2026_ES,
+    en: ART_ALGORITMO_2026_EN,
   },
 };
 

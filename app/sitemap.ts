@@ -6,7 +6,7 @@ const BASE_URL = 'https://ytubviral.com';
 export default function sitemap(): MetadataRoute.Sitemap {
   const blogEntries: MetadataRoute.Sitemap = BLOG_POSTS.map((p) => ({
     url: `${BASE_URL}/blog/${p.slug}`,
-    lastModified: new Date(p.date.en), // real publish date
+    lastModified: new Date(p.date.en),
     changeFrequency: 'monthly' as const,
     priority: 0.7,
   }));
