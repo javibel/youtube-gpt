@@ -178,6 +178,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'YouTube no longer rewards watch time alone. In 2026, viewer satisfaction, LLMs, and contextual signals have changed the rules. We explain what\'s changed, which metrics truly matter, and how to adapt your strategy with real data.',
     },
   },
+  {
+    slug: 'como-conseguir-suscriptores-youtube-2026',
+    cat: 'youtube',
+    readMin: 12,
+    date: { es: '8 May 2026', en: 'May 8, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/conseguir-suscriptores-youtube.webp',
+    title: {
+      es: 'Cómo Conseguir Suscriptores en YouTube en 2026: 12 Estrategias que Funcionan de Verdad',
+      en: 'How to Get Subscribers on YouTube in 2026: 12 Strategies That Actually Work',
+    },
+    excerpt: {
+      es: 'Ganar suscriptores en YouTube es más difícil que nunca — y más importante que nunca. Te enseñamos 12 estrategias probadas con datos reales para crecer tu canal en 2026, desde el primer vídeo hasta los 100K.',
+      en: 'Gaining subscribers on YouTube is harder than ever — and more important than ever. We show you 12 proven strategies backed by real data to grow your channel in 2026, from your first video to 100K.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -1760,6 +1776,218 @@ const ART_ALGORITMO_2026_EN: BlockType[] = [
   { type: 'callout-final', t: 'Give the algorithm what it wants: optimized content', sub: 'Viral titles, SEO descriptions, low-competition keywords and more — all powered by AI.', cta: 'Start free with YTubViral' },
 ];
 
+const ART_SUSCRIPTORES_ES: BlockType[] = [
+  { type: 'p', t: 'Conseguir suscriptores en YouTube en 2026 es un juego completamente diferente al de hace tres años. El algoritmo ha cambiado, la competencia se ha multiplicado y los espectadores son más selectivos que nunca. Pero hay buenas noticias: los canales que aplican las estrategias correctas crecen más rápido que nunca, porque YouTube está mejor que nunca encontrando audiencias para contenido de nicho.' },
+  { type: 'p', t: 'En este artículo te voy a enseñar 12 estrategias probadas para ganar suscriptores reales — no bots, no comprados, no trucos que funcionan una semana. Son las mismas técnicas que usan canales que pasan de 0 a 100K suscriptores en 2026, respaldadas por datos reales y confirmaciones directas de YouTube.' },
+
+  { type: 'h2', t: '1. El primer vídeo importa menos de lo que crees (pero los primeros 10 lo son todo)' },
+  { type: 'p', t: 'El error más común de un canal nuevo es obsesionarse con que el primer vídeo sea perfecto. La realidad es que casi ningún primer vídeo se hace viral. Lo que sí importa es que publiques al menos 10 vídeos buenos en tu nicho antes de juzgar si "funciona" o no.' },
+  { type: 'p', t: 'YouTube necesita datos para entender de qué va tu canal. Con 1-3 vídeos no tiene suficiente información. Con 10+, el algoritmo empieza a entender quién es tu audiencia y puede empezar a recomendarte. Paddy Galloway, consultor de canales con millones de suscriptores, lo ha dicho públicamente: los primeros 10 vídeos son tu fase de calibración, no de resultados.' },
+  { type: 'p', t: 'La clave: no publiques 10 vídeos rápido y malos. Publica 10 vídeos donde cada uno sea ligeramente mejor que el anterior. El crecimiento real viene de la mejora constante, no del volumen.' },
+
+  { type: 'h2', t: '2. Optimiza título + miniatura antes de grabar' },
+  { type: 'p', t: 'En 2026, el título y la miniatura son el 80% de si un vídeo funciona o no. No importa lo bueno que sea tu contenido si nadie hace clic. Los creadores que más crecen hacen algo contraintuitivo: diseñan el título y la miniatura antes de grabar el vídeo.' },
+  { type: 'p', t: '¿Por qué? Porque si no puedes crear un título atractivo y una miniatura que genere curiosidad, probablemente el tema no tiene suficiente tirón. Es mejor descubrir esto antes de invertir 8 horas en producción.' },
+  { type: 'p', t: 'Las claves de un buen título en 2026: máximo 60 caracteres, incluye una promesa clara, genera curiosidad sin ser clickbait, y contiene tu keyword principal. Las herramientas de IA pueden ayudarte a generar variaciones y elegir la más potente.' },
+
+  { type: 'callout-mid', t: 'Genera títulos virales con IA', sub: 'YTubViral analiza millones de vídeos para sugerirte títulos con alto CTR para tu nicho.', cta: 'Probar gratis' },
+
+  { type: 'h2', t: '3. Engancha en los primeros 30 segundos (o pierde al espectador)' },
+  { type: 'p', t: 'YouTube Analytics muestra que la mayor caída de retención ocurre en los primeros 30 segundos. Si pierdes al espectador ahí, no importa lo bueno que sea el resto del vídeo — nunca lo verá. Y un vídeo con mala retención inicial no consigue suscriptores porque nadie llega al final.' },
+  { type: 'p', t: 'La fórmula que mejor funciona en 2026: empieza con el resultado o la promesa ("Al final de este vídeo vas a saber exactamente cómo..."), luego da una prueba rápida de credibilidad ("He analizado 500 canales que pasaron de 0 a 100K..."), y después un mini-teaser de lo más sorprendente del vídeo.' },
+  { type: 'p', t: 'Evita las intros largas, los logos animados y el "hola, bienvenidos a mi canal". Los espectadores en 2026 son impacientes — tienes 8 segundos para convencerles de que vale la pena quedarse.' },
+
+  { type: 'h2', t: '4. Pide la suscripción en el momento correcto (no al principio)' },
+  { type: 'p', t: 'Casi todos los YouTubers piden la suscripción en la intro. Es un error. El espectador todavía no sabe si tu contenido merece la pena. La tasa de conversión de "suscríbete" al principio es mínima.' },
+  { type: 'p', t: 'El momento óptimo para pedir la suscripción es después de haber entregado valor real — normalmente entre el minuto 3 y el 5 de un vídeo de 10 minutos. El espectador ya ha visto que el contenido es bueno y está receptivo. La frase funciona mejor cuando es específica: "Si esto te está siendo útil, suscríbete para el vídeo de la semana que viene donde voy a enseñarte [tema relacionado]".' },
+  { type: 'p', t: 'Otra técnica que funciona: mencionar la suscripción de pasada justo después de un punto alto del vídeo (un dato sorprendente, un resultado impresionante). La emoción positiva aumenta la probabilidad de que el espectador actúe.' },
+
+  { type: 'h2', t: '5. Publica con consistencia (pero no a cualquier precio)' },
+  { type: 'p', t: 'YouTube premia la consistencia. No porque haya una "penalización" por no publicar, sino porque los canales que publican regularmente acumulan más datos, más señales de audiencia y más oportunidades de que un vídeo despegue.' },
+  { type: 'p', t: 'La frecuencia ideal depende de tu nicho y tu capacidad. Un vídeo semanal de buena calidad es mejor que 3 vídeos mediocres. Si solo puedes hacer 2 vídeos al mes con calidad real, hazlo — pero sé predecible. Los espectadores se suscriben a canales de los que esperan contenido regular.' },
+  { type: 'p', t: 'Dato importante: YouTube ha confirmado que la consistencia en el horario de publicación ayuda al algoritmo a saber cuándo mostrar tu contenido. Si publicas siempre los martes a las 18h, el sistema aprende a amplificar tu vídeo en ese momento.' },
+
+  { type: 'h2', t: '6. Domina el SEO de YouTube (sí, sigue importando)' },
+  { type: 'p', t: 'En 2026, el SEO de YouTube sigue siendo una de las formas más efectivas de conseguir suscriptores porque atrae tráfico cualificado — personas que buscan activamente lo que tú ofreces. Un espectador que te encuentra por búsqueda tiene más probabilidades de suscribirse que uno que te ve de pasada en el feed.' },
+  { type: 'p', t: 'Las claves del SEO en YouTube en 2026:' },
+  { type: 'list', items: [
+    'Investiga keywords antes de grabar: busca términos con volumen de búsqueda alto y competencia baja.',
+    'Incluye la keyword en el título (primeras 5 palabras si es posible), la descripción (primeras 2 líneas) y los tags.',
+    'Escribe descripciones de al menos 200 palabras. YouTube las usa para entender de qué va tu vídeo.',
+    'Usa capítulos (timestamps) en la descripción. YouTube los muestra en los resultados de búsqueda y mejoran el CTR.',
+    'Los subtítulos importan: sube un archivo SRT corregido. YouTube indexa el texto de los subtítulos.',
+  ]},
+
+  { type: 'callout-mid', t: 'Encuentra las keywords perfectas para tu canal', sub: 'Keyword Research con datos reales: volumen, competencia y score de oportunidad para cada tema.', cta: 'Probar YTubViral gratis' },
+
+  { type: 'h2', t: '7. Crea series y playlists estratégicas' },
+  { type: 'p', t: 'Una de las estrategias más subestimadas para ganar suscriptores es crear series. Cuando un espectador ve un vídeo que forma parte de una serie, tiene una razón directa para suscribirse: no quiere perderse el siguiente episodio.' },
+  { type: 'p', t: 'Las playlists funcionan de forma similar. Agrupa tus vídeos por tema y optimiza el título de la playlist con keywords. Cuando alguien entra en una playlist y ve 3-4 vídeos seguidos, la probabilidad de suscripción se multiplica. La métrica AVPV (Average Views Per Viewer) que YouTube usa para recomendar tu canal sube directamente con las playlists.' },
+  { type: 'p', t: 'Idea práctica: al final de cada vídeo, menciona el siguiente vídeo de la serie y usa una tarjeta (card) para enlazarlo. "En el próximo episodio vamos a ver..." es mucho más poderoso que "suscríbete para más contenido".' },
+
+  { type: 'h2', t: '8. Aprovecha YouTube Shorts (con estrategia)' },
+  { type: 'p', t: 'Los Shorts son la herramienta de descubrimiento más potente de YouTube en 2026. Un Short viral puede llevar miles de personas a tu canal en un día. Pero hay un problema: los suscriptores que llegan por Shorts tienen tasas de retención más bajas en vídeos largos.' },
+  { type: 'p', t: 'La estrategia correcta: usa los Shorts como trailer de tu contenido largo. Coge el momento más interesante de tu vídeo, córtalo a 30-60 segundos, y al final incluye un CTA hacia el vídeo completo. Así los espectadores que se suscriben ya saben qué tipo de contenido haces.' },
+  { type: 'p', t: 'Dato de 2026: YouTube ha mejorado la conexión entre Shorts y contenido largo. Los canales que publican ambos formatos reciben un boost del algoritmo porque la plataforma quiere retener a los espectadores de Shorts en vídeos más largos (donde hay más ads = más ingresos para YouTube).' },
+
+  { type: 'h2', t: '9. Colabora con otros creadores (el multiplicador olvidado)' },
+  { type: 'p', t: 'Las colaboraciones siguen siendo una de las formas más rápidas de ganar suscriptores cualificados. Cuando un creador de tu nicho te presenta a su audiencia, esos espectadores ya están interesados en tu tema — la fricción para suscribirse es mínima.' },
+  { type: 'p', t: 'La clave es colaborar con canales de tamaño similar o ligeramente superior (2x-5x tus suscriptores). Los canales mucho más grandes no suelen aceptar, y los mucho más pequeños no te aportan audiencia nueva significativa.' },
+  { type: 'p', t: 'Formatos que funcionan: entrevistas cruzadas (tú entrevistas al otro en tu canal y viceversa), vídeos de "reacción" o análisis conjunto, y retos colaborativos. En todos los casos, asegúrate de que el contenido sea genuinamente útil para ambas audiencias.' },
+
+  { type: 'h2', t: '10. Responde a todos los comentarios (especialmente los primeros 30 días)' },
+  { type: 'p', t: 'Responder comentarios no es solo buena educación — es una señal directa para el algoritmo. Cada respuesta cuenta como un comentario adicional, lo que duplica la actividad en tu vídeo. Pero más importante: crea comunidad, y la comunidad es lo que convierte espectadores casuales en suscriptores fieles.' },
+  { type: 'p', t: 'En los primeros 30 días de un canal, responde a absolutamente todos los comentarios. Cuando llegues a 1.000+ suscriptores y el volumen sea inmanejable, prioriza los comentarios con preguntas y los que generan debate.' },
+  { type: 'p', t: 'Tip avanzado: haz preguntas en tus vídeos que inviten a comentar. "¿Cuál es tu mayor reto ahora mismo con [tema]?" genera comentarios reales, no el típico "gran vídeo 👍". Y esos comentarios reales son los que el algoritmo valora.' },
+
+  { type: 'h2', t: '11. Analiza qué funciona (y haz más de eso)' },
+  { type: 'p', t: 'YouTube Analytics te da toda la información que necesitas para crecer. El problema es que la mayoría de creadores nunca lo miran, o miran las métricas equivocadas.' },
+  { type: 'p', t: 'Las métricas que debes revisar cada semana:' },
+  { type: 'list', items: [
+    'CTR (Click-Through Rate): si está por debajo del 4%, tus títulos y miniaturas necesitan trabajo.',
+    'Retención media: si es inferior al 40%, el contenido no engancha. Identifica en qué momento exacto la gente abandona.',
+    'Fuentes de tráfico: ¿de dónde vienen tus espectadores? Si la búsqueda domina, tu SEO funciona. Si son "sugeridos", el algoritmo te está impulsando.',
+    'Suscriptores por vídeo: identifica cuáles convierten mejor y haz más contenido similar.',
+    'AVPV (Average Views Per Viewer): si sube, tu audiencia está enganchada y ve varios vídeos por sesión.',
+  ]},
+  { type: 'p', t: 'La regla es simple: identifica tus 3 vídeos que más suscriptores generaron, analiza qué tienen en común (tema, formato, duración, estilo de miniatura) y replica ese patrón.' },
+
+  { type: 'callout-mid', t: 'Analiza tu canal con datos reales', sub: 'SEO Score, análisis de competidores, keywords de baja competencia — todo en un dashboard.', cta: 'Empieza gratis con YTubViral' },
+
+  { type: 'h2', t: '12. Optimiza tu página de canal (la conversión invisible)' },
+  { type: 'p', t: 'Tu página de canal es tu landing page. Cuando un espectador nuevo descubre uno de tus vídeos y le gusta, lo siguiente que hace es visitar tu canal. Lo que vea ahí determina si se suscribe o se va.' },
+  { type: 'p', t: 'Los elementos que importan:' },
+  { type: 'list', items: [
+    'Banner: claro, profesional, que diga de qué va tu canal y cuándo publicas.',
+    'Vídeo de presentación del canal: máximo 60 segundos, muestra tu mejor contenido y explica por qué alguien debería suscribirse.',
+    'Secciones organizadas: agrupa tus vídeos por series o temas. Un canal ordenado transmite profesionalidad.',
+    'Descripción del canal: incluye keywords, pero escríbela para personas. Explica qué van a encontrar y por qué eres diferente.',
+  ]},
+  { type: 'p', t: 'Un truco que pocos canales usan: cambia tu vídeo de presentación del canal cada 2-3 meses con tu mejor vídeo reciente. Los nuevos visitantes verán tu contenido más pulido, no uno que grabaste cuando empezabas.' },
+
+  { type: 'h2', t: 'Lo que NO funciona en 2026' },
+  { type: 'p', t: 'Para cerrar, hay prácticas que muchos "gurús" siguen recomendando pero que en 2026 no solo no funcionan — pueden perjudicarte:' },
+  { type: 'list', items: [
+    'Comprar suscriptores: YouTube detecta cuentas falsas y las purga. Peor aún, destruyen tus métricas de engagement, lo que hunde tu canal en el algoritmo.',
+    'Sub4Sub (suscripción mutua): misma lógica — suscriptores que no ven tus vídeos arruinan tu CTR y retención.',
+    'Publicar sin estrategia de SEO: en un entorno tan competitivo, publicar "a ver qué pasa" es tirar esfuerzo a la basura.',
+    'Copiar exactamente a creadores grandes: tu audiencia inicial no es la suya. Lo que funciona a 1M de suscriptores no funciona a 1.000.',
+    'Spam de comentarios en canales ajenos: YouTube los filtra como spam y puede penalizar tu cuenta.',
+  ]},
+
+  { type: 'h2', t: 'Conclusión' },
+  { type: 'p', t: 'Ganar suscriptores en YouTube en 2026 no tiene atajos — pero tampoco es un misterio. Optimiza el descubrimiento (títulos, miniaturas, SEO), entrega valor real desde el primer segundo, crea razones para que la gente quiera volver (series, consistencia, comunidad), y usa los datos para mejorar cada semana.' },
+  { type: 'p', t: 'Los 12 puntos de este artículo no son teoría — son lo que los canales que más crecen en 2026 están haciendo ahora mismo. La diferencia entre un canal que despega y uno que se estanca casi siempre está en la ejecución, no en el conocimiento. Ahora tienes el conocimiento. Ejecuta.' },
+
+  { type: 'callout-final', t: 'Acelera el crecimiento de tu canal', sub: 'Títulos virales, keywords de baja competencia, SEO Score y más — todo potenciado por IA.', cta: 'Empieza gratis con YTubViral' },
+];
+
+const ART_SUSCRIPTORES_EN: BlockType[] = [
+  { type: 'p', t: 'Getting subscribers on YouTube in 2026 is a completely different game than it was three years ago. The algorithm has changed, competition has multiplied, and viewers are more selective than ever. But there\'s good news: channels that apply the right strategies grow faster than ever, because YouTube is better than ever at finding audiences for niche content.' },
+  { type: 'p', t: 'In this article, I\'ll show you 12 proven strategies to gain real subscribers — not bots, not purchased, not tricks that work for a week. These are the same techniques used by channels going from 0 to 100K subscribers in 2026, backed by real data and direct confirmations from YouTube.' },
+
+  { type: 'h2', t: '1. Your First Video Matters Less Than You Think (but Your First 10 Are Everything)' },
+  { type: 'p', t: 'The most common mistake for a new channel is obsessing over making the first video perfect. The reality is that almost no first video goes viral. What does matter is publishing at least 10 solid videos in your niche before judging whether it\'s "working" or not.' },
+  { type: 'p', t: 'YouTube needs data to understand what your channel is about. With 1-3 videos, it doesn\'t have enough information. With 10+, the algorithm starts to understand who your audience is and can begin recommending you. Paddy Galloway, consultant for channels with millions of subscribers, has said publicly: your first 10 videos are your calibration phase, not your results phase.' },
+  { type: 'p', t: 'The key: don\'t publish 10 videos quickly and badly. Publish 10 videos where each one is slightly better than the last. Real growth comes from constant improvement, not volume.' },
+
+  { type: 'h2', t: '2. Optimize Title + Thumbnail Before Recording' },
+  { type: 'p', t: 'In 2026, the title and thumbnail account for 80% of whether a video performs. It doesn\'t matter how good your content is if nobody clicks. The fastest-growing creators do something counterintuitive: they design the title and thumbnail before recording the video.' },
+  { type: 'p', t: 'Why? Because if you can\'t create an attractive title and a curiosity-generating thumbnail, the topic probably doesn\'t have enough pull. It\'s better to discover this before investing 8 hours in production.' },
+  { type: 'p', t: 'Keys to a good title in 2026: maximum 60 characters, include a clear promise, generate curiosity without being clickbait, and contain your main keyword. AI tools can help you generate variations and choose the most powerful one.' },
+
+  { type: 'callout-mid', t: 'Generate viral titles with AI', sub: 'YTubViral analyzes millions of videos to suggest high-CTR titles for your niche.', cta: 'Try free' },
+
+  { type: 'h2', t: '3. Hook Them in the First 30 Seconds (or Lose Them)' },
+  { type: 'p', t: 'YouTube Analytics shows that the biggest retention drop happens in the first 30 seconds. If you lose the viewer there, it doesn\'t matter how good the rest of the video is — they\'ll never see it. And a video with poor initial retention doesn\'t get subscribers because nobody reaches the end.' },
+  { type: 'p', t: 'The formula that works best in 2026: start with the result or promise ("By the end of this video you\'ll know exactly how to..."), then give a quick proof of credibility ("I analyzed 500 channels that went from 0 to 100K..."), and then a mini-teaser of the most surprising thing in the video.' },
+  { type: 'p', t: 'Avoid long intros, animated logos, and "hey, welcome to my channel." Viewers in 2026 are impatient — you have 8 seconds to convince them it\'s worth staying.' },
+
+  { type: 'h2', t: '4. Ask for the Subscription at the Right Moment (Not the Beginning)' },
+  { type: 'p', t: 'Almost every YouTuber asks for subscriptions in the intro. It\'s a mistake. The viewer doesn\'t know yet if your content is worth it. The conversion rate of "subscribe" at the beginning is minimal.' },
+  { type: 'p', t: 'The optimal moment to ask for a subscription is after you\'ve delivered real value — usually between minute 3 and 5 of a 10-minute video. The viewer has already seen that the content is good and is receptive. The phrase works better when specific: "If this is being useful, subscribe for next week\'s video where I\'ll show you [related topic]."' },
+  { type: 'p', t: 'Another technique that works: mention the subscription casually right after a high point in the video (a surprising stat, an impressive result). The positive emotion increases the likelihood of the viewer taking action.' },
+
+  { type: 'h2', t: '5. Publish Consistently (but Not at Any Cost)' },
+  { type: 'p', t: 'YouTube rewards consistency. Not because there\'s a "penalty" for not publishing, but because channels that publish regularly accumulate more data, more audience signals, and more opportunities for a video to take off.' },
+  { type: 'p', t: 'The ideal frequency depends on your niche and capacity. One quality video per week is better than 3 mediocre ones. If you can only make 2 videos per month with real quality, do it — but be predictable. Viewers subscribe to channels they expect regular content from.' },
+  { type: 'p', t: 'Important fact: YouTube has confirmed that consistency in publishing schedule helps the algorithm know when to show your content. If you always publish on Tuesdays at 6pm, the system learns to amplify your video at that time.' },
+
+  { type: 'h2', t: '6. Master YouTube SEO (Yes, It Still Matters)' },
+  { type: 'p', t: 'In 2026, YouTube SEO remains one of the most effective ways to gain subscribers because it attracts qualified traffic — people actively searching for what you offer. A viewer who finds you through search is more likely to subscribe than one who sees you in passing on their feed.' },
+  { type: 'p', t: 'YouTube SEO essentials in 2026:' },
+  { type: 'list', items: [
+    'Research keywords before recording: look for terms with high search volume and low competition.',
+    'Include the keyword in the title (first 5 words if possible), description (first 2 lines), and tags.',
+    'Write descriptions of at least 200 words. YouTube uses them to understand what your video is about.',
+    'Use chapters (timestamps) in the description. YouTube shows them in search results and they improve CTR.',
+    'Subtitles matter: upload a corrected SRT file. YouTube indexes subtitle text.',
+  ]},
+
+  { type: 'callout-mid', t: 'Find the perfect keywords for your channel', sub: 'Keyword Research with real data: volume, competition, and opportunity score for every topic.', cta: 'Try YTubViral free' },
+
+  { type: 'h2', t: '7. Create Series and Strategic Playlists' },
+  { type: 'p', t: 'One of the most underrated strategies for gaining subscribers is creating series. When a viewer watches a video that\'s part of a series, they have a direct reason to subscribe: they don\'t want to miss the next episode.' },
+  { type: 'p', t: 'Playlists work similarly. Group your videos by topic and optimize the playlist title with keywords. When someone enters a playlist and watches 3-4 videos in a row, the subscription probability multiplies. The AVPV (Average Views Per Viewer) metric that YouTube uses to recommend your channel rises directly with playlists.' },
+  { type: 'p', t: 'Practical idea: at the end of each video, mention the next video in the series and use a card to link it. "In the next episode we\'ll cover..." is much more powerful than "subscribe for more content."' },
+
+  { type: 'h2', t: '8. Leverage YouTube Shorts (with Strategy)' },
+  { type: 'p', t: 'Shorts are YouTube\'s most powerful discovery tool in 2026. A viral Short can bring thousands of people to your channel in a day. But there\'s a catch: subscribers who arrive via Shorts have lower retention rates on long-form videos.' },
+  { type: 'p', t: 'The right strategy: use Shorts as trailers for your long-form content. Take the most interesting moment from your video, cut it to 30-60 seconds, and at the end include a CTA to the full video. That way, subscribers who come in already know what type of content you make.' },
+  { type: 'p', t: '2026 data point: YouTube has improved the connection between Shorts and long-form content. Channels that publish both formats receive an algorithm boost because the platform wants to retain Shorts viewers on longer videos (where there are more ads = more revenue for YouTube).' },
+
+  { type: 'h2', t: '9. Collaborate with Other Creators (the Forgotten Multiplier)' },
+  { type: 'p', t: 'Collaborations remain one of the fastest ways to gain qualified subscribers. When a creator in your niche introduces you to their audience, those viewers are already interested in your topic — the friction to subscribe is minimal.' },
+  { type: 'p', t: 'The key is to collaborate with channels of similar or slightly larger size (2x-5x your subscribers). Much larger channels usually won\'t accept, and much smaller ones won\'t bring you significant new audience.' },
+  { type: 'p', t: 'Formats that work: cross-interviews (you interview the other person on your channel and vice versa), joint reaction or analysis videos, and collaborative challenges. In all cases, make sure the content is genuinely useful for both audiences.' },
+
+  { type: 'h2', t: '10. Reply to Every Comment (Especially in the First 30 Days)' },
+  { type: 'p', t: 'Replying to comments isn\'t just good manners — it\'s a direct signal to the algorithm. Every reply counts as an additional comment, which doubles the activity on your video. But more importantly: it builds community, and community is what converts casual viewers into loyal subscribers.' },
+  { type: 'p', t: 'In the first 30 days of a channel, reply to absolutely every comment. Once you reach 1,000+ subscribers and the volume becomes unmanageable, prioritize comments with questions and those that generate discussion.' },
+  { type: 'p', t: 'Advanced tip: ask questions in your videos that invite comments. "What\'s your biggest challenge right now with [topic]?" generates real comments, not the typical "great video 👍." And those real comments are the ones the algorithm values.' },
+
+  { type: 'h2', t: '11. Analyze What Works (and Do More of It)' },
+  { type: 'p', t: 'YouTube Analytics gives you all the information you need to grow. The problem is that most creators never look at it, or look at the wrong metrics.' },
+  { type: 'p', t: 'Metrics you should review every week:' },
+  { type: 'list', items: [
+    'CTR (Click-Through Rate): if it\'s below 4%, your titles and thumbnails need work.',
+    'Average retention: if it\'s under 40%, the content isn\'t hooking. Identify the exact moment people leave.',
+    'Traffic sources: where are your viewers coming from? If search dominates, your SEO works. If it\'s "suggested," the algorithm is pushing you.',
+    'Subscribers per video: identify which ones convert best and make more similar content.',
+    'AVPV (Average Views Per Viewer): if it\'s rising, your audience is hooked and watching multiple videos per session.',
+  ]},
+  { type: 'p', t: 'The rule is simple: identify your 3 videos that generated the most subscribers, analyze what they have in common (topic, format, length, thumbnail style), and replicate that pattern.' },
+
+  { type: 'callout-mid', t: 'Analyze your channel with real data', sub: 'SEO Score, competitor analysis, low-competition keywords — all in one dashboard.', cta: 'Start free with YTubViral' },
+
+  { type: 'h2', t: '12. Optimize Your Channel Page (the Invisible Conversion)' },
+  { type: 'p', t: 'Your channel page is your landing page. When a new viewer discovers one of your videos and likes it, the next thing they do is visit your channel. What they see there determines whether they subscribe or leave.' },
+  { type: 'p', t: 'Elements that matter:' },
+  { type: 'list', items: [
+    'Banner: clear, professional, stating what your channel is about and when you publish.',
+    'Channel trailer: maximum 60 seconds, showing your best content and explaining why someone should subscribe.',
+    'Organized sections: group your videos by series or topics. An organized channel conveys professionalism.',
+    'Channel description: include keywords, but write it for people. Explain what they\'ll find and why you\'re different.',
+  ]},
+  { type: 'p', t: 'A trick few channels use: change your channel trailer every 2-3 months with your best recent video. New visitors will see your most polished content, not something you recorded when you were starting out.' },
+
+  { type: 'h2', t: 'What Does NOT Work in 2026' },
+  { type: 'p', t: 'To close, there are practices many "gurus" still recommend that in 2026 not only don\'t work — they can hurt you:' },
+  { type: 'list', items: [
+    'Buying subscribers: YouTube detects fake accounts and purges them. Worse, they destroy your engagement metrics, which tanks your channel in the algorithm.',
+    'Sub4Sub (mutual subscription): same logic — subscribers who don\'t watch your videos ruin your CTR and retention.',
+    'Publishing without SEO strategy: in such a competitive environment, publishing "to see what happens" is wasting effort.',
+    'Copying big creators exactly: your initial audience isn\'t theirs. What works at 1M subscribers doesn\'t work at 1,000.',
+    'Spamming comments on other channels: YouTube filters them as spam and can penalize your account.',
+  ]},
+
+  { type: 'h2', t: 'Conclusion' },
+  { type: 'p', t: 'Gaining subscribers on YouTube in 2026 has no shortcuts — but it\'s not a mystery either. Optimize discovery (titles, thumbnails, SEO), deliver real value from the first second, create reasons for people to come back (series, consistency, community), and use data to improve every week.' },
+  { type: 'p', t: 'The 12 points in this article aren\'t theory — they\'re what the fastest-growing channels in 2026 are doing right now. The difference between a channel that takes off and one that stagnates is almost always in execution, not knowledge. Now you have the knowledge. Execute.' },
+
+  { type: 'callout-final', t: 'Accelerate your channel growth', sub: 'Viral titles, low-competition keywords, SEO Score and more — all powered by AI.', cta: 'Start free with YTubViral' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -1796,6 +2024,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'algoritmo-youtube-2026-como-funciona': {
     es: ART_ALGORITMO_2026_ES,
     en: ART_ALGORITMO_2026_EN,
+  },
+  'como-conseguir-suscriptores-youtube-2026': {
+    es: ART_SUSCRIPTORES_ES,
+    en: ART_SUSCRIPTORES_EN,
   },
 };
 
