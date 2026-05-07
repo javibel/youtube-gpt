@@ -236,11 +236,14 @@ export async function GET(request: Request) {
       }
     }
 
-    // 4. Publish LinkedIn
+    // 4. Publish LinkedIn — DESACTIVADO: cuenta bloqueada por LinkedIn (2026-05-07)
+    // if (li) {
+    //   const liResult = await publishToLinkedIn(li);
+    //   results.linkedin = liResult;
+    //   if (!liResult.success) errors.push(`LinkedIn: ${liResult.error}`);
+    // }
     if (li) {
-      const liResult = await publishToLinkedIn(li);
-      results.linkedin = liResult;
-      if (!liResult.success) errors.push(`LinkedIn: ${liResult.error}`);
+      results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
     }
 
     // 5. TikTok + X by email (manual)
