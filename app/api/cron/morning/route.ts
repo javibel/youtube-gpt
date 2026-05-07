@@ -216,24 +216,18 @@ export async function GET(request: Request) {
     if (tiktok.status === 'rejected') errors.push(`TikTok content: ${tiktok.reason}`);
     if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
-    // 3. Publish Facebook (30% with image)
-    const useImage = Math.random() < 0.3;
-    // Para Facebook: prioriza imagen humana (16:9 permitido), si no hay usa la abstracta
-    const fbImageUrl = (await getHumanImageUrl('facebook')) ?? getSocialImageUrl();
-    const fbResult = fb
-      ? useImage
-        ? await publishToFacebookWithImage(fb, fbImageUrl)
-        : await publishToFacebook(fb)
-      : null;
-    results.facebook = fbResult;
-    if (fbResult && !fbResult.success) {
-      errors.push(`Facebook: ${fbResult.error}`);
-      if (fbResult.blocked) {
-        await sendNotificationEmail(
-          '[YTubViral Agent] Facebook bloqueado por Meta',
-          'Meta ha bloqueado temporalmente las llamadas a la API. Entra en developers.facebook.com y verifica tu sesion. El post se reintentara automaticamente en el cron vespertino.\n\nError: ' + (fbResult.error ?? '')
-        ).catch(() => {});
-      }
+    // 3. Publish Facebook — DESACTIVADO: bloquea cuentas (2026-05-07)
+    // const useImage = Math.random() < 0.3;
+    // const fbImageUrl = (await getHumanImageUrl('facebook')) ?? getSocialImageUrl();
+    // const fbResult = fb
+    //   ? useImage
+    //     ? await publishToFacebookWithImage(fb, fbImageUrl)
+    //     : await publishToFacebook(fb)
+    //   : null;
+    // results.facebook = fbResult;
+    const fbResult = null;
+    if (fb) {
+      results.facebook = { success: false, error: 'Facebook desactivado — bloquea cuentas (2026-05-07)' };
     }
 
     // 4. Publish LinkedIn — DESACTIVADO: cuenta bloqueada por LinkedIn (2026-05-07)

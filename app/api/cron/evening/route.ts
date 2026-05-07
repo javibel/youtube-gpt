@@ -36,14 +36,13 @@ export async function GET(request: Request) {
 
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
 
-    // Retry Facebook posts that failed with error 190 (Meta block) during morning cron
-    const fbRetry = await retryPendingFacebookPost().catch(err => ({
-      success: false as const,
-      skipped: false,
-      error: err instanceof Error ? err.message : String(err),
-    }));
+    // Facebook retry — DESACTIVADO: bloquea cuentas (2026-05-07)
+    // const fbRetry = await retryPendingFacebookPost().catch(err => ({
+    //   success: false as const, skipped: false,
+    //   error: err instanceof Error ? err.message : String(err),
+    // }));
+    const fbRetry = { success: false, skipped: true, error: 'Facebook desactivado (2026-05-07)' };
     results.facebookRetry = fbRetry;
-    if (!fbRetry.success && !fbRetry.skipped) errors.push(`Facebook retry: ${fbRetry.error}`);
 
     // 0. Send feedback emails to users registered 3 days ago
     const feedbackResult = await runFeedbackAgent().catch(err => ({
