@@ -155,7 +155,7 @@ export default function AchievementsPage() {
                 if (!def) return null;
                 return (
                   <span key={key} className="yv-badge yv-badge--success">
-                    <span>{def.icon}</span> {def.label[lang]}
+                    <img src={def.icon} alt="" width={16} height={16} className="inline" /> {def.label[lang]}
                   </span>
                 );
               })}
@@ -211,9 +211,7 @@ export default function AchievementsPage() {
                     }}
                   >
                     <div className="flex items-start gap-3">
-                      <span style={{ fontSize: 24 }} className={achievement.unlocked ? '' : 'grayscale'}>
-                        {achievement.icon}
-                      </span>
+                      <img src={achievement.icon} alt="" width={24} height={24} className={achievement.unlocked ? '' : 'grayscale'} />
                       <div className="flex-1 min-w-0">
                         <h3 style={{ font: '600 14px/1.3 var(--yv-font-sans)', color: 'var(--yv-text-1)' }}>
                           {achievement.label[lang]}

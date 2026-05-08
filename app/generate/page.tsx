@@ -13,15 +13,15 @@ const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenera
 
 // Template metadata for the new UI
 const TPL_META: Record<string, { icon: string; color: string; est: string }> = {
-  title:          { icon: '🎯', color: '#e84d5b', est: '8s' },
-  description:    { icon: '📄', color: '#00E5FF', est: '12s' },
-  script:         { icon: '📝', color: '#FFE800', est: '30s' },
-  caption:        { icon: '💬', color: '#FF00AA', est: '10s' },
-  thumbnail:      { icon: '🖼️', color: '#7CFF00', est: '5s' },
-  niche_analysis: { icon: '🔍', color: '#B388FF', est: '45s' },
-  series:         { icon: '📚', color: '#FF8A00', est: '60s' },
-  shorts_hook:    { icon: '⚡', color: '#00FFA3', est: '6s' },
-  video_preview:  { icon: '📺', color: '#00D9FF', est: '~30s' },
+  title:          { icon: '/icons/title.webp', color: '#e84d5b', est: '8s' },
+  description:    { icon: '/icons/description.webp', color: '#00E5FF', est: '12s' },
+  script:         { icon: '/icons/script.webp', color: '#FFE800', est: '30s' },
+  caption:        { icon: '/icons/caption.webp', color: '#FF00AA', est: '10s' },
+  thumbnail:      { icon: '/icons/thumbnail.webp', color: '#7CFF00', est: '5s' },
+  niche_analysis: { icon: '/icons/magnifying-glass.webp', color: '#B388FF', est: '45s' },
+  series:         { icon: '/icons/clapperboard.webp', color: '#FF8A00', est: '60s' },
+  shorts_hook:    { icon: '/icons/lightning.webp', color: '#00FFA3', est: '6s' },
+  video_preview:  { icon: '/icons/yt-play.webp', color: '#00D9FF', est: '~30s' },
 };
 
 const TPL_NAMES: Record<string, Record<'es'|'en', string>> = {
@@ -92,7 +92,7 @@ export default function GeneratePage() {
   }, []);
 
   const currentTpl = TEMPLATES[selectedTemplate as keyof typeof TEMPLATES];
-  const meta = TPL_META[selectedTemplate] ?? { icon: '📄', color: '#e84d5b', est: '~' };
+  const meta = TPL_META[selectedTemplate] ?? { icon: '/icons/description.webp', color: '#e84d5b', est: '~' };
   const isProTpl = (currentTpl as { proOnly?: boolean })?.proOnly ?? false;
   const inputs: string[] = (currentTpl as { inputs: string[] })?.inputs ?? [];
 
@@ -183,7 +183,7 @@ export default function GeneratePage() {
           <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>01 · {t('¿Qué necesitas?', 'What do you need?')}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {([...Object.keys(TEMPLATES), 'video_preview'] as string[]).map((key) => {
-              const tplMeta = TPL_META[key] ?? { icon: '📄', color: '#e84d5b', est: '~' };
+              const tplMeta = TPL_META[key] ?? { icon: '/icons/description.webp', color: '#e84d5b', est: '~' };
               const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean } | undefined;
               const locked = key === 'video_preview' ? !isPro : (tpl?.proOnly && !isPro);
               const active = selectedTemplate === key;
@@ -204,7 +204,7 @@ export default function GeneratePage() {
                     </div>
                   )}
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xl">{tplMeta.icon}</span>
+                    <img src={tplMeta.icon} alt="" width={24} height={24} />
                     <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>~{tplMeta.est}</span>
                   </div>
                   <p className="font-display font-semibold text-sm" style={{ color: active ? '#fff' : '#d4d4d8' }}>

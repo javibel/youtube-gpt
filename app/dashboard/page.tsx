@@ -10,8 +10,8 @@ const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenera
 const PlaybackModal = lazy(() => import('@/components/PlaybackModal'));
 
 const TPL_ICONS: Record<string, string> = {
-  title: '🎯', description: '📄', caption: '💬', thumbnail: '🖼️',
-  script: '📝', shorts_hook: '⚡', series: '📚', niche_analysis: '🔍',
+  title: '/icons/title.webp', description: '/icons/description.webp', caption: '/icons/caption.webp', thumbnail: '/icons/thumbnail.webp',
+  script: '/icons/script.webp', shorts_hook: '/icons/lightning.webp', series: '/icons/clapperboard.webp', niche_analysis: '/icons/magnifying-glass.webp',
 };
 const TPL_LABELS: Record<string, { es: string; en: string }> = {
   title:         { es: 'Título',      en: 'Title' },
@@ -29,11 +29,11 @@ const TPL_COLORS: Record<string, string> = {
 };
 
 const QUICK_TPLS = [
-  { k: 'title',       icon: '🎯', color: '#e84d5b', est: '8s' },
-  { k: 'description', icon: '📄', color: '#00E5FF', est: '12s' },
-  { k: 'script',      icon: '📝', color: '#FFE800', est: '30s' },
-  { k: 'caption',     icon: '💬', color: '#FF00AA', est: '10s' },
-  { k: 'thumbnail',   icon: '🖼️', color: '#7CFF00', est: '5s' },
+  { k: 'title',       icon: '/icons/title.webp', color: '#e84d5b', est: '8s' },
+  { k: 'description', icon: '/icons/description.webp', color: '#00E5FF', est: '12s' },
+  { k: 'script',      icon: '/icons/script.webp', color: '#FFE800', est: '30s' },
+  { k: 'caption',     icon: '/icons/caption.webp', color: '#FF00AA', est: '10s' },
+  { k: 'thumbnail',   icon: '/icons/thumbnail.webp', color: '#7CFF00', est: '5s' },
 ];
 
 type Stats = {
@@ -482,14 +482,14 @@ function handleCopy(id: string, out: string) {
           {/* Stat cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: '⚡', label: t('Este mes', 'This month'), num: `${stats?.generationsThisMonth ?? 0}`, sub: `/ ${stats?.limit}`, color: '#e84d5b' },
-              { icon: '🔥', label: t('Racha', 'Streak'),        num: `${stats?.streak ?? 0}`,               sub: t('días', 'days'),    color: '#FFE800' },
-              { icon: '📊', label: t('Total generado', 'Total generated'), num: `${stats?.totalGenerations ?? 0}`, sub: '', color: '#00E5FF' },
-              { icon: '⏱',  label: t('Tiempo ahorrado', 'Time saved'),    num: `${Math.round((stats?.totalGenerations ?? 0) * 0.06)}h`, sub: t('aprox.', 'approx.'), color: '#7CFF00' },
+              { icon: '/icons/rocket.webp', label: t('Este mes', 'This month'), num: `${stats?.generationsThisMonth ?? 0}`, sub: `/ ${stats?.limit}`, color: '#e84d5b' },
+              { icon: '/icons/flame.webp', label: t('Racha', 'Streak'),        num: `${stats?.streak ?? 0}`,               sub: t('días', 'days'),    color: '#FFE800' },
+              { icon: '/icons/bar-chart.webp', label: t('Total generado', 'Total generated'), num: `${stats?.totalGenerations ?? 0}`, sub: '', color: '#00E5FF' },
+              { icon: '/icons/clock-fast.webp',  label: t('Tiempo ahorrado', 'Time saved'),    num: `${Math.round((stats?.totalGenerations ?? 0) * 0.06)}h`, sub: t('aprox.', 'approx.'), color: '#7CFF00' },
             ].map((s, i) => (
               <div key={i} className="yv-card p-5 relative">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-2xl" style={{ filter: `drop-shadow(0 0 6px ${s.color}40)` }}>{s.icon}</span>
+                  <img src={s.icon} alt="" width={28} height={28} style={{ filter: `drop-shadow(0 0 6px ${s.color}40)` }} />
                   <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>0{i + 1}</span>
                 </div>
                 <p className="font-display font-bold stat-num" style={{ fontSize: '36px', color: '#fff' }}>
@@ -569,13 +569,13 @@ function handleCopy(id: string, out: string) {
             const total = stats?.totalGenerations ?? 0;
             const streak = stats?.streak ?? 0;
             const badges = [
-              { id: 'first',   icon: '🎯', label: t('Primera gen',   'First gen'),    desc: t('Genera tu primer contenido',       'Generate your first content'),        earned: total >= 1 },
-              { id: 'ten',     icon: '📊', label: t('10 generados',  '10 generated'), desc: t('Alcanza 10 generaciones en total', 'Reach 10 total generations'),          earned: total >= 10 },
-              { id: 'fifty',   icon: '⚡', label: t('50 generados',  '50 generated'), desc: t('Alcanza 50 generaciones en total', 'Reach 50 total generations'),          earned: total >= 50 },
-              { id: 'streak',  icon: '🔥', label: t('Racha 7d',      '7d streak'),    desc: t('Usa YTubViral 7 días seguidos',    'Use YTubViral 7 days in a row'),       earned: streak >= 7 },
-              { id: 'pro',     icon: '👑', label: 'Pro',                              desc: t('Activa el plan Pro',               'Activate Pro plan'),                  earned: isPro },
-              { id: 'biz',     icon: '💎', label: 'Business',                         desc: t('Activa el plan Business',          'Activate Business plan'),             earned: isBusiness },
-              { id: 'yt',      icon: '📺', label: t('Canal YT',      'YT Channel'),   desc: t('Conecta tu canal de YouTube',      'Connect your YouTube channel'),       earned: isPro && ytConnected === true },
+              { id: 'first',   icon: '/icons/spark.webp', label: t('Primera gen',   'First gen'),    desc: t('Genera tu primer contenido',       'Generate your first content'),        earned: total >= 1 },
+              { id: 'ten',     icon: '/icons/bar-chart.webp', label: t('10 generados',  '10 generated'), desc: t('Alcanza 10 generaciones en total', 'Reach 10 total generations'),          earned: total >= 10 },
+              { id: 'fifty',   icon: '/icons/lightning.webp', label: t('50 generados',  '50 generated'), desc: t('Alcanza 50 generaciones en total', 'Reach 50 total generations'),          earned: total >= 50 },
+              { id: 'streak',  icon: '/icons/flame.webp', label: t('Racha 7d',      '7d streak'),    desc: t('Usa YTubViral 7 días seguidos',    'Use YTubViral 7 days in a row'),       earned: streak >= 7 },
+              { id: 'pro',     icon: '/icons/crown.webp', label: 'Pro',                              desc: t('Activa el plan Pro',               'Activate Pro plan'),                  earned: isPro },
+              { id: 'biz',     icon: '/icons/diamond.webp', label: 'Business',                         desc: t('Activa el plan Business',          'Activate Business plan'),             earned: isBusiness },
+              { id: 'yt',      icon: '/icons/yt-play.webp', label: t('Canal YT',      'YT Channel'),   desc: t('Conecta tu canal de YouTube',      'Connect your YouTube channel'),       earned: isPro && ytConnected === true },
             ];
             const earnedCount = badges.filter(b => b.earned).length;
             return (
@@ -597,7 +597,7 @@ function handleCopy(id: string, out: string) {
                         opacity: b.earned ? 1 : 0.35,
                         filter: b.earned ? 'none' : 'grayscale(1)',
                       }}>
-                      <span className="text-2xl">{b.icon}</span>
+                      <img src={b.icon} alt="" width={28} height={28} />
                       <p className="font-mono-jb text-[13px] text-center leading-tight" style={{ color: b.earned ? '#fff' : '#6b7280' }}>{b.label}</p>
                       {b.earned && <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--yv-brand)' }} />}
                     </div>
@@ -622,8 +622,8 @@ function handleCopy(id: string, out: string) {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 28px -10px ${tplItem.color}80`; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
                 >
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center text-2xl mb-4" style={{ background: tplItem.color + '22', border: `1px solid ${tplItem.color}` }}>
-                    {tplItem.icon}
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: tplItem.color + '22', border: `1px solid ${tplItem.color}` }}>
+                    <img src={tplItem.icon} alt="" width={24} height={24} />
                   </div>
                   <p className="font-display font-bold text-sm">{tpl(tplItem.k)}</p>
                   <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>~{tplItem.est}</p>
@@ -759,8 +759,8 @@ function handleCopy(id: string, out: string) {
                   return (
                     <div key={gen.id} className="hover:bg-white/[0.02] transition" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       <button onClick={() => setExpandedId(isOpen ? null : gen.id)} className="w-full text-left p-5 flex items-start gap-4">
-                        <span className="text-2xl w-10 h-10 rounded-lg flex items-center justify-center border border-white/10 bg-black shrink-0">
-                          {TPL_ICONS[gen.template] ?? '📄'}
+                        <span className="w-10 h-10 rounded-lg flex items-center justify-center border border-white/10 bg-black shrink-0">
+                          <img src={TPL_ICONS[gen.template] ?? '/icons/description.webp'} alt="" width={24} height={24} />
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -903,7 +903,7 @@ function handleCopy(id: string, out: string) {
                 <span style={{ color: 'var(--yv-text-3)' }}>{t('Miembro desde', 'Member since')}</span>
                 <span className="text-white">{data?.user?.createdAt ? new Date(data.user.createdAt).toLocaleDateString(dateLocale, { month: 'short', year: 'numeric' }) : '—'}</span>
               </div>
-              <div className="flex justify-between"><span style={{ color: 'var(--yv-text-3)' }}>{t('Racha', 'Streak')}</span><span style={{ color: 'var(--yv-brand)' }}>🔥 {stats?.streak ?? 0}{t('d', 'd')}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--yv-text-3)' }}>{t('Racha', 'Streak')}</span><span style={{ color: 'var(--yv-brand)' }} className="flex items-center gap-1"><img src="/icons/flame.webp" alt="" width={14} height={14} className="inline" /> {stats?.streak ?? 0}{t('d', 'd')}</span></div>
             </div>
           </div>
 
