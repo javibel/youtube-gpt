@@ -57,7 +57,7 @@ const svgOverlay = `
   <!-- CTA bar -->
   <rect x="420" y="510" width="360" height="44" rx="22" fill="#e84d5b"/>
   <text x="600" y="538" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="16" fill="white">
-    Join the waitlist — 50% off for life
+    Join the waitlist — 50% off for 1 year
   </text>
 
   <!-- Subtle border -->
