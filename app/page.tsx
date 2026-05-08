@@ -67,7 +67,7 @@ function TopNav({ lang }: { lang: Lang }) {
               {label}
             </a>
           ))}
-          <Link href="/launch" className="px-3 py-1.5 rounded-full bg-[#e84d5b] text-white font-bold transition hover:bg-[#d43d4b]">
+          <Link href="/launch" className="btn-shimmer px-3 py-1.5 rounded-full bg-[#e84d5b] text-white font-bold transition hover:bg-[#d43d4b]">
             {lang === 'en' ? 'Launch' : 'Launch'}
           </Link>
         </div>
