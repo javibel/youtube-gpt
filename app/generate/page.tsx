@@ -204,7 +204,7 @@ export default function GeneratePage() {
                     </div>
                   )}
                   <div className="flex items-center justify-between mb-3">
-                    <img src={tplMeta.icon} alt="" width={24} height={24} />
+                    <img src={tplMeta.icon} alt="" width={72} height={72} />
                     <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>~{tplMeta.est}</span>
                   </div>
                   <p className="font-display font-semibold text-sm" style={{ color: active ? '#fff' : '#d4d4d8' }}>

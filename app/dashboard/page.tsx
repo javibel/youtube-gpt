@@ -489,7 +489,7 @@ function handleCopy(id: string, out: string) {
             ].map((s, i) => (
               <div key={i} className="yv-card p-5 relative">
                 <div className="flex items-center justify-between mb-4">
-                  <img src={s.icon} alt="" width={28} height={28} style={{ filter: `drop-shadow(0 0 6px ${s.color}40)` }} />
+                  <img src={s.icon} alt="" width={84} height={84} style={{ filter: `drop-shadow(0 0 6px ${s.color}40)` }} />
                   <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>0{i + 1}</span>
                 </div>
                 <p className="font-display font-bold stat-num" style={{ fontSize: '36px', color: '#fff' }}>
@@ -597,7 +597,7 @@ function handleCopy(id: string, out: string) {
                         opacity: b.earned ? 1 : 0.35,
                         filter: b.earned ? 'none' : 'grayscale(1)',
                       }}>
-                      <img src={b.icon} alt="" width={28} height={28} />
+                      <img src={b.icon} alt="" width={84} height={84} />
                       <p className="font-mono-jb text-[13px] text-center leading-tight" style={{ color: b.earned ? '#fff' : '#6b7280' }}>{b.label}</p>
                       {b.earned && <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--yv-brand)' }} />}
                     </div>
@@ -622,8 +622,8 @@ function handleCopy(id: string, out: string) {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 28px -10px ${tplItem.color}80`; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
                 >
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: tplItem.color + '22', border: `1px solid ${tplItem.color}` }}>
-                    <img src={tplItem.icon} alt="" width={24} height={24} />
+                  <div className="w-20 h-20 rounded-lg flex items-center justify-center mb-4" style={{ background: tplItem.color + '22', border: `1px solid ${tplItem.color}` }}>
+                    <img src={tplItem.icon} alt="" width={72} height={72} />
                   </div>
                   <p className="font-display font-bold text-sm">{tpl(tplItem.k)}</p>
                   <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>~{tplItem.est}</p>
@@ -759,8 +759,8 @@ function handleCopy(id: string, out: string) {
                   return (
                     <div key={gen.id} className="hover:bg-white/[0.02] transition" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       <button onClick={() => setExpandedId(isOpen ? null : gen.id)} className="w-full text-left p-5 flex items-start gap-4">
-                        <span className="w-10 h-10 rounded-lg flex items-center justify-center border border-white/10 bg-black shrink-0">
-                          <img src={TPL_ICONS[gen.template] ?? '/icons/description.webp'} alt="" width={24} height={24} />
+                        <span className="w-20 h-20 rounded-lg flex items-center justify-center border border-white/10 bg-black shrink-0">
+                          <img src={TPL_ICONS[gen.template] ?? '/icons/description.webp'} alt="" width={72} height={72} />
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -897,13 +897,13 @@ function handleCopy(id: string, out: string) {
                 <p className="font-mono-jb text-[13px] truncate" style={{ color: 'var(--yv-text-3)' }}>{data?.user?.email}</p>
               </div>
             </div>
-            <div className="space-y-1.5 font-mono-jb text-[13px]">
+            <div className="space-y-1.5 font-mono-jb text-[14px]">
               <div className="flex justify-between"><span style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</span><span className="text-white">{isPro ? 'PRO ★' : 'FREE'}</span></div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--yv-text-3)' }}>{t('Miembro desde', 'Member since')}</span>
                 <span className="text-white">{data?.user?.createdAt ? new Date(data.user.createdAt).toLocaleDateString(dateLocale, { month: 'short', year: 'numeric' }) : '—'}</span>
               </div>
-              <div className="flex justify-between"><span style={{ color: 'var(--yv-text-3)' }}>{t('Racha', 'Streak')}</span><span style={{ color: 'var(--yv-brand)' }} className="flex items-center gap-1"><img src="/icons/flame.webp" alt="" width={14} height={14} className="inline" /> {stats?.streak ?? 0}{t('d', 'd')}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--yv-text-3)' }}>{t('Racha', 'Streak')}</span><span style={{ color: 'var(--yv-brand)' }} className="flex items-center gap-1"><img src="/icons/flame.webp" alt="" width={28} height={28} className="inline" /> {stats?.streak ?? 0}{t('d', 'd')}</span></div>
             </div>
           </div>
 
