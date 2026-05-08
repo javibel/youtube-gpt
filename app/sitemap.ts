@@ -17,6 +17,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { slug: 'competitor-analysis', date: '2026-05-08' },
     { slug: 'revenue-estimator', date: '2026-05-08' },
     { slug: 'ab-testing', date: '2026-05-08' },
+    { slug: 'learning-hub', date: '2026-05-08' },
+    { slug: 'trend-explorer', date: '2026-05-08' },
   ].map((f) => ({
     url: `${BASE_URL}/features/${f.slug}`,
     lastModified: new Date(f.date),
