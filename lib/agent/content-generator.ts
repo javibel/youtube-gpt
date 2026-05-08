@@ -125,7 +125,7 @@ Escribe un post de Facebook (150-250 palabras).
 - Tono conversacional, como si hablaras con amigos de confianza
 - Puede incluir una historia, un error, una reflexión, una duda real
 - Emojis solo si salen naturales, no los fuerces
-- Hashtags al final solo si son 3-4 muy relevantes, sino omítelos
+- SIEMPRE incluye 3-4 hashtags relevantes al final del post (ej: #youtube #contentcreator #creadores #youtuber)
 - Sin CTA de marketing, sin "¡no te lo pierdas!", sin urgencia artificial
 
 Devuelve SOLO el texto del post.
