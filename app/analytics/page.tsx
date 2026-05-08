@@ -108,19 +108,98 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Sparkline SVG for daily views
-  function renderSparkline(points: DailyPoint[], key: 'views' | 'estimatedMinutesWatched') {
+  // Interactive chart with hover tooltip
+  function InteractiveChart({ points, dataKey, label }: { points: DailyPoint[]; dataKey: 'views' | 'estimatedMinutesWatched'; label: string }) {
+    const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
     if (points.length < 2) return null;
-    const vals = points.map(p => p[key]);
+    const vals = points.map(p => p[dataKey]);
     const max = Math.max(...vals, 1);
     const w = 600;
-    const h = 100;
-    const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * w},${h - (v / max) * h}`).join(' ');
+    const h = 120;
+    const padding = 4;
+
+    const getX = (i: number) => padding + (i / (vals.length - 1)) * (w - padding * 2);
+    const getY = (v: number) => h - padding - (v / max) * (h - padding * 2);
+
+    const pts = vals.map((v, i) => `${getX(i)},${getY(v)}`).join(' ');
+    const fillPts = `${getX(0)},${h} ${pts} ${getX(vals.length - 1)},${h}`;
+
+    function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const relX = e.clientX - rect.left;
+      const pct = relX / rect.width;
+      const idx = Math.round(pct * (vals.length - 1));
+      const clamped = Math.max(0, Math.min(vals.length - 1, idx));
+      setHoverIdx(clamped);
+      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    }
+
+    const hoverPoint = hoverIdx !== null ? points[hoverIdx] : null;
+    const hoverVal = hoverIdx !== null ? vals[hoverIdx] : 0;
+
     return (
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-24" preserveAspectRatio="none">
-        <polyline points={pts} fill="none" stroke="#9B2020" strokeWidth="2" />
-        <polyline points={`0,${h} ${pts} ${w},${h}`} fill="rgba(155,32,32,0.15)" stroke="none" />
-      </svg>
+      <div className="relative">
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          className="w-full"
+          style={{ height: 140 }}
+          preserveAspectRatio="none"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          {/* Fill area */}
+          <polyline points={fillPts} fill="rgba(155,32,32,0.12)" stroke="none" />
+          {/* Line */}
+          <polyline points={pts} fill="none" stroke="#e84d5b" strokeWidth="2" />
+
+          {/* Vertical hover line */}
+          {hoverIdx !== null && (
+            <>
+              <line
+                x1={getX(hoverIdx)} y1={0}
+                x2={getX(hoverIdx)} y2={h}
+                stroke="rgba(232,77,91,0.4)" strokeWidth="1" strokeDasharray="3,3"
+              />
+              <circle
+                cx={getX(hoverIdx)} cy={getY(hoverVal)}
+                r="4" fill="#e84d5b" stroke="#fff" strokeWidth="1.5"
+              />
+            </>
+          )}
+        </svg>
+
+        {/* Tooltip */}
+        {hoverPoint && (
+          <div
+            className="absolute pointer-events-none z-10"
+            style={{
+              left: mousePos.x,
+              top: mousePos.y - 70,
+              transform: 'translateX(-50%)',
+            }}
+          >
+            <div
+              className="font-mono-jb text-[12px] rounded-lg px-3 py-2 shadow-lg"
+              style={{
+                background: 'var(--yv-bg-2)',
+                border: '1px solid var(--yv-border)',
+                color: 'var(--yv-text-1)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <div style={{ color: 'var(--yv-text-3)', marginBottom: 2 }}>{hoverPoint.day}</div>
+              <div style={{ fontWeight: 600 }}>{fmtNum(hoverVal)} {label}</div>
+              {dataKey === 'views' && (
+                <div style={{ color: 'var(--yv-text-3)', fontSize: 11 }}>
+                  +{hoverPoint.subscribersGained} subs · {fmtHours(hoverPoint.estimatedMinutesWatched)} watch
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -183,13 +262,13 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            {/* Daily views sparkline */}
+            {/* Daily views chart */}
             {data.daily.length > 2 && (
               <div className="yv-card p-5">
                 <h2 className="font-display font-bold text-lg mb-3" style={{ color: 'var(--yv-text-1)' }}>
                   {t('Visualizaciones diarias (90 días)', 'Daily views (90 days)')}
                 </h2>
-                {renderSparkline(data.daily, 'views')}
+                <InteractiveChart points={data.daily} dataKey="views" label={t('vistas', 'views')} />
                 <div className="flex justify-between font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
                   <span>{data.daily[0]?.day}</span>
                   <span>{data.daily[data.daily.length - 1]?.day}</span>
