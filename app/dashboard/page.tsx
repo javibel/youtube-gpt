@@ -500,29 +500,58 @@ function handleCopy(id: string, out: string) {
             ))}
           </div>
 
-          {/* Usage bar */}
+          {/* Usage */}
           <div className="yv-card p-6">
-            <div className="flex items-center justify-between mb-3">
-              <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
-                {t('Uso del plan', 'Plan usage')} · {isPro ? 'PRO' : 'FREE'}
-              </p>
-              <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>
-                {stats?.generationsThisMonth ?? 0}/{stats?.limit ?? 10} ·{' '}
-                <span style={{ color: 'var(--yv-brand)' }}>{stats?.remaining ?? 0} {t('restantes', 'remaining')}</span>
-              </p>
-            </div>
-            <div className="h-2 rounded-full bg-white/5 relative overflow-hidden">
-              <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                style={{
-                  width: `${usedPct}%`,
-                  background: usedPct >= 85 ? 'linear-gradient(90deg,#ef4444,#f97316)' : isPro ? 'linear-gradient(90deg,var(--yv-brand),#FF8A00)' : 'linear-gradient(90deg,var(--yv-brand),#f05c6a)',
-                  boxShadow: '0 0 12px rgba(232,77,91,0.5)',
-                }}
-              />
-            </div>
-            <div className="flex justify-between mt-2 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
-              <span>0</span><span>{Math.round((stats?.limit ?? 10) * 0.5)}</span><span>{stats?.limit ?? 10}</span>
-            </div>
+            {isBusiness ? (
+              /* Business: unlimited — show monthly counter */
+              <div className="flex items-center gap-6">
+                <div className="flex items-center justify-center w-20 h-20 rounded-full" style={{ border: '3px solid #00E5FF' }}>
+                  <span className="text-2xl font-bold" style={{ color: '#00E5FF' }}>{stats?.generationsThisMonth ?? 0}</span>
+                </div>
+                <div>
+                  <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-2)' }}>
+                    {t('Uso del plan', 'Plan usage')} · BUSINESS
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>
+                    {stats?.generationsThisMonth ?? 0} {t('generaciones este mes', 'generations this month')}
+                  </p>
+                  <p className="font-mono-jb text-[13px] mt-1 flex items-center gap-1.5" style={{ color: '#00E5FF' }}>
+                    <span style={{ fontSize: '16px' }}>∞</span> {t('Ilimitado', 'Unlimited')}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* Free/Pro: percentage circle */
+              <div className="flex items-center gap-6">
+                <div className="relative w-20 h-20 flex-shrink-0">
+                  <svg width="80" height="80" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+                    <circle cx="40" cy="40" r="34" fill="none"
+                      strokeWidth="6" strokeLinecap="round"
+                      stroke={usedPct >= 85 ? '#ef4444' : 'var(--yv-brand)'}
+                      strokeDasharray={`${2 * Math.PI * 34}`}
+                      strokeDashoffset={`${2 * Math.PI * 34 * (1 - usedPct / 100)}`}
+                      transform="rotate(-90 40 40)"
+                      style={{ transition: 'stroke-dashoffset 0.7s ease' }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-bold">{Math.round(usedPct)}%</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-2)' }}>
+                    {t('Uso del plan', 'Plan usage')} · {isPro ? 'PRO' : 'FREE'}
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>
+                    {stats?.generationsThisMonth ?? 0}/{stats?.limit ?? 10} {t('generaciones', 'generations')}
+                  </p>
+                  <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-brand)' }}>
+                    {stats?.remaining ?? 0} {t('restantes', 'remaining')}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Subscription active */}
