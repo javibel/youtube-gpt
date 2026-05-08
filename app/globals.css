@@ -189,7 +189,7 @@ body {
   --yv-radius-xl: 16px;
 
   /* Layout */
-  --yv-sidebar-w: 240px;
+  --yv-sidebar-w: 216px;
   --yv-content-max: 1440px;
   --yv-content-max-wide: 1680px;
   --yv-page-pad-x: 40px;
