@@ -95,7 +95,7 @@ function YvIcon({ name }: { name: string }) {
     image:  <><rect x="2.5" y="2.5" width="11" height="11" rx="1.5" {...s} /><circle cx="6" cy="6" r="1" {...s} /><path d="M3 12l3-3 3 3 2-2 2 2" {...s} /></>,
     wave:   <><path d="M2 8c1-2 2-2 3 0s2 2 3 0 2-2 3 0 2 2 3 0" {...s} /></>,
     users:  <><circle cx="6" cy="5.5" r="2" {...s} /><circle cx="11" cy="5.5" r="1.5" {...s} /><path d="M2.5 13c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5M10 9.5c1.5 0 3 1 3 3" {...s} /></>,
-    money:  <><circle cx="8" cy="8" r="5.5" {...s} /><path d="M8 5v6M6.5 6.5h2.5a1.2 1.2 0 010 2.4h-2a1.2 1.2 0 000 2.4H10" {...s} /></>,
+    money:  <><circle cx="8" cy="8" r="5.5" {...s} /><path d="M8 5v6M9.5 6.5H7.5a1.2 1.2 0 000 2.4h1a1.2 1.2 0 010 2.4H6.5" {...s} /></>,
     doc:    <><path d="M4 2h5l3 3v9H4V2zM9 2v3h3M6 8h4M6 11h4" {...s} /></>,
     clock:  <><circle cx="8" cy="8" r="5.5" {...s} /><path d="M8 5v3l2 1.5" {...s} /></>,
     bolt:   <><path d="M9 2L3.5 9.5h4L7 14l5.5-7.5h-4L9 2z" {...s} /></>,
