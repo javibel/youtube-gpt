@@ -103,7 +103,7 @@ function YvIcon({ name }: { name: string }) {
     team:   <><circle cx="5.5" cy="6" r="2" {...s} /><circle cx="10.5" cy="6" r="2" {...s} /><path d="M2 13c0-2 1.5-3.5 3.5-3.5S9 11 9 13M7 13c0-2 1.5-3.5 3.5-3.5S14 11 14 13" {...s} /></>,
     book:   <><path d="M2.5 3.5h4.5a1.5 1.5 0 011.5 1.5v8.5a1 1 0 00-1-1H2.5v-9zM13.5 3.5H9a1.5 1.5 0 00-1.5 1.5v8.5a1 1 0 011-1h5v-9z" {...s} /></>,
   };
-  return <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">{icons[name] || null}</svg>;
+  return <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true">{icons[name] || null}</svg>;
 }
 
 export default function Sidebar() {
@@ -285,9 +285,9 @@ export default function Sidebar() {
         }
         .yv-sidebar__item {
           display: flex; align-items: center; gap: 10px;
-          height: 30px; padding: 0 10px;
+          height: 34px; padding: 0 10px;
           border-radius: 6px;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 450;
           color: var(--yv-text-3);
           cursor: pointer;
@@ -305,7 +305,7 @@ export default function Sidebar() {
           box-shadow: inset 0 0 0 1px var(--yv-border);
         }
         .yv-sidebar__icon {
-          width: 16px; height: 16px;
+          width: 20px; height: 20px;
           display: flex; align-items: center; justify-content: center;
           color: var(--yv-text-4);
           flex-shrink: 0;
