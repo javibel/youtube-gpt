@@ -445,6 +445,7 @@ model LinkedinProspect {
   headline   String?
   followers  Int?
   status     String?  @default("discovered")
+  accountId  String?  @map("account_id")
   notes      String?
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @default(now()) @map("updated_at")
@@ -457,6 +458,7 @@ model LinkedinAction {
   type       String
   profileUrl String?  @map("profile_url")
   content    String?
+  accountId  String?  @map("account_id")
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("linkedin_actions")
@@ -467,6 +469,7 @@ model TwitterAction {
   type      String
   tweetUrl  String?  @map("tweet_url")
   content   String?
+  accountId String?  @map("account_id")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("twitter_actions")
@@ -477,6 +480,7 @@ model InstagramAction {
   type      String
   postUrl   String?  @map("post_url")
   content   String?
+  accountId String?  @map("account_id")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("instagram_actions")
@@ -487,9 +491,36 @@ model FacebookAction {
   type      String
   postUrl   String?  @map("post_url")
   content   String?
+  accountId String?  @map("account_id")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("facebook_actions")
+}
+
+model RedditAction {
+  id        Int      @id @default(autoincrement())
+  type      String
+  postUrl   String?  @map("post_url")
+  content   String?
+  accountId String?  @map("account_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reddit_actions")
+}
+
+model FollowupCheck {
+  id               Int      @id @default(autoincrement())
+  platform         String
+  originalActionId Int?     @map("original_action_id")
+  postUrl          String?  @map("post_url")
+  replyAuthor      String?  @map("reply_author")
+  replyContent     String?  @map("reply_content")
+  ourResponse      String?  @map("our_response")
+  responded        Boolean  @default(false)
+  accountId        String?  @map("account_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("followup_checks")
 }
 
 model CalendarEntry {
@@ -569,4 +600,14 @@ model Achievement {
   @@unique([userId, key])
   @@index([userId])
   @@map("achievements")
+}
+
+model LaunchWaitlist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("launch-page") // launch-page, twitter, reddit, etc.
+  referrer  String?  // UTM or referral info
+  createdAt DateTime @default(now())
+
+  @@map("launch_waitlist")
 }

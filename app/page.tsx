@@ -45,8 +45,8 @@ const STATIC_TESTIMONIALS = {
 
 function TopNav({ lang }: { lang: Lang }) {
   const nav = lang === 'en'
-    ? [['#how', 'How it works'], ['#tools', 'Tools'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear']]
-    : [['#how', 'Cómo funciona'], ['#tools', 'Herramientas'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo']];
+    ? [['#how', 'How it works'], ['#tools', 'Tools'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear'], ['/launch', 'Launch']]
+    : [['#how', 'Cómo funciona'], ['#tools', 'Herramientas'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo'], ['/launch', 'Lanzamiento']];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
@@ -653,6 +653,7 @@ function Footer({ lang }: { lang: Lang }) {
               <li><Link href="/gear" className="text-zinc-500 text-sm hover:text-white transition">{t('Equipo recomendado', 'Recommended gear')}</Link></li>
               <li><Link href="/extension" className="text-zinc-500 text-sm hover:text-white transition">{t('Extensión Chrome', 'Chrome Extension')}</Link></li>
               <li><a href="#pricing" className="text-zinc-500 text-sm hover:text-white transition">{t('Precios', 'Pricing')}</a></li>
+              <li><Link href="/launch" className="text-zinc-500 text-sm hover:text-white transition">{t('Lanzamiento', 'Launch')}</Link></li>
             </ul>
           </div>
           <div>

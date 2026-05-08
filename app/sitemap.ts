@@ -64,6 +64,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: `${BASE_URL}/launch`,
+      lastModified: new Date('2026-05-08'),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
       url: `${BASE_URL}/signup`,
       lastModified: new Date('2026-05-07'),
       changeFrequency: 'monthly',
