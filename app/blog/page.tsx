@@ -7,7 +7,7 @@ import { BLOG_POSTS, BLOG_CATEGORIES, type Lang } from '@/lib/blog-data';
 export const metadata: Metadata = {
   title: 'Blog — YTubViral | Estrategias, IA y crecimiento para YouTubers',
   description:
-    'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización. Escrito por creadores, para creadores.',
+    'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización. Practical guides on YouTube algorithm, viral titles, AI scripts, thumbnails & monetization.',
   alternates: { canonical: 'https://ytubviral.com/blog' },
   openGraph: {
     title: 'Blog — YTubViral',

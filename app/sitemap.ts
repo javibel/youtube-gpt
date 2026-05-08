@@ -12,15 +12,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   const featurePages: MetadataRoute.Sitemap = [
-    { slug: 'keyword-research', date: '2026-05-05' },
-    { slug: 'seo-score', date: '2026-05-05' },
-    { slug: 'competitor-analysis', date: '2026-05-05' },
-    { slug: 'revenue-estimator', date: '2026-05-05' },
-    { slug: 'ab-testing', date: '2026-05-05' },
+    { slug: 'keyword-research', date: '2026-05-08' },
+    { slug: 'seo-score', date: '2026-05-08' },
+    { slug: 'competitor-analysis', date: '2026-05-08' },
+    { slug: 'revenue-estimator', date: '2026-05-08' },
+    { slug: 'ab-testing', date: '2026-05-08' },
   ].map((f) => ({
     url: `${BASE_URL}/features/${f.slug}`,
     lastModified: new Date(f.date),
-    changeFrequency: 'monthly' as const,
+    changeFrequency: 'weekly' as const,
     priority: 0.9,
   }));
 
@@ -30,7 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: BASE_URL,
-      lastModified: new Date('2026-05-05'),
+      lastModified: new Date('2026-05-07'),
       changeFrequency: 'weekly',
       priority: 1,
     },
@@ -43,32 +43,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...blogEntries,
     ...featurePages,
     {
-      url: `${BASE_URL}/learn`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/trends`,
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'daily',
-      priority: 0.7,
-    },
-    {
       url: `${BASE_URL}/extension`,
-      lastModified: new Date('2026-03-01'),
+      lastModified: new Date('2026-05-07'),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
       url: `${BASE_URL}/gear`,
-      lastModified: new Date('2026-05-01'),
+      lastModified: new Date('2026-05-07'),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
       url: `${BASE_URL}/signup`,
-      lastModified: new Date('2026-04-01'),
+      lastModified: new Date('2026-05-07'),
       changeFrequency: 'monthly',
       priority: 0.9,
     },

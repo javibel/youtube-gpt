@@ -7,7 +7,7 @@ import { GEAR_ITEMS, GEAR_CATEGORIES, TIER_LABELS, TIER_COLORS, AMAZON_TAGS, typ
 export const metadata: Metadata = {
   title: 'Equipo para YouTubers — YTubViral | Las mejores herramientas para crear contenido',
   description:
-    'Guía completa del mejor equipo para YouTube: cámaras, micrófonos, iluminación, accesorios y software. Recomendaciones reales por nivel y presupuesto.',
+    'Guía completa del mejor equipo para YouTube: cámaras, micrófonos, iluminación, accesorios y software. Best YouTube gear guide: cameras, microphones, lighting, accessories & software by budget.',
   alternates: { canonical: 'https://ytubviral.com/gear' },
   openGraph: {
     title: 'Equipo para YouTubers — YTubViral',
