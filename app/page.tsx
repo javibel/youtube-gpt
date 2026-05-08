@@ -589,12 +589,23 @@ function FinalCTA({ lang }: { lang: Lang }) {
 
 function Footer({ lang }: { lang: Lang }) {
   const t = (es: string, en: string) => lang === 'en' ? en : es;
-  const toolLinks = [
-    { href: '/features/keyword-research', label: t('Keyword Research', 'Keyword Research') },
-    { href: '/features/seo-score', label: t('SEO Score', 'SEO Score') },
-    { href: '/features/competitor-analysis', label: t('Análisis de competencia', 'Competitor Analysis') },
-    { href: '/features/revenue-estimator', label: t('Estimador de ingresos', 'Revenue Estimator') },
+  const creationTools = [
+    { href: '/features/ai-generator', label: t('Generador IA', 'AI Generator') },
+    { href: '/features/keyword-research', label: 'Keyword Research' },
+    { href: '/features/seo-score', label: 'SEO Score' },
     { href: '/features/ab-testing', label: 'A/B Testing' },
+    { href: '/features/ai-coach', label: t('Coach IA', 'AI Coach') },
+    { href: '/features/content-calendar', label: t('Calendario', 'Calendar') },
+  ];
+  const analysisTools = [
+    { href: '/features/channel-analytics', label: 'Analytics' },
+    { href: '/features/competitor-analysis', label: t('Competidores', 'Competitors') },
+    { href: '/features/retention-analyzer', label: t('Retención', 'Retention') },
+    { href: '/features/video-predictor', label: t('Predictor', 'Predictor') },
+    { href: '/features/best-time', label: t('Mejor hora', 'Best Time') },
+    { href: '/features/revenue-estimator', label: t('Ingresos', 'Revenue') },
+    { href: '/features/trend-explorer', label: t('Tendencias', 'Trends') },
+    { href: '/features/learning-hub', label: t('Aprendizaje', 'Learning') },
   ];
 
   return (
@@ -608,13 +619,25 @@ function Footer({ lang }: { lang: Lang }) {
         </p>
       </div>
       <div className="border-t border-white/10 px-6 py-12 mt-8">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-10 mb-10">
           <div>
             <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
-              {t('Herramientas', 'Tools')}
+              {t('Creación', 'Creation')}
             </p>
             <ul className="space-y-2">
-              {toolLinks.map((l) => (
+              {creationTools.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-zinc-500 text-sm hover:text-white transition">{l.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+              {t('Análisis', 'Analysis')}
+            </p>
+            <ul className="space-y-2">
+              {analysisTools.map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="text-zinc-500 text-sm hover:text-white transition">{l.label}</Link>
                 </li>
@@ -628,6 +651,7 @@ function Footer({ lang }: { lang: Lang }) {
             <ul className="space-y-2">
               <li><Link href="/blog" className="text-zinc-500 text-sm hover:text-white transition">Blog</Link></li>
               <li><Link href="/gear" className="text-zinc-500 text-sm hover:text-white transition">{t('Equipo recomendado', 'Recommended gear')}</Link></li>
+              <li><Link href="/extension" className="text-zinc-500 text-sm hover:text-white transition">{t('Extensión Chrome', 'Chrome Extension')}</Link></li>
               <li><a href="#pricing" className="text-zinc-500 text-sm hover:text-white transition">{t('Precios', 'Pricing')}</a></li>
             </ul>
           </div>
