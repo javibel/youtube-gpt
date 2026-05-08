@@ -482,7 +482,7 @@ function handleCopy(id: string, out: string) {
           {/* Stat cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: '/icons/rocket.webp', label: t('Este mes', 'This month'), num: `${stats?.generationsThisMonth ?? 0}`, sub: `/ ${stats?.limit}`, color: '#e84d5b' },
+              { icon: '/icons/rocket.webp', label: t('Este mes', 'This month'), num: `${stats?.generationsThisMonth ?? 0}`, sub: isBusiness ? '' : `/ ${stats?.limit}`, color: '#e84d5b' },
               { icon: '/icons/flame.webp', label: t('Racha', 'Streak'),        num: `${stats?.streak ?? 0}`,               sub: t('días', 'days'),    color: '#FFE800' },
               { icon: '/icons/bar-chart.webp', label: t('Total generado', 'Total generated'), num: `${stats?.totalGenerations ?? 0}`, sub: '', color: '#00E5FF' },
               { icon: '/icons/clock-fast.webp',  label: t('Tiempo ahorrado', 'Time saved'),    num: `${Math.round((stats?.totalGenerations ?? 0) * 0.06)}h`, sub: t('aprox.', 'approx.'), color: '#7CFF00' },
