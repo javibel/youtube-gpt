@@ -45,8 +45,8 @@ const STATIC_TESTIMONIALS = {
 
 function TopNav({ lang }: { lang: Lang }) {
   const nav = lang === 'en'
-    ? [['#how', 'How it works'], ['#tools', 'Tools'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear'], ['/launch', 'Launch']]
-    : [['#how', 'Cómo funciona'], ['#tools', 'Herramientas'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo'], ['/launch', 'Lanzamiento']];
+    ? [['#how', 'How it works'], ['#tools', 'Tools'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear']]
+    : [['#how', 'Cómo funciona'], ['#tools', 'Herramientas'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo']];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
@@ -67,6 +67,9 @@ function TopNav({ lang }: { lang: Lang }) {
               {label}
             </a>
           ))}
+          <Link href="/launch" className="px-3 py-1.5 rounded-full bg-[#e84d5b] text-white font-bold transition hover:bg-[#d43d4b]">
+            {lang === 'en' ? 'Launch' : 'Launch'}
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
