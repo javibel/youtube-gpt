@@ -19,6 +19,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { slug: 'ab-testing', date: '2026-05-08' },
     { slug: 'learning-hub', date: '2026-05-08' },
     { slug: 'trend-explorer', date: '2026-05-08' },
+    { slug: 'ai-generator', date: '2026-05-08' },
+    { slug: 'best-time', date: '2026-05-08' },
+    { slug: 'retention-analyzer', date: '2026-05-08' },
+    { slug: 'video-predictor', date: '2026-05-08' },
+    { slug: 'content-calendar', date: '2026-05-08' },
+    { slug: 'channel-analytics', date: '2026-05-08' },
+    { slug: 'ai-coach', date: '2026-05-08' },
   ].map((f) => ({
     url: `${BASE_URL}/features/${f.slug}`,
     lastModified: new Date(f.date),
