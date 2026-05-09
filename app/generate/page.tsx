@@ -350,7 +350,7 @@ export default function GeneratePage() {
                 ) : selectedTemplate === 'video_preview' ? (
                   <>
                     <span>📺</span>
-                    {t('Crear Video Tips', 'Create Video Tips')}
+                    {t('Crear Vídeo Tips', 'Create Video Tips')}
                   </>
                 ) : (
                   <>

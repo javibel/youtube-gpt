@@ -89,11 +89,11 @@ export async function POST(req: NextRequest) {
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
         <tr><td style="padding:40px;">
-          <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">${isEn ? 'TEAM INVITATION' : 'INVITACION DE EQUIPO'}</p>
-          <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">${isEn ? `Join ${team.name}` : `Unete a ${team.name}`}</p>
+          <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">${isEn ? 'TEAM INVITATION' : 'INVITACIÓN DE EQUIPO'}</p>
+          <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">${isEn ? `Join ${team.name}` : `Únete a ${team.name}`}</p>
           <p style="margin:0 0 28px;font-size:15px;color:#71717a;line-height:1.7;">${isEn
     ? `${inviterName} has invited you to join their team on YTubViral. Click the button below to accept — the link expires in 7 days.`
-    : `${inviterName} te ha invitado a unirte a su equipo en YTubViral. Haz clic en el boton para aceptar — el enlace expira en 7 dias.`}</p>
+    : `${inviterName} te ha invitado a unirte a su equipo en YTubViral. Haz clic en el botón para aceptar — el enlace expira en 7 días.`}</p>
           <a href="${joinUrl}" style="display:inline-block;background:#e84d5b;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:6px;text-decoration:none;box-shadow:3px 3px 0 #000;">${isEn ? 'Join team' : 'Unirse al equipo'} &rarr;</a>
         </td></tr>
       </table>

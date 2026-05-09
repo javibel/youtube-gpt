@@ -147,7 +147,7 @@ export default function AbTestPage() {
             'You need to reconnect your YouTube channel to enable A/B testing. Go to your dashboard, disconnect and reconnect your channel.',
           ));
         } else if (data.error === 'active_test_exists') {
-          setError(t('Este video ya tiene un test activo.', 'This video already has an active test.'));
+          setError(t('Este vídeo ya tiene un test activo.', 'This video already has an active test.'));
         } else if (data.error === 'max_active_tests') {
           setError(t('Máximo 3 tests activos a la vez. Cancela o espera a que termine alguno.', 'Maximum 3 active tests at a time. Cancel or wait for one to finish.'));
         } else {
@@ -192,8 +192,8 @@ export default function AbTestPage() {
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">A/B Testing</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesion para usar A/B testing.', 'Sign in to use A/B testing.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesion', 'Sign in')}</a>
+          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para usar A/B testing.', 'Sign in to use A/B testing.')}</p>
+          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
     );
@@ -210,11 +210,11 @@ export default function AbTestPage() {
             <span className="yv-page-header__eyebrow">A/B TESTING</span>
             <h1 className="yv-page-header__title">
               {t('Encuentra el ', 'Find the ')}
-              <span style={{ color: 'var(--yv-brand)' }}>{t('titulo ganador.', 'winning title.')}</span>
+              <span style={{ color: 'var(--yv-brand)' }}>{t('título ganador.', 'winning title.')}</span>
             </h1>
             <p className="yv-page-header__desc">
               {t(
-                'Prueba 2 variantes de titulo en un video real. El sistema cambia automaticamente entre ellas y mide cual consigue mas vistas.',
+                'Prueba 2 variantes de título en un vídeo real. El sistema cambia automáticamente entre ellas y mide cuál consigue más vistas.',
                 'Test 2 title variants on a real video. The system automatically switches between them and measures which gets more views.',
               )}
             </p>
@@ -354,7 +354,7 @@ export default function AbTestPage() {
                         ))}
                       </div>
                       <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
-                        {t(`Test total: ${hours * 2}h (${Math.round(hours * 2 / 24)} dias)`, `Total test: ${hours * 2}h (${Math.round(hours * 2 / 24)} days)`)}
+                        {t(`Test total: ${hours * 2}h (${Math.round(hours * 2 / 24)} días)`, `Total test: ${hours * 2}h (${Math.round(hours * 2 / 24)} days)`)}
                       </p>
                     </div>
 
@@ -417,7 +417,7 @@ export default function AbTestPage() {
             </h3>
             <p className="font-mono-jb text-sm max-w-md mx-auto" style={{ color: 'var(--yv-text-3)' }}>
               {t(
-                'Selecciona un video arriba para probar 2 titulos diferentes y descubrir cual consigue mas vistas.',
+                'Selecciona un vídeo arriba para probar 2 títulos diferentes y descubrir cuál consigue más vistas.',
                 'Select a video above to test 2 different titles and discover which gets more views.',
               )}
             </p>

@@ -151,15 +151,15 @@ export default function CompetitorsPage() {
           </h1>
           <p className="text-lg max-w-2xl mx-auto mb-12 leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
             {t(
-              'Descubre que hace crecer a otros canales. Analiza sus videos mas exitosos, frecuencia de subida, keywords principales y estrategias de crecimiento.',
+              'Descubre qué hace crecer a otros canales. Analiza sus vídeos más exitosos, frecuencia de subida, keywords principales y estrategias de crecimiento.',
               'Discover what makes other channels grow. Analyze their most successful videos, upload frequency, main keywords and growth strategies.'
             )}
           </p>
 
           <div className="grid md:grid-cols-3 gap-5 mb-14 text-left">
             {[
-              { icon: '📈', title: t('Métricas del canal', 'Channel metrics'), desc: t('Suscriptores, vistas totales, frecuencia de publicación y país', 'Subscribers, total views, upload frequency and country') },
-              { icon: '🏆', title: t('Top videos', 'Top videos'), desc: t('Los videos con mas vistas, likes y engagement de cualquier canal', 'The most viewed, liked and engaging videos from any channel') },
+              { icon: '📈', title: t('Métricas del canal', 'Channel metrics'), desc: t('Suscriptores, vistas totales, frecuencia de publicación y país.', 'Subscribers, total views, upload frequency and country') },
+              { icon: '🏆', title: t('Top vídeos', 'Top videos'), desc: t('Los vídeos con más vistas, likes y engagement de cualquier canal', 'The most viewed, liked and engaging videos from any channel') },
               { icon: '🔑', title: t('Keywords y estrategia', 'Keywords & strategy'), desc: t('Las keywords que usa tu competencia para posicionar sus videos', 'The keywords your competition uses to rank their videos') },
             ].map(f => (
               <div key={f.title} className="yv-card p-5">
