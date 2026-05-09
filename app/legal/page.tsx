@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getLangClient } from '@/lib/get-lang-client';
 
 export default function LegalPage() {
   const [lang, setLang] = useState<'es'|'en'>('es');
-  useEffect(() => {
-    const s = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
-    if (s) setLang(s);
-  }, []);
+  useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   return (
@@ -24,22 +22,22 @@ export default function LegalPage() {
           </a>
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>LEGAL</p>
           <h1 className="font-display font-bold text-4xl text-white">{t('Aviso Legal', 'Legal Notice')}</h1>
-          <p className="text-zinc-500 text-sm mt-2 font-mono-jb">{t('Última actualización: abril de 2026', 'Last updated: April 2026')}</p>
+          <p className="text-zinc-500 text-sm mt-2 font-mono-jb">{t('Última actualización: mayo de 2026', 'Last updated: May 2026')}</p>
         </div>
 
         {[
           {
             title: t('Titular del sitio web', 'Website owner'),
             body: t(
-              'El presente sitio web ytubviral.com y el servicio YTubViral son gestionados por un particular con domicilio en España. Email de contacto: ytbeviral@gmail.com',
-              'This website ytubviral.com and the YTubViral service are managed by an individual based in Spain. Contact email: ytbeviral@gmail.com'
+              'El presente sitio web ytubviral.com y el servicio YTubViral son gestionados por:\n\nNombre: Javier Jimeno Plata\nDomicilio: Madrid, España\nEmail de contacto: hello@ytubviral.com\n\nConforme al artículo 10 de la Ley 34/2002 de Servicios de la Sociedad de la Información y de Comercio Electrónico (LSSI-CE).',
+              'This website ytubviral.com and the YTubViral service are managed by:\n\nName: Javier Jimeno Plata\nAddress: Madrid, Spain\nContact email: hello@ytubviral.com\n\nIn accordance with Article 10 of Law 34/2002 on Information Society Services and Electronic Commerce (LSSI-CE).'
             ),
           },
           {
             title: t('Objeto', 'Purpose'),
             body: t(
-              'YTubViral es un servicio de generación de contenido asistido por inteligencia artificial dirigido a creadores de contenido en YouTube. El servicio se presta a través de Internet y está disponible globalmente.',
-              'YTubViral is an AI-assisted content generation service aimed at YouTube content creators. The service is provided over the Internet and is available globally.'
+              'YTubViral es un servicio de generación y análisis de contenido asistido por inteligencia artificial dirigido a creadores de contenido en YouTube. Ofrece 14 herramientas que incluyen generación de títulos, scripts, descripciones SEO, análisis de competidores, keyword research, estimación de ingresos, A/B testing, calendario de contenido, análisis de retención, predicción de vídeos, coaching con IA, explorador de tendencias y centro de aprendizaje. El servicio se presta a través de Internet y está disponible globalmente.',
+              'YTubViral is an AI-assisted content generation and analysis service aimed at YouTube content creators. It offers 14 tools including title generation, scripts, SEO descriptions, competitor analysis, keyword research, revenue estimation, A/B testing, content calendar, retention analysis, video prediction, AI coaching, trend explorer and learning hub. The service is provided over the Internet and is available globally.'
             ),
           },
           {
@@ -50,34 +48,62 @@ export default function LegalPage() {
             ),
           },
           {
+            title: t('Uso de inteligencia artificial', 'Use of artificial intelligence'),
+            body: t(
+              'YTubViral utiliza modelos de inteligencia artificial proporcionados por Anthropic (Claude) para generar contenido. Los resultados generados son orientativos, pueden contener inexactitudes y no constituyen asesoramiento profesional. El usuario es el único responsable de revisar y validar el contenido generado antes de su publicación o uso.',
+              'YTubViral uses artificial intelligence models provided by Anthropic (Claude) to generate content. Generated results are indicative, may contain inaccuracies and do not constitute professional advice. The user is solely responsible for reviewing and validating generated content before publication or use.'
+            ),
+          },
+          {
             title: t('Exclusión de responsabilidad', 'Disclaimer'),
             body: t(
-              'YTubViral no garantiza la exactitud, completitud ni idoneidad del contenido generado por los modelos de inteligencia artificial. El usuario es el único responsable del uso que haga de dicho contenido. YTubViral no se responsabiliza de posibles daños derivados del uso del servicio, interrupciones técnicas, pérdida de datos o cualquier otro perjuicio directo o indirecto.',
-              'YTubViral does not guarantee the accuracy, completeness or suitability of content generated by AI models. The user is solely responsible for the use of such content. YTubViral is not liable for any damages arising from use of the service, technical interruptions, data loss or any other direct or indirect harm.'
+              'YTubViral no garantiza la exactitud, completitud ni idoneidad del contenido generado por los modelos de inteligencia artificial. El usuario es el único responsable del uso que haga de dicho contenido. YTubViral no se responsabiliza de posibles daños derivados del uso del servicio, interrupciones técnicas, pérdida de datos o cualquier otro perjuicio directo o indirecto. La responsabilidad máxima de YTubViral se limita al importe abonado por el usuario en los tres meses anteriores al hecho que origina la reclamación.',
+              'YTubViral does not guarantee the accuracy, completeness or suitability of content generated by AI models. The user is solely responsible for the use of such content. YTubViral is not liable for any damages arising from use of the service, technical interruptions, data loss or any other direct or indirect harm. YTubViral\'s maximum liability is limited to the amount paid by the user in the three months prior to the event giving rise to the claim.'
+            ),
+          },
+          {
+            title: t('Enlaces de afiliados', 'Affiliate links'),
+            body: t(
+              'La sección "Equipo recomendado" del sitio web contiene enlaces de afiliados de Amazon Associates. YTubViral puede recibir una comisión por las compras realizadas a través de estos enlaces, sin coste adicional para el usuario. Estas recomendaciones son editoriales y no están influenciadas por las comisiones.',
+              'The "Recommended Gear" section of the website contains affiliate links from Amazon Associates. YTubViral may receive a commission for purchases made through these links, at no additional cost to the user. These recommendations are editorial and are not influenced by commissions.'
             ),
           },
           {
             title: t('Legislación aplicable', 'Applicable law'),
             body: t(
-              'El presente aviso legal se rige por la legislación española, en particular por la Ley 34/2002 (LSSI-CE), el Reglamento (UE) 2016/679 (RGPD), la Ley Orgánica 3/2018 (LOPDGDD) y el Real Decreto Legislativo 1/2007 de defensa de los consumidores.',
-              'This legal notice is governed by Spanish law, in particular Law 34/2002 (LSSI-CE), Regulation (EU) 2016/679 (GDPR), Organic Law 3/2018 (LOPDGDD) and Royal Legislative Decree 1/2007 on consumer protection.'
+              'El presente aviso legal se rige por la legislación española, en particular por:\n\n• Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y de Comercio Electrónico (LSSI-CE).\n• Reglamento (UE) 2016/679 del Parlamento Europeo y del Consejo, de 27 de abril de 2016 (RGPD).\n• Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y Garantía de los Derechos Digitales (LOPDGDD).\n• Real Decreto Legislativo 1/2007, de 16 de noviembre, por el que se aprueba el texto refundido de la Ley General para la Defensa de los Consumidores y Usuarios.\n• Reglamento (UE) 2024/1689 del Parlamento Europeo y del Consejo (Reglamento de Inteligencia Artificial), en lo que resulte aplicable.',
+              'This legal notice is governed by Spanish law, in particular by:\n\n• Law 34/2002, of 11 July, on Information Society Services and Electronic Commerce (LSSI-CE).\n• Regulation (EU) 2016/679 of the European Parliament and of the Council, of 27 April 2016 (GDPR).\n• Organic Law 3/2018, of 5 December, on Personal Data Protection and Guarantee of Digital Rights (LOPDGDD).\n• Royal Legislative Decree 1/2007, of 16 November, approving the consolidated text of the General Law for the Defence of Consumers and Users.\n• Regulation (EU) 2024/1689 of the European Parliament and of the Council (AI Act), where applicable.'
             ),
           },
           {
             title: t('Resolución de litigios en línea', 'Online dispute resolution'),
             body: t(
-              'Conforme al Reglamento (UE) 524/2013, los usuarios residentes en la UE pueden acceder a la plataforma de resolución de litigios en línea de la Comisión Europea en: ec.europa.eu/consumers/odr',
-              'Pursuant to Regulation (EU) 524/2013, users resident in the EU may access the European Commission\'s online dispute resolution platform at: ec.europa.eu/consumers/odr'
+              'Conforme al Reglamento (UE) 524/2013, los usuarios residentes en la UE pueden acceder a la plataforma de resolución de litigios en línea de la Comisión Europea en:',
+              'Pursuant to Regulation (EU) 524/2013, users resident in the EU may access the European Commission\'s online dispute resolution platform at:'
             ),
           },
           {
             title: t('Contacto', 'Contact'),
-            body: t('Para cualquier consulta legal: ytbeviral@gmail.com', 'For any legal enquiries: ytbeviral@gmail.com'),
+            body: t(
+              'Para cualquier consulta legal: hello@ytubviral.com',
+              'For any legal enquiries: hello@ytubviral.com'
+            ),
           },
         ].map((s, i) => (
           <section key={i} className="space-y-3 pb-8 border-b border-white/5 last:border-0">
             <h2 className="font-display font-bold text-lg text-white">{s.title}</h2>
-            <p className="text-zinc-400 text-sm leading-relaxed">{s.body}</p>
+            <p className="text-zinc-400 text-sm leading-relaxed whitespace-pre-line">{s.body}</p>
+            {s.title.includes('litigios') || s.title.includes('dispute') ? (
+              <a
+                href="https://ec.europa.eu/consumers/odr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm font-mono-jb hover:text-zinc-300 transition"
+                style={{ color: 'var(--red)' }}
+              >
+                https://ec.europa.eu/consumers/odr ↗
+              </a>
+            ) : null}
           </section>
         ))}
 
