@@ -77,26 +77,37 @@ export async function POST(req: NextRequest) {
   const baseSlug = slugify(name.trim());
   let slug = baseSlug;
   let attempt = 0;
-  while (await prisma.team.findUnique({ where: { slug } })) {
-    attempt++;
-    slug = `${baseSlug}-${attempt}`;
-  }
+  let team;
 
-  const team = await prisma.team.create({
-    data: {
-      name: name.trim(),
-      slug,
-      members: {
-        create: { userId: session.user.id, role: 'owner' },
-      },
-    },
-    include: {
-      members: {
-        include: { user: { select: { id: true, name: true, email: true, image: true } } },
-      },
-      invitations: true,
-    },
-  });
+  // Retry loop handles race condition where slug is taken between check and create
+  for (;;) {
+    try {
+      team = await prisma.team.create({
+        data: {
+          name: name.trim(),
+          slug,
+          members: {
+            create: { userId: session.user.id, role: 'owner' },
+          },
+        },
+        include: {
+          members: {
+            include: { user: { select: { id: true, name: true, email: true, image: true } } },
+          },
+          invitations: true,
+        },
+      });
+      break;
+    } catch (e: unknown) {
+      const code = (e as { code?: string }).code;
+      if (code === 'P2002' && attempt < 5) {
+        attempt++;
+        slug = `${baseSlug}-${attempt}`;
+        continue;
+      }
+      throw e;
+    }
+  }
 
   return NextResponse.json({ team, role: 'owner' }, { status: 201 });
 }

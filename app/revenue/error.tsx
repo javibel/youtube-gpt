@@ -1,10 +1,15 @@
 'use client';
 
+import { getLangClient } from '@/lib/get-lang-client';
+
 export default function RevenueError({ error, reset }: { error: Error; reset: () => void }) {
+  const lang = getLangClient();
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-1)' }}>
       <div className="text-center max-w-md px-6">
-        <h1 className="font-display font-bold text-2xl text-white mb-4">Error en Ingresos</h1>
+        <h1 className="font-display font-bold text-2xl text-white mb-4">
+          {lang === 'en' ? 'Revenue Error' : 'Error en Ingresos'}
+        </h1>
         <p className="font-mono-jb text-sm mb-2" style={{ color: 'var(--yv-text-3)' }}>
           {error.message}
         </p>
@@ -12,7 +17,7 @@ export default function RevenueError({ error, reset }: { error: Error; reset: ()
           {error.stack}
         </pre>
         <button onClick={reset} className="btn-offset px-6 py-2.5 text-sm font-display rounded-lg">
-          Reintentar
+          {lang === 'en' ? 'Retry' : 'Reintentar'}
         </button>
       </div>
     </div>

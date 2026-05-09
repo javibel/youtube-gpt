@@ -297,7 +297,7 @@ export default function AbTestPage() {
                           onChange={e => setVariantA(e.target.value)}
                           maxLength={100}
                           className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
-                          placeholder={t('Titulo variante A...', 'Variant A title...')}
+                          placeholder={t('Título variante A...', 'Variant A title...')}
                         />
                         <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantA.length}/100</p>
                       </div>
@@ -310,7 +310,7 @@ export default function AbTestPage() {
                           onChange={e => setVariantB(e.target.value)}
                           maxLength={100}
                           className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
-                          placeholder={t('Titulo variante B...', 'Variant B title...')}
+                          placeholder={t('Título variante B...', 'Variant B title...')}
                         />
                         <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantB.length}/100</p>
                       </div>

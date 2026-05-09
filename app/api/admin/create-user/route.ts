@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { validatePassword } from '@/lib/password';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
@@ -14,6 +15,15 @@ export async function POST(req: NextRequest) {
   const { email, name, password } = await req.json();
   if (!email || !password) {
     return NextResponse.json({ error: 'Email y contraseña son requeridos' }, { status: 400 });
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'Email inválido' }, { status: 400 });
+  }
+
+  const pwError = validatePassword(password);
+  if (pwError) {
+    return NextResponse.json({ error: pwError }, { status: 400 });
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });

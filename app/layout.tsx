@@ -65,13 +65,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  const lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+
   return (
-    <html lang="es">
+    <html lang={lang}>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

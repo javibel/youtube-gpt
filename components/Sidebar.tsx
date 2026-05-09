@@ -166,7 +166,7 @@ export default function Sidebar() {
           <div className="yv-sidebar__avatar">{userInitial}</div>
           <div className="yv-sidebar__user-info">
             <div className="yv-sidebar__user-name">{userName}</div>
-            <div className="yv-sidebar__user-plan">{lang.toUpperCase()}</div>
+            <div className="yv-sidebar__user-plan">{session?.user?.email || ''}</div>
           </div>
           <button
             className="yv-sidebar__signout"

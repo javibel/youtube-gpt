@@ -41,6 +41,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
   }
 
+  // Per-email rate limit: max 3 resets per email per hour
+  const emailRlKey = `forgot-password:email:${email.toLowerCase().trim()}`;
+  const emailRl = await prisma.$queryRaw<{ hits: number }[]>`
+    INSERT INTO rate_limits (key, hits, window_start)
+    VALUES (${emailRlKey}, 1, NOW())
+    ON CONFLICT (key) DO UPDATE
+    SET
+      hits = CASE
+        WHEN rate_limits.window_start < NOW() - INTERVAL '1 hour'
+        THEN 1
+        ELSE rate_limits.hits + 1
+      END,
+      window_start = CASE
+        WHEN rate_limits.window_start < NOW() - INTERVAL '1 hour'
+        THEN NOW()
+        ELSE rate_limits.window_start
+      END
+    RETURNING hits
+  `;
+  if (Number(emailRl[0].hits) > 3) {
+    return NextResponse.json({ ok: true }); // Silent — don't reveal rate limit per email
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
 
   // Siempre devolvemos 200 para no revelar si el email existe
@@ -98,8 +121,11 @@ export async function POST(request: NextRequest) {
     </body></html>
   `;
 
-  sendTransactionalEmail({ to: email, subject, html })
-    .catch(err => console.error('forgot-password email error:', err));
+  try {
+    await sendTransactionalEmail({ to: email, subject, html });
+  } catch (err) {
+    console.error('forgot-password email error:', err);
+  }
 
   return NextResponse.json({ ok: true });
 }
