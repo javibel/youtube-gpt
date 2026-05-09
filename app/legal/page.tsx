@@ -29,8 +29,8 @@ export default function LegalPage() {
           {
             title: t('Titular del sitio web', 'Website owner'),
             body: t(
-              'El presente sitio web ytubviral.com y el servicio YTubViral son gestionados por:\n\nNombre: Javier Jimeno Plata\nDomicilio: Madrid, España\nEmail de contacto: hello@ytubviral.com\n\nConforme al artículo 10 de la Ley 34/2002 de Servicios de la Sociedad de la Información y de Comercio Electrónico (LSSI-CE).',
-              'This website ytubviral.com and the YTubViral service are managed by:\n\nName: Javier Jimeno Plata\nAddress: Madrid, Spain\nContact email: hello@ytubviral.com\n\nIn accordance with Article 10 of Law 34/2002 on Information Society Services and Electronic Commerce (LSSI-CE).'
+              'El presente sitio web ytubviral.com y el servicio YTubViral son gestionados por:\n\nNombre: Javier Jimeno Plata\nDomicilio: Barcelona, España\nEmail de contacto: hello@ytubviral.com\n\nConforme al artículo 10 de la Ley 34/2002 de Servicios de la Sociedad de la Información y de Comercio Electrónico (LSSI-CE).',
+              'This website ytubviral.com and the YTubViral service are managed by:\n\nName: Javier Jimeno Plata\nAddress: Barcelona, Spain\nContact email: hello@ytubviral.com\n\nIn accordance with Article 10 of Law 34/2002 on Information Society Services and Electronic Commerce (LSSI-CE).'
             ),
           },
           {

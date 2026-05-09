@@ -29,8 +29,8 @@ export default function TermsPage() {
           {
             title: t('1. Identificación del servicio', '1. Service identification'),
             body: t(
-              'YTubViral es un servicio web accesible en ytubviral.com que ofrece herramientas de generación y análisis de contenido asistidas por inteligencia artificial para creadores de contenido en YouTube. El servicio es gestionado por Javier Jimeno Plata, con domicilio en Madrid, España. Contacto: hello@ytubviral.com.',
-              'YTubViral is a web service accessible at ytubviral.com that offers AI-assisted content generation and analysis tools for YouTube content creators. The service is managed by Javier Jimeno Plata, based in Madrid, Spain. Contact: hello@ytubviral.com.'
+              'YTubViral es un servicio web accesible en ytubviral.com que ofrece herramientas de generación y análisis de contenido asistidas por inteligencia artificial para creadores de contenido en YouTube. El servicio es gestionado por Javier Jimeno Plata, con domicilio en Barcelona, España. Contacto: hello@ytubviral.com.',
+              'YTubViral is a web service accessible at ytubviral.com that offers AI-assisted content generation and analysis tools for YouTube content creators. The service is managed by Javier Jimeno Plata, based in Barcelona, Spain. Contact: hello@ytubviral.com.'
             ),
           },
           {
