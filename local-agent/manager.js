@@ -1,0 +1,309 @@
+'use strict';
+
+/**
+ * MANAGER AGENT — Coordinador y reporte ejecutivo
+ *
+ * 1. Lee los reportes JSON de todos los agentes del día
+ * 2. Claude sintetiza en un resumen ejecutivo
+ * 3. Envía email diario al fundador
+ *
+ * Output: reports/manager-YYYY-MM-DD.json + email
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { guardedCall, getStats, cleanOldFiles } = require('./api-guard');
+const { sendEmail } = require('./reports');
+const mem = require('./agent-memory');
+
+const REPORTS_DIR = path.join(__dirname, 'reports');
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+function readReport(agentName, date) {
+  const filePath = path.join(REPORTS_DIR, `${agentName}-${date}.json`);
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString('es-ES', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    timeZone: 'Europe/Madrid',
+  });
+}
+
+// ── Build summary from raw reports ──────────────────────────────────────────
+
+function buildRawSummary(date) {
+  const sections = [];
+
+  // Guardian
+  const guardian = readReport('guardian', date);
+  if (guardian) {
+    const s = guardian.summary || {};
+    sections.push({
+      agent: 'Guardian (Seguridad)',
+      status: (s.critical + s.high) > 0 ? 'ATENCIÓN' : 'OK',
+      data: `Critical: ${s.critical}, High: ${s.high}, Medium: ${s.medium}, Low: ${s.low}`,
+      ai: guardian.aiAnalysis || '',
+      duration: guardian.durationMs,
+    });
+  }
+
+  // Scout (puede ser del lunes anterior)
+  const scout = readReport('scout', date);
+  if (scout) {
+    sections.push({
+      agent: 'Scout (Competencia)',
+      status: scout.totalChanges > 0 ? 'CAMBIOS' : 'SIN CAMBIOS',
+      data: `Cambios detectados: ${scout.totalChanges}`,
+      ai: scout.aiAnalysis || '',
+      duration: scout.durationMs,
+    });
+  } else {
+    // Try to find most recent scout report
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const prevDate = d.toISOString().slice(0, 10);
+      const prevScout = readReport('scout', prevDate);
+      if (prevScout) {
+        sections.push({
+          agent: 'Scout (Competencia)',
+          status: 'ÚLTIMO REPORTE',
+          data: `Último scan: ${prevDate} — Cambios: ${prevScout.totalChanges}`,
+          ai: prevScout.aiAnalysis || '',
+          duration: prevScout.durationMs,
+        });
+        break;
+      }
+    }
+  }
+
+  // Watchdog (puede ser del lunes anterior)
+  const watchdog = readReport('watchdog', date);
+  if (watchdog) {
+    sections.push({
+      agent: 'Watchdog (Legal)',
+      status: watchdog.summary?.issues > 0 ? 'ISSUES' : 'OK',
+      data: `Issues: ${watchdog.summary?.issues || 0}, OK: ${watchdog.summary?.ok || 0}`,
+      ai: watchdog.aiAnalysis || '',
+      duration: watchdog.durationMs,
+    });
+  } else {
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const prevDate = d.toISOString().slice(0, 10);
+      const prevWatchdog = readReport('watchdog', prevDate);
+      if (prevWatchdog) {
+        sections.push({
+          agent: 'Watchdog (Legal)',
+          status: 'ÚLTIMO REPORTE',
+          data: `Último scan: ${prevDate} — Issues: ${prevWatchdog.summary?.issues || 0}`,
+          ai: prevWatchdog.aiAnalysis || '',
+          duration: prevWatchdog.durationMs,
+        });
+        break;
+      }
+    }
+  }
+
+  // API usage stats
+  const apiStats = getStats();
+  sections.push({
+    agent: 'API Guard (Consumo)',
+    status: apiStats.budgetUsedPercent > 80 ? 'ATENCIÓN' : 'OK',
+    data: `Llamadas: ${apiStats.callCount}, Tokens: ${apiStats.dailyTokensUsed}/${apiStats.dailyBudget} (${apiStats.budgetUsedPercent}%), Errores: ${apiStats.consecutiveErrors}`,
+    ai: '',
+    duration: 0,
+  });
+
+  return sections;
+}
+
+// ── Main ────────────────────────────────────────────────────────────────────
+
+async function runManager() {
+  console.log('[manager] Building daily executive report...');
+  const startTime = Date.now();
+  ensureDir(REPORTS_DIR);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const sections = buildRawSummary(today);
+
+  // ── Collect memory summaries from all agents ──────────────────────────
+  console.log('[manager] Reading agent memories...');
+  const agentMemories = {};
+  for (const agentId of ['sentinel', 'guardian', 'scout', 'watchdog']) {
+    agentMemories[agentId] = mem.getMemorySummary(agentId);
+  }
+
+  const results = {
+    timestamp: new Date().toISOString(),
+    agent: 'manager',
+    sections,
+    agentMemories,
+  };
+
+  // Build memory context for AI
+  let memoryBlock = '';
+  const allEscalated = [];
+  const allRegressions = [];
+  for (const [agentId, summary] of Object.entries(agentMemories)) {
+    if (summary.runCount === 0) continue;
+    memoryBlock += `\n${agentId.toUpperCase()}: ${summary.openIssues} issues abiertos, tendencia ${summary.trendDirection}, ${summary.escalatedIssues} escalados`;
+    for (const issue of summary.openIssueSummary) {
+      if (issue.escalated) allEscalated.push({ agent: agentId, ...issue });
+      if (issue.regression) allRegressions.push({ agent: agentId, ...issue });
+    }
+  }
+
+  if (allEscalated.length > 0) {
+    memoryBlock += `\n\nALERTA — ISSUES ESCALADOS (7+ dias sin resolver):`;
+    for (const e of allEscalated) {
+      memoryBlock += `\n- [${e.agent}/${e.severity}] ${e.description} (${e.daysSinceFirst} dias, ${e.occurrences} ocurrencias)`;
+    }
+  }
+  if (allRegressions.length > 0) {
+    memoryBlock += `\n\nALERTA — REGRESIONES (bugs que volvieron):`;
+    for (const r of allRegressions) {
+      memoryBlock += `\n- [${r.agent}/${r.severity}] ${r.description}`;
+    }
+  }
+
+  // AI synthesis
+  let executiveSummary = '';
+  const hasReports = sections.some(s => s.agent !== 'API Guard (Consumo)');
+
+  if (hasReports) {
+    console.log('[manager] Requesting AI executive summary...');
+    try {
+      const sectionTexts = sections.map(s =>
+        `${s.agent} [${s.status}]: ${s.data}${s.ai ? '\nAnálisis: ' + s.ai.slice(0, 300) : ''}`
+      ).join('\n\n');
+
+      const { text } = await guardedCall(
+        `Eres el Manager de un equipo de agentes de IA para YTubViral (SaaS para YouTubers).
+
+Estos son los reportes de hoy de tus agentes:
+
+${sectionTexts}
+
+MEMORIA DEL SISTEMA (historial de issues):${memoryBlock || '\nSin historial previo — primera ejecución.'}
+
+Escribe un RESUMEN EJECUTIVO para el CEO (Javier). En español:
+1. Estado general del sistema (1 línea)
+2. Acciones urgentes si las hay — PRIORIZA regresiones y escalados (máx 3 bullets)
+3. Estado de cada agente (1 línea cada uno) + tendencia (mejorando/empeorando/estable)
+4. Recomendación del día
+
+Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
+        { maxTokens: 600, agentId: 'manager', model: 'claude-haiku-4-5-20251001' }
+      );
+      executiveSummary = text;
+    } catch (err) {
+      executiveSummary = `Error generando resumen: ${err.message}`;
+    }
+  } else {
+    executiveSummary = 'No hay reportes de agentes disponibles hoy. Los agentes pueden no haber ejecutado aún.';
+  }
+
+  results.executiveSummary = executiveSummary;
+  results.durationMs = Date.now() - startTime;
+
+  // Save report
+  const reportFile = path.join(REPORTS_DIR, `manager-${today}.json`);
+  fs.writeFileSync(reportFile, JSON.stringify(results, null, 2));
+
+  // Build and send email
+  const dateStr = formatDate(new Date()).toUpperCase();
+  const apiStats = getStats();
+
+  let emailBody = `REPORTE EJECUTIVO DIARIO — ${dateStr}\n${'='.repeat(60)}\n\n`;
+  emailBody += `${executiveSummary}\n\n`;
+  emailBody += `${'─'.repeat(60)}\nDETALLE POR AGENTE\n${'─'.repeat(60)}\n\n`;
+
+  for (const section of sections) {
+    const icon = section.status === 'OK' || section.status === 'SIN CAMBIOS' ? '✅' : section.status === 'ATENCIÓN' || section.status === 'ISSUES' ? '⚠️' : 'ℹ️';
+    emailBody += `${icon} ${section.agent} [${section.status}]\n`;
+    emailBody += `   ${section.data}\n`;
+    if (section.ai) {
+      emailBody += `   AI: ${section.ai.slice(0, 200)}${section.ai.length > 200 ? '...' : ''}\n`;
+    }
+    emailBody += '\n';
+  }
+
+  // Memory section in email
+  if (allEscalated.length > 0 || allRegressions.length > 0) {
+    emailBody += `${'─'.repeat(60)}\n⚠️ ALERTAS DE MEMORIA\n${'─'.repeat(60)}\n\n`;
+    if (allRegressions.length > 0) {
+      emailBody += `🔴 REGRESIONES (bugs que volvieron):\n`;
+      for (const r of allRegressions) emailBody += `   - [${r.agent}] ${r.description}\n`;
+      emailBody += '\n';
+    }
+    if (allEscalated.length > 0) {
+      emailBody += `🟠 ESCALADOS (7+ dias sin resolver):\n`;
+      for (const e of allEscalated) emailBody += `   - [${e.agent}] ${e.description} (${e.daysSinceFirst}d)\n`;
+      emailBody += '\n';
+    }
+  }
+
+  // Memory trends
+  emailBody += `${'─'.repeat(60)}\nTENDENCIAS\n`;
+  for (const [agentId, summary] of Object.entries(agentMemories)) {
+    if (summary.runCount === 0) continue;
+    const arrow = summary.trendDirection === 'mejorando' ? '📈' : summary.trendDirection === 'empeorando' ? '📉' : '➡️';
+    emailBody += `   ${arrow} ${agentId}: ${summary.openIssues} issues abiertos — ${summary.trendDirection} (run #${summary.runCount})\n`;
+  }
+
+  emailBody += `\n${'─'.repeat(60)}\nCONSUMO API\n`;
+  emailBody += `   Llamadas hoy: ${apiStats.callCount}\n`;
+  emailBody += `   Tokens: ${apiStats.dailyTokensUsed} / ${apiStats.dailyBudget} (${apiStats.budgetUsedPercent}%)\n`;
+  emailBody += `   Circuit breaker: ${apiStats.circuitBreakerOpen ? 'ABIERTO ⚠️' : 'Cerrado ✅'}\n`;
+  emailBody += `\n${'='.repeat(60)}\nYTubViral Agent System — Manager v2.0 (con memoria)\n`;
+
+  try {
+    await sendEmail(`📋 Reporte Ejecutivo YTubViral — ${today}`, emailBody);
+    console.log('[manager] Executive report email sent');
+    results.emailSent = true;
+  } catch (err) {
+    console.error('[manager] Failed to send email:', err.message);
+    results.emailSent = false;
+    results.emailError = err.message;
+  }
+
+  // Save Manager memory
+  const managerMemory = mem.loadMemory('manager');
+  mem.recordTrend(managerMemory, {
+    agentsReporting: sections.filter(s => s.agent !== 'API Guard (Consumo)').length,
+    totalEscalated: allEscalated.length,
+    totalRegressions: allRegressions.length,
+    emailSent: results.emailSent,
+    apiCallsToday: apiStats.callCount,
+    apiTokensToday: apiStats.dailyTokensUsed,
+  });
+  mem.recordRun(managerMemory, results.durationMs);
+  mem.saveMemory('manager', managerMemory);
+
+  // Clean old reports and logs (retain 30 days)
+  try {
+    const cleaned = cleanOldFiles();
+    results.filesCleaned = cleaned;
+  } catch (err) {
+    console.warn('[manager] Cleanup error:', err.message);
+  }
+
+  console.log(`[manager] Done (${results.durationMs}ms)`);
+  return results;
+}
+
+module.exports = { runManager };

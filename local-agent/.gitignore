@@ -1,0 +1,33 @@
+# Secrets — NEVER commit to public repo
+.env
+*.env.*
+
+# Session cookies (full account access)
+*-cookies.json
+cookies/
+
+# Browser profiles (session data, passwords)
+chrome-profile/
+chrome-profiles/
+
+# Persona identities
+personas.json
+
+# Runtime data
+node_modules/
+logs/
+reports/
+memory/
+debug/
+.next/
+
+# Lock files (regenerable)
+package-lock.json
+
+# Node binary (local copy)
+node
+
+# Windows/system
+*.ico
+*.lnk
+Thumbs.db

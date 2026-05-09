@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Demo Script — YTubViral</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; color: #e4e4e7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; padding: 40px 20px 80px; }
+  .container { max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+  .subtitle { color: #71717a; font-size: 14px; margin-bottom: 40px; }
+  .meta { display: flex; gap: 24px; margin-bottom: 40px; flex-wrap: wrap; }
+  .meta-item { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 16px 20px; flex: 1; min-width: 200px; }
+  .meta-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #71717a; margin-bottom: 4px; }
+  .meta-value { font-size: 14px; color: #a1a1aa; }
+
+  .scene { background: #18181b; border: 1px solid #27272a; border-radius: 16px; margin-bottom: 24px; overflow: hidden; }
+  .scene-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #27272a; }
+  .scene-num { background: #e84d5b; color: #fff; font-size: 12px; font-weight: 700; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .scene-title { font-size: 18px; font-weight: 700; color: #fff; margin-left: 12px; flex: 1; }
+  .scene-time { font-size: 13px; color: #71717a; font-family: monospace; background: #27272a; padding: 4px 10px; border-radius: 6px; }
+  .scene-body { padding: 20px 24px; }
+  .overlay { background: rgba(232, 77, 91, 0.1); border: 1px solid rgba(232, 77, 91, 0.3); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; font-size: 15px; color: #e84d5b; font-weight: 600; }
+  .overlay::before { content: 'TEXT OVERLAY'; font-size: 10px; letter-spacing: 0.1em; display: block; color: #71717a; margin-bottom: 2px; font-weight: 400; }
+  .steps { list-style: none; }
+  .steps li { padding: 8px 0; padding-left: 24px; position: relative; color: #a1a1aa; font-size: 14px; }
+  .steps li::before { content: ''; position: absolute; left: 8px; top: 16px; width: 6px; height: 6px; border-radius: 50%; background: #3f3f46; }
+  .steps li strong { color: #e4e4e7; }
+
+  .tips { background: #18181b; border: 1px solid #27272a; border-radius: 16px; padding: 24px; margin-top: 40px; }
+  .tips h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 16px; }
+  .tips ol { padding-left: 20px; }
+  .tips li { padding: 6px 0; color: #a1a1aa; font-size: 14px; }
+  .tips li strong { color: #e4e4e7; }
+
+  .software { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+  .sw-pill { background: #27272a; border-radius: 8px; padding: 10px 16px; font-size: 13px; color: #a1a1aa; }
+  .sw-pill strong { color: #fff; }
+
+  .divider { height: 1px; background: #27272a; margin: 40px 0; }
+
+  @media print {
+    body { background: #fff; color: #222; }
+    .scene { border-color: #ddd; background: #f9f9f9; }
+    .scene-header { border-color: #ddd; }
+    .overlay { background: #fff0f0; border-color: #e84d5b; }
+    .tips { background: #f9f9f9; border-color: #ddd; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Video Demo Script</h1>
+<p class="subtitle">YTubViral — Product Hunt Launch Video (60–90 seconds)</p>
+
+<div class="meta">
+  <div class="meta-item">
+    <div class="meta-label">Format</div>
+    <div class="meta-value">Screen recording + text overlays. No voiceover. Background music (lo-fi / electronic).</div>
+  </div>
+  <div class="meta-item">
+    <div class="meta-label">Resolution</div>
+    <div class="meta-value">Record at 1920x1080. Export 1080p MP4.</div>
+  </div>
+  <div class="meta-item">
+    <div class="meta-label">Browser</div>
+    <div class="meta-value">Chrome, full screen, logged in at ytubviral.com, language: English.</div>
+  </div>
+</div>
+
+<!-- SCENE 1 -->
+<div class="scene">
+  <div class="scene-header">
+    <div style="display:flex;align-items:center"><div class="scene-num">1</div><div class="scene-title">Hook</div></div>
+    <div class="scene-time">0:00 – 0:05</div>
+  </div>
+  <div class="scene-body">
+    <div class="overlay">14 AI tools. One platform. Built for YouTubers.</div>
+    <ul class="steps">
+      <li>Show the landing page hero for 2 seconds</li>
+      <li>Quick scroll down to the tool grid section</li>
+      <li>Pause on the tool grid (14 tools visible)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SCENE 2 -->
+<div class="scene">
+  <div class="scene-header">
+    <div style="display:flex;align-items:center"><div class="scene-num">2</div><div class="scene-title">AI Generator</div></div>
+    <div class="scene-time">0:05 – 0:18</div>
+  </div>
+  <div class="scene-body">
+    <div class="overlay">Generate titles, scripts, descriptions in seconds</div>
+    <ul class="steps">
+      <li>Click <strong>"Generate"</strong> in the sidebar</li>
+      <li>Select the <strong>"Title"</strong> template (red border)</li>
+      <li>Type in the topic field: <strong>"how to edit videos like a pro"</strong></li>
+      <li>Click <strong>"Generate"</strong></li>
+      <li>Show the results loading and appearing (5 title suggestions)</li>
+      <li>Quick pause on the results</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SCENE 3 -->
+<div class="scene">
+  <div class="scene-header">
+    <div style="display:flex;align-items:center"><div class="scene-num">3</div><div class="scene-title">SEO Score</div></div>
+    <div class="scene-time">0:18 – 0:28</div>
+  </div>
+  <div class="scene-body">
+    <div class="overlay">Analyze any video's SEO score</div>
+    <ul class="steps">
+      <li>Click <strong>"SEO Score"</strong> in the sidebar</li>
+      <li>Click <strong>"Analyze my videos"</strong></li>
+      <li>Show the video list with scores (22, 64, 64)</li>
+      <li>Click on one video to expand the checklist</li>
+      <li>Pause on the detailed SEO checklist (green checks, red crosses)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SCENE 4 -->
+<div class="scene">
+  <div class="scene-header">
+    <div style="display:flex;align-items:center"><div class="scene-num">4</div><div class="scene-title">Keyword Research</div></div>
+    <div class="scene-time">0:28 – 0:38</div>
+  </div>
+  <div class="scene-body">
+    <div class="overlay">Find low-competition keywords</div>
+    <ul class="steps">
+      <li>Click <strong>"Keywords"</strong> in the sidebar</li>
+      <li>Type <strong>"vegan recipes"</strong> in the search box</li>
+      <li>Click <strong>"Analyze"</strong></li>
+      <li>Show the keyword results table (volume, competition, top videos)</li>
+      <li>Pause briefly on the data</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SCENE 5 -->
+<div class="scene">
+  <div class="scene-header">
+    <div style="display:flex;align-items:center"><div class="scene-num">5</div><div class="scene-title">Dashboard</div></div>
+    <div class="scene-time">0:38 – 0:48</div>
+  </div>
+  <div class="scene-body">
+    <div class="overlay">Your channel, all in one place</div>
+    <ul class="steps">
+      <li>Click <strong>"Dashboard"</strong> in the sidebar</li>
+      <li>Show the full dashboard: stats cards (generations, streak, total, time saved)</li>
+      <li>Scroll down slightly to show the YouTube channel widget (subs, views, videos)</li>
+      <li>Show the achievements/badges row</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SCENE 6 -->
+<div class="scene">
+  <div class="scene-header">
+    <div style="display:flex;align-items:center"><div class="scene-num">6</div><div class="scene-title">Content Calendar</div></div>
+    <div class="scene-time">0:48 – 0:55</div>
+  </div>
+  <div class="scene-body">
+    <div class="overlay">Plan your uploads with AI</div>
+    <ul class="steps">
+      <li>Click <strong>"Calendar"</strong> in the sidebar</li>
+      <li>Show the monthly calendar with colored entries</li>
+      <li>Click <strong>"AI Scheduler"</strong> button (top right)</li>
+      <li>Show the AI suggesting upload slots</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SCENE 7 -->
+<div class="scene">
+  <div class="scene-header">
+    <div style="display:flex;align-items:center"><div class="scene-num">7</div><div class="scene-title">Quick Tool Montage</div></div>
+    <div class="scene-time">0:55 – 1:05</div>
+  </div>
+  <div class="scene-body">
+    <div class="overlay">And 8 more tools...</div>
+    <ul class="steps">
+      <li>Quick 1.5-second clips of each (just the page header, no interaction):</li>
+      <li><strong>Competitors</strong> — "Analyse your competition"</li>
+      <li><strong>Trends</strong> — trend explorer view</li>
+      <li><strong>AI Coach</strong> — coach interface</li>
+      <li><strong>Retention</strong> — retention analyzer</li>
+      <li><strong>A/B Test</strong> — A/B testing page</li>
+      <li><strong>Revenue</strong> — revenue estimator</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SCENE 8 -->
+<div class="scene">
+  <div class="scene-header">
+    <div style="display:flex;align-items:center"><div class="scene-num">8</div><div class="scene-title">CTA / Close</div></div>
+    <div class="scene-time">1:05 – 1:15</div>
+  </div>
+  <div class="scene-body">
+    <div class="overlay">Free plan available. Pro from &euro;9.99/mo</div>
+    <ul class="steps">
+      <li>Show the pricing section on the landing page (scroll to #pricing)</li>
+      <li>Pause 2 seconds</li>
+    </ul>
+    <div class="overlay" style="margin-top:16px;text-align:center;font-size:20px;">YTubViral.com<br><span style="font-size:15px;color:#a1a1aa;">Try it free &rarr;</span></div>
+    <ul class="steps">
+      <li>Hold for 3 seconds</li>
+      <li>Fade to black</li>
+    </ul>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- TIPS -->
+<div class="tips">
+  <h2>Recording Tips</h2>
+  <ol>
+    <li><strong>Clean the browser:</strong> Close all other tabs, hide bookmarks bar, disable extensions with badges</li>
+    <li><strong>Use a clean profile or incognito:</strong> No personal data visible</li>
+    <li><strong>Mouse movements:</strong> Smooth and deliberate, not rushed. Use a mouse, not trackpad</li>
+    <li><strong>Wait for loads:</strong> Don't click before the page has fully loaded</li>
+    <li><strong>Screen resolution:</strong> 1920x1080 or 2560x1440 (scales down well)</li>
+    <li><strong>Music:</strong> Use royalty-free music — "Chill Electronic" from YouTube Audio Library, or lo-fi beats from Pixabay. Keep it low volume.</li>
+    <li><strong>Text overlays:</strong> Add in post. White text, semi-transparent dark background, bottom-left or top-center.</li>
+    <li><strong>Transitions:</strong> Simple crossfade between scenes (0.3s). No fancy effects.</li>
+    <li><strong>Total time target:</strong> 70–80 seconds ideal. Under 90 max.</li>
+  </ol>
+
+  <h2 style="margin-top:24px;">Editing Software (free)</h2>
+  <div class="software">
+    <div class="sw-pill"><strong>CapCut Desktop</strong> — Easiest for overlays</div>
+    <div class="sw-pill"><strong>DaVinci Resolve</strong> — Professional, free tier</div>
+    <div class="sw-pill"><strong>Clipchamp</strong> — Built into Windows 11</div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
