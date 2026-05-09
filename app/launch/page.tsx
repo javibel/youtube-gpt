@@ -201,7 +201,7 @@ export default function LaunchPage() {
         )}
 
         {/* Tools grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 mb-16">
+        <div className="flex flex-wrap justify-center gap-2.5 mb-16">
           {t.tools.map((tool, i) => (
             <div
               key={i}
