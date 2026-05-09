@@ -94,6 +94,7 @@ export default function LaunchPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
+          lang,
           source: params.get('ref') || 'launch-page',
           referrer: params.get('utm_source') || document.referrer || null,
         }),
