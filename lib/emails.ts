@@ -101,8 +101,13 @@ export function waitlistWelcomeEmail(lang: 'es' | 'en'): string {
           </p>
           <p style="margin:0 0 24px;font-size:15px;color:#71717a;line-height:1.7;">
             ${isEn
-              ? 'Thanks for joining the YTubViral waitlist. We\'re preparing something special for launch day — including an exclusive discount only for early supporters like you.'
-              : 'Gracias por unirte a la waitlist de YTubViral. Estamos preparando algo especial para el día del lanzamiento — incluyendo un descuento exclusivo solo para early supporters como tú.'}
+              ? 'Hey! I\'m Javier, the founder of YTubViral. I wanted to personally thank you for joining the waitlist — it means a lot, especially at this early stage.'
+              : '¡Hola! Soy Javier, el fundador de YTubViral. Quería agradecerte personalmente por unirte a la waitlist — significa mucho, especialmente en esta etapa inicial.'}
+          </p>
+          <p style="margin:0 0 24px;font-size:15px;color:#71717a;line-height:1.7;">
+            ${isEn
+              ? 'We\'re preparing something special for launch day — including an exclusive discount only for early supporters like you.'
+              : 'Estamos preparando algo especial para el día del lanzamiento — incluyendo un descuento exclusivo solo para early supporters como tú.'}
           </p>
           <div style="background:rgba(232,77,91,0.08);border:1px solid rgba(232,77,91,0.25);border-radius:8px;padding:20px;">
             <p style="margin:0 0 8px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">
@@ -114,10 +119,19 @@ export function waitlistWelcomeEmail(lang: 'es' | 'en'): string {
                 : '&#10003; 50% de descuento en planes Pro y Business durante 1 año<br>&#10003; Cupón exclusivo el día del lanzamiento<br>&#10003; Acceso anticipado antes que nadie'}
             </p>
           </div>
-          <p style="margin:24px 0 0;font-size:14px;color:#71717a;line-height:1.7;">
+          <p style="margin:24px 0 0;font-size:15px;color:#71717a;line-height:1.7;">
             ${isEn
               ? 'In the meantime, you can already <a href="https://ytubviral.com" style="color:#e84d5b;text-decoration:none;font-weight:600;">try YTubViral for free</a> — 14 AI tools to grow your YouTube channel.'
               : 'Mientras tanto, ya puedes <a href="https://ytubviral.com" style="color:#e84d5b;text-decoration:none;font-weight:600;">probar YTubViral gratis</a> — 14 herramientas de IA para hacer crecer tu canal de YouTube.'}
+          </p>
+          <p style="margin:24px 0 0;font-size:15px;color:#71717a;line-height:1.7;">
+            ${isEn
+              ? 'Thanks again for your trust. I\'ll keep you posted!'
+              : '¡Gracias de nuevo por tu confianza! Te mantendré informado.'}
+          </p>
+          <p style="margin:20px 0 0;font-size:15px;color:#ffffff;line-height:1.7;">
+            Javier Jimeno<br>
+            <span style="color:#71717a;font-size:13px;">${isEn ? 'Founder' : 'Fundador'}, <a href="https://ytubviral.com" style="color:#e84d5b;text-decoration:none;">YTubViral.com</a></span>
           </p>
         </td></tr>
 ${footer(isEn)}`;
@@ -135,10 +149,15 @@ export function launchDayEmail(lang: 'es' | 'en', phUrl: string, couponCode: str
           <p style="margin:0 0 8px;font-size:24px;font-weight:800;color:#ffffff;">
             ${isEn ? 'Launch day is here!' : '¡El día del lanzamiento ha llegado!'}
           </p>
+          <p style="margin:0 0 16px;font-size:15px;color:#71717a;line-height:1.7;">
+            ${isEn
+              ? 'Hey! It\'s Javier. The day has finally come — YTubViral is now live on Product Hunt.'
+              : '¡Hola! Soy Javier. El día ha llegado — YTubViral ya está en vivo en Product Hunt.'}
+          </p>
           <p style="margin:0 0 28px;font-size:15px;color:#71717a;line-height:1.7;">
             ${isEn
-              ? 'YTubViral is now live on Product Hunt. As an early supporter, you get an exclusive deal — but it expires in 48 hours.'
-              : 'YTubViral ya está en Product Hunt. Como early supporter, tienes una oferta exclusiva — pero expira en 48 horas.'}
+              ? 'As an early supporter, you get an exclusive deal that I\'m not offering anywhere else — but it expires in 48 hours.'
+              : 'Como early supporter, tienes una oferta exclusiva que no estoy ofreciendo en ningún otro sitio — pero expira en 48 horas.'}
           </p>
 
           <div style="background:rgba(232,77,91,0.08);border:1px solid rgba(232,77,91,0.25);border-radius:8px;padding:24px;text-align:center;margin-bottom:28px;">
@@ -176,10 +195,19 @@ export function launchDayEmail(lang: 'es' | 'en', phUrl: string, couponCode: str
           <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:16px;">
             <p style="margin:0;font-size:13px;color:#a1a1aa;line-height:1.6;">
               ${isEn
-                ? 'Your vote on Product Hunt helps us reach more creators. It takes 10 seconds and means a lot. Thank you!'
-                : 'Tu voto en Product Hunt nos ayuda a llegar a más creadores. Son 10 segundos y significa mucho. ¡Gracias!'}
+                ? 'Your vote on Product Hunt helps us reach more creators. It takes 10 seconds and means a lot.'
+                : 'Tu voto en Product Hunt nos ayuda a llegar a más creadores. Son 10 segundos y significa mucho.'}
             </p>
           </div>
+          <p style="margin:24px 0 0;font-size:15px;color:#71717a;line-height:1.7;">
+            ${isEn
+              ? 'Thank you for being part of this from the beginning. I truly appreciate your support.'
+              : 'Gracias por estar desde el principio. De verdad que aprecio tu apoyo.'}
+          </p>
+          <p style="margin:20px 0 0;font-size:15px;color:#ffffff;line-height:1.7;">
+            Javier Jimeno<br>
+            <span style="color:#71717a;font-size:13px;">${isEn ? 'Founder' : 'Fundador'}, <a href="https://ytubviral.com" style="color:#e84d5b;text-decoration:none;">YTubViral.com</a></span>
+          </p>
         </td></tr>
 ${footer(isEn)}`;
 }
