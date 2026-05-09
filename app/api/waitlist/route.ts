@@ -35,15 +35,19 @@ export async function POST(request: NextRequest) {
 
   const count = await prisma.launchWaitlist.count();
 
-  // Send welcome email (fire-and-forget — don't block the response)
+  // Send welcome email (must await — serverless kills the process after response)
   const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
-  sendTransactionalEmail({
-    to: normalised,
-    subject: emailLang === 'en'
-      ? "You're on the YTubViral launch list!"
-      : '¡Estás en la lista de lanzamiento de YTubViral!',
-    html: waitlistWelcomeEmail(emailLang),
-  }).catch(err => console.error('[waitlist] Welcome email failed:', err));
+  try {
+    await sendTransactionalEmail({
+      to: normalised,
+      subject: emailLang === 'en'
+        ? "You're on the YTubViral launch list!"
+        : '¡Estás en la lista de lanzamiento de YTubViral!',
+      html: waitlistWelcomeEmail(emailLang),
+    });
+  } catch (err) {
+    console.error('[waitlist] Welcome email failed:', err);
+  }
 
   return NextResponse.json({ ok: true, position: count });
 }
