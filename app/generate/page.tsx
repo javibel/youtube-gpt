@@ -151,6 +151,7 @@ export default function GeneratePage() {
     );
   }
 
+  const isBusiness = limit >= 999999;
   const remainingDisplay = remaining ?? Math.max(0, limit - usageCount);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -173,7 +174,9 @@ export default function GeneratePage() {
           </div>
           <div className="yv-page-header__actions">
             <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-              {t('Te quedan', 'You have')} <span className="text-white font-semibold">{remainingDisplay}</span> {t('créditos', 'credits')}
+              {isBusiness
+                ? <><span className="text-white font-semibold">∞</span> {t('Ilimitado', 'Unlimited')}</>
+                : <>{t('Te quedan', 'You have')} <span className="text-white font-semibold">{remainingDisplay}</span> {t('créditos', 'credits')}</>}
             </p>
           </div>
         </header>
@@ -359,6 +362,10 @@ export default function GeneratePage() {
               {selectedTemplate === 'video_preview' ? (
                 <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                   📺 {t('Sin créditos · local', '0 credits · local')}
+                </p>
+              ) : isBusiness ? (
+                <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
+                  <span className="text-white font-semibold">∞</span> {t('Ilimitado', 'Unlimited')}
                 </p>
               ) : remainingDisplay === 0 ? (
                 <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-brand)' }}>
