@@ -81,6 +81,7 @@ export async function POST(request: Request) {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
+      allow_promotion_codes: true,
       locale: lang === 'en' ? 'en' : 'es',
       success_url: 'https://ytubviral.com/stripe/success',
       cancel_url: 'https://ytubviral.com/dashboard',
