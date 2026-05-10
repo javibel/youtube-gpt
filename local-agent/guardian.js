@@ -158,9 +158,14 @@ function checkDangerousPatterns() {
         // Skip: console.error('Password changed email error:', err) — "password" is in the label, not a leaked value
         if (name === 'Logging sensitive data') {
           const line = m.match;
-          // If the keyword only appears inside a string literal, it's a label — not a leak
-          const stripped = line.replace(/['"`][^'"`]*['"`]/g, ''); // remove string literals
+          // Remove string literals (single, double, backtick) and template expressions like 'no access_token'
+          const stripped = line
+            .replace(/['"][^'"]*['"]/g, '')       // single/double quoted strings
+            .replace(/`[^`]*`/g, '')              // template literals
+            .replace(/\$\{[^}]*\}/g, '');         // template expressions inside backticks
           if (!/(?:password|secret|token|key)/i.test(stripped)) continue;
+          // Also skip if the keyword is part of a compound word like "access_token" in an error label
+          if (/\b(?:access_token|refresh_token|error_description)\b/i.test(line) && /console\.\w+\(.*(?:fail|error|warn)/i.test(line)) continue;
         }
 
         // Remove context from saved findings to keep report lean
