@@ -194,6 +194,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'Gaining subscribers on YouTube is harder than ever — and more important than ever. We show you 12 proven strategies backed by real data to grow your channel in 2026, from your first video to 100K.',
     },
   },
+  {
+    slug: 'como-analizar-competencia-youtube',
+    cat: 'marketing',
+    readMin: 11,
+    date: { es: '10 May 2026', en: 'May 10, 2026' },
+    author: { name: 'Lucía Vega', role: { es: 'Especialista en contenido', en: 'Content specialist' }, avatar: 'LV' },
+    image: '/blog/analizar-competencia-youtube.webp',
+    title: {
+      es: 'Cómo Analizar a tu Competencia en YouTube en 2026 (Guía Paso a Paso)',
+      en: 'How to Analyze Your YouTube Competition in 2026 (Step-by-Step Guide)',
+    },
+    excerpt: {
+      es: 'Tus competidores ya tienen las respuestas que buscas: qué temas funcionan, qué keywords posicionan, cuándo publican. Te enseñamos a extraer esos datos sin pagar un céntimo y a convertirlos en ventaja para tu canal.',
+      en: 'Your competitors already have the answers you\'re looking for: which topics work, which keywords rank, when they publish. We show you how to extract that data for free and turn it into an edge for your channel.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -1988,6 +2004,188 @@ const ART_SUSCRIPTORES_EN: BlockType[] = [
   { type: 'callout-final', t: 'Accelerate your channel growth', sub: 'Viral titles, low-competition keywords, SEO Score and more — all powered by AI.', cta: 'Start free with YTubViral' },
 ];
 
+const ART_COMPETENCIA_ES: BlockType[] = [
+  { type: 'p', t: 'Hay una diferencia enorme entre un creador que publica vídeos esperando que funcionen y uno que sabe exactamente qué temas, formatos y keywords están funcionando en su nicho antes de grabar. La diferencia no es talento — es información. Y esa información la tienen tus competidores a la vista de todos.' },
+  { type: 'p', t: 'Analizar a tu competencia en YouTube no es copiar. Es entender el mercado. Saber qué busca tu audiencia, qué huecos existen, qué formatos generan engagement y cuándo es el mejor momento para publicar. Los canales que crecen más rápido en 2026 no adivinan — observan, analizan y ejecutan.' },
+
+  { type: 'h2', t: 'Por Qué Deberías Analizar a tu Competencia (y Por Qué la Mayoría No lo Hace)' },
+  { type: 'p', t: 'El 90% de los creadores pequeños nunca analizan a su competencia de forma sistemática. Publican lo que se les ocurre, eligen títulos "a ojo" y se frustran cuando un vídeo no despega. Mientras tanto, los canales que crecen rápido hacen exactamente lo contrario: estudian qué funciona antes de crear.' },
+  { type: 'p', t: 'Analizar a tu competencia te da tres ventajas concretas:' },
+  { type: 'list', items: [
+    'Descubres temas con demanda probada: si un vídeo de tu competidor tiene 500K views en un nicho pequeño, hay demanda real para ese tema.',
+    'Identificas huecos: temas que la audiencia busca pero que nadie cubre bien, o ángulos que nadie ha explorado.',
+    'Aprendes de sus errores: vídeos con muchas impresiones pero pocas views revelan títulos o miniaturas que no funcionan — sin que tú tengas que cometer el mismo error.',
+  ]},
+  { type: 'p', t: 'No se trata de obsesionarte con lo que hacen otros. Se trata de tomar decisiones informadas en lugar de apostar a ciegas.' },
+
+  { type: 'h2', t: 'Las 5 Métricas que Debes Mirar (y las que Puedes Ignorar)' },
+  { type: 'p', t: 'No todas las métricas de un canal competidor son relevantes. Estos son los 5 datos que realmente te dicen algo útil:' },
+
+  { type: 'h3', t: '1. Views por Hora (VPH)' },
+  { type: 'p', t: 'Es la métrica más reveladora. Un vídeo con 100K views que se publicó hace 3 años no significa lo mismo que uno con 100K views publicado hace 2 semanas. El VPH te dice qué vídeos están funcionando ahora, no cuáles acumularon views por antigüedad. Un VPH alto en un vídeo reciente indica que el algoritmo lo está empujando activamente.' },
+
+  { type: 'h3', t: '2. Frecuencia de Publicación' },
+  { type: 'p', t: 'Cuántos vídeos publica tu competidor al mes y en qué días. Si un canal publica 3 veces por semana y tú publicas 1, no necesariamente estás en desventaja — pero necesitas que cada vídeo cuente más. También puedes detectar patrones: muchos canales exitosos publican los mismos días porque han descubierto cuándo su audiencia está más activa.' },
+
+  { type: 'h3', t: '3. Tags y Keywords' },
+  { type: 'p', t: 'Los tags de un vídeo te revelan las keywords que tu competidor está intentando posicionar. No siempre son las correctas (muchos creadores ponen tags irrelevantes), pero cuando un vídeo con buenos tags tiene buen rendimiento, has encontrado una keyword validada por el mercado.' },
+
+  { type: 'h3', t: '4. Títulos y Miniaturas (Patrones)' },
+  { type: 'p', t: 'No mires títulos individuales — busca patrones. ¿Usan números? ¿Preguntas? ¿Mayúsculas? ¿Emojis? ¿Qué colores dominan en las miniaturas? Los patrones que se repiten en vídeos exitosos no son casualidad.' },
+
+  { type: 'h3', t: '5. Ratio de Engagement' },
+  { type: 'p', t: 'Likes y comentarios divididos por views. Un vídeo con 50K views y 500 comentarios genera más engagement que uno con 200K views y 100 comentarios. El engagement alto indica que la audiencia está involucrada, no solo pasando de largo — y el algoritmo lo recompensa.' },
+
+  { type: 'p', t: 'Lo que puedes ignorar: suscriptores totales (vanity metric), likes totales sin contexto, y la descripción del canal (casi nadie la optimiza bien).' },
+
+  { type: 'callout-mid', t: 'Analiza a cualquier canal en segundos', sub: 'Pega la URL de tu competidor y obtén sus keywords, VPH, frecuencia y oportunidades que no está cubriendo.', cta: 'Probar YTubViral gratis' },
+
+  { type: 'h2', t: 'Herramientas para Analizar la Competencia en YouTube' },
+  { type: 'p', t: 'Existen varias formas de obtener estos datos. Algunas son gratuitas, otras de pago:' },
+
+  { type: 'h3', t: 'YouTube Studio (gratis, limitado)' },
+  { type: 'p', t: 'Puedes ver las estadísticas públicas de cualquier canal: vídeos recientes, views totales, y frecuencia. Pero no tienes acceso a tags, VPH detallado, ni comparativas. Es un punto de partida, no una herramienta de análisis.' },
+
+  { type: 'h3', t: 'Social Blade (gratis)' },
+  { type: 'p', t: 'Te da estimaciones de ingresos, crecimiento de suscriptores y views diarios. Útil para ver tendencias generales, pero los datos de ingresos son muy imprecisos y no te dice nada sobre keywords o contenido específico.' },
+
+  { type: 'h3', t: 'VidIQ / TubeBuddy (freemium, desde $7.50-$19/mes)' },
+  { type: 'p', t: 'Las herramientas más conocidas. Muestran tags de competidores, scores de SEO, y tendencias. El problema: las funciones realmente útiles están detrás de planes de pago caros, y muchos creadores pequeños no pueden justificar $19-49/mes.' },
+
+  { type: 'h3', t: 'YTubViral (gratis)' },
+  { type: 'p', t: 'Disclaimer: somos nosotros, así que no somos objetivos. Pero la herramienta de Competitor Intelligence de YTubViral te permite pegar la URL de cualquier canal y ver: sus vídeos ordenados por VPH (no por views totales), sus tags y keywords, su frecuencia de publicación, y lo más útil — un análisis de IA que detecta oportunidades y temas que ese canal no está cubriendo. Todo gratis.' },
+
+  { type: 'h2', t: 'Paso a Paso: Cómo Encontrar Oportunidades Analizando a tu Competencia' },
+  { type: 'p', t: 'Vamos al grano. Este es el proceso que uso yo para encontrar ideas de vídeos con demanda probada:' },
+
+  { type: 'h3', t: 'Paso 1: Identifica a 3-5 Competidores Directos' },
+  { type: 'p', t: 'No busques los canales más grandes de tu nicho. Busca canales de tu tamaño o un poco más grandes que estén creciendo rápido. Un canal con 500K suscriptores que lleva 8 años no es tu competencia real — un canal con 20K que ganó 15K en los últimos 3 meses sí lo es. Esos son los que están haciendo algo bien ahora mismo.' },
+
+  { type: 'h3', t: 'Paso 2: Ordena sus Vídeos por VPH, no por Views' },
+  { type: 'p', t: 'Este es el error más común. La gente mira los vídeos más vistos de un canal y asume que esos son los mejores temas. Pero un vídeo de hace 4 años con 2M de views puede estar completamente muerto hoy. Lo que quieres ver son los vídeos con mayor VPH reciente — esos son los que el algoritmo está empujando ahora.' },
+
+  { type: 'h3', t: 'Paso 3: Extrae las Keywords de los Vídeos Top' },
+  { type: 'p', t: 'Mira los tags, el título y la descripción de los vídeos con mejor VPH. Esas son las keywords validadas — temas donde la audiencia ha demostrado interés real con views y engagement. Anota las que se repiten en varios vídeos exitosos.' },
+
+  { type: 'h3', t: 'Paso 4: Busca Huecos de Contenido' },
+  { type: 'p', t: 'Ahora viene lo interesante. Busca temas que la audiencia pide en los comentarios pero que el canal no ha cubierto. Busca keywords con volumen de búsqueda donde tu competidor no tiene vídeos. Busca ángulos diferentes del mismo tema — si tu competidor hizo "Cómo editar con DaVinci Resolve", quizá tú puedes hacer "5 errores de principiante en DaVinci Resolve que nadie te cuenta".' },
+
+  { type: 'h3', t: 'Paso 5: Valida con Datos de Búsqueda' },
+  { type: 'p', t: 'Antes de grabar, verifica que la keyword tiene volumen de búsqueda real. No asumas que porque un vídeo de tu competidor funcionó, cualquier variación va a funcionar. Usa una herramienta de keyword research para confirmar que hay gente buscando activamente ese tema.' },
+
+  { type: 'callout', t: 'Consejo: repite este proceso una vez al mes. Los nichos evolucionan, los competidores cambian de estrategia, y las oportunidades que no existían hace 30 días pueden ser oro hoy.' },
+
+  { type: 'h2', t: '5 Errores Comunes al Analizar la Competencia' },
+  { type: 'list', items: [
+    'Copiar en lugar de inspirarse: reproducir exactamente el mismo vídeo que tu competidor no funciona. El algoritmo favorece contenido único, y tu audiencia notará que es una copia. Usa los datos para encontrar tu propio ángulo.',
+    'Obsesionarse con un solo competidor: si solo miras a un canal, tendrás una visión sesgada del nicho. Analiza 3-5 canales para ver patrones reales.',
+    'Ignorar a competidores más pequeños: los canales pequeños que crecen rápido son una mina de oro de información. Sus estrategias son más replicables que las de un canal con millones de suscriptores.',
+    'Mirar solo views totales: como dijimos, el VPH es la métrica que importa. Un vídeo "pequeño" con VPH alto te dice más que un vídeo "grande" con VPH muerto.',
+    'No actuar sobre los datos: el peor error es hacer todo el análisis y luego seguir publicando lo que se te ocurre. Los datos solo sirven si los usas para tomar decisiones.',
+  ]},
+
+  { type: 'h2', t: 'Analizar vs Copiar: La Línea que No Debes Cruzar' },
+  { type: 'p', t: 'Esto es importante. Analizar a tu competencia significa entender qué funciona y por qué. Copiar significa reproducir exactamente lo que hace otro. La diferencia es crucial, y no solo por ética — YouTube detecta y penaliza el contenido duplicado.' },
+  { type: 'p', t: 'La regla es simple: usa los datos de tu competencia para encontrar temas, pero crea contenido con tu perspectiva, tu estilo y tu experiencia. Si un competidor tiene un vídeo exitoso sobre "edición de vídeo para principiantes", no hagas el mismo vídeo — haz "lo que aprendí editando 200 vídeos como principiante" o "5 técnicas de edición que ningún tutorial te enseña".' },
+
+  { type: 'h2', t: 'Conclusión' },
+  { type: 'p', t: 'Analizar a tu competencia en YouTube no es opcional si quieres crecer en 2026. Los datos están ahí, disponibles para cualquiera. La diferencia entre los canales que crecen y los que se estancan no es que los primeros tengan más talento — es que toman decisiones basadas en información real en lugar de intuición.' },
+  { type: 'p', t: 'El proceso es simple: identifica competidores que crecen, ordena por VPH, extrae keywords, busca huecos, y crea contenido que llene esos huecos con tu voz. Hazlo una vez al mes y tendrás más ideas validadas de las que puedas producir.' },
+
+  { type: 'callout-final', t: 'Analiza a cualquier canal de YouTube en segundos', sub: 'Keywords, VPH, oportunidades de contenido y análisis de IA — todo gratis.', cta: 'Empieza gratis con YTubViral' },
+];
+
+const ART_COMPETENCIA_EN: BlockType[] = [
+  { type: 'p', t: 'There\'s an enormous difference between a creator who publishes videos hoping they\'ll work and one who knows exactly which topics, formats, and keywords are performing in their niche before they even hit record. The difference isn\'t talent — it\'s information. And your competitors have that information in plain sight.' },
+  { type: 'p', t: 'Analyzing your YouTube competition isn\'t copying. It\'s understanding the market. Knowing what your audience searches for, what gaps exist, which formats drive engagement, and when\'s the best time to publish. The fastest-growing channels in 2026 don\'t guess — they observe, analyze, and execute.' },
+
+  { type: 'h2', t: 'Why You Should Analyze Your Competition (and Why Most Don\'t)' },
+  { type: 'p', t: '90% of small creators never systematically analyze their competition. They publish whatever comes to mind, pick titles "by feel," and get frustrated when a video flops. Meanwhile, fast-growing channels do the exact opposite: they study what works before creating.' },
+  { type: 'p', t: 'Analyzing your competition gives you three concrete advantages:' },
+  { type: 'list', items: [
+    'You discover topics with proven demand: if a competitor\'s video has 500K views in a small niche, there\'s real demand for that topic.',
+    'You identify gaps: topics the audience searches for but nobody covers well, or angles no one has explored.',
+    'You learn from their mistakes: videos with high impressions but low views reveal titles or thumbnails that don\'t work — without you making the same mistake.',
+  ]},
+  { type: 'p', t: 'This isn\'t about obsessing over what others do. It\'s about making informed decisions instead of betting blind.' },
+
+  { type: 'h2', t: 'The 5 Metrics You Should Track (and the Ones You Can Ignore)' },
+  { type: 'p', t: 'Not all competitor metrics are relevant. These are the 5 data points that actually tell you something useful:' },
+
+  { type: 'h3', t: '1. Views per Hour (VPH)' },
+  { type: 'p', t: 'This is the most revealing metric. A video with 100K views published 3 years ago doesn\'t mean the same as one with 100K views published 2 weeks ago. VPH tells you which videos are performing now, not which ones accumulated views over time. A high VPH on a recent video means the algorithm is actively pushing it.' },
+
+  { type: 'h3', t: '2. Publishing Frequency' },
+  { type: 'p', t: 'How many videos your competitor publishes per month and on which days. If a channel posts 3 times a week and you post once, you\'re not necessarily at a disadvantage — but each video needs to count more. You can also spot patterns: many successful channels publish on the same days because they\'ve discovered when their audience is most active.' },
+
+  { type: 'h3', t: '3. Tags and Keywords' },
+  { type: 'p', t: 'A video\'s tags reveal the keywords your competitor is trying to rank for. They\'re not always correct (many creators use irrelevant tags), but when a well-tagged video performs well, you\'ve found a market-validated keyword.' },
+
+  { type: 'h3', t: '4. Title and Thumbnail Patterns' },
+  { type: 'p', t: 'Don\'t look at individual titles — look for patterns. Do they use numbers? Questions? All caps? Emojis? What colors dominate thumbnails? Patterns that repeat across successful videos aren\'t coincidence.' },
+
+  { type: 'h3', t: '5. Engagement Ratio' },
+  { type: 'p', t: 'Likes and comments divided by views. A video with 50K views and 500 comments generates more engagement than one with 200K views and 100 comments. High engagement means the audience is involved, not just scrolling past — and the algorithm rewards it.' },
+
+  { type: 'p', t: 'What you can ignore: total subscribers (vanity metric), total likes without context, and channel descriptions (almost nobody optimizes them well).' },
+
+  { type: 'callout-mid', t: 'Analyze any channel in seconds', sub: 'Paste your competitor\'s URL and get their keywords, VPH, frequency, and opportunities they\'re missing.', cta: 'Try YTubViral free' },
+
+  { type: 'h2', t: 'Tools for Analyzing YouTube Competition' },
+  { type: 'p', t: 'There are several ways to get this data. Some are free, others paid:' },
+
+  { type: 'h3', t: 'YouTube Studio (free, limited)' },
+  { type: 'p', t: 'You can see any channel\'s public stats: recent videos, total views, and frequency. But you don\'t get access to tags, detailed VPH, or comparisons. It\'s a starting point, not an analysis tool.' },
+
+  { type: 'h3', t: 'Social Blade (free)' },
+  { type: 'p', t: 'Gives you income estimates, subscriber growth, and daily views. Useful for general trends, but income data is highly inaccurate and tells you nothing about specific keywords or content.' },
+
+  { type: 'h3', t: 'VidIQ / TubeBuddy (freemium, from $7.50-$19/mo)' },
+  { type: 'p', t: 'The most well-known tools. They show competitor tags, SEO scores, and trends. The problem: the truly useful features are behind expensive paid plans, and many small creators can\'t justify $19-49/month.' },
+
+  { type: 'h3', t: 'YTubViral (free)' },
+  { type: 'p', t: 'Disclaimer: this is us, so we\'re not objective. But YTubViral\'s Competitor Intelligence tool lets you paste any channel\'s URL and see: their videos sorted by VPH (not total views), their tags and keywords, their publishing frequency, and most usefully — an AI analysis that detects opportunities and topics that channel isn\'t covering. All free.' },
+
+  { type: 'h2', t: 'Step by Step: How to Find Opportunities by Analyzing Your Competition' },
+  { type: 'p', t: 'Let\'s get practical. This is the process I use to find video ideas with proven demand:' },
+
+  { type: 'h3', t: 'Step 1: Identify 3-5 Direct Competitors' },
+  { type: 'p', t: 'Don\'t look for the biggest channels in your niche. Look for channels your size or slightly larger that are growing fast. A channel with 500K subscribers that\'s been around for 8 years isn\'t your real competition — a channel with 20K that gained 15K in the last 3 months is. Those are the ones doing something right, right now.' },
+
+  { type: 'h3', t: 'Step 2: Sort Their Videos by VPH, Not Views' },
+  { type: 'p', t: 'This is the most common mistake. People look at a channel\'s most-viewed videos and assume those are the best topics. But a 4-year-old video with 2M views might be completely dead today. What you want to see is videos with the highest recent VPH — those are the ones the algorithm is pushing now.' },
+
+  { type: 'h3', t: 'Step 3: Extract Keywords from Top Videos' },
+  { type: 'p', t: 'Look at the tags, title, and description of the highest-VPH videos. Those are validated keywords — topics where the audience has demonstrated real interest with views and engagement. Note the ones that repeat across multiple successful videos.' },
+
+  { type: 'h3', t: 'Step 4: Find Content Gaps' },
+  { type: 'p', t: 'Now it gets interesting. Look for topics the audience requests in comments but the channel hasn\'t covered. Look for keywords with search volume where your competitor has no videos. Look for different angles on the same topic — if your competitor made "How to edit with DaVinci Resolve," maybe you can make "5 beginner mistakes in DaVinci Resolve nobody tells you about."' },
+
+  { type: 'h3', t: 'Step 5: Validate with Search Data' },
+  { type: 'p', t: 'Before recording, verify the keyword has real search volume. Don\'t assume that because a competitor\'s video worked, any variation will work too. Use a keyword research tool to confirm people are actively searching for that topic.' },
+
+  { type: 'callout', t: 'Tip: repeat this process once a month. Niches evolve, competitors change strategies, and opportunities that didn\'t exist 30 days ago could be gold today.' },
+
+  { type: 'h2', t: '5 Common Mistakes When Analyzing Competition' },
+  { type: 'list', items: [
+    'Copying instead of drawing inspiration: reproducing exactly the same video as your competitor doesn\'t work. The algorithm favors unique content, and your audience will notice it\'s a copy. Use data to find your own angle.',
+    'Obsessing over a single competitor: if you only watch one channel, you\'ll have a biased view of the niche. Analyze 3-5 channels to see real patterns.',
+    'Ignoring smaller competitors: small channels growing fast are an information goldmine. Their strategies are more replicable than those of a channel with millions of subscribers.',
+    'Looking only at total views: as we said, VPH is the metric that matters. A "small" video with high VPH tells you more than a "big" video with dead VPH.',
+    'Not acting on the data: the worst mistake is doing the full analysis and then continuing to publish whatever comes to mind. Data only works if you use it to make decisions.',
+  ]},
+
+  { type: 'h2', t: 'Analyzing vs Copying: The Line You Shouldn\'t Cross' },
+  { type: 'p', t: 'This is important. Analyzing your competition means understanding what works and why. Copying means reproducing exactly what someone else does. The difference is crucial, and not just ethically — YouTube detects and penalizes duplicate content.' },
+  { type: 'p', t: 'The rule is simple: use your competitor\'s data to find topics, but create content with your perspective, your style, and your experience. If a competitor has a hit video about "video editing for beginners," don\'t make the same video — make "what I learned editing 200 videos as a beginner" or "5 editing techniques no tutorial teaches you."' },
+
+  { type: 'h2', t: 'Conclusion' },
+  { type: 'p', t: 'Analyzing your YouTube competition isn\'t optional if you want to grow in 2026. The data is there, available to anyone. The difference between channels that grow and channels that stagnate isn\'t that the former have more talent — it\'s that they make decisions based on real information instead of gut feeling.' },
+  { type: 'p', t: 'The process is simple: identify growing competitors, sort by VPH, extract keywords, find gaps, and create content that fills those gaps with your voice. Do it once a month and you\'ll have more validated ideas than you can produce.' },
+
+  { type: 'callout-final', t: 'Analyze any YouTube channel in seconds', sub: 'Keywords, VPH, content opportunities and AI analysis — all free.', cta: 'Start free with YTubViral' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -2028,6 +2226,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'como-conseguir-suscriptores-youtube-2026': {
     es: ART_SUSCRIPTORES_ES,
     en: ART_SUSCRIPTORES_EN,
+  },
+  'como-analizar-competencia-youtube': {
+    es: ART_COMPETENCIA_ES,
+    en: ART_COMPETENCIA_EN,
   },
 };
 
