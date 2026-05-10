@@ -27,9 +27,9 @@ const HEALTH_ENDPOINTS = [
   { url: '/', name: 'Landing', critical: true },
   { url: '/api/health', name: 'API Health', critical: false },
 ];
-const TIMEOUT_MS = 15000;
+const TIMEOUT_MS = 20000;
 const SLOW_THRESHOLD_MS = 5000;
-const CONFIRM_RETRIES = 2;       // retries before declaring DOWN
+const CONFIRM_RETRIES = 3;       // retries before declaring DOWN
 const CONFIRM_DELAY_MS = 10000;  // 10s between retries
 const OWNER_EMAIL = process.env.OWNER_EMAIL || 'javijimenoplata@gmail.com';
 
