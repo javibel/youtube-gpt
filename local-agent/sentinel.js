@@ -29,6 +29,8 @@ const HEALTH_ENDPOINTS = [
 ];
 const TIMEOUT_MS = 15000;
 const SLOW_THRESHOLD_MS = 5000;
+const CONFIRM_RETRIES = 2;       // retries before declaring DOWN
+const CONFIRM_DELAY_MS = 10000;  // 10s between retries
 const OWNER_EMAIL = process.env.OWNER_EMAIL || 'javijimenoplata@gmail.com';
 
 // In-memory state (survives across cron ticks within same PM2 process)
@@ -170,18 +172,36 @@ async function runSentinel() {
   state.lastResponseTime = landing?.elapsed || 0;
 
   // Critical failure = landing page down
-  const criticalDown = results.some(r => r.endpoint === 'Landing' && !r.ok);
+  let criticalDown = results.some(r => r.endpoint === 'Landing' && !r.ok);
   const anyDown = results.some(r => !r.ok);
+
+  // ── Confirm before declaring DOWN (avoid false positives from transient timeouts)
+  if (criticalDown && !state.isDown) {
+    console.log(`[sentinel] Landing failed — confirming with ${CONFIRM_RETRIES} retries...`);
+    for (let i = 1; i <= CONFIRM_RETRIES; i++) {
+      await new Promise(r => setTimeout(r, CONFIRM_DELAY_MS));
+      const retry = await checkEndpoint(HEALTH_ENDPOINTS[0]); // Landing
+      console.log(`[sentinel] Retry ${i}/${CONFIRM_RETRIES}: ${retry.ok ? '✅' : '❌'} ${retry.status || 'ERR'} (${retry.elapsed}ms)`);
+      if (retry.ok) {
+        criticalDown = false;
+        // Update the landing result for memory/logging
+        const idx = results.findIndex(r => r.endpoint === 'Landing');
+        if (idx >= 0) results[idx] = retry;
+        state.lastResponseTime = retry.elapsed;
+        break;
+      }
+    }
+  }
 
   if (criticalDown) {
     state.consecutiveFailures++;
 
     if (!state.isDown) {
-      // Transition: UP → DOWN
+      // Transition: UP → DOWN (confirmed after retries)
       state.isDown = true;
       state.downSince = Date.now();
       state.lastAlertAt = Date.now();
-      console.log('[sentinel] 🚨 SITE DOWN detected!');
+      console.log('[sentinel] 🚨 SITE DOWN confirmed after retries!');
       await sendDownAlert(results);
     } else {
       // Already down — re-alert every 30 minutes
