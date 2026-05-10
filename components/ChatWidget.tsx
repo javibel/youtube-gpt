@@ -2,14 +2,20 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { getLangClient } from '@/lib/get-lang-client';
+
+type Lang = 'es' | 'en';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
+const t = (lang: Lang, es: string, en: string) => lang === 'en' ? en : es;
+
 export default function ChatWidget() {
   const { status } = useSession();
+  const [lang, setLang] = useState<Lang>('es');
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -20,6 +26,8 @@ export default function ChatWidget() {
   const [lastSentAt, setLastSentAt] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,12 +61,12 @@ export default function ChatWidget() {
     // Throttle client-side (3s)
     const now = Date.now();
     if (now - lastSentAt < 3000) {
-      setError('Espera un momento antes de enviar otro mensaje.');
+      setError(t(lang, 'Espera un momento antes de enviar otro mensaje.', 'Wait a moment before sending another message.'));
       return;
     }
 
     if (text.length > 500) {
-      setError('Mensaje demasiado largo (máx 500 caracteres).');
+      setError(t(lang, 'Mensaje demasiado largo (máx 500 caracteres).', 'Message too long (max 500 characters).'));
       return;
     }
 
@@ -76,13 +84,13 @@ export default function ChatWidget() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, lang }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Error al enviar el mensaje.');
+        setError(data.error || t(lang, 'Error al enviar el mensaje.', 'Error sending message.'));
         setMessages(prevMessages);
         if (data.limitReached) setRemaining(0);
       } else {
@@ -91,7 +99,7 @@ export default function ChatWidget() {
         if (typeof data.remaining === 'number') setRemaining(data.remaining);
       }
     } catch {
-      setError('Error de conexión. Inténtalo de nuevo.');
+      setError(t(lang, 'Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'));
       setMessages(prevMessages);
     } finally {
       setIsLoading(false);
@@ -121,12 +129,14 @@ export default function ChatWidget() {
           >
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-              <span className="text-sm font-semibold text-white">Asistente YTubViral</span>
+              <span className="text-sm font-semibold text-white">
+                {t(lang, 'Asistente YTubViral', 'YTubViral Assistant')}
+              </span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
               className="text-white/40 hover:text-white/80 transition-colors text-xl leading-none"
-              aria-label="Cerrar"
+              aria-label={t(lang, 'Cerrar', 'Close')}
             >
               ×
             </button>
@@ -136,7 +146,10 @@ export default function ChatWidget() {
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
             {messages.length === 0 && (
               <p className="text-white/40 text-[13px] text-center mt-6 leading-relaxed">
-                Pregúntame sobre YTubViral o sobre cómo crear contenido para YouTube, TikTok o Instagram.
+                {t(lang,
+                  'Pregúntame sobre YTubViral o sobre cómo crear contenido para YouTube, TikTok o Instagram.',
+                  'Ask me about YTubViral or how to create content for YouTube, TikTok or Instagram.'
+                )}
               </p>
             )}
             {messages.map((msg, i) => (
@@ -179,13 +192,16 @@ export default function ChatWidget() {
             </div>
           )}
 
-          {/* Remaining notice (solo cuando queden pocos) */}
+          {/* Remaining notice */}
           {remaining !== null && remaining <= 2 && remaining > 0 && (
             <div
               className="px-4 py-1.5 text-[13px] text-yellow-400/80 border-t border-white/10 flex-shrink-0"
               style={{ background: '#1a1a1a' }}
             >
-              {remaining === 1 ? '1 mensaje restante hoy.' : `${remaining} mensajes restantes hoy.`}
+              {remaining === 1
+                ? t(lang, '1 mensaje restante hoy.', '1 message remaining today.')
+                : t(lang, `${remaining} mensajes restantes hoy.`, `${remaining} messages remaining today.`)
+              }
             </div>
           )}
           {remaining === 0 && (
@@ -193,7 +209,10 @@ export default function ChatWidget() {
               className="px-4 py-1.5 text-[13px] text-red-400/80 border-t border-white/10 flex-shrink-0"
               style={{ background: '#1a1a1a' }}
             >
-              Límite diario alcanzado. Vuelve mañana o actualiza a Pro.
+              {t(lang,
+                'Límite diario alcanzado. Vuelve mañana o actualiza a Pro.',
+                'Daily limit reached. Come back tomorrow or upgrade to Pro.'
+              )}
             </div>
           )}
 
@@ -208,7 +227,10 @@ export default function ChatWidget() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isDisabled ? 'Sin mensajes disponibles hoy.' : 'Escribe tu pregunta...'}
+              placeholder={isDisabled
+                ? t(lang, 'Sin mensajes disponibles hoy.', 'No messages available today.')
+                : t(lang, 'Escribe tu pregunta...', 'Type your question...')
+              }
               maxLength={500}
               disabled={isDisabled}
               className="flex-1 bg-white/5 rounded-lg px-3 py-2 text-[13px] text-white placeholder-white/30 border border-white/10 focus:outline-none focus:border-white/30 disabled:opacity-40 min-w-0"
@@ -218,7 +240,7 @@ export default function ChatWidget() {
               disabled={isDisabled || !input.trim()}
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity disabled:opacity-30 flex-shrink-0"
               style={{ background: '#9B2020' }}
-              aria-label="Enviar"
+              aria-label={t(lang, 'Enviar', 'Send')}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13" />
@@ -234,7 +256,10 @@ export default function ChatWidget() {
         onClick={() => setIsOpen(v => !v)}
         className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
         style={{ background: '#9B2020' }}
-        aria-label={isOpen ? 'Cerrar asistente' : 'Abrir asistente'}
+        aria-label={isOpen
+          ? t(lang, 'Cerrar asistente', 'Close assistant')
+          : t(lang, 'Abrir asistente', 'Open assistant')
+        }
       >
         {isOpen ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

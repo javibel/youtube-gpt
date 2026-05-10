@@ -93,8 +93,9 @@ THUMBNAILS (/thumbnail-preview) — Pro plan only:
 ACHIEVEMENTS (/achievements) — all users:
 - Gamified achievement system. Unlock badges for milestones (channel connection, subscriber counts), improvement (SEO scores, A/B tests), streaks (consecutive days), and learning (coach messages, tool usage).
 
-CHROME EXTENSION:
-- YTubViral Chrome Extension available on Chrome Web Store. Adds YTubViral tools directly into YouTube Studio pages.
+CHROME EXTENSION (v1.4):
+- YTubViral Chrome Extension available on Chrome Web Store. Works on YouTube watch pages, YouTube Studio editor, Studio video list, search results, and channel pages.
+- Features: SEO scorecard with score ring and checklist, outlier detection badge (≥5× channel average), channel stats with growth sparkline, keyword competition panel, AI title generation. Pro plan required.
 
 BLOG (/blog):
 - Educational blog with articles about YouTube growth, SEO, content strategy, and gear reviews.
@@ -154,15 +155,16 @@ export async function POST(request: Request) {
     const dailyLimit = getLimits(plan).chatMessagesPerDay;
 
     const body = await request.json();
-    const { message, context } = body;
+    const { message, context, lang: clientLang } = body;
+    const en = clientLang === 'en';
 
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
-      return NextResponse.json({ error: 'Mensaje requerido' }, { status: 400 });
+      return NextResponse.json({ error: en ? 'Message required' : 'Mensaje requerido' }, { status: 400 });
     }
 
     if (message.length > MAX_MESSAGE_LENGTH) {
       return NextResponse.json(
-        { error: `Mensaje demasiado largo (máx ${MAX_MESSAGE_LENGTH} caracteres)` },
+        { error: en ? `Message too long (max ${MAX_MESSAGE_LENGTH} characters)` : `Mensaje demasiado largo (máx ${MAX_MESSAGE_LENGTH} caracteres)` },
         { status: 400 }
       );
     }
@@ -188,7 +190,7 @@ export async function POST(request: Request) {
     `;
     if (Number(throttleResult[0].hits) > 1) {
       return NextResponse.json(
-        { error: 'Espera un momento antes de enviar otro mensaje.' },
+        { error: en ? 'Wait a moment before sending another message.' : 'Espera un momento antes de enviar otro mensaje.' },
         { status: 429 }
       );
     }
@@ -218,8 +220,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: isPro
-            ? 'Has alcanzado el límite diario del plan Pro (20 mensajes/día).'
-            : 'Has alcanzado el límite diario del plan gratuito (5 mensajes/día). Actualiza a Pro para obtener 20 mensajes/día.',
+            ? (en ? 'You have reached the daily Pro plan limit (20 messages/day).' : 'Has alcanzado el límite diario del plan Pro (20 mensajes/día).')
+            : (en ? 'You have reached the free plan daily limit (5 messages/day). Upgrade to Pro for 20 messages/day.' : 'Has alcanzado el límite diario del plan gratuito (5 mensajes/día). Actualiza a Pro para obtener 20 mensajes/día.'),
           limitReached: true,
           remaining: 0,
         },

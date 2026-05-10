@@ -868,6 +868,8 @@ const ART_CUANTO_GANA_YOUTUBER: BlockType[] = [
   ]},
   { type: 'p', t: 'Suma esas cifras. Un creador medio en España necesita facturar al menos 1.500€ mensuales solo para cubrir gastos operativos, seguridad social e impuestos básicos. Antes de tener un solo euro de sueldo.' },
 
+  { type: 'callout-gear', t: '¿Buscas equipo profesional sin arruinarte?', sub: 'Cámaras, micrófonos e iluminación recomendados por nivel y presupuesto — desde 65€.', cta: 'Ver equipo recomendado' },
+
   { type: 'h2', t: 'La opción Andorra: ya no es lo que era' },
   { type: 'p', t: 'Muchos creadores que superan los 100.000€ de facturación anual consideran mudarse a Andorra para pagar menos impuestos. Pero desde abril de 2025, el principado ha endurecido radicalmente los requisitos:' },
   { type: 'list', items: [
@@ -1001,6 +1003,8 @@ const ART_CUANTO_GANA_YOUTUBER_EN: BlockType[] = [
     'Self-employment fee: \u20ac200 \u2013 \u20ac400/month',
   ]},
   { type: 'p', t: 'Add those numbers up. A mid-level creator in Spain needs to invoice at least \u20ac1,500 per month just to cover operating expenses, social security, and basic taxes. Before taking home a single euro in salary.' },
+
+  { type: 'callout-gear', t: 'Looking for pro gear without breaking the bank?', sub: 'Cameras, microphones and lighting recommended by level and budget \u2014 starting at \u20ac65.', cta: 'View recommended gear' },
 
   { type: 'h2', t: 'The Andorra option: not what it used to be' },
   { type: 'p', t: 'Many creators who exceed \u20ac100,000 in annual revenue consider moving to Andorra to pay lower taxes. Andorra is a tiny principality between Spain and France historically known for its favorable tax regime. But since April 2025, the principality has drastically tightened its requirements:' },

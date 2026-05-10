@@ -1232,15 +1232,16 @@ function handleCopy(id: string, out: string) {
               <div className="space-y-3">
                 <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
                   {t(
-                    'Analiza canales, investiga keywords y genera títulos con IA directamente en YouTube, sin cambiar de pestaña.',
-                    'Analyze channels, research keywords and generate titles with AI directly on YouTube, without switching tabs.'
+                    'SEO score, detección de outliers, estadísticas de canal y títulos con IA — directamente en YouTube y YouTube Studio.',
+                    'SEO score, outlier detection, channel stats and AI titles — directly on YouTube and YouTube Studio.'
                   )}
                 </p>
                 <div className="space-y-2">
                   {[
-                    t('Keywords y competencia en cada búsqueda', 'Keywords & competition on every search'),
-                    t('Métricas de cualquier canal en un clic', 'Any channel metrics in one click'),
-                    t('5 títulos virales con IA al instante', '5 viral AI titles instantly'),
+                    t('SEO score y checklist en cada vídeo', 'SEO score & checklist on every video'),
+                    t('Panel SEO integrado en YouTube Studio', 'SEO panel integrated in YouTube Studio'),
+                    t('Detección de outliers y métricas de canal', 'Outlier detection & channel metrics'),
+                    t('Keywords, competencia y títulos con IA', 'Keywords, competition & AI titles'),
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-2 text-[13px]">
                       <span className="mt-0.5 shrink-0" style={{ color: 'var(--yv-brand)' }}>&#10003;</span>
@@ -1263,8 +1264,8 @@ function handleCopy(id: string, out: string) {
               <div className="space-y-3">
                 <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
                   {t(
-                    'Usa YTubViral directamente en YouTube: keywords, análisis de canales y títulos con IA sin cambiar de pestaña.',
-                    'Use YTubViral directly on YouTube: keywords, channel analysis and AI titles without switching tabs.'
+                    'SEO score, outliers, estadísticas de canal y títulos con IA directamente en YouTube y YouTube Studio.',
+                    'SEO score, outliers, channel stats and AI titles directly on YouTube and YouTube Studio.'
                   )}
                 </p>
                 <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}>
