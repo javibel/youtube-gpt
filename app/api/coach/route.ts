@@ -20,7 +20,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { message, context, mode } = body;
+  const { message, context, mode, lang: clientLang } = body;
+  const lang = clientLang === 'en' ? 'en' : 'es';
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return NextResponse.json({ error: 'message required' }, { status: 400 });
   }
@@ -204,7 +205,7 @@ YTUBVIRAL PLATFORM TOOLS (recommend these when relevant):
 When the user asks how to do something that a tool can help with, mention the specific tool by name.
 
 RULES:
-- Reply in the same language the user writes in (Spanish or English)
+- IMPORTANT: Reply ALWAYS in ${lang === 'en' ? 'English' : 'Spanish'}, regardless of the language of the channel data or system prompt
 - Be concise but thorough. Use plain text, no markdown formatting
 - Reference specific videos and data points when possible
 - If asked about something you don't have data for, say so honestly

@@ -108,7 +108,7 @@ export default function CoachPage() {
       const res = await fetch('/api/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, context: messages, mode }),
+        body: JSON.stringify({ message: text, context: messages, mode, lang }),
       });
       const json = await res.json();
       if (!res.ok) {
