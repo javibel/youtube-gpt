@@ -202,7 +202,7 @@ export const GEAR_ITEMS: GearItem[] = [
     tier: 'mid',
     priceRange: '€130-160',
     amazonUrl: {
-      es: 'https://www.amazon.es/dp/B0743Z892W',
+      es: 'https://amzn.eu/d/0iTOMZUB',
       en: 'https://www.amazon.co.uk/dp/B0743Z892W',
     },
     image: '/gear/elgato-green-screen.png',
