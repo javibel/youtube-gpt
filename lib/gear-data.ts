@@ -174,6 +174,22 @@ export const GEAR_ITEMS: GearItem[] = [
     image: '/gear/neewer-660.png',
   },
   {
+    id: 'neewer-ring-light-18',
+    name: { es: 'Neewer 18" Anillo de Luz LED', en: 'Neewer 18" LED Ring Light' },
+    description: {
+      es: 'Anillo de luz de 48cm, 52W, 5500K regulable con trípode y soporte para móvil. Ideal para vlogs, tutoriales y thumbnails. Iluminación uniforme sin sombras duras que favorece cualquier tipo de rostro.',
+      en: '48cm ring light, 52W, 5500K dimmable with tripod and phone holder. Perfect for vlogs, tutorials and thumbnails. Even lighting with no harsh shadows that flatters any face.',
+    },
+    category: 'lighting',
+    tier: 'mid',
+    priceRange: '€50-80',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/08AJiBkO',
+      en: 'https://www.amazon.co.uk/dp/B0798BHRV5',
+    },
+    image: '/gear/neewer-ring-light.png',
+  },
+  {
     id: 'elgato-key-light',
     name: { es: 'Elgato Key Light', en: 'Elgato Key Light' },
     description: {
