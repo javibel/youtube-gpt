@@ -210,6 +210,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'Your competitors already have the answers you\'re looking for: which topics work, which keywords rank, when they publish. We show you how to extract that data for free and turn it into an edge for your channel.',
     },
   },
+  {
+    slug: 'thumbnails-youtube-guia-ctr',
+    cat: 'tutorials',
+    readMin: 11,
+    date: { es: '11 May 2026', en: 'May 11, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/thumbnails-youtube-ctr.webp',
+    title: {
+      es: 'Cómo Diseñar Thumbnails para YouTube que Generen Clicks (Guía 2026)',
+      en: 'How to Design YouTube Thumbnails That Get Clicks (2026 Guide)',
+    },
+    excerpt: {
+      es: 'El 90% de los vídeos más vistos de YouTube usan miniaturas personalizadas. Te enseñamos las reglas de diseño que separan un CTR del 2% de uno del 10%, con datos reales, errores que debes evitar y un checklist para cada miniatura.',
+      en: '90% of top-performing YouTube videos use custom thumbnails. We break down the design rules that separate a 2% CTR from a 10% one, with real data, mistakes to avoid, and a checklist for every thumbnail.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -2190,6 +2206,210 @@ const ART_COMPETENCIA_EN: BlockType[] = [
   { type: 'callout-final', t: 'Analyze any YouTube channel in seconds', sub: 'Keywords, VPH, content opportunities and AI analysis — all free.', cta: 'Start free with YTubViral' },
 ];
 
+// ── Thumbnails YouTube CTR ───────────────────────────────────────────────────
+
+const ART_THUMBNAILS_ES: BlockType[] = [
+  { type: 'p', t: 'Tu miniatura es el anuncio de tu vídeo. Da igual lo bueno que sea tu contenido — si nadie hace clic, nadie lo ve. Y la diferencia entre un vídeo que despega y uno que muere en el limbo del algoritmo casi siempre está en la miniatura.' },
+  { type: 'p', t: 'Esto no es opinión. El 90% de los vídeos con mejor rendimiento en YouTube usan miniaturas personalizadas. En 2026, YouTube mide lo que llaman "Quality CTR" — ya no basta con que hagan clic; si la gente hace clic y se va en los primeros 30 segundos, el algoritmo te penaliza. Tu miniatura tiene que atraer al espectador correcto, no a cualquiera.' },
+  { type: 'p', t: 'En esta guía te doy las reglas que funcionan de verdad, respaldadas por datos, para diseñar miniaturas que conviertan impresiones en views — y views en retención.' },
+
+  { type: 'h2', t: 'Los Números: Qué CTR es Bueno en YouTube en 2026' },
+  { type: 'p', t: 'Antes de hablar de diseño, necesitas saber contra qué compites. Estos son los benchmarks reales de CTR en YouTube en 2026:' },
+  { type: 'list', items: [
+    '2-4%: por debajo de la media. Tu miniatura no está funcionando.',
+    '4-6%: rango medio. Aceptable, pero hay margen de mejora.',
+    '6-8%: bueno. Estás por encima de la mayoría de creadores de tu nicho.',
+    '8-10%+: excelente. Tu combinación título + miniatura está resonando con la audiencia.',
+  ]},
+  { type: 'p', t: 'Pero ojo: el CTR varía por nicho. Gaming tiene un CTR medio del 8.5% porque la audiencia consume contenido de forma compulsiva. Educación ronda el 4.5% porque la gente busca algo específico y es más selectiva. No te compares con un nicho que no es el tuyo.' },
+  { type: 'p', t: 'Lo importante no es el número absoluto — es la tendencia. Si tu CTR sube de un vídeo a otro, tu diseño está mejorando. Si baja, algo no funciona.' },
+
+  { type: 'h2', t: 'Las 7 Reglas de una Miniatura que Convierte' },
+
+  { type: 'h3', t: '1. Cara con Emoción Exagerada' },
+  { type: 'p', t: 'Los datos son contundentes: las miniaturas con caras expresivas generan entre un 20% y un 42% más de clicks que las que no tienen rostros o usan expresiones neutras. El cerebro humano está programado para buscar caras — es instinto, no elección.' },
+  { type: 'p', t: 'La clave es la exageración. Una cara sonriendo ligeramente no llama la atención en un feed con 50 miniaturas compitiendo. Una expresión de sorpresa genuina, frustración o emoción intensa sí lo hace. Si te da vergüenza hacerla, probablemente es lo suficientemente expresiva.' },
+
+  { type: 'h3', t: '2. Máximo 3-4 Palabras de Texto' },
+  { type: 'p', t: 'El 63% de las visualizaciones de YouTube son en móvil. En una pantalla de 6 pulgadas, tu miniatura mide menos de 2 centímetros de alto. Si metes 7 palabras, nadie va a leer ninguna. Los datos muestran que el 73% de los vídeos con mejor rendimiento usan entre 2 y 3 palabras en la miniatura.' },
+  { type: 'p', t: 'Esas palabras no deben repetir el título — deben complementarlo. Si tu título dice "Cómo gané 10.000€ en YouTube", la miniatura puede decir "PROOF" o "sin monetización". Miniatura y título son un equipo, no un eco.' },
+
+  { type: 'h3', t: '3. Contraste que Destaque en Cualquier Fondo' },
+  { type: 'p', t: 'Tu miniatura compite contra un fondo blanco (modo claro) y un fondo negro (modo oscuro) de YouTube. Necesita funcionar en ambos. La regla más simple: sujeto brillante sobre fondo oscuro, o sujeto oscuro sobre fondo brillante.' },
+  { type: 'p', t: 'Los datos sugieren que el rojo genera un 23% más de CTR que el azul, probablemente porque activa una sensación de urgencia. Pero el color importa menos que el contraste — un amarillo vibrante sobre negro funciona mejor que un rojo apagado sobre marrón.' },
+
+  { type: 'h3', t: '4. Un Solo Punto Focal' },
+  { type: 'p', t: 'Los ojos del espectador tienen menos de un segundo para procesar tu miniatura. Si hay 5 elementos compitiendo por atención, no procesarán ninguno. Las mejores miniaturas tienen un punto focal claro: una cara, un objeto, un antes/después.' },
+  { type: 'p', t: 'Prueba el "test de 3 segundos": muestra tu miniatura a alguien durante 3 segundos y pregúntale de qué va el vídeo. Si no puede decírtelo, tu miniatura es demasiado compleja.' },
+
+  { type: 'h3', t: '5. Evita la Esquina Inferior Derecha' },
+  { type: 'p', t: 'YouTube superpone la duración del vídeo en la esquina inferior derecha de la miniatura. Todo lo que pongas ahí — texto, cara, elemento importante — quedará tapado. Es un error sorprendentemente común incluso en canales grandes.' },
+
+  { type: 'h3', t: '6. La Brecha de Curiosidad' },
+  { type: 'p', t: 'Una buena miniatura no da toda la información — sugiere algo que el espectador necesita descubrir. Si tu vídeo es un antes/después, muestra el "después" borroso o parcial. Si es un ranking, muestra el resultado sin revelar qué producto o idea ganó. La curiosidad es lo que convierte una impresión en un clic.' },
+  { type: 'p', t: 'Pero cuidado: la curiosidad tiene que cumplirse. Si tu miniatura promete algo que el vídeo no entrega, tendrás CTR alto pero retención desastrosa — y YouTube te penalizará con el Quality CTR.' },
+
+  { type: 'h3', t: '7. Consistencia de Marca (Pero No Aburrir)' },
+  { type: 'p', t: 'Los canales que crecen más rápido mantienen un estilo visual reconocible sin ser repetitivos. Eso puede ser una paleta de colores, un tipo de composición, o un estilo de texto. Cuando un suscriptor ve tu miniatura en el feed, debería reconocerla como tuya antes de leer el título.' },
+  { type: 'p', t: 'Pero hay una trampa: si todas tus miniaturas son idénticas con distintos textos, el espectador deja de prestarles atención. Mantén el estilo, varía la ejecución.' },
+
+  { type: 'callout-mid', t: 'Genera ideas de miniaturas con IA', sub: 'Describe tu vídeo y obtén sugerencias de composición, colores y texto optimizados para CTR.', cta: 'Probar el generador gratis' },
+
+  { type: 'h2', t: 'Los 5 Errores que Matan tu CTR' },
+
+  { type: 'h3', t: '1. Demasiado Texto' },
+  { type: 'p', t: 'Es el error número uno. Si tu miniatura parece un slide de PowerPoint, has perdido. La miniatura no es un resumen — es un gancho visual. Si necesitas explicar de qué va el vídeo con texto, tu composición visual no está funcionando.' },
+
+  { type: 'h3', t: '2. Miniatura y Título Dicen lo Mismo' },
+  { type: 'p', t: 'Si tu título dice "5 Errores de Edición" y tu miniatura dice "5 ERRORES DE EDICIÓN", estás desperdiciando espacio. La miniatura debe añadir información que el título no tiene — un rostro, un objeto, una emoción, un resultado.' },
+
+  { type: 'h3', t: '3. Imagen Genérica de Stock' },
+  { type: 'p', t: 'Los espectadores de YouTube reconocen las fotos de stock al instante. Transmiten "no me esforcé" y "probablemente no hay nada valioso aquí". Siempre es mejor una foto tuya de calidad media que una foto de stock perfecta.' },
+
+  { type: 'h3', t: '4. No Optimizar para Móvil' },
+  { type: 'p', t: 'Diseñas en un monitor de 27 pulgadas. Tu audiencia lo ve en un teléfono. Si no previsualizas tu miniatura en tamaño móvil antes de subirla, estás diseñando a ciegas. Encoge tu miniatura al 25% del tamaño original y mira si sigue funcionando.' },
+
+  { type: 'h3', t: '5. Clickbait sin Payoff' },
+  { type: 'p', t: 'En 2026, YouTube mide la "satisfacción" del espectador, no solo los clics. Si tu miniatura promete algo que el vídeo no cumple, la gente se irá en los primeros 30 segundos y el algoritmo hundirá tu vídeo. El clickbait que no cumple ya no funciona — el que sí cumple se llama buena miniatura.' },
+
+  { type: 'h2', t: 'Herramientas para Crear Miniaturas Profesionales' },
+  { type: 'p', t: 'No necesitas Photoshop ni ser diseñador. Estas herramientas hacen el trabajo:' },
+  { type: 'list', items: [
+    'Canva (gratis/pro): plantillas de 1280x720, editor drag-and-drop. La opción más popular entre creadores por su facilidad. El plan pro tiene eliminación de fondos automática.',
+    'Photopea (gratis): clon de Photoshop que funciona en el navegador. Para los que quieren más control sin pagar nada.',
+    'Adobe Express (freemium): plantillas profesionales y acceso a Adobe Fonts. Bueno si ya estás en el ecosistema Adobe.',
+    'Remove.bg (gratis limitado): elimina fondos de fotos en un clic. Imprescindible para aislar tu cara o un producto sobre fondos de colores.',
+  ]},
+
+  { type: 'h2', t: 'El A/B Testing Cambia Todo' },
+  { type: 'p', t: 'En 2026, YouTube permite subir hasta 3 variaciones de miniatura por vídeo con su herramienta Test & Compare. YouTube las muestra a diferentes segmentos de audiencia y elige la ganadora basándose en tiempo de visualización, no solo en clics.' },
+  { type: 'p', t: 'Esto es un cambio radical. Antes tenías que adivinar qué miniatura funcionaba mejor. Ahora puedes probarlo con datos reales. Los creadores que hacen A/B testing consistentemente reportan mejoras de CTR del 15-30% en 3 meses.' },
+  { type: 'p', t: 'El truco está en probar una variable a la vez. Si cambias el color de fondo, la expresión facial y el texto a la vez, no sabrás qué causó la mejora. Cambia una cosa, mide, y repite.' },
+
+  { type: 'callout', t: 'El A/B testing no es solo para canales grandes. Un canal con 1.000 suscriptores que hace pruebas sistemáticas crecerá más rápido que uno con 50.000 que adivina.' },
+
+  { type: 'h2', t: 'Checklist: Antes de Subir tu Miniatura' },
+  { type: 'p', t: 'Usa esta lista para cada vídeo. No publiques hasta que puedas decir "sí" a todo:' },
+  { type: 'list', items: [
+    '¿Tiene un solo punto focal claro?',
+    '¿Funciona en tamaño móvil (encogida al 25%)?',
+    '¿El texto tiene 4 palabras o menos?',
+    '¿Miniatura y título se complementan (no se repiten)?',
+    '¿Hay contraste suficiente contra fondo blanco Y negro?',
+    '¿La esquina inferior derecha está libre?',
+    '¿Genera curiosidad sin ser clickbait vacío?',
+    '¿Es reconocible como tu marca?',
+    '¿Resolución 1280x720, formato JPG/PNG, menos de 2MB?',
+  ]},
+
+  { type: 'h2', t: 'Conclusión' },
+  { type: 'p', t: 'Tu miniatura es la primera impresión de tu vídeo, y en YouTube las primeras impresiones lo son todo. Los datos son claros: caras expresivas, poco texto, alto contraste, un punto focal, y curiosidad sin engaño. No es ciencia espacial, pero requiere intención y práctica.' },
+  { type: 'p', t: 'La mejor noticia es que en 2026 tienes herramientas para probar qué funciona con datos reales en lugar de adivinar. Usa el A/B testing, revisa tus CTRs, y mejora con cada vídeo. La miniatura perfecta no existe — pero la que funciona para tu audiencia sí, y solo la vas a encontrar probando.' },
+
+  { type: 'callout-final', t: 'Optimiza tus miniaturas con datos', sub: 'Analiza el CTR de tu competencia, genera ideas con IA y haz A/B testing — todo gratis.', cta: 'Empieza gratis con YTubViral' },
+];
+
+const ART_THUMBNAILS_EN: BlockType[] = [
+  { type: 'p', t: 'Your thumbnail is your video\'s ad. It doesn\'t matter how good your content is — if nobody clicks, nobody watches. And the difference between a video that takes off and one that dies in algorithmic limbo almost always comes down to the thumbnail.' },
+  { type: 'p', t: 'This isn\'t opinion. 90% of top-performing YouTube videos use custom thumbnails. In 2026, YouTube measures what they call "Quality CTR" — it\'s no longer enough to get clicks; if people click and leave within the first 30 seconds, the algorithm penalizes you. Your thumbnail needs to attract the right viewer, not just any viewer.' },
+  { type: 'p', t: 'In this guide, I\'ll give you the rules that actually work, backed by data, for designing thumbnails that convert impressions into views — and views into retention.' },
+
+  { type: 'h2', t: 'The Numbers: What\'s a Good CTR on YouTube in 2026' },
+  { type: 'p', t: 'Before we talk design, you need to know what you\'re competing against. These are the real CTR benchmarks on YouTube in 2026:' },
+  { type: 'list', items: [
+    '2-4%: below average. Your thumbnail isn\'t working.',
+    '4-6%: middle range. Acceptable, but there\'s room to improve.',
+    '6-8%: good. You\'re above most creators in your niche.',
+    '8-10%+: excellent. Your title + thumbnail combo is resonating with your audience.',
+  ]},
+  { type: 'p', t: 'But here\'s the thing: CTR varies by niche. Gaming averages 8.5% because the audience consumes content compulsively. Education hovers around 4.5% because viewers are searching for something specific and are more selective. Don\'t compare yourself to a niche that isn\'t yours.' },
+  { type: 'p', t: 'What matters isn\'t the absolute number — it\'s the trend. If your CTR goes up from one video to the next, your design is improving. If it drops, something isn\'t working.' },
+
+  { type: 'h2', t: 'The 7 Rules of a High-Converting Thumbnail' },
+
+  { type: 'h3', t: '1. Face with Exaggerated Emotion' },
+  { type: 'p', t: 'The data is conclusive: thumbnails with expressive faces generate 20% to 42% more clicks than those without faces or with neutral expressions. The human brain is wired to seek faces — it\'s instinct, not choice.' },
+  { type: 'p', t: 'The key is exaggeration. A face with a slight smile won\'t grab attention in a feed with 50 thumbnails competing. Genuine surprise, frustration, or intense excitement does. If you feel embarrassed making the face, it\'s probably expressive enough.' },
+
+  { type: 'h3', t: '2. Maximum 3-4 Words of Text' },
+  { type: 'p', t: '63% of YouTube views happen on mobile. On a 6-inch screen, your thumbnail is less than an inch tall. If you cram 7 words in there, nobody will read any of them. Data shows that 73% of top-performing videos use between 2 and 3 words on their thumbnail.' },
+  { type: 'p', t: 'Those words shouldn\'t repeat the title — they should complement it. If your title says "How I Made $10,000 on YouTube," the thumbnail could say "PROOF" or "no monetization." Thumbnail and title are a team, not an echo.' },
+
+  { type: 'h3', t: '3. Contrast That Pops on Any Background' },
+  { type: 'p', t: 'Your thumbnail competes against YouTube\'s white background (light mode) and black background (dark mode). It needs to work on both. The simplest rule: bright subject on dark background, or dark subject on bright background.' },
+  { type: 'p', t: 'Data suggests red generates 23% more CTR than blue, likely because it triggers a sense of urgency. But color matters less than contrast — a vibrant yellow on black works better than a muted red on brown.' },
+
+  { type: 'h3', t: '4. One Single Focal Point' },
+  { type: 'p', t: 'The viewer\'s eyes have less than a second to process your thumbnail. If 5 elements are competing for attention, they\'ll process none of them. The best thumbnails have one clear focal point: a face, an object, a before/after.' },
+  { type: 'p', t: 'Try the "3-second test": show your thumbnail to someone for 3 seconds and ask them what the video is about. If they can\'t tell you, your thumbnail is too complex.' },
+
+  { type: 'h3', t: '5. Avoid the Bottom-Right Corner' },
+  { type: 'p', t: 'YouTube overlays the video duration on the bottom-right corner of your thumbnail. Anything you put there — text, face, important element — gets covered. It\'s a surprisingly common mistake even on large channels.' },
+
+  { type: 'h3', t: '6. The Curiosity Gap' },
+  { type: 'p', t: 'A good thumbnail doesn\'t give all the information — it suggests something the viewer needs to discover. If your video is a before/after, show the "after" blurred or partial. If it\'s a ranking, show the result without revealing which product or idea won. Curiosity is what converts an impression into a click.' },
+  { type: 'p', t: 'But be careful: the curiosity must pay off. If your thumbnail promises something the video doesn\'t deliver, you\'ll have high CTR but terrible retention — and YouTube will tank your video with Quality CTR.' },
+
+  { type: 'h3', t: '7. Brand Consistency (Without Being Boring)' },
+  { type: 'p', t: 'The fastest-growing channels maintain a recognizable visual style without being repetitive. That might be a color palette, a composition style, or a text treatment. When a subscriber sees your thumbnail in their feed, they should recognize it as yours before reading the title.' },
+  { type: 'p', t: 'But there\'s a trap: if all your thumbnails are identical with different text, the viewer stops paying attention. Keep the style, vary the execution.' },
+
+  { type: 'callout-mid', t: 'Generate thumbnail ideas with AI', sub: 'Describe your video and get composition, color, and text suggestions optimized for CTR.', cta: 'Try the generator free' },
+
+  { type: 'h2', t: 'The 5 Mistakes Killing Your CTR' },
+
+  { type: 'h3', t: '1. Too Much Text' },
+  { type: 'p', t: 'This is the number one mistake. If your thumbnail looks like a PowerPoint slide, you\'ve lost. The thumbnail isn\'t a summary — it\'s a visual hook. If you need to explain what the video is about with text, your visual composition isn\'t working.' },
+
+  { type: 'h3', t: '2. Thumbnail and Title Say the Same Thing' },
+  { type: 'p', t: 'If your title says "5 Editing Mistakes" and your thumbnail says "5 EDITING MISTAKES," you\'re wasting space. The thumbnail should add information the title doesn\'t have — a face, an object, an emotion, an outcome.' },
+
+  { type: 'h3', t: '3. Generic Stock Images' },
+  { type: 'p', t: 'YouTube viewers recognize stock photos instantly. They communicate "I didn\'t try" and "there\'s probably nothing valuable here." A medium-quality photo of you is always better than a perfect stock photo.' },
+
+  { type: 'h3', t: '4. Not Optimizing for Mobile' },
+  { type: 'p', t: 'You design on a 27-inch monitor. Your audience sees it on a phone. If you don\'t preview your thumbnail at mobile size before uploading, you\'re designing blind. Shrink your thumbnail to 25% of its original size and see if it still works.' },
+
+  { type: 'h3', t: '5. Clickbait Without Payoff' },
+  { type: 'p', t: 'In 2026, YouTube measures viewer "satisfaction," not just clicks. If your thumbnail promises something the video doesn\'t deliver, people will leave within the first 30 seconds and the algorithm will bury your video. Clickbait that doesn\'t deliver no longer works — clickbait that does is just called a good thumbnail.' },
+
+  { type: 'h2', t: 'Tools for Creating Professional Thumbnails' },
+  { type: 'p', t: 'You don\'t need Photoshop or design skills. These tools get the job done:' },
+  { type: 'list', items: [
+    'Canva (free/pro): 1280x720 templates, drag-and-drop editor. The most popular option among creators for its ease of use. The pro plan has automatic background removal.',
+    'Photopea (free): Photoshop clone that runs in the browser. For those who want more control without paying anything.',
+    'Adobe Express (freemium): professional templates and access to Adobe Fonts. Good if you\'re already in the Adobe ecosystem.',
+    'Remove.bg (free, limited): removes photo backgrounds in one click. Essential for isolating your face or a product against colored backgrounds.',
+  ]},
+
+  { type: 'h2', t: 'A/B Testing Changes Everything' },
+  { type: 'p', t: 'In 2026, YouTube lets you upload up to 3 thumbnail variations per video with their Test & Compare tool. YouTube shows them to different audience segments and picks the winner based on watch time, not just clicks.' },
+  { type: 'p', t: 'This is a game changer. Before, you had to guess which thumbnail worked best. Now you can test it with real data. Creators who consistently A/B test report CTR improvements of 15-30% within 3 months.' },
+  { type: 'p', t: 'The trick is to test one variable at a time. If you change the background color, the facial expression, and the text all at once, you won\'t know what caused the improvement. Change one thing, measure, and repeat.' },
+
+  { type: 'callout', t: 'A/B testing isn\'t just for big channels. A channel with 1,000 subscribers that runs systematic tests will grow faster than one with 50,000 that guesses.' },
+
+  { type: 'h2', t: 'Checklist: Before Uploading Your Thumbnail' },
+  { type: 'p', t: 'Use this list for every video. Don\'t publish until you can say "yes" to everything:' },
+  { type: 'list', items: [
+    'Does it have one clear focal point?',
+    'Does it work at mobile size (shrunk to 25%)?',
+    'Is the text 4 words or fewer?',
+    'Do the thumbnail and title complement each other (not repeat)?',
+    'Is there enough contrast against both white AND black backgrounds?',
+    'Is the bottom-right corner clear?',
+    'Does it create curiosity without being empty clickbait?',
+    'Is it recognizable as your brand?',
+    'Resolution 1280x720, JPG/PNG format, under 2MB?',
+  ]},
+
+  { type: 'h2', t: 'Conclusion' },
+  { type: 'p', t: 'Your thumbnail is your video\'s first impression, and on YouTube first impressions are everything. The data is clear: expressive faces, minimal text, high contrast, one focal point, and curiosity without deception. It\'s not rocket science, but it requires intention and practice.' },
+  { type: 'p', t: 'The best news is that in 2026 you have tools to test what works with real data instead of guessing. Use A/B testing, review your CTRs, and improve with every video. The perfect thumbnail doesn\'t exist — but the one that works for your audience does, and you\'ll only find it by testing.' },
+
+  { type: 'callout-final', t: 'Optimize your thumbnails with data', sub: 'Analyze competitor CTR, generate ideas with AI, and A/B test — all free.', cta: 'Start free with YTubViral' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -2234,6 +2454,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'como-analizar-competencia-youtube': {
     es: ART_COMPETENCIA_ES,
     en: ART_COMPETENCIA_EN,
+  },
+  'thumbnails-youtube-guia-ctr': {
+    es: ART_THUMBNAILS_ES,
+    en: ART_THUMBNAILS_EN,
   },
 };
 
