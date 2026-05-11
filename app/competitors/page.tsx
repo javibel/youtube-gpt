@@ -131,8 +131,7 @@ export default function CompetitorsPage() {
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <a href="/" className="flex items-center gap-2.5">
               <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-                <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+                <circle cx="16" cy="16" r="12" fill="#ee4d5e"/>
               </svg>
               <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
             </a>

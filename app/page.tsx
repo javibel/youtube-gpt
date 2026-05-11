@@ -53,8 +53,7 @@ function TopNav({ lang }: { lang: Lang }) {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="13" stroke="#9B2020" strokeWidth="2.2"/>
-            <polygon points="13,10.5 13,21.5 23,16" fill="#9B2020"/>
+            <circle cx="16" cy="16" r="12" fill="#ee4d5e"/>
           </svg>
           <span className="font-display font-bold text-[17px] tracking-tight">
             YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
