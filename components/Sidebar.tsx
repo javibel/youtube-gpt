@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { getLangClient } from '@/lib/get-lang-client';
@@ -109,10 +109,8 @@ function YvIcon({ name }: { name: string }) {
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const [lang] = useState<Lang>(() => getLangClient());
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   function isActive(href: string) {
