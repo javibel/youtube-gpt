@@ -339,7 +339,7 @@ function handleCopy(id: string, out: string) {
               <div className="text-center">
                 <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                    <circle cx="16" cy="16" r="12" fill="#ee4d5e"/>
+                    <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
                   </svg>
                 </div>
                 <h2 className="font-display font-bold text-2xl text-white mb-2">

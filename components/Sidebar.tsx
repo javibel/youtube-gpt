@@ -127,7 +127,7 @@ export default function Sidebar() {
       <div className="yv-sidebar__brand">
         <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
           <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <circle cx="16" cy="16" r="12" fill="var(--yv-brand)"/>
+            <circle cx="16" cy="16" r="8" fill="var(--yv-brand)"/>
           </svg>
           <span className="yv-sidebar__name">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span></span>
         </a>

@@ -120,7 +120,7 @@ export default function LaunchPage() {
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="12" fill="#ee4d5e"/>
+              <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
             </svg>
             <span className="font-bold text-[17px] tracking-tight">
               YTubViral<span style={{ color: '#e84d5b' }}>.</span>com

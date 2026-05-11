@@ -93,7 +93,7 @@ export default async function ExtensionPage() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="12" fill="#ee4d5e"/>
+              <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
             </svg>
             <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
           </Link>
