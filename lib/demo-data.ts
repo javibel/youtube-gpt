@@ -24,37 +24,44 @@ function generateSnapshots(days: number) {
   let subs = 15200;
   let views = 1850000;
   let vids = 80;
-  // Pre-generate a "momentum" curve: slow start, acceleration, plateau, etc.
-  let momentum = 1.0;
+
+  // Pre-define growth phases so the cumulative curve has visible shape changes.
+  // Each phase: [startDay, endDay, subsMultiplier, viewsMultiplier]
+  // "plateau" = 0.15x, "normal" = 1x, "boost" = 2.5x, "viral" = 5x
+  const phases: [number, number, number, number][] = [
+    [1,  12, 0.15, 0.2],   // plateau — algo dip, barely growing
+    [13, 18, 1.0,  1.0],   // normal recovery
+    [19, 22, 2.8,  3.0],   // video went semi-viral
+    [23, 38, 0.8,  0.9],   // back to steady
+    [39, 42, 0.1,  0.15],  // another plateau
+    [43, 48, 1.5,  1.6],   // new video boosts
+    [49, 52, 4.5,  5.0],   // viral spike!
+    [53, 58, 2.0,  2.2],   // afterglow from viral
+    [59, 72, 0.9,  1.0],   // normal
+    [73, 76, 0.2,  0.25],  // slight dip
+    [77, 84, 1.2,  1.3],   // recovering
+    [85, 90, 1.8,  2.0],   // recent momentum
+  ];
+
+  function getPhaseMultiplier(dayIdx: number): [number, number] {
+    for (const [s, e, sm, vm] of phases) {
+      if (dayIdx >= s && dayIdx <= e) return [sm, vm];
+    }
+    return [1, 1];
+  }
+
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const dayIdx = days - i;
     const r = seededRand(dayIdx);
-    const r2 = seededRand(dayIdx * 3 + 17);
-    // Momentum shifts every ~10 days (simulates video releases, algorithm waves)
-    if (dayIdx % 10 === 1) momentum = 0.6 + seededRand(dayIdx * 7) * 1.2;
-    // Weekend boost
-    const dow = d.getDay();
-    const weekendFactor = (dow === 0 || dow === 6) ? 1.3 : 1.0;
-    // Viral spike (rare but impactful)
-    const isViral = r > 0.94;
-    // Slow day (occasional dips)
-    const isSlowDay = r2 < 0.08;
-    const baseSubs = 40 + r * 60;
-    const dailySubs = Math.round(
-      baseSubs * momentum * weekendFactor
-      + (isViral ? 350 + r * 200 : 0)
-      - (isSlowDay ? baseSubs * 0.5 : 0)
-    );
-    const baseViews = 4000 + r * 5000;
-    const dailyViews = Math.round(
-      baseViews * momentum * weekendFactor
-      + (isViral ? 25000 + r * 15000 : 0)
-      - (isSlowDay ? baseViews * 0.4 : 0)
-    );
-    subs += Math.max(5, dailySubs);
-    views += Math.max(500, dailyViews);
+    const [subsMult, viewsMult] = getPhaseMultiplier(dayIdx);
+
+    const dailySubs = Math.max(2, Math.round((30 + r * 50) * subsMult));
+    const dailyViews = Math.max(200, Math.round((3000 + r * 4000) * viewsMult));
+
+    subs += dailySubs;
+    views += dailyViews;
     if (dayIdx % 4 === 0 && r > 0.3) vids++;
     pts.push({ subscribers: subs, totalViews: views, videoCount: vids, recordedAt: d.toISOString() });
   }
