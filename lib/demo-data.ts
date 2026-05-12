@@ -155,26 +155,49 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
     const now = new Date();
     const endDate = new Date(now.getTime() - 2 * 86400000).toISOString().slice(0, 10);
     const startDate = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
+    // Growth phases for analytics daily data — different amplitudes create
+    // varied peak heights instead of uniform oscillation.
+    // [startDay, endDay, viewsMult, subsMult]
+    const analyticsPhases: [number, number, number, number][] = [
+      [1,  8,  0.6,  0.5],   // slow week
+      [9,  14, 1.0,  1.0],   // normal
+      [15, 17, 2.2,  2.0],   // video release bump
+      [18, 25, 1.1,  1.0],   // settling
+      [26, 30, 0.5,  0.4],   // dip
+      [31, 33, 0.7,  0.6],   // low
+      [34, 38, 1.8,  1.7],   // another release
+      [39, 45, 1.3,  1.2],   // afterglow
+      [46, 50, 0.8,  0.7],   // normal-low
+      [51, 54, 3.5,  3.0],   // big viral spike
+      [55, 60, 2.0,  1.8],   // viral afterglow
+      [61, 68, 1.0,  0.9],   // back to normal
+      [69, 74, 0.55, 0.5],   // quiet period
+      [75, 80, 1.4,  1.3],   // recovery
+      [81, 85, 1.0,  1.0],   // steady
+      [86, 90, 1.6,  1.5],   // recent momentum
+    ];
+    function getAnalyticsMult(dayIdx: number): [number, number] {
+      for (const [s, e, vm, sm] of analyticsPhases) {
+        if (dayIdx >= s && dayIdx <= e) return [vm, sm];
+      }
+      return [1, 1];
+    }
+
     const daily = [];
-    let viewsMomentum = 1.0;
     for (let i = 89; i >= 0; i--) {
       const d = new Date(now); d.setDate(d.getDate() - i);
       const dayIdx = 90 - i;
       const r = seededRand(dayIdx + 500);
-      const r2 = seededRand(dayIdx * 5 + 333);
       const dow = d.getDay();
-      const isWeekend = dow === 0 || dow === 6;
-      // Momentum waves (video release effect)
-      if (dayIdx % 12 === 1) viewsMomentum = 0.7 + seededRand(dayIdx * 11 + 500) * 1.0;
-      const wkFactor = isWeekend ? 1.25 : 1.0;
-      const isViral = r > 0.93;
-      const isSlow = r2 < 0.06;
-      const baseViews = 5500 + r * 3500;
+      const wkFactor = (dow === 0 || dow === 6) ? 1.2 : (dow === 5) ? 1.1 : 1.0;
+      const [viewsMult, subsMult] = getAnalyticsMult(dayIdx);
+      const baseViews = 4500 + r * 3000;
+      const baseSubs = 40 + r * 50;
       daily.push({
         day: d.toISOString().slice(0, 10),
-        views: Math.round(baseViews * viewsMomentum * wkFactor + (isViral ? 9000 + r * 5000 : 0) - (isSlow ? baseViews * 0.3 : 0)),
-        estimatedMinutesWatched: Math.round((2100 + r * 1500) * viewsMomentum * wkFactor),
-        subscribersGained: Math.round((55 + r * 60) * viewsMomentum * wkFactor + (isViral ? 180 : 0)),
+        views: Math.round(baseViews * viewsMult * wkFactor),
+        estimatedMinutesWatched: Math.round(baseViews * viewsMult * wkFactor * 0.38),
+        subscribersGained: Math.round(baseSubs * subsMult * wkFactor),
         subscribersLost: Math.round(4 + r * 12),
       });
     }
