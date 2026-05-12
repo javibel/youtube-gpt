@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { getDemoResponse } from "@/lib/demo-data";
 
 const protectedRoutes = ["/dashboard", "/generate", "/admin", "/profile", "/seo-score", "/ab-test", "/team", "/optimize", "/audit", "/achievements", "/thumbnail-preview", "/revenue"];
-const publicRoutes = ["/", "/login", "/signup"];
 
 export default async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
+
+  // Demo mode: cookie ytv_demo=1 returns fake data for video recording
+  if (path.startsWith('/api/') && req.cookies.get('ytv_demo')?.value === '1') {
+    const demo = getDemoResponse(req);
+    if (demo) return demo;
+  }
+
   const isProtected = protectedRoutes.some((r) => path.startsWith(r));
 
   if (!isProtected) return NextResponse.next();
@@ -28,5 +35,5 @@ export default async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
