@@ -226,6 +226,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: '90% of top-performing YouTube videos use custom thumbnails. We break down the design rules that separate a 2% CTR from a 10% one, with real data, mistakes to avoid, and a checklist for every thumbnail.',
     },
   },
+  {
+    slug: 'como-crear-scripts-youtube-con-ia',
+    cat: 'tutorials',
+    readMin: 10,
+    date: { es: '12 May 2026', en: 'May 12, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/scripts-youtube-ia.webp',
+    title: {
+      es: 'Cómo Crear Scripts de YouTube con IA en 2026 (Guía Paso a Paso)',
+      en: 'How to Create YouTube Scripts with AI in 2026 (Step-by-Step Guide)',
+    },
+    excerpt: {
+      es: 'La IA no te va a convertir en buen YouTuber, pero sí puede ahorrarte 3 horas por guion. Te enseño el proceso exacto para crear scripts que suenen a ti — no a un robot — usando IA como herramienta, no como muleta.',
+      en: 'AI won\'t make you a good YouTuber, but it can save you 3 hours per script. I\'ll show you the exact process to create scripts that sound like you — not a robot — using AI as a tool, not a crutch.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -2410,6 +2426,220 @@ const ART_THUMBNAILS_EN: BlockType[] = [
   { type: 'callout-final', t: 'Optimize your thumbnails with data', sub: 'Analyze competitor CTR, generate ideas with AI, and A/B test — all free.', cta: 'Start free with YTubViral' },
 ];
 
+const ART_SCRIPTS_IA_ES: BlockType[] = [
+  { type: 'p', t: 'Voy a decirte algo que la mayoría de artículos sobre IA y YouTube no te van a decir: si le pides a ChatGPT "escríbeme un guion sobre X" y copias lo que te da, tu vídeo va a sonar genérico, aburrido y exactamente igual que los otros 500 vídeos que hicieron lo mismo.' },
+  { type: 'p', t: 'La IA es una herramienta brutal para crear scripts de YouTube. Pero una herramienta solo es tan buena como la persona que la usa. Un martillo puede construir una casa o destrozar una pared — depende de quién lo agarra.' },
+  { type: 'p', t: 'En esta guía te voy a enseñar el proceso real que yo uso para crear guiones con IA. No es "un prompt mágico". Es un método de 5 fases que convierte a la IA en tu asistente de escritura — no en tu sustituto.' },
+
+  { type: 'h2', t: 'Por Qué el 90% de los Scripts Generados con IA Son Malos' },
+  { type: 'p', t: 'Antes de darte la solución, necesitas entender el problema. La mayoría de creadores usan la IA así: abren ChatGPT, escriben "hazme un guion de 10 minutos sobre cómo ganar dinero en YouTube", copian el resultado y leen frente a la cámara. El resultado siempre es el mismo:' },
+  { type: 'list', items: [
+    'Suena a Wikipedia con personalidad forzada',
+    'Usa muletillas que nadie dice en la vida real ("en este vídeo vamos a explorar...")',
+    'Tiene estructura de ensayo académico, no de conversación',
+    'Incluye datos inventados o desactualizados que la IA alucina',
+    'Le falta tu voz, tu opinión, tus experiencias — lo único que te diferencia',
+  ]},
+  { type: 'p', t: 'El espectador nota inmediatamente que el creador no escribió eso. No sabe que es IA necesariamente, pero siente que algo falla — que el vídeo no tiene alma. Y se va.' },
+  { type: 'p', t: 'La solución no es dejar de usar IA. Es usarla en las fases donde aporta valor real y mantener el control en las que solo tú puedes hacer bien.' },
+
+  { type: 'h2', t: 'La Estructura de un Buen Script de YouTube' },
+  { type: 'p', t: 'Antes de meter la IA en la ecuación, necesitas saber qué estructura funciona. Un buen guion de YouTube no es un artículo de blog leído en voz alta — es una conversación con una persona que puede irse en cualquier momento.' },
+
+  { type: 'h3', t: 'Hook (0-15 segundos)' },
+  { type: 'p', t: 'Los primeros 15 segundos determinan si el espectador se queda. Tu hook tiene que hacer una de estas cosas: plantear un problema que el espectador tiene, hacer una afirmación sorprendente que contradiga lo que cree, o adelantar un resultado que va a querer ver.' },
+  { type: 'p', t: 'Lo que nunca funciona: "Hola, bienvenidos a mi canal, soy Javier y hoy vamos a hablar de...". Eso es 15 segundos de nada. El espectador ya sabe que es tu canal — está ahí. Ve al grano.' },
+
+  { type: 'h3', t: 'Problema + Contexto (15s - 1:30)' },
+  { type: 'p', t: 'Después del hook, dale contexto al espectador. ¿Por qué debería importarle este tema? ¿Qué le pasa si no lo resuelve? ¿Qué le va a aportar quedarse? Aquí es donde estableces credibilidad: datos reales, experiencia propia, o una historia que conecte.' },
+
+  { type: 'h3', t: 'Contenido central (1:30 - 8:00)' },
+  { type: 'p', t: 'El cuerpo del vídeo. Puede ser una lista (5 errores, 7 pasos), un tutorial paso a paso, o una narrativa. La clave es que cada sección tenga un "mini-hook" — una frase al final que enganche con la siguiente: "pero hay un error que la mayoría comete y que destruye todo lo anterior...".' },
+  { type: 'p', t: 'Si es una lista, la sección más potente va al principio (para retener) o al final (para crear anticipación). Nunca en el medio, donde nadie la recordará.' },
+
+  { type: 'h3', t: 'CTA + Cierre (últimos 30-60 segundos)' },
+  { type: 'p', t: 'No termines de golpe. Resume la idea principal en una frase, haz tu CTA (suscríbete, comenta, mira el siguiente vídeo), y cierra con una frase que deje un buen sabor — algo memorable, no un "bueno, eso es todo".' },
+
+  { type: 'callout', t: 'Los vídeos con estructura clara (hook → problema → contenido → CTA) tienen un 34% más de retención media que los que improvisan. No es opinión — es dato de YouTube Analytics.' },
+
+  { type: 'h2', t: 'El Método de 5 Fases para Scripts con IA' },
+  { type: 'p', t: 'Ahora sí. Este es el proceso que funciona. Cada fase usa la IA de forma distinta — y en dos de ellas la IA no interviene para nada.' },
+
+  { type: 'h3', t: 'Fase 1: Brainstorm de Ángulos (IA)' },
+  { type: 'p', t: 'Aquí es donde la IA brilla de verdad. No le pidas un guion — pídele 10 ángulos distintos para abordar tu tema. Si tu vídeo es sobre "cómo empezar en YouTube", la IA te puede dar ángulos como: los 3 errores que cometen todos, lo que nadie te dice del primer año, qué haría si empezara desde cero hoy, el setup mínimo viable, etc.' },
+  { type: 'p', t: 'De esos 10 ángulos, uno te va a hacer pensar "eso es interesante, eso quiero contar". Ese es tu ángulo. La IA te ayudó a encontrarlo en 30 segundos en vez de 30 minutos mirando al techo.' },
+
+  { type: 'h3', t: 'Fase 2: Outline Estructurado (IA + Tú)' },
+  { type: 'p', t: 'Con el ángulo elegido, pídele a la IA un esqueleto del guion: hook, secciones principales, puntos de cada sección, CTA. Pero no aceptes el primero que te dé. Léelo y pregúntate: ¿qué falta? ¿qué sobra? ¿qué reordenaría?' },
+  { type: 'p', t: 'Mueve secciones, elimina las que no aportan, añade las que se te ocurren a ti. El outline final debe ser mitad IA, mitad tuyo. La IA te dio la base; tú le diste la dirección.' },
+
+  { type: 'h3', t: 'Fase 3: Primer Borrador (IA)' },
+  { type: 'p', t: 'Ahora sí, pídele que desarrolle el outline en un guion completo. Pero dale instrucciones claras: "escríbelo en tono conversacional, como si hablaras con un amigo. Evita introducciones largas. Usa frases cortas. No uses muletillas como \'sin más preámbulo\' o \'en el mundo actual\'. Duración objetivo: 10 minutos a 150 palabras por minuto."' },
+  { type: 'p', t: 'Cuanto más específico seas con el tono y el estilo, mejor será el resultado. Si tienes guiones anteriores que te gustan, dáselos como ejemplo. La IA ajusta el estilo mucho mejor con ejemplos que con instrucciones abstractas.' },
+
+  { type: 'callout-mid', t: 'Genera scripts optimizados para YouTube', sub: 'Elige tu tema, ajusta el tono y la duración, y obtén un guion listo para grabar en segundos.', cta: 'Probar el generador de scripts' },
+
+  { type: 'h3', t: 'Fase 4: Reescritura con Tu Voz (Tú Solo)' },
+  { type: 'p', t: 'Esta es la fase más importante y la que el 90% de los creadores se saltan. Coge el borrador de la IA y léelo en voz alta. Cada frase que suene rara, forzada o "de máquina", cámbiala por cómo lo dirías tú.' },
+  { type: 'p', t: 'Aquí es donde añades tus opiniones, tus experiencias, tus chistes, tus manías. "Mira, esto lo sé porque me pasó a mí cuando tenía 200 suscriptores y pensaba que lo estaba haciendo todo bien". Eso es lo que hace que tu vídeo sea tuyo y no un texto genérico con tu cara.' },
+  { type: 'p', t: 'Regla práctica: si puedes copiar una frase del guion, pegarla en el vídeo de otro creador y nadie notaría la diferencia — esa frase necesita tu voz. Si solo tú podrías decir esa frase, déjala como está.' },
+
+  { type: 'h3', t: 'Fase 5: Pulido Final (IA + Tú)' },
+  { type: 'p', t: 'Con tu versión reescrita, puedes volver a la IA para dos cosas: comprobar que el hook es fuerte (pégale los primeros 3 párrafos y pregúntale "¿esto engancha a alguien que no me conoce?") y verificar datos ("¿este porcentaje es correcto? ¿esta herramienta sigue existiendo?").' },
+  { type: 'p', t: 'También es útil pedirle que detecte secciones donde el ritmo baja — partes donde el espectador podría aburrirse. La IA es buena encontrando esos valles que tú no ves porque estás demasiado metido en el texto.' },
+
+  { type: 'h2', t: 'Los Prompts que Funcionan (Y los que No)' },
+  { type: 'p', t: 'La diferencia entre un guion bueno y uno genérico está en cómo le pides las cosas a la IA. Estos son ejemplos reales:' },
+
+  { type: 'h3', t: 'Prompt malo' },
+  { type: 'p', t: '"Escríbeme un guion de YouTube de 10 minutos sobre cómo ganar suscriptores". Resultado: texto genérico, estructura de artículo, cero personalidad, datos que pueden ser inventados.' },
+
+  { type: 'h3', t: 'Prompt bueno' },
+  { type: 'p', t: '"Necesito un guion para un vídeo de YouTube de 10 minutos. Tema: cómo conseguí mis primeros 1.000 suscriptores. Tono: conversacional, directo, como hablar con un amigo. Público: creadores nuevos con 0-500 subs que están frustrados por crecer lento. Estructura: hook provocador (15s) → mi error principal al empezar → 5 cosas que cambié con resultado concreto de cada una → CTA. No uses frases como \'en este vídeo\', \'sin más preámbulo\', o \'en el mundo actual\'. Usa frases cortas. Incluye marcas de pausa [PAUSA] donde el ritmo lo pida."' },
+  { type: 'p', t: 'El segundo prompt produce un resultado 10 veces mejor porque le estás dando contexto, audiencia, estructura, tono y restricciones. La IA no lee tu mente — cuanto más le des, mejor te devuelve.' },
+
+  { type: 'h2', t: '5 Errores que Arruinan un Script con IA' },
+
+  { type: 'h3', t: '1. Copiar sin leer' },
+  { type: 'p', t: 'Si no lees el guion en voz alta antes de grabar, se nota. Las frases que funcionan escritas no siempre funcionan habladas. "La optimización del contenido audiovisual" queda bien en un artículo — frente a cámara suena ridículo. Di "hacer mejores vídeos" y ya está.' },
+
+  { type: 'h3', t: '2. No verificar datos' },
+  { type: 'p', t: 'La IA inventa estadísticas con total confianza. Si tu guion dice "el 73% de los espectadores prefieren vídeos de menos de 8 minutos", verifica de dónde sale ese dato. Si no puedes encontrar la fuente, borra el número. Un dato falso destruye tu credibilidad más rápido que cualquier otra cosa.' },
+
+  { type: 'h3', t: '3. Perder tu personalidad' },
+  { type: 'p', t: 'Si 10 creadores usan el mismo prompt, los 10 van a tener guiones similares. Tu diferenciación no está en la información — está en cómo la cuentas, qué opinas sobre ella, y qué experiencias tuyas la respaldan. Si quitas eso, eres intercambiable.' },
+
+  { type: 'h3', t: '4. Ignorar el ritmo' },
+  { type: 'p', t: 'Un guion no es solo palabras — es ritmo. Necesita frases cortas que golpeen. Después una frase más larga que desarrolle. Luego otra corta. Como una conversación real. La IA tiende a escribir párrafos uniformes — rompe esa monotonía manualmente.' },
+
+  { type: 'h3', t: '5. No iterar' },
+  { type: 'p', t: 'Tu primer guion con IA va a ser mediocre. El quinto va a ser bueno. El vigésimo va a ser excelente. No porque la IA mejore — mejoras tú. Aprendes a dar mejores instrucciones, a detectar qué sobra, a añadir tu voz más rápido. El proceso se agiliza con la práctica, no con un prompt perfecto.' },
+
+  { type: 'h2', t: 'Cuánto Tiempo se Ahorra Realmente' },
+  { type: 'p', t: 'Seamos honestos con los números. Un guion de 10 minutos (1.500 palabras) sin IA me llevaba unas 4-5 horas: investigar, estructurar, escribir, reescribir, pulir. Con el método de 5 fases:' },
+  { type: 'list', items: [
+    'Fase 1 (brainstorm): 5 minutos en vez de 30',
+    'Fase 2 (outline): 10 minutos en vez de 45',
+    'Fase 3 (borrador): 3 minutos de generación + 5 de lectura',
+    'Fase 4 (reescritura): 45-60 minutos — esta no cambia, y no debe cambiar',
+    'Fase 5 (pulido): 15 minutos en vez de 30',
+  ]},
+  { type: 'p', t: 'Total: 1.5-2 horas en vez de 4-5. No es magia — te ahorra la parte mecánica (el papel en blanco, la estructura inicial, el primer borrador) y te deja más tiempo para la parte creativa (tu voz, tus historias, tu edición del ritmo). Eso es exactamente para lo que la IA es útil.' },
+
+  { type: 'h2', t: 'Conclusión' },
+  { type: 'p', t: 'La IA no va a escribir guiones que suenen a ti. Pero te va a quitar 3 horas de trabajo mecánico por guion y te va a dar un borrador sobre el que trabajar en lugar de un documento en blanco que te mira fijamente.' },
+  { type: 'p', t: 'El método es simple: deja que la IA haga el brainstorm, la estructura y el primer borrador. Tú pones la voz, la opinión y la experiencia. Es un equipo — pero tú mandas. El día que dejes de mandar, tus vídeos sonarán como los de todo el mundo. Y en YouTube, sonar como todo el mundo es la forma más rápida de ser invisible.' },
+
+  { type: 'callout-final', t: 'Crea tu próximo guion en minutos', sub: 'Genera scripts optimizados para YouTube con IA — ajusta tono, duración y estructura. Gratis.', cta: 'Probar YTubViral gratis' },
+];
+
+const ART_SCRIPTS_IA_EN: BlockType[] = [
+  { type: 'p', t: 'I\'m going to tell you something most articles about AI and YouTube won\'t: if you ask ChatGPT to "write me a script about X" and copy what it gives you, your video will sound generic, boring, and exactly like the other 500 videos that did the same thing.' },
+  { type: 'p', t: 'AI is an incredible tool for creating YouTube scripts. But a tool is only as good as the person using it. A hammer can build a house or smash a wall — it depends on who\'s holding it.' },
+  { type: 'p', t: 'In this guide, I\'ll show you the real process I use to create scripts with AI. It\'s not "one magic prompt." It\'s a 5-phase method that turns AI into your writing assistant — not your replacement.' },
+
+  { type: 'h2', t: 'Why 90% of AI-Generated Scripts Are Bad' },
+  { type: 'p', t: 'Before I give you the solution, you need to understand the problem. Most creators use AI like this: they open ChatGPT, type "make me a 10-minute script about how to make money on YouTube," copy the result, and read it in front of the camera. The result is always the same:' },
+  { type: 'list', items: [
+    'It sounds like Wikipedia with forced personality',
+    'It uses filler phrases nobody says in real life ("in this video we\'re going to explore...")',
+    'It has an academic essay structure, not a conversation',
+    'It includes made-up or outdated data the AI hallucinated',
+    'It lacks your voice, your opinions, your experiences — the only thing that makes you different',
+  ]},
+  { type: 'p', t: 'The viewer notices immediately that the creator didn\'t write it. They may not know it\'s AI, but they feel something\'s off — that the video has no soul. And they leave.' },
+  { type: 'p', t: 'The solution isn\'t to stop using AI. It\'s to use it in the phases where it adds real value and keep control in the ones only you can do well.' },
+
+  { type: 'h2', t: 'The Structure of a Good YouTube Script' },
+  { type: 'p', t: 'Before bringing AI into the equation, you need to know what structure works. A good YouTube script isn\'t a blog post read aloud — it\'s a conversation with someone who can leave at any moment.' },
+
+  { type: 'h3', t: 'Hook (0-15 seconds)' },
+  { type: 'p', t: 'The first 15 seconds determine whether the viewer stays. Your hook needs to do one of these things: present a problem the viewer has, make a surprising statement that contradicts what they believe, or preview a result they\'ll want to see.' },
+  { type: 'p', t: 'What never works: "Hey, welcome to my channel, I\'m Javier and today we\'re going to talk about..." That\'s 15 seconds of nothing. The viewer already knows it\'s your channel — they\'re there. Get to the point.' },
+
+  { type: 'h3', t: 'Problem + Context (15s - 1:30)' },
+  { type: 'p', t: 'After the hook, give the viewer context. Why should they care about this topic? What happens if they don\'t solve it? What will they gain by staying? This is where you establish credibility: real data, personal experience, or a story that connects.' },
+
+  { type: 'h3', t: 'Core Content (1:30 - 8:00)' },
+  { type: 'p', t: 'The body of the video. It can be a list (5 mistakes, 7 steps), a step-by-step tutorial, or a narrative. The key is that each section has a "mini-hook" — a sentence at the end that bridges to the next one: "but there\'s a mistake most people make that destroys everything above...".' },
+  { type: 'p', t: 'If it\'s a list, the strongest section goes first (to retain) or last (to build anticipation). Never in the middle, where nobody will remember it.' },
+
+  { type: 'h3', t: 'CTA + Close (last 30-60 seconds)' },
+  { type: 'p', t: 'Don\'t end abruptly. Summarize the main idea in one sentence, do your CTA (subscribe, comment, watch the next video), and close with a memorable line — not a "well, that\'s all for today."' },
+
+  { type: 'callout', t: 'Videos with clear structure (hook → problem → content → CTA) have 34% higher average retention than improvised ones. That\'s not opinion — it\'s YouTube Analytics data.' },
+
+  { type: 'h2', t: 'The 5-Phase Method for AI Scripts' },
+  { type: 'p', t: 'Here we go. This is the process that works. Each phase uses AI differently — and in two of them, AI doesn\'t intervene at all.' },
+
+  { type: 'h3', t: 'Phase 1: Angle Brainstorm (AI)' },
+  { type: 'p', t: 'This is where AI truly shines. Don\'t ask it for a script — ask it for 10 different angles to approach your topic. If your video is about "how to start on YouTube," AI can give you angles like: the 3 mistakes everyone makes, what nobody tells you about the first year, what I\'d do if starting from zero today, the minimum viable setup, etc.' },
+  { type: 'p', t: 'Out of those 10 angles, one will make you think "that\'s interesting, that\'s what I want to talk about." That\'s your angle. AI helped you find it in 30 seconds instead of 30 minutes staring at the ceiling.' },
+
+  { type: 'h3', t: 'Phase 2: Structured Outline (AI + You)' },
+  { type: 'p', t: 'With your chosen angle, ask AI for a script skeleton: hook, main sections, points for each section, CTA. But don\'t accept the first one. Read it and ask yourself: what\'s missing? What\'s unnecessary? What would I reorder?' },
+  { type: 'p', t: 'Move sections, remove ones that don\'t add value, add the ones you think of yourself. The final outline should be half AI, half you. AI gave you the foundation; you gave it direction.' },
+
+  { type: 'h3', t: 'Phase 3: First Draft (AI)' },
+  { type: 'p', t: 'Now ask it to develop the outline into a full script. But give clear instructions: "write it in a conversational tone, like talking to a friend. Avoid long introductions. Use short sentences. Don\'t use filler phrases like \'without further ado\' or \'in today\'s world.\' Target length: 10 minutes at 150 words per minute."' },
+  { type: 'p', t: 'The more specific you are about tone and style, the better the result. If you have previous scripts you like, give them as examples. AI adjusts style much better with examples than with abstract instructions.' },
+
+  { type: 'callout-mid', t: 'Generate optimized YouTube scripts', sub: 'Choose your topic, adjust tone and length, and get a script ready to record in seconds.', cta: 'Try the script generator' },
+
+  { type: 'h3', t: 'Phase 4: Rewrite with Your Voice (You Only)' },
+  { type: 'p', t: 'This is the most important phase and the one 90% of creators skip. Take the AI draft and read it out loud. Every sentence that sounds weird, forced, or "machine-like," change it to how you\'d actually say it.' },
+  { type: 'p', t: 'This is where you add your opinions, your experiences, your jokes, your quirks. "Look, I know this because it happened to me when I had 200 subscribers and thought I was doing everything right." That\'s what makes your video yours and not a generic text with your face on it.' },
+  { type: 'p', t: 'Practical rule: if you can copy a sentence from the script, paste it into another creator\'s video and nobody would notice the difference — that sentence needs your voice. If only you could say that sentence, leave it as is.' },
+
+  { type: 'h3', t: 'Phase 5: Final Polish (AI + You)' },
+  { type: 'p', t: 'With your rewritten version, you can go back to AI for two things: check that the hook is strong (paste the first 3 paragraphs and ask "would this hook someone who doesn\'t know me?") and verify facts ("is this percentage correct? does this tool still exist?").' },
+  { type: 'p', t: 'It\'s also useful to ask it to detect sections where the pace drops — parts where the viewer might get bored. AI is good at finding those valleys you can\'t see because you\'re too deep in the text.' },
+
+  { type: 'h2', t: 'Prompts That Work (And Those That Don\'t)' },
+  { type: 'p', t: 'The difference between a good script and a generic one is in how you ask AI. Here are real examples:' },
+
+  { type: 'h3', t: 'Bad prompt' },
+  { type: 'p', t: '"Write me a 10-minute YouTube script about how to gain subscribers." Result: generic text, article structure, zero personality, potentially made-up data.' },
+
+  { type: 'h3', t: 'Good prompt' },
+  { type: 'p', t: '"I need a script for a 10-minute YouTube video. Topic: how I got my first 1,000 subscribers. Tone: conversational, direct, like talking to a friend. Audience: new creators with 0-500 subs who are frustrated by slow growth. Structure: provocative hook (15s) → my main mistake starting out → 5 things I changed with concrete results for each → CTA. Don\'t use phrases like \'in this video,\' \'without further ado,\' or \'in today\'s world.\' Use short sentences. Include pause marks [PAUSE] where the rhythm calls for it."' },
+  { type: 'p', t: 'The second prompt produces a result 10x better because you\'re giving it context, audience, structure, tone, and constraints. AI doesn\'t read your mind — the more you give it, the better it gives back.' },
+
+  { type: 'h2', t: '5 Mistakes That Ruin an AI Script' },
+
+  { type: 'h3', t: '1. Copy without reading' },
+  { type: 'p', t: 'If you don\'t read the script out loud before recording, it shows. Sentences that work written don\'t always work spoken. "The optimization of audiovisual content" looks fine in an article — in front of a camera it sounds ridiculous. Say "making better videos" and move on.' },
+
+  { type: 'h3', t: '2. Not verifying data' },
+  { type: 'p', t: 'AI makes up statistics with total confidence. If your script says "73% of viewers prefer videos under 8 minutes," verify where that number comes from. If you can\'t find the source, delete the number. A false stat destroys your credibility faster than anything else.' },
+
+  { type: 'h3', t: '3. Losing your personality' },
+  { type: 'p', t: 'If 10 creators use the same prompt, all 10 will have similar scripts. Your differentiation isn\'t in the information — it\'s in how you tell it, what you think about it, and what experiences back it up. Remove that and you\'re interchangeable.' },
+
+  { type: 'h3', t: '4. Ignoring rhythm' },
+  { type: 'p', t: 'A script isn\'t just words — it\'s rhythm. It needs short sentences that punch. Then a longer one that develops. Then another short one. Like a real conversation. AI tends to write uniform paragraphs — break that monotony manually.' },
+
+  { type: 'h3', t: '5. Not iterating' },
+  { type: 'p', t: 'Your first AI script will be mediocre. Your fifth will be good. Your twentieth will be excellent. Not because AI improves — you improve. You learn to give better instructions, spot what\'s unnecessary, add your voice faster. The process speeds up with practice, not with a perfect prompt.' },
+
+  { type: 'h2', t: 'How Much Time Does It Actually Save' },
+  { type: 'p', t: 'Let\'s be honest with the numbers. A 10-minute script (1,500 words) without AI used to take me about 4-5 hours: research, structure, write, rewrite, polish. With the 5-phase method:' },
+  { type: 'list', items: [
+    'Phase 1 (brainstorm): 5 minutes instead of 30',
+    'Phase 2 (outline): 10 minutes instead of 45',
+    'Phase 3 (draft): 3 minutes generating + 5 reading',
+    'Phase 4 (rewrite): 45-60 minutes — this doesn\'t change, and it shouldn\'t',
+    'Phase 5 (polish): 15 minutes instead of 30',
+  ]},
+  { type: 'p', t: 'Total: 1.5-2 hours instead of 4-5. It\'s not magic — it saves you the mechanical part (the blank page, initial structure, first draft) and leaves you more time for the creative part (your voice, your stories, your rhythm edits). That\'s exactly what AI is useful for.' },
+
+  { type: 'h2', t: 'Conclusion' },
+  { type: 'p', t: 'AI won\'t write scripts that sound like you. But it will save you 3 hours of mechanical work per script and give you a draft to work with instead of a blank document staring at you.' },
+  { type: 'p', t: 'The method is simple: let AI do the brainstorm, structure, and first draft. You bring the voice, the opinion, and the experience. It\'s a team — but you\'re in charge. The day you stop being in charge, your videos will sound like everyone else\'s. And on YouTube, sounding like everyone else is the fastest way to become invisible.' },
+
+  { type: 'callout-final', t: 'Create your next script in minutes', sub: 'Generate YouTube-optimized scripts with AI — adjust tone, length, and structure. Free.', cta: 'Try YTubViral for free' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -2458,6 +2688,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'thumbnails-youtube-guia-ctr': {
     es: ART_THUMBNAILS_ES,
     en: ART_THUMBNAILS_EN,
+  },
+  'como-crear-scripts-youtube-con-ia': {
+    es: ART_SCRIPTS_IA_ES,
+    en: ART_SCRIPTS_IA_EN,
   },
 };
 

@@ -46,6 +46,7 @@ async function main() {
     'https://ytubviral.com/blog/como-conseguir-suscriptores-youtube-2026',
     'https://ytubviral.com/blog/como-analizar-competencia-youtube',
     'https://ytubviral.com/blog/thumbnails-youtube-guia-ctr',
+    'https://ytubviral.com/blog/como-crear-scripts-youtube-con-ia',
     'https://ytubviral.com/features/keyword-research',
     'https://ytubviral.com/features/seo-score',
     'https://ytubviral.com/features/competitor-analysis',
