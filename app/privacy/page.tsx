@@ -14,7 +14,7 @@ export default function PrivacyPage() {
 
         <div>
           <a href="/" className="inline-flex items-center gap-2 mb-10">
-            <svg width="16" height="16" viewBox="6 6 20 20" fill="none">
+            <svg width="14" height="14" viewBox="7 7 18 18" fill="none">
               <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
             </svg>
             <span className="font-display font-bold text-[14px] text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>

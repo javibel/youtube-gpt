@@ -198,7 +198,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <svg width="18" height="18" viewBox="6 6 20 20" fill="none">
+            <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
               <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
             </svg>
             <span className="font-display font-bold text-[17px] tracking-tight">

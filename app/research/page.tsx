@@ -211,7 +211,7 @@ function ResearchPageInner() {
         <header className="border-b" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)' }}>
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <a href="/" className="flex items-center gap-2.5">
-              <svg width="18" height="18" viewBox="6 6 20 20" fill="none">
+              <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
                 <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
               </svg>
               <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>

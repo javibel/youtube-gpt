@@ -338,7 +338,7 @@ function handleCopy(id: string, out: string) {
             {onboardingStep === 0 && (
               <div className="text-center">
                 <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
-                  <svg width="20" height="20" viewBox="6 6 20 20" fill="none">
+                  <svg width="18" height="18" viewBox="7 7 18 18" fill="none">
                     <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
                   </svg>
                 </div>
