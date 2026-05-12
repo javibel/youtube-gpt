@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "YTubViral Demo Mode",
+  "version": "1.1",
+  "description": "Injects fake realistic data for video recording",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://ytubviral.com/*",
+        "https://www.ytubviral.com/*",
+        "http://localhost:3000/*"
+      ],
+      "js": ["injector.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["demo-mode.js"],
+      "matches": ["https://ytubviral.com/*", "https://www.ytubviral.com/*", "http://localhost:3000/*"]
+    }
+  ]
+}

@@ -12,34 +12,49 @@ export function isDemoMode(req: NextRequest): boolean {
   return req.cookies.get('ytv_demo')?.value === '1';
 }
 
+// Seeded pseudo-random for consistent but organic-looking data
+function seededRand(seed: number): number {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
 function generateSnapshots(days: number) {
   const pts = [];
   const now = new Date();
+  let subs = 15200;
+  let views = 1850000;
+  let vids = 80;
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const seed = (days - i) * 17 % 100;
-    pts.push({
-      subscribers: 15800 + (days - i) * 85 + seed,
-      totalViews: 1900000 + (days - i) * 14600 + seed * 100,
-      videoCount: 82 + Math.floor((days - i) / 7),
-      recordedAt: d.toISOString(),
-    });
+    const dayIdx = days - i;
+    const r = seededRand(dayIdx);
+    // Organic growth: base trend + noise + occasional spikes (viral days)
+    const isSpike = r > 0.92;
+    const dailySubs = Math.round(50 + r * 80 + dayIdx * 0.8 + (isSpike ? 400 : 0));
+    const dailyViews = Math.round(5000 + r * 6000 + dayIdx * 120 + (isSpike ? 30000 : 0));
+    subs += dailySubs;
+    views += dailyViews;
+    if (dayIdx % 4 === 0 && r > 0.3) vids++;
+    pts.push({ subscribers: subs, totalViews: views, videoCount: vids, recordedAt: d.toISOString() });
   }
   return pts;
 }
+
+const DEMO_VIDEOS = [
+  { videoId: 'dQw4w9WgXcQ', title: 'Cómo Monetizar YouTube en 2026 (La Verdad)', views: 84200, likes: 3600, comments: 420, publishedAt: '2026-05-08T14:00:00Z', thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
+  { videoId: '9bZkp7q19f0', title: '10 Errores que MATAN tu Canal de YouTube', views: 127500, likes: 5400, comments: 680, publishedAt: '2026-05-01T10:00:00Z', thumbnail: 'https://i.ytimg.com/vi/9bZkp7q19f0/mqdefault.jpg' },
+  { videoId: 'kJQP7kiw5Fk', title: 'Mi Setup de YouTube por Menos de 500€', views: 63800, likes: 2800, comments: 340, publishedAt: '2026-04-24T12:00:00Z', thumbnail: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg' },
+  { videoId: 'RgKAFK5djSk', title: 'El Algoritmo de YouTube Cambió (Qué Hacer)', views: 195000, likes: 8200, comments: 1120, publishedAt: '2026-04-17T10:00:00Z', thumbnail: 'https://i.ytimg.com/vi/RgKAFK5djSk/mqdefault.jpg' },
+  { videoId: 'JGwWNGJdvx8', title: 'Keyword Research para YouTube: Guía Completa', views: 41200, likes: 1900, comments: 210, publishedAt: '2026-04-10T10:00:00Z', thumbnail: 'https://i.ytimg.com/vi/JGwWNGJdvx8/mqdefault.jpg' },
+];
 
 const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
   '/api/user/stats': () => ({
     user: { email: 'javier@ytubviral.com', name: 'Javier Jimeno', createdAt: '2025-09-15T10:00:00Z' },
     stats: {
-      totalGenerations: 347,
-      generationsThisMonth: 6,
-      limit: 50,
-      remaining: 44,
-      isPro: true,
-      plan: 'pro',
-      streak: 12,
+      totalGenerations: 347, generationsThisMonth: 6, limit: 50, remaining: 44,
+      isPro: true, plan: 'pro', streak: 12,
     },
     subscription: { status: 'active', plan: 'pro', cancelAtPeriodEnd: false, currentPeriodEnd: '2026-06-15T00:00:00Z' },
   }),
@@ -50,20 +65,11 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
     return {
       connected: true,
       channel: {
-        id: 'UC_demo_channel',
-        name: 'Javier Jimeno',
+        id: 'UC_demo_channel', name: 'Javier Jimeno',
         thumbnail: 'https://yt3.ggpht.com/a/default-user=s88-c-k-c0x00ffffff-no-rj',
-        subscribers: latest.subscribers,
-        totalViews: latest.totalViews,
-        videoCount: latest.videoCount,
+        subscribers: latest.subscribers, totalViews: latest.totalViews, videoCount: latest.videoCount,
       },
-      videos: [
-        { videoId: 'dQw4w9WgXcQ', title: 'Cómo Monetizar YouTube en 2026 (La Verdad)', views: 84200, likes: 3600, publishedAt: '2026-05-08T14:00:00Z', thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
-        { videoId: '9bZkp7q19f0', title: '10 Errores que MATAN tu Canal de YouTube', views: 127500, likes: 5400, publishedAt: '2026-05-01T10:00:00Z', thumbnail: 'https://i.ytimg.com/vi/9bZkp7q19f0/mqdefault.jpg' },
-        { videoId: 'kJQP7kiw5Fk', title: 'Mi Setup de YouTube por Menos de 500€', views: 63800, likes: 2800, publishedAt: '2026-04-24T12:00:00Z', thumbnail: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/mqdefault.jpg' },
-        { videoId: 'RgKAFK5djSk', title: 'El Algoritmo de YouTube Cambió (Qué Hacer)', views: 195000, likes: 8200, publishedAt: '2026-04-17T10:00:00Z', thumbnail: 'https://i.ytimg.com/vi/RgKAFK5djSk/mqdefault.jpg' },
-        { videoId: 'JGwWNGJdvx8', title: 'Keyword Research para YouTube: Guía Completa', views: 41200, likes: 1900, publishedAt: '2026-04-10T10:00:00Z', thumbnail: 'https://i.ytimg.com/vi/JGwWNGJdvx8/mqdefault.jpg' },
-      ],
+      videos: DEMO_VIDEOS,
     };
   },
 
@@ -114,9 +120,7 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
   }),
 
   '/api/onboarding': () => ({ step: 3, name: 'Javier' }),
-
   '/api/reviews': () => ({ review: null }),
-
   '/api/video-previews': () => ({ previews: [] }),
 
   // ── Analytics page ─────────────────────────────────────────────
@@ -127,13 +131,16 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
     const daily = [];
     for (let i = 89; i >= 0; i--) {
       const d = new Date(now); d.setDate(d.getDate() - i);
-      const seed = (90 - i) * 13 % 100;
+      const dayIdx = 90 - i;
+      const r = seededRand(dayIdx + 500);
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const weekendBoost = isWeekend ? 1800 : 0;
       daily.push({
         day: d.toISOString().slice(0, 10),
-        views: 5000 + (90 - i) * 60 + seed * 20,
-        estimatedMinutesWatched: 2100 + (90 - i) * 25 + seed * 8,
-        subscribersGained: 60 + Math.round(seed * 0.8) + (90 - i),
-        subscribersLost: 5 + Math.round(seed * 0.1),
+        views: Math.round(5500 + r * 4500 + weekendBoost + dayIdx * 40 + (r > 0.9 ? 8000 : 0)),
+        estimatedMinutesWatched: Math.round(2100 + r * 1800 + weekendBoost * 0.4 + dayIdx * 15),
+        subscribersGained: Math.round(55 + r * 70 + dayIdx * 0.6 + (r > 0.9 ? 150 : 0)),
+        subscribersLost: Math.round(4 + r * 12),
       });
     }
     return {
@@ -164,15 +171,167 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
         { country: 'GB', views: 6200, estimatedMinutesWatched: 2600 },
       ],
       topVideos: [
-        { video: 'v4', title: 'El Algoritmo de YouTube Cambió (Qué Hacer)', views: 195000, estimatedMinutesWatched: 48200, averageViewDuration: 384, likes: 8200, subscribersGained: 1240 },
-        { video: 'v2', title: '10 Errores que MATAN tu Canal de YouTube', views: 127500, estimatedMinutesWatched: 31800, averageViewDuration: 298, likes: 5400, subscribersGained: 820 },
-        { video: 'v1', title: 'Cómo Monetizar YouTube en 2026 (La Verdad)', views: 84200, estimatedMinutesWatched: 21050, averageViewDuration: 312, likes: 3600, subscribersGained: 480 },
-        { video: 'v3', title: 'Mi Setup de YouTube por Menos de 500€', views: 63800, estimatedMinutesWatched: 15900, averageViewDuration: 276, likes: 2800, subscribersGained: 340 },
-        { video: 'v5', title: 'Keyword Research para YouTube: Guía Completa', views: 41200, estimatedMinutesWatched: 14400, averageViewDuration: 420, likes: 1900, subscribersGained: 260 },
+        { video: 'RgKAFK5djSk', title: 'El Algoritmo de YouTube Cambió (Qué Hacer)', views: 195000, estimatedMinutesWatched: 48200, averageViewDuration: 384, likes: 8200, subscribersGained: 1240 },
+        { video: '9bZkp7q19f0', title: '10 Errores que MATAN tu Canal de YouTube', views: 127500, estimatedMinutesWatched: 31800, averageViewDuration: 298, likes: 5400, subscribersGained: 820 },
+        { video: 'dQw4w9WgXcQ', title: 'Cómo Monetizar YouTube en 2026 (La Verdad)', views: 84200, estimatedMinutesWatched: 21050, averageViewDuration: 312, likes: 3600, subscribersGained: 480 },
+        { video: 'kJQP7kiw5Fk', title: 'Mi Setup de YouTube por Menos de 500€', views: 63800, estimatedMinutesWatched: 15900, averageViewDuration: 276, likes: 2800, subscribersGained: 340 },
+        { video: 'JGwWNGJdvx8', title: 'Keyword Research para YouTube: Guía Completa', views: 41200, estimatedMinutesWatched: 14400, averageViewDuration: 420, likes: 1900, subscribersGained: 260 },
       ],
       daily,
     };
   },
+
+  // ── Subscribers page ───────────────────────────────────────────
+  '/api/youtube/subscribers': () => {
+    const now = new Date();
+    const endDate = new Date(now.getTime() - 2 * 86400000).toISOString().slice(0, 10);
+    const startDate = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10);
+    const subsTimeline = [];
+    for (let i = 89; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      const r = seededRand(90 - i + 200);
+      const isSpike = r > 0.93;
+      subsTimeline.push({
+        day: d.toISOString().slice(0, 10),
+        gained: Math.round(55 + r * 70 + (90 - i) * 0.6 + (isSpike ? 200 : 0)),
+        lost: Math.round(4 + r * 12),
+      });
+    }
+    const totalGained = subsTimeline.reduce((s, d) => s + d.gained, 0);
+    const totalLost = subsTimeline.reduce((s, d) => s + d.lost, 0);
+    return {
+      ageGroups: [
+        { group: '18-24', percentage: 28.5 }, { group: '25-34', percentage: 38.2 },
+        { group: '35-44', percentage: 18.7 }, { group: '45-54', percentage: 9.1 },
+        { group: '55-64', percentage: 3.8 }, { group: '65+', percentage: 1.7 },
+      ],
+      genderSplit: [{ gender: 'male', percentage: 72.4 }, { gender: 'female', percentage: 27.6 }],
+      countries: [
+        { country: 'ES', views: 78400, watchTime: 32800, subsGained: 890 },
+        { country: 'MX', views: 42100, watchTime: 17600, subsGained: 520 },
+        { country: 'AR', views: 28900, watchTime: 12100, subsGained: 380 },
+        { country: 'CO', views: 21400, watchTime: 8900, subsGained: 290 },
+        { country: 'US', views: 18200, watchTime: 7600, subsGained: 240 },
+      ],
+      subsSources: [
+        { source: 'YT_SEARCH', subsGained: 89200 },
+        { source: 'SUGGESTED', subsGained: 72400 },
+        { source: 'EXT_URL', subsGained: 28600 },
+        { source: 'SUBSCRIBER', subsGained: 18900 },
+      ],
+      subsTimeline,
+      summary: { totalSubsGained: totalGained, totalSubsLost: totalLost, netGrowth: totalGained - totalLost },
+      aiInsights: {
+        audienceProfile: 'Tu audiencia principal son hombres de 25-34 años en España y Latinoamérica interesados en crecer en YouTube y monetizar contenido digital.',
+        interests: ['YouTube growth', 'Video editing', 'Content creation', 'Digital marketing', 'Passive income'],
+        collaborationSuggestions: [
+          { channel: 'Canales de edición de vídeo (DaVinci, Premiere)', reason: 'Audiencia complementaria que busca mejorar calidad técnica' },
+          { channel: 'Canales de marketing digital en español', reason: 'Overlap en audiencia emprendedora digital' },
+          { channel: 'Canales de productividad/tech', reason: 'Tu audiencia valora herramientas y optimización' },
+        ],
+        growthTips: [
+          'Crea más contenido en inglés para captar audiencia US/GB con CPMs más altos',
+          'Enfócate en Shorts para captar el segmento 18-24 que crece rápido',
+          'Colabora con canales de edición de vídeo para cross-pollinate audiencias',
+        ],
+      },
+      channelName: 'Javier Jimeno',
+      period: { start: startDate, end: endDate },
+    };
+  },
+
+  // ── Revenue page ───────────────────────────────────────────────
+  '/api/youtube/revenue': () => {
+    const now = new Date();
+    const endDate = new Date(now.getTime() - 2 * 86400000).toISOString().slice(0, 10);
+    const startDate = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
+    return {
+      hasRealRevenue: false,
+      revenue28d: 842.50,
+      weightedCPM: 3.59,
+      totalViews28: 234800,
+      totalWatchTime28: 98400,
+      countries: [
+        { country: 'ES', views: 78400, watchTime: 32800, cpm: 3.0, estimatedRevenue: 235.20 },
+        { country: 'MX', views: 42100, watchTime: 17600, cpm: 2.0, estimatedRevenue: 84.20 },
+        { country: 'AR', views: 28900, watchTime: 12100, cpm: 1.0, estimatedRevenue: 28.90 },
+        { country: 'US', views: 18200, watchTime: 7600, cpm: 7.5, estimatedRevenue: 136.50 },
+        { country: 'CO', views: 21400, watchTime: 8900, cpm: 1.5, estimatedRevenue: 32.10 },
+        { country: 'GB', views: 6200, watchTime: 2600, cpm: 6.0, estimatedRevenue: 37.20 },
+      ],
+      videos: DEMO_VIDEOS.map(v => ({
+        videoId: v.videoId, title: v.title, views: v.views,
+        watchTime: Math.round(v.views * 0.42),
+        estimatedRevenue: Math.round(v.views / 1000 * 3.59 * 100) / 100,
+        thumbnail: v.thumbnail,
+      })),
+      months: [
+        { month: '2026-02', views: 168000, watchTime: 70500, estimatedRevenue: 603.12 },
+        { month: '2026-03', views: 195000, watchTime: 81900, estimatedRevenue: 700.05 },
+        { month: '2026-04', views: 218000, watchTime: 91500, estimatedRevenue: 782.62 },
+        { month: '2026-05', views: 234800, watchTime: 98400, estimatedRevenue: 842.50 },
+      ],
+      projection: { daily: 30.09, monthly: 902.68, yearly: 10982.61 },
+      aiInsights: {
+        optimizationPotential: 'Podrías aumentar un 40-60% tus ingresos atrayendo más audiencia de EEUU y UK donde los CPMs son 2-3x más altos.',
+        missedRevenue: '$350-500/mes',
+        tips: [
+          'Crea contenido bilingüe (ES+EN) para captar audiencia anglófona con CPMs de $6-8',
+          'Optimiza los primeros 30 segundos para mejorar retención — cada minuto extra de watch time sube el RPM',
+          'Usa end screens y cards para aumentar sesiones de visualización — YouTube premia los canales que retienen a los viewers',
+        ],
+        cpmStrategy: 'Tu audiencia principal está en países con CPM bajo ($1-3). Crear series en inglés sobre "YouTube growth tips" podría triplicar el RPM sin perder tu audiencia actual.',
+      },
+      channelName: 'Javier Jimeno',
+      period: { start: startDate, end: endDate },
+    };
+  },
+
+  // ── SEO Score page ─────────────────────────────────────────────
+  '/api/youtube/seo-score': () => ({
+    scores: DEMO_VIDEOS.map((v, i) => ({
+      videoId: v.videoId, title: v.title, thumbnail: v.thumbnail,
+      publishedAt: v.publishedAt, views: v.views,
+      score: [78, 85, 62, 91, 74][i],
+      checklist: [
+        { key: 'title_length', label: { es: 'Longitud del título', en: 'Title length' }, passed: v.title.length >= 30 && v.title.length <= 70, detail: { es: `${v.title.length} chars`, en: `${v.title.length} chars` }, weight: 8 },
+        { key: 'title_number', label: { es: 'Número en el título', en: 'Number in title' }, passed: /\d/.test(v.title), detail: { es: 'OK', en: 'OK' }, weight: 5 },
+        { key: 'desc_length', label: { es: 'Descripción completa', en: 'Full description' }, passed: i !== 2, detail: { es: i === 2 ? 'Muy corta' : '150+ palabras', en: i === 2 ? 'Too short' : '150+ words' }, weight: 10 },
+        { key: 'tags_count', label: { es: 'Tags suficientes', en: 'Enough tags' }, passed: i !== 2 && i !== 4, detail: { es: 'OK', en: 'OK' }, weight: 8 },
+        { key: 'timestamps', label: { es: 'Timestamps', en: 'Timestamps' }, passed: i < 2, detail: { es: i < 2 ? 'Incluidos' : 'No encontrados', en: i < 2 ? 'Included' : 'Not found' }, weight: 7 },
+      ],
+      analyzedAt: new Date().toISOString(),
+    })),
+  }),
+
+  // ── Optimize page ──────────────────────────────────────────────
+  '/api/youtube/optimize': () => ({
+    videos: DEMO_VIDEOS.map((v, i) => ({
+      videoId: v.videoId, title: v.title, thumbnail: v.thumbnail,
+      publishedAt: v.publishedAt, views: v.views, likes: v.likes,
+      score: [78, 85, 62, 91, 74][i],
+    })),
+  }),
+
+  // ── Retention page (POST only — return empty for GET) ──────────
+  '/api/youtube/retention': () => ({
+    videoId: 'dQw4w9WgXcQ',
+    title: 'Cómo Monetizar YouTube en 2026 (La Verdad)',
+    duration: 720,
+    retentionData: Array.from({ length: 100 }, (_, i) => {
+      const base = 100 - i * 0.4;
+      const drop30s = i < 5 ? 0 : i < 10 ? -8 : 0;
+      const midDip = i > 40 && i < 60 ? -5 : 0;
+      const r = seededRand(i + 900) * 4 - 2;
+      return { percent: i, retention: Math.max(5, Math.round((base + drop30s + midDip + r) * 10) / 10) };
+    }),
+    averageRetention: 48.2,
+    averageViewDuration: 346,
+    aiAnalysis: {
+      es: 'Tu retención es buena (48.2%). Se detecta una caída fuerte entre 0:30-1:00 — posiblemente tu intro es demasiado larga. Acorta el hook a 15 segundos. La caída en el minuto 5 sugiere que la sección central necesita más dinamismo visual.',
+      en: 'Your retention is good (48.2%). A strong drop between 0:30-1:00 is detected — possibly your intro is too long. Shorten the hook to 15 seconds. The dip at minute 5 suggests the middle section needs more visual dynamism.',
+    },
+  }),
 
   // ── Achievements page ──────────────────────────────────────────
   '/api/achievements': () => ({
@@ -201,7 +360,6 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
       { id: 'ta2', topic: 'YouTube Shorts monetización', country: 'ES', score: 88, read: false, createdAt: new Date().toISOString() },
       { id: 'ta3', topic: 'Podcast clips strategy', country: 'US', score: 82, read: true, createdAt: new Date(Date.now() - 86400000).toISOString() },
       { id: 'ta4', topic: 'Faceless channels 2026', country: 'MX', score: 79, read: true, createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-      { id: 'ta5', topic: 'MrBeast production secrets', country: 'US', score: 76, read: true, createdAt: new Date(Date.now() - 3 * 86400000).toISOString() },
     ],
     unreadCount: 2,
   }),
@@ -223,7 +381,7 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
       for (let hour = 0; hour < 24; hour++) {
         const peak = (hour >= 17 && hour <= 21) ? 0.8 : (hour >= 12 && hour <= 14) ? 0.5 : 0.2;
         const weekendBoost = (day === 0 || day === 6) ? 0.15 : 0;
-        row.push(Math.round((peak + weekendBoost + (day * 3 + hour * 7) % 10 / 50) * 100));
+        row.push(Math.round((peak + weekendBoost + seededRand(day * 24 + hour + 700) * 0.2) * 100));
       }
       heatmap.push(row);
     }
@@ -248,39 +406,69 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
   },
 
   // ── Audit page ─────────────────────────────────────────────────
-  '/api/youtube/audit': () => ({
-    audit: {
-      overallScore: 78,
+  '/api/youtube/audit': () => {
+    const now = new Date();
+    const endDate = new Date(now.getTime() - 2 * 86400000).toISOString().slice(0, 10);
+    const startDate = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
+    return {
+      channelName: 'Javier Jimeno',
+      subscribers: 18400,
+      healthScore: 78,
       categories: [
-        { key: 'titles', label: { es: 'Títulos', en: 'Titles' }, score: 82, maxScore: 100, checks: [
-          { key: 'title_length', label: { es: 'Longitud óptima (30-70 chars)', en: 'Optimal length (30-70 chars)' }, passed: true, impact: 8 },
-          { key: 'title_numbers', label: { es: 'Incluye números', en: 'Includes numbers' }, passed: true, impact: 5 },
-          { key: 'title_power_words', label: { es: 'Palabras clave de impacto', en: 'Power words' }, passed: true, impact: 4 },
+        { key: 'content', label: { es: 'Contenido', en: 'Content' }, score: 80, maxScore: 100, checks: [
+          { key: 'avg_duration', label: { es: 'Duración media óptima (8-20 min)', en: 'Optimal avg duration (8-20 min)' }, passed: true, impact: 25 },
+          { key: 'longform', label: { es: 'Videos long-form (10+ min)', en: 'Long-form videos (10+ min)' }, passed: true, impact: 15 },
+          { key: 'desc_quality', label: { es: 'Descripciones completas (80+ palabras)', en: 'Complete descriptions (80+ words)' }, passed: true, impact: 25 },
+          { key: 'timestamps', label: { es: 'Timestamps en >50% videos', en: 'Timestamps in >50% videos' }, passed: false, impact: 20 },
+          { key: 'links', label: { es: 'Enlaces en descripciones', en: 'Links in descriptions' }, passed: true, impact: 15 },
         ]},
-        { key: 'descriptions', label: { es: 'Descripciones', en: 'Descriptions' }, score: 65, maxScore: 100, checks: [
-          { key: 'desc_length', label: { es: '100+ palabras', en: '100+ words' }, passed: true, impact: 10 },
-          { key: 'desc_links', label: { es: 'Incluye enlaces', en: 'Includes links' }, passed: true, impact: 5 },
-          { key: 'desc_timestamps', label: { es: 'Timestamps', en: 'Timestamps' }, passed: false, impact: 7 },
-          { key: 'desc_cta', label: { es: 'Call to action', en: 'Call to action' }, passed: true, impact: 3 },
+        { key: 'seo', label: { es: 'SEO', en: 'SEO' }, score: 85, maxScore: 100, checks: [
+          { key: 'avg_seo', label: { es: 'SEO Score promedio ≥ 60', en: 'Average SEO Score ≥ 60' }, passed: true, impact: 30 },
+          { key: 'tags_usage', label: { es: '>70% videos con 5+ tags', en: '>70% videos with 5+ tags' }, passed: true, impact: 25 },
+          { key: 'hashtags', label: { es: 'Hashtags en >50% videos', en: 'Hashtags in >50% videos' }, passed: true, impact: 15 },
+          { key: 'title_length', label: { es: 'Títulos bien dimensionados', en: 'Well-sized titles' }, passed: true, impact: 30 },
         ]},
-        { key: 'tags', label: { es: 'Tags', en: 'Tags' }, score: 74, maxScore: 100, checks: [
-          { key: 'tag_count', label: { es: '5-20 tags', en: '5-20 tags' }, passed: true, impact: 8 },
-          { key: 'tag_long', label: { es: 'Tags de cola larga', en: 'Long-tail tags' }, passed: true, impact: 4 },
-          { key: 'tag_short', label: { es: 'Tags de 1 palabra', en: 'Single word tags' }, passed: false, impact: 3 },
+        { key: 'growth', label: { es: 'Crecimiento', en: 'Growth' }, score: 75, maxScore: 100, checks: [
+          { key: 'net_positive', label: { es: 'Crecimiento neto positivo', en: 'Net positive growth' }, passed: true, impact: 30 },
+          { key: 'low_churn', label: { es: 'Baja pérdida de suscriptores', en: 'Low subscriber churn' }, passed: true, impact: 25 },
+          { key: 'views_trending', label: { es: 'Tendencia de views al alza', en: 'Views trending upward' }, passed: true, impact: 25 },
+          { key: 'subs_gained', label: { es: '10+ suscriptores en 28 días', en: '10+ subscribers in 28 days' }, passed: true, impact: 20 },
         ]},
-        { key: 'engagement', label: { es: 'Engagement', en: 'Engagement' }, score: 88, maxScore: 100, checks: [
-          { key: 'like_ratio', label: { es: 'Ratio likes > 4%', en: 'Like ratio > 4%' }, passed: true, impact: 10 },
-          { key: 'comment_rate', label: { es: 'Ratio comentarios > 0.5%', en: 'Comment rate > 0.5%' }, passed: true, impact: 8 },
+        { key: 'engagement', label: { es: 'Engagement', en: 'Engagement' }, score: 70, maxScore: 100, checks: [
+          { key: 'eng_rate', label: { es: 'Engagement rate > 3%', en: 'Engagement rate > 3%' }, passed: true, impact: 30 },
+          { key: 'avg_retention', label: { es: 'Retención media > 40%', en: 'Average retention > 40%' }, passed: true, impact: 30 },
+          { key: 'share_rate', label: { es: 'Videos compartidos', en: 'Videos shared' }, passed: false, impact: 15 },
+          { key: 'cta_usage', label: { es: 'CTAs en >50% descripciones', en: 'CTAs in >50% descriptions' }, passed: false, impact: 25 },
+        ]},
+        { key: 'consistency', label: { es: 'Consistencia', en: 'Consistency' }, score: 80, maxScore: 100, checks: [
+          { key: 'freq_weekly', label: { es: 'Al menos 1 video/semana', en: 'At least 1 video/week' }, passed: true, impact: 35 },
+          { key: 'no_long_gaps', label: { es: 'Sin pausas > 14 días', en: 'No gaps > 14 days' }, passed: true, impact: 25 },
+          { key: 'regular_schedule', label: { es: 'Calendario regular', en: 'Regular schedule' }, passed: true, impact: 25 },
+          { key: 'active_recent', label: { es: 'Video en últimos 7 días', en: 'Video in last 7 days' }, passed: true, impact: 15 },
         ]},
       ],
-      videoCount: 87,
-      analyzedAt: new Date().toISOString(),
-      aiAnalysis: {
-        es: 'Tu canal tiene un rendimiento sólido con títulos bien optimizados y buen engagement. Las áreas de mejora principales son: añadir timestamps a las descripciones (mejora el CTR en búsqueda un 12%) y diversificar los tags con más variaciones de 1 palabra para captar búsquedas genéricas.',
-        en: 'Your channel has solid performance with well-optimized titles and good engagement. Main areas for improvement: add timestamps to descriptions (improves search CTR by 12%) and diversify tags with more single-word variations to capture generic searches.',
+      quickWins: [
+        { label: { es: 'Añade timestamps a tus descripciones', en: 'Add timestamps to descriptions' }, detail: { es: 'Solo el 30% de tus vídeos tienen timestamps. Mejora el CTR en búsqueda un 12%.', en: 'Only 30% of your videos have timestamps. Improves search CTR by 12%.' }, action: { label: { es: 'Optimizar', en: 'Optimize' }, href: '/optimize' }, priority: 'high' as const },
+        { label: { es: 'Añade CTAs pidiendo likes y comentarios', en: 'Add CTAs asking for likes and comments' }, detail: { es: 'Menos del 50% de tus vídeos incluyen un CTA claro.', en: 'Less than 50% of your videos include a clear CTA.' }, action: { label: { es: 'Ver Coach AI', en: 'Ask AI Coach' }, href: '/coach' }, priority: 'medium' as const },
+        { label: { es: 'Publica en tu mejor horario', en: 'Publish at your best time' }, detail: { es: 'Sábados 18-21h es tu mejor momento.', en: 'Saturdays 6-9 PM is your best window.' }, action: { label: { es: 'Ver Best Time', en: 'See Best Time' }, href: '/best-time' }, priority: 'low' as const },
+      ],
+      patterns: {
+        topVideos: DEMO_VIDEOS.slice(0, 3).map(v => ({ videoId: v.videoId, title: v.title, views: v.views, seoScore: 85 })),
+        bottomVideos: DEMO_VIDEOS.slice(3).map(v => ({ videoId: v.videoId, title: v.title, views: v.views, seoScore: 62 })),
+        patterns: [
+          { es: 'Tus TOP videos tienen SEO Score 85 vs 62 de los peores. El SEO importa.', en: 'Your TOP videos have SEO Score 85 vs 62 for bottom ones. SEO matters.' },
+          { es: 'Tus TOP videos tienen títulos más largos (52 vs 38 chars).', en: 'Your TOP videos have longer titles (52 vs 38 chars).' },
+          { es: '80% de tus TOP videos usan números en el título vs 20% de los peores.', en: '80% of your TOP videos use numbers in titles vs 20% of bottom ones.' },
+        ],
       },
-    },
-  }),
+      aiSummary: {
+        es: 'Tu canal tiene una salud sólida (78/100). El SEO y la consistencia son tus puntos fuertes. Las áreas de mejora principales son:\n\n1. Timestamps: solo el 30% de tus vídeos los incluyen. Añadirlos mejora el CTR en búsqueda.\n2. CTAs: menos de la mitad de tus vídeos piden likes/comentarios explícitamente.\n3. Shares: tu ratio de compartidos es bajo. Crea momentos "compartibles" en tus vídeos.',
+        en: 'Your channel has solid health (78/100). SEO and consistency are your strengths. Main areas for improvement:\n\n1. Timestamps: only 30% of your videos include them. Adding them improves search CTR.\n2. CTAs: less than half your videos explicitly ask for likes/comments.\n3. Shares: your share rate is low. Create "shareable" moments in your videos.',
+      },
+      videosAnalyzed: 30,
+      period: { start: startDate, end: endDate },
+    };
+  },
 
   // ── Calendar page ──────────────────────────────────────────────
   '/api/calendar': () => {
@@ -294,8 +482,7 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
     for (let i = -3; i < 12; i++) {
       const d = new Date(now); d.setDate(d.getDate() + i * 3);
       entries.push({
-        id: `cal${i + 4}`,
-        date: d.toISOString().slice(0, 10),
+        id: `cal${i + 4}`, date: d.toISOString().slice(0, 10),
         title: titles[(i + 3) % titles.length],
         status: i < 0 ? 'published' : i === 0 ? 'filming' : 'planned',
         notes: '',
@@ -305,10 +492,6 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
   },
 };
 
-/**
- * Check if the request is in demo mode and return fake data if available.
- * Returns null if not in demo mode or no fake data for this route.
- */
 export function getDemoResponse(req: NextRequest): NextResponse | null {
   if (!isDemoMode(req)) return null;
 
