@@ -90,7 +90,7 @@ const REQUIRED_CONTENT = {
     name: 'Aviso Legal',
     mustContain: [
       { keyword: 'titular', label: 'Titular del sitio' },
-      { keyword: 'nif', label: 'NIF/CIF', caseInsensitive: true },
+      // NIF omitted intentionally — owner not yet registered as autónomo
       { keyword: 'domicilio', label: 'Domicilio' },
       { keyword: 'lssi', label: 'LSSI-CE', caseInsensitive: true },
       { keyword: 'resolución de litigios', label: 'ODR/Resolución de litigios' },
