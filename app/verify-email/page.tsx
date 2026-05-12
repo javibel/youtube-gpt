@@ -53,7 +53,7 @@ function VerifyEmailContent() {
   return (
     <div className="min-h-screen grain grid-bg flex items-center justify-center p-4" style={{ background: 'var(--ink)' }}>
       <div className="absolute top-6 left-6">
-        <a href="/" className="flex items-center gap-2">
+        <a href="/" className="flex items-center gap-1">
           <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
             <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
           </svg>

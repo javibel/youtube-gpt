@@ -129,7 +129,7 @@ export default function CompetitorsPage() {
       <div className="min-h-screen grain" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-2)' }}>
         <header className="border-b" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)' }}>
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <a href="/" className="flex items-center gap-2.5">
+            <a href="/" className="flex items-center gap-1.5">
               <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
                 <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
               </svg>

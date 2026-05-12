@@ -13,7 +13,7 @@ export default function LegalPage() {
       <div className="max-w-3xl mx-auto px-6 py-16 space-y-10">
 
         <div>
-          <a href="/" className="inline-flex items-center gap-2 mb-10">
+          <a href="/" className="inline-flex items-center gap-1 mb-10">
             <svg width="14" height="14" viewBox="7 7 18 18" fill="none">
               <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
             </svg>
