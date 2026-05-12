@@ -24,17 +24,37 @@ function generateSnapshots(days: number) {
   let subs = 15200;
   let views = 1850000;
   let vids = 80;
+  // Pre-generate a "momentum" curve: slow start, acceleration, plateau, etc.
+  let momentum = 1.0;
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const dayIdx = days - i;
     const r = seededRand(dayIdx);
-    // Organic growth: base trend + noise + occasional spikes (viral days)
-    const isSpike = r > 0.92;
-    const dailySubs = Math.round(50 + r * 80 + dayIdx * 0.8 + (isSpike ? 400 : 0));
-    const dailyViews = Math.round(5000 + r * 6000 + dayIdx * 120 + (isSpike ? 30000 : 0));
-    subs += dailySubs;
-    views += dailyViews;
+    const r2 = seededRand(dayIdx * 3 + 17);
+    // Momentum shifts every ~10 days (simulates video releases, algorithm waves)
+    if (dayIdx % 10 === 1) momentum = 0.6 + seededRand(dayIdx * 7) * 1.2;
+    // Weekend boost
+    const dow = d.getDay();
+    const weekendFactor = (dow === 0 || dow === 6) ? 1.3 : 1.0;
+    // Viral spike (rare but impactful)
+    const isViral = r > 0.94;
+    // Slow day (occasional dips)
+    const isSlowDay = r2 < 0.08;
+    const baseSubs = 40 + r * 60;
+    const dailySubs = Math.round(
+      baseSubs * momentum * weekendFactor
+      + (isViral ? 350 + r * 200 : 0)
+      - (isSlowDay ? baseSubs * 0.5 : 0)
+    );
+    const baseViews = 4000 + r * 5000;
+    const dailyViews = Math.round(
+      baseViews * momentum * weekendFactor
+      + (isViral ? 25000 + r * 15000 : 0)
+      - (isSlowDay ? baseViews * 0.4 : 0)
+    );
+    subs += Math.max(5, dailySubs);
+    views += Math.max(500, dailyViews);
     if (dayIdx % 4 === 0 && r > 0.3) vids++;
     pts.push({ subscribers: subs, totalViews: views, videoCount: vids, recordedAt: d.toISOString() });
   }
@@ -129,17 +149,25 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
     const endDate = new Date(now.getTime() - 2 * 86400000).toISOString().slice(0, 10);
     const startDate = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
     const daily = [];
+    let viewsMomentum = 1.0;
     for (let i = 89; i >= 0; i--) {
       const d = new Date(now); d.setDate(d.getDate() - i);
       const dayIdx = 90 - i;
       const r = seededRand(dayIdx + 500);
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      const weekendBoost = isWeekend ? 1800 : 0;
+      const r2 = seededRand(dayIdx * 5 + 333);
+      const dow = d.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      // Momentum waves (video release effect)
+      if (dayIdx % 12 === 1) viewsMomentum = 0.7 + seededRand(dayIdx * 11 + 500) * 1.0;
+      const wkFactor = isWeekend ? 1.25 : 1.0;
+      const isViral = r > 0.93;
+      const isSlow = r2 < 0.06;
+      const baseViews = 5500 + r * 3500;
       daily.push({
         day: d.toISOString().slice(0, 10),
-        views: Math.round(5500 + r * 4500 + weekendBoost + dayIdx * 40 + (r > 0.9 ? 8000 : 0)),
-        estimatedMinutesWatched: Math.round(2100 + r * 1800 + weekendBoost * 0.4 + dayIdx * 15),
-        subscribersGained: Math.round(55 + r * 70 + dayIdx * 0.6 + (r > 0.9 ? 150 : 0)),
+        views: Math.round(baseViews * viewsMomentum * wkFactor + (isViral ? 9000 + r * 5000 : 0) - (isSlow ? baseViews * 0.3 : 0)),
+        estimatedMinutesWatched: Math.round((2100 + r * 1500) * viewsMomentum * wkFactor),
+        subscribersGained: Math.round((55 + r * 60) * viewsMomentum * wkFactor + (isViral ? 180 : 0)),
         subscribersLost: Math.round(4 + r * 12),
       });
     }
@@ -313,25 +341,70 @@ const DEMO_ROUTES: Record<string, (req: NextRequest) => object | null> = {
     })),
   }),
 
-  // ── Retention page (POST only — return empty for GET) ──────────
-  '/api/youtube/retention': () => ({
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Cómo Monetizar YouTube en 2026 (La Verdad)',
-    duration: 720,
-    retentionData: Array.from({ length: 100 }, (_, i) => {
-      const base = 100 - i * 0.4;
-      const drop30s = i < 5 ? 0 : i < 10 ? -8 : 0;
-      const midDip = i > 40 && i < 60 ? -5 : 0;
-      const r = seededRand(i + 900) * 4 - 2;
-      return { percent: i, retention: Math.max(5, Math.round((base + drop30s + midDip + r) * 10) / 10) };
-    }),
-    averageRetention: 48.2,
-    averageViewDuration: 346,
-    aiAnalysis: {
-      es: 'Tu retención es buena (48.2%). Se detecta una caída fuerte entre 0:30-1:00 — posiblemente tu intro es demasiado larga. Acorta el hook a 15 segundos. La caída en el minuto 5 sugiere que la sección central necesita más dinamismo visual.',
-      en: 'Your retention is good (48.2%). A strong drop between 0:30-1:00 is detected — possibly your intro is too long. Shorten the hook to 15 seconds. The dip at minute 5 suggests the middle section needs more visual dynamism.',
-    },
-  }),
+  // ── Retention page (returns { videos, aiTips, dropOffReasons }) ─
+  '/api/youtube/retention': () => {
+    const makeRetention = (seed: number, hookPct: number, avgPct: number) => {
+      const vals: number[] = [];
+      let cur = hookPct;
+      for (let i = 0; i < 100; i++) {
+        const r = seededRand(i + seed) * 4 - 2;
+        const decay = i < 5 ? -0.3 : i < 15 ? -0.8 : -0.35;
+        const midDip = i > 40 && i < 55 ? -0.5 : 0;
+        cur = Math.max(5, cur + decay + midDip + r);
+        vals.push(Math.round(cur));
+      }
+      return vals;
+    };
+    const videos = [
+      { videoId: 'dQw4w9WgXcQ', title: 'Cómo Monetizar YouTube en 2026 (La Verdad)', views: 84200, duration: 720,
+        retention: makeRetention(900, 95, 48), avgRetention: 48, hookScore: 88,
+        dropOffPoints: [
+          { time: 35, drop: 12, retentionBefore: 88, retentionAfter: 76 },
+          { time: 312, drop: 8, retentionBefore: 52, retentionAfter: 44 },
+        ] },
+      { videoId: '9bZkp7q19f0', title: '10 Errores que MATAN tu Canal de YouTube', views: 127500, duration: 600,
+        retention: makeRetention(910, 92, 52), avgRetention: 52, hookScore: 85,
+        dropOffPoints: [
+          { time: 28, drop: 10, retentionBefore: 85, retentionAfter: 75 },
+          { time: 240, drop: 7, retentionBefore: 55, retentionAfter: 48 },
+        ] },
+      { videoId: 'kJQP7kiw5Fk', title: 'Mi Setup de YouTube por Menos de 500€', views: 63800, duration: 540,
+        retention: makeRetention(920, 88, 44), avgRetention: 44, hookScore: 78,
+        dropOffPoints: [
+          { time: 42, drop: 14, retentionBefore: 82, retentionAfter: 68 },
+        ] },
+      { videoId: 'RgKAFK5djSk', title: 'El Algoritmo de YouTube Cambió (Qué Hacer)', views: 195000, duration: 840,
+        retention: makeRetention(930, 97, 55), avgRetention: 55, hookScore: 92,
+        dropOffPoints: [
+          { time: 30, drop: 8, retentionBefore: 92, retentionAfter: 84 },
+          { time: 420, drop: 9, retentionBefore: 50, retentionAfter: 41 },
+        ] },
+      { videoId: 'JGwWNGJdvx8', title: 'Keyword Research para YouTube: Guía Completa', views: 41200, duration: 960,
+        retention: makeRetention(940, 85, 42), avgRetention: 42, hookScore: 72,
+        dropOffPoints: [
+          { time: 50, drop: 15, retentionBefore: 78, retentionAfter: 63 },
+          { time: 360, drop: 10, retentionBefore: 48, retentionAfter: 38 },
+        ] },
+    ];
+    return {
+      videos,
+      aiTips: [
+        'Acorta tu intro a 10-15 segundos — todos tus vídeos pierden audiencia entre 0:30 y 1:00.',
+        'Usa cortes visuales o cambios de plano cada 30-40 segundos en la sección media para evitar la caída del minuto 5.',
+        'Tu hook es fuerte (media 83%) — mantén ese estilo directo al tema.',
+        'Prueba a añadir un "loop abierto" al inicio: adelanta lo que van a aprender al final del vídeo.',
+      ],
+      dropOffReasons: {
+        dQw4w9WgXcQ: [
+          { timestamp: '0:35', reason: 'Intro demasiado larga — el contenido principal empieza después de 30s.' },
+          { timestamp: '5:12', reason: 'Sección repetitiva sin nuevos estímulos visuales.' },
+        ],
+        '9bZkp7q19f0': [
+          { timestamp: '0:28', reason: 'Transición del hook al contenido poco fluida.' },
+        ],
+      },
+    };
+  },
 
   // ── Achievements page ──────────────────────────────────────────
   '/api/achievements': () => ({

@@ -190,17 +190,23 @@ export default function SubscribersPage() {
                 <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>
                   {t('SUSCRIPTORES GANADOS POR DÍA (90D)', 'SUBSCRIBERS GAINED PER DAY (90D)')}
                 </p>
-                <div className="flex items-end gap-px h-20">
+                <div className="flex items-end gap-px h-20 relative">
                   {subsTimeline.map((d, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center" title={`${d.day}: +${d.gained} / -${d.lost}`}>
+                    <div key={i} className="flex-1 flex flex-col items-center relative group/bar" style={{ cursor: 'crosshair' }}>
                       <div
-                        className="w-full rounded-t-sm"
+                        className="w-full rounded-t-sm transition-opacity group-hover/bar:opacity-100"
                         style={{
                           height: `${Math.max((d.gained / timelineMax) * 80, d.gained > 0 ? 2 : 0)}px`,
                           background: d.gained > d.lost * 2 ? '#22c55e' : '#9B2020',
                           opacity: 0.7,
                         }}
                       />
+                      {/* Hover tooltip */}
+                      <div className="invisible group-hover/bar:visible absolute bottom-full mb-2 left-1/2 -translate-x-1/2 whitespace-nowrap z-20 px-2.5 py-1.5 rounded-lg font-mono-jb text-[11px] pointer-events-none"
+                        style={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.12)' }}>
+                        <div style={{ color: 'var(--yv-text-3)' }}>{new Date(d.day).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' })}</div>
+                        <div><span style={{ color: '#22c55e' }}>+{d.gained}</span> <span style={{ color: '#e84d5b' }}>-{d.lost}</span> <span style={{ color: 'var(--yv-text-4)' }}>= {d.gained - d.lost}</span></div>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -255,11 +255,11 @@ export default function SeoScorePage() {
                   {/* Score badge */}
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div
-                      className="w-14 h-14 rounded-xl flex flex-col items-center justify-center font-mono-jb"
+                      className="min-w-[4rem] px-3 h-14 rounded-xl flex flex-col items-center justify-center font-mono-jb"
                       style={{ background: scoreBg(video.score), border: `1px solid ${scoreColor(video.score)}33` }}
                     >
                       <span className="text-lg font-bold" style={{ color: scoreColor(video.score) }}>{video.score}</span>
-                      <span className="text-[13px]" style={{ color: scoreColor(video.score), opacity: 0.7 }}>{scoreLabel(video.score, lang)}</span>
+                      <span className="text-[11px] whitespace-nowrap" style={{ color: scoreColor(video.score), opacity: 0.7 }}>{scoreLabel(video.score, lang)}</span>
                     </div>
                     <svg
                       width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
