@@ -1,9 +1,10 @@
 'use strict';
 
-const { newPage, newPageForProfile, ensureSession, persistSession } = require('./browser');
+const { newPage, newPageForProfile, ensureSession, persistSession, closeBrowserForProfile } = require('./browser');
 const db = require('./db');
 const { generateTweetReply } = require('./claude');
 const { safeGoto, safeEval, alertSessionExpired } = require('./resilience');
+const { diagnose } = require('./doctor');
 const { adjustedLimit, shouldSkipSession, shouldSkipPost, readingPause, actionPause, commentPause, warmupScroll } = require('./humanize');
 
 const BASE_LIMITS = { likes: 5, replies: 1 };
@@ -48,15 +49,15 @@ async function login({ profileDir, cookieFile } = {}) {
   const tag = profileDir ? `twitter:${profileDir}` : 'twitter';
   const p = profileDir ? await newPageForProfile(profileDir) : await newPage();
 
-  // Persona accounts: use persistent Chrome profile (no cookie seeding needed)
-  // Brand account: seed cookies from JSON file as before
-  if (!profileDir) {
-    await ensureSession(p, {
-      domain: 'x.com',
-      sessionCookieName: 'auth_token',
-      cookieFile: cookieFile || 'twitter-cookies.json',
-    });
-  }
+  // Seed cookies for all accounts (brand from default file, personas from their backup file)
+  // Personas also use Chrome profile, but cookie seeding provides a fallback if the profile corrupts
+  const effectiveCookieFile = cookieFile
+    || (profileDir ? `cookies/${profileDir.replace(/.*[/\\]/, '')}-twitter.json` : 'twitter-cookies.json');
+  await ensureSession(p, {
+    domain: 'x.com',
+    sessionCookieName: 'auth_token',
+    cookieFile: effectiveCookieFile,
+  });
 
   const ok = await safeGoto(p, 'https://x.com/home', { tag, timeout: 60000 });
   if (!ok) {
@@ -68,22 +69,51 @@ async function login({ profileDir, cookieFile } = {}) {
   const url = p.url();
   if (url.includes('/home')) {
     console.log(`[${tag}] Session active`);
-    // Persist cookies back to file for brand account
-    if (!profileDir) {
-      await persistSession(p, { domain: 'x.com', cookieFile: cookieFile || 'twitter-cookies.json' });
-    }
+    // Persist cookies back to file (brand + personas — backup against profile corruption)
+    await persistSession(p, { domain: 'x.com', cookieFile: effectiveCookieFile });
     return p;
   }
 
-  // Session invalid — send alert
+  // Session invalid — let doctor diagnose and attempt recovery
+  await p.close().catch(() => {});
   const accountId = profileDir ? profileDir.replace(/.*[/\\]/, '') : null;
+  const result = await diagnose(new Error(`Session invalid — redirected to ${url}`), {
+    platform: 'twitter',
+    account: accountId || 'brand',
+    action: 'login',
+    profileDir: profileDir || undefined,
+    cookieFile: cookieFile || 'twitter-cookies.json',
+    sessionInvalid: true,
+  });
+
+  if (result.healed) {
+    console.log(`[${tag}] Doctor suggests retry: ${result.action}`);
+    if (profileDir) await closeBrowserForProfile(profileDir);
+    const retryPage = profileDir ? await newPageForProfile(profileDir) : await newPage();
+    await ensureSession(retryPage, {
+      domain: 'x.com',
+      sessionCookieName: 'auth_token',
+      cookieFile: effectiveCookieFile,
+    });
+    const retryOk = await safeGoto(retryPage, 'https://x.com/home', { tag, timeout: 60000 });
+    if (retryOk) {
+      await new Promise(r => setTimeout(r, 3000));
+      if (retryPage.url().includes('/home')) {
+        console.log(`[${tag}] Session recovered after doctor fix`);
+        await persistSession(retryPage, { domain: 'x.com', cookieFile: effectiveCookieFile });
+        return retryPage;
+      }
+    }
+    await retryPage.close().catch(() => {});
+  }
+
+  // Could not self-heal — alert human
   const instructions = profileDir
     ? `Pasos:\n1. Ejecuta: node login-persona.js ${accountId} twitter\n2. Haz login manual y cierra el navegador\n3. pm2 restart ytubviral-agent`
     : 'Pasos:\n1. Abre Edge y entra a x.com\n2. Abre Cookie Editor > Export as JSON\n3. Reemplaza twitter-cookies.json\n4. pm2 restart ytubviral-agent';
   await alertSessionExpired('Twitter', accountId, instructions);
 
-  console.error(`[${tag}] Session invalid. URL: ${url}`);
-  await p.close().catch(() => {});
+  console.error(`[${tag}] Session invalid — doctor could not heal`);
   return null;
 }
 
@@ -240,7 +270,7 @@ async function engageWithTweets(opts = {}) {
 
           if (!replyClicked) {
             console.log(`[${tag}] Reply button not found for ${tweet.author}`);
-            await safeGoto(page, searchUrl, { tag, timeout: 30000 });
+            await safeGoto(page, searchUrl, { tag, timeout: 45000 });
             continue;
           }
           await delay(1500, 2500);
@@ -250,7 +280,7 @@ async function engageWithTweets(opts = {}) {
           if (!textArea) {
             console.log(`[${tag}] Reply text area not found`);
             await page.keyboard.press('Escape').catch(() => {});
-            await safeGoto(page, searchUrl, { tag, timeout: 30000 });
+            await safeGoto(page, searchUrl, { tag, timeout: 45000 });
             continue;
           }
 
@@ -273,16 +303,20 @@ async function engageWithTweets(opts = {}) {
           }
 
           // Navigate back to search results
-          const backOk = await safeGoto(page, searchUrl, { tag, timeout: 30000 });
+          const backOk = await safeGoto(page, searchUrl, { tag, timeout: 45000 });
           if (!backOk) {
-            console.log(`[${tag}] Cannot return to search, ending session`);
-            break;
+            console.log(`[${tag}] Search nav failed, trying fresh load...`);
+            const retry = await safeGoto(page, searchUrl, { tag, timeout: 45000, retries: 1 });
+            if (!retry) {
+              console.log(`[${tag}] Cannot return to search, ending session`);
+              break;
+            }
           }
           await commentPause();
         } catch (err) {
           console.error(`[${tag}] Reply error: ${err.message}`);
           await page.keyboard.press('Escape').catch(() => {});
-          const backOk = await safeGoto(page, searchUrl, { tag, timeout: 30000 });
+          const backOk = await safeGoto(page, searchUrl, { tag, timeout: 45000 });
           if (!backOk) {
             console.log(`[${tag}] Cannot return to search, ending session`);
             break;

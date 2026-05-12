@@ -44,6 +44,8 @@ async function main() {
     'https://ytubviral.com/blog/ab-testing-youtube-titulos-guia',
     'https://ytubviral.com/blog/algoritmo-youtube-2026-como-funciona',
     'https://ytubviral.com/blog/como-conseguir-suscriptores-youtube-2026',
+    'https://ytubviral.com/blog/como-analizar-competencia-youtube',
+    'https://ytubviral.com/blog/thumbnails-youtube-guia-ctr',
     'https://ytubviral.com/features/keyword-research',
     'https://ytubviral.com/features/seo-score',
     'https://ytubviral.com/features/competitor-analysis',
@@ -62,6 +64,9 @@ async function main() {
     'https://ytubviral.com/gear',
     'https://ytubviral.com/signup',
     'https://ytubviral.com/privacy',
+    'https://ytubviral.com/terms',
+    'https://ytubviral.com/legal',
+    'https://ytubviral.com/launch',
   ];
 
   for (const url of urls) {

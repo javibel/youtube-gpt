@@ -90,7 +90,7 @@ const REQUIRED_CONTENT = {
     name: 'Aviso Legal',
     mustContain: [
       { keyword: 'titular', label: 'Titular del sitio' },
-      // NIF omitted intentionally — owner not yet registered as autónomo
+      { keyword: 'nif', label: 'NIF/CIF', caseInsensitive: true },
       { keyword: 'domicilio', label: 'Domicilio' },
       { keyword: 'lssi', label: 'LSSI-CE', caseInsensitive: true },
       { keyword: 'resolución de litigios', label: 'ODR/Resolución de litigios' },
@@ -306,7 +306,7 @@ Responde en español:
 3. Valoración compliance (1-10)
 
 Máximo 150 palabras. Solo riesgos reales, no teóricos.`,
-        { maxTokens: 400, agentId: 'watchdog', model: 'claude-sonnet-4-6-20250514' }
+        { maxTokens: 400, agentId: 'watchdog', model: 'claude-sonnet-4-6' }
       );
       results.aiAnalysis = text;
     } catch (err) {

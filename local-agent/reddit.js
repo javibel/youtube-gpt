@@ -1,9 +1,10 @@
 'use strict';
 
-const { newPageForProfile } = require('./browser');
+const { newPageForProfile, closeBrowserForProfile } = require('./browser');
 const db = require('./db');
 const { generatePersonaComment } = require('./claude');
 const { safeGoto, safeEval, alertSessionExpired } = require('./resilience');
+const { diagnose } = require('./doctor');
 
 const LIMITS = { upvotes: 5, comments: 2 };
 
@@ -42,12 +43,43 @@ async function login({ profileDir, cookieFile }) {
     return p;
   }
 
+  // Session invalid — let doctor diagnose and attempt recovery
+  await p.close().catch(() => {});
   const accountId = profileDir.replace(/.*[/\\]/, '');
+  const result = await diagnose(new Error('Session invalid after login attempt'), {
+    platform: 'reddit',
+    account: accountId,
+    action: 'login',
+    profileDir,
+    cookieFile,
+    sessionInvalid: true,
+  });
+
+  if (result.healed) {
+    // Doctor thinks a retry can work (e.g. cookies available for re-seeding)
+    console.log(`[${tag}] Doctor suggests retry: ${result.action}`);
+    await closeBrowserForProfile(profileDir);
+    const retryPage = await newPageForProfile(profileDir);
+    const retryOk = await safeGoto(retryPage, 'https://old.reddit.com/', { tag, timeout: 60000 });
+    if (retryOk) {
+      await new Promise(r => setTimeout(r, 3000));
+      const retryLoggedIn = await safeEval(retryPage, () => {
+        const userSpan = document.querySelector('.user a');
+        return !!userSpan && !userSpan.textContent?.includes('login');
+      });
+      if (retryLoggedIn) {
+        console.log(`[${tag}] Session recovered after doctor fix`);
+        return retryPage;
+      }
+    }
+    await retryPage.close().catch(() => {});
+  }
+
+  // Could not self-heal — alert human
   await alertSessionExpired('Reddit', accountId,
     `Pasos:\n1. Ejecuta: node login-persona.js ${accountId} reddit\n2. Haz login manual y cierra el navegador\n3. pm2 restart ytubviral-agent`);
 
-  console.error(`[${tag}] Session invalid`);
-  await p.close().catch(() => {});
+  console.error(`[${tag}] Session invalid — doctor could not heal`);
   return null;
 }
 

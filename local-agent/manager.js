@@ -17,6 +17,7 @@ const { sendEmail } = require('./reports');
 const mem = require('./agent-memory');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
+const ANTHROPIC_CREDIT_TOTAL = 6.00; // USD loaded into Anthropic account
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -127,7 +128,68 @@ function buildRawSummary(date) {
     duration: 0,
   });
 
+  // Doctor (auto-diagnosis) summary
+  try {
+    const { getTodaySummary } = require('./doctor');
+    const doctorStats = getTodaySummary();
+    if (doctorStats.total > 0) {
+      const patternDetails = Object.entries(doctorStats.patterns)
+        .map(([id, p]) => `${id}: ${p.count}x (${p.healed} healed, ${p.severity})`)
+        .join('; ');
+      sections.push({
+        agent: 'Doctor (Auto-diagnóstico)',
+        status: doctorStats.unhealed > 0 ? 'ATENCIÓN' : 'OK',
+        data: `Diagnósticos: ${doctorStats.total}, Curados: ${doctorStats.healed}, Sin resolver: ${doctorStats.unhealed}. ${patternDetails}`,
+        ai: '',
+        duration: 0,
+      });
+    }
+  } catch (e) { /* doctor.js not available */ }
+
   return sections;
+}
+
+// ── Anthropic API balance ─────────────────────────────────────────────────
+
+async function getAnthropicBalance() {
+  const adminKey = process.env.ANTHROPIC_ADMIN_KEY;
+  if (!adminKey) return null;
+
+  try {
+    // Query all costs from account start to now
+    let totalCents = 0;
+    const now = new Date().toISOString();
+    const months = [];
+    for (let y = 2025; y <= new Date().getFullYear(); y++) {
+      for (let m = 1; m <= 12; m++) {
+        const start = `${y}-${String(m).padStart(2, '0')}-01T00:00:00Z`;
+        if (start > now) break;
+        const endM = m === 12
+          ? `${y + 1}-01-01T00:00:00Z`
+          : `${y}-${String(m + 1).padStart(2, '0')}-01T00:00:00Z`;
+        months.push({ start, end: endM > now ? now : endM });
+      }
+    }
+
+    for (const { start, end } of months) {
+      const url = `https://api.anthropic.com/v1/organizations/cost_report?starting_at=${start}&ending_at=${end}&bucket_width=1d&limit=31`;
+      const res = await fetch(url, {
+        headers: { 'anthropic-version': '2023-06-01', 'x-api-key': adminKey },
+      });
+      const data = await res.json();
+      if (data.error) continue;
+      for (const b of data.data || []) {
+        for (const r of b.results || []) totalCents += parseFloat(r.amount || '0');
+      }
+    }
+
+    const totalSpent = totalCents / 100;
+    const balance = ANTHROPIC_CREDIT_TOTAL - totalSpent;
+    return { totalCredit: ANTHROPIC_CREDIT_TOTAL, totalSpent: +totalSpent.toFixed(2), balance: +balance.toFixed(2) };
+  } catch (err) {
+    console.warn('[manager] Anthropic balance check failed:', err.message);
+    return null;
+  }
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
@@ -139,6 +201,10 @@ async function runManager() {
 
   const today = new Date().toISOString().slice(0, 10);
   const sections = buildRawSummary(today);
+
+  // Anthropic API balance
+  console.log('[manager] Checking Anthropic API balance...');
+  const anthropicBalance = await getAnthropicBalance();
 
   // ── Collect memory summaries from all agents ──────────────────────────
   console.log('[manager] Reading agent memories...');
@@ -218,6 +284,7 @@ Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
   }
 
   results.executiveSummary = executiveSummary;
+  results.anthropicBalance = anthropicBalance;
   results.durationMs = Date.now() - startTime;
 
   // Save report
@@ -269,6 +336,15 @@ Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
   emailBody += `   Llamadas hoy: ${apiStats.callCount}\n`;
   emailBody += `   Tokens: ${apiStats.dailyTokensUsed} / ${apiStats.dailyBudget} (${apiStats.budgetUsedPercent}%)\n`;
   emailBody += `   Circuit breaker: ${apiStats.circuitBreakerOpen ? 'ABIERTO ⚠️' : 'Cerrado ✅'}\n`;
+
+  if (anthropicBalance) {
+    const balanceIcon = anthropicBalance.balance < 1 ? '🔴' : anthropicBalance.balance < 2 ? '🟡' : '🟢';
+    emailBody += `\n${'─'.repeat(60)}\n${balanceIcon} SALDO ANTHROPIC API\n`;
+    emailBody += `   Crédito total: $${anthropicBalance.totalCredit.toFixed(2)}\n`;
+    emailBody += `   Gastado: $${anthropicBalance.totalSpent.toFixed(2)}\n`;
+    emailBody += `   Saldo restante: $${anthropicBalance.balance.toFixed(2)}\n`;
+  }
+
   emailBody += `\n${'='.repeat(60)}\nYTubViral Agent System — Manager v2.0 (con memoria)\n`;
 
   try {

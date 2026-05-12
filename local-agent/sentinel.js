@@ -267,17 +267,19 @@ async function runSentinel() {
   const memory = mem.loadMemory('sentinel');
 
   // Build findings for memory system
+  // Only track critical endpoints (Landing) in memory to avoid noise from
+  // non-critical endpoint cold starts (API Health timeouts on Vercel)
   const findings = [];
   for (const r of results) {
-    if (!r.ok) {
+    if (!r.ok && r.endpoint === 'Landing') {
       findings.push({
         id: mem.issueId('downtime', r.endpoint),
         category: 'downtime',
-        severity: r.endpoint === 'Landing' ? 'critical' : 'high',
+        severity: 'critical',
         description: `${r.endpoint} down: ${r.error || `HTTP ${r.status}`}`,
       });
     }
-    if (r.slow) {
+    if (r.slow && r.endpoint === 'Landing') {
       findings.push({
         id: mem.issueId('performance', r.endpoint),
         category: 'performance',

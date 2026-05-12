@@ -256,7 +256,7 @@ Responde en español con:
 3. Estado general: ¿mantenemos ventaja competitiva?
 
 Sé directo y conciso. Máximo 200 palabras.`,
-        { maxTokens: 500, agentId: 'scout', model: 'claude-sonnet-4-6-20250514' }
+        { maxTokens: 500, agentId: 'scout', model: 'claude-sonnet-4-6' }
       );
       results.aiAnalysis = text;
     } catch (err) {

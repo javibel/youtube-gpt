@@ -5,31 +5,65 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteerExtra.use(StealthPlugin());
 const fs = require('fs');
 const path = require('path');
+const { diagnose } = require('./doctor');
 
 const CHROME_PROFILE_DIR = path.join(__dirname, 'chrome-profile');
 
 // Map of profileDir -> browser instance (supports multiple simultaneous profiles)
 const browsers = new Map();
 
-async function getBrowserForProfile(profileDir) {
-  const absDir = path.resolve(__dirname, profileDir);
-  let b = browsers.get(absDir);
-  if (b && b.isConnected()) return b;
-
-  // Remove stale lock file if exists (zombie Chrome)
-  const lockFile = path.join(absDir, 'SingletonLock');
-  if (fs.existsSync(lockFile)) {
-    try { fs.unlinkSync(lockFile); } catch {}
-    console.log(`[browser] Removed stale SingletonLock for ${profileDir}`);
+async function launchBrowser(absDir) {
+  // Remove stale lock/port files if exists (zombie Chrome)
+  for (const lockName of ['SingletonLock', 'SingletonCookie', 'DevToolsActivePort', 'lockfile']) {
+    const lockFile = path.join(absDir, lockName);
+    if (fs.existsSync(lockFile)) {
+      try { fs.unlinkSync(lockFile); } catch {}
+      console.log(`[browser] Removed stale ${lockName} for ${absDir}`);
+    }
   }
 
-  b = await puppeteerExtra.launch({
+  const chromePath = process.env.CHROME_PATH
+    || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+
+  return puppeteerExtra.launch({
     headless: true,
+    executablePath: chromePath,
     userDataDir: absDir,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     defaultViewport: { width: 1280, height: 800 },
     protocolTimeout: 60000,
   });
+}
+
+async function getBrowserForProfile(profileDir) {
+  const absDir = path.resolve(__dirname, profileDir);
+  let b = browsers.get(absDir);
+  if (b && b.isConnected()) return b;
+
+  try {
+    b = await launchBrowser(absDir);
+  } catch (err) {
+    // Let the doctor diagnose and attempt a fix
+    const result = await diagnose(err, {
+      platform: 'browser',
+      action: 'launch',
+      profileDir,
+    });
+
+    if (result.healed) {
+      // Doctor fixed something (e.g. renamed corrupt profile) — retry
+      console.log(`[browser] Doctor healed: ${result.action} — retrying launch...`);
+      try {
+        b = await launchBrowser(absDir);
+      } catch (retryErr) {
+        console.error(`[browser] Retry after doctor fix also failed: ${retryErr.message}`);
+        throw retryErr;
+      }
+    } else {
+      throw err;
+    }
+  }
+
   browsers.set(absDir, b);
   return b;
 }
