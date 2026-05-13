@@ -242,6 +242,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'AI won\'t make you a good YouTuber, but it can save you 3 hours per script. I\'ll show you the exact process to create scripts that sound like you — not a robot — using AI as a tool, not a crutch.',
     },
   },
+  {
+    slug: 'como-monetizar-youtube-2026-guia',
+    cat: 'marketing',
+    readMin: 14,
+    date: { es: '13 May 2026', en: 'May 13, 2026' },
+    author: { name: 'Lucía Vega', role: { es: 'Especialista en contenido', en: 'Content specialist' }, avatar: 'LV' },
+    image: '/blog/monetizar-youtube-2026.webp',
+    title: {
+      es: 'Cómo Monetizar un Canal de YouTube en 2026: La Guía Completa (AdSense, Afiliados, Sponsors y Más)',
+      en: 'How to Monetize a YouTube Channel in 2026: The Complete Guide (AdSense, Affiliates, Sponsors & More)',
+    },
+    excerpt: {
+      es: 'AdSense es solo la puerta de entrada. Te explicamos las 6 fuentes de ingresos reales de un YouTuber en 2026, con CPMs por nicho, datos de Shorts, ejemplos de canales pequeños que facturan más que canales grandes, y la hoja de ruta para empezar a ganar desde los 500 suscriptores.',
+      en: 'AdSense is just the entry door. We break down the 6 real income sources for a YouTuber in 2026, with CPMs by niche, Shorts data, examples of small channels earning more than big ones, and the roadmap to start earning from 500 subscribers.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -2640,6 +2656,290 @@ const ART_SCRIPTS_IA_EN: BlockType[] = [
   { type: 'callout-final', t: 'Create your next script in minutes', sub: 'Generate YouTube-optimized scripts with AI — adjust tone, length, and structure. Free.', cta: 'Try YTubViral for free' },
 ];
 
+// ── Artículo 14: Cómo Monetizar YouTube 2026 ─────────────────────────────────
+
+const ART_MONETIZAR_ES: BlockType[] = [
+  { type: 'p', t: 'Hay una pregunta que todos los creadores se hacen tarde o temprano: "¿cuándo voy a empezar a ganar dinero con esto?" Y la respuesta honesta es que probablemente antes de lo que crees — pero no de la forma que imaginas.' },
+  { type: 'p', t: 'La mayoría de la gente piensa que monetizar YouTube = activar anuncios y esperar. Y sí, AdSense existe y paga. Pero en 2026, los creadores que viven de YouTube no dependen de los anuncios como fuente principal. AdSense es la puerta de entrada, no el destino.' },
+  { type: 'p', t: 'En esta guía te vamos a explicar todas las formas reales de ganar dinero con un canal de YouTube en 2026: desde el primer euro con 500 suscriptores hasta las estrategias que usan los canales que facturan cinco cifras al mes con audiencias pequeñas.' },
+
+  { type: 'h2', t: 'El Programa de Socios de YouTube en 2026: Dos Niveles' },
+  { type: 'p', t: 'YouTube cambió las reglas del juego en 2023 y las ha ido refinando desde entonces. En 2026, el Programa de Socios (YPP) tiene dos niveles de acceso, y el primero es mucho más accesible de lo que la gente cree.' },
+
+  { type: 'h3', t: 'Nivel 1: Desde los 500 suscriptores' },
+  { type: 'p', t: 'Con solo 500 suscriptores, 3 cargas públicas en los últimos 90 días y una de estas dos condiciones — 3.000 horas de visualización en el último año o 3 millones de vistas en Shorts en 90 días — ya puedes empezar a ganar dinero.' },
+  { type: 'p', t: '¿Pero cómo? No con anuncios. El Nivel 1 te desbloquea las funciones de financiación directa: membresías del canal, Super Chat y Super Stickers en directos, Super Thanks en vídeos y YouTube Shopping. Es decir, tu comunidad te paga a ti directamente.' },
+  { type: 'p', t: 'Esto es importante porque significa que no necesitas 1.000 suscriptores para empezar. Si tienes 500 personas que te siguen y les aportas valor, ya puedes empezar a construir un flujo de ingresos.' },
+
+  { type: 'h3', t: 'Nivel 2: Los 1.000 suscriptores y AdSense' },
+  { type: 'p', t: 'El nivel que todo el mundo conoce: 1.000 suscriptores + 4.000 horas de visualización en el último año (o 10 millones de vistas en Shorts en 90 días). Aquí es donde se activan los anuncios: pre-roll, mid-roll, display y también la participación en los ingresos de YouTube Premium.' },
+  { type: 'p', t: 'YouTube revisa tu canal antes de aprobarte: originalidad del contenido, cumplimiento de normas de comunidad, coherencia temática. No basta con las cifras — tu canal tiene que ser legítimo y aportar valor real.' },
+
+  { type: 'callout', t: 'Dato clave: en 2026 puedes empezar a ganar dinero desde los 500 suscriptores con membresías y Super Chat. No esperes a los 1.000 para pensar en monetización.' },
+
+  { type: 'h2', t: 'CPM y RPM: Lo que Realmente Importa para Tu Bolsillo' },
+  { type: 'p', t: 'Una vez que activas los anuncios, el dinero que ganas depende de dos métricas que necesitas entender: CPM (lo que pagan los anunciantes por 1.000 impresiones) y RPM (lo que realmente llega a tu cuenta por 1.000 visualizaciones).' },
+  { type: 'p', t: 'El RPM siempre es menor que el CPM porque no todas las visualizaciones son monetizables: bloqueadores de anuncios, espectadores en países sin inventario publicitario, contenido limitado por anunciantes... Un canal puede tener un CPM de 20$ y un RPM de 4$. La diferencia es enorme.' },
+  { type: 'p', t: 'Y aquí viene lo que pocos te cuentan: tu nicho y la ubicación de tu audiencia determinan tus ingresos mucho más que tu número de visualizaciones.' },
+
+  { type: 'h3', t: 'Tabla de RPM por nicho: España vs. Latinoamérica' },
+  { type: 'p', t: 'Estos son los rangos reales de RPM en 2026. La diferencia entre nichos y regiones es brutal:' },
+  { type: 'list', items: [
+    'Finanzas e inversión: RPM 6-12€ (España) / 1,5-4$ (LATAM)',
+    'Tecnología, software e IA: RPM 5-10€ (España) / 1,2-3$ (LATAM)',
+    'Negocios, marketing y B2B: RPM 5-9€ (España) / 1-2,5$ (LATAM)',
+    'Educación y habilidades profesionales: RPM 3-7€ (España) / 0,8-2$ (LATAM)',
+    'Salud, fitness y bienestar: RPM 2-5€ (España) / 0,5-1,5$ (LATAM)',
+    'Lifestyle, vlogs y cocina: RPM 1-4€ (España) / 0,3-1$ (LATAM)',
+    'Gaming y entretenimiento: RPM 0,5-3€ (España) / 0,2-0,8$ (LATAM)',
+  ]},
+  { type: 'p', t: 'Lee esos números otra vez. Un canal de finanzas en España puede ganar hasta 10 veces más por cada mil vistas que un canal de gaming en Latinoamérica. No es que uno sea "mejor" que otro — es que los anunciantes pagan precios completamente distintos según el poder adquisitivo de la audiencia y la intención de compra del nicho.' },
+  { type: 'p', t: 'La conclusión es clara: si tu objetivo es maximizar ingresos por publicidad, atraer audiencia de alto poder adquisitivo en nichos técnicos o financieros es significativamente más rentable que buscar viralidad masiva en entretenimiento.' },
+
+  { type: 'h2', t: 'Monetización de Shorts: El Fondo de Creadores' },
+  { type: 'p', t: 'YouTube Shorts es una máquina de visualizaciones. Pero — y esto es importante — no es una máquina de dinero directo. El modelo de monetización de Shorts funciona completamente distinto al de los vídeos largos.' },
+
+  { type: 'h3', t: 'Cómo funciona el Creator Pool' },
+  { type: 'p', t: 'Los anuncios en Shorts no se asignan a un vídeo concreto. Aparecen en el feed entre distintos contenidos, y los ingresos se acumulan en un fondo común por país. Después, ese fondo se reparte entre los creadores monetizados según su porcentaje de visualizaciones totales. Si tu canal genera el 2% de todas las vistas de Shorts monetizadas en España, recibes el 2% del fondo.' },
+  { type: 'p', t: 'Pero hay dos detalles que cambian mucho los números:' },
+  { type: 'list', items: [
+    'Si usas música comercial con licencia, una parte del ingreso va primero a pagar los derechos de autor — lo que reduce el fondo antes de repartir.',
+    'YouTube se queda con el 55% y tú recibes el 45%. En vídeos largos es al revés: 55% para ti, 45% para YouTube.',
+  ]},
+
+  { type: 'h3', t: '¿Cuánto se gana realmente con Shorts?' },
+  { type: 'p', t: 'Siendo directos: muy poco por visualización. El RPM de Shorts ronda los 0,01$-0,07$, con casos excepcionales en nichos de alto valor que llegan a 0,10$. Esto es lo que significa en números reales:' },
+  { type: 'list', items: [
+    '1 millón de vistas al mes: 30$-70$',
+    '10 millones de vistas al mes: 300$-700$',
+    '50 millones de vistas al mes: 1.500$-3.500$',
+  ]},
+  { type: 'p', t: '50 millones de vistas mensuales para ganar 3.500$. Eso es una barbaridad de alcance para relativamente poco dinero. La conclusión: no uses Shorts para ganar dinero con anuncios. Usa Shorts como motor de descubrimiento — para que la gente te encuentre, vea tus Shorts, y luego vaya a tus vídeos largos, se suscriba, compre tu producto o se una a tu membresía.' },
+
+  { type: 'callout', t: 'Los Shorts no son una fuente de ingresos publicitarios. Son un embudo de ventas: atraen tráfico masivo que puedes convertir en suscriptores, ventas y miembros.' },
+
+  { type: 'h2', t: 'Las 6 Fuentes de Ingresos Reales de un YouTuber en 2026' },
+  { type: 'p', t: 'Los creadores que viven de YouTube no dependen de una sola fuente. Tienen un ecosistema donde AdSense suele representar menos del 30% del total. Estas son las seis fuentes principales, ordenadas de más accesible a más avanzada.' },
+
+  { type: 'h3', t: '1. AdSense (anuncios)' },
+  { type: 'p', t: 'La fuente más conocida y la más pasiva. Una vez activos los anuncios, ganas dinero por cada vista monetizable. Es ingreso directo, predecible y automático — pero volátil. Un cambio en el algoritmo, una desmonetización parcial o una bajada estacional del CPM pueden reducir tus ingresos un 40% de un mes a otro sin que hagas nada diferente.' },
+  { type: 'p', t: 'AdSense es tu base, no tu plan completo.' },
+
+  { type: 'h3', t: '2. Marketing de afiliación' },
+  { type: 'p', t: 'Aquí es donde muchos canales pequeños ganan más que con los anuncios. Pones enlaces de afiliado en la descripción de tus vídeos y ganas una comisión por cada venta que se genere.' },
+  { type: 'p', t: 'La ventaja brutal: no necesitas ser Partner de YouTube para empezar. Puedes ganar dinero con afiliados desde tu primer vídeo.' },
+  { type: 'list', items: [
+    'Amazon Associates: 1-10% de comisión (cookie de 24 horas). El programa más accesible pero con la ventana más corta.',
+    'B&H Photo: 2-8% de comisión (cookie de 60 días). Ideal para equipo audiovisual de alto valor.',
+    'SmallRig / Govee: 10% de comisión (cookie de 30 días). Accesorios y luces con buen margen.',
+    'Adobe Creative Cloud: hasta 85% del primer mes (cookie de 30 días). Si recomiendas software, esto es oro.',
+    'Programas SaaS (PartnerStack, etc.): comisiones recurrentes del 20-50% mensual. El santo grial de los afiliados.',
+  ]},
+  { type: 'p', t: 'La métrica clave no es el porcentaje de comisión — es la ventana de cookie. Si recomiendas una cámara de 3.000€ y alguien hace clic en tu enlace de B&H Photo pero la compra 45 días después, tú sigues cobrando la comisión. Con Amazon, si no compra en 24 horas, pierdes la venta.' },
+
+  { type: 'callout-gear', t: '¿Buscas el setup ideal para tu canal?', sub: 'Hemos seleccionado el mejor equipo para creadores de contenido en cada rango de precio. Todo probado y con enlaces directos.', cta: 'Ver la guía de equipamiento' },
+
+  { type: 'h3', t: '3. Membresías y financiación directa' },
+  { type: 'p', t: 'Desde el Nivel 1 del YPP (500 subs), puedes activar membresías del canal. Tus suscriptores pagan una cuota mensual (tú decides el precio y los niveles) a cambio de insignias, emojis exclusivos y contenido solo para miembros.' },
+  { type: 'p', t: 'Suma Super Chat (aportes en directos), Super Stickers y Super Thanks (aportes en vídeos), y tienes un sistema completo de financiación directa. Lo mejor: este ingreso no depende de anunciantes ni de algoritmos — depende de tu comunidad.' },
+  { type: 'p', t: 'Un canal con 2.000 suscriptores y 50 miembros a 4,99€/mes genera casi 250€ mensuales recurrentes solo en membresías. No es para vivir, pero es un colchón que muchos canales de entretenimiento con 100.000 subs no tienen.' },
+
+  { type: 'h3', t: '4. Patrocinios y colaboraciones con marcas' },
+  { type: 'p', t: 'Los patrocinios son, posiblemente, la fuente de ingresos más rentable por hora de trabajo. Una marca te paga por mencionar o hacer un vídeo dedicado a su producto. Los pagos superan con diferencia lo que ganarías con anuncios en el mismo vídeo.' },
+  { type: 'p', t: 'En 2026, YouTube Creator Partnerships (impulsado por la IA de Gemini) centraliza la conexión entre marcas y creadores directamente en YouTube Studio. Incluso canales pequeños con datos de audiencia precisos pueden acceder a campañas de grandes marcas.' },
+  { type: 'p', t: 'Los números varían enormemente por nicho: un canal de fitness con 20K subs puede conseguir 1.000-3.000€ por vídeo patrocinado. Un canal de tecnología B2B con 5K subs puede cobrar 5.000€ porque su audiencia toma decisiones de compra de alto valor.' },
+  { type: 'p', t: 'La clave: prepara un Media Kit profesional que destaque la demografía de tu audiencia, tu tasa de engagement y casos previos de conversión. Las marcas no compran visualizaciones — compran acceso a la audiencia correcta.' },
+
+  { type: 'callout-mid', t: '¿Sabes cuánto podrías ganar con tu canal?', sub: 'Calcula tus ingresos estimados por nicho, suscriptores y visualizaciones con datos reales de 2026.', cta: 'Probar Revenue Estimator' },
+
+  { type: 'h3', t: '5. Productos digitales y cursos' },
+  { type: 'p', t: 'Si tu contenido enseña algo — edición, cocina, finanzas, programación, fotografía — tienes la base perfecta para vender productos digitales: cursos, plantillas, presets, ebooks, comunidades de pago.' },
+  { type: 'p', t: 'El margen es cercano al 100% porque no hay costes de fabricación. Un curso de 49€ vendido a 100 personas al mes son 4.900€ de ingreso neto. Y el canal de YouTube funciona como la mejor máquina de marketing posible: vídeos gratuitos que demuestran tu expertise → enlace al curso en la descripción.' },
+  { type: 'p', t: 'No necesitas una audiencia enorme. Un canal de 3.000 suscriptores en un nicho técnico (automatización con IA, edición en DaVinci Resolve, Excel avanzado) puede generar más con un curso de 79€ que un canal de entretenimiento con 200.000 subs genera en anuncios.' },
+
+  { type: 'h3', t: '6. YouTube Shopping y merchandising' },
+  { type: 'p', t: 'YouTube Shopping permite integrar productos directamente en la interfaz del vídeo: estantes de productos bajo el reproductor, etiquetas en el propio vídeo y una pestaña de tienda en el canal. Desde el Nivel 1 del YPP ya puedes usarlo.' },
+  { type: 'p', t: 'Para merchandising propio (camisetas, tazas, prints), servicios de print-on-demand como Spreadshop o Teespring eliminan el riesgo de inventario. Tú diseñas, ellos producen y envían. No es una fuente de ingresos masiva para la mayoría, pero refuerza la identidad de marca y genera ingresos pasivos adicionales.' },
+
+  { type: 'h2', t: 'El Fenómeno del "Canal Boutique": Pocos Subs, Muchos Ingresos' },
+  { type: 'p', t: 'Uno de los patrones más interesantes de 2026 es la proliferación de canales con menos de 20.000 suscriptores que generan ingresos superiores a los de canales con un millón de seguidores. Les llamamos "canales boutique" y su estrategia se basa en la especialización extrema.' },
+  { type: 'p', t: 'Ejemplo real: un canal dedicado exclusivamente a enseñar automatizaciones de IA para departamentos de recursos humanos. 8.000 suscriptores, RPM de anuncios de 12€ en España. Pero su verdadera monetización viene de consultoría (150€/hora), venta de plantillas (29€ cada una) y afiliación de software SaaS con comisiones recurrentes del 20-50% mensual. Con 5.000 visualizaciones al mes, factura más de 3.000€ mensuales.' },
+  { type: 'p', t: '¿La clave? El valor por espectador. Si cada persona que ve tu vídeo tiene un problema que pagaría por resolver, no necesitas millones de visitas. Necesitas las visitas correctas.' },
+
+  { type: 'callout', t: 'No persigas más suscriptores — persigue suscriptores más valiosos. Un canal de nicho técnico con 5.000 subs puede facturar más que un canal de entretenimiento con 500.000.' },
+
+  { type: 'h2', t: 'La Función "Hype": Impulso para Canales Emergentes en España' },
+  { type: 'p', t: 'YouTube ha lanzado en España la función Hype, diseñada específicamente para canales de entre 500 y 500.000 suscriptores. Permite que tus fans "impulsen" un vídeo durante los 7 primeros días tras su publicación.' },
+  { type: 'p', t: 'Los vídeos con más puntos de Hype entran en una tabla de clasificación nacional y reciben una exposición algorítmica adicional — la misma que normalmente está reservada para los canales grandes. Es una herramienta de marketing interna que puede acelerar significativamente tu camino hacia los umbrales de monetización.' },
+  { type: 'p', t: 'Todavía es pronto para tener datos definitivos sobre su impacto, pero los primeros indicadores muestran que los vídeos que entran en el ranking de Hype reciben entre un 30-50% más de impresiones que vídeos similares sin Hype. Si estás en España, actívalo y pide a tu comunidad que te impulse.' },
+
+  { type: 'h2', t: 'Lo que Puede Salir Mal: Riesgos de la Monetización' },
+  { type: 'p', t: 'Monetizar no es solo activar un botón y esperar. Hay riesgos reales que pueden cortarte los ingresos de un día para otro si no los tienes en cuenta.' },
+
+  { type: 'h3', t: 'Contenido reutilizado' },
+  { type: 'p', t: 'YouTube ha intensificado en 2026 la lucha contra los canales que usan contenido ajeno sin añadir valor significativo. Si tus vídeos son compilaciones de clips de otros creadores sin comentario, crítica o edición creativa, te van a desmonetizar. La originalidad y la voz propia no son opcionales — son requisitos técnicos para mantener la monetización.' },
+
+  { type: 'h3', t: 'Strikes y normas de comunidad' },
+  { type: 'p', t: 'Un solo aviso de comunidad (strike) puede bloquear tu elegibilidad para el YPP. YouTube revisa no solo tus vídeos, sino tus metadatos, títulos y miniaturas. Clickbait engañoso, contenido sensible sin contexto o violaciones de copyright pueden costarte la monetización entera.' },
+
+  { type: 'h3', t: 'Dependencia de una sola fuente' },
+  { type: 'p', t: 'Si el 100% de tus ingresos viene de AdSense, estás a merced de las fluctuaciones estacionales (el CPM baja un 30-40% en enero), cambios en el algoritmo y decisiones de los anunciantes. Diversificar no es un consejo bonito — es supervivencia.' },
+
+  { type: 'h2', t: 'Tu Hoja de Ruta para Empezar a Monetizar Hoy' },
+  { type: 'p', t: 'Da igual en qué fase esté tu canal. Aquí tienes el plan paso a paso para construir un sistema de ingresos sólido en 2026:' },
+  { type: 'list', items: [
+    'Fase 1 (0-500 subs): Define tu nicho de alto valor. Empieza con afiliados desde el primer vídeo — no necesitas el YPP. Usa los primeros meses para construir una comunidad que interactúe.',
+    'Fase 2 (500-1.000 subs): Activa el Nivel 1 del YPP. Lanza membresías aunque solo tengas 10 miembros. Prueba Super Thanks. Cada euro cuenta y el hábito de pago se construye pronto.',
+    'Fase 3 (1.000+ subs): Activa anuncios. Optimiza tu RPM eligiendo nichos de alto CPM y segmentando tu audiencia hacia mercados de alto poder adquisitivo (España, EE.UU., UK).',
+    'Fase 4 (2.000-5.000 subs): Crea tu primer producto digital o curso. Prepara tu Media Kit y empieza a buscar patrocinios. Activa YouTube Shopping si tienes productos.',
+    'Fase 5 (5.000+ subs): Optimiza y escala. Combina AdSense + afiliados + membresías + sponsors + productos. El objetivo: que ninguna fuente represente más del 40% de tus ingresos.',
+  ]},
+  { type: 'p', t: 'Recuerda que incluso dentro del nicho más rentable, la calidad del contenido sigue siendo la base. Nadie paga membresías a un canal mediocre y ninguna marca patrocina vídeos que no retienen audiencia. La monetización no es un truco — es el resultado natural de crear buen contenido de forma consistente para la audiencia correcta.' },
+
+  { type: 'callout-final', t: 'Calcula tu potencial de ingresos en 30 segundos', sub: 'Revenue Estimator analiza tu nicho, audiencia y visualizaciones para darte una estimación realista. Gratis, sin tarjeta.', cta: 'Probar YTubViral gratis' },
+];
+
+const ART_MONETIZAR_EN: BlockType[] = [
+  { type: 'p', t: 'There\'s a question every creator asks sooner or later: "when will I start making money from this?" And the honest answer is probably sooner than you think — but not the way you imagine.' },
+  { type: 'p', t: 'Most people think monetizing YouTube = turning on ads and waiting. And yes, AdSense exists and pays. But in 2026, creators who live off YouTube don\'t rely on ads as their main source. AdSense is the entry door, not the destination.' },
+  { type: 'p', t: 'In this guide, we\'ll explain every real way to make money with a YouTube channel in 2026: from your first euro at 500 subscribers to the strategies used by channels that invoice five figures monthly with small audiences.' },
+
+  { type: 'h2', t: 'The YouTube Partner Program in 2026: Two Levels' },
+  { type: 'p', t: 'YouTube changed the game in 2023 and has been refining it since. In 2026, the Partner Program (YPP) has two access levels, and the first one is far more accessible than people think.' },
+
+  { type: 'h3', t: 'Level 1: From 500 Subscribers' },
+  { type: 'p', t: 'With just 500 subscribers, 3 public uploads in the last 90 days, and one of two conditions — 3,000 watch hours in the past year or 3 million Shorts views in 90 days — you can start earning money.' },
+  { type: 'p', t: 'But how? Not with ads. Level 1 unlocks fan funding features: channel memberships, Super Chat and Super Stickers in live streams, Super Thanks on videos, and YouTube Shopping. Your community pays you directly.' },
+  { type: 'p', t: 'This matters because you don\'t need 1,000 subscribers to begin. If 500 people follow you and you deliver value, you can start building an income stream.' },
+
+  { type: 'h3', t: 'Level 2: 1,000 Subscribers and AdSense' },
+  { type: 'p', t: 'The level everyone knows: 1,000 subscribers + 4,000 watch hours in the past year (or 10 million Shorts views in 90 days). This is where ads kick in: pre-roll, mid-roll, display, and YouTube Premium revenue sharing.' },
+  { type: 'p', t: 'YouTube reviews your channel before approval: content originality, community guideline compliance, thematic consistency. Numbers alone aren\'t enough — your channel needs to be legitimate and deliver real value.' },
+
+  { type: 'callout', t: 'Key fact: in 2026, you can start earning from 500 subscribers with memberships and Super Chat. Don\'t wait until 1,000 to think about monetization.' },
+
+  { type: 'h2', t: 'CPM and RPM: What Really Matters for Your Wallet' },
+  { type: 'p', t: 'Once ads are active, your earnings depend on two metrics you need to understand: CPM (what advertisers pay per 1,000 impressions) and RPM (what actually reaches your account per 1,000 views).' },
+  { type: 'p', t: 'RPM is always lower than CPM because not all views are monetizable: ad blockers, viewers in countries without ad inventory, content flagged by advertisers... A channel can have a $20 CPM but only a $4 RPM. The gap is massive.' },
+  { type: 'p', t: 'And here\'s what few people tell you: your niche and audience location determine your earnings far more than your view count.' },
+
+  { type: 'h3', t: 'RPM by Niche: Spain vs. Latin America' },
+  { type: 'p', t: 'These are the real RPM ranges in 2026. The difference between niches and regions is dramatic:' },
+  { type: 'list', items: [
+    'Finance & investing: RPM €6-12 (Spain) / $1.5-4 (LATAM)',
+    'Tech, software & AI: RPM €5-10 (Spain) / $1.2-3 (LATAM)',
+    'Business, marketing & B2B: RPM €5-9 (Spain) / $1-2.5 (LATAM)',
+    'Education & professional skills: RPM €3-7 (Spain) / $0.8-2 (LATAM)',
+    'Health, fitness & wellness: RPM €2-5 (Spain) / $0.5-1.5 (LATAM)',
+    'Lifestyle, vlogs & cooking: RPM €1-4 (Spain) / $0.3-1 (LATAM)',
+    'Gaming & entertainment: RPM €0.5-3 (Spain) / $0.2-0.8 (LATAM)',
+  ]},
+  { type: 'p', t: 'Read those numbers again. A finance channel in Spain can earn up to 10x more per thousand views than a gaming channel in Latin America. It\'s not that one is "better" — advertisers pay completely different prices based on audience purchasing power and the niche\'s purchase intent.' },
+  { type: 'p', t: 'The takeaway: if your goal is maximizing ad revenue, attracting high-purchasing-power audiences in technical or financial niches is significantly more profitable than chasing mass virality in entertainment.' },
+
+  { type: 'h2', t: 'Shorts Monetization: The Creator Pool' },
+  { type: 'p', t: 'YouTube Shorts is a views machine. But — and this is important — it\'s not a direct money machine. The Shorts monetization model works completely differently from long-form videos.' },
+
+  { type: 'h3', t: 'How the Creator Pool Works' },
+  { type: 'p', t: 'Ads in Shorts aren\'t assigned to a specific video. They appear in the feed between different content, and the revenue accumulates in a country-wide pool. That pool is then distributed among monetized creators based on their share of total views. If your channel generates 2% of all monetized Shorts views in Spain, you get 2% of the pool.' },
+  { type: 'p', t: 'But two details change the numbers significantly:' },
+  { type: 'list', items: [
+    'If you use licensed commercial music, a portion goes to rights holders first — reducing the pool before distribution.',
+    'YouTube keeps 55% and you get 45%. For long-form videos it\'s reversed: 55% for you, 45% for YouTube.',
+  ]},
+
+  { type: 'h3', t: 'How Much Do Shorts Really Pay?' },
+  { type: 'p', t: 'Being direct: very little per view. Shorts RPM ranges from $0.01-$0.07, with exceptional cases in high-value niches reaching $0.10. Here\'s what that means in real numbers:' },
+  { type: 'list', items: [
+    '1 million views/month: $30-$70',
+    '10 million views/month: $300-$700',
+    '50 million views/month: $1,500-$3,500',
+  ]},
+  { type: 'p', t: '50 million monthly views to earn $3,500. That\'s an enormous reach for relatively little money. The takeaway: don\'t use Shorts to make ad money. Use Shorts as a discovery engine — so people find you, watch your Shorts, then go to your long-form videos, subscribe, buy your product, or join your membership.' },
+
+  { type: 'callout', t: 'Shorts aren\'t an ad revenue source. They\'re a sales funnel: they attract massive traffic that you can convert into subscribers, sales, and members.' },
+
+  { type: 'h2', t: 'The 6 Real Income Sources for a YouTuber in 2026' },
+  { type: 'p', t: 'Creators who live off YouTube don\'t depend on a single source. They have an ecosystem where AdSense usually represents less than 30% of total revenue. These are the six main sources, from most accessible to most advanced.' },
+
+  { type: 'h3', t: '1. AdSense (Ads)' },
+  { type: 'p', t: 'The most well-known and most passive source. Once ads are active, you earn money per monetizable view. It\'s direct, predictable, and automatic — but volatile. An algorithm change, a partial demonetization, or a seasonal CPM drop can cut your income by 40% month-to-month without you doing anything different.' },
+  { type: 'p', t: 'AdSense is your baseline, not your whole plan.' },
+
+  { type: 'h3', t: '2. Affiliate Marketing' },
+  { type: 'p', t: 'This is where many small channels earn more than from ads. You place affiliate links in your video descriptions and earn a commission on every sale generated.' },
+  { type: 'p', t: 'The massive advantage: you don\'t need to be a YouTube Partner to start. You can earn affiliate income from your very first video.' },
+  { type: 'list', items: [
+    'Amazon Associates: 1-10% commission (24-hour cookie). Most accessible but shortest window.',
+    'B&H Photo: 2-8% commission (60-day cookie). Ideal for high-value audiovisual gear.',
+    'SmallRig / Govee: 10% commission (30-day cookie). Accessories and lights with good margins.',
+    'Adobe Creative Cloud: up to 85% of first month (30-day cookie). If you recommend software, this is gold.',
+    'SaaS programs (PartnerStack, etc.): 20-50% recurring monthly commissions. The holy grail of affiliates.',
+  ]},
+  { type: 'p', t: 'The key metric isn\'t the commission percentage — it\'s the cookie window. If you recommend a €3,000 camera and someone clicks your B&H Photo link but buys it 45 days later, you still earn the commission. With Amazon, if they don\'t buy within 24 hours, you lose the sale.' },
+
+  { type: 'callout-gear', t: 'Looking for the ideal setup for your channel?', sub: 'We\'ve selected the best gear for content creators at every price range. All tested with direct links.', cta: 'See the gear guide' },
+
+  { type: 'h3', t: '3. Memberships and Direct Fan Funding' },
+  { type: 'p', t: 'From YPP Level 1 (500 subs), you can activate channel memberships. Your subscribers pay a monthly fee (you set the price and tiers) in exchange for badges, exclusive emojis, and members-only content.' },
+  { type: 'p', t: 'Add Super Chat (live donations), Super Stickers, and Super Thanks (video donations), and you have a complete direct funding system. The best part: this income doesn\'t depend on advertisers or algorithms — it depends on your community.' },
+  { type: 'p', t: 'A channel with 2,000 subscribers and 50 members at €4.99/month generates nearly €250 in recurring monthly revenue from memberships alone. It won\'t pay the rent, but it\'s a cushion many entertainment channels with 100K subs don\'t have.' },
+
+  { type: 'h3', t: '4. Sponsorships and Brand Collaborations' },
+  { type: 'p', t: 'Sponsorships are possibly the most profitable income source per hour of work. A brand pays you to mention or make a dedicated video about their product. Payments far exceed what you\'d earn from ads on the same video.' },
+  { type: 'p', t: 'In 2026, YouTube Creator Partnerships (powered by Gemini AI) centralizes the brand-creator connection directly in YouTube Studio. Even small channels with precise audience data can access campaigns from major brands.' },
+  { type: 'p', t: 'Numbers vary enormously by niche: a fitness channel with 20K subs can land €1,000-3,000 per sponsored video. A B2B tech channel with 5K subs can charge €5,000 because their audience makes high-value purchasing decisions.' },
+  { type: 'p', t: 'The key: prepare a professional Media Kit highlighting your audience demographics, engagement rate, and previous conversion cases. Brands don\'t buy views — they buy access to the right audience.' },
+
+  { type: 'callout-mid', t: 'Know how much you could earn with your channel?', sub: 'Calculate your estimated revenue by niche, subscribers, and views with real 2026 data.', cta: 'Try Revenue Estimator' },
+
+  { type: 'h3', t: '5. Digital Products and Courses' },
+  { type: 'p', t: 'If your content teaches something — editing, cooking, finance, programming, photography — you have the perfect foundation to sell digital products: courses, templates, presets, ebooks, paid communities.' },
+  { type: 'p', t: 'Margins are close to 100% because there are no manufacturing costs. A €49 course sold to 100 people a month is €4,900 in net revenue. And your YouTube channel works as the best marketing machine possible: free videos demonstrating your expertise → course link in the description.' },
+  { type: 'p', t: 'You don\'t need a huge audience. A channel with 3,000 subscribers in a technical niche (AI automation, DaVinci Resolve editing, advanced Excel) can generate more from a €79 course than an entertainment channel with 200K subs generates in ads.' },
+
+  { type: 'h3', t: '6. YouTube Shopping and Merchandising' },
+  { type: 'p', t: 'YouTube Shopping lets you integrate products directly into the video interface: product shelves below the player, in-video tags, and a store tab on your channel. You can use it from YPP Level 1.' },
+  { type: 'p', t: 'For custom merchandise (shirts, mugs, prints), print-on-demand services like Spreadshop or Teespring eliminate inventory risk. You design, they produce and ship. It\'s not a massive income source for most, but it strengthens brand identity and generates passive additional income.' },
+
+  { type: 'h2', t: 'The "Boutique Channel" Phenomenon: Few Subs, Big Income' },
+  { type: 'p', t: 'One of the most interesting patterns of 2026 is the rise of channels with fewer than 20,000 subscribers generating higher income than channels with a million followers. We call them "boutique channels" and their strategy is based on extreme specialization.' },
+  { type: 'p', t: 'Real example: a channel dedicated exclusively to teaching AI automations for HR departments. 8,000 subscribers, ad RPM of €12 in Spain. But their real monetization comes from consulting (€150/hour), template sales (€29 each), and SaaS affiliate programs with 20-50% recurring monthly commissions. With 5,000 monthly views, they invoice over €3,000/month.' },
+  { type: 'p', t: 'The key? Value per viewer. If every person watching your video has a problem they\'d pay to solve, you don\'t need millions of views. You need the right views.' },
+
+  { type: 'callout', t: 'Don\'t chase more subscribers — chase more valuable subscribers. A technical niche channel with 5,000 subs can invoice more than an entertainment channel with 500,000.' },
+
+  { type: 'h2', t: 'The "Hype" Feature: A Boost for Emerging Channels in Spain' },
+  { type: 'p', t: 'YouTube has launched the Hype feature in Spain, designed specifically for channels between 500 and 500,000 subscribers. It lets your fans "boost" a video during the first 7 days after publication.' },
+  { type: 'p', t: 'Videos with the most Hype points enter a national leaderboard and receive additional algorithmic exposure — the kind normally reserved for large channels. It\'s an internal marketing tool that can significantly accelerate your path to monetization thresholds.' },
+  { type: 'p', t: 'It\'s still early for definitive data on its impact, but initial indicators show that videos entering the Hype ranking receive 30-50% more impressions than similar videos without Hype. If you\'re in Spain, activate it and ask your community to boost you.' },
+
+  { type: 'h2', t: 'What Can Go Wrong: Monetization Risks' },
+  { type: 'p', t: 'Monetizing isn\'t just flipping a switch and waiting. There are real risks that can cut your income overnight if you don\'t account for them.' },
+
+  { type: 'h3', t: 'Reused Content' },
+  { type: 'p', t: 'YouTube has intensified its fight against channels using others\' content without adding significant value in 2026. If your videos are compilations of clips from other creators without commentary, criticism, or creative editing, you\'ll get demonetized. Originality and your own voice aren\'t optional — they\'re technical requirements for maintaining monetization.' },
+
+  { type: 'h3', t: 'Strikes and Community Guidelines' },
+  { type: 'p', t: 'A single community strike can block your YPP eligibility. YouTube reviews not just your videos, but your metadata, titles, and thumbnails. Misleading clickbait, sensitive content without context, or copyright violations can cost you your entire monetization.' },
+
+  { type: 'h3', t: 'Single-Source Dependency' },
+  { type: 'p', t: 'If 100% of your income comes from AdSense, you\'re at the mercy of seasonal fluctuations (CPM drops 30-40% in January), algorithm changes, and advertiser decisions. Diversifying isn\'t a nice tip — it\'s survival.' },
+
+  { type: 'h2', t: 'Your Roadmap to Start Monetizing Today' },
+  { type: 'p', t: 'It doesn\'t matter what stage your channel is at. Here\'s the step-by-step plan to build a solid income system in 2026:' },
+  { type: 'list', items: [
+    'Phase 1 (0-500 subs): Define your high-value niche. Start with affiliates from your very first video — you don\'t need the YPP. Use the first months to build a community that engages.',
+    'Phase 2 (500-1,000 subs): Activate YPP Level 1. Launch memberships even if you only have 10 members. Try Super Thanks. Every euro counts, and the payment habit is built early.',
+    'Phase 3 (1,000+ subs): Activate ads. Optimize your RPM by choosing high-CPM niches and targeting your audience toward high-purchasing-power markets (Spain, US, UK).',
+    'Phase 4 (2,000-5,000 subs): Create your first digital product or course. Prepare your Media Kit and start seeking sponsorships. Activate YouTube Shopping if you have products.',
+    'Phase 5 (5,000+ subs): Optimize and scale. Combine AdSense + affiliates + memberships + sponsors + products. The goal: no single source should represent more than 40% of your income.',
+  ]},
+  { type: 'p', t: 'Remember that even within the most profitable niche, content quality remains the foundation. Nobody pays memberships to a mediocre channel, and no brand sponsors videos that don\'t retain viewers. Monetization isn\'t a trick — it\'s the natural result of consistently creating great content for the right audience.' },
+
+  { type: 'callout-final', t: 'Calculate your income potential in 30 seconds', sub: 'Revenue Estimator analyzes your niche, audience, and views to give you a realistic estimate. Free, no credit card.', cta: 'Try YTubViral for free' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -2692,6 +2992,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'como-crear-scripts-youtube-con-ia': {
     es: ART_SCRIPTS_IA_ES,
     en: ART_SCRIPTS_IA_EN,
+  },
+  'como-monetizar-youtube-2026-guia': {
+    es: ART_MONETIZAR_ES,
+    en: ART_MONETIZAR_EN,
   },
 };
 
