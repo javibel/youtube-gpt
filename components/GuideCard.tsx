@@ -23,12 +23,12 @@ export default function GuideCard({ guide, lang, linkPrefix }: Props) {
       className="group block border border-white/10 p-6 bg-black hover:border-white/20 transition-colors"
     >
       <div className="flex items-start gap-4">
-        <div className="w-10 h-10 relative shrink-0">
+        <div className="w-[120px] h-[120px] relative shrink-0">
           <Image
             src={guide.icon}
             alt=""
-            width={40}
-            height={40}
+            width={120}
+            height={120}
             className="object-contain"
           />
         </div>

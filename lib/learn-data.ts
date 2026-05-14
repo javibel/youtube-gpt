@@ -26,7 +26,7 @@ export interface LearnGuide {
 export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'seo-basics',
-    icon: '/icons/magnifying-glass.webp',
+    icon: '/icons/target.webp',
     title: { es: 'SEO en YouTube: Guía completa', en: 'YouTube SEO: Complete Guide' },
     description: {
       es: 'Aprende a optimizar tus vídeos para que aparezcan en búsquedas y recomendaciones.',
@@ -59,7 +59,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   },
   {
     slug: 'keyword-research',
-    icon: '/icons/bar-chart.webp',
+    icon: '/icons/key.webp',
     title: { es: 'Keyword Research para YouTube', en: 'Keyword Research for YouTube' },
     description: {
       es: 'Encuentra las palabras clave que tu audiencia está buscando y que tienen poca competencia.',
@@ -92,7 +92,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   },
   {
     slug: 'retention',
-    icon: '/icons/chart-up.webp',
+    icon: '/icons/anchor.webp',
     title: { es: 'Mejorar retención de audiencia', en: 'Improve Audience Retention' },
     description: {
       es: 'La retención es el factor #1 del algoritmo. Aprende a mantener a tu audiencia enganchada.',
@@ -157,7 +157,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   },
   {
     slug: 'analytics-deep',
-    icon: '/icons/flask.webp',
+    icon: '/icons/chart-up.webp',
     title: { es: 'Análisis avanzado con YouTube Analytics', en: 'Advanced Analysis with YouTube Analytics' },
     description: {
       es: 'Aprende a leer tus datos privados de YouTube y tomar decisiones basadas en métricas reales.',
@@ -222,7 +222,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   },
   {
     slug: 'competitor-analysis',
-    icon: '/icons/target.webp',
+    icon: '/icons/swords.webp',
     title: { es: 'Análisis de competidores', en: 'Competitor Analysis' },
     description: {
       es: 'Aprende de los que ya lo están haciendo bien. Analiza su estrategia y encuentra tu ventaja.',
@@ -255,7 +255,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   },
   {
     slug: 'ab-testing',
-    icon: '/icons/lightning.webp',
+    icon: '/icons/split.webp',
     title: { es: 'A/B Testing de títulos y thumbnails', en: 'A/B Testing Titles & Thumbnails' },
     description: {
       es: 'Deja de adivinar qué funciona. Testea variaciones y deja que los datos decidan.',
@@ -321,7 +321,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   },
   {
     slug: 'trend-explorer',
-    icon: '/icons/flame.webp',
+    icon: '/icons/trend.webp',
     title: { es: 'Cómo aprovechar las tendencias', en: 'How to Ride Trends' },
     description: {
       es: 'Detecta temas en auge antes que tu competencia y crea contenido que el algoritmo quiere recomendar.',
@@ -420,7 +420,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   },
   {
     slug: 'video-predictor',
-    icon: '/icons/diamond.webp',
+    icon: '/icons/crystal-ball.webp',
     title: { es: 'Predecir el rendimiento antes de publicar', en: 'Predict Performance Before Publishing' },
     description: {
       es: 'Anticipa cómo rendirá tu vídeo y optimízalo antes de que sea demasiado tarde.',
@@ -453,7 +453,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   },
   {
     slug: 'ai-coach',
-    icon: '/icons/brain.webp',
+    icon: '/icons/bulb.webp',
     title: { es: 'Tu coach de YouTube con IA', en: 'Your AI YouTube Coach' },
     description: {
       es: 'Recibe análisis personalizado de tu canal y recomendaciones accionables basadas en tus datos reales.',

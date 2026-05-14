@@ -144,8 +144,8 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
           ) : (
             <div className="w-full h-full flex items-center justify-center relative"
               style={{ background: 'linear-gradient(135deg, rgba(232,77,91,0.25) 0%, #0a0a0a 100%)' }}>
-              <div className="w-24 h-24 relative opacity-60">
-                <Image src={guide.icon} alt="" width={96} height={96} className="object-contain" />
+              <div className="w-72 h-72 relative opacity-60">
+                <Image src={guide.icon} alt="" width={288} height={288} className="object-contain" />
               </div>
               <div className="absolute inset-0"
                 style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
