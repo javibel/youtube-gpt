@@ -1,4 +1,7 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../app/**/*.{tsx,ts}";
+@source "../components/**/*.{tsx,ts}";
+@source "../lib/**/*.{ts}";
 
 :root {
   --cyan: #00D9FF;
