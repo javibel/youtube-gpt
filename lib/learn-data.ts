@@ -1667,6 +1667,680 @@ const BODY_ABTESTING_EN: LearnBlockType[] = [
   { type: 'callout-final', t: 'Every video is a learning opportunity', sub: 'Test, learn, improve. A/B testing turns every upload into an experiment that makes you better. Free.', cta: 'Get started free' },
 ];
 
+// ── Best Time to Publish ──
+
+const BODY_BESTTIME_ES: LearnBlockType[] = [
+  { type: 'p', t: 'El momento en que pulsas "Publicar" puede marcar la diferencia entre un vídeo que despega y uno que pasa desapercibido. No es superstición: YouTube evalúa el rendimiento inicial de cada vídeo para decidir si lo impulsa en recomendaciones.' },
+
+  { type: 'h2', t: 'Por qué importa la hora de publicación' },
+  { type: 'p', t: 'La primera hora tras publicar es crítica. YouTube mide el CTR y la retención de los primeros espectadores. Si publicas cuando tu audiencia duerme, esos primeros datos serán débiles — y el algoritmo asumirá que el vídeo no interesa.' },
+  { type: 'p', t: 'Publicar cuando tu audiencia está activa significa más impresiones iniciales, mejor CTR temprano, y una señal fuerte para el algoritmo.' },
+
+  { type: 'callout', t: '🕐 Regla de oro: publica 2-3 horas ANTES del pico de actividad de tu audiencia. Así el vídeo ya estará procesado, con thumbnail y subtítulos listos, cuando lleguen tus espectadores.' },
+
+  { type: 'h2', t: 'Cómo encontrar tu hora ideal' },
+  { type: 'h3', t: '1. YouTube Studio Analytics' },
+  { type: 'p', t: 'Ve a YouTube Studio > Analytics > Audiencia. El gráfico de calor "Cuándo están conectados tus espectadores" muestra las horas pico día a día. Necesitas al menos 1.000 suscriptores para que aparezca.' },
+
+  { type: 'h3', t: '2. YTubViral Best Time' },
+  { type: 'p', t: 'Nuestra herramienta analiza los patrones de tu canal y de canales similares para darte una recomendación personalizada, incluso si tienes pocos suscriptores.' },
+
+  { type: 'h3', t: '3. Reglas generales' },
+  { type: 'list', items: [
+    'Martes a jueves suelen ser los mejores días (menos competencia que lunes y viernes).',
+    '14:00-17:00 hora local de tu audiencia principal es un punto de partida sólido.',
+    'Fines de semana funcionan bien para entretenimiento y vlogs, peor para contenido B2B.',
+    'Evita festivos nacionales salvo que tu contenido sea estacional.',
+  ]},
+
+  { type: 'h2', t: 'Audiencia internacional' },
+  { type: 'p', t: 'Si tu audiencia está repartida entre varios países, prioriza el timezone del grupo más grande. Consulta YouTube Studio > Audiencia > Principales países para saber dónde están.' },
+  { type: 'p', t: 'Si tienes 40% España y 30% México, optimiza para hora española. La audiencia de México verá el vídeo unas horas después, pero el impulso inicial será fuerte.' },
+
+  { type: 'h2', t: 'Consistencia sobre perfección' },
+  { type: 'p', t: 'Más importante que encontrar la hora "perfecta" es ser consistente. Tu audiencia aprende cuándo esperar contenido nuevo. Si publicas cada miércoles a las 16:00, tus suscriptores anticipan ese momento.' },
+  { type: 'list', items: [
+    'Elige un horario y mantén lo al menos 4-6 semanas antes de evaluar.',
+    'Usa la programación de publicación de YouTube: sube el vídeo cuando quieras y programa la fecha/hora.',
+    'Avisa a tu audiencia: "Nuevo vídeo cada miércoles" en tu banner, descripción y comunidad.',
+  ]},
+
+  { type: 'callout-mid', t: '🗓️ Programa, no publiques en directo', sub: 'Subir y programar te permite revisar thumbnail, descripción y subtítulos con calma. Publicar "ahora mismo" lleva a errores por prisa.', cta: 'Probar Best Time gratis' },
+
+  { type: 'h2', t: 'Errores comunes' },
+  { type: 'list', items: [
+    'Publicar a medianoche "para que esté listo por la mañana" — el vídeo pierde las primeras horas sin audiencia.',
+    'Copiar la hora de otro creador sin verificar que tu audiencia tiene los mismos hábitos.',
+    'Cambiar de horario cada semana — no das tiempo al algoritmo ni a tu audiencia de adaptarse.',
+    'Ignorar las vacaciones y festivos de tu audiencia principal.',
+  ]},
+
+  { type: 'callout-final', t: 'Encuentra tu momento ideal', sub: 'Usa YTubViral Best Time para obtener recomendaciones personalizadas basadas en tu audiencia real. Gratis.', cta: 'Analizar mi mejor hora' },
+];
+
+const BODY_BESTTIME_EN: LearnBlockType[] = [
+  { type: 'p', t: 'The moment you hit "Publish" can make the difference between a video that takes off and one that goes unnoticed. It\'s not superstition: YouTube evaluates the initial performance of every video to decide whether to boost it in recommendations.' },
+
+  { type: 'h2', t: 'Why publishing time matters' },
+  { type: 'p', t: 'The first hour after publishing is critical. YouTube measures CTR and retention from the first viewers. If you publish while your audience sleeps, those early signals will be weak — and the algorithm will assume the video isn\'t interesting.' },
+  { type: 'p', t: 'Publishing when your audience is active means more initial impressions, better early CTR, and a strong signal for the algorithm.' },
+
+  { type: 'callout', t: '🕐 Golden rule: publish 2-3 hours BEFORE your audience\'s peak activity. This way the video will be fully processed, with thumbnail and subtitles ready, when your viewers arrive.' },
+
+  { type: 'h2', t: 'How to find your ideal time' },
+  { type: 'h3', t: '1. YouTube Studio Analytics' },
+  { type: 'p', t: 'Go to YouTube Studio > Analytics > Audience. The heatmap "When your viewers are on YouTube" shows peak hours day by day. You need at least 1,000 subscribers for it to appear.' },
+
+  { type: 'h3', t: '2. YTubViral Best Time' },
+  { type: 'p', t: 'Our tool analyzes patterns from your channel and similar channels to give you a personalized recommendation, even if you have few subscribers.' },
+
+  { type: 'h3', t: '3. General rules' },
+  { type: 'list', items: [
+    'Tuesday through Thursday tend to be the best days (less competition than Monday and Friday).',
+    '2:00-5:00 PM local time of your main audience is a solid starting point.',
+    'Weekends work well for entertainment and vlogs, worse for B2B content.',
+    'Avoid national holidays unless your content is seasonal.',
+  ]},
+
+  { type: 'h2', t: 'International audience' },
+  { type: 'p', t: 'If your audience spans multiple countries, prioritize the timezone of your largest group. Check YouTube Studio > Audience > Top countries to see where they are.' },
+  { type: 'p', t: 'If you have 40% US and 30% UK, optimize for US Eastern time. Your UK audience will see the video a few hours later, but the initial momentum will be strong.' },
+
+  { type: 'h2', t: 'Consistency over perfection' },
+  { type: 'p', t: 'More important than finding the "perfect" time is being consistent. Your audience learns when to expect new content. If you publish every Wednesday at 4 PM, your subscribers anticipate that moment.' },
+  { type: 'list', items: [
+    'Pick a schedule and stick with it for at least 4-6 weeks before evaluating.',
+    'Use YouTube\'s scheduled publishing: upload whenever you want and schedule the date/time.',
+    'Tell your audience: "New video every Wednesday" in your banner, description, and community posts.',
+  ]},
+
+  { type: 'callout-mid', t: '🗓️ Schedule, don\'t publish live', sub: 'Uploading and scheduling lets you review thumbnail, description, and subtitles calmly. Publishing "right now" leads to mistakes from rushing.', cta: 'Try Best Time free' },
+
+  { type: 'h2', t: 'Common mistakes' },
+  { type: 'list', items: [
+    'Publishing at midnight "so it\'s ready in the morning" — the video wastes the first hours with no audience.',
+    'Copying another creator\'s time without verifying your audience has the same habits.',
+    'Changing your schedule every week — you don\'t give the algorithm or your audience time to adapt.',
+    'Ignoring holidays and vacation periods for your main audience.',
+  ]},
+
+  { type: 'callout-final', t: 'Find your ideal moment', sub: 'Use YTubViral Best Time for personalized recommendations based on your real audience. Free.', cta: 'Analyze my best time' },
+];
+
+// ── Trend Explorer ──
+
+const BODY_TRENDS_ES: LearnBlockType[] = [
+  { type: 'p', t: 'Las tendencias son la autopista rápida del crecimiento en YouTube. Un vídeo sobre un tema trending puede conseguir en un día lo que un vídeo evergreen tarda meses en acumular. Pero surfear tendencias tiene reglas.' },
+
+  { type: 'h2', t: 'Qué son las tendencias y por qué importan' },
+  { type: 'p', t: 'Una tendencia es un pico temporal de interés en un tema. Puede ser un lanzamiento de producto, un evento deportivo, una noticia viral, o un meme. YouTube prioriza contenido relevante y actual, así que los vídeos que capturan una tendencia a tiempo reciben un boost en recomendaciones.' },
+
+  { type: 'callout', t: '⚡ Velocidad = ventaja: en tendencias, el primero gana. Un vídeo publicado 24h después de una tendencia recibe 10x menos impulso que uno publicado en las primeras 4 horas.' },
+
+  { type: 'h2', t: 'Dónde encontrar tendencias' },
+  { type: 'list', items: [
+    'YTubViral Trend Explorer: analiza picos de búsqueda y vídeos virales en tu nicho.',
+    'Google Trends: busca tu tema y filtra por "Últimas 4 horas" o "Último día".',
+    'YouTube Trending: la pestaña "Tendencias" muestra qué es popular ahora (pero llega tarde).',
+    'Twitter/X: los trending topics anticipan lo que llegará a YouTube en 12-24 horas.',
+    'Reddit: los posts con crecimiento rápido en subreddits de tu nicho son señales tempranas.',
+  ]},
+
+  { type: 'h2', t: 'Cómo ejecutar un vídeo trending' },
+  { type: 'h3', t: '1. Detecta rápido' },
+  { type: 'p', t: 'Configura alertas: Google Alerts para tu nicho, notificaciones de Reddit, y revisa YTubViral Trends cada mañana. La detección temprana es tu mayor ventaja.' },
+
+  { type: 'h3', t: '2. Evalúa antes de actuar' },
+  { type: 'list', items: [
+    '¿El tema es relevante para tu audiencia? No persigas tendencias fuera de tu nicho.',
+    '¿Puedes aportar valor único? Si solo repites lo que dice todo el mundo, no destacarás.',
+    '¿Puedes producir el vídeo a tiempo? Una tendencia que dura 48h no te espera.',
+  ]},
+
+  { type: 'h3', t: '3. Produce rápido, no perfecto' },
+  { type: 'p', t: 'En trending, velocidad > producción. Un vídeo con buena info grabado con webcam a tiempo vale más que un vídeo cinematográfico publicado una semana tarde.' },
+
+  { type: 'h3', t: '4. Optimiza el título para la búsqueda del momento' },
+  { type: 'p', t: 'Usa exactamente las palabras que la gente está buscando AHORA. Si todos buscan "iPhone 17 review", tu título debe contener esas palabras exactas.' },
+
+  { type: 'h2', t: 'Tendencias vs. Evergreen' },
+  { type: 'p', t: 'La estrategia ideal combina ambas. Los vídeos evergreen generan tráfico constante durante meses o años. Los trending dan picos de crecimiento rápido. Un buen ratio es 70% evergreen, 30% trending.' },
+
+  { type: 'callout-mid', t: '🎯 Estrategia híbrida', sub: 'Usa los picos de trending para ganar suscriptores. Retén a esos suscriptores con contenido evergreen de calidad.', cta: 'Explorar tendencias' },
+
+  { type: 'h2', t: 'Errores al perseguir tendencias' },
+  { type: 'list', items: [
+    'Publicar sobre todo lo que es trending sin filtrar por relevancia para tu audiencia.',
+    'Sacrificar calidad extrema: rápido sí, pero con información correcta y útil.',
+    'No tener un sistema para detectar tendencias — depender de enterarte "por casualidad".',
+    'Olvidar conectar el tema trending con tu contenido habitual para retener a los nuevos.',
+  ]},
+
+  { type: 'callout-final', t: 'No te pierdas la próxima tendencia', sub: 'YTubViral Trend Explorer detecta picos de interés en tu nicho antes de que exploten. Gratis.', cta: 'Explorar tendencias' },
+];
+
+const BODY_TRENDS_EN: LearnBlockType[] = [
+  { type: 'p', t: 'Trends are the fast lane to YouTube growth. A video on a trending topic can get in one day what an evergreen video takes months to accumulate. But riding trends has rules.' },
+
+  { type: 'h2', t: 'What are trends and why they matter' },
+  { type: 'p', t: 'A trend is a temporary spike in interest around a topic. It can be a product launch, a sports event, viral news, or a meme. YouTube prioritizes relevant and timely content, so videos that capture a trend in time get a boost in recommendations.' },
+
+  { type: 'callout', t: '⚡ Speed = advantage: in trends, first wins. A video published 24h after a trend gets 10x less boost than one published in the first 4 hours.' },
+
+  { type: 'h2', t: 'Where to find trends' },
+  { type: 'list', items: [
+    'YTubViral Trend Explorer: analyzes search spikes and viral videos in your niche.',
+    'Google Trends: search your topic and filter by "Past 4 hours" or "Past day".',
+    'YouTube Trending: the "Trending" tab shows what\'s popular now (but it\'s late).',
+    'Twitter/X: trending topics anticipate what will hit YouTube in 12-24 hours.',
+    'Reddit: fast-growing posts in your niche subreddits are early signals.',
+  ]},
+
+  { type: 'h2', t: 'How to execute a trending video' },
+  { type: 'h3', t: '1. Detect fast' },
+  { type: 'p', t: 'Set up alerts: Google Alerts for your niche, Reddit notifications, and check YTubViral Trends every morning. Early detection is your biggest advantage.' },
+
+  { type: 'h3', t: '2. Evaluate before acting' },
+  { type: 'list', items: [
+    'Is the topic relevant to your audience? Don\'t chase trends outside your niche.',
+    'Can you add unique value? If you just repeat what everyone else says, you won\'t stand out.',
+    'Can you produce the video in time? A trend that lasts 48h won\'t wait for you.',
+  ]},
+
+  { type: 'h3', t: '3. Produce fast, not perfect' },
+  { type: 'p', t: 'In trending, speed > production quality. A well-informed video shot with a webcam on time is worth more than a cinematic video published a week late.' },
+
+  { type: 'h3', t: '4. Optimize the title for what people are searching NOW' },
+  { type: 'p', t: 'Use exactly the words people are searching for RIGHT NOW. If everyone\'s searching "iPhone 17 review", your title must contain those exact words.' },
+
+  { type: 'h2', t: 'Trends vs. Evergreen' },
+  { type: 'p', t: 'The ideal strategy combines both. Evergreen videos generate steady traffic for months or years. Trending videos give rapid growth spikes. A good ratio is 70% evergreen, 30% trending.' },
+
+  { type: 'callout-mid', t: '🎯 Hybrid strategy', sub: 'Use trending spikes to gain subscribers. Retain those subscribers with quality evergreen content.', cta: 'Explore trends' },
+
+  { type: 'h2', t: 'Mistakes when chasing trends' },
+  { type: 'list', items: [
+    'Publishing about everything that\'s trending without filtering for your audience\'s relevance.',
+    'Sacrificing quality entirely: fast yes, but with correct and useful information.',
+    'Not having a system to detect trends — depending on finding out "by chance".',
+    'Forgetting to connect the trending topic to your regular content to retain newcomers.',
+  ]},
+
+  { type: 'callout-final', t: 'Don\'t miss the next trend', sub: 'YTubViral Trend Explorer detects interest spikes in your niche before they explode. Free.', cta: 'Explore trends' },
+];
+
+// ── AI Content Generator ──
+
+const BODY_AIGEN_ES: LearnBlockType[] = [
+  { type: 'p', t: 'La IA no reemplaza tu creatividad — la amplifica. Generar ideas, títulos, descripciones y guiones con IA te permite producir más contenido de mayor calidad en menos tiempo.' },
+
+  { type: 'h2', t: 'Qué puede hacer la IA por tu canal' },
+  { type: 'list', items: [
+    'Generar ideas de vídeos basadas en tendencias y gaps de tu nicho.',
+    'Escribir títulos optimizados para CTR con variantes para testing.',
+    'Crear descripciones SEO completas con timestamps y keywords.',
+    'Desarrollar guiones estructurados con hooks, desarrollo y CTAs.',
+    'Sugerir tags y hashtags relevantes.',
+  ]},
+
+  { type: 'callout', t: '🤖 IA como copiloto: la mejor estrategia es usar IA para el primer borrador, luego añadir tu voz, experiencia y personalidad. El resultado final debe sonar a TI, no a una máquina.' },
+
+  { type: 'h2', t: 'Generación de ideas' },
+  { type: 'p', t: 'El bloqueo creativo es real. YTubViral AI Generator analiza tu nicho, los vídeos que funcionan, y las búsquedas con demanda no cubierta para sugerirte ideas con alto potencial.' },
+  { type: 'list', items: [
+    'Ideas basadas en gaps: temas que la gente busca pero nadie cubre bien.',
+    'Ideas basadas en tendencias: temas con crecimiento de interés reciente.',
+    'Ideas basadas en tu historial: extensiones de tus vídeos más exitosos.',
+    'Ideas de formato: el mismo tema como tutorial, listicle, vs., o storytelling.',
+  ]},
+
+  { type: 'h2', t: 'Títulos que generan clicks' },
+  { type: 'p', t: 'Un buen título tiene curiosidad, claridad y keyword. La IA puede generar 10 variantes en segundos, cada una con un ángulo diferente.' },
+  { type: 'p', t: 'Ejemplo para un tutorial de edición:' },
+  { type: 'list', items: [
+    '"Edita como un PRO en 10 minutos (DaVinci Resolve gratis)"',
+    '"El TRUCO de edición que usan los YouTubers top"',
+    '"Deja de editar MAL — 5 errores que arruinan tus vídeos"',
+    '"Tutorial DaVinci Resolve 2026: De CERO a PROFESIONAL"',
+  ]},
+
+  { type: 'h2', t: 'Descripciones SEO' },
+  { type: 'p', t: 'La descripción es texto indexable por YouTube y Google. Una buena descripción incluye:' },
+  { type: 'list', items: [
+    'Primer párrafo: keyword principal + resumen del valor del vídeo (150 palabras mín).',
+    'Timestamps: facilitan la navegación y generan "key moments" en búsqueda.',
+    'Links relevantes: a tus redes, productos mencionados, vídeos relacionados.',
+    'Hashtags: 3-5 hashtags relevantes al final.',
+  ]},
+
+  { type: 'h2', t: 'Guiones estructurados' },
+  { type: 'h3', t: 'La estructura que funciona' },
+  { type: 'list', items: [
+    'Hook (0-30s): captura la atención con una promesa o pregunta provocadora.',
+    'Contexto (30s-2min): establece por qué este tema importa AHORA.',
+    'Contenido principal: desarrolla los puntos, usa ejemplos concretos.',
+    'CTA intermedio: suscripción, like, comentario — cuando el engagement es alto.',
+    'Cierre: resumen + teaser del próximo vídeo.',
+  ]},
+
+  { type: 'callout-mid', t: '✍️ Tu voz importa', sub: 'Usa el guión de IA como esqueleto, pero habla con tus palabras. Tu audiencia conecta contigo, no con un texto genérico.', cta: 'Probar AI Generator' },
+
+  { type: 'h2', t: 'Errores al usar IA para contenido' },
+  { type: 'list', items: [
+    'Publicar texto generado sin editarlo — suena genérico y pierde tu personalidad.',
+    'No verificar datos: la IA puede inventar estadísticas o citar fuentes falsas.',
+    'Depender 100% de IA para ideas — también explora tus propias experiencias y opiniones.',
+    'Usar IA para clickbait engañoso — el CTR sube pero la retención cae y YouTube penaliza.',
+  ]},
+
+  { type: 'callout-final', t: 'Tu copiloto creativo te espera', sub: 'YTubViral AI Generator crea ideas, títulos y descripciones optimizados para tu nicho. Gratis.', cta: 'Generar contenido con IA' },
+];
+
+const BODY_AIGEN_EN: LearnBlockType[] = [
+  { type: 'p', t: 'AI doesn\'t replace your creativity — it amplifies it. Generating ideas, titles, descriptions, and scripts with AI lets you produce more high-quality content in less time.' },
+
+  { type: 'h2', t: 'What AI can do for your channel' },
+  { type: 'list', items: [
+    'Generate video ideas based on trends and gaps in your niche.',
+    'Write CTR-optimized titles with variants for testing.',
+    'Create complete SEO descriptions with timestamps and keywords.',
+    'Develop structured scripts with hooks, body, and CTAs.',
+    'Suggest relevant tags and hashtags.',
+  ]},
+
+  { type: 'callout', t: '🤖 AI as copilot: the best strategy is using AI for the first draft, then adding your voice, experience, and personality. The final result should sound like YOU, not a machine.' },
+
+  { type: 'h2', t: 'Idea generation' },
+  { type: 'p', t: 'Creative block is real. YTubViral AI Generator analyzes your niche, videos that perform well, and searches with unmet demand to suggest high-potential ideas.' },
+  { type: 'list', items: [
+    'Gap-based ideas: topics people search for but nobody covers well.',
+    'Trend-based ideas: topics with recent growing interest.',
+    'History-based ideas: extensions of your most successful videos.',
+    'Format ideas: the same topic as tutorial, listicle, vs., or storytelling.',
+  ]},
+
+  { type: 'h2', t: 'Titles that drive clicks' },
+  { type: 'p', t: 'A good title has curiosity, clarity, and a keyword. AI can generate 10 variants in seconds, each with a different angle.' },
+  { type: 'p', t: 'Example for an editing tutorial:' },
+  { type: 'list', items: [
+    '"Edit like a PRO in 10 minutes (free DaVinci Resolve)"',
+    '"The EDITING TRICK top YouTubers use"',
+    '"Stop editing WRONG — 5 mistakes ruining your videos"',
+    '"DaVinci Resolve Tutorial 2026: BEGINNER to PRO"',
+  ]},
+
+  { type: 'h2', t: 'SEO descriptions' },
+  { type: 'p', t: 'The description is text indexed by YouTube and Google. A good description includes:' },
+  { type: 'list', items: [
+    'First paragraph: main keyword + summary of the video\'s value (150 words min).',
+    'Timestamps: ease navigation and generate "key moments" in search.',
+    'Relevant links: to your social media, mentioned products, related videos.',
+    'Hashtags: 3-5 relevant hashtags at the end.',
+  ]},
+
+  { type: 'h2', t: 'Structured scripts' },
+  { type: 'h3', t: 'The structure that works' },
+  { type: 'list', items: [
+    'Hook (0-30s): capture attention with a promise or provocative question.',
+    'Context (30s-2min): establish why this topic matters NOW.',
+    'Main content: develop points, use concrete examples.',
+    'Mid-roll CTA: subscribe, like, comment — when engagement is high.',
+    'Closing: summary + teaser for next video.',
+  ]},
+
+  { type: 'callout-mid', t: '✍️ Your voice matters', sub: 'Use the AI script as a skeleton, but speak in your own words. Your audience connects with you, not with generic text.', cta: 'Try AI Generator' },
+
+  { type: 'h2', t: 'Mistakes when using AI for content' },
+  { type: 'list', items: [
+    'Publishing AI-generated text without editing — sounds generic and loses your personality.',
+    'Not verifying facts: AI can invent statistics or cite false sources.',
+    'Depending 100% on AI for ideas — also explore your own experiences and opinions.',
+    'Using AI for misleading clickbait — CTR goes up but retention drops and YouTube penalizes.',
+  ]},
+
+  { type: 'callout-final', t: 'Your creative copilot awaits', sub: 'YTubViral AI Generator creates ideas, titles, and descriptions optimized for your niche. Free.', cta: 'Generate content with AI' },
+];
+
+// ── Content Calendar ──
+
+const BODY_CALENDAR_ES: LearnBlockType[] = [
+  { type: 'p', t: 'Publicar sin plan es como navegar sin mapa. Un calendario de contenido te da dirección, consistencia y tranquilidad. Sabes qué grabar, cuándo publicar y cómo cada vídeo conecta con tu estrategia.' },
+
+  { type: 'h2', t: 'Por qué necesitas un calendario' },
+  { type: 'list', items: [
+    'Consistencia: YouTube favorece canales que publican regularmente.',
+    'Reducción de estrés: no más "¿qué grabo hoy?" de última hora.',
+    'Variedad estratégica: alternas formatos, temas y enfoques planificadamente.',
+    'Aprovechamiento de fechas clave: Black Friday, Navidad, vuelta al cole...',
+    'Visión global: ves cómo cada vídeo conecta con el plan de crecimiento.',
+  ]},
+
+  { type: 'callout', t: '📅 La consistencia gana: 1 vídeo/semana durante 6 meses > 10 vídeos una semana y luego nada durante 2 meses. El algoritmo premia la regularidad.' },
+
+  { type: 'h2', t: 'Cómo crear tu calendario' },
+  { type: 'h3', t: '1. Define tu frecuencia' },
+  { type: 'p', t: 'Sé realista. ¿Cuántos vídeos puedes producir CADA semana sin quemarte? Para la mayoría de creadores, 1-2 vídeos/semana es sostenible. Un vídeo bueno a la semana supera a tres mediocres.' },
+
+  { type: 'h3', t: '2. Establece pilares de contenido' },
+  { type: 'p', t: 'Define 3-4 categorías o "pilares" que cubran tu nicho. Ejemplo para un canal de cocina:' },
+  { type: 'list', items: [
+    'Recetas rápidas (< 15 min)',
+    'Técnicas de cocina (educativo)',
+    'Reviews de utensilios',
+    'Retos / colaboraciones (entretenimiento)',
+  ]},
+  { type: 'p', t: 'Rota entre pilares para mantener variedad sin salirte de tu nicho.' },
+
+  { type: 'h3', t: '3. Planifica por bloques' },
+  { type: 'p', t: 'Planifica un mes completo. Asigna un pilar a cada slot de publicación. Luego rellena con ideas específicas.' },
+
+  { type: 'h3', t: '4. Incluye fechas clave' },
+  { type: 'list', items: [
+    'Eventos de tu nicho: lanzamientos, conferencias, temporadas.',
+    'Festividades: Navidad, Halloween, verano — oportunidades de contenido estacional.',
+    'Hitos del canal: 1K subs, aniversario — contenido especial.',
+  ]},
+
+  { type: 'h2', t: 'Herramientas para gestionar tu calendario' },
+  { type: 'list', items: [
+    'YTubViral Content Calendar: planificación visual con sugerencias de IA.',
+    'Notion / Google Calendar: soluciones genéricas pero flexibles.',
+    'Trello / Kanban: útil si tu flujo es idea → guión → grabación → edición → publicación.',
+  ]},
+
+  { type: 'callout-mid', t: '🔄 Batch production', sub: 'Graba varios vídeos el mismo día. Montar el set, maquillarte y preparar la iluminación una vez es más eficiente que hacerlo 4 veces.', cta: 'Crear mi calendario' },
+
+  { type: 'h2', t: 'Qué hacer cuando te quedas sin ideas' },
+  { type: 'list', items: [
+    'Revisa comentarios: tu audiencia te dice qué quiere ver.',
+    'Analiza competidores: ¿qué temas les funcionan que tú no has cubierto?',
+    'Busca en YTubViral: ideas generadas por IA basadas en tu nicho.',
+    'Recicla contenido exitoso: actualiza, profundiza o cambia el formato de un vídeo antiguo.',
+    'Pregunta directamente: usa encuestas en community posts o Stories.',
+  ]},
+
+  { type: 'callout-final', t: 'Planifica tu éxito', sub: 'YTubViral Content Calendar te ayuda a organizar tu mes con ideas y sugerencias inteligentes. Gratis.', cta: 'Crear mi calendario' },
+];
+
+const BODY_CALENDAR_EN: LearnBlockType[] = [
+  { type: 'p', t: 'Publishing without a plan is like sailing without a map. A content calendar gives you direction, consistency, and peace of mind. You know what to record, when to publish, and how each video connects to your strategy.' },
+
+  { type: 'h2', t: 'Why you need a calendar' },
+  { type: 'list', items: [
+    'Consistency: YouTube favors channels that publish regularly.',
+    'Stress reduction: no more last-minute "what do I record today?".',
+    'Strategic variety: you alternate formats, topics, and approaches deliberately.',
+    'Leveraging key dates: Black Friday, Christmas, back to school...',
+    'Big picture view: see how each video connects to the growth plan.',
+  ]},
+
+  { type: 'callout', t: '📅 Consistency wins: 1 video/week for 6 months > 10 videos one week then nothing for 2 months. The algorithm rewards regularity.' },
+
+  { type: 'h2', t: 'How to create your calendar' },
+  { type: 'h3', t: '1. Define your frequency' },
+  { type: 'p', t: 'Be realistic. How many videos can you produce EVERY week without burning out? For most creators, 1-2 videos/week is sustainable. One good video per week beats three mediocre ones.' },
+
+  { type: 'h3', t: '2. Establish content pillars' },
+  { type: 'p', t: 'Define 3-4 categories or "pillars" that cover your niche. Example for a cooking channel:' },
+  { type: 'list', items: [
+    'Quick recipes (< 15 min)',
+    'Cooking techniques (educational)',
+    'Utensil reviews',
+    'Challenges / collabs (entertainment)',
+  ]},
+  { type: 'p', t: 'Rotate between pillars to maintain variety without leaving your niche.' },
+
+  { type: 'h3', t: '3. Plan in blocks' },
+  { type: 'p', t: 'Plan a full month. Assign a pillar to each publishing slot. Then fill in with specific ideas.' },
+
+  { type: 'h3', t: '4. Include key dates' },
+  { type: 'list', items: [
+    'Niche events: launches, conferences, seasons.',
+    'Holidays: Christmas, Halloween, summer — seasonal content opportunities.',
+    'Channel milestones: 1K subs, anniversary — special content.',
+  ]},
+
+  { type: 'h2', t: 'Tools to manage your calendar' },
+  { type: 'list', items: [
+    'YTubViral Content Calendar: visual planning with AI suggestions.',
+    'Notion / Google Calendar: generic but flexible solutions.',
+    'Trello / Kanban: useful if your flow is idea → script → recording → editing → publishing.',
+  ]},
+
+  { type: 'callout-mid', t: '🔄 Batch production', sub: 'Record multiple videos on the same day. Setting up the set, doing makeup, and preparing lighting once is more efficient than doing it 4 times.', cta: 'Create my calendar' },
+
+  { type: 'h2', t: 'What to do when you run out of ideas' },
+  { type: 'list', items: [
+    'Check comments: your audience tells you what they want to see.',
+    'Analyze competitors: what topics work for them that you haven\'t covered?',
+    'Search YTubViral: AI-generated ideas based on your niche.',
+    'Recycle successful content: update, deepen, or change the format of an old video.',
+    'Ask directly: use polls in community posts or Stories.',
+  ]},
+
+  { type: 'callout-final', t: 'Plan your success', sub: 'YTubViral Content Calendar helps you organize your month with smart ideas and suggestions. Free.', cta: 'Create my calendar' },
+];
+
+// ── Video Predictor ──
+
+const BODY_PREDICTOR_ES: LearnBlockType[] = [
+  { type: 'p', t: '¿Y si pudieras saber cómo rendirá tu vídeo ANTES de publicarlo? El análisis predictivo te permite identificar puntos débiles y optimizar título, thumbnail y descripción antes de que sea tarde.' },
+
+  { type: 'h2', t: 'Cómo funciona la predicción de rendimiento' },
+  { type: 'p', t: 'YTubViral Video Predictor analiza múltiples señales para estimar el rendimiento potencial de tu vídeo:' },
+  { type: 'list', items: [
+    'Historial de tu canal: retención media, CTR típico, crecimiento de subs.',
+    'Demanda del tema: volumen de búsqueda y competencia en YouTube.',
+    'Calidad del título: longitud, keywords, elementos de curiosidad.',
+    'Optimización SEO: descripción, tags, hashtags.',
+    'Patrones del nicho: qué funciona para canales similares al tuyo.',
+  ]},
+
+  { type: 'callout', t: '🔮 No es magia, son datos: la predicción se basa en patrones reales de miles de vídeos. No garantiza resultados, pero te da una estimación informada para tomar mejores decisiones.' },
+
+  { type: 'h2', t: 'Qué métricas predecir' },
+  { type: 'h3', t: 'CTR estimado' },
+  { type: 'p', t: 'El Click-Through Rate depende principalmente del título y thumbnail. Un CTR por debajo del 4% indica que necesitas un título más llamativo o un thumbnail más impactante.' },
+
+  { type: 'h3', t: 'Retención estimada' },
+  { type: 'p', t: 'Basándose en la duración, estructura y tema, se puede estimar si los espectadores verán el vídeo completo o abandonarán pronto. Vídeos con hooks débiles pierden el 40% en los primeros 30 segundos.' },
+
+  { type: 'h3', t: 'Potencial de búsqueda' },
+  { type: 'p', t: 'Combina el volumen de búsqueda del tema con tu autoridad en ese nicho. Un tema con mucha búsqueda y poca competencia es una oportunidad de oro.' },
+
+  { type: 'h2', t: 'Cómo usar las predicciones' },
+  { type: 'list', items: [
+    'Compara variantes: genera 3 títulos y analiza cuál tiene mayor CTR potencial.',
+    'Identifica debilidades: si el SEO score es bajo, mejora descripción y tags antes de publicar.',
+    'Prioriza producción: si tienes 5 ideas, empieza por la que tiene mayor potencial estimado.',
+    'Ajusta expectativas: un vídeo sobre un nicho pequeño no hará millones de views, y está bien.',
+  ]},
+
+  { type: 'callout-mid', t: '📊 Predicción ≠ certeza', sub: 'Un vídeo "seguro" puede fallar y uno "arriesgado" puede explotar. Usa las predicciones como guía, no como ley. El factor humano sigue siendo decisivo.', cta: 'Probar Video Predictor' },
+
+  { type: 'h2', t: 'Señales de alerta antes de publicar' },
+  { type: 'list', items: [
+    'SEO Score < 60: tu vídeo será difícil de encontrar en búsquedas.',
+    'Título genérico sin hook: "Mi vlog #47" no genera curiosidad.',
+    'Duración incoherente con el tema: 45 minutos para "5 tips rápidos" es un problema.',
+    'Sin keyword clara: si ni tú puedes decir qué buscaría alguien para encontrar tu vídeo.',
+    'Thumbnail sin contraste: si no destaca en miniatura, nadie hará click.',
+  ]},
+
+  { type: 'h2', t: 'El flujo ideal pre-publicación' },
+  { type: 'list', items: [
+    '1. Escribe el título y descripción.',
+    '2. Analiza con YTubViral: SEO Score + Predicción.',
+    '3. Itera: mejora los puntos débiles señalados.',
+    '4. Prepara thumbnail y analiza con A/B Testing.',
+    '5. Publica con confianza.',
+  ]},
+
+  { type: 'callout-final', t: 'Publica con confianza', sub: 'YTubViral Video Predictor te dice cómo rendirá tu vídeo antes de publicar. Optimiza antes, no después. Gratis.', cta: 'Predecir rendimiento' },
+];
+
+const BODY_PREDICTOR_EN: LearnBlockType[] = [
+  { type: 'p', t: 'What if you could know how your video will perform BEFORE publishing? Predictive analysis lets you identify weak points and optimize title, thumbnail, and description before it\'s too late.' },
+
+  { type: 'h2', t: 'How performance prediction works' },
+  { type: 'p', t: 'YTubViral Video Predictor analyzes multiple signals to estimate your video\'s potential performance:' },
+  { type: 'list', items: [
+    'Your channel history: average retention, typical CTR, subscriber growth.',
+    'Topic demand: search volume and competition on YouTube.',
+    'Title quality: length, keywords, curiosity elements.',
+    'SEO optimization: description, tags, hashtags.',
+    'Niche patterns: what works for channels similar to yours.',
+  ]},
+
+  { type: 'callout', t: '🔮 It\'s not magic, it\'s data: prediction is based on real patterns from thousands of videos. It doesn\'t guarantee results, but gives you an informed estimate to make better decisions.' },
+
+  { type: 'h2', t: 'What metrics to predict' },
+  { type: 'h3', t: 'Estimated CTR' },
+  { type: 'p', t: 'Click-Through Rate depends primarily on title and thumbnail. A CTR below 4% indicates you need a more compelling title or more impactful thumbnail.' },
+
+  { type: 'h3', t: 'Estimated retention' },
+  { type: 'p', t: 'Based on duration, structure, and topic, you can estimate whether viewers will watch the full video or drop off early. Videos with weak hooks lose 40% in the first 30 seconds.' },
+
+  { type: 'h3', t: 'Search potential' },
+  { type: 'p', t: 'Combines the topic\'s search volume with your authority in that niche. A topic with high search volume and low competition is a golden opportunity.' },
+
+  { type: 'h2', t: 'How to use predictions' },
+  { type: 'list', items: [
+    'Compare variants: generate 3 titles and analyze which has the highest potential CTR.',
+    'Identify weaknesses: if the SEO score is low, improve description and tags before publishing.',
+    'Prioritize production: if you have 5 ideas, start with the one with highest estimated potential.',
+    'Set expectations: a video about a small niche won\'t get millions of views, and that\'s okay.',
+  ]},
+
+  { type: 'callout-mid', t: '📊 Prediction ≠ certainty', sub: 'A "safe" video can flop and a "risky" one can explode. Use predictions as a guide, not as law. The human factor remains decisive.', cta: 'Try Video Predictor' },
+
+  { type: 'h2', t: 'Red flags before publishing' },
+  { type: 'list', items: [
+    'SEO Score < 60: your video will be hard to find in searches.',
+    'Generic title without a hook: "My vlog #47" doesn\'t generate curiosity.',
+    'Duration inconsistent with the topic: 45 minutes for "5 quick tips" is a problem.',
+    'No clear keyword: if even you can\'t say what someone would search to find your video.',
+    'Thumbnail without contrast: if it doesn\'t stand out at small size, nobody will click.',
+  ]},
+
+  { type: 'h2', t: 'The ideal pre-publish flow' },
+  { type: 'list', items: [
+    '1. Write the title and description.',
+    '2. Analyze with YTubViral: SEO Score + Prediction.',
+    '3. Iterate: improve the weak points flagged.',
+    '4. Prepare thumbnail and analyze with A/B Testing.',
+    '5. Publish with confidence.',
+  ]},
+
+  { type: 'callout-final', t: 'Publish with confidence', sub: 'YTubViral Video Predictor tells you how your video will perform before publishing. Optimize before, not after. Free.', cta: 'Predict performance' },
+];
+
+// ── AI Coach ──
+
+const BODY_COACH_ES: LearnBlockType[] = [
+  { type: 'p', t: 'Imagina tener un mentor de YouTube disponible 24/7 que conoce tu canal, tu nicho y tus objetivos. YTubViral AI Coach es exactamente eso: un asistente inteligente que te guía paso a paso.' },
+
+  { type: 'h2', t: 'Qué hace el AI Coach' },
+  { type: 'p', t: 'A diferencia de un chatbot genérico, el AI Coach tiene contexto sobre tu canal y el ecosistema YouTube. Puede:' },
+  { type: 'list', items: [
+    'Analizar tu canal y sugerir mejoras específicas.',
+    'Responder preguntas sobre estrategia, SEO, monetización o algoritmo.',
+    'Revisar tu título, descripción y tags antes de publicar.',
+    'Crear planes de acción personalizados para tus objetivos.',
+    'Explicar por qué un vídeo funcionó (o no) basándose en métricas.',
+  ]},
+
+  { type: 'callout', t: '🧠 Contexto = mejores respuestas: el AI Coach aprende de tu canal. Cuanto más lo usas, mejores son sus recomendaciones porque entiende tu nicho, audiencia y estilo.' },
+
+  { type: 'h2', t: 'Casos de uso prácticos' },
+  { type: 'h3', t: 'Estrategia de crecimiento' },
+  { type: 'p', t: 'Pregúntale: "Tengo 500 suscriptores y publico 1 vez/semana sobre recetas veganas. ¿Cómo llego a 5K?" El coach te dará un plan de acción concreto basado en datos de canales similares.' },
+
+  { type: 'h3', t: 'Optimización pre-publicación' },
+  { type: 'p', t: 'Pega tu título y descripción. El coach te dirá si el SEO es fuerte, si el título tiene buen CTR potencial, y qué mejorar. Es como tener un segundo par de ojos experto.' },
+
+  { type: 'h3', t: 'Diagnóstico de problemas' },
+  { type: 'p', t: '"Mis vídeos tienen buen CTR pero la retención cae al 30% al minuto 2. ¿Qué hago?" El coach analizará posibles causas: hooks débiles, intros largas, promesa incumplida en el título.' },
+
+  { type: 'h3', t: 'Aprendizaje continuo' },
+  { type: 'p', t: 'Pregunta sobre cualquier aspecto de YouTube: "¿Cómo funciona el algoritmo de Shorts?", "¿Merece la pena usar end screens?", "¿Cuánto debería durar un tutorial?". Respuestas claras, actualizadas y adaptadas a tu caso.' },
+
+  { type: 'h2', t: 'Cómo sacarle el máximo partido' },
+  { type: 'list', items: [
+    'Sé específico: "Mi CTR bajó del 8% al 4% este mes" > "Mis vídeos no funcionan".',
+    'Da contexto: menciona tu nicho, tamaño de canal, frecuencia de publicación.',
+    'Pide planes de acción: no solo diagnóstico, sino pasos concretos.',
+    'Itera: si la primera sugerencia no encaja, dile por qué y pide alternativas.',
+    'Úsalo regularmente: un chequeo semanal vale más que una consulta cada 3 meses.',
+  ]},
+
+  { type: 'callout-mid', t: '🎯 No sustituye la práctica', sub: 'El coach te da dirección, pero tú tienes que ejecutar. La mejor estrategia del mundo no sirve si no produces contenido consistentemente.', cta: 'Probar AI Coach' },
+
+  { type: 'h2', t: 'Coach vs. foros y comunidades' },
+  { type: 'p', t: 'Los foros son valiosos para networking y opiniones diversas. Pero el AI Coach tiene ventajas únicas:' },
+  { type: 'list', items: [
+    'Disponible 24/7, sin esperar respuestas.',
+    'Respuestas basadas en datos, no en opiniones anecdóticas.',
+    'Personalizado a tu canal — un foro da consejos genéricos.',
+    'Sin juicio: pregunta lo que sea sin vergüenza de "no saber".',
+    'Consistente: no recibes consejos contradictorios de distintas personas.',
+  ]},
+
+  { type: 'callout-final', t: 'Tu mentor de YouTube, siempre disponible', sub: 'YTubViral AI Coach te guía con consejos personalizados basados en tu canal y tu nicho. Gratis.', cta: 'Hablar con mi AI Coach' },
+];
+
+const BODY_COACH_EN: LearnBlockType[] = [
+  { type: 'p', t: 'Imagine having a YouTube mentor available 24/7 who knows your channel, your niche, and your goals. YTubViral AI Coach is exactly that: an intelligent assistant guiding you step by step.' },
+
+  { type: 'h2', t: 'What the AI Coach does' },
+  { type: 'p', t: 'Unlike a generic chatbot, the AI Coach has context about your channel and the YouTube ecosystem. It can:' },
+  { type: 'list', items: [
+    'Analyze your channel and suggest specific improvements.',
+    'Answer questions about strategy, SEO, monetization, or the algorithm.',
+    'Review your title, description, and tags before publishing.',
+    'Create personalized action plans for your goals.',
+    'Explain why a video performed well (or didn\'t) based on metrics.',
+  ]},
+
+  { type: 'callout', t: '🧠 Context = better answers: the AI Coach learns from your channel. The more you use it, the better its recommendations because it understands your niche, audience, and style.' },
+
+  { type: 'h2', t: 'Practical use cases' },
+  { type: 'h3', t: 'Growth strategy' },
+  { type: 'p', t: 'Ask it: "I have 500 subscribers and publish once a week about vegan recipes. How do I reach 5K?" The coach will give you a concrete action plan based on data from similar channels.' },
+
+  { type: 'h3', t: 'Pre-publish optimization' },
+  { type: 'p', t: 'Paste your title and description. The coach will tell you if the SEO is strong, if the title has good potential CTR, and what to improve. It\'s like having an expert second pair of eyes.' },
+
+  { type: 'h3', t: 'Problem diagnosis' },
+  { type: 'p', t: '"My videos have good CTR but retention drops to 30% at minute 2. What do I do?" The coach will analyze possible causes: weak hooks, long intros, broken promise in the title.' },
+
+  { type: 'h3', t: 'Continuous learning' },
+  { type: 'p', t: 'Ask about any aspect of YouTube: "How does the Shorts algorithm work?", "Are end screens worth it?", "How long should a tutorial be?". Clear, up-to-date answers adapted to your case.' },
+
+  { type: 'h2', t: 'How to get the most out of it' },
+  { type: 'list', items: [
+    'Be specific: "My CTR dropped from 8% to 4% this month" > "My videos aren\'t working".',
+    'Give context: mention your niche, channel size, publishing frequency.',
+    'Ask for action plans: not just diagnosis, but concrete steps.',
+    'Iterate: if the first suggestion doesn\'t fit, say why and ask for alternatives.',
+    'Use it regularly: a weekly check-in is worth more than one consultation every 3 months.',
+  ]},
+
+  { type: 'callout-mid', t: '🎯 Doesn\'t replace practice', sub: 'The coach gives you direction, but you have to execute. The best strategy in the world is useless if you don\'t produce content consistently.', cta: 'Try AI Coach' },
+
+  { type: 'h2', t: 'Coach vs. forums and communities' },
+  { type: 'p', t: 'Forums are valuable for networking and diverse opinions. But the AI Coach has unique advantages:' },
+  { type: 'list', items: [
+    'Available 24/7, no waiting for replies.',
+    'Data-based answers, not anecdotal opinions.',
+    'Personalized to your channel — forums give generic advice.',
+    'No judgment: ask anything without embarrassment about "not knowing".',
+    'Consistent: you don\'t get contradictory advice from different people.',
+  ]},
+
+  { type: 'callout-final', t: 'Your YouTube mentor, always available', sub: 'YTubViral AI Coach guides you with personalized advice based on your channel and niche. Free.', cta: 'Talk to my AI Coach' },
+];
+
 export const GUIDE_BODIES: Record<string, { es: LearnBlockType[]; en: LearnBlockType[] }> = {
   'seo-basics': { es: BODY_SEO_ES, en: BODY_SEO_EN },
   'keyword-research': { es: BODY_KEYWORDS_ES, en: BODY_KEYWORDS_EN },
@@ -1676,6 +2350,12 @@ export const GUIDE_BODIES: Record<string, { es: LearnBlockType[]; en: LearnBlock
   'growth-strategy': { es: BODY_GROWTH_ES, en: BODY_GROWTH_EN },
   'competitor-analysis': { es: BODY_COMPETITOR_ES, en: BODY_COMPETITOR_EN },
   'ab-testing': { es: BODY_ABTESTING_ES, en: BODY_ABTESTING_EN },
+  'best-time': { es: BODY_BESTTIME_ES, en: BODY_BESTTIME_EN },
+  'trend-explorer': { es: BODY_TRENDS_ES, en: BODY_TRENDS_EN },
+  'ai-generator': { es: BODY_AIGEN_ES, en: BODY_AIGEN_EN },
+  'content-calendar': { es: BODY_CALENDAR_ES, en: BODY_CALENDAR_EN },
+  'video-predictor': { es: BODY_PREDICTOR_ES, en: BODY_PREDICTOR_EN },
+  'ai-coach': { es: BODY_COACH_ES, en: BODY_COACH_EN },
 };
 
 // ── Helpers ──
