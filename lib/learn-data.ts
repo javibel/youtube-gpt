@@ -1085,11 +1085,597 @@ const BODY_THUMBNAILS_EN: LearnBlockType[] = [
   { type: 'callout-final', t: 'Stop losing clicks with mediocre thumbnails', sub: 'Create, test, and optimize your thumbnails with real data. 10 free tests.', cta: 'Get started free' },
 ];
 
+const BODY_ANALYTICS_ES: LearnBlockType[] = [
+  { type: 'h2', t: 'YouTube Analytics: tu centro de control' },
+  { type: 'p', t: 'YouTube te da acceso a datos que la mayoría de creadores ignora. YouTube Studio Analytics es la herramienta más poderosa que tienes — y es gratis. El problema no es la falta de datos, sino saber cuáles importan y cómo interpretarlos.' },
+  { type: 'p', t: 'En esta guía vas a aprender a leer tus métricas como un profesional: qué números vigilar, cuáles ignorar, y cómo tomar decisiones basadas en datos reales en lugar de intuiciones.' },
+
+  { type: 'h2', t: 'Las 5 métricas que realmente importan' },
+
+  { type: 'h3', t: '1. Watch time (tiempo de visualización)' },
+  { type: 'p', t: 'El watch time es más importante que las views. Un vídeo con 1000 views y 8 minutos de watch time medio es mejor señal para el algoritmo que un vídeo con 5000 views y 1 minuto de media. YouTube quiere que la gente se quede — premia el contenido que lo consigue.' },
+  { type: 'list', items: [
+    'Watch time total: indica cuánto contenido tuyo consume la audiencia en total.',
+    'Watch time medio por vídeo: te dice si tu contenido engancha o la gente se va.',
+    'Compara el watch time de vídeos similares para identificar qué formato funciona mejor.',
+  ]},
+
+  { type: 'h3', t: '2. CTR (Click-Through Rate)' },
+  { type: 'p', t: 'El CTR mide qué porcentaje de personas que ven tu thumbnail hacen clic. Es la métrica que te dice si tu "packaging" (título + thumbnail) funciona. Un CTR bajo con muchas impresiones significa que YouTube te está mostrando, pero la gente no hace clic — tu thumbnail o título necesitan trabajo.' },
+  { type: 'list', items: [
+    'CTR < 4%: tu thumbnail o título necesitan mejora urgente.',
+    'CTR 4-6%: aceptable, pero hay margen de mejora.',
+    'CTR 6-10%: buen rendimiento.',
+    'CTR > 10%: excelente — tu packaging funciona muy bien.',
+  ]},
+
+  { type: 'h3', t: '3. Fuentes de tráfico' },
+  { type: 'p', t: 'De dónde viene tu audiencia te dice qué estrategia está funcionando. Si la mayoría viene de "Búsqueda de YouTube", tu SEO funciona. Si viene de "Vídeos sugeridos", el algoritmo te está recomendando. Si viene de "Externo", tus redes sociales están haciendo su trabajo.' },
+  { type: 'list', items: [
+    'Búsqueda: indica buen SEO. Son views evergreen que seguirán llegando.',
+    'Vídeos sugeridos: el algoritmo te empuja. Señal de que tu contenido retiene bien.',
+    'Externo: tráfico de redes sociales, web, etc. Útil pero no sostenible a largo plazo.',
+    'Notificaciones: mide el engagement de tus suscriptores actuales.',
+  ]},
+
+  { type: 'callout', t: 'Conecta tu canal a YTubViral Analytics para ver todas tus métricas en un dashboard unificado con recomendaciones automáticas.' },
+
+  { type: 'h3', t: '4. Suscriptores ganados por vídeo' },
+  { type: 'p', t: 'No todos los vídeos convierten igual. Algunos traen muchas views pero pocos suscriptores; otros traen menos views pero convierten mejor. Identificar qué tipo de contenido convierte viewers en suscriptores te permite duplicar esa estrategia.' },
+
+  { type: 'h3', t: '5. Audience demographics' },
+  { type: 'p', t: 'Saber quién te mira cambia todo. Si descubres que el 40% de tu audiencia está en México pero tú publicas a las 15:00 hora española, estás perdiendo el pico de actividad de tu audiencia más grande. Los datos demográficos informan decisiones de horario, idioma y contenido.' },
+
+  { type: 'h2', t: 'Métricas que NO deberías obsesionarte' },
+  { type: 'list', items: [
+    'Views totales del canal: vanity metric. No dice nada sobre la salud actual del canal.',
+    'Suscriptores totales: un canal con 100K subs y 500 views por vídeo está peor que uno con 5K subs y 5000 views.',
+    'Likes/Dislikes: no correlacionan con rendimiento algorítmico.',
+    'Views en las primeras 24 horas: importante solo si tu contenido es trending, no para evergreen.',
+  ]},
+
+  { type: 'h2', t: 'Cómo hacer un análisis mensual' },
+  { type: 'list', items: [
+    'Compara las métricas de este mes con el anterior: ¿el watch time subió o bajó?',
+    'Identifica tus 3 mejores y 3 peores vídeos del mes: ¿qué tienen en común cada grupo?',
+    'Revisa las fuentes de tráfico: ¿están cambiando? ¿Estás dependiendo demasiado de una sola?',
+    'Analiza los suscriptores ganados/perdidos: ¿qué contenido causó pérdidas?',
+    'Revisa el CTR de cada vídeo: ¿alguno tiene un CTR inusualmente bajo que puedas mejorar cambiando el thumbnail?',
+  ]},
+
+  { type: 'callout-mid', t: 'Análisis avanzado sin complicaciones', sub: 'YTubViral Analytics te da un dashboard unificado con métricas, tendencias y recomendaciones accionables.', cta: 'Probar Analytics gratis' },
+
+  { type: 'h2', t: 'Audience overlap: la métrica escondida' },
+  { type: 'p', t: 'YouTube Studio tiene una función poco conocida: te muestra qué otros canales mira tu audiencia. Esto es oro para encontrar oportunidades de colaboración, identificar competidores directos, y descubrir qué tipo de contenido le interesa a tu audiencia más allá de tu nicho.' },
+
+  { type: 'callout-final', t: 'Toma decisiones basadas en datos, no en intuiciones', sub: 'Conecta tu canal a YTubViral y recibe análisis automatizado con recomendaciones personalizadas.', cta: 'Empezar gratis' },
+];
+
+const BODY_ANALYTICS_EN: LearnBlockType[] = [
+  { type: 'h2', t: 'YouTube Analytics: Your Control Center' },
+  { type: 'p', t: 'YouTube gives you access to data that most creators ignore. YouTube Studio Analytics is the most powerful tool you have — and it\'s free. The problem isn\'t lack of data, but knowing which metrics matter and how to interpret them.' },
+  { type: 'p', t: 'In this guide you\'ll learn to read your metrics like a professional: which numbers to watch, which to ignore, and how to make decisions based on real data instead of gut feelings.' },
+
+  { type: 'h2', t: 'The 5 Metrics That Actually Matter' },
+
+  { type: 'h3', t: '1. Watch Time' },
+  { type: 'p', t: 'Watch time is more important than views. A video with 1000 views and 8 minutes average watch time is a better signal for the algorithm than a video with 5000 views and 1 minute average. YouTube wants people to stay — it rewards content that achieves this.' },
+  { type: 'list', items: [
+    'Total watch time: indicates how much of your content the audience consumes overall.',
+    'Average watch time per video: tells you if your content hooks people or they leave.',
+    'Compare watch time across similar videos to identify which format works best.',
+  ]},
+
+  { type: 'h3', t: '2. CTR (Click-Through Rate)' },
+  { type: 'p', t: 'CTR measures what percentage of people who see your thumbnail actually click. It\'s the metric that tells you if your "packaging" (title + thumbnail) works. Low CTR with many impressions means YouTube is showing you, but people aren\'t clicking — your thumbnail or title needs work.' },
+  { type: 'list', items: [
+    'CTR < 4%: your thumbnail or title needs urgent improvement.',
+    'CTR 4-6%: acceptable, but room for improvement.',
+    'CTR 6-10%: good performance.',
+    'CTR > 10%: excellent — your packaging is working great.',
+  ]},
+
+  { type: 'h3', t: '3. Traffic Sources' },
+  { type: 'p', t: 'Where your audience comes from tells you which strategy is working. If most comes from "YouTube Search", your SEO works. If from "Suggested Videos", the algorithm is recommending you. If from "External", your social media is doing its job.' },
+  { type: 'list', items: [
+    'Search: indicates good SEO. These are evergreen views that will keep coming.',
+    'Suggested Videos: the algorithm is pushing you. A sign that your content retains well.',
+    'External: traffic from social media, web, etc. Useful but not sustainable long-term.',
+    'Notifications: measures engagement of your current subscribers.',
+  ]},
+
+  { type: 'callout', t: 'Connect your channel to YTubViral Analytics to see all your metrics in a unified dashboard with automatic recommendations.' },
+
+  { type: 'h3', t: '4. Subscribers Gained Per Video' },
+  { type: 'p', t: 'Not all videos convert equally. Some bring lots of views but few subscribers; others bring fewer views but convert better. Identifying which content type converts viewers into subscribers lets you double down on that strategy.' },
+
+  { type: 'h3', t: '5. Audience Demographics' },
+  { type: 'p', t: 'Knowing who watches you changes everything. If you discover 40% of your audience is in Mexico but you publish at 3 PM Spanish time, you\'re missing the peak activity window of your largest audience. Demographics inform scheduling, language, and content decisions.' },
+
+  { type: 'h2', t: 'Metrics You Should NOT Obsess Over' },
+  { type: 'list', items: [
+    'Total channel views: vanity metric. Says nothing about current channel health.',
+    'Total subscribers: a channel with 100K subs and 500 views per video is worse off than one with 5K subs and 5000 views.',
+    'Likes/Dislikes: don\'t correlate with algorithmic performance.',
+    'Views in the first 24 hours: only important for trending content, not evergreen.',
+  ]},
+
+  { type: 'h2', t: 'How to Do a Monthly Analysis' },
+  { type: 'list', items: [
+    'Compare this month\'s metrics with last month: did watch time go up or down?',
+    'Identify your 3 best and 3 worst videos of the month: what does each group have in common?',
+    'Review traffic sources: are they changing? Are you depending too much on one?',
+    'Analyze subscribers gained/lost: what content caused losses?',
+    'Check CTR per video: does any have an unusually low CTR you could improve by changing the thumbnail?',
+  ]},
+
+  { type: 'callout-mid', t: 'Advanced analysis without complexity', sub: 'YTubViral Analytics gives you a unified dashboard with metrics, trends, and actionable recommendations.', cta: 'Try Analytics free' },
+
+  { type: 'h2', t: 'Audience Overlap: The Hidden Metric' },
+  { type: 'p', t: 'YouTube Studio has a little-known feature: it shows you what other channels your audience watches. This is gold for finding collaboration opportunities, identifying direct competitors, and discovering what type of content interests your audience beyond your niche.' },
+
+  { type: 'callout-final', t: 'Make decisions based on data, not intuition', sub: 'Connect your channel to YTubViral and receive automated analysis with personalized recommendations.', cta: 'Get started free' },
+];
+
+const BODY_GROWTH_ES: LearnBlockType[] = [
+  { type: 'h2', t: 'La verdad sobre los primeros 1000 suscriptores' },
+  { type: 'p', t: 'Los primeros 1000 suscriptores son los más difíciles de conseguir. La mayoría de canales los consiguen en 6-18 meses. Algunos en 3. Muchos nunca los alcanzan. La diferencia no es el talento — es la estrategia y la consistencia.' },
+  { type: 'p', t: 'Esta guía es el plan paso a paso que hubiera querido tener cuando empecé. Sin trucos, sin atajos — solo las tácticas que realmente funcionan para canales nuevos en 2026.' },
+
+  { type: 'h2', t: 'Paso 1: Define tu nicho con precisión' },
+  { type: 'p', t: 'El error #1 de los canales nuevos es ser demasiado amplios. "Tecnología" no es un nicho. "Reviews de portátiles para estudiantes" sí lo es. Cuanto más específico seas, más fácil es rankear y más rápido encuentras tu audiencia.' },
+  { type: 'list', items: [
+    'Combina tu experiencia + un tema específico + una audiencia clara.',
+    '"Tutoriales de DaVinci Resolve para principiantes" es mejor que "edición de vídeo".',
+    '"Recetas keto en 15 minutos" es mejor que "cocina saludable".',
+    'Puedes expandir después. Primero domina un nicho pequeño.',
+  ]},
+
+  { type: 'h2', t: 'Paso 2: Publica de forma consistente' },
+  { type: 'p', t: 'La consistencia es más importante que la frecuencia. 1 vídeo a la semana durante 6 meses es infinitamente mejor que 5 vídeos la primera semana y luego desaparecer. El algoritmo premia la consistencia porque predice comportamiento futuro.' },
+  { type: 'list', items: [
+    'Mínimo 1 vídeo/semana. Si puedes 2, mejor, pero solo si mantienes la calidad.',
+    'Elige un día y hora fijos. Tu audiencia aprende cuándo esperar contenido nuevo.',
+    'Graba en lotes: 2-3 vídeos en un día, edita y publica a lo largo de la semana.',
+    'Ten siempre 1-2 vídeos de "buffer" grabados — reduce el estrés.',
+  ]},
+
+  { type: 'callout', t: 'Planifica tu calendario de contenido con YTubViral Content Calendar — asigna ideas a fechas y mantén el ritmo.' },
+
+  { type: 'h2', t: 'Paso 3: Enfócate en contenido de búsqueda' },
+  { type: 'p', t: 'Cuando no tienes suscriptores, nadie te va a encontrar por notificaciones o por la página de inicio. Tu única vía de descubrimiento es la búsqueda. Por eso, tus primeros 20-30 vídeos deben ser contenido que la gente busca activamente.' },
+  { type: 'list', items: [
+    'Tutoriales y how-to: "Cómo hacer X" es el formato rey para canales nuevos.',
+    'Reviews y comparativas: "Mejor X para Y en 2026" atrae búsquedas de alta intención.',
+    'Preguntas frecuentes de tu nicho: responde lo que la gente pregunta en comentarios y foros.',
+    'Evita vlogs, challenges y contenido trending al principio — no tienes audiencia que los busque.',
+  ]},
+
+  { type: 'h2', t: 'Paso 4: Colabora con canales de tu tamaño' },
+  { type: 'p', t: 'Las colaboraciones son el growth hack más infrautilizado. No necesitas colaborar con canales grandes — los canales de tu mismo tamaño están igual de motivados que tú y la audiencia se cruza.' },
+  { type: 'list', items: [
+    'Busca canales de tu nicho con 0.5x a 2x tus suscriptores.',
+    'Propón un formato win-win: cada uno hace un vídeo y menciona al otro.',
+    'Comenta genuinamente en sus vídeos antes de proponer la colaboración.',
+    'Un collab al mes puede duplicar tu tasa de crecimiento.',
+  ]},
+
+  { type: 'h2', t: 'Paso 5: Optimiza cada vídeo antes de publicar' },
+  { type: 'list', items: [
+    'Investiga la keyword antes de grabar — no después.',
+    'Crea el título y thumbnail ANTES de grabar. Esto enfoca tu contenido.',
+    'Descripción completa con keyword en el primer párrafo y timestamps.',
+    'Tags relevantes y thumbnail personalizado con texto legible.',
+    'Usa YTubViral SEO Score y apunta al 80+.',
+  ]},
+
+  { type: 'callout-mid', t: '¿Empezando de cero?', sub: 'YTubViral te da todas las herramientas que necesitas: SEO Score, Keywords, Best Time, AI Generator. 10 usos gratis.', cta: 'Empezar gratis' },
+
+  { type: 'h2', t: 'Paso 6: Construye comunidad desde el día 1' },
+  { type: 'p', t: 'Los primeros 50-100 suscriptores son los más valiosos. Son las personas que creyeron en ti cuando no tenías nada. Trátalos como oro.' },
+  { type: 'list', items: [
+    'Responde a TODOS los comentarios en tus primeros meses.',
+    'Haz preguntas al final de cada vídeo para generar engagement.',
+    'Fija un comentario con un dato extra o un link útil.',
+    'Usa las Community Posts para mantener a tu audiencia entre vídeos.',
+  ]},
+
+  { type: 'h2', t: 'Errores que matan canales nuevos' },
+  { type: 'list', items: [
+    'Compararte con canales grandes: tienen años de ventaja. Compárate con tu yo de hace un mes.',
+    'Revisar métricas diariamente: genera ansiedad. Revisa semanalmente.',
+    'Comprar suscriptores o views: YouTube lo detecta y penaliza. No funciona.',
+    'Cambiar de nicho cada mes: el algoritmo necesita tiempo para entender tu canal.',
+    'Perfeccionismo: un vídeo publicado supera a un vídeo perfecto que nunca se sube.',
+  ]},
+
+  { type: 'callout-final', t: 'Tu canal empieza hoy', sub: 'Las herramientas de YTubViral te dan la ventaja que los canales grandes no tenían cuando empezaron. 10 usos gratis.', cta: 'Empezar gratis' },
+];
+
+const BODY_GROWTH_EN: LearnBlockType[] = [
+  { type: 'h2', t: 'The Truth About the First 1000 Subscribers' },
+  { type: 'p', t: 'The first 1000 subscribers are the hardest to get. Most channels reach them in 6-18 months. Some in 3. Many never do. The difference isn\'t talent — it\'s strategy and consistency.' },
+  { type: 'p', t: 'This guide is the step-by-step plan I wish I\'d had when I started. No tricks, no shortcuts — just the tactics that actually work for new channels in 2026.' },
+
+  { type: 'h2', t: 'Step 1: Define Your Niche with Precision' },
+  { type: 'p', t: 'The #1 mistake new channels make is being too broad. "Technology" isn\'t a niche. "Laptop reviews for students" is. The more specific you are, the easier it is to rank and the faster you find your audience.' },
+  { type: 'list', items: [
+    'Combine your expertise + a specific topic + a clear audience.',
+    '"DaVinci Resolve tutorials for beginners" is better than "video editing".',
+    '"15-minute keto recipes" is better than "healthy cooking".',
+    'You can expand later. First dominate a small niche.',
+  ]},
+
+  { type: 'h2', t: 'Step 2: Publish Consistently' },
+  { type: 'p', t: 'Consistency is more important than frequency. 1 video per week for 6 months is infinitely better than 5 videos the first week then disappearing. The algorithm rewards consistency because it predicts future behavior.' },
+  { type: 'list', items: [
+    'Minimum 1 video/week. If you can do 2, great, but only if you maintain quality.',
+    'Choose a fixed day and time. Your audience learns when to expect new content.',
+    'Batch record: 2-3 videos in one day, edit and publish throughout the week.',
+    'Always have 1-2 "buffer" videos recorded — reduces stress.',
+  ]},
+
+  { type: 'callout', t: 'Plan your content calendar with YTubViral Content Calendar — assign ideas to dates and maintain your rhythm.' },
+
+  { type: 'h2', t: 'Step 3: Focus on Search Content' },
+  { type: 'p', t: 'When you have no subscribers, nobody will find you through notifications or the home page. Your only discovery path is search. That\'s why your first 20-30 videos should be content people actively search for.' },
+  { type: 'list', items: [
+    'Tutorials and how-to: "How to do X" is the king format for new channels.',
+    'Reviews and comparisons: "Best X for Y in 2026" attracts high-intent searches.',
+    'Frequently asked questions in your niche: answer what people ask in comments and forums.',
+    'Avoid vlogs, challenges, and trending content at first — you don\'t have an audience searching for it.',
+  ]},
+
+  { type: 'h2', t: 'Step 4: Collaborate with Same-Size Channels' },
+  { type: 'p', t: 'Collaborations are the most underused growth hack. You don\'t need to collaborate with big channels — channels your same size are equally motivated and the audiences cross-pollinate.' },
+  { type: 'list', items: [
+    'Look for channels in your niche with 0.5x to 2x your subscribers.',
+    'Propose a win-win format: each person makes a video and mentions the other.',
+    'Genuinely comment on their videos before proposing the collaboration.',
+    'One collab per month can double your growth rate.',
+  ]},
+
+  { type: 'h2', t: 'Step 5: Optimize Every Video Before Publishing' },
+  { type: 'list', items: [
+    'Research the keyword before recording — not after.',
+    'Create the title and thumbnail BEFORE recording. This focuses your content.',
+    'Complete description with keyword in the first paragraph and timestamps.',
+    'Relevant tags and custom thumbnail with readable text.',
+    'Use YTubViral SEO Score and aim for 80+.',
+  ]},
+
+  { type: 'callout-mid', t: 'Starting from zero?', sub: 'YTubViral gives you all the tools you need: SEO Score, Keywords, Best Time, AI Generator. 10 free uses.', cta: 'Get started free' },
+
+  { type: 'h2', t: 'Step 6: Build Community from Day 1' },
+  { type: 'p', t: 'The first 50-100 subscribers are the most valuable. They\'re the people who believed in you when you had nothing. Treat them like gold.' },
+  { type: 'list', items: [
+    'Reply to ALL comments in your first months.',
+    'Ask questions at the end of each video to generate engagement.',
+    'Pin a comment with extra data or a useful link.',
+    'Use Community Posts to keep your audience engaged between videos.',
+  ]},
+
+  { type: 'h2', t: 'Mistakes That Kill New Channels' },
+  { type: 'list', items: [
+    'Comparing yourself to big channels: they have years of head start. Compare yourself to your one-month-ago self.',
+    'Checking metrics daily: creates anxiety. Review weekly.',
+    'Buying subscribers or views: YouTube detects it and penalizes. It doesn\'t work.',
+    'Changing niche every month: the algorithm needs time to understand your channel.',
+    'Perfectionism: a published video beats a perfect video that never gets uploaded.',
+  ]},
+
+  { type: 'callout-final', t: 'Your channel starts today', sub: 'YTubViral tools give you the edge that big channels didn\'t have when they started. 10 free uses.', cta: 'Get started free' },
+];
+
+const BODY_COMPETITOR_ES: LearnBlockType[] = [
+  { type: 'h2', t: 'Por qué analizar a tu competencia (no es lo que crees)' },
+  { type: 'p', t: 'Analizar a tus competidores no es copiar lo que hacen. Es entender qué funciona en tu nicho, encontrar huecos que nadie está cubriendo, y descubrir tu ventaja competitiva. Los mejores creadores estudian a su competencia constantemente — no por inseguridad, sino por estrategia.' },
+
+  { type: 'h2', t: 'Paso 1: Identifica a tus competidores reales' },
+  { type: 'p', t: 'Tus competidores no son los canales con millones de suscriptores. Son los canales que compiten por las mismas keywords y la misma audiencia que tú. Idealmente, busca canales con 2-10x tus suscriptores — son tu referencia más realista.' },
+  { type: 'list', items: [
+    'Busca tus keywords principales en YouTube y anota los canales que aparecen repetidamente.',
+    'Identifica 5-10 canales "competidores directos" en tu nicho y tamaño.',
+    'Añade 2-3 canales "aspiracionales" (mucho más grandes) para ver hacia dónde ir.',
+    'No incluyas canales que no comparten tu idioma/audiencia — no son competencia real.',
+  ]},
+
+  { type: 'h2', t: 'Paso 2: Analiza sus vídeos más exitosos' },
+  { type: 'p', t: 'Ordena los vídeos de cada competidor por "Más populares" en su canal. Los primeros 10-20 resultados te dicen exactamente qué tipo de contenido resonó más con su audiencia — que es similar a la tuya.' },
+  { type: 'list', items: [
+    '¿Qué formato usan? (tutorial, review, lista, documental, etc.)',
+    '¿Qué títulos usan? ¿Hay patrones? (números, preguntas, promesas)',
+    '¿Qué thumbnails funcionan? ¿Rostros, texto, colores?',
+    '¿Cuál es la duración media de sus vídeos top?',
+    '¿Qué keywords atacan? Analiza sus títulos y descripciones.',
+  ]},
+
+  { type: 'callout', t: 'Usa YTubViral Competitor Tracking para monitorizar el crecimiento y estrategia de tus competidores en tiempo real.' },
+
+  { type: 'h2', t: 'Paso 3: Encuentra content gaps' },
+  { type: 'p', t: 'Un content gap es un tema que tu audiencia busca pero que tus competidores no cubren bien (o no cubren en absoluto). Estos huecos son tus oportunidades de oro — menos competencia, misma demanda.' },
+  { type: 'list', items: [
+    'Lee los comentarios en los vídeos de tus competidores: ¿qué preguntas hacen los viewers que no se responden?',
+    'Busca keywords relacionadas que tus competidores no han cubierto.',
+    'Mira las sugerencias de YouTube al final de sus vídeos — ¿hay temas que no aparecen?',
+    'Revisa foros, Reddit y grupos de Facebook de tu nicho — ¿qué preguntas se repiten?',
+  ]},
+
+  { type: 'h2', t: 'Paso 4: Analiza su frecuencia y crecimiento' },
+  { type: 'list', items: [
+    '¿Cada cuánto publican? ¿Diario, semanal, quincenal?',
+    '¿Su crecimiento de suscriptores es constante o tiene picos?',
+    '¿Qué tipo de contenido provocó los picos de crecimiento?',
+    '¿Han hecho cambios de formato o estilo recientemente? ¿Les funcionó?',
+    '¿Tienen patrones estacionales? (más vídeos en cierta época del año)',
+  ]},
+
+  { type: 'h2', t: 'Paso 5: Encuentra tu ángulo diferencial' },
+  { type: 'p', t: 'El objetivo del análisis no es hacer lo mismo que tu competencia. Es encontrar lo que puedes hacer DIFERENTE. Tu ángulo diferencial es lo que hace que un viewer te elija a ti sobre los demás.' },
+  { type: 'list', items: [
+    'Perspectiva única: ¿tienes experiencia profesional que otros no tienen?',
+    'Formato diferente: si todos hacen tutoriales largos, haz tutoriales de 5 minutos.',
+    'Audiencia desatendida: si todos hablan para avanzados, enfócate en principiantes.',
+    'Personalidad: tu forma de comunicar es un diferencial que nadie puede copiar.',
+  ]},
+
+  { type: 'callout-mid', t: 'Monitoriza a tu competencia automáticamente', sub: 'YTubViral Competitor Tracking analiza las métricas de hasta 10 canales y te alerta de cambios importantes.', cta: 'Probar gratis' },
+
+  { type: 'h2', t: 'Errores en el análisis competitivo' },
+  { type: 'list', items: [
+    'Copiar en lugar de inspirarte: tu audiencia lo nota y pierdes autenticidad.',
+    'Obsesionarte con canales mucho más grandes: no son tu referencia realista.',
+    'Analizar solo una vez: el análisis competitivo debe ser continuo (mensual mínimo).',
+    'Ignorar canales pequeños que están creciendo rápido — son tu verdadera amenaza.',
+    'No actuar sobre lo que descubres — el análisis sin acción es tiempo perdido.',
+  ]},
+
+  { type: 'callout-final', t: 'Conoce a tu competencia, supérala', sub: 'Monitoriza, analiza y encuentra tu ventaja con datos reales. Gratis para empezar.', cta: 'Empezar gratis' },
+];
+
+const BODY_COMPETITOR_EN: LearnBlockType[] = [
+  { type: 'h2', t: 'Why Analyze Your Competition (It\'s Not What You Think)' },
+  { type: 'p', t: 'Analyzing your competitors isn\'t about copying what they do. It\'s about understanding what works in your niche, finding gaps nobody is covering, and discovering your competitive advantage. The best creators study their competition constantly — not out of insecurity, but out of strategy.' },
+
+  { type: 'h2', t: 'Step 1: Identify Your Real Competitors' },
+  { type: 'p', t: 'Your competitors aren\'t channels with millions of subscribers. They\'re channels competing for the same keywords and the same audience as you. Ideally, look for channels with 2-10x your subscribers — they\'re your most realistic reference.' },
+  { type: 'list', items: [
+    'Search your main keywords on YouTube and note the channels that appear repeatedly.',
+    'Identify 5-10 "direct competitor" channels in your niche and size range.',
+    'Add 2-3 "aspirational" channels (much larger) to see where to aim.',
+    'Don\'t include channels that don\'t share your language/audience — they\'re not real competition.',
+  ]},
+
+  { type: 'h2', t: 'Step 2: Analyze Their Most Successful Videos' },
+  { type: 'p', t: 'Sort each competitor\'s videos by "Most Popular" on their channel. The top 10-20 results tell you exactly what type of content resonated most with their audience — which is similar to yours.' },
+  { type: 'list', items: [
+    'What format do they use? (tutorial, review, list, documentary, etc.)',
+    'What titles do they use? Any patterns? (numbers, questions, promises)',
+    'What thumbnails work? Faces, text, colors?',
+    'What\'s the average duration of their top videos?',
+    'What keywords do they target? Analyze their titles and descriptions.',
+  ]},
+
+  { type: 'callout', t: 'Use YTubViral Competitor Tracking to monitor your competitors\' growth and strategy in real time.' },
+
+  { type: 'h2', t: 'Step 3: Find Content Gaps' },
+  { type: 'p', t: 'A content gap is a topic your audience searches for but your competitors don\'t cover well (or don\'t cover at all). These gaps are your golden opportunities — less competition, same demand.' },
+  { type: 'list', items: [
+    'Read comments on your competitors\' videos: what questions do viewers ask that go unanswered?',
+    'Look for related keywords your competitors haven\'t covered.',
+    'Check YouTube\'s suggestions at the end of their videos — are there topics that don\'t appear?',
+    'Browse forums, Reddit, and Facebook groups in your niche — what questions keep coming up?',
+  ]},
+
+  { type: 'h2', t: 'Step 4: Analyze Their Frequency and Growth' },
+  { type: 'list', items: [
+    'How often do they publish? Daily, weekly, biweekly?',
+    'Is their subscriber growth steady or does it have spikes?',
+    'What type of content caused the growth spikes?',
+    'Have they changed format or style recently? Did it work?',
+    'Do they have seasonal patterns? (more videos at certain times of year)',
+  ]},
+
+  { type: 'h2', t: 'Step 5: Find Your Differentiating Angle' },
+  { type: 'p', t: 'The goal of analysis isn\'t to do the same as your competition. It\'s to find what you can do DIFFERENTLY. Your differentiating angle is what makes a viewer choose you over everyone else.' },
+  { type: 'list', items: [
+    'Unique perspective: do you have professional experience others don\'t?',
+    'Different format: if everyone makes long tutorials, make 5-minute ones.',
+    'Underserved audience: if everyone talks to advanced users, focus on beginners.',
+    'Personality: your communication style is a differentiator nobody can copy.',
+  ]},
+
+  { type: 'callout-mid', t: 'Monitor your competition automatically', sub: 'YTubViral Competitor Tracking analyzes metrics of up to 10 channels and alerts you to important changes.', cta: 'Try free' },
+
+  { type: 'h2', t: 'Competitive Analysis Mistakes' },
+  { type: 'list', items: [
+    'Copying instead of getting inspired: your audience notices and you lose authenticity.',
+    'Obsessing over much larger channels: they\'re not your realistic reference.',
+    'Analyzing only once: competitive analysis should be continuous (monthly minimum).',
+    'Ignoring small channels that are growing fast — they\'re your real threat.',
+    'Not acting on what you discover — analysis without action is wasted time.',
+  ]},
+
+  { type: 'callout-final', t: 'Know your competition, surpass them', sub: 'Monitor, analyze, and find your edge with real data. Free to start.', cta: 'Get started free' },
+];
+
+const BODY_ABTESTING_ES: LearnBlockType[] = [
+  { type: 'h2', t: 'Deja de adivinar: testea con datos' },
+  { type: 'p', t: 'La mayoría de creadores publican un vídeo con un título y un thumbnail y esperan lo mejor. Los creadores que crecen rápido testean variaciones y dejan que los datos decidan. El A/B testing es la diferencia entre "creo que funciona" y "sé que funciona".' },
+  { type: 'p', t: 'YouTube mismo usa A/B testing internamente para todo — desde el color de un botón hasta el algoritmo de recomendaciones. Si YouTube testea, tú también deberías.' },
+
+  { type: 'h2', t: 'Qué testear (y qué no)' },
+
+  { type: 'h3', t: 'Testea: Thumbnails' },
+  { type: 'p', t: 'El thumbnail es el candidato perfecto para A/B testing porque tiene el mayor impacto en el CTR y es fácil de cambiar sin afectar al contenido del vídeo.' },
+  { type: 'list', items: [
+    'Variación de colores: fondo azul vs fondo amarillo.',
+    'Con rostro vs sin rostro.',
+    'Con texto vs sin texto.',
+    'Expresión facial diferente.',
+    'Composición: primer plano vs plano general.',
+  ]},
+
+  { type: 'h3', t: 'Testea: Títulos' },
+  { type: 'p', t: 'Cambiar el título puede transformar un vídeo que no funciona en uno que despega. Pero cambia una variable a la vez para saber qué causó la diferencia.' },
+  { type: 'list', items: [
+    'Con número vs sin número: "7 trucos..." vs "Los mejores trucos..."',
+    'Pregunta vs afirmación: "¿Por qué...?" vs "La razón por la que..."',
+    'Corto vs largo: "SEO YouTube" vs "SEO en YouTube: Guía completa paso a paso para 2026"',
+    'Emoción diferente: "Lo que nadie te dice..." vs "La guía definitiva de..."',
+  ]},
+
+  { type: 'h3', t: 'NO testees: Contenido del vídeo' },
+  { type: 'p', t: 'El contenido del vídeo no se puede cambiar después de publicar. Por eso los tests de packaging (título + thumbnail) son tan valiosos — son los únicos que puedes iterar después del lanzamiento.' },
+
+  { type: 'callout', t: 'Usa YTubViral A/B Testing para rotar thumbnails y títulos automáticamente y ver cuál gana.' },
+
+  { type: 'h2', t: 'Cómo hacer A/B testing paso a paso' },
+
+  { type: 'h3', t: 'Método manual (sin herramientas)' },
+  { type: 'list', items: [
+    'Publica con tu mejor opción de título + thumbnail (versión A).',
+    'Después de 24-48 horas, anota el CTR y las impresiones.',
+    'Cambia a la versión B (nuevo thumbnail o nuevo título).',
+    'Espera otras 24-48 horas y compara.',
+    'Quédate con la versión ganadora.',
+  ]},
+  { type: 'p', t: 'El problema del método manual: las condiciones no son iguales. Las primeras 48 horas tienen más impresiones que las segundas, por lo que la comparación no es perfecta.' },
+
+  { type: 'h3', t: 'Método automático (con YTubViral)' },
+  { type: 'list', items: [
+    'Sube 2-3 variaciones de thumbnail y/o título.',
+    'YTubViral rota las variaciones cada pocas horas de forma automática.',
+    'Después de suficientes impresiones, te muestra cuál tiene mejor CTR.',
+    'Activa la versión ganadora con un clic.',
+    'Resultado: datos comparables en condiciones similares.',
+  ]},
+
+  { type: 'h2', t: 'Cuándo hacer A/B testing' },
+  { type: 'list', items: [
+    'SIEMPRE en tus vídeos nuevos (primeras 48-72 horas son críticas).',
+    'En vídeos publicados con CTR bajo (<4%) — un cambio de thumbnail puede revivir un vídeo.',
+    'Cuando un vídeo tiene muchas impresiones pero pocas views — YouTube lo muestra pero nadie hace clic.',
+    'NO en vídeos con muy pocas impresiones (<500) — no hay datos suficientes para decidir.',
+  ]},
+
+  { type: 'callout-mid', t: 'A/B Testing automático', sub: 'Deja de adivinar. Rota variaciones y deja que los datos elijan al ganador.', cta: 'Probar A/B Testing' },
+
+  { type: 'h2', t: 'Cómo interpretar los resultados' },
+  { type: 'list', items: [
+    'Necesitas mínimo 1000 impresiones por variación para que el resultado sea significativo.',
+    'Una diferencia de CTR menor al 0.5% probablemente no es significativa — es ruido.',
+    'Si una versión tiene un CTR 1%+ superior, es una mejora real.',
+    'Mira también la retención: a veces un thumbnail más "clickbait" sube el CTR pero baja la retención.',
+    'Registra los resultados en un documento — con el tiempo descubrirás patrones de tu nicho.',
+  ]},
+
+  { type: 'h2', t: 'Patrones que suelen ganar' },
+  { type: 'list', items: [
+    'Thumbnails con rostros > sin rostros (en la mayoría de nichos).',
+    'Títulos con números > sin números.',
+    'Colores cálidos (amarillo, rojo, naranja) > fríos (azul, gris).',
+    'Texto grande y legible > texto pequeño o decorativo.',
+    'Expresiones de sorpresa/shock > expresiones neutras.',
+  ]},
+  { type: 'p', t: 'Pero cada nicho es diferente. Lo que funciona en gaming puede no funcionar en finanzas. Por eso testear es más valioso que seguir reglas genéricas.' },
+
+  { type: 'callout-final', t: 'Cada vídeo es una oportunidad de aprender', sub: 'Testea, aprende, mejora. El A/B testing convierte cada publicación en un experimento que te hace mejor. Gratis.', cta: 'Empezar gratis' },
+];
+
+const BODY_ABTESTING_EN: LearnBlockType[] = [
+  { type: 'h2', t: 'Stop Guessing: Test with Data' },
+  { type: 'p', t: 'Most creators publish a video with one title and one thumbnail and hope for the best. Creators who grow fast test variations and let the data decide. A/B testing is the difference between "I think it works" and "I know it works."' },
+  { type: 'p', t: 'YouTube itself uses A/B testing internally for everything — from button colors to the recommendation algorithm. If YouTube tests, you should too.' },
+
+  { type: 'h2', t: 'What to Test (and What Not To)' },
+
+  { type: 'h3', t: 'Test: Thumbnails' },
+  { type: 'p', t: 'The thumbnail is the perfect A/B testing candidate because it has the biggest impact on CTR and is easy to change without affecting the video content.' },
+  { type: 'list', items: [
+    'Color variation: blue background vs yellow background.',
+    'With face vs without face.',
+    'With text vs without text.',
+    'Different facial expression.',
+    'Composition: close-up vs wide shot.',
+  ]},
+
+  { type: 'h3', t: 'Test: Titles' },
+  { type: 'p', t: 'Changing the title can transform a failing video into one that takes off. But change one variable at a time to know what caused the difference.' },
+  { type: 'list', items: [
+    'With number vs without: "7 tricks..." vs "The best tricks..."',
+    'Question vs statement: "Why do...?" vs "The reason why..."',
+    'Short vs long: "YouTube SEO" vs "YouTube SEO: Complete Step-by-Step Guide for 2026"',
+    'Different emotion: "What nobody tells you..." vs "The ultimate guide to..."',
+  ]},
+
+  { type: 'h3', t: 'DON\'T Test: Video Content' },
+  { type: 'p', t: 'Video content can\'t be changed after publishing. That\'s why packaging tests (title + thumbnail) are so valuable — they\'re the only things you can iterate after launch.' },
+
+  { type: 'callout', t: 'Use YTubViral A/B Testing to automatically rotate thumbnails and titles and see which wins.' },
+
+  { type: 'h2', t: 'How to A/B Test Step by Step' },
+
+  { type: 'h3', t: 'Manual Method (No Tools)' },
+  { type: 'list', items: [
+    'Publish with your best title + thumbnail option (version A).',
+    'After 24-48 hours, note the CTR and impressions.',
+    'Switch to version B (new thumbnail or new title).',
+    'Wait another 24-48 hours and compare.',
+    'Keep the winning version.',
+  ]},
+  { type: 'p', t: 'The problem with the manual method: conditions aren\'t equal. The first 48 hours have more impressions than the second, so the comparison isn\'t perfect.' },
+
+  { type: 'h3', t: 'Automatic Method (with YTubViral)' },
+  { type: 'list', items: [
+    'Upload 2-3 thumbnail and/or title variations.',
+    'YTubViral rotates variations every few hours automatically.',
+    'After enough impressions, it shows you which has the best CTR.',
+    'Activate the winning version with one click.',
+    'Result: comparable data under similar conditions.',
+  ]},
+
+  { type: 'h2', t: 'When to A/B Test' },
+  { type: 'list', items: [
+    'ALWAYS on your new videos (first 48-72 hours are critical).',
+    'On published videos with low CTR (<4%) — a thumbnail change can revive a video.',
+    'When a video has many impressions but few views — YouTube is showing it but nobody clicks.',
+    'NOT on videos with very few impressions (<500) — not enough data to decide.',
+  ]},
+
+  { type: 'callout-mid', t: 'Automatic A/B Testing', sub: 'Stop guessing. Rotate variations and let the data pick the winner.', cta: 'Try A/B Testing' },
+
+  { type: 'h2', t: 'How to Interpret Results' },
+  { type: 'list', items: [
+    'You need at least 1000 impressions per variation for the result to be significant.',
+    'A CTR difference under 0.5% is probably not significant — it\'s noise.',
+    'If one version has 1%+ higher CTR, it\'s a real improvement.',
+    'Also check retention: sometimes a more "clickbait" thumbnail increases CTR but drops retention.',
+    'Log results in a document — over time you\'ll discover patterns for your niche.',
+  ]},
+
+  { type: 'h2', t: 'Patterns That Usually Win' },
+  { type: 'list', items: [
+    'Thumbnails with faces > without faces (in most niches).',
+    'Titles with numbers > without numbers.',
+    'Warm colors (yellow, red, orange) > cool (blue, gray).',
+    'Large readable text > small or decorative text.',
+    'Surprise/shock expressions > neutral expressions.',
+  ]},
+  { type: 'p', t: 'But every niche is different. What works in gaming may not work in finance. That\'s why testing is more valuable than following generic rules.' },
+
+  { type: 'callout-final', t: 'Every video is a learning opportunity', sub: 'Test, learn, improve. A/B testing turns every upload into an experiment that makes you better. Free.', cta: 'Get started free' },
+];
+
 export const GUIDE_BODIES: Record<string, { es: LearnBlockType[]; en: LearnBlockType[] }> = {
   'seo-basics': { es: BODY_SEO_ES, en: BODY_SEO_EN },
   'keyword-research': { es: BODY_KEYWORDS_ES, en: BODY_KEYWORDS_EN },
   'retention': { es: BODY_RETENTION_ES, en: BODY_RETENTION_EN },
   'thumbnails': { es: BODY_THUMBNAILS_ES, en: BODY_THUMBNAILS_EN },
+  'analytics-deep': { es: BODY_ANALYTICS_ES, en: BODY_ANALYTICS_EN },
+  'growth-strategy': { es: BODY_GROWTH_ES, en: BODY_GROWTH_EN },
+  'competitor-analysis': { es: BODY_COMPETITOR_ES, en: BODY_COMPETITOR_EN },
+  'ab-testing': { es: BODY_ABTESTING_ES, en: BODY_ABTESTING_EN },
 };
 
 // ── Helpers ──
