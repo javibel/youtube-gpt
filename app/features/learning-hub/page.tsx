@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+import { LEARN_GUIDES } from '@/lib/learn-data';
+import GuideCard from '@/components/GuideCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,23 +46,6 @@ export default async function LearningHubFeature() {
   const lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
   const t = (es: string, en: string) => lang === 'en' ? en : es;
   const FAQ = lang === 'en' ? FAQ_EN : FAQ_ES;
-
-  const guides = [
-    { title: t('SEO en YouTube: Guía completa', 'YouTube SEO: Complete Guide'), desc: t('Aprende a optimizar títulos, descripciones, tags y thumbnails para que tus vídeos aparezcan en búsquedas y recomendaciones.', 'Learn to optimize titles, descriptions, tags, and thumbnails so your videos appear in search and recommendations.'), level: t('Principiante', 'Beginner'), color: '#22c55e' },
-    { title: t('Keyword Research para YouTube', 'Keyword Research for YouTube'), desc: t('Encuentra las palabras clave que tu audiencia está buscando y que tienen poca competencia. Metodología paso a paso.', 'Find keywords your audience is searching for with low competition. Step-by-step methodology.'), level: t('Principiante', 'Beginner'), color: '#22c55e' },
-    { title: t('Mejorar retención de audiencia', 'Improve Audience Retention'), desc: t('La retención es el factor #1 del algoritmo. Técnicas de hook, pattern interrupts y open loops para mantener a tu audiencia.', 'Retention is the #1 algorithm factor. Hook techniques, pattern interrupts, and open loops to keep your audience.'), level: t('Intermedio', 'Intermediate'), color: '#eab308' },
-    { title: t('Thumbnails que generan clics', 'Thumbnails That Get Clicks'), desc: t('Principios de diseño probados: contraste de colores, tipografía, expresiones faciales y tests A/B para maximizar CTR.', 'Proven design principles: color contrast, typography, facial expressions, and A/B tests to maximize CTR.'), level: t('Principiante', 'Beginner'), color: '#22c55e' },
-    { title: t('Análisis avanzado con YouTube Analytics', 'Advanced YouTube Analytics'), desc: t('Lee tus datos privados de YouTube como un profesional: fuentes de tráfico, watch time, conversión a suscriptores y tendencias.', 'Read your private YouTube data like a pro: traffic sources, watch time, subscriber conversion, and trends.'), level: t('Avanzado', 'Advanced'), color: '#ef4444' },
-    { title: t('Estrategia de crecimiento 0 a 1K subs', 'Growth Strategy 0 to 1K Subs'), desc: t('Los primeros 1000 suscriptores son los más difíciles. Plan paso a paso: nicho, consistencia, colaboraciones y herramientas.', 'The first 1000 subscribers are the hardest. Step-by-step plan: niche, consistency, collabs, and tools.'), level: t('Principiante', 'Beginner'), color: '#22c55e' },
-    { title: t('Análisis de competidores', 'Competitor Analysis'), desc: t('Aprende de los que ya lo están haciendo bien. Identifica sus patrones, encuentra huecos de contenido y descubre tu ventaja.', 'Learn from those already doing well. Identify their patterns, find content gaps, and discover your edge.'), level: t('Intermedio', 'Intermediate'), color: '#eab308' },
-    { title: t('A/B Testing de títulos y thumbnails', 'A/B Testing Titles & Thumbnails'), desc: t('Deja de adivinar qué funciona. Testea variaciones de título y thumbnail y deja que los datos elijan al ganador.', 'Stop guessing what works. Test title and thumbnail variations and let data pick the winner.'), level: t('Intermedio', 'Intermediate'), color: '#eab308' },
-    { title: t('Mejor hora para publicar', 'Best Time to Publish'), desc: t('Publica cuando tu audiencia está activa para maximizar el impulso inicial y las recomendaciones del algoritmo.', 'Publish when your audience is active to maximize initial momentum and algorithm recommendations.'), level: t('Principiante', 'Beginner'), color: '#22c55e' },
-    { title: t('Cómo aprovechar las tendencias', 'How to Ride Trends'), desc: t('Detecta temas en auge antes que tu competencia y crea contenido oportuno que el algoritmo quiere recomendar.', 'Spot rising topics before competitors and create timely content the algorithm wants to recommend.'), level: t('Intermedio', 'Intermediate'), color: '#eab308' },
-    { title: t('Generar contenido con IA', 'Generate Content with AI'), desc: t('Usa la IA como copiloto para generar ideas, títulos, descripciones y guiones optimizados para SEO en segundos.', 'Use AI as your copilot to generate ideas, titles, descriptions, and SEO-optimized scripts in seconds.'), level: t('Principiante', 'Beginner'), color: '#22c55e' },
-    { title: t('Calendario de contenido', 'Content Calendar'), desc: t('Planifica tu contenido con estrategia. La consistencia es lo que separa a los canales que crecen de los que se estancan.', 'Plan your content strategically. Consistency separates growing channels from stagnant ones.'), level: t('Intermedio', 'Intermediate'), color: '#eab308' },
-    { title: t('Predictor de rendimiento', 'Performance Predictor'), desc: t('Anticipa cómo rendirá tu vídeo antes de publicar y optimiza título, thumbnail y descripción a tiempo.', 'Anticipate how your video will perform before publishing and optimize title, thumbnail, and description in time.'), level: t('Avanzado', 'Advanced'), color: '#ef4444' },
-    { title: t('AI Coach personalizado', 'Personalized AI Coach'), desc: t('Recibe análisis personalizado de tu canal y recomendaciones accionables basadas en tus datos reales, no en consejos genéricos.', 'Get personalized channel analysis and actionable recommendations based on your real data, not generic tips.'), level: t('Avanzado', 'Advanced'), color: '#ef4444' },
-  ];
 
   const benefits = [
     { title: t('Basado en datos reales', 'Based on real data'), desc: t('Nada de "sube buenos vídeos". Cada consejo está respaldado por métricas y datos del algoritmo de YouTube actualizados.', 'No "just upload good videos". Every tip is backed by metrics and up-to-date YouTube algorithm data.') },
@@ -106,14 +91,8 @@ export default async function LearningHubFeature() {
           {t('14 guías para dominar YouTube', '14 guides to master YouTube')}
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {guides.map((g) => (
-            <div key={g.title} className="soft-card p-5">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <h3 className="font-display font-bold text-base">{g.title}</h3>
-                <span className="font-mono-jb text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: `${g.color}22`, color: g.color }}>{g.level}</span>
-              </div>
-              <p className="text-zinc-400 text-sm leading-relaxed">{g.desc}</p>
-            </div>
+          {LEARN_GUIDES.map((g) => (
+            <GuideCard key={g.slug} guide={g} lang={lang} linkPrefix="/features/learning-hub/" />
           ))}
         </div>
       </section>

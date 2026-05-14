@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { BLOG_POSTS } from '@/lib/blog-data';
+import { LEARN_GUIDES } from '@/lib/learn-data';
 
 const BASE_URL = 'https://ytubviral.com';
 
@@ -51,6 +52,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...blogEntries,
     ...featurePages,
+    ...LEARN_GUIDES.map((g) => ({
+      url: `${BASE_URL}/features/learning-hub/${g.slug}`,
+      lastModified: new Date('2026-05-13'),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
     {
       url: `${BASE_URL}/extension`,
       lastModified: new Date('2026-05-07'),
