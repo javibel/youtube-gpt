@@ -27,6 +27,7 @@ export const GEAR_CATEGORIES: GearCategory[] = [
   { key: 'audio',        name: { es: 'Audio',         en: 'Audio' },         icon: '🎧', color: '#FF00AA' },
   { key: 'hardware',     name: { es: 'Hardware',      en: 'Hardware' },      icon: '🖥️', color: '#FF8A00' },
   { key: 'software',     name: { es: 'Software',      en: 'Software' },      icon: '💻', color: '#B388FF' },
+  { key: 'accessibility', name: { es: 'Accesibilidad y Confort', en: 'Accessibility & Comfort' }, icon: '♿', color: '#4FC3F7' },
 ];
 
 export const AMAZON_TAGS = {
@@ -427,6 +428,91 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'https://www.amazon.co.uk/dp/B08N5LTPWZ',
     },
     image: '/gear/davinci-resolve.png',
+  },
+
+  // ── Accessibility & Comfort ─────────────────────────────────────
+  {
+    id: 'sony-wh1000xm5',
+    name: { es: 'Sony WH-1000XM5', en: 'Sony WH-1000XM5' },
+    description: {
+      es: 'Los auriculares con cancelación de ruido #1 del mercado. 30h de batería, audio Hi-Res, multipoint Bluetooth. Imprescindibles para creadores neurodivergentes que necesitan bloquear estímulos sensoriales durante la edición o la escritura de guiones.',
+      en: 'The #1 noise-cancelling headphones on the market. 30h battery, Hi-Res audio, multipoint Bluetooth. Essential for neurodivergent creators who need to block sensory stimuli during editing or script writing.',
+    },
+    category: 'accessibility',
+    tier: 'pro',
+    priceRange: '€300-380',
+    recommended: true,
+    amazonUrl: {
+      es: 'https://www.amazon.es/dp/B09Y2MYL5C',
+      en: 'https://www.amazon.co.uk/dp/B09Y2MYL5C',
+    },
+    image: '/gear/sony-wh1000xm5.png',
+  },
+  {
+    id: 'loop-quiet-2',
+    name: { es: 'Loop Quiet 2 Tapones', en: 'Loop Quiet 2 Earplugs' },
+    description: {
+      es: 'Tapones de silicona reutilizables con reducción de 24dB. Discretos, cómodos, 4 tallas. Perfectos para sobrecarga sensorial sin aislarte del todo — escuchas conversaciones pero el ruido de fondo desaparece.',
+      en: 'Reusable silicone earplugs with 24dB reduction. Discreet, comfortable, 4 sizes. Perfect for sensory overload without total isolation — you hear conversations but background noise disappears.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€20-30',
+    recommended: true,
+    amazonUrl: {
+      es: 'https://www.amazon.es/dp/B0D3V6Y38G',
+      en: 'https://www.amazon.co.uk/dp/B0D3V61JC8',
+    },
+    image: '/gear/loop-quiet-2.png',
+  },
+  {
+    id: 'time-timer-mod',
+    name: { es: 'Time Timer MOD Home', en: 'Time Timer MOD Home' },
+    description: {
+      es: 'Temporizador visual de 60 minutos con funcionamiento silencioso. El disco rojo se reduce visualmente conforme pasa el tiempo — ideal para técnica Pomodoro con TDAH. Sin tictac, sin ansiedad. Lo recomiendan terapeutas ocupacionales.',
+      en: '60-minute visual timer with silent operation. The red disc visually shrinks as time passes — ideal for Pomodoro technique with ADHD. No ticking, no anxiety. Recommended by occupational therapists.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€30-45',
+    recommended: true,
+    amazonUrl: {
+      es: 'https://www.amazon.es/dp/B08K9FG8Y7',
+      en: 'https://www.amazon.co.uk/dp/B0CKPGLNHZ',
+    },
+    image: '/gear/time-timer-mod.png',
+  },
+  {
+    id: 'pilpoc-fidget-cube',
+    name: { es: 'PILPOC theFube Fidget Cube', en: 'PILPOC theFube Fidget Cube' },
+    description: {
+      es: 'Cubo fidget con 4 lados silenciosos y 2 con click. Diseño premium con funda protectora incluida. Ayuda a mantener el foco durante sesiones de edición largas. Específicamente diseñado para TDAH, ansiedad y autismo.',
+      en: 'Fidget cube with 4 silent sides and 2 clicky ones. Premium design with protective case included. Helps maintain focus during long editing sessions. Specifically designed for ADHD, anxiety, and autism.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€15-25',
+    amazonUrl: {
+      es: 'https://www.amazon.es/dp/B0992DZSTS',
+      en: 'https://www.amazon.co.uk/dp/B0C3BJ8L3B',
+    },
+    image: '/gear/pilpoc-fidget-cube.png',
+  },
+  {
+    id: 'elgato-key-light-accessibility',
+    name: { es: 'Elgato Key Light (Confort Sensorial)', en: 'Elgato Key Light (Sensory Comfort)' },
+    description: {
+      es: 'Control de temperatura e intensidad desde el móvil. Para personas con sensibilidad sensorial, poder ajustar la luz con precisión sin levantarte elimina una fuente constante de incomodidad. Temperatura regulable de 2900K a 7000K.',
+      en: 'Temperature and intensity control from your phone. For people with sensory sensitivity, being able to precisely adjust light without getting up eliminates a constant source of discomfort. Adjustable temperature from 2900K to 7000K.',
+    },
+    category: 'accessibility',
+    tier: 'mid',
+    priceRange: '€170-200',
+    amazonUrl: {
+      es: 'https://www.amazon.es/dp/B07L755X9G',
+      en: 'https://www.amazon.co.uk/dp/B07L755X9G',
+    },
+    image: '/gear/elgato-key-light.png',
   },
 ];
 

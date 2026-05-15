@@ -258,6 +258,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'AdSense is just the entry door. We break down the 6 real income sources for a YouTuber in 2026, with CPMs by niche, Shorts data, examples of small channels earning more than big ones, and the roadmap to start earning from 500 subscribers.',
     },
   },
+  {
+    slug: 'youtube-neurodivergencia-guia',
+    cat: 'youtube',
+    readMin: 12,
+    date: { es: '14 May 2026', en: 'May 14, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/youtube-neurodivergencia.webp',
+    title: {
+      es: 'Cómo Triunfar en YouTube Siendo Neurodivergente: Guía Práctica 2026',
+      en: 'How to Succeed on YouTube as a Neurodivergent Creator: Practical Guide 2026',
+    },
+    excerpt: {
+      es: 'TDAH, autismo, dislexia — tu cerebro no funciona como el de la mayoría. Eso no es un problema en YouTube: es una ventaja. Te enseño cómo adaptar tu workflow, evitar el burnout y convertir tu neurodivergencia en tu mayor fortaleza como creador.',
+      en: 'ADHD, autism, dyslexia — your brain doesn\'t work like most people\'s. That\'s not a problem on YouTube: it\'s an advantage. I\'ll show you how to adapt your workflow, avoid burnout, and turn your neurodivergence into your greatest strength as a creator.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -2940,6 +2956,252 @@ const ART_MONETIZAR_EN: BlockType[] = [
   { type: 'callout-final', t: 'Calculate your income potential in 30 seconds', sub: 'Revenue Estimator analyzes your niche, audience, and views to give you a realistic estimate. Free, no credit card.', cta: 'Try YTubViral for free' },
 ];
 
+// ── Article 15: YouTube y Neurodivergencia ───────────────────────────────────
+
+const ART_NEURODIVERGENCIA_ES: BlockType[] = [
+  { type: 'p', t: 'Voy a empezar con algo que no se dice lo suficiente: si tienes TDAH, autismo, dislexia o cualquier otra neurodivergencia, YouTube no es más difícil para ti. Es diferente. Y en muchos aspectos, tienes ventajas que los creadores neurotípicos no tienen.' },
+  { type: 'p', t: 'No lo digo por motivar. Lo digo porque hay datos y ejemplos reales que lo demuestran. Creadores como Orion Kelly (That Autistic Guy, 208K suscriptores) o Jessica Kellgren-Fozard (1,2M suscriptores) han construido comunidades enormes no a pesar de su neurodivergencia, sino gracias a ella.' },
+  { type: 'p', t: 'El problema no es tu cerebro. El problema es que la mayoría de consejos sobre YouTube están diseñados para cerebros neurotípicos: "publica 3 veces por semana", "sigue una rutina estricta", "sé consistente". Si tu cerebro no funciona así, esos consejos no solo no ayudan — te queman.' },
+  { type: 'p', t: 'Esta guía es diferente. Te voy a enseñar cómo adaptar YouTube a tu cerebro, no al revés.' },
+
+  { type: 'h2', t: 'Las Ventajas Reales de un Cerebro Neurodivergente en YouTube' },
+  { type: 'p', t: 'Antes de hablar de estrategias, necesitas entender algo: la neurodivergencia no es una limitación que hay que compensar. En YouTube, muchos rasgos neurodivergentes son directamente ventajas competitivas.' },
+
+  { type: 'h3', t: 'Hiperfoco (TDAH)' },
+  { type: 'p', t: 'El hiperfoco es cuando tu cerebro se engancha a algo y no puedes parar. La mayoría de la gente lo ve como un síntoma. En YouTube, es un superpoder. Cuando entras en hiperfoco sobre un tema de tu nicho, produces contenido con una profundidad y una pasión que un creador neurotípico tarda días en igualar — tú lo haces en una tarde.' },
+  { type: 'p', t: 'El truco no es evitar el hiperfoco. Es aprender a canalizar esas ráfagas de energía hacia tu canal. Cuando llegue, no luches contra él — aprovéchalo. Graba tres vídeos seguidos si tu cuerpo te lo pide. Ya los editarás después.' },
+
+  { type: 'h3', t: 'Reconocimiento de patrones (Autismo)' },
+  { type: 'p', t: 'Muchas personas autistas tienen una capacidad natural para detectar patrones que otros no ven. En YouTube, esto se traduce en análisis de tendencias, SEO, y comprensión del algoritmo a un nivel que la mayoría de creadores nunca alcanzan. Si notas que ciertos tipos de títulos funcionan mejor, que determinados temas ciclan cada 3 meses, o que hay un patrón en los comentarios — es tu cerebro haciendo lo que mejor sabe hacer.' },
+
+  { type: 'h3', t: 'Autenticidad sin filtro' },
+  { type: 'p', t: 'En 2026, los espectadores están hartos de creadores que fingen. La autenticidad no es opcional — es la moneda más valiosa de YouTube. Muchas personas neurodivergentes tienen dificultad para disimular o actuar. Eso que en el mundo laboral puede ser un obstáculo, en YouTube es oro puro. Tu audiencia sabe que lo que ve es real. No hay máscara. Y eso genera una lealtad que ningún truco de edición puede comprar.' },
+
+  { type: 'h3', t: 'Intereses profundos y conocimiento especializado' },
+  { type: 'p', t: 'Los intereses especiales (autismo) y la tendencia a obsesionarse con temas (TDAH) producen un conocimiento enciclopédico que los espectadores valoran enormemente. Si llevas 5 años fascinado por la astrofísica, los trenes, la historia militar o cualquier otro nicho, tienes más material en la cabeza del que podrías publicar en una vida. Ese conocimiento profundo es exactamente lo que el algoritmo premia: contenido original que no se puede encontrar en ningún otro canal.' },
+
+  { type: 'callout', t: 'Según un estudio publicado en el Journal of Creative Behavior (2023), las personas con TDAH obtienen puntuaciones significativamente más altas en pensamiento divergente — la capacidad de generar ideas originales y conexiones inesperadas. Exactamente lo que necesitas para destacar en YouTube.' },
+
+  { type: 'h2', t: 'El Problema del Burnout Creativo (y Cómo Evitarlo)' },
+  { type: 'p', t: 'Vamos a hablar del elefante en la habitación. El burnout afecta a todos los creadores, pero si eres neurodivergente, el riesgo es significativamente mayor. ¿Por qué? Porque la mayoría de estrategias de consistencia están diseñadas para cerebros que funcionan de forma lineal y predecible. Si tu energía fluctúa, si tienes días brillantes y días donde no puedes ni abrir el editor, seguir el calendario de publicación de otro creador es una receta para el desastre.' },
+  { type: 'p', t: 'La solución no es "esforzarte más". Es diseñar un sistema que funcione con tus ciclos naturales, no contra ellos.' },
+
+  { type: 'h3', t: 'El masking y su coste' },
+  { type: 'p', t: 'Muchos creadores neurodivergentes caen en la trampa del masking: imitar el estilo, la energía y la cadencia de otros YouTubers populares. Actuar como alguien que no eres frente a cámara consume una cantidad brutal de energía mental. Y tarde o temprano te pasa factura — dejas de disfrutar, cada vídeo se siente como una montaña, y acabas dejando el canal.' },
+  { type: 'p', t: 'La alternativa es radical pero funciona: sé tú. Si hablas lento, habla lento. Si necesitas mirar a un lado para pensar, hazlo. Si tu energía es más tranquila que la de un MrBeast, perfecto — hay millones de espectadores que prefieren eso. Tu audiencia real va a conectar contigo precisamente por lo que te hace diferente, no a pesar de ello.' },
+
+  { type: 'h2', t: 'Workflow Adaptado: El Sistema de Batching Flexible' },
+  { type: 'p', t: 'Aquí está el método que realmente funciona para cerebros neurodivergentes. Lo llamo "batching flexible" porque combina la eficiencia del batching (grabar varios vídeos de golpe) con la flexibilidad que necesitas cuando tu energía no es predecible.' },
+
+  { type: 'h3', t: 'Paso 1: Captura de ideas en caliente' },
+  { type: 'p', t: 'Tu cerebro genera ideas a todas horas — en la ducha, a las 3 de la mañana, en medio de otra tarea. El error es confiar en que las recordarás. No las recordarás. Ten una nota en el móvil donde vuelques cada idea en el momento. No la desarrolles, no la juzgues — solo anótala. Una frase basta: "vídeo sobre por qué los autistas dominamos los datos de YouTube".' },
+  { type: 'p', t: 'En una semana tendrás 15-20 ideas. El 80% serán mediocres. El 20% restante son tus próximos vídeos.' },
+
+  { type: 'h3', t: 'Paso 2: Días de alta energía = Producción' },
+  { type: 'p', t: 'No intentes grabar un vídeo cada martes a las 10:00. En vez de eso, aprende a reconocer tus picos de energía. Cuando llegue un día bueno — y llegarán — graba todo lo que puedas. Dos vídeos, tres si te da. No intentes que sean perfectos. Graba, graba, graba.' },
+  { type: 'p', t: 'Esos vídeos grabados en batch son tu colchón. Te dan la libertad de tener días malos sin que tu canal se resienta.' },
+
+  { type: 'h3', t: 'Paso 3: Días de baja energía = Edición ligera o descanso' },
+  { type: 'p', t: 'Los días donde tu energía está por el suelo no son para grabar ni para escribir guiones. Son para tareas que requieren menos esfuerzo cognitivo: responder comentarios, elegir thumbnails, revisar analíticas, o simplemente descansar sin culpa.' },
+  { type: 'p', t: 'La culpa es el mayor enemigo del creador neurodivergente. Un día de descanso no es un fracaso — es parte del sistema. Si no descansas cuando lo necesitas, el crash será peor y más largo.' },
+
+  { type: 'h3', t: 'Paso 4: Publica desde el banco, no en tiempo real' },
+  { type: 'p', t: 'Con 3-4 vídeos grabados por adelantado, puedes programar publicaciones con la función de programación de YouTube. Esto elimina la presión de "tengo que publicar hoy" cuando tu cerebro no coopera. Tu audiencia ve contenido consistente; tú trabajas a tu ritmo real.' },
+
+  { type: 'callout-mid', t: 'Planifica tu calendario de contenido sin estrés', sub: 'Content Calendar te ayuda a organizar tus publicaciones con flexibilidad — perfecto para ritmos de trabajo no lineales.', cta: 'Probar calendario gratis' },
+
+  { type: 'h2', t: 'Herramientas que Salvan la Vida a Creadores Neurodivergentes' },
+  { type: 'p', t: 'No todas las herramientas son iguales cuando tu cerebro funciona diferente. Estas son las que realmente marcan la diferencia:' },
+
+  { type: 'h3', t: 'Para el TDAH' },
+  { type: 'list', items: [
+    'Temporizadores visuales (como Pomodoro con intervalos de 25 min): dan estructura sin rigidez. Si 25 minutos es demasiado, prueba con 15. Lo importante es el ciclo trabajo-descanso, no la duración exacta.',
+    'Notion o Obsidian para el banco de ideas: vuelca todo ahí y organízalo cuando tengas energía. No uses 5 apps — usa una.',
+    'Teleprompter o notas en pantalla: el TDAH dificulta mantener el hilo del guion. Un teleprompter (incluso una app gratuita en el móvil) te mantiene en el camino sin que pierdas espontaneidad.',
+    'Capítulos de YouTube: divide tus vídeos en secciones. Ayuda al espectador, pero también te ayuda a ti a estructurar la grabación en bloques manejables.',
+  ]},
+
+  { type: 'h3', t: 'Para el autismo' },
+  { type: 'list', items: [
+    'Entorno de grabación controlado: iluminación consistente, misma ropa, mismo fondo. Reducir variables sensoriales hace que grabar sea más cómodo y sostenible.',
+    'Guiones detallados: si la improvisación te genera ansiedad, escribe todo. No hay nada malo en leer de un guion si el contenido es bueno.',
+    'Programación de publicaciones: elimina la incertidumbre del "cuándo publico". Decide una vez, programa, olvídate.',
+    'Subtítulos automáticos: YouTube genera subtítulos que puedes editar. No solo ayudan a tu audiencia — te ayudan a ti a revisar lo que dijiste sin tener que volver a escucharte.',
+  ]},
+
+  { type: 'h3', t: 'Para la dislexia' },
+  { type: 'list', items: [
+    'Text-to-speech para revisar guiones: escucha lo que escribiste en vez de leerlo. Detectarás errores y frases raras mucho más rápido.',
+    'Dictado por voz: en vez de escribir el guion, dilo en voz alta y transcríbelo. Herramientas como Whisper (gratuita) o la transcripción nativa del móvil funcionan bien.',
+    'Formato visual en miniaturas: si los títulos con mucho texto no son lo tuyo, apuesta por thumbnails con expresiones faciales y poco texto. Funciona mejor de todas formas.',
+  ]},
+
+  { type: 'callout-gear', t: 'Equipo de accesibilidad y confort para creadores', sub: 'Auriculares con cancelación de ruido, temporizadores visuales, fidget tools y más — seleccionados para neurodivergentes.', cta: 'Ver equipo recomendado' },
+
+  { type: 'h2', t: 'SEO y Algoritmo: Tu Nicho es Más Valioso de lo que Crees' },
+  { type: 'p', t: 'Aquí viene un dato que la mayoría no sabe: el contenido sobre neurodivergencia en YouTube tiene una competencia relativamente baja y una demanda en crecimiento constante. Términos como "TDAH y productividad", "vivir con autismo", "dislexia consejos" tienen miles de búsquedas mensuales y pocos creadores de calidad cubriendo esos temas.' },
+  { type: 'p', t: 'No digo que tu canal tenga que ser sobre neurodivergencia. Puede ser sobre cocina, tecnología, gaming o cualquier otro tema. Pero si decides hablar abiertamente sobre tu experiencia neurodivergente, tienes un ángulo único que te diferencia del resto de creadores de tu nicho.' },
+
+  { type: 'list', items: [
+    'Vídeos como "Cómo edito vídeos con TDAH" o "Mi setup de grabación como persona autista" funcionan como puerta de entrada a tu canal principal.',
+    'Los espectadores neurodivergentes son una comunidad leal que comparte y comenta activamente — engagement alto significa que el algoritmo empuja tu contenido.',
+    'Las marcas están cada vez más interesadas en colaborar con creadores que representan la diversidad real de su audiencia.',
+  ]},
+
+  { type: 'h2', t: 'Qué Hacer Cuando Todo se Cae (Porque Pasará)' },
+  { type: 'p', t: 'Habrá días donde no puedas grabar. Semanas donde abandones el canal mentalmente. Meses donde sientas que nunca vas a llegar a ningún sitio. Eso no es fracaso — es el ciclo natural de crear contenido con un cerebro que funciona por oleadas.' },
+  { type: 'p', t: 'Lo que diferencia a los creadores que llegan de los que abandonan no es la consistencia perfecta. Es la capacidad de volver después de una pausa sin castigarse.' },
+
+  { type: 'list', items: [
+    'No te disculpes por la ausencia en tu vídeo de vuelta. Tu audiencia real seguirá ahí. Los que se fueron no eran tu audiencia.',
+    'Baja el estándar temporalmente. Un vídeo grabado con el móvil y subido sin editar es infinitamente mejor que un vídeo perfecto que nunca se graba.',
+    'Habla sobre lo que sientes. Los vídeos más vulnerables suelen ser los que más conectan. "Desaparecí 2 meses — esto es lo que pasó" puede ser tu vídeo más visto.',
+    'Pide ayuda. Un editor freelance, un amigo que te accountability, o simplemente alguien que te diga "tu contenido importa" cuando tú no puedes verlo.',
+  ]},
+
+  { type: 'h2', t: 'El Setup Mínimo para Empezar Sin Sobrecarga' },
+  { type: 'p', t: 'Si estás empezando y tu cerebro tiende a la parálisis por análisis, te doy el setup más simple posible:' },
+  { type: 'list', items: [
+    'Smartphone + trípode barato (o apóyalo en unos libros)',
+    'Micrófono de solapa o el audio del propio móvil (en una habitación sin eco)',
+    'Luz natural de una ventana grande (la mejor iluminación gratis que existe)',
+    'Editor gratuito: CapCut (móvil) o DaVinci Resolve (PC)',
+    'Un tema que te obsesione — ese es tu nicho',
+  ]},
+  { type: 'p', t: 'No necesitas más. No necesitas logo, intro animada, cámara de 1000€ ni 15 luces de estudio. Necesitas darle al botón de grabar y subir el vídeo. Todo lo demás viene después.' },
+
+  { type: 'callout', t: 'Molly Burke (2M suscriptores) empezó grabando con un setup básico y hablando directamente a cámara. Chris Ulmer (3,7M suscriptores) graba entrevistas con un móvil y un trípode. La producción no determina el éxito — la conexión sí.' },
+
+  { type: 'h2', t: 'Lo que Nadie Te Dice: Tu Neurodivergencia es tu Marca Personal' },
+  { type: 'p', t: 'El mercado de YouTube está saturado de creadores genéricos que siguen las mismas fórmulas, usan los mismos templates y suenan exactamente igual. Tu cerebro no funciona así — y eso es precisamente lo que te hace memorable.' },
+  { type: 'p', t: 'Los creadores que más crecen en 2026 no son los más pulidos. Son los más auténticos. Los que tienen una perspectiva que nadie más tiene. Los que ven el mundo de una forma que el espectador nunca había considerado. Eso es literalmente la definición de neurodivergencia: tu cerebro diverge de la norma. En un mar de contenido idéntico, la divergencia es lo que destaca.' },
+  { type: 'p', t: 'No intentes ser el YouTuber que crees que deberías ser. Sé el que ya eres. Tu audiencia está ahí fuera buscándote — solo necesitas darles la oportunidad de encontrarte.' },
+
+  { type: 'callout-final', t: 'Crea tu primer vídeo con IA en minutos', sub: 'Genera títulos, scripts y estrategias SEO adaptadas a tu estilo. Sin fórmulas rígidas — la IA se adapta a ti.', cta: 'Probar YTubViral gratis' },
+];
+
+const ART_NEURODIVERGENCIA_EN: BlockType[] = [
+  { type: 'p', t: 'I\'m going to start with something that doesn\'t get said enough: if you have ADHD, autism, dyslexia, or any other neurodivergence, YouTube isn\'t harder for you. It\'s different. And in many ways, you have advantages that neurotypical creators don\'t.' },
+  { type: 'p', t: 'I\'m not saying this to motivate you. I\'m saying it because there are real data and real examples that prove it. Creators like Orion Kelly (That Autistic Guy, 208K subscribers) or Jessica Kellgren-Fozard (1.2M subscribers) have built massive communities not despite their neurodivergence, but because of it.' },
+  { type: 'p', t: 'The problem isn\'t your brain. The problem is that most YouTube advice is designed for neurotypical brains: "post 3 times a week", "follow a strict routine", "be consistent". If your brain doesn\'t work that way, those tips don\'t just fail to help — they burn you out.' },
+  { type: 'p', t: 'This guide is different. I\'m going to show you how to adapt YouTube to your brain, not the other way around.' },
+
+  { type: 'h2', t: 'The Real Advantages of a Neurodivergent Brain on YouTube' },
+  { type: 'p', t: 'Before we get into strategies, you need to understand something: neurodivergence isn\'t a limitation to compensate for. On YouTube, many neurodivergent traits are direct competitive advantages.' },
+
+  { type: 'h3', t: 'Hyperfocus (ADHD)' },
+  { type: 'p', t: 'Hyperfocus is when your brain locks onto something and you can\'t stop. Most people see it as a symptom. On YouTube, it\'s a superpower. When you enter hyperfocus on a topic in your niche, you produce content with a depth and passion that a neurotypical creator takes days to match — you do it in an afternoon.' },
+  { type: 'p', t: 'The trick isn\'t to avoid hyperfocus. It\'s to learn to channel those energy bursts toward your channel. When it hits, don\'t fight it — ride it. Record three videos back to back if your body wants to. You\'ll edit them later.' },
+
+  { type: 'h3', t: 'Pattern Recognition (Autism)' },
+  { type: 'p', t: 'Many autistic people have a natural ability to detect patterns others miss. On YouTube, this translates into trend analysis, SEO, and algorithm understanding at a level most creators never reach. If you notice that certain title formats perform better, that specific topics cycle every 3 months, or that there\'s a pattern in comments — that\'s your brain doing what it does best.' },
+
+  { type: 'h3', t: 'Unfiltered Authenticity' },
+  { type: 'p', t: 'In 2026, viewers are tired of creators who fake it. Authenticity isn\'t optional — it\'s YouTube\'s most valuable currency. Many neurodivergent people struggle to mask or perform. What can be an obstacle in the corporate world is pure gold on YouTube. Your audience knows what they see is real. No mask. And that builds loyalty no editing trick can buy.' },
+
+  { type: 'h3', t: 'Deep Interests and Specialized Knowledge' },
+  { type: 'p', t: 'Special interests (autism) and the tendency to obsess over topics (ADHD) produce encyclopedic knowledge that viewers value enormously. If you\'ve spent 5 years fascinated by astrophysics, trains, military history, or any other niche, you have more material in your head than you could publish in a lifetime. That deep knowledge is exactly what the algorithm rewards: original content that can\'t be found on any other channel.' },
+
+  { type: 'callout', t: 'According to a study published in the Journal of Creative Behavior (2023), people with ADHD score significantly higher in divergent thinking — the ability to generate original ideas and unexpected connections. Exactly what you need to stand out on YouTube.' },
+
+  { type: 'h2', t: 'The Creative Burnout Problem (and How to Avoid It)' },
+  { type: 'p', t: 'Let\'s talk about the elephant in the room. Burnout affects all creators, but if you\'re neurodivergent, the risk is significantly higher. Why? Because most consistency strategies are designed for brains that work linearly and predictably. If your energy fluctuates, if you have brilliant days and days where you can\'t even open the editor, following another creator\'s posting schedule is a recipe for disaster.' },
+  { type: 'p', t: 'The solution isn\'t "try harder". It\'s designing a system that works with your natural cycles, not against them.' },
+
+  { type: 'h3', t: 'Masking and Its Cost' },
+  { type: 'p', t: 'Many neurodivergent creators fall into the masking trap: imitating the style, energy, and cadence of popular YouTubers. Acting like someone you\'re not on camera consumes a brutal amount of mental energy. And sooner or later it catches up — you stop enjoying it, every video feels like a mountain, and you end up abandoning the channel.' },
+  { type: 'p', t: 'The alternative is radical but it works: be you. If you speak slowly, speak slowly. If you need to look away to think, do it. If your energy is calmer than MrBeast\'s, perfect — millions of viewers prefer that. Your real audience will connect with you precisely because of what makes you different, not despite it.' },
+
+  { type: 'h2', t: 'Adapted Workflow: The Flexible Batching System' },
+  { type: 'p', t: 'Here\'s the method that actually works for neurodivergent brains. I call it "flexible batching" because it combines the efficiency of batching (recording several videos at once) with the flexibility you need when your energy isn\'t predictable.' },
+
+  { type: 'h3', t: 'Step 1: Hot Idea Capture' },
+  { type: 'p', t: 'Your brain generates ideas at all hours — in the shower, at 3 AM, in the middle of another task. The mistake is trusting you\'ll remember them. You won\'t. Keep a note on your phone where you dump every idea the moment it hits. Don\'t develop it, don\'t judge it — just write it down. One sentence is enough: "video about why autistic people dominate YouTube analytics".' },
+  { type: 'p', t: 'In a week you\'ll have 15-20 ideas. 80% will be mediocre. The remaining 20% are your next videos.' },
+
+  { type: 'h3', t: 'Step 2: High-Energy Days = Production' },
+  { type: 'p', t: 'Don\'t try to record one video every Tuesday at 10 AM. Instead, learn to recognize your energy peaks. When a good day comes — and they will — record everything you can. Two videos, three if you\'re feeling it. Don\'t try to make them perfect. Record, record, record.' },
+  { type: 'p', t: 'Those batch-recorded videos are your cushion. They give you the freedom to have bad days without your channel suffering.' },
+
+  { type: 'h3', t: 'Step 3: Low-Energy Days = Light Editing or Rest' },
+  { type: 'p', t: 'Days when your energy is on the floor aren\'t for recording or writing scripts. They\'re for tasks that require less cognitive effort: replying to comments, choosing thumbnails, reviewing analytics, or simply resting without guilt.' },
+  { type: 'p', t: 'Guilt is the neurodivergent creator\'s worst enemy. A rest day isn\'t failure — it\'s part of the system. If you don\'t rest when you need to, the crash will be worse and longer.' },
+
+  { type: 'h3', t: 'Step 4: Publish from the Bank, Not in Real Time' },
+  { type: 'p', t: 'With 3-4 videos recorded in advance, you can schedule uploads using YouTube\'s scheduling feature. This eliminates the pressure of "I have to publish today" when your brain won\'t cooperate. Your audience sees consistent content; you work at your actual pace.' },
+
+  { type: 'callout-mid', t: 'Plan your content calendar stress-free', sub: 'Content Calendar helps you organize your uploads with flexibility — perfect for non-linear work rhythms.', cta: 'Try calendar for free' },
+
+  { type: 'h2', t: 'Tools That Are Lifesavers for Neurodivergent Creators' },
+  { type: 'p', t: 'Not all tools are equal when your brain works differently. These are the ones that actually make a difference:' },
+
+  { type: 'h3', t: 'For ADHD' },
+  { type: 'list', items: [
+    'Visual timers (like Pomodoro with 25-min intervals): provide structure without rigidity. If 25 minutes is too long, try 15. What matters is the work-rest cycle, not the exact duration.',
+    'Notion or Obsidian for your idea bank: dump everything there and organize it when you have energy. Don\'t use 5 apps — use one.',
+    'Teleprompter or on-screen notes: ADHD makes it hard to stay on script. A teleprompter (even a free phone app) keeps you on track without losing spontaneity.',
+    'YouTube chapters: divide your videos into sections. It helps the viewer, but it also helps you structure recording into manageable blocks.',
+  ]},
+
+  { type: 'h3', t: 'For Autism' },
+  { type: 'list', items: [
+    'Controlled recording environment: consistent lighting, same clothes, same background. Reducing sensory variables makes recording more comfortable and sustainable.',
+    'Detailed scripts: if improvising causes anxiety, write everything out. There\'s nothing wrong with reading from a script if the content is good.',
+    'Scheduled uploads: eliminate the uncertainty of "when do I publish". Decide once, schedule, forget about it.',
+    'Auto-generated subtitles: YouTube creates subtitles you can edit. They don\'t just help your audience — they help you review what you said without having to listen to yourself again.',
+  ]},
+
+  { type: 'h3', t: 'For Dyslexia' },
+  { type: 'list', items: [
+    'Text-to-speech for script review: listen to what you wrote instead of reading it. You\'ll catch errors and awkward phrases much faster.',
+    'Voice dictation: instead of writing the script, say it out loud and transcribe it. Tools like Whisper (free) or your phone\'s native transcription work well.',
+    'Visual-first thumbnails: if text-heavy titles aren\'t your thing, go for thumbnails with facial expressions and minimal text. It performs better anyway.',
+  ]},
+
+  { type: 'callout-gear', t: 'Accessibility and comfort gear for creators', sub: 'Noise-cancelling headphones, visual timers, fidget tools and more — curated for neurodivergent creators.', cta: 'See recommended gear' },
+
+  { type: 'h2', t: 'SEO and Algorithm: Your Niche Is More Valuable Than You Think' },
+  { type: 'p', t: 'Here\'s something most people don\'t know: neurodivergence content on YouTube has relatively low competition and steadily growing demand. Terms like "ADHD productivity", "living with autism", "dyslexia tips" have thousands of monthly searches and few quality creators covering them.' },
+  { type: 'p', t: 'I\'m not saying your channel has to be about neurodivergence. It can be about cooking, tech, gaming, or anything else. But if you decide to speak openly about your neurodivergent experience, you have a unique angle that sets you apart from every other creator in your niche.' },
+
+  { type: 'list', items: [
+    'Videos like "How I Edit Videos with ADHD" or "My Recording Setup as an Autistic Person" work as entry points to your main channel.',
+    'Neurodivergent viewers are a loyal community that actively shares and comments — high engagement means the algorithm pushes your content.',
+    'Brands are increasingly interested in collaborating with creators who represent the real diversity of their audience.',
+  ]},
+
+  { type: 'h2', t: 'What to Do When Everything Falls Apart (Because It Will)' },
+  { type: 'p', t: 'There will be days when you can\'t record. Weeks when you mentally abandon the channel. Months when you feel like you\'ll never get anywhere. That\'s not failure — it\'s the natural cycle of creating content with a brain that works in waves.' },
+  { type: 'p', t: 'What separates creators who make it from those who quit isn\'t perfect consistency. It\'s the ability to come back after a break without punishing yourself.' },
+
+  { type: 'list', items: [
+    'Don\'t apologize for the absence in your comeback video. Your real audience will still be there. Those who left weren\'t your audience.',
+    'Lower the bar temporarily. A video shot on your phone and uploaded without editing is infinitely better than a perfect video that never gets made.',
+    'Talk about what you\'re feeling. The most vulnerable videos are often the ones that connect the most. "I disappeared for 2 months — here\'s what happened" can be your most viewed video.',
+    'Ask for help. A freelance editor, a friend who holds you accountable, or simply someone who tells you "your content matters" when you can\'t see it yourself.',
+  ]},
+
+  { type: 'h2', t: 'The Minimum Setup to Start Without Overwhelm' },
+  { type: 'p', t: 'If you\'re starting out and your brain tends toward analysis paralysis, here\'s the simplest possible setup:' },
+  { type: 'list', items: [
+    'Smartphone + cheap tripod (or prop it up on some books)',
+    'Lavalier mic or the phone\'s own audio (in a room without echo)',
+    'Natural light from a large window (the best free lighting there is)',
+    'Free editor: CapCut (mobile) or DaVinci Resolve (PC)',
+    'A topic you\'re obsessed with — that\'s your niche',
+  ]},
+  { type: 'p', t: 'You don\'t need more. You don\'t need a logo, animated intro, €1,000 camera, or 15 studio lights. You need to hit the record button and upload the video. Everything else comes later.' },
+
+  { type: 'callout', t: 'Molly Burke (2M subscribers) started recording with a basic setup and talking directly to camera. Chris Ulmer (3.7M subscribers) films interviews with a phone and a tripod. Production doesn\'t determine success — connection does.' },
+
+  { type: 'h2', t: 'What Nobody Tells You: Your Neurodivergence IS Your Personal Brand' },
+  { type: 'p', t: 'The YouTube market is saturated with generic creators who follow the same formulas, use the same templates, and sound exactly alike. Your brain doesn\'t work like that — and that\'s precisely what makes you memorable.' },
+  { type: 'p', t: 'The creators who grow the most in 2026 aren\'t the most polished. They\'re the most authentic. The ones who have a perspective nobody else has. The ones who see the world in a way the viewer never considered. That\'s literally the definition of neurodivergence: your brain diverges from the norm. In a sea of identical content, divergence is what stands out.' },
+  { type: 'p', t: 'Don\'t try to be the YouTuber you think you should be. Be the one you already are. Your audience is out there looking for you — they just need the chance to find you.' },
+
+  { type: 'callout-final', t: 'Create your first video with AI in minutes', sub: 'Generate titles, scripts, and SEO strategies tailored to your style. No rigid formulas — the AI adapts to you.', cta: 'Try YTubViral for free' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -2996,6 +3258,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'como-monetizar-youtube-2026-guia': {
     es: ART_MONETIZAR_ES,
     en: ART_MONETIZAR_EN,
+  },
+  'youtube-neurodivergencia-guia': {
+    es: ART_NEURODIVERGENCIA_ES,
+    en: ART_NEURODIVERGENCIA_EN,
   },
 };
 
