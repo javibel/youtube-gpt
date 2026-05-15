@@ -40,13 +40,13 @@ export async function sendTransactionalEmail({
     try {
       const result = await resend.emails.send({
         from: 'YTubViral <hello@ytubviral.com>',
-        replyTo: 'ytbeviral@gmail.com',
+        replyTo: 'support@ytubviral.com',
         to,
         subject,
         html,
         text,
         headers: {
-          'List-Unsubscribe': '<mailto:ytbeviral@gmail.com?subject=unsubscribe>',
+          'List-Unsubscribe': '<mailto:support@ytubviral.com?subject=unsubscribe>',
         },
       });
       if (result.error) {

@@ -28,8 +28,8 @@ export default function PrivacyPage() {
           {
             title: t('1. Responsable del tratamiento', '1. Data controller'),
             body: t(
-              'El responsable del tratamiento de los datos personales recogidos a través de YTubViral es Javier Jimeno Plata, con domicilio en Barcelona, España. Email de contacto: hello@ytubviral.com.',
-              'The controller of personal data collected through YTubViral is Javier Jimeno Plata, based in Barcelona, Spain. Contact email: hello@ytubviral.com.'
+              'El responsable del tratamiento de los datos personales recogidos a través de YTubViral es Javier Jimeno Plata, con domicilio en Barcelona, España. Email de contacto: privacy@ytubviral.com.',
+              'The controller of personal data collected through YTubViral is Javier Jimeno Plata, based in Barcelona, Spain. Contact email: privacy@ytubviral.com.'
             ),
           },
           {
@@ -84,8 +84,8 @@ export default function PrivacyPage() {
           {
             title: t('9. Tus derechos', '9. Your rights'),
             body: t(
-              'En virtud del RGPD, tienes derecho de:\n\n• Acceso: solicitar una copia de tus datos personales.\n• Rectificación: corregir datos inexactos.\n• Supresión: solicitar la eliminación de tus datos.\n• Portabilidad: recibir tus datos en un formato estructurado.\n• Oposición: oponerte al tratamiento de tus datos.\n• Limitación: solicitar la limitación del tratamiento.\n• Revocación del consentimiento: retirar el consentimiento otorgado para la conexión de YouTube en cualquier momento.\n\nPara ejercer cualquiera de estos derechos, escríbenos a hello@ytubviral.com. Responderemos en un plazo máximo de 30 días. También puedes presentar una reclamación ante la Agencia Española de Protección de Datos (aepd.es).',
-              'Under the GDPR, you have the right to:\n\n• Access: request a copy of your personal data.\n• Rectification: correct inaccurate data.\n• Erasure: request the deletion of your data.\n• Portability: receive your data in a structured format.\n• Objection: object to the processing of your data.\n• Restriction: request the restriction of processing.\n• Withdrawal of consent: withdraw the consent granted for YouTube connection at any time.\n\nTo exercise any of these rights, write to us at hello@ytubviral.com. We will respond within a maximum of 30 days. You may also lodge a complaint with the Spanish Data Protection Agency (aepd.es).'
+              'En virtud del RGPD, tienes derecho de:\n\n• Acceso: solicitar una copia de tus datos personales.\n• Rectificación: corregir datos inexactos.\n• Supresión: solicitar la eliminación de tus datos.\n• Portabilidad: recibir tus datos en un formato estructurado.\n• Oposición: oponerte al tratamiento de tus datos.\n• Limitación: solicitar la limitación del tratamiento.\n• Revocación del consentimiento: retirar el consentimiento otorgado para la conexión de YouTube en cualquier momento.\n\nPara ejercer cualquiera de estos derechos, escríbenos a privacy@ytubviral.com. Responderemos en un plazo máximo de 30 días. También puedes presentar una reclamación ante la Agencia Española de Protección de Datos (aepd.es).',
+              'Under the GDPR, you have the right to:\n\n• Access: request a copy of your personal data.\n• Rectification: correct inaccurate data.\n• Erasure: request the deletion of your data.\n• Portability: receive your data in a structured format.\n• Objection: object to the processing of your data.\n• Restriction: request the restriction of processing.\n• Withdrawal of consent: withdraw the consent granted for YouTube connection at any time.\n\nTo exercise any of these rights, write to us at privacy@ytubviral.com. We will respond within a maximum of 30 days. You may also lodge a complaint with the Spanish Data Protection Agency (aepd.es).'
             ),
           },
           {
@@ -140,8 +140,8 @@ export default function PrivacyPage() {
           {
             title: t('13. Contacto', '13. Contact'),
             body: t(
-              'Para cualquier consulta sobre privacidad: hello@ytubviral.com',
-              'For any privacy enquiries: hello@ytubviral.com'
+              'Para cualquier consulta sobre privacidad: privacy@ytubviral.com',
+              'For any privacy enquiries: privacy@ytubviral.com'
             ),
           },
         ].map((s, i) => (

@@ -28,8 +28,8 @@ export default function TermsPage() {
           {
             title: t('1. Identificación del servicio', '1. Service identification'),
             body: t(
-              'YTubViral es un servicio web accesible en ytubviral.com que ofrece herramientas de generación y análisis de contenido asistidas por inteligencia artificial para creadores de contenido en YouTube. El servicio es gestionado por Javier Jimeno Plata, con domicilio en Barcelona, España. Contacto: hello@ytubviral.com.',
-              'YTubViral is a web service accessible at ytubviral.com that offers AI-assisted content generation and analysis tools for YouTube content creators. The service is managed by Javier Jimeno Plata, based in Barcelona, Spain. Contact: hello@ytubviral.com.'
+              'YTubViral es un servicio web accesible en ytubviral.com que ofrece herramientas de generación y análisis de contenido asistidas por inteligencia artificial para creadores de contenido en YouTube. El servicio es gestionado por Javier Jimeno Plata, con domicilio en Barcelona, España. Contacto: legal@ytubviral.com.',
+              'YTubViral is a web service accessible at ytubviral.com that offers AI-assisted content generation and analysis tools for YouTube content creators. The service is managed by Javier Jimeno Plata, based in Barcelona, Spain. Contact: legal@ytubviral.com.'
             ),
           },
           {
@@ -56,8 +56,8 @@ export default function TermsPage() {
           {
             title: t('5. Pagos, cancelaciones y derecho de desistimiento', '5. Payments, cancellations and right of withdrawal'),
             body: t(
-              'Los pagos se procesan a través de Stripe, proveedor externo de servicios de pago. YTubViral no almacena datos de tarjetas bancarias. El usuario puede cancelar su suscripción en cualquier momento desde su panel de usuario. La cancelación tendrá efecto al finalizar el periodo de facturación en curso.\n\nDerecho de desistimiento: conforme a la Directiva 2011/83/UE, el usuario dispone de un plazo de 14 días naturales desde la contratación para desistir del servicio sin necesidad de justificación. No obstante, si el usuario ha comenzado a utilizar el servicio (realizando generaciones de contenido) durante dicho plazo, acepta que el servicio ha comenzado a prestarse y renuncia expresamente al derecho de desistimiento en la parte proporcional del servicio ya consumido. Para ejercer el derecho de desistimiento, el usuario puede contactar a hello@ytubviral.com.',
-              'Payments are processed through Stripe, a third-party payment service provider. YTubViral does not store bank card details. The user may cancel their subscription at any time from their dashboard. Cancellation takes effect at the end of the current billing period.\n\nRight of withdrawal: in accordance with Directive 2011/83/EU, the user has a period of 14 calendar days from the date of purchase to withdraw from the service without giving any reason. However, if the user has begun using the service (by generating content) during that period, the user agrees that the service has started and expressly waives the right of withdrawal for the proportion of the service already consumed. To exercise the right of withdrawal, the user may contact hello@ytubviral.com.'
+              'Los pagos se procesan a través de Stripe, proveedor externo de servicios de pago. YTubViral no almacena datos de tarjetas bancarias. El usuario puede cancelar su suscripción en cualquier momento desde su panel de usuario. La cancelación tendrá efecto al finalizar el periodo de facturación en curso.\n\nDerecho de desistimiento: conforme a la Directiva 2011/83/UE, el usuario dispone de un plazo de 14 días naturales desde la contratación para desistir del servicio sin necesidad de justificación. No obstante, si el usuario ha comenzado a utilizar el servicio (realizando generaciones de contenido) durante dicho plazo, acepta que el servicio ha comenzado a prestarse y renuncia expresamente al derecho de desistimiento en la parte proporcional del servicio ya consumido. Para ejercer el derecho de desistimiento, el usuario puede contactar a legal@ytubviral.com.',
+              'Payments are processed through Stripe, a third-party payment service provider. YTubViral does not store bank card details. The user may cancel their subscription at any time from their dashboard. Cancellation takes effect at the end of the current billing period.\n\nRight of withdrawal: in accordance with Directive 2011/83/EU, the user has a period of 14 calendar days from the date of purchase to withdraw from the service without giving any reason. However, if the user has begun using the service (by generating content) during that period, the user agrees that the service has started and expressly waives the right of withdrawal for the proportion of the service already consumed. To exercise the right of withdrawal, the user may contact legal@ytubviral.com.'
             ),
           },
           {
@@ -84,8 +84,8 @@ export default function TermsPage() {
           {
             title: t('9. Eliminación de cuenta', '9. Account deletion'),
             body: t(
-              'El usuario puede solicitar la eliminación de su cuenta y todos los datos asociados contactando a hello@ytubviral.com. Tras la solicitud, los datos personales serán eliminados en un plazo máximo de 30 días. El historial de generaciones y los datos de uso se eliminarán de forma permanente. Si el usuario tiene una suscripción activa, deberá cancelarla previamente.',
-              'The user may request the deletion of their account and all associated data by contacting hello@ytubviral.com. Following the request, personal data will be deleted within a maximum of 30 days. Generation history and usage data will be permanently deleted. If the user has an active subscription, it must be cancelled beforehand.'
+              'El usuario puede solicitar la eliminación de su cuenta y todos los datos asociados contactando a legal@ytubviral.com. Tras la solicitud, los datos personales serán eliminados en un plazo máximo de 30 días. El historial de generaciones y los datos de uso se eliminarán de forma permanente. Si el usuario tiene una suscripción activa, deberá cancelarla previamente.',
+              'The user may request the deletion of their account and all associated data by contacting legal@ytubviral.com. Following the request, personal data will be deleted within a maximum of 30 days. Generation history and usage data will be permanently deleted. If the user has an active subscription, it must be cancelled beforehand.'
             ),
           },
           {
@@ -119,8 +119,8 @@ export default function TermsPage() {
           {
             title: t('14. Contacto', '14. Contact'),
             body: t(
-              'Para cualquier consulta sobre estos términos: hello@ytubviral.com',
-              'For any questions about these terms: hello@ytubviral.com'
+              'Para cualquier consulta sobre estos términos: legal@ytubviral.com',
+              'For any questions about these terms: legal@ytubviral.com'
             ),
           },
         ].map((s, i) => (

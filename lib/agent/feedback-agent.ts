@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { sendEmailTo } from './gmail-agent';
+import { sendTransactionalEmail } from '@/lib/send-email';
 
 const APP_URL = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
 const FEEDBACK_DELAY_DAYS = 3;
@@ -62,7 +62,12 @@ export async function runFeedbackAgent(): Promise<FeedbackAgentResult> {
       const name = user.name?.split(' ')[0] ?? (lang === 'es' ? 'creador' : 'creator');
       const copy = COPY[lang];
 
-      await sendEmailTo(user.email, copy.subject, copy.body(name, url));
+      const body = copy.body(name, url);
+      await sendTransactionalEmail({
+        to: user.email,
+        subject: copy.subject,
+        html: body.replace(/\n/g, '<br>'),
+      });
 
       await prisma.user.update({
         where: { id: user.id },

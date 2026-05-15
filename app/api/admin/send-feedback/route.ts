@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { sendEmailTo } from '@/lib/agent/gmail-agent';
+import { sendTransactionalEmail } from '@/lib/send-email';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? '';
 const APP_URL = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
@@ -54,7 +54,8 @@ export async function POST(request: Request) {
   const name = user.name?.split(' ')[0] ?? (lang === 'es' ? 'creador' : 'creator');
   const copy = COPY[lang];
 
-  await sendEmailTo(email, copy.subject, copy.body(name, url));
+  const body = copy.body(name, url);
+  await sendTransactionalEmail({ to: email, subject: copy.subject, html: body.replace(/\n/g, '<br>') });
 
   await prisma.user.update({ where: { id: user.id }, data: { feedbackEmailSentAt: new Date() } });
 
