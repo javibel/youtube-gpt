@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'YouTube Trend Explorer — Real-Time Trending Videos | YTubViral',
   description:
-    'Explore YouTube trending videos in real time across 12 countries. Filter by category, language, duration, and engagement. Discover viral content before your competitors. Explorador de tendencias de YouTube en tiempo real.',
+    'Explora vídeos en tendencia de YouTube en tiempo real en 12 países. Filtra por categoría, idioma, duración y engagement.',
   alternates: { canonical: 'https://ytubviral.com/features/trend-explorer' },
   openGraph: {
     title: 'YouTube Trend Explorer — Real-Time Trending | YTubViral',
@@ -216,7 +216,7 @@ export default async function TrendExplorerFeature() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
-            mainEntity: [...FAQ_ES, ...FAQ_EN].map((item) => ({
+            mainEntity: FAQ_ES.map((item) => ({
               '@type': 'Question',
               name: item.q,
               acceptedAnswer: { '@type': 'Answer', text: item.a },

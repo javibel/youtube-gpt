@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'YouTube AI Content Generator — Titles, Scripts & More | YTubViral',
   description:
-    'Generate YouTube titles, descriptions, scripts, captions, thumbnail ideas, Shorts hooks, and series plans with AI. 9 templates, bilingual. Genera contenido para YouTube con IA: títulos, guiones, descripciones y más.',
+    'Genera contenido para YouTube con IA: títulos, guiones, descripciones, hooks para Shorts y más. 9 plantillas listas para usar.',
   alternates: { canonical: 'https://ytubviral.com/features/ai-generator' },
   openGraph: {
     title: 'YouTube AI Content Generator | YTubViral',
@@ -156,7 +156,7 @@ export default async function AIGeneratorFeature() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
-            mainEntity: [...FAQ_ES, ...FAQ_EN].map((item) => ({
+            mainEntity: FAQ_ES.map((item) => ({
               '@type': 'Question',
               name: item.q,
               acceptedAnswer: { '@type': 'Answer', text: item.a },

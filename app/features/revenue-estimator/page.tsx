@@ -151,7 +151,7 @@ export default async function RevenueEstimatorFeature() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
-            mainEntity: [...FAQ_ES, ...FAQ_EN].map((item) => ({
+            mainEntity: FAQ_ES.map((item) => ({
               '@type': 'Question',
               name: item.q,
               acceptedAnswer: { '@type': 'Answer', text: item.a },

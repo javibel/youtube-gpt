@@ -17,10 +17,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = getPost(slug);
   if (!post) return {};
-  const desc = `${post.excerpt.es} | ${post.excerpt.en}`;
   return {
-    title: `${post.title.es} — YTubViral Blog`,
-    description: desc,
+    title: `${post.title.es} | ${post.title.en} — YTubViral`,
+    description: post.excerpt.es,
     alternates: { canonical: `https://ytubviral.com/blog/${slug}` },
     openGraph: {
       title: post.title.es,

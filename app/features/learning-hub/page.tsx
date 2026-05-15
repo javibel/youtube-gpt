@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'YouTube Learning Hub — Free Creator Guides | YTubViral',
   description:
-    '14 free step-by-step guides to grow on YouTube: SEO, keyword research, retention, thumbnails, analytics, A/B testing, AI coaching, trends, and more. Guías gratuitas paso a paso para crecer en YouTube.',
+    '14 guías gratuitas paso a paso para crecer en YouTube: SEO, keywords, retención, thumbnails, analytics, A/B testing, coaching IA y más.',
   alternates: { canonical: 'https://ytubviral.com/features/learning-hub' },
   openGraph: {
     title: 'YouTube Learning Hub — Free Creator Guides | YTubViral',
@@ -185,7 +185,7 @@ export default async function LearningHubFeature() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
-            mainEntity: [...FAQ_ES, ...FAQ_EN].map((item) => ({
+            mainEntity: FAQ_ES.map((item) => ({
               '@type': 'Question',
               name: item.q,
               acceptedAnswer: { '@type': 'Answer', text: item.a },

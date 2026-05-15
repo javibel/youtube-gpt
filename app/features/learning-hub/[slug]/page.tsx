@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const guide = getGuide(slug);
   if (!guide) return {};
   return {
-    title: `${guide.title.es} | ${guide.title.en} — Learning Hub | YTubViral`,
+    title: `${guide.title.es} — Learning Hub | YTubViral`,
     description: guide.description.es,
     alternates: { canonical: `https://ytubviral.com/features/learning-hub/${slug}` },
     openGraph: {

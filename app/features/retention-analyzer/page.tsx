@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'YouTube Retention Analyzer — Hook Score & Drop-Off Points | YTubViral',
   description:
-    'Analyze audience retention curves, hook scores, and drop-off points for your YouTube videos. AI-powered insights to improve watch time. Analiza la retención de audiencia de tus vídeos de YouTube.',
+    'Analiza la retención de audiencia de tus vídeos de YouTube: curvas, hook score, puntos de abandono y consejos de IA para mejorar.',
   alternates: { canonical: 'https://ytubviral.com/features/retention-analyzer' },
   openGraph: {
     title: 'YouTube Retention Analyzer | YTubViral',
@@ -116,7 +116,7 @@ export default async function RetentionAnalyzerFeature() {
         </div>
       </section>
 
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [...FAQ_ES, ...FAQ_EN].map((item) => ({ '@type': 'Question', name: item.q, acceptedAnswer: { '@type': 'Answer', text: item.a } })) }) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ_ES.map((item) => ({ '@type': 'Question', name: item.q, acceptedAnswer: { '@type': 'Answer', text: item.a } })) }) }} />
 
       <section className="max-w-3xl mx-auto px-6 py-20 text-center">
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-4">{t('¿Listo para mejorar tu retención?', 'Ready to improve your retention?')}</h2>

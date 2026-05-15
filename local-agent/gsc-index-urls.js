@@ -48,6 +48,7 @@ async function main() {
     'https://ytubviral.com/blog/thumbnails-youtube-guia-ctr',
     'https://ytubviral.com/blog/como-crear-scripts-youtube-con-ia',
     'https://ytubviral.com/blog/como-monetizar-youtube-2026-guia',
+    'https://ytubviral.com/blog/youtube-neurodivergencia-guia',
     'https://ytubviral.com/features/keyword-research',
     'https://ytubviral.com/features/seo-score',
     'https://ytubviral.com/features/competitor-analysis',

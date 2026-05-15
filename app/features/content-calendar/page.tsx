@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'YouTube Content Calendar — Plan & Schedule Videos | YTubViral',
   description:
-    'Plan your YouTube content with a visual calendar. Track ideas, drafts, scheduled, and published videos. Never miss an upload again. Calendario de contenido para YouTube: planifica y programa tus vídeos.',
+    'Calendario de contenido para YouTube: planifica y programa tus vídeos. Gestiona ideas, borradores y publicaciones en un solo lugar.',
   alternates: { canonical: 'https://ytubviral.com/features/content-calendar' },
   openGraph: {
     title: 'YouTube Content Calendar | YTubViral',
@@ -98,7 +98,7 @@ export default async function ContentCalendarFeature() {
         </div>
       </section>
 
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [...FAQ_ES, ...FAQ_EN].map((item) => ({ '@type': 'Question', name: item.q, acceptedAnswer: { '@type': 'Answer', text: item.a } })) }) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ_ES.map((item) => ({ '@type': 'Question', name: item.q, acceptedAnswer: { '@type': 'Answer', text: item.a } })) }) }} />
 
       <section className="max-w-3xl mx-auto px-6 py-20 text-center">
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-4">{t('¿Listo para organizar tu contenido?', 'Ready to organize your content?')}</h2>
