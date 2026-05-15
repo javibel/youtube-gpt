@@ -446,7 +446,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B09Y2MYL5C',
       en: 'https://www.amazon.co.uk/dp/B09Y2MYL5C',
     },
-    image: '/gear/sony-wh1000xm5.png',
+    image: '/gear/sony-wh1000xm5.webp',
   },
   {
     id: 'loop-quiet-2',
@@ -463,7 +463,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B0D3V6Y38G',
       en: 'https://www.amazon.co.uk/dp/B0D3V61JC8',
     },
-    image: '/gear/loop-quiet-2.png',
+    image: '/gear/loop-quiet-2.webp',
   },
   {
     id: 'time-timer-mod',
@@ -480,7 +480,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://www.amazon.es/dp/B08K9FG8Y7',
       en: 'https://www.amazon.co.uk/dp/B0CKPGLNHZ',
     },
-    image: '/gear/time-timer-mod.png',
+    image: '/gear/time-timer-mod.webp',
   },
   {
     id: 'pilpoc-fidget-cube',
@@ -493,10 +493,10 @@ export const GEAR_ITEMS: GearItem[] = [
     tier: 'budget',
     priceRange: '€15-25',
     amazonUrl: {
-      es: 'https://www.amazon.es/dp/B0992DZSTS',
+      es: 'https://www.amazon.es/dp/B09VLHSXX1',
       en: 'https://www.amazon.co.uk/dp/B0C3BJ8L3B',
     },
-    image: '/gear/pilpoc-fidget-cube.png',
+    image: '/gear/pilpoc-fidget-cube.webp',
   },
   {
     id: 'elgato-key-light-accessibility',
