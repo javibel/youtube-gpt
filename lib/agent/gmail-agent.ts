@@ -105,6 +105,10 @@ const NO_REPLY_PATTERNS = [
   /mailer.?daemon/i, /postmaster@/i,
   /newsletter/i, /unsubscribe/i, /digest@/i,
   /updates?@/i, /alerts?@/i, /info@.*\.(sendgrid|mailchimp|mailgun|sparkpost)/i,
+  /verify@/i, /security@/i, /account.*@/i,
+  /@facebookmail\.com/i, /@linkedin\.com/i, /@x\.com/i, /@twitter\.com/i,
+  /@google\.com/i, /@googlemail\.com/i, /@accounts\.google/i,
+  /api-noreply@/i, /googledev-noreply@/i, /messages-noreply@/i,
 ];
 
 function isNoReply(from: string): boolean {

@@ -21,10 +21,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const guide = getGuide(slug);
   if (!guide) return {};
-  const desc = `${guide.description.es} | ${guide.description.en}`;
   return {
-    title: `${guide.title.es} — Learning Hub | YTubViral`,
-    description: desc,
+    title: `${guide.title.es} | ${guide.title.en} — Learning Hub | YTubViral`,
+    description: guide.description.es,
     alternates: { canonical: `https://ytubviral.com/features/learning-hub/${slug}` },
     openGraph: {
       title: guide.title.es,
