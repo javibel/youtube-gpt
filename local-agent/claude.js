@@ -51,16 +51,29 @@ async function callClaude(prompt, maxTokens = 200) {
 
   // Pattern-based reject (specific phrases)
   const rejectPatterns = [
+    // Meta-commentary about not commenting
     /returning empty/i, /return empty/i, /devuelvo vac[ií]o/i,
     /devuelvo comentario/i, /no devuelvo/i,
     /not commenting/i, /no comento/i, /skip this/i, /I('ll| will) pass/i,
+    /I got nothing/i, /not my (lane|area|expertise)/i, /not gonna comment/i,
+    /nothing to add/i, /nada que aportar/i, /nada que añadir/i,
+    /passing on/i, /I('m| am) passing/i, /paso de/i,
+    /out of place/i, /fuera de lugar/i,
+    /not my area/i, /no es mi área/i, /no es mi tema/i,
+    /looks like a (service |casting )?pitch/i, /parece (un )?pitch/i,
+    /looks like a casting call/i,
+    /doesn't spark/i, /no genera conversación/i,
+    // Promotional/sales detection
     /promotional post/i, /post promocional/i, /sales pitch/i,
     /direct sales/i, /venta directa/i, /commercial post/i,
     /post comercial/i, /this is (a |an )?ad\b/i, /esto es (un )?anuncio/i,
+    /venta de cursos/i,
+    // Claude refusing
     /I('m| am) not going to/i, /no voy a/i,
     /doesn't .* comment/i, /no merece/i,
     /per the (core )?rules/i, /según las reglas/i,
     /not engaging/i, /no interactúo/i,
+    /I('m| am) not comfortable/i, /no me siento cómodo/i,
     /motivacional vac[ií]o/i, /generic hype/i, /motivational air/i,
     /nada que ver con/i, /nothing to .* engage/i,
     /autoayuda genérica/i, /self-help/i,
@@ -70,10 +83,12 @@ async function callClaude(prompt, maxTokens = 200) {
     /I would need/i, /not enough context/i, /can't .* comment/i,
     /ver el contenido/i,
     /I('m| am) not clicking/i, /no voy a hacer clic/i,
+    // AI-sounding generic phrases
     /gran post/i, /great post/i, /totalmente de acuerdo/i,
     /no podr[ií]a estar m[aá]s de acuerdo/i, /couldn't agree more/i,
     /esto es oro/i, /this is gold/i,
     /amazing post/i,
+    // Commercial / self-promo sounding
     /check out my/i, /mira mi/i, /visita mi/i,
     /link in bio/i, /enlace en bio/i,
     /use code/i, /usa el c[oó]digo/i,

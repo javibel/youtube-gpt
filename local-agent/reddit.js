@@ -8,22 +8,32 @@ const { diagnose } = require('./doctor');
 
 const LIMITS = { upvotes: 8, comments: 4 };
 
-// High-priority subreddits where people ask for YouTube help/tools (conversion-focused)
+// HIGH-PRIORITY: people actively asking about YouTube growth/tools (highest conversion)
 const SUBREDDITS_PRIORITY = [
   'NewTubers', 'youtubers', 'SmallYTChannel', 'PartneredYoutube',
-  'CreatorServices', 'contentcreation',
+  'letsplay', 'contentcreation',
 ];
 
-// Secondary subreddits (broader audience, less direct conversion)
-const SUBREDDITS_SECONDARY = [
-  'YouTubeGaming', 'letsplay', 'videopodcast',
-  'socialmedia', 'SEO', 'VideoEditing', 'Filmmakers', 'podcasting',
+// MEDIUM: adjacent audiences that care about content/SEO
+const SUBREDDITS_MEDIUM = [
+  'CreatorServices', 'ContentCreators',
+  'socialmedia', 'SEO', 'VideoEditing',
 ];
 
-// 70% chance of priority subreddit (where people ask for tools)
-const SUBREDDITS = Math.random() < 0.7
-  ? SUBREDDITS_PRIORITY
-  : [...SUBREDDITS_PRIORITY, ...SUBREDDITS_SECONDARY];
+// Pick 2-3 subreddits per session for better reach
+function pickSubreddits() {
+  const picks = [];
+  // Always 1-2 priority
+  const shuffledPri = [...SUBREDDITS_PRIORITY].sort(() => Math.random() - 0.5);
+  picks.push(shuffledPri[0]);
+  if (Math.random() < 0.6) picks.push(shuffledPri[1]);
+  // 40% chance of adding 1 medium
+  if (Math.random() < 0.4) {
+    const med = SUBREDDITS_MEDIUM[Math.floor(Math.random() * SUBREDDITS_MEDIUM.length)];
+    if (!picks.includes(med)) picks.push(med);
+  }
+  return picks;
+}
 
 function delay(min = 1500, max = 4000) {
   const ms = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -171,11 +181,20 @@ async function engageWithPosts(opts = {}) {
   if (!page) return;
 
   try {
-    const subreddit = SUBREDDITS[Math.floor(Math.random() * SUBREDDITS.length)];
-    console.log(`[${tag}] Browsing r/${subreddit}`);
+    const subreddits = pickSubreddits();
+    console.log(`[${tag}] Session subreddits: ${subreddits.map(s => 'r/' + s).join(', ')}`);
 
-    const posts = await collectPosts(page, subreddit, tag);
-    console.log(`[${tag}] Found ${posts.length} posts in r/${subreddit}`);
+    // Collect posts from all selected subreddits
+    let allPosts = [];
+    for (const subreddit of subreddits) {
+      const posts = await collectPosts(page, subreddit, tag);
+      console.log(`[${tag}] Found ${posts.length} posts in r/${subreddit}`);
+      allPosts.push(...posts.map(p => ({ ...p, subreddit })));
+      await delay(1500, 2500);
+    }
+    // Shuffle to avoid predictable patterns
+    allPosts = allPosts.sort(() => Math.random() - 0.5);
+    const posts = allPosts;
 
     let upvotesGiven = 0;
     let commentsGiven = 0;
@@ -219,7 +238,9 @@ async function engageWithPosts(opts = {}) {
         && (post.text.length > 20 || post.title.length > 30)
         && Math.random() < commentChance) {
         try {
-          const postContent = post.text || post.title;
+          const postContent = post.text
+            ? `${post.title}\n\n${post.text}`
+            : post.title;
 
           let comment;
           if (persona) {

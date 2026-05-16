@@ -33,20 +33,10 @@ runSentinel().catch(err => console.error('[sentinel] startup check:', err.messag
 
 // ── Schedules ─────────────────────────────────────────────────────────────────
 
-// Twitter/X engagement — 2 sessions per day at random hours (13-15h and 20-22h Madrid)
-const twitterHour1 = 13 + Math.floor(Math.random() * 2);
-const twitterMin1 = Math.floor(Math.random() * 60);
-cron.schedule(`${twitterMin1} ${twitterHour1} * * *`, async () => {
-  console.log('[cron] Twitter engage (session 1)');
-  await twitter.engageWithTweets().catch(err => console.error('[twitter]', err.message));
-}, { timezone: 'Europe/Madrid' });
-
-const twitterHour2 = 20 + Math.floor(Math.random() * 2);
-const twitterMin2 = Math.floor(Math.random() * 60);
-cron.schedule(`${twitterMin2} ${twitterHour2} * * *`, async () => {
-  console.log('[cron] Twitter engage (session 2)');
-  await twitter.engageWithTweets().catch(err => console.error('[twitter]', err.message));
-}, { timezone: 'Europe/Madrid' });
+// Twitter/X brand engagement — DISABLED (user manages brand Twitter manually)
+// Personas handle Twitter engagement via persona-runner.js
+// const twitterHour1 = 13 + Math.floor(Math.random() * 2);
+// const twitterMin1 = Math.floor(Math.random() * 60);
 
 // Gmail inbox — every 30 min (8-23h)
 cron.schedule('*/30 8-23 * * *', async () => {
@@ -152,8 +142,7 @@ cron.schedule('15 3 * * *', async () => {
 
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');
-console.log(`  Twitter session 1: ${twitterHour1}:${String(twitterMin1).padStart(2, '0')} (Europe/Madrid)`);
-console.log(`  Twitter session 2: ${twitterHour2}:${String(twitterMin2).padStart(2, '0')} (Europe/Madrid)`);
+console.log('  Twitter brand: DISABLED (manual)');
 console.log(`  Personas morning: ${personaHour1}:${String(personaMin1).padStart(2, '0')} (Europe/Madrid)`);
 console.log(`  Personas evening: ${personaHour2}:${String(personaMin2).padStart(2, '0')} (Europe/Madrid)`);
 console.log(`  Follow-up morning: ${followupHour1}:${String(followupMin1).padStart(2, '0')} (Europe/Madrid)`);
@@ -161,9 +150,7 @@ console.log(`  Follow-up evening: ${followupHour2}:${String(followupMin2).padSta
 console.log('  Gmail inbox: every 30min 8-23h (Europe/Madrid)');
 console.log('  Daily report: 08:05 (Europe/Madrid)');
 console.log('  Persona reports: 12:00, 00:00 (Europe/Madrid)');
-console.log('  Guardian: 02:15 daily (Europe/Madrid)');
-console.log('  Scout: 02:30 Mondays (Europe/Madrid)');
-console.log('  Watchdog: 02:45 Mondays (Europe/Madrid)');
+console.log('  Social Optimizer: 03:00 daily (Europe/Madrid)');
 console.log('  Manager: 03:15 daily (Europe/Madrid)');
 
 // Keep process alive

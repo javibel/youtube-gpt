@@ -207,11 +207,11 @@ async function engageWithTweets(opts = {}) {
     });
 
     if (!tweets || tweets.length === 0) {
-      console.log(`[${tag}] No tweets found for #${hashtag}`);
+      console.log(`[${tag}] No tweets found for "${query}"`);
       return;
     }
 
-    console.log(`[${tag}] Found ${tweets.length} tweets for #${hashtag}`);
+    console.log(`[${tag}] Found ${tweets.length} tweets for "${query}"`);
 
     let likesGiven = 0;
     let repliesGiven = 0;
