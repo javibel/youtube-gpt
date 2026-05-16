@@ -1,7 +1,11 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const db = require('./db');
 const { generateEmailReply } = require('./claude');
+
+const REPORTS_DIR = path.join(__dirname, 'reports');
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
@@ -143,12 +147,29 @@ function hasListUnsubscribe(headers) {
   return headers.some(h => h.name.toLowerCase() === 'list-unsubscribe');
 }
 
+// SaaSHub newsletters NOT about our vertical → ignore (Property Management, Rental, etc.)
+function isSaashubIrrelevantNewsletter(from, subject) {
+  if (!from.toLowerCase().includes('saashub.com')) return false;
+  const subLower = subject.toLowerCase();
+  // Only keep: approval/verification emails, or newsletters mentioning youtube/video/creator/ai tools
+  if (subLower.includes('approved') || subLower.includes('verified') || subLower.includes('ytubviral')) return false;
+  if (subLower.includes('youtube') || subLower.includes('video') || subLower.includes('creator') || subLower.includes('ai tool')) return false;
+  // Generic SaaSHub "Top 15 X" newsletters about unrelated categories
+  if (subLower.includes('top 15') || subLower.includes('top 10') || subLower.includes('experts')) return true;
+  return false;
+}
+
 // Classify an email: 'important' | 'actionable' | 'ignore'
 function classifyEmail(from, subject, snippet, headers = []) {
   const fromLower = from.toLowerCase();
   const subjectLower = subject.toLowerCase();
   const snippetLower = (snippet || '').toLowerCase();
   const combined = `${subjectLower} ${snippetLower}`;
+
+  // 0. Filter irrelevant SaaSHub newsletters before anything else
+  if (isSaashubIrrelevantNewsletter(from, subject)) {
+    return 'ignore';
+  }
 
   // 1. Check important senders FIRST (even if they match no-reply patterns)
   if (IMPORTANT_SENDERS.some(s => fromLower.includes(s))) {
@@ -301,6 +322,7 @@ async function processInbox() {
   }
 
   console.log(`[gmail] Processing ${messages.length} unread messages`);
+  const processedEmails = []; // Track for daily report
 
   for (const { id: messageId } of messages) {
     try {
@@ -341,6 +363,7 @@ async function processInbox() {
         await forwardToOwner(token, { from, subject, body, snippet });
         console.log(`[gmail] Forwarded to owner: "${subject}"`);
         await saveMessage({ from, content: (body || snippet), replied: false, externalId: threadId });
+        processedEmails.push({ classification: 'important', from: senderEmail, subject, snippet: (snippet || '').slice(0, 200) });
         await markAsRead(token, messageId);
         continue;
       }
@@ -359,11 +382,13 @@ async function processInbox() {
         });
         console.log(`[gmail] Replied to ${senderEmail} (BCC owner): "${reply.slice(0, 60)}..."`);
         await saveMessage({ from, content: (body || snippet), replied: true, replyContent: reply, externalId: threadId });
+        processedEmails.push({ classification: 'actionable', from: senderEmail, subject, replied: true, snippet: (snippet || '').slice(0, 200) });
       } else {
         // AI couldn't generate a reply — forward to owner instead
         await forwardToOwner(token, { from, subject, body, snippet });
         console.log(`[gmail] No auto-reply possible, forwarded to owner: "${subject}"`);
         await saveMessage({ from, content: (body || snippet), replied: false, externalId: threadId });
+        processedEmails.push({ classification: 'actionable', from: senderEmail, subject, replied: false, snippet: (snippet || '').slice(0, 200) });
       }
 
       await markAsRead(token, messageId);
@@ -371,6 +396,17 @@ async function processInbox() {
     } catch (err) {
       console.error(`[gmail] Error processing message ${messageId}:`, err.message);
     }
+  }
+
+  // Save daily report for Manager to pick up
+  if (processedEmails.length > 0) {
+    const today = new Date().toISOString().slice(0, 10);
+    const reportFile = path.join(REPORTS_DIR, `gmail-${today}.json`);
+    let existing = [];
+    try { existing = JSON.parse(fs.readFileSync(reportFile, 'utf-8')); } catch {}
+    const merged = [...existing, ...processedEmails];
+    if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR, { recursive: true });
+    fs.writeFileSync(reportFile, JSON.stringify(merged, null, 2));
   }
 
   console.log('[gmail] Inbox processing complete');

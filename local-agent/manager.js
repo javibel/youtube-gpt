@@ -118,6 +118,23 @@ function buildRawSummary(date) {
     }
   }
 
+  // Gmail — emails procesados hoy
+  const gmailReport = readReport('gmail', date);
+  if (gmailReport && Array.isArray(gmailReport) && gmailReport.length > 0) {
+    const important = gmailReport.filter(e => e.classification === 'important');
+    const actionable = gmailReport.filter(e => e.classification === 'actionable');
+    const emailSummary = gmailReport.map(e =>
+      `[${e.classification.toUpperCase()}] ${e.from}: "${e.subject}"`
+    ).join('\n');
+    sections.push({
+      agent: 'Gmail (Correo)',
+      status: important.length > 0 ? 'ATENCIÓN' : 'OK',
+      data: `Importantes: ${important.length}, Accionables: ${actionable.length}. Total procesados: ${gmailReport.length}`,
+      ai: emailSummary,
+      duration: 0,
+    });
+  }
+
   // API usage stats
   const apiStats = getStats();
   sections.push({
