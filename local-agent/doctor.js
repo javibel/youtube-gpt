@@ -50,6 +50,21 @@ const KNOWN_PATTERNS = [
     severity: 'high',
     fix: async (err, ctx) => {
       const absDir = path.resolve(__dirname, ctx.profileDir);
+      // Step 1: Try cleaning stale lock files (most common cause)
+      const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'DevToolsActivePort'];
+      let cleaned = false;
+      for (const f of lockFiles) {
+        const fp = path.join(absDir, f);
+        if (fs.existsSync(fp)) { try { fs.unlinkSync(fp); cleaned = true; } catch {} }
+      }
+      // Also clean Default/LOCK
+      const defaultLock = path.join(absDir, 'Default', 'LOCK');
+      if (fs.existsSync(defaultLock)) { try { fs.unlinkSync(defaultLock); cleaned = true; } catch {} }
+
+      if (cleaned) {
+        return { healed: true, action: 'Cleaned stale lock files from Chrome profile. Retry should work.' };
+      }
+      // Step 2: If no lock files found, profile is truly corrupt — rename it
       const backup = `${absDir}-corrupt-${new Date().toISOString().slice(0, 10)}`;
       if (fs.existsSync(backup)) fs.rmSync(backup, { recursive: true, force: true });
       fs.renameSync(absDir, backup);

@@ -133,17 +133,32 @@ async function getRecentComments(platform, daysBack = 7, accountId = null) {
 }
 
 async function saveFollowup({ platform, originalActionId, postUrl, replyAuthor, replyContent, ourResponse, accountId = null }) {
-  await query(`
-    INSERT INTO followup_checks (platform, original_action_id, post_url, reply_author, reply_content, our_response, responded, account_id, created_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-  `, [platform, originalActionId, postUrl, replyAuthor, replyContent, ourResponse, !!ourResponse, accountId]);
+  // Upsert: if we previously detected but didn't respond, update the existing row
+  const existing = await query(`
+    SELECT id FROM followup_checks WHERE platform = $1 AND post_url = $2 AND reply_author = $3
+    AND (account_id = $4 OR ($4 IS NULL AND account_id IS NULL))
+  `, [platform, postUrl, replyAuthor, accountId]);
+
+  if (existing.length > 0) {
+    await query(`
+      UPDATE followup_checks SET our_response = $1, responded = $2, original_action_id = COALESCE($3, original_action_id), created_at = NOW()
+      WHERE id = $4
+    `, [ourResponse, !!ourResponse, originalActionId, existing[0].id]);
+  } else {
+    await query(`
+      INSERT INTO followup_checks (platform, original_action_id, post_url, reply_author, reply_content, our_response, responded, account_id, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+    `, [platform, originalActionId, postUrl, replyAuthor, replyContent, ourResponse, !!ourResponse, accountId]);
+  }
 }
 
 async function hasFollowup(platform, postUrl, replyAuthor, accountId = null) {
+  // Only skip if we already RESPONDED, or if detected < 6h ago (avoid re-processing same cycle)
   const rows = await query(`
     SELECT COUNT(*) as count FROM followup_checks
     WHERE platform = $1 AND post_url = $2 AND reply_author = $3
     AND (account_id = $4 OR ($4 IS NULL AND account_id IS NULL))
+    AND (responded = true OR created_at > NOW() - INTERVAL '6 hours')
   `, [platform, postUrl, replyAuthor, accountId]);
   return parseInt(rows[0]?.count ?? '0') > 0;
 }
