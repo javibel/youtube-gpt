@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useState } from 'react';
+import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import GuideCard from '@/components/GuideCard';
 import { LEARN_GUIDES } from '@/lib/learn-data';
@@ -29,10 +29,8 @@ const LEARNING_PATHS: { title: Record<Lang, string>; desc: Record<Lang, string>;
 ];
 
 export default function LearnPage() {
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [filter, setFilter] = useState<'all' | 'beginner' | 'intermediate' | 'advanced'>('all');
-
-  useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   const filtered = filter === 'all' ? LEARN_GUIDES : LEARN_GUIDES.filter((g) => g.level === filter);

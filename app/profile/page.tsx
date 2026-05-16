@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { getLangClient, setLangClient } from '@/lib/get-lang-client';
+import { setLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import PasswordInput from '@/components/PasswordInput';
 
@@ -18,7 +19,8 @@ type UserData = {
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>('es');
+  const serverLang = useLang();
+  const [lang, setLang] = useState<Lang>(serverLang);
   const [data, setData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [nameInput, setNameInput] = useState('');
@@ -32,8 +34,6 @@ export default function ProfilePage() {
   const [pwdError, setPwdError] = useState('');
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdSuccess, setPwdSuccess] = useState(false);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');

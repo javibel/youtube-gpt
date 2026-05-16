@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 const PlaybackModal = lazy(() => import('@/components/PlaybackModal'));
@@ -74,7 +74,7 @@ export default function DashboardPage() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewSaved, setReviewSaved] = useState(false);
   const [existingReview, setExistingReview] = useState<{ rating: number; text: string; status: string } | null>(null);
-  const [lang, setLang] = useState<'es'|'en'>('es');
+  const lang = useLang();
   const [previewGen, setPreviewGen] = useState<{ id: string; output: string; title?: string } | null>(null);
   const [dailyTip, setDailyTip] = useState<{ es: string; en: string } | null>(null);
 
@@ -149,8 +149,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
   }, [status, router]);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     if (status === 'authenticated') {

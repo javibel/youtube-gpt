@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 type Tab = 'explore' | 'alerts';
@@ -113,7 +113,7 @@ function vphColor(vph: number): string {
 
 export default function TrendsPage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [tab, setTab] = useState<Tab>('explore');
 
   // Alert state
@@ -132,8 +132,6 @@ export default function TrendsPage() {
   const [langFilter, setLangFilter] = useState<string>('all');
   const [durationFilter, setDurationFilter] = useState<string>('all');
   const [minLikes, setMinLikes] = useState<string>('0');
-
-  useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   // Load alerts

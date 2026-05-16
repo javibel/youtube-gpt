@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -54,12 +54,11 @@ function fmtNum(n: number | null | undefined): string {
 
 export default function RevenuePage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [data, setData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   useEffect(() => {

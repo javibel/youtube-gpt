@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import DashboardShell from '@/components/DashboardShell';
@@ -102,7 +102,7 @@ function ScoreRing({ score, color, label }: { score: number; color: string; labe
 function ResearchPageInner() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ResearchResult | null>(null);
@@ -113,8 +113,6 @@ function ResearchPageInner() {
   const [activeTab, setActiveTab] = useState<ResearchTab>('keywords');
   const [questionsResult, setQuestionsResult] = useState<QuestionsResult | null>(null);
   const [questionsLoading, setQuestionsLoading] = useState(false);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   // No redirect — show public landing if unauthenticated
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -141,13 +141,11 @@ function MiniRing({ score, size = 48 }: { score: number; size?: number }) {
 
 export default function AuditPage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState<AuditData | null>(null);
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 

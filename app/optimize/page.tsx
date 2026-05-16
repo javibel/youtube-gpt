@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
@@ -109,7 +109,7 @@ function CheckDot({ ok }: { ok: boolean }) {
 
 export default function OptimizePage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   // State
@@ -135,8 +135,6 @@ export default function OptimizePage() {
 
   // Debounce score calculation
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   // Load videos list
   const loadVideos = useCallback(async () => {

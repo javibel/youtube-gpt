@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -65,15 +66,14 @@ const COPY = {
 };
 
 export default function LaunchPage() {
-  const [lang, setLang] = useState<Lang>('es');
+  const serverLang = useLang();
+  const [lang, setLang] = useState<Lang>(serverLang);
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'loading' | 'success' | 'already' | 'error'>('idle');
   const [count, setCount] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    const saved = document.cookie.match(/lang=(es|en)/);
-    if (saved) setLang(saved[1] as Lang);
     fetch('/api/waitlist').then(r => r.json()).then(d => setCount(d.count)).catch(() => {});
   }, []);
 

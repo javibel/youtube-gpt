@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLang } from '@/components/LangProvider';
 
 type Phase = 'syncing' | 'success' | 'error';
 type Lang = 'es' | 'en';
@@ -9,12 +10,7 @@ type Lang = 'es' | 'en';
 export default function StripeSuccessPage() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>('syncing');
-  const [lang, setLang] = useState<Lang>('es');
-
-  useEffect(() => {
-    const stored = localStorage.getItem('ytubviral_lang') as Lang | null;
-    if (stored === 'en' || stored === 'es') setLang(stored);
-  }, []);
+  const lang = useLang();
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 

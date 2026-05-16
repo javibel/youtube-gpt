@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useRouter } from 'next/navigation';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -45,13 +45,11 @@ function cellColor(val: number): string {
 export default function BestTimePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState<AnalysisData | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{ day: number; hour: number } | null>(null);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 

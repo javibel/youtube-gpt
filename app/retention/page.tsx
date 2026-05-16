@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -205,7 +205,7 @@ function InteractiveRetentionCurve({
 
 export default function RetentionPage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [videos, setVideos] = useState<VideoRetention[]>([]);
@@ -214,8 +214,6 @@ export default function RetentionPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   async function analyze() {

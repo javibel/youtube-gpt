@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
@@ -61,14 +61,12 @@ function scoreLabel(score: number, lang: Lang): string {
 export default function SeoScorePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [scores, setScores] = useState<VideoScore[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 

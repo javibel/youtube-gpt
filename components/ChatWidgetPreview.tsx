@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from './LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -23,10 +23,8 @@ const PREVIEW_MESSAGES: Record<Lang, { role: string; content: string }[]> = {
 
 export default function ChatWidgetPreview() {
   const [isOpen, setIsOpen] = useState(false);
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const { status } = useSession();
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   // Si está autenticado, el widget real (ChatWidget) lo gestiona desde el layout
   if (status === 'authenticated') return null;

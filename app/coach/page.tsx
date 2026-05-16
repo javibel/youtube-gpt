@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
@@ -78,15 +78,13 @@ const MODE_COLORS: Record<CoachMode, string> = {
 export default function CoachPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [mode, setMode] = useState<CoachMode>('analyze');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 

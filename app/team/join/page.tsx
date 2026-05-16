@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -20,14 +20,12 @@ function TeamJoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {

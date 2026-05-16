@@ -25,7 +25,7 @@ const alertsSent = new Set();
  */
 async function safeGoto(page, url, opts = {}) {
   const tag = opts.tag || 'browser';
-  const timeout = opts.timeout || 45000;
+  const timeout = opts.timeout || 60000;
   const waitUntil = opts.waitUntil || 'domcontentloaded';
   const maxRetries = opts.retries || 2;
 
@@ -36,7 +36,8 @@ async function safeGoto(page, url, opts = {}) {
     } catch (err) {
       const isTimeout = err.message.includes('timeout') || err.message.includes('Timeout');
       if (attempt < maxRetries && isTimeout) {
-        console.log(`[${tag}] Navigation timeout (attempt ${attempt}/${maxRetries}), retrying in ${attempt * 3}s...`);
+        console.log(`[${tag}] Navigation timeout (attempt ${attempt}/${maxRetries}), reloading page before retry...`);
+        try { await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 }); } catch (_) {}
         await new Promise(r => setTimeout(r, 3000 * attempt));
         continue;
       }

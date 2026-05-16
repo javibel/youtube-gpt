@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -45,7 +45,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function TeamPage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [team, setTeam] = useState<Team | null>(null);
   const [myRole, setMyRole] = useState('');
   const [loading, setLoading] = useState(true);
@@ -58,8 +58,6 @@ export default function TeamPage() {
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
   const isOwnerOrAdmin = myRole === 'owner' || myRole === 'admin';
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     if (status !== 'authenticated') return;

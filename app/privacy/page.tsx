@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 export default function PrivacyPage() {
-  const [lang, setLang] = useState<'es'|'en'>('es');
-  useEffect(() => { setLang(getLangClient()); }, []);
+  const lang = useLang();
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   return (

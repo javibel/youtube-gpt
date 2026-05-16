@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -46,7 +46,7 @@ const NICHE_OPTIONS = [
 
 export default function BulkGeneratePage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [template, setTemplate] = useState('title');
   const [topicsText, setTopicsText] = useState('');
   const [tone, setTone] = useState('viral');
@@ -61,8 +61,6 @@ export default function BulkGeneratePage() {
   const [copied, setCopied] = useState<number | null>(null);
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   const topics = topicsText.split('\n').map(l => l.trim()).filter(Boolean);
   const tmpl = TEMPLATES[template];

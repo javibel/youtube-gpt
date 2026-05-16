@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from './LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -15,7 +15,7 @@ const t = (lang: Lang, es: string, en: string) => lang === 'en' ? en : es;
 
 export default function ChatWidget() {
   const { status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -26,8 +26,6 @@ export default function ChatWidget() {
   const [lastSentAt, setLastSentAt] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

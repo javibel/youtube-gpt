@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 type ViewMode = 'search' | 'home' | 'suggested';
@@ -133,7 +133,7 @@ function YTSuggestedItem({ thumb, title, channel, views, date, isUser, lang }: {
 
 export default function ThumbnailPreviewPage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [keyword, setKeyword] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -144,8 +144,6 @@ export default function ThumbnailPreviewPage() {
   const [ctrAnalysis, setCtrAnalysis] = useState<CtrAnalysis | null>(null);
   const [insertPosition, setInsertPosition] = useState(2);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {

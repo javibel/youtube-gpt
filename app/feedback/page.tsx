@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useLang } from '@/components/LangProvider';
 
 const COPY = {
   es: {
@@ -38,7 +39,8 @@ function FeedbackForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
-  const [lang, setLang] = useState<Lang>('es');
+  const serverLang = useLang();
+  const [lang, setLang] = useState<Lang>(serverLang);
   const [status, setStatus] = useState<'loading' | 'ready' | 'done' | 'already' | 'invalid'>('loading');
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);

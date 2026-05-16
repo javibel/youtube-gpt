@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
@@ -97,7 +97,7 @@ function Sparkline({ points, color = '#9B2020' }: { points: number[]; color?: st
 export default function CompetitorTrackingPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -111,8 +111,6 @@ export default function CompetitorTrackingPage() {
   const [newUploads, setNewUploads] = useState<TrendingVideo[]>([]);
   const [opportunities, setOpportunities] = useState<MissedOpportunity[]>([]);
   const [intelLoading, setIntelLoading] = useState(false);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   useEffect(() => {

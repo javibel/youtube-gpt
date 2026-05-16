@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLang } from '@/components/LangProvider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -10,7 +11,6 @@ import ProVideoSection from '@/components/ProVideoSection';
 import GuideCard from '@/components/GuideCard';
 import { getGuide, getRelatedGuides, GUIDE_BODIES } from '@/lib/learn-data';
 import type { PlanType } from '@/lib/plans';
-import { getLangClient } from '@/lib/get-lang-client';
 
 type Lang = 'es' | 'en';
 
@@ -24,10 +24,8 @@ const LEVEL_LABELS: Record<string, Record<Lang, string>> = {
 export default function LearnGuidePage() {
   const params = useParams();
   const slug = params.slug as string;
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [plan, setPlan] = useState<PlanType>('free');
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   useEffect(() => {
     fetch('/api/user/stats')

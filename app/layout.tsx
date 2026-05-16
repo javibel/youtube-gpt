@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import SessionProviderWrapper from "@/components/SessionProviderWrapper";
+import { LangProvider } from "@/components/LangProvider";
 import ChatWidget from "@/components/ChatWidget";
 import "./globals.css";
 
@@ -124,10 +125,12 @@ export default async function RootLayout({
         />
       </head>
       <body>
-        <SessionProviderWrapper>
-          {children}
-          <ChatWidget />
-        </SessionProviderWrapper>
+        <LangProvider lang={lang as 'es' | 'en'}>
+          <SessionProviderWrapper>
+            {children}
+            <ChatWidget />
+          </SessionProviderWrapper>
+        </LangProvider>
       </body>
     </html>
   );

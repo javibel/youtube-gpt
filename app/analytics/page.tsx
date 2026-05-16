@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
@@ -61,12 +61,10 @@ function barColor(i: number): string {
 
 export default function AnalyticsPage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState<AnalyticsData | null>(null);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 

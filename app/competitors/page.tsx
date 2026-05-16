@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 
 type Lang = 'es' | 'en';
@@ -57,7 +57,7 @@ const EXAMPLE_URLS = [
 export default function CompetitorsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -65,8 +65,6 @@ export default function CompetitorsPage() {
   const [outliers, setOutliers] = useState<OutlierResult | null>(null);
   const [outliersLoading, setOutliersLoading] = useState(false);
   const [outlierPeriod, setOutlierPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('all');
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   // Fetch outliers when we have a result or period changes
   useEffect(() => {

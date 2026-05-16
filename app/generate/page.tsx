@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import LimitReachedModal from '@/components/LimitReachedModal';
 import { TEMPLATES } from '@/utils/prompts';
 import { callClaudeAPI } from '@/utils/claudeAPI';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 
@@ -54,7 +54,7 @@ export default function GeneratePage() {
   const [limit, setLimit] = useState<number>(10);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isPro, setIsPro] = useState<boolean>(false);
-  const [lang, setLang] = useState<'es'|'en'>('es');
+  const lang = useLang();
   const [showLimitModal, setShowLimitModal] = useState<boolean>(false);
   const [modalReason, setModalReason] = useState<'limit' | 'pro_feature'>('limit');
   const [copied, setCopied] = useState(false);
@@ -67,8 +67,6 @@ export default function GeneratePage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
   }, [status, router]);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   // Pre-fill topic from query param (e.g. from Calendar)
   useEffect(() => {

@@ -33,8 +33,8 @@ async function callClaude(prompt, maxTokens = 200) {
   if (/^vac[ií]o/i.test(text)) return '';
   if (/^(N\/A|n\/a|none|ninguno|pass|skip)/i.test(text)) return '';
 
-  // 3. Too long for a genuine social media comment (>300 chars = probably an explanation)
-  if (text.length > 300) return '';
+  // 3. Too long for a genuine social media comment (>500 chars = probably an explanation)
+  if (text.length > 500) return '';
 
   // 4. Contains em-dash (—) followed by explanation = meta-commentary pattern
   //    e.g. "I'm not commenting — this is a sales pitch"
@@ -61,19 +61,16 @@ async function callClaude(prompt, maxTokens = 200) {
     /autoayuda genérica/i, /self-help/i,
     /huele a/i,
     // Claude refusing
-    /no puedo/i, /no tengo suficiente/i, /necesitar[ií]a/i,
+    /no puedo generar/i, /no tengo suficiente/i,
     /basándome solo/i, /sin contexto/i, /cannot write/i,
-    /I can't/i, /I would need/i, /not enough context/i,
-    /contenido real/i, /ver el contenido/i,
+    /I would need/i, /not enough context/i,
+    /ver el contenido/i,
     /I('m| am) not clicking/i, /no voy a hacer clic/i,
-    // AI-sounding generic phrases
+    // AI-sounding generic phrases (only the most obvious ones)
     /gran post/i, /great post/i, /totalmente de acuerdo/i,
     /no podr[ií]a estar m[aá]s de acuerdo/i, /couldn't agree more/i,
-    /excelente aporte/i, /qu[eé] buena onda/i,
     /esto es oro/i, /this is gold/i,
-    /me encanta esto/i, /love this/i,
-    /amazing post/i, /incredible/i, /incre[ií]ble/i,
-    /what a great/i, /qu[eé] gran/i,
+    /amazing post/i,
     // Commercial / self-promo sounding
     /check out my/i, /mira mi/i, /visita mi/i,
     /link in bio/i, /enlace en bio/i,

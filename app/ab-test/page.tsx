@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { getLangClient } from '@/lib/get-lang-client';
+import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
 
@@ -58,7 +58,7 @@ function progressPct(start: Date, end: Date): number {
 
 export default function AbTestPage() {
   const { data: session, status } = useSession();
-  const [lang, setLang] = useState<Lang>('es');
+  const lang = useLang();
   const [videos, setVideos] = useState<Video[]>([]);
   const [tests, setTests] = useState<AbTest[]>([]);
   const [channelConnected, setChannelConnected] = useState(false);
@@ -72,8 +72,6 @@ export default function AbTestPage() {
   const [loadingVideos, setLoadingVideos] = useState(true);
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
-
-  useEffect(() => { setLang(getLangClient()); }, []);
 
   // Load videos and tests on mount
   useEffect(() => {
