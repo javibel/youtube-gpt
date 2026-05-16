@@ -7,14 +7,39 @@ const { safeGoto, safeEval, alertSessionExpired } = require('./resilience');
 const { readingPause, commentPause } = require('./humanize');
 
 // Limits per platform per day
-const FOLLOWUP_LIMITS = { twitter: 2, reddit: 2 };
+const FOLLOWUP_LIMITS = { twitter: 4, reddit: 4 };
 
 // How many days back to look for our comments that might have replies
-const DAYS_BACK = 7;
+const DAYS_BACK = 14;
 
 function delay(min = 1500, max = 4000) {
   const ms = Math.floor(Math.random() * (max - min + 1)) + min;
   return new Promise(r => setTimeout(r, ms));
+}
+
+// Fuzzy matching: check if our comment matches the context by word overlap
+// Reddit/Twitter reformat text (entities, truncation, markdown), so exact match fails
+function fuzzyMatchComment(ourContent, contextTexts) {
+  if (!ourContent || ourContent.length < 10) return false;
+  // Extract significant words (4+ chars, lowercase, no common words)
+  const stopWords = new Set(['this', 'that', 'with', 'from', 'have', 'been', 'would', 'could', 'should', 'about', 'their', 'there', 'them', 'they', 'what', 'when', 'your', 'para', 'como', 'pero', 'también', 'esto', 'eso', 'más', 'que', 'una', 'los', 'las', 'del', 'con']);
+  const getWords = (text) => text.toLowerCase().replace(/[^a-záéíóúñü0-9\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !stopWords.has(w));
+
+  const ourWords = getWords(ourContent);
+  if (ourWords.length < 3) return false;
+  const ourSet = new Set(ourWords.slice(0, 20)); // First 20 significant words
+
+  for (const ctx of contextTexts) {
+    const ctxWords = getWords(ctx);
+    let matches = 0;
+    for (const word of ctxWords) {
+      if (ourSet.has(word)) matches++;
+    }
+    // If 40%+ of our significant words appear in the context, it's a match
+    const ratio = matches / ourSet.size;
+    if (ratio >= 0.4 && matches >= 3) return true;
+  }
+  return false;
 }
 
 // ── Twitter: check notifications for replies ──
@@ -133,18 +158,72 @@ async function checkTwitterFollowups(opts = {}) {
         return texts;
       }) || [];
 
-      // Match our original comment
+      // Match our original comment using fuzzy word overlap (exact matching fails due to reformatting)
       let ourOriginal = null;
       for (const comment of ourComments) {
         if (!comment.content) continue;
+        // Try exact snippet first (fast path)
         const snippet = comment.content.slice(0, 40);
         if (context.some(t => t.includes(snippet))) {
+          ourOriginal = comment;
+          break;
+        }
+        // Fuzzy fallback — word overlap matching
+        if (fuzzyMatchComment(comment.content, context)) {
           ourOriginal = comment;
           break;
         }
       }
 
       if (!ourOriginal) {
+        // Even without matching our original, if someone replied to us, try to respond
+        // (the mention IS in our notifications, so it's likely a reply to us)
+        if (mention.text.length > 10) {
+          console.log(`[${tag}] Can't match original but replying to mention from ${mention.author}`);
+          const reply = await generateFollowupReply(
+            'twitter', '(context unavailable)', mention.text, mention.author,
+            persona, !persona && Math.random() < 0.15
+          );
+          if (reply) {
+            try {
+              const replyClicked = await safeEval(page, () => {
+                const articles = document.querySelectorAll('article[data-testid="tweet"]');
+                const target = articles[articles.length - 1] || articles[0];
+                if (!target) return false;
+                const replyBtn = target.querySelector('button[data-testid="reply"]');
+                if (replyBtn) { replyBtn.click(); return true; }
+                return false;
+              });
+              if (replyClicked) {
+                await delay(1500, 2500);
+                const textArea = await page.$('div[data-testid="tweetTextarea_0"]');
+                if (textArea) {
+                  await textArea.click();
+                  await delay(500, 1000);
+                  await page.keyboard.type(reply, { delay: 50 });
+                  await delay(1000, 2000);
+                  const submitBtn = await page.$('button[data-testid="tweetButtonInline"]');
+                  if (submitBtn) {
+                    await submitBtn.click();
+                    await delay(2000, 3000);
+                    followupsGiven++;
+                    await db.saveFollowup({
+                      platform: 'twitter', originalActionId: null,
+                      postUrl: mention.tweetUrl, replyAuthor: mention.author,
+                      replyContent: mention.text, ourResponse: reply, accountId,
+                    });
+                    await db.saveAction({ type: 'x_reply', profileUrl: mention.tweetUrl, content: reply, accountId });
+                    console.log(`[${tag}] Follow-up (no match) to ${mention.author}: "${reply.slice(0, 60)}..."`);
+                  }
+                }
+              }
+            } catch (err) {
+              console.error(`[${tag}] Reply error (no match): ${err.message}`);
+            }
+            await commentPause();
+            continue;
+          }
+        }
         await db.saveFollowup({
           platform: 'twitter', originalActionId: null,
           postUrl: mention.tweetUrl, replyAuthor: mention.author,
@@ -156,7 +235,8 @@ async function checkTwitterFollowups(opts = {}) {
       console.log(`[${tag}] ${mention.author} replied to our comment: "${mention.text.slice(0, 60)}..."`);
       await readingPause();
 
-      const shouldMention = !persona && Math.random() < 0.15;
+      // Follow-ups are the best moment to mention YTubViral — someone is engaged with us
+      const shouldMention = persona ? (Math.random() < (persona.mentionRate || 0.25) * 1.5) : (Math.random() < 0.30);
       const reply = await generateFollowupReply(
         'twitter', ourOriginal.content, mention.text, mention.author,
         persona, shouldMention
@@ -319,18 +399,90 @@ async function checkRedditFollowups(opts = {}) {
       const alreadyHandled = await db.hasFollowup('reddit', msg.contextUrl, msg.author, accountId);
       if (alreadyHandled) continue;
 
-      // Match to our original comment
+      // Match to our original comment — use fuzzy matching (Reddit reformats heavily)
       let ourOriginal = null;
       for (const comment of ourComments) {
         if (!comment.content) continue;
+        // Try exact snippet first
         const snippet = comment.content.slice(0, 40);
-        if (msg.parentText.includes(snippet)) {
+        if (msg.parentText && msg.parentText.includes(snippet)) {
+          ourOriginal = comment;
+          break;
+        }
+        // Fuzzy matching on parentText
+        if (msg.parentText && fuzzyMatchComment(comment.content, [msg.parentText])) {
+          ourOriginal = comment;
+          break;
+        }
+        // URL matching: if the contextUrl contains the same post we commented on
+        if (comment.post_url && msg.contextUrl && msg.contextUrl.includes(comment.post_url.split('/comments/')[1]?.split('/')[0] || '___none___')) {
           ourOriginal = comment;
           break;
         }
       }
 
       if (!ourOriginal) {
+        // Even if we can't match our original, if someone replied in our inbox it's to us — respond
+        if (msg.body.length > 10) {
+          console.log(`[${tag}] Can't match original but ${msg.author} replied in inbox, responding...`);
+          const shouldMention = persona ? (Math.random() < (persona.mentionRate || 0.15)) : (Math.random() < 0.12);
+          const reply = await generateFollowupReply(
+            'reddit', msg.parentText || '(context unavailable)', msg.body, msg.author,
+            persona, shouldMention
+          );
+          if (reply) {
+            try {
+              const navOk = await safeGoto(page, msg.contextUrl, { tag, timeout: 45000 });
+              if (navOk) {
+                await delay(2000, 3000);
+                const replyLinkClicked = await safeEval(page, (replyAuthor) => {
+                  const comments = document.querySelectorAll('.comment');
+                  for (const comment of comments) {
+                    const authorEl = comment.querySelector('.author');
+                    if (authorEl?.textContent?.trim() === replyAuthor) {
+                      const buttons = comment.querySelectorAll('.buttons a, .flat-list a');
+                      for (const btn of buttons) {
+                        if (btn.textContent?.trim().toLowerCase() === 'reply') {
+                          btn.click();
+                          return true;
+                        }
+                      }
+                    }
+                  }
+                  return false;
+                }, msg.author);
+
+                if (replyLinkClicked) {
+                  await delay(1000, 2000);
+                  const commentBox = await page.$('.usertext-edit textarea, textarea[name="text"]');
+                  if (commentBox) {
+                    await commentBox.click();
+                    await delay(500, 1000);
+                    await page.keyboard.type(reply, { delay: 40 });
+                    await delay(1000, 2000);
+                    const submitBtn = await page.$('.usertext-edit button[type="submit"], button.save');
+                    if (submitBtn) {
+                      await submitBtn.click();
+                      await delay(2000, 3000);
+                      followupsGiven++;
+                      await db.saveFollowup({
+                        platform: 'reddit', originalActionId: null,
+                        postUrl: msg.contextUrl, replyAuthor: msg.author,
+                        replyContent: msg.body, ourResponse: reply, accountId,
+                      });
+                      await db.saveAction({ type: 'rd_comment', profileUrl: msg.contextUrl, content: reply, accountId });
+                      console.log(`[${tag}] Follow-up (no match) to ${msg.author}: "${reply.slice(0, 60)}..."`);
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.error(`[${tag}] Reply error (no match): ${err.message}`);
+            }
+            await commentPause();
+            continue;
+          }
+        }
         await db.saveFollowup({
           platform: 'reddit', originalActionId: null,
           postUrl: msg.contextUrl, replyAuthor: msg.author,
@@ -342,7 +494,8 @@ async function checkRedditFollowups(opts = {}) {
       console.log(`[${tag}] ${msg.author} replied: "${msg.body.slice(0, 60)}..."`);
       await readingPause();
 
-      const shouldMention = persona ? (Math.random() < (persona.mentionRate || 0.15)) : (Math.random() < 0.12);
+      // Follow-ups are prime moments to mention YTubViral — someone is already engaged
+      const shouldMention = persona ? (Math.random() < (persona.mentionRate || 0.20) * 1.5) : (Math.random() < 0.25);
       const reply = await generateFollowupReply(
         'reddit', ourOriginal.content, msg.body, msg.author,
         persona, shouldMention

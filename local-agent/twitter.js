@@ -7,7 +7,7 @@ const { safeGoto, safeEval, alertSessionExpired } = require('./resilience');
 const { diagnose } = require('./doctor');
 const { adjustedLimit, shouldSkipSession, shouldSkipPost, readingPause, actionPause, commentPause, warmupScroll } = require('./humanize');
 
-const BASE_LIMITS = { likes: 5, replies: 1 };
+const BASE_LIMITS = { likes: 8, replies: 3 };
 
 const HASHTAGS = [
   // EN high-volume (verified active on X)

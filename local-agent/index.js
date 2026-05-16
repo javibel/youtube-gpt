@@ -85,11 +85,18 @@ cron.schedule('0 0 * * *', async () => {
   await reports.sendPersonaReport().catch(err => console.error('[reports]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
-// ── Follow-up checks (reply to people who replied to our comments) ──────────
-const followupHour = 15 + Math.floor(Math.random() * 2);
-const followupMin = Math.floor(Math.random() * 60);
-cron.schedule(`${followupMin} ${followupHour} * * *`, async () => {
-  console.log('[cron] Follow-up reply checks');
+// ── Follow-up checks (reply to people who replied to our comments) — 2x/day ──
+const followupHour1 = 10 + Math.floor(Math.random() * 2);
+const followupMin1 = Math.floor(Math.random() * 60);
+cron.schedule(`${followupMin1} ${followupHour1} * * *`, async () => {
+  console.log('[cron] Follow-up reply checks (morning)');
+  await followup.runFollowupChecks().catch(err => console.error('[followup]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
+const followupHour2 = 17 + Math.floor(Math.random() * 2);
+const followupMin2 = Math.floor(Math.random() * 60);
+cron.schedule(`${followupMin2} ${followupHour2} * * *`, async () => {
+  console.log('[cron] Follow-up reply checks (evening)');
   await followup.runFollowupChecks().catch(err => console.error('[followup]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
@@ -142,7 +149,8 @@ console.log(`  Twitter session 1: ${twitterHour1}:${String(twitterMin1).padStart
 console.log(`  Twitter session 2: ${twitterHour2}:${String(twitterMin2).padStart(2, '0')} (Europe/Madrid)`);
 console.log(`  Personas morning: ${personaHour1}:${String(personaMin1).padStart(2, '0')} (Europe/Madrid)`);
 console.log(`  Personas evening: ${personaHour2}:${String(personaMin2).padStart(2, '0')} (Europe/Madrid)`);
-console.log(`  Follow-up checks: ${followupHour}:${String(followupMin).padStart(2, '0')} (Europe/Madrid)`);
+console.log(`  Follow-up morning: ${followupHour1}:${String(followupMin1).padStart(2, '0')} (Europe/Madrid)`);
+console.log(`  Follow-up evening: ${followupHour2}:${String(followupMin2).padStart(2, '0')} (Europe/Madrid)`);
 console.log('  Gmail inbox: every 30min 8-23h (Europe/Madrid)');
 console.log('  Daily report: 08:05 (Europe/Madrid)');
 console.log('  Persona reports: 12:00, 00:00 (Europe/Madrid)');

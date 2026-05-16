@@ -3,6 +3,7 @@ import { generateSocialPost } from '@/lib/agent/content-generator';
 import {
   publishToFacebook,
   publishToFacebookWithImage,
+  publishToInstagram,
   getSocialImageUrl,
 } from '@/lib/agent/meta-agent';
 import { getHumanImageUrl } from '@/lib/agent/linkedin-agent';
@@ -198,44 +199,46 @@ export async function GET(request: Request) {
     });
     results.dailyIdeas = ideasGenerated;
 
-    // 2. Generate content for Facebook + LinkedIn + TikTok + Twitter (morning networks)
-    const [facebook, linkedin, tiktok, twitter] = await Promise.allSettled([
+    // 2. Generate content for Facebook + Instagram + LinkedIn + TikTok + Twitter (morning networks)
+    const [facebook, instagram, linkedin, tiktok, twitter] = await Promise.allSettled([
       generateSocialPost('facebook', 'morning'),
+      generateSocialPost('instagram', 'morning'),
       generateSocialPost('linkedin', 'morning'),
       generateSocialPost('tiktok', 'morning'),
       generateSocialPost('twitter', 'morning'),
     ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;
+    const ig = instagram.status === 'fulfilled' ? instagram.value : null;
     const li = linkedin.status === 'fulfilled' ? linkedin.value : null;
     const tt = tiktok.status === 'fulfilled' ? tiktok.value : null;
     const tw = twitter.status === 'fulfilled' ? twitter.value : null;
 
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
+    if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
     if (linkedin.status === 'rejected') errors.push(`LinkedIn content: ${linkedin.reason}`);
     if (tiktok.status === 'rejected') errors.push(`TikTok content: ${tiktok.reason}`);
     if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
-    // 3. Publish Facebook — DESACTIVADO: bloquea cuentas (2026-05-07)
-    // const useImage = Math.random() < 0.3;
-    // const fbImageUrl = (await getHumanImageUrl('facebook')) ?? getSocialImageUrl();
-    // const fbResult = fb
-    //   ? useImage
-    //     ? await publishToFacebookWithImage(fb, fbImageUrl)
-    //     : await publishToFacebook(fb)
-    //   : null;
-    // results.facebook = fbResult;
-    const fbResult = null;
+    // 3. Publish Facebook (via Graph API — reactivado 2026-05-16)
     if (fb) {
-      results.facebook = { success: false, error: 'Facebook desactivado — bloquea cuentas (2026-05-07)' };
+      const useImage = Math.random() < 0.3;
+      const fbImageUrl = (await getHumanImageUrl('facebook')) ?? getSocialImageUrl();
+      const fbResult = useImage
+        ? await publishToFacebookWithImage(fb, fbImageUrl)
+        : await publishToFacebook(fb);
+      results.facebook = fbResult;
+      if (!fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
+    }
+
+    // 3b. Publish Instagram (via Graph API — activado 2026-05-16)
+    if (ig) {
+      const igResult = await publishToInstagram(ig);
+      results.instagram = igResult;
+      if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
     }
 
     // 4. Publish LinkedIn — DESACTIVADO: cuenta bloqueada por LinkedIn (2026-05-07)
-    // if (li) {
-    //   const liResult = await publishToLinkedIn(li);
-    //   results.linkedin = liResult;
-    //   if (!liResult.success) errors.push(`LinkedIn: ${liResult.error}`);
-    // }
     if (li) {
       results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
     }

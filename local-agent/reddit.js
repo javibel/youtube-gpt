@@ -6,7 +6,7 @@ const { generatePersonaComment } = require('./claude');
 const { safeGoto, safeEval, alertSessionExpired } = require('./resilience');
 const { diagnose } = require('./doctor');
 
-const LIMITS = { upvotes: 5, comments: 2 };
+const LIMITS = { upvotes: 8, comments: 4 };
 
 const SUBREDDITS = [
   'NewTubers', 'youtubers', 'SmallYTChannel', 'PartneredYoutube',

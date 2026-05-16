@@ -36,12 +36,11 @@ export async function GET(request: Request) {
 
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
 
-    // Facebook retry — DESACTIVADO: bloquea cuentas (2026-05-07)
-    // const fbRetry = await retryPendingFacebookPost().catch(err => ({
-    //   success: false as const, skipped: false,
-    //   error: err instanceof Error ? err.message : String(err),
-    // }));
-    const fbRetry = { success: false, skipped: true, error: 'Facebook desactivado (2026-05-07)' };
+    // Facebook retry — reactivado 2026-05-16
+    const fbRetry = await retryPendingFacebookPost().catch(err => ({
+      success: false as const, skipped: false,
+      error: err instanceof Error ? err.message : String(err),
+    }));
     results.facebookRetry = fbRetry;
 
     // 0. Send feedback emails to users registered 3 days ago
