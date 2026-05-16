@@ -274,6 +274,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'ADHD, autism, dyslexia — your brain doesn\'t work like most people\'s. That\'s not a problem on YouTube: it\'s an advantage. I\'ll show you how to adapt your workflow, avoid burnout, and turn your neurodivergence into your greatest strength as a creator.',
     },
   },
+  {
+    slug: 'auditoria-canal-youtube-guia',
+    cat: 'youtube',
+    readMin: 12,
+    date: { es: 'May 16, 2026', en: 'May 16, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: '/authors/javier.webp' },
+    image: '/blog/auditoria-canal-youtube.webp',
+    title: {
+      es: 'Auditoría de canal YouTube: cómo detectar (y arreglar) lo que frena tu crecimiento',
+      en: 'YouTube Channel Audit: How to Find (and Fix) What\'s Holding You Back',
+    },
+    excerpt: {
+      es: 'Aprende a hacer una auditoría completa de tu canal para identificar problemas de SEO, contenido y estrategia que están frenando tu crecimiento.',
+      en: 'Learn to perform a complete channel audit to identify SEO, content, and strategy issues holding back your growth.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -3202,6 +3218,238 @@ const ART_NEURODIVERGENCIA_EN: BlockType[] = [
   { type: 'callout-final', t: 'Create your first video with AI in minutes', sub: 'Generate titles, scripts, and SEO strategies tailored to your style. No rigid formulas — the AI adapts to you.', cta: 'Try YTubViral for free' },
 ];
 
+const ART_AUDITORIA_ES: BlockType[] = [
+  { type: 'p', t: 'La mayoría de los canales de YouTube no dejan de crecer porque el creador sea malo, vago o poco talentoso. Dejan de crecer porque hay un problema específico y diagnosticable que nadie ha identificado todavía. Un CTR del 2% cuando debería ser del 6%. Descripciones que no contienen ninguna keyword relevante. Thumbnails que funcionan a un 60% de su potencial. Vídeos que pierden al 70% de la audiencia en los primeros 90 segundos.' },
+  { type: 'p', t: 'Eso es exactamente lo que resuelve una auditoría de canal: un diagnóstico sistemático que convierte los síntomas (pocas vistas, poco crecimiento, bajo engagement) en causas identificables y acciones concretas. No es un proceso glamuroso. Es exactamente lo que separa los canales que crecen de los que se estancan.' },
+  { type: 'p', t: 'En esta guía voy a darte el proceso completo paso a paso: desde las métricas que medir hasta las herramientas que usar, con ejemplos reales y un checklist final para que no te saltes nada. Al terminar de leerla, sabrás exactamente qué está fallando en tu canal y cómo arreglarlo.' },
+
+  { type: 'h2', t: 'Qué es una auditoría de canal de YouTube (y por qué necesitas una)' },
+  { type: 'p', t: 'Una auditoría de canal es una revisión estructurada de todos los elementos que determinan el rendimiento de tu canal: métricas de analítica, SEO, thumbnails, estrategia de contenido, competencia y engagement. A diferencia de revisar cada vídeo por separado, la auditoría te da una visión global que revela patrones que no se ven mirando vídeos aislados.' },
+  { type: 'p', t: 'La necesitas si llevas más de 3 meses sin crecimiento significativo, si tus vídeos tienen visualizaciones inconsistentes sin razón aparente, si acabas de alcanzar una meseta después de un período de crecimiento, o simplemente si quieres asegurarte de que no estás dejando oportunidades sobre la mesa.' },
+  { type: 'p', t: 'La buena noticia es que la mayor parte de los problemas que una auditoría revela son solucionables en semanas, no en meses. El primer paso es siempre el mismo: los datos.' },
+
+  { type: 'h2', t: 'Paso 1 — Analiza tus métricas clave' },
+  { type: 'p', t: 'Antes de tocar nada, necesitas entender exactamente cómo está funcionando tu canal ahora mismo. Abre YouTube Studio y ve a la pestaña de Analíticas. Estas son las tres métricas que más importan para el diagnóstico:' },
+  { type: 'h3', t: 'CTR (Click-Through Rate)' },
+  { type: 'p', t: 'El CTR mide qué porcentaje de personas que ven tu miniatura en el feed hacen clic en tu vídeo. El promedio en YouTube es del 2-10%, pero los canales que crecen de forma consistente suelen estar por encima del 5%. Si tu CTR está por debajo del 4%, tus thumbnails y títulos son el problema principal — no el contenido.' },
+  { type: 'h3', t: 'Retención de audiencia (AVD)' },
+  { type: 'p', t: 'La retención de audiencia, medida como Average View Duration (AVD), te dice cuánto tiempo ven tus vídeos en promedio. Un AVD del 40-50% es bueno para vídeos de más de 10 minutos. Por debajo del 30%, el algoritmo reduce drásticamente tu distribución porque interpreta que el contenido no satisface al espectador. Revisa el gráfico de retención vídeo por vídeo para identificar en qué momento exacto la gente abandona — esos son los puntos donde tienes que intervenir.' },
+  { type: 'h3', t: 'Tasa de crecimiento de suscriptores' },
+  { type: 'p', t: 'Compara tu tasa de crecimiento de suscriptores mes a mes durante los últimos 6 meses. ¿Está subiendo, bajando o plana? Si es plana o bajando, el problema suele estar en la captación (CTR y distribución) o en la retención (el contenido no convierte espectadores ocasionales en suscriptores). Un canal sano convierte entre el 0,5% y el 2% de sus vistas únicas en suscriptores nuevos.' },
+  { type: 'list', items: [
+    'CTR < 4%: problema de thumbnails y/o títulos',
+    'AVD < 30%: problema de gancho o ritmo del contenido',
+    'Impresiones planas: problema de SEO o de frecuencia de publicación',
+    'Vistas sin suscriptores: problema de CTA o de propuesta de valor del canal',
+    'Picos y valles: dependencia de trending topics sin audiencia base sólida',
+  ]},
+
+  { type: 'h2', t: 'Paso 2 — Audita tu SEO' },
+  { type: 'p', t: 'El SEO de YouTube determina si tu contenido aparece en búsquedas y en recomendaciones. Un canal con un SEO pobre puede tener contenido excelente y seguir siendo invisible. El algoritmo no puede ver tus vídeos — solo puede leer el texto que los acompaña.' },
+  { type: 'p', t: 'Revisa tus últimos 10-15 vídeos y verifica lo siguiente para cada uno: ¿El título incluye la keyword principal? ¿Está en los primeros 60 caracteres? ¿La descripción tiene al menos 150 palabras con la keyword y sinónimos naturales? ¿Usas entre 5 y 10 tags relevantes (no 30 tags genéricos)? Una descripción bien escrita puede mejorar la visibilidad de un vídeo en un 40-60% sin cambiar ni un segundo del contenido.' },
+  { type: 'p', t: 'El error más común es usar keywords demasiado competitivas para el tamaño actual del canal. Si tienes 2.000 suscriptores, intentar posicionar "cómo ganar dinero en YouTube" es prácticamente imposible. La estrategia correcta es ir a keywords de cola larga con volumen suficiente y competencia manejable, e ir escalando hacia keywords más grandes a medida que crece tu autoridad.' },
+  { type: 'list', items: [
+    'Títulos: keyword principal en los primeros 60 caracteres, máximo 70 caracteres totales',
+    'Descripciones: 150-500 palabras, keyword en las primeras 2-3 líneas',
+    'Tags: 5-10 tags específicos, mezcla de long-tail y categoría general',
+    'Subtítulos: actívalos para todos los vídeos — mejoran la indexación',
+    'Capítulos: usa timestamps para ayudar al algoritmo a entender la estructura',
+  ]},
+  { type: 'callout-mid', t: 'Analiza el SEO de todos tus vídeos de golpe', sub: 'El SEO Score de YTubViral evalúa automáticamente títulos, descripciones y tags de cada vídeo y te da una puntuación con recomendaciones específicas.', cta: 'Ver análisis SEO', href: '/features/seo-score' },
+
+  { type: 'h2', t: 'Paso 3 — Evalúa tus thumbnails' },
+  { type: 'p', t: 'Las miniaturas son el primer contacto del espectador con tu contenido. Son más importantes que el título para el CTR en dispositivos móviles, donde el texto es más pequeño y la imagen domina. Una miniatura bien diseñada puede doblar tu CTR; una mala puede hundir un contenido excelente.' },
+  { type: 'p', t: 'Para auditar tus thumbnails, hazte estas preguntas sobre cada una: ¿Se entiende de qué va el vídeo en 1 segundo? ¿Funciona en tamaño pequeño (como aparece en móvil)? ¿Tiene contraste suficiente? ¿El texto es legible en 3-4 palabras máximo? ¿Tu cara (si apareces) muestra emoción clara? ¿Es coherente con el resto de thumbnails del canal?' },
+  { type: 'p', t: 'Compara el CTR de tus últimos 15 vídeos. Identifica los 3 con CTR más alto y los 3 con CTR más bajo. ¿Qué tienen en común los de alto CTR? ¿Qué falla en los de bajo CTR? Eso te dará las reglas de diseño específicas para tu audiencia, que son más valiosas que cualquier consejo genérico.' },
+  { type: 'list', items: [
+    'Fondo: limpio y con contraste alto (evita fondos naturales caóticos)',
+    'Texto: máximo 4-5 palabras, tipografía bold, color que contraste con el fondo',
+    'Cara: emoción exagerada y clara — el cerebro procesa expresiones faciales en milisegundos',
+    'Coherencia: paleta de colores y estilo reconocibles como marca del canal',
+    'Test en miniatura pequeña: abre YouTube en móvil y verifica que se entiende',
+  ]},
+
+  { type: 'h2', t: 'Paso 4 — Analiza tu competencia' },
+  { type: 'p', t: 'Tus competidores ya han hecho parte del trabajo por ti. Han probado qué títulos funcionan, qué formatos retienen audiencia, qué días y horas publican. Analizar esos datos es información de mercado gratuita que la mayoría de creadores ignora.' },
+  { type: 'p', t: 'Identifica 3-5 canales que compiten directamente contigo: mismo nicho, tamaño similar o ligeramente superior. Para cada uno, analiza sus últimos 20 vídeos y busca patrones: ¿cuáles tienen más vistas de lo habitual? ¿Qué tienen en común esos vídeos? ¿Qué tipo de thumbnails usan? ¿Hay temas que ellos cubren y tú no? ¿Hay temas que tú cubres mejor que ellos?' },
+  { type: 'p', t: 'No se trata de copiar. Se trata de entender qué demanda el mercado y encontrar tu ángulo diferencial dentro de esa demanda. El vídeo que tu competidor hizo con 200K vistas y que tú podrías hacer mejor — ese es tu próximo vídeo.' },
+  { type: 'list', items: [
+    'Vídeos más vistos: qué temas y formatos funcionan en el nicho',
+    'Vídeos menos vistos: qué evitar o cómo diferenciarte en esos temas',
+    'Frecuencia de publicación: el estándar del nicho que tienes que igualar o superar',
+    'Comentarios negativos: qué es lo que la audiencia echa en falta — ahí está tu oportunidad',
+    'Thumbnails y títulos: qué patrones visuales y de redacción predominan',
+  ]},
+  { type: 'callout-mid', t: 'Análisis de competidores automatizado', sub: 'YTubViral rastrea automáticamente los canales de tu competencia y te muestra qué vídeos están funcionando, con qué keywords y cuándo publican.', cta: 'Analizar competencia', href: '/features/competitor-analysis' },
+
+  { type: 'h2', t: 'Paso 5 — Revisa tu estrategia de contenido' },
+  { type: 'p', t: 'El contenido más optimizado del mundo no crecerá si la estrategia detrás es incoherente. Una auditoría de contenido evalúa tres elementos: frecuencia de publicación, coherencia temática (niching) y aprovechamiento de tendencias.' },
+  { type: 'h3', t: 'Frecuencia de publicación' },
+  { type: 'p', t: 'El algoritmo de YouTube favorece a los canales que publican de forma consistente porque le garantizan a la plataforma un flujo predecible de contenido. No necesitas publicar todos los días — de hecho, para la mayoría de nichos, 1-2 vídeos por semana es el punto óptimo. Lo que no puedes hacer es publicar 4 vídeos en una semana y luego desaparecer 3 semanas. El algoritmo "olvida" canales que desaparecen y tarda semanas en recuperar la distribución.' },
+  { type: 'h3', t: 'Coherencia temática' },
+  { type: 'p', t: 'YouTube clasifica los canales por nicho para saber a quién recomendar su contenido. Si tu canal mezcla recetas de cocina, videojuegos y consejos de finanzas personales, el algoritmo no sabe quién es tu audiencia y reduce drásticamente las recomendaciones. Cuanto más específico es tu nicho, más fácil es para el algoritmo encontrar a tu audiencia y para ti construir una comunidad leal. Si tu canal está muy diversificado, considera crear una serie de vídeos enfocada en un subtema concreto para ir consolidando la especialización.' },
+  { type: 'h3', t: 'Aprovechamiento de tendencias' },
+  { type: 'p', t: 'Publicar sobre temas trending en el momento adecuado puede multiplicar las impresiones por 5x o 10x. La clave es la velocidad: el 80% del valor de un trending topic desaparece en las primeras 48-72 horas. Si detectas una tendencia en tu nicho pero tardas 2 semanas en publicar, llegas tarde. Incorporar un flujo de vigilancia de tendencias a tu rutina semanal es uno de los cambios con mayor retorno inmediato.' },
+
+  { type: 'h2', t: 'Paso 6 — Keyword gap analysis' },
+  { type: 'p', t: 'El keyword gap analysis identifica las keywords que tienen volumen de búsqueda en tu nicho pero que tu canal aún no cubre. Es una de las técnicas con mayor ROI en YouTube SEO porque te indica exactamente qué vídeos hacer para capturar tráfico de búsqueda garantizado.' },
+  { type: 'p', t: 'El proceso es sencillo: toma las keywords principales de tu nicho, búscalas en YouTube y analiza qué canales aparecen en los primeros resultados. Si esos canales tienen un tamaño comparable al tuyo y el volumen de búsqueda es significativo, esa es una keyword que puedes atacar. Si aparecen canales con 10 millones de suscriptores, probablemente esa keyword sea demasiado competitiva por ahora.' },
+  { type: 'p', t: 'También puedes hacer el análisis inverso: busca las keywords por las que posicionan tus competidores y que tú no estás cubriendo. Esos son los temas donde estás dejando tráfico sobre la mesa. Prioriza las keywords donde hay demanda demostrada (el competidor tiene vistas) pero la ejecución es mediocre (el vídeo no está bien optimizado o el contenido es superficial) — ahí es donde puedes ganar con una versión superior.' },
+  { type: 'list', items: [
+    'Long-tail keywords: más fáciles de posicionar y con intención de búsqueda más clara',
+    'Keywords de pregunta: "cómo", "por qué", "cuándo" — alta intención de búsqueda',
+    'Keywords de comparación: "X vs Y" — audiencia con alta intención de decisión',
+    'Keywords locales: si tu audiencia es regional, añade el país o ciudad',
+    'Keywords de tendencia: busca variaciones de trending topics con menos competencia',
+  ]},
+  { type: 'callout-mid', t: 'Encuentra tus keywords gap en minutos', sub: 'La herramienta de keyword research de YTubViral analiza tu nicho, identifica las oportunidades que estás perdiendo y las ordena por volumen y competencia.', cta: 'Analizar keywords', href: '/features/keyword-research' },
+
+  { type: 'h2', t: 'Paso 7 — Retención y engagement' },
+  { type: 'p', t: 'El algoritmo de YouTube en 2026 prioriza la satisfacción del espectador por encima del tiempo de visualización bruto. Las métricas de satisfacción incluyen: likes, comentarios, compartidos, guardados en playlist, y especialmente el porcentaje de retención. Un vídeo que retiene al 60% de su audiencia a los 5 minutos recibirá más distribución que uno que tiene el doble de vistas pero pierde el 80% de la audiencia en los primeros 2 minutos.' },
+  { type: 'p', t: 'Analiza el gráfico de retención de tus 10 vídeos más recientes. Identifica los puntos de caída: ¿cae mucho en los primeros 30 segundos? (problema de gancho). ¿Cae de golpe a los 3-4 minutos? (problema de ritmo o de transición de sección). ¿Cae progresivamente pero suave? (normal, pero optimizable con más cambios de ritmo y pasos de acción).' },
+  { type: 'p', t: 'Para el engagement, revisa tu tasa de likes (deberías tener al menos un 3-5% de likes sobre vistas totales) y tu tasa de comentarios. Los comentarios son la señal de engagement más valiosa para el algoritmo. Responder comentarios en las primeras horas de publicación es una de las acciones con mayor impacto en la distribución inicial.' },
+  { type: 'list', items: [
+    'Gancho en los primeros 30 segundos: el dato, la promesa o el conflicto que hace que el espectador se quede',
+    'Ritmo: cambio de plano, gráfico, música o tono cada 60-90 segundos para mantener la atención',
+    'Transiciones de sección: anuncia lo que viene para evitar abandonos en los puntos de corte naturales',
+    'CTA en el momento justo: pide el like/suscripción cuando el espectador esté más enganchado (no al principio)',
+    'Responde comentarios: las primeras 2-3 horas después de publicar son críticas para el engagement inicial',
+  ]},
+
+  { type: 'h2', t: 'Checklist final de auditoría de canal' },
+  { type: 'p', t: 'Usa este checklist para asegurarte de que has cubierto todos los puntos clave de tu auditoría. Si puedes marcar 8 de los 10 puntos, tu canal está en buena forma. Si marcas menos de 6, tienes trabajo concreto por delante.' },
+  { type: 'list', items: [
+    'CTR revisado: identificados los 3 vídeos con CTR más bajo y las causas',
+    'AVD revisado: identificados los puntos de caída de retención en los últimos 10 vídeos',
+    'SEO auditado: títulos, descripciones y tags de los últimos 15 vídeos revisados',
+    'Thumbnails evaluados: comparados los de mayor y menor CTR, encontrado el patrón',
+    'Competencia analizada: 3-5 canales analizados, oportunidades identificadas',
+    'Frecuencia de publicación: consistente en los últimos 3 meses (sin pausas de más de 2 semanas)',
+    'Coherencia temática: el canal tiene un nicho claro sin saltos temáticos bruscos',
+    'Keyword gap: identificadas al menos 5 keywords con volumen que el canal no cubre',
+    'Engagement revisado: tasa de likes y comentarios analizados, CTA optimizado',
+    'Plan de acción: lista priorizada de los 3 problemas más urgentes a resolver',
+  ]},
+
+  { type: 'callout-final', t: 'Haz tu auditoría de canal en minutos, no en horas', sub: 'YTubViral analiza automáticamente tu canal — SEO, CTR, keywords gap y competencia — y te da un informe de diagnóstico con las acciones prioritarias. Sin hojas de cálculo.', cta: 'Empieza gratis', href: '/signup' },
+];
+
+const ART_AUDITORIA_EN: BlockType[] = [
+  { type: 'p', t: 'Most YouTube channels don\'t stop growing because the creator is bad, lazy, or untalented. They plateau because there\'s a specific, diagnosable problem that nobody has identified yet. A 2% CTR when it should be 6%. Descriptions with no relevant keywords. Thumbnails performing at 60% of their potential. Videos losing 70% of the audience in the first 90 seconds.' },
+  { type: 'p', t: 'That\'s exactly what a channel audit solves: a systematic diagnosis that converts symptoms (low views, stagnant growth, weak engagement) into identifiable causes and concrete actions. It\'s not a glamorous process. But it\'s precisely what separates growing channels from stagnating ones.' },
+  { type: 'p', t: 'In this guide I\'ll walk you through the complete process step by step: from which metrics to measure to which tools to use, with real examples and a final checklist so you don\'t miss anything. By the end, you\'ll know exactly what\'s wrong with your channel — and how to fix it.' },
+
+  { type: 'h2', t: 'What Is a YouTube Channel Audit (and Why You Need One)' },
+  { type: 'p', t: 'A channel audit is a structured review of all the elements that determine your channel\'s performance: analytics metrics, SEO, thumbnails, content strategy, competition, and engagement. Unlike reviewing individual videos, an audit gives you a global view that reveals patterns invisible when looking at isolated videos.' },
+  { type: 'p', t: 'You need one if you\'ve gone more than 3 months without significant growth, if your views are inconsistent without apparent reason, if you\'ve just hit a plateau after a growth phase, or simply if you want to make sure you\'re not leaving opportunities on the table.' },
+  { type: 'p', t: 'The good news is that most problems an audit reveals are fixable in weeks, not months. The first step is always the same: data.' },
+
+  { type: 'h2', t: 'Step 1 — Analyze Your Key Metrics' },
+  { type: 'p', t: 'Before changing anything, you need to understand exactly how your channel is performing right now. Open YouTube Studio and go to the Analytics tab. These are the three metrics that matter most for diagnosis:' },
+  { type: 'h3', t: 'CTR (Click-Through Rate)' },
+  { type: 'p', t: 'CTR measures what percentage of people who see your thumbnail in the feed click on your video. The YouTube average is 2-10%, but consistently growing channels tend to stay above 5%. If your CTR is below 4%, your thumbnails and titles are the main problem — not your content.' },
+  { type: 'h3', t: 'Audience Retention (AVD)' },
+  { type: 'p', t: 'Audience retention, measured as Average View Duration (AVD), tells you how long people watch your videos on average. An AVD of 40-50% is solid for videos over 10 minutes. Below 30%, the algorithm drastically reduces your distribution because it interprets the content as failing to satisfy viewers. Review the retention graph video by video to identify the exact moment people leave — those are the points where you need to intervene.' },
+  { type: 'h3', t: 'Subscriber Growth Rate' },
+  { type: 'p', t: 'Compare your subscriber growth rate month over month for the past 6 months. Is it rising, falling, or flat? If flat or falling, the problem usually lies in acquisition (CTR and distribution) or retention (content isn\'t converting casual viewers into subscribers). A healthy channel converts between 0.5% and 2% of unique views into new subscribers.' },
+  { type: 'list', items: [
+    'CTR < 4%: thumbnail and/or title problem',
+    'AVD < 30%: hook or content pacing problem',
+    'Flat impressions: SEO or publishing frequency problem',
+    'Views without subscribers: CTA or channel value proposition problem',
+    'Peaks and valleys: dependence on trending topics without a solid base audience',
+  ]},
+
+  { type: 'h2', t: 'Step 2 — Audit Your SEO' },
+  { type: 'p', t: 'YouTube SEO determines whether your content shows up in searches and recommendations. A channel with poor SEO can have excellent content and still be invisible. The algorithm can\'t watch your videos — it can only read the text that accompanies them.' },
+  { type: 'p', t: 'Review your last 10-15 videos and verify the following for each: Does the title include the main keyword? Is it in the first 60 characters? Does the description have at least 150 words with the keyword and natural synonyms? Are you using 5-10 relevant tags (not 30 generic ones)? A well-written description can improve a video\'s visibility by 40-60% without changing a single second of the content.' },
+  { type: 'p', t: 'The most common mistake is targeting keywords that are too competitive for your channel\'s current size. If you have 2,000 subscribers, trying to rank for "how to make money on YouTube" is practically impossible. The right strategy is to go after long-tail keywords with enough volume and manageable competition, then scale toward bigger keywords as your authority grows.' },
+  { type: 'list', items: [
+    'Titles: main keyword in the first 60 characters, maximum 70 characters total',
+    'Descriptions: 150-500 words, keyword in the first 2-3 lines',
+    'Tags: 5-10 specific tags, mix of long-tail and general category',
+    'Subtitles: enable them for all videos — they improve indexing',
+    'Chapters: use timestamps to help the algorithm understand your video structure',
+  ]},
+  { type: 'callout-mid', t: 'Analyze the SEO of all your videos at once', sub: 'YTubViral\'s SEO Score automatically evaluates titles, descriptions, and tags for every video and gives you a score with specific recommendations.', cta: 'View SEO analysis', href: '/features/seo-score' },
+
+  { type: 'h2', t: 'Step 3 — Evaluate Your Thumbnails' },
+  { type: 'p', t: 'Thumbnails are the viewer\'s first contact with your content. They\'re more important than the title for CTR on mobile devices, where text is smaller and the image dominates. A well-designed thumbnail can double your CTR; a bad one can sink excellent content.' },
+  { type: 'p', t: 'To audit your thumbnails, ask these questions about each one: Can you tell what the video is about in 1 second? Does it work at small size (as it appears on mobile)? Does it have sufficient contrast? Is the text readable in 3-4 words maximum? Does your face (if visible) show a clear emotion? Is it consistent with the rest of the channel\'s thumbnails?' },
+  { type: 'p', t: 'Compare the CTR of your last 15 videos. Identify the top 3 with the highest CTR and the bottom 3 with the lowest. What do the high-CTR ones have in common? What fails in the low-CTR ones? This gives you the specific design rules for your audience — more valuable than any generic advice.' },
+  { type: 'list', items: [
+    'Background: clean with high contrast (avoid chaotic natural backgrounds)',
+    'Text: maximum 4-5 words, bold typography, color that contrasts with the background',
+    'Face: exaggerated and clear emotion — the brain processes facial expressions in milliseconds',
+    'Consistency: recognizable color palette and style as channel branding',
+    'Small thumbnail test: open YouTube on mobile and verify it\'s understandable',
+  ]},
+
+  { type: 'h2', t: 'Step 4 — Analyze Your Competition' },
+  { type: 'p', t: 'Your competitors have already done part of the work for you. They\'ve tested which titles work, which formats retain audiences, which days and times generate the most views. Analyzing that data is free market intelligence that most creators ignore.' },
+  { type: 'p', t: 'Identify 3-5 channels that compete directly with you: same niche, similar or slightly larger size. For each one, analyze their last 20 videos and look for patterns: which ones have more views than usual? What do those videos have in common? What kind of thumbnails do they use? Are there topics they cover that you don\'t? Are there topics where you could do better?' },
+  { type: 'p', t: 'It\'s not about copying. It\'s about understanding what the market demands and finding your unique angle within that demand. The video your competitor made with 200K views that you could do better — that\'s your next video.' },
+  { type: 'list', items: [
+    'Most viewed videos: which topics and formats work in the niche',
+    'Least viewed videos: what to avoid or how to differentiate on those topics',
+    'Publishing frequency: the niche standard you need to match or beat',
+    'Negative comments: what the audience feels is missing — that\'s your opportunity',
+    'Thumbnails and titles: which visual and copywriting patterns dominate',
+  ]},
+  { type: 'callout-mid', t: 'Automated competitor analysis', sub: 'YTubViral automatically tracks your competitors\' channels and shows you which videos are working, with which keywords, and when they publish.', cta: 'Analyze competition', href: '/features/competitor-analysis' },
+
+  { type: 'h2', t: 'Step 5 — Review Your Content Strategy' },
+  { type: 'p', t: 'Even the most optimized content won\'t grow if the strategy behind it is incoherent. A content audit evaluates three elements: publishing frequency, thematic consistency (niching), and trend exploitation.' },
+  { type: 'h3', t: 'Publishing Frequency' },
+  { type: 'p', t: 'The YouTube algorithm favors channels that publish consistently because it guarantees the platform a predictable flow of content. You don\'t need to publish every day — for most niches, 1-2 videos per week is the optimal cadence. What you can\'t do is publish 4 videos in one week and then disappear for 3 weeks. The algorithm "forgets" channels that go dark and takes weeks to recover distribution.' },
+  { type: 'h3', t: 'Thematic Consistency' },
+  { type: 'p', t: 'YouTube classifies channels by niche to know who to recommend their content to. If your channel mixes cooking recipes, video games, and personal finance tips, the algorithm doesn\'t know who your audience is and drastically reduces recommendations. The more specific your niche, the easier it is for the algorithm to find your audience and for you to build a loyal community. If your channel is very diversified, consider creating a video series focused on one specific sub-topic to consolidate your specialization.' },
+  { type: 'h3', t: 'Trend Exploitation' },
+  { type: 'p', t: 'Publishing about trending topics at the right moment can multiply impressions by 5x or 10x. The key is speed: 80% of a trending topic\'s value disappears in the first 48-72 hours. If you spot a trend in your niche but take 2 weeks to publish, you\'re too late. Incorporating a trend monitoring workflow into your weekly routine is one of the changes with the highest immediate return.' },
+
+  { type: 'h2', t: 'Step 6 — Keyword Gap Analysis' },
+  { type: 'p', t: 'Keyword gap analysis identifies keywords that have search volume in your niche but that your channel doesn\'t cover yet. It\'s one of the highest-ROI techniques in YouTube SEO because it tells you exactly which videos to make to capture guaranteed search traffic.' },
+  { type: 'p', t: 'The process is simple: take the main keywords in your niche, search them on YouTube, and analyze which channels appear in the top results. If those channels are a comparable size to yours and the search volume is significant, that\'s a keyword you can target. If channels with 10 million subscribers appear, that keyword is probably too competitive for now.' },
+  { type: 'p', t: 'You can also do the reverse analysis: find keywords your competitors rank for that you\'re not covering. Those are the topics where you\'re leaving traffic on the table. Prioritize keywords where there\'s demonstrated demand (the competitor has views) but the execution is mediocre (the video is poorly optimized or the content is superficial) — that\'s where you can win with a superior version.' },
+  { type: 'list', items: [
+    'Long-tail keywords: easier to rank, clearer search intent',
+    'Question keywords: "how to", "why", "when" — high search intent',
+    'Comparison keywords: "X vs Y" — audience with high decision intent',
+    'Local keywords: if your audience is regional, add the country or city',
+    'Trending keywords: look for trending topic variations with less competition',
+  ]},
+  { type: 'callout-mid', t: 'Find your keyword gaps in minutes', sub: 'YTubViral\'s keyword research tool analyzes your niche, identifies the opportunities you\'re missing, and ranks them by volume and competition.', cta: 'Analyze keywords', href: '/features/keyword-research' },
+
+  { type: 'h2', t: 'Step 7 — Retention and Engagement' },
+  { type: 'p', t: 'The YouTube algorithm in 2026 prioritizes viewer satisfaction above raw watch time. Satisfaction metrics include: likes, comments, shares, playlist saves, and especially retention percentage. A video that retains 60% of its audience at the 5-minute mark will receive more distribution than one with twice the views but losing 80% of the audience in the first 2 minutes.' },
+  { type: 'p', t: 'Analyze the retention graph of your 10 most recent videos. Identify the drop points: is there a big drop in the first 30 seconds? (hook problem). Does it drop sharply at 3-4 minutes? (pacing or section transition problem). Does it drop progressively but gently? (normal, but optimizable with more pace changes and action steps).' },
+  { type: 'p', t: 'For engagement, review your like rate (you should have at least a 3-5% like-to-view ratio) and your comment rate. Comments are the most valuable engagement signal for the algorithm. Responding to comments in the first hours after publishing is one of the highest-impact actions for initial distribution.' },
+  { type: 'list', items: [
+    'Hook in the first 30 seconds: the fact, promise, or conflict that makes viewers stay',
+    'Pacing: shot change, graphic, music, or tone shift every 60-90 seconds to maintain attention',
+    'Section transitions: announce what\'s coming to prevent drop-offs at natural cut points',
+    'CTA at the right moment: ask for the like/subscribe when viewers are most engaged (not at the beginning)',
+    'Reply to comments: the first 2-3 hours after publishing are critical for initial engagement',
+  ]},
+
+  { type: 'h2', t: 'Final Channel Audit Checklist' },
+  { type: 'p', t: 'Use this checklist to make sure you\'ve covered all the key points of your audit. If you can check off 8 of the 10 items, your channel is in good shape. If you check fewer than 6, you have concrete work ahead.' },
+  { type: 'list', items: [
+    'CTR reviewed: identified the 3 videos with lowest CTR and their causes',
+    'AVD reviewed: identified retention drop points in the last 10 videos',
+    'SEO audited: titles, descriptions, and tags of the last 15 videos reviewed',
+    'Thumbnails evaluated: compared highest and lowest CTR, found the pattern',
+    'Competition analyzed: 3-5 channels analyzed, opportunities identified',
+    'Publishing frequency: consistent over the past 3 months (no gaps longer than 2 weeks)',
+    'Thematic consistency: channel has a clear niche without abrupt topic shifts',
+    'Keyword gap: identified at least 5 keywords with volume the channel doesn\'t cover',
+    'Engagement reviewed: like and comment rates analyzed, CTA optimized',
+    'Action plan: prioritized list of the 3 most urgent problems to solve',
+  ]},
+
+  { type: 'callout-final', t: 'Run your channel audit in minutes, not hours', sub: 'YTubViral automatically analyzes your channel — SEO, CTR, keyword gaps, and competition — and gives you a diagnosis report with priority actions. No spreadsheets.', cta: 'Start for free', href: '/signup' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -3262,6 +3510,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'youtube-neurodivergencia-guia': {
     es: ART_NEURODIVERGENCIA_ES,
     en: ART_NEURODIVERGENCIA_EN,
+  },
+  'auditoria-canal-youtube-guia': {
+    es: ART_AUDITORIA_ES,
+    en: ART_AUDITORIA_EN,
   },
 };
 
