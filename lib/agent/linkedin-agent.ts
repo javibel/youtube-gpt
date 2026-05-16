@@ -67,6 +67,7 @@ export async function getHumanImageUrl(platform: 'linkedin' | 'facebook' | 'inst
       if (!fs.existsSync(dir)) continue;
       const files = fs.readdirSync(dir).filter(f => {
         if (!/\.(jpg|jpeg|png|webp)$/i.test(f)) return false;
+        if (platform === 'instagram' && /\.webp$/i.test(f)) return false;
         if (platform === 'instagram' && (f.startsWith('169_') || f.startsWith('43_'))) return false;
         return true;
       });

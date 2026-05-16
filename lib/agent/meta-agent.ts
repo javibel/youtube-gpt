@@ -60,11 +60,11 @@ export function getSocialImageUrl(): string {
   const day = new Date().getDay();
   const category = DAY_CATEGORY[day] ?? 'motivacion';
   const num = String((Math.floor(Math.random() * 5) + 1)).padStart(2, '0');
-  return `${BASE_URL}/social-images/${category}/${num}.png`;
+  return `${BASE_URL}/social-images/${category}/${num}.jpg`;
 }
 
 function getFallbackImageUrl(): string {
-  return `${BASE_URL}/social-images/default.png`;
+  return `${BASE_URL}/social-images/default.jpg`;
 }
 
 async function alreadyPublishedToday(platform: string): Promise<boolean> {
