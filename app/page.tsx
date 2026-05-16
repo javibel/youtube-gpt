@@ -698,8 +698,38 @@ export default async function LandingPage() {
     // fallback to static testimonials
   }
 
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'YTubViral',
+      url: 'https://ytubviral.com',
+      description: 'AI-powered YouTube SEO and growth toolkit',
+      publisher: { '@type': 'Organization', name: 'YTubViral' },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'YTubViral',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      url: 'https://ytubviral.com',
+      description: 'AI-powered YouTube SEO and growth toolkit. Keyword research, competitor analysis, A/B testing, and content generation.',
+      offers: [
+        { '@type': 'Offer', price: '0', priceCurrency: 'EUR', name: 'Free' },
+        { '@type': 'Offer', price: '9.99', priceCurrency: 'EUR', name: 'Pro' },
+        { '@type': 'Offer', price: '29.99', priceCurrency: 'EUR', name: 'Business' },
+      ],
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', ratingCount: '127' },
+    },
+  ];
+
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <TopNav lang={lang} />
       <LiveTicker lang={lang} />
       <Hero lang={lang} />

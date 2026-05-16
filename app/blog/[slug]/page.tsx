@@ -30,6 +30,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       authors: [post.author.name],
       ...(post.image ? { images: [{ url: `https://ytubviral.com${post.image}`, width: 1200, height: 630 }] } : {}),
     },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title.es,
+      description: post.excerpt.es,
+      ...(post.image ? { images: [`https://ytubviral.com${post.image}`] } : {}),
+    },
   };
 }
 

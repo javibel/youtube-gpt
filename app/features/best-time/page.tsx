@@ -143,6 +143,24 @@ export default async function BestTimeFeature() {
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ_ES.map((item) => ({ '@type': 'Question', name: item.q, acceptedAnswer: { '@type': 'Answer', text: item.a } })) }) }} />
 
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: 'YTubViral — Best Time to Post',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+            url: 'https://ytubviral.com/features/best-time',
+            offers: [
+              { '@type': 'Offer', price: '0', priceCurrency: 'EUR', name: 'Free' },
+              { '@type': 'Offer', price: '9.99', priceCurrency: 'EUR', name: 'Pro' },
+            ],
+          }),
+        }}
+      />
+
       <section className="max-w-3xl mx-auto px-6 py-20 text-center">
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-4">
           {t('¿Listo para publicar en el momento perfecto?', 'Ready to publish at the perfect moment?')}

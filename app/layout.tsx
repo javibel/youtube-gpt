@@ -56,6 +56,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@ytubviral",
     title: "YTubViral — Genera contenido viral para YouTube con IA",
     description:
       "Títulos, descripciones, scripts y miniaturas para YouTube generados por IA en segundos.",

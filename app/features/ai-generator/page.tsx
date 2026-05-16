@@ -165,6 +165,24 @@ export default async function AIGeneratorFeature() {
         }}
       />
 
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: 'YTubViral — AI Generator',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+            url: 'https://ytubviral.com/features/ai-generator',
+            offers: [
+              { '@type': 'Offer', price: '0', priceCurrency: 'EUR', name: 'Free' },
+              { '@type': 'Offer', price: '9.99', priceCurrency: 'EUR', name: 'Pro' },
+            ],
+          }),
+        }}
+      />
+
       <section className="max-w-3xl mx-auto px-6 py-20 text-center">
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-4">
           {t('¿Listo para crear contenido 10x más rápido?', 'Ready to create content 10x faster?')}

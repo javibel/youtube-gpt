@@ -182,6 +182,24 @@ export default async function CompetitorAnalysisFeature() {
         }}
       />
 
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: 'YTubViral — Competitor Analysis',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+            url: 'https://ytubviral.com/features/competitor-analysis',
+            offers: [
+              { '@type': 'Offer', price: '0', priceCurrency: 'EUR', name: 'Free' },
+              { '@type': 'Offer', price: '9.99', priceCurrency: 'EUR', name: 'Pro' },
+            ],
+          }),
+        }}
+      />
+
       <section className="max-w-3xl mx-auto px-6 py-20 text-center">
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-4">
           {t('Sabe exactamente qué hace tu competencia', 'Know exactly what your competitors are doing')}

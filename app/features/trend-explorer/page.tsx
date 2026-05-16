@@ -225,6 +225,24 @@ export default async function TrendExplorerFeature() {
         }}
       />
 
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: 'YTubViral — Trend Explorer',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+            url: 'https://ytubviral.com/features/trend-explorer',
+            offers: [
+              { '@type': 'Offer', price: '0', priceCurrency: 'EUR', name: 'Free' },
+              { '@type': 'Offer', price: '9.99', priceCurrency: 'EUR', name: 'Pro' },
+            ],
+          }),
+        }}
+      />
+
       <section className="max-w-3xl mx-auto px-6 py-20 text-center">
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-4">
           {t('¿Listo para descubrir la próxima tendencia viral?', 'Ready to discover the next viral trend?')}
