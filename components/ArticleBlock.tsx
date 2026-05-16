@@ -47,7 +47,7 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
         <div className="relative">
           <p className="font-display font-bold text-2xl mb-2">{block.t}</p>
           <p className="text-zinc-400 mb-6">{block.sub}</p>
-          <Link href="/signup" className="btn-offset inline-flex px-8 py-3 text-sm font-display font-bold">
+          <Link href={block.href ?? '/signup'} className="btn-offset inline-flex px-8 py-3 text-sm font-display font-bold">
             {block.cta} →
           </Link>
         </div>
@@ -80,7 +80,7 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>YTubViral</p>
           <p className="font-display font-bold text-3xl mb-2">{block.t}</p>
           <p className="text-zinc-400 mb-8">{block.sub}</p>
-          <Link href="/signup" className="btn-offset inline-flex px-10 py-4 text-base font-display font-bold">
+          <Link href={block.href ?? '/signup'} className="btn-offset inline-flex px-10 py-4 text-base font-display font-bold">
             {block.cta} →
           </Link>
         </div>

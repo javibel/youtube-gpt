@@ -20,8 +20,8 @@ export type BlockType =
   | { type: 'h3'; t: string }
   | { type: 'list'; items: string[] }
   | { type: 'callout'; t: string }
-  | { type: 'callout-mid'; t: string; sub: string; cta: string }
-  | { type: 'callout-final'; t: string; sub: string; cta: string }
+  | { type: 'callout-mid'; t: string; sub: string; cta: string; href?: string }
+  | { type: 'callout-final'; t: string; sub: string; cta: string; href?: string }
   | { type: 'callout-gear'; t: string; sub: string; cta: string };
 
 export const BLOG_CATEGORIES = {
@@ -605,7 +605,7 @@ const ART_TITULOS_VIRALES: BlockType[] = [
     '"Probé las Estrategias de los 10 Canales más Grandes de YouTube"',
     '"Viví Solo de YouTube Durante 1 Mes (Resultado Real)"',
   ]},
-  { type: 'callout-mid', t: '¿Cansado de escribir títulos a mano?', sub: 'YTubViral genera 5 opciones optimizadas en segundos, con score de viralidad.', cta: 'Prueba YTubViral gratis' },
+  { type: 'callout-mid', t: '¿Cansado de escribir títulos a mano?', sub: 'YTubViral genera 5 opciones optimizadas en segundos, con score de viralidad.', cta: 'Prueba YTubViral gratis', href: '/features/ai-generator' },
   { type: 'h2', t: 'Los 5 Errores que Arruinan tus Títulos' },
   { type: 'h3', t: 'Error 1: Ser Demasiado Genérico' },
   { type: 'p', t: 'Malo: "Tips para YouTube" — Bueno: "7 Tips que Triplicaron mis Vistas en YouTube en 2026". La especificidad convierte.' },
@@ -682,7 +682,7 @@ const ART_DESCRIPCIONES_SEO: BlockType[] = [
   { type: 'p', t: 'Los timestamps mejoran el SEO, la experiencia del usuario y aumentan el tiempo de visualización al facilitar la navegación.' },
   { type: 'h3', t: 'Error 5: No Añadir Links' },
   { type: 'p', t: 'La descripción es el único lugar donde YouTube permite links clickeables. No incluir links a tus recursos, redes o productos es una oportunidad perdida.' },
-  { type: 'callout-mid', t: '¿Cansado de escribir descripciones desde cero?', sub: 'YTubViral genera descripciones SEO completas y optimizadas en segundos.', cta: 'Prueba YTubViral gratis' },
+  { type: 'callout-mid', t: '¿Cansado de escribir descripciones desde cero?', sub: 'YTubViral genera descripciones SEO completas y optimizadas en segundos.', cta: 'Prueba YTubViral gratis', href: '/features/ai-generator' },
   { type: 'h2', t: 'Plantilla de Descripción Lista para Usar' },
   { type: 'p', t: 'Copia esta plantilla y adáptala a cada vídeo:' },
   { type: 'list', items: [
@@ -746,7 +746,7 @@ const ART_DESCRIPCIONES_SEO_EN: BlockType[] = [
   { type: 'p', t: 'Timestamps improve SEO, user experience, and increase watch time by making navigation easier.' },
   { type: 'h3', t: 'Mistake 5: Not Adding Links' },
   { type: 'p', t: 'The description is the only place where YouTube allows clickable links. Not including links to your resources, social media, or products is a missed opportunity.' },
-  { type: 'callout-mid', t: 'Tired of writing descriptions from scratch?', sub: 'YTubViral generates fully optimized SEO descriptions in seconds.', cta: 'Try YTubViral for free' },
+  { type: 'callout-mid', t: 'Tired of writing descriptions from scratch?', sub: 'YTubViral generates fully optimized SEO descriptions in seconds.', cta: 'Try YTubViral for free', href: '/features/ai-generator' },
   { type: 'h2', t: 'Ready-to-Use Description Template' },
   { type: 'p', t: 'Copy this template and adapt it to each video:' },
   { type: 'list', items: [
@@ -776,7 +776,7 @@ const ART_7_FRAMEWORKS_ES: BlockType[] = [
   { type: 'list', items: ['Sin presupuesto, sin equipo, sin experiencia', 'En 30 días, en 7 horas, en un solo fin de semana', 'Con la cámara que ya tienes / con el móvil', 'Empezando desde 0 suscriptores'] },
   { type: 'h2', t: '3. La confesión post-experiencia' },
   { type: 'p', t: 'Empezar el título con primera persona y un verbo de aprendizaje: "Probé X durante Y. Esto NO te cuentan." Es uno de los frameworks con mayor crecimiento desde mediados de 2025.' },
-  { type: 'callout-mid', t: '¿Cansado de escribir títulos a ciegas?', sub: 'Genera 8 variantes optimizadas, con score de viralidad, en 6 segundos.', cta: 'Prueba YTubViral gratis' },
+  { type: 'callout-mid', t: '¿Cansado de escribir títulos a ciegas?', sub: 'Genera 8 variantes optimizadas, con score de viralidad, en 6 segundos.', cta: 'Prueba YTubViral gratis', href: '/features/ai-generator' },
   { type: 'h2', t: '4. La pregunta retórica con giro' },
   { type: 'p', t: 'No vale cualquier pregunta. La estructura ganadora: pregunta que el espectador YA se ha hecho, con una vuelta inesperada al final. "¿Vale la pena el MacBook Air M4 en 2026? Mi experiencia real" cumple las dos condiciones.' },
   { type: 'h2', t: '5. El framework de comparación directa' },
@@ -806,7 +806,7 @@ const ART_7_FRAMEWORKS_EN: BlockType[] = [
   { type: 'list', items: ['No budget, no gear, no experience', 'In 30 days, in 7 hours, in a single weekend', 'With the camera you already own / with your phone', 'Starting from 0 subscribers'] },
   { type: 'h2', t: '3. The post-experience confession' },
   { type: 'p', t: 'Start the title in first person with a learning verb: "I tried X for Y days. This is what they DON\'T tell you." This is one of the fastest-growing frameworks since mid-2025.' },
-  { type: 'callout-mid', t: 'Tired of writing titles blindly?', sub: 'Generate 8 optimized variations with a virality score in 6 seconds.', cta: 'Try YTubViral free' },
+  { type: 'callout-mid', t: 'Tired of writing titles blindly?', sub: 'Generate 8 optimized variations with a virality score in 6 seconds.', cta: 'Try YTubViral free', href: '/features/ai-generator' },
   { type: 'h2', t: '4. The rhetorical question with a twist' },
   { type: 'p', t: 'Not just any question works. The winning structure: a question the viewer has ALREADY asked themselves, with an unexpected twist at the end. "Is the MacBook Air M4 worth it in 2026? My real experience" hits both conditions.' },
   { type: 'h2', t: '5. The direct comparison framework' },
@@ -1306,7 +1306,7 @@ const ART_KEYWORD_RESEARCH_ES: BlockType[] = [
     'VidIQ/TubeBuddy: datos similares pero requieren extensión de navegador y plan de pago para datos completos',
   ]},
 
-  { type: 'callout-mid', t: 'Prueba el keyword research de YTubViral', sub: 'Volumen, competencia y oportunidad en una búsqueda. Gratis.', cta: 'Investigar keywords →' },
+  { type: 'callout-mid', t: 'Prueba el keyword research de YTubViral', sub: 'Volumen, competencia y oportunidad en una búsqueda. Gratis.', cta: 'Investigar keywords →', href: '/features/keyword-research' },
 
   { type: 'h2', t: 'Paso 3: Evalúa la competencia' },
   { type: 'p', t: 'Una keyword con 100.000 búsquedas al mes suena genial, pero si los primeros 10 resultados son de canales con +1M de suscriptores, no vas a posicionar. La clave está en encontrar keywords donde la competencia sea baja relativa a tu tamaño de canal.' },
@@ -1399,7 +1399,7 @@ const ART_KEYWORD_RESEARCH_EN: BlockType[] = [
     'VidIQ/TubeBuddy: similar data but require a browser extension and paid plan for complete data',
   ]},
 
-  { type: 'callout-mid', t: 'Try YTubViral keyword research', sub: 'Volume, competition, and opportunity in one search. Free.', cta: 'Research keywords →' },
+  { type: 'callout-mid', t: 'Try YTubViral keyword research', sub: 'Volume, competition, and opportunity in one search. Free.', cta: 'Research keywords →', href: '/features/keyword-research' },
 
   { type: 'h2', t: 'Step 3: Evaluate the competition' },
   { type: 'p', t: 'A keyword with 100,000 monthly searches sounds great, but if the top 10 results are from channels with 1M+ subscribers, you won\'t rank. The key is finding keywords where competition is low relative to your channel size.' },
@@ -1509,7 +1509,7 @@ const ART_AB_TESTING_ES: BlockType[] = [
   ]},
   { type: 'p', t: 'La diferencia de precio es notable: TubeBuddy solo ofrece A/B testing en su plan Legend a $49/mes. YTubViral lo incluye en Pro a €9,99/mes.' },
 
-  { type: 'callout-mid', t: 'Testea tus títulos con datos reales', sub: 'A/B testing de títulos con rotación automática y significancia estadística.', cta: 'Empezar A/B testing →' },
+  { type: 'callout-mid', t: 'Testea tus títulos con datos reales', sub: 'A/B testing de títulos con rotación automática y significancia estadística.', cta: 'Empezar A/B testing →', href: '/features/ab-testing' },
 
   { type: 'h2', t: 'La estrategia óptima: combina ambos' },
   { type: 'p', t: 'La mejor estrategia en 2026 es usar ambas herramientas para lo que hacen mejor:' },
@@ -1597,7 +1597,7 @@ const ART_AB_TESTING_EN: BlockType[] = [
   ]},
   { type: 'p', t: 'The price difference is notable: TubeBuddy only offers A/B testing in their Legend plan at $49/month. YTubViral includes it in Pro at €9.99/month.' },
 
-  { type: 'callout-mid', t: 'Test your titles with real data', sub: 'Title A/B testing with automatic rotation and statistical significance.', cta: 'Start A/B testing →' },
+  { type: 'callout-mid', t: 'Test your titles with real data', sub: 'Title A/B testing with automatic rotation and statistical significance.', cta: 'Start A/B testing →', href: '/features/ab-testing' },
 
   { type: 'h2', t: 'The optimal strategy: combine both' },
   { type: 'p', t: 'The best strategy in 2026 is to use both tools for what they do best:' },
@@ -1666,7 +1666,7 @@ const ART_ALGORITMO_2026_ES: BlockType[] = [
   { type: 'h3', t: 'Señales de satisfacción' },
   { type: 'p', t: 'Encuestas post-vídeo, ratio like/dislike, frecuencia de retorno del espectador. Todo esto alimenta los modelos de IA que deciden si tu vídeo se recomienda a más personas.' },
 
-  { type: 'callout-mid', t: 'Analiza tus métricas con precisión', sub: 'SEO Score, análisis de competidores y keyword research — todo en un solo dashboard.', cta: 'Probar YTubViral gratis' },
+  { type: 'callout-mid', t: 'Analiza tus métricas con precisión', sub: 'SEO Score, análisis de competidores y keyword research — todo en un solo dashboard.', cta: 'Probar YTubViral gratis', href: '/features/seo-score' },
 
   { type: 'h2', t: 'Cómo funciona la recomendación en 2026' },
   { type: 'p', t: 'YouTube describe su sistema como "automatizar el boca a boca". En lugar de que tu amigo te diga "mira este vídeo", el algoritmo aprende de lo que espectadores similares a ti ven y disfrutan, y adapta las recomendaciones a cada usuario individual.' },
@@ -1777,7 +1777,7 @@ const ART_ALGORITMO_2026_EN: BlockType[] = [
   { type: 'h3', t: 'Satisfaction signals' },
   { type: 'p', t: 'Post-video surveys, like/dislike ratio, viewer return frequency. All of this feeds the AI models that decide whether your video gets recommended to more people.' },
 
-  { type: 'callout-mid', t: 'Analyze your metrics with precision', sub: 'SEO Score, competitor analysis, and keyword research — all in one dashboard.', cta: 'Try YTubViral free' },
+  { type: 'callout-mid', t: 'Analyze your metrics with precision', sub: 'SEO Score, competitor analysis, and keyword research — all in one dashboard.', cta: 'Try YTubViral free', href: '/features/seo-score' },
 
   { type: 'h2', t: 'How recommendations work in 2026' },
   { type: 'p', t: 'YouTube describes its system as "automating word of mouth." Instead of your friend telling you "watch this video," the algorithm learns from what similar viewers watch and enjoy, adapting recommendations to each individual user.' },
@@ -1874,7 +1874,7 @@ const ART_SUSCRIPTORES_ES: BlockType[] = [
   { type: 'p', t: '¿Por qué? Porque si no puedes crear un título atractivo y una miniatura que genere curiosidad, probablemente el tema no tiene suficiente tirón. Es mejor descubrir esto antes de invertir 8 horas en producción.' },
   { type: 'p', t: 'Las claves de un buen título en 2026: máximo 60 caracteres, incluye una promesa clara, genera curiosidad sin ser clickbait, y contiene tu keyword principal. Las herramientas de IA pueden ayudarte a generar variaciones y elegir la más potente.' },
 
-  { type: 'callout-mid', t: 'Genera títulos virales con IA', sub: 'YTubViral analiza millones de vídeos para sugerirte títulos con alto CTR para tu nicho.', cta: 'Probar gratis' },
+  { type: 'callout-mid', t: 'Genera títulos virales con IA', sub: 'YTubViral analiza millones de vídeos para sugerirte títulos con alto CTR para tu nicho.', cta: 'Probar gratis', href: '/features/ai-generator' },
 
   { type: 'h2', t: '3. Engancha en los primeros 30 segundos (o pierde al espectador)' },
   { type: 'p', t: 'YouTube Analytics muestra que la mayor caída de retención ocurre en los primeros 30 segundos. Si pierdes al espectador ahí, no importa lo bueno que sea el resto del vídeo — nunca lo verá. Y un vídeo con mala retención inicial no consigue suscriptores porque nadie llega al final.' },
@@ -1902,7 +1902,7 @@ const ART_SUSCRIPTORES_ES: BlockType[] = [
     'Los subtítulos importan: sube un archivo SRT corregido. YouTube indexa el texto de los subtítulos.',
   ]},
 
-  { type: 'callout-mid', t: 'Encuentra las keywords perfectas para tu canal', sub: 'Keyword Research con datos reales: volumen, competencia y score de oportunidad para cada tema.', cta: 'Probar YTubViral gratis' },
+  { type: 'callout-mid', t: 'Encuentra las keywords perfectas para tu canal', sub: 'Keyword Research con datos reales: volumen, competencia y score de oportunidad para cada tema.', cta: 'Probar YTubViral gratis', href: '/features/keyword-research' },
 
   { type: 'h2', t: '7. Crea series y playlists estratégicas' },
   { type: 'p', t: 'Una de las estrategias más subestimadas para ganar suscriptores es crear series. Cuando un espectador ve un vídeo que forma parte de una serie, tiene una razón directa para suscribirse: no quiere perderse el siguiente episodio.' },
@@ -1936,7 +1936,7 @@ const ART_SUSCRIPTORES_ES: BlockType[] = [
   ]},
   { type: 'p', t: 'La regla es simple: identifica tus 3 vídeos que más suscriptores generaron, analiza qué tienen en común (tema, formato, duración, estilo de miniatura) y replica ese patrón.' },
 
-  { type: 'callout-mid', t: 'Analiza tu canal con datos reales', sub: 'SEO Score, análisis de competidores, keywords de baja competencia — todo en un dashboard.', cta: 'Empieza gratis con YTubViral' },
+  { type: 'callout-mid', t: 'Analiza tu canal con datos reales', sub: 'SEO Score, análisis de competidores, keywords de baja competencia — todo en un dashboard.', cta: 'Empieza gratis con YTubViral', href: '/features/seo-score' },
 
   { type: 'h2', t: '12. Optimiza tu página de canal (la conversión invisible)' },
   { type: 'p', t: 'Tu página de canal es tu landing page. Cuando un espectador nuevo descubre uno de tus vídeos y le gusta, lo siguiente que hace es visitar tu canal. Lo que vea ahí determina si se suscribe o se va.' },
@@ -1980,7 +1980,7 @@ const ART_SUSCRIPTORES_EN: BlockType[] = [
   { type: 'p', t: 'Why? Because if you can\'t create an attractive title and a curiosity-generating thumbnail, the topic probably doesn\'t have enough pull. It\'s better to discover this before investing 8 hours in production.' },
   { type: 'p', t: 'Keys to a good title in 2026: maximum 60 characters, include a clear promise, generate curiosity without being clickbait, and contain your main keyword. AI tools can help you generate variations and choose the most powerful one.' },
 
-  { type: 'callout-mid', t: 'Generate viral titles with AI', sub: 'YTubViral analyzes millions of videos to suggest high-CTR titles for your niche.', cta: 'Try free' },
+  { type: 'callout-mid', t: 'Generate viral titles with AI', sub: 'YTubViral analyzes millions of videos to suggest high-CTR titles for your niche.', cta: 'Try free', href: '/features/ai-generator' },
 
   { type: 'h2', t: '3. Hook Them in the First 30 Seconds (or Lose Them)' },
   { type: 'p', t: 'YouTube Analytics shows that the biggest retention drop happens in the first 30 seconds. If you lose the viewer there, it doesn\'t matter how good the rest of the video is — they\'ll never see it. And a video with poor initial retention doesn\'t get subscribers because nobody reaches the end.' },
@@ -2008,7 +2008,7 @@ const ART_SUSCRIPTORES_EN: BlockType[] = [
     'Subtitles matter: upload a corrected SRT file. YouTube indexes subtitle text.',
   ]},
 
-  { type: 'callout-mid', t: 'Find the perfect keywords for your channel', sub: 'Keyword Research with real data: volume, competition, and opportunity score for every topic.', cta: 'Try YTubViral free' },
+  { type: 'callout-mid', t: 'Find the perfect keywords for your channel', sub: 'Keyword Research with real data: volume, competition, and opportunity score for every topic.', cta: 'Try YTubViral free', href: '/features/keyword-research' },
 
   { type: 'h2', t: '7. Create Series and Strategic Playlists' },
   { type: 'p', t: 'One of the most underrated strategies for gaining subscribers is creating series. When a viewer watches a video that\'s part of a series, they have a direct reason to subscribe: they don\'t want to miss the next episode.' },
@@ -2042,7 +2042,7 @@ const ART_SUSCRIPTORES_EN: BlockType[] = [
   ]},
   { type: 'p', t: 'The rule is simple: identify your 3 videos that generated the most subscribers, analyze what they have in common (topic, format, length, thumbnail style), and replicate that pattern.' },
 
-  { type: 'callout-mid', t: 'Analyze your channel with real data', sub: 'SEO Score, competitor analysis, low-competition keywords — all in one dashboard.', cta: 'Start free with YTubViral' },
+  { type: 'callout-mid', t: 'Analyze your channel with real data', sub: 'SEO Score, competitor analysis, low-competition keywords — all in one dashboard.', cta: 'Start free with YTubViral', href: '/features/seo-score' },
 
   { type: 'h2', t: '12. Optimize Your Channel Page (the Invisible Conversion)' },
   { type: 'p', t: 'Your channel page is your landing page. When a new viewer discovers one of your videos and likes it, the next thing they do is visit your channel. What they see there determines whether they subscribe or leave.' },
@@ -2106,7 +2106,7 @@ const ART_COMPETENCIA_ES: BlockType[] = [
 
   { type: 'p', t: 'Lo que puedes ignorar: suscriptores totales (vanity metric), likes totales sin contexto, y la descripción del canal (casi nadie la optimiza bien).' },
 
-  { type: 'callout-mid', t: 'Analiza a cualquier canal en segundos', sub: 'Pega la URL de tu competidor y obtén sus keywords, VPH, frecuencia y oportunidades que no está cubriendo.', cta: 'Probar YTubViral gratis' },
+  { type: 'callout-mid', t: 'Analiza a cualquier canal en segundos', sub: 'Pega la URL de tu competidor y obtén sus keywords, VPH, frecuencia y oportunidades que no está cubriendo.', cta: 'Probar YTubViral gratis', href: '/features/competitor-analysis' },
 
   { type: 'h2', t: 'Herramientas para Analizar la Competencia en YouTube' },
   { type: 'p', t: 'Existen varias formas de obtener estos datos. Algunas son gratuitas, otras de pago:' },
@@ -2197,7 +2197,7 @@ const ART_COMPETENCIA_EN: BlockType[] = [
 
   { type: 'p', t: 'What you can ignore: total subscribers (vanity metric), total likes without context, and channel descriptions (almost nobody optimizes them well).' },
 
-  { type: 'callout-mid', t: 'Analyze any channel in seconds', sub: 'Paste your competitor\'s URL and get their keywords, VPH, frequency, and opportunities they\'re missing.', cta: 'Try YTubViral free' },
+  { type: 'callout-mid', t: 'Analyze any channel in seconds', sub: 'Paste your competitor\'s URL and get their keywords, VPH, frequency, and opportunities they\'re missing.', cta: 'Try YTubViral free', href: '/features/competitor-analysis' },
 
   { type: 'h2', t: 'Tools for Analyzing YouTube Competition' },
   { type: 'p', t: 'There are several ways to get this data. Some are free, others paid:' },
@@ -2301,7 +2301,7 @@ const ART_THUMBNAILS_ES: BlockType[] = [
   { type: 'p', t: 'Los canales que crecen más rápido mantienen un estilo visual reconocible sin ser repetitivos. Eso puede ser una paleta de colores, un tipo de composición, o un estilo de texto. Cuando un suscriptor ve tu miniatura en el feed, debería reconocerla como tuya antes de leer el título.' },
   { type: 'p', t: 'Pero hay una trampa: si todas tus miniaturas son idénticas con distintos textos, el espectador deja de prestarles atención. Mantén el estilo, varía la ejecución.' },
 
-  { type: 'callout-mid', t: 'Genera ideas de miniaturas con IA', sub: 'Describe tu vídeo y obtén sugerencias de composición, colores y texto optimizados para CTR.', cta: 'Probar el generador gratis' },
+  { type: 'callout-mid', t: 'Genera ideas de miniaturas con IA', sub: 'Describe tu vídeo y obtén sugerencias de composición, colores y texto optimizados para CTR.', cta: 'Probar el generador gratis', href: '/features/ai-generator' },
 
   { type: 'h2', t: 'Los 5 Errores que Matan tu CTR' },
 
@@ -2402,7 +2402,7 @@ const ART_THUMBNAILS_EN: BlockType[] = [
   { type: 'p', t: 'The fastest-growing channels maintain a recognizable visual style without being repetitive. That might be a color palette, a composition style, or a text treatment. When a subscriber sees your thumbnail in their feed, they should recognize it as yours before reading the title.' },
   { type: 'p', t: 'But there\'s a trap: if all your thumbnails are identical with different text, the viewer stops paying attention. Keep the style, vary the execution.' },
 
-  { type: 'callout-mid', t: 'Generate thumbnail ideas with AI', sub: 'Describe your video and get composition, color, and text suggestions optimized for CTR.', cta: 'Try the generator free' },
+  { type: 'callout-mid', t: 'Generate thumbnail ideas with AI', sub: 'Describe your video and get composition, color, and text suggestions optimized for CTR.', cta: 'Try the generator free', href: '/features/ai-generator' },
 
   { type: 'h2', t: 'The 5 Mistakes Killing Your CTR' },
 
@@ -2509,7 +2509,7 @@ const ART_SCRIPTS_IA_ES: BlockType[] = [
   { type: 'p', t: 'Ahora sí, pídele que desarrolle el outline en un guion completo. Pero dale instrucciones claras: "escríbelo en tono conversacional, como si hablaras con un amigo. Evita introducciones largas. Usa frases cortas. No uses muletillas como \'sin más preámbulo\' o \'en el mundo actual\'. Duración objetivo: 10 minutos a 150 palabras por minuto."' },
   { type: 'p', t: 'Cuanto más específico seas con el tono y el estilo, mejor será el resultado. Si tienes guiones anteriores que te gustan, dáselos como ejemplo. La IA ajusta el estilo mucho mejor con ejemplos que con instrucciones abstractas.' },
 
-  { type: 'callout-mid', t: 'Genera scripts optimizados para YouTube', sub: 'Elige tu tema, ajusta el tono y la duración, y obtén un guion listo para grabar en segundos.', cta: 'Probar el generador de scripts' },
+  { type: 'callout-mid', t: 'Genera scripts optimizados para YouTube', sub: 'Elige tu tema, ajusta el tono y la duración, y obtén un guion listo para grabar en segundos.', cta: 'Probar el generador de scripts', href: '/features/ai-generator' },
 
   { type: 'h3', t: 'Fase 4: Reescritura con Tu Voz (Tú Solo)' },
   { type: 'p', t: 'Esta es la fase más importante y la que el 90% de los creadores se saltan. Coge el borrador de la IA y léelo en voz alta. Cada frase que suene rara, forzada o "de máquina", cámbiala por cómo lo dirías tú.' },
@@ -2616,7 +2616,7 @@ const ART_SCRIPTS_IA_EN: BlockType[] = [
   { type: 'p', t: 'Now ask it to develop the outline into a full script. But give clear instructions: "write it in a conversational tone, like talking to a friend. Avoid long introductions. Use short sentences. Don\'t use filler phrases like \'without further ado\' or \'in today\'s world.\' Target length: 10 minutes at 150 words per minute."' },
   { type: 'p', t: 'The more specific you are about tone and style, the better the result. If you have previous scripts you like, give them as examples. AI adjusts style much better with examples than with abstract instructions.' },
 
-  { type: 'callout-mid', t: 'Generate optimized YouTube scripts', sub: 'Choose your topic, adjust tone and length, and get a script ready to record in seconds.', cta: 'Try the script generator' },
+  { type: 'callout-mid', t: 'Generate optimized YouTube scripts', sub: 'Choose your topic, adjust tone and length, and get a script ready to record in seconds.', cta: 'Try the script generator', href: '/features/ai-generator' },
 
   { type: 'h3', t: 'Phase 4: Rewrite with Your Voice (You Only)' },
   { type: 'p', t: 'This is the most important phase and the one 90% of creators skip. Take the AI draft and read it out loud. Every sentence that sounds weird, forced, or "machine-like," change it to how you\'d actually say it.' },
@@ -2766,7 +2766,7 @@ const ART_MONETIZAR_ES: BlockType[] = [
   { type: 'p', t: 'Los números varían enormemente por nicho: un canal de fitness con 20K subs puede conseguir 1.000-3.000€ por vídeo patrocinado. Un canal de tecnología B2B con 5K subs puede cobrar 5.000€ porque su audiencia toma decisiones de compra de alto valor.' },
   { type: 'p', t: 'La clave: prepara un Media Kit profesional que destaque la demografía de tu audiencia, tu tasa de engagement y casos previos de conversión. Las marcas no compran visualizaciones — compran acceso a la audiencia correcta.' },
 
-  { type: 'callout-mid', t: '¿Sabes cuánto podrías ganar con tu canal?', sub: 'Calcula tus ingresos estimados por nicho, suscriptores y visualizaciones con datos reales de 2026.', cta: 'Probar Revenue Estimator' },
+  { type: 'callout-mid', t: '¿Sabes cuánto podrías ganar con tu canal?', sub: 'Calcula tus ingresos estimados por nicho, suscriptores y visualizaciones con datos reales de 2026.', cta: 'Probar Revenue Estimator', href: '/features/revenue-estimator' },
 
   { type: 'h3', t: '5. Productos digitales y cursos' },
   { type: 'p', t: 'Si tu contenido enseña algo — edición, cocina, finanzas, programación, fotografía — tienes la base perfecta para vender productos digitales: cursos, plantillas, presets, ebooks, comunidades de pago.' },
@@ -2907,7 +2907,7 @@ const ART_MONETIZAR_EN: BlockType[] = [
   { type: 'p', t: 'Numbers vary enormously by niche: a fitness channel with 20K subs can land €1,000-3,000 per sponsored video. A B2B tech channel with 5K subs can charge €5,000 because their audience makes high-value purchasing decisions.' },
   { type: 'p', t: 'The key: prepare a professional Media Kit highlighting your audience demographics, engagement rate, and previous conversion cases. Brands don\'t buy views — they buy access to the right audience.' },
 
-  { type: 'callout-mid', t: 'Know how much you could earn with your channel?', sub: 'Calculate your estimated revenue by niche, subscribers, and views with real 2026 data.', cta: 'Try Revenue Estimator' },
+  { type: 'callout-mid', t: 'Know how much you could earn with your channel?', sub: 'Calculate your estimated revenue by niche, subscribers, and views with real 2026 data.', cta: 'Try Revenue Estimator', href: '/features/revenue-estimator' },
 
   { type: 'h3', t: '5. Digital Products and Courses' },
   { type: 'p', t: 'If your content teaches something — editing, cooking, finance, programming, photography — you have the perfect foundation to sell digital products: courses, templates, presets, ebooks, paid communities.' },
@@ -3008,7 +3008,7 @@ const ART_NEURODIVERGENCIA_ES: BlockType[] = [
   { type: 'h3', t: 'Paso 4: Publica desde el banco, no en tiempo real' },
   { type: 'p', t: 'Con 3-4 vídeos grabados por adelantado, puedes programar publicaciones con la función de programación de YouTube. Esto elimina la presión de "tengo que publicar hoy" cuando tu cerebro no coopera. Tu audiencia ve contenido consistente; tú trabajas a tu ritmo real.' },
 
-  { type: 'callout-mid', t: 'Planifica tu calendario de contenido sin estrés', sub: 'Content Calendar te ayuda a organizar tus publicaciones con flexibilidad — perfecto para ritmos de trabajo no lineales.', cta: 'Probar calendario gratis' },
+  { type: 'callout-mid', t: 'Planifica tu calendario de contenido sin estrés', sub: 'Content Calendar te ayuda a organizar tus publicaciones con flexibilidad — perfecto para ritmos de trabajo no lineales.', cta: 'Probar calendario gratis', href: '/features/content-calendar' },
 
   { type: 'h2', t: 'Herramientas que Salvan la Vida a Creadores Neurodivergentes' },
   { type: 'p', t: 'No todas las herramientas son iguales cuando tu cerebro funciona diferente. Estas son las que realmente marcan la diferencia:' },
@@ -3130,7 +3130,7 @@ const ART_NEURODIVERGENCIA_EN: BlockType[] = [
   { type: 'h3', t: 'Step 4: Publish from the Bank, Not in Real Time' },
   { type: 'p', t: 'With 3-4 videos recorded in advance, you can schedule uploads using YouTube\'s scheduling feature. This eliminates the pressure of "I have to publish today" when your brain won\'t cooperate. Your audience sees consistent content; you work at your actual pace.' },
 
-  { type: 'callout-mid', t: 'Plan your content calendar stress-free', sub: 'Content Calendar helps you organize your uploads with flexibility — perfect for non-linear work rhythms.', cta: 'Try calendar for free' },
+  { type: 'callout-mid', t: 'Plan your content calendar stress-free', sub: 'Content Calendar helps you organize your uploads with flexibility — perfect for non-linear work rhythms.', cta: 'Try calendar for free', href: '/features/content-calendar' },
 
   { type: 'h2', t: 'Tools That Are Lifesavers for Neurodivergent Creators' },
   { type: 'p', t: 'Not all tools are equal when your brain works differently. These are the ones that actually make a difference:' },
