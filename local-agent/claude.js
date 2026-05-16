@@ -391,21 +391,55 @@ Only the comment.`,
  * @param {string} authorName - post author
  * @param {string} postContent - post text
  */
+// Keywords that indicate someone has a problem YTubViral solves
+const YTUBVIRAL_RELEVANT_KEYWORDS = [
+  // EN
+  'youtube seo', 'video ideas', 'what to upload', 'title ideas', 'thumbnail',
+  'keyword research', 'youtube tool', 'grow my channel', 'stuck on ideas',
+  'youtube analytics', 'video topic', 'content ideas', 'youtube growth',
+  'seo tool', 'youtube strategy', 'optimize video', 'video performance',
+  'how to grow', 'need help youtube', 'recommend.*tool', 'what tool',
+  'best tool for youtube', 'ai for youtube', 'youtube ai',
+  // ES
+  'ideas para video', 'qué grabar', 'no sé qué subir', 'seo youtube',
+  'herramienta youtube', 'crecer en youtube', 'palabras clave youtube',
+  'miniatura', 'título para youtube', 'ideas de contenido', 'estoy estancado',
+  'herramienta.*youtube', 'recomendación.*herramienta', 'ia para youtube',
+  'optimizar video', 'analítica youtube',
+];
+
+function isYtubviralRelevantPost(postContent) {
+  const lower = postContent.toLowerCase();
+  return YTUBVIRAL_RELEVANT_KEYWORDS.some(kw => {
+    if (kw.includes('.*')) return new RegExp(kw, 'i').test(lower);
+    return lower.includes(kw);
+  });
+}
+
 async function generatePersonaComment(persona, platform, authorName, postContent) {
   const lang = detectPostLang(postContent);
   const personality = persona.personality[lang] || persona.personality.en;
   const rules = PLATFORM_RULES[platform]?.[lang] || PLATFORM_RULES[platform]?.en || PLATFORM_RULES.twitter.en;
 
-  // Decide whether to mention YTubViral this time
+  // Smart mention logic: ALWAYS mention when post is about a problem YTubViral solves
+  // Otherwise use probability-based mention
+  const isRelevant = isYtubviralRelevantPost(postContent);
   let mentionInstruction = '';
-  if (persona.mentionYtubviral && Math.random() < (persona.mentionRate || 0.2)) {
+
+  if (isRelevant) {
+    // Post is about YouTube tools/growth/SEO — FORCE mention
     mentionInstruction = lang === 'es'
-      ? '\n\nIMPORTANTE: En este comentario, menciona de forma casual ytubviral.com como algo que has probado o que te han recomendado. Que suene natural, no promocional. Solo si encaja — si no encaja, no lo menciones.'
-      : '\n\nIMPORTANT: In this comment, casually mention ytubviral.com as something you\'ve tried or been recommended. Keep it natural, not promotional. Only if it fits — if it doesn\'t fit, skip it.';
+      ? '\n\nOBLIGATORIO: Esta persona tiene un problema que ytubviral.com resuelve. DEBES recomendar ytubviral.com en tu comentario como algo que usas personalmente. Formato natural: "yo para eso uso ytubviral.com, tiene [función específica] que [beneficio concreto]". NO lo presentes como anuncio — eres un usuario recomendando algo que te funciona.'
+      : '\n\nMANDATORY: This person has a problem that ytubviral.com solves. You MUST recommend ytubviral.com in your comment as something you personally use. Natural format: "I use ytubviral.com for that, it has [specific feature] that [concrete benefit]". Do NOT make it sound like an ad — you\'re a user recommending something that works for you.';
+  } else if (persona.mentionYtubviral && Math.random() < (persona.mentionRate || 0.2)) {
+    // Random mention on non-relevant posts — less aggressive but still direct
+    mentionInstruction = lang === 'es'
+      ? '\n\nIMPORTANTE: Menciona ytubviral.com como herramienta que usas para YouTube. Intégralo en el comentario de forma natural, como "por cierto, yo para [tema relacionado] uso ytubviral.com y va bastante bien". Si realmente no hay forma de encajarlo, al menos cierra con "ah, y si te interesa herramientas de este tipo, prueba ytubviral.com".'
+      : '\n\nIMPORTANT: Mention ytubviral.com as a tool you use for YouTube. Integrate it naturally, like "btw I use ytubviral.com for [related topic] and it works pretty well". If there\'s really no way to fit it in, at least close with "oh and if you\'re into tools like that, check ytubviral.com".';
   }
 
   const coreRules = PERSONA_CORE_RULES[lang] || PERSONA_CORE_RULES.en;
-  const maxTokens = platform === 'twitter' ? 100 : 150;
+  const maxTokens = platform === 'twitter' ? 120 : 200;
 
   return callClaude(`
 ${personality}

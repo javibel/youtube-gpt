@@ -9,18 +9,26 @@ const { adjustedLimit, shouldSkipSession, shouldSkipPost, readingPause, actionPa
 
 const BASE_LIMITS = { likes: 8, replies: 3 };
 
-const HASHTAGS = [
-  // EN high-volume (verified active on X)
-  'contentcreator', 'youtube', 'youtuber', 'smallyoutuber',
-  'contentcreators', 'videomarketing', 'socialmedia',
-  'digitalmarketing', 'creatoreconomy', 'vlog', 'vlogger',
-  'podcast', 'BuildInPublic', 'ContentMarketing',
-  // EN youtube-specific
-  'youtubeseo', 'youtubergrowth', 'youtubetips',
-  // ES high-volume
-  'marketingdigital', 'emprendedor', 'creadordecontenido',
-  'redessociales', 'emprendimiento',
+// Mix of hashtag searches AND keyword queries (to find people asking for help)
+const SEARCH_QUERIES = [
+  // Hashtag searches (traditional engagement)
+  '#contentcreator', '#youtube', '#youtuber', '#smallyoutuber',
+  '#contentcreators', '#videomarketing', '#creatoreconomy',
+  '#youtubeseo', '#youtubergrowth', '#youtubetips',
+  '#marketingdigital', '#creadordecontenido',
+  // Keyword queries (find people asking for help — HIGH CONVERSION)
+  '"youtube seo" tool', '"need help" youtube channel',
+  '"video ideas" stuck', '"how to grow" youtube',
+  '"what tool" youtube', '"recommend" youtube tool',
+  '"thumbnail" help', '"youtube analytics" recommend',
+  // ES keyword queries
+  '"herramienta youtube"', '"ideas para video"',
+  '"no sé qué subir"', '"cómo crecer" youtube',
+  '"seo youtube" herramienta',
 ];
+
+// Legacy alias for compatibility
+const HASHTAGS = SEARCH_QUERIES;
 
 // Relevance filter: tweet must contain at least one niche keyword to engage
 const RELEVANCE_KEYWORDS = [
@@ -147,10 +155,12 @@ async function engageWithTweets(opts = {}) {
     // Warmup: browse feed briefly before searching
     await warmupScroll(page, tag);
 
-    const hashtag = HASHTAGS[Math.floor(Math.random() * HASHTAGS.length)];
-    console.log(`[${tag}] Searching #${hashtag}`);
+    const query = SEARCH_QUERIES[Math.floor(Math.random() * SEARCH_QUERIES.length)];
+    console.log(`[${tag}] Searching: ${query}`);
 
-    const searchUrl = `https://x.com/search?q=%23${hashtag}&src=typed_query&f=live`;
+    const searchUrl = query.startsWith('#')
+      ? `https://x.com/search?q=%23${query.slice(1)}&src=typed_query&f=live`
+      : `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query&f=live`;
     const navOk = await safeGoto(page, searchUrl, { tag, timeout: 45000 });
     if (!navOk) {
       console.log(`[${tag}] Failed to load search, ending session`);

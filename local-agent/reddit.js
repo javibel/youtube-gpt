@@ -8,12 +8,22 @@ const { diagnose } = require('./doctor');
 
 const LIMITS = { upvotes: 8, comments: 4 };
 
-const SUBREDDITS = [
+// High-priority subreddits where people ask for YouTube help/tools (conversion-focused)
+const SUBREDDITS_PRIORITY = [
   'NewTubers', 'youtubers', 'SmallYTChannel', 'PartneredYoutube',
-  'YouTubeGaming', 'letsplay', 'videopodcast', 'contentcreation',
-  'socialmedia', 'SEO', 'VideoEditing', 'Filmmakers',
-  'CreatorServices', 'podcasting',
+  'CreatorServices', 'contentcreation',
 ];
+
+// Secondary subreddits (broader audience, less direct conversion)
+const SUBREDDITS_SECONDARY = [
+  'YouTubeGaming', 'letsplay', 'videopodcast',
+  'socialmedia', 'SEO', 'VideoEditing', 'Filmmakers', 'podcasting',
+];
+
+// 70% chance of priority subreddit (where people ask for tools)
+const SUBREDDITS = Math.random() < 0.7
+  ? SUBREDDITS_PRIORITY
+  : [...SUBREDDITS_PRIORITY, ...SUBREDDITS_SECONDARY];
 
 function delay(min = 1500, max = 4000) {
   const ms = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -200,10 +210,14 @@ async function engageWithPosts(opts = {}) {
         }
       }
 
-      // Comment (~40% chance per post, only if under limit and post has content to reply to)
+      // Prioritize posts where someone is asking for help (higher conversion potential)
+      const isQuestion = /\?|help|recommend|suggest|advice|stuck|how do|what tool|best way/i.test(post.title + ' ' + post.text);
+      const commentChance = isQuestion ? 0.7 : 0.35; // 70% for questions, 35% for others
+
+      // Comment (probability-based, only if under limit and post has content to reply to)
       if (todayComments + commentsGiven < limits.comments
         && (post.text.length > 20 || post.title.length > 30)
-        && Math.random() < 0.4) {
+        && Math.random() < commentChance) {
         try {
           const postContent = post.text || post.title;
 

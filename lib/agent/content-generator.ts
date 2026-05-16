@@ -75,13 +75,13 @@ type DayTheme = {
 };
 
 const TEMAS_SEMANA: Record<number, DayTheme> = {
-  0: { tema: 'inspiración / descanso creativo',    descripcion: 'reflexión personal, qué te mueve a seguir, momentos de pausa', mencionarProducto: false },
-  1: { tema: 'motivación / arranque de semana',    descripcion: 'energía de inicio, un reto que enfrentas, un objetivo de la semana', mencionarProducto: false },
-  2: { tema: 'tip práctico de YouTube',            descripcion: 'algo concreto que aprendiste sobre YouTube, SEO, retención, títulos, thumbnails', mencionarProducto: false },
-  3: { tema: 'historia real / caso de uso',        descripcion: 'una anécdota real, un error que cometiste, algo que salió bien o mal, un aprendizaje', mencionarProducto: false },
-  4: { tema: 'herramientas y proceso creativo',    descripcion: 'cómo trabajas, qué usas, puedes mencionar YTubViral si viene natural', mencionarProducto: true },
-  5: { tema: 'reflexión de la semana',             descripcion: 'qué fue bien, qué fue mal, qué cambiarias, una emoción honesta', mencionarProducto: false },
-  6: { tema: 'pregunta a la comunidad',            descripcion: 'abre conversación, pregunta algo genuino a tu audiencia, sin respuesta correcta', mencionarProducto: false },
+  0: { tema: 'dato / estadística sorprendente de YouTube',  descripcion: 'un dato real que pocos conocen sobre YouTube, algoritmo, CTR, retención. Que la gente quiera guardarlo o compartirlo. Incluye el número concreto.', mencionarProducto: false },
+  1: { tema: 'error común que cometen YouTubers',           descripcion: 'un error específico que ves en canales pequeños, con explicación de por qué falla y qué hacer en su lugar. Práctico y accionable.', mencionarProducto: false },
+  2: { tema: 'tip práctico con resultado medible',          descripcion: 'un truco concreto de SEO, títulos, thumbnails o retención que da resultados. Con formato "haz X para conseguir Y". Menciona YTubViral como herramienta que ayuda.', mencionarProducto: true },
+  3: { tema: 'mini tutorial / how-to',                      descripcion: 'explica paso a paso algo útil: cómo investigar keywords, cómo analizar competencia, cómo optimizar un título. 3-5 pasos concretos.', mencionarProducto: true },
+  4: { tema: 'herramienta destacada + uso real',            descripcion: 'muestra una funcionalidad específica de YTubViral con caso de uso real. No como anuncio — como "mira lo que descubrí analizando X".', mencionarProducto: true },
+  5: { tema: 'pregunta / debate con opinión',               descripcion: 'lanza una pregunta polarizante sobre YouTube que genere debate. Da tu opinión primero. Ej: "¿Los Shorts canibalizan los long-form?"', mencionarProducto: false },
+  6: { tema: 'comparativa / antes vs después',              descripcion: 'compara dos enfoques, muestra un antes/después de optimizar un título o thumbnail, o datos de un canal antes y después de aplicar una estrategia.', mencionarProducto: true },
 };
 
 function getTodayTheme(): DayTheme {
@@ -119,14 +119,17 @@ ${VOZ}
 
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
-${theme.mencionarProducto ? 'Puedes mencionar YTubViral de forma natural si encaja con la historia.' : 'No menciones YTubViral ni hagas ningún tipo de promoción hoy.'}
+${theme.mencionarProducto ? 'Menciona YTubViral (ytubviral.com) de forma natural como herramienta que usas/construyes. No como anuncio — como parte de la historia.' : 'No menciones YTubViral hoy.'}
 
-Escribe un post de Facebook (150-250 palabras).
-- Tono conversacional, como si hablaras con amigos de confianza
-- Puede incluir una historia, un error, una reflexión, una duda real
-- Emojis solo si salen naturales, no los fuerces
-- SIEMPRE incluye 3-4 hashtags relevantes al final del post (ej: #youtube #contentcreator #creadores #youtuber)
-- Sin CTA de marketing, sin "¡no te lo pierdas!", sin urgencia artificial
+Escribe un post de Facebook (150-250 palabras) que la gente quiera GUARDAR o COMPARTIR.
+- El post debe aportar VALOR PRÁCTICO: un dato, un tip, un método, algo accionable
+- Empieza con una frase que enganche (dato sorprendente, pregunta provocadora, o afirmación contraintuitiva)
+- Tono conversacional pero con sustancia — no reflexiones vacías
+- Si incluyes números o datos, que sean específicos (no "muchos youtubers", sino "el 73% de canales pequeños")
+- Emojis solo si salen naturales
+- SIEMPRE incluye 4-6 hashtags relevantes al final (mezcla ES + EN: #youtube #youtubeseo #creadordecontenido #youtubetips #creadores)
+- Termina con pregunta que invite a comentar O con un "guarda este post"
+- Sin CTA de marketing forzado, sin urgencia artificial
 
 Devuelve SOLO el texto del post.
 `.trim();
@@ -140,15 +143,15 @@ ${VOZ}
 
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
-${theme.mencionarProducto ? 'Puedes mencionar YTubViral de forma natural si encaja con la historia.' : 'No menciones YTubViral ni hagas ningún tipo de promoción hoy.'}
+${theme.mencionarProducto ? 'Menciona YTubViral (ytubviral.com) como herramienta que usas/construyes, de forma natural.' : 'No menciones YTubViral hoy.'}
 
-Escribe un caption de Instagram (100-180 palabras).
-- Primera línea que enganche sin ser clickbait
-- Voz personal, puede ser una historia corta, una reflexión, una pregunta real
-- Emojis naturales, no en cada línea
-- "🔗 Link en bio" solo si mencionas algo que vale la pena ver
-- 6-10 hashtags al final (mezcla de nicho y generales para YouTube/creadores)
-- Sin frases de marketing ni urgencia artificial
+Escribe un caption de Instagram (100-180 palabras) que la gente quiera GUARDAR.
+- Primera línea BRUTAL que enganche (dato, pregunta provocadora, afirmación contraintuitiva)
+- Contenido de VALOR: tip práctico, dato real, método paso a paso, o comparativa
+- Emojis estratégicos (✅ para listas, 📊 para datos, 💡 para tips — no exagerar)
+- Termina con pregunta que genere comentarios O con "🔗 Link en bio" si mencionas ytubviral
+- 8-12 hashtags al final (mezcla): #youtube #youtubeseo #youtubetips #contentcreator #creadordecontenido #youtubegrowth #smallyoutuber #creadores #marketingdigital #youtuber
+- El contenido debe ser ÚTIL para alguien que quiere crecer en YouTube
 
 Devuelve SOLO el caption con hashtags.
 `.trim();

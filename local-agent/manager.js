@@ -163,6 +163,21 @@ function buildRawSummary(date) {
     }
   } catch (e) { /* doctor.js not available */ }
 
+  // Social Optimizer report
+  const socialReport = readReport('social-optimizer', date);
+  if (socialReport) {
+    const issueCount = socialReport.analysis?.issues?.length || 0;
+    const mentionRate = socialReport.analysis?.mentionRate || 0;
+    const newUsers = socialReport.metrics?.users?.newThisWeek || 0;
+    sections.push({
+      agent: 'Social Optimizer',
+      status: issueCount > 2 ? 'ATENCIÓN' : issueCount > 0 ? 'REVISAR' : 'OK',
+      data: `Issues: ${issueCount}, Mention rate: ${mentionRate}%, Usuarios nuevos (7d): ${newUsers}`,
+      ai: socialReport.analysis?.aiAnalysis || (socialReport.analysis?.issues || []).join(' | '),
+      duration: 0,
+    });
+  }
+
   return sections;
 }
 

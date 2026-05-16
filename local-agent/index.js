@@ -14,6 +14,7 @@ const { runScout } = require('./scout');
 const { runWatchdog } = require('./watchdog');
 const { runManager } = require('./manager');
 const { runSentinel } = require('./sentinel');
+const { runSocialOptimizer } = require('./social-optimizer');
 
 console.log('[agent] YTubViral local agent starting...');
 
@@ -134,6 +135,12 @@ cron.schedule('30 2 * * 1', async () => {
 cron.schedule('45 2 * * 1', async () => {
   console.log('[cron] Watchdog agent — legal compliance audit');
   await runWatchdog().catch(err => console.error('[watchdog]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
+// Social Optimizer — daily at 03:00 (before Manager, so Manager can include findings)
+cron.schedule('0 3 * * *', async () => {
+  console.log('[cron] Social Optimizer — daily analysis');
+  await runSocialOptimizer().catch(err => console.error('[social-optimizer]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
 // Manager (coordinator + executive report) — every day at 03:15
