@@ -24,28 +24,33 @@ async function callClaude(prompt, maxTokens = 200) {
 
   // Structural checks first (catch ANY meta-commentary regardless of wording)
 
-  // 1. Contains newline → almost always meta-commentary (real comments are 1-2 sentences)
-  if (text.includes('\n')) return '';
+  // 1. Newline handling per platform length
+  //    Short-form (twitter ≤120 tokens): take first paragraph only (Claude often over-generates)
+  //    Longer-form (reddit ≤200 tokens): allow multiple paragraphs
+  let processed = text;
+  if (maxTokens <= 150 && text.includes('\n')) {
+    processed = text.split(/\n/)[0].trim();
+    if (!processed || processed.length < 20) return '';
+  }
 
   // 2. Starts with meta markers
-  if (/^\s*[\(\[\{"']/.test(text)) return '';         // ( [ { " '
-  if (/^empty/i.test(text)) return '';
-  if (/^vac[ií]o/i.test(text)) return '';
-  if (/^(N\/A|n\/a|none|ninguno|pass|skip)/i.test(text)) return '';
+  if (/^\s*[\(\[\{"']/.test(processed)) return '';         // ( [ { " '
+  if (/^empty/i.test(processed)) return '';
+  if (/^vac[ií]o/i.test(processed)) return '';
+  if (/^(N\/A|n\/a|none|ninguno|pass|skip)/i.test(processed)) return '';
 
-  // 3. Too long for a genuine social media comment (>500 chars = probably an explanation)
-  if (text.length > 500) return '';
+  // 3. Too long for platform (twitter: 300, reddit: 800)
+  const maxLen = maxTokens <= 150 ? 300 : 800;
+  if (processed.length > maxLen) return '';
 
   // 4. Contains em-dash (—) followed by explanation = meta-commentary pattern
-  //    e.g. "I'm not commenting — this is a sales pitch"
-  if (/\s—\s.{20,}/i.test(text) && /\b(post|comment|engage|spam|ad|promo|sales|comercial|regla|rule|skip|empty|vac[ií]o)\b/i.test(text)) return '';
+  if (/\s—\s.{20,}/i.test(processed) && /\b(post|comment|engage|spam|ad|promo|sales|comercial|regla|rule|skip|empty|vac[ií]o)\b/i.test(processed)) return '';
 
   // 5. Long response starting with "No" + contains meta words = refusal explanation
-  if (/^No\b/i.test(text) && text.length > 80 && /\b(post|comment|engage|regla|rule|spam|ad|promo|devuelvo|return|skip)\b/i.test(text)) return '';
+  if (/^No\b/i.test(processed) && processed.length > 80 && /\b(post|comment|engage|regla|rule|spam|ad|promo|devuelvo|return|skip)\b/i.test(processed)) return '';
 
   // Pattern-based reject (specific phrases)
   const rejectPatterns = [
-    // Claude explaining why it won't comment
     /returning empty/i, /return empty/i, /devuelvo vac[ií]o/i,
     /devuelvo comentario/i, /no devuelvo/i,
     /not commenting/i, /no comento/i, /skip this/i, /I('ll| will) pass/i,
@@ -60,27 +65,35 @@ async function callClaude(prompt, maxTokens = 200) {
     /nada que ver con/i, /nothing to .* engage/i,
     /autoayuda genérica/i, /self-help/i,
     /huele a/i,
-    // Claude refusing
     /no puedo generar/i, /no tengo suficiente/i,
-    /basándome solo/i, /sin contexto/i, /cannot write/i,
-    /I would need/i, /not enough context/i,
+    /basándome solo/i, /sin contexto/i, /cannot write/i, /can't write/i,
+    /I would need/i, /not enough context/i, /can't .* comment/i,
     /ver el contenido/i,
     /I('m| am) not clicking/i, /no voy a hacer clic/i,
-    // AI-sounding generic phrases (only the most obvious ones)
     /gran post/i, /great post/i, /totalmente de acuerdo/i,
     /no podr[ií]a estar m[aá]s de acuerdo/i, /couldn't agree more/i,
     /esto es oro/i, /this is gold/i,
     /amazing post/i,
-    // Commercial / self-promo sounding
     /check out my/i, /mira mi/i, /visita mi/i,
     /link in bio/i, /enlace en bio/i,
     /use code/i, /usa el c[oó]digo/i,
     /DM me/i, /escr[ií]beme/i,
     /free trial/i, /prueba gratis/i,
   ];
-  if (rejectPatterns.some(p => p.test(text))) return '';
+  if (rejectPatterns.some(p => p.test(processed))) return '';
 
-  return text;
+  // For longer-form comments (reddit): trim to max 3 paragraphs, remove markdown formatting
+  if (maxTokens > 150 && processed.includes('\n')) {
+    const paragraphs = processed.split(/\n{1,}/).filter(p => p.trim());
+    if (paragraphs.length > 5) return '';
+    const cleaned = paragraphs.slice(0, 3).join('\n\n')
+      .replace(/\*\*/g, '')
+      .replace(/^#+\s/gm, '')
+      .replace(/^\d+\.\s/gm, '- ');
+    return cleaned;
+  }
+
+  return processed;
 }
 
 // Simple language detection based on common words
@@ -410,10 +423,17 @@ const YTUBVIRAL_RELEVANT_KEYWORDS = [
 
 function isYtubviralRelevantPost(postContent) {
   const lower = postContent.toLowerCase();
-  return YTUBVIRAL_RELEVANT_KEYWORDS.some(kw => {
+  // Direct match first
+  const directMatch = YTUBVIRAL_RELEVANT_KEYWORDS.some(kw => {
     if (kw.includes('.*')) return new RegExp(kw, 'i').test(lower);
     return lower.includes(kw);
   });
+  if (directMatch) return true;
+
+  // Proximity match: if post contains YouTube/canal + problem-word within same text
+  const hasYoutube = /youtube|canal|channel|video/i.test(lower);
+  const hasProblem = /\b(tool|herramienta|recommend|ayud|help|seo|keyword|título|title|tag|grow|crec|stuck|estancad|optimiz|analiz|ideas?)\b/i.test(lower);
+  return hasYoutube && hasProblem;
 }
 
 async function generatePersonaComment(persona, platform, authorName, postContent) {
@@ -438,8 +458,26 @@ async function generatePersonaComment(persona, platform, authorName, postContent
       : '\n\nIMPORTANT: Mention ytubviral.com as a tool you use for YouTube. Integrate it naturally, like "btw I use ytubviral.com for [related topic] and it works pretty well". If there\'s really no way to fit it in, at least close with "oh and if you\'re into tools like that, check ytubviral.com".';
   }
 
-  const coreRules = PERSONA_CORE_RULES[lang] || PERSONA_CORE_RULES.en;
-  const maxTokens = platform === 'twitter' ? 120 : 200;
+  let coreRules = PERSONA_CORE_RULES[lang] || PERSONA_CORE_RULES.en;
+  const maxTokens = platform === 'twitter' ? 150 : 200;
+
+  // When post is relevant and we MUST mention ytubviral, remove conflicting "return empty" rules
+  // Otherwise Claude thinks "asking for tools = commercial post" and refuses
+  if (isRelevant) {
+    coreRules = coreRules
+      .replace(/.*huele a comercial.*devuelve vac[ií]o.*/gi, '')
+      .replace(/.*smells commercial.*return empty.*/gi, '')
+      .replace(/.*no tienes nada interesante.*devuelve vac[ií]o.*/gi, '')
+      .replace(/.*nothing interesting.*return empty.*/gi, '');
+  }
+
+  // When forced mention on twitter, override length constraint
+  let effectiveRules = rules;
+  if (isRelevant && platform === 'twitter') {
+    effectiveRules = lang === 'es'
+      ? 'REGLAS: Reply de Twitter. Máximo 280 caracteres. 1-2 frases. Informal. Sin hashtags. Sin markdown. ESCRIBE EN ESPAÑOL.\nSolo el reply.'
+      : 'RULES: Twitter reply. Max 280 chars. 1-2 sentences. Informal. No hashtags. No markdown. WRITE IN ENGLISH.\nOnly the reply.';
+  }
 
   return callClaude(`
 ${personality}
@@ -450,7 +488,7 @@ You just read this ${platform} post by ${authorName}. Write the comment you'd na
 
 Post: "${postContent}"
 
-${rules}${mentionInstruction}
+${effectiveRules}${mentionInstruction}
 `, maxTokens);
 }
 
