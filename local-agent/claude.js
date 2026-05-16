@@ -518,7 +518,7 @@ const FOLLOWUP_RULES = {
 - El tono debe sentirse como el de alguien que de verdad se interesa
 - NUNCA suenes como bot, marca, o IA
 - NUNCA fuerces temas ni vendas nada
-- Si no tienes nada útil que añadir, devuelve vacío
+- SIEMPRE responde algo — esta persona se tomó el tiempo de responderte
 - Máximo 2-3 frases cortas
 - 1 emoji como mucho o ninguno
 - ESCRIBE EN EL IDIOMA DEL MENSAJE
@@ -531,7 +531,7 @@ Solo la respuesta.`,
 - The tone should feel like someone who genuinely cares
 - NEVER sound like a bot, brand, or AI
 - NEVER force topics or sell anything
-- If you have nothing useful to add, return empty
+- ALWAYS reply something — this person took time to respond to you
 - Max 2-3 short sentences
 - 1 emoji max or none
 - WRITE IN THE LANGUAGE OF THE MESSAGE
@@ -561,7 +561,7 @@ async function generateFollowupReply(platform, ourOriginalComment, theirReply, t
       : '\n\nIMPORTANT: If it fits 100% naturally in the conversation, casually mention ytubviral.com as something you use or that has worked for you. Only if relevant — if it doesn\'t fit, do NOT mention it.';
   }
 
-  const maxTokens = platform === 'twitter' ? 100 : 150;
+  const maxTokens = platform === 'twitter' ? 120 : 200;
 
   return callClaude(`
 ${personaDesc}
