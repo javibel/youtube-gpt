@@ -100,10 +100,10 @@
     "activeHours": "8-23"
   },
   "scout": {
-    "model": "claude-opus-4-6"
+    "model": "claude-sonnet-4-6"
   },
   "watchdog": {
-    "model": "claude-opus-4-6"
+    "model": "claude-sonnet-4-6"
   },
   "social-optimizer": {
     "model": "claude-sonnet-4-6"
@@ -132,10 +132,13 @@
   "_lastModified": "2026-05-16T19:50:00.986Z",
   "_lastModifiedBy": "dashboard",
   "_anthropicBalance": {
-    "amount": 2.95,
+    "amount": 2.9384662500000003,
     "currency": "USD",
     "totalCredit": 6,
     "totalSpent": 3.05,
-    "lastChecked": "2026-05-17T01:15:13.609Z"
+    "lastChecked": "2026-05-17T01:15:13.609Z",
+    "lastDeduction": "2026-05-17T09:10:41.216Z",
+    "totalSpentToday": 0.01153375,
+    "spendDate": "2026-05-17"
   }
 }
