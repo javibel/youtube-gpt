@@ -5,6 +5,7 @@ export interface GearItem {
   name: { es: string; en: string };
   description: { es: string; en: string };
   category: string;
+  subcategory?: string;
   tier: 'budget' | 'mid' | 'pro';
   priceRange: string;
   recommended?: boolean;
@@ -29,6 +30,34 @@ export const GEAR_CATEGORIES: GearCategory[] = [
   { key: 'software',     name: { es: 'Software',      en: 'Software' },      icon: '💻', color: '#B388FF' },
   { key: 'accessibility', name: { es: 'Accesibilidad y Confort', en: 'Accessibility & Comfort' }, icon: '♿', color: '#4FC3F7' },
 ];
+
+// Subcategories for accessibility (each becomes its own page)
+export const ACCESSIBILITY_SUBCATEGORIES: GearCategory[] = [
+  { key: 'noise-cancelling',   name: { es: 'Cancelación de Ruido', en: 'Noise Cancelling' },       icon: '🎧', color: '#4FC3F7' },
+  { key: 'fidget-tools',       name: { es: 'Herramientas Fidget', en: 'Fidget Tools' },            icon: '🤲', color: '#7CFF00' },
+  { key: 'deep-pressure',      name: { es: 'Presión Profunda', en: 'Deep Pressure' },              icon: '🧸', color: '#FF8A00' },
+  { key: 'wearables-rings',    name: { es: 'Wearables y Anillos', en: 'Wearables & Rings' },       icon: '💍', color: '#B388FF' },
+  { key: 'movement',           name: { es: 'Movimiento', en: 'Movement' },                         icon: '🏋️', color: '#00E5FF' },
+  { key: 'timers',             name: { es: 'Temporizadores', en: 'Timers' },                       icon: '⏱️', color: '#FFE800' },
+];
+
+// All categories including accessibility subcategories (for routing)
+export const ALL_GEAR_SLUGS: string[] = [
+  ...GEAR_CATEGORIES.map(c => c.key),
+  ...ACCESSIBILITY_SUBCATEGORIES.map(c => c.key),
+];
+
+export function getCategoryBySlug(slug: string): GearCategory | undefined {
+  return GEAR_CATEGORIES.find(c => c.key === slug)
+    || ACCESSIBILITY_SUBCATEGORIES.find(c => c.key === slug);
+}
+
+export function getItemsForSlug(slug: string): GearItem[] {
+  const subcat = ACCESSIBILITY_SUBCATEGORIES.find(c => c.key === slug);
+  if (subcat) return GEAR_ITEMS.filter(i => i.subcategory === slug);
+  if (slug === 'accessibility') return GEAR_ITEMS.filter(i => i.category === 'accessibility' && !i.subcategory);
+  return GEAR_ITEMS.filter(i => i.category === slug);
+}
 
 export const AMAZON_TAGS = {
   es: 'ytubviral-21',

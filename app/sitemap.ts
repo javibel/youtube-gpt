@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { BLOG_POSTS } from '@/lib/blog-data';
 import { LEARN_GUIDES } from '@/lib/learn-data';
+import { ALL_GEAR_SLUGS } from '@/lib/gear-data';
 
 const BASE_URL = 'https://ytubviral.com';
 
@@ -10,6 +11,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: new Date(p.date.en),
     changeFrequency: 'monthly' as const,
     priority: 0.7,
+  }));
+
+  const gearEntries: MetadataRoute.Sitemap = ALL_GEAR_SLUGS.map((slug) => ({
+    url: `${BASE_URL}/gear/${slug}`,
+    lastModified: new Date('2026-05-17'),
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
   }));
 
   const featurePages: MetadataRoute.Sitemap = [
@@ -52,6 +60,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...blogEntries,
     ...featurePages,
+    ...gearEntries,
     ...LEARN_GUIDES.map((g) => ({
       url: `${BASE_URL}/features/learning-hub/${g.slug}`,
       lastModified: new Date('2026-05-13'),
@@ -66,7 +75,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${BASE_URL}/gear`,
-      lastModified: new Date('2026-05-07'),
+      lastModified: new Date('2026-05-17'),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
