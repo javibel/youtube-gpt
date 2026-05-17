@@ -690,6 +690,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/08IO7z6x',
       en: 'https://amzn.eu/d/08IO7z6x',
     },
+    image: '/gear/Tilcare Chew Chew.webp',
   },
   {
     id: 'yadoca-anxiety-ring',
@@ -705,6 +706,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0fDkdfPE',
       en: 'https://amzn.eu/d/0fDkdfPE',
     },
+    image: '/gear/YADOCA 925 Anillos.webp',
   },
   {
     id: 'ringconn-gen2-air',
@@ -720,6 +722,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0dnn7xqd',
       en: 'https://amzn.eu/d/0dnn7xqd',
     },
+    image: '/gear/RingConn Gen 2.webp',
   },
   {
     id: 'yogi-fidget-spinner',
@@ -735,6 +738,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/03mY8IX0',
       en: 'https://amzn.eu/d/03mY8IX0',
     },
+    image: '/gear/Yogi Juguete antiestrés.webp',
   },
   {
     id: 'twr-proprioceptive-roller',
@@ -750,6 +754,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/08oGd0XJ',
       en: 'https://amzn.eu/d/08oGd0XJ',
     },
+    image: '/gear/Tronco Propioceptivo.webp',
   },
   {
     id: 'scione-fidget-spinner',
@@ -765,6 +770,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0dzZ8qpR',
       en: 'https://amzn.eu/d/0dzZ8qpR',
     },
+    image: '/gear/SCIONE Fidget.webp',
   },
   {
     id: 'eoocoo-visual-timer',
@@ -780,6 +786,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/096xXum0',
       en: 'https://amzn.eu/d/096xXum0',
     },
+    image: '/gear/EooCoo Temporizador.webp',
   },
   {
     id: 'diamday-spinner-ring',
@@ -795,6 +802,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0c9KIxRP',
       en: 'https://amzn.eu/d/0c9KIxRP',
     },
+    image: '/gear/Diamday Anillos Giratorios.webp',
   },
 ];
 
