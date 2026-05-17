@@ -528,6 +528,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/06gWy0Kj',
       en: 'https://amzn.eu/d/06gWy0Kj',
     },
+    image: '/gear/Calcetín-Cuerpo-Entero-TDAH.webp',
   },
   {
     id: 'magnetic-fidget-sliders',
@@ -543,6 +544,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0ia8QwVd',
       en: 'https://amzn.eu/d/0ia8QwVd',
     },
+    image: '/gear/8-Piezas-Juguete-Fidget.webp',
   },
   {
     id: 'vcostore-fidget-cube',
@@ -558,6 +560,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0hRs6kia',
       en: 'https://amzn.eu/d/0hRs6kia',
     },
+    image: '/gear/VCOSTORE-Stress-Cube-12-Caras.webp',
   },
   {
     id: 'odoxia-weighted-lap-pad',
@@ -573,6 +576,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/041KIc40',
       en: 'https://amzn.eu/d/041KIc40',
     },
+    image: '/gear/ODOXIA-Cojín-Regazo-con-Lastre.webp',
   },
   {
     id: 'good-nite-weighted-blanket',
@@ -588,6 +592,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/022WCZ27',
       en: 'https://amzn.eu/d/022WCZ27',
     },
+    image: '/gear/Manta-con-Peso.webp',
   },
   {
     id: 'qucover-cooling-blanket',
@@ -603,6 +608,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/00DSMZrR',
       en: 'https://amzn.eu/d/00DSMZrR',
     },
+    image: '/gear/Qucover-Manta-Refrescante.webp',
   },
   {
     id: 'bose-qc-ultra-earbuds-2',
@@ -618,6 +624,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0fy62C6u',
       en: 'https://amzn.eu/d/0fy62C6u',
     },
+    image: '/gear/Bose-Auriculares-boton.webp',
   },
   {
     id: 'sony-wf1000xm5',
@@ -634,6 +641,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0idxogNS',
       en: 'https://amzn.eu/d/0idxogNS',
     },
+    image: '/gear/Auriculares-inalambricos-Noise-Cancelling.webp',
   },
   {
     id: 'soundcore-space-q45',
@@ -650,6 +658,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/0bZCq6NT',
       en: 'https://amzn.eu/d/0bZCq6NT',
     },
+    image: '/gear/Soundcore-Anker-Space-Q45.webp',
   },
   {
     id: 'chair-resistance-bands',
@@ -665,6 +674,7 @@ export const GEAR_ITEMS: GearItem[] = [
       es: 'https://amzn.eu/d/074XROyr',
       en: 'https://amzn.eu/d/074XROyr',
     },
+    image: '/gear/Bandas-Sensoriales.webp',
   },
   {
     id: 'tilcare-chew-pendant',
