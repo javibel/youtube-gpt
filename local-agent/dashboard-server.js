@@ -321,7 +321,7 @@ input:focus{outline:none;border-color:#3b82f6}
 button{width:100%;padding:0.7rem;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer}
 button:hover{background:#2563eb}.err{color:#ef4444;font-size:0.8rem;margin-bottom:0.5rem}
 </style></head><body><div class="card"><h2>YTubViral Dashboard</h2>
-<form method="POST" action="/login"><input name="token" type="password" placeholder="Token de acceso" autofocus>
+<form method="POST" action="/login" autocomplete="on"><input name="username" type="text" value="admin" autocomplete="username" style="display:none"><input name="token" type="password" placeholder="Token de acceso" autocomplete="current-password" autofocus>
 <div class="err" id="err"></div><button type="submit">Entrar</button></form>
 <script>if(location.search.includes('err=1'))document.getElementById('err').textContent='Token incorrecto'</script>
 </div></body></html>`;
@@ -403,6 +403,26 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'PUT') {
       const body = await parseBody(req);
+
+      // Validate model ID before saving
+      if (body.model) {
+        try {
+          const r = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': process.env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({ model: body.model, max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] }),
+          });
+          const data = await r.json();
+          if (data.error) return sendJSON(res, 400, { success: false, error: `Modelo inválido: ${data.error.message}` });
+        } catch (e) {
+          return sendJSON(res, 400, { success: false, error: `Error validando modelo: ${e.message}` });
+        }
+      }
+
       const config = loadConfig();
       config[module] = { ...(config[module] || {}), ...body };
       config._lastModified = new Date().toISOString();
@@ -417,6 +437,29 @@ const server = http.createServer(async (req, res) => {
       config._lastModified = new Date().toISOString();
       saveConfigFile(config);
       return sendJSON(res, 200, { success: true, module, reset: true });
+    }
+  }
+
+  // Validate a model ID against the Anthropic API
+  if (pathname === '/api/validate-model' && req.method === 'POST') {
+    const body = await parseBody(req);
+    const model = body.model;
+    if (!model) return sendJSON(res, 400, { error: 'model required' });
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ model, max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] }),
+      });
+      const data = await r.json();
+      if (data.error) return sendJSON(res, 200, { valid: false, error: data.error.message });
+      return sendJSON(res, 200, { valid: true, model });
+    } catch (e) {
+      return sendJSON(res, 200, { valid: false, error: e.message });
     }
   }
 

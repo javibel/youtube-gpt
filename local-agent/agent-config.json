@@ -100,10 +100,10 @@
     "activeHours": "8-23"
   },
   "scout": {
-    "model": "claude-sonnet-4-6"
+    "model": "claude-opus-4-6"
   },
   "watchdog": {
-    "model": "claude-sonnet-4-6"
+    "model": "claude-opus-4-6"
   },
   "social-optimizer": {
     "model": "claude-sonnet-4-6"
