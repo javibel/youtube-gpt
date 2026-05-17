@@ -62,7 +62,7 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
     image: guide.coverImage ? `https://ytubviral.com${guide.coverImage}` : undefined,
     datePublished: '2026-05-13',
     dateModified: '2026-05-13',
-    author: { '@type': 'Organization', name: 'YTubViral' },
+    author: { '@type': 'Person', name: 'Javier Jimeno' },
     publisher: {
       '@type': 'Organization',
       name: 'YTubViral',

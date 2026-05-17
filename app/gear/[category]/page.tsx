@@ -18,14 +18,15 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   const cat = getCategoryBySlug(category);
   if (!cat) return {};
 
-  const title = `${cat.name.es} para YouTubers — YTubViral`;
+  const title = `${cat.name.es} para YouTubers`;
   const description = `Las mejores ${cat.name.es.toLowerCase()} recomendadas para creadores de contenido. Comparativas y enlaces a Amazon.`;
 
   return {
     title,
     description,
     alternates: { canonical: `https://ytubviral.com/gear/${category}` },
-    openGraph: { title, description, url: `https://ytubviral.com/gear/${category}`, type: 'website' },
+    openGraph: { title, description, url: `https://ytubviral.com/gear/${category}`, type: 'website', images: [{ url: '/og-image.png', width: 1200, height: 630 }] },
+    twitter: { card: 'summary_large_image' as const, title, description, images: ['/og-image.png'] },
   };
 }
 
@@ -94,7 +95,7 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
           <div className="flex items-center gap-4">
             <span className="text-4xl">{cat.icon}</span>
             <div>
-              <h1 className="font-display font-bold text-3xl md:text-4xl text-white">{cat.name[lang]}</h1>
+              <h1 className="font-display font-bold text-3xl md:text-4xl text-white">{cat.name[lang]} {t('para YouTubers', 'for YouTubers')}</h1>
               <div className="w-12 h-0.5 mt-3" style={{ background: cat.color }} />
             </div>
           </div>
