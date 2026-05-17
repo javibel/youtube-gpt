@@ -468,6 +468,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'The #1 noise-cancelling headphones on the market. 30h battery, Hi-Res audio, multipoint Bluetooth. Essential for neurodivergent creators who need to block sensory stimuli during editing or script writing.',
     },
     category: 'accessibility',
+    subcategory: 'noise-cancelling',
     tier: 'pro',
     priceRange: '€300-380',
     recommended: true,
@@ -485,6 +486,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Reusable silicone earplugs with 24dB reduction. Discreet, comfortable, 4 sizes. Perfect for sensory overload without total isolation — you hear conversations but background noise disappears.',
     },
     category: 'accessibility',
+    subcategory: 'noise-cancelling',
     tier: 'budget',
     priceRange: '€20-30',
     recommended: true,
@@ -502,6 +504,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: '60-minute visual timer with silent operation. The red disc visually shrinks as time passes — ideal for Pomodoro technique with ADHD. No ticking, no anxiety. Recommended by occupational therapists.',
     },
     category: 'accessibility',
+    subcategory: 'timers',
     tier: 'budget',
     priceRange: '€30-45',
     recommended: true,
@@ -519,6 +522,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Fidget cube with 4 silent sides and 2 clicky ones. Premium design with protective case included. Helps maintain focus during long editing sessions. Specifically designed for ADHD, anxiety, and autism.',
     },
     category: 'accessibility',
+    subcategory: 'fidget-tools',
     tier: 'budget',
     priceRange: '€15-25',
     amazonUrl: {
@@ -551,6 +555,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Full body sock providing deep pressure stimulation. Relieves stress and anxiety in people with ADHD and autism. Sensory therapy that helps concentration during long work sessions.',
     },
     category: 'accessibility',
+    subcategory: 'deep-pressure',
     tier: 'budget',
     priceRange: '€20-35',
     amazonUrl: {
@@ -567,6 +572,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: '8-piece magnetic metal slider and spinner set. Silent, ideal for class or office without disturbing others. Helps channel nervous energy and maintain focus with ADHD and autism.',
     },
     category: 'accessibility',
+    subcategory: 'fidget-tools',
     tier: 'budget',
     priceRange: '€10-18',
     amazonUrl: {
@@ -583,6 +589,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Portable stress cube with 12 different stimulation sides. Compact to carry anywhere. For kids and adults with ADHD, OCD or anxiety who need to keep hands busy while creating.',
     },
     category: 'accessibility',
+    subcategory: 'fidget-tools',
     tier: 'budget',
     priceRange: '€8-12',
     amazonUrl: {
@@ -599,6 +606,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: '2kg weighted lap pad shaped like a dog. Provides comforting pressure that calms the nervous system. Perfect for editing sessions — constant pressure helps maintain calm and focus with autism, ADHD or anxiety.',
     },
     category: 'accessibility',
+    subcategory: 'deep-pressure',
     tier: 'budget',
     priceRange: '€25-35',
     amazonUrl: {
@@ -615,6 +623,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: '8kg weighted blanket (150x200 cm) to relieve stress and improve sleep. Deep pressure simulates a constant hug that calms anxiety. Essential for creators struggling with post-work insomnia.',
     },
     category: 'accessibility',
+    subcategory: 'deep-pressure',
     tier: 'mid',
     priceRange: '€40-55',
     amazonUrl: {
@@ -631,6 +640,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Blanket with Japanese ARC-Chill technology (Q-MAX>0.5) that feels cold to the touch. Ideal to combine with weighted blanket in summer or for people with thermal sensitivity. Breathable and reversible, 150x200 cm.',
     },
     category: 'accessibility',
+    subcategory: 'deep-pressure',
     tier: 'budget',
     priceRange: '€25-35',
     amazonUrl: {
@@ -647,6 +657,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'In-ear headphones with the best noise cancellation on the market. Immersive audio with deep bass, IPX4, up to 6h battery. For creators who prefer in-ear over over-ear to block sensory stimuli.',
     },
     category: 'accessibility',
+    subcategory: 'noise-cancelling',
     tier: 'pro',
     priceRange: '€250-300',
     amazonUrl: {
@@ -663,6 +674,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Wireless in-ear headphones with leading noise cancellation. Bluetooth, mic, 24h battery with case, fast charging, IPX4. The in-ear alternative to WH-1000XM5 for those needing maximum portability and discretion.',
     },
     category: 'accessibility',
+    subcategory: 'noise-cancelling',
     tier: 'pro',
     priceRange: '€220-280',
     recommended: true,
@@ -680,6 +692,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Over-ear headphones with adaptive noise cancellation (98% reduction). 50h battery, LDAC Hi-Res, control app, Bluetooth 5.3. Affordable alternative to Sony/Bose with excellent cancellation for sensory sensitivity.',
     },
     category: 'accessibility',
+    subcategory: 'noise-cancelling',
     tier: 'mid',
     priceRange: '€80-110',
     recommended: true,
@@ -697,6 +710,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: '5-pack elastic bands to attach to chair legs. Allow moving your feet while working without disturbing others. Channel the need for movement in ADHD and autism discreetly and silently.',
     },
     category: 'accessibility',
+    subcategory: 'movement',
     tier: 'budget',
     priceRange: '€8-14',
     amazonUrl: {
@@ -713,6 +727,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Safe silicone chew pendant for children and adults who need oral stimulation. Discreet as an accessory, helps reduce anxiety and improve focus in people with autism or ADHD.',
     },
     category: 'accessibility',
+    subcategory: 'fidget-tools',
     tier: 'budget',
     priceRange: '€8-15',
     amazonUrl: {
@@ -729,6 +744,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Sterling silver 925 ring with spinning beads. Discreet, elegant, perfect for thumb-spinning during meetings or recording sessions. Relieves anxiety without drawing attention.',
     },
     category: 'accessibility',
+    subcategory: 'wearables-rings',
     tier: 'budget',
     priceRange: '€12-20',
     amazonUrl: {
@@ -745,6 +761,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Ultra-thin smart ring monitoring sleep, heart rate and stress levels. 10-day battery life. Helps neurodivergent creators detect stress patterns and optimize their work routines.',
     },
     category: 'accessibility',
+    subcategory: 'wearables-rings',
     tier: 'pro',
     priceRange: '€250-300',
     amazonUrl: {
@@ -761,6 +778,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Ring spinner with five sizes. Silent, metallic and satisfying to touch. Relieves anxiety and helps with focus in ADHD and autism. Discreet design for any professional context.',
     },
     category: 'accessibility',
+    subcategory: 'fidget-tools',
     tier: 'budget',
     priceRange: '€10-18',
     amazonUrl: {
@@ -777,6 +795,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Natural wood roller made in Spain (49.5x17x7.5 cm). For hypopressive exercises, pilates and eutony. Improves body awareness and reduces tension from long computer sessions.',
     },
     category: 'accessibility',
+    subcategory: 'movement',
     tier: 'mid',
     priceRange: '€35-50',
     amazonUrl: {
@@ -793,6 +812,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Classic high-quality spinner with smooth, lasting spin. Sensory toy to relieve stress and anxiety. Ideal as a gift or focus tool for brainstorming and editing sessions.',
     },
     category: 'accessibility',
+    subcategory: 'fidget-tools',
     tier: 'budget',
     priceRange: '€8-12',
     amazonUrl: {
@@ -809,6 +829,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: '60-min visual timer with countdown, stopwatch and alarm. Configurable silent/sound mode. Digital alternative to the classic Time Timer — clear display, compact, ideal for Pomodoro with ADHD.',
     },
     category: 'accessibility',
+    subcategory: 'timers',
     tier: 'budget',
     priceRange: '€15-22',
     amazonUrl: {
@@ -825,6 +846,7 @@ export const GEAR_ITEMS: GearItem[] = [
       en: 'Stainless steel ring with spinning moon and star design. Relieves stress and anxiety discreetly. Beautiful unisex design that works as both jewelry and a self-regulation tool.',
     },
     category: 'accessibility',
+    subcategory: 'wearables-rings',
     tier: 'budget',
     priceRange: '€10-16',
     amazonUrl: {
