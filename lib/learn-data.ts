@@ -27,6 +27,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'seo-basics',
     icon: '/icons/target.webp',
+    coverImage: '/learn/covers/seo-basics.webp',
     title: { es: 'SEO en YouTube: Guía completa', en: 'YouTube SEO: Complete Guide' },
     description: {
       es: 'Aprende a optimizar tus vídeos para que aparezcan en búsquedas y recomendaciones.',
@@ -60,6 +61,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'keyword-research',
     icon: '/icons/key.webp',
+    coverImage: '/learn/covers/keyword-research.webp',
     title: { es: 'Keyword Research para YouTube', en: 'Keyword Research for YouTube' },
     description: {
       es: 'Encuentra las palabras clave que tu audiencia está buscando y que tienen poca competencia.',
@@ -93,6 +95,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'retention',
     icon: '/icons/anchor.webp',
+    coverImage: '/learn/covers/retention.webp',
     title: { es: 'Mejorar retención de audiencia', en: 'Improve Audience Retention' },
     description: {
       es: 'La retención es el factor #1 del algoritmo. Aprende a mantener a tu audiencia enganchada.',
@@ -126,6 +129,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'thumbnails',
     icon: '/icons/thumbnail.webp',
+    coverImage: '/learn/covers/thumbnails.webp',
     title: { es: 'Thumbnails que generan clics', en: 'Thumbnails That Get Clicks' },
     description: {
       es: 'El thumbnail decide si alguien hace clic. Aprende los principios de diseño que funcionan.',
@@ -158,6 +162,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'analytics-deep',
     icon: '/icons/chart-up.webp',
+    coverImage: '/learn/covers/analytics-deep.webp',
     title: { es: 'Análisis avanzado con YouTube Analytics', en: 'Advanced Analysis with YouTube Analytics' },
     description: {
       es: 'Aprende a leer tus datos privados de YouTube y tomar decisiones basadas en métricas reales.',
@@ -191,6 +196,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'growth-strategy',
     icon: '/icons/rocket.webp',
+    coverImage: '/learn/covers/growth-strategy.webp',
     title: { es: 'Estrategia de crecimiento 0 a 1K subs', en: 'Growth Strategy 0 to 1K Subs' },
     description: {
       es: 'Los primeros 1000 suscriptores son los más difíciles. Aquí tienes el plan paso a paso.',
@@ -223,6 +229,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'competitor-analysis',
     icon: '/icons/swords.webp',
+    coverImage: '/learn/covers/competitor-analysis.webp',
     title: { es: 'Análisis de competidores', en: 'Competitor Analysis' },
     description: {
       es: 'Aprende de los que ya lo están haciendo bien. Analiza su estrategia y encuentra tu ventaja.',
@@ -256,6 +263,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'ab-testing',
     icon: '/icons/split.webp',
+    coverImage: '/learn/covers/ab-testing.webp',
     title: { es: 'A/B Testing de títulos y thumbnails', en: 'A/B Testing Titles & Thumbnails' },
     description: {
       es: 'Deja de adivinar qué funciona. Testea variaciones y deja que los datos decidan.',
@@ -289,6 +297,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'best-time',
     icon: '/icons/clock-fast.webp',
+    coverImage: '/learn/covers/best-time.webp',
     title: { es: 'Mejor hora para publicar', en: 'Best Time to Publish' },
     description: {
       es: 'El timing importa. Publica cuando tu audiencia está activa para maximizar el impulso inicial.',
@@ -322,6 +331,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'trend-explorer',
     icon: '/icons/trend.webp',
+    coverImage: '/learn/covers/trend-explorer.webp',
     title: { es: 'Cómo aprovechar las tendencias', en: 'How to Ride Trends' },
     description: {
       es: 'Detecta temas en auge antes que tu competencia y crea contenido que el algoritmo quiere recomendar.',
@@ -355,6 +365,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'ai-generator',
     icon: '/icons/magic-wand.webp',
+    coverImage: '/learn/covers/ai-generator.webp',
     title: { es: 'Generar contenido con IA', en: 'Generate Content with AI' },
     description: {
       es: 'Usa la IA como copiloto: genera ideas, títulos, descripciones y guiones optimizados en segundos.',
@@ -388,6 +399,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'content-calendar',
     icon: '/icons/clipboard.webp',
+    coverImage: '/learn/covers/content-calendar.webp',
     title: { es: 'Planificar tu calendario de contenido', en: 'Plan Your Content Calendar' },
     description: {
       es: 'La consistencia es lo que separa a los canales que crecen de los que se estancan. Planifica con estrategia.',
@@ -421,6 +433,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'video-predictor',
     icon: '/icons/crystal-ball.webp',
+    coverImage: '/learn/covers/video-predictor.webp',
     title: { es: 'Predecir el rendimiento antes de publicar', en: 'Predict Performance Before Publishing' },
     description: {
       es: 'Anticipa cómo rendirá tu vídeo y optimízalo antes de que sea demasiado tarde.',
@@ -454,6 +467,7 @@ export const LEARN_GUIDES: LearnGuide[] = [
   {
     slug: 'ai-coach',
     icon: '/icons/bulb.webp',
+    coverImage: '/learn/covers/ai-coach.webp',
     title: { es: 'Tu coach de YouTube con IA', en: 'Your AI YouTube Coach' },
     description: {
       es: 'Recibe análisis personalizado de tu canal y recomendaciones accionables basadas en tus datos reales.',
