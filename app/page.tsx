@@ -241,6 +241,33 @@ function LogoMarquee({ lang }: { lang: Lang }) {
   );
 }
 
+function DemoVideo({ lang }: { lang: Lang }) {
+  return (
+    <section className="py-20 border-b border-white/10 bg-black">
+      <div className="max-w-4xl mx-auto px-6">
+        <h2 className="font-display font-bold text-3xl md:text-4xl text-center mb-4">
+          {lang === 'en' ? 'See YTubViral in action' : 'Mira YTubViral en acción'}
+        </h2>
+        <p className="text-zinc-400 text-center mb-10 max-w-2xl mx-auto">
+          {lang === 'en'
+            ? 'A quick tour of every tool — from SEO analysis to AI-powered scripts.'
+            : 'Un recorrido rápido por todas las herramientas — del análisis SEO a los guiones con IA.'}
+        </p>
+        <div className="relative w-full rounded-2xl overflow-hidden border border-white/10" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src="https://www.youtube.com/embed/sTvct-XXyGk?rel=0"
+            title="YTubViral Demo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function HowItWorks({ lang }: { lang: Lang }) {
   const steps = lang === 'en'
     ? [
@@ -735,6 +762,7 @@ export default async function LandingPage() {
       <Hero lang={lang} />
       <StatsStrip lang={lang} />
       <LogoMarquee lang={lang} />
+      <DemoVideo lang={lang} />
       <HowItWorks lang={lang} />
       <LandingFeatures lang={lang} />
       <ComparisonTable lang={lang} />
