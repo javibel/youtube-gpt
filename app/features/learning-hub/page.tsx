@@ -16,13 +16,13 @@ export const metadata: Metadata = {
     description: '14 practical, data-driven guides to master YouTube growth. From SEO basics to AI coaching and advanced analytics.',
     url: 'https://ytubviral.com/features/learning-hub',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-learn.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'YouTube Learning Hub — Free Creator Guides',
     description: '14 guías gratuitas paso a paso para crecer en YouTube: SEO, keywords, retención, thumbnails, analytics, A/B testing, coaching IA y más.',
-    images: ['/og-image.png'],
+    images: ['/og-learn.webp'],
   },
 };
 

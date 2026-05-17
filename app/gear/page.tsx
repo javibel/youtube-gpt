@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Cámaras, micrófonos, luces y más. Recomendaciones por nivel.',
     url: 'https://ytubviral.com/gear',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-gear.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Equipo Recomendado para YouTubers',
     description: 'Guía completa del mejor equipo para YouTube: cámaras, micrófonos, iluminación, accesorios, software y herramientas de accesibilidad recomendadas por nivel.',
-    images: ['/og-image.png'],
+    images: ['/og-gear.webp'],
   },
 };
 

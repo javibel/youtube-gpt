@@ -14,13 +14,13 @@ export const metadata: Metadata = {
     description: 'Estrategias, IA y crecimiento para YouTubers',
     url: 'https://ytubviral.com/blog',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-blog.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Blog — Estrategias, IA y crecimiento para YouTubers',
     description: 'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización.',
-    images: ['/og-image.png'],
+    images: ['/og-blog.webp'],
   },
 };
 

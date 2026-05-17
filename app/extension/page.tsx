@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Install the YTubViral Chrome extension: SEO score, outlier detection, channel stats and AI titles directly on YouTube and YouTube Studio.',
     url: 'https://ytubviral.com/extension',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-extension.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Chrome Extension — SEO y IA en YouTube',
     description: 'Install the YTubViral Chrome extension: SEO score, outlier detection, channel stats and AI titles directly on YouTube and YouTube Studio.',
-    images: ['/og-image.png'],
+    images: ['/og-extension.webp'],
   },
 };
 
