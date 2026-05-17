@@ -22,6 +22,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
+const { registerFixes, applyFixes } = require('./auto-fix');
 
 const WEB_DIR = path.join(__dirname, '..', 'youtube-gpt');
 const REPORTS_DIR = path.join(__dirname, 'reports');
@@ -34,7 +35,7 @@ function ensureDir(dir) {
 
 function exec(cmd, cwd = WEB_DIR) {
   try {
-    return execSync(cmd, { cwd, encoding: 'utf-8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'] });
+    return execSync(cmd, { cwd, encoding: 'utf-8', timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
   } catch (err) {
     return err.stdout || err.stderr || err.message || '';
   }
@@ -392,9 +393,11 @@ async function runGuardian() {
       }
 
       const { text } = await guardedCall(
-        `Eres un auditor de seguridad web. Analiza estos hallazgos de una auditoría automática de YTubViral (Next.js + Vercel + PostgreSQL):
-
-${findingsSummary}${memoryContext}
+        `Hallazgos de la auditoría automática:\n\n${findingsSummary}${memoryContext}`,
+        {
+          maxTokens: 500,
+          agentId: 'guardian',
+          system: `Eres un auditor de seguridad web. Analizas hallazgos de auditorías automáticas de YTubViral (Next.js + Vercel + PostgreSQL).
 
 Responde en español con:
 1. Los 3 problemas más urgentes (si los hay) — prioriza REGRESIONES y ESCALADOS
@@ -403,7 +406,7 @@ Responde en español con:
 4. Si hay resoluciones recientes, mencionar brevemente
 
 Sé directo y conciso. Máximo 200 palabras.`,
-        { maxTokens: 500, agentId: 'guardian' }
+        }
       );
       results.aiAnalysis = text;
     } catch (err) {
@@ -411,6 +414,14 @@ Sé directo y conciso. Máximo 200 palabras.`,
     }
   } else {
     results.aiAnalysis = 'Sin hallazgos críticos/altos. Estado de seguridad correcto.';
+  }
+
+  // Auto-fix: apply corrections
+  const allIssues = currentFindings.map(f => f.description);
+  const appliedFixes = await applyFixes('guardian', allIssues, results);
+  if (appliedFixes.length > 0) {
+    console.log(`[guardian] Auto-fixed ${appliedFixes.length} issue(s)`);
+    results.autoFixes = appliedFixes;
   }
 
   results.durationMs = Date.now() - startTime;
@@ -427,5 +438,50 @@ Sé directo y conciso. Máximo 200 palabras.`,
 
   return results;
 }
+
+// ── Auto-Fix Definitions ──────────────────────────────────────────────────────
+
+registerFixes('guardian', [
+  {
+    id: 'npm-audit-fix',
+    description: 'Ejecutar npm audit fix para vulnerabilidades con fix disponible',
+    cooldownMs: 7 * 86400000, // weekly
+    condition: (issues, metrics) => {
+      const audit = metrics.checks?.npmAudit;
+      return audit && (audit.critical > 0 || audit.high > 0) &&
+        audit.details?.some(d => d.fixAvailable);
+    },
+    apply: (config, issues, metrics) => {
+      try {
+        const output = execSync('npm audit fix --force 2>&1', {
+          cwd: WEB_DIR, encoding: 'utf-8', timeout: 120000,
+          stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
+        });
+        const fixed = (output.match(/fixed (\d+)/i) || [])[1] || '?';
+        return { changed: false, detail: `npm audit fix ran: ${fixed} packages fixed. Output: ${output.slice(0, 200)}` };
+      } catch (err) {
+        return { changed: false, detail: `npm audit fix failed: ${err.message.slice(0, 200)}` };
+      }
+    },
+  },
+  {
+    id: 'gitignore-env',
+    description: 'Añadir .env a .gitignore si no está incluido',
+    cooldownMs: 30 * 86400000,
+    condition: (issues, metrics) => {
+      const exposed = metrics.checks?.exposedFiles || [];
+      return exposed.some(f => f.file?.includes('.env'));
+    },
+    apply: () => {
+      const gitignore = path.join(WEB_DIR, '.gitignore');
+      try {
+        const content = fs.existsSync(gitignore) ? fs.readFileSync(gitignore, 'utf8') : '';
+        if (content.includes('.env')) return { changed: false, detail: '.env already in .gitignore' };
+        fs.appendFileSync(gitignore, '\n.env\n.env.local\n', 'utf8');
+        return { changed: false, detail: 'Added .env to .gitignore' };
+      } catch { return { changed: false }; }
+    },
+  },
+]);
 
 module.exports = { runGuardian };

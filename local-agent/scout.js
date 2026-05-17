@@ -19,6 +19,8 @@ const fs = require('fs');
 const path = require('path');
 const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
+const { registerFixes, applyFixes } = require('./auto-fix');
+const { sendEmail } = require('./reports');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
 const SNAPSHOTS_FILE = path.join(REPORTS_DIR, 'scout-snapshots.json');
@@ -242,13 +244,13 @@ async function runScout() {
     console.log('[scout] Requesting AI analysis of changes...');
     try {
       const { text } = await guardedCall(
-        `Eres un analista de competencia para YTubViral, una herramienta SaaS de IA para YouTubers (€9.99/mes Pro, €29.99/mes Business).
+        `Cambios detectados en webs de competidores:\n\n${allChanges.join('\n')}${historyContext}`,
+        {
+          maxTokens: 500,
+          agentId: 'scout',
+          system: `Eres un analista de competencia para YTubViral, una herramienta SaaS de IA para YouTubers (€9.99/mes Pro, €29.99/mes Business).
 
 Competidores principales: VidIQ ($19/mo), TubeBuddy ($49/mo Legend), ViewStats, OutlierKit.
-
-Se han detectado estos cambios en las webs de los competidores:
-
-${allChanges.join('\n')}${historyContext}
 
 Responde en español con:
 1. ¿Hay algún cambio que sea una amenaza o una oportunidad para YTubViral?
@@ -256,7 +258,7 @@ Responde en español con:
 3. Estado general: ¿mantenemos ventaja competitiva?
 
 Sé directo y conciso. Máximo 200 palabras.`,
-        { maxTokens: 500, agentId: 'scout' }
+        }
       );
       results.aiAnalysis = text;
     } catch (err) {
@@ -267,6 +269,16 @@ Sé directo y conciso. Máximo 200 palabras.`,
   }
 
   results.totalChanges = allChanges.length;
+
+  // Auto-fix: apply corrections based on detected changes
+  if (allChanges.length > 0) {
+    const appliedFixes = await applyFixes('scout', allChanges);
+    if (appliedFixes.length > 0) {
+      console.log(`[scout] Auto-fix: ${appliedFixes.length} action(s) taken`);
+      results.autoFixes = appliedFixes;
+    }
+  }
+
   results.durationMs = Date.now() - startTime;
 
   // Save memory
@@ -280,5 +292,38 @@ Sé directo y conciso. Máximo 200 palabras.`,
 
   return results;
 }
+
+// ── Auto-Fix Definitions ──────────────────────────────────────────────────────
+
+registerFixes('scout', [
+  {
+    id: 'alert-pricing-change',
+    description: 'Enviar alerta inmediata cuando un competidor cambia precios',
+    cooldownMs: 7 * 86400000,
+    condition: (issues) => issues.some(i => /pric|preci/i.test(i)),
+    apply: async (config, issues) => {
+      const pricingIssues = issues.filter(i => /pric|preci/i.test(i));
+      await sendEmail(
+        '[YTubViral Scout] ALERTA: Cambio de precios en competidor',
+        `Se han detectado cambios de pricing en competidores:\n\n${pricingIssues.join('\n')}\n\nRevisa el reporte completo en el dashboard.`
+      ).catch(() => {});
+      return { changed: false, detail: `Alerta de pricing enviada: ${pricingIssues.length} cambios` };
+    },
+  },
+  {
+    id: 'alert-new-feature',
+    description: 'Enviar alerta cuando un competidor lanza una feature nueva',
+    cooldownMs: 7 * 86400000,
+    condition: (issues) => issues.some(i => /feature|nueva|new|lanzamiento|launch/i.test(i)),
+    apply: async (config, issues) => {
+      const featureIssues = issues.filter(i => /feature|nueva|new|lanzamiento|launch/i.test(i));
+      await sendEmail(
+        '[YTubViral Scout] Competidor lanzó feature nueva',
+        `Cambios detectados en competidores:\n\n${featureIssues.join('\n')}\n\nRevisa el reporte en el dashboard.`
+      ).catch(() => {});
+      return { changed: false, detail: `Alerta de feature enviada: ${featureIssues.length} cambios` };
+    },
+  },
+]);
 
 module.exports = { runScout };

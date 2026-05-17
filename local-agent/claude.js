@@ -82,7 +82,6 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
       'Content-Type': 'application/json',
       'x-api-key': API_KEY(),
       'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'prompt-caching-2024-07-31',
     },
     body: JSON.stringify(body),
   });
@@ -691,4 +690,5 @@ module.exports = {
   generateEmailReply,
   // Utilities
   detectPostLang,
+  deductFromBalance,
 };

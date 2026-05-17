@@ -192,7 +192,6 @@ async function guardedCall(prompt, options = {}) {
     'x-api-key': (process.env.ANTHROPIC_API_KEY || '').trim(),
     'anthropic-version': '2023-06-01',
   };
-  if (system) headers['anthropic-beta'] = 'prompt-caching-2024-07-31';
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -215,18 +214,27 @@ async function guardedCall(prompt, options = {}) {
 
     const data = await res.json();
 
-    // Track usage
+    // Track usage (including cache tokens)
     const inputTokens = data.usage?.input_tokens || 0;
     const outputTokens = data.usage?.output_tokens || 0;
+    const cacheReadTokens = data.usage?.cache_read_input_tokens || 0;
+    const cacheCreationTokens = data.usage?.cache_creation_input_tokens || 0;
     state.dailyTokensUsed += inputTokens + outputTokens;
     state.totalInputTokens += inputTokens;
     state.totalOutputTokens += outputTokens;
     state.callCount++;
     state.consecutiveErrors = 0; // Reset on success
 
+    // Deduct from balance with cache-aware pricing
+    try {
+      const { deductFromBalance } = require('./claude');
+      deductFromBalance(model, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens);
+    } catch {}
+
     const text = data.content?.[0]?.text?.trim() ?? '';
 
-    console.log(`[api-guard] ${agentId}: OK — ${inputTokens}in/${outputTokens}out tokens (dia: ${state.dailyTokensUsed}/${cfg.dailyBudgetTokens})`);
+    const cacheInfo = cacheReadTokens > 0 ? ` [cache read: ${cacheReadTokens}]` : cacheCreationTokens > 0 ? ` [cache write: ${cacheCreationTokens}]` : '';
+    console.log(`[api-guard] ${agentId}: OK — ${inputTokens}in/${outputTokens}out tokens${cacheInfo} (dia: ${state.dailyTokensUsed}/${cfg.dailyBudgetTokens})`);
 
     saveLogIfNeeded();
 

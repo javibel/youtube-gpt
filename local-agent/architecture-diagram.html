@@ -131,6 +131,10 @@
     .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 0.3rem; }
     .stat-card .sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
 
+    /* ── Report filters ── */
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
+    .report-filter.active { background: var(--accent); color: white; border-color: var(--accent); }
+
     /* ── Responsive ── */
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -191,6 +195,11 @@
     <a class="nav-item" data-page="browser" onclick="navigate('browser')"><span class="icon">🌐</span> Browser</a>
     <a class="nav-item" data-page="gmail" onclick="navigate('gmail')"><span class="icon">📧</span> Gmail</a>
   </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Datos</div>
+    <a class="nav-item" data-page="reports" onclick="navigate('reports')"><span class="icon">📋</span> Reports</a>
+  </div>
 </aside>
 
 <!-- ═══ MAIN ═══ -->
@@ -217,7 +226,7 @@
           <div class="sub" id="stat-spent-sub"></div>
         </div>
         <div class="stat-card"><div class="label">Config modificada</div><div class="value" id="stat-config">--</div><div class="sub" id="stat-config-sub"></div></div>
-        <div class="stat-card"><div class="label">Reportes recientes</div><div class="value" id="stat-reports">--</div></div>
+        <div class="stat-card" style="cursor:pointer" onclick="navigate('reports')"><div class="label">Reportes recientes</div><div class="value" id="stat-reports">--</div></div>
         <div class="stat-card"><div class="label">Dashboard uptime</div><div class="value" id="stat-uptime">--</div></div>
       </div>
 
@@ -597,6 +606,37 @@
       </div><div class="actions"><button class="btn btn-primary" onclick="saveModule('gmail')">Guardar</button></div></div>
     </div>
 
+    <!-- ═══ REPORTS ═══ -->
+    <div class="page" id="page-reports">
+      <div class="detail-hero"><div class="hero-icon" style="background:#1e3a5f">📋</div><div><h1>Reports</h1><div class="desc">Informes generados por los agentes nocturnos</div></div></div>
+
+      <div id="reports-list" class="section">
+        <div class="section-title"><span class="icon">📁</span> Todos los reportes</div>
+        <div id="reports-filter" style="margin-bottom:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm report-filter active" data-filter="all" onclick="filterReports('all')">Todos</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="recent" onclick="filterReports('recent')">Recientes</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="manager" onclick="filterReports('manager')">Manager</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="guardian" onclick="filterReports('guardian')">Guardian</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="scout" onclick="filterReports('scout')">Scout</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="watchdog" onclick="filterReports('watchdog')">Watchdog</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="social-optimizer" onclick="filterReports('social-optimizer')">Social Optimizer</button>
+        </div>
+        <table id="reports-table">
+          <thead><tr><th>Agente</th><th>Fecha</th><th>Tamaño</th><th></th></tr></thead>
+          <tbody id="reports-tbody"></tbody>
+        </table>
+        <p id="reports-empty" style="display:none;text-align:center;padding:2rem;color:var(--muted)">No hay reportes disponibles</p>
+      </div>
+
+      <div id="report-detail" class="section" style="display:none">
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+          <button class="btn btn-ghost" onclick="closeReportDetail()">← Volver</button>
+          <h3 id="report-detail-title" style="font-size:0.95rem;font-weight:600"></h3>
+        </div>
+        <div id="report-detail-content" style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:1.25rem;overflow-x:auto;max-height:70vh;overflow-y:auto"></div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -622,6 +662,8 @@ function navigate(pageId) {
   if (configCache && configCache[pageId]) {
     populateFields(pageId, configCache[pageId]);
   }
+  // Load reports when entering reports page
+  if (pageId === 'reports') loadReports();
 }
 
 // ── Tabs ──
@@ -809,6 +851,270 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(loadStatus, 30000);
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') navigate('home'); });
+
+// ── Reports ──
+let reportsData = [];
+let currentFilter = 'all';
+
+async function loadReports() {
+  try {
+    const res = await fetch(`${API}/api/reports`);
+    reportsData = await res.json();
+    renderReports();
+  } catch { document.getElementById('reports-empty').style.display = 'block'; }
+}
+
+function renderReports() {
+  const tbody = document.getElementById('reports-tbody');
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const filtered = currentFilter === 'all' ? reportsData
+    : currentFilter === 'recent' ? reportsData.filter(r => r.date === today || r.date === yesterday)
+    : reportsData.filter(r => r.agent === currentFilter);
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    document.getElementById('reports-empty').style.display = 'block';
+    return;
+  }
+  document.getElementById('reports-empty').style.display = 'none';
+  tbody.innerHTML = filtered.map(r => `<tr>
+    <td><span style="color:var(--accent);font-weight:500">${r.agent}</span></td>
+    <td>${r.date}</td>
+    <td style="color:var(--muted)">${r.sizeKb} KB</td>
+    <td><button class="btn btn-ghost" style="padding:0.3rem 0.8rem;font-size:0.78rem" onclick="viewReport('${r.filename}')">Ver</button></td>
+  </tr>`).join('');
+}
+
+function filterReports(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.report-filter').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+  renderReports();
+}
+
+async function viewReport(filename) {
+  try {
+    const res = await fetch(`${API}/api/reports/${filename}`);
+    const data = await res.json();
+    document.getElementById('reports-list').style.display = 'none';
+    document.getElementById('report-detail').style.display = 'block';
+    document.getElementById('report-detail-title').textContent = filename;
+    document.getElementById('report-detail-content').innerHTML = formatReport(data);
+  } catch (e) { showToast('Error cargando reporte: ' + e.message, true); }
+}
+
+function closeReportDetail() {
+  document.getElementById('report-detail').style.display = 'none';
+  document.getElementById('reports-list').style.display = 'block';
+}
+
+function formatReport(data) {
+  const badge = (text, color) => `<span style="font-size:0.72rem;padding:2px 8px;border-radius:10px;background:var(--${color}-bg);color:var(--${color})">${text}</span>`;
+  const sevBadge = (sev) => { const c = sev==='critical'?'red':sev==='high'?'orange':'orange'; return badge(sev, c); };
+  const card = (content) => `<div style="margin-bottom:1rem;padding:0.75rem 1rem;border-radius:8px;background:var(--surface);border:1px solid var(--surface2)">${content}</div>`;
+  const heading = (icon, title) => `<div style="font-weight:600;font-size:0.92rem;margin:1.25rem 0 0.5rem;display:flex;align-items:center;gap:0.4rem">${icon} ${title}</div>`;
+  const kv = (label, value) => `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;font-size:0.83rem"><span style="color:var(--muted)">${label}</span><span style="font-weight:500">${value}</span></div>`;
+  const aiBlock = (text) => text ? `${heading('🤖','Análisis IA')}${card(`<div style="font-size:0.83rem;line-height:1.7;white-space:pre-wrap">${escHtml(text)}</div>`)}` : '';
+  const memBlock = (mem) => mem ? `${heading('🧠','Memoria')}${card(
+    kv('Nuevos', mem.newIssues ?? mem.newChanges ?? '—') +
+    kv('Recurrentes', mem.recurringIssues ?? '—') +
+    kv('Resueltos', mem.resolvedIssues ?? mem.recentResolutions ?? '—') +
+    kv('Escalados', mem.escalatedIssues ?? '—') +
+    (mem.regressions ? kv('Regresiones', mem.regressions) : '') +
+    kv('Total abiertos', mem.totalOpenIssues ?? mem.totalTrackedChanges ?? '—')
+  )}` : '';
+  const durationLine = (ms) => ms ? `<div style="text-align:right;font-size:0.75rem;color:var(--muted);margin-top:0.5rem">Duración: ${(ms/1000).toFixed(1)}s</div>` : '';
+
+  // ── Manager ──
+  if (data.sections) {
+    let html = heading('📋','Resumen Ejecutivo');
+    html += data.sections.map(s => card(`
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+        <span style="font-weight:600">${s.agent}</span>
+        ${badge(s.status, s.status==='OK'?'green':'orange')}
+        ${s.duration ? `<span style="font-size:0.72rem;color:var(--muted);margin-left:auto">${(s.duration/1000).toFixed(1)}s</span>` : ''}
+      </div>
+      ${s.data ? `<div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.3rem">${escHtml(s.data)}</div>` : ''}
+      ${s.ai ? `<div style="font-size:0.82rem;line-height:1.6;white-space:pre-wrap">${escHtml(s.ai)}</div>` : ''}
+    `)).join('');
+    if (data.aiSynthesis) html += heading('🤖','Síntesis IA') + card(`<div style="font-size:0.83rem;line-height:1.7;white-space:pre-wrap">${escHtml(data.aiSynthesis)}</div>`);
+    if (data.autoFixes?.length) {
+      html += heading('🔧','Auto-Fixes');
+      html += data.autoFixes.map(f => card(`<div style="font-size:0.83rem"><strong>${f.agent}/${f.fixId}</strong>: ${escHtml(f.detail||f.description)}</div>`)).join('');
+    }
+    html += durationLine(data.durationMs);
+    return html;
+  }
+
+  // ── Guardian ──
+  if (data.findings) {
+    const sum = data.summary || {};
+    let html = heading('🛡️','Auditoría de Seguridad');
+    html += card(
+      kv('Críticos', sum.critical||0) +
+      kv('Altos', sum.high||0) +
+      kv('Medios', sum.medium||0) +
+      kv('Bajos', sum.low||0) +
+      kv('Total findings', data.findings.length)
+    );
+    if (data.findings.length > 0) {
+      html += heading('⚠️','Hallazgos');
+      html += data.findings.map(f => card(`
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          ${sevBadge(f.severity)}
+          <span style="font-size:0.83rem">${escHtml(f.message||f.description||f.file||'')}</span>
+        </div>
+        ${f.file ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem">📁 ${escHtml(f.file)}</div>` : ''}
+      `)).join('');
+    }
+    html += aiBlock(data.aiAnalysis);
+    html += memBlock(data.memory);
+    html += durationLine(data.durationMs);
+    return html;
+  }
+
+  // ── Social Optimizer ──
+  if (data.metrics && data.analysis) {
+    const m = data.metrics;
+    let html = heading('📊','Métricas de Actividad');
+
+    // Twitter
+    html += card(
+      `<div style="font-weight:600;font-size:0.83rem;margin-bottom:0.4rem">Twitter</div>` +
+      kv('Likes (24h / 7d)', `${m.twitter_24h?.likes||0} / ${m.twitter_7d?.likes||0}`) +
+      kv('Replies (24h / 7d)', `${m.twitter_24h?.replies||0} / ${m.twitter_7d?.replies||0}`) +
+      kv('Menciones marca (7d)', `${m.mentions_7d?.twitter?.withBrand||0} / ${m.mentions_7d?.twitter?.total||0}`)
+    );
+
+    // Reddit
+    html += card(
+      `<div style="font-weight:600;font-size:0.83rem;margin-bottom:0.4rem">Reddit</div>` +
+      kv('Upvotes (24h / 7d)', `${m.reddit_24h?.upvotes||0} / ${m.reddit_7d?.upvotes||0}`) +
+      kv('Comments (24h / 7d)', `${m.reddit_24h?.comments||0} / ${m.reddit_7d?.comments||0}`) +
+      kv('Menciones marca (7d)', `${m.mentions_7d?.reddit?.withBrand||0} / ${m.mentions_7d?.reddit?.total||0}`)
+    );
+
+    // Follow-ups
+    if (m.followups_7d) {
+      html += card(
+        `<div style="font-weight:600;font-size:0.83rem;margin-bottom:0.4rem">Follow-ups</div>` +
+        kv('Detectados', m.followups_7d.detected||0) +
+        kv('Respondidos', m.followups_7d.responded||0)
+      );
+    }
+
+    // Users
+    if (m.users) {
+      html += card(
+        `<div style="font-weight:600;font-size:0.83rem;margin-bottom:0.4rem">Usuarios</div>` +
+        kv('Total', m.users.total||0) +
+        kv('Nuevos esta semana', m.users.newThisWeek||0)
+      );
+    }
+
+    // Issues
+    const issues = data.analysis.issues || [];
+    if (issues.length > 0) {
+      html += heading('⚠️',`Problemas detectados (${issues.length})`);
+      html += issues.map(i => card(`<div style="font-size:0.83rem;display:flex;align-items:flex-start;gap:0.4rem"><span style="color:var(--orange)">●</span>${escHtml(i)}</div>`)).join('');
+    }
+
+    // Mention rate
+    if (data.analysis.mentionRate !== undefined) {
+      html += card(kv('Tasa de mención', `${data.analysis.mentionRate}%`) + kv('Objetivo', '25%+'));
+    }
+
+    html += aiBlock(data.analysis.aiAnalysis);
+    return html;
+  }
+
+  // ── Watchdog ──
+  if (data.pages && data.agent === 'watchdog') {
+    let html = heading('📜','Auditoría Legal');
+
+    for (const [path, page] of Object.entries(data.pages)) {
+      const ok = !page.issues || page.issues.length === 0;
+      html += card(`
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem">
+          <span style="font-weight:600;font-size:0.85rem">${escHtml(page.name)}</span>
+          <span style="font-size:0.75rem;color:var(--muted)">${path}</span>
+          ${badge(ok ? 'OK' : `${page.issues.length} issues`, ok ? 'green' : 'orange')}
+          ${page.status ? `<span style="font-size:0.72rem;color:var(--muted);margin-left:auto">HTTP ${page.status}</span>` : ''}
+        </div>
+        ${page.error ? `<div style="font-size:0.82rem;color:var(--red)">Error: ${escHtml(page.error)}</div>` : ''}
+        ${(page.issues||[]).map(i => `<div style="font-size:0.82rem;padding:0.2rem 0;display:flex;align-items:center;gap:0.4rem">${sevBadge(i.severity)} Falta: ${escHtml(i.missing||i.label)}${i.note ? ` <span style="color:var(--muted)">(${escHtml(i.note)})</span>` : ''}</div>`).join('')}
+      `);
+    }
+
+    // Live headers
+    if (data.liveHeaders?.length > 0) {
+      html += heading('🔒','Headers de Seguridad');
+      html += data.liveHeaders.map(h => card(`
+        <div style="font-size:0.83rem;display:flex;align-items:center;gap:0.5rem">
+          ${sevBadge(h.severity)}
+          <span><strong>${escHtml(h.header)}</strong>: ${escHtml(h.status)}${h.error ? ` — ${escHtml(h.error)}` : ''}</span>
+        </div>
+      `)).join('');
+    } else {
+      html += card(`<div style="font-size:0.83rem;color:var(--green)">✅ Todos los headers de seguridad presentes</div>`);
+    }
+
+    html += aiBlock(data.aiAnalysis);
+    html += memBlock(data.memory);
+    html += durationLine(data.durationMs);
+    return html;
+  }
+
+  // ── Scout ──
+  if (data.competitors) {
+    let html = heading('🔍','Análisis de Competencia');
+
+    for (const [name, comp] of Object.entries(data.competitors)) {
+      const changes = comp.changes || [];
+      html += card(`
+        <div style="font-weight:600;font-size:0.88rem;margin-bottom:0.4rem">${escHtml(name)}</div>
+        ${Object.entries(comp.pages||{}).map(([label, p]) => `
+          <div style="font-size:0.82rem;padding:0.15rem 0">
+            <span style="color:var(--muted)">${label}</span>
+            ${p.prices?.length ? `— Precios: <strong>${escHtml(p.prices.join(', '))}</strong>` : ''}
+            ${p.error ? `<span style="color:var(--red)"> Error: ${escHtml(p.error)}</span>` : ''}
+          </div>
+        `).join('')}
+        ${changes.length > 0 ? `<div style="margin-top:0.4rem">${changes.map(c => `<div style="font-size:0.82rem;color:var(--orange);padding:0.1rem 0">⚡ ${escHtml(c.change)}</div>`).join('')}</div>` : '<div style="font-size:0.82rem;color:var(--green);margin-top:0.3rem">Sin cambios</div>'}
+      `);
+    }
+
+    html += aiBlock(data.aiAnalysis);
+    html += memBlock(data.memory);
+    html += durationLine(data.durationMs);
+    return html;
+  }
+
+  // ── Fallback: structured render ──
+  return formatGeneric(data);
+}
+
+function formatGeneric(data, depth) {
+  depth = depth || 0;
+  if (depth > 3) return `<span style="color:var(--muted)">${escHtml(JSON.stringify(data))}</span>`;
+  if (data === null || data === undefined) return '<span style="color:var(--muted)">—</span>';
+  if (typeof data === 'boolean') return data ? '<span style="color:var(--green)">✅ Sí</span>' : '<span style="color:var(--red)">❌ No</span>';
+  if (typeof data === 'number') return `<strong>${data}</strong>`;
+  if (typeof data === 'string') {
+    if (data.length > 300) return `<div style="font-size:0.82rem;line-height:1.6;white-space:pre-wrap">${escHtml(data)}</div>`;
+    return escHtml(data);
+  }
+  if (Array.isArray(data)) {
+    if (data.length === 0) return '<span style="color:var(--muted)">—</span>';
+    return `<div style="padding-left:${depth?'0.8rem':'0'}">${data.map((item,i) => `<div style="padding:0.2rem 0;font-size:0.83rem"><span style="color:var(--muted)">${i+1}.</span> ${typeof item==='object'?formatGeneric(item,depth+1):escHtml(String(item))}</div>`).join('')}</div>`;
+  }
+  if (typeof data === 'object') {
+    return `<div style="padding-left:${depth?'0.8rem':'0'}">${Object.entries(data).map(([k,v]) => `<div style="display:flex;gap:0.5rem;padding:0.2rem 0;font-size:0.83rem;flex-wrap:wrap"><span style="color:var(--muted);min-width:120px">${escHtml(k)}:</span><span>${formatGeneric(v,depth+1)}</span></div>`).join('')}</div>`;
+  }
+  return escHtml(String(data));
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 </script>
 </body>
 </html>

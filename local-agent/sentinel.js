@@ -22,6 +22,7 @@ const { sendEmail } = require('./reports');
 const mem = require('./agent-memory');
 const { runGuardian } = require('./guardian');
 const config = require('./config');
+const { registerFixes, applyFixes, adjustConfigValue, readConfig } = require('./auto-fix');
 
 const HEALTH_ENDPOINTS = [
   { url: '/', name: 'Landing', critical: true },
@@ -309,8 +310,51 @@ async function runSentinel() {
   mem.recordRun(memory, state.lastResponseTime);
   mem.saveMemory('sentinel', memory);
 
-  return { results, state: { ...state } };
+  // Auto-fix: apply corrections based on patterns
+  const issueDescs = findings.map(f => f.description);
+  const appliedFixes = await applyFixes('sentinel', issueDescs, { results, state });
+  if (appliedFixes.length > 0) {
+    console.log(`[sentinel] Auto-fixed ${appliedFixes.length} issue(s)`);
+  }
+
+  return { results, state: { ...state }, autoFixes: appliedFixes };
 }
+
+// ── Auto-Fix Definitions ──────────────────────────────────────────────────────
+
+registerFixes('sentinel', [
+  {
+    id: 'raise-timeout-on-slow',
+    description: 'Subir timeout cuando el sitio es consistentemente lento (evita falsos positivos)',
+    cooldownMs: 24 * 3600000,
+    condition: () => {
+      // Trigger if last 3+ checks were slow but site was up
+      const memory = mem.loadMemory('sentinel');
+      const trends = memory.trends || [];
+      const recent = trends.slice(-6);
+      const slowCount = recent.filter(t => t.data?.landingOk && t.data?.landingMs > 4000).length;
+      return slowCount >= 3;
+    },
+    apply: (cfg) => {
+      return adjustConfigValue(cfg, 'sentinel', 'timeoutMs', 5000, 10000, 45000, 'timeout raised (slow site)');
+    },
+  },
+  {
+    id: 'raise-slow-threshold',
+    description: 'Subir umbral de lentitud si el sitio es consistentemente lento',
+    cooldownMs: 7 * 86400000,
+    condition: () => {
+      const memory = mem.loadMemory('sentinel');
+      const trends = memory.trends || [];
+      const recent = trends.slice(-12);
+      const slowCount = recent.filter(t => t.data?.landingOk && t.data?.landingMs > 4000).length;
+      return slowCount >= 6; // half of last 12 checks were slow
+    },
+    apply: (cfg) => {
+      return adjustConfigValue(cfg, 'sentinel', 'slowThresholdMs', 1000, 3000, 10000, 'slow threshold raised');
+    },
+  },
+]);
 
 // ── Exports ────────────────────────────────────────────────────────────────
 

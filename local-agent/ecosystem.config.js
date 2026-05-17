@@ -34,8 +34,7 @@ module.exports = {
     },
     {
       name: 'ytubviral-tunnel',
-      script: 'C:/Users/jimen/youtube-gpt/local-agent/cloudflared.exe',
-      args: 'tunnel run ytubviral-dashboard',
+      script: 'tunnel-wrapper.js',
       watch: false,
       autorestart: true,
       max_restarts: 20,

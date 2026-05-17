@@ -19,6 +19,8 @@ const fs = require('fs');
 const path = require('path');
 const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
+const { registerFixes, applyFixes } = require('./auto-fix');
+const { sendEmail } = require('./reports');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
 const BASE_URL = process.env.APP_PUBLIC_URL || 'https://ytubviral.com';
@@ -291,14 +293,13 @@ async function runWatchdog() {
       }
 
       const { text } = await guardedCall(
-        `Eres un abogado especializado en derecho digital español y europeo (GDPR, LSSI-CE, EU AI Act).
+        `Resultado de la auditoría automática de las páginas legales:\n${issuesSummary.length > 0 ? issuesSummary.join('\n') : 'Todas las páginas contienen los elementos requeridos.'}\n\nHeaders de seguridad faltantes: ${results.liveHeaders.length > 0 ? results.liveHeaders.map(h => h.header).join(', ') : 'Ninguno'}${memoryContext}`,
+        {
+          maxTokens: 400,
+          agentId: 'watchdog',
+          system: `Eres un abogado especializado en derecho digital español y europeo (GDPR, LSSI-CE, EU AI Act).
 
 YTubViral es un SaaS (ytubviral.com) con sede en Barcelona, propiedad de Javier Jimeno Plata. Usa: Google OAuth, YouTube API, Stripe, Claude AI, Neon PostgreSQL, Vercel, Resend.
-
-Resultado de la auditoría automática de las páginas legales:
-${issuesSummary.length > 0 ? issuesSummary.join('\n') : 'Todas las páginas contienen los elementos requeridos.'}
-
-Headers de seguridad faltantes: ${results.liveHeaders.length > 0 ? results.liveHeaders.map(h => h.header).join(', ') : 'Ninguno'}${memoryContext}
 
 Responde en español:
 1. ¿Hay algún riesgo legal real? (multa, denuncia, bloqueo) — prioriza REGRESIONES y ESCALADOS
@@ -306,7 +307,7 @@ Responde en español:
 3. Valoración compliance (1-10)
 
 Máximo 150 palabras. Solo riesgos reales, no teóricos.`,
-        { maxTokens: 400, agentId: 'watchdog' }
+        }
       );
       results.aiAnalysis = text;
     } catch (err) {
@@ -314,6 +315,14 @@ Máximo 150 palabras. Solo riesgos reales, no teóricos.`,
     }
   } else {
     results.aiAnalysis = 'Compliance correcto. Sin issues detectados.';
+  }
+
+  // Auto-fix: apply corrections based on findings
+  const allIssueDescs = currentFindings.map(f => f.description);
+  const appliedFixes = await applyFixes('watchdog', allIssueDescs, results);
+  if (appliedFixes.length > 0) {
+    console.log(`[watchdog] Auto-fix: ${appliedFixes.length} action(s) taken`);
+    results.autoFixes = appliedFixes;
   }
 
   results.durationMs = Date.now() - startTime;
@@ -329,5 +338,38 @@ Máximo 150 palabras. Solo riesgos reales, no teóricos.`,
 
   return results;
 }
+
+// ── Auto-Fix Definitions ──────────────────────────────────────────────────────
+
+registerFixes('watchdog', [
+  {
+    id: 'alert-legal-page-down',
+    description: 'Alerta urgente si una página legal no carga (riesgo de multa)',
+    cooldownMs: 24 * 3600000,
+    condition: (issues) => issues.some(i => /no carga|no accesible|down|404|500/i.test(i)),
+    apply: async (config, issues) => {
+      const criticalIssues = issues.filter(i => /no carga|no accesible|down|404|500/i.test(i));
+      await sendEmail(
+        '[YTubViral Watchdog] URGENTE: Página legal no accesible',
+        `Las siguientes páginas legales tienen problemas de acceso:\n\n${criticalIssues.join('\n')}\n\nEsto puede suponer un riesgo legal. Verificar inmediatamente.`
+      ).catch(() => {});
+      return { changed: false, detail: `Alerta legal enviada: ${criticalIssues.length} páginas con problemas` };
+    },
+  },
+  {
+    id: 'alert-content-insufficient',
+    description: 'Alerta cuando contenido legal es insuficiente (<500 chars)',
+    cooldownMs: 7 * 86400000,
+    condition: (issues) => issues.some(i => /insuficiente|<\s*500|corto|short|missing.*section/i.test(i)),
+    apply: async (config, issues) => {
+      const contentIssues = issues.filter(i => /insuficiente|<\s*500|corto|short|missing.*section/i.test(i));
+      await sendEmail(
+        '[YTubViral Watchdog] Contenido legal insuficiente',
+        `Se han detectado páginas legales con contenido insuficiente:\n\n${contentIssues.join('\n')}\n\nActualizar contenido para cumplir con requisitos legales.`
+      ).catch(() => {});
+      return { changed: false, detail: `Alerta de contenido legal enviada: ${contentIssues.length} issues` };
+    },
+  },
+]);
 
 module.exports = { runWatchdog };

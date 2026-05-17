@@ -15,6 +15,7 @@ const path = require('path');
 const { guardedCall, getStats, cleanOldFiles } = require('./api-guard');
 const { sendEmail } = require('./reports');
 const mem = require('./agent-memory');
+const { registerFixes, applyFixes, getRecentFixes, getEffectivenessReport, getDisabledFixes, readConfig, writeConfig } = require('./auto-fix');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
 const ANTHROPIC_CREDIT_TOTAL = 6.00; // USD loaded into Anthropic prepaid credits (remaining: check console)
@@ -296,6 +297,22 @@ async function runManager() {
     }
   }
 
+  // Auto-fix: apply manager-level corrections
+  const managerIssues = sections
+    .filter(s => s.status !== 'OK' && s.status !== 'SIN CAMBIOS')
+    .map(s => `${s.agent}: ${s.data} ${s.ai?.slice(0, 100) || ''}`);
+  managerIssues._sections = sections;
+
+  const managerFixes = await applyFixes('manager', managerIssues, { anthropicBalance, allEscalated, allRegressions });
+  if (managerFixes.length > 0) {
+    console.log(`[manager] Auto-fixed ${managerFixes.length} issue(s)`);
+    results.managerAutoFixes = managerFixes;
+  }
+
+  // Collect all auto-fixes from today (from all agents)
+  const todayAutoFixes = getRecentFixes(1);
+  results.allAutoFixes = todayAutoFixes;
+
   // AI synthesis
   let executiveSummary = '';
   const hasReports = sections.some(s => s.agent !== 'API Guard (Consumo)');
@@ -308,13 +325,11 @@ async function runManager() {
       ).join('\n\n');
 
       const { text } = await guardedCall(
-        `Eres el Manager de un equipo de agentes de IA para YTubViral (SaaS para YouTubers).
-
-Estos son los reportes de hoy de tus agentes:
-
-${sectionTexts}
-
-MEMORIA DEL SISTEMA (historial de issues):${memoryBlock || '\nSin historial previo — primera ejecución.'}
+        `Reportes de hoy:\n\n${sectionTexts}\n\nMEMORIA DEL SISTEMA (historial de issues):${memoryBlock || '\nSin historial previo — primera ejecución.'}`,
+        {
+          maxTokens: 600,
+          agentId: 'manager',
+          system: `Eres el Manager de un equipo de agentes de IA para YTubViral (SaaS para YouTubers).
 
 Escribe un RESUMEN EJECUTIVO para el CEO (Javier). En español:
 1. Estado general del sistema (1 línea)
@@ -323,7 +338,7 @@ Escribe un RESUMEN EJECUTIVO para el CEO (Javier). En español:
 4. Recomendación del día
 
 Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
-        { maxTokens: 600, agentId: 'manager' }
+        }
       );
       executiveSummary = text;
     } catch (err) {
@@ -382,6 +397,35 @@ Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
     emailBody += `   ${arrow} ${agentId}: ${summary.openIssues} issues abiertos — ${summary.trendDirection} (run #${summary.runCount})\n`;
   }
 
+  // Auto-fixes section in email
+  if (todayAutoFixes.length > 0) {
+    emailBody += `${'─'.repeat(60)}\n🔧 AUTO-FIXES APLICADOS HOY (${todayAutoFixes.length})\n${'─'.repeat(60)}\n\n`;
+    for (const fix of todayAutoFixes) {
+      const outcomeIcon = fix.outcome === 'effective' ? '✅' : fix.outcome === 'ineffective' ? '❌' : '⏳';
+      emailBody += `   ${outcomeIcon} [${fix.agent}] ${fix.description}: ${fix.detail}\n`;
+    }
+    emailBody += '\n';
+  }
+
+  // Effectiveness report
+  const effectiveness = getEffectivenessReport();
+  const disabledFixes = getDisabledFixes();
+  const effEntries = Object.entries(effectiveness).filter(([, e]) => e.total > 0);
+  if (effEntries.length > 0 || Object.keys(disabledFixes).length > 0) {
+    emailBody += `${'─'.repeat(60)}\n📊 EFECTIVIDAD AUTO-FIX\n${'─'.repeat(60)}\n\n`;
+    for (const [key, eff] of effEntries) {
+      const icon = eff.disabled ? '🚫' : eff.successRate > 0.7 ? '🟢' : eff.successRate > 0.3 ? '🟡' : '🔴';
+      emailBody += `   ${icon} ${key}: ${eff.successRatePct} (${eff.successes}/${eff.total})${eff.disabled ? ' — DESHABILITADO' : ''}\n`;
+    }
+    if (Object.keys(disabledFixes).length > 0) {
+      emailBody += `\n   Fixes deshabilitados: ${Object.keys(disabledFixes).length}\n`;
+      for (const [key, info] of Object.entries(disabledFixes)) {
+        emailBody += `     🚫 ${key}: ${info.reason}\n`;
+      }
+    }
+    emailBody += '\n';
+  }
+
   emailBody += `\n${'─'.repeat(60)}\nCONSUMO API\n`;
   emailBody += `   Llamadas hoy: ${apiStats.callCount}\n`;
   emailBody += `   Tokens: ${apiStats.dailyTokensUsed} / ${apiStats.dailyBudget} (${apiStats.budgetUsedPercent}%)\n`;
@@ -431,5 +475,77 @@ Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
   console.log(`[manager] Done (${results.durationMs}ms)`);
   return results;
 }
+
+// ── Auto-Fix Definitions ──────────────────────────────────────────────────────
+
+const MODEL_FALLBACK_CHAIN = ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'];
+
+registerFixes('manager', [
+  {
+    id: 'model-fallback-on-api-error',
+    description: 'Cambiar modelo a alternativa más barata cuando un agente falla con error de API',
+    cooldownMs: 48 * 3600000, // 2 days between model changes
+    condition: (issues) => issues.some(i => /404|API error|model.*not found/i.test(i)),
+    apply: (config, issues) => {
+      const errorAgents = [];
+      for (const section of (issues._sections || [])) {
+        if (section.ai && /404|API error|model.*not found/i.test(section.ai)) {
+          // Find which agent config module this corresponds to
+          const agentMap = { 'Scout': 'scout', 'Watchdog': 'watchdog', 'Guardian': 'guardian', 'Social Optimizer': 'social-optimizer' };
+          for (const [name, mod] of Object.entries(agentMap)) {
+            if (section.agent?.includes(name) && config[mod]?.model) {
+              const currentIdx = MODEL_FALLBACK_CHAIN.indexOf(config[mod].model);
+              if (currentIdx >= 0 && currentIdx < MODEL_FALLBACK_CHAIN.length - 1) {
+                const prev = config[mod].model;
+                config[mod].model = MODEL_FALLBACK_CHAIN[currentIdx + 1];
+                errorAgents.push(`${mod}: ${prev} → ${config[mod].model}`);
+              }
+            }
+          }
+        }
+      }
+      if (errorAgents.length === 0) return { changed: false };
+      return { changed: true, detail: `Model fallback applied: ${errorAgents.join(', ')}` };
+    },
+  },
+  {
+    id: 'budget-downgrade-models',
+    description: 'Degradar modelos caros a Haiku cuando el saldo es bajo (<$1)',
+    cooldownMs: 7 * 86400000,
+    condition: (issues, metrics) => {
+      const balance = metrics.anthropicBalance?.balance;
+      return balance !== undefined && balance < 1.0;
+    },
+    apply: (config, issues, metrics) => {
+      const downgradeable = ['scout', 'watchdog', 'social-optimizer'];
+      const changes = [];
+      for (const mod of downgradeable) {
+        if (config[mod]?.model && config[mod].model !== 'claude-haiku-4-5-20251001') {
+          const prev = config[mod].model;
+          config[mod].model = 'claude-haiku-4-5-20251001';
+          changes.push(`${mod}: ${prev} → haiku`);
+        }
+      }
+      if (changes.length === 0) return { changed: false };
+      return { changed: true, detail: `Budget low ($${metrics.anthropicBalance.balance.toFixed(2)}), downgraded: ${changes.join(', ')}` };
+    },
+  },
+  {
+    id: 'escalate-persistent-failures',
+    description: 'Enviar alerta crítica cuando un agente lleva 3+ días con errores',
+    cooldownMs: 3 * 86400000,
+    condition: (issues, metrics) => {
+      return (metrics.allEscalated || []).length > 0;
+    },
+    apply: async (config, issues, metrics) => {
+      const escalated = metrics.allEscalated || [];
+      await sendEmail(
+        '[YTubViral] CRÍTICO: Agentes con errores persistentes',
+        `Los siguientes issues llevan 7+ días sin resolverse:\n\n${escalated.map(e => `- [${e.agent}/${e.severity}] ${e.description} (${e.daysSinceFirst} días)`).join('\n')}\n\nSe requiere intervención manual.`
+      ).catch(() => {});
+      return { changed: false, detail: `Alerta de escalación enviada: ${escalated.length} issues` };
+    },
+  },
+]);
 
 module.exports = { runManager };

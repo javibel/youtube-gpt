@@ -249,7 +249,7 @@ function getSystemStatus() {
   let pm2Status = 'unknown';
   try {
     const { execSync } = require('child_process');
-    const output = execSync('pm2 jlist', { encoding: 'utf8', timeout: 5000 });
+    const output = execSync('pm2 jlist', { encoding: 'utf8', timeout: 5000, windowsHide: true });
     const processes = JSON.parse(output);
     const agent = processes.find(p => p.name === 'ytubviral-agent' || p.name === 'local-agent');
     pm2Status = agent ? agent.pm2_env.status : 'not found';
@@ -483,6 +483,33 @@ const server = http.createServer(async (req, res) => {
     };
     saveConfigFile(config);
     return sendJSON(res, 200, { success: true, balance: config._anthropicBalance });
+  }
+
+  // Reports listing
+  if (pathname === '/api/reports' && req.method === 'GET') {
+    const reports = [];
+    if (fs.existsSync(REPORTS_DIR)) {
+      const files = fs.readdirSync(REPORTS_DIR).filter(f => f.endsWith('.json')).sort().reverse();
+      for (const f of files) {
+        const match = f.match(/^(.+?)-(\d{4}-\d{2}-\d{2})\.json$/);
+        if (match) {
+          const stat = fs.statSync(path.join(REPORTS_DIR, f));
+          reports.push({ filename: f, agent: match[1], date: match[2], sizeKb: (stat.size / 1024).toFixed(1) });
+        }
+      }
+    }
+    return sendJSON(res, 200, reports);
+  }
+
+  // Single report content
+  const reportMatch = pathname.match(/^\/api\/reports\/(.+\.json)$/);
+  if (reportMatch && req.method === 'GET') {
+    const filePath = path.join(REPORTS_DIR, path.basename(reportMatch[1]));
+    if (!fs.existsSync(filePath)) return sendJSON(res, 404, { error: 'Report not found' });
+    try {
+      const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      return sendJSON(res, 200, content);
+    } catch (e) { return sendJSON(res, 500, { error: 'Error reading report' }); }
   }
 
   const logsMatch = pathname.match(/^\/api\/logs\/(.+)$/);
