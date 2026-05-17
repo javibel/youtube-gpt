@@ -1,0 +1,141 @@
+{
+  "scheduler": {
+    "sentinelInterval": 5,
+    "gmailInterval": 30,
+    "reportTime": "08:05",
+    "personaMorning": "09:00-10:59",
+    "personaEvening": "22:00-22:59",
+    "followupMorning": "10:00-11:59",
+    "followupEvening": "17:00-18:59",
+    "cleanupTime": "02:00",
+    "guardianTime": "02:15",
+    "scoutTime": "02:30",
+    "watchdogTime": "02:45",
+    "optimizerTime": "03:00",
+    "managerTime": "03:15"
+  },
+  "sentinel": {
+    "siteUrl": "https://ytubviral.com",
+    "timeoutMs": 20000,
+    "slowThresholdMs": 5000,
+    "confirmRetries": 3,
+    "confirmDelayMs": 10000,
+    "ownerEmail": "javijimenoplata@gmail.com"
+  },
+  "api-guard": {
+    "maxTokensPerCall": 2000,
+    "maxInputChars": 15000,
+    "dailyBudgetTokens": 100000,
+    "maxCallsPerMinute": 10,
+    "timeoutMs": 30000,
+    "circuitBreakerThreshold": 5,
+    "circuitBreakerResetMs": 300000
+  },
+  "claude": {
+    "model": "claude-haiku-4-5-20251001",
+    "maxTokensTwitter": 150,
+    "maxTokensReddit": 200,
+    "maxCharsTwitter": 300,
+    "maxCharsReddit": 800
+  },
+  "humanize": {
+    "skipSessionProbability": 0.15,
+    "skipPostProbability": 0.25,
+    "readingPauseMin": 5,
+    "readingPauseMax": 15,
+    "actionPauseMin": 3,
+    "actionPauseMax": 8,
+    "commentPauseMin": 15,
+    "commentPauseMax": 40,
+    "dailyLimitVariance": 40
+  },
+  "persona-runner": {
+    "model": "claude-haiku-4-5-20251001",
+    "maxTweetsPerSession": 10,
+    "maxRedditPerSession": 5
+  },
+  "followup": {
+    "model": "claude-haiku-4-5-20251001",
+    "twitterLimit": 4,
+    "redditLimit": 4,
+    "daysBack": 14,
+    "fuzzyMatchThreshold": 0.4
+  },
+  "meta-agent": {
+    "fbRandomDelayMax": 12,
+    "fbRetryDelayMax": 15,
+    "igPollInterval": 3000,
+    "igMaxPollAttempts": 10,
+    "duplicateCheck": true,
+    "fallbackImage": "/social-images/default.jpg"
+  },
+  "linkedin-agent": {
+    "imageFolders": [
+      "javier",
+      "oficina"
+    ],
+    "rotationDays": 30
+  },
+  "browser": {
+    "chromePath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "headless": true,
+    "viewportWidth": 1280,
+    "viewportHeight": 800,
+    "protocolTimeout": 60000,
+    "stealthPlugin": true
+  },
+  "guardian": {
+    "model": "claude-sonnet-4-6",
+    "webDir": "../youtube-gpt",
+    "timeoutMs": 60000,
+    "dangerousPatterns": "eval(, innerHTML, dangerouslySetInnerHTML, AKIA[0-9A-Z]",
+    "extensions": "ts, tsx, js, jsx",
+    "useAI": true,
+    "alertEmail": "javijimenoplata@gmail.com"
+  },
+  "gmail": {
+    "model": "claude-haiku-4-5-20251001",
+    "agentEmail": "ytbeviral@gmail.com",
+    "ownerEmail": "javijimenoplata@gmail.com",
+    "activeHours": "8-23"
+  },
+  "scout": {
+    "model": "claude-opus-4-6"
+  },
+  "watchdog": {
+    "model": "claude-opus-4-6"
+  },
+  "social-optimizer": {
+    "model": "claude-sonnet-4-6"
+  },
+  "manager": {
+    "model": "claude-sonnet-4-6"
+  },
+  "personas": {
+    "alex": {
+      "name": "Alex Sastre",
+      "age": 26,
+      "city": "Valencia",
+      "job": "Editor de video freelance",
+      "platforms": "Twitter, Reddit",
+      "mentionRate": 0.25
+    },
+    "ferran": {
+      "name": "Ferran Gómez",
+      "age": 33,
+      "city": "Barcelona",
+      "job": "Consultor marketing digital",
+      "platforms": "Twitter, Reddit",
+      "mentionRate": 0.2
+    }
+  },
+  "_lastModified": "2026-05-16T19:50:00.986Z",
+  "_lastModifiedBy": "dashboard",
+  "_anthropicBalance": {
+    "amount": 2.95,
+    "currency": "USD",
+    "totalCredit": 6,
+    "totalSpent": 3.05,
+    "lastChecked": "2026-05-17T01:15:13.609Z"
+  }
+}

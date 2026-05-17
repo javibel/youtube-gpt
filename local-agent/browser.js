@@ -6,6 +6,7 @@ puppeteerExtra.use(StealthPlugin());
 const fs = require('fs');
 const path = require('path');
 const { diagnose } = require('./doctor');
+const config = require('./config');
 
 const CHROME_PROFILE_DIR = path.join(__dirname, 'chrome-profile');
 
@@ -22,16 +23,19 @@ async function launchBrowser(absDir) {
     }
   }
 
-  const chromePath = process.env.CHROME_PATH
-    || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+  const chromePath = config.get('browser', 'chromePath',
+    process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe');
 
   return puppeteerExtra.launch({
-    headless: true,
+    headless: config.get('browser', 'headless', true),
     executablePath: chromePath,
     userDataDir: absDir,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    defaultViewport: { width: 1280, height: 800 },
-    protocolTimeout: 60000,
+    defaultViewport: {
+      width: config.get('browser', 'viewportWidth', 1280),
+      height: config.get('browser', 'viewportHeight', 800),
+    },
+    protocolTimeout: config.get('browser', 'protocolTimeout', 60000),
   });
 }
 

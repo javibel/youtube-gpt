@@ -15,18 +15,25 @@
 
 const fs = require('fs');
 const path = require('path');
+const config = require('./config');
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
-const DEFAULTS = {
-  maxTokensPerCall: 2000,       // Hard cap por llamada (output)
-  maxInputChars: 15000,         // Truncar prompt si supera esto (~4K tokens)
-  dailyBudgetTokens: 100000,    // Budget diario total (input + output)
-  maxCallsPerMinute: 10,        // Rate limit
-  timeoutMs: 30000,             // 30s timeout por llamada
-  circuitBreakerThreshold: 5,   // Parar tras 5 errores consecutivos
-  circuitBreakerResetMs: 300000,// Reset circuit breaker tras 5 min
+const HARDCODED_DEFAULTS = {
+  maxTokensPerCall: 2000,
+  maxInputChars: 15000,
+  dailyBudgetTokens: 100000,
+  maxCallsPerMinute: 10,
+  timeoutMs: 30000,
+  circuitBreakerThreshold: 5,
+  circuitBreakerResetMs: 300000,
 };
+
+// Live config with fallback to hardcoded defaults
+function getCfg() {
+  const mod = config.getModule('api-guard');
+  return { ...HARDCODED_DEFAULTS, ...mod };
+}
 
 // ── State (in-memory, resets on process restart) ────────────────────────────
 
@@ -95,8 +102,8 @@ function cleanOldCallTimestamps() {
 
 // ── Guard checks ────────────────────────────────────────────────────────────
 
-function checkGuards(config = {}) {
-  const cfg = { ...DEFAULTS, ...config };
+function checkGuards(overrides = {}) {
+  const cfg = { ...getCfg(), ...overrides };
   resetDailyIfNeeded();
 
   // 1. Circuit breaker
@@ -133,13 +140,16 @@ function checkGuards(config = {}) {
  * @returns {Promise<{text: string, inputTokens: number, outputTokens: number}>}
  */
 async function guardedCall(prompt, options = {}) {
-  const cfg = { ...DEFAULTS };
+  const cfg = getCfg();
   const {
     maxTokens = 1000,
-    model = 'claude-haiku-4-5-20251001',
     agentId = 'unknown',
     system = undefined,
   } = options;
+  // Model priority: explicit option > per-agent config > global claude config > hardcoded default
+  const model = options.model
+    || config.get(agentId, 'model', null)
+    || config.get('claude', 'model', 'claude-haiku-4-5-20251001');
 
   // Pre-flight checks
   const check = checkGuards();
@@ -167,19 +177,27 @@ async function guardedCall(prompt, options = {}) {
     max_tokens: safeMaxTokens,
     messages: [{ role: 'user', content: safePrompt }],
   };
-  if (system) body.system = system;
+  // Prompt caching: wrap system prompt with cache_control
+  if (system) {
+    body.system = [
+      { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
+    ];
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs);
 
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-api-key': (process.env.ANTHROPIC_API_KEY || '').trim(),
+    'anthropic-version': '2023-06-01',
+  };
+  if (system) headers['anthropic-beta'] = 'prompt-caching-2024-07-31';
+
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': (process.env.ANTHROPIC_API_KEY || '').trim(),
-        'anthropic-version': '2023-06-01',
-      },
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -233,8 +251,8 @@ function getStats() {
     date: state.dailyDate,
     callCount: state.callCount,
     dailyTokensUsed: state.dailyTokensUsed,
-    dailyBudget: DEFAULTS.dailyBudgetTokens,
-    budgetUsedPercent: Math.round((state.dailyTokensUsed / DEFAULTS.dailyBudgetTokens) * 100),
+    dailyBudget: getCfg().dailyBudgetTokens,
+    budgetUsedPercent: Math.round((state.dailyTokensUsed / getCfg().dailyBudgetTokens) * 100),
     totalInputTokens: state.totalInputTokens,
     totalOutputTokens: state.totalOutputTokens,
     consecutiveErrors: state.consecutiveErrors,
@@ -288,4 +306,4 @@ function cleanOldFiles() {
   return deleted;
 }
 
-module.exports = { guardedCall, checkGuards, getStats, cleanOldFiles, DEFAULTS };
+module.exports = { guardedCall, checkGuards, getStats, cleanOldFiles, DEFAULTS: HARDCODED_DEFAULTS };

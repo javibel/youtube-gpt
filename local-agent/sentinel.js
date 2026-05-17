@@ -21,17 +21,24 @@
 const { sendEmail } = require('./reports');
 const mem = require('./agent-memory');
 const { runGuardian } = require('./guardian');
+const config = require('./config');
 
-const SITE_URL = process.env.SITE_URL || 'https://ytubviral.com';
 const HEALTH_ENDPOINTS = [
   { url: '/', name: 'Landing', critical: true },
   { url: '/api/health', name: 'API Health', critical: false },
 ];
-const TIMEOUT_MS = 20000;
-const SLOW_THRESHOLD_MS = 5000;
-const CONFIRM_RETRIES = 3;       // retries before declaring DOWN
-const CONFIRM_DELAY_MS = 10000;  // 10s between retries
-const OWNER_EMAIL = process.env.OWNER_EMAIL || 'javijimenoplata@gmail.com';
+
+// All configurable via dashboard
+function getSentinelCfg() {
+  return {
+    siteUrl: config.get('sentinel', 'siteUrl', process.env.SITE_URL || 'https://ytubviral.com'),
+    timeoutMs: config.get('sentinel', 'timeoutMs', 20000),
+    slowThresholdMs: config.get('sentinel', 'slowThresholdMs', 5000),
+    confirmRetries: config.get('sentinel', 'confirmRetries', 3),
+    confirmDelayMs: config.get('sentinel', 'confirmDelayMs', 10000),
+    ownerEmail: config.get('sentinel', 'ownerEmail', process.env.OWNER_EMAIL || 'javijimenoplata@gmail.com'),
+  };
+}
 
 // In-memory state (survives across cron ticks within same PM2 process)
 let state = {
@@ -45,13 +52,14 @@ let state = {
 
 // ── HTTP check ─────────────────────────────────────────────────────────────
 
-async function checkEndpoint(endpoint) {
-  const url = `${SITE_URL}${endpoint.url}`;
+async function checkEndpoint(endpoint, cfg) {
+  const { siteUrl, timeoutMs, slowThresholdMs } = cfg || getSentinelCfg();
+  const url = `${siteUrl}${endpoint.url}`;
   const start = Date.now();
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     const res = await fetch(url, {
       method: 'GET',
@@ -70,7 +78,7 @@ async function checkEndpoint(endpoint) {
       status: res.status,
       ok,
       elapsed,
-      slow: elapsed > SLOW_THRESHOLD_MS,
+      slow: elapsed > slowThresholdMs,
       error: null,
     };
   } catch (err) {
@@ -146,7 +154,7 @@ async function sendSlowAlert(results) {
 
   let body = `ALERTA — RENDIMIENTO DEGRADADO\n${'='.repeat(50)}\n\n`;
   body += `Hora: ${new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}\n`;
-  body += `Umbral: ${SLOW_THRESHOLD_MS}ms\n\n`;
+  body += `Umbral: ${getSentinelCfg().slowThresholdMs}ms\n\n`;
   for (const r of slow) {
     body += `  ⚠️ ${r.endpoint}: ${r.elapsed}ms (status ${r.status})\n`;
   }
@@ -161,10 +169,11 @@ async function sendSlowAlert(results) {
 // ── Main check ─────────────────────────────────────────────────────────────
 
 async function runSentinel() {
+  const cfg = getSentinelCfg();
   const results = [];
 
   for (const endpoint of HEALTH_ENDPOINTS) {
-    results.push(await checkEndpoint(endpoint));
+    results.push(await checkEndpoint(endpoint, cfg));
   }
 
   state.lastCheck = new Date().toISOString();
@@ -177,11 +186,11 @@ async function runSentinel() {
 
   // ── Confirm before declaring DOWN (avoid false positives from transient timeouts)
   if (criticalDown && !state.isDown) {
-    console.log(`[sentinel] Landing failed — confirming with ${CONFIRM_RETRIES} retries...`);
-    for (let i = 1; i <= CONFIRM_RETRIES; i++) {
-      await new Promise(r => setTimeout(r, CONFIRM_DELAY_MS));
-      const retry = await checkEndpoint(HEALTH_ENDPOINTS[0]); // Landing
-      console.log(`[sentinel] Retry ${i}/${CONFIRM_RETRIES}: ${retry.ok ? '✅' : '❌'} ${retry.status || 'ERR'} (${retry.elapsed}ms)`);
+    console.log(`[sentinel] Landing failed — confirming with ${cfg.confirmRetries} retries...`);
+    for (let i = 1; i <= cfg.confirmRetries; i++) {
+      await new Promise(r => setTimeout(r, cfg.confirmDelayMs));
+      const retry = await checkEndpoint(HEALTH_ENDPOINTS[0], cfg);
+      console.log(`[sentinel] Retry ${i}/${cfg.confirmRetries}: ${retry.ok ? '✅' : '❌'} ${retry.status || 'ERR'} (${retry.elapsed}ms)`);
       if (retry.ok) {
         criticalDown = false;
         // Update the landing result for memory/logging
@@ -284,7 +293,7 @@ async function runSentinel() {
         id: mem.issueId('performance', r.endpoint),
         category: 'performance',
         severity: 'medium',
-        description: `${r.endpoint} slow: ${r.elapsed}ms (threshold ${SLOW_THRESHOLD_MS}ms)`,
+        description: `${r.endpoint} slow: ${r.elapsed}ms (threshold ${cfg.slowThresholdMs}ms)`,
       });
     }
   }

@@ -17,7 +17,7 @@ const { sendEmail } = require('./reports');
 const mem = require('./agent-memory');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
-const ANTHROPIC_CREDIT_TOTAL = 6.00; // USD loaded into Anthropic account
+const ANTHROPIC_CREDIT_TOTAL = 6.00; // USD loaded into Anthropic prepaid credits (remaining: check console)
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -238,6 +238,24 @@ async function runManager() {
   console.log('[manager] Checking Anthropic API balance...');
   const anthropicBalance = await getAnthropicBalance();
 
+  // Sync balance to dashboard config for real-time display
+  if (anthropicBalance) {
+    try {
+      const cfgPath = require('path').join(__dirname, 'agent-config.json');
+      const cfgFs = require('fs');
+      const cfg = cfgFs.existsSync(cfgPath) ? JSON.parse(cfgFs.readFileSync(cfgPath, 'utf8')) : {};
+      cfg._anthropicBalance = {
+        amount: anthropicBalance.balance,
+        currency: 'USD',
+        totalCredit: anthropicBalance.totalCredit,
+        totalSpent: anthropicBalance.totalSpent,
+        lastChecked: new Date().toISOString(),
+      };
+      cfgFs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2), 'utf8');
+      console.log(`[manager] Dashboard balance synced: $${anthropicBalance.balance.toFixed(2)}`);
+    } catch (err) { console.warn('[manager] Failed to sync balance to dashboard:', err.message); }
+  }
+
   // ── Collect memory summaries from all agents ──────────────────────────
   console.log('[manager] Reading agent memories...');
   const agentMemories = {};
@@ -305,7 +323,7 @@ Escribe un RESUMEN EJECUTIVO para el CEO (Javier). En español:
 4. Recomendación del día
 
 Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
-        { maxTokens: 600, agentId: 'manager', model: 'claude-haiku-4-5-20251001' }
+        { maxTokens: 600, agentId: 'manager' }
       );
       executiveSummary = text;
     } catch (err) {

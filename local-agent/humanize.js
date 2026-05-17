@@ -1,42 +1,52 @@
 'use strict';
 
+const config = require('./config');
+
 // ── Anti-detection utilities ──
 // Makes bot behavior look more human by adding variance, pauses, and randomness.
+// All values configurable via dashboard (module: 'humanize')
 
-// Vary a daily limit by ±40% — real humans don't do exactly 10 likes every day
+function hCfg(key, def) { return config.get('humanize', key, def); }
+
+// Vary a daily limit by ±variance% — real humans don't do exactly 10 likes every day
 function randomLimit(base) {
-  const min = Math.max(1, Math.round(base * 0.6));
-  const max = Math.round(base * 1.4);
+  const variance = hCfg('dailyLimitVariance', 40) / 100;
+  const min = Math.max(1, Math.round(base * (1 - variance)));
+  const max = Math.round(base * (1 + variance));
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 // Skip entire session ~15% of the time — humans have off days
 function shouldSkipSession() {
-  return Math.random() < 0.15;
+  return Math.random() < hCfg('skipSessionProbability', 0.15);
 }
 
 // Skip an individual post ~25% of the time even if it matches criteria
-// (humans don't engage with every post they see)
 function shouldSkipPost() {
-  return Math.random() < 0.25;
+  return Math.random() < hCfg('skipPostProbability', 0.25);
 }
 
 // Simulate reading a post (5–15 seconds)
 function readingPause() {
-  const ms = 5000 + Math.floor(Math.random() * 10000);
+  const min = hCfg('readingPauseMin', 5) * 1000;
+  const max = hCfg('readingPauseMax', 15) * 1000;
+  const ms = min + Math.floor(Math.random() * (max - min));
   return new Promise(r => setTimeout(r, ms));
 }
 
-// Pause between actions (3–8 seconds, longer than typical bot delays)
+// Pause between actions (3–8 seconds)
 function actionPause() {
-  const ms = 3000 + Math.floor(Math.random() * 5000);
+  const min = hCfg('actionPauseMin', 3) * 1000;
+  const max = hCfg('actionPauseMax', 8) * 1000;
+  const ms = min + Math.floor(Math.random() * (max - min));
   return new Promise(r => setTimeout(r, ms));
 }
 
 // Long pause between comment/reply actions (15–40 seconds)
-// Typing a thoughtful reply takes time
 function commentPause() {
-  const ms = 15000 + Math.floor(Math.random() * 25000);
+  const min = hCfg('commentPauseMin', 15) * 1000;
+  const max = hCfg('commentPauseMax', 40) * 1000;
+  const ms = min + Math.floor(Math.random() * (max - min));
   return new Promise(r => setTimeout(r, ms));
 }
 

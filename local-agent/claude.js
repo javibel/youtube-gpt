@@ -1,23 +1,106 @@
 'use strict';
 
+const config = require('./config');
+
 const API_KEY = () => process.env.ANTHROPIC_API_KEY?.trim() ?? '';
 
-async function callClaude(prompt, maxTokens = 200) {
+// Pricing per 1M tokens (USD) — May 2026
+const MODEL_PRICING = {
+  'claude-haiku-4-5-20251001': { input: 0.25, output: 1.25 },
+  'claude-sonnet-4-6':         { input: 3.00, output: 15.00 },
+  'claude-opus-4-6':           { input: 15.00, output: 75.00 },
+};
+
+// Deduct cost from stored balance after each call
+function deductFromBalance(model, inputTokens, outputTokens, cacheReadTokens = 0, cacheCreationTokens = 0) {
+  try {
+    const pricing = MODEL_PRICING[model] || MODEL_PRICING['claude-haiku-4-5-20251001'];
+    // Cache read tokens cost 10% of input price; cache creation costs 25% more than input
+    const regularInput = inputTokens - cacheReadTokens - cacheCreationTokens;
+    const cost = (
+      Math.max(0, regularInput) * pricing.input +
+      cacheReadTokens * pricing.input * 0.1 +
+      cacheCreationTokens * pricing.input * 1.25 +
+      outputTokens * pricing.output
+    ) / 1_000_000;
+    if (cost <= 0) return;
+
+    const fs = require('fs');
+    const path = require('path');
+    const configFile = path.join(__dirname, 'agent-config.json');
+    if (!fs.existsSync(configFile)) return;
+
+    const cfg = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    if (!cfg._anthropicBalance || cfg._anthropicBalance.amount === null) return;
+
+    cfg._anthropicBalance.amount = Math.max(0, cfg._anthropicBalance.amount - cost);
+    cfg._anthropicBalance.lastDeduction = new Date().toISOString();
+    cfg._anthropicBalance.totalSpentToday = (cfg._anthropicBalance.totalSpentToday || 0) + cost;
+
+    // Reset daily spend at midnight
+    const today = new Date().toISOString().slice(0, 10);
+    if (cfg._anthropicBalance.spendDate !== today) {
+      cfg._anthropicBalance.totalSpentToday = cost;
+      cfg._anthropicBalance.spendDate = today;
+    }
+
+    fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2), 'utf8');
+  } catch {}
+}
+
+/**
+ * @param {string} prompt
+ * @param {number} maxTokens
+ * @param {object} [opts]
+ * @param {string} [opts.caller] - module name to read model override from config (e.g. 'guardian', 'persona-runner')
+ * @param {string} [opts.model] - explicit model override (takes priority)
+ * @param {string} [opts.system] - system prompt (cached via prompt caching for cost savings)
+ */
+async function callClaude(prompt, maxTokens = 200, opts = {}) {
+  // Determine model: explicit > per-agent config > global config > hardcoded default
+  const model = opts.model
+    || (opts.caller && config.get(opts.caller, 'model', null))
+    || config.get('claude', 'model', 'claude-haiku-4-5-20251001');
+
+  // Build request body — use prompt caching on system messages
+  const body = {
+    model,
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }],
+  };
+
+  // If system prompt provided, use cache_control for prompt caching (saves 50-90% on input tokens)
+  if (opts.system) {
+    body.system = [
+      { type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } },
+    ];
+  }
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': API_KEY(),
       'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'prompt-caching-2024-07-31',
     },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Claude API error: ${res.status}`);
   const data = await res.json();
+
+  // Track usage and deduct from balance (including cache savings)
+  const usage = data.usage;
+  if (usage) {
+    deductFromBalance(
+      model,
+      usage.input_tokens || 0,
+      usage.output_tokens || 0,
+      usage.cache_read_input_tokens || 0,
+      usage.cache_creation_input_tokens || 0,
+    );
+  }
+
   const text = data.content?.[0]?.text?.trim() ?? '';
 
   // ── Hard reject: meta-comments, AI refusals, generic bot phrases ──
@@ -200,25 +283,16 @@ async function generateComment(authorName, postContent) {
   const persona = PERSONA[lang] || PERSONA.en;
   const rules = RULES[lang] || RULES.en;
 
-  return callClaude(`
-${persona}
-
-You just read this post by ${authorName} on LinkedIn. Write the comment you'd naturally leave.
+  const systemPrompt = `${persona}\n\n${rules}`;
+  return callClaude(`You just read this post by ${authorName} on LinkedIn. Write the comment you'd naturally leave.
 
 Post: "${postContent}"
-
-${rules}
-`, 150);
+`, 150, { caller: 'persona-runner', system: systemPrompt });
 }
 
 // Genera una respuesta genuina para un tweet de X/Twitter
 async function generateTweetReply(authorName, tweetContent) {
-  return callClaude(`
-Eres un tío de 30 años en tech que ha montado una herramienta para YouTubers. Conoces bien el mundo de los creadores porque trabajas con sus datos a diario, pero tú no creas contenido — construyes herramientas.
-
-Acabas de ver este tweet de ${authorName}. Responde como lo harías de verdad — rápido, informal, como si le contestaras a un colega.
-
-Tweet: "${tweetContent}"
+  const systemPrompt = `Eres un tío de 30 años en tech que ha montado una herramienta para YouTubers. Conoces bien el mundo de los creadores porque trabajas con sus datos a diario, pero tú no creas contenido — construyes herramientas.
 
 CÓMO ESCRIBES EN TWITTER:
 - Ultra corto — 1 frase, máximo 2. Menos de 200 caracteres
@@ -231,16 +305,17 @@ CÓMO ESCRIBES EN TWITTER:
 - 1 emoji como mucho, o ninguno
 - Idioma del tweet original
 
-Solo el reply. Nada más.
-`, 100);
+Solo el reply. Nada más.`;
+
+  return callClaude(`Acabas de ver este tweet de ${authorName}. Responde como lo harías de verdad — rápido, informal, como si le contestaras a un colega.
+
+Tweet: "${tweetContent}"
+`, 100, { caller: 'persona-runner', system: systemPrompt });
 }
 
 // Genera un comentario genuino para un post de Instagram
 async function generateInstagramComment(authorName, caption) {
-  return callClaude(`
-Eres un tío de 30 años que trabaja en tech ayudando a creadores de YouTube con herramientas y datos. Estás en Instagram scrolleando y ves este post de ${authorName}.
-
-Caption: "${caption}"
+  const systemPrompt = `Eres un tío de 30 años que trabaja en tech ayudando a creadores de YouTube con herramientas y datos. Estás en Instagram scrolleando.
 
 Escribe un comentario como lo haría una persona real en Instagram:
 - 1 frase corta y natural, como si hablaras
@@ -252,8 +327,12 @@ Escribe un comentario como lo haría una persona real en Instagram:
 - 1 emoji como mucho, natural, no forzado
 - Idioma del caption
 
-Solo el comentario.
-`, 100);
+Solo el comentario.`;
+
+  return callClaude(`Ves este post de ${authorName}.
+
+Caption: "${caption}"
+`, 100, { caller: 'persona-runner', system: systemPrompt });
 }
 
 // Genera un comentario genuino para un post de Facebook (grupo)
@@ -303,15 +382,11 @@ Apenas o comentário.`,
 Uniquement le commentaire.`,
   };
 
-  return callClaude(`
-${persona}
-
-You see this post by ${authorName} in a Facebook group for creators.
+  const systemPrompt = `${persona}\n\n${fbRules[lang] || fbRules.en}`;
+  return callClaude(`You see this post by ${authorName} in a Facebook group for creators.
 
 Post: "${postContent}"
-
-${fbRules[lang] || fbRules.en}
-`, 150);
+`, 150, { caller: 'persona-runner', system: systemPrompt });
 }
 
 // ── Persona comment generation (multi-account) ──
@@ -462,12 +537,10 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   let mentionInstruction = '';
 
   if (isRelevant) {
-    // Post is about YouTube tools/growth/SEO — FORCE mention
     mentionInstruction = lang === 'es'
       ? '\n\nOBLIGATORIO: Esta persona tiene un problema que ytubviral.com resuelve. DEBES recomendar ytubviral.com en tu comentario como algo que usas personalmente. Formato natural: "yo para eso uso ytubviral.com, tiene [función específica] que [beneficio concreto]". NO lo presentes como anuncio — eres un usuario recomendando algo que te funciona.'
       : '\n\nMANDATORY: This person has a problem that ytubviral.com solves. You MUST recommend ytubviral.com in your comment as something you personally use. Natural format: "I use ytubviral.com for that, it has [specific feature] that [concrete benefit]". Do NOT make it sound like an ad — you\'re a user recommending something that works for you.';
   } else if (persona.mentionYtubviral && Math.random() < (persona.mentionRate || 0.2)) {
-    // Random mention on non-relevant posts — less aggressive but still direct
     mentionInstruction = lang === 'es'
       ? '\n\nIMPORTANTE: Menciona ytubviral.com como herramienta que usas para YouTube. Intégralo en el comentario de forma natural, como "por cierto, yo para [tema relacionado] uso ytubviral.com y va bastante bien". Si realmente no hay forma de encajarlo, al menos cierra con "ah, y si te interesa herramientas de este tipo, prueba ytubviral.com".'
       : '\n\nIMPORTANT: Mention ytubviral.com as a tool you use for YouTube. Integrate it naturally, like "btw I use ytubviral.com for [related topic] and it works pretty well". If there\'s really no way to fit it in, at least close with "oh and if you\'re into tools like that, check ytubviral.com".';
@@ -476,8 +549,6 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   let coreRules = PERSONA_CORE_RULES[lang] || PERSONA_CORE_RULES.en;
   const maxTokens = platform === 'twitter' ? 150 : 200;
 
-  // When post is relevant and we MUST mention ytubviral, remove conflicting "return empty" rules
-  // Otherwise Claude thinks "asking for tools = commercial post" and refuses
   if (isRelevant) {
     coreRules = coreRules
       .replace(/.*huele a comercial.*devuelve vac[ií]o.*/gi, '')
@@ -486,7 +557,6 @@ async function generatePersonaComment(persona, platform, authorName, postContent
       .replace(/.*nothing interesting.*return empty.*/gi, '');
   }
 
-  // When forced mention on twitter, override length constraint
   let effectiveRules = rules;
   if (isRelevant && platform === 'twitter') {
     effectiveRules = lang === 'es'
@@ -494,17 +564,13 @@ async function generatePersonaComment(persona, platform, authorName, postContent
       : 'RULES: Twitter reply. Max 280 chars. 1-2 sentences. Informal. No hashtags. No markdown. WRITE IN ENGLISH.\nOnly the reply.';
   }
 
-  return callClaude(`
-${personality}
+  // PROMPT CACHING: personality + core rules are static per persona/platform combo → cache them
+  const systemPrompt = `${personality}\n\n${coreRules}\n\n${effectiveRules}`;
 
-${coreRules}
+  return callClaude(`You just read this ${platform} post by ${authorName}. Write the comment you'd naturally leave.
 
-You just read this ${platform} post by ${authorName}. Write the comment you'd naturally leave.
-
-Post: "${postContent}"
-
-${effectiveRules}${mentionInstruction}
-`, maxTokens);
+Post: "${postContent}"${mentionInstruction}
+`, maxTokens, { caller: 'persona-runner', system: systemPrompt });
 }
 
 // ── Follow-up reply generation ──
@@ -563,17 +629,15 @@ async function generateFollowupReply(platform, ourOriginalComment, theirReply, t
 
   const maxTokens = platform === 'twitter' ? 120 : 200;
 
-  return callClaude(`
-${personaDesc}
+  // PROMPT CACHING: persona + rules are static per persona → cached
+  const systemPrompt = `${personaDesc}\n\n${rules}`;
 
-You previously left this comment on ${platform}: "${ourOriginalComment}"
+  return callClaude(`You previously left this comment on ${platform}: "${ourOriginalComment}"
 
 ${theirName} replied to you: "${theirReply}"
 
-Continue the conversation naturally.
-
-${rules}${mentionInstruction}
-`, maxTokens);
+Continue the conversation naturally.${mentionInstruction}
+`, maxTokens, { caller: 'followup', system: systemPrompt });
 }
 
 // ── Email reply generation ──
@@ -606,18 +670,14 @@ Solo el email de respuesta.`,
 Only the reply email.`,
   };
 
-  return callClaude(`
-${rules.persona}
-
-You received this email:
+  const systemPrompt = `${rules.persona}\n\n${rules.format}`;
+  return callClaude(`You received this email:
 From: ${senderEmail}
 Subject: ${subject}
 Body: "${body.slice(0, 800)}"
 
 Write a reply.
-
-${rules.format}
-`, 300);
+`, 300, { caller: 'gmail', system: systemPrompt });
 }
 
 module.exports = {

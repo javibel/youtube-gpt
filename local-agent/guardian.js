@@ -403,7 +403,7 @@ Responde en español con:
 4. Si hay resoluciones recientes, mencionar brevemente
 
 Sé directo y conciso. Máximo 200 palabras.`,
-        { maxTokens: 500, agentId: 'guardian', model: 'claude-haiku-4-5-20251001' }
+        { maxTokens: 500, agentId: 'guardian' }
       );
       results.aiAnalysis = text;
     } catch (err) {

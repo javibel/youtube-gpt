@@ -514,6 +514,278 @@ export const GEAR_ITEMS: GearItem[] = [
     },
     image: '/gear/elgato-key-light.png',
   },
+  {
+    id: 'sensory-owl-body-sock',
+    name: { es: 'Sensory Owl Calcetín Corporal', en: 'Sensory Owl Body Sock' },
+    description: {
+      es: 'Calcetín de cuerpo entero que proporciona estimulación de presión profunda. Alivia estrés y ansiedad en personas con TDAH y autismo. Terapia sensorial que ayuda a la concentración durante sesiones de trabajo largas.',
+      en: 'Full body sock providing deep pressure stimulation. Relieves stress and anxiety in people with ADHD and autism. Sensory therapy that helps concentration during long work sessions.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€20-35',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/06gWy0Kj',
+      en: 'https://amzn.eu/d/06gWy0Kj',
+    },
+  },
+  {
+    id: 'magnetic-fidget-sliders',
+    name: { es: 'Fidget Magnético Slider 8 piezas', en: 'Magnetic Fidget Slider 8-Pack' },
+    description: {
+      es: 'Set de 8 sliders y spinners magnéticos metálicos. Silenciosos, ideales para usar en clase o la oficina sin molestar. Ayudan a canalizar la energía nerviosa y mantener el foco con TDAH y autismo.',
+      en: '8-piece magnetic metal slider and spinner set. Silent, ideal for class or office without disturbing others. Helps channel nervous energy and maintain focus with ADHD and autism.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€10-18',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0ia8QwVd',
+      en: 'https://amzn.eu/d/0ia8QwVd',
+    },
+  },
+  {
+    id: 'vcostore-fidget-cube',
+    name: { es: 'VCOSTORE Cubo Fidget 12 Caras', en: 'VCOSTORE 12-Side Fidget Cube' },
+    description: {
+      es: 'Cubo antiestrés portátil con 12 caras de estimulación diferentes. Compacto para llevar a cualquier parte. Para niños y adultos con TDAH, TOC o ansiedad que necesitan mantener las manos ocupadas mientras crean.',
+      en: 'Portable stress cube with 12 different stimulation sides. Compact to carry anywhere. For kids and adults with ADHD, OCD or anxiety who need to keep hands busy while creating.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€8-12',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0hRs6kia',
+      en: 'https://amzn.eu/d/0hRs6kia',
+    },
+  },
+  {
+    id: 'odoxia-weighted-lap-pad',
+    name: { es: 'ODOXIA Cojín de Regazo con Lastre', en: 'ODOXIA Weighted Lap Pad' },
+    description: {
+      es: 'Cojín de regazo de 2 kg con forma de perro. Proporciona presión reconfortante que calma el sistema nervioso. Perfecto para sesiones de edición — la presión constante ayuda a mantener la calma y el foco con autismo, TDAH o ansiedad.',
+      en: '2kg weighted lap pad shaped like a dog. Provides comforting pressure that calms the nervous system. Perfect for editing sessions — constant pressure helps maintain calm and focus with autism, ADHD or anxiety.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€25-35',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/041KIc40',
+      en: 'https://amzn.eu/d/041KIc40',
+    },
+  },
+  {
+    id: 'good-nite-weighted-blanket',
+    name: { es: 'Good Nite Manta con Peso 8 kg', en: 'Good Nite Weighted Blanket 8kg' },
+    description: {
+      es: 'Manta ponderada de 8 kg (150x200 cm) para aliviar estrés y mejorar el sueño. La presión profunda simula un abrazo constante que calma la ansiedad. Esencial para creadores que luchan con el insomnio post-trabajo.',
+      en: '8kg weighted blanket (150x200 cm) to relieve stress and improve sleep. Deep pressure simulates a constant hug that calms anxiety. Essential for creators struggling with post-work insomnia.',
+    },
+    category: 'accessibility',
+    tier: 'mid',
+    priceRange: '€40-55',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/022WCZ27',
+      en: 'https://amzn.eu/d/022WCZ27',
+    },
+  },
+  {
+    id: 'qucover-cooling-blanket',
+    name: { es: 'Qucover Manta Refrescante Verano', en: 'Qucover Cooling Summer Blanket' },
+    description: {
+      es: 'Manta con tecnología japonesa ARC-Chill (Q-MAX>0.5) que se siente fría al tacto. Ideal para combinar con manta ponderada en verano o para personas con sensibilidad térmica. Transpirable y reversible, 150x200 cm.',
+      en: 'Blanket with Japanese ARC-Chill technology (Q-MAX>0.5) that feels cold to the touch. Ideal to combine with weighted blanket in summer or for people with thermal sensitivity. Breathable and reversible, 150x200 cm.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€25-35',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/00DSMZrR',
+      en: 'https://amzn.eu/d/00DSMZrR',
+    },
+  },
+  {
+    id: 'bose-qc-ultra-earbuds-2',
+    name: { es: 'Bose QC Ultra Earbuds 2ª Gen', en: 'Bose QC Ultra Earbuds 2nd Gen' },
+    description: {
+      es: 'Auriculares in-ear con la mejor cancelación de ruido del mercado. Audio inmersivo con graves profundos, IPX4, hasta 6h de batería. Para creadores que prefieren in-ear frente a over-ear para bloquear estímulos sensoriales.',
+      en: 'In-ear headphones with the best noise cancellation on the market. Immersive audio with deep bass, IPX4, up to 6h battery. For creators who prefer in-ear over over-ear to block sensory stimuli.',
+    },
+    category: 'accessibility',
+    tier: 'pro',
+    priceRange: '€250-300',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0fy62C6u',
+      en: 'https://amzn.eu/d/0fy62C6u',
+    },
+  },
+  {
+    id: 'sony-wf1000xm5',
+    name: { es: 'Sony WF-1000XM5 In-Ear', en: 'Sony WF-1000XM5 In-Ear' },
+    description: {
+      es: 'Auriculares inalámbricos in-ear con cancelación de ruido líder. Bluetooth, micrófono, 24h de batería con estuche, carga rápida, IPX4. La alternativa in-ear a los WH-1000XM5 para quien necesita máxima portabilidad y discreción.',
+      en: 'Wireless in-ear headphones with leading noise cancellation. Bluetooth, mic, 24h battery with case, fast charging, IPX4. The in-ear alternative to WH-1000XM5 for those needing maximum portability and discretion.',
+    },
+    category: 'accessibility',
+    tier: 'pro',
+    priceRange: '€220-280',
+    recommended: true,
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0idxogNS',
+      en: 'https://amzn.eu/d/0idxogNS',
+    },
+  },
+  {
+    id: 'soundcore-space-q45',
+    name: { es: 'Soundcore Space Q45', en: 'Soundcore Space Q45' },
+    description: {
+      es: 'Cascos over-ear con cancelación de ruido adaptativa (98% reducción). 50h de batería, LDAC Hi-Res, app de control, Bluetooth 5.3. Alternativa asequible a Sony/Bose con excelente cancelación para sensibilidad sensorial.',
+      en: 'Over-ear headphones with adaptive noise cancellation (98% reduction). 50h battery, LDAC Hi-Res, control app, Bluetooth 5.3. Affordable alternative to Sony/Bose with excellent cancellation for sensory sensitivity.',
+    },
+    category: 'accessibility',
+    tier: 'mid',
+    priceRange: '€80-110',
+    recommended: true,
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0bZCq6NT',
+      en: 'https://amzn.eu/d/0bZCq6NT',
+    },
+  },
+  {
+    id: 'chair-resistance-bands',
+    name: { es: 'Bandas Elásticas para Sillas (5 uds)', en: 'Chair Resistance Bands (5-Pack)' },
+    description: {
+      es: 'Set de 5 bandas elásticas para enganchar a las patas de la silla. Permiten mover los pies mientras trabajas sin molestar. Canalizan la necesidad de movimiento en TDAH y autismo de forma discreta y silenciosa.',
+      en: '5-pack elastic bands to attach to chair legs. Allow moving your feet while working without disturbing others. Channel the need for movement in ADHD and autism discreetly and silently.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€8-14',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/074XROyr',
+      en: 'https://amzn.eu/d/074XROyr',
+    },
+  },
+  {
+    id: 'tilcare-chew-pendant',
+    name: { es: 'Tilcare Colgante Masticable', en: 'Tilcare Chew Pendant' },
+    description: {
+      es: 'Colgante de silicona segura para morder, ideal para niños y adultos que necesitan estimulación oral. Discreto como accesorio, ayuda a reducir ansiedad y mejorar la concentración en personas con autismo o TDAH.',
+      en: 'Safe silicone chew pendant for children and adults who need oral stimulation. Discreet as an accessory, helps reduce anxiety and improve focus in people with autism or ADHD.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€8-15',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/08IO7z6x',
+      en: 'https://amzn.eu/d/08IO7z6x',
+    },
+  },
+  {
+    id: 'yadoca-anxiety-ring',
+    name: { es: 'YADOCA Anillo Giratorio Anti-Ansiedad', en: 'YADOCA Anxiety Spinner Ring' },
+    description: {
+      es: 'Anillo de plata de ley 925 con cuentas giratorias. Discreto, elegante, perfecto para girar con el pulgar durante reuniones o sesiones de grabación. Alivia ansiedad sin llamar la atención.',
+      en: 'Sterling silver 925 ring with spinning beads. Discreet, elegant, perfect for thumb-spinning during meetings or recording sessions. Relieves anxiety without drawing attention.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€12-20',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0fDkdfPE',
+      en: 'https://amzn.eu/d/0fDkdfPE',
+    },
+  },
+  {
+    id: 'ringconn-gen2-air',
+    name: { es: 'RingConn Gen 2 Air Smart Ring', en: 'RingConn Gen 2 Air Smart Ring' },
+    description: {
+      es: 'Anillo inteligente ultrafino que monitoriza sueño, frecuencia cardíaca y niveles de estrés. 10 días de autonomía. Ayuda a creadores neurodivergentes a detectar patrones de estrés y optimizar sus rutinas de trabajo.',
+      en: 'Ultra-thin smart ring monitoring sleep, heart rate and stress levels. 10-day battery life. Helps neurodivergent creators detect stress patterns and optimize their work routines.',
+    },
+    category: 'accessibility',
+    tier: 'pro',
+    priceRange: '€250-300',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0dnn7xqd',
+      en: 'https://amzn.eu/d/0dnn7xqd',
+    },
+  },
+  {
+    id: 'yogi-fidget-spinner',
+    name: { es: 'Yogi Spinner Antiestrés', en: 'Yogi Anti-Stress Spinner' },
+    description: {
+      es: 'Spinner de anillos con cinco tamaños. Silencioso, metálico y satisfactorio al tacto. Alivia ansiedad y ayuda con el foco en TDAH y autismo. Diseño discreto para usar en cualquier contexto profesional.',
+      en: 'Ring spinner with five sizes. Silent, metallic and satisfying to touch. Relieves anxiety and helps with focus in ADHD and autism. Discreet design for any professional context.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€10-18',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/03mY8IX0',
+      en: 'https://amzn.eu/d/03mY8IX0',
+    },
+  },
+  {
+    id: 'twr-proprioceptive-roller',
+    name: { es: 'TWR Tronco Propioceptivo 5P', en: 'TWR Proprioceptive Roller 5P' },
+    description: {
+      es: 'Woodroller de madera natural fabricado en España (49,5x17x7,5 cm). Para ejercicios hipopresivos, pilates y eutonía. Mejora la conciencia corporal y reduce tensión acumulada de largas sesiones frente al ordenador.',
+      en: 'Natural wood roller made in Spain (49.5x17x7.5 cm). For hypopressive exercises, pilates and eutony. Improves body awareness and reduces tension from long computer sessions.',
+    },
+    category: 'accessibility',
+    tier: 'mid',
+    priceRange: '€35-50',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/08oGd0XJ',
+      en: 'https://amzn.eu/d/08oGd0XJ',
+    },
+  },
+  {
+    id: 'scione-fidget-spinner',
+    name: { es: 'SCIONE Fidget Spinner Sensorial', en: 'SCIONE Sensory Fidget Spinner' },
+    description: {
+      es: 'Spinner clásico de alta calidad con giro suave y duradero. Juguete sensorial para aliviar estrés y ansiedad. Ideal como regalo o como herramienta de foco para sesiones de brainstorming y edición.',
+      en: 'Classic high-quality spinner with smooth, lasting spin. Sensory toy to relieve stress and anxiety. Ideal as a gift or focus tool for brainstorming and editing sessions.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€8-12',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0dzZ8qpR',
+      en: 'https://amzn.eu/d/0dzZ8qpR',
+    },
+  },
+  {
+    id: 'eoocoo-visual-timer',
+    name: { es: 'EooCoo Temporizador Visual Digital', en: 'EooCoo Digital Visual Timer' },
+    description: {
+      es: 'Temporizador visual de 60 min con cuenta atrás, cronómetro y alarma. Función silencio/sonido configurable. Alternativa digital al Time Timer clásico — pantalla clara, compacto, ideal para Pomodoro con TDAH.',
+      en: '60-min visual timer with countdown, stopwatch and alarm. Configurable silent/sound mode. Digital alternative to the classic Time Timer — clear display, compact, ideal for Pomodoro with ADHD.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€15-22',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/096xXum0',
+      en: 'https://amzn.eu/d/096xXum0',
+    },
+  },
+  {
+    id: 'diamday-spinner-ring',
+    name: { es: 'Diamday Anillo Giratorio Luna y Estrella', en: 'Diamday Moon & Star Spinner Ring' },
+    description: {
+      es: 'Anillo de acero inoxidable con diseño de luna y estrella giratorio. Alivia estrés y ansiedad de forma discreta. Bonito diseño unisex que funciona como joya y herramienta de autorregulación a la vez.',
+      en: 'Stainless steel ring with spinning moon and star design. Relieves stress and anxiety discreetly. Beautiful unisex design that works as both jewelry and a self-regulation tool.',
+    },
+    category: 'accessibility',
+    tier: 'budget',
+    priceRange: '€10-16',
+    amazonUrl: {
+      es: 'https://amzn.eu/d/0c9KIxRP',
+      en: 'https://amzn.eu/d/0c9KIxRP',
+    },
+  },
 ];
 
 export const TIER_LABELS: Record<string, { es: string; en: string }> = {

@@ -5,12 +5,17 @@ const db = require('./db');
 const { generateFollowupReply } = require('./claude');
 const { safeGoto, safeEval, alertSessionExpired } = require('./resilience');
 const { readingPause, commentPause } = require('./humanize');
+const config = require('./config');
 
-// Limits per platform per day
-const FOLLOWUP_LIMITS = { twitter: 4, reddit: 4 };
-
-// How many days back to look for our comments that might have replies
-const DAYS_BACK = 14;
+// Configurable via dashboard (module: 'followup')
+function getFollowupCfg() {
+  return {
+    twitterLimit: config.get('followup', 'twitterLimit', 4),
+    redditLimit: config.get('followup', 'redditLimit', 4),
+    daysBack: config.get('followup', 'daysBack', 14),
+    fuzzyMatchThreshold: config.get('followup', 'fuzzyMatchThreshold', 0.4),
+  };
+}
 
 function delay(min = 1500, max = 4000) {
   const ms = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -37,7 +42,7 @@ function fuzzyMatchComment(ourContent, contextTexts) {
     }
     // If 40%+ of our significant words appear in the context, it's a match
     const ratio = matches / ourSet.size;
-    if (ratio >= 0.4 && matches >= 3) return true;
+    if (ratio >= getFollowupCfg().fuzzyMatchThreshold && matches >= 3) return true;
   }
   return false;
 }
@@ -48,9 +53,10 @@ async function checkTwitterFollowups(opts = {}) {
   const accountId = opts.accountId || null;
   const tag = accountId ? `followup:twitter:${accountId}` : 'followup:twitter';
   const persona = opts.persona || null;
+  const fCfg = getFollowupCfg();
 
   const todayCount = await db.countTodayFollowups('twitter', accountId);
-  if (todayCount >= FOLLOWUP_LIMITS.twitter) {
+  if (todayCount >= fCfg.twitterLimit) {
     console.log(`[${tag}] Daily follow-up limit reached (${todayCount})`);
     return;
   }
@@ -124,12 +130,12 @@ async function checkTwitterFollowups(opts = {}) {
     console.log(`[${tag}] Found ${mentions.length} mentions`);
 
     // Get our recent comments to match against
-    const ourComments = await db.getRecentComments('twitter', DAYS_BACK, accountId);
+    const ourComments = await db.getRecentComments('twitter', fCfg.daysBack, accountId);
 
     let followupsGiven = 0;
 
     for (const mention of mentions) {
-      if (todayCount + followupsGiven >= FOLLOWUP_LIMITS.twitter) break;
+      if (todayCount + followupsGiven >= fCfg.twitterLimit) break;
 
       // Filter: only last 48h
       if (mention.datetime) {
@@ -319,6 +325,7 @@ async function checkRedditFollowups(opts = {}) {
   const accountId = opts.accountId || null;
   const persona = opts.persona || null;
   const tag = accountId ? `followup:reddit:${accountId}` : 'followup:reddit';
+  const fCfg = getFollowupCfg();
 
   if (!opts.profileDir) {
     console.log(`[${tag}] Reddit requires profileDir, skipping`);
@@ -326,7 +333,7 @@ async function checkRedditFollowups(opts = {}) {
   }
 
   const todayCount = await db.countTodayFollowups('reddit', accountId);
-  if (todayCount >= FOLLOWUP_LIMITS.reddit) {
+  if (todayCount >= fCfg.redditLimit) {
     console.log(`[${tag}] Daily follow-up limit reached`);
     return;
   }
@@ -389,12 +396,12 @@ async function checkRedditFollowups(opts = {}) {
 
     console.log(`[${tag}] Found ${messages.length} comment replies in inbox`);
 
-    const ourComments = await db.getRecentComments('reddit', DAYS_BACK, accountId);
+    const ourComments = await db.getRecentComments('reddit', fCfg.daysBack, accountId);
 
     let followupsGiven = 0;
 
     for (const msg of messages) {
-      if (todayCount + followupsGiven >= FOLLOWUP_LIMITS.reddit) break;
+      if (todayCount + followupsGiven >= fCfg.redditLimit) break;
 
       const alreadyHandled = await db.hasFollowup('reddit', msg.contextUrl, msg.author, accountId);
       if (alreadyHandled) continue;

@@ -306,7 +306,7 @@ Responde en español:
 3. Valoración compliance (1-10)
 
 Máximo 150 palabras. Solo riesgos reales, no teóricos.`,
-        { maxTokens: 400, agentId: 'watchdog', model: 'claude-haiku-4-5-20251001' }
+        { maxTokens: 400, agentId: 'watchdog' }
       );
       results.aiAnalysis = text;
     } catch (err) {
