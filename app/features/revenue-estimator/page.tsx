@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube Money Calculator — Revenue Estimator by Country | YTubViral',
+  title: 'YouTube Money Calculator — Revenue Estimator by Country',
   description:
     'Estimate YouTube earnings for any channel. Real CPM data for 40+ countries, revenue projections, and AI monetization tips. Free YouTube money calculator.',
   alternates: { canonical: 'https://ytubviral.com/features/revenue-estimator' },
   openGraph: {
-    title: 'YouTube Money Calculator — Revenue Estimator | YTubViral',
+    title: 'YouTube Money Calculator — Revenue Estimator',
     description: 'Estimate YouTube earnings with real CPM data for 40+ countries. Free calculator.',
     url: 'https://ytubviral.com/features/revenue-estimator',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube Money Calculator — Revenue Estimator by Country',
+    description: 'Estimate YouTube earnings for any channel. Real CPM data for 40+ countries, revenue projections, and AI monetization tips. Free YouTube money calculator.',
+    images: ['/og-image.png'],
   },
 };
 

@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube A/B Testing Tool — Test Titles & Thumbnails Free | YTubViral',
+  title: 'YouTube A/B Testing Tool — Test Titles & Thumbnails Free',
   description:
     'A/B test your YouTube titles automatically. Swap versions, track CTR, and find what gets more clicks. The only free A/B testing tool for YouTube creators.',
   alternates: { canonical: 'https://ytubviral.com/features/ab-testing' },
   openGraph: {
-    title: 'YouTube A/B Testing Tool — Test Titles & Thumbnails | YTubViral',
+    title: 'YouTube A/B Testing Tool — Test Titles & Thumbnails',
     description: 'A/B test YouTube titles automatically. Track CTR and find what gets more clicks. Free.',
     url: 'https://ytubviral.com/features/ab-testing',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube A/B Testing Tool — Test Titles & Thumbnails Free',
+    description: 'A/B test your YouTube titles automatically. Swap versions, track CTR, and find what gets more clicks. The only free A/B testing tool for YouTube creators.',
+    images: ['/og-image.png'],
   },
 };
 

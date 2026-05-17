@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube AI Content Generator — Titles, Scripts & More | YTubViral',
+  title: 'YouTube AI Content Generator — Titles, Scripts & More',
   description:
     'Genera contenido para YouTube con IA: títulos, guiones, descripciones, hooks para Shorts y más. 9 plantillas listas para usar.',
   alternates: { canonical: 'https://ytubviral.com/features/ai-generator' },
   openGraph: {
-    title: 'YouTube AI Content Generator | YTubViral',
+    title: 'YouTube AI Content Generator',
     description: 'Generate titles, scripts, descriptions, and more for YouTube with AI. 9 templates, free.',
     url: 'https://ytubviral.com/features/ai-generator',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube AI Content Generator — Titles, Scripts & More',
+    description: 'Genera contenido para YouTube con IA: títulos, guiones, descripciones, hooks para Shorts y más. 9 plantillas listas para usar.',
+    images: ['/og-image.png'],
   },
 };
 

@@ -7,15 +7,22 @@ import GuideCard from '@/components/GuideCard';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube Learning Hub — Free Creator Guides | YTubViral',
+  title: 'YouTube Learning Hub — Free Creator Guides',
   description:
     '14 guías gratuitas paso a paso para crecer en YouTube: SEO, keywords, retención, thumbnails, analytics, A/B testing, coaching IA y más.',
   alternates: { canonical: 'https://ytubviral.com/features/learning-hub' },
   openGraph: {
-    title: 'YouTube Learning Hub — Free Creator Guides | YTubViral',
+    title: 'YouTube Learning Hub — Free Creator Guides',
     description: '14 practical, data-driven guides to master YouTube growth. From SEO basics to AI coaching and advanced analytics.',
     url: 'https://ytubviral.com/features/learning-hub',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube Learning Hub — Free Creator Guides',
+    description: '14 guías gratuitas paso a paso para crecer en YouTube: SEO, keywords, retención, thumbnails, analytics, A/B testing, coaching IA y más.',
+    images: ['/og-image.png'],
   },
 };
 

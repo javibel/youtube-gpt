@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 import { BLOG_POSTS, BLOG_CATEGORIES, type Lang } from '@/lib/blog-data';
 
 export const metadata: Metadata = {
-  title: 'Blog — YTubViral | Estrategias, IA y crecimiento para YouTubers',
+  title: 'Blog — Estrategias, IA y crecimiento para YouTubers',
   description:
     'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización.',
   alternates: { canonical: 'https://ytubviral.com/blog' },
   openGraph: {
-    title: 'Blog — YTubViral',
+    title: 'Blog — Estrategias, IA y crecimiento para YouTubers',
     description: 'Estrategias, IA y crecimiento para YouTubers',
     url: 'https://ytubviral.com/blog',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Blog — Estrategias, IA y crecimiento para YouTubers',
+    description: 'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización.',
+    images: ['/og-image.png'],
   },
 };
 

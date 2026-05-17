@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube Content Calendar — Plan & Schedule Videos | YTubViral',
+  title: 'YouTube Content Calendar — Plan & Schedule Videos',
   description:
     'Calendario de contenido para YouTube: planifica y programa tus vídeos. Gestiona ideas, borradores y publicaciones en un solo lugar.',
   alternates: { canonical: 'https://ytubviral.com/features/content-calendar' },
   openGraph: {
-    title: 'YouTube Content Calendar | YTubViral',
+    title: 'YouTube Content Calendar',
     description: 'Visual content calendar for YouTube. Plan, schedule, and track your uploads.',
     url: 'https://ytubviral.com/features/content-calendar',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube Content Calendar — Plan & Schedule Videos',
+    description: 'Calendario de contenido para YouTube: planifica y programa tus vídeos. Gestiona ideas, borradores y publicaciones en un solo lugar.',
+    images: ['/og-image.png'],
   },
 };
 

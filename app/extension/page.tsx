@@ -4,10 +4,23 @@ import { cookies } from 'next/headers';
 import { ExtensionDetector } from './ExtensionDetector';
 
 export const metadata: Metadata = {
-  title: 'Chrome Extension — YTubViral',
+  title: 'Chrome Extension — SEO y IA en YouTube',
   description:
     'Install the YTubViral Chrome extension: SEO score, outlier detection, channel stats and AI titles directly on YouTube and YouTube Studio.',
   alternates: { canonical: 'https://ytubviral.com/extension' },
+  openGraph: {
+    title: 'Chrome Extension — SEO y IA en YouTube',
+    description: 'Install the YTubViral Chrome extension: SEO score, outlier detection, channel stats and AI titles directly on YouTube and YouTube Studio.',
+    url: 'https://ytubviral.com/extension',
+    type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Chrome Extension — SEO y IA en YouTube',
+    description: 'Install the YTubViral Chrome extension: SEO score, outlier detection, channel stats and AI titles directly on YouTube and YouTube Studio.',
+    images: ['/og-image.png'],
+  },
 };
 
 type Lang = 'es' | 'en';

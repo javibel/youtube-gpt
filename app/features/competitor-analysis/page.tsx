@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube Competitor Analysis Tool — Free Channel Spy | YTubViral',
+  title: 'YouTube Competitor Analysis Tool — Free Channel Spy',
   description:
     'Analyze any YouTube channel: upload frequency, average views, top keywords, trending videos, and growth patterns. Free competitor intelligence for creators.',
   alternates: { canonical: 'https://ytubviral.com/features/competitor-analysis' },
   openGraph: {
-    title: 'YouTube Competitor Analysis Tool — Free | YTubViral',
+    title: 'YouTube Competitor Analysis Tool — Free',
     description: 'Spy on any YouTube channel: views, keywords, upload patterns, trending videos. Free.',
     url: 'https://ytubviral.com/features/competitor-analysis',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube Competitor Analysis Tool — Free Channel Spy',
+    description: 'Analyze any YouTube channel: upload frequency, average views, top keywords, trending videos, and growth patterns. Free competitor intelligence for creators.',
+    images: ['/og-image.png'],
   },
 };
 

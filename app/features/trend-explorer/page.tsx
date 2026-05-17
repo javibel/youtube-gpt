@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube Trend Explorer — Real-Time Trending Videos | YTubViral',
+  title: 'YouTube Trend Explorer — Real-Time Trending Videos',
   description:
     'Explora vídeos en tendencia de YouTube en tiempo real en 12 países. Filtra por categoría, idioma, duración y engagement.',
   alternates: { canonical: 'https://ytubviral.com/features/trend-explorer' },
   openGraph: {
-    title: 'YouTube Trend Explorer — Real-Time Trending | YTubViral',
+    title: 'YouTube Trend Explorer — Real-Time Trending',
     description: 'Discover what\'s trending on YouTube right now. 12 countries, real-time data, advanced filters.',
     url: 'https://ytubviral.com/features/trend-explorer',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube Trend Explorer — Real-Time Trending Videos',
+    description: 'Explora vídeos en tendencia de YouTube en tiempo real en 12 países. Filtra por categoría, idioma, duración y engagement.',
+    images: ['/og-image.png'],
   },
 };
 

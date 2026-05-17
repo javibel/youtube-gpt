@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube Retention Analyzer — Hook Score & Drop-Off Points | YTubViral',
+  title: 'YouTube Retention Analyzer — Hook Score & Drop-Off Points',
   description:
     'Analiza la retención de audiencia de tus vídeos de YouTube: curvas, hook score, puntos de abandono y consejos de IA para mejorar.',
   alternates: { canonical: 'https://ytubviral.com/features/retention-analyzer' },
   openGraph: {
-    title: 'YouTube Retention Analyzer | YTubViral',
+    title: 'YouTube Retention Analyzer',
     description: 'Retention curves, hook scores, drop-off analysis, and AI tips to boost watch time.',
     url: 'https://ytubviral.com/features/retention-analyzer',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube Retention Analyzer — Hook Score & Drop-Off Points',
+    description: 'Analiza la retención de audiencia de tus vídeos de YouTube: curvas, hook score, puntos de abandono y consejos de IA para mejorar.',
+    images: ['/og-image.png'],
   },
 };
 

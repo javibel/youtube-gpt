@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube Keyword Research Tool — Free AI-Powered | YTubViral',
+  title: 'YouTube Keyword Research Tool — Free AI-Powered',
   description:
     'Find high-volume, low-competition YouTube keywords in seconds. Search volume, opportunity score, related terms, and trend data. Free, no credit card required.',
   alternates: { canonical: 'https://ytubviral.com/features/keyword-research' },
   openGraph: {
-    title: 'YouTube Keyword Research Tool — Free AI-Powered | YTubViral',
+    title: 'YouTube Keyword Research Tool — Free AI-Powered',
     description: 'Find high-volume, low-competition YouTube keywords in seconds. Free, no credit card.',
     url: 'https://ytubviral.com/features/keyword-research',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube Keyword Research Tool — Free AI-Powered',
+    description: 'Find high-volume, low-competition YouTube keywords in seconds. Search volume, opportunity score, related terms, and trend data. Free, no credit card required.',
+    images: ['/og-image.png'],
   },
 };
 

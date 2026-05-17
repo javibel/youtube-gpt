@@ -5,15 +5,22 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'YouTube AI Coach — Personalized Growth Assistant | YTubViral',
+  title: 'YouTube AI Coach — Personalized Growth Assistant',
   description:
     'Tu coach personal de IA para YouTube: crea contenido, analiza rendimiento, optimiza SEO e investiga nichos. Todo vía chat.',
   alternates: { canonical: 'https://ytubviral.com/features/ai-coach' },
   openGraph: {
-    title: 'YouTube AI Coach | YTubViral',
+    title: 'YouTube AI Coach',
     description: 'Personal AI coach for YouTube growth. Create, analyze, optimize, and research — all via chat.',
     url: 'https://ytubviral.com/features/ai-coach',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YouTube AI Coach — Personalized Growth Assistant',
+    description: 'Tu coach personal de IA para YouTube: crea contenido, analiza rendimiento, optimiza SEO e investiga nichos. Todo vía chat.',
+    images: ['/og-image.png'],
   },
 };
 

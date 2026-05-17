@@ -4,15 +4,22 @@ import { cookies } from 'next/headers';
 import { GEAR_ITEMS, GEAR_CATEGORIES, ACCESSIBILITY_SUBCATEGORIES, type Lang } from '@/lib/gear-data';
 
 export const metadata: Metadata = {
-  title: 'Equipo para YouTubers — YTubViral | Las mejores herramientas para crear contenido',
+  title: 'Equipo Recomendado para YouTubers',
   description:
     'Guía completa del mejor equipo para YouTube: cámaras, micrófonos, iluminación, accesorios, software y herramientas de accesibilidad recomendadas por nivel.',
   alternates: { canonical: 'https://ytubviral.com/gear' },
   openGraph: {
-    title: 'Equipo para YouTubers — YTubViral',
+    title: 'Equipo Recomendado para YouTubers',
     description: 'Cámaras, micrófonos, luces y más. Recomendaciones por nivel.',
     url: 'https://ytubviral.com/gear',
     type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Equipo Recomendado para YouTubers',
+    description: 'Guía completa del mejor equipo para YouTube: cámaras, micrófonos, iluminación, accesorios, software y herramientas de accesibilidad recomendadas por nivel.',
+    images: ['/og-image.png'],
   },
 };
 
