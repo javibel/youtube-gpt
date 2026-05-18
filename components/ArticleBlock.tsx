@@ -72,6 +72,23 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
       </div>
     );
   }
+  if (block.type === 'video') {
+    return (
+      <div className="my-10">
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            src={`https://www.youtube.com/embed/${block.videoId}?rel=0`}
+            title="YouTube video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+            className="absolute inset-0 w-full h-full border border-white/10"
+            style={{ borderRadius: 8 }}
+          />
+        </div>
+      </div>
+    );
+  }
   if (block.type === 'callout-final') {
     return (
       <div className="mt-14 border border-white/15 p-10 text-center relative overflow-hidden" style={{ background: '#0E0E10' }}>

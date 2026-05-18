@@ -22,7 +22,8 @@ export type BlockType =
   | { type: 'callout'; t: string }
   | { type: 'callout-mid'; t: string; sub: string; cta: string; href?: string }
   | { type: 'callout-final'; t: string; sub: string; cta: string; href?: string }
-  | { type: 'callout-gear'; t: string; sub: string; cta: string };
+  | { type: 'callout-gear'; t: string; sub: string; cta: string }
+  | { type: 'video'; videoId: string };
 
 export const BLOG_CATEGORIES = {
   ai:        { color: '#00E5FF', name: { es: 'IA',          en: 'AI' } },
@@ -3522,7 +3523,7 @@ const ART_TOUR_YTUBVIRAL_ES: BlockType[] = [
 
   { type: 'h2', t: 'Vídeo tutorial: las 14 herramientas en acción' },
   { type: 'p', t: 'Ver las herramientas en acción es mejor que cualquier descripción. En este vídeo recorro cada una de las 14 herramientas paso a paso, mostrando resultados reales y cómo integrarlas en tu workflow de creación de contenido:' },
-  { type: 'callout', t: '▶️ Ver el tour completo en YouTube → https://www.youtube.com/watch?v=sTvct-XXyGk' },
+  { type: 'video', videoId: 'sTvct-XXyGk' },
   { type: 'p', t: 'El vídeo dura menos de 10 minutos y cubre todas las herramientas con ejemplos prácticos. Si después de verlo quieres profundizar en alguna herramienta específica, cada una tiene su propia página con guía detallada.' },
 
   { type: 'h2', t: '¿Gratis o Pro?' },
@@ -3600,7 +3601,7 @@ const ART_TOUR_YTUBVIRAL_EN: BlockType[] = [
 
   { type: 'h2', t: 'Video tutorial: all 14 tools in action' },
   { type: 'p', t: 'Seeing the tools in action is better than any description. In this video I walk through each of the 14 tools step by step, showing real results and how to integrate them into your content creation workflow:' },
-  { type: 'callout', t: '▶️ Watch the full tour on YouTube → https://www.youtube.com/watch?v=sTvct-XXyGk' },
+  { type: 'video', videoId: 'sTvct-XXyGk' },
   { type: 'p', t: 'The video is under 10 minutes and covers every tool with practical examples. If you want to dive deeper into any specific tool afterwards, each one has its own page with a detailed guide.' },
 
   { type: 'h2', t: 'Free or Pro?' },
