@@ -26,8 +26,8 @@ export default function PrivacyPage() {
           {
             title: t('1. Responsable del tratamiento', '1. Data controller'),
             body: t(
-              'El responsable del tratamiento de los datos personales recogidos a través de YTubViral es Javier Jimeno Plata, con domicilio en Barcelona, España. Email de contacto: privacy@ytubviral.com.',
-              'The controller of personal data collected through YTubViral is Javier Jimeno Plata, based in Barcelona, Spain. Contact email: privacy@ytubviral.com.'
+              'El responsable del tratamiento de los datos personales recogidos a través de YTubViral es Javier Jimeno Plata, con NIF 43444126R, domicilio en Barcelona, España. Email de contacto: privacy@ytubviral.com.',
+              'The controller of personal data collected through YTubViral is Javier Jimeno Plata, Tax ID (NIF) 43444126R, based in Barcelona, Spain. Contact email: privacy@ytubviral.com.'
             ),
           },
           {
