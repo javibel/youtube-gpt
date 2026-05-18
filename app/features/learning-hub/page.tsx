@@ -4,8 +4,6 @@ import { cookies } from 'next/headers';
 import { LEARN_GUIDES } from '@/lib/learn-data';
 import GuideCard from '@/components/GuideCard';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'YouTube Learning Hub — Free Creator Guides',
   description:

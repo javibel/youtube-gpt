@@ -11,8 +11,6 @@ import type { Lang, BlockType } from '@/lib/blog-data';
 import ArticleBlock from '@/components/ArticleBlock';
 import GuideCard from '@/components/GuideCard';
 
-export const dynamic = 'force-dynamic';
-
 export async function generateStaticParams() {
   return getAllGuideSlugs().map((slug) => ({ slug }));
 }

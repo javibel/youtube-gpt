@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 
-export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'YouTube Retention Analyzer — Hook Score & Drop-Off Points',
