@@ -461,15 +461,24 @@ async function checkRedditFollowups(opts = {}) {
 
                 if (replyLinkClicked) {
                   await delay(1000, 2000);
-                  const commentBox = await page.$('.usertext-edit textarea, textarea[name="text"]');
-                  if (commentBox) {
-                    await commentBox.click();
-                    await delay(500, 1000);
-                    await page.keyboard.type(reply, { delay: 40 });
+                  try { await page.waitForSelector('.usertext-edit textarea, textarea[name="text"]', { visible: true, timeout: 5000 }); } catch {}
+                  const typed = await safeEval(page, (replyText) => {
+                    const ta = document.querySelector('.usertext-edit textarea, textarea[name="text"]');
+                    if (!ta) return false;
+                    ta.focus();
+                    ta.value = replyText;
+                    ta.dispatchEvent(new Event('input', { bubbles: true }));
+                    return true;
+                  }, reply);
+                  if (typed) {
                     await delay(1000, 2000);
-                    const submitBtn = await page.$('.usertext-edit button[type="submit"], button.save');
-                    if (submitBtn) {
-                      await submitBtn.click();
+                    const submitted = await safeEval(page, () => {
+                      const btn = document.querySelector('.usertext-edit button[type="submit"], button.save');
+                      if (!btn) return false;
+                      btn.click();
+                      return true;
+                    });
+                    if (submitted) {
                       await delay(2000, 3000);
                       followupsGiven++;
                       await db.saveFollowup({
@@ -552,20 +561,30 @@ async function checkRedditFollowups(opts = {}) {
         }
         await delay(1000, 2000);
 
-        const commentBox = await page.$('.usertext-edit textarea, textarea[name="text"]');
-        if (!commentBox) {
+        try { await page.waitForSelector('.usertext-edit textarea, textarea[name="text"]', { visible: true, timeout: 5000 }); } catch {}
+        const typed = await safeEval(page, (replyText) => {
+          const ta = document.querySelector('.usertext-edit textarea, textarea[name="text"]');
+          if (!ta) return false;
+          ta.focus();
+          ta.value = replyText;
+          ta.dispatchEvent(new Event('input', { bubbles: true }));
+          return true;
+        }, reply);
+
+        if (!typed) {
           console.log(`[${tag}] Comment box not found after clicking reply`);
           continue;
         }
 
-        await commentBox.click();
-        await delay(500, 1000);
-        await page.keyboard.type(reply, { delay: 40 });
         await delay(1000, 2000);
+        const submitted = await safeEval(page, () => {
+          const btn = document.querySelector('.usertext-edit button[type="submit"], button.save');
+          if (!btn) return false;
+          btn.click();
+          return true;
+        });
 
-        const submitBtn = await page.$('.usertext-edit button[type="submit"], button.save');
-        if (submitBtn) {
-          await submitBtn.click();
+        if (submitted) {
           await delay(2000, 3000);
           followupsGiven++;
 

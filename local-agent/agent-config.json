@@ -40,7 +40,7 @@
   },
   "humanize": {
     "skipSessionProbability": 0.15,
-    "skipPostProbability": 0.25,
+    "skipPostProbability": 0.2,
     "readingPauseMin": 5,
     "readingPauseMax": 15,
     "actionPauseMin": 3,
@@ -118,7 +118,7 @@
       "city": "Valencia",
       "job": "Editor de video freelance",
       "platforms": "Twitter, Reddit",
-      "mentionRate": 0.25
+      "mentionRate": 0.3
     },
     "ferran": {
       "name": "Ferran Gómez",
@@ -126,19 +126,19 @@
       "city": "Barcelona",
       "job": "Consultor marketing digital",
       "platforms": "Twitter, Reddit",
-      "mentionRate": 0.2
+      "mentionRate": 0.25
     }
   },
-  "_lastModified": "2026-05-16T19:50:00.986Z",
-  "_lastModifiedBy": "dashboard",
+  "_lastModified": "2026-05-18T01:00:12.571Z",
+  "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 2.9384662500000003,
+    "amount": 2.8182097500000007,
     "currency": "USD",
     "totalCredit": 6,
-    "totalSpent": 3.05,
-    "lastChecked": "2026-05-17T01:15:13.609Z",
-    "lastDeduction": "2026-05-17T09:10:41.216Z",
-    "totalSpentToday": 0.01153375,
-    "spendDate": "2026-05-17"
+    "totalSpent": 3.16,
+    "lastChecked": "2026-05-18T01:15:13.022Z",
+    "lastDeduction": "2026-05-18T08:45:06.139Z",
+    "totalSpentToday": 0.02179025,
+    "spendDate": "2026-05-18"
   }
 }

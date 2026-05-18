@@ -290,6 +290,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'Learn to perform a complete channel audit to identify SEO, content, and strategy issues holding back your growth.',
     },
   },
+  {
+    slug: 'tour-completo-ytubviral-14-herramientas',
+    cat: 'tutorials',
+    readMin: 10,
+    date: { es: '17 May 2026', en: 'May 17, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO y Fundador, YTubViral', en: 'CEO & Founder, YTubViral' }, avatar: 'JJ' },
+    image: '/blog/tour-completo-ytubviral.webp',
+    title: {
+      es: 'Tour Completo de YTubViral: 14 Herramientas de IA para Crecer en YouTube',
+      en: 'Complete YTubViral Tour: 14 AI Tools to Grow on YouTube',
+    },
+    excerpt: {
+      es: 'Recorremos las 14 herramientas de YTubViral en acción: desde el generador de títulos hasta el coaching con IA. Incluye vídeo tutorial paso a paso para que veas exactamente cómo funciona cada una.',
+      en: 'We walk through all 14 YTubViral tools in action: from the title generator to AI coaching. Includes a step-by-step video tutorial so you can see exactly how each one works.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -3450,6 +3466,162 @@ const ART_AUDITORIA_EN: BlockType[] = [
   { type: 'callout-final', t: 'Run your channel audit in minutes, not hours', sub: 'YTubViral automatically analyzes your channel — SEO, CTR, keyword gaps, and competition — and gives you a diagnosis report with priority actions. No spreadsheets.', cta: 'Start for free', href: '/signup' },
 ];
 
+const ART_TOUR_YTUBVIRAL_ES: BlockType[] = [
+  { type: 'p', t: 'Si alguna vez te has preguntado qué puede hacer exactamente YTubViral por tu canal, este artículo es la respuesta completa. Vamos a recorrer las 14 herramientas una por una, mostrándote exactamente qué hacen, para qué sirven y cómo pueden ahorrarte horas de trabajo cada semana.' },
+  { type: 'p', t: 'Y si prefieres verlo en acción, al final del artículo tienes el vídeo tutorial completo donde hago el recorrido en directo.' },
+
+  { type: 'h2', t: '¿Qué es YTubViral?' },
+  { type: 'p', t: 'YTubViral es una plataforma de IA diseñada específicamente para creadores de YouTube. No es un chatbot genérico al que le pides cosas: son 14 herramientas especializadas, cada una entrenada para resolver un problema concreto del workflow de un YouTuber. Desde la investigación de keywords hasta la generación de scripts, pasando por el análisis de competencia y la predicción de rendimiento.' },
+  { type: 'p', t: 'La diferencia con herramientas generalistas como ChatGPT es que YTubViral entiende el contexto de YouTube: sabe qué métricas importan, cómo funciona el algoritmo, y genera contenido optimizado para la plataforma — no textos genéricos que luego tienes que adaptar.' },
+
+  { type: 'h2', t: 'Las 14 herramientas, una por una' },
+
+  { type: 'h3', t: '1. Generador de títulos' },
+  { type: 'p', t: 'Introduces el tema de tu vídeo y la IA genera múltiples opciones de título optimizadas para CTR. No son títulos genéricos: cada propuesta sigue los frameworks de titulación que mejor funcionan en YouTube en 2026 (curiosidad, números específicos, promesas comprobables). Puedes elegir el tono, ajustar la longitud y regenerar hasta encontrar el título perfecto.' },
+
+  { type: 'h3', t: '2. Generador de descripciones SEO' },
+  { type: 'p', t: 'Genera descripciones optimizadas para el algoritmo de YouTube incluyendo la keyword principal, sinónimos naturales, timestamps y CTAs. La herramienta sabe que las primeras 2-3 líneas son las que aparecen en búsqueda, así que las escribe para captar atención. El resto se estructura para que YouTube entienda de qué va tu vídeo y lo posicione mejor.' },
+
+  { type: 'h3', t: '3. Generador de scripts' },
+  { type: 'p', t: 'La herramienta más potente de la plataforma. Le das tu tema, duración objetivo y tono, y genera un guion completo con gancho inicial, estructura de secciones, transiciones y cierre con CTA. No es un bloque de texto plano: el script incluye indicaciones de ritmo, momentos para cambio de plano y puntos de engagement para mantener la retención alta.' },
+
+  { type: 'h3', t: '4. Keyword Research' },
+  { type: 'p', t: 'Analiza tu nicho y encuentra keywords con alto volumen de búsqueda y competencia manejable. Te muestra el volumen estimado, la dificultad y sugiere variaciones de cola larga que canales pequeños pueden posicionar. Es la base de toda estrategia de contenido: sin keywords, estás creando a ciegas.' },
+
+  { type: 'h3', t: '5. Análisis de competencia' },
+  { type: 'p', t: 'Introduce la URL de un canal competidor y obtén un análisis completo: qué temas publican, con qué frecuencia, qué keywords posicionan, cuáles son sus vídeos de mayor rendimiento y dónde tienen gaps que tú puedes aprovechar. Es como tener un informe de inteligencia competitiva actualizado en segundos.' },
+
+  { type: 'h3', t: '6. A/B Testing de títulos' },
+  { type: 'p', t: 'Compara dos opciones de título y la IA predice cuál tendrá mejor CTR basándose en patrones de rendimiento de millones de vídeos. No reemplaza el A/B testing nativo de YouTube, pero te permite pre-filtrar opciones antes de publicar y tener una estimación fundamentada de qué funcionará mejor.' },
+
+  { type: 'h3', t: '7. Estimación de ingresos' },
+  { type: 'p', t: 'Calcula cuánto podrías ganar con tu canal según tu nicho, país de audiencia, CPM estimado y número de vistas. Útil para establecer expectativas realistas, planificar objetivos de monetización y entender cómo distintas estrategias de contenido afectan tus ingresos potenciales.' },
+
+  { type: 'callout-mid', t: '¿Quieres probar estas herramientas?', sub: 'Regístrate gratis y accede a las 14 herramientas de YTubViral. Sin tarjeta de crédito, sin compromiso.', cta: 'Empieza gratis', href: '/signup' },
+
+  { type: 'h3', t: '8. Calendario de contenido' },
+  { type: 'p', t: 'Genera un calendario de publicación optimizado para tu nicho, teniendo en cuenta los mejores días y horas para publicar, la frecuencia ideal según tu capacidad de producción y la distribución temática para mantener la variedad sin perder coherencia. Es como tener un director editorial para tu canal.' },
+
+  { type: 'h3', t: '9. Análisis de retención' },
+  { type: 'p', t: 'Analiza la estructura de tu vídeo y predice en qué puntos la audiencia abandonará. Te sugiere cambios específicos para mejorar la retención: dónde añadir un gancho de re-engagement, dónde el ritmo baja demasiado, dónde una transición visual mantendría la atención. La retención es la métrica que más pesa en el algoritmo de 2026.' },
+
+  { type: 'h3', t: '10. Predicción de vídeos' },
+  { type: 'p', t: 'Antes de grabar, introduce tu idea y la IA predice su rendimiento potencial basándose en la demanda actual del tema, la competencia existente, la estacionalidad y tu perfil de canal. Te dice si la idea tiene potencial viral, si es un tema evergreen, o si es mejor esperar a otro momento. Ahorra horas de producción evitando vídeos que no van a funcionar.' },
+
+  { type: 'h3', t: '11. Coaching con IA' },
+  { type: 'p', t: 'Un coach personalizado que analiza tu canal de forma global y te da recomendaciones estratégicas priorizadas. No es una lista genérica de consejos: el coaching se adapta a tu tamaño de canal, tu nicho, tu frecuencia de publicación y tus métricas reales para darte los 3-5 cambios que mayor impacto tendrán en tu crecimiento.' },
+
+  { type: 'h3', t: '12. Explorador de tendencias' },
+  { type: 'p', t: 'Detecta qué temas están creciendo en tu nicho antes de que se saturen. La diferencia entre subirse a una tendencia temprano y llegar tarde puede ser de 10x en vistas. El explorador monitoriza señales de tendencia y te las presenta ordenadas por relevancia para tu canal.' },
+
+  { type: 'h3', t: '13. Centro de aprendizaje' },
+  { type: 'p', t: 'Guías paso a paso sobre cada aspecto de YouTube: SEO, thumbnails, retención, monetización, engagement. No son tutoriales genéricos — cada guía está escrita con datos actualizados de 2026 y con ejemplos prácticos que puedes aplicar inmediatamente a tu canal. Los miembros Pro tienen acceso a vídeos tutoriales exclusivos.' },
+
+  { type: 'h3', t: '14. Generador de hashtags' },
+  { type: 'p', t: 'Genera hashtags optimizados para tu vídeo: los 3-5 que aparecen sobre el título (no más, que YouTube penaliza el exceso) más sugerencias de tags para la descripción. Los hashtags correctos pueden multiplicar tu visibilidad en búsquedas y en la pestaña de exploración.' },
+
+  { type: 'h2', t: 'Vídeo tutorial: las 14 herramientas en acción' },
+  { type: 'p', t: 'Ver las herramientas en acción es mejor que cualquier descripción. En este vídeo recorro cada una de las 14 herramientas paso a paso, mostrando resultados reales y cómo integrarlas en tu workflow de creación de contenido:' },
+  { type: 'callout', t: '▶️ Ver el tour completo en YouTube → https://www.youtube.com/watch?v=sTvct-XXyGk' },
+  { type: 'p', t: 'El vídeo dura menos de 10 minutos y cubre todas las herramientas con ejemplos prácticos. Si después de verlo quieres profundizar en alguna herramienta específica, cada una tiene su propia página con guía detallada.' },
+
+  { type: 'h2', t: '¿Gratis o Pro?' },
+  { type: 'p', t: 'Las 14 herramientas están disponibles en el plan gratuito con un límite de usos diarios. El plan Pro (9,99€/mes) elimina los límites y añade funcionalidades premium como los vídeos tutoriales del Centro de aprendizaje, análisis más profundos y prioridad en la generación de contenido. El plan Business (29,99€/mes) está diseñado para agencias y creadores con múltiples canales.' },
+  { type: 'p', t: 'La recomendación: empieza con el plan gratuito, prueba todas las herramientas, y cuando veas cuáles te ahorran más tiempo, decide si el Pro merece la pena para tu caso. No necesitas pagar para saber si YTubViral te sirve.' },
+
+  { type: 'h2', t: 'Cómo integrar YTubViral en tu workflow' },
+  { type: 'p', t: 'La forma más efectiva de usar YTubViral es seguir un flujo de trabajo consistente para cada vídeo:' },
+  { type: 'list', items: [
+    'Investigación: Keyword Research + Explorador de tendencias para elegir el tema',
+    'Validación: Predicción de vídeos para confirmar que el tema tiene potencial',
+    'Pre-producción: Generador de títulos + A/B Testing para el título final',
+    'Producción: Generador de scripts para el guion base',
+    'Post-producción: Descripciones SEO + Hashtags para la publicación',
+    'Análisis: Retención + Coaching para mejorar el siguiente vídeo',
+  ]},
+  { type: 'p', t: 'No necesitas usar las 14 herramientas para cada vídeo. Empieza con las 3-4 que más impacto tengan en tu workflow actual y ve incorporando el resto a medida que te familiarices con la plataforma.' },
+
+  { type: 'callout-final', t: 'Empieza a usar las 14 herramientas hoy', sub: 'Regístrate gratis en YTubViral y accede a todas las herramientas de IA para crecer en YouTube. Sin tarjeta de crédito.', cta: 'Crear cuenta gratis', href: '/signup' },
+];
+
+const ART_TOUR_YTUBVIRAL_EN: BlockType[] = [
+  { type: 'p', t: 'If you\'ve ever wondered what exactly YTubViral can do for your channel, this article is the complete answer. We\'ll walk through all 14 tools one by one, showing you exactly what they do, what they\'re for, and how they can save you hours of work every week.' },
+  { type: 'p', t: 'And if you prefer to see it in action, there\'s a full video tutorial at the end of the article where I walk through everything live.' },
+
+  { type: 'h2', t: 'What is YTubViral?' },
+  { type: 'p', t: 'YTubViral is an AI platform built specifically for YouTube creators. It\'s not a generic chatbot you ask things to: it\'s 14 specialized tools, each trained to solve a specific problem in a YouTuber\'s workflow. From keyword research to script generation, competitor analysis to performance prediction.' },
+  { type: 'p', t: 'The difference from generalist tools like ChatGPT is that YTubViral understands the YouTube context: it knows which metrics matter, how the algorithm works, and generates content optimized for the platform — not generic text you then have to adapt.' },
+
+  { type: 'h2', t: 'All 14 tools, one by one' },
+
+  { type: 'h3', t: '1. Title Generator' },
+  { type: 'p', t: 'Enter your video topic and the AI generates multiple CTR-optimized title options. These aren\'t generic titles: each suggestion follows the title frameworks that perform best on YouTube in 2026 (curiosity, specific numbers, verifiable promises). You can choose the tone, adjust length, and regenerate until you find the perfect title.' },
+
+  { type: 'h3', t: '2. SEO Description Generator' },
+  { type: 'p', t: 'Generates descriptions optimized for YouTube\'s algorithm including the main keyword, natural synonyms, timestamps, and CTAs. The tool knows that the first 2-3 lines are what appear in search, so it writes them to capture attention. The rest is structured so YouTube understands what your video is about and ranks it higher.' },
+
+  { type: 'h3', t: '3. Script Generator' },
+  { type: 'p', t: 'The most powerful tool on the platform. Give it your topic, target duration, and tone, and it generates a complete script with opening hook, section structure, transitions, and closing CTA. It\'s not a flat text block: the script includes pacing cues, camera change moments, and engagement points to keep retention high.' },
+
+  { type: 'h3', t: '4. Keyword Research' },
+  { type: 'p', t: 'Analyzes your niche and finds keywords with high search volume and manageable competition. It shows estimated volume, difficulty, and suggests long-tail variations that small channels can actually rank for. This is the foundation of any content strategy: without keywords, you\'re creating blind.' },
+
+  { type: 'h3', t: '5. Competitor Analysis' },
+  { type: 'p', t: 'Enter a competitor\'s channel URL and get a complete analysis: what topics they publish, how often, which keywords they rank for, their best-performing videos, and where they have gaps you can exploit. It\'s like having an updated competitive intelligence report in seconds.' },
+
+  { type: 'h3', t: '6. Title A/B Testing' },
+  { type: 'p', t: 'Compare two title options and the AI predicts which will have better CTR based on performance patterns from millions of videos. It doesn\'t replace YouTube\'s native A/B testing, but lets you pre-filter options before publishing with a data-backed estimate of what will perform better.' },
+
+  { type: 'h3', t: '7. Revenue Estimation' },
+  { type: 'p', t: 'Calculates how much you could earn with your channel based on your niche, audience country, estimated CPM, and view count. Useful for setting realistic expectations, planning monetization goals, and understanding how different content strategies affect your potential revenue.' },
+
+  { type: 'callout-mid', t: 'Want to try these tools?', sub: 'Sign up free and access all 14 YTubViral tools. No credit card, no commitment.', cta: 'Start free', href: '/signup' },
+
+  { type: 'h3', t: '8. Content Calendar' },
+  { type: 'p', t: 'Generates an optimized publishing calendar for your niche, considering the best days and times to publish, ideal frequency based on your production capacity, and topic distribution to maintain variety without losing coherence. It\'s like having an editorial director for your channel.' },
+
+  { type: 'h3', t: '9. Retention Analysis' },
+  { type: 'p', t: 'Analyzes your video structure and predicts where your audience will drop off. It suggests specific changes to improve retention: where to add a re-engagement hook, where the pacing drops too much, where a visual transition would maintain attention. Retention is the metric that weighs most in the 2026 algorithm.' },
+
+  { type: 'h3', t: '10. Video Prediction' },
+  { type: 'p', t: 'Before filming, enter your idea and the AI predicts its performance potential based on current topic demand, existing competition, seasonality, and your channel profile. It tells you if the idea has viral potential, if it\'s an evergreen topic, or if you should wait for another moment. Saves hours of production by avoiding videos that won\'t perform.' },
+
+  { type: 'h3', t: '11. AI Coaching' },
+  { type: 'p', t: 'A personalized coach that analyzes your channel holistically and gives you prioritized strategic recommendations. It\'s not a generic list of tips: the coaching adapts to your channel size, niche, publishing frequency, and real metrics to give you the 3-5 changes that will have the greatest impact on your growth.' },
+
+  { type: 'h3', t: '12. Trend Explorer' },
+  { type: 'p', t: 'Detects what topics are growing in your niche before they get saturated. The difference between catching a trend early and arriving late can be 10x in views. The explorer monitors trend signals and presents them sorted by relevance to your channel.' },
+
+  { type: 'h3', t: '13. Learning Hub' },
+  { type: 'p', t: 'Step-by-step guides on every aspect of YouTube: SEO, thumbnails, retention, monetization, engagement. These aren\'t generic tutorials — each guide is written with up-to-date 2026 data and practical examples you can apply immediately to your channel. Pro members get access to exclusive video tutorials.' },
+
+  { type: 'h3', t: '14. Hashtag Generator' },
+  { type: 'p', t: 'Generates optimized hashtags for your video: the 3-5 that appear above the title (no more — YouTube penalizes excess) plus tag suggestions for the description. The right hashtags can multiply your visibility in search and the Explore tab.' },
+
+  { type: 'h2', t: 'Video tutorial: all 14 tools in action' },
+  { type: 'p', t: 'Seeing the tools in action is better than any description. In this video I walk through each of the 14 tools step by step, showing real results and how to integrate them into your content creation workflow:' },
+  { type: 'callout', t: '▶️ Watch the full tour on YouTube → https://www.youtube.com/watch?v=sTvct-XXyGk' },
+  { type: 'p', t: 'The video is under 10 minutes and covers every tool with practical examples. If you want to dive deeper into any specific tool afterwards, each one has its own page with a detailed guide.' },
+
+  { type: 'h2', t: 'Free or Pro?' },
+  { type: 'p', t: 'All 14 tools are available on the free plan with a daily usage limit. The Pro plan (€9.99/month) removes limits and adds premium features like Learning Hub video tutorials, deeper analysis, and content generation priority. The Business plan (€29.99/month) is designed for agencies and creators with multiple channels.' },
+  { type: 'p', t: 'The recommendation: start with the free plan, try all the tools, and once you see which ones save you the most time, decide if Pro is worth it for your case. You don\'t need to pay to find out if YTubViral works for you.' },
+
+  { type: 'h2', t: 'How to integrate YTubViral into your workflow' },
+  { type: 'p', t: 'The most effective way to use YTubViral is to follow a consistent workflow for each video:' },
+  { type: 'list', items: [
+    'Research: Keyword Research + Trend Explorer to choose the topic',
+    'Validation: Video Prediction to confirm the topic has potential',
+    'Pre-production: Title Generator + A/B Testing for the final title',
+    'Production: Script Generator for the base script',
+    'Post-production: SEO Descriptions + Hashtags for publishing',
+    'Analysis: Retention + Coaching to improve the next video',
+  ]},
+  { type: 'p', t: 'You don\'t need to use all 14 tools for every video. Start with the 3-4 that have the most impact on your current workflow and add the rest as you get comfortable with the platform.' },
+
+  { type: 'callout-final', t: 'Start using all 14 tools today', sub: 'Sign up free on YTubViral and access every AI tool to grow on YouTube. No credit card required.', cta: 'Create free account', href: '/signup' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -3514,6 +3686,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'auditoria-canal-youtube-guia': {
     es: ART_AUDITORIA_ES,
     en: ART_AUDITORIA_EN,
+  },
+  'tour-completo-ytubviral-14-herramientas': {
+    es: ART_TOUR_YTUBVIRAL_ES,
+    en: ART_TOUR_YTUBVIRAL_EN,
   },
 };
 
