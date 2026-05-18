@@ -71,8 +71,7 @@
   },
   "linkedin-agent": {
     "imageFolders": [
-      "javier",
-      "oficina"
+      "javier"
     ],
     "rotationDays": 30
   },
@@ -118,6 +117,7 @@
       "city": "Valencia",
       "job": "Editor de video freelance",
       "platforms": "Twitter, Reddit",
+      "mentionYtubviral": true,
       "mentionRate": 0.3
     },
     "ferran": {
@@ -126,19 +126,20 @@
       "city": "Barcelona",
       "job": "Consultor marketing digital",
       "platforms": "Twitter, Reddit",
+      "mentionYtubviral": true,
       "mentionRate": 0.25
     }
   },
   "_lastModified": "2026-05-18T01:00:12.571Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 2.8182097500000007,
+    "amount": 2.8179715000000005,
     "currency": "USD",
     "totalCredit": 6,
     "totalSpent": 3.16,
     "lastChecked": "2026-05-18T01:15:13.022Z",
-    "lastDeduction": "2026-05-18T08:45:06.139Z",
-    "totalSpentToday": 0.02179025,
+    "lastDeduction": "2026-05-18T15:06:28.026Z",
+    "totalSpentToday": 0.0220285,
     "spendDate": "2026-05-18"
   }
 }
