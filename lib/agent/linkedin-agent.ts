@@ -34,7 +34,7 @@ function stripMarkdown(text: string): string {
 }
 
 // Carpetas con imágenes humanas/de marca (se irán ampliando)
-const HUMAN_IMAGE_FOLDERS = ['javier', 'oficina'];
+const HUMAN_IMAGE_FOLDERS = ['javier'];
 
 // Devuelve URL de imagen humana aleatoria si existe alguna, o null
 // Convención de nombres:
