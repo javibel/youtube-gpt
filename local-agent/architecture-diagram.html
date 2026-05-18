@@ -197,6 +197,11 @@
   </div>
 
   <div class="nav-section">
+    <div class="nav-section-title">Ecosistema</div>
+    <a class="nav-item" data-page="ecosystem" onclick="navigate('ecosystem')"><span class="icon">🌐</span> Ecosystem Map</a>
+  </div>
+
+  <div class="nav-section">
     <div class="nav-section-title">Datos</div>
     <a class="nav-item" data-page="reports" onclick="navigate('reports')"><span class="icon">📋</span> Reports</a>
   </div>
@@ -416,6 +421,16 @@
         <div class="field"><label>Manager</label><input type="time" data-module="scheduler" data-key="managerTime" value="03:15"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('scheduler')">Resetear</button><button class="btn btn-primary" onclick="saveModule('scheduler')">Guardar cambios</button></div></div></div>
       <div class="tab-content" id="sch-hist"><div class="section"><div class="timeline"><div class="tl-item"><div class="date">2026-05-16</div><div class="desc">Social Optimizer + Manager al ciclo nocturno</div></div><div class="tl-item"><div class="date">2026-05-09</div><div class="desc">Guardian automatizado diario</div></div><div class="tl-item"><div class="date">2026-05-05</div><div class="desc">Follow-up system 2 rondas/dia</div></div><div class="tl-item"><div class="date">2026-04-28</div><div class="desc">Personas Alex + Ferran creadas</div></div><div class="tl-item"><div class="date">2026-04-20</div><div class="desc">Sentinel PRIORITY 1</div></div><div class="tl-item"><div class="date">2026-04-01</div><div class="desc">Creacion inicial</div></div></div></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Sentinel</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza cada 5 min</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">El Orquestador ejecuta Sentinel cada 5 minutos, 24/7. Es el check mas frecuente porque la disponibilidad del sitio es PRIORIDAD 1. Si el sitio cae, todo lo demas es irrelevante.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Persona Runner (YCML)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 2x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecuta las personas Alex y Ferran en horarios de mañana (9-11h) y noche (22-23h). Estos horarios simulan actividad humana real en redes sociales.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Follow-up</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 2x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Revisa si alguien ha respondido a comentarios de las personas. Se ejecuta despues de las personas para maximizar la ventana de deteccion de replies.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Meta Agent (YCMR)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 1x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Publica contenido en Facebook + Instagram via Graph API. Horario fijo para consistencia de la marca.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">LinkedIn Agent</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 1x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Publica posts profesionales en LinkedIn via UGC API. Contenido adaptado al tono corporativo.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Gmail</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza cada 30 min</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Monitorea el inbox de ytbeviral@gmail.com. Lee emails nuevos, genera respuestas con IA, y envia via Resend.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Ciclo nocturno (Guardian → Scout → Watchdog → Optimizer → Manager)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">02:00-03:30</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Cadena nocturna de 5 agentes en secuencia. Se ejecutan de madrugada porque consumen recursos (IA, scraping) y no interfieren con la actividad social diurna.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Reports</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">08:05 diario</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Genera y envia el reporte diario por email al owner. Resume toda la actividad de las ultimas 24h: posts, comentarios, alertas, metricas.</div></div>
+      </div></div>
     </div>
 
     <!-- SENTINEL -->
@@ -431,12 +446,24 @@
         <div class="field"><label>Delay reintentos (ms)</label><input type="number" data-module="sentinel" data-key="confirmDelayMs" value="10000"></div>
         <div class="field"><label>Email alertas</label><input type="email" data-module="sentinel" data-key="ownerEmail" value="javijimenoplata@gmail.com"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('sentinel')">Resetear</button><button class="btn btn-primary" onclick="saveModule('sentinel')">Guardar cambios</button></div></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">El Orquestador lo ejecuta cada 5 minutos. Es la tarea mas frecuente de todo el sistema.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">YTubViral.com (Vercel)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Hace HTTP HEAD a ytubviral.com y /api/health para verificar que el sitio responde. Mide response time y verifica SSL.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend (Email)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Si detecta que el sitio esta caido (tras 3 reintentos), envia alerta por email al owner via Resend.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Doctor</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Si el sitio persiste DOWN, invoca al Doctor para intentar diagnostico automatico antes de escalar al humano.</div></div>
+      </div></div>
     </div>
 
     <!-- DOCTOR -->
     <div class="page" id="page-doctor">
       <div class="detail-hero"><div class="hero-icon" style="background:#1e3a5f">🏥</div><div><h1>Doctor</h1><div class="desc">Auto-diagnostico y self-healing — Knowledge Base de patrones conocidos</div></div></div>
       <div class="section"><div class="section-title">Knowledge Base</div><table><thead><tr><th>Pattern</th><th>Condicion</th><th>Fix</th></tr></thead><tbody><tr><td><code>corrupt-chrome-profile</code></td><td>Browser no lanza</td><td>Elimina locks + retry</td></tr><tr><td><code>session-expired</code></td><td>Login redirect</td><td>Email + marca invalida</td></tr><tr><td><code>rate-limited</code></td><td>HTTP 429</td><td>Exponential backoff</td></tr><tr><td><code>network-timeout</code></td><td>Navigation timeout</td><td>Retry con delay</td></tr><tr><td><code>captcha-detected</code></td><td>CAPTCHA en pagina</td><td>Aborta + alerta humano</td></tr></tbody></table></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Sentinel</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Sentinel invoca al Doctor cuando detecta un problema persistente (site DOWN, errores repetidos). Doctor intenta auto-curar antes de escalar.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Cualquier agente</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Cualquier modulo puede llamar a doctor.js cuando detecta un error conocido (corrupt-chrome-profile, session-expired, rate-limited, etc.).</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Browser (Puppeteer)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Aplica fixes como eliminar locks del perfil Chrome, reiniciar el browser, o limpiar cookies corruptas.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend (Email)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Si no puede auto-curar un problema, envia alerta por email al owner explicando el diagnostico y pidiendo intervencion humana.</div></div>
+      </div></div>
     </div>
 
     <!-- PERSONA RUNNER -->
@@ -463,6 +490,13 @@
         <div class="field"><label>Max tweets/sesion</label><input type="number" data-module="persona-runner" data-key="maxTweetsPerSession" value="10"><div class="hint">Limite base (±40% variacion)</div></div>
         <div class="field"><label>Max Reddit/sesion</label><input type="number" data-module="persona-runner" data-key="maxRedditPerSession" value="5"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('persona-runner')">Resetear</button><button class="btn btn-primary" onclick="saveModule('persona-runner')">Guardar</button></div></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">El Orquestador ejecuta las personas 2 veces al dia (mañana y noche) en horarios que simulan actividad humana real.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Para cada hilo encontrado, envia el contexto del tweet/post + la personalidad de la persona a Claude, que genera un comentario unico y natural.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Browser (Puppeteer)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa Puppeteer con perfil Chrome persistente para navegar Twitter/Reddit, buscar hilos y publicar comentarios como si fuera un usuario real.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Humanize</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa el modulo Humanize para añadir delays aleatorios, saltar posts aleatoriamente y variar limites diarios. Esto evita patrones detectables por las plataformas.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Neon (PostgreSQL)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Registra cada comentario publicado en la BD (SocialAction) con URL, plataforma, persona y contenido. Necesario para el follow-up posterior y para evitar duplicados.</div></div>
+      </div></div>
     </div>
 
     <!-- FOLLOWUP -->
@@ -475,6 +509,12 @@
         <div class="field"><label>Dias hacia atras</label><input type="number" data-module="followup" data-key="daysBack" value="14"></div>
         <div class="field"><label>Fuzzy threshold</label><input type="number" data-module="followup" data-key="fuzzyMatchThreshold" value="0.4" step="0.05"><div class="hint">Min ratio palabras para match (0.4 = 40%)</div></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('followup')">Resetear</button><button class="btn btn-primary" onclick="saveModule('followup')">Guardar</button></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">El Orquestador lo ejecuta 2 veces al dia, despues de las sesiones de personas, para detectar respuestas a nuestros comentarios.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Neon (PostgreSQL)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee la tabla SocialAction para obtener URLs de comentarios publicados por las personas en los ultimos 14 dias. Necesita saber donde buscar replies.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Browser (Puppeteer)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Navega a cada URL de comentario y busca si alguien ha respondido. Usa fuzzy matching para detectar replies incluso si la plataforma cambia el formato.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Si encuentra un reply, envia el contexto completo (comentario original + reply) a Claude para generar una respuesta contextual que continue la conversacion de forma natural.</div></div>
+      </div></div>
     </div>
 
     <!-- HUMANIZE -->
@@ -491,6 +531,10 @@
         <div class="field"><label>Comment max (s)</label><input type="number" data-module="humanize" data-key="commentPauseMax" value="40"></div>
         <div class="field"><label>Daily variance (%)</label><input type="number" data-module="humanize" data-key="dailyLimitVariance" value="40"><div class="hint">±N% sobre limites diarios</div></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('humanize')">Resetear</button><button class="btn btn-primary" onclick="saveModule('humanize')">Guardar</button></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Persona Runner</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Las personas llaman a humanize.js para obtener delays aleatorios, decidir si saltarse un post, y calcular limites diarios con varianza. Cada accion del bot pasa por este filtro.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Follow-up</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Follow-up tambien usa humanize para pausas entre replies, evitando responder multiples hilos en rafaga.</div></div>
+      </div></div>
     </div>
 
     <!-- META AGENT -->
@@ -507,6 +551,12 @@
         <div class="field"><label>Fallback image</label><input data-module="meta-agent" data-key="fallbackImage" value="/social-images/default.jpg"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('meta-agent')">Resetear</button><button class="btn btn-primary" onclick="saveModule('meta-agent')">Guardar</button></div></div></div>
       <div class="tab-content" id="meta-hist"><div class="section"><div class="timeline"><div class="tl-item"><div class="date">2026-05-16</div><div class="desc">Fix PNG→JPEG + excluir .webp + default.jpg</div></div><div class="tl-item"><div class="date">2026-05-09</div><div class="desc">Human images priority</div></div><div class="tl-item"><div class="date">2026-04-25</div><div class="desc">appsecret_proof HMAC</div></div><div class="tl-item"><div class="date">2026-04-15</div><div class="desc">Instagram Container API</div></div></div></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado 1 vez al dia por el Orquestador. Publica contenido en Facebook e Instagram de la cuenta oficial @ytubviral.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Meta Graph API</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa la Graph API v19 de Meta para publicar en Facebook (POST /photos o /feed) e Instagram (Container API: create → poll → publish). Todas las llamadas incluyen appsecret_proof HMAC.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude genera el copy de cada post basandose en la voz de marca de YTubViral, variando temas segun el dia de la semana.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Neon (PostgreSQL)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Registra cada publicacion en SocialAction y verifica duplicados. Si un post falla (error 190), lo marca como pending_retry para reintento nocturno.</div></div>
+      </div></div>
     </div>
 
     <!-- LINKEDIN -->
@@ -516,6 +566,11 @@
         <div class="field"><label>Carpetas de imagenes</label><input data-module="linkedin-agent" data-key="imageFolders" value="javier, oficina"><div class="hint">Dentro de public/social-images/</div></div>
         <div class="field"><label>Dias de rotacion</label><input type="number" data-module="linkedin-agent" data-key="rotationDays" value="30"><div class="hint">No repetir imagen en N dias</div></div>
       </div><div class="actions"><button class="btn btn-primary" onclick="saveModule('linkedin-agent')">Guardar</button></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado 1 vez al dia. Publica posts profesionales en la pagina de LinkedIn de YTubViral.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">LinkedIn API v2</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa UGC Posts API para crear posts con imagen. Upload de imagen nativo (registerUpload → PUT binary → create post).</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude genera el copy profesional adaptado al tono corporativo de LinkedIn, diferente al de Facebook/Instagram.</div></div>
+      </div></div>
     </div>
 
     <!-- GUARDIAN -->
@@ -530,30 +585,57 @@
         <div class="field"><label>Email alertas</label><input type="email" data-module="guardian" data-key="alertEmail" value="javijimenoplata@gmail.com"></div>
         <div class="field-full field"><label>Patrones peligrosos</label><textarea data-module="guardian" data-key="dangerousPatterns" rows="3">eval(, innerHTML, dangerouslySetInnerHTML, AKIA[0-9A-Z]</textarea></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('guardian')">Resetear</button><button class="btn btn-primary" onclick="saveModule('guardian')">Guardar</button></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado diariamente a las 02:15. Primer agente del ciclo nocturno.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Codigo fuente (Next.js)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Escanea</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee todos los archivos .ts/.tsx/.js/.jsx del proyecto web y busca patrones peligrosos: eval(), innerHTML, secrets hardcodeadas, etc.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Envia los hallazgos a Claude para generar un resumen priorizado de vulnerabilidades con severidad y recomendaciones.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Manager</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Sus hallazgos son leidos por el Manager (03:15) para incluirlos en el resumen ejecutivo nocturno.</div></div>
+      </div></div>
     </div>
 
     <!-- SCOUT -->
     <div class="page" id="page-scout">
       <div class="detail-hero"><div class="hero-icon" style="background:#5e1f3b">🔍</div><div><h1>Scout</h1><div class="desc">Analisis de competencia semanal — lunes 02:30</div></div></div>
       <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="scout" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('scout')">Guardar</button></div><p style="margin-top:1rem">Monitorea VidIQ, TubeBuddy, OutlierKit, Thumbmagic, Ahrefs, TubeLab, ViewStats. Detecta nuevas features, cambios de pricing y oportunidades.</p></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado semanalmente los lunes a las 02:30.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Webs de competidores</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Escanea</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Visita las webs de 7 competidores para detectar cambios en features, pricing, landing pages y blog posts.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI + Manager</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude analiza los cambios y el Manager incluye los hallazgos competitivos en el resumen ejecutivo.</div></div>
+      </div></div>
     </div>
 
     <!-- WATCHDOG -->
     <div class="page" id="page-watchdog">
       <div class="detail-hero"><div class="hero-icon" style="background:#5e1f3b">⚖️</div><div><h1>Watchdog</h1><div class="desc">Compliance legal semanal — lunes 02:45</div></div></div>
       <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="watchdog" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('watchdog')">Guardar</button></div><p style="margin-top:1rem">Verifica ToS de APIs (Meta, LinkedIn, YouTube), GDPR, politica de privacidad, licencias npm.</p></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado semanalmente los lunes a las 02:45, despues del Scout.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">APIs externas (ToS)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Verifica</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Revisa los Terms of Service de Meta Graph API, LinkedIn API, YouTube Data API para detectar cambios que puedan afectar nuestro uso.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI + Manager</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude evalua riesgos legales y el Manager incluye alertas de compliance en el resumen ejecutivo.</div></div>
+      </div></div>
     </div>
 
     <!-- SOCIAL OPTIMIZER -->
     <div class="page" id="page-social-optimizer">
       <div class="detail-hero"><div class="hero-icon" style="background:#5e1f3b">📈</div><div><h1>Social Optimizer</h1><div class="desc">Analisis de rendimiento social — diario 03:00</div></div></div>
       <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="social-optimizer" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('social-optimizer')">Guardar</button></div><p style="margin-top:1rem">Analiza metricas de engagement (24h y 7d), calidad de contenido, estado operacional, y genera recomendaciones.</p></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado diariamente a las 03:00.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Neon (PostgreSQL)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee SocialAction de 24h y 7d para calcular engagement, volumen y calidad.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI + Manager</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude genera recomendaciones y el Manager las incluye en el resumen ejecutivo.</div></div>
+      </div></div>
     </div>
 
     <!-- MANAGER -->
     <div class="page" id="page-manager">
       <div class="detail-hero"><div class="hero-icon" style="background:#5e1f3b">👔</div><div><h1>Manager</h1><div class="desc">Coordinador ejecutivo — diario 03:15 (ultimo en ejecutar)</div></div></div>
       <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="manager" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6" selected>Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select><div class="hint">Manager usa Sonnet por defecto (necesita mas razonamiento)</div></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('manager')">Guardar</button></div><p style="margin-top:1rem">Agrega hallazgos de Guardian, Scout, Watchdog y Social Optimizer. Prioriza acciones, genera resumen ejecutivo, detecta conflictos entre recomendaciones.</p></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ultimo agente del ciclo nocturno, ejecutado a las 03:15. Necesita que todos los demas hayan terminado.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Guardian + Scout + Watchdog + Social Optimizer</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee los reportes generados por los 4 agentes nocturnos. Cada uno ha dejado su hallazgo en disco para que el Manager lo agregue.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI (Sonnet)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa Sonnet (no Haiku) porque necesita razonamiento mas profundo para priorizar acciones, detectar conflictos entre recomendaciones y generar un resumen ejecutivo coherente.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend (Email)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Envia el resumen ejecutivo por email al owner con acciones priorizadas, alertas criticas y recomendaciones.</div></div>
+      </div></div>
     </div>
 
     <!-- CLAUDE -->
@@ -566,6 +648,11 @@
         <div class="field"><label>Max chars Twitter</label><input type="number" data-module="claude" data-key="maxCharsTwitter" value="300"></div>
         <div class="field"><label>Max chars Reddit</label><input type="number" data-module="claude" data-key="maxCharsReddit" value="800"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('claude')">Resetear</button><button class="btn btn-primary" onclick="saveModule('claude')">Guardar</button></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Persona Runner + Follow-up + Meta + LinkedIn + Gmail</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Todos los agentes que generan texto llaman a este wrapper. Es el unico punto de acceso a la API de Anthropic en el local-agent.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Anthropic API</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Envia prompts a la API de Claude (messages endpoint). Pasa por API Guard para rate limiting y budget control antes de cada llamada.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#f59e0b">⇄</span><span style="font-weight:600">API Guard</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Bidireccional</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Antes de cada llamada, API Guard verifica rate limits, budget diario y circuit breaker. Si esta abierto, bloquea la llamada. Despues, registra tokens consumidos.</div></div>
+      </div></div>
     </div>
 
     <!-- API GUARD -->
@@ -580,6 +667,10 @@
         <div class="field"><label>Circuit breaker threshold</label><input type="number" data-module="api-guard" data-key="circuitBreakerThreshold" value="5"><div class="hint">Errores consecutivos para abrir circuit</div></div>
         <div class="field"><label>Circuit reset (ms)</label><input type="number" data-module="api-guard" data-key="circuitBreakerResetMs" value="300000"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('api-guard')">Resetear</button><button class="btn btn-primary" onclick="saveModule('api-guard')">Guardar</button></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#f59e0b">⇄</span><span style="font-weight:600">Claude AI (wrapper)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Bidireccional</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Intercepta cada llamada a Claude: verifica rate limit (max/min), budget diario (tokens), y circuit breaker (errores consecutivos). Si alguno falla, bloquea la llamada sin consumir API.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend (Email)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Si se alcanza el budget diario o el circuit breaker se abre, envia alerta por email al owner.</div></div>
+      </div></div>
     </div>
 
     <!-- BROWSER -->
@@ -593,6 +684,11 @@
         <div class="field"><label>Protocol timeout (ms)</label><input type="number" data-module="browser" data-key="protocolTimeout" value="60000"></div>
         <div class="field"><label>Stealth Plugin</label><select data-module="browser" data-key="stealthPlugin"><option value="true" selected>Activado</option><option value="false">Desactivado</option></select></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('browser')">Resetear</button><button class="btn btn-primary" onclick="saveModule('browser')">Guardar</button></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Persona Runner + Follow-up</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Las personas y follow-up usan Puppeteer para navegar Twitter y Reddit. Cada persona tiene su propio perfil Chrome persistente con sesion guardada.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Scout</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Scout usa el browser para visitar webs de competidores y extraer informacion de features/pricing.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Twitter / Reddit</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Navega con Stealth Plugin (evasion de deteccion de bots) y perfiles Chrome reales. Cada sesion simula comportamiento humano con Humanize.</div></div>
+      </div></div>
     </div>
 
     <!-- GMAIL -->
@@ -604,6 +700,188 @@
         <div class="field"><label>Email owner</label><input type="email" data-module="gmail" data-key="ownerEmail" value="javijimenoplata@gmail.com"></div>
         <div class="field"><label>Horario activo</label><input data-module="gmail" data-key="activeHours" value="8-23"><div class="hint">Rango HH-HH</div></div>
       </div><div class="actions"><button class="btn btn-primary" onclick="saveModule('gmail')">Guardar</button></div></div>
+      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado cada 30 minutos en horario activo (8-23h). No revisa email de madrugada.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Gmail API</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee emails no leidos del inbox de ytbeviral@gmail.com via Gmail API (OAuth2). Solo lectura — los envios van por Resend.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Envia el contenido del email a Claude para generar una respuesta profesional en el idioma del remitente.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Las respuestas se envian via Resend desde support@ytubviral.com (no via Gmail API). Esto garantiza SPF/DKIM/DMARC correcto con el dominio propio.</div></div>
+      </div></div>
+    </div>
+
+    <!-- ═══ ECOSYSTEM MAP ═══ -->
+    <div class="page" id="page-ecosystem">
+      <div class="detail-hero"><div class="hero-icon" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">🌐</div><div><h1>Ecosystem Map</h1><div class="desc">Relaciones entre YTubViral, usuarios y plataformas externas — click en cada bloque para ver detalles</div></div></div>
+
+      <div class="stats-row" id="eco-stats"></div>
+
+      <div class="diagram-container" style="min-height:500px">
+        <svg id="eco-diagram" viewBox="0 0 1000 620" xmlns="http://www.w3.org/2000/svg" style="width:65%;height:auto;font-family:Inter,sans-serif;margin:0 auto;display:block;">
+          <defs>
+            <marker id="earrow" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#3b82f6"/></marker>
+            <marker id="earrow-g" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#22c55e"/></marker>
+            <marker id="earrow-o" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#f59e0b"/></marker>
+            <marker id="earrow-p" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#a855f7"/></marker>
+            <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+
+          <!-- ══ USERS (top left) ══ -->
+          <g class="eco-node" data-eco="users" style="cursor:pointer">
+            <rect x="30" y="40" width="160" height="70" rx="12" fill="#1c1c22" stroke="#a855f7" stroke-width="1.5" class="hoverable"/>
+            <text x="110" y="65" text-anchor="middle" fill="#a855f7" font-size="11" font-weight="600" letter-spacing="1">USUARIOS</text>
+            <text x="110" y="85" text-anchor="middle" fill="#d4d4d8" font-size="12">Navegador / App</text>
+            <text x="110" y="100" text-anchor="middle" fill="#71717a" font-size="10">Signup, Login, Generate</text>
+          </g>
+
+          <!-- ══ YTUBVIRAL.COM (center) ══ -->
+          <g class="eco-node" data-eco="vercel" style="cursor:pointer">
+            <rect x="320" y="180" width="360" height="100" rx="14" fill="#141418" stroke="#3b82f6" stroke-width="2" filter="url(#glow)"/>
+            <text x="500" y="205" text-anchor="middle" fill="#3b82f6" font-size="12" font-weight="700" letter-spacing="1.5">YTUBVIRAL.COM</text>
+            <text x="500" y="225" text-anchor="middle" fill="#d4d4d8" font-size="13" font-weight="600">Next.js App (Vercel)</text>
+            <text x="500" y="245" text-anchor="middle" fill="#71717a" font-size="10">14 AI tools · Dashboard · API · Auth</text>
+            <text x="500" y="262" text-anchor="middle" fill="#52525b" font-size="10">Fluid Compute · Edge Network</text>
+          </g>
+
+          <!-- ══ LOCAL AGENT (center bottom) ══ -->
+          <g class="eco-node" data-eco="pm2" style="cursor:pointer">
+            <rect x="350" y="440" width="300" height="80" rx="12" fill="#141418" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="500" y="465" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" letter-spacing="1">LOCAL AGENT (PM2)</text>
+            <text x="500" y="485" text-anchor="middle" fill="#d4d4d8" font-size="12">YCML + YCMR + Nocturnos</text>
+            <text x="500" y="502" text-anchor="middle" fill="#71717a" font-size="10">Sentinel · Personas · Guardian · Scout</text>
+          </g>
+
+          <!-- ══ CLOUDFLARE (top center) ══ -->
+          <g class="eco-node" data-eco="cloudflare" style="cursor:pointer">
+            <rect x="380" y="20" width="240" height="55" rx="10" fill="#1c1c22" stroke="#f59e0b" stroke-width="1" class="hoverable"/>
+            <text x="500" y="42" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">CLOUDFLARE</text>
+            <text x="500" y="60" text-anchor="middle" fill="#71717a" font-size="10">DNS · SPF · DKIM · DMARC</text>
+          </g>
+
+          <!-- ══ NEON DB (right) ══ -->
+          <g class="eco-node" data-eco="neon" style="cursor:pointer">
+            <rect x="780" y="170" width="190" height="65" rx="10" fill="#1c1c22" stroke="#22c55e" stroke-width="1" class="hoverable"/>
+            <text x="875" y="195" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">NEON (PostgreSQL)</text>
+            <text x="875" y="213" text-anchor="middle" fill="#71717a" font-size="10">Prisma ORM · eu-west-2</text>
+          </g>
+
+          <!-- ══ ANTHROPIC (left) ══ -->
+          <g class="eco-node" data-eco="anthropic" style="cursor:pointer">
+            <rect x="30" y="185" width="190" height="65" rx="10" fill="#1c1c22" stroke="#a855f7" stroke-width="1" class="hoverable"/>
+            <text x="125" y="210" text-anchor="middle" fill="#a855f7" font-size="11" font-weight="600">ANTHROPIC (Claude)</text>
+            <text x="125" y="228" text-anchor="middle" fill="#71717a" font-size="10">Haiku · Sonnet · Opus</text>
+          </g>
+
+          <!-- ══ STRIPE (top right) ══ -->
+          <g class="eco-node" data-eco="stripe" style="cursor:pointer">
+            <rect x="770" y="40" width="190" height="55" rx="10" fill="#1c1c22" stroke="#8b5cf6" stroke-width="1" class="hoverable"/>
+            <text x="865" y="62" text-anchor="middle" fill="#8b5cf6" font-size="11" font-weight="600">STRIPE</text>
+            <text x="865" y="78" text-anchor="middle" fill="#71717a" font-size="10">Pagos · Webhooks · Suscripciones</text>
+          </g>
+
+          <!-- ══ RESEND (right mid) ══ -->
+          <g class="eco-node" data-eco="resend" style="cursor:pointer">
+            <rect x="780" y="290" width="190" height="65" rx="10" fill="#1c1c22" stroke="#ec4899" stroke-width="1" class="hoverable"/>
+            <text x="875" y="315" text-anchor="middle" fill="#ec4899" font-size="11" font-weight="600">RESEND</text>
+            <text x="875" y="333" text-anchor="middle" fill="#71717a" font-size="10">hello@ · support@ · legal@</text>
+          </g>
+
+          <!-- ══ GOOGLE SEARCH CONSOLE (bottom left) ══ -->
+          <g class="eco-node" data-eco="gsc" style="cursor:pointer">
+            <rect x="30" y="370" width="190" height="55" rx="10" fill="#1c1c22" stroke="#22c55e" stroke-width="1" class="hoverable"/>
+            <text x="125" y="392" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">SEARCH CONSOLE</text>
+            <text x="125" y="408" text-anchor="middle" fill="#71717a" font-size="10">Indexacion · Sitemap · SEO</text>
+          </g>
+
+          <!-- ══ CHROME EXTENSION (top left) ══ -->
+          <g class="eco-node" data-eco="chromeExtension" style="cursor:pointer">
+            <rect x="30" y="290" width="190" height="55" rx="10" fill="#1c1c22" stroke="#3b82f6" stroke-width="1" class="hoverable"/>
+            <text x="125" y="312" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">CHROME EXTENSION</text>
+            <text x="125" y="328" text-anchor="middle" fill="#71717a" font-size="10">SEO Quick · Channel Stats</text>
+          </g>
+
+          <!-- ══ YOUTUBE API (left bottom) ══ -->
+          <g class="eco-node" data-eco="youtubeApi" style="cursor:pointer">
+            <rect x="30" y="450" width="190" height="55" rx="10" fill="#1c1c22" stroke="#ef4444" stroke-width="1" class="hoverable"/>
+            <text x="125" y="472" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="600">YOUTUBE DATA API</text>
+            <text x="125" y="488" text-anchor="middle" fill="#71717a" font-size="10">OAuth2 · Analytics · Metadata</text>
+          </g>
+
+          <!-- ══ GMAIL API (bottom right) ══ -->
+          <g class="eco-node" data-eco="gmailApi" style="cursor:pointer">
+            <rect x="780" y="440" width="190" height="55" rx="10" fill="#1c1c22" stroke="#f59e0b" stroke-width="1" class="hoverable"/>
+            <text x="875" y="462" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">GMAIL API</text>
+            <text x="875" y="478" text-anchor="middle" fill="#71717a" font-size="10">Inbox reading · OAuth2</text>
+          </g>
+
+          <!-- ══ META (bottom center-right) ══ -->
+          <g class="eco-node" data-eco="meta" style="cursor:pointer">
+            <rect x="780" y="370" width="190" height="55" rx="10" fill="#1c1c22" stroke="#3b82f6" stroke-width="1" class="hoverable"/>
+            <text x="875" y="392" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">META (FB + IG)</text>
+            <text x="875" y="408" text-anchor="middle" fill="#71717a" font-size="10">Graph API · YCMR publishing</text>
+          </g>
+
+          <!-- ══ CHROME/PUPPETEER (bottom) ══ -->
+          <g class="eco-node" data-eco="chrome" style="cursor:pointer">
+            <rect x="350" y="555" width="300" height="50" rx="10" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="500" y="577" text-anchor="middle" fill="#a1a1aa" font-size="11" font-weight="600">CHROME (Puppeteer Stealth)</text>
+            <text x="500" y="593" text-anchor="middle" fill="#71717a" font-size="10">Twitter · Reddit · LinkedIn</text>
+          </g>
+
+          <!-- ══ LINKEDIN (bottom far right) ══ -->
+          <g class="eco-node" data-eco="linkedin" style="cursor:pointer">
+            <rect x="780" y="510" width="190" height="55" rx="10" fill="#1c1c22" stroke="#3b82f6" stroke-width="1" class="hoverable"/>
+            <text x="875" y="532" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">LINKEDIN</text>
+            <text x="875" y="548" text-anchor="middle" fill="#71717a" font-size="10">API v2 · YCMR publishing</text>
+          </g>
+
+          <!-- ═══ CONNECTIONS ═══ -->
+
+          <!-- Users → Cloudflare → YTubViral -->
+          <path d="M190 60 L380 47" stroke="#a855f7" stroke-width="1" fill="none" marker-end="url(#earrow-p)" opacity="0.5"/>
+          <path d="M500 75 L500 180" stroke="#f59e0b" stroke-width="1.2" fill="none" marker-end="url(#earrow-o)" opacity="0.5"/>
+          <!-- Users → YTubViral (direct) -->
+          <path d="M190 90 L320 210" stroke="#a855f7" stroke-width="1" fill="none" marker-end="url(#earrow-p)" opacity="0.4"/>
+
+          <!-- YTubViral → Neon DB -->
+          <path d="M680 220 L780 205" stroke="#22c55e" stroke-width="1.2" fill="none" marker-end="url(#earrow-g)" opacity="0.5"/>
+          <!-- YTubViral → Anthropic -->
+          <path d="M320 220 L220 218" stroke="#a855f7" stroke-width="1.2" fill="none" marker-end="url(#earrow-p)" opacity="0.5"/>
+          <!-- YTubViral → Stripe -->
+          <path d="M680 210 L770 75" stroke="#8b5cf6" stroke-width="1" fill="none" marker-end="url(#earrow-p)" opacity="0.4"/>
+          <!-- YTubViral → Resend -->
+          <path d="M680 260 L780 310" stroke="#ec4899" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
+          <!-- YTubViral → Chrome Extension -->
+          <path d="M320 250 L220 312" stroke="#3b82f6" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
+
+          <!-- YTubViral ↔ Local Agent -->
+          <path d="M500 280 L500 440" stroke="#f59e0b" stroke-width="1.5" fill="none" marker-end="url(#earrow-o)" opacity="0.6" stroke-dasharray="6 3"/>
+          <text x="510" y="365" fill="#71717a" font-size="9">Shared DB</text>
+
+          <!-- Local Agent → Anthropic -->
+          <path d="M350 470 L220 230" stroke="#a855f7" stroke-width="1" fill="none" marker-end="url(#earrow-p)" opacity="0.4"/>
+          <!-- Local Agent → Resend -->
+          <path d="M650 470 L780 330" stroke="#ec4899" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
+          <!-- Local Agent → Gmail API -->
+          <path d="M650 490 L780 465" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#earrow-o)" opacity="0.4"/>
+          <!-- Local Agent → Chrome/Puppeteer -->
+          <path d="M500 520 L500 555" stroke="#52525b" stroke-width="1.2" fill="none" marker-end="url(#earrow)" opacity="0.5"/>
+          <!-- Local Agent → GSC -->
+          <path d="M350 490 L220 400" stroke="#22c55e" stroke-width="1" fill="none" marker-end="url(#earrow-g)" opacity="0.4"/>
+          <!-- Local Agent → YouTube API -->
+          <path d="M350 500 L220 470" stroke="#ef4444" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
+          <!-- Local Agent → Meta -->
+          <path d="M650 480 L780 395" stroke="#3b82f6" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
+          <!-- Local Agent → LinkedIn -->
+          <path d="M650 505 L780 535" stroke="#3b82f6" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
+          <!-- Local Agent → Neon -->
+          <path d="M650 460 L780 210" stroke="#22c55e" stroke-width="1" fill="none" marker-end="url(#earrow-g)" opacity="0.3"/>
+        </svg>
+      </div>
+
+      <!-- Ecosystem detail panel (shown when clicking a node) -->
+      <div id="eco-detail" style="display:none">
+        <button class="btn btn-ghost btn-sm" onclick="closeEcoDetail()" style="margin-bottom:1rem">← Volver al mapa</button>
+        <div id="eco-detail-content"></div>
+      </div>
     </div>
 
     <!-- ═══ REPORTS ═══ -->
@@ -664,6 +942,8 @@ function navigate(pageId) {
   }
   // Load reports when entering reports page
   if (pageId === 'reports') loadReports();
+  // Load ecosystem data when entering ecosystem page
+  if (pageId === 'ecosystem') { closeEcoDetail(); loadEcoData(); }
 }
 
 // ── Tabs ──
@@ -1114,6 +1394,329 @@ function formatGeneric(data, depth) {
 }
 
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ══════════════════════════════════════════════════════════════════════════
+// ECOSYSTEM
+// ══════════════════════════════════════════════════════════════════════════
+
+const ECO_INFO = {
+  users: {
+    title: 'Usuarios', icon: '👥', color: '#a855f7',
+    desc: 'Usuarios registrados que acceden a YTubViral via navegador o Chrome Extension.',
+    connections: [
+      { dir: 'out', to: 'Cloudflare', why: 'Cuando un usuario escribe ytubviral.com, su navegador pregunta a Cloudflare DNS cual es la IP del servidor. Sin este paso el navegador no sabria a donde conectarse.' },
+      { dir: 'out', to: 'YTubViral (Vercel)', why: 'Tras resolver DNS, el navegador conecta directamente con Vercel via HTTPS. Todas las interacciones (signup, login, generar contenido, pagar) pasan por esta conexion.' },
+    ],
+    sections: [
+      { title: 'Flujo de entrada', items: ['Signup con email + password', 'Verificacion email via Resend (hello@ytubviral.com)', 'Login con NextAuth (Credentials provider)', 'JWT session con emailVerified check'] },
+      { title: 'Planes', items: ['Free: 10 generaciones/mes', 'Pro: 9.99€/mes — ilimitado + AI Coach', 'Business: 29.99€/mes — equipo + API'] },
+      { title: 'Datos en BD', items: ['User (id, email, name, plan, emailVerified)', 'Generation (template, tokens, createdAt)', 'Subscription (Stripe, status, period)'] },
+    ],
+  },
+  vercel: {
+    title: 'YTubViral.com (Vercel)', icon: '▲', color: '#3b82f6',
+    desc: 'Aplicacion Next.js desplegada en Vercel. Push a main = deploy automatico.',
+    connections: [
+      { dir: 'in', from: 'Usuarios', why: 'Recibe todas las peticiones HTTP de los usuarios (paginas, API calls, webhooks).' },
+      { dir: 'in', from: 'Cloudflare', why: 'Cloudflare DNS resuelve ytubviral.com a las IPs de Vercel (76.76.21.21). El trafico llega a Vercel tras esa resolucion.' },
+      { dir: 'out', to: 'Neon (PostgreSQL)', why: 'Cada peticion que necesita datos (login, generaciones, suscripciones, perfil) consulta la BD via Prisma ORM.' },
+      { dir: 'out', to: 'Anthropic', why: 'Las 14 herramientas de IA envian prompts a la API de Claude para generar titulos, descripciones, scripts, analisis SEO, etc.' },
+      { dir: 'out', to: 'Stripe', why: 'Cuando un usuario hace upgrade a Pro/Business, Vercel crea una Checkout Session en Stripe. Stripe envia webhooks de vuelta cuando el pago se confirma.' },
+      { dir: 'out', to: 'Resend', why: 'Envia emails transaccionales: verificacion de cuenta, reset de contraseña, welcome, feedback requests.' },
+      { dir: 'out', to: 'Chrome Extension', why: 'La extension hace peticiones a /api/extension/* con Bearer token. Vercel responde con datos de SEO, canal y scorecard.' },
+      { dir: 'both', to: 'Local Agent', why: 'No hay conexion directa. Comparten la misma base de datos Neon — la web escribe usuarios/generaciones, el agente escribe acciones sociales. Ambos leen datos del otro.' },
+    ],
+    sections: [
+      { title: 'Stack', items: ['Next.js App Router', 'TypeScript', 'Tailwind CSS', 'Prisma ORM', 'NextAuth v5'] },
+      { title: 'Herramientas (14)', items: ['Generador de titulos, descripciones, scripts, captions, thumbnails', 'SEO Score, Keyword Research, Trends, Competitors', 'A/B Test, Calendar, Retention, Revenue, Predictor', 'AI Coach, Bulk Generation, Audit'] },
+      { title: 'API Routes', items: ['/api/generate — Generacion con Claude', '/api/stripe/webhook — Pagos', '/api/auth/* — Autenticacion', '/api/youtube/* — YouTube Data API', '/api/extension/* — Chrome Extension', '/api/cron/* — Tareas programadas'] },
+    ],
+  },
+  cloudflare: {
+    title: 'Cloudflare', icon: '☁️', color: '#f59e0b',
+    desc: 'DNS-only (sin proxy). Gestiona registros DNS, SPF, DKIM, DMARC.',
+    connections: [
+      { dir: 'in', from: 'Usuarios', why: 'El navegador del usuario consulta los nameservers de Cloudflare para resolver ytubviral.com a una IP.' },
+      { dir: 'out', to: 'YTubViral (Vercel)', why: 'El registro A apunta a 76.76.21.21 (Vercel). Cloudflare responde con esta IP al navegador, que luego conecta directamente con Vercel. No hay proxy: es solo DNS.' },
+      { dir: 'related', to: 'Resend', why: 'Los registros SPF, DKIM y DMARC en Cloudflare DNS autorizan a Resend a enviar emails en nombre de @ytubviral.com. Sin estos registros, los emails irian a spam.' },
+    ],
+    sections: [
+      { title: 'Configuracion', items: ['Modo: DNS-only (no proxy — por bloqueo LaLiga/ISPs espanoles)', 'Nameservers: Cloudflare', 'SSL: gestionado por Vercel (no Cloudflare, porque es DNS-only)'] },
+      { title: 'Registros DNS', items: ['A → 76.76.21.21 (Vercel)', 'CNAME www → cname.vercel-dns.com', 'TXT SPF: include:send.resend.com include:_spf.mx.cloudflare.net -all', 'TXT DKIM: resend._domainkey (clave publica de Resend)', 'TXT _dmarc: v=DMARC1; p=quarantine'] },
+      { title: 'Tunnel (cloudflared)', items: ['Tunel seguro para acceder al dashboard local (puerto 3456) remotamente', 'Proceso PM2: ytubviral-tunnel', 'No es proxy web — solo para admin'] },
+    ],
+  },
+  neon: {
+    title: 'Neon (PostgreSQL)', icon: '🗄️', color: '#22c55e',
+    desc: 'Base de datos PostgreSQL serverless. Es el nexo entre la web y el agente local.',
+    connections: [
+      { dir: 'in', from: 'YTubViral (Vercel)', why: 'La web lee/escribe usuarios, generaciones, suscripciones, sesiones y feedback via Prisma ORM.' },
+      { dir: 'in', from: 'Local Agent', why: 'El agente lee/escribe acciones sociales (likes, replies, posts), prospectos LinkedIn, mensajes Gmail y reportes via driver pg directo.' },
+    ],
+    sections: [
+      { title: 'Conexion', items: ['Region: eu-west-2 (London)', 'Branch: main', 'Pooler: habilitado', 'SSL: requerido'] },
+      { title: 'Tablas principales', items: ['User, Account, Session (auth)', 'Generation, Subscription (producto)', 'SocialPost, SocialMessage (redes)', 'LinkedinProspect, LinkedinAction', 'TwitterAction, RedditAction', 'WaitlistEntry, Review, Feedback'] },
+      { title: 'Patron de acceso compartido', items: ['Web (Vercel): Prisma ORM — tipado, migraciones', 'Local Agent: pg driver — queries directas SQL', 'Misma BD, mismas tablas, sin conflictos porque escriben en columnas/tablas diferentes'] },
+    ],
+  },
+  anthropic: {
+    title: 'Anthropic (Claude)', icon: '🧠', color: '#a855f7',
+    desc: 'API de IA. Cerebro de toda la generacion de contenido y analisis autonomo.',
+    connections: [
+      { dir: 'in', from: 'YTubViral (Vercel)', why: 'Cada vez que un usuario genera contenido (titulo, descripcion, script, etc.), la web envia un prompt a la API de Claude y devuelve la respuesta al usuario.' },
+      { dir: 'in', from: 'Local Agent', why: 'Los agentes usan Claude para generar tweets, replies de Reddit, respuestas de email, analisis de seguridad (Guardian), competencia (Scout), legal (Watchdog) y sintesis diaria (Manager).' },
+    ],
+    sections: [
+      { title: 'Modelos en uso', items: ['Haiku 4.5: Personas, Follow-up, Gmail replies, generacion web (rapido, barato)', 'Sonnet 4.6: Guardian, Manager, Social Optimizer (equilibrio)', 'Opus 4.6: Scout, Watchdog (analisis profundo, semanal)'] },
+      { title: 'Uso en Web (Vercel)', items: ['14 herramientas de generacion', 'AI Coach (conversacional, streaming)', 'Prompt caching activado (ahorra ~80% en prompts repetidos)'] },
+      { title: 'Uso en Local Agent', items: ['claude.js: genera tweets y Reddit replies para personas', 'gmail agent: genera respuestas automaticas a emails', 'Guardian: analiza codigo fuente buscando vulnerabilidades', 'Scout: analiza webs de competidores', 'Manager: sintetiza todos los reportes nocturnos'] },
+      { title: 'Protecciones (API Guard)', items: ['Rate limit: 10 calls/min', 'Budget diario: 100K tokens', 'Circuit breaker: 5 fallos → pausa 5min', 'Max tokens por llamada: 2000'] },
+    ],
+  },
+  stripe: {
+    title: 'Stripe', icon: '💳', color: '#8b5cf6',
+    desc: 'Procesamiento de pagos. Gestiona suscripciones Pro y Business.',
+    connections: [
+      { dir: 'in', from: 'YTubViral (Vercel)', why: 'La web crea Checkout Sessions cuando un usuario quiere upgrade. Tambien consulta estado de suscripcion para verificar plan activo.' },
+      { dir: 'out', to: 'YTubViral (Vercel)', why: 'Stripe envia webhooks a /api/stripe/webhook cuando un pago se completa, una suscripcion se cancela, o un periodo se renueva. La web actualiza el plan del usuario en BD.' },
+    ],
+    sections: [
+      { title: 'Productos', items: ['Pro: 9.99€/mes o 95.88€/año', 'Business: 29.99€/mes o 287.88€/año'] },
+      { title: 'Flujo de pago', items: ['1. Usuario click "Upgrade" → /api/stripe/checkout crea Session', '2. Redirige a Stripe Checkout (hosted page)', '3. Usuario paga → Stripe envia webhook', '4. Webhook actualiza plan en BD → usuario ya es Pro'] },
+      { title: 'Configuracion', items: ['Cuenta: Individual', 'Moneda: EUR', 'Webhook secret: whsec_... en env vars', 'Cancel: downgrade inmediato a Free'] },
+    ],
+  },
+  resend: {
+    title: 'Resend', icon: '📧', color: '#ec4899',
+    desc: 'Email transaccional. Todo email saliente del sistema pasa por Resend.',
+    connections: [
+      { dir: 'in', from: 'YTubViral (Vercel)', why: 'La web envia emails de verificacion, reset de contraseña, welcome y feedback requests a traves de la API de Resend.' },
+      { dir: 'in', from: 'Local Agent', why: 'El agente envia reportes diarios, alertas de sesion expirada, auto-replies a emails de usuarios, y forwards de emails importantes — todo via Resend.' },
+      { dir: 'related', to: 'Cloudflare', why: 'Los registros DNS de Cloudflare (SPF, DKIM, DMARC) autorizan a Resend a enviar como @ytubviral.com. Esto garantiza que los emails no vayan a spam.' },
+    ],
+    sections: [
+      { title: 'Direcciones de dominio', items: ['hello@ytubviral.com — reportes, notificaciones generales', 'support@ytubviral.com — auto-replies a usuarios, replyTo', 'legal@ytubviral.com — avisos legales (futuro)', 'privacy@ytubviral.com — privacidad (futuro)'] },
+      { title: 'Emails desde la Web', items: ['Verificacion de email (signup) — isTransactional: sin List-Unsubscribe', 'Reset/cambio de contraseña — isTransactional', 'Waitlist welcome', 'Feedback requests'] },
+      { title: 'Emails desde Local Agent', items: ['Daily report → javijimenoplata@gmail.com', 'Persona report → javijimenoplata@gmail.com', 'Session expired alerts → javijimenoplata@gmail.com', 'Gmail auto-replies → usuario que escribio', 'Email forwards → javijimenoplata@gmail.com'] },
+      { title: 'Autenticacion DNS', items: ['SPF PASS: include:send.resend.com en registro TXT', 'DKIM PASS: resend._domainkey con clave publica', 'DMARC PASS: p=quarantine'] },
+    ],
+  },
+  gsc: {
+    title: 'Google Search Console', icon: '🔍', color: '#22c55e',
+    desc: 'Indexacion y monitoreo SEO. No tiene conexion directa con la web en runtime.',
+    connections: [
+      { dir: 'in', from: 'Local Agent', why: 'Scripts locales (gsc-index-urls.js, gsc-inspect-urls.js) usan la API de Search Console con OAuth2 para solicitar indexacion de URLs nuevas y verificar estado.' },
+      { dir: 'related', to: 'YTubViral (Vercel)', why: 'Google rastrea ytubviral.com siguiendo el sitemap.xml generado por la web. No hay conexion API directa desde Vercel — la indexacion se gestiona desde el agente local.' },
+    ],
+    sections: [
+      { title: 'Estado', items: ['30+ paginas indexadas', 'Sitemap: /sitemap.xml (generado por app/sitemap.ts)', 'Indexacion solicitada manualmente tras cada nuevo articulo/pagina'] },
+      { title: 'Scripts locales', items: ['gsc-index-urls.js — lista de URLs a indexar, las envia a la API', 'gsc-inspect-urls.js — verifica si cada URL esta indexada o pendiente'] },
+      { title: 'URLs indexadas', items: ['Landing, pricing, features/* (14 feature pages)', 'Blog (16 articulos)', 'Learning Hub (14 guias publicas)', 'Legal (terms, privacy, legal)', 'Gear, extension, launch'] },
+    ],
+  },
+  chromeExtension: {
+    title: 'Chrome Extension', icon: '🧩', color: '#3b82f6',
+    desc: 'Extension de navegador que muestra herramientas YTubViral dentro de YouTube.',
+    connections: [
+      { dir: 'out', to: 'YTubViral (Vercel)', why: 'La extension hace fetch a /api/extension/* con Bearer token para obtener datos de SEO, canal y scorecard. Es un cliente API mas, como el navegador.' },
+    ],
+    sections: [
+      { title: 'Endpoints API', items: ['/api/extension/channel-stats — estadisticas del canal', '/api/extension/seo-quick — analisis SEO rapido de un video', '/api/extension/video-scorecard — puntuacion completa de video'] },
+      { title: 'Autenticacion', items: ['Bearer token generado en /profile del dashboard', 'Token en header Authorization de cada request', 'Mismo sistema de auth que la API, verificado en servidor'] },
+    ],
+  },
+  youtubeApi: {
+    title: 'YouTube Data API', icon: '▶️', color: '#ef4444',
+    desc: 'Datos de canales, videos y analytics de YouTube.',
+    connections: [
+      { dir: 'in', from: 'YTubViral (Vercel)', why: 'Cuando un usuario conecta su canal, la web usa OAuth2 para obtener acceso y luego consulta estadisticas, metadata de videos y analytics para las herramientas de analisis.' },
+    ],
+    sections: [
+      { title: 'Autenticacion', items: ['OAuth2: el usuario autoriza acceso a su canal', 'API Key: para datos publicos (search, trending)', 'Refresh token almacenado en BD por usuario'] },
+      { title: 'Datos consultados', items: ['Channel: subscribers, total views, video count', 'Videos: title, description, tags, views, likes', 'Analytics: watch time, retention curve, traffic sources', 'Search: trending topics, keyword volume'] },
+      { title: 'Flujo OAuth', items: ['1. Usuario click "Connect YouTube" → /api/youtube/auth', '2. Redirige a Google consent screen', '3. Callback → /api/youtube/callback guarda tokens', '4. Tools consultan API con el access token del usuario'] },
+    ],
+  },
+  gmailApi: {
+    title: 'Gmail API', icon: '📬', color: '#f59e0b',
+    desc: 'Lee el inbox de ytbeviral@gmail.com. Ya NO envia emails (migrado a Resend).',
+    connections: [
+      { dir: 'in', from: 'Local Agent', why: 'Cada 30 min el agente lee emails nuevos del inbox, los clasifica con IA, y decide si auto-responder (via Resend), forward (via Resend) o ignorar. Gmail API solo se usa para LEER y marcar como leido.' },
+    ],
+    sections: [
+      { title: 'Estado actual', items: ['SOLO lectura: listUnreadMessages, getMessage, markAsRead', 'Todo el envio de emails migrado a Resend (mayo 2026)', 'Cuenta: ytbeviral@gmail.com'] },
+      { title: 'Clasificacion', items: ['Important: forward via Resend al owner (Stripe, Chrome Web Store, seguridad)', 'Actionable: Claude genera reply → Resend lo envia desde support@ytubviral.com', 'Ignore: newsletters, no-reply, marketing → marca como leido'] },
+      { title: 'Autenticacion', items: ['OAuth2 con refresh_token (nunca expira)', 'GMAIL_CLIENT_ID + GMAIL_CLIENT_SECRET + GMAIL_REFRESH_TOKEN'] },
+    ],
+  },
+  meta: {
+    title: 'Meta (Facebook + Instagram)', icon: '📱', color: '#3b82f6',
+    desc: 'Publicacion automatica en Facebook Page e Instagram Business.',
+    connections: [
+      { dir: 'in', from: 'Local Agent', why: 'El Meta Agent del local-agent publica posts automaticos en Facebook e Instagram usando la Graph API. Los posts incluyen imagen + texto generado por Claude.' },
+    ],
+    sections: [
+      { title: 'API', items: ['Graph API v19', 'Page Access Token (long-lived, ~60 dias)', 'Instagram Business Account linkeado a la Facebook Page'] },
+      { title: 'Flujo de publicacion', items: ['1. Scheduler trigger → meta-agent.js', '2. Selecciona imagen del banco (rotacion)', '3. Claude genera texto del post', '4. Publica en FB Page via Graph API', '5. Publica en IG via Container → Publish flow', '6. Guarda en BD como SocialPost'] },
+    ],
+  },
+  linkedin: {
+    title: 'LinkedIn', icon: '💼', color: '#3b82f6',
+    desc: 'Publicacion automatica y prospecting.',
+    connections: [
+      { dir: 'in', from: 'Local Agent', why: 'El LinkedIn Agent publica posts con imagenes via API, y hace prospecting (visitas a perfiles, conexiones) via Puppeteer.' },
+    ],
+    sections: [
+      { title: 'API', items: ['LinkedIn API v2', 'OAuth2 access token', 'Posts con imagenes rotativas (carpeta javier/)'] },
+      { title: 'Funciones', items: ['Publicacion automatica (texto + imagen)', 'Prospecting: visitar perfiles de creadores', 'Rotacion de imagenes cada 30 dias'] },
+    ],
+  },
+  pm2: {
+    title: 'Local Agent (PM2)', icon: '⚙️', color: '#f59e0b',
+    desc: 'Sistema de agentes autonomos corriendo 24/7 en la maquina local.',
+    connections: [
+      { dir: 'both', to: 'Neon (PostgreSQL)', why: 'Lee datos de usuarios y generaciones escritos por la web. Escribe acciones sociales, mensajes de email y prospectos que la web puede consultar.' },
+      { dir: 'out', to: 'Anthropic', why: 'Genera contenido para tweets, Reddit replies, email replies y analisis nocturnos (Guardian, Scout, Watchdog, Manager).' },
+      { dir: 'out', to: 'Resend', why: 'Envia reportes diarios, alertas y auto-replies via email de dominio (@ytubviral.com).' },
+      { dir: 'out', to: 'Gmail API', why: 'Lee inbox de ytbeviral@gmail.com cada 30 min para detectar emails de usuarios o plataformas.' },
+      { dir: 'out', to: 'Chrome (Puppeteer)', why: 'Lanza Chrome headless para engagement en Twitter/Reddit (personas) y prospecting en LinkedIn.' },
+      { dir: 'out', to: 'Search Console', why: 'Scripts locales solicitan indexacion de nuevas URLs y verifican estado.' },
+      { dir: 'out', to: 'Meta (FB + IG)', why: 'Publica posts automaticos en Facebook Page e Instagram via Graph API.' },
+      { dir: 'out', to: 'LinkedIn', why: 'Publica posts y hace prospecting.' },
+      { dir: 'out', to: 'YouTube Data API', why: 'Consulta datos de canal para los reportes nocturnos (Social Optimizer).' },
+    ],
+    sections: [
+      { title: 'Agentes Core', items: ['Scheduler (orquestador — index.js)', 'Sentinel (uptime cada 5 min — prioridad 1)', 'Doctor (auto-diagnostico y self-healing)'] },
+      { title: 'YCML (Engagement)', items: ['Persona Runner: Alex + Ferran en Twitter/Reddit', 'Follow-up: detecta replies y responde', 'Humanize: delays aleatorios, skip sessions'] },
+      { title: 'YCMR (Publicacion)', items: ['Meta Agent: FB + IG via Graph API', 'LinkedIn Agent: posts + prospecting'] },
+      { title: 'Nocturnos (02:00-03:15)', items: ['Guardian: auditoria de seguridad del codigo', 'Scout: analisis de competencia', 'Watchdog: cumplimiento legal (terms, privacy)', 'Social Optimizer: metricas y tasa de mencion', 'Manager: sintesis ejecutiva de todos los reportes'] },
+    ],
+  },
+  chrome: {
+    title: 'Chrome (Puppeteer Stealth)', icon: '🌐', color: '#a1a1aa',
+    desc: 'Navegador headless que simula usuarios reales en redes sociales.',
+    connections: [
+      { dir: 'in', from: 'Local Agent', why: 'El Persona Runner y LinkedIn Agent lanzan Chrome con perfiles persistentes para hacer engagement (likes, replies) y prospecting sin ser detectados como bots.' },
+      { dir: 'out', to: 'Twitter/Reddit/LinkedIn', why: 'Chrome navega a las plataformas sociales, busca contenido relevante, interactua (like, reply, connect) y guarda las acciones en BD.' },
+    ],
+    sections: [
+      { title: 'Configuracion', items: ['Puppeteer Extra + Stealth Plugin (anti-deteccion)', 'Chrome real instalado localmente', 'Headless por defecto', 'Protocol timeout: 60s'] },
+      { title: 'Perfiles persistentes', items: ['brand — cuenta principal de Twitter', 'alex — persona Alex Sastre (Twitter + Reddit)', 'ferran — persona Ferran Gomez (Twitter + Reddit)', 'Cada perfil tiene cookies, localStorage y session propios'] },
+      { title: 'Auto-heal (3 capas)', items: ['browser.js: detecta lockfiles bloqueados → mata zombies → limpia locks', 'resilience.js: 3 fallos consecutivos → auto-heal completo (cierra, mata, limpia, resetea)', 'doctor.js: diagnostica causa raiz y sugiere fix antes de alertar humano'] },
+    ],
+  },
+};
+
+// Eco diagram node click handlers
+document.querySelectorAll('.eco-node').forEach(g => {
+  g.addEventListener('click', () => showEcoDetail(g.dataset.eco));
+  g.addEventListener('mouseenter', () => { const r = g.querySelector('.hoverable'); if(r){ r.style.filter='brightness(1.4)'; r.style.strokeWidth='2'; }});
+  g.addEventListener('mouseleave', () => { const r = g.querySelector('.hoverable'); if(r){ r.style.filter=''; r.style.strokeWidth='1'; }});
+});
+
+let ecoData = null;
+
+async function loadEcoData() {
+  try {
+    const res = await fetch('/api/ecosystem');
+    ecoData = await res.json();
+    renderEcoStats();
+  } catch (e) { console.error('Ecosystem load error:', e); }
+}
+
+function renderEcoStats() {
+  if (!ecoData) return;
+  const el = document.getElementById('eco-stats');
+  if (!el) return;
+
+  const statusDot = (s) => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--${s==='ok'?'green':s==='warning'?'orange':'red'});margin-right:6px"></span>`;
+  const services = ['vercel','neon','anthropic','resend','cloudflare','pm2'];
+  const labels = { vercel:'YTubViral', neon:'Neon DB', anthropic:'Anthropic', resend:'Resend', cloudflare:'Cloudflare', pm2:'PM2' };
+
+  el.innerHTML = services.map(key => {
+    const s = ecoData[key] || {};
+    let detail = '';
+    if (key === 'vercel') detail = s.responseMs ? `${s.responseMs}ms` : '';
+    if (key === 'neon') detail = s.responseMs ? `${s.responseMs}ms` : '';
+    if (key === 'anthropic') detail = s.balance != null ? `$${s.balance.toFixed(2)}` : '';
+    if (key === 'resend') detail = s.domainStatus || '';
+    if (key === 'pm2') detail = s.processStatus || '';
+    return `<div class="stat-card" style="cursor:pointer" onclick="showEcoDetail('${key}')">
+      <div class="label">${labels[key]}</div>
+      <div class="value" style="font-size:1rem">${statusDot(s.status||'error')}${s.status==='ok'?'Online':s.status==='warning'?'Warning':'Error'}</div>
+      ${detail ? `<div class="sub">${detail}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function showEcoDetail(key) {
+  const info = ECO_INFO[key];
+  if (!info) return;
+
+  const liveData = ecoData?.[key] || {};
+  const el = document.getElementById('eco-detail-content');
+  const diagramEl = document.querySelector('#page-ecosystem .diagram-container');
+  const statsEl = document.getElementById('eco-stats');
+
+  let html = `<div class="detail-hero"><div class="hero-icon" style="background:${info.color}22;color:${info.color}">${info.icon}</div><div><h1>${info.title}</h1><div class="desc">${info.desc}</div></div></div>`;
+
+  // Live status card
+  if (Object.keys(liveData).length > 0) {
+    const statusDot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${liveData.status==='ok'?'green':liveData.status==='warning'?'orange':'red'});margin-right:8px"></span>`;
+    html += `<div class="section"><div class="section-title">${statusDot} Estado en vivo</div>`;
+    html += `<div class="config-grid">`;
+    for (const [k, v] of Object.entries(liveData)) {
+      if (k === 'status') continue;
+      const display = Array.isArray(v) ? v.join(', ') : typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
+      html += `<div class="field"><label>${k}</label><input type="text" value="${escHtml(display)}" readonly style="opacity:0.7;cursor:default"></div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Connections section
+  if (info.connections && info.connections.length > 0) {
+    html += `<div class="section"><div class="section-title">🔗 Conexiones</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:0.75rem">`;
+    for (const conn of info.connections) {
+      const arrow = conn.dir === 'in' ? '←' : conn.dir === 'out' ? '→' : '⇄';
+      const arrowColor = conn.dir === 'in' ? '#22c55e' : conn.dir === 'out' ? '#3b82f6' : '#f59e0b';
+      const label = conn.dir === 'in' ? conn.from : conn.to;
+      const dirLabel = conn.dir === 'in' ? 'Recibe de' : conn.dir === 'out' ? 'Envía a' : 'Bidireccional con';
+      html += `<div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem">`;
+      html += `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem">`;
+      html += `<span style="font-size:1.3rem;color:${arrowColor}">${arrow}</span>`;
+      html += `<span style="font-weight:600">${label}</span>`;
+      html += `<span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">${dirLabel}</span>`;
+      html += `</div>`;
+      html += `<div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">${conn.why}</div>`;
+      html += `</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Static info sections
+  for (const section of info.sections) {
+    html += `<div class="section"><div class="section-title">${section.title}</div><ul>`;
+    for (const item of section.items) {
+      html += `<li>${item}</li>`;
+    }
+    html += `</ul></div>`;
+  }
+
+  el.innerHTML = html;
+  document.getElementById('eco-detail').style.display = 'block';
+  if (diagramEl) diagramEl.style.display = 'none';
+  if (statsEl) statsEl.style.display = 'none';
+}
+
+function closeEcoDetail() {
+  document.getElementById('eco-detail').style.display = 'none';
+  const diagramEl = document.querySelector('#page-ecosystem .diagram-container');
+  const statsEl = document.getElementById('eco-stats');
+  if (diagramEl) diagramEl.style.display = '';
+  if (statsEl) statsEl.style.display = '';
+}
+
 
 </script>
 </body>

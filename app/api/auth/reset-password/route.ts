@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       to: user.email,
       subject,
       html: passwordChangedEmail(name, emailLang),
+      isTransactional: true,
     }).catch(err => console.error('Password changed email error:', err));
 
     return NextResponse.json({ ok: true });

@@ -1,9 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import { generateGmailReply } from './content-generator';
+import { Resend } from 'resend';
 
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const AGENT_EMAIL = process.env.AGENT_EMAIL ?? 'ytbeviral@gmail.com';
+
+const resendKey = process.env.RESEND_API_KEY?.trim();
+const resend = resendKey ? new Resend(resendKey) : null;
 
 // ── OAuth helpers ─────────────────────────────────────────────────────────────
 
@@ -220,21 +224,32 @@ export async function runGmailAgent(): Promise<GmailAgentResult> {
       // Check if important — BCC owner
       const important = isImportant(subject, body);
 
-      // Send reply
-      const rawEmail = buildMimeEmail({
-        to: senderEmail,
-        from: `Equipo YTubViral <${AGENT_EMAIL}>`,
-        subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
-        body: replyBody,
-        inReplyTo: messageId,
-        references: references ? `${references} ${messageId}` : messageId,
-        bcc: important ? OWNER_EMAIL : undefined,
-      });
-
-      await gmailPost('/messages/send', token, {
-        raw: rawEmail,
-        threadId: msg.threadId,
-      });
+      // Send reply via Resend (domain email) or Gmail fallback
+      const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+      if (resend) {
+        await resend.emails.send({
+          from: 'YTubViral Support <support@ytubviral.com>',
+          replyTo: 'support@ytubviral.com',
+          to: senderEmail,
+          subject: replySubject,
+          text: replyBody,
+          ...(important ? { bcc: OWNER_EMAIL } : {}),
+        });
+      } else {
+        const rawEmail = buildMimeEmail({
+          to: senderEmail,
+          from: `Equipo YTubViral <${AGENT_EMAIL}>`,
+          subject: replySubject,
+          body: replyBody,
+          inReplyTo: messageId,
+          references: references ? `${references} ${messageId}` : messageId,
+          bcc: important ? OWNER_EMAIL : undefined,
+        });
+        await gmailPost('/messages/send', token, {
+          raw: rawEmail,
+          threadId: msg.threadId,
+        });
+      }
 
       // Mark original as read
       await gmailPost(`/messages/${msg.id}/modify`, token, {
@@ -271,28 +286,46 @@ export async function sendNotificationEmail(
   subject: string,
   body: string
 ): Promise<void> {
-  const token = await getAccessToken();
-  const rawEmail = buildMimeEmail({
-    to: AGENT_EMAIL,
-    from: `YTubViral <${AGENT_EMAIL}>`,
-    subject,
-    body,
-  });
-  await gmailPost('/messages/send', token, { raw: rawEmail });
+  if (resend) {
+    await resend.emails.send({
+      from: 'YTubViral <hello@ytubviral.com>',
+      to: AGENT_EMAIL,
+      subject,
+      text: body,
+    });
+  } else {
+    const token = await getAccessToken();
+    const rawEmail = buildMimeEmail({
+      to: AGENT_EMAIL,
+      from: `YTubViral <${AGENT_EMAIL}>`,
+      subject,
+      body,
+    });
+    await gmailPost('/messages/send', token, { raw: rawEmail });
+  }
 }
 
 export async function sendOwnerEmail(
   subject: string,
   body: string
 ): Promise<void> {
-  const token = await getAccessToken();
-  const rawEmail = buildMimeEmail({
-    to: OWNER_EMAIL,
-    from: `YTubViral <${AGENT_EMAIL}>`,
-    subject,
-    body,
-  });
-  await gmailPost('/messages/send', token, { raw: rawEmail });
+  if (resend) {
+    await resend.emails.send({
+      from: 'YTubViral Agent <hello@ytubviral.com>',
+      to: OWNER_EMAIL,
+      subject,
+      text: body,
+    });
+  } else {
+    const token = await getAccessToken();
+    const rawEmail = buildMimeEmail({
+      to: OWNER_EMAIL,
+      from: `YTubViral <${AGENT_EMAIL}>`,
+      subject,
+      body,
+    });
+    await gmailPost('/messages/send', token, { raw: rawEmail });
+  }
 }
 
 export async function sendEmailTo(
@@ -300,12 +333,22 @@ export async function sendEmailTo(
   subject: string,
   body: string
 ): Promise<void> {
-  const token = await getAccessToken();
-  const rawEmail = buildMimeEmail({
-    to,
-    from: `YTubViral <${AGENT_EMAIL}>`,
-    subject,
-    body,
-  });
-  await gmailPost('/messages/send', token, { raw: rawEmail });
+  if (resend) {
+    await resend.emails.send({
+      from: 'YTubViral <hello@ytubviral.com>',
+      replyTo: 'support@ytubviral.com',
+      to,
+      subject,
+      text: body,
+    });
+  } else {
+    const token = await getAccessToken();
+    const rawEmail = buildMimeEmail({
+      to,
+      from: `YTubViral <${AGENT_EMAIL}>`,
+      subject,
+      body,
+    });
+    await gmailPost('/messages/send', token, { raw: rawEmail });
+  }
 }

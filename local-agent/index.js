@@ -21,6 +21,45 @@ console.log('[agent] YTubViral local agent starting...');
 // Inicializar BD
 db.initDb().catch(err => console.error('[db] Init error:', err));
 
+// ── Cleanup: reports >7d, logs >100KB ────────────────────────────────────────
+(function cleanup() {
+  const fs = require('fs');
+  const path = require('path');
+  const now = Date.now();
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  const MAX_LOG_BYTES = 100 * 1024;
+
+  // Purge old reports
+  const reportsDir = path.join(__dirname, 'reports');
+  try {
+    const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json') && !f.includes('snapshots'));
+    let deleted = 0;
+    for (const f of files) {
+      const fp = path.join(reportsDir, f);
+      const stat = fs.statSync(fp);
+      if (now - stat.mtimeMs > SEVEN_DAYS) { fs.unlinkSync(fp); deleted++; }
+    }
+    if (deleted > 0) console.log(`[cleanup] Deleted ${deleted} reports older than 7 days`);
+  } catch {}
+
+  // Rotate large logs
+  const logsDir = path.join(__dirname, 'logs');
+  try {
+    for (const logFile of ['out.log', 'error.log', 'tunnel-error.log']) {
+      const fp = path.join(logsDir, logFile);
+      try {
+        const stat = fs.statSync(fp);
+        if (stat.size > MAX_LOG_BYTES) {
+          const content = fs.readFileSync(fp, 'utf8');
+          const lines = content.split('\n');
+          fs.writeFileSync(fp, lines.slice(-200).join('\n'));
+          console.log(`[cleanup] Rotated ${logFile}: ${(stat.size / 1024).toFixed(0)}KB → kept last 200 lines`);
+        }
+      } catch {}
+    }
+  } catch {}
+})();
+
 // ── PRIORITY 1: Site Health ───────────────────────────────────────────────────
 
 // Sentinel — uptime monitor every 5 minutes (24/7)

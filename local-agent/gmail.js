@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const { generateEmailReply } = require('./claude');
+const { sendViaResend } = require('./resend');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
 
@@ -26,27 +27,6 @@ async function getAccessToken() {
   const data = await res.json();
   if (!data.access_token) throw new Error('Gmail OAuth failed: ' + JSON.stringify(data));
   return data.access_token;
-}
-
-// ── Email building ──
-
-function buildRawEmail({ to, from, subject, body, bcc, inReplyTo, references, threadId }) {
-  const lines = [
-    `From: ${from}`,
-    `To: ${to}`,
-  ];
-  if (bcc) lines.push(`Bcc: ${bcc}`);
-  lines.push(`Subject: ${subject}`);
-  if (inReplyTo) lines.push(`In-Reply-To: ${inReplyTo}`);
-  if (references) lines.push(`References: ${references}`);
-  lines.push(
-    'Content-Type: text/plain; charset=utf-8',
-    'MIME-Version: 1.0',
-    '',
-    body,
-  );
-  const raw = lines.join('\r\n');
-  return Buffer.from(raw).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // ── Classification ──
@@ -248,45 +228,23 @@ async function markAsRead(token, messageId) {
   });
 }
 
-async function sendReply(token, { to, subject, body, bcc, inReplyTo, references, threadId }) {
-  const raw = buildRawEmail({
+async function sendReply(_token, { to, subject, body, bcc }) {
+  await sendViaResend({
     to,
-    from: `YTubViral <${AGENT_EMAIL}>`,
     subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
     body,
+    from: 'support',
+    replyTo: 'support@ytubviral.com',
     bcc,
-    inReplyTo,
-    references,
   });
-  const payload = { raw };
-  if (threadId) payload.threadId = threadId;
-
-  const res = await fetch(`${GMAIL_BASE}/messages/send`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  return res.json();
 }
 
-async function forwardToOwner(token, { from, subject, body, snippet }) {
-  const raw = buildRawEmail({
+async function forwardToOwner(_token, { from, subject, body, snippet }) {
+  await sendViaResend({
     to: OWNER_EMAIL,
-    from: `YTubViral Agent <${AGENT_EMAIL}>`,
     subject: `[FWD] ${subject}`,
     body: `── Reenvío automático del agente ──\nDe: ${from}\nAsunto: ${subject}\n${'─'.repeat(40)}\n\n${body || snippet}\n\n${'─'.repeat(40)}\nReenviado por el agente YTubViral`,
-  });
-
-  await fetch(`${GMAIL_BASE}/messages/send`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ raw }),
+    from: 'agent',
   });
 }
 

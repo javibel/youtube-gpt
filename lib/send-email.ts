@@ -12,10 +12,13 @@ export async function sendTransactionalEmail({
   to,
   subject,
   html,
+  isTransactional = false,
 }: {
   to: string;
   subject: string;
   html: string;
+  /** Set true for verification/password emails — omits List-Unsubscribe header */
+  isTransactional?: boolean;
 }): Promise<void> {
   // Plain-text version for multipart emails (improves deliverability)
   const text = html
@@ -45,9 +48,11 @@ export async function sendTransactionalEmail({
         subject,
         html,
         text,
-        headers: {
-          'List-Unsubscribe': '<mailto:support@ytubviral.com?subject=unsubscribe>',
-        },
+        ...(!isTransactional && {
+          headers: {
+            'List-Unsubscribe': '<mailto:support@ytubviral.com?subject=unsubscribe>',
+          },
+        }),
       });
       if (result.error) {
         console.error('[send-email] Resend error:', result.error);

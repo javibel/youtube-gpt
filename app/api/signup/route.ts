@@ -199,6 +199,7 @@ export async function POST(req: NextRequest) {
       to: email,
       subject,
       html: verificationEmail(name, verifyUrl, emailLang),
+      isTransactional: true,
     }).catch((err) => console.error('Verification email error:', err));
 
     return NextResponse.json({ success: true }, { status: 201 });

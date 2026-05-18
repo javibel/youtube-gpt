@@ -1,67 +1,16 @@
 'use strict';
 
 const db = require('./db');
+const { sendViaResend } = require('./resend');
 
-const TOKEN_URL = 'https://oauth2.googleapis.com/token';
-const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
-const AGENT_EMAIL = process.env.AGENT_EMAIL ?? 'ytbeviral@gmail.com';
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'javijimenoplata@gmail.com';
 
-async function getAccessToken() {
-  const res = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET,
-      refresh_token: process.env.GMAIL_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error('Gmail OAuth failed');
-  return data.access_token;
-}
-
-function encodeSubject(subject) {
-  // RFC 2047: encode non-ASCII Subject headers so email clients don't garble them
-  if (/[^\x20-\x7E]/.test(subject)) {
-    const encoded = Buffer.from(subject, 'utf-8').toString('base64');
-    return `=?UTF-8?B?${encoded}?=`;
-  }
-  return subject;
-}
-
-function buildEmail({ to, from, subject, body }) {
-  const lines = [
-    `From: ${from}`,
-    `To: ${to}`,
-    `Subject: ${encodeSubject(subject)}`,
-    `Content-Type: text/plain; charset=utf-8`,
-    `Content-Transfer-Encoding: base64`,
-    `MIME-Version: 1.0`,
-    '',
-    Buffer.from(body, 'utf-8').toString('base64'),
-  ];
-  const raw = lines.join('\r\n');
-  return Buffer.from(raw).toString('base64url');
-}
-
 async function sendEmail(subject, body) {
-  const token = await getAccessToken();
-  const raw = buildEmail({
+  await sendViaResend({
     to: OWNER_EMAIL,
-    from: `YTubViral Agent <${AGENT_EMAIL}>`,
     subject,
     body,
-  });
-  await fetch(`${GMAIL_BASE}/messages/send`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ raw }),
+    from: 'agent',
   });
 }
 

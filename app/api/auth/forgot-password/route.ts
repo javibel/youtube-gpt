@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
   `;
 
   try {
-    await sendTransactionalEmail({ to: email, subject, html });
+    await sendTransactionalEmail({ to: email, subject, html, isTransactional: true });
   } catch (err) {
     console.error('forgot-password email error:', err);
   }
