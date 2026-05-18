@@ -67,7 +67,7 @@ async function login({ profileDir, cookieFile } = {}) {
     cookieFile: effectiveCookieFile,
   });
 
-  const ok = await safeGoto(p, 'https://x.com/home', { tag, timeout: 60000 });
+  const ok = await safeGoto(p, 'https://x.com/home', { tag, timeout: 60000, profileDir: profileDir || undefined });
   if (!ok) {
     await p.close().catch(() => {});
     return null;
@@ -103,7 +103,7 @@ async function login({ profileDir, cookieFile } = {}) {
       sessionCookieName: 'auth_token',
       cookieFile: effectiveCookieFile,
     });
-    const retryOk = await safeGoto(retryPage, 'https://x.com/home', { tag, timeout: 60000 });
+    const retryOk = await safeGoto(retryPage, 'https://x.com/home', { tag, timeout: 60000, profileDir: profileDir || undefined });
     if (retryOk) {
       await new Promise(r => setTimeout(r, 3000));
       if (retryPage.url().includes('/home')) {
@@ -161,7 +161,7 @@ async function engageWithTweets(opts = {}) {
     const searchUrl = query.startsWith('#')
       ? `https://x.com/search?q=%23${query.slice(1)}&src=typed_query&f=live`
       : `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query&f=live`;
-    const navOk = await safeGoto(page, searchUrl, { tag, timeout: 45000 });
+    const navOk = await safeGoto(page, searchUrl, { tag, timeout: 45000, profileDir: opts.profileDir });
     if (!navOk) {
       console.log(`[${tag}] Failed to load search, ending session`);
       return;

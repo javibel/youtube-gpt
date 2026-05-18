@@ -8,9 +8,14 @@
  */
 
 const { sendEmail } = require('./reports');
+const { recordNavFailure, resetNavFailures, killZombieChromeForProfile, closeBrowserForProfile } = require('./browser');
+const path = require('path');
 
 // Track which session alerts have been sent (per process lifetime)
 const alertsSent = new Set();
+
+// Threshold: after this many consecutive navigation failures, try auto-healing
+const AUTO_HEAL_THRESHOLD = 3;
 
 /**
  * Navigate with automatic retry on timeout.
@@ -28,10 +33,13 @@ async function safeGoto(page, url, opts = {}) {
   const timeout = opts.timeout || 60000;
   const waitUntil = opts.waitUntil || 'domcontentloaded';
   const maxRetries = opts.retries || 2;
+  const profileDir = opts.profileDir || null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await page.goto(url, { waitUntil, timeout });
+      // Success — reset failure counter
+      if (profileDir) resetNavFailures(profileDir);
       return true;
     } catch (err) {
       const isTimeout = err.message.includes('timeout') || err.message.includes('Timeout');
@@ -43,6 +51,30 @@ async function safeGoto(page, url, opts = {}) {
       }
       // Last attempt or non-timeout error: log and return false (don't throw)
       console.error(`[${tag}] Navigation failed after ${attempt} attempt(s): ${err.message}`);
+
+      // Track consecutive failures and auto-heal if threshold reached
+      if (profileDir && isTimeout) {
+        const failures = recordNavFailure(profileDir);
+        if (failures >= AUTO_HEAL_THRESHOLD) {
+          console.log(`[${tag}] ${failures} consecutive nav failures — auto-healing: killing zombies + restarting browser`);
+          try {
+            await page.close().catch(() => {});
+            const absDir = path.resolve(__dirname, profileDir);
+            await closeBrowserForProfile(profileDir);
+            await killZombieChromeForProfile(absDir);
+            // Clean locks
+            const fs = require('fs');
+            for (const lockName of ['SingletonLock', 'SingletonCookie', 'DevToolsActivePort', 'lockfile']) {
+              try { fs.unlinkSync(path.join(absDir, lockName)); } catch {}
+            }
+            resetNavFailures(profileDir);
+            console.log(`[${tag}] Auto-heal complete — browser will be relaunched on next use`);
+          } catch (healErr) {
+            console.error(`[${tag}] Auto-heal failed: ${healErr.message}`);
+          }
+        }
+      }
+
       return false;
     }
   }

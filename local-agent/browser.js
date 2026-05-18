@@ -13,13 +13,58 @@ const CHROME_PROFILE_DIR = path.join(__dirname, 'chrome-profile');
 // Map of profileDir -> browser instance (supports multiple simultaneous profiles)
 const browsers = new Map();
 
+// Track consecutive navigation failures per profile for auto-healing
+const navFailures = new Map();
+
+function recordNavFailure(profileDir) {
+  const count = (navFailures.get(profileDir) || 0) + 1;
+  navFailures.set(profileDir, count);
+  return count;
+}
+
+function resetNavFailures(profileDir) {
+  navFailures.set(profileDir, 0);
+}
+
+/**
+ * Kill zombie Chrome processes that hold lockfiles.
+ * Uses taskkill on Windows to kill chrome.exe instances tied to a profile dir.
+ */
+async function killZombieChromeForProfile(absDir) {
+  const { execSync } = require('child_process');
+  try {
+    // On Windows, find chrome.exe processes whose command line includes the profile dir
+    const cmd = `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${absDir.replace(/\\/g, '\\\\')}') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`;
+    execSync(cmd, { timeout: 10000, stdio: 'pipe' });
+    console.log(`[browser] Killed zombie Chrome processes for ${path.basename(absDir)}`);
+    // Brief wait for OS to release file handles
+    await new Promise(r => setTimeout(r, 1000));
+  } catch {
+    // Fallback: if targeted kill fails, don't nuke all Chrome (user might have browser open)
+    console.log(`[browser] No zombie Chrome found for ${path.basename(absDir)}`);
+  }
+}
+
 async function launchBrowser(absDir) {
   // Remove stale lock/port files if exists (zombie Chrome)
+  let lockBlocked = false;
   for (const lockName of ['SingletonLock', 'SingletonCookie', 'DevToolsActivePort', 'lockfile']) {
     const lockFile = path.join(absDir, lockName);
     if (fs.existsSync(lockFile)) {
-      try { fs.unlinkSync(lockFile); } catch {}
+      try { fs.unlinkSync(lockFile); } catch {
+        lockBlocked = true;
+      }
       console.log(`[browser] Removed stale ${lockName} for ${absDir}`);
+    }
+  }
+
+  // If any lock couldn't be removed, a zombie Chrome holds it — kill and retry
+  if (lockBlocked) {
+    console.log(`[browser] Lock files held by zombie process — killing Chrome for ${path.basename(absDir)}`);
+    await killZombieChromeForProfile(absDir);
+    for (const lockName of ['SingletonLock', 'SingletonCookie', 'DevToolsActivePort', 'lockfile']) {
+      const lockFile = path.join(absDir, lockName);
+      try { fs.unlinkSync(lockFile); } catch {}
     }
   }
 
@@ -218,4 +263,8 @@ module.exports = {
   newPage,
   ensureSession,
   persistSession,
+  // Nav failure tracking (used by resilience.js for auto-healing)
+  recordNavFailure,
+  resetNavFailures,
+  killZombieChromeForProfile,
 };
