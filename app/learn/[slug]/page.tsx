@@ -82,8 +82,8 @@ export default function LearnGuidePage() {
 
           <div className="p-6 md:p-8">
             <div className="flex items-start gap-4">
-              <div className="w-[144px] h-[144px] relative shrink-0">
-                <Image src={guide.icon} alt="" width={144} height={144} className="object-contain" />
+              <div className="w-[56px] h-[56px] relative shrink-0">
+                <Image src={guide.icon} alt="" width={56} height={56} className="object-contain" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2 flex-wrap">

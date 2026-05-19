@@ -76,28 +76,6 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
       />
 
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-1.5">
-            <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-              <circle cx="16" cy="16" r="8" fill="#ee4d5e" />
-            </svg>
-            <span className="font-display font-bold text-[17px] tracking-tight">
-              YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
-            </span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/features/learning-hub" className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400 hover:text-white transition">
-              {lang === 'en' ? '← Learning Hub' : '← Learning Hub'}
-            </Link>
-            <Link href="/signup" className="btn-offset px-4 py-2 text-[13px] font-display">
-              {lang === 'en' ? 'Get started free' : 'Empezar gratis'}
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {/* Article */}
       <article className="max-w-3xl mx-auto px-6 pt-16 pb-8">
         {/* Breadcrumbs */}
