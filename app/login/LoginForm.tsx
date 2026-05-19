@@ -29,7 +29,19 @@ export default function LoginForm() {
       if (result?.error) {
         setError(t('Email o contraseña incorrectos', 'Incorrect email or password'));
       } else {
-        router.push('/dashboard');
+        // Check if the user needs verification (middleware would redirect anyway, but this is better UX)
+        const sess = await fetch('/api/auth/session').then(r => r.json());
+        if (sess?.user?.requiresVerification) {
+          // Send a fresh verification code
+          fetch('/api/auth/resend-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, lang }),
+          }).catch(() => {});
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch {
       setError(t('Error al ingresar', 'Sign in error'));

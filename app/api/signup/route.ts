@@ -183,22 +183,20 @@ export async function POST(req: NextRequest) {
       data: { email, password: hashedPassword, name, lang: emailLang },
     });
 
-    // Create email verification token (24h)
-    const verifyToken = crypto.randomBytes(32).toString('hex');
+    // Create email verification code (6 digits, 15 min expiry)
+    const verifyCode = String(crypto.randomInt(100000, 999999));
     await prisma.emailVerificationToken.create({
-      data: { email, token: verifyToken, expires: new Date(Date.now() + 24 * 3600 * 1000) },
+      data: { email, token: verifyCode, expires: new Date(Date.now() + 15 * 60 * 1000) },
     });
 
-    // Send verification email (non-blocking)
-    const baseUrl = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
-    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
+    // Send verification email with code (non-blocking)
     const subject = emailLang === 'en'
-      ? `Verify your email - YTubViral`
-      : `Verifica tu email - YTubViral`;
+      ? `${verifyCode} — Verify your email - YTubViral`
+      : `${verifyCode} — Verifica tu email - YTubViral`;
     sendTransactionalEmail({
       to: email,
       subject,
-      html: verificationEmail(name, verifyUrl, emailLang),
+      html: verificationEmail(name, verifyCode, emailLang),
       isTransactional: true,
     }).catch((err) => console.error('Verification email error:', err));
 

@@ -34,7 +34,7 @@ function footer(isEn: boolean): string {
 
 // ── Verification email ───────────────────────────────────────────────────────
 
-export function verificationEmail(name: string, verifyUrl: string, lang: 'es' | 'en'): string {
+export function verificationEmail(name: string, code: string, lang: 'es' | 'en'): string {
   const isEn = lang === 'en';
   return `${header(lang)}
         <tr><td style="background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
@@ -44,15 +44,17 @@ export function verificationEmail(name: string, verifyUrl: string, lang: 'es' | 
           <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">
             ${isEn ? `Hi, ${name}.` : `Hola, ${name}.`}
           </p>
-          <p style="margin:0 0 28px;font-size:15px;color:#71717a;line-height:1.7;">
+          <p style="margin:0 0 24px;font-size:15px;color:#71717a;line-height:1.7;">
             ${isEn
-              ? 'Click the button below to verify your email address and activate your account. The link expires in 24 hours.'
-              : 'Haz clic en el botón para verificar tu email y activar tu cuenta. El enlace expira en 24 horas.'}
+              ? 'Enter this code in YTubViral to verify your email and activate your account. The code expires in 15 minutes.'
+              : 'Introduce este código en YTubViral para verificar tu email y activar tu cuenta. El código expira en 15 minutos.'}
           </p>
-          <a href="${verifyUrl}" style="display:inline-block;background:#e84d5b;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:6px;text-decoration:none;box-shadow:3px 3px 0 #000;">
-            ${isEn ? 'Verify email →' : 'Verificar email →'}
-          </a>
-          <p style="margin:28px 0 0;font-size:12px;color:#52525b;">
+          <div style="background:#0a0a0a;border:2px solid rgba(232,77,91,0.3);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
+            <p style="margin:0;font-size:36px;font-weight:900;color:#ffffff;letter-spacing:0.3em;font-family:monospace;">
+              ${code}
+            </p>
+          </div>
+          <p style="margin:0;font-size:12px;color:#52525b;">
             ${isEn ? "If you didn't create an account, you can safely ignore this email." : 'Si no creaste esta cuenta, puedes ignorar este email.'}
           </p>
         </td></tr>

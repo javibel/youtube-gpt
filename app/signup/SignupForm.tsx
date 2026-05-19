@@ -48,7 +48,9 @@ export default function SignupForm() {
       if (!res.ok) {
         setError(data.error || t('Error al crear cuenta', 'Error creating account'));
       } else {
-        router.push('/login');
+        // Store password temporarily for auto-login after verification
+        sessionStorage.setItem('ytv_signup_pw', password);
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch {
       setError(t('Error al crear cuenta', 'Error creating account'));

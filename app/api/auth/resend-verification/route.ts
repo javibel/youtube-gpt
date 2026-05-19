@@ -22,22 +22,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Delete old token and create a fresh one
+  // Delete old tokens and create a fresh 6-digit code
   await prisma.emailVerificationToken.deleteMany({ where: { email } });
-  const token = crypto.randomBytes(32).toString('hex');
+  const code = String(crypto.randomInt(100000, 999999));
   await prisma.emailVerificationToken.create({
-    data: { email, token, expires: new Date(Date.now() + 24 * 3600 * 1000) },
+    data: { email, token: code, expires: new Date(Date.now() + 15 * 60 * 1000) },
   });
 
-  const baseUrl = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
-  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
   const name = user.name ?? email;
-  const subject = emailLang === 'en' ? 'Verify your email - YTubViral' : 'Verifica tu email - YTubViral';
+  const subject = emailLang === 'en'
+    ? `${code} — Verify your email - YTubViral`
+    : `${code} — Verifica tu email - YTubViral`;
 
   sendTransactionalEmail({
     to: email,
     subject,
-    html: verificationEmail(name, verifyUrl, emailLang),
+    html: verificationEmail(name, code, emailLang),
     isTransactional: true,
   }).catch((err) => console.error('Resend verification error:', err));
 

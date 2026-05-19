@@ -1,33 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-const BASE = process.env.NEXTAUTH_URL ?? 'https://ytubviral.com';
+export async function POST(request: NextRequest) {
+  const { email, code } = await request.json();
 
-export async function GET(request: NextRequest) {
-  const token = request.nextUrl.searchParams.get('token');
-
-  if (!token) {
-    return NextResponse.redirect(`${BASE}/verify-email?error=invalid`);
+  if (!email || !code) {
+    return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   }
 
-  const record = await prisma.emailVerificationToken.findUnique({ where: { token } });
+  const record = await prisma.emailVerificationToken.findFirst({
+    where: { email, token: code },
+  });
 
   if (!record) {
-    return NextResponse.redirect(`${BASE}/verify-email?error=invalid`);
+    return NextResponse.json({ error: 'invalid_code' }, { status: 400 });
   }
 
   if (record.expires < new Date()) {
-    await prisma.emailVerificationToken.delete({ where: { token } });
-    return NextResponse.redirect(`${BASE}/verify-email?error=expired`);
+    await prisma.emailVerificationToken.delete({ where: { token: code } });
+    return NextResponse.json({ error: 'expired_code' }, { status: 400 });
   }
 
   await Promise.all([
     prisma.user.update({
-      where: { email: record.email },
+      where: { email },
       data: { emailVerified: new Date() },
     }),
-    prisma.emailVerificationToken.delete({ where: { token } }),
+    prisma.emailVerificationToken.deleteMany({ where: { email } }),
   ]);
 
-  return NextResponse.redirect(`${BASE}/verify-email?success=1`);
+  return NextResponse.json({ verified: true });
 }

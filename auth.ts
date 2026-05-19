@@ -29,7 +29,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!passwordMatch) return null;
 
         // Auto-verify legacy users created before email verification was added (pre-March 2026).
-        // Users created after must verify their email — no bypass even if token expired.
         if (!user.emailVerified) {
           const LEGACY_CUTOFF = new Date('2026-03-01T00:00:00Z');
           if (user.createdAt < LEGACY_CUTOFF) {
@@ -51,13 +50,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         const ev = (user as { emailVerified?: Date | null }).emailVerified;
         // Only explicitly null means "new unverified user" — undefined means legacy session
         token.requiresVerification = ev === null;
         token.isAdmin = user.email === process.env.ADMIN_EMAIL;
+      }
+      // On session update(), re-check emailVerified from DB to unblock verified users
+      if (trigger === 'update' && token.requiresVerification && token.id) {
+        const fresh = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { emailVerified: true },
+        });
+        if (fresh?.emailVerified) {
+          token.requiresVerification = false;
+        }
       }
       return token;
     },
