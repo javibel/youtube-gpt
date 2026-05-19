@@ -9,22 +9,23 @@ const { adjustedLimit, shouldSkipSession, shouldSkipPost, readingPause, actionPa
 
 const BASE_LIMITS = { likes: 8, replies: 3 };
 
-// Mix of hashtag searches AND keyword queries (to find people asking for help)
+// Targeted searches — removed generic hashtags (#youtube, #contentcreator) that return irrelevant noise
 const SEARCH_QUERIES = [
-  // Hashtag searches (traditional engagement)
-  '#contentcreator', '#youtube', '#youtuber', '#smallyoutuber',
-  '#contentcreators', '#videomarketing', '#creatoreconomy',
-  '#youtubeseo', '#youtubergrowth', '#youtubetips',
+  // Niche hashtags (high signal-to-noise)
+  '#smallyoutuber', '#youtubeseo', '#youtubergrowth', '#youtubetips',
+  '#videomarketing', '#creatoreconomy',
   '#marketingdigital', '#creadordecontenido',
   // Keyword queries (find people asking for help — HIGH CONVERSION)
   '"youtube seo" tool', '"need help" youtube channel',
   '"video ideas" stuck', '"how to grow" youtube',
   '"what tool" youtube', '"recommend" youtube tool',
   '"thumbnail" help', '"youtube analytics" recommend',
+  'youtube channel tips', 'youtube algorithm help',
+  'grow my youtube channel', 'youtube title ideas',
   // ES keyword queries
   '"herramienta youtube"', '"ideas para video"',
   '"no sé qué subir"', '"cómo crecer" youtube',
-  '"seo youtube" herramienta',
+  '"seo youtube" herramienta', 'crecer en youtube consejos',
 ];
 
 // Legacy alias for compatibility
@@ -161,7 +162,7 @@ async function engageWithTweets(opts = {}) {
     const searchUrl = query.startsWith('#')
       ? `https://x.com/search?q=%23${query.slice(1)}&src=typed_query&f=live`
       : `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query&f=live`;
-    const navOk = await safeGoto(page, searchUrl, { tag, timeout: 45000, profileDir: opts.profileDir });
+    const navOk = await safeGoto(page, searchUrl, { tag, timeout: 60000, profileDir: opts.profileDir });
     if (!navOk) {
       console.log(`[${tag}] Failed to load search, ending session`);
       return;
@@ -262,7 +263,7 @@ async function engageWithTweets(opts = {}) {
           }
 
           // Navigate to the tweet's own page to reply
-          const tweetNavOk = await safeGoto(page, tweet.tweetUrl, { tag, timeout: 45000 });
+          const tweetNavOk = await safeGoto(page, tweet.tweetUrl, { tag, timeout: 60000 });
           if (!tweetNavOk) {
             console.log(`[${tag}] Failed to load tweet page, ending session`);
             break;
@@ -280,7 +281,7 @@ async function engageWithTweets(opts = {}) {
 
           if (!replyClicked) {
             console.log(`[${tag}] Reply button not found for ${tweet.author}`);
-            await safeGoto(page, searchUrl, { tag, timeout: 45000 });
+            await safeGoto(page, searchUrl, { tag, timeout: 60000 });
             continue;
           }
           await delay(1500, 2500);
@@ -290,7 +291,7 @@ async function engageWithTweets(opts = {}) {
           if (!textArea) {
             console.log(`[${tag}] Reply text area not found`);
             await page.keyboard.press('Escape').catch(() => {});
-            await safeGoto(page, searchUrl, { tag, timeout: 45000 });
+            await safeGoto(page, searchUrl, { tag, timeout: 60000 });
             continue;
           }
 
@@ -313,10 +314,10 @@ async function engageWithTweets(opts = {}) {
           }
 
           // Navigate back to search results
-          const backOk = await safeGoto(page, searchUrl, { tag, timeout: 45000 });
+          const backOk = await safeGoto(page, searchUrl, { tag, timeout: 60000 });
           if (!backOk) {
             console.log(`[${tag}] Search nav failed, trying fresh load...`);
-            const retry = await safeGoto(page, searchUrl, { tag, timeout: 45000, retries: 1 });
+            const retry = await safeGoto(page, searchUrl, { tag, timeout: 60000, retries: 1 });
             if (!retry) {
               console.log(`[${tag}] Cannot return to search, ending session`);
               break;
@@ -326,7 +327,7 @@ async function engageWithTweets(opts = {}) {
         } catch (err) {
           console.error(`[${tag}] Reply error: ${err.message}`);
           await page.keyboard.press('Escape').catch(() => {});
-          const backOk = await safeGoto(page, searchUrl, { tag, timeout: 45000 });
+          const backOk = await safeGoto(page, searchUrl, { tag, timeout: 60000 });
           if (!backOk) {
             console.log(`[${tag}] Cannot return to search, ending session`);
             break;

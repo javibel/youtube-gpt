@@ -307,6 +307,22 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'We walk through all 14 YTubViral tools in action: from the title generator to AI coaching. Includes a step-by-step video tutorial so you can see exactly how each one works.',
     },
   },
+  {
+    slug: 'ideas-videos-youtube-no-se-que-subir',
+    cat: 'youtube',
+    readMin: 11,
+    date: { es: '19 May 2026', en: 'May 19, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: '/authors/javier.webp' },
+    image: '/blog/ideas-videos-youtube.webp',
+    title: {
+      es: 'No sé qué subir a YouTube: el sistema para no quedarte sin ideas nunca',
+      en: 'Don\'t Know What to Upload to YouTube? A System to Never Run Out of Ideas',
+    },
+    excerpt: {
+      es: 'Olvídate de listas genéricas de 100 ideas. Aprende un sistema con datos y herramientas de IA para generar ideas de vídeo relevantes para tu nicho cada semana.',
+      en: 'Forget generic 100-idea lists. Learn a data-driven system with AI tools to generate relevant video ideas for your niche every week.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -3623,6 +3639,242 @@ const ART_TOUR_YTUBVIRAL_EN: BlockType[] = [
   { type: 'callout-final', t: 'Start using all 14 tools today', sub: 'Sign up free on YTubViral and access every AI tool to grow on YouTube. No credit card required.', cta: 'Create free account', href: '/signup' },
 ];
 
+const ART_IDEAS_VIDEOS_ES: BlockType[] = [
+  { type: 'p', t: 'Abres YouTube Studio, te sientas delante de la pantalla y... nada. Bloqueo total. No se te ocurre ni un solo vídeo que merezca la pena grabar. Entonces haces lo que hacemos todos: buscas "ideas para vídeos de YouTube" y encuentras listas de 100, 200 o 300 ideas genéricas que no tienen nada que ver con tu canal.' },
+  { type: 'p', t: 'El problema de esas listas es que son universales. "Haz un unboxing", "graba tu rutina matutina", "reacciona a algo". No tienen en cuenta tu nicho, tu audiencia ni lo que funciona en tu temática. Son ruido.' },
+  { type: 'p', t: 'En este artículo te voy a enseñar un sistema para no quedarte nunca sin ideas. No una lista — un proceso repetible que usa datos reales y herramientas de IA para generar ideas relevantes para TU canal cada semana.' },
+
+  { type: 'h2', t: 'Por qué te quedas sin ideas (y por qué es normal)' },
+  { type: 'p', t: 'El bloqueo creativo no es falta de talento. Es falta de sistema. Los creadores que publican de forma consistente no son más creativos que tú — tienen un proceso que les genera ideas antes de que se les acaben.' },
+  { type: 'p', t: 'Las 3 causas más comunes del "no sé qué subir":' },
+  { type: 'list', items: [
+    'Dependes solo de la inspiración. Si no te llega una idea genial, no grabas.',
+    'No sabes qué busca tu audiencia. Asumes lo que quieren ver en lugar de mirarlo con datos.',
+    'Miras lo que hacen otros y te parece que ya está todo hecho. Parálisis por comparación.',
+  ]},
+  { type: 'p', t: 'La solución a las tres es la misma: dejar de esperar ideas y empezar a buscarlas con un sistema.' },
+
+  { type: 'h2', t: 'El sistema de 5 pasos para generar ideas infinitas' },
+  { type: 'p', t: 'Este es el proceso que usan creadores que publican 2-4 vídeos por semana sin bloqueo. Cada paso se apoya en datos, no en intuición.' },
+
+  { type: 'h3', t: 'Paso 1: Investiga qué busca tu audiencia (Keyword Research)' },
+  { type: 'p', t: 'El primer paso no es pensar qué vídeo hacer — es descubrir qué preguntas tiene tu audiencia. Las keywords de YouTube son preguntas sin responder. Cada búsqueda es una persona que necesita un vídeo.' },
+  { type: 'p', t: 'Entra en una herramienta de keyword research para YouTube y busca tu temática principal. Fíjate en:' },
+  { type: 'list', items: [
+    'Volumen de búsqueda: cuánta gente busca eso cada mes.',
+    'Competencia: cuántos vídeos de calidad ya existen sobre el tema.',
+    'Oportunidad: la combinación de alto volumen + baja competencia = tu mejor candidato.',
+  ]},
+  { type: 'p', t: 'No busques UNA idea. Busca 10-15 keywords con oportunidad y anótalas. Esa lista es tu banco de ideas para las próximas semanas.' },
+
+  { type: 'callout-mid', t: 'Descubre keywords con oportunidad real', sub: 'Volumen, competencia y score de oportunidad en segundos. Gratis.', cta: 'Probar Keyword Research', href: '/features/keyword-research' },
+
+  { type: 'h3', t: 'Paso 2: Mira qué le funciona a tu competencia' },
+  { type: 'p', t: 'No se trata de copiar — se trata de detectar patrones. Si un canal similar al tuyo tiene un vídeo con 10x más vistas que su media, ese tema tiene demanda probada en tu nicho.' },
+  { type: 'p', t: 'Analiza 3-5 canales de tu competencia y busca:' },
+  { type: 'list', items: [
+    'Outliers: vídeos con rendimiento muy superior a la media del canal.',
+    'Temas recurrentes: ¿qué temáticas repiten y les siguen funcionando?',
+    'Gaps: ¿qué temas NO han tocado que tú sí podrías cubrir?',
+  ]},
+  { type: 'p', t: 'Un outlier de tu competencia es una idea validada por el mercado. No la copies — hazla mejor, más completa, con tu punto de vista.' },
+
+  { type: 'callout-mid', t: 'Detecta outliers de tu competencia', sub: 'Analiza cualquier canal y encuentra sus vídeos con mejor rendimiento.', cta: 'Analizar competencia', href: '/features/competitor-analysis' },
+
+  { type: 'h3', t: 'Paso 3: Descubre qué está en tendencia ahora mismo' },
+  { type: 'p', t: 'Las tendencias son ideas con fecha de caducidad — y por eso funcionan tan bien. Un vídeo sobre un tema trending puede conseguir en una semana lo que un evergreen tarda meses.' },
+  { type: 'p', t: 'La clave es detectar tendencias temprano, antes de que estén saturadas. No busques lo que ya es viral — busca lo que ESTÁ empezando a subir.' },
+  { type: 'p', t: 'Revisa semanalmente:' },
+  { type: 'list', items: [
+    'Tendencias de tu nicho en herramientas de exploración de trends.',
+    'Temas que están creciendo en búsquedas pero aún tienen pocos vídeos.',
+    'Noticias o lanzamientos de tu sector que generarán búsquedas.',
+  ]},
+
+  { type: 'callout-mid', t: 'Detecta tendencias antes que nadie', sub: 'El Trend Explorer te muestra qué está subiendo en tu nicho ahora mismo.', cta: 'Explorar tendencias', href: '/features/trend-explorer' },
+
+  { type: 'h3', t: 'Paso 4: Usa IA para multiplicar una idea en varias' },
+  { type: 'p', t: 'Ya tienes datos: keywords con oportunidad, outliers de la competencia, tendencias activas. Ahora necesitas convertir esos datos en vídeos concretos con títulos, ángulos y hooks.' },
+  { type: 'p', t: 'Aquí es donde la IA marca la diferencia. En lugar de pensar "voy a hacer un vídeo sobre thumbnails", puedes pedirle a un generador de ideas que te proponga 5 ángulos diferentes:' },
+  { type: 'list', items: [
+    '"Los 3 errores de thumbnail que te cuestan el 60% del CTR"',
+    '"Cómo diseñar thumbnails que funcionan (sin Photoshop)"',
+    '"Thumbnails A/B test: probé 2 diseños durante 30 días"',
+    '"El patrón de thumbnail que usan todos los canales de +1M"',
+    '"5 minutos para crear un thumbnail viral con Canva"',
+  ]},
+  { type: 'p', t: 'De un solo tema salen 5 vídeos diferentes. Cada ángulo atrae a un público distinto y posiciona para keywords distintas.' },
+
+  { type: 'callout-mid', t: 'Genera ideas y títulos con IA', sub: 'Dale un tema y obtén ángulos, títulos y hooks listos para grabar.', cta: 'Probar AI Generator', href: '/features/ai-generator' },
+
+  { type: 'h3', t: 'Paso 5: Organiza todo en un calendario de contenido' },
+  { type: 'p', t: 'Ideas sueltas en un documento se pierden. Necesitas un calendario que te diga qué grabar esta semana, la siguiente y la de después.' },
+  { type: 'p', t: 'Un buen calendario de contenido combina:' },
+  { type: 'list', items: [
+    'Vídeos evergreen (SEO): contenido que se busca todo el año. Tu base.',
+    'Vídeos trending: contenido que aprovecha el momento. Tu acelerador.',
+    'Vídeos de comunidad: respuestas a comentarios, Q&A. Tu conexión.',
+  ]},
+  { type: 'p', t: 'Intenta mantener una proporción de 60% evergreen, 30% trending, 10% comunidad. Así tienes crecimiento constante con picos de viralidad.' },
+
+  { type: 'callout-mid', t: 'Planifica tu mes con IA', sub: 'El Content Calendar te sugiere qué publicar cada semana basado en tu nicho.', cta: 'Crear mi calendario', href: '/features/content-calendar' },
+
+  { type: 'h2', t: 'El bloqueo creativo no es tu enemigo — es una señal' },
+  { type: 'p', t: 'Cuando te sientas bloqueado, no te falta creatividad. Te falta información. No sabes qué quiere tu audiencia, qué funciona en tu nicho, ni qué está en tendencia.' },
+  { type: 'p', t: 'Con este sistema, el bloqueo desaparece porque las ideas vienen de datos, no de inspiración. Y los datos nunca se agotan.' },
+
+  { type: 'h2', t: 'Ejemplo práctico: de cero ideas a un mes planificado' },
+  { type: 'p', t: 'Imagina que tienes un canal de cocina saludable y no sabes qué subir. Así aplicarías el sistema:' },
+  { type: 'list', items: [
+    'Keyword Research: buscas "recetas saludables" → descubres que "recetas con proteína para gym" tiene alto volumen y baja competencia.',
+    'Competencia: analizas 3 canales similares → un vídeo de "meal prep semanal" tiene 5x más vistas que la media.',
+    'Tendencias: detectas que "recetas con air fryer" está subiendo un 200% este mes.',
+    'IA: generas 5 ángulos para cada idea → ya tienes 15 vídeos posibles.',
+    'Calendario: organizas 4 para este mes → 1 meal prep (evergreen), 1 air fryer (trending), 1 proteína gym (SEO), 1 Q&A (comunidad).',
+  ]},
+  { type: 'p', t: 'De "no sé qué subir" a un mes completo planificado en 30 minutos. Ese es el poder de un sistema.' },
+
+  { type: 'h2', t: '7 fuentes de ideas que nunca se agotan' },
+  { type: 'p', t: 'Si necesitas aún más combustible para tu sistema, estas fuentes son inagotables:' },
+  { type: 'list', items: [
+    'Comentarios de tus vídeos: cada pregunta de un espectador es una idea.',
+    'Reddit y foros de tu nicho: mira qué preguntas hace la gente.',
+    'Autocompletado de YouTube: escribe tu tema y mira las sugerencias.',
+    'Google Trends: detecta estacionalidad y picos de interés.',
+    'Tus vídeos con más retención: haz secuelas o profundiza en lo que ya funciona.',
+    'Podcasts y newsletters de tu sector: adapta temas de texto a vídeo.',
+    'Herramientas de IA: pídele ángulos nuevos sobre temas que ya conoces.',
+  ]},
+
+  { type: 'h2', t: 'Lo que NO deberías hacer cuando no tienes ideas' },
+  { type: 'list', items: [
+    'Copiar exactamente lo que hace otro canal. Google lo detecta y tu audiencia también.',
+    'Hacer un vídeo "por hacer" sin convicción. Se nota y el algoritmo lo castiga con mala retención.',
+    'Buscar listas genéricas de 200 ideas y elegir al azar. Sin contexto de tu nicho, es ruido.',
+    'Esperar a que te llegue la inspiración divina. No es una estrategia.',
+  ]},
+
+  { type: 'callout-final', t: 'Nunca más sin ideas para YouTube', sub: 'Keyword Research, Trend Explorer, AI Generator y Content Calendar — todo gratis en YTubViral.', cta: 'Empezar gratis', href: '/signup' },
+];
+
+const ART_IDEAS_VIDEOS_EN: BlockType[] = [
+  { type: 'p', t: 'You open YouTube Studio, sit in front of the screen and... nothing. Total block. You can\'t think of a single video worth recording. So you do what we all do: search for "YouTube video ideas" and find lists of 100, 200, or 300 generic ideas that have nothing to do with your channel.' },
+  { type: 'p', t: 'The problem with those lists is that they\'re universal. "Do an unboxing", "film your morning routine", "react to something". They don\'t account for your niche, your audience, or what works in your space. They\'re noise.' },
+  { type: 'p', t: 'In this article, I\'ll teach you a system to never run out of ideas. Not a list — a repeatable process that uses real data and AI tools to generate relevant ideas for YOUR channel every week.' },
+
+  { type: 'h2', t: 'Why You Run Out of Ideas (and Why It\'s Normal)' },
+  { type: 'p', t: 'Creative block isn\'t a lack of talent. It\'s a lack of system. Creators who publish consistently aren\'t more creative than you — they have a process that generates ideas before they run out.' },
+  { type: 'p', t: 'The 3 most common causes of "I don\'t know what to upload":' },
+  { type: 'list', items: [
+    'You rely solely on inspiration. If a great idea doesn\'t come, you don\'t record.',
+    'You don\'t know what your audience is searching for. You assume instead of looking at data.',
+    'You see what others do and feel like everything\'s been done. Comparison paralysis.',
+  ]},
+  { type: 'p', t: 'The solution to all three is the same: stop waiting for ideas and start finding them with a system.' },
+
+  { type: 'h2', t: 'The 5-Step System for Infinite Ideas' },
+  { type: 'p', t: 'This is the process used by creators who publish 2-4 videos per week without burnout. Each step relies on data, not gut feeling.' },
+
+  { type: 'h3', t: 'Step 1: Research What Your Audience Is Searching For (Keyword Research)' },
+  { type: 'p', t: 'The first step isn\'t thinking about what video to make — it\'s discovering what questions your audience has. YouTube keywords are unanswered questions. Every search is a person who needs a video.' },
+  { type: 'p', t: 'Use a YouTube keyword research tool and search your main topic. Look for:' },
+  { type: 'list', items: [
+    'Search volume: how many people search for it every month.',
+    'Competition: how many quality videos already exist on the topic.',
+    'Opportunity: high volume + low competition = your best candidate.',
+  ]},
+  { type: 'p', t: 'Don\'t look for ONE idea. Find 10-15 keywords with opportunity and note them down. That list is your idea bank for the coming weeks.' },
+
+  { type: 'callout-mid', t: 'Find keywords with real opportunity', sub: 'Volume, competition, and opportunity score in seconds. Free.', cta: 'Try Keyword Research', href: '/features/keyword-research' },
+
+  { type: 'h3', t: 'Step 2: See What Works for Your Competition' },
+  { type: 'p', t: 'It\'s not about copying — it\'s about spotting patterns. If a channel similar to yours has a video with 10x more views than their average, that topic has proven demand in your niche.' },
+  { type: 'p', t: 'Analyze 3-5 competitor channels and look for:' },
+  { type: 'list', items: [
+    'Outliers: videos performing far above the channel\'s average.',
+    'Recurring themes: what topics do they repeat that keep working?',
+    'Gaps: what topics HAVEN\'T they covered that you could?',
+  ]},
+  { type: 'p', t: 'A competitor\'s outlier is a market-validated idea. Don\'t copy it — make it better, more complete, with your perspective.' },
+
+  { type: 'callout-mid', t: 'Spot competitor outliers', sub: 'Analyze any channel and find their best-performing videos.', cta: 'Analyze competition', href: '/features/competitor-analysis' },
+
+  { type: 'h3', t: 'Step 3: Discover What\'s Trending Right Now' },
+  { type: 'p', t: 'Trends are ideas with an expiration date — and that\'s why they work so well. A video about a trending topic can achieve in one week what an evergreen takes months.' },
+  { type: 'p', t: 'The key is to detect trends early, before they\'re saturated. Don\'t look for what\'s already viral — look for what\'s STARTING to rise.' },
+  { type: 'p', t: 'Check weekly:' },
+  { type: 'list', items: [
+    'Niche trends in trend exploration tools.',
+    'Topics growing in searches but still with few videos.',
+    'News or launches in your sector that will generate searches.',
+  ]},
+
+  { type: 'callout-mid', t: 'Spot trends before anyone else', sub: 'Trend Explorer shows you what\'s rising in your niche right now.', cta: 'Explore trends', href: '/features/trend-explorer' },
+
+  { type: 'h3', t: 'Step 4: Use AI to Multiply One Idea Into Many' },
+  { type: 'p', t: 'You already have data: keywords with opportunity, competitor outliers, active trends. Now you need to turn that data into concrete videos with titles, angles, and hooks.' },
+  { type: 'p', t: 'This is where AI makes the difference. Instead of thinking "I\'ll make a video about thumbnails", you can ask an idea generator to propose 5 different angles:' },
+  { type: 'list', items: [
+    '"The 3 Thumbnail Mistakes Costing You 60% of Your CTR"',
+    '"How to Design Thumbnails That Work (Without Photoshop)"',
+    '"Thumbnail A/B Test: I Tested 2 Designs for 30 Days"',
+    '"The Thumbnail Pattern Every 1M+ Channel Uses"',
+    '"5 Minutes to Create a Viral Thumbnail with Canva"',
+  ]},
+  { type: 'p', t: 'From a single topic come 5 different videos. Each angle attracts a different audience and ranks for different keywords.' },
+
+  { type: 'callout-mid', t: 'Generate ideas and titles with AI', sub: 'Give it a topic and get angles, titles, and hooks ready to film.', cta: 'Try AI Generator', href: '/features/ai-generator' },
+
+  { type: 'h3', t: 'Step 5: Organize Everything in a Content Calendar' },
+  { type: 'p', t: 'Scattered ideas in a document get lost. You need a calendar that tells you what to film this week, next week, and the week after.' },
+  { type: 'p', t: 'A good content calendar combines:' },
+  { type: 'list', items: [
+    'Evergreen videos (SEO): content searched year-round. Your foundation.',
+    'Trending videos: content that captures the moment. Your accelerator.',
+    'Community videos: comment responses, Q&A. Your connection.',
+  ]},
+  { type: 'p', t: 'Try to maintain a ratio of 60% evergreen, 30% trending, 10% community. This gives you steady growth with viral peaks.' },
+
+  { type: 'callout-mid', t: 'Plan your month with AI', sub: 'Content Calendar suggests what to publish each week based on your niche.', cta: 'Create my calendar', href: '/features/content-calendar' },
+
+  { type: 'h2', t: 'Creative Block Isn\'t Your Enemy — It\'s a Signal' },
+  { type: 'p', t: 'When you feel blocked, you\'re not lacking creativity. You\'re lacking information. You don\'t know what your audience wants, what works in your niche, or what\'s trending.' },
+  { type: 'p', t: 'With this system, the block disappears because ideas come from data, not inspiration. And data never runs out.' },
+
+  { type: 'h2', t: 'Practical Example: From Zero Ideas to a Month Planned' },
+  { type: 'p', t: 'Imagine you have a healthy cooking channel and don\'t know what to upload. Here\'s how you\'d apply the system:' },
+  { type: 'list', items: [
+    'Keyword Research: search "healthy recipes" → discover "high protein recipes for gym" has high volume and low competition.',
+    'Competition: analyze 3 similar channels → a "weekly meal prep" video has 5x more views than average.',
+    'Trends: detect that "air fryer recipes" is up 200% this month.',
+    'AI: generate 5 angles for each idea → now you have 15 possible videos.',
+    'Calendar: organize 4 for this month → 1 meal prep (evergreen), 1 air fryer (trending), 1 gym protein (SEO), 1 Q&A (community).',
+  ]},
+  { type: 'p', t: 'From "I don\'t know what to upload" to a full month planned in 30 minutes. That\'s the power of a system.' },
+
+  { type: 'h2', t: '7 Idea Sources That Never Run Dry' },
+  { type: 'p', t: 'If you need even more fuel for your system, these sources are inexhaustible:' },
+  { type: 'list', items: [
+    'Comments on your videos: every viewer question is an idea.',
+    'Reddit and niche forums: see what questions people ask.',
+    'YouTube autocomplete: type your topic and see suggestions.',
+    'Google Trends: detect seasonality and interest spikes.',
+    'Your highest-retention videos: make sequels or go deeper into what already works.',
+    'Podcasts and newsletters in your sector: adapt text topics to video.',
+    'AI tools: ask for new angles on topics you already know.',
+  ]},
+
+  { type: 'h2', t: 'What NOT to Do When You\'re Out of Ideas' },
+  { type: 'list', items: [
+    'Copy exactly what another channel does. Google detects it and your audience does too.',
+    'Make a video "just because" without conviction. It shows and the algorithm punishes it with poor retention.',
+    'Search generic lists of 200 ideas and pick randomly. Without niche context, it\'s noise.',
+    'Wait for divine inspiration. That\'s not a strategy.',
+  ]},
+
+  { type: 'callout-final', t: 'Never run out of YouTube ideas again', sub: 'Keyword Research, Trend Explorer, AI Generator, and Content Calendar — all free on YTubViral.', cta: 'Start free', href: '/signup' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -3691,6 +3943,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'tour-completo-ytubviral-14-herramientas': {
     es: ART_TOUR_YTUBVIRAL_ES,
     en: ART_TOUR_YTUBVIRAL_EN,
+  },
+  'ideas-videos-youtube-no-se-que-subir': {
+    es: ART_IDEAS_VIDEOS_ES,
+    en: ART_IDEAS_VIDEOS_EN,
   },
 };
 
