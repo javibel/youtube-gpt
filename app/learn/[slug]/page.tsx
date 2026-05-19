@@ -70,8 +70,8 @@ export default function LearnGuidePage() {
         <div className="yv-card overflow-hidden mb-8">
           {/* Cover image or gradient */}
           {guide.coverImage ? (
-            <div className="relative h-32 md:h-40 overflow-hidden">
-              <Image src={guide.coverImage} alt={guide.title[lang]} fill className="object-cover" sizes="(max-width: 768px) 100vw, 900px" />
+            <div className="relative overflow-hidden">
+              <Image src={guide.coverImage} alt={guide.title[lang]} width={900} height={400} className="w-full h-auto" sizes="(max-width: 768px) 100vw, 900px" style={{ maxHeight: '280px', objectFit: 'cover' }} />
             </div>
           ) : (
             <div className="h-32 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(232,77,91,0.15), transparent)' }}>
