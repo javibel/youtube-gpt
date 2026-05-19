@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { data: session, update } = useSession();
 
   const emailFromUrl = searchParams.get('email') ?? '';
 
@@ -26,6 +27,19 @@ function VerifyEmailContent() {
     const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
     if (stored) setLang(stored);
   }, []);
+
+  // If user has a stale session (already verified in DB but JWT says requiresVerification),
+  // refresh the JWT from DB and redirect to dashboard
+  useEffect(() => {
+    if (session?.user && (session.user as { requiresVerification?: boolean }).requiresVerification) {
+      update().then((updated) => {
+        if (updated && !(updated.user as { requiresVerification?: boolean }).requiresVerification) {
+          router.push('/dashboard');
+        }
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   // Auto-focus first input
   useEffect(() => {
