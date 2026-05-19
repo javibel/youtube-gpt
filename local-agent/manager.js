@@ -123,14 +123,16 @@ function buildRawSummary(date) {
   const gmailReport = readReport('gmail', date);
   if (gmailReport && Array.isArray(gmailReport) && gmailReport.length > 0) {
     const important = gmailReport.filter(e => e.classification === 'important');
-    const actionable = gmailReport.filter(e => e.classification === 'actionable');
+    const autoReplied = gmailReport.filter(e => e.replied);
     const emailSummary = gmailReport.map(e =>
-      `[${e.classification.toUpperCase()}] ${e.from}: "${e.subject}"`
+      `[${e.classification.toUpperCase()}] ${e.from}: "${e.subject}"${e.replied ? ' → RESPONDIDO' : ''}`
     ).join('\n');
+    // Flag auto-replies to external addresses — these need human review
+    const status = autoReplied.length > 0 ? 'REVISAR' : important.length > 0 ? 'ATENCIÓN' : 'OK';
     sections.push({
       agent: 'Gmail (Correo)',
-      status: important.length > 0 ? 'ATENCIÓN' : 'OK',
-      data: `Importantes: ${important.length}, Accionables: ${actionable.length}. Total procesados: ${gmailReport.length}`,
+      status,
+      data: `Importantes: ${important.length}, Auto-replies: ${autoReplied.length}. Total procesados: ${gmailReport.length}`,
       ai: emailSummary,
       duration: 0,
     });
@@ -424,6 +426,18 @@ Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
       }
     }
     emailBody += '\n';
+  }
+
+  // Auto-replies a externos — siempre visibles para revisión humana
+  const gmailToday = readReport('gmail', today);
+  const autoReplied = (gmailToday && Array.isArray(gmailToday)) ? gmailToday.filter(e => e.replied) : [];
+  if (autoReplied.length > 0) {
+    emailBody += `${'─'.repeat(60)}\n📧 AUTO-REPLIES ENVIADOS A EXTERNOS (${autoReplied.length})\n${'─'.repeat(60)}\n\n`;
+    for (const e of autoReplied) {
+      emailBody += `   Para: ${e.from}\n`;
+      emailBody += `   Asunto: ${e.subject}\n`;
+      emailBody += `   Respuesta: ${(e.replySnippet || '(sin preview)').slice(0, 150)}\n\n`;
+    }
   }
 
   emailBody += `\n${'─'.repeat(60)}\nCONSUMO API\n`;

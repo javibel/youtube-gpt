@@ -202,8 +202,26 @@ function classifyEmail(from, subject, snippet, headers = []) {
     return 'ignore';
   }
 
-  // Everything else is potentially actionable (a real person wrote to ytbeviral@gmail.com)
-  return 'actionable';
+  // 6. Only auto-reply to personal email addresses (gmail, outlook, yahoo, proton, etc.)
+  //    Company/domain emails → forward to owner for human review (never auto-reply)
+  const senderEmail = (fromLower.match(/<([^>]+)>/) || [, fromLower])[1];
+  const PERSONAL_DOMAINS = [
+    'gmail.com', 'googlemail.com',
+    'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
+    'yahoo.com', 'yahoo.es', 'yahoo.co.uk',
+    'proton.me', 'protonmail.com', 'proton.com', 'pm.me',
+    'icloud.com', 'me.com', 'mac.com',
+    'aol.com', 'zoho.com', 'mail.com', 'gmx.com', 'gmx.net',
+    'yandex.com', 'yandex.ru',
+    'tutanota.com', 'tutamail.com', 'tuta.io',
+  ];
+  const senderDomain = senderEmail.split('@')[1];
+  if (senderDomain && PERSONAL_DOMAINS.includes(senderDomain)) {
+    return 'actionable';
+  }
+
+  // All other senders (company domains, services, etc.) → forward to owner
+  return 'important';
 }
 
 // ── Gmail API helpers ──
@@ -366,7 +384,7 @@ async function processInbox() {
         });
         console.log(`[gmail] Replied to ${senderEmail} (BCC owner): "${reply.slice(0, 60)}..."`);
         await saveMessage({ from, content: (body || snippet), replied: true, replyContent: reply, externalId: threadId });
-        processedEmails.push({ classification: 'actionable', from: senderEmail, subject, replied: true, snippet: (snippet || '').slice(0, 200) });
+        processedEmails.push({ classification: 'actionable', from: senderEmail, subject, replied: true, snippet: (snippet || '').slice(0, 200), replySnippet: reply.slice(0, 200) });
       } else {
         // AI couldn't generate a reply — forward to owner instead
         await forwardToOwner(token, { from, subject, body, snippet });
