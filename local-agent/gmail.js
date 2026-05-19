@@ -108,6 +108,20 @@ const IGNORE_PATTERNS = [
   // Facebook/LinkedIn abandoned — all notifications are noise
   /facebookmail\.com/i,
   /linkedin\.com/i,
+  // Generic team/support/info addresses (automated, not personal)
+  /^team@/i,
+  /^support@/i,
+  /^info@/i,
+  /^hello@/i,
+  /^hi@/i,
+  /^contact@/i,
+  /^sales@/i,
+  /^help@/i,
+  /^feedback@/i,
+  // BetaList newsletters
+  /betalist\.com/i,
+  // Catch-all: any email from a company domain with generic prefix
+  /^(team|support|info|hello|hi|contact|sales|help|billing|accounts?)@.+\.(com|io|net|org|co|so|app)/i,
 ];
 
 // Subjects that indicate automated/marketing emails (ignore)
@@ -115,11 +129,23 @@ const IGNORE_SUBJECT_PATTERNS = [
   /unsubscribe/i,
   /newsletter/i,
   /weekly digest/i,
+  /daily digest/i,
   /your.*tracks?.*expir/i,
   /schedule a post/i,
   /get started/i,
   /welcome to/i,
   /activate your/i,
+  /hours? left/i,
+  /expir(es?|ing)/i,
+  /don'?t miss/i,
+  /limited time/i,
+  /last chance/i,
+  /upgrade (your|now)/i,
+  /new (feature|update|release)/i,
+  /what'?s new/i,
+  /hunted "/i,        // Product Hunt "X hunted Y"
+  /started a thread/i, // Product Hunt thread notifications
+  /and more$/i,        // BetaList "X, Y, Z, and more"
 ];
 
 // Check List-Unsubscribe header (strong signal it's a newsletter/marketing)
