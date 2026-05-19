@@ -280,7 +280,7 @@ export const BLOG_POSTS: BlogPost[] = [
     cat: 'youtube',
     readMin: 12,
     date: { es: 'May 16, 2026', en: 'May 16, 2026' },
-    author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: '/authors/javier.webp' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: 'JJ' },
     image: '/blog/auditoria-canal-youtube.webp',
     title: {
       es: 'Auditoría de canal YouTube: cómo detectar (y arreglar) lo que frena tu crecimiento',
@@ -312,7 +312,7 @@ export const BLOG_POSTS: BlogPost[] = [
     cat: 'youtube',
     readMin: 11,
     date: { es: '19 May 2026', en: 'May 19, 2026' },
-    author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: '/authors/javier.webp' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: 'JJ' },
     image: '/blog/ideas-videos-youtube.webp',
     title: {
       es: 'No sé qué subir a YouTube: el sistema para no quedarte sin ideas nunca',
