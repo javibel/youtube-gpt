@@ -2,8 +2,6 @@
 
 const config = require('./config');
 
-const API_KEY = () => process.env.ANTHROPIC_API_KEY?.trim() ?? '';
-
 // Pricing per 1M tokens (USD) — May 2026
 const MODEL_PRICING = {
   'claude-haiku-4-5-20251001': { input: 0.25, output: 1.25 },
@@ -62,45 +60,16 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
     || (opts.caller && config.get(opts.caller, 'model', null))
     || config.get('claude', 'model', 'claude-haiku-4-5-20251001');
 
-  // Build request body — use prompt caching on system messages
-  const body = {
+  // Route through guardedCall for unified protections:
+  // daily budget, rate limiting, circuit breaker, timeout, input truncation
+  // Lazy require to avoid circular dependency (api-guard requires claude for deductFromBalance)
+  const { guardedCall } = require('./api-guard');
+  const { text } = await guardedCall(prompt, {
+    maxTokens,
     model,
-    max_tokens: maxTokens,
-    messages: [{ role: 'user', content: prompt }],
-  };
-
-  // If system prompt provided, use cache_control for prompt caching (saves 50-90% on input tokens)
-  if (opts.system) {
-    body.system = [
-      { type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } },
-    ];
-  }
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY(),
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(body),
+    agentId: opts.caller || 'claude',
+    system: opts.system,
   });
-  if (!res.ok) throw new Error(`Claude API error: ${res.status}`);
-  const data = await res.json();
-
-  // Track usage and deduct from balance (including cache savings)
-  const usage = data.usage;
-  if (usage) {
-    deductFromBalance(
-      model,
-      usage.input_tokens || 0,
-      usage.output_tokens || 0,
-      usage.cache_read_input_tokens || 0,
-      usage.cache_creation_input_tokens || 0,
-    );
-  }
-
-  const text = data.content?.[0]?.text?.trim() ?? '';
 
   // ── Hard reject: meta-comments, AI refusals, generic bot phrases ──
 
@@ -177,7 +146,10 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
     /DM me/i, /escr[ií]beme/i,
     /free trial/i, /prueba gratis/i,
   ];
-  if (rejectPatterns.some(p => p.test(processed))) return '';
+  // Merge additional reject patterns from overrides (hot-patchable by Claude)
+  const overrides = loadOverrides();
+  const extraPatterns = (overrides.additionalRejectPatterns || []).map(p => new RegExp(p, 'i'));
+  if ([...rejectPatterns, ...extraPatterns].some(p => p.test(processed))) return '';
 
   // For longer-form comments (reddit): trim to max 3 paragraphs, remove markdown formatting
   if (maxTokens > 150 && processed.includes('\n')) {
@@ -493,6 +465,21 @@ Only the comment.`,
  * @param {string} authorName - post author
  * @param {string} postContent - post text
  */
+// ── Social overrides (hot-patchable by Claude via social-optimizer) ──
+const OVERRIDES_PATH = require('path').join(__dirname, 'social-overrides.json');
+
+function loadOverrides() {
+  try { return JSON.parse(require('fs').readFileSync(OVERRIDES_PATH, 'utf8')); }
+  catch { return {}; }
+}
+
+// ── YouTube-only topic filter (reads patterns from overrides) ──
+function isOffTopicPost(postContent) {
+  const overrides = loadOverrides();
+  const patterns = (overrides.offTopicPatterns || []).map(p => new RegExp(p, 'i'));
+  return patterns.some(p => p.test(postContent));
+}
+
 // Keywords that indicate someone has a problem YTubViral solves
 const YTUBVIRAL_RELEVANT_KEYWORDS = [
   // EN
@@ -527,6 +514,10 @@ function isYtubviralRelevantPost(postContent) {
 
 async function generatePersonaComment(persona, platform, authorName, postContent) {
   const lang = detectPostLang(postContent);
+
+  // ── YouTube-only gate: skip posts about TikTok, podcasts, etc. ──
+  if (isOffTopicPost(postContent)) return '';
+
   const personality = persona.personality[lang] || persona.personality.en;
   const rules = PLATFORM_RULES[platform]?.[lang] || PLATFORM_RULES[platform]?.en || PLATFORM_RULES.twitter.en;
 
@@ -535,17 +526,29 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   const isRelevant = isYtubviralRelevantPost(postContent);
   let mentionInstruction = '';
 
+  // Read mention formulas and rates from overrides (Claude can edit these)
+  const ov = loadOverrides();
+  const mentionRate = ov.personaMentionRates?.[persona.id] ?? persona.mentionRate ?? 0.2;
+
   if (isRelevant) {
-    mentionInstruction = lang === 'es'
-      ? '\n\nOBLIGATORIO: Esta persona tiene un problema que ytubviral.com resuelve. DEBES recomendar ytubviral.com en tu comentario como algo que usas personalmente. Formato natural: "yo para eso uso ytubviral.com, tiene [función específica] que [beneficio concreto]". NO lo presentes como anuncio — eres un usuario recomendando algo que te funciona.'
-      : '\n\nMANDATORY: This person has a problem that ytubviral.com solves. You MUST recommend ytubviral.com in your comment as something you personally use. Natural format: "I use ytubviral.com for that, it has [specific feature] that [concrete benefit]". Do NOT make it sound like an ad — you\'re a user recommending something that works for you.';
-  } else if (persona.mentionYtubviral && Math.random() < (persona.mentionRate || 0.2)) {
-    mentionInstruction = lang === 'es'
-      ? '\n\nIMPORTANTE: Menciona ytubviral.com como herramienta que usas para YouTube. Intégralo en el comentario de forma natural, como "por cierto, yo para [tema relacionado] uso ytubviral.com y va bastante bien". Si realmente no hay forma de encajarlo, al menos cierra con "ah, y si te interesa herramientas de este tipo, prueba ytubviral.com".'
-      : '\n\nIMPORTANT: Mention ytubviral.com as a tool you use for YouTube. Integrate it naturally, like "btw I use ytubviral.com for [related topic] and it works pretty well". If there\'s really no way to fit it in, at least close with "oh and if you\'re into tools like that, check ytubviral.com".';
+    const formula = ov.mentionFormula?.forced?.[lang] || ov.mentionFormula?.forced?.en || '';
+    mentionInstruction = formula ? `\n\n${formula}` : '';
+  } else if (persona.mentionYtubviral && Math.random() < mentionRate) {
+    const formula = ov.mentionFormula?.probabilistic?.[lang] || ov.mentionFormula?.probabilistic?.en || '';
+    mentionInstruction = formula ? `\n\n${formula}` : '';
+  }
+
+  // Beta offer: when mentioning ytubviral, sometimes add free Pro tester line
+  if (mentionInstruction && ov.betaOffer?.enabled && Math.random() < (ov.betaOffer.probability || 0.3)) {
+    const offerLine = ov.betaOffer[lang] || ov.betaOffer.en || '';
+    if (offerLine) mentionInstruction += `\n\nAdemás, añade casualmente al final algo como: "${offerLine}"`;
   }
 
   let coreRules = PERSONA_CORE_RULES[lang] || PERSONA_CORE_RULES.en;
+  // Append dynamic rules from overrides (Claude can add/modify these)
+  const extraRules = ov.coreRulesExtra?.[lang] || ov.coreRulesExtra?.en || '';
+  if (extraRules) coreRules += '\n' + extraRules;
+
   const maxTokens = platform === 'twitter' ? 150 : 200;
 
   if (isRelevant) {

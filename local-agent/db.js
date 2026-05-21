@@ -7,7 +7,9 @@ const connStr = (process.env.DATABASE_URL || '').replace(/sslmode=require\b/, 's
 const pool = new Pool({
   connectionString: connStr,
   ssl: { rejectUnauthorized: false },
-  max: 5,
+  max: 3,                      // reduced from 5 — we never need more than 2 concurrent
+  min: 0,                      // don't keep idle connections — let Neon auto-suspend
+  idleTimeoutMillis: 2000,     // close idle connections after 2s (default was 10s)
   connectionTimeoutMillis: 10000,
 });
 
@@ -326,11 +328,24 @@ async function initDb() {
     'ALTER TABLE facebook_actions ADD COLUMN IF NOT EXISTS account_id TEXT',
     'ALTER TABLE reddit_actions ADD COLUMN IF NOT EXISTS account_id TEXT',
   ];
-  for (const sql of migrations) {
+
+  // Performance indexes — avoid full table scans on frequent queries
+  const indexes = [
+    'CREATE INDEX IF NOT EXISTS idx_twitter_actions_created ON twitter_actions (created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_twitter_actions_url ON twitter_actions (tweet_url)',
+    'CREATE INDEX IF NOT EXISTS idx_reddit_actions_created ON reddit_actions (created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_reddit_actions_url ON reddit_actions (post_url)',
+    'CREATE INDEX IF NOT EXISTS idx_facebook_actions_created ON facebook_actions (created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_instagram_actions_created ON instagram_actions (created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_linkedin_actions_created ON linkedin_actions (created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_followup_lookup ON followup_checks (platform, post_url, reply_author)',
+    'CREATE INDEX IF NOT EXISTS idx_social_messages_received ON social_messages ("receivedAt")',
+  ];
+  for (const sql of [...migrations, ...indexes]) {
     try {
       await query(sql);
     } catch (e) {
-      // Only ignore "column already exists" errors
+      // Only ignore "already exists" errors
       if (!e.message?.includes('already exists')) {
         console.error(`[db] Migration failed: ${sql.slice(0, 60)} → ${e.message}`);
       }
@@ -340,8 +355,31 @@ async function initDb() {
   console.log('[db] Tables ready');
 }
 
+/**
+ * Drain all idle connections so Neon can auto-suspend.
+ * Call after batch operations (persona runs, reports, etc.)
+ * The pool stays alive — next query() will reconnect on demand.
+ */
+async function disconnect() {
+  try {
+    // pool._clients gives us active + idle. We only want to close idle ones.
+    // The simplest safe way: reduce pool to 0 idle by evicting them.
+    const idleCount = pool.idleCount;
+    if (idleCount > 0) {
+      // Temporarily set allowExitOnIdle so the pool releases all idle clients
+      pool.options.allowExitOnIdle = true;
+      // Force-evict idle connections
+      while (pool.idleCount > 0) {
+        const client = await pool.connect();
+        client.release(true); // true = destroy instead of return to pool
+      }
+      pool.options.allowExitOnIdle = false;
+    }
+  } catch {}
+}
+
 module.exports = {
-  query,
+  query, disconnect,
   saveProspect, updateProspectStatus, getProspectsByStatus,
   saveAction, countTodayActions,
   hasTwitterAction, hasTwitterActionOfType, hasInstagramAction, hasFacebookAction, hasRedditAction,

@@ -262,144 +262,229 @@ async function runSocialOptimizer() {
 
 registerFixes('social-optimizer', [
   {
-    id: 'bump-mention-rate',
-    description: 'Subir mentionRate de personas cuando tasa de menciones es baja',
-    cooldownMs: 72 * 3600000, // 3 days between bumps
-    condition: (issues) => issues.some(i => i.includes('MENCIONES:')),
-    apply: (config) => {
-      const personas = config.personas || {};
+    id: 'claude-unified-diagnosis',
+    description: 'Claude Opus analiza todos los problemas y genera correcciones inteligentes a config + social-overrides',
+    cooldownMs: 3 * 86400000, // 3 days — structural fixes need time to show results
+    condition: (issues) => issues.length > 0,
+    apply: async (config, issues, metrics) => {
+      const overridesPath = require('path').join(__dirname, 'social-overrides.json');
+      let currentOverrides = {};
+      try { currentOverrides = JSON.parse(fs.readFileSync(overridesPath, 'utf8')); } catch {}
+
+      // Gather fix history for Claude to learn from
+      const { loadFixLog } = require('./auto-fix');
+      const fixLog = loadFixLog();
+      const recentFixes = fixLog.fixes
+        .filter(f => f.agent === 'social-optimizer')
+        .slice(-5)
+        .map(f => ({ fix: f.fixId, detail: f.detail, outcome: f.outcome, date: f.timestamp?.slice(0, 10) }));
+
+      const effectivenessData = {};
+      for (const [key, eff] of Object.entries(fixLog.effectiveness)) {
+        if (key.startsWith('social-optimizer:')) {
+          effectivenessData[key.replace('social-optimizer:', '')] = {
+            successRate: `${Math.round(eff.successRate * 100)}%`,
+            total: eff.total,
+            consecutiveFailures: eff.consecutiveFailures,
+          };
+        }
+      }
+
+      // Build relevant config snapshot for Claude
+      const configSnapshot = {
+        personas: config.personas || {},
+        humanize: config.humanize || {},
+        'persona-runner': config['persona-runner'] || {},
+      };
+
+      const mentionRate = metrics.mentions_7d
+        ? ((metrics.mentions_7d.reddit.withBrand + metrics.mentions_7d.twitter.withBrand) / Math.max(1, metrics.mentions_7d.reddit.total + metrics.mentions_7d.twitter.total) * 100).toFixed(1)
+        : '?';
+
+      const userPrompt = `PROBLEMAS DETECTADOS:
+${issues.join('\n')}
+
+MÉTRICAS:
+- Mention rate: ${mentionRate}%
+- Twitter 24h: ${metrics.twitter_24h?.likes || 0} likes, ${metrics.twitter_24h?.replies || 0} replies
+- Reddit 24h: ${metrics.reddit_24h?.upvotes || 0} upvotes, ${metrics.reddit_24h?.comments || 0} comments
+- Follow-ups: ${metrics.followups_7d?.responded || 0}/${metrics.followups_7d?.detected || 0} respondidos
+- Nuevos usuarios 7d: ${metrics.users?.newThisWeek || 0}
+
+CONFIG ACTUAL (agent-config.json, secciones relevantes):
+${JSON.stringify(configSnapshot, null, 2)}
+
+SOCIAL-OVERRIDES ACTUAL:
+${JSON.stringify(currentOverrides, null, 2)}
+
+HISTORIAL DE FIXES RECIENTES (aprende de lo que funcionó y lo que no):
+${JSON.stringify(recentFixes, null, 2)}
+
+EFECTIVIDAD ACUMULADA:
+${JSON.stringify(effectivenessData, null, 2)}`;
+
+      const diagnosisResult = await guardedCall(userPrompt, {
+        maxTokens: 1500,
+        agentId: 'social-optimizer',
+        system: `Eres el cerebro de auto-mejora del sistema social de YTubViral. Analizas problemas y generas correcciones INTELIGENTES basadas en datos.
+
+CONTEXTO: Las personas Alex (editor freelance 26yo) y Ferran (consultor marketing 33yo) comentan en Reddit y Twitter sobre YouTube. El objetivo es llevar usuarios a ytubviral.com.
+
+PUEDES MODIFICAR DOS TIPOS DE CONFIG:
+
+1. "overrideChanges" — campos de social-overrides.json:
+   - offTopicPatterns: regex patterns para rechazar posts no-YouTube
+   - additionalRejectPatterns: regex para rechazar comentarios problemáticos
+   - coreRulesExtra: reglas adicionales para el system prompt (es/en)
+   - mentionFormula.forced: instrucción cuando post es 100% relevante
+   - mentionFormula.probabilistic: instrucción para menciones probabilísticas
+   - personaMentionRates: tasas de mención por persona (0.05-0.50)
+
+2. "configChanges" — campos de agent-config.json:
+   - personas.{name}.mentionRate: tasa de mención (0.05-0.50)
+   - humanize.skipSessionProbability: prob de saltar sesión (0.0-0.30)
+   - humanize.skipPostProbability: prob de saltar post (0.05-0.40)
+   - persona-runner.maxTweetsPerSession: max tweets por sesión (3-20)
+   - persona-runner.maxRedditPerSession: max comments Reddit por sesión (2-12)
+
+REGLAS:
+- Analiza el historial: NO repitas fixes que ya fallaron (mira EFECTIVIDAD)
+- Cada cambio DEBE tener razón directa en los problemas detectados
+- Sé conservador: un cambio malo es peor que no cambiar
+- Razona el POR QUÉ de cada ajuste numérico, no solo "subir" o "bajar"
+- Si no hay problemas reales, NO inventes cambios
+
+RESPONDE en JSON exacto:
+{
+  "diagnosis": "resumen de 1-2 frases del problema raíz",
+  "overrideChanges": { ...campos de social-overrides.json... } | null,
+  "configChanges": { "personas.alex.mentionRate": 0.35, ... } | null,
+  "reasoning": "por qué cada cambio resuelve el problema"
+}
+
+Responde SOLO con el JSON, sin markdown, sin explicación adicional.`,
+      });
+
+      if (!diagnosisResult?.text) {
+        return { changed: false, detail: 'Claude unified diagnosis: no response' };
+      }
+
+      // Parse Claude's response (robust: handles markdown fences and truncated JSON)
+      let claudeResponse;
+      try {
+        let raw = diagnosisResult.text;
+        const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (fenceMatch) raw = fenceMatch[1].trim();
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          claudeResponse = JSON.parse(jsonMatch[0]);
+        } else {
+          const openBraces = (raw.match(/\{/g) || []).length;
+          const closeBraces = (raw.match(/\}/g) || []).length;
+          if (openBraces > closeBraces) {
+            let patched = raw.replace(/,\s*"[^"]*"?\s*:?\s*[^,}]*$/, '');
+            patched += '}'.repeat(openBraces - closeBraces);
+            const patchedMatch = patched.match(/\{[\s\S]*\}/);
+            if (patchedMatch) claudeResponse = JSON.parse(patchedMatch[0]);
+          }
+          if (!claudeResponse) throw new Error('No JSON found');
+        }
+      } catch (e) {
+        console.warn(`[claude-unified] JSON parse failed: ${e.message}. Raw: ${diagnosisResult.text.slice(0, 200)}`);
+        return { changed: false, detail: `Claude unified diagnosis: parse error — ${e.message}` };
+      }
+
+      if (!claudeResponse.overrideChanges && !claudeResponse.configChanges) {
+        return { changed: false, detail: `Claude unified diagnosis: ${claudeResponse.diagnosis} — no changes needed` };
+      }
+
       let changed = false;
-      const details = [];
-      for (const [key, persona] of Object.entries(personas)) {
-        if (typeof persona !== 'object' || !persona.mentionRate) continue;
-        const prev = persona.mentionRate;
-        const next = Math.min(0.5, Math.round((prev + 0.05) * 100) / 100);
-        if (next > prev) {
-          persona.mentionRate = next;
-          details.push(`${key}: ${prev} → ${next}`);
+      const appliedChanges = [];
+
+      // ── Apply override changes (social-overrides.json) ──
+      if (claudeResponse.overrideChanges) {
+        const ALLOWED_OVERRIDE_FIELDS = ['offTopicPatterns', 'additionalRejectPatterns', 'coreRulesExtra', 'mentionFormula', 'personaMentionRates'];
+        const validOverrides = {};
+        for (const [key, value] of Object.entries(claudeResponse.overrideChanges)) {
+          if (!ALLOWED_OVERRIDE_FIELDS.includes(key)) continue;
+          if (key === 'personaMentionRates' && typeof value === 'object') {
+            for (const [pid, rate] of Object.entries(value)) {
+              if (typeof rate !== 'number' || rate > 0.50 || rate < 0.05) {
+                console.log(`[claude-unified] Rejected invalid override mentionRate for ${pid}: ${rate}`);
+                delete value[pid];
+              }
+            }
+          }
+          validOverrides[key] = value;
+        }
+
+        if (Object.keys(validOverrides).length > 0) {
+          const newOverrides = { ...currentOverrides, ...validOverrides };
+          newOverrides.changeLog = newOverrides.changeLog || [];
+          newOverrides.changeLog.push({
+            date: new Date().toISOString().slice(0, 10),
+            by: 'claude-unified',
+            summary: claudeResponse.diagnosis,
+            reasoning: claudeResponse.reasoning,
+            fieldsChanged: Object.keys(validOverrides),
+          });
+          if (newOverrides.changeLog.length > 20) newOverrides.changeLog = newOverrides.changeLog.slice(-20);
+          fs.writeFileSync(overridesPath, JSON.stringify(newOverrides, null, 2), 'utf8');
+          appliedChanges.push(`overrides: ${Object.keys(validOverrides).join(', ')}`);
           changed = true;
         }
       }
-      if (!changed) return { changed: false };
-      return { changed: true, detail: `mentionRate bumped: ${details.join(', ')}`, previousValue: details.map(d => d.split(' → ')[0]), newValue: details.map(d => d.split(' → ')[1]) };
-    },
-  },
-  {
-    id: 'increase-session-limit',
-    description: 'Aumentar límite de tweets/reddit por sesión cuando hay baja actividad',
-    cooldownMs: 7 * 86400000, // 7 days
-    condition: (issues) => issues.some(i => i.includes('0 actividad en 24h')),
-    apply: (config) => {
-      const pr = config['persona-runner'] || {};
-      const results = [];
-      let changed = false;
 
-      if ((pr.maxTweetsPerSession || 10) < 15) {
-        const prev = pr.maxTweetsPerSession || 10;
-        if (!config['persona-runner']) config['persona-runner'] = {};
-        config['persona-runner'].maxTweetsPerSession = prev + 3;
-        results.push(`maxTweets: ${prev} → ${prev + 3}`);
-        changed = true;
-      }
-      if ((pr.maxRedditPerSession || 5) < 8) {
-        const prev = pr.maxRedditPerSession || 5;
-        if (!config['persona-runner']) config['persona-runner'] = {};
-        config['persona-runner'].maxRedditPerSession = prev + 2;
-        results.push(`maxReddit: ${prev} → ${prev + 2}`);
-        changed = true;
-      }
-      if (!changed) return { changed: false };
-      return { changed: true, detail: `Session limits raised: ${results.join(', ')}` };
-    },
-  },
-  {
-    id: 'reduce-skip-probability',
-    description: 'Reducir probabilidad de saltar sesiones cuando actividad es baja',
-    cooldownMs: 7 * 86400000, // 7 days
-    condition: (issues) => issues.some(i => i.includes('0 actividad en 24h')),
-    apply: (config) => {
-      const h = config.humanize || {};
-      const prev = h.skipSessionProbability ?? 0.15;
-      if (prev <= 0.05) return { changed: false, detail: 'skipSessionProbability already at minimum' };
-      const next = Math.max(0.05, Math.round((prev - 0.05) * 100) / 100);
-      if (!config.humanize) config.humanize = {};
-      config.humanize.skipSessionProbability = next;
-      return { changed: true, detail: `skipSessionProbability: ${prev} → ${next}`, previousValue: prev, newValue: next };
-    },
-  },
-  {
-    id: 'reduce-skip-post-probability',
-    description: 'Reducir probabilidad de saltar posts cuando menciones son bajas',
-    cooldownMs: 7 * 86400000, // 7 days
-    condition: (issues) => issues.some(i => i.includes('MENCIONES:') || i.includes('0 actividad')),
-    apply: (config) => {
-      const h = config.humanize || {};
-      const prev = h.skipPostProbability ?? 0.25;
-      if (prev <= 0.10) return { changed: false };
-      const next = Math.max(0.10, Math.round((prev - 0.05) * 100) / 100);
-      if (!config.humanize) config.humanize = {};
-      config.humanize.skipPostProbability = next;
-      return { changed: true, detail: `skipPostProbability: ${prev} → ${next}`, previousValue: prev, newValue: next };
-    },
-  },
-  {
-    id: 'fix-mention-credibility',
-    description: 'Reforzar instrucción de mención cuando la IA rechaza recomendar por falta de credibilidad',
-    cooldownMs: 14 * 86400000, // 14 days — structural fix, not frequent
-    condition: (issues) => {
-      // Detect AI analysis mentioning credibility/verification rejection
-      const patterns = [
-        /rechaz[óo].*recomendar/i, /no puede verificar/i, /credibilidad/i,
-        /refuse.*recommend/i, /can.?t verify/i, /credibility/i,
-        /no.*menciona.*ytubviral/i, /not.*mention/i,
-        /problema.*[eé]tico/i, /ethical.*problem/i,
-      ];
-      return issues.some(i => patterns.some(p => p.test(i)));
-    },
-    apply: async (config, issues) => {
-      // Read current personas and check if they already reference ytubviral
-      const personasPath = require('path').join(__dirname, 'personas.json');
-      try {
-        const personas = JSON.parse(fs.readFileSync(personasPath, 'utf8'));
-        const fixes = [];
+      // ── Apply config changes (agent-config.json) ──
+      if (claudeResponse.configChanges) {
+        const CONFIG_BOUNDS = {
+          'personas.alex.mentionRate': { min: 0.05, max: 0.50 },
+          'personas.ferran.mentionRate': { min: 0.05, max: 0.50 },
+          'humanize.skipSessionProbability': { min: 0.0, max: 0.30 },
+          'humanize.skipPostProbability': { min: 0.05, max: 0.40 },
+          'persona-runner.maxTweetsPerSession': { min: 3, max: 20 },
+          'persona-runner.maxRedditPerSession': { min: 2, max: 12 },
+        };
 
-        for (const persona of personas) {
-          const esHas = (persona.personality?.es || '').includes('ytubviral');
-          const enHas = (persona.personality?.en || '').includes('ytubviral');
-
-          if (!esHas || !enHas) {
-            fixes.push(`${persona.name}: personalidad no incluye experiencia con ytubviral (es:${esHas}, en:${enHas})`);
+        for (const [dotKey, value] of Object.entries(claudeResponse.configChanges)) {
+          const bounds = CONFIG_BOUNDS[dotKey];
+          if (!bounds) {
+            console.log(`[claude-unified] Rejected unknown config key: ${dotKey}`);
+            continue;
           }
-        }
+          if (typeof value !== 'number' || value < bounds.min || value > bounds.max) {
+            console.log(`[claude-unified] Rejected out-of-bounds config: ${dotKey}=${value} (bounds: ${bounds.min}-${bounds.max})`);
+            continue;
+          }
 
-        if (fixes.length > 0) {
-          // Send alert — personality needs manual update
-          await sendEmail(
-            '[YTubViral Social] Personas rechazan mencionar YTubViral — acción requerida',
-            `El análisis de Social Optimizer detectó que las personas están rechazando recomendar YTubViral por falta de credibilidad en su perfil.\n\nProblemas encontrados:\n${fixes.join('\n')}\n\nACCIÓN: Actualizar personalidades en personas.json para incluir experiencia real con ytubviral.com.\n\nIssues del análisis:\n${issues.filter(i => /credib|rechaz|verify|menciona|mention/i.test(i)).join('\n')}`
-          ).catch(() => {});
-          return { changed: false, detail: `Credibility gap detectado: ${fixes.join('; ')}. Alerta enviada.` };
+          // Apply the dotted key path to config
+          const parts = dotKey.split('.');
+          let target = config;
+          for (let i = 0; i < parts.length - 1; i++) {
+            if (!target[parts[i]]) target[parts[i]] = {};
+            target = target[parts[i]];
+          }
+          const prev = target[parts[parts.length - 1]];
+          target[parts[parts.length - 1]] = Math.round(value * 1000) / 1000;
+          appliedChanges.push(`${dotKey}: ${prev} → ${value}`);
+          changed = true;
         }
-
-        return { changed: false, detail: 'Personalidades ya incluyen referencia a ytubviral — credibilidad OK' };
-      } catch (err) {
-        return { changed: false, detail: `Error checking personas: ${err.message}` };
       }
-    },
-  },
-  {
-    id: 'fix-irrelevant-targeting',
-    description: 'Alerta cuando las personas comentan en hilos no relevantes (baja conversión)',
-    cooldownMs: 7 * 86400000,
-    condition: (issues) => {
-      return issues.some(i => /relevancia|irrelevant|lejos del.*n[uú]cleo|too far|off.?topic/i.test(i));
-    },
-    apply: async (config, issues) => {
+
+      if (!changed) {
+        return { changed: false, detail: `Claude unified diagnosis: all proposed changes were invalid` };
+      }
+
+      // Email notification
       await sendEmail(
-        '[YTubViral Social] Personas en hilos irrelevantes — revisar targeting',
-        `El análisis detectó que las personas están participando en conversaciones que no son relevantes para YTubViral.\n\nIssues:\n${issues.filter(i => /relevan|irrelevant|lejos|far|topic/i.test(i)).join('\n')}\n\nACCIÓN SUGERIDA:\n1. Revisar keywords de búsqueda en twitter.js y reddit.js\n2. Añadir filtros más estrictos en claude.js (isYtubviralRelevantPost)\n3. Verificar que los subreddits target son correctos`
+        '[YTubViral Social] Claude auto-fix aplicado',
+        `Claude Opus ha analizado y corregido el sistema social.\n\nDIAGNÓSTICO: ${claudeResponse.diagnosis}\n\nCAMBIOS APLICADOS:\n${appliedChanges.join('\n')}\n\nRAZONAMIENTO: ${claudeResponse.reasoning}`
       ).catch(() => {});
-      return { changed: false, detail: 'Alerta de targeting irrelevante enviada' };
+
+      return {
+        changed: true,
+        detail: `Claude unified: ${claudeResponse.diagnosis}. Applied: ${appliedChanges.join('; ')}`,
+      };
     },
   },
 ]);

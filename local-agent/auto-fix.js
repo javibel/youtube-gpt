@@ -372,6 +372,23 @@ function adjustConfigValue(config, moduleName, key, delta, min, max, description
   };
 }
 
+// ── Dynamic fixes (injected by meta-optimizer) ────────────────────────────────
+
+const DYNAMIC_FIXES_FILE = path.join(__dirname, 'reports', 'approved-fixes.json');
+
+/**
+ * Load approved dynamic fixes for a given agent.
+ * These are fixes proposed by meta-optimizer and approved by the owner.
+ */
+function getDynamicFixes(agentId) {
+  try {
+    const data = JSON.parse(fs.readFileSync(DYNAMIC_FIXES_FILE, 'utf8'));
+    return (data.fixes || []).filter(f => f.agent === agentId && f.status === 'approved');
+  } catch {
+    return [];
+  }
+}
+
 module.exports = {
   registerFixes,
   applyFixes,
@@ -385,4 +402,6 @@ module.exports = {
   writeConfig,
   getConfigValue,
   setConfigValue,
+  loadFixLog,
+  getDynamicFixes,
 };
