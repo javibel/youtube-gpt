@@ -747,7 +747,13 @@ export default async function LandingPage() {
         { '@type': 'Offer', price: '9.99', priceCurrency: 'EUR', name: 'Pro' },
         { '@type': 'Offer', price: '29.99', priceCurrency: 'EUR', name: 'Business' },
       ],
-      aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', ratingCount: '127' },
+      ...(approvedReviews.length >= 5 ? {
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: (approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length).toFixed(1),
+          ratingCount: String(approvedReviews.length),
+        },
+      } : {}),
     },
   ];
 

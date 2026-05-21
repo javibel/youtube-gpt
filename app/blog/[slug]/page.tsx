@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const post = getPost(slug);
   if (!post) return {};
   return {
-    title: `${post.title.es} | ${post.title.en} — YTubViral`,
+    title: `${post.title.es} | YTubViral`,
     description: post.excerpt.es,
     alternates: { canonical: `https://ytubviral.com/blog/${slug}` },
     openGraph: {
@@ -105,11 +105,25 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     mainEntityOfPage: `https://ytubviral.com/blog/${slug}`,
   };
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ytubviral.com' },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://ytubviral.com/blog' },
+      { '@type': 'ListItem', position: 3, name: post.title.es, item: `https://ytubviral.com/blog/${slug}` },
+    ],
+  };
+
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>

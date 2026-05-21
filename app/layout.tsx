@@ -57,13 +57,14 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     site: "@ytubviral",
+    creator: "@ytubviral",
     title: "YTubViral — Genera contenido viral para YouTube con IA",
     description:
       "Títulos, descripciones, scripts y miniaturas para YouTube generados por IA en segundos.",
-    images: ["/og-image.png"],
   },
   alternates: {
     canonical: BASE_URL,
+    languages: { 'en-US': BASE_URL },
   },
 };
 

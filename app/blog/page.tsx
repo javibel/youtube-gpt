@@ -77,8 +77,21 @@ export default async function BlogListPage({
   const catLabel = (cat: string) => BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES]?.name[lang] ?? cat;
   const catColor = (cat: string) => BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES]?.color ?? '#FF0033';
 
+  const blogJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: 'YTubViral Blog',
+    url: 'https://ytubviral.com/blog',
+    description: 'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización.',
+    publisher: { '@type': 'Organization', name: 'YTubViral', url: 'https://ytubviral.com' },
+  };
+
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
+      />
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">

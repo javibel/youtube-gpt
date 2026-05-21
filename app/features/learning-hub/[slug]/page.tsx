@@ -69,11 +69,25 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
     mainEntityOfPage: `https://ytubviral.com/features/learning-hub/${slug}`,
   };
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ytubviral.com' },
+      { '@type': 'ListItem', position: 2, name: 'Learning Hub', item: 'https://ytubviral.com/features/learning-hub' },
+      { '@type': 'ListItem', position: 3, name: guide.title[lang], item: `https://ytubviral.com/features/learning-hub/${slug}` },
+    ],
+  };
+
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
       {/* Article */}
