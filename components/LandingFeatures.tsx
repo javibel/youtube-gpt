@@ -6,12 +6,21 @@ import Link from 'next/link';
 type Lang = 'es' | 'en';
 
 const FEATURE_LINKS: Record<string, string> = {
+  seoscore: '/features/seo-score',
   research: '/features/keyword-research',
   competitors: '/features/competitor-analysis',
   revenue: '/features/revenue-estimator',
 };
 
 const FEATURES_ES = [
+  {
+    k: 'seoscore',
+    t: 'SEO Score',
+    d: 'Pega el título, descripción y tags de tu vídeo. Obtén una puntuación de 0 a 100 con recomendaciones específicas para mejorar. El diagnóstico más rápido para saber por qué tu vídeo no se posiciona.',
+    tag: 'Gratis · Top #1',
+    preview: null,
+  },
+  { k: 'research', t: 'Keyword Research', d: 'Datos reales de YouTube Data API. Volumen estimado, competencia y CPC. Encuentra temas antes que tu competencia y posiciona cada vídeo desde el primer día. Exclusivo Plan Pro.', tag: 'Pro · SEO', preview: null },
   {
     k: 'titles',
     t: 'Títulos virales',
@@ -24,22 +33,29 @@ const FEATURES_ES = [
       'Guardé 200€/mes con este cambio tonto en mi setup',
     ],
   },
+  { k: 'competitors', t: 'Análisis de competidores', d: 'Introduce cualquier URL de canal. Stats completos, top 10 vídeos por vistas, frecuencia de publicación y las keywords que más usa. Copia lo que funciona. Exclusivo Plan Pro.', tag: 'Pro · Intel', preview: null },
   { k: 'desc', t: 'Descripciones SEO', d: 'Con keywords de cola larga, timestamps automáticos, hashtags y tu tono único.', tag: 'Search +41%', preview: null },
   { k: 'script', t: 'Scripts completos', d: 'Gancho de 15s, desarrollo modular y CTA. Estructura probada en +2M de vídeos virales.', tag: '8 min ahorro', preview: null },
-  { k: 'caption', t: 'Captions multi-plataforma', d: 'Reels, TikToks, Tweets. Adapta tu contenido de YouTube a cada red sin perder el alma.', tag: '4 redes', preview: null },
   { k: 'thumb', t: 'Conceptos de miniaturas', d: 'Briefs visuales con colores, pose facial, texto y referencias. Envía a tu diseñador y listo.', tag: '×3 clics', preview: null },
-  { k: 'research', t: 'Keyword Research', d: 'Datos reales de YouTube Data API. Volumen estimado, competencia y CPC. Encuentra temas antes que tu competencia y posiciona cada vídeo desde el primer día. Exclusivo Plan Pro.', tag: 'Pro · SEO', preview: null },
-  { k: 'competitors', t: 'Análisis de competidores', d: 'Introduce cualquier URL de canal. Stats completos, top 10 vídeos por vistas, frecuencia de publicación y las keywords que más usa. Copia lo que funciona. Exclusivo Plan Pro.', tag: 'Pro · Intel', preview: null },
+  { k: 'retention', t: 'Optimizador de retención', d: 'Detecta el punto exacto donde los viewers abandonan. Recomendaciones de IA por segmento: gancho, desarrollo y cierre.', tag: 'Pro · Retención', preview: null },
+  { k: 'outliers', t: 'Detección de outliers', d: 'Encuentra vídeos virales en cualquier nicho que superaron ×10 la media del canal. Analiza qué hicieron diferente para replicar el patrón.', tag: 'Pro · Viral', preview: null },
   { k: 'extension', t: 'Extensión Chrome', d: 'SEO score, detección de outliers, estadísticas de canal y títulos con IA — directamente en YouTube y YouTube Studio. Solo en Plan Pro.', tag: 'Pro · Chrome', preview: null },
   { k: 'revenue', t: 'Estimador de ingresos', d: 'CPM real por país, proyección mensual y anual, top vídeos por revenue y consejos de IA para maximizar tu monetización. Datos reales de YouTube Analytics.', tag: 'Pro · Revenue', preview: null },
   { k: 'calendar', t: 'Calendario IA', d: 'Planifica tu próxima semana con IA. Analiza trends, competidores y horarios óptimos para sugerirte qué publicar, cuándo y por qué.', tag: 'Pro · Planificador', preview: null },
+  { k: 'caption', t: 'Captions multi-plataforma', d: 'Reels, TikToks, Tweets. Adapta tu contenido de YouTube a cada red sin perder el alma.', tag: '4 redes', preview: null },
   { k: 'thumbpreview', t: 'Preview de miniatura', d: 'Visualiza tu miniatura en contexto real: feed de YouTube, móvil, barra lateral. Detecta problemas de legibilidad antes de publicar.', tag: 'Pro · Visual', preview: null },
-  { k: 'retention', t: 'Optimizador de retención', d: 'Detecta el punto exacto donde los viewers abandonan. Recomendaciones de IA por segmento: gancho, desarrollo y cierre.', tag: 'Pro · Retención', preview: null },
   { k: 'subscribers', t: 'Análisis de suscriptores', d: 'Crecimiento diario, tendencia semanal, ratio subs/vistas y predicción a 30 días. Entiende qué vídeos convierten viewers en fans.', tag: 'Pro · Growth', preview: null },
-  { k: 'outliers', t: 'Detección de outliers', d: 'Encuentra vídeos virales en cualquier nicho que superaron ×10 la media del canal. Analiza qué hicieron diferente para replicar el patrón.', tag: 'Pro · Viral', preview: null },
 ];
 
 const FEATURES_EN = [
+  {
+    k: 'seoscore',
+    t: 'SEO Score',
+    d: "Paste your video's title, description and tags. Get a 0-to-100 score with specific recommendations to improve. The fastest diagnosis for why your video isn't ranking.",
+    tag: 'Free · Top #1',
+    preview: null,
+  },
+  { k: 'research', t: 'Keyword Research', d: 'Real YouTube Data API data. Estimated volume, competition and CPC. Find topics before your competitors and rank every video from day one. Pro plan only.', tag: 'Pro · SEO', preview: null },
   {
     k: 'titles',
     t: 'Viral titles',
@@ -52,20 +68,56 @@ const FEATURES_EN = [
       'I saved $200/month with this dumb tweak to my setup',
     ],
   },
+  { k: 'competitors', t: 'Competitor Analysis', d: 'Enter any channel URL. Full stats, top 10 videos by views, upload frequency and the keywords they use most. Copy what works. Pro plan only.', tag: 'Pro · Intel', preview: null },
   { k: 'desc', t: 'SEO descriptions', d: 'Long-tail keywords, automatic timestamps, hashtags and your unique tone.', tag: 'Search +41%', preview: null },
   { k: 'script', t: 'Full scripts', d: '15s hook, modular development and CTA. Structure proven across 2M+ viral videos.', tag: '8 min saved', preview: null },
-  { k: 'caption', t: 'Multi-platform captions', d: 'Reels, TikToks, Tweets. Repurpose your YouTube content to every network without losing its soul.', tag: '4 networks', preview: null },
   { k: 'thumb', t: 'Thumbnail concepts', d: 'Visual briefs with colors, facial pose, text and references. Send to your designer and you\'re done.', tag: '×3 clicks', preview: null },
-  { k: 'research', t: 'Keyword Research', d: 'Real YouTube Data API data. Estimated volume, competition and CPC. Find topics before your competitors and rank every video from day one. Pro plan only.', tag: 'Pro · SEO', preview: null },
-  { k: 'competitors', t: 'Competitor Analysis', d: 'Enter any channel URL. Full stats, top 10 videos by views, upload frequency and the keywords they use most. Copy what works. Pro plan only.', tag: 'Pro · Intel', preview: null },
+  { k: 'retention', t: 'Retention Optimizer', d: 'Pinpoint exactly where viewers drop off. AI recommendations by segment: hook, body and outro.', tag: 'Pro · Retention', preview: null },
+  { k: 'outliers', t: 'Outlier Detection', d: 'Find viral videos in any niche that outperformed the channel average by 10×. Analyze what they did differently so you can replicate the pattern.', tag: 'Pro · Viral', preview: null },
   { k: 'extension', t: 'Chrome Extension', d: 'SEO score, outlier detection, channel stats and AI titles — directly on YouTube and YouTube Studio. Pro plan only.', tag: 'Pro · Chrome', preview: null },
   { k: 'revenue', t: 'Revenue Estimator', d: 'Real CPM by country, monthly and yearly projections, top videos by revenue and AI tips to maximize your monetization. Real YouTube Analytics data.', tag: 'Pro · Revenue', preview: null },
   { k: 'calendar', t: 'AI Calendar', d: 'Plan your next week with AI. Analyzes trends, competitors and optimal times to suggest what to publish, when and why.', tag: 'Pro · Planner', preview: null },
+  { k: 'caption', t: 'Multi-platform captions', d: 'Reels, TikToks, Tweets. Repurpose your YouTube content to every network without losing its soul.', tag: '4 networks', preview: null },
   { k: 'thumbpreview', t: 'Thumbnail Preview', d: 'See your thumbnail in real context: YouTube feed, mobile, sidebar. Catch readability issues before you publish.', tag: 'Pro · Visual', preview: null },
-  { k: 'retention', t: 'Retention Optimizer', d: 'Pinpoint exactly where viewers drop off. AI recommendations by segment: hook, body and outro.', tag: 'Pro · Retention', preview: null },
   { k: 'subscribers', t: 'Subscriber Analysis', d: 'Daily growth, weekly trends, subs/views ratio and 30-day forecast. Understand which videos convert viewers into fans.', tag: 'Pro · Growth', preview: null },
-  { k: 'outliers', t: 'Outlier Detection', d: 'Find viral videos in any niche that outperformed the channel average by 10×. Analyze what they did differently so you can replicate the pattern.', tag: 'Pro · Viral', preview: null },
 ];
+
+function PreviewSeoScore({ lang }: { lang: Lang }) {
+  const items = lang === 'en'
+    ? [
+        { label: 'Title', score: 85, tip: 'Good length, has number + emotion' },
+        { label: 'Description', score: 42, tip: 'Too short, missing keywords' },
+        { label: 'Tags', score: 68, tip: 'Add 3 long-tail keywords' },
+        { label: 'Thumbnail', score: 90, tip: 'High contrast, readable text' },
+      ]
+    : [
+        { label: 'Título', score: 85, tip: 'Buena longitud, tiene número + emoción' },
+        { label: 'Descripción', score: 42, tip: 'Demasiado corta, faltan keywords' },
+        { label: 'Tags', score: 68, tip: 'Añade 3 keywords de cola larga' },
+        { label: 'Miniatura', score: 90, tip: 'Alto contraste, texto legible' },
+      ];
+  const overall = 72;
+  return (
+    <div className="col-span-2 border border-white/10 bg-black p-4 space-y-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500">{lang === 'en' ? 'OVERALL SCORE' : 'PUNTUACIÓN GLOBAL'}</span>
+        <span className="font-display font-bold text-3xl" style={{ color: overall >= 70 ? '#22c55e' : 'var(--red)' }}>{overall}<span className="text-lg text-zinc-500">/100</span></span>
+      </div>
+      {items.map((item) => (
+        <div key={item.label} className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] text-zinc-300">{item.label}</span>
+            <span className="font-mono-jb text-[13px]" style={{ color: item.score >= 70 ? '#22c55e' : item.score >= 50 ? '#f59e0b' : 'var(--red)' }}>{item.score}</span>
+          </div>
+          <div className="h-1.5 bg-white/5 overflow-hidden">
+            <div className="h-full transition-all" style={{ width: `${item.score}%`, background: item.score >= 70 ? '#22c55e' : item.score >= 50 ? '#f59e0b' : 'var(--red)' }} />
+          </div>
+          <p className="font-mono-jb text-[11px] text-zinc-500">{item.tip}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function PreviewDesc({ lang }: { lang: Lang }) {
   return (
@@ -355,6 +407,7 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
         </div>
       ));
     }
+    if (f.k === 'seoscore') return <PreviewSeoScore lang={lang} />;
     if (f.k === 'desc') return <PreviewDesc lang={lang} />;
     if (f.k === 'script') return <PreviewScript lang={lang} />;
     if (f.k === 'caption') return <PreviewCaption lang={lang} />;
@@ -376,7 +429,7 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
         <div className="mb-14">
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>04 · TOOLS</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
-            {lang === 'en' ? <>14 tools.<br />One superpower.</> : <>14 herramientas.<br />Un superpoder.</>}
+            {lang === 'en' ? <>Start with SEO Score.<br />Unlock everything else.</> : <>Empieza con SEO Score.<br />Descubre el resto.</>}
           </h2>
         </div>
 

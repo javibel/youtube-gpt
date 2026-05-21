@@ -162,8 +162,8 @@ function Hero({ lang }: { lang: Lang }) {
 
         <p className="max-w-2xl mx-auto text-center text-zinc-400 text-lg md:text-xl mt-8 leading-relaxed">
           {lang === 'en'
-            ? "Titles, scripts, thumbnails, SEO, keyword research, competitor analysis, revenue estimator, AI calendar, retention optimizer and more. 14 tools, one platform."
-            : 'Títulos, scripts, miniaturas, SEO, keyword research, análisis de competidores, estimador de ingresos, calendario IA, optimizador de retención y más. 14 herramientas, una plataforma.'}
+            ? "Check your SEO Score, find winning keywords, spy on competitors, generate titles that get clicks — and 10 more AI tools built for YouTube creators who want to grow faster."
+            : 'Analiza tu SEO Score, encuentra keywords ganadoras, espía a la competencia, genera títulos que consiguen clics — y 10 herramientas más de IA para creadores de YouTube que quieren crecer más rápido.'}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
