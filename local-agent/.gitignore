@@ -1,4 +1,4 @@
-# Secrets — NEVER commit to public repo
+# Secrets — NEVER commit
 .env
 *.env.*
 
@@ -21,13 +21,28 @@ memory/
 debug/
 .next/
 
+# State files (regenerated at runtime)
+outreach-monitor-state.json
+outreach-community-posts.json
+outreach-tracker.json
+
 # Lock files (regenerable)
 package-lock.json
 
-# Node binary (local copy)
-node
+# Binaries
+node/
+cloudflared.exe
+
+# Claude Code local config
+.claude/
+
+# Persona scaffold dirs
+persona-alex/
+persona-ferran/
 
 # Windows/system
 *.ico
 *.lnk
 Thumbs.db
+Desktop.ini
+node

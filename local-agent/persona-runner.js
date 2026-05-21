@@ -7,6 +7,7 @@ const { generatePersonaComment } = require('./claude');
 
 const twitter = require('./twitter');
 const reddit = require('./reddit');
+const { diagnose } = require('./doctor');
 
 function loadPersonas() {
   const file = path.join(__dirname, 'personas.json');
@@ -47,6 +48,7 @@ async function runAllPersonas() {
         const msg = err.message || String(err);
         console.error(`[persona-runner] ${persona.name} Twitter error: ${msg}`);
         _errors.push({ persona: persona.name, platform: 'Twitter', error: msg, at: new Date().toISOString() });
+        await diagnose(err, { platform: 'twitter', account: persona.id, profileDir: persona.profileDir, action: 'engage' }).catch(() => {});
       }
     }
 
@@ -67,6 +69,7 @@ async function runAllPersonas() {
         const msg = err.message || String(err);
         console.error(`[persona-runner] ${persona.name} Reddit error: ${msg}`);
         _errors.push({ persona: persona.name, platform: 'Reddit', error: msg, at: new Date().toISOString() });
+        await diagnose(err, { platform: 'reddit', account: persona.id, profileDir: persona.profileDir, action: 'engage' }).catch(() => {});
       }
     }
 

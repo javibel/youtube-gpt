@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Spy on any YouTube channel: views, keywords, upload patterns, trending videos. Free.',
     url: 'https://ytubviral.com/features/competitor-analysis',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-competitor-analysis.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'YouTube Competitor Analysis Tool — Free Channel Spy',
     description: 'Analyze any YouTube channel: upload frequency, average views, top keywords, trending videos, and growth patterns. Free competitor intelligence for creators.',
-    images: ['/og-image.png'],
+    images: ['/og-competitor-analysis.webp'],
   },
 };
 

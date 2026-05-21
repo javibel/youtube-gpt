@@ -53,7 +53,9 @@ async function safeGoto(page, url, opts = {}) {
       console.error(`[${tag}] Navigation failed after ${attempt} attempt(s): ${err.message}`);
 
       // Track consecutive failures and auto-heal if threshold reached
-      if (profileDir && isTimeout) {
+      const errMsg = err.message || '';
+      const isDisconnect = errMsg.includes('Target closed') || errMsg.includes('detached Frame') || errMsg.includes('Protocol error');
+      if (profileDir && (isTimeout || isDisconnect)) {
         const failures = recordNavFailure(profileDir);
         if (failures >= AUTO_HEAL_THRESHOLD) {
           console.log(`[${tag}] ${failures} consecutive nav failures — auto-healing: killing zombies + restarting browser`);
@@ -94,7 +96,7 @@ async function safeEval(page, fn, ...args) {
     return await page.evaluate(fn, ...args);
   } catch (err) {
     const msg = err.message || '';
-    if (msg.includes('timed out') || msg.includes('Execution context') || msg.includes('Target closed') || msg.includes('Session closed')) {
+    if (msg.includes('timed out') || msg.includes('Execution context') || msg.includes('Target closed') || msg.includes('Session closed') || msg.includes('detached Frame') || msg.includes('Protocol error')) {
       return null;
     }
     throw err;

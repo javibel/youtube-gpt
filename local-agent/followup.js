@@ -1,11 +1,63 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const { newPage, newPageForProfile, ensureSession, persistSession } = require('./browser');
 const db = require('./db');
-const { generateFollowupReply } = require('./claude');
+const { generateFollowupReply, callClaude } = require('./claude');
 const { safeGoto, safeEval, alertSessionExpired } = require('./resilience');
 const { readingPause, commentPause } = require('./humanize');
 const config = require('./config');
+
+const REMOVALS_FILE = path.join(__dirname, 'reports', 'reddit-removals.json');
+
+/**
+ * Record a Reddit removal AND ask Claude to diagnose why it was removed.
+ * Claude generates a specific lesson that gets injected into future comment prompts.
+ */
+async function recordRemoval({ accountId, contextUrl, ourContent, subreddit }) {
+  let removals = [];
+  try { removals = JSON.parse(fs.readFileSync(REMOVALS_FILE, 'utf-8')); } catch {}
+
+  // Ask Claude to diagnose the removal
+  let lesson = '';
+  try {
+    const diagnosis = await callClaude(
+      `Un comentario nuestro fue ELIMINADO por Reddit en ${subreddit}.
+
+Comentario eliminado:
+"${(ourContent || '').slice(0, 400)}"
+
+URL del contexto: ${contextUrl}
+
+Analiza:
+1. ¿Por qué fue probablemente eliminado? (spam filter, auto-promo, reglas del sub, karma bajo, etc.)
+2. ¿Qué patrón específico del texto activó la eliminación?
+3. ¿Cómo debería reformularse para el MISMO mensaje pero sin ser eliminado?
+
+Responde en 2-3 frases concretas y accionables. Solo la lección, sin preámbulos.`,
+      200,
+      { caller: 'removal-analysis', system: 'Eres un experto en moderación de Reddit. Conoces los filtros anti-spam, las reglas comunes de subreddits, y cómo AutoModerator filtra contenido. Sé directo y específico.' }
+    );
+    lesson = (diagnosis || '').trim();
+  } catch (err) {
+    console.error(`[followup] Claude removal analysis failed: ${err.message}`);
+    lesson = 'Análisis no disponible — revisar manualmente.';
+  }
+
+  removals.push({
+    date: new Date().toISOString(),
+    accountId,
+    subreddit: subreddit || contextUrl,
+    ourContent: (ourContent || '').slice(0, 500),
+    contextUrl,
+    lesson,
+  });
+  // Keep last 50 removals
+  if (removals.length > 50) removals = removals.slice(-50);
+  fs.writeFileSync(REMOVALS_FILE, JSON.stringify(removals, null, 2));
+  console.log(`[followup] ⚠️ Reddit removal in ${subreddit || contextUrl} — Claude lesson: ${lesson.slice(0, 100)}...`);
+}
 
 // Configurable via dashboard (module: 'followup')
 function getFollowupCfg() {
@@ -405,6 +457,26 @@ async function checkRedditFollowups(opts = {}) {
 
       const alreadyHandled = await db.hasFollowup('reddit', msg.contextUrl, msg.author, accountId);
       if (alreadyHandled) continue;
+
+      if (msg.author.toLowerCase() === 'automoderator') {
+        console.log(`[${tag}] Skipping AutoModerator message`);
+        continue;
+      }
+
+      // Detect removed comments — learn from them
+      if (msg.body.includes('[ Removed by Reddit ]') || msg.body.includes('[removed]')) {
+        // Our comment was removed. Find what we originally wrote so we can learn.
+        const ourMatch = ourComments.find(c => c.post_url && msg.contextUrl && msg.contextUrl.includes(c.post_url.split('/comments/')[1]?.split('/')[0] || '___'));
+        const sub = msg.contextUrl.match(/\/r\/([^/]+)/)?.[1] || 'unknown';
+        recordRemoval({
+          accountId,
+          contextUrl: msg.contextUrl,
+          ourContent: ourMatch?.content || msg.parentText || '(content not recoverable)',
+          subreddit: `r/${sub}`,
+        });
+        console.log(`[${tag}] ⚠️ Reddit removed content in ${sub} — logged for learning`);
+        continue;
+      }
 
       // Match to our original comment — use fuzzy matching (Reddit reformats heavily)
       let ourOriginal = null;

@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Personal AI coach for YouTube growth. Create, analyze, optimize, and research — all via chat.',
     url: 'https://ytubviral.com/features/ai-coach',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-ai-coach.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'YouTube AI Coach — Personalized Growth Assistant',
     description: 'Tu coach personal de IA para YouTube: crea contenido, analiza rendimiento, optimiza SEO e investiga nichos. Todo vía chat.',
-    images: ['/og-image.png'],
+    images: ['/og-ai-coach.webp'],
   },
 };
 

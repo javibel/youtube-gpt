@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Daily views, watch time, traffic sources, top videos, and subscriber growth. Free.',
     url: 'https://ytubviral.com/features/channel-analytics',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-channel-analytics.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'YouTube Channel Analytics Dashboard — Views, Traffic & Growth',
     description: 'Dashboard de analytics avanzado para tu canal de YouTube: vistas diarias, watch time, fuentes de tráfico, top vídeos y suscriptores.',
-    images: ['/og-image.png'],
+    images: ['/og-channel-analytics.webp'],
   },
 };
 

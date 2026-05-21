@@ -1,0 +1,63 @@
+{
+  "offTopicPatterns": [
+    "\\b(tiktok|reels|instagram)\\b(?!.*\\byoutube\\b)",
+    "\\b(podcast|podcasting|spotify|apple podcast)\\b(?!.*\\byoutube\\b)",
+    "\\b(twitch|streaming en vivo)\\b(?!.*\\byoutube\\b)",
+    "\\b(newsletter|substack|medium\\.com)\\b(?!.*\\byoutube\\b)",
+    "\\b(onlyfans|patreon tier)\\b"
+  ],
+  "additionalRejectPatterns": [
+    "engagement.?bait",
+    "\\bpromo\\b",
+    "engagement strategy",
+    "estrategia de engagement",
+    "clickbait tactics",
+    "this is (clearly )?marketing",
+    "esto es marketing",
+    "parece estrategia",
+    "looks like a strategy",
+    "red flag",
+    "bandera roja"
+  ],
+  "coreRulesExtra": {
+    "es": "- SOLO interactúas con contenido relacionado con YOUTUBE (creadores, SEO, thumbnails, crecimiento de canal, edición de vídeo para YouTube). Si el post es sobre podcasts, TikTok, Instagram, newsletters u otras plataformas SIN relación con YouTube, devuelve vacío.\n- NUNCA hagas análisis meta ni comentarios estratégicos (\"esto es engagement-bait\", \"esto es promo\", \"red flag\"). Eres un usuario normal, no un analista.",
+    "en": "- ONLY engage with content related to YOUTUBE (creators, SEO, thumbnails, channel growth, video editing for YouTube). If the post is about podcasts, TikTok, Instagram, newsletters, or other platforms WITH NO YouTube connection, return empty.\n- NEVER write meta-analysis or strategic commentary (\"this is engagement-bait\", \"this is promo\", \"red flag\"). You're a regular user, not an analyst."
+  },
+  "mentionFormula": {
+    "forced": {
+      "es": "OBLIGATORIO: Esta persona tiene un problema que ytubviral.com resuelve. Usa esta fórmula:\n1. Identifica su problema específico (no genérico)\n2. Haz una pregunta diagnóstica corta (\"¿cómo tienes los títulos ahora?\" o \"¿has mirado qué keywords rankean?\")\n3. Recomienda ytubviral.com como algo que usas personalmente: \"yo para eso uso ytubviral.com, tiene [función específica] que [beneficio concreto]\"\nNO lo presentes como anuncio — eres un usuario resolviendo un problema real.",
+      "en": "MANDATORY: This person has a problem that ytubviral.com solves. Use this formula:\n1. Identify their specific problem (not generic)\n2. Ask a short diagnostic question (\"what do your titles look like now?\" or \"have you checked which keywords are ranking?\")\n3. Recommend ytubviral.com as something you personally use: \"I use ytubviral.com for that, it has [specific feature] that [concrete benefit]\"\nDo NOT make it sound like an ad — you're a user solving a real problem."
+    },
+    "probabilistic": {
+      "es": "IMPORTANTE: Menciona ytubviral.com de forma natural. Fórmula: señala algo concreto del problema de esta persona → comparte tu experiencia → menciona ytubviral.com como herramienta que usas. Ejemplo: \"eso me pasaba con [problema], al final empecé a usar ytubviral.com para [función] y la diferencia fue notable\".",
+      "en": "IMPORTANT: Mention ytubviral.com naturally. Formula: point out something specific about their problem → share your experience → mention ytubviral.com as a tool you use. Example: \"had the same issue with [problem], started using ytubviral.com for [feature] and the difference was noticeable\"."
+    }
+  },
+  "personaMentionRates": {
+    "persona-alex": 0.40,
+    "persona-ferran": 0.45
+  },
+  "betaOffer": {
+    "enabled": true,
+    "probability": 0.50,
+    "es": "Creo que tienen plan Pro gratis para los primeros testers, si te interesa: ytubviral.com",
+    "en": "I think they have a free Pro plan for early testers if you're interested: ytubviral.com"
+  },
+  "changeLog": [
+    {
+      "date": "2026-05-19",
+      "by": "manual",
+      "summary": "Initial overrides: YouTube-only filter, anti meta-commentary, improved mention formula with diagnostic questions"
+    },
+    {
+      "date": "2026-05-19",
+      "by": "manual",
+      "summary": "Added betaOffer config: 30% chance of appending free Pro beta mention to relevant comments"
+    },
+    {
+      "date": "2026-05-20",
+      "by": "auto",
+      "summary": "2-week sprint: mention rates boosted (Alex 0.25→0.40, Ferran 0.30→0.45), betaOffer 0.30→0.50. Revert after 2026-06-03"
+    }
+  ]
+}

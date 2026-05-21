@@ -45,8 +45,12 @@ const DEFAULTS = {
     guardianTime: '02:15',
     scoutTime: '02:30',
     watchdogTime: '02:45',
+    infraOptimizerTime: '02:45',
+    seoOptimizerTime: '02:50',
+    funnelOptimizerTime: '02:55',
     optimizerTime: '03:00',
     managerTime: '03:15',
+    metaOptimizerTime: '03:30 (Sundays)',
   },
   sentinel: {
     siteUrl: 'https://ytubviral.com',
@@ -137,10 +141,23 @@ const DEFAULTS = {
     model: 'claude-haiku-4-5-20251001',
   },
   'social-optimizer': {
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-opus-4-6',
   },
   manager: {
-    model: 'claude-sonnet-4-6',
+    model: 'claude-opus-4-6',
+  },
+  'seo-optimizer': {
+    model: 'claude-opus-4-6',
+  },
+  'funnel-optimizer': {
+    model: 'claude-opus-4-6',
+  },
+  'infra-optimizer': {
+    model: 'claude-opus-4-6',
+  },
+  'meta-optimizer': {
+    model: 'claude-opus-4-6',
+    enabled: true,
   },
   personas: {
     alex: {
@@ -654,6 +671,31 @@ const server = http.createServer(async (req, res) => {
   const logsMatch = pathname.match(/^\/api\/logs\/(.+)$/);
   if (logsMatch && req.method === 'GET') {
     return sendJSON(res, 200, getRecentLogs(logsMatch[1]));
+  }
+
+  // Social overrides (hot-patchable config for Claude intervention)
+  const SOCIAL_OVERRIDES_FILE = path.join(__dirname, 'social-overrides.json');
+  if (pathname === '/api/social-overrides' && req.method === 'GET') {
+    try {
+      const data = fs.existsSync(SOCIAL_OVERRIDES_FILE)
+        ? JSON.parse(fs.readFileSync(SOCIAL_OVERRIDES_FILE, 'utf8'))
+        : {};
+      return sendJSON(res, 200, data);
+    } catch { return sendJSON(res, 200, {}); }
+  }
+  if (pathname === '/api/social-overrides' && req.method === 'PUT') {
+    const body = await parseBody(req);
+    // Validate: only allow known fields
+    const ALLOWED = ['offTopicPatterns', 'additionalRejectPatterns', 'coreRulesExtra', 'mentionFormula', 'personaMentionRates'];
+    const current = fs.existsSync(SOCIAL_OVERRIDES_FILE) ? JSON.parse(fs.readFileSync(SOCIAL_OVERRIDES_FILE, 'utf8')) : {};
+    for (const [k, v] of Object.entries(body)) {
+      if (ALLOWED.includes(k)) current[k] = v;
+    }
+    current.changeLog = current.changeLog || [];
+    current.changeLog.push({ date: new Date().toISOString().slice(0, 10), by: 'dashboard', summary: 'Manual edit from dashboard' });
+    if (current.changeLog.length > 20) current.changeLog = current.changeLog.slice(-20);
+    fs.writeFileSync(SOCIAL_OVERRIDES_FILE, JSON.stringify(current, null, 2), 'utf8');
+    return sendJSON(res, 200, { success: true, overrides: current });
   }
 
   // Ecosystem — live service status

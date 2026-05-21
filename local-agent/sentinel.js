@@ -23,11 +23,104 @@ const mem = require('./agent-memory');
 const { runGuardian } = require('./guardian');
 const config = require('./config');
 const { registerFixes, applyFixes, adjustConfigValue, readConfig } = require('./auto-fix');
+const { diagnose } = require('./doctor');
 
 const HEALTH_ENDPOINTS = [
   { url: '/', name: 'Landing', critical: true },
   { url: '/api/health', name: 'API Health', critical: false },
 ];
+
+// ── Resend health check ──────────────────────────────────────────────────
+
+const RESEND_DOMAINS_API = 'https://api.resend.com/domains';
+const EMERGENCY_ALERT_DIR = require('path').join(__dirname, 'logs');
+
+/**
+ * Check Resend health: API reachable + key valid + domain if accessible.
+ *
+ * Strategy: The API key may have limited permissions (sending_access only).
+ * - GET /domains: works with full_access keys, returns domain health
+ * - GET /domains: returns 403 with sending_access keys (key is valid, just limited)
+ * - GET /domains: returns 401 if key is truly invalid/expired
+ * - Network error: Resend API is down
+ *
+ * Returns { ok, status, domain, dnsOk, error }
+ */
+async function checkResend() {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) return { ok: false, status: 'no_key', error: 'RESEND_API_KEY not set' };
+
+  try {
+    const res = await fetch(RESEND_DOMAINS_API, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    // 401 = key expired or invalid → critical
+    if (res.status === 401) {
+      return { ok: false, status: 'auth_failed', error: 'API key invalid or expired (HTTP 401)' };
+    }
+
+    // 403 = key valid but lacks domain-read permission (sending_access only)
+    // This means Resend is UP and the key WORKS for sending — healthy
+    if (res.status === 403) {
+      return { ok: true, status: 'healthy_limited', domain: 'unknown (sending_access key)', dnsOk: null };
+    }
+
+    if (!res.ok) {
+      return { ok: false, status: 'api_error', error: `Resend API HTTP ${res.status}` };
+    }
+
+    // Full access — parse domain info
+    const data = await res.json();
+    const domains = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+    const ytubviral = domains.find(d => d.name === 'ytubviral.com');
+
+    if (!ytubviral) {
+      return { ok: false, status: 'domain_missing', error: 'ytubviral.com not found in Resend domains' };
+    }
+
+    const dnsRecords = ytubviral.records || [];
+    const dnsOk = dnsRecords.every(r => r.status === 'verified' || r.status === 'not_started');
+    const domainVerified = ytubviral.status === 'verified';
+
+    if (!domainVerified) {
+      return { ok: false, status: 'domain_unverified', domain: ytubviral.status, dnsOk, error: `Domain status: ${ytubviral.status}` };
+    }
+
+    return { ok: true, status: 'healthy', domain: ytubviral.status, dnsOk };
+  } catch (err) {
+    const isTimeout = err.name === 'AbortError' || err.name === 'TimeoutError';
+    return { ok: false, status: isTimeout ? 'timeout' : 'network_error', error: err.message };
+  }
+}
+
+/**
+ * Write emergency alert to disk when Resend is down and email can't be sent.
+ */
+function writeEmergencyAlert(subject, body) {
+  const fs = require('fs');
+  const alertFile = require('path').join(EMERGENCY_ALERT_DIR, `emergency-alert-${new Date().toISOString().slice(0, 10)}.log`);
+  const entry = `\n${'='.repeat(60)}\n[${new Date().toISOString()}] ${subject}\n${'='.repeat(60)}\n${body}\n`;
+  try {
+    fs.appendFileSync(alertFile, entry, 'utf8');
+    console.log(`[sentinel] Emergency alert written to ${alertFile}`);
+  } catch (e) {
+    console.error('[sentinel] CRITICAL: Cannot write emergency alert to disk:', e.message);
+  }
+}
+
+/**
+ * Send alert with Resend fallback — if email fails, write to disk.
+ */
+async function sendAlertWithFallback(subject, body) {
+  try {
+    await sendEmail(subject, body);
+  } catch (err) {
+    console.error(`[sentinel] Email failed (${err.message}), writing to disk as fallback`);
+    writeEmergencyAlert(subject, body);
+  }
+}
 
 // All configurable via dashboard
 function getSentinelCfg() {
@@ -49,6 +142,11 @@ let state = {
   consecutiveFailures: 0,
   lastCheck: null,
   lastResponseTime: null,
+  // Resend monitoring
+  resendOk: true,
+  resendDownSince: null,
+  resendLastAlert: null,
+  resendConsecutiveFailures: 0,
 };
 
 // ── HTTP check ─────────────────────────────────────────────────────────────
@@ -127,9 +225,7 @@ async function sendDownAlert(results) {
   body += `  - Origin server error\n`;
   body += `\nSentinel — YTubViral Agent System\n`;
 
-  await sendEmail(subject, body).catch(e =>
-    console.error('[sentinel] Alert email failed:', e.message)
-  );
+  await sendAlertWithFallback(subject, body);
   console.log('[sentinel] 🚨 DOWN alert sent');
 }
 
@@ -143,9 +239,7 @@ async function sendRecoveryAlert(downtime) {
   body += `Response time actual: ${state.lastResponseTime}ms\n`;
   body += `\nSentinel — YTubViral Agent System\n`;
 
-  await sendEmail(subject, body).catch(e =>
-    console.error('[sentinel] Recovery email failed:', e.message)
-  );
+  await sendAlertWithFallback(subject, body);
   console.log('[sentinel] ✅ Recovery alert sent');
 }
 
@@ -161,9 +255,7 @@ async function sendSlowAlert(results) {
   }
   body += `\nSentinel — YTubViral Agent System\n`;
 
-  await sendEmail(subject, body).catch(e =>
-    console.error('[sentinel] Slow alert email failed:', e.message)
-  );
+  await sendAlertWithFallback(subject, body);
   console.log('[sentinel] ⚠️ Slow alert sent');
 }
 
@@ -213,6 +305,8 @@ async function runSentinel() {
       state.lastAlertAt = Date.now();
       console.log('[sentinel] 🚨 SITE DOWN confirmed after retries!');
       await sendDownAlert(results);
+      const downErr = new Error(`Site DOWN: ${results.filter(r => !r.ok).map(r => `${r.endpoint}: ${r.error || r.status}`).join(', ')}`);
+      await diagnose(downErr, { platform: 'system', action: 'health-check', account: 'sentinel' }).catch(() => {});
     } else {
       // Already down — re-alert every 30 minutes
       const minSinceAlert = (Date.now() - state.lastAlertAt) / 60000;
@@ -267,6 +361,94 @@ async function runSentinel() {
     state.guardianTriggered = false;
   }
 
+  // ── Resend health check (every 5 min, coste cero) ───────────────────
+  const resendResult = await checkResend();
+  results.push({
+    endpoint: 'Resend',
+    url: RESEND_DOMAINS_API,
+    status: resendResult.ok ? 200 : 0,
+    ok: resendResult.ok,
+    elapsed: 0,
+    slow: false,
+    error: resendResult.error || null,
+    resendDetail: resendResult,
+  });
+
+  if (!resendResult.ok) {
+    state.resendConsecutiveFailures++;
+
+    if (state.resendOk) {
+      // Transition: OK → DOWN
+      state.resendOk = false;
+      state.resendDownSince = Date.now();
+      console.log(`[sentinel] 📧 RESEND DOWN: ${resendResult.error}`);
+
+      // Try to send email alert — if Resend is down, fallback to disk
+      const subject = `📧 RESEND CAÍDO — Emails del sistema no se están enviando`;
+      let body = `ALERTA — SERVICIO DE EMAIL CAÍDO\n${'='.repeat(50)}\n\n`;
+      body += `Hora: ${new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}\n`;
+      body += `Estado: ${resendResult.status}\n`;
+      body += `Error: ${resendResult.error}\n`;
+      body += `DNS OK: ${resendResult.dnsOk ?? 'N/A'}\n`;
+      body += `Dominio: ${resendResult.domain ?? 'N/A'}\n\n`;
+      body += `IMPACTO:\n`;
+      body += `  - Reportes diarios NO se enviarán\n`;
+      body += `  - Alertas de Sentinel escritas a disco (logs/emergency-alert-*.log)\n`;
+      body += `  - Verificación de email de usuarios FALLARÁ\n`;
+      body += `  - Auto-replies de Gmail NO se enviarán\n\n`;
+      body += `ACCIONES REQUERIDAS:\n`;
+      if (resendResult.status === 'auth_failed') {
+        body += `  1. La API key de Resend es inválida o expiró\n`;
+        body += `  2. Ve a https://resend.com/api-keys y genera una nueva\n`;
+        body += `  3. Actualiza RESEND_API_KEY en .env y reinicia PM2\n`;
+      } else if (resendResult.status === 'domain_unverified') {
+        body += `  1. El dominio ytubviral.com perdió verificación en Resend\n`;
+        body += `  2. Verifica los registros DNS (SPF, DKIM, DMARC) en Cloudflare\n`;
+        body += `  3. Ve a https://resend.com/domains para re-verificar\n`;
+      } else if (resendResult.status === 'domain_missing') {
+        body += `  1. El dominio ytubviral.com no existe en Resend\n`;
+        body += `  2. Ve a https://resend.com/domains y añádelo de nuevo\n`;
+      } else {
+        body += `  1. Resend puede estar experimentando una caída temporal\n`;
+        body += `  2. Revisa https://status.resend.com\n`;
+        body += `  3. Si persiste, verifica la API key y el dominio\n`;
+      }
+      body += `\nSentinel — YTubViral Agent System\n`;
+
+      await sendAlertWithFallback(subject, body);
+      state.resendLastAlert = Date.now();
+    } else {
+      // Already down — re-alert every 60 minutes via disk
+      const minSinceAlert = (Date.now() - (state.resendLastAlert || 0)) / 60000;
+      if (minSinceAlert >= 60) {
+        const downMin = Math.round((Date.now() - state.resendDownSince) / 60000);
+        writeEmergencyAlert(
+          `📧 RESEND sigue CAÍDO (${downMin}min)`,
+          `Error: ${resendResult.error}\nFallos consecutivos: ${state.resendConsecutiveFailures}\nRevisa logs/emergency-alert-*.log para detalles.`
+        );
+        state.resendLastAlert = Date.now();
+      }
+    }
+  } else {
+    if (!state.resendOk) {
+      // Transition: DOWN → RECOVERED
+      const downtime = Date.now() - state.resendDownSince;
+      const downtimeMin = Math.round(downtime / 60000);
+      console.log(`[sentinel] 📧 Resend RECOVERED after ${downtimeMin}min`);
+
+      await sendAlertWithFallback(
+        `✅ RESEND RECUPERADO — Emails funcionando (caído ${downtimeMin}min)`,
+        `Resend se ha recuperado.\n\nTiempo de caída: ${downtimeMin} minutos\nEstado: ${resendResult.status}\nDNS OK: ${resendResult.dnsOk}\n\nSentinel — YTubViral Agent System`
+      );
+
+      state.resendOk = true;
+      state.resendDownSince = null;
+      state.resendConsecutiveFailures = 0;
+    } else {
+      state.resendConsecutiveFailures = 0;
+    }
+  }
+
   // Log compact status
   const statusLine = results.map(r =>
     `${r.endpoint}: ${r.ok ? '✅' : '❌'} ${r.status || 'ERR'} (${r.elapsed}ms)`
@@ -297,6 +479,14 @@ async function runSentinel() {
         description: `${r.endpoint} slow: ${r.elapsed}ms (threshold ${cfg.slowThresholdMs}ms)`,
       });
     }
+    if (!r.ok && r.endpoint === 'Resend') {
+      findings.push({
+        id: mem.issueId('service-down', 'resend'),
+        category: 'service-down',
+        severity: 'high',
+        description: `Resend email service down: ${r.error || r.resendDetail?.status}`,
+      });
+    }
   }
 
   mem.processFindings(memory, findings);
@@ -306,6 +496,8 @@ async function runSentinel() {
     endpointsChecked: results.length,
     endpointsOk: results.filter(r => r.ok).length,
     endpointsFailed: results.filter(r => !r.ok).length,
+    resendOk: resendResult.ok,
+    resendStatus: resendResult.status,
   });
   mem.recordRun(memory, state.lastResponseTime);
   mem.saveMemory('sentinel', memory);

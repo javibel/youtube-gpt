@@ -473,6 +473,30 @@ function loadOverrides() {
   catch { return {}; }
 }
 
+const REMOVALS_PATH = require('path').join(__dirname, 'reports', 'reddit-removals.json');
+
+/**
+ * Build a prompt section from recent Reddit removals. Uses Claude-generated
+ * lessons (specific diagnosis per removal) instead of generic warnings.
+ */
+function getRemovalLessons() {
+  try {
+    const removals = JSON.parse(require('fs').readFileSync(REMOVALS_PATH, 'utf8'));
+    if (!removals.length) return '';
+    // Only use removals that have Claude-generated lessons
+    const withLessons = removals.filter(r => r.lesson && r.lesson !== 'Análisis no disponible — revisar manualmente.');
+    if (!withLessons.length) return '';
+    // Last 5 lessons — concise, specific, actionable
+    const recent = withLessons.slice(-5);
+    const lessons = recent.map(r =>
+      `- ${r.subreddit} (${r.date?.slice(0, 10)}): ${r.lesson}`
+    ).join('\n');
+    return `\n\nCOMENTARIOS NUESTROS ELIMINADOS POR REDDIT — LECCIONES APRENDIDAS:
+${lessons}
+Aplica estas lecciones al generar tu comentario. Adapta tu tono y contenido al subreddit específico.`;
+  } catch { return ''; }
+}
+
 // ── YouTube-only topic filter (reads patterns from overrides) ──
 function isOffTopicPost(postContent) {
   const overrides = loadOverrides();
@@ -548,6 +572,12 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   // Append dynamic rules from overrides (Claude can add/modify these)
   const extraRules = ov.coreRulesExtra?.[lang] || ov.coreRulesExtra?.en || '';
   if (extraRules) coreRules += '\n' + extraRules;
+
+  // Inject lessons from removed comments (auto-learning from Reddit moderation)
+  if (platform === 'reddit') {
+    const removalLessons = getRemovalLessons();
+    if (removalLessons) coreRules += removalLessons;
+  }
 
   const maxTokens = platform === 'twitter' ? 150 : 200;
 
@@ -632,7 +662,12 @@ async function generateFollowupReply(platform, ourOriginalComment, theirReply, t
   const maxTokens = platform === 'twitter' ? 120 : 200;
 
   // PROMPT CACHING: persona + rules are static per persona → cached
-  const systemPrompt = `${personaDesc}\n\n${rules}`;
+  let fullRules = rules;
+  if (platform === 'reddit') {
+    const removalLessons = getRemovalLessons();
+    if (removalLessons) fullRules += removalLessons;
+  }
+  const systemPrompt = `${personaDesc}\n\n${fullRules}`;
 
   return callClaude(`You previously left this comment on ${platform}: "${ourOriginalComment}"
 
@@ -692,6 +727,7 @@ module.exports = {
   // Email
   generateEmailReply,
   // Utilities
+  callClaude,
   detectPostLang,
   deductFromBalance,
 };

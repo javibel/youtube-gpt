@@ -185,7 +185,12 @@
     <a class="nav-item" data-page="scout" onclick="navigate('scout')"><span class="icon">🔍</span> Scout</a>
     <a class="nav-item" data-page="watchdog" onclick="navigate('watchdog')"><span class="icon">⚖️</span> Watchdog</a>
     <a class="nav-item" data-page="social-optimizer" onclick="navigate('social-optimizer')"><span class="icon">📈</span> Social Optimizer</a>
+    <a class="nav-item" data-page="seo-optimizer" onclick="navigate('seo-optimizer')"><span class="icon">🔎</span> SEO Optimizer</a>
+    <a class="nav-item" data-page="funnel-optimizer" onclick="navigate('funnel-optimizer')"><span class="icon">🎯</span> Funnel Optimizer</a>
+    <a class="nav-item" data-page="infra-optimizer" onclick="navigate('infra-optimizer')"><span class="icon">🏗</span> Infra Optimizer</a>
     <a class="nav-item" data-page="manager" onclick="navigate('manager')"><span class="icon">👔</span> Manager</a>
+    <a class="nav-item" data-page="meta-optimizer" onclick="navigate('meta-optimizer')"><span class="icon">🧬</span> Meta-Optimizer</a>
+    <a class="nav-item" data-page="feature-monitor" onclick="navigate('feature-monitor')"><span class="icon">🩺</span> Feature Monitor</a>
   </div>
 
   <div class="nav-section">
@@ -240,7 +245,7 @@
         <script>
         // Custom SVG diagram — full control over layout
         document.getElementById('diagram-svg').innerHTML = `
-        <svg viewBox="0 0 820 500" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:auto;font-family:Inter,sans-serif;margin:0 auto;display:block;">
+        <svg viewBox="0 0 820 570" xmlns="http://www.w3.org/2000/svg" style="width:60%;height:auto;font-family:Inter,sans-serif;margin:0 auto;display:block;">
           <defs>
             <marker id="arrow" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
               <polygon points="0 0, 7 2.5, 0 5" fill="#d97706"/>
@@ -305,60 +310,78 @@
           </g>
 
           <!-- ══ ROW 2: Nocturnos (right) ══ -->
-          <rect x="534" y="140" width="272" height="120" rx="10" fill="#141418" stroke="#16a34a" stroke-width="1" opacity="0.7"/>
+          <rect x="534" y="140" width="272" height="170" rx="10" fill="#141418" stroke="#16a34a" stroke-width="1" opacity="0.7"/>
           <text x="670" y="158" text-anchor="middle" fill="#a1a1aa" font-size="10" font-weight="600" letter-spacing="1.5">AGENTES NOCTURNOS</text>
           <g class="node-click" data-page="social-optimizer">
-            <rect x="544" y="168" width="82" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="585" y="190" text-anchor="middle" fill="#d4d4d8" font-size="11">Optimizer</text>
+            <rect x="544" y="168" width="82" height="32" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="585" y="188" text-anchor="middle" fill="#d4d4d8" font-size="10">Social Opt.</text>
           </g>
           <g class="node-click" data-page="scout">
-            <rect x="634" y="168" width="72" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="670" y="190" text-anchor="middle" fill="#d4d4d8" font-size="11">Scout</text>
+            <rect x="634" y="168" width="72" height="32" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="670" y="188" text-anchor="middle" fill="#d4d4d8" font-size="10">Scout</text>
           </g>
           <g class="node-click" data-page="watchdog">
-            <rect x="714" y="168" width="82" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="755" y="190" text-anchor="middle" fill="#d4d4d8" font-size="11">Watchdog</text>
+            <rect x="714" y="168" width="82" height="32" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="755" y="188" text-anchor="middle" fill="#d4d4d8" font-size="10">Watchdog</text>
           </g>
           <g class="node-click" data-page="guardian">
-            <rect x="544" y="212" width="90" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="589" y="234" text-anchor="middle" fill="#d4d4d8" font-size="11">Guardian</text>
+            <rect x="544" y="206" width="82" height="32" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="585" y="226" text-anchor="middle" fill="#d4d4d8" font-size="10">Guardian</text>
+          </g>
+          <g class="node-click" data-page="seo-optimizer">
+            <rect x="634" y="206" width="72" height="32" rx="7" fill="#1c1c22" stroke="#22c55e" stroke-width="1" class="hoverable"/>
+            <text x="670" y="226" text-anchor="middle" fill="#d4d4d8" font-size="10">SEO Opt.</text>
+          </g>
+          <g class="node-click" data-page="infra-optimizer">
+            <rect x="714" y="206" width="82" height="32" rx="7" fill="#1c1c22" stroke="#22c55e" stroke-width="1" class="hoverable"/>
+            <text x="755" y="226" text-anchor="middle" fill="#d4d4d8" font-size="10">Infra Opt.</text>
+          </g>
+          <g class="node-click" data-page="funnel-optimizer">
+            <rect x="544" y="244" width="82" height="32" rx="7" fill="#1c1c22" stroke="#22c55e" stroke-width="1" class="hoverable"/>
+            <text x="585" y="264" text-anchor="middle" fill="#d4d4d8" font-size="10">Funnel Opt.</text>
           </g>
           <g class="node-click" data-page="manager">
-            <rect x="642" y="212" width="90" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="687" y="234" text-anchor="middle" fill="#d4d4d8" font-size="11">Manager</text>
+            <rect x="634" y="244" width="72" height="32" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="670" y="264" text-anchor="middle" fill="#d4d4d8" font-size="10">Manager</text>
+          </g>
+          <g class="node-click" data-page="meta-optimizer">
+            <rect x="714" y="244" width="82" height="32" rx="7" fill="#1c1c22" stroke="#f59e0b" stroke-width="1" class="hoverable"/>
+            <text x="755" y="264" text-anchor="middle" fill="#d4d4d8" font-size="10">Meta-Opt.</text>
+          </g>
+          <g class="node-click" data-page="feature-monitor">
+            <rect x="544" y="282" width="92" height="32" rx="7" fill="#1c1c22" stroke="#22c55e" stroke-width="1" class="hoverable"/>
+            <text x="590" y="302" text-anchor="middle" fill="#d4d4d8" font-size="10">Feature Mon.</text>
           </g>
 
-          <!-- ══ ARROWS: Row 2 → Row 3 (routed through gap y=260-350) ══ -->
-          <!-- Personas → Browser (down from bottom row, no cross) -->
-          <path d="M90 248 L90 290 Q90 300 140 300 L190 300 Q200 300 200 310 L200 350" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
-          <!-- Follow-up → Browser (straight down, no cross) -->
-          <path d="M218 204 L218 275 Q218 285 230 285 L230 285 Q240 285 240 295 L240 350" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
-          <!-- Personas → Claude AI (down then right through gap) -->
-          <path d="M130 248 L130 285 Q130 295 200 295 L390 295 Q400 295 400 305 L400 350" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
-          <!-- Meta Agent → Claude AI (straight down, no cross) -->
-          <path d="M364 204 L364 310 Q364 320 390 320 L410 320 Q420 320 420 330 L420 350" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
-          <!-- Guardian → Claude AI (down from bottom row then left through gap) -->
-          <path d="M589 248 L589 270 Q589 280 550 280 L450 280 Q440 280 440 290 L440 350" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
-          <!-- Manager → Claude AI (down then left through gap, lower path) -->
-          <path d="M687 248 L687 265 Q687 275 640 275 L470 275 Q460 275 460 285 L460 350" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
+          <!-- ══ ARROWS: Row 2 → Row 3 (routed through gap y=310-420) ══ -->
+          <!-- Personas → Browser -->
+          <path d="M90 248 L90 360 Q90 370 140 370 L190 370 Q200 370 200 380 L200 420" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
+          <!-- Follow-up → Browser -->
+          <path d="M218 204 L218 345 Q218 355 230 355 L230 355 Q240 355 240 365 L240 420" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
+          <!-- Personas → Claude AI -->
+          <path d="M130 248 L130 355 Q130 365 200 365 L390 365 Q400 365 400 375 L400 420" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
+          <!-- Meta Agent → Claude AI -->
+          <path d="M364 204 L364 380 Q364 390 390 390 L410 390 Q420 390 420 400 L420 420" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
+          <!-- Nocturnos → Claude AI -->
+          <path d="M670 276 L670 350 Q670 360 550 360 L450 360 Q440 360 440 370 L440 420" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
 
           <!-- ══ ROW 3: INFRA ══ -->
-          <rect x="120" y="340" width="580" height="70" rx="10" fill="#141418" stroke="#2563eb" stroke-width="1" opacity="0.7"/>
-          <text x="410" y="358" text-anchor="middle" fill="#a1a1aa" font-size="10" font-weight="600" letter-spacing="1.5">INFRAESTRUCTURA</text>
+          <rect x="120" y="410" width="580" height="70" rx="10" fill="#141418" stroke="#2563eb" stroke-width="1" opacity="0.7"/>
+          <text x="410" y="428" text-anchor="middle" fill="#a1a1aa" font-size="10" font-weight="600" letter-spacing="1.5">INFRAESTRUCTURA</text>
           <g class="node-click" data-page="browser">
-            <rect x="145" y="368" width="120" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="205" y="390" text-anchor="middle" fill="#d4d4d8" font-size="12">Browser</text>
+            <rect x="145" y="438" width="120" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="205" y="460" text-anchor="middle" fill="#d4d4d8" font-size="12">Browser</text>
           </g>
           <g class="node-click" data-page="claude">
-            <rect x="350" y="368" width="120" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="410" y="390" text-anchor="middle" fill="#d4d4d8" font-size="12">Claude AI</text>
+            <rect x="350" y="438" width="120" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="410" y="460" text-anchor="middle" fill="#d4d4d8" font-size="12">Claude AI</text>
           </g>
           <g class="node-click" data-page="api-guard">
-            <rect x="555" y="368" width="120" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="615" y="390" text-anchor="middle" fill="#d4d4d8" font-size="12">API Guard</text>
+            <rect x="555" y="438" width="120" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="615" y="460" text-anchor="middle" fill="#d4d4d8" font-size="12">API Guard</text>
           </g>
           <!-- Claude → API Guard -->
-          <path d="M470 386 L555 386" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
+          <path d="M470 456 L555 456" stroke="#d97706" stroke-width="1.2" fill="none" marker-end="url(#arrow)" opacity="0.5"/>
         </svg>`;
 
         // Click handlers for SVG nodes
@@ -393,8 +416,24 @@
           <p>Rate limiting, budget diario, circuit breaker para Anthropic API.</p>
         </div>
         <div class="card" onclick="navigate('claude')">
-          <div class="card-header"><div class="card-icon" style="background:#5e1f3b">🧠</div><h3>Claude AI</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">Haiku</span></div>
+          <div class="card-header"><div class="card-icon" style="background:#5e1f3b">🧠</div><h3>Claude AI</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">Opus</span></div>
           <p>Generacion de comentarios, replies y analisis. Filtros de calidad integrados.</p>
+        </div>
+        <div class="card" onclick="navigate('seo-optimizer')">
+          <div class="card-header"><div class="card-icon" style="background:#052e16">🔎</div><h3>SEO Optimizer</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">02:50</span></div>
+          <p>GSC metrics + Claude analiza tendencias SEO, CTR, posiciones. Auto-resubmit URLs.</p>
+        </div>
+        <div class="card" onclick="navigate('funnel-optimizer')">
+          <div class="card-header"><div class="card-icon" style="background:#451a03">🎯</div><h3>Funnel Optimizer</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">02:55</span></div>
+          <p>Metricas de conversion, activacion, retencion. Claude diagnostica cuellos de botella.</p>
+        </div>
+        <div class="card" onclick="navigate('infra-optimizer')">
+          <div class="card-header"><div class="card-icon" style="background:#1e293b">🏗</div><h3>Infra Optimizer</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">02:45</span></div>
+          <p>Response times, DB, disco, PM2, error rates. Claude correlaciona patrones de degradacion.</p>
+        </div>
+        <div class="card" onclick="navigate('meta-optimizer')">
+          <div class="card-header"><div class="card-icon" style="background:#3b1f5e">🧬</div><h3>Meta-Optimizer</h3><span class="badge" style="background:var(--orange-bg);color:var(--orange)">Dom 03:30</span></div>
+          <p>El cerebro del sistema. Analiza efectividad de TODOS los fixes y mejora el sistema mismo.</p>
         </div>
       </div>
     </div>
@@ -417,8 +456,12 @@
         <div class="field"><label>Follow-up tarde</label><input type="text" data-module="scheduler" data-key="followupEvening" value="17:00-18:59"></div>
         <div class="field"><label>Guardian</label><input type="time" data-module="scheduler" data-key="guardianTime" value="02:15"></div>
         <div class="field"><label>Scout (lunes)</label><input type="time" data-module="scheduler" data-key="scoutTime" value="02:30"></div>
+        <div class="field"><label>Infra Optimizer</label><input type="time" data-module="scheduler" data-key="infraOptimizerTime" value="02:45"></div>
+        <div class="field"><label>SEO Optimizer</label><input type="time" data-module="scheduler" data-key="seoOptimizerTime" value="02:50"></div>
+        <div class="field"><label>Funnel Optimizer</label><input type="time" data-module="scheduler" data-key="funnelOptimizerTime" value="02:55"></div>
         <div class="field"><label>Social Optimizer</label><input type="time" data-module="scheduler" data-key="optimizerTime" value="03:00"></div>
         <div class="field"><label>Manager</label><input type="time" data-module="scheduler" data-key="managerTime" value="03:15"></div>
+        <div class="field"><label>Meta-Optimizer (dom)</label><input type="text" data-module="scheduler" data-key="metaOptimizerTime" value="03:30 (Sundays)"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('scheduler')">Resetear</button><button class="btn btn-primary" onclick="saveModule('scheduler')">Guardar cambios</button></div></div></div>
       <div class="tab-content" id="sch-hist"><div class="section"><div class="timeline"><div class="tl-item"><div class="date">2026-05-16</div><div class="desc">Social Optimizer + Manager al ciclo nocturno</div></div><div class="tl-item"><div class="date">2026-05-09</div><div class="desc">Guardian automatizado diario</div></div><div class="tl-item"><div class="date">2026-05-05</div><div class="desc">Follow-up system 2 rondas/dia</div></div><div class="tl-item"><div class="date">2026-04-28</div><div class="desc">Personas Alex + Ferran creadas</div></div><div class="tl-item"><div class="date">2026-04-20</div><div class="desc">Sentinel PRIORITY 1</div></div><div class="tl-item"><div class="date">2026-04-01</div><div class="desc">Creacion inicial</div></div></div></div></div>
       <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
@@ -428,7 +471,7 @@
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Meta Agent (YCMR)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 1x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Publica contenido en Facebook + Instagram via Graph API. Horario fijo para consistencia de la marca.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">LinkedIn Agent</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 1x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Publica posts profesionales en LinkedIn via UGC API. Contenido adaptado al tono corporativo.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Gmail</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza cada 30 min</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Monitorea el inbox de ytbeviral@gmail.com. Lee emails nuevos, genera respuestas con IA, y envia via Resend.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Ciclo nocturno (Guardian → Scout → Watchdog → Optimizer → Manager)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">02:00-03:30</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Cadena nocturna de 5 agentes en secuencia. Se ejecutan de madrugada porque consumen recursos (IA, scraping) y no interfieren con la actividad social diurna.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Ciclo nocturno (Guardian → Infra → SEO → Funnel → Social Opt. → Manager)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">02:00-03:30</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Cadena nocturna de 8+ agentes en secuencia. Se ejecutan de madrugada porque consumen recursos (IA, APIs) y no interfieren con la actividad social diurna. Scout + Watchdog solo lunes. Meta-Optimizer solo domingos.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Reports</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">08:05 diario</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Genera y envia el reporte diario por email al owner. Resume toda la actividad de las ultimas 24h: posts, comentarios, alertas, metricas.</div></div>
       </div></div>
     </div>
@@ -617,23 +660,180 @@
 
     <!-- SOCIAL OPTIMIZER -->
     <div class="page" id="page-social-optimizer">
-      <div class="detail-hero"><div class="hero-icon" style="background:#5e1f3b">📈</div><div><h1>Social Optimizer</h1><div class="desc">Analisis de rendimiento social — diario 03:00</div></div></div>
-      <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="social-optimizer" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('social-optimizer')">Guardar</button></div><p style="margin-top:1rem">Analiza metricas de engagement (24h y 7d), calidad de contenido, estado operacional, y genera recomendaciones.</p></div>
+      <div class="detail-hero"><div class="hero-icon" style="background:#5e1f3b">📈</div><div><h1>Social Optimizer</h1><div class="desc">Analisis de rendimiento social — diario 03:00 — con auto-correccion Claude</div></div></div>
+      <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="social-optimizer" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('social-optimizer')">Guardar</button></div><p style="margin-top:1rem">Analiza metricas de engagement (24h y 7d), calidad de contenido, estado operacional, y genera recomendaciones. <strong>Claude puede auto-corregir prompts y config</strong> cuando detecta problemas estructurales.</p></div>
+
+      <!-- Social Overrides (hot-patchable by Claude) -->
+      <div class="section" id="social-overrides-section">
+        <div class="section-title">🧠 Social Overrides <span style="font-size:0.75rem;color:var(--muted);font-weight:400;margin-left:0.5rem">Config editable por Claude y dashboard</span></div>
+        <div id="overrides-loading" style="color:var(--muted);padding:1rem">Cargando overrides...</div>
+        <div id="overrides-content" style="display:none">
+
+          <!-- Mention rates -->
+          <div style="margin-bottom:1.5rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Mention rates por persona</label>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap">
+              <div style="flex:1;min-width:140px">
+                <label style="font-size:0.8rem;color:var(--muted)">Alex</label>
+                <input type="number" id="ov-rate-alex" min="0.05" max="0.50" step="0.05" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text)">
+              </div>
+              <div style="flex:1;min-width:140px">
+                <label style="font-size:0.8rem;color:var(--muted)">Ferran</label>
+                <input type="number" id="ov-rate-ferran" min="0.05" max="0.50" step="0.05" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text)">
+              </div>
+            </div>
+          </div>
+
+          <!-- Off-topic patterns -->
+          <div style="margin-bottom:1.5rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Filtros off-topic <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(regex, uno por linea)</span></label>
+            <textarea id="ov-offtopic" rows="4" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text);font-family:monospace;font-size:0.8rem;resize:vertical"></textarea>
+          </div>
+
+          <!-- Reject patterns -->
+          <div style="margin-bottom:1.5rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Reject patterns adicionales <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(regex, uno por linea)</span></label>
+            <textarea id="ov-reject" rows="4" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text);font-family:monospace;font-size:0.8rem;resize:vertical"></textarea>
+          </div>
+
+          <!-- Core rules extra -->
+          <div style="margin-bottom:1.5rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Reglas extra del system prompt</label>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap">
+              <div style="flex:1;min-width:250px">
+                <label style="font-size:0.8rem;color:var(--muted)">ES</label>
+                <textarea id="ov-rules-es" rows="4" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text);font-size:0.8rem;resize:vertical"></textarea>
+              </div>
+              <div style="flex:1;min-width:250px">
+                <label style="font-size:0.8rem;color:var(--muted)">EN</label>
+                <textarea id="ov-rules-en" rows="4" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text);font-size:0.8rem;resize:vertical"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mention formula -->
+          <div style="margin-bottom:1.5rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Formula de mencion (forzada — post relevante)</label>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap">
+              <div style="flex:1;min-width:250px">
+                <label style="font-size:0.8rem;color:var(--muted)">ES</label>
+                <textarea id="ov-mention-forced-es" rows="4" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text);font-size:0.8rem;resize:vertical"></textarea>
+              </div>
+              <div style="flex:1;min-width:250px">
+                <label style="font-size:0.8rem;color:var(--muted)">EN</label>
+                <textarea id="ov-mention-forced-en" rows="4" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text);font-size:0.8rem;resize:vertical"></textarea>
+              </div>
+            </div>
+          </div>
+          <div style="margin-bottom:1.5rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Formula de mencion (probabilistica)</label>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap">
+              <div style="flex:1;min-width:250px">
+                <label style="font-size:0.8rem;color:var(--muted)">ES</label>
+                <textarea id="ov-mention-prob-es" rows="3" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text);font-size:0.8rem;resize:vertical"></textarea>
+              </div>
+              <div style="flex:1;min-width:250px">
+                <label style="font-size:0.8rem;color:var(--muted)">EN</label>
+                <textarea id="ov-mention-prob-en" rows="3" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--surface2);border-radius:6px;color:var(--text);font-size:0.8rem;resize:vertical"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-primary" onclick="saveOverrides()">Guardar overrides</button>
+          </div>
+
+          <!-- Change log -->
+          <div style="margin-top:1.5rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Changelog <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(auto-correciones de Claude)</span></label>
+            <div id="ov-changelog" style="font-size:0.8rem;color:var(--muted);max-height:200px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
       <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado diariamente a las 03:00.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Neon (PostgreSQL)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee SocialAction de 24h y 7d para calcular engagement, volumen y calidad.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI + Manager</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude genera recomendaciones y el Manager las incluye en el resumen ejecutivo.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI + Manager</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude genera recomendaciones y el Manager las incluye en el resumen ejecutivo. <strong>Claude puede auto-corregir social-overrides.json</strong> cuando detecta problemas estructurales (off-topic, baja mencion, comentarios genericos).</div></div>
+      </div></div>
+    </div>
+
+    <!-- SEO OPTIMIZER -->
+    <div class="page" id="page-seo-optimizer">
+      <div class="detail-hero"><div class="hero-icon" style="background:#052e16">🔎</div><div><h1>SEO Optimizer</h1><div class="desc">Analisis SEO diario con Google Search Console + Claude Opus — 02:50</div></div></div>
+      <div class="tabs"><div class="tab active" onclick="switchTab(this,'seo-desc')">Descripcion</div><div class="tab" onclick="switchTab(this,'seo-cfg')">Configuracion</div></div>
+      <div class="tab-content active" id="seo-desc"><div class="section"><div class="section-title">Que hace</div><p>Recopila metricas de Google Search Console (gratis via API) y las envia a Claude Opus para un diagnostico inteligente. Claude analiza tendencias de CTR, posiciones, clicks e indexacion, y puede auto-resubmit URLs a indexacion.</p><ul><li>Search Analytics 7d vs 7d anteriores: clicks, impressions, CTR, posicion media</li><li>Desglose por query y por pagina</li><li>URL inspection de paginas clave (/features/*, /blog/*)</li><li>Estado del sitemap: indexadas vs no-indexadas</li></ul><div class="section-title" style="margin-top:1rem">Anomalias que detecta</div><ul><li>CTR drop >20%</li><li>Posicion media empeora >2 posiciones</li><li>Clicks caen >30%</li><li>Indexacion <80% del sitemap</li><li>Paginas clave no indexadas</li></ul><div class="section-title" style="margin-top:1rem">Fixes permitidos (allowlist)</div><ul><li><code>resubmit_urls</code> — Reenvia URLs a indexacion via Google Indexing API</li><li><code>alert</code> — Email al owner con diagnostico detallado</li></ul></div></div>
+      <div class="tab-content" id="seo-cfg"><div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="seo-optimizer" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select><div class="hint">Claude Opus para diagnostico profundo de SEO</div></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('seo-optimizer')">Guardar</button></div></div></div>
+      <div class="section"><div class="section-title">Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado diariamente a las 02:50.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Google Search Console API</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Recopila Search Analytics (clicks, impressions, CTR, posicion) e Indexation Status via OAuth2. Coste cero.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI (Opus) + Manager</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude Opus analiza tendencias y genera diagnostico. Manager incluye hallazgos en el resumen ejecutivo.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Google Indexing API</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Si Claude detecta paginas no indexadas, puede auto-resubmit URLs via la Indexing API.</div></div>
+      </div></div>
+    </div>
+
+    <!-- FUNNEL OPTIMIZER -->
+    <div class="page" id="page-funnel-optimizer">
+      <div class="detail-hero"><div class="hero-icon" style="background:#451a03">🎯</div><div><h1>Funnel Optimizer</h1><div class="desc">Analisis de conversion y activacion — diario 02:55 — Claude diagnostica cuellos de botella</div></div></div>
+      <div class="tabs"><div class="tab active" onclick="switchTab(this,'fun-desc')">Descripcion</div><div class="tab" onclick="switchTab(this,'fun-cfg')">Configuracion</div></div>
+      <div class="tab-content active" id="fun-desc"><div class="section"><div class="section-title">Que hace</div><p>Consulta la base de datos para medir el funnel completo: signups, activacion, retencion, conversion a pago, adopcion de features y feedback. Claude Opus analiza las cohortes y diagnostica cuellos de botella.</p><ul><li>Usuarios totales vs nuevos esta semana</li><li>Activacion: % que genero contenido (all-time + cohorte 14d)</li><li>Retencion: usuarios activos 7d vs 7d anterior</li><li>Suscripciones activas (Pro/Business)</li><li>Top 5 templates mas usados</li><li>Rating promedio de feedback</li></ul><div class="section-title" style="margin-top:1rem">Anomalias que detecta</div><ul><li>0 signups en la semana</li><li>Activacion <30%</li><li>Retencion cae >20%</li><li>0 suscripciones de pago</li><li>Feedback <3.5 estrellas</li></ul><div class="section-title" style="margin-top:1rem">Fixes permitidos</div><ul><li><code>alert</code> — Email con diagnostico y recomendaciones</li><li><code>adjust_social_mention</code> — Si 0 signups, sube mention rates via social-overrides</li><li><code>trigger_activation_email</code> — Email via Resend a usuarios inactivos >3 dias</li></ul></div></div>
+      <div class="tab-content" id="fun-cfg"><div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="funnel-optimizer" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('funnel-optimizer')">Guardar</button></div></div></div>
+      <div class="section"><div class="section-title">Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Neon (PostgreSQL)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Queries directas a BD: users, generations, subscriptions, user_feedbacks, waitlist_entries.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI (Opus)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude analiza metricas del funnel y diagnostica: "Activacion baja porque nuevos usuarios no descubren el SEO Score tool".</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend + Social Overrides</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Puede enviar activation emails a usuarios inactivos o ajustar mention rates sociales si no hay signups.</div></div>
+      </div></div>
+    </div>
+
+    <!-- INFRA OPTIMIZER -->
+    <div class="page" id="page-infra-optimizer">
+      <div class="detail-hero"><div class="hero-icon" style="background:#1e293b">🏗</div><div><h1>Infra Optimizer</h1><div class="desc">Health monitoring + correlacion de patrones — diario 02:45</div></div></div>
+      <div class="tabs"><div class="tab active" onclick="switchTab(this,'inf-desc')">Descripcion</div><div class="tab" onclick="switchTab(this,'inf-cfg')">Configuracion</div></div>
+      <div class="tab-content active" id="inf-desc"><div class="section"><div class="section-title">Que hace</div><p>Recopila metricas de infraestructura (gratis) y Claude Opus correlaciona patrones de degradacion para detectar problemas antes de que afecten a los usuarios.</p><ul><li>Tendencia response time de Sentinel (7 dias)</li><li>Conexiones DB activas (pg_stat_activity)</li><li>Espacio en disco (PowerShell)</li><li>PM2 restart count y memory por proceso</li><li>Error rate de los logs (errores/hora)</li><li>Presencia de reports de otros agentes</li></ul><div class="section-title" style="margin-top:1rem">Anomalias que detecta</div><ul><li>Response time >3s</li><li>DB connections >75% del pool</li><li>Disco >80% (warning) o >90% (critico)</li><li>Memory >200MB por proceso</li><li>Restarts inesperados</li><li>Error rate >20/dia</li><li>Agentes que no generaron reporte</li></ul><div class="section-title" style="margin-top:1rem">Fixes permitidos</div><ul><li><code>alert</code> — Email con diagnostico</li><li><code>clean_disk</code> — Borrar reports >7d, rotar logs</li><li><code>restart_service</code> — PM2 restart (strict allowlist)</li><li><code>adjust_schedule</code> — Proponer cambio de horario cron (solo propuesta)</li></ul></div></div>
+      <div class="tab-content" id="inf-cfg"><div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="infra-optimizer" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('infra-optimizer')">Guardar</button></div></div></div>
+      <div class="section"><div class="section-title">Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Sentinel memory + PM2 + Neon + Logs</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee response times de Sentinel, conexiones de BD, espacio en disco, PM2 info y error rates de los logs. Todo gratis, sin llamadas API.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI (Opus)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude correlaciona: "Response times suben a las 3am cuando corren guardian+social-optimizer simultaneamente".</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">PM2 + Filesystem</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Actua sobre</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Puede limpiar disco (reports viejos, logs) y reiniciar servicios PM2 especificos.</div></div>
+      </div></div>
+    </div>
+
+    <!-- META-OPTIMIZER -->
+    <div class="page" id="page-meta-optimizer">
+      <div class="detail-hero"><div class="hero-icon" style="background:#3b1f5e">🧬</div><div><h1>Meta-Optimizer</h1><div class="desc">El cerebro del sistema — analiza y mejora TODOS los agentes — domingos 03:30</div></div></div>
+      <div class="tabs"><div class="tab active" onclick="switchTab(this,'metaopt-desc')">Descripcion</div><div class="tab" onclick="switchTab(this,'metaopt-cfg')">Configuracion</div></div>
+      <div class="tab-content active" id="metaopt-desc"><div class="section"><div class="section-title">Que hace</div><p>Lee la efectividad de TODOS los fixes de TODOS los agentes, analiza patrones y propone mejoras al sistema completo. Es el unico agente que puede modificar otros agentes.</p><div class="section-title" style="margin-top:1rem">Fase 1: Recoleccion (gratis)</div><ul><li>auto-fixes.json — historial completo de fixes y efectividad</li><li>agent-memory/*.json — issues persistentes de cada agente</li><li>reports/ — reportes de la ultima semana</li><li>agent-config.json — config actual</li></ul><div class="section-title" style="margin-top:1rem">Fase 2: Auto-tune (gratis, sin IA)</div><ul><li>Fixes con >80% exito → cooldown -20% (reaccionar mas rapido)</li><li>Fixes con <30% exito → cooldown +50% (dejar de gastar recursos)</li><li>Re-enable fixes desactivados si el issue no aparece en 14+ dias</li><li>Max 3 cambios por ejecucion</li></ul><div class="section-title" style="margin-top:1rem">Fase 3: Claude Opus (1 llamada)</div><ul><li>Claude analiza TODO el sistema: que funciona, que no, por que</li><li>Puede proponer: ajuste de cooldowns, re-enable, nuevos fixes</li><li>Nuevos fixes van a proposed-fixes.json (requieren aprobacion humana)</li></ul><div class="section-title" style="margin-top:1rem">Seguridad</div><ul><li>Kill switch: meta-optimizer.enabled en agent-config.json</li><li>Max 3 cambios de config por ejecucion</li><li>Bounds hardcodeados (no puede poner mentionRate > 0.50, etc.)</li><li>Audit trail completo</li><li>Rollback automatico si un cambio empeora metricas</li></ul></div></div>
+      <div class="tab-content" id="metaopt-cfg"><div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="meta-optimizer" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div><div class="field"><label>Habilitado</label><select data-module="meta-optimizer" data-key="enabled"><option value="true">Si (kill switch ON)</option><option value="false">No (desactivado)</option></select><div class="hint">Kill switch global — desactivar para pausar auto-mejora</div></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('meta-optimizer')">Guardar</button></div></div></div>
+      <div class="section"><div class="section-title">Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Todos los agentes (reports + fixes + memory)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee datos de efectividad de auto-fixes.json, memorias de cada agente, y reportes de la semana. Tiene una vista panoramica de todo el sistema.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI (Opus)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude Opus 4.6 analiza la efectividad de todo el sistema y propone mejoras: "El fix X tiene 80% exito pero el fix Y solo 40% — el prompt del social-optimizer necesita mas contexto".</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#f59e0b">→</span><span style="font-weight:600">agent-config.json + auto-fixes.json</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Modifica</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Puede ajustar cooldowns, re-enable fixes desactivados, y proponer nuevos fixes (estos ultimos requieren aprobacion humana).</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend (Email)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Envia propuestas de nuevos fixes y analisis semanal al owner para revision y aprobacion.</div></div>
+      </div></div>
+    </div>
+
+    <!-- FEATURE MONITOR -->
+    <div class="page" id="page-feature-monitor">
+      <div class="detail-hero"><div class="hero-icon" style="background:#052e16">🩺</div><div><h1>Feature Monitor</h1><div class="desc">Health checks de 24 endpoints + auto-heal con Claude — 2x/dia 07:00 y 19:00</div></div></div>
+      <div class="tabs"><div class="tab active" onclick="switchTab(this,'fm-desc')">Descripcion</div><div class="tab" onclick="switchTab(this,'fm-cfg')">Configuracion</div></div>
+      <div class="tab-content active" id="fm-desc"><div class="section"><div class="section-title">Que hace</div><p>Testea 24 endpoints de la plataforma en 5 categorias: infraestructura, features publicas, rutas AI/Claude, rutas YouTube-auth, y extension. Cuando detecta fallos, intenta auto-curar antes de escalar al humano.</p><div class="section-title" style="margin-top:1rem">Flujo de auto-heal</div><ul><li>1. Escanea 24 endpoints (HTTP status + response time)</li><li>2. Si hay fallos, espera 30s y re-confirma (descarta transitorios)</li><li>3. Claude Opus diagnostica el patron de fallos y recomienda accion</li><li>4. Ejecuta fix (redeploy Vercel, restart PM2, etc.)</li><li>5. Espera 60s y re-verifica endpoints</li><li>6. Solo escala a humano si todos los auto-fixes fallan</li></ul><div class="section-title" style="margin-top:1rem">Fixes permitidos</div><ul><li><code>claude-feature-diagnosis</code> — Claude analiza y recomienda: redeploy, check keys, retry, alert</li><li><code>restart-local-services</code> — Reinicia PM2 tunnel si hay fallo de conectividad local</li><li><code>redeploy</code> — Trigger Vercel deploy hook automaticamente</li></ul><div class="section-title" style="margin-top:1rem">Categorias de endpoints</div><ul><li>Infraestructura: Landing, API Health, Login, Blog, Sitemap</li><li>Features publicas: Trending, Extension SEO Quick</li><li>AI/Claude: rutas que usan Anthropic API</li><li>YouTube-auth: rutas que requieren YouTube auth</li><li>Extension: endpoints del Chrome extension</li></ul></div></div>
+      <div class="tab-content" id="fm-cfg"><div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="feature-monitor" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('feature-monitor')">Guardar</button></div></div></div>
+      <div class="section"><div class="section-title">Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">ytubviral.com (24 endpoints)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Testea</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Hace HTTP requests a 24 endpoints de la plataforma para verificar que estan operativos y responden en tiempo.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI (Opus)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Diagnostico</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Si hay fallos confirmados, Claude analiza el patron y recomienda la accion de fix mas probable.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#f59e0b">→</span><span style="font-weight:600">Vercel Deploy Hook + PM2</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Actua sobre</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Puede triggear un redeploy en Vercel via deploy hook o reiniciar servicios PM2 locales.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend (Email)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Escalacion</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Solo envia email al owner cuando TODOS los auto-fixes han fallado. El humano es el ultimo recurso.</div></div>
       </div></div>
     </div>
 
     <!-- MANAGER -->
     <div class="page" id="page-manager">
       <div class="detail-hero"><div class="hero-icon" style="background:#5e1f3b">👔</div><div><h1>Manager</h1><div class="desc">Coordinador ejecutivo — diario 03:15 (ultimo en ejecutar)</div></div></div>
-      <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="manager" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6" selected>Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select><div class="hint">Manager usa Sonnet por defecto (necesita mas razonamiento)</div></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('manager')">Guardar</button></div><p style="margin-top:1rem">Agrega hallazgos de Guardian, Scout, Watchdog y Social Optimizer. Prioriza acciones, genera resumen ejecutivo, detecta conflictos entre recomendaciones.</p></div>
+      <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="manager" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select><div class="hint">Manager usa Opus para sintesis ejecutiva profunda</div></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('manager')">Guardar</button></div><p style="margin-top:1rem">Agrega hallazgos de Guardian, Scout, Watchdog, Social Optimizer, SEO Optimizer, Funnel Optimizer, Infra Optimizer, Meta-Optimizer y Feature Monitor. Prioriza acciones, genera resumen ejecutivo, detecta conflictos entre recomendaciones.</p></div>
       <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ultimo agente del ciclo nocturno, ejecutado a las 03:15. Necesita que todos los demas hayan terminado.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Guardian + Scout + Watchdog + Social Optimizer</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee los reportes generados por los 4 agentes nocturnos. Cada uno ha dejado su hallazgo en disco para que el Manager lo agregue.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI (Sonnet)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa Sonnet (no Haiku) porque necesita razonamiento mas profundo para priorizar acciones, detectar conflictos entre recomendaciones y generar un resumen ejecutivo coherente.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Guardian + Scout + Watchdog + Social/SEO/Funnel/Infra Optimizers + Meta-Optimizer + Feature Monitor</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Lee los reportes generados por los 9 agentes nocturnos. Cada uno ha dejado su hallazgo en disco para que el Manager lo agregue.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI (Opus)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa Opus para razonamiento profundo: priorizar acciones, detectar conflictos entre recomendaciones de 8 agentes, y generar un resumen ejecutivo coherente.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Resend (Email)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Envia el resumen ejecutivo por email al owner con acciones priorizadas, alertas criticas y recomendaciones.</div></div>
       </div></div>
     </div>
@@ -898,6 +1098,10 @@
           <button class="btn btn-ghost btn-sm report-filter" data-filter="scout" onclick="filterReports('scout')">Scout</button>
           <button class="btn btn-ghost btn-sm report-filter" data-filter="watchdog" onclick="filterReports('watchdog')">Watchdog</button>
           <button class="btn btn-ghost btn-sm report-filter" data-filter="social-optimizer" onclick="filterReports('social-optimizer')">Social Optimizer</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="seo-optimizer" onclick="filterReports('seo-optimizer')">SEO Optimizer</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="funnel-optimizer" onclick="filterReports('funnel-optimizer')">Funnel Optimizer</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="infra-optimizer" onclick="filterReports('infra-optimizer')">Infra Optimizer</button>
+          <button class="btn btn-ghost btn-sm report-filter" data-filter="meta-optimizer" onclick="filterReports('meta-optimizer')">Meta-Optimizer</button>
         </div>
         <table id="reports-table">
           <thead><tr><th>Agente</th><th>Fecha</th><th>Tamaño</th><th></th></tr></thead>
@@ -1128,9 +1332,74 @@ document.addEventListener('DOMContentLoaded', async () => {
   }, 300);
   loadStatus();
   loadBalance();
+  loadOverrides();
   setInterval(loadStatus, 30000);
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') navigate('home'); });
+
+// ── Social Overrides ──
+async function loadOverrides() {
+  try {
+    const res = await fetch(`${API}/api/social-overrides`);
+    const ov = await res.json();
+    document.getElementById('ov-rate-alex').value = ov.personaMentionRates?.['persona-alex'] ?? 0.25;
+    document.getElementById('ov-rate-ferran').value = ov.personaMentionRates?.['persona-ferran'] ?? 0.20;
+    document.getElementById('ov-offtopic').value = (ov.offTopicPatterns || []).join('\n');
+    document.getElementById('ov-reject').value = (ov.additionalRejectPatterns || []).join('\n');
+    document.getElementById('ov-rules-es').value = ov.coreRulesExtra?.es || '';
+    document.getElementById('ov-rules-en').value = ov.coreRulesExtra?.en || '';
+    document.getElementById('ov-mention-forced-es').value = ov.mentionFormula?.forced?.es || '';
+    document.getElementById('ov-mention-forced-en').value = ov.mentionFormula?.forced?.en || '';
+    document.getElementById('ov-mention-prob-es').value = ov.mentionFormula?.probabilistic?.es || '';
+    document.getElementById('ov-mention-prob-en').value = ov.mentionFormula?.probabilistic?.en || '';
+    // Changelog
+    const cl = document.getElementById('ov-changelog');
+    const logs = (ov.changeLog || []).slice().reverse();
+    cl.innerHTML = logs.length ? logs.map(l =>
+      `<div style="border-bottom:1px solid var(--surface2);padding:0.4rem 0"><strong>${l.date}</strong> <span style="background:${l.by==='claude-auto'?'#22c55e33':'var(--surface)'};padding:1px 6px;border-radius:4px;font-size:0.7rem">${l.by}</span> ${l.summary}${l.reasoning ? '<br><span style="color:var(--muted);font-size:0.75rem">'+l.reasoning+'</span>' : ''}</div>`
+    ).join('') : '<div style="color:var(--muted)">Sin cambios registrados</div>';
+    document.getElementById('overrides-loading').style.display = 'none';
+    document.getElementById('overrides-content').style.display = 'block';
+  } catch (e) {
+    document.getElementById('overrides-loading').textContent = 'Error cargando overrides: ' + e.message;
+  }
+}
+
+async function saveOverrides() {
+  const data = {
+    personaMentionRates: {
+      'persona-alex': parseFloat(document.getElementById('ov-rate-alex').value) || 0.25,
+      'persona-ferran': parseFloat(document.getElementById('ov-rate-ferran').value) || 0.20,
+    },
+    offTopicPatterns: document.getElementById('ov-offtopic').value.split('\n').filter(l => l.trim()),
+    additionalRejectPatterns: document.getElementById('ov-reject').value.split('\n').filter(l => l.trim()),
+    coreRulesExtra: {
+      es: document.getElementById('ov-rules-es').value,
+      en: document.getElementById('ov-rules-en').value,
+    },
+    mentionFormula: {
+      forced: {
+        es: document.getElementById('ov-mention-forced-es').value,
+        en: document.getElementById('ov-mention-forced-en').value,
+      },
+      probabilistic: {
+        es: document.getElementById('ov-mention-prob-es').value,
+        en: document.getElementById('ov-mention-prob-en').value,
+      },
+    },
+  };
+  try {
+    const res = await fetch(`${API}/api/social-overrides`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      showToast('Social overrides guardados');
+      loadOverrides(); // refresh changelog
+    } else showToast('Error guardando overrides', true);
+  } catch (e) { showToast('Error: ' + e.message, true); }
+}
 
 // ── Reports ──
 let reportsData = [];
@@ -1467,10 +1736,10 @@ const ECO_INFO = {
       { dir: 'in', from: 'Local Agent', why: 'Los agentes usan Claude para generar tweets, replies de Reddit, respuestas de email, analisis de seguridad (Guardian), competencia (Scout), legal (Watchdog) y sintesis diaria (Manager).' },
     ],
     sections: [
-      { title: 'Modelos en uso', items: ['Haiku 4.5: Personas, Follow-up, Gmail replies, generacion web (rapido, barato)', 'Sonnet 4.6: Guardian, Manager, Social Optimizer (equilibrio)', 'Opus 4.6: Scout, Watchdog (analisis profundo, semanal)'] },
+      { title: 'Modelos en uso', items: ['Haiku 4.5: Personas, Follow-up, Gmail replies, generacion web (rapido, barato)', 'Opus 4.6: Guardian, Scout, Watchdog, Social/SEO/Funnel/Infra Optimizers, Manager, Meta-Optimizer (analisis profundo)'] },
       { title: 'Uso en Web (Vercel)', items: ['14 herramientas de generacion', 'AI Coach (conversacional, streaming)', 'Prompt caching activado (ahorra ~80% en prompts repetidos)'] },
       { title: 'Uso en Local Agent', items: ['claude.js: genera tweets y Reddit replies para personas', 'gmail agent: genera respuestas automaticas a emails', 'Guardian: analiza codigo fuente buscando vulnerabilidades', 'Scout: analiza webs de competidores', 'Manager: sintetiza todos los reportes nocturnos'] },
-      { title: 'Protecciones (API Guard)', items: ['Rate limit: 10 calls/min', 'Budget diario: 100K tokens', 'Circuit breaker: 5 fallos → pausa 5min', 'Max tokens por llamada: 2000'] },
+      { title: 'Protecciones (API Guard)', items: ['Rate limit: 10 calls/min', 'Budget diario: 200K tokens', 'Circuit breaker: 5 fallos → pausa 5min', 'Max tokens por llamada: 4000'] },
     ],
   },
   stripe: {

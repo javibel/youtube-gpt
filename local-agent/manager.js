@@ -181,6 +181,82 @@ function buildRawSummary(date) {
     });
   }
 
+  // SEO Optimizer report
+  const seoReport = readReport('seo-optimizer', date);
+  if (seoReport) {
+    const issueCount = seoReport.analysis?.issues?.length || 0;
+    const clicks = seoReport.metrics?.current?.clicks || 0;
+    const ctr = seoReport.metrics?.current?.ctr || 0;
+    sections.push({
+      agent: 'SEO Optimizer',
+      status: issueCount > 2 ? 'ATENCIÓN' : issueCount > 0 ? 'REVISAR' : 'OK',
+      data: `Issues: ${issueCount}, Clicks 7d: ${clicks}, CTR: ${(ctr * 100).toFixed(1)}%`,
+      ai: (seoReport.analysis?.issues || []).join(' | '),
+      duration: 0,
+    });
+  }
+
+  // Funnel Optimizer report
+  const funnelReport = readReport('funnel-optimizer', date);
+  if (funnelReport) {
+    const issueCount = funnelReport.analysis?.issues?.length || 0;
+    const activation = funnelReport.metrics?.activation?.cohortRate || 0;
+    const newUsers = funnelReport.metrics?.users?.newThisWeek || 0;
+    sections.push({
+      agent: 'Funnel Optimizer',
+      status: issueCount > 2 ? 'ATENCIÓN' : issueCount > 0 ? 'REVISAR' : 'OK',
+      data: `Issues: ${issueCount}, Activación cohorte: ${(activation * 100).toFixed(0)}%, Nuevos 7d: ${newUsers}`,
+      ai: (funnelReport.analysis?.issues || []).join(' | '),
+      duration: 0,
+    });
+  }
+
+  // Infra Optimizer report
+  const infraReport = readReport('infra-optimizer', date);
+  if (infraReport) {
+    const issueCount = infraReport.analysis?.issues?.length || 0;
+    const diskPct = infraReport.metrics?.disk?.usedPercent || 0;
+    sections.push({
+      agent: 'Infra Optimizer',
+      status: issueCount > 2 ? 'ATENCIÓN' : issueCount > 0 ? 'REVISAR' : 'OK',
+      data: `Issues: ${issueCount}, Disco: ${diskPct}%`,
+      ai: (infraReport.analysis?.issues || []).join(' | '),
+      duration: 0,
+    });
+  }
+
+  // Meta-Optimizer report (weekly, may not exist today)
+  const metaReport = readReport('meta-optimizer', date);
+  if (metaReport) {
+    const actionsApplied = metaReport.actionsApplied || 0;
+    sections.push({
+      agent: 'Meta-Optimizer',
+      status: actionsApplied > 0 ? 'AJUSTES' : 'OK',
+      data: `Acciones aplicadas: ${actionsApplied}, Fixes analizados: ${metaReport.fixesAnalyzed || 0}`,
+      ai: metaReport.systemDiagnosis || '',
+      duration: 0,
+    });
+  }
+
+  // Feature Monitor report (2x/day)
+  const featureReport = readReport('feature-monitor', date);
+  if (featureReport) {
+    const healthPct = featureReport.healthPct || 0;
+    const unhealed = featureReport.unhealed || 0;
+    const healed = featureReport.healed || 0;
+    const total = featureReport.total || 0;
+    const passing = featureReport.passing || 0;
+    const statusLabel = unhealed > 0 ? 'ATENCIÓN' : healthPct < 100 ? 'REVISAR' : 'OK';
+    const unhealedNames = (featureReport.unhealedIssues || []).map(u => u.feature).join(', ');
+    sections.push({
+      agent: 'Feature Monitor',
+      status: statusLabel,
+      data: `Health: ${healthPct}% (${passing}/${total}), Healed: ${healed}, Unhealed: ${unhealed}`,
+      ai: unhealedNames ? `Unhealed: ${unhealedNames}` : 'All endpoints healthy',
+      duration: 0,
+    });
+  }
+
   return sections;
 }
 
@@ -262,7 +338,7 @@ async function runManager() {
   // ── Collect memory summaries from all agents ──────────────────────────
   console.log('[manager] Reading agent memories...');
   const agentMemories = {};
-  for (const agentId of ['sentinel', 'guardian', 'scout', 'watchdog']) {
+  for (const agentId of ['sentinel', 'guardian', 'scout', 'watchdog', 'seo-optimizer', 'funnel-optimizer', 'infra-optimizer', 'meta-optimizer']) {
     agentMemories[agentId] = mem.getMemorySummary(agentId);
   }
 

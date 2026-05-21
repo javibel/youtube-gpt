@@ -21,6 +21,7 @@ const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
 const { registerFixes, applyFixes } = require('./auto-fix');
 const { sendEmail } = require('./reports');
+const { diagnose } = require('./doctor');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
 const SNAPSHOTS_FILE = path.join(REPORTS_DIR, 'scout-snapshots.json');
@@ -263,6 +264,7 @@ Sé directo y conciso. Máximo 200 palabras.`,
       results.aiAnalysis = text;
     } catch (err) {
       results.aiAnalysis = `Error en análisis AI: ${err.message}`;
+      await diagnose(err, { platform: 'system', action: 'ai-analysis', account: 'scout' }).catch(() => {});
     }
   } else {
     results.aiAnalysis = 'Sin cambios detectados en los competidores esta semana.';

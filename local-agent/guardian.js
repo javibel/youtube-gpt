@@ -23,6 +23,7 @@ const { execSync } = require('child_process');
 const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
 const { registerFixes, applyFixes } = require('./auto-fix');
+const { diagnose } = require('./doctor');
 
 const WEB_DIR = path.join(__dirname, '..', 'youtube-gpt');
 const REPORTS_DIR = path.join(__dirname, 'reports');
@@ -411,6 +412,7 @@ Sé directo y conciso. Máximo 200 palabras.`,
       results.aiAnalysis = text;
     } catch (err) {
       results.aiAnalysis = `Error en análisis AI: ${err.message}`;
+      await diagnose(err, { platform: 'system', action: 'ai-analysis', account: 'guardian' }).catch(() => {});
     }
   } else {
     results.aiAnalysis = 'Sin hallazgos críticos/altos. Estado de seguridad correcto.';

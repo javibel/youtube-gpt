@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'A/B test YouTube titles automatically. Track CTR and find what gets more clicks. Free.',
     url: 'https://ytubviral.com/features/ab-testing',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-ab-testing.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'YouTube A/B Testing Tool — Test Titles & Thumbnails Free',
     description: 'A/B test your YouTube titles automatically. Swap versions, track CTR, and find what gets more clicks. The only free A/B testing tool for YouTube creators.',
-    images: ['/og-image.png'],
+    images: ['/og-ab-testing.webp'],
   },
 };
 

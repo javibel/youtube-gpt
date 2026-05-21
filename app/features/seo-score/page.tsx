@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Get a 0-100 SEO score for any YouTube video. Free actionable optimization checklist.',
     url: 'https://ytubviral.com/features/seo-score',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-seo-score.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'YouTube SEO Score Checker — Analyze Any Video Free',
     description: 'Get a 0-100 SEO score for any YouTube video in seconds. Actionable checklist for title, tags, description, and thumbnail optimization. Free tool.',
-    images: ['/og-image.png'],
+    images: ['/og-seo-score.webp'],
   },
 };
 

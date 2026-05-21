@@ -22,6 +22,7 @@ puppeteerExtra.use(StealthPlugin());
 const fs = require('fs');
 const path = require('path');
 const { persistSession, newPageForProfile, closeBrowserForProfile } = require('./browser');
+const { diagnose } = require('./doctor');
 
 const PLATFORM_CONFIG = {
   linkedin: {
@@ -47,8 +48,8 @@ const PLATFORM_CONFIG = {
   },
   reddit: {
     loginUrl: 'https://www.reddit.com/login',
-    feedUrl: 'https://www.reddit.com/',
-    feedCheck: 'reddit.com',
+    feedUrl: 'https://www.reddit.com/login',
+    feedCheck: 'REDDIT_DOM_CHECK',
     cookieDomain: '.reddit.com',
     cookieName: 'reddit_session',
   },
@@ -149,12 +150,20 @@ async function main() {
   await page.goto(platformCfg.feedUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await new Promise(r => setTimeout(r, 3000));
 
-  let loggedIn = page.url().includes(platformCfg.feedCheck);
+  let loggedIn;
+  if (platformCfg.feedCheck === 'REDDIT_DOM_CHECK') {
+    // Reddit: always require manual login — navigate to login page
+    loggedIn = false;
+  } else if (platformCfg.feedCheckInverse) {
+    loggedIn = !page.url().includes(platformCfg.feedCheck);
+  } else {
+    loggedIn = page.url().includes(platformCfg.feedCheck);
+  }
 
   if (loggedIn) {
     console.log('\n>>> Session accepted from cookies!');
   } else {
-    console.log('\n>>> Session expired. Log in manually in the browser window.');
+    console.log('\n>>> Log in manually in the browser window.');
     console.log('>>> Waiting for login... (checking every 3s)\n');
 
     // Poll until login is detected or browser is closed
@@ -165,7 +174,15 @@ async function main() {
       await new Promise(r => setTimeout(r, 3000));
       try {
         const currentUrl = page.url();
-        if (currentUrl.includes(platformCfg.feedCheck)) {
+        let match;
+        if (platformCfg.feedCheck === 'REDDIT_DOM_CHECK') {
+          match = !currentUrl.includes('/login') && !currentUrl.includes('/register') && currentUrl.includes('reddit.com');
+        } else if (platformCfg.feedCheckInverse) {
+          match = !currentUrl.includes(platformCfg.feedCheck);
+        } else {
+          match = currentUrl.includes(platformCfg.feedCheck);
+        }
+        if (match) {
           loggedIn = true;
           console.log('>>> Login detected!');
           break;
@@ -238,7 +255,12 @@ async function main() {
     await verifyPage.close();
     await closeBrowserForProfile(persona.profileDir);
 
-    if (finalUrl.includes(platformCfg.feedCheck)) {
+    const finalMatch = platformCfg.feedCheck === 'REDDIT_DOM_CHECK'
+      ? !finalUrl.includes('/login') && finalUrl.includes('reddit.com')
+      : platformCfg.feedCheckInverse
+        ? !finalUrl.includes(platformCfg.feedCheck)
+        : finalUrl.includes(platformCfg.feedCheck);
+    if (finalMatch) {
       console.log(`\n✓ ${persona.name} — ${platform} session verified in headless. Ready to go.`);
     } else {
       console.log(`\n✗ Headless verification failed (redirected to ${finalUrl}).`);
@@ -250,7 +272,8 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch(async err => {
   console.error('Error:', err.message);
+  await diagnose(err, { platform: process.argv[3] || 'unknown', account: process.argv[2] || 'unknown', action: 'login' }).catch(() => {});
   process.exit(1);
 });

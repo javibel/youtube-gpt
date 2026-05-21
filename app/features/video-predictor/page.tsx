@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Estimate views, engagement, and viral potential before uploading. AI-powered predictions.',
     url: 'https://ytubviral.com/features/video-predictor',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-video-predictor.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'YouTube Video Performance Predictor — AI Views Estimator',
     description: 'Predice el rendimiento de tu vídeo de YouTube antes de publicarlo: vistas estimadas, engagement, potencial viral y sugerencias de IA.',
-    images: ['/og-image.png'],
+    images: ['/og-video-predictor.webp'],
   },
 };
 

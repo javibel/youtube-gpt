@@ -66,7 +66,21 @@ async function checkRedditPost(page, post, tag) {
 }
 
 async function checkTwitterReplies(tag) {
-  const page = await newPage();
+  let page;
+  try {
+    page = await newPage();
+  } catch (launchErr) {
+    console.error(`[${tag}] Twitter browser launch failed: ${launchErr.message}`);
+    // No profileDir — Doctor/Claude will infer from platform+account context
+    const result = await diagnose(launchErr, { platform: 'twitter', account: 'brand', action: 'launch' });
+    if (result.healed) {
+      console.log(`[${tag}] Doctor healed Twitter launch: ${result.action} — retrying...`);
+      try { page = await newPage(); } catch { return []; }
+    } else {
+      return [];
+    }
+  }
+
   try {
     await ensureSession(page, { domain: 'x.com', sessionCookieName: 'auth_token', cookieFile: 'twitter-cookies.json' });
     const ok = await safeGoto(page, TWITTER_TWEET, { tag, timeout: 60000 });
@@ -96,6 +110,10 @@ async function checkTwitterReplies(tag) {
     }, KNOWN_PERSONAS);
 
     return (replies || []).map(r => ({ ...r, source: 'X tweet', url: TWITTER_TWEET }));
+  } catch (err) {
+    console.error(`[${tag}] Twitter check error: ${err.message}`);
+    await diagnose(err, { platform: 'twitter', account: 'brand', action: 'check-replies' }).catch(() => {});
+    return [];
   } finally {
     await page.close().catch(() => {});
     await closeBrowser().catch(() => {});

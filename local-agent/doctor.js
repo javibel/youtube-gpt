@@ -22,6 +22,7 @@ const { guardedCall } = require('./api-guard');
 
 const LOG_DIR = path.join(__dirname, 'logs');
 const LOG_FILE = () => path.join(LOG_DIR, `doctor-${new Date().toISOString().slice(0, 10)}.json`);
+const LEARNED_PATTERNS_FILE = path.join(__dirname, 'reports', 'learned-patterns.json');
 
 // Track alerts sent this process (avoid spam)
 const alertsSent = new Set();
@@ -43,6 +44,91 @@ function canCallClaude() {
 }
 
 function recordClaudeCall() { claudeCallLog.push(Date.now()); }
+
+// ── Learned Patterns (auto-learned from Claude successes) ────────────────
+// Flow: KNOWN_PATTERNS (0 tokens) → LEARNED_PATTERNS (0 tokens) → Claude (tokens)
+// When Claude heals a new error, save it as a candidate. Meta-optimizer promotes stable patterns.
+
+function computeErrorSignature(err, ctx) {
+  let msg = (err.message || String(err))
+    .replace(/https?:\/\/[^\s)]+/g, '<URL>')           // URLs
+    .replace(/[A-Z]:\\[^\s)]+/g, '<PATH>')              // Windows paths
+    .replace(/\/[^\s)]+\.[a-z]{2,5}/g, '<PATH>')       // Unix paths with extensions
+    .replace(/:\d{2,5}/g, ':<PORT>')                    // Ports
+    .replace(/\b\d{10,}\b/g, '<ID>')                    // Long numeric IDs
+    .replace(/\b[0-9a-f]{8,}\b/gi, '<HEX>')            // Hex hashes
+    .replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}[^\s]*/g, '<TIMESTAMP>')  // ISO timestamps
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
+  return `${msg}|${ctx.platform || ''}|${ctx.action || ''}`;
+}
+
+function loadLearnedPatterns() {
+  try {
+    if (!fs.existsSync(LEARNED_PATTERNS_FILE)) return [];
+    const data = JSON.parse(fs.readFileSync(LEARNED_PATTERNS_FILE, 'utf8'));
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+
+function saveLearnedPatterns(patterns) {
+  try {
+    const dir = path.dirname(LEARNED_PATTERNS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(LEARNED_PATTERNS_FILE, JSON.stringify(patterns, null, 2), 'utf8');
+  } catch (e) {
+    console.error(`[doctor] Failed to save learned patterns: ${e.message}`);
+  }
+}
+
+function saveLearnedPattern(signature, action, details) {
+  const patterns = loadLearnedPatterns();
+  const existing = patterns.find(p => p.signature === signature);
+  if (existing) {
+    existing.healCount++;
+    existing.lastUsed = new Date().toISOString();
+    if (existing.status === 'failed') existing.status = 'candidate'; // Claude healed again, re-candidate
+  } else {
+    patterns.push({
+      signature,
+      action,
+      details: details || '',
+      healCount: 1,
+      failCount: 0,
+      consecutiveFailures: 0,
+      status: 'candidate',
+      firstSeen: new Date().toISOString(),
+      lastUsed: new Date().toISOString(),
+    });
+  }
+  saveLearnedPatterns(patterns);
+  console.log(`[doctor] Learned pattern saved: ${signature.slice(0, 80)}... → ${action}`);
+}
+
+function findLearnedPattern(signature) {
+  const patterns = loadLearnedPatterns();
+  return patterns.find(p => p.signature === signature && (p.status === 'candidate' || p.status === 'stable'));
+}
+
+function updateLearnedPatternResult(signature, healed) {
+  const patterns = loadLearnedPatterns();
+  const p = patterns.find(pp => pp.signature === signature);
+  if (!p) return;
+  p.lastUsed = new Date().toISOString();
+  if (healed) {
+    p.healCount++;
+    p.consecutiveFailures = 0;
+  } else {
+    p.failCount++;
+    p.consecutiveFailures = (p.consecutiveFailures || 0) + 1;
+    if (p.consecutiveFailures >= 3) {
+      p.status = 'failed';
+      console.log(`[doctor] Learned pattern failed 3x consecutively, marked as failed: ${signature.slice(0, 80)}...`);
+    }
+  }
+  saveLearnedPatterns(patterns);
+}
 
 // ── Troubleshoot files by area ────────────────────────────────────────────
 const TROUBLESHOOT = {
@@ -334,6 +420,31 @@ async function claudeDiagnose(err, ctx, tag) {
     recordClaudeCall();
     const knownPatternIds = KNOWN_PATTERNS.map(p => p.id).join(', ');
 
+    // Gather system state for Claude — profiles, PM2 services, recent doctor logs
+    const allProfiles = [];
+    try {
+      allProfiles.push({ name: 'chrome-profile', path: 'chrome-profile', desc: 'default browser (brand Twitter, generic)' });
+      const profilesDir = path.join(__dirname, 'chrome-profiles');
+      if (fs.existsSync(profilesDir)) {
+        for (const d of fs.readdirSync(profilesDir)) {
+          if (fs.statSync(path.join(profilesDir, d)).isDirectory()) {
+            allProfiles.push({ name: d, path: `chrome-profiles/${d}`, desc: d });
+          }
+        }
+      }
+    } catch {}
+
+    // Recent doctor logs for context (last 5 entries today)
+    let recentLogs = '';
+    try {
+      const todayFile = LOG_FILE();
+      if (fs.existsSync(todayFile)) {
+        const entries = JSON.parse(fs.readFileSync(todayFile, 'utf8'));
+        const last5 = entries.slice(-5).map(e => `  ${e.timestamp}: ${e.patternId} → ${e.healed ? 'HEALED' : 'NOT HEALED'}: ${e.action}`);
+        recentLogs = last5.join('\n');
+      }
+    } catch {}
+
     const prompt = `You are the Doctor agent for YTubViral, a multi-agent automation system running on Windows with PM2, Puppeteer, and Chrome profiles.
 
 An error occurred that didn't match any known pattern. Diagnose it and recommend ONE action.
@@ -344,16 +455,22 @@ CONTEXT:
 - Platform: ${ctx.platform || 'unknown'}
 - Account: ${ctx.account || 'unknown'}
 - Action: ${ctx.action || 'unknown'}
-- Profile dir: ${ctx.profileDir || 'none'}
+- Profile dir: ${ctx.profileDir || 'none (not provided by caller)'}
 
+AVAILABLE CHROME PROFILES:
+${allProfiles.map(p => `- "${p.path}" — ${p.desc}`).join('\n')}
+
+${recentLogs ? `RECENT DOCTOR ACTIVITY (last 5):\n${recentLogs}\n` : ''}
 KNOWN PATTERNS (already checked, none matched): ${knownPatternIds}
 
 ALLOWED ACTIONS (you MUST pick one):
-- kill_chrome_and_clean_locks: Kill orphaned Chrome processes for the profile + remove lock files. Use when Chrome is stuck/zombie.
-- restart_pm2_service: Restart a PM2 service. Specify which service in the details. Use for crashed/hung Node processes.
-- clean_temp_files: Remove stale temp files causing issues. Specify which files in details.
-- retry_later: The issue is transient (network blip, API hiccup, race condition). No fix needed, will resolve on next run.
-- escalate: The issue is serious and cannot be auto-fixed (account banned, API key revoked, data corruption, unknown critical failure).
+- kill_chrome_and_clean_locks: Kill orphaned Chrome processes for a specific profile + remove lock files. In "details", specify the profile path from the list above (e.g. "chrome-profile" or "chrome-profiles/persona-alex"). If the caller didn't provide a profileDir, INFER which profile is relevant from the platform/account context. If unsure, use "all" to kill ALL Chrome zombies and clean ALL profiles.
+- restart_pm2_service: Restart a PM2 service. Specify which service in details (ytubviral-agent, ytubviral-dashboard, ytubviral-tunnel).
+- clean_temp_files: Remove stale temp files. Specify relative paths (comma-separated) in details.
+- retry_later: Transient issue (network blip, API hiccup). Will resolve on next run.
+- escalate: Cannot self-fix (account banned, API key revoked, data corruption).
+
+IMPORTANT: Be smart about inferring context. If platform is "twitter" and account is "brand", the profile is likely "chrome-profile" (the default browser). If account contains "persona-alex", the profile is "chrome-profiles/persona-alex". Don't say "cannot fix" just because the caller forgot to pass profileDir — figure it out.
 
 Respond ONLY with this JSON (no markdown, no explanation):
 {"action":"<one of the allowed actions>","severity":"low|medium|high|critical","diagnosis":"<1 sentence>","details":"<specific details for executing the action>"}`;
@@ -396,19 +513,58 @@ async function executeClaudeAction(action, details, ctx, tag) {
 
   switch (action) {
     case 'kill_chrome_and_clean_locks': {
-      const profileDir = ctx.profileDir
-        ? path.resolve(__dirname, ctx.profileDir)
-        : null;
-      if (!profileDir) {
-        return { healed: false, action: 'No profile dir in context — cannot kill Chrome.' };
+      const lockFileNames = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'DevToolsActivePort', 'lockfile'];
+
+      // Claude can specify profile in details, or we use ctx.profileDir, or we clean ALL
+      let profilePaths = [];
+      const detailStr = (details || '').trim();
+
+      if (detailStr === 'all') {
+        // Kill ALL Chrome zombies and clean ALL profiles
+        profilePaths.push(path.resolve(__dirname, 'chrome-profile'));
+        const profilesDir = path.join(__dirname, 'chrome-profiles');
+        if (fs.existsSync(profilesDir)) {
+          for (const d of fs.readdirSync(profilesDir)) {
+            const full = path.join(profilesDir, d);
+            if (fs.statSync(full).isDirectory()) profilePaths.push(full);
+          }
+        }
+      } else if (detailStr && detailStr !== '') {
+        // Claude specified a profile path in details (e.g. "chrome-profile" or "chrome-profiles/persona-alex")
+        const resolved = path.resolve(__dirname, detailStr);
+        if (fs.existsSync(resolved)) profilePaths.push(resolved);
       }
-      await killOrphanedChrome(profileDir);
-      const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'DevToolsActivePort', 'lockfile'];
-      for (const f of lockFiles) {
-        const fp = path.join(profileDir, f);
-        if (fs.existsSync(fp)) { try { fs.unlinkSync(fp); } catch {} }
+
+      // Fallback to ctx.profileDir
+      if (!profilePaths.length && ctx.profileDir) {
+        profilePaths.push(path.resolve(__dirname, ctx.profileDir));
       }
-      return { healed: true, action: `Claude: killed Chrome + cleaned locks for ${path.basename(profileDir)}. ${details || ''}` };
+
+      // Last resort: clean the default profile
+      if (!profilePaths.length) {
+        profilePaths.push(path.resolve(__dirname, 'chrome-profile'));
+      }
+
+      const cleaned = [];
+      for (const profileDir of profilePaths) {
+        if (!fs.existsSync(profileDir)) continue;
+        await killOrphanedChrome(profileDir);
+        for (const f of lockFileNames) {
+          const fp = path.join(profileDir, f);
+          if (fs.existsSync(fp)) { try { fs.unlinkSync(fp); } catch {} }
+        }
+        cleaned.push(path.basename(profileDir));
+      }
+
+      // Also close cached browser instances
+      try {
+        const { closeBrowserForProfile } = require('./browser');
+        for (const profileDir of profilePaths) {
+          await closeBrowserForProfile(profileDir).catch(() => {});
+        }
+      } catch {}
+
+      return { healed: cleaned.length > 0, action: `Claude: killed Chrome + cleaned locks for [${cleaned.join(', ')}]. ${details || ''}` };
     }
 
     case 'restart_pm2_service': {
@@ -511,12 +667,45 @@ async function diagnose(err, ctx = {}) {
     }
   }
 
-  // No pattern matched — ask Claude to diagnose and recommend action
+  // ── Check learned patterns (0 tokens) ──
+  const signature = computeErrorSignature(err, ctx);
+  const learned = findLearnedPattern(signature);
+  if (learned) {
+    console.log(`${tag} Matched learned pattern (${learned.status}): ${learned.action} — ${learned.details || 'no details'}`);
+    try {
+      const execResult = await executeClaudeAction(learned.action, learned.details, ctx, tag);
+      updateLearnedPatternResult(signature, execResult.healed);
+
+      const entry = {
+        timestamp: new Date().toISOString(),
+        patternId: `learned-${learned.action}`,
+        severity: 'medium',
+        diagnosis: `Learned pattern match (${learned.status}, healed ${learned.healCount}x before)`,
+        healed: execResult.healed,
+        action: execResult.action,
+        error: err.message,
+        context: { platform: ctx.platform, account: ctx.account, action: ctx.action },
+      };
+      logEntry(entry);
+      console.log(`${tag} Learned pattern ${execResult.healed ? 'HEALED' : 'FAILED'}: ${execResult.action}`);
+
+      if (execResult.healed) {
+        return { healed: true, diagnosis: entry.diagnosis, action: execResult.action, patternId: entry.patternId };
+      }
+      // Learned pattern failed — fall through to Claude
+      console.log(`${tag} Learned pattern failed — falling through to Claude...`);
+    } catch (learnedErr) {
+      console.error(`${tag} Learned pattern execution threw: ${learnedErr.message}`);
+      updateLearnedPatternResult(signature, false);
+    }
+  }
+
+  // ── No pattern matched — ask Claude to diagnose and recommend action ──
   console.log(`${tag} No pattern matched — consulting Claude for diagnosis...`);
 
   const claudeResult = await claudeDiagnose(err, ctx, tag);
 
-  const entry = {
+  const claudeEntry = {
     timestamp: new Date().toISOString(),
     patternId: claudeResult.patternId,
     severity: claudeResult.severity,
@@ -527,12 +716,20 @@ async function diagnose(err, ctx = {}) {
     context: { platform: ctx.platform, account: ctx.account, action: ctx.action },
   };
 
-  logEntry(entry);
+  logEntry(claudeEntry);
   console.log(`${tag} Claude diagnosis: ${claudeResult.diagnosis}`);
   console.log(`${tag} ${claudeResult.healed ? 'HEALED' : 'NOT HEALED'}: ${claudeResult.action}`);
 
+  // Save successful Claude diagnoses as learned patterns for future use (0 tokens next time)
+  if (claudeResult.healed && claudeResult.patternId && claudeResult.patternId !== 'claude-unknown') {
+    const actionName = claudeResult.patternId.replace('claude-', '');
+    if (CLAUDE_ALLOWED_ACTIONS.includes(actionName)) {
+      saveLearnedPattern(signature, actionName, claudeResult.action.replace(/^Claude: /, '').split('.')[0]);
+    }
+  }
+
   if (!claudeResult.healed && (claudeResult.severity === 'critical' || claudeResult.severity === 'high')) {
-    await alertHuman(entry, tag);
+    await alertHuman(claudeEntry, tag);
   }
 
   return { healed: claudeResult.healed, diagnosis: claudeResult.diagnosis, action: claudeResult.action, patternId: claudeResult.patternId };
@@ -604,4 +801,4 @@ function getTodaySummary() {
   return { total: entries.length, healed, unhealed, patterns };
 }
 
-module.exports = { diagnose, getTodaySummary };
+module.exports = { diagnose, getTodaySummary, loadLearnedPatterns, saveLearnedPatterns };

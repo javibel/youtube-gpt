@@ -11,8 +11,12 @@
     "guardianTime": "02:15",
     "scoutTime": "02:30",
     "watchdogTime": "02:45",
+    "infraOptimizerTime": "02:45",
+    "seoOptimizerTime": "02:50",
+    "funnelOptimizerTime": "02:55",
     "optimizerTime": "03:00",
-    "managerTime": "03:15"
+    "managerTime": "03:15",
+    "metaOptimizerTime": "03:30 (Sundays)"
   },
   "sentinel": {
     "siteUrl": "https://ytubviral.com",
@@ -23,9 +27,9 @@
     "ownerEmail": "javijimenoplata@gmail.com"
   },
   "api-guard": {
-    "maxTokensPerCall": 2000,
-    "maxInputChars": 15000,
-    "dailyBudgetTokens": 100000,
+    "maxTokensPerCall": 4000,
+    "maxInputChars": 25000,
+    "dailyBudgetTokens": 200000,
     "maxCallsPerMinute": 10,
     "timeoutMs": 30000,
     "circuitBreakerThreshold": 5,
@@ -105,10 +109,26 @@
     "model": "claude-opus-4-6"
   },
   "social-optimizer": {
-    "model": "claude-sonnet-4-6"
+    "model": "claude-opus-4-6"
   },
   "manager": {
-    "model": "claude-sonnet-4-6"
+    "model": "claude-opus-4-6"
+  },
+  "seo-optimizer": {
+    "model": "claude-opus-4-6"
+  },
+  "funnel-optimizer": {
+    "model": "claude-opus-4-6"
+  },
+  "infra-optimizer": {
+    "model": "claude-opus-4-6"
+  },
+  "meta-optimizer": {
+    "model": "claude-opus-4-6",
+    "enabled": true
+  },
+  "feature-monitor": {
+    "model": "claude-opus-4-6"
   },
   "personas": {
     "alex": {
@@ -118,7 +138,7 @@
       "job": "Editor de video freelance",
       "platforms": "Twitter, Reddit",
       "mentionYtubviral": true,
-      "mentionRate": 0.3
+      "mentionRate": 0.35
     },
     "ferran": {
       "name": "Ferran Gómez",
@@ -127,17 +147,14 @@
       "job": "Consultor marketing digital",
       "platforms": "Twitter, Reddit",
       "mentionYtubviral": true,
-      "mentionRate": 0.25
+      "mentionRate": 0.3
     }
   },
-  "_lastModified": "2026-05-18T01:00:12.571Z",
+  "_lastModified": "2026-05-21T00:50:56.087Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 2.7174890000000005,
+    "amount": 27.25,
     "currency": "USD",
-    "lastChecked": "2026-05-18T17:33:54.466Z",
-    "lastDeduction": "2026-05-18T20:12:01.646Z",
-    "totalSpentToday": 0.002511,
-    "spendDate": "2026-05-18"
+    "lastChecked": "2026-05-21T16:10:10.043Z"
   }
 }

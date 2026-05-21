@@ -21,6 +21,7 @@ const mem = require('./agent-memory');
 const { loadFixLog, reenableFix, registerFixes, applyFixes } = require('./auto-fix');
 const { sendEmail } = require('./reports');
 const config = require('./config');
+const { loadLearnedPatterns, saveLearnedPatterns } = require('./doctor');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
 const MEMORY_DIR = path.join(__dirname, 'memory');
@@ -320,6 +321,62 @@ function autoTune(analysis) {
   return changes;
 }
 
+// ── Phase 2.5: Promote/prune learned patterns ────────────────────────────
+
+function promoteLearnedPatterns() {
+  const patterns = loadLearnedPatterns();
+  if (!patterns.length) return { promoted: 0, pruned: 0, disabled: 0, total: patterns.length };
+
+  const now = Date.now();
+  const PROMOTE_THRESHOLD = 3;           // heals needed to promote
+  const PROMOTE_MIN_AGE_MS = 48 * 3600000; // 48h minimum
+  const PRUNE_UNUSED_DAYS = 14;          // days without use to prune
+  const FAIL_THRESHOLD = 3;              // consecutive failures to disable
+
+  let promoted = 0, pruned = 0, disabled = 0;
+
+  for (const p of patterns) {
+    const ageSinceFirst = now - new Date(p.firstSeen || 0).getTime();
+    const daysSinceUse = (now - new Date(p.lastUsed || 0).getTime()) / 86400000;
+
+    // Promote: candidate → stable
+    if (p.status === 'candidate' && p.healCount >= PROMOTE_THRESHOLD && ageSinceFirst >= PROMOTE_MIN_AGE_MS) {
+      p.status = 'stable';
+      p.promotedAt = new Date().toISOString();
+      promoted++;
+      console.log(`[meta-optimizer] Promoted learned pattern: ${p.signature.slice(0, 60)}... (${p.healCount} heals)`);
+    }
+
+    // Prune: stable → pruned (unused 14+ days)
+    if (p.status === 'stable' && daysSinceUse >= PRUNE_UNUSED_DAYS) {
+      p.status = 'pruned';
+      p.prunedAt = new Date().toISOString();
+      pruned++;
+      console.log(`[meta-optimizer] Pruned unused pattern: ${p.signature.slice(0, 60)}... (unused ${Math.round(daysSinceUse)}d)`);
+    }
+
+    // Disable: failed with 3+ consecutive failures
+    if (p.status === 'failed' && (p.consecutiveFailures || 0) >= FAIL_THRESHOLD) {
+      p.status = 'disabled';
+      p.disabledAt = new Date().toISOString();
+      disabled++;
+      console.log(`[meta-optimizer] Disabled failed pattern: ${p.signature.slice(0, 60)}...`);
+    }
+  }
+
+  if (promoted + pruned + disabled > 0) {
+    saveLearnedPatterns(patterns);
+  }
+
+  // Compute stats
+  const stats = { candidate: 0, stable: 0, pruned: 0, failed: 0, disabled: 0 };
+  for (const p of patterns) stats[p.status] = (stats[p.status] || 0) + 1;
+
+  const totalHeals = patterns.reduce((sum, p) => sum + (p.healCount || 0), 0);
+
+  return { promoted, pruned, disabled, total: patterns.length, stats, totalHealsSaved: totalHeals };
+}
+
 // ── Phase 3: Claude Opus analysis ──────────────────────────────────────────
 
 const SYSTEM_PROMPT = `Eres el meta-optimizador del sistema multi-agente de YTubViral. Tu trabajo es analizar la EFECTIVIDAD del propio sistema de auto-mejora y proponer mejoras.
@@ -378,6 +435,15 @@ ${JSON.stringify(analysis.coverageGaps, null, 2)}
 
 == AUTO-TUNE CHANGES ALREADY APPLIED THIS RUN ==
 ${JSON.stringify(autoTuneChanges, null, 2)}
+
+== LEARNED PATTERNS (auto-learned from Doctor's Claude diagnoses) ==
+${JSON.stringify((() => {
+  const lp = loadLearnedPatterns();
+  const stats = { candidate: 0, stable: 0, pruned: 0, failed: 0, disabled: 0 };
+  for (const p of lp) stats[p.status] = (stats[p.status] || 0) + 1;
+  const totalHeals = lp.reduce((s, p) => s + (p.healCount || 0), 0);
+  return { total: lp.length, stats, totalHealsSavedTokens: totalHeals, topPatterns: lp.filter(p => p.status === 'stable' || p.status === 'candidate').slice(0, 5).map(p => ({ sig: p.signature.slice(0, 80), action: p.action, heals: p.healCount, status: p.status })) };
+})(), null, 2)}
 
 Evalua el sistema y propone mejoras si las hay. Si todo funciona bien, dilo tambien.`;
 
@@ -559,6 +625,20 @@ async function runMetaOptimizer() {
       console.log('[meta-optimizer] Phase 2: No auto-tune changes needed');
     }
 
+    // Phase 2.5: Promote/prune learned patterns
+    console.log('[meta-optimizer] Phase 2.5: Managing learned patterns...');
+    const patternResults = promoteLearnedPatterns();
+    report.phases.learnedPatterns = patternResults;
+    if (patternResults.promoted + patternResults.pruned + patternResults.disabled > 0) {
+      console.log(
+        `[meta-optimizer] Phase 2.5: ${patternResults.promoted} promoted, ` +
+        `${patternResults.pruned} pruned, ${patternResults.disabled} disabled ` +
+        `(${patternResults.total} total patterns, ${patternResults.totalHealsSaved} heals saved tokens)`
+      );
+    } else {
+      console.log(`[meta-optimizer] Phase 2.5: ${patternResults.total} patterns, no changes needed`);
+    }
+
     // Phase 3: Claude Opus analysis
     console.log('[meta-optimizer] Phase 3: Requesting Claude Opus analysis...');
     let recommendations = null;
@@ -616,6 +696,9 @@ async function runMetaOptimizer() {
       autoTuneChanges: autoTuneChanges.length,
       claudeActions: recommendations?.actions?.length || 0,
       actionsExecuted: executionResult.executed.length,
+      learnedPatterns: patternResults.total,
+      patternsPromoted: patternResults.promoted,
+      patternsPruned: patternResults.pruned,
     });
     saveMetaLog(metaLog);
 

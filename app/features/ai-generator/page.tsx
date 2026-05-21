@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Generate titles, scripts, descriptions, and more for YouTube with AI. 9 templates, free.',
     url: 'https://ytubviral.com/features/ai-generator',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-ai-generator.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'YouTube AI Content Generator — Titles, Scripts & More',
     description: 'Genera contenido para YouTube con IA: títulos, guiones, descripciones, hooks para Shorts y más. 9 plantillas listas para usar.',
-    images: ['/og-image.png'],
+    images: ['/og-ai-generator.webp'],
   },
 };
 

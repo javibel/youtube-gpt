@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     description: 'Find your optimal publishing schedule based on real channel data. Free heatmap and AI tips.',
     url: 'https://ytubviral.com/features/best-time',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-best-time.webp', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Best Time to Post on YouTube — Data-Driven Tool',
     description: 'Descubre la mejor hora para publicar en YouTube con datos reales de tu canal. Heatmap, mejores franjas horarias y consejos de IA.',
-    images: ['/og-image.png'],
+    images: ['/og-best-time.webp'],
   },
 };
 

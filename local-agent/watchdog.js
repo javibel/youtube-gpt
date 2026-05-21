@@ -21,6 +21,7 @@ const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
 const { registerFixes, applyFixes } = require('./auto-fix');
 const { sendEmail } = require('./reports');
+const { diagnose } = require('./doctor');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
 const BASE_URL = process.env.APP_PUBLIC_URL || 'https://ytubviral.com';
@@ -312,6 +313,7 @@ Máximo 150 palabras. Solo riesgos reales, no teóricos.`,
       results.aiAnalysis = text;
     } catch (err) {
       results.aiAnalysis = `Error en análisis AI: ${err.message}`;
+      await diagnose(err, { platform: 'system', action: 'ai-analysis', account: 'watchdog' }).catch(() => {});
     }
   } else {
     results.aiAnalysis = 'Compliance correcto. Sin issues detectados.';
