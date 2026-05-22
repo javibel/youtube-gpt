@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       email: normalised,
       source: source || 'launch-page',
       referrer: referrer || null,
+      lang: lang === 'en' ? 'en' : 'es',
     },
   });
 

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   }
 
   const subscribers = await prisma.launchWaitlist.findMany({
-    select: { email: true },
+    select: { email: true, lang: true },
   });
 
   let sent = 0;
@@ -33,10 +33,14 @@ export async function POST(request: NextRequest) {
 
   for (const sub of subscribers) {
     try {
+      const subLang: 'es' | 'en' = sub.lang === 'en' ? 'en' : 'es';
+      const subject = subLang === 'en'
+        ? '\u{1F680} YTubViral is LIVE \u2014 50% off for 48h only'
+        : '\u{1F680} YTubViral est\u00e1 EN VIVO \u2014 50% de descuento solo 48h';
       await sendTransactionalEmail({
         to: sub.email,
-        subject: '\u{1F680} YTubViral est\u00e1 EN VIVO \u2014 50% de descuento solo 48h',
-        html: launchDayEmail('es', phUrl, couponCode),
+        subject,
+        html: launchDayEmail(subLang, phUrl, couponCode),
       });
       sent++;
       // Small delay to avoid rate limits

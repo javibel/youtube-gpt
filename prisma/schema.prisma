@@ -607,6 +607,7 @@ model LaunchWaitlist {
   email     String   @unique
   source    String   @default("launch-page") // launch-page, twitter, reddit, etc.
   referrer  String?  // UTM or referral info
+  lang      String   @default("es") // es | en — for bilingual launch blast
   createdAt DateTime @default(now())
 
   @@map("launch_waitlist")
