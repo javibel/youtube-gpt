@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const post = getPost(slug);
   if (!post) return {};
   return {
-    title: `${post.title.es} | YTubViral`,
+    title: post.title.es,
     description: post.excerpt.es,
     alternates: { canonical: `https://ytubviral.com/blog/${slug}` },
     openGraph: {

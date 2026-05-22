@@ -24,7 +24,7 @@
     "slowThresholdMs": 5000,
     "confirmRetries": 3,
     "confirmDelayMs": 10000,
-    "ownerEmail": "javijimenoplata@gmail.com"
+    "ownerEmail": "ytbeviral@gmail.com"
   },
   "api-guard": {
     "maxTokensPerCall": 4000,
@@ -94,12 +94,12 @@
     "dangerousPatterns": "eval(, innerHTML, dangerouslySetInnerHTML, AKIA[0-9A-Z]",
     "extensions": "ts, tsx, js, jsx",
     "useAI": true,
-    "alertEmail": "javijimenoplata@gmail.com"
+    "alertEmail": "ytbeviral@gmail.com"
   },
   "gmail": {
     "model": "claude-haiku-4-5-20251001",
     "agentEmail": "ytbeviral@gmail.com",
-    "ownerEmail": "javijimenoplata@gmail.com",
+    "ownerEmail": "ytbeviral@gmail.com",
     "activeHours": "8-23"
   },
   "scout": {
@@ -153,8 +153,13 @@
   "_lastModified": "2026-05-21T00:50:56.087Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 27.25,
+    "amount": 2.120328,
     "currency": "USD",
-    "lastChecked": "2026-05-21T16:10:10.043Z"
+    "totalCredit": 6,
+    "totalSpent": 3.84,
+    "lastChecked": "2026-05-22T01:15:10.518Z",
+    "lastDeduction": "2026-05-22T17:00:21.467Z",
+    "totalSpentToday": 0.039672,
+    "spendDate": "2026-05-22"
   }
 }

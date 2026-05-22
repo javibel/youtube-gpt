@@ -3,7 +3,7 @@
 const db = require('./db');
 const { sendViaResend } = require('./resend');
 
-const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'javijimenoplata@gmail.com';
+const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'ytbeviral@gmail.com';
 
 async function sendEmail(subject, body) {
   await sendViaResend({

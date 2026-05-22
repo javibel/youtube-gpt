@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://ytubviral.com/blog' },
   openGraph: {
     title: 'Blog — Estrategias, IA y crecimiento para YouTubers',
-    description: 'Estrategias, IA y crecimiento para YouTubers',
+    description: 'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización. Aprende a crecer como creador con herramientas de inteligencia artificial.',
     url: 'https://ytubviral.com/blog',
     type: 'website',
     images: [{ url: '/og-blog.webp', width: 1200, height: 630 }],

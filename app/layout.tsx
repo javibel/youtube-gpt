@@ -90,41 +90,6 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "SoftwareApplication",
-              "name": "YTubViral",
-              "url": "https://ytubviral.com",
-              "applicationCategory": "BusinessApplication",
-              "operatingSystem": "Web",
-              "description": "Herramienta de IA para YouTubers. Genera títulos virales, scripts, descripciones SEO, captions, miniaturas, keyword research y análisis de competidores en segundos.",
-              "offers": [
-                {
-                  "@type": "Offer",
-                  "name": "Free",
-                  "price": "0",
-                  "priceCurrency": "EUR",
-                  "description": "10 generaciones al mes, sin tarjeta de crédito"
-                },
-                {
-                  "@type": "Offer",
-                  "name": "Pro",
-                  "price": "9.99",
-                  "priceCurrency": "EUR",
-                  "description": "200 generaciones al mes, todas las herramientas"
-                }
-              ],
-              "creator": {
-                "@type": "Organization",
-                "name": "YTubViral",
-                "url": "https://ytubviral.com"
-              }
-            })
-          }}
-        />
       </head>
       <body>
         <LangProvider lang={lang as 'es' | 'en'}>

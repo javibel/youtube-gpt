@@ -19,7 +19,7 @@ const { diagnose } = require('./doctor');
 
 const KNOWN_PERSONAS = ['Javi_Mart', 'AdNearby3690', 'Complex-Specific1379', 'YTubViral'];
 const STATE_FILE = path.join(__dirname, 'outreach-monitor-state.json');
-const OWNER_EMAIL = 'hello@ytubviral.com';
+const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'ytbeviral@gmail.com';
 
 const REDDIT_POSTS = [
   { name: 'r/alphaandbetausers', url: 'https://www.reddit.com/r/alphaandbetausers/comments/1thw159/' },

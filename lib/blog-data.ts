@@ -47,7 +47,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: '10 AI Tools for YouTubers in 2026 (Free and Paid)',
     },
     excerpt: {
-      es: 'La IA ha revolucionado la forma en que los creadores trabajan. En 2026 existen herramientas increíbles que te permiten ahorrar horas cada semana — aquí están las 10 mejores, con precios y para qué sirve cada una.',
+      es: 'La IA ha revolucionado cómo trabajan los creadores. Aquí están las 10 mejores herramientas de 2026 que te ahorran horas cada semana, con precios y para qué sirve cada una.',
       en: 'AI has revolutionized how creators work. In 2026 there are incredible tools that save you hours every week — here are the top 10, with pricing and what each one does.',
     },
   },
@@ -63,7 +63,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How to Write Viral YouTube Titles in 2026 (Complete Guide)',
     },
     excerpt: {
-      es: 'El título es la diferencia entre 100 y 100.000 visualizaciones. Aprende las 7 fórmulas probadas para escribir títulos que disparan el CTR, con ejemplos reales y el checklist del título perfecto.',
+      es: 'El título es la diferencia entre 100 y 100.000 visualizaciones. Aprende las 7 fórmulas probadas para escribir títulos que disparan el CTR, con ejemplos reales.',
       en: 'The title is the difference between 100 and 100,000 views. Learn the 7 proven formulas for writing titles that skyrocket CTR, with real examples and a perfect-title checklist.',
     },
   },
@@ -79,7 +79,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'SEO Descriptions for YouTube: The Definitive Guide 2026',
     },
     excerpt: {
-      es: 'La descripción de tu vídeo es el elemento más infravalorado del SEO en YouTube. Los vídeos con descripciones optimizadas tienen un 78% más de probabilidades de aparecer en la primera página. Aquí está todo lo que necesitas saber.',
+      es: 'La descripción es el elemento más infravalorado del SEO en YouTube. Los vídeos con descripciones optimizadas tienen un 78% más de probabilidades de aparecer en primera página.',
       en: 'Your video description is the most underrated YouTube SEO element. Videos with optimized descriptions are 78% more likely to appear on the first page. Here is everything you need to know.',
     },
   },
@@ -95,7 +95,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: '7 viral title frameworks YouTube rewards in 2026',
     },
     excerpt: {
-      es: 'Analizamos 12.480 vídeos con más de 500K visualizaciones para destilar los patrones de titulación que el algoritmo prioriza este año. Spoiler: los números específicos siguen ganando.',
+      es: 'Analizamos 12.480 vídeos con +500K views para destilar los patrones de titulación que el algoritmo prioriza en 2026. Los números específicos siguen ganando.',
       en: 'We analyzed 12,480 videos with 500K+ views to distill the title patterns the algorithm prioritizes this year. Spoiler: specific numbers still win.',
     },
   },
@@ -111,7 +111,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How Much Does a YouTuber Really Earn in Spain (And Why Nobody Tells the Truth)',
     },
     excerpt: {
-      es: 'CPMs reales por nicho, impuestos de autónomos, el Valle de la Muerte entre los 100 y los 10.000 suscriptores, y por qué YouTube no es un billete de lotería sino un negocio de márgenes estrechos. Sin edulcorar.',
+      es: 'CPMs reales por nicho, impuestos, el Valle de la Muerte entre 100 y 10.000 suscriptores, y por qué YouTube es un negocio de márgenes estrechos. Sin edulcorar.',
       en: 'Real CPMs by niche, freelancer taxes, the Valley of Death between 100 and 10,000 subscribers, and why YouTube isn\'t a lottery ticket but a thin-margin business. No sugar-coating.',
     },
   },
@@ -127,7 +127,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'Your First YouTube Setup for Under €500 (2026 Buying Guide)',
     },
     excerpt: {
-      es: 'No necesitas gastar miles de euros para empezar en YouTube con calidad profesional. Te monto un setup completo — cámara, micrófono, iluminación y accesorios — por menos de 500€, pieza a pieza.',
+      es: 'No necesitas miles de euros para empezar en YouTube con calidad profesional. Setup completo — cámara, micro, iluminación y accesorios — por menos de 500€.',
       en: 'You don\'t need to spend thousands to start YouTube with professional quality. I\'ll build you a complete setup — camera, mic, lighting and accessories — for under €500, piece by piece.',
     },
   },
@@ -143,7 +143,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'YouTube Keyword Research Step by Step: The Definitive Guide 2026',
     },
     excerpt: {
-      es: 'Aprende a encontrar keywords con alto volumen y baja competencia para tus vídeos. Método completo con herramientas gratuitas, ejemplos reales y los errores que cometen el 90% de creadores.',
+      es: 'Aprende a encontrar keywords con alto volumen y baja competencia para tus vídeos. Método completo con herramientas gratuitas y los errores que cometen el 90% de creadores.',
       en: 'Learn how to find high-volume, low-competition keywords for your videos. Complete method with free tools, real examples, and the mistakes 90% of creators make.',
     },
   },
@@ -159,7 +159,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'YouTube A/B Testing: How to Test Titles & Thumbnails in 2026 (Complete Guide)',
     },
     excerpt: {
-      es: 'YouTube ya permite A/B testing nativo de títulos y miniaturas. Te enseñamos cómo funciona, sus limitaciones, y cómo combinarlo con herramientas externas para optimizar tu CTR al máximo.',
+      es: 'YouTube ya permite A/B testing nativo de títulos y miniaturas. Cómo funciona, sus limitaciones, y cómo combinarlo con herramientas externas para optimizar tu CTR.',
       en: 'YouTube now allows native A/B testing for titles and thumbnails. We show you how it works, its limitations, and how to combine it with external tools to maximize your CTR.',
     },
   },
@@ -175,7 +175,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'The YouTube Algorithm in 2026: How It Really Works (and How to Use It)',
     },
     excerpt: {
-      es: 'YouTube ya no premia solo el tiempo de visualización. En 2026, la satisfacción del espectador, los LLMs y las señales contextuales han cambiado las reglas. Te explicamos qué ha cambiado, qué métricas importan de verdad y cómo adaptar tu estrategia con datos reales.',
+      es: 'YouTube ya no premia solo el watch time. En 2026, la satisfacción del espectador, los LLMs y las señales contextuales han cambiado las reglas. Qué métricas importan y cómo adaptar tu estrategia.',
       en: 'YouTube no longer rewards watch time alone. In 2026, viewer satisfaction, LLMs, and contextual signals have changed the rules. We explain what\'s changed, which metrics truly matter, and how to adapt your strategy with real data.',
     },
   },
@@ -191,7 +191,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How to Get Subscribers on YouTube in 2026: 12 Strategies That Actually Work',
     },
     excerpt: {
-      es: 'Ganar suscriptores en YouTube es más difícil que nunca — y más importante que nunca. Te enseñamos 12 estrategias probadas con datos reales para crecer tu canal en 2026, desde el primer vídeo hasta los 100K.',
+      es: 'Ganar suscriptores en YouTube es más difícil que nunca — y más importante. 12 estrategias probadas con datos reales para crecer tu canal, del primer vídeo a los 100K.',
       en: 'Gaining subscribers on YouTube is harder than ever — and more important than ever. We show you 12 proven strategies backed by real data to grow your channel in 2026, from your first video to 100K.',
     },
   },
@@ -207,7 +207,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How to Analyze Your YouTube Competition in 2026 (Step-by-Step Guide)',
     },
     excerpt: {
-      es: 'Tus competidores ya tienen las respuestas que buscas: qué temas funcionan, qué keywords posicionan, cuándo publican. Te enseñamos a extraer esos datos sin pagar un céntimo y a convertirlos en ventaja para tu canal.',
+      es: 'Tus competidores ya tienen las respuestas: qué temas funcionan, qué keywords posicionan, cuándo publican. Aprende a extraer esos datos gratis y convertirlos en ventaja.',
       en: 'Your competitors already have the answers you\'re looking for: which topics work, which keywords rank, when they publish. We show you how to extract that data for free and turn it into an edge for your channel.',
     },
   },
@@ -223,7 +223,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How to Design YouTube Thumbnails That Get Clicks (2026 Guide)',
     },
     excerpt: {
-      es: 'El 90% de los vídeos más vistos de YouTube usan miniaturas personalizadas. Te enseñamos las reglas de diseño que separan un CTR del 2% de uno del 10%, con datos reales, errores que debes evitar y un checklist para cada miniatura.',
+      es: 'El 90% de los vídeos top de YouTube usan miniaturas personalizadas. Las reglas de diseño que separan un CTR del 2% de uno del 10%, con datos reales y checklist.',
       en: '90% of top-performing YouTube videos use custom thumbnails. We break down the design rules that separate a 2% CTR from a 10% one, with real data, mistakes to avoid, and a checklist for every thumbnail.',
     },
   },
@@ -239,7 +239,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How to Create YouTube Scripts with AI in 2026 (Step-by-Step Guide)',
     },
     excerpt: {
-      es: 'La IA no te va a convertir en buen YouTuber, pero sí puede ahorrarte 3 horas por guion. Te enseño el proceso exacto para crear scripts que suenen a ti — no a un robot — usando IA como herramienta, no como muleta.',
+      es: 'La IA no te hará buen YouTuber, pero puede ahorrarte 3 horas por guion. El proceso exacto para crear scripts que suenen a ti — no a un robot — usando IA como herramienta.',
       en: 'AI won\'t make you a good YouTuber, but it can save you 3 hours per script. I\'ll show you the exact process to create scripts that sound like you — not a robot — using AI as a tool, not a crutch.',
     },
   },
@@ -255,7 +255,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How to Monetize a YouTube Channel in 2026: The Complete Guide (AdSense, Affiliates, Sponsors & More)',
     },
     excerpt: {
-      es: 'AdSense es solo la puerta de entrada. Te explicamos las 6 fuentes de ingresos reales de un YouTuber en 2026, con CPMs por nicho, datos de Shorts, ejemplos de canales pequeños que facturan más que canales grandes, y la hoja de ruta para empezar a ganar desde los 500 suscriptores.',
+      es: 'AdSense es solo la puerta de entrada. Las 6 fuentes de ingresos reales de un YouTuber en 2026, con CPMs por nicho, datos de Shorts y la hoja de ruta desde los 500 suscriptores.',
       en: 'AdSense is just the entry door. We break down the 6 real income sources for a YouTuber in 2026, with CPMs by niche, Shorts data, examples of small channels earning more than big ones, and the roadmap to start earning from 500 subscribers.',
     },
   },
@@ -271,7 +271,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How to Succeed on YouTube as a Neurodivergent Creator: Practical Guide 2026',
     },
     excerpt: {
-      es: 'TDAH, autismo, dislexia — tu cerebro no funciona como el de la mayoría. Eso no es un problema en YouTube: es una ventaja. Te enseño cómo adaptar tu workflow, evitar el burnout y convertir tu neurodivergencia en tu mayor fortaleza como creador.',
+      es: 'TDAH, autismo, dislexia — tu cerebro funciona diferente. En YouTube eso es una ventaja. Cómo adaptar tu workflow, evitar el burnout y convertir la neurodivergencia en fortaleza.',
       en: 'ADHD, autism, dyslexia — your brain doesn\'t work like most people\'s. That\'s not a problem on YouTube: it\'s an advantage. I\'ll show you how to adapt your workflow, avoid burnout, and turn your neurodivergence into your greatest strength as a creator.',
     },
   },
@@ -303,7 +303,7 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'Complete YTubViral Tour: 14 AI Tools to Grow on YouTube',
     },
     excerpt: {
-      es: 'Recorremos las 14 herramientas de YTubViral en acción: desde el generador de títulos hasta el coaching con IA. Incluye vídeo tutorial paso a paso para que veas exactamente cómo funciona cada una.',
+      es: 'Las 14 herramientas de YTubViral en acción: desde el generador de títulos hasta el coaching con IA. Vídeo tutorial paso a paso de cómo funciona cada una.',
       en: 'We walk through all 14 YTubViral tools in action: from the title generator to AI coaching. Includes a step-by-step video tutorial so you can see exactly how each one works.',
     },
   },

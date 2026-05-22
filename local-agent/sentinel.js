@@ -130,7 +130,7 @@ function getSentinelCfg() {
     slowThresholdMs: config.get('sentinel', 'slowThresholdMs', 5000),
     confirmRetries: config.get('sentinel', 'confirmRetries', 3),
     confirmDelayMs: config.get('sentinel', 'confirmDelayMs', 10000),
-    ownerEmail: config.get('sentinel', 'ownerEmail', process.env.OWNER_EMAIL || 'javijimenoplata@gmail.com'),
+    ownerEmail: config.get('sentinel', 'ownerEmail', process.env.OWNER_EMAIL || 'ytbeviral@gmail.com'),
   };
 }
 

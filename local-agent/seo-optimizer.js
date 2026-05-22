@@ -28,6 +28,7 @@ const mem = require('./agent-memory');
 const { registerFixes, applyFixes } = require('./auto-fix');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
+const KNOWN_ISSUES_FILE = path.join(REPORTS_DIR, 'seo-known-issues.json');
 
 const CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
@@ -427,6 +428,73 @@ Responde SOLO con el JSON.`,
   },
 ]);
 
+// ── Known Issues Cache (avoid repeating the same findings daily) ─────────────
+
+function loadKnownIssues() {
+  try {
+    if (fs.existsSync(KNOWN_ISSUES_FILE)) {
+      return JSON.parse(fs.readFileSync(KNOWN_ISSUES_FILE, 'utf8'));
+    }
+  } catch {}
+  return {};
+}
+
+function saveKnownIssues(knownMap) {
+  ensureDir(REPORTS_DIR);
+  fs.writeFileSync(KNOWN_ISSUES_FILE, JSON.stringify(knownMap, null, 2));
+}
+
+/**
+ * Filter issues into new vs known. An issue is "known" if the same type prefix
+ * (e.g. SEO_CTR, SEO_INDEXING) appeared yesterday and the value hasn't changed
+ * significantly. Returns { newIssues, knownIssues, resolvedIssues }.
+ */
+function classifyIssues(currentIssues) {
+  const known = loadKnownIssues();
+  const today = new Date().toISOString().slice(0, 10);
+  const newIssues = [];
+  const knownIssues = [];
+  const currentMap = {};
+
+  for (const issue of currentIssues) {
+    const prefix = issue.split(':')[0]; // e.g. SEO_CTR, SEO_INDEXING, SEO_NOINDEX
+    const key = prefix + (issue.includes('ytubviral.com/') ? ':' + issue.match(/ytubviral\.com\/[^\s)]+/)?.[0] : '');
+    currentMap[key] = { text: issue, date: today };
+
+    if (known[key]) {
+      // Known issue — only flag as "new" if it got significantly worse
+      const oldText = known[key].text;
+      const oldNum = parseFloat((oldText.match(/(\d+\.?\d*)%/) || [])[1]) || 0;
+      const newNum = parseFloat((issue.match(/(\d+\.?\d*)%/) || [])[1]) || 0;
+      // If the number worsened by >10 percentage points, treat as new
+      if (prefix.includes('CTR') || prefix.includes('CLICKS')) {
+        if (newNum > oldNum + 10) {
+          newIssues.push(issue + ' [WORSENED]');
+        } else {
+          knownIssues.push(issue);
+        }
+      } else {
+        knownIssues.push(issue);
+      }
+    } else {
+      newIssues.push(issue);
+    }
+  }
+
+  // Detect resolved issues (were known, no longer present)
+  const resolvedIssues = [];
+  for (const [key, val] of Object.entries(known)) {
+    if (!currentMap[key]) {
+      resolvedIssues.push(val.text + ' [RESOLVED]');
+    }
+  }
+
+  // Save current state for next run
+  saveKnownIssues(currentMap);
+
+  return { newIssues, knownIssues, resolvedIssues };
+}
+
 // ── Main Orchestrator ─────────────────────────────────────────────────────────
 
 async function runSeoOptimizer() {
@@ -446,6 +514,12 @@ async function runSeoOptimizer() {
     // 3. Detect anomalies
     const issues = detectAnomalies(metrics);
     console.log(`[seo-optimizer] ${issues.length} anomalies detected`);
+
+    // 3b. Classify issues as new vs known (avoid repeating daily)
+    const { newIssues, knownIssues, resolvedIssues } = classifyIssues(issues);
+    if (newIssues.length > 0) console.log(`[seo-optimizer] ${newIssues.length} NEW issue(s)`);
+    if (knownIssues.length > 0) console.log(`[seo-optimizer] ${knownIssues.length} known issue(s) (suppressed)`);
+    if (resolvedIssues.length > 0) console.log(`[seo-optimizer] ${resolvedIssues.length} issue(s) RESOLVED`);
 
     // 4. Apply auto-fixes + self-improvement (always run, even with 0 issues)
     let appliedFixes = await applyFixes('seo-optimizer', issues, metrics);
@@ -484,16 +558,21 @@ async function runSeoOptimizer() {
       mem.processFindings('seo-optimizer', findings);
     } catch (e) { /* memory not critical */ }
 
-    // 7. Send summary email if there are issues
-    if (issues.length > 0) {
+    // 7. Send summary email only if there are NEW issues or resolved issues
+    const shouldEmail = newIssues.length > 0 || resolvedIssues.length > 0;
+    if (shouldEmail) {
       const curT = metrics.current.totals;
       const prevT = metrics.previous.totals;
       const emailBody = [
         '=== SEO OPTIMIZER — Daily analysis ===',
         `Date: ${today}`,
         '',
-        '-- ANOMALIES DETECTED --',
-        ...issues.map(i => `  * ${i}`),
+        newIssues.length > 0 ? '-- NEW ANOMALIES --' : null,
+        ...newIssues.map(i => `  🔴 ${i}`),
+        resolvedIssues.length > 0 ? '\n-- RESOLVED --' : null,
+        ...resolvedIssues.map(i => `  ✅ ${i}`),
+        knownIssues.length > 0 ? `\n-- KNOWN (${knownIssues.length} persistent, not repeated) --` : null,
+        knownIssues.length > 0 ? `  ${knownIssues.map(i => i.split(':')[0]).join(', ')}` : null,
         '',
         `-- CURRENT PERIOD (${metrics.current.period}) --`,
         `Clicks: ${curT.clicks}`,
@@ -515,7 +594,12 @@ async function runSeoOptimizer() {
           : '',
       ].filter(Boolean).join('\n');
 
-      await sendEmail('[YTubViral] SEO Optimizer — Daily report', emailBody);
+      const subject = resolvedIssues.length > 0 && newIssues.length === 0
+        ? '[YTubViral] SEO Optimizer — Issues resolved'
+        : '[YTubViral] SEO Optimizer — New issues detected';
+      await sendEmail(subject, emailBody);
+    } else if (issues.length > 0) {
+      console.log(`[seo-optimizer] ${issues.length} known issues — no email (already reported)`);
     }
 
     console.log(`[seo-optimizer] Analysis complete: ${issues.length} issues found`);

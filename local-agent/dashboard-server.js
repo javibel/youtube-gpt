@@ -58,7 +58,7 @@ const DEFAULTS = {
     slowThresholdMs: 5000,
     confirmRetries: 3,
     confirmDelayMs: 10000,
-    ownerEmail: 'javijimenoplata@gmail.com',
+    ownerEmail: 'ytbeviral@gmail.com',
   },
   'api-guard': {
     maxTokensPerCall: 2000,
@@ -126,12 +126,12 @@ const DEFAULTS = {
     dangerousPatterns: ['eval(', 'innerHTML', 'dangerouslySetInnerHTML', 'AKIA[0-9A-Z]'],
     extensions: ['ts', 'tsx', 'js', 'jsx'],
     useAI: true,
-    alertEmail: 'javijimenoplata@gmail.com',
+    alertEmail: 'ytbeviral@gmail.com',
   },
   gmail: {
     model: 'claude-haiku-4-5-20251001',
     agentEmail: 'ytbeviral@gmail.com',
-    ownerEmail: 'javijimenoplata@gmail.com',
+    ownerEmail: 'ytbeviral@gmail.com',
     activeHours: '8-23',
   },
   scout: {

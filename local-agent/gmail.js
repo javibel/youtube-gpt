@@ -11,7 +11,7 @@ const REPORTS_DIR = path.join(__dirname, 'reports');
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const AGENT_EMAIL = process.env.AGENT_EMAIL ?? 'ytbeviral@gmail.com';
-const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'javijimenoplata@gmail.com';
+const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'ytbeviral@gmail.com';
 
 async function getAccessToken() {
   const res = await fetch(TOKEN_URL, {

@@ -24,6 +24,7 @@ const { runDiscovery } = require('./outreach-discover');
 const { runOutreachSend } = require('./outreach-send');
 const { runOutreachPost } = require('./outreach-post');
 const { runFeatureMonitor } = require('./feature-monitor');
+const { runCleanup: runGmailCleanup } = require('./gmail-cleanup');
 
 console.log('[agent] YTubViral local agent starting...');
 
@@ -155,6 +156,12 @@ cron.schedule('0 10 * * 0', async () => {
     'Recordatorio: backup semanal YTubViral',
     'Ejecuta el backup semanal de archivos sensibles:\n\n  cd C:\\Users\\jimen\\youtube-gpt\\local-agent\n  powershell -File backup.ps1\n\nDestino: D:\\ytubviral-backup\\\n\nSentinel - YTubViral Agent System'
   ).catch(err => console.error('[backup-reminder]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
+// Gmail cleanup — daily at 01:30, archive old emails and label important ones
+cron.schedule('30 1 * * *', async () => {
+  console.log('[cron] Gmail cleanup — inbox hygiene');
+  await runGmailCleanup().catch(err => console.error('[gmail-cleanup]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
 // Close all browsers every night to free memory
