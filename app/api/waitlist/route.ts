@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { waitlistWelcomeEmail } from '@/lib/emails';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   const { email, source, referrer, lang } = await request.json() as {
     email?: string;
