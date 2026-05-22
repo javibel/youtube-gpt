@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 
     const ip = getIp(request);
     const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis']);
-    const maxTokens = LONG_TEMPLATES.has(template) ? 2048 : 1024;
+    const maxTokens = LONG_TEMPLATES.has(template) ? 8192 : 2048;
     const langInstruction = lang === 'en'
       ? '\n\nIMPORTANT: Write your ENTIRE response in English.'
       : '';

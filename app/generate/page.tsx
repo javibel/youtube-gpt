@@ -429,7 +429,7 @@ export default function GeneratePage() {
                   )}
                   {output && (
                     <>
-                      <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans max-h-[600px] overflow-y-auto" style={{ color: 'var(--yv-text-1)' }}>
+                      <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans max-h-[1200px] overflow-y-auto" style={{ color: 'var(--yv-text-1)' }}>
                         {output}
                       </pre>
                       {truncated && (

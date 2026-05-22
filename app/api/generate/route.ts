@@ -186,7 +186,7 @@ export async function POST(request: Request) {
 
     // Token limits per template — long-form content needs more tokens
     const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis']);
-    const maxTokens = LONG_TEMPLATES.has(template) ? 2048 : 1024;
+    const maxTokens = LONG_TEMPLATES.has(template) ? 8192 : 2048;
 
     // Continuation support — if previousContent is provided, ask Claude to continue
     const previousContent = inputs._previousContent as string | undefined;
