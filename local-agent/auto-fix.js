@@ -24,6 +24,9 @@ const path = require('path');
 const CONFIG_FILE = path.join(__dirname, 'agent-config.json');
 const FIX_LOG_FILE = path.join(__dirname, 'reports', 'auto-fixes.json');
 
+// Safety: max Claude-powered fixes per agent per day to prevent runaway loops
+const MAX_CLAUDE_FIXES_PER_AGENT_PER_DAY = 2;
+
 // ── Config helpers ──────────────────────────────────────────────────────────
 
 function readConfig() {
@@ -78,8 +81,9 @@ function isOnCooldown(log, agentId, fixId, baseCooldownMs) {
     else if (eff.successRate > 0.7) cooldown = baseCooldownMs * 0.6;     // faster if usually works
   }
 
+  // Find last REAL fix (ignore no-ops — parse errors, no response, etc.)
   const lastApplied = log.fixes
-    .filter(f => f.agent === agentId && f.fixId === fixId)
+    .filter(f => f.agent === agentId && f.fixId === fixId && f.outcome !== 'no-op')
     .pop();
   if (!lastApplied) return false;
   return (Date.now() - new Date(lastApplied.timestamp).getTime()) < cooldown;
@@ -91,18 +95,42 @@ function isDisabled(log, agentId, fixId) {
 }
 
 function logFix(log, entry) {
-  log.fixes.push({
+  // If fix didn't actually change anything (parse error, no response, etc.),
+  // mark as 'no-op' — don't track for effectiveness and don't block cooldown
+  const outcome = entry._noOp ? 'no-op' : 'pending';
+  const fixEntry = {
     timestamp: new Date().toISOString(),
-    outcome: 'pending', // will be evaluated on next run
+    outcome,
     ...entry,
-  });
+  };
+  delete fixEntry._noOp;
+  log.fixes.push(fixEntry);
   const key = `${entry.agent}:${entry.fixId}`;
-  if (!log.stats[key]) log.stats[key] = { applied: 0, effective: 0, ineffective: 0, lastApplied: null };
-  log.stats[key].applied++;
+  if (!log.stats[key]) log.stats[key] = { applied: 0, effective: 0, ineffective: 0, noOps: 0, lastApplied: null };
+  if (outcome === 'no-op') {
+    log.stats[key].noOps = (log.stats[key].noOps || 0) + 1;
+  } else {
+    log.stats[key].applied++;
+  }
   log.stats[key].lastApplied = new Date().toISOString();
 }
 
 // ── Effectiveness evaluation ────────────────────────────────────────────────
+
+/**
+ * Normalize an issue string to a stable category for comparison.
+ * Strips numbers, percentages, and variable parts so "mention rate 14.1%"
+ * and "mention rate 15.7%" match as the same category.
+ */
+function normalizeIssueCategory(str) {
+  return (str || '')
+    .toLowerCase()
+    .replace(/[\d.]+%/g, '<PCT>')          // percentages
+    .replace(/\b\d+\b/g, '<N>')            // numbers
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+}
 
 /**
  * Called at the START of each agent run (before applying new fixes).
@@ -114,7 +142,8 @@ function logFix(log, entry) {
  */
 function evaluateEffectiveness(agentId, currentIssues) {
   const log = loadFixLog();
-  const issueSet = new Set(currentIssues.map(i => i.toLowerCase().slice(0, 80)));
+  // Normalize issues to stable categories for comparison
+  const issueCategories = new Set(currentIssues.map(i => normalizeIssueCategory(i)));
   const results = [];
   let changed = false;
 
@@ -122,10 +151,10 @@ function evaluateEffectiveness(agentId, currentIssues) {
   for (const fix of log.fixes) {
     if (fix.agent !== agentId || fix.outcome !== 'pending') continue;
 
-    // Check if the target issue pattern still exists
-    const targetPattern = (fix.targetIssue || fix.detail || '').toLowerCase().slice(0, 80);
-    const stillPresent = [...issueSet].some(issue =>
-      issue.includes(targetPattern.slice(0, 30)) || targetPattern.includes(issue.slice(0, 30))
+    // Check if the target issue CATEGORY still exists (not exact string match)
+    const targetCategory = normalizeIssueCategory(fix.targetIssue || fix.detail || '');
+    const stillPresent = [...issueCategories].some(cat =>
+      cat.includes(targetCategory.slice(0, 40)) || targetCategory.includes(cat.slice(0, 40))
     );
 
     const key = `${fix.agent}:${fix.fixId}`;
@@ -214,11 +243,22 @@ function registerFixes(agentId, fixes) {
 /**
  * Run all applicable fixes for an agent.
  * 1. First evaluates previous fixes' effectiveness
- * 2. Then applies new fixes for current issues
+ * 2. Then applies new fixes for current issues AND improvement opportunities
+ *
+ * @param {string} agentId
+ * @param {string[]} issues - detected issues (errors, problems)
+ * @param {object} metrics - agent-specific metrics
+ * @param {string[]} [improvements] - improvement opportunities from AI analysis (optional)
  */
-async function applyFixes(agentId, issues, metrics = {}) {
+async function applyFixes(agentId, issues, metrics = {}, improvements = []) {
   const fixes = FIX_REGISTRY[agentId];
   if (!fixes || fixes.length === 0) return [];
+
+  // Merge issues + improvements so fixes can trigger on either
+  const allSignals = [
+    ...(Array.isArray(issues) ? issues.filter(i => typeof i === 'string') : []),
+    ...(Array.isArray(improvements) ? improvements.filter(i => typeof i === 'string').map(i => `[IMPROVE] ${i}`) : []),
+  ];
 
   // Step 1: Evaluate effectiveness of previously applied fixes
   const issueStrings = Array.isArray(issues) ? issues.filter(i => typeof i === 'string') : [];
@@ -229,6 +269,18 @@ async function applyFixes(agentId, issues, metrics = {}) {
   const config = readConfig();
   const applied = [];
   let configChanged = false;
+
+  // Safety: count how many fixes this agent has already applied TODAY
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const fixesToday = log.fixes.filter(f =>
+    f.agent === agentId && f.outcome !== 'no-op' && f.timestamp?.startsWith(todayStr)
+  ).length;
+
+  if (fixesToday >= MAX_CLAUDE_FIXES_PER_AGENT_PER_DAY) {
+    console.log(`[auto-fix] ${agentId}: daily fix cap reached (${fixesToday}/${MAX_CLAUDE_FIXES_PER_AGENT_PER_DAY}) — skipping`);
+    saveFixLog(log);
+    return applied;
+  }
 
   for (const fix of fixes) {
     const cooldown = fix.cooldownMs || 86400000;
@@ -242,18 +294,20 @@ async function applyFixes(agentId, issues, metrics = {}) {
     // Skip if on cooldown (adaptive)
     if (isOnCooldown(log, agentId, fix.id, cooldown)) continue;
 
-    // Check condition
+    // Check condition — pass allSignals (issues + improvements) so fixes
+    // can trigger on improvement opportunities, not just errors
     try {
-      if (!fix.condition(issues, metrics)) continue;
+      if (!fix.condition(allSignals, metrics)) continue;
     } catch { continue; }
 
-    // Apply fix
+    // Apply fix — pass allSignals so Claude sees both issues and improvements
     try {
-      const result = await fix.apply(config, issues, metrics);
+      const result = await fix.apply(config, allSignals, metrics);
       if (result && (result.changed || result.detail)) {
         if (result.changed) configChanged = true;
 
         // Find the primary issue this fix targets (for effectiveness evaluation)
+        // Only use real issues for targeting, not improvement suggestions
         const targetIssue = issueStrings.find(i => {
           const lower = i.toLowerCase();
           return fix.id.split('-').some(word => word.length > 2 && lower.includes(word));
@@ -267,6 +321,8 @@ async function applyFixes(agentId, issues, metrics = {}) {
           previousValue: result.previousValue,
           newValue: result.newValue,
           targetIssue: targetIssue.slice(0, 200),
+          // Mark as no-op if fix didn't actually change anything (parse error, etc.)
+          _noOp: !result.changed,
         };
         logFix(log, entry);
         applied.push(entry);

@@ -16,40 +16,70 @@ const { sendViaResend } = require('./resend');
 const TRACKER_PATH = path.join(__dirname, 'outreach-tracker.json');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-const TEMPLATES = {
+// Follow-up templates — reference the SEO analysis if contact has video data
+const TEMPLATES_SEO = {
   es: {
-    subject: 'Re: Colaboración — acceso gratuito a YTubViral Pro',
+    subject: (videoTitle) => `Re: Tu video "${videoTitle.slice(0, 35)}..." — análisis SEO`,
+    body: (name, seoScore) => `Hola ${name},
+
+Te escribí hace unos días con un análisis SEO de tu último video (${seoScore}/100). Espero que los tips te hayan servido.
+
+Solo quería asegurarme de que no se perdió en el inbox. Si quieres el análisis completo con keywords, retención y más, regístrate en https://ytubviral.com — te activo Pro gratis 1 mes.
+
+También puedes probar la herramienta de SEO Score gratis sin registrarte: https://ytubviral.com/features/seo-score
+
+Si no te interesa, sin problema. Gracias por tu tiempo.
+
+Javier Jimeno
+Fundador, YTubViral`,
+  },
+  en: {
+    subject: (videoTitle) => `Re: Your video "${videoTitle.slice(0, 35)}..." — SEO analysis`,
+    body: (name, seoScore) => `Hi ${name},
+
+I sent you a quick SEO analysis of your latest video a few days ago (scored ${seoScore}/100). Hope the tips were useful.
+
+Just making sure it didn't get buried. If you'd like the full analysis with keywords, retention data and more, sign up at https://ytubviral.com — I'll activate Pro free for 1 month.
+
+You can also try the SEO Score tool free without signing up: https://ytubviral.com/features/seo-score
+
+If it's not for you, no worries at all. Thanks for your time.
+
+Javier Jimeno
+Founder, YTubViral`,
+  },
+};
+
+const TEMPLATES_FALLBACK = {
+  es: {
+    subject: 'Re: Herramienta SEO gratuita para tu canal',
     body: (name) => `Hola ${name},
 
-Te escribí hace unos días sobre YTubViral, nuestra plataforma de crecimiento para YouTube con IA.
+Te escribí hace unos días sobre YTubViral. Solo quería asegurarme de que no se perdió.
 
-No quiero ser pesado — solo quería asegurarme de que no se perdió entre el ruido del inbox. La oferta sigue en pie: 1 mes de Pro gratis, sin compromiso.
+Puedes probar gratis nuestra herramienta de SEO Score — analiza cualquier video y te dice qué mejorar: https://ytubviral.com/features/seo-score
 
-Si te interesa, regístrate en https://ytubviral.com y responde con tu email de registro. Yo activo Pro en tu cuenta en minutos.
+Si te interesa el paquete completo, te doy Pro gratis 1 mes. Solo regístrate y responde con tu email.
 
 Si no es para ti, sin problema — agradezco tu tiempo.
 
-Un saludo,
 Javier Jimeno
-Fundador, YTubViral
-https://ytubviral.com`,
+Fundador, YTubViral`,
   },
   en: {
-    subject: 'Re: Collab — free YTubViral Pro access',
+    subject: 'Re: Free SEO tool for your channel',
     body: (name) => `Hi ${name},
 
-I reached out a few days ago about YTubViral, our AI-powered YouTube growth toolkit.
+I reached out a few days ago about YTubViral. Just making sure it didn't get buried.
 
-Not trying to be pushy — just wanted to make sure my email didn't get buried. The offer still stands: 1 month of Pro, completely free, no strings attached.
+You can try our SEO Score tool free — analyze any video and get actionable tips: https://ytubviral.com/features/seo-score
 
-If you're interested, sign up at https://ytubviral.com and reply with your registration email. I'll activate Pro on your account within minutes.
+If you'd like the full suite, I'll activate Pro free for 1 month. Just sign up and reply with your email.
 
-If it's not your thing, no worries at all — I appreciate your time.
+No worries if it's not your thing — appreciate your time.
 
-Best,
 Javier Jimeno
-Founder, YTubViral
-https://ytubviral.com`,
+Founder, YTubViral`,
   },
 };
 
@@ -73,21 +103,31 @@ async function runFollowUp() {
 
   let sent = 0;
   for (const contact of due) {
-    const tpl = TEMPLATES[contact.lang] || TEMPLATES.en;
     const firstName = contact.name.split(' ')[0].split('/')[0].trim();
-    const body = tpl.body(firstName);
+    const lang = contact.lang || 'en';
 
-    console.log(`  → ${contact.name} <${contact.email}> [${contact.lang}]`);
+    let subject, body;
+    if (contact.latestVideo && contact.seoScore) {
+      const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
+      subject = tpl.subject(contact.latestVideo.title);
+      body = tpl.body(firstName, contact.seoScore);
+    } else {
+      const tpl = TEMPLATES_FALLBACK[lang] || TEMPLATES_FALLBACK.en;
+      subject = tpl.subject;
+      body = tpl.body(firstName);
+    }
+
+    console.log(`  → ${contact.name} <${contact.email}> [${lang}]`);
 
     if (DRY_RUN) {
-      console.log(`    [DRY RUN] Would send: "${tpl.subject}"\n`);
+      console.log(`    [DRY RUN] Would send: "${subject}"\n`);
       continue;
     }
 
     try {
       const result = await sendViaResend({
         to: contact.email,
-        subject: tpl.subject,
+        subject,
         body,
         from: 'hello',
         replyTo: 'hello@ytubviral.com',

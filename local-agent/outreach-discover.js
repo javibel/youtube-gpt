@@ -5,9 +5,9 @@
  * extracts public emails from channel descriptions, and adds them
  * to outreach-tracker.json for follow-up.
  *
- * Uses YouTube Data API v3 (search + channels endpoints).
- * Quota: ~200 units per run (search=100, channels list=1 per id batch).
- * Daily quota: 10,000 units → can run ~50 times/day.
+ * Uses YouTube Data API v3 (search + channels + videos endpoints).
+ * Quota: ~600 units per run (search=100×3 queries, channels=1, video search=100×4, video details=1×4).
+ * Daily quota: 10,000 units → can run ~16 times/day.
  *
  * Usage:
  *   node outreach-discover.js [--dry-run]
@@ -24,6 +24,7 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY;
 
 const YT_SEARCH = 'https://www.googleapis.com/youtube/v3/search';
 const YT_CHANNELS = 'https://www.googleapis.com/youtube/v3/channels';
+const YT_VIDEOS = 'https://www.googleapis.com/youtube/v3/videos';
 
 // Niches to search — rotates daily so we don't repeat queries
 const SEARCH_QUERIES = [
@@ -69,7 +70,7 @@ const MIN_SUBS = 500;
 const MAX_SUBS = 100000;
 
 // Email regex — matches common patterns in channel descriptions
-const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+const EMAIL_RE = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
 // Emails to skip (generic/no-reply)
 const SKIP_EMAILS = new Set([
@@ -83,6 +84,132 @@ function shouldSkipEmail(email) {
     if (lower.includes(skip)) return true;
   }
   return false;
+}
+
+// ── Quick SEO score from video metadata (0-100) ───────────────────────────
+// Mirrors the checks in /api/youtube/seo-score but runs locally from YT Data API
+
+function quickSeoScore(video) {
+  let score = 0;
+  const title = video.title || '';
+  const desc = video.description || '';
+  const tags = video.tags || [];
+
+  // Title length (ideal 40-70 chars)
+  if (title.length >= 40 && title.length <= 70) score += 15;
+  else if (title.length >= 20 && title.length <= 90) score += 8;
+  else score += 3;
+
+  // Title has numbers or power words
+  if (/\d/.test(title)) score += 5;
+  if (/how|why|best|top|ultimate|guide|tips|tutorial|cómo|mejor|guía/i.test(title)) score += 5;
+
+  // Description length (ideal >500 chars)
+  if (desc.length >= 500) score += 15;
+  else if (desc.length >= 200) score += 10;
+  else if (desc.length >= 50) score += 5;
+  else score += 2;
+
+  // Description has links
+  if (/https?:\/\//.test(desc)) score += 5;
+
+  // Description has timestamps
+  if (/\d{1,2}:\d{2}/.test(desc)) score += 5;
+
+  // Tags
+  if (tags.length >= 10) score += 15;
+  else if (tags.length >= 5) score += 10;
+  else if (tags.length >= 1) score += 5;
+  else score += 0; // No tags = missed opportunity
+
+  // Has custom thumbnail (default thumbnails are lower res)
+  // YT API doesn't expose this directly, but maxres presence is a proxy
+  if (video.hasThumbnail) score += 10;
+  else score += 3;
+
+  // View performance relative to subs (if available)
+  if (video.viewCount && video.channelSubs) {
+    const viewRatio = video.viewCount / Math.max(video.channelSubs, 1);
+    if (viewRatio >= 0.5) score += 15;      // viral-level
+    else if (viewRatio >= 0.15) score += 10; // healthy
+    else if (viewRatio >= 0.05) score += 5;  // average
+    else score += 2;                          // underperforming
+  } else {
+    score += 5; // neutral if unknown
+  }
+
+  return Math.min(100, Math.max(0, score));
+}
+
+function generateSeoTips(video, score) {
+  const tips = [];
+  const title = video.title || '';
+  const desc = video.description || '';
+  const tags = video.tags || [];
+
+  if (title.length < 40) tips.push({ area: 'title', tip_en: 'Title is too short — aim for 40-70 characters with your main keyword', tip_es: 'El título es muy corto — apunta a 40-70 caracteres con tu keyword principal' });
+  if (title.length > 70) tips.push({ area: 'title', tip_en: 'Title is too long — it gets cut off in search. Keep it under 70 characters', tip_es: 'El título es muy largo — se corta en búsquedas. Mantenlo bajo 70 caracteres' });
+  if (!/\d/.test(title) && !/how|why|best|top|cómo|mejor/i.test(title)) tips.push({ area: 'title', tip_en: 'Add numbers or power words (How to, Best, Top 5) to boost CTR', tip_es: 'Añade números o palabras clave (Cómo, Mejor, Top 5) para mejorar el CTR' });
+
+  if (desc.length < 200) tips.push({ area: 'description', tip_en: 'Description is too short — YouTube reads this for ranking. Aim for 500+ characters', tip_es: 'La descripción es muy corta — YouTube la usa para posicionar. Apunta a 500+ caracteres' });
+  if (!/https?:\/\//.test(desc)) tips.push({ area: 'description', tip_en: 'No links in description — add your channel links and relevant resources', tip_es: 'Sin enlaces en la descripción — añade links a tu canal y recursos relevantes' });
+  if (!/\d{1,2}:\d{2}/.test(desc)) tips.push({ area: 'description', tip_en: 'No timestamps — adding chapters improves watch time and helps YouTube understand your content', tip_es: 'Sin timestamps — añadir capítulos mejora el tiempo de visualización y ayuda a YouTube a entender tu contenido' });
+
+  if (tags.length === 0) tips.push({ area: 'tags', tip_en: 'No tags at all — you\'re missing easy ranking signals. Add 5-15 relevant tags', tip_es: 'Sin tags — estás perdiendo señales de posicionamiento fáciles. Añade 5-15 tags relevantes' });
+  else if (tags.length < 5) tips.push({ area: 'tags', tip_en: `Only ${tags.length} tags — add more related keywords (aim for 10-15)`, tip_es: `Solo ${tags.length} tags — añade más keywords relacionadas (apunta a 10-15)` });
+
+  // Return top 3 most impactful tips
+  return tips.slice(0, 3);
+}
+
+// ── Fetch latest video from a channel ──────────────────────────────────────
+
+async function getLatestVideo(channelId, channelSubs) {
+  try {
+    // Search for latest video from this channel (costs 100 quota units)
+    const searchData = await ytFetch(YT_SEARCH, {
+      key: YT_API_KEY,
+      part: 'snippet',
+      channelId,
+      type: 'video',
+      order: 'date',
+      maxResults: 1,
+    });
+
+    if (!searchData.items || searchData.items.length === 0) return null;
+
+    const videoId = searchData.items[0].id.videoId;
+    if (!videoId) return null;
+
+    // Get full video details (costs 1 quota unit per video)
+    const videoData = await ytFetch(YT_VIDEOS, {
+      key: YT_API_KEY,
+      part: 'snippet,statistics',
+      id: videoId,
+    });
+
+    if (!videoData.items || videoData.items.length === 0) return null;
+
+    const v = videoData.items[0];
+    const snippet = v.snippet || {};
+    const stats = v.statistics || {};
+
+    return {
+      videoId,
+      title: snippet.title || '',
+      description: (snippet.description || '').slice(0, 1000),
+      tags: snippet.tags || [],
+      viewCount: parseInt(stats.viewCount || '0', 10),
+      likeCount: parseInt(stats.likeCount || '0', 10),
+      commentCount: parseInt(stats.commentCount || '0', 10),
+      publishedAt: snippet.publishedAt || '',
+      hasThumbnail: !!(snippet.thumbnails?.maxres || snippet.thumbnails?.high),
+      channelSubs: channelSubs || 0,
+    };
+  } catch (err) {
+    console.error(`[outreach-discover] Failed to get latest video for ${channelId}: ${err.message}`);
+    return null;
+  }
 }
 
 async function ytFetch(baseUrl, params) {
@@ -235,6 +362,7 @@ async function runDiscovery() {
     const searchData = uniqueChannels.find(c => c.channelId === ch.channelId);
 
     candidates.push({
+      channelId: ch.channelId,
       name: ch.title,
       email,
       lang: searchData?.lang || 'en',
@@ -246,8 +374,32 @@ async function runDiscovery() {
 
   console.log(`[outreach-discover] ${candidates.length} candidates with email in target range (${MIN_SUBS}-${MAX_SUBS} subs)`);
 
-  // Step 4: Add top candidates to tracker
+  // Step 4: Fetch latest video + SEO score for top candidates (value-upfront email)
   const toAdd = candidates.slice(0, MAX_NEW_PER_RUN);
+  console.log(`[outreach-discover] Fetching latest video for ${toAdd.length} candidates...`);
+
+  for (const c of toAdd) {
+    try {
+      const video = await getLatestVideo(c.channelId, c.subs);
+      if (video) {
+        c.latestVideo = {
+          videoId: video.videoId,
+          title: video.title,
+          url: `https://youtube.com/watch?v=${video.videoId}`,
+          viewCount: video.viewCount,
+          publishedAt: video.publishedAt,
+        };
+        c.seoScore = quickSeoScore(video);
+        c.seoTips = generateSeoTips(video, c.seoScore);
+        console.log(`  📊 ${c.name}: "${video.title.slice(0, 50)}..." → SEO ${c.seoScore}/100`);
+      }
+    } catch (err) {
+      console.error(`  ⚠ Video fetch failed for ${c.name}: ${err.message}`);
+    }
+    // Small delay between API calls
+    await new Promise(r => setTimeout(r, 300));
+  }
+
   let added = 0;
   const nextId = Math.max(...tracker.contacts.map(c => c.id), 0) + 1;
 
@@ -267,9 +419,13 @@ async function runDiscovery() {
       dateRegistered: null,
       dateActivated: null,
       notes: `Auto-discovered. ${c.subs.toLocaleString()} subs. Found ${new Date().toISOString().split('T')[0]}`,
+      // Value-upfront data for personalized outreach
+      latestVideo: c.latestVideo || null,
+      seoScore: c.seoScore || null,
+      seoTips: c.seoTips || [],
     };
 
-    console.log(`  + ${c.name} <${c.email}> [${c.lang}] ${c.subs} subs — ${c.niche}`);
+    console.log(`  + ${c.name} <${c.email}> [${c.lang}] ${c.subs} subs — ${c.niche}${c.seoScore ? ` (SEO: ${c.seoScore}/100)` : ''}`);
 
     if (!DRY_RUN) {
       tracker.contacts.push(contact);

@@ -69,10 +69,28 @@ async function submitRedditPost(page, subreddit, title, body) {
   await page.keyboard.type(body, { delay: 15 });
   await delay(1000, 2000);
 
-  // Submit
-  const submitBtn = await page.$('button[type="submit"], .submit button, #newlink button.btn[type="submit"]');
-  if (!submitBtn) throw new Error('Submit button not found');
-  await submitBtn.click();
+  // Submit — old reddit uses a <button> inside .spacer or the form itself
+  // Use safeEval to click it directly in the DOM to avoid "not clickable" errors
+  const submitted = await safeEval(page, () => {
+    // Try multiple selectors for old reddit submit button
+    const selectors = [
+      '#newlink button.btn[type="submit"]',
+      '.spacer button[type="submit"]',
+      'button.btn[name="submit"]',
+      '#newlink-submitbutton',
+      'form#newlink button',
+      'button[type="submit"]',
+    ];
+    for (const sel of selectors) {
+      const btn = document.querySelector(sel);
+      if (btn && btn.offsetParent !== null) {
+        btn.click();
+        return true;
+      }
+    }
+    return false;
+  });
+  if (!submitted) throw new Error('Submit button not found or not clickable');
   await delay(4000, 6000);
 
   // Check if we landed on the post page (success) or still on submit (error)

@@ -9,23 +9,25 @@ const { adjustedLimit, shouldSkipSession, shouldSkipPost, readingPause, actionPa
 
 const BASE_LIMITS = { likes: 8, replies: 3 };
 
-// Targeted searches — removed generic hashtags (#youtube, #contentcreator) that return irrelevant noise
+// Targeted searches — INTENT-BASED: find people actively looking for tools or asking for help
+// Ordered by conversion potential: tool-seekers first, then help-seekers, then niche tags
 const SEARCH_QUERIES = [
-  // Niche hashtags (high signal-to-noise)
-  '#smallyoutuber', '#youtubeseo', '#youtubergrowth', '#youtubetips',
-  '#videomarketing', '#creatoreconomy',
-  '#marketingdigital', '#creadordecontenido',
-  // Keyword queries (find people asking for help — HIGH CONVERSION)
-  '"youtube seo" tool', '"need help" youtube channel',
-  '"video ideas" stuck', '"how to grow" youtube',
+  // TIER 1: People explicitly asking for YouTube tools (HIGHEST CONVERSION)
   '"what tool" youtube', '"recommend" youtube tool',
-  '"thumbnail" help', '"youtube analytics" recommend',
-  'youtube channel tips', 'youtube algorithm help',
-  'grow my youtube channel', 'youtube title ideas',
-  // ES keyword queries
-  '"herramienta youtube"', '"ideas para video"',
-  '"no sé qué subir"', '"cómo crecer" youtube',
-  '"seo youtube" herramienta', 'crecer en youtube consejos',
+  '"best tool" youtube', '"any tool" youtube',
+  '"youtube tool" free', '"seo tool" youtube',
+  '"herramienta" youtube', '"qué herramienta" youtube',
+  '"tool for" youtube seo', '"looking for" youtube tool',
+  // TIER 2: People asking for help with problems YTubViral solves
+  '"need help" youtube channel', '"how to" youtube seo',
+  '"thumbnail" help youtube', '"youtube title" help',
+  '"no one watches" youtube', '"no views" youtube',
+  '"youtube analytics" help', '"keyword research" youtube',
+  '"nadie ve" mis videos', '"cómo mejorar" youtube',
+  '"no sé qué subir"', '"ideas para video" youtube',
+  // TIER 3: High-intent niche hashtags (only the ones where people ask questions)
+  '#youtubeseo', '#smallyoutuber help',
+  '#youtubetips', '#creadordecontenido',
 ];
 
 // Legacy alias for compatibility

@@ -303,7 +303,7 @@ registerFixes('seo-optimizer', [
   {
     id: 'claude-seo-diagnosis',
     description: 'Claude Opus analiza tendencias SEO y propone acciones correctivas',
-    cooldownMs: 3 * 86400000, // 3 days
+    cooldownMs: 86400000, // 1 day — faster retry on persistent issues
     condition: (issues) => issues.length > 0,
     apply: async (config, issues, metrics) => {
       const { loadFixLog } = require('./auto-fix');
@@ -347,7 +347,7 @@ HISTORIAL FIXES RECIENTES:
 ${JSON.stringify(recentFixes, null, 2)}`;
 
       const diagnosisResult = await guardedCall(userPrompt, {
-        maxTokens: 1500,
+        maxTokens: 2500,
         agentId: 'seo-optimizer',
         system: `Eres el analista SEO del sistema de auto-mejora de YTubViral (ytubviral.com). Analizas metricas de Google Search Console y diagnosticas problemas con razonamiento profundo.
 
@@ -447,13 +447,10 @@ async function runSeoOptimizer() {
     const issues = detectAnomalies(metrics);
     console.log(`[seo-optimizer] ${issues.length} anomalies detected`);
 
-    // 4. Apply auto-fixes (triggers Claude analysis if issues found)
-    let appliedFixes = [];
-    if (issues.length > 0) {
-      appliedFixes = await applyFixes('seo-optimizer', issues, metrics);
-      if (appliedFixes.length > 0) {
-        console.log(`[seo-optimizer] Auto-fixed ${appliedFixes.length} issue(s)`);
-      }
+    // 4. Apply auto-fixes + self-improvement (always run, even with 0 issues)
+    let appliedFixes = await applyFixes('seo-optimizer', issues, metrics);
+    if (appliedFixes.length > 0) {
+      console.log(`[seo-optimizer] Auto-fixed ${appliedFixes.length} issue(s)`);
     }
 
     // 5. Build and save report

@@ -15,18 +15,72 @@ const { sendViaResend } = require('./resend');
 const TRACKER_PATH = path.join(__dirname, 'outreach-tracker.json');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-const TEMPLATES = {
+// ── Value-upfront templates (include SEO analysis of their latest video) ────
+
+const TEMPLATES_SEO = {
   es: {
-    subject: 'Colaboración — acceso gratuito a YTubViral Pro',
+    subject: (videoTitle) => `Tu video "${videoTitle.slice(0, 40)}..." — análisis SEO gratuito`,
+    body: (name, videoTitle, videoUrl, seoScore, tips) => {
+      const tipsText = tips.map((t, i) => `${i + 1}. ${t.tip_es}`).join('\n');
+      return `Hola ${name},
+
+Soy Javier Jimeno, fundador de YTubViral. Analicé tu último video "${videoTitle}" y tiene un ${seoScore}/100 en SEO de YouTube.
+
+Estos son los 3 puntos donde más puedes mejorar:
+
+${tipsText}
+
+Estos ajustes son rápidos y pueden marcar una diferencia real en cómo YouTube posiciona tu contenido.
+
+Si quieres ver el análisis completo (keywords, retención, thumbnails, ideas de contenido), te doy acceso Pro gratis 1 mes en https://ytubviral.com — solo regístrate y responde con tu email de registro.
+
+Sin compromiso. Si te sirve, genial. Si no, espero que al menos estos tips te sean útiles.
+
+Un saludo,
+Javier Jimeno
+Fundador, YTubViral
+https://ytubviral.com`;
+    },
+  },
+  en: {
+    subject: (videoTitle) => `Your video "${videoTitle.slice(0, 40)}..." — free SEO analysis`,
+    body: (name, videoTitle, videoUrl, seoScore, tips) => {
+      const tipsText = tips.map((t, i) => `${i + 1}. ${t.tip_en}`).join('\n');
+      return `Hi ${name},
+
+I'm Javier Jimeno, founder of YTubViral. I ran a quick analysis on your latest video "${videoTitle}" and it scored ${seoScore}/100 on YouTube SEO.
+
+Here are the 3 areas with the biggest room for improvement:
+
+${tipsText}
+
+These are quick fixes that can make a real difference in how YouTube ranks your content.
+
+If you'd like to see the full analysis (keywords, retention, thumbnails, content ideas), I'll give you free Pro access for 1 month at https://ytubviral.com — just sign up and reply with your registration email.
+
+No strings attached. If it helps, great. If not, I hope these tips are useful regardless.
+
+Best,
+Javier Jimeno
+Founder, YTubViral
+https://ytubviral.com`;
+    },
+  },
+};
+
+// Fallback templates for contacts without video data (legacy contacts)
+const TEMPLATES_FALLBACK = {
+  es: {
+    subject: 'Herramienta SEO gratuita para tu canal — YTubViral',
     body: (name, topic) => `Hola ${name},
 
-Soy Javier Jimeno, fundador de YTubViral — una plataforma de herramientas de crecimiento para YouTube con IA (SEO, keywords, ideas de contenido, análisis de retención, thumbnails...).
+Soy Javier Jimeno, fundador de YTubViral. Estoy contactando a creadores como tú en el espacio de ${topic} porque creo que nuestra herramienta puede ayudarte.
 
-He visto tu contenido sobre ${topic} y creo que YTubViral podría encajar muy bien con lo que haces. Me gustaría ofrecerte acceso gratuito al plan Pro durante 1 mes para que lo pruebes sin compromiso.
+YTubViral tiene una herramienta de SEO Score gratuita — analizas cualquiera de tus videos y te dice exactamente qué mejorar en título, descripción, tags y thumbnail para posicionarte mejor.
 
-Lo único que necesitas es registrarte en https://ytubviral.com y responder a este email con el correo que usaste. Yo activo Pro directamente en tu cuenta.
+Pruébala gratis en https://ytubviral.com/features/seo-score
 
-Sin letras pequeñas. Si te gusta, genial. Si no, me encantaría saber qué mejorarías.
+Si te interesa el paquete completo (keywords, ideas de contenido, retención), te doy Pro gratis 1 mes. Solo regístrate y responde con tu email.
 
 Un saludo,
 Javier Jimeno
@@ -34,31 +88,22 @@ Fundador, YTubViral
 https://ytubviral.com`,
   },
   en: {
-    subject: 'Collab — free YTubViral Pro access',
+    subject: 'Free SEO tool for your channel — YTubViral',
     body: (name, topic) => `Hi ${name},
 
-I'm Javier Jimeno, founder of YTubViral — an AI-powered YouTube growth toolkit (SEO, keywords, content ideas, retention analysis, thumbnails...).
+I'm Javier Jimeno, founder of YTubViral. I'm reaching out to creators like you in the ${topic} space because I think our tool can genuinely help.
 
-I came across your content about ${topic} and thought YTubViral could be a great fit for what you do. I'd love to offer you free access to our Pro plan for 1 month, no strings attached.
+YTubViral has a free SEO Score tool — analyze any of your videos and get actionable tips on what to improve in your title, description, tags, and thumbnail to rank better.
 
-Just sign up at https://ytubviral.com and reply with the email you used. I'll activate Pro on your account directly.
+Try it free at https://ytubviral.com/features/seo-score
 
-No catch. If you love it, awesome. If not, I'd genuinely appreciate your feedback on what we could improve.
+If you'd like the full suite (keywords, content ideas, retention analysis), I'll give you Pro free for 1 month. Just sign up and reply with your email.
 
 Best,
 Javier Jimeno
 Founder, YTubViral
 https://ytubviral.com`,
   },
-};
-
-const TOPICS = {
-  'Nathalia / The Key Item': 'tus guías sobre creación de contenido',
-  'DCP.bio': 'tu contenido sobre marketing digital y YouTube',
-  'Alejandro Tamargo': 'tu guía de YouTube SEO 2026',
-  'Alan Spicer': 'your YouTube growth tutorials',
-  'Stephanie Kase': 'your YouTube strategy content',
-  'LinoDash': 'your YouTube growth tips',
 };
 
 async function runOutreachSend() {
@@ -77,22 +122,35 @@ async function runOutreachSend() {
   const batch = toSend.slice(0, 5);
   let sent = 0;
   for (const contact of batch) {
-    const tpl = TEMPLATES[contact.lang] || TEMPLATES.en;
-    const topic = TOPICS[contact.name] || contact.niche || 'YouTube';
     const firstName = contact.name.split(' ')[0].split('/')[0].trim();
-    const body = tpl.body(firstName, topic);
+    const lang = contact.lang || 'en';
 
-    console.log(`  → ${contact.name} <${contact.email}> [${contact.lang}]`);
+    // Choose template based on whether we have video SEO data
+    let subject, body;
+    if (contact.latestVideo && contact.seoScore && contact.seoTips?.length > 0) {
+      // Value-upfront: personalized SEO analysis
+      const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
+      subject = tpl.subject(contact.latestVideo.title);
+      body = tpl.body(firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
+      console.log(`  → ${contact.name} <${contact.email}> [${lang}] SEO: ${contact.seoScore}/100`);
+    } else {
+      // Fallback: lead with free SEO Score tool
+      const tpl = TEMPLATES_FALLBACK[lang] || TEMPLATES_FALLBACK.en;
+      const topic = contact.niche || 'YouTube';
+      subject = tpl.subject;
+      body = tpl.body(firstName, topic);
+      console.log(`  → ${contact.name} <${contact.email}> [${lang}] (no video data — using fallback)`);
+    }
 
     if (dryRun) {
-      console.log(`    [DRY RUN] Would send: "${tpl.subject}"\n`);
+      console.log(`    [DRY RUN] Would send: "${subject}"\n`);
       continue;
     }
 
     try {
       const result = await sendViaResend({
         to: contact.email,
-        subject: tpl.subject,
+        subject,
         body,
         from: 'hello',
         replyTo: 'hello@ytubviral.com',

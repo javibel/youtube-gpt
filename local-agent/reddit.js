@@ -11,13 +11,14 @@ const LIMITS = { upvotes: 8, comments: 4 };
 // HIGH-PRIORITY: people actively asking about YouTube growth/tools (highest conversion)
 const SUBREDDITS_PRIORITY = [
   'NewTubers', 'youtubers', 'SmallYTChannel', 'PartneredYoutube',
-  'letsplay', 'contentcreation',
+  'letsplay', 'contentcreation', 'YouTubeGrowth',
 ];
 
-// MEDIUM: adjacent audiences that care about content/SEO
+// MEDIUM: adjacent audiences that care about content/SEO/tools
 const SUBREDDITS_MEDIUM = [
   'CreatorServices', 'ContentCreators',
   'socialmedia', 'SEO', 'VideoEditing',
+  'SideProject', 'InternetIsBeautiful',
 ];
 
 // Pick 2-3 subreddits per session for better reach
@@ -192,8 +193,15 @@ async function engageWithPosts(opts = {}) {
       allPosts.push(...posts.map(p => ({ ...p, subreddit })));
       await delay(1500, 2500);
     }
-    // Shuffle to avoid predictable patterns
-    allPosts = allPosts.sort(() => Math.random() - 0.5);
+    // Sort by intent: questions/help-seekers FIRST (highest conversion), then randomize the rest
+    const INTENT_PATTERN = /\?|help|recommend|suggest|advice|stuck|how do|what tool|best way|looking for|need a|any good|consejo|ayuda|recomendar|herramienta|cómo|alguien sabe/i;
+    allPosts = allPosts
+      .map(p => ({ ...p, _isIntent: INTENT_PATTERN.test(p.title + ' ' + p.text) }))
+      .sort((a, b) => {
+        if (a._isIntent && !b._isIntent) return -1;
+        if (!a._isIntent && b._isIntent) return 1;
+        return Math.random() - 0.5; // random within same tier
+      });
     const posts = allPosts;
 
     let upvotesGiven = 0;
@@ -230,8 +238,8 @@ async function engageWithPosts(opts = {}) {
       }
 
       // Prioritize posts where someone is asking for help (higher conversion potential)
-      const isQuestion = /\?|help|recommend|suggest|advice|stuck|how do|what tool|best way/i.test(post.title + ' ' + post.text);
-      const commentChance = isQuestion ? 0.7 : 0.35; // 70% for questions, 35% for others
+      const isQuestion = post._isIntent || /\?|help|recommend|suggest|advice|stuck|how do|what tool|best way|looking for|need a|consejo|ayuda|recomendar|herramienta|cómo/i.test(post.title + ' ' + post.text);
+      const commentChance = isQuestion ? 0.85 : 0.25; // 85% for questions (was 70%), 25% for others (was 35%)
 
       // Comment (probability-based, only if under limit and post has content to reply to)
       if (todayComments + commentsGiven < limits.comments

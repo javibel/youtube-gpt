@@ -206,7 +206,7 @@ PROBLEMAS DETECTADOS:
 ${issues.length > 0 ? issues.join('\n') : 'Ninguno'}`;
 
   const result = await guardedCall(userPrompt, {
-    maxTokens: 1500,
+    maxTokens: 2500,
     agentId: 'funnel-optimizer',
     system: `Eres el analista de conversión del sistema de auto-mejora de YTubViral. Analizas el funnel completo: adquisición → activación → retención → conversión → feedback.
 
@@ -384,7 +384,7 @@ registerFixes('funnel-optimizer', [
   {
     id: 'claude-funnel-diagnosis',
     description: 'Claude Opus analiza el funnel completo y propone acciones correctivas',
-    cooldownMs: 3 * 86400000, // 3 days
+    cooldownMs: 86400000, // 1 day — faster retry on persistent issues
     condition: (issues) => issues.length > 0,
     apply: async (_config, issues, metrics) => {
       const claudeResponse = await analyzeWithClaude(metrics, issues);
@@ -428,13 +428,10 @@ async function runFunnelOptimizer() {
     const issues = detectFunnelIssues(metrics);
     console.log(`[funnel-optimizer] Issues detected: ${issues.length}`);
 
-    // 3. Apply auto-fixes (triggers Claude analysis if issues found)
-    let appliedFixes = [];
-    if (issues.length > 0) {
-      appliedFixes = await applyFixes('funnel-optimizer', issues, metrics);
-      if (appliedFixes.length > 0) {
-        console.log(`[funnel-optimizer] Auto-fixed ${appliedFixes.length} issue(s)`);
-      }
+    // 3. Apply auto-fixes + self-improvement (always run, even with 0 issues)
+    let appliedFixes = await applyFixes('funnel-optimizer', issues, metrics);
+    if (appliedFixes.length > 0) {
+      console.log(`[funnel-optimizer] Auto-fixed ${appliedFixes.length} issue(s)`);
     }
 
     // 4. Build and save report

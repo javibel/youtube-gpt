@@ -195,21 +195,29 @@ async function runSocialOptimizer() {
       },
     };
 
-    // Auto-fix: apply corrections based on detected issues + AI analysis
-    // Feed AI analysis text into issues so auto-fix can detect patterns like credibility rejection
+    // Auto-fix + self-improvement: apply corrections AND act on AI recommendations
     const allIssuesForFix = [...analysis.issues];
-    if (analysis.aiAnalysis) {
-      // Split AI analysis into sentences so pattern matching works on each
-      const aiSentences = analysis.aiAnalysis.split(/[.\n]/).filter(s => s.trim().length > 20);
-      allIssuesForFix.push(...aiSentences);
+
+    // Extract AI recommendations as improvement opportunities (separate from issues)
+    // Only include actionable recommendations, not generic analysis text
+    const improvements = [];
+    if (analysis.recommendations.length > 0) {
+      improvements.push(...analysis.recommendations);
     }
-    let appliedFixes = [];
-    if (allIssuesForFix.length > 0) {
-      appliedFixes = await applyFixes('social-optimizer', allIssuesForFix, metrics);
-      if (appliedFixes.length > 0) {
-        console.log(`[social-optimizer] Auto-fixed ${appliedFixes.length} issue(s)`);
-        report.autoFixes = appliedFixes;
-      }
+    // Only extract AI analysis sentences that contain actionable keywords
+    if (analysis.aiAnalysis) {
+      const actionableKeywords = /debe|should|recomiend|cambiar|mejorar|aumentar|reducir|abandonar|concentrar|ajustar|improve|fix|change|increase|decrease|stop|focus/i;
+      const aiSentences = analysis.aiAnalysis.split(/[.\n]/)
+        .filter(s => s.trim().length > 20 && actionableKeywords.test(s));
+      improvements.push(...aiSentences);
+    }
+
+    // Run auto-fix with issues + improvements
+    // Note: if both are empty, the fix condition (issues.length > 0) won't trigger — no wasted API calls
+    let appliedFixes = await applyFixes('social-optimizer', allIssuesForFix, metrics, improvements);
+    if (appliedFixes.length > 0) {
+      console.log(`[social-optimizer] Auto-fixed ${appliedFixes.length} issue(s)`);
+      report.autoFixes = appliedFixes;
     }
 
     // Save report
@@ -264,7 +272,7 @@ registerFixes('social-optimizer', [
   {
     id: 'claude-unified-diagnosis',
     description: 'Claude Opus analiza todos los problemas y genera correcciones inteligentes a config + social-overrides',
-    cooldownMs: 3 * 86400000, // 3 days — structural fixes need time to show results
+    cooldownMs: 86400000, // 1 day — was 3 days but parse errors + persistent issues need faster retry
     condition: (issues) => issues.length > 0,
     apply: async (config, issues, metrics) => {
       const overridesPath = require('path').join(__dirname, 'social-overrides.json');
@@ -324,7 +332,7 @@ EFECTIVIDAD ACUMULADA:
 ${JSON.stringify(effectivenessData, null, 2)}`;
 
       const diagnosisResult = await guardedCall(userPrompt, {
-        maxTokens: 1500,
+        maxTokens: 2500,
         agentId: 'social-optimizer',
         system: `Eres el cerebro de auto-mejora del sistema social de YTubViral. Analizas problemas y generas correcciones INTELIGENTES basadas en datos.
 
@@ -349,10 +357,11 @@ PUEDES MODIFICAR DOS TIPOS DE CONFIG:
 
 REGLAS:
 - Analiza el historial: NO repitas fixes que ya fallaron (mira EFECTIVIDAD)
-- Cada cambio DEBE tener razón directa en los problemas detectados
-- Sé conservador: un cambio malo es peor que no cambiar
+- Cada cambio DEBE tener razón directa en los problemas o recomendaciones detectadas
+- Las líneas con [IMPROVE] son oportunidades de mejora del AI analysis — actúa sobre ellas
 - Razona el POR QUÉ de cada ajuste numérico, no solo "subir" o "bajar"
-- Si no hay problemas reales, NO inventes cambios
+- Si una persona (Alex/Ferran) está en hilos irrelevantes, añade offTopicPatterns o coreRulesExtra para corregir su targeting
+- Si no hay problemas NI oportunidades reales, NO inventes cambios
 
 RESPONDE en JSON exacto:
 {
