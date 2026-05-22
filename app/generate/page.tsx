@@ -6,7 +6,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useRouter } from 'next/navigation';
 import LimitReachedModal from '@/components/LimitReachedModal';
 import { TEMPLATES } from '@/utils/prompts';
-import { callClaudeAPI } from '@/utils/claudeAPI';
+import { callClaudeAPI, continueGeneration } from '@/utils/claudeAPI';
 import { useLang } from '@/components/LangProvider';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
@@ -48,6 +48,8 @@ export default function GeneratePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('title');
   const [formData, setFormData] = useState<Record<string, string>>({ tema: '', tono: 'viral', duracion: '10', plataforma: 'youtube', estilo: 'viral', num_videos: '5', nicho: '', keywords: '', cta: '' });
   const [output, setOutput] = useState<string>('');
+  const [truncated, setTruncated] = useState<boolean>(false);
+  const [continuing, setContinuing] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [usageCount, setUsageCount] = useState<number>(0);
@@ -101,6 +103,7 @@ export default function GeneratePage() {
     setSelectedTemplate(key);
     setOutput('');
     setError('');
+    setTruncated(false);
   };
 
   const handleGenerate = async () => {
@@ -117,9 +120,11 @@ export default function GeneratePage() {
     setLoading(true);
     setError('');
     setOutput('');
+    setTruncated(false);
     try {
       const result = await callClaudeAPI(selectedTemplate, formData, lang);
-      setOutput(result);
+      setOutput(result.content);
+      setTruncated(result.truncated);
       setUsageCount((prev) => prev + 1);
       setRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
     } catch (err: unknown) {
@@ -130,6 +135,20 @@ export default function GeneratePage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleContinue = async () => {
+    setContinuing(true);
+    setError('');
+    try {
+      const result = await continueGeneration(selectedTemplate, formData, output, lang);
+      setOutput((prev) => prev + result.content);
+      setTruncated(result.truncated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setContinuing(false);
     }
   };
 
@@ -409,13 +428,32 @@ export default function GeneratePage() {
                     </div>
                   )}
                   {output && (
-                    <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans max-h-[600px] overflow-y-auto" style={{ color: 'var(--yv-text-1)' }}>
-                      {output}
-                    </pre>
+                    <>
+                      <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans max-h-[600px] overflow-y-auto" style={{ color: 'var(--yv-text-1)' }}>
+                        {output}
+                      </pre>
+                      {truncated && (
+                        <p className="mt-3 text-[13px] font-mono-jb" style={{ color: 'var(--yv-brand)' }}>
+                          ⚡ {t('El contenido fue cortado por longitud. Pulsa "Continuar generando" para obtener el resto.', 'Content was cut short due to length. Click "Continue generating" to get the rest.')}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
                 {output && (
                   <div className="flex items-center gap-2 px-5 pb-4 pt-2 border-t border-white/10 flex-wrap">
+                    {truncated && (
+                      <button
+                        onClick={handleContinue}
+                        disabled={continuing}
+                        className="btn-offset px-4 py-2 text-[13px] font-display"
+                        style={{ borderColor: 'var(--yv-brand)', color: 'var(--yv-brand)' }}
+                      >
+                        {continuing
+                          ? t('Continuando...', 'Continuing...')
+                          : t('▸ Continuar generando', '▸ Continue generating')}
+                      </button>
+                    )}
                     <button onClick={handleGenerate} className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display">
                       ⟳ {t('Regenerar', 'Regenerate')}
                     </button>

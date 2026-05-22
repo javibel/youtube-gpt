@@ -74,6 +74,8 @@ export async function POST(request: Request) {
     }
 
     const ip = getIp(request);
+    const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis']);
+    const maxTokens = LONG_TEMPLATES.has(template) ? 2048 : 1024;
     const langInstruction = lang === 'en'
       ? '\n\nIMPORTANT: Write your ENTIRE response in English.'
       : '';
@@ -95,7 +97,7 @@ export async function POST(request: Request) {
           },
           body: JSON.stringify({
             model: 'claude-sonnet-4-6',
-            max_tokens: 1024,
+            max_tokens: maxTokens,
             messages: [{ role: 'user', content: prompt }],
           }),
         });

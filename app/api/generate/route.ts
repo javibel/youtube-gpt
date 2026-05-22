@@ -184,12 +184,31 @@ export async function POST(request: Request) {
       }
     }
 
+    // Token limits per template — long-form content needs more tokens
+    const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis']);
+    const maxTokens = LONG_TEMPLATES.has(template) ? 2048 : 1024;
+
+    // Continuation support — if previousContent is provided, ask Claude to continue
+    const previousContent = inputs._previousContent as string | undefined;
+    const isContinuation = !!previousContent;
+
     // Llamar a Claude
     const basePrompt = templateData.prompt(inputs);
     const langInstruction = lang === 'en'
       ? '\n\nIMPORTANT: Write your ENTIRE response in English. Do not use any other language, regardless of the language used in the inputs above.'
       : '';
     const prompt = basePrompt + langInstruction;
+
+    const messages: { role: string; content: string }[] = isContinuation
+      ? [
+          { role: 'user', content: prompt },
+          { role: 'assistant', content: previousContent! },
+          { role: 'user', content: lang === 'en'
+            ? 'Continue from where you left off. Do not repeat what you already wrote — pick up exactly where the text was cut.'
+            : 'Continúa desde donde lo dejaste. No repitas lo que ya escribiste — retoma exactamente donde se cortó el texto.' },
+        ]
+      : [{ role: 'user', content: prompt }];
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -199,8 +218,8 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }],
+        max_tokens: maxTokens,
+        messages,
       }),
     });
 
@@ -215,16 +234,17 @@ export async function POST(request: Request) {
     const data = await response.json();
     const content = data.content[0].text;
     const tokensUsed = data.usage?.output_tokens ?? 0;
+    const truncated = data.stop_reason === 'max_tokens';
 
     // Guardar generación con IP
     if (userId) {
       const ip = getIp(request);
       await prisma.generation.create({
-        data: { userId, template, inputs, output: content, tokensUsed, ipAddress: ip },
+        data: { userId, template, inputs, output: isContinuation ? previousContent + content : content, tokensUsed, ipAddress: ip },
       });
     }
 
-    return Response.json({ content });
+    return Response.json({ content, truncated });
   } catch (error) {
     console.error('API Error:', error);
     return Response.json({ error: 'Error al procesar la solicitud' }, { status: 500 });
