@@ -7,6 +7,7 @@ import LandingFeatures from '@/components/LandingFeatures';
 import LandingFAQ from '@/components/LandingFAQ';
 import LangToggle from '@/components/LangToggle';
 import ChatWidgetPreview from '@/components/ChatWidgetPreview';
+import WaitlistInline from '@/components/WaitlistInline';
 
 export const metadata: Metadata = {
   title: 'YTubViral — 14 herramientas de IA para crecer en YouTube',
@@ -605,12 +606,18 @@ function FinalCTA({ lang }: { lang: Lang }) {
         </h2>
         <p className="text-zinc-400 text-lg md:text-xl mt-8 max-w-xl mx-auto">
           {lang === 'en'
-            ? 'Join 12,000+ creators who stopped staring at a blank screen.'
-            : 'Únete a +12.000 creadores que dejaron de mirar la pantalla en blanco.'}
+            ? 'Join the waitlist — get 50% off for a year and early access before the public launch.'
+            : 'Únete a la waitlist — 50% de descuento durante un año y acceso anticipado antes del lanzamiento público.'}
         </p>
-        <Link href="/signup" className="btn-offset px-10 py-5 text-lg font-display font-bold mt-10 inline-flex">
-          {lang === 'en' ? 'Get started free →' : 'Empezar gratis →'}
-        </Link>
+        <WaitlistInline lang={lang} />
+        <p className="text-center text-zinc-600 text-[13px] font-mono-jb mt-4">
+          {lang === 'en'
+            ? 'or '
+            : 'o '}
+          <Link href="/signup" className="text-zinc-400 hover:text-white underline underline-offset-2 transition">
+            {lang === 'en' ? 'start free now →' : 'empieza gratis ahora →'}
+          </Link>
+        </p>
       </div>
     </section>
   );
