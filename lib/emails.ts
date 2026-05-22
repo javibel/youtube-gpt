@@ -123,8 +123,8 @@ export function waitlistWelcomeEmail(lang: 'es' | 'en'): string {
           </div>
           <p style="margin:24px 0 0;font-size:15px;color:#71717a;line-height:1.7;">
             ${isEn
-              ? 'In the meantime, you can already <a href="https://ytubviral.com" style="color:#e84d5b;text-decoration:none;font-weight:600;">try YTubViral for free</a> — 14 AI tools to grow your YouTube channel.'
-              : 'Mientras tanto, ya puedes <a href="https://ytubviral.com" style="color:#e84d5b;text-decoration:none;font-weight:600;">probar YTubViral gratis</a> — 14 herramientas de IA para hacer crecer tu canal de YouTube.'}
+              ? 'In the meantime, you can already <a href="https://ytubviral.com/features/seo-score" style="color:#e84d5b;text-decoration:none;font-weight:600;">check your YouTube SEO Score for free</a> — paste any video URL and get a detailed analysis in seconds.'
+              : 'Mientras tanto, ya puedes <a href="https://ytubviral.com/features/seo-score" style="color:#e84d5b;text-decoration:none;font-weight:600;">analizar tu SEO Score de YouTube gratis</a> — pega cualquier URL de vídeo y obtén un análisis detallado en segundos.'}
           </p>
           <p style="margin:24px 0 0;font-size:15px;color:#71717a;line-height:1.7;">
             ${isEn
