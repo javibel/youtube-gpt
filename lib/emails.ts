@@ -13,7 +13,7 @@ function header(lang: string): string {
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
         <tr><td align="center" style="padding:0 0 32px 0;">
           <a href="https://ytubviral.com" style="text-decoration:none;">
-            <img src="https://ytubviral.com/logo.png?v=3" alt="YTubViral.com" width="180" style="display:block;height:auto;" />
+            <img src="https://ytubviral.com/logo.png?v=3" alt="YTubViral.com" width="450" style="display:block;height:auto;" />
           </a>
         </td></tr>`;
 }
