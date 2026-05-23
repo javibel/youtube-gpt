@@ -319,11 +319,11 @@ cron.schedule('0 13,19 * * *', async () => {
   await runQuoraCommenter().catch(err => console.error('[quora-commenter]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
-// YouTube Commenter — 10:30 + 21:00 daily (HIGH RISK — conservative limits)
-cron.schedule('30 10,21 * * *', async () => {
-  console.log('[cron] YouTube Commenter — commenting via personas');
-  await runYoutubeCommenter().catch(err => console.error('[youtube-commenter]', err.message));
-}, { timezone: 'Europe/Madrid' });
+// YouTube Commenter — DISABLED (risk to persona accounts)
+// cron.schedule('30 10,21 * * *', async () => {
+//   console.log('[cron] YouTube Commenter — commenting via personas');
+//   await runYoutubeCommenter().catch(err => console.error('[youtube-commenter]', err.message));
+// }, { timezone: 'Europe/Madrid' });
 
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');
@@ -350,7 +350,7 @@ console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
 console.log('  Blog Generator: 04:00 Mon+Thu (Europe/Madrid)');
 console.log('  Blog Syndicator: 05:00 daily (Europe/Madrid)');
 console.log('  Quora Commenter: 13:00, 19:00 daily (Europe/Madrid)');
-console.log('  YouTube Commenter: 10:30, 21:00 daily (Europe/Madrid)');
+console.log('  YouTube Commenter: DISABLED (risk to personas)');
 
 // Keep process alive
 process.on('uncaughtException', err => console.error('[agent] Uncaught exception:', err));
