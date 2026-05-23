@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getDemoResponse } from "@/lib/demo-data";
 
-const protectedRoutes = ["/dashboard", "/generate", "/admin", "/profile", "/seo-score", "/ab-test", "/team", "/optimize", "/audit", "/achievements", "/thumbnail-preview", "/revenue"];
+const protectedRoutes = ["/dashboard", "/generate", "/admin", "/profile", "/ab-test", "/team", "/optimize", "/audit", "/achievements", "/thumbnail-preview", "/revenue"];
 
 export default async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;

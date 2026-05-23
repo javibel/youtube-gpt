@@ -172,7 +172,12 @@ function classifyEmail(from, subject, snippet, headers = []) {
   const snippetLower = (snippet || '').toLowerCase();
   const combined = `${subjectLower} ${snippetLower}`;
 
-  // 0. Filter irrelevant SaaSHub newsletters before anything else
+  // 0a. Ignore our own emails (Resend sends from @ytubviral.com — prevents forwarding loops)
+  if (fromLower.includes('@ytubviral.com')) {
+    return 'ignore';
+  }
+
+  // 0b. Filter irrelevant SaaSHub newsletters before anything else
   if (isSaashubIrrelevantNewsletter(from, subject)) {
     return 'ignore';
   }
