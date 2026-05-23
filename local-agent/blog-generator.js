@@ -243,6 +243,7 @@ ${bodyEn.map(b => blockToTS(b)).join('\n')}
     readMin: ${metadata.readMin || 10},
     date: { es: '${dateEs}', en: '${dateEn}' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: 'JJ' },
+    image: '/blog/${slug}.webp',
     title: {
       es: '${escapeForTS(metadata.title_es)}',
       en: '${escapeForTS(metadata.title_en)}',
