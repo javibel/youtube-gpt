@@ -46,6 +46,9 @@ const state = {
   callCount: 0,
   totalInputTokens: 0,
   totalOutputTokens: 0,
+  totalCacheReadTokens: 0,
+  totalCacheCreationTokens: 0,
+  cacheHits: 0,
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -60,6 +63,9 @@ function resetDailyIfNeeded() {
     state.callCount = 0;
     state.totalInputTokens = 0;
     state.totalOutputTokens = 0;
+    state.totalCacheReadTokens = 0;
+    state.totalCacheCreationTokens = 0;
+    state.cacheHits = 0;
   }
 }
 
@@ -70,7 +76,7 @@ function saveDailyLog() {
     const logFile = path.join(logDir, `api-usage-${state.dailyDate}.json`);
 
     // Merge with existing log (in case PM2 restarted mid-day)
-    let existing = { totalCalls: 0, totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0 };
+    let existing = { totalCalls: 0, totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, cacheHits: 0 };
     try {
       existing = JSON.parse(fs.readFileSync(logFile, 'utf-8'));
     } catch { /* first write of the day */ }
@@ -81,6 +87,9 @@ function saveDailyLog() {
       totalInputTokens: existing.totalInputTokens + state.totalInputTokens,
       totalOutputTokens: existing.totalOutputTokens + state.totalOutputTokens,
       totalTokens: existing.totalTokens + state.dailyTokensUsed,
+      cacheReadTokens: (existing.cacheReadTokens || 0) + (state.totalCacheReadTokens || 0),
+      cacheCreationTokens: (existing.cacheCreationTokens || 0) + (state.totalCacheCreationTokens || 0),
+      cacheHits: (existing.cacheHits || 0) + (state.cacheHits || 0),
       lastUpdated: new Date().toISOString(),
     };
     fs.writeFileSync(logFile, JSON.stringify(log, null, 2));
@@ -191,6 +200,7 @@ async function guardedCall(prompt, options = {}) {
     'Content-Type': 'application/json',
     'x-api-key': (process.env.ANTHROPIC_API_KEY || '').trim(),
     'anthropic-version': '2023-06-01',
+    'anthropic-beta': 'prompt-caching-2024-07-31',
   };
 
   try {
@@ -222,6 +232,9 @@ async function guardedCall(prompt, options = {}) {
     state.dailyTokensUsed += inputTokens + outputTokens;
     state.totalInputTokens += inputTokens;
     state.totalOutputTokens += outputTokens;
+    state.totalCacheReadTokens += cacheReadTokens;
+    state.totalCacheCreationTokens += cacheCreationTokens;
+    if (cacheReadTokens > 0) state.cacheHits++;
     state.callCount++;
     state.consecutiveErrors = 0; // Reset on success
 

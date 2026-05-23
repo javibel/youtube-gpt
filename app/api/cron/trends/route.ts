@@ -95,11 +95,12 @@ export async function GET(request: Request) {
           'Content-Type': 'application/json',
           'x-api-key': ANTHROPIC_API_KEY,
           'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'prompt-caching-2024-07-31',
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 600,
-          system: `You analyze YouTube trends for a creator. Their channel is "${channelName}". Based on the trending videos, identify 2-3 trends that could be RELEVANT to this creator. For each trend, output a JSON array of objects with: title (short catchy alert title), description (1-2 sentences explaining the trend and why it's relevant), category (one word like tech/gaming/education/entertainment/music/lifestyle/news), relevance (0-100 how relevant to this creator), videos (array of {title, views, channelName} for the 1-2 most relevant trending videos). Output ONLY valid JSON array, no markdown.`,
+          system: [{ type: 'text', text: `You analyze YouTube trends for a creator. Their channel is "${channelName}". Based on the trending videos, identify 2-3 trends that could be RELEVANT to this creator. For each trend, output a JSON array of objects with: title (short catchy alert title), description (1-2 sentences explaining the trend and why it's relevant), category (one word like tech/gaming/education/entertainment/music/lifestyle/news), relevance (0-100 how relevant to this creator), videos (array of {title, views, channelName} for the 1-2 most relevant trending videos). Output ONLY valid JSON array, no markdown.`, cache_control: { type: 'ephemeral' } }],
           messages: [{ role: 'user', content: `Trending videos:\n${trendingList}` }],
         }),
       });

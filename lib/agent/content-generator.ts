@@ -45,17 +45,21 @@ ${postsContext}
   }
 }
 
-async function callClaude(prompt: string, maxTokens = 600): Promise<string> {
+async function callClaude(prompt: string, maxTokens = 600, systemPrompt?: string): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': API_KEY(),
       'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'prompt-caching-2024-07-31',
     },
     body: JSON.stringify({
       model: MODEL,
       max_tokens: maxTokens,
+      ...(systemPrompt ? {
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+      } : {}),
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -115,8 +119,6 @@ const FACEBOOK_PROMPT = (): string => {
   const theme = getTodayTheme();
   const day = getTodayDayName();
   return `
-${VOZ}
-
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
 ${theme.mencionarProducto ? 'Menciona YTubViral (ytubviral.com) de forma natural como herramienta que usas/construyes. No como anuncio — como parte de la historia.' : 'No menciones YTubViral hoy.'}
@@ -139,8 +141,6 @@ const INSTAGRAM_PROMPT = (): string => {
   const theme = getTodayTheme();
   const day = getTodayDayName();
   return `
-${VOZ}
-
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
 ${theme.mencionarProducto ? 'Menciona YTubViral (ytubviral.com) como herramienta que usas/construyes, de forma natural.' : 'No menciones YTubViral hoy.'}
@@ -177,8 +177,6 @@ const LINKEDIN_PROMPT = (): string => {
   const topicFinal = theme.mencionarProducto ? topicPersonal : `${theme.descripcion} (ángulo personal y honesto)`;
 
   return `
-${VOZ}
-
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Escribe sobre: ${topicFinal}
 ${theme.mencionarProducto ? 'Puedes mencionar YTubViral de forma natural si encaja con la historia.' : 'No menciones YTubViral ni hagas ningún tipo de promoción hoy.'}
@@ -200,8 +198,6 @@ const TIKTOK_PROMPT = (): string => {
   const theme = getTodayTheme();
   const day = getTodayDayName();
   return `
-${VOZ}
-
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
 
@@ -221,8 +217,6 @@ const TWITTER_PROMPT = (): string => {
   const theme = getTodayTheme();
   const day = getTodayDayName();
   return `
-${VOZ}
-
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
 
@@ -261,8 +255,9 @@ export async function generateSocialPost(
     }[platform]),
   ]);
 
-  const fullPrompt = context ? `${context}\n\n---\n\n${prompt}` : prompt;
-  return callClaude(fullPrompt, 700);
+  // VOZ + narrative context as cached system prompt (static per session)
+  const systemPrompt = context ? `${VOZ}\n\n${context}` : VOZ;
+  return callClaude(prompt!, 700, systemPrompt);
 }
 
 export async function generateYoutubeReply(
