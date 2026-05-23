@@ -224,11 +224,11 @@ cron.schedule('0 11 * * *', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
-// Outreach Reddit DMs — 3x/day, DM creators who share videos in YouTube subreddits
-cron.schedule('15 9,14,19 * * *', async () => {
-  console.log('[cron] Outreach Reddit DM — sending personalized DMs to creators');
-  await runRedditDm().catch(err => console.error('[outreach-reddit-dm]', err.message));
-}, { timezone: 'Europe/Madrid' });
+// Outreach Reddit DMs — DISABLED: Reddit requires CAPTCHA for DMs on low-karma accounts
+// cron.schedule('15 9,14,19 * * *', async () => {
+//   console.log('[cron] Outreach Reddit DM — sending personalized DMs to creators');
+//   await runRedditDm().catch(err => console.error('[outreach-reddit-dm]', err.message));
+// }, { timezone: 'Europe/Madrid' });
 
 // Outreach Reddit Targeted Comments — 2x/day, reply to help/feedback posts
 cron.schedule('0 11,18 * * *', async () => {
