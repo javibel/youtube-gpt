@@ -9,9 +9,15 @@ interface CheckResult {
   weight: number;
 }
 
-function checkTitle(title: string, lang: string): CheckResult[] {
+function checkTitle(title: string, desc: string, lang: string): CheckResult[] {
   const len = title.length;
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  const titleWords = title.toLowerCase().replace(/[^\w\sáéíóúñü]/g, '').split(/\s+/).filter(w => w.length > 2);
+  const descLower = desc.toLowerCase();
+  const keywordsInDesc = titleWords.filter(w => descLower.includes(w)).length;
+  const keywordRatio = titleWords.length > 0 ? keywordsInDesc / titleWords.length : 0;
+
   return [
     {
       key: 'title_length',
@@ -34,12 +40,26 @@ function checkTitle(title: string, lang: string): CheckResult[] {
       detail: title === title.toUpperCase() ? t('TODO MAYÚSCULAS penaliza', 'ALL CAPS penalized') : 'OK',
       weight: 4,
     },
+    {
+      key: 'title_keyword_consistency',
+      label: t('Coherencia keywords', 'Keyword consistency'),
+      passed: keywordRatio >= 0.5,
+      detail: keywordRatio >= 0.5
+        ? t(`${Math.round(keywordRatio * 100)}% keywords en descripción`, `${Math.round(keywordRatio * 100)}% keywords in description`)
+        : t(`Solo ${Math.round(keywordRatio * 100)}% keywords en descripción`, `Only ${Math.round(keywordRatio * 100)}% keywords in description`),
+      weight: 6,
+    },
   ];
 }
 
 function checkDescription(desc: string, lang: string): CheckResult[] {
   const wordCount = desc.split(/\s+/).filter(Boolean).length;
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  const first200 = desc.slice(0, 200);
+  const first200Words = first200.split(/\s+/).filter(Boolean).length;
+  const frontLoaded = first200Words >= 20 && !/^(http|www|\n|\s*$)/.test(first200.trim());
+
   return [
     {
       key: 'desc_length',
@@ -47,6 +67,13 @@ function checkDescription(desc: string, lang: string): CheckResult[] {
       passed: wordCount >= 100,
       detail: wordCount < 50 ? t(`Muy corta (${wordCount} palabras)`, `Very short (${wordCount} words)`) : wordCount < 100 ? t(`Algo corta (${wordCount})`, `Short (${wordCount})`) : t(`Bien (${wordCount})`, `Good (${wordCount})`),
       weight: 10,
+    },
+    {
+      key: 'desc_frontload',
+      label: t('Primeras líneas', 'Front-loaded'),
+      passed: frontLoaded,
+      detail: frontLoaded ? t('Primeras líneas optimizadas', 'First lines optimized') : t('Optimiza las primeras líneas', 'Optimize first lines'),
+      weight: 5,
     },
     {
       key: 'desc_links',
@@ -72,9 +99,14 @@ function checkDescription(desc: string, lang: string): CheckResult[] {
   ];
 }
 
-function checkTags(tags: string[], lang: string): CheckResult[] {
+function checkTags(tags: string[], title: string, lang: string): CheckResult[] {
   const count = tags.length;
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  const titleLower = title.toLowerCase();
+  const tagsLower = tags.map(tg => tg.toLowerCase());
+  const titleInTags = tagsLower.some(tg => titleLower.includes(tg) || tg.includes(titleLower.slice(0, 20)));
+
   return [
     {
       key: 'tags_count',
@@ -82,6 +114,13 @@ function checkTags(tags: string[], lang: string): CheckResult[] {
       passed: count >= 5 && count <= 20,
       detail: count === 0 ? t('Sin tags', 'No tags') : count < 5 ? t(`Pocos (${count})`, `Few (${count})`) : count > 20 ? t(`Demasiados (${count})`, `Too many (${count})`) : t(`Bien (${count})`, `Good (${count})`),
       weight: 8,
+    },
+    {
+      key: 'tags_keyword_match',
+      label: t('Keyword en tags', 'Keyword in tags'),
+      passed: count > 0 && titleInTags,
+      detail: count === 0 ? t('Sin tags', 'No tags') : titleInTags ? t('Keyword principal en tags', 'Main keyword in tags') : t('Keyword del título no está en tags', 'Title keyword not in tags'),
+      weight: 5,
     },
   ];
 }
@@ -133,10 +172,13 @@ export async function POST(request: Request) {
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
+  const title = snippet.title || '';
+  const desc = snippet.description || '';
+
   const checklist: CheckResult[] = [
-    ...checkTitle(snippet.title || '', lang),
-    ...checkDescription(snippet.description || '', lang),
-    ...checkTags(tags, lang),
+    ...checkTitle(title, desc, lang),
+    ...checkDescription(desc, lang),
+    ...checkTags(tags, title, lang),
     {
       key: 'thumbnail',
       label: t('Thumbnail', 'Thumbnail'),

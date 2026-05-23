@@ -15,10 +15,39 @@ interface CheckItem {
   weight: number;
 }
 
+// ── Engagement benchmarks by YouTube category ─────────────────────────────
+// Source: industry averages. Higher-engagement niches have higher thresholds.
+const ENGAGEMENT_BY_CATEGORY: Record<string, number> = {
+  '1':  0.04,  // Film & Animation
+  '2':  0.04,  // Autos & Vehicles
+  '10': 0.05,  // Music
+  '15': 0.03,  // Pets & Animals
+  '17': 0.04,  // Sports
+  '19': 0.03,  // Travel & Events
+  '20': 0.05,  // Gaming
+  '22': 0.03,  // People & Blogs
+  '23': 0.04,  // Comedy
+  '24': 0.04,  // Entertainment
+  '25': 0.03,  // News & Politics
+  '26': 0.04,  // Howto & Style
+  '27': 0.04,  // Education
+  '28': 0.04,  // Science & Technology
+  '29': 0.03,  // Nonprofits & Activism
+};
+const DEFAULT_ENGAGEMENT_THRESHOLD = 0.03;
+
 // ── SEO analysis helpers ────────────────────────────────────────────────────
 
-function checkTitle(title: string): CheckItem[] {
+function checkTitle(title: string, desc: string): CheckItem[] {
   const len = title.length;
+
+  // Extract likely keyword (longest meaningful phrase from title, first ~40 chars)
+  const titleWords = title.toLowerCase().replace(/[^\w\sáéíóúñü]/g, '').split(/\s+/).filter(w => w.length > 2);
+  const descLower = desc.toLowerCase();
+  // Check if main title words appear in description (keyword consistency)
+  const keywordsInDesc = titleWords.filter(w => descLower.includes(w)).length;
+  const keywordRatio = titleWords.length > 0 ? keywordsInDesc / titleWords.length : 0;
+
   return [
     {
       key: 'title_length',
@@ -50,6 +79,20 @@ function checkTitle(title: string): CheckItem[] {
       },
       weight: 4,
     },
+    {
+      key: 'title_keyword_consistency',
+      label: { es: 'Coherencia keyword título-descripción', en: 'Title-description keyword consistency' },
+      passed: keywordRatio >= 0.5,
+      detail: {
+        es: keywordRatio >= 0.5
+          ? `Bien: ${Math.round(keywordRatio * 100)}% de las palabras del título aparecen en la descripción`
+          : `Solo ${Math.round(keywordRatio * 100)}% de las palabras del título aparecen en la descripción. Repite las keywords principales en las primeras líneas`,
+        en: keywordRatio >= 0.5
+          ? `Good: ${Math.round(keywordRatio * 100)}% of title words appear in description`
+          : `Only ${Math.round(keywordRatio * 100)}% of title words appear in description. Repeat main keywords in the first lines`,
+      },
+      weight: 6,
+    },
   ];
 }
 
@@ -58,6 +101,11 @@ function checkDescription(desc: string): CheckItem[] {
   const hasLinks = /https?:\/\//.test(desc);
   const hasTimestamps = /\d{1,2}:\d{2}/.test(desc);
   const hasHashtags = /#\w+/.test(desc);
+
+  // Check if description front-loads keywords (first 200 chars are most important)
+  const first200 = desc.slice(0, 200);
+  const first200Words = first200.split(/\s+/).filter(Boolean).length;
+  const frontLoaded = first200Words >= 20 && !/^(http|www|\n|\s*$)/.test(first200.trim());
 
   return [
     {
@@ -69,6 +117,20 @@ function checkDescription(desc: string): CheckItem[] {
         en: wordCount < 50 ? `Very short (${wordCount} words). Minimum 100-200.` : wordCount < 100 ? `Somewhat short (${wordCount}). Aim for 150+.` : `Good (${wordCount} words)`,
       },
       weight: 10,
+    },
+    {
+      key: 'desc_frontload',
+      label: { es: 'Primeras líneas optimizadas', en: 'Front-loaded description' },
+      passed: frontLoaded,
+      detail: {
+        es: frontLoaded
+          ? 'Las primeras líneas tienen contenido relevante (visible antes del "ver más")'
+          : 'Las primeras 2-3 líneas deben tener keywords y enganchar. Es lo que aparece antes de "ver más"',
+        en: frontLoaded
+          ? 'First lines have relevant content (visible before "show more")'
+          : 'First 2-3 lines should have keywords and hook. This shows before "show more"',
+      },
+      weight: 5,
     },
     {
       key: 'desc_links',
@@ -103,8 +165,14 @@ function checkDescription(desc: string): CheckItem[] {
   ];
 }
 
-function checkTags(tags: string[]): CheckItem[] {
+function checkTags(tags: string[], title: string): CheckItem[] {
   const count = tags.length;
+
+  // Check if title keyword appears in tags
+  const titleLower = title.toLowerCase();
+  const tagsLower = tags.map(t => t.toLowerCase());
+  const titleInTags = tagsLower.some(t => titleLower.includes(t) || t.includes(titleLower.slice(0, 20)));
+
   return [
     {
       key: 'tags_count',
@@ -115,6 +183,20 @@ function checkTags(tags: string[]): CheckItem[] {
         en: count === 0 ? 'No tags. Add 5-15 relevant tags' : count < 5 ? `Few tags (${count}). Aim for 5-15` : count > 20 ? `Too many tags (${count}). YouTube recommends max 15` : `Good (${count} tags)`,
       },
       weight: 8,
+    },
+    {
+      key: 'tags_keyword_match',
+      label: { es: 'Keyword del título en tags', en: 'Title keyword in tags' },
+      passed: count > 0 && titleInTags,
+      detail: {
+        es: count === 0
+          ? 'Sin tags. Añade tu keyword principal como primer tag'
+          : titleInTags ? 'Tu keyword principal aparece en los tags' : 'Tu keyword del título no está en los tags. Añádela como primer tag',
+        en: count === 0
+          ? 'No tags. Add your main keyword as first tag'
+          : titleInTags ? 'Your main keyword appears in tags' : 'Your title keyword is not in tags. Add it as first tag',
+      },
+      weight: 5,
     },
   ];
 }
@@ -128,6 +210,7 @@ function checkVideo(
   const title = snippet.title || '';
   const desc = snippet.description || '';
   const tags = snippet.tags || [];
+  const categoryId = snippet.categoryId || '';
 
   const views = parseInt(stats.viewCount || '0', 10);
   const likes = parseInt(stats.likeCount || '0', 10);
@@ -139,10 +222,16 @@ function checkVideo(
     ? (parseInt(durationMatch[1] || '0') * 3600) + (parseInt(durationMatch[2] || '0') * 60) + parseInt(durationMatch[3] || '0')
     : 0;
 
+  // Engagement threshold adjusted by category
+  const engagementThreshold = ENGAGEMENT_BY_CATEGORY[categoryId] || DEFAULT_ENGAGEMENT_THRESHOLD;
+  const engagementRatio = views > 0 ? (likes + comments) / views : 0;
+  const engagementPct = (engagementRatio * 100).toFixed(1);
+  const thresholdPct = (engagementThreshold * 100).toFixed(1);
+
   const checklist: CheckItem[] = [
-    ...checkTitle(title),
+    ...checkTitle(title, desc),
     ...checkDescription(desc),
-    ...checkTags(tags),
+    ...checkTags(tags, title),
     {
       key: 'thumbnail',
       label: { es: 'Thumbnail personalizado', en: 'Custom thumbnail' },
@@ -166,10 +255,14 @@ function checkVideo(
     {
       key: 'engagement',
       label: { es: 'Ratio de engagement', en: 'Engagement ratio' },
-      passed: views > 0 ? ((likes + comments) / views) > 0.03 : false,
+      passed: views > 0 ? engagementRatio > engagementThreshold : false,
       detail: {
-        es: views > 0 ? `${(((likes + comments) / views) * 100).toFixed(1)}% engagement` : 'Sin datos suficientes',
-        en: views > 0 ? `${(((likes + comments) / views) * 100).toFixed(1)}% engagement` : 'Not enough data',
+        es: views > 0
+          ? `${engagementPct}% engagement (objetivo: >${thresholdPct}% para esta categoría)`
+          : 'Sin datos suficientes',
+        en: views > 0
+          ? `${engagementPct}% engagement (target: >${thresholdPct}% for this category)`
+          : 'Not enough data',
       },
       weight: 7,
     },
@@ -290,27 +383,87 @@ export async function POST(request: Request) {
         hasCaptions,
       );
 
-      // AI analysis of title quality
+      // AI analysis — enhanced with full video context + thumbnail Vision analysis
       let aiTip: { es: string; en: string } | null = null;
-      try {
-        const msg = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 150,
-          messages: [{
-            role: 'user',
-            content: `Analyze this YouTube video title for SEO and CTR optimization. Give ONE specific, actionable tip to improve it. Be concise (1 sentence).
+      let thumbnailAnalysis: { passed: boolean; detail: { es: string; en: string } } | null = null;
+      const thumbUrl = video.snippet?.thumbnails?.high?.url || video.snippet?.thumbnails?.medium?.url || '';
+
+      // Run AI tip + thumbnail analysis in parallel
+      const [aiTipResult, thumbResult] = await Promise.allSettled([
+        // 1. Enhanced AI tip with full context
+        (async () => {
+          const viewCount = parseInt(video.statistics?.viewCount || '0', 10);
+          const likeCount = parseInt(video.statistics?.likeCount || '0', 10);
+          const commentCount = parseInt(video.statistics?.commentCount || '0', 10);
+          const engRate = viewCount > 0 ? (((likeCount + commentCount) / viewCount) * 100).toFixed(1) : '0';
+          const failedChecks = checklist.filter(c => !c.passed && c.weight > 0).map(c => c.key).join(', ');
+
+          const msg = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 200,
+            messages: [{
+              role: 'user',
+              content: `Analyze this YouTube video and give ONE specific, actionable tip to improve its SEO or CTR. Focus on the weakest area. Be concise (1-2 sentences).
 
 Title: "${video.snippet.title}"
+Description (first 300 chars): "${(video.snippet.description || '').slice(0, 300)}"
 Tags: ${(video.snippet.tags || []).slice(0, 10).join(', ') || 'none'}
+Category: ${video.snippet.categoryId || 'unknown'}
+Views: ${viewCount} | Likes: ${likeCount} | Comments: ${commentCount} | Engagement: ${engRate}%
+Duration: ${video.contentDetails?.duration || 'unknown'}
+Failed checks: ${failedChecks || 'none'}
 
 Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`,
-          }],
-        });
-        const text = (msg.content[0] as { type: string; text: string }).text;
-        const parsed = JSON.parse(text);
-        if (parsed.es && parsed.en) aiTip = parsed;
-      } catch {
-        // AI tip is optional
+            }],
+          });
+          const text = (msg.content[0] as { type: string; text: string }).text;
+          const parsed = JSON.parse(text);
+          if (parsed.es && parsed.en) return parsed;
+          return null;
+        })(),
+
+        // 2. Thumbnail analysis with Claude Vision
+        thumbUrl ? (async () => {
+          const msg = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 250,
+            messages: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'image' as const,
+                  source: { type: 'url' as const, url: thumbUrl },
+                },
+                {
+                  type: 'text' as const,
+                  text: `Analyze this YouTube thumbnail for CTR optimization. Evaluate:
+1. Text readability (can you read text on mobile?)
+2. Visual contrast and color impact
+3. Human face/emotion presence
+4. Overall clickability
+
+Rate it as "good" or "needs_improvement" and give ONE specific actionable tip.
+
+Reply in this exact JSON: {"rating":"good"|"needs_improvement","es":"evaluación + tip en español","en":"evaluation + tip in english"}`,
+                },
+              ],
+            }],
+          });
+          const text = (msg.content[0] as { type: string; text: string }).text;
+          return JSON.parse(text);
+        })() : Promise.resolve(null),
+      ]);
+
+      if (aiTipResult.status === 'fulfilled' && aiTipResult.value) {
+        aiTip = aiTipResult.value;
+      }
+
+      if (thumbResult.status === 'fulfilled' && thumbResult.value) {
+        const tr = thumbResult.value;
+        thumbnailAnalysis = {
+          passed: tr.rating === 'good',
+          detail: { es: tr.es, en: tr.en },
+        };
       }
 
       if (aiTip) {
@@ -322,6 +475,23 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
           weight: 0,
         });
       }
+
+      // Replace basic thumbnail check with Vision analysis if available
+      if (thumbnailAnalysis) {
+        checklist.push({
+          key: 'thumbnail_quality',
+          label: { es: 'Calidad del thumbnail (IA)', en: 'Thumbnail quality (AI)' },
+          passed: thumbnailAnalysis.passed,
+          detail: thumbnailAnalysis.detail,
+          weight: 7,
+        });
+      }
+
+      // Recalculate score after AI checks (thumbnail_quality has weight)
+      const scoredChecks = checklist.filter(c => c.weight > 0);
+      const finalMaxScore = scoredChecks.reduce((s, c) => s + c.weight, 0);
+      const finalRawScore = scoredChecks.filter(c => c.passed).reduce((s, c) => s + c.weight, 0);
+      const finalScore = finalMaxScore > 0 ? Math.round((finalRawScore / finalMaxScore) * 100) : score;
 
       // Upsert score in DB
       const videoTitle = video.snippet?.title || '';
@@ -338,7 +508,7 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
           thumbnail: videoThumb,
           publishedAt: videoPubAt,
           views: videoViews,
-          score,
+          score: finalScore,
           checklist: JSON.parse(JSON.stringify(checklist)),
         },
         update: {
@@ -346,7 +516,7 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
           thumbnail: videoThumb,
           publishedAt: videoPubAt,
           views: videoViews,
-          score,
+          score: finalScore,
           checklist: JSON.parse(JSON.stringify(checklist)),
           analyzedAt: new Date(),
         },
@@ -358,7 +528,7 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
         thumbnail: video.snippet?.thumbnails?.medium?.url || '',
         publishedAt: video.snippet?.publishedAt || '',
         views: parseInt(video.statistics?.viewCount || '0', 10),
-        score,
+        score: finalScore,
         checklist,
       });
     }

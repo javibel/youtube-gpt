@@ -209,9 +209,10 @@ export default function SeoScorePage() {
           {scores.map(video => {
             const isExpanded = expanded === video.videoId;
             const aiTip = video.checklist.find(c => c.key === 'ai_tip');
-            const checks = video.checklist.filter(c => c.key !== 'ai_tip');
-            const passed = checks.filter(c => c.passed).length;
-            const total = checks.length;
+            const checks = video.checklist.filter(c => c.key !== 'ai_tip' && c.key !== 'thumbnail_quality');
+            const allScored = video.checklist.filter(c => c.weight > 0);
+            const passed = allScored.filter(c => c.passed).length;
+            const total = allScored.length;
 
             return (
               <div
@@ -270,60 +271,87 @@ export default function SeoScorePage() {
                 </button>
 
                 {/* Expanded checklist */}
-                {isExpanded && (
-                  <div className="border-t p-4 space-y-2" style={{ borderColor: 'var(--yv-border)' }}>
-                    {/* AI Tip */}
-                    {aiTip && (
-                      <div className="mb-4 p-3 rounded-lg border border-purple-500/30" style={{ background: 'rgba(139,92,246,0.08)' }}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                          </svg>
-                          <span className="font-mono-jb text-[13px] tracking-wider text-purple-400 uppercase">
-                            {t('Consejo IA', 'AI Tip')}
-                          </span>
-                        </div>
-                        <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>
-                          {lang === 'en' ? aiTip.detail.en : aiTip.detail.es}
-                        </p>
-                      </div>
-                    )}
+                {isExpanded && (() => {
+                  const thumbAi = video.checklist.find(c => c.key === 'thumbnail_quality');
+                  const scoredChecks = checks.filter(c => c.weight > 0);
+                  const failedFirst = [...scoredChecks].sort((a, b) => {
+                    if (a.passed === b.passed) return b.weight - a.weight;
+                    return a.passed ? 1 : -1;
+                  });
 
-                    {/* Check items */}
-                    {checks.map(check => (
-                      <div
-                        key={check.key}
-                        className="flex items-start gap-3 p-3 rounded-lg"
-                        style={{ background: check.passed ? 'rgba(34,197,94,0.05)' : 'rgba(232,77,91,0.05)' }}
-                      >
-                        <div className="flex-shrink-0 mt-0.5">
-                          {check.passed ? (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5">
-                              <path d="M20 6L9 17l-5-5" />
+                  return (
+                    <div className="border-t p-4 space-y-2" style={{ borderColor: 'var(--yv-border)' }}>
+                      {/* AI Tip */}
+                      {aiTip && (
+                        <div className="mb-4 p-3 rounded-lg border border-purple-500/30" style={{ background: 'rgba(139,92,246,0.08)' }}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2">
+                              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
                             </svg>
-                          ) : (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e84d5b" strokeWidth="2.5">
-                              <path d="M18 6L6 18M6 6l12 12" />
-                            </svg>
+                            <span className="font-mono-jb text-[13px] tracking-wider text-purple-400 uppercase">
+                              {t('Consejo IA', 'AI Tip')}
+                            </span>
+                          </div>
+                          <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>
+                            {lang === 'en' ? aiTip.detail.en : aiTip.detail.es}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Thumbnail AI analysis */}
+                      {thumbAi && (
+                        <div className="mb-4 p-3 rounded-lg border" style={{
+                          borderColor: thumbAi.passed ? 'rgba(34,197,94,0.3)' : 'rgba(232,77,91,0.3)',
+                          background: thumbAi.passed ? 'rgba(34,197,94,0.06)' : 'rgba(232,77,91,0.06)',
+                        }}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm">🖼️</span>
+                            <span className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: thumbAi.passed ? '#22c55e' : '#e84d5b' }}>
+                              {t('Análisis de thumbnail (IA)', 'Thumbnail analysis (AI)')}
+                            </span>
+                          </div>
+                          <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>
+                            {lang === 'en' ? thumbAi.detail.en : thumbAi.detail.es}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Check items — failed first, then passed, sorted by weight */}
+                      {failedFirst.map(check => (
+                        <div
+                          key={check.key}
+                          className="flex items-start gap-3 p-3 rounded-lg"
+                          style={{ background: check.passed ? 'rgba(34,197,94,0.05)' : 'rgba(232,77,91,0.05)' }}
+                        >
+                          <div className="flex-shrink-0 mt-0.5">
+                            {check.passed ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5">
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                            ) : (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e84d5b" strokeWidth="2.5">
+                                <path d="M18 6L6 18M6 6l12 12" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-display font-medium">
+                              {lang === 'en' ? check.label.en : check.label.es}
+                            </p>
+                            <p className="text-[13px] font-mono-jb mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
+                              {lang === 'en' ? check.detail.en : check.detail.es}
+                            </p>
+                          </div>
+                          {check.weight > 0 && (
+                            <span className="flex-shrink-0 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
+                              {t('peso', 'weight')}: {check.weight}
+                            </span>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-display font-medium">
-                            {lang === 'en' ? check.label.en : check.label.es}
-                          </p>
-                          <p className="text-[13px] font-mono-jb mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
-                            {lang === 'en' ? check.detail.en : check.detail.es}
-                          </p>
-                        </div>
-                        {check.weight > 0 && (
-                          <span className="flex-shrink-0 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
-                            {t('peso', 'weight')}: {check.weight}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
