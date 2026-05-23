@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 
@@ -58,55 +57,380 @@ function scoreLabel(score: number, lang: Lang): string {
   return lang === 'en' ? 'Poor' : 'Bajo';
 }
 
-export default function SeoScorePage() {
+function VideoCard({ video, lang, expanded, onToggle }: { video: VideoScore; lang: Lang; expanded: boolean; onToggle: () => void }) {
+  const aiTip = video.checklist.find(c => c.key === 'ai_tip');
+  const checks = video.checklist.filter(c => c.key !== 'ai_tip' && c.key !== 'thumbnail_quality');
+  const allScored = video.checklist.filter(c => c.weight > 0);
+  const passed = allScored.filter(c => c.passed).length;
+  const total = allScored.length;
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  return (
+    <div className="yv-card overflow-hidden transition-all p-0">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/[0.03] transition"
+      >
+        {video.thumbnail && (
+          <img src={video.thumbnail} alt="" className="w-28 h-16 rounded-lg object-cover flex-shrink-0" />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-white font-display font-semibold text-sm truncate">{video.title || video.videoId}</p>
+          <div className="flex items-center gap-3 mt-1">
+            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
+              {fmtNum(video.views)} {t('vistas', 'views')}
+            </span>
+            {video.publishedAt && (
+              <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
+                {fmtDate(video.publishedAt, lang)}
+              </span>
+            )}
+            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
+              {passed}/{total} {t('checks', 'checks')}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div
+            className="min-w-[4rem] px-3 h-14 rounded-xl flex flex-col items-center justify-center font-mono-jb"
+            style={{ background: scoreBg(video.score), border: `1px solid ${scoreColor(video.score)}33` }}
+          >
+            <span className="text-lg font-bold" style={{ color: scoreColor(video.score) }}>{video.score}</span>
+            <span className="text-[11px] whitespace-nowrap" style={{ color: scoreColor(video.score), opacity: 0.7 }}>{scoreLabel(video.score, lang)}</span>
+          </div>
+          <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            className={`transition-transform ${expanded ? 'rotate-180' : ''}`}
+            style={{ color: 'var(--yv-text-3)' }}
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </button>
+
+      {expanded && (() => {
+        const thumbAi = video.checklist.find(c => c.key === 'thumbnail_quality');
+        const scoredChecks = checks.filter(c => c.weight > 0);
+        const failedFirst = [...scoredChecks].sort((a, b) => {
+          if (a.passed === b.passed) return b.weight - a.weight;
+          return a.passed ? 1 : -1;
+        });
+
+        return (
+          <div className="border-t p-4 space-y-2" style={{ borderColor: 'var(--yv-border)' }}>
+            {aiTip && (
+              <div className="mb-4 p-3 rounded-lg border border-purple-500/30" style={{ background: 'rgba(139,92,246,0.08)' }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                  </svg>
+                  <span className="font-mono-jb text-[13px] tracking-wider text-purple-400 uppercase">
+                    {t('Consejo IA', 'AI Tip')}
+                  </span>
+                </div>
+                <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>
+                  {lang === 'en' ? aiTip.detail.en : aiTip.detail.es}
+                </p>
+              </div>
+            )}
+            {thumbAi && (
+              <div className="mb-4 p-3 rounded-lg border" style={{
+                borderColor: thumbAi.passed ? 'rgba(34,197,94,0.3)' : 'rgba(232,77,91,0.3)',
+                background: thumbAi.passed ? 'rgba(34,197,94,0.06)' : 'rgba(232,77,91,0.06)',
+              }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm">🖼️</span>
+                  <span className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: thumbAi.passed ? '#22c55e' : '#e84d5b' }}>
+                    {t('Análisis de thumbnail (IA)', 'Thumbnail analysis (AI)')}
+                  </span>
+                </div>
+                <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>
+                  {lang === 'en' ? thumbAi.detail.en : thumbAi.detail.es}
+                </p>
+              </div>
+            )}
+            {failedFirst.map(check => (
+              <div
+                key={check.key}
+                className="flex items-start gap-3 p-3 rounded-lg"
+                style={{ background: check.passed ? 'rgba(34,197,94,0.05)' : 'rgba(232,77,91,0.05)' }}
+              >
+                <div className="flex-shrink-0 mt-0.5">
+                  {check.passed ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e84d5b" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-display font-medium">{lang === 'en' ? check.label.en : check.label.es}</p>
+                  <p className="text-[13px] font-mono-jb mt-0.5" style={{ color: 'var(--yv-text-3)' }}>{lang === 'en' ? check.detail.en : check.detail.es}</p>
+                </div>
+                {check.weight > 0 && (
+                  <span className="flex-shrink-0 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
+                    {t('peso', 'weight')}: {check.weight}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+function SeoScoreContent() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const lang = useLang();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [scores, setScores] = useState<VideoScore[]>([]);
+  const isAuthed = status === 'authenticated';
+
+  const [urlInput, setUrlInput] = useState('');
+  const [urlLoading, setUrlLoading] = useState(false);
+  const [urlResult, setUrlResult] = useState<VideoScore | null>(null);
+  const [urlError, setUrlError] = useState('');
+
+  const [channelLoading, setChannelLoading] = useState(false);
+  const [channelScores, setChannelScores] = useState<VideoScore[]>([]);
+  const [channelError, setChannelError] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [hasLoadedChannel, setHasLoadedChannel] = useState(false);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
-  // Load cached scores on mount
+  // Load cached channel scores on mount (authenticated only)
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (!isAuthed) return;
     fetch('/api/youtube/seo-score')
       .then(r => r.json())
       .then(data => {
-        if (data.scores?.length) {
-          setScores(data.scores);
-        }
-        setHasLoaded(true);
+        if (data.scores?.length) setChannelScores(data.scores);
+        setHasLoadedChannel(true);
       })
-      .catch(() => setHasLoaded(true));
-  }, [status]);
+      .catch(() => setHasLoadedChannel(true));
+  }, [isAuthed]);
 
-  async function handleAnalyze() {
-    setLoading(true);
-    setError('');
+  async function handleUrlAnalyze(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!urlInput.trim()) return;
+    setUrlLoading(true);
+    setUrlError('');
+    setUrlResult(null);
     try {
-      const res = await fetch('/api/youtube/seo-score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const res = await fetch('/api/youtube/seo-score-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msgs: Record<string, string> = {
+          invalid_url: t('URL no válida. Pega un enlace de YouTube.', 'Invalid URL. Paste a YouTube link.'),
+          video_not_found: t('Video no encontrado. Verifica el enlace.', 'Video not found. Check the link.'),
+          url_required: t('Pega un enlace de YouTube.', 'Paste a YouTube link.'),
+        };
+        setUrlError(msgs[data.error] || data.error || 'Error');
+        return;
+      }
+      setUrlResult(data);
+      setExpanded(data.videoId);
+    } catch {
+      setUrlError(t('Error de conexión', 'Connection error'));
+    } finally {
+      setUrlLoading(false);
+    }
+  }
+
+  async function handleChannelAnalyze() {
+    setChannelLoading(true);
+    setChannelError('');
+    try {
+      const res = await fetch('/api/youtube/seo-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
       const data = await res.json();
       if (!res.ok) {
         if (data.error === 'pro_required') {
-          setError(t('Esta función requiere el plan Pro.', 'This feature requires the Pro plan.'));
+          setChannelError(t('Esta función requiere el plan Pro.', 'This feature requires the Pro plan.'));
         } else if (data.error === 'youtube_not_connected') {
-          setError(t('Conecta tu canal de YouTube primero desde el Dashboard.', 'Connect your YouTube channel first from the Dashboard.'));
+          setChannelError(t('Conecta tu canal de YouTube primero desde el Dashboard.', 'Connect your YouTube channel first from the Dashboard.'));
         } else {
-          setError(data.error || 'Error');
+          setChannelError(data.error || 'Error');
         }
         return;
       }
-      setScores(data.scores || []);
+      setChannelScores(data.scores || []);
     } catch {
-      setError(t('Error de conexión', 'Connection error'));
+      setChannelError(t('Error de conexión', 'Connection error'));
     } finally {
-      setLoading(false);
+      setChannelLoading(false);
     }
   }
+
+  const allScores = [
+    ...(urlResult ? [urlResult] : []),
+    ...channelScores.filter(s => s.videoId !== urlResult?.videoId),
+  ];
+  const avgScore = allScores.length ? Math.round(allScores.reduce((s, v) => s + v.score, 0) / allScores.length) : 0;
+
+  return (
+    <div className="yv-page">
+      {/* Page title */}
+      <div className="yv-page-header mb-10">
+        <div className="yv-page-header__left">
+          <span className="yv-page-header__eyebrow">{t('ANÁLISIS SEO', 'SEO ANALYSIS')}</span>
+          <h1 className="yv-page-header__title">
+            SEO Score{' '}
+            <span style={{ color: 'var(--yv-brand)' }}>{t('de cualquier vídeo.', 'for any video.')}</span>
+          </h1>
+          <p className="yv-page-header__desc">
+            {t(
+              'Pega el enlace de cualquier vídeo de YouTube y obtén un análisis SEO completo con puntuación de 0 a 100 y recomendaciones específicas con IA.',
+              'Paste any YouTube video link and get a complete SEO analysis with a 0-100 score and AI-powered specific recommendations.'
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* URL input — works for everyone */}
+      <form onSubmit={handleUrlAnalyze} className="mb-8">
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={urlInput}
+            onChange={e => setUrlInput(e.target.value)}
+            placeholder={t('Pega un enlace de YouTube...', 'Paste a YouTube link...')}
+            className="flex-1 px-4 py-3 rounded-xl text-sm font-mono-jb"
+            style={{
+              background: 'var(--yv-surface)',
+              border: '1px solid var(--yv-border)',
+              color: 'var(--yv-text)',
+              outline: 'none',
+            }}
+            onFocus={e => { e.target.style.borderColor = 'var(--yv-brand)'; }}
+            onBlur={e => { e.target.style.borderColor = 'var(--yv-border)'; }}
+          />
+          <button
+            type="submit"
+            disabled={urlLoading || !urlInput.trim()}
+            className="btn-offset px-8 py-3 text-sm font-mono-jb tracking-wider flex-shrink-0"
+            style={{ borderRadius: '10px', opacity: !urlInput.trim() ? 0.5 : 1 }}
+          >
+            {urlLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {t('Analizando...', 'Analyzing...')}
+              </span>
+            ) : (
+              t('Analizar', 'Analyze')
+            )}
+          </button>
+        </div>
+      </form>
+
+      {urlError && (
+        <div className="mb-6 px-4 py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-mono-jb">
+          {urlError}
+        </div>
+      )}
+
+      {/* Channel analyze button — authenticated users only */}
+      {isAuthed && (
+        <div className="mb-8 flex items-center gap-4">
+          <button
+            onClick={handleChannelAnalyze}
+            disabled={channelLoading}
+            className="px-6 py-2.5 text-sm font-mono-jb tracking-wider rounded-xl transition"
+            style={{
+              background: 'var(--yv-surface)',
+              border: '1px solid var(--yv-border)',
+              color: 'var(--yv-text-2)',
+            }}
+          >
+            {channelLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {t('Analizando canal...', 'Analyzing channel...')}
+              </span>
+            ) : (
+              t('Analizar mis vídeos (Pro)', 'Analyze my videos (Pro)')
+            )}
+          </button>
+          {allScores.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div
+                className="px-4 py-2 rounded-lg font-mono-jb text-sm font-bold"
+                style={{ background: scoreBg(avgScore), color: scoreColor(avgScore), border: `1px solid ${scoreColor(avgScore)}33` }}
+              >
+                {t('Media', 'Average')}: {avgScore}/100
+              </div>
+              <span className="text-[13px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
+                {allScores.length} {t('vídeos', 'videos')}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {channelError && (
+        <div className="mb-6 px-4 py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-mono-jb">
+          {channelError}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!urlResult && (!isAuthed || (hasLoadedChannel && channelScores.length === 0)) && !urlLoading && !channelLoading && (
+        <div className="text-center py-20">
+          <div className="text-5xl mb-4">📊</div>
+          <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
+            {t(
+              'Pega el enlace de cualquier vídeo de YouTube para obtener su SEO Score gratis.',
+              'Paste any YouTube video link to get its SEO Score for free.'
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Video scores list */}
+      <div className="space-y-4">
+        {allScores.map(video => (
+          <VideoCard
+            key={video.videoId}
+            video={video}
+            lang={lang}
+            expanded={expanded === video.videoId}
+            onToggle={() => setExpanded(expanded === video.videoId ? null : video.videoId)}
+          />
+        ))}
+      </div>
+
+      {/* CTA for unauthenticated users */}
+      {!isAuthed && urlResult && (
+        <div className="mt-10 text-center p-6 rounded-xl" style={{ background: 'var(--yv-surface)', border: '1px solid var(--yv-border)' }}>
+          <p className="font-display font-semibold text-white text-lg mb-2">
+            {t('Analiza todos los vídeos de tu canal', 'Analyze all your channel videos')}
+          </p>
+          <p className="font-mono-jb text-sm mb-4" style={{ color: 'var(--yv-text-3)' }}>
+            {t(
+              'Crea una cuenta gratis para guardar tus análisis y acceder a 14 herramientas más de optimización YouTube.',
+              'Create a free account to save your analyses and access 14+ YouTube optimization tools.'
+            )}
+          </p>
+          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">
+            {t('Crear cuenta gratis', 'Create free account')}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function SeoScorePage() {
+  const { status } = useSession();
+  const lang = useLang();
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   if (status === 'loading') {
     return (
@@ -116,247 +440,26 @@ export default function SeoScorePage() {
     );
   }
 
+  // Unauthenticated users get the page without DashboardShell
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">SEO Score</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para analizar tus vídeos.', 'Sign in to analyze your videos.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
+      <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+        <nav className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--yv-border)' }}>
+          <a href="/" className="font-display font-bold text-lg text-white">YTubViral</a>
+          <a href="/login" className="font-mono-jb text-sm px-4 py-2 rounded-lg transition" style={{ color: 'var(--yv-text-2)', border: '1px solid var(--yv-border)' }}>
+            {t('Iniciar sesión', 'Sign in')}
+          </a>
+        </nav>
+        <div className="max-w-4xl mx-auto px-6 py-10">
+          <SeoScoreContent />
         </div>
       </div>
     );
   }
 
-  const avgScore = scores.length ? Math.round(scores.reduce((s, v) => s + v.score, 0) / scores.length) : 0;
-
   return (
     <DashboardShell>
-      <div className="yv-page">
-
-        {/* Page title */}
-        <div className="yv-page-header mb-10">
-          <div className="yv-page-header__left">
-            <span className="yv-page-header__eyebrow">
-              {t('ANÁLISIS SEO', 'SEO ANALYSIS')}
-            </span>
-            <h1 className="yv-page-header__title">
-              {t('SEO Score', 'SEO Score')}{' '}
-              <span style={{ color: 'var(--yv-brand)' }}>{t('de tus vídeos.', 'for your videos.')}</span>
-            </h1>
-            <p className="yv-page-header__desc">
-              {t(
-                'Analiza título, descripción, tags, subtítulos, engagement y más. Cada vídeo recibe un score de 0 a 100 con recomendaciones específicas.',
-                'Analyze title, description, tags, captions, engagement and more. Each video gets a score from 0 to 100 with specific recommendations.'
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* Analyze button */}
-        <div className="mb-8 flex items-center gap-4">
-          <button
-            onClick={handleAnalyze}
-            disabled={loading}
-            className="btn-offset px-8 py-3 text-sm font-mono-jb tracking-wider"
-            style={{ borderRadius: '10px' }}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {t('Analizando...', 'Analyzing...')}
-              </span>
-            ) : (
-              t('Analizar mis vídeos', 'Analyze my videos')
-            )}
-          </button>
-          {scores.length > 0 && (
-            <div className="flex items-center gap-3">
-              <div
-                className="px-4 py-2 rounded-lg font-mono-jb text-sm font-bold"
-                style={{ background: scoreBg(avgScore), color: scoreColor(avgScore), border: `1px solid ${scoreColor(avgScore)}33` }}
-              >
-                {t('Media', 'Average')}: {avgScore}/100
-              </div>
-              <span className="text-[13px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
-                {scores.length} {t('vídeos', 'videos')}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {error && (
-          <div className="mb-6 px-4 py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-mono-jb">
-            {error}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {hasLoaded && scores.length === 0 && !loading && (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4">📊</div>
-            <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
-              {t(
-                'Pulsa "Analizar mis vídeos" para obtener el SEO Score de tus últimos 10 vídeos.',
-                'Click "Analyze my videos" to get the SEO Score for your last 10 videos.'
-              )}
-            </p>
-          </div>
-        )}
-
-        {/* Video scores list */}
-        <div className="space-y-4">
-          {scores.map(video => {
-            const isExpanded = expanded === video.videoId;
-            const aiTip = video.checklist.find(c => c.key === 'ai_tip');
-            const checks = video.checklist.filter(c => c.key !== 'ai_tip' && c.key !== 'thumbnail_quality');
-            const allScored = video.checklist.filter(c => c.weight > 0);
-            const passed = allScored.filter(c => c.passed).length;
-            const total = allScored.length;
-
-            return (
-              <div
-                key={video.videoId}
-                className="yv-card overflow-hidden transition-all p-0"
-              >
-                {/* Video header row */}
-                <button
-                  onClick={() => setExpanded(isExpanded ? null : video.videoId)}
-                  className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/[0.03] transition"
-                >
-                  {/* Thumbnail */}
-                  {video.thumbnail && (
-                    <img
-                      src={video.thumbnail}
-                      alt=""
-                      className="w-28 h-16 rounded-lg object-cover flex-shrink-0"
-                    />
-                  )}
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-display font-semibold text-sm truncate">{video.title || video.videoId}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-                        {fmtNum(video.views)} {t('vistas', 'views')}
-                      </span>
-                      {video.publishedAt && (
-                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
-                          {fmtDate(video.publishedAt, lang)}
-                        </span>
-                      )}
-                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
-                        {passed}/{total} {t('checks', 'checks')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Score badge */}
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <div
-                      className="min-w-[4rem] px-3 h-14 rounded-xl flex flex-col items-center justify-center font-mono-jb"
-                      style={{ background: scoreBg(video.score), border: `1px solid ${scoreColor(video.score)}33` }}
-                    >
-                      <span className="text-lg font-bold" style={{ color: scoreColor(video.score) }}>{video.score}</span>
-                      <span className="text-[11px] whitespace-nowrap" style={{ color: scoreColor(video.score), opacity: 0.7 }}>{scoreLabel(video.score, lang)}</span>
-                    </div>
-                    <svg
-                      width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                      className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                      style={{ color: 'var(--yv-text-3)' }}
-                    >
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </div>
-                </button>
-
-                {/* Expanded checklist */}
-                {isExpanded && (() => {
-                  const thumbAi = video.checklist.find(c => c.key === 'thumbnail_quality');
-                  const scoredChecks = checks.filter(c => c.weight > 0);
-                  const failedFirst = [...scoredChecks].sort((a, b) => {
-                    if (a.passed === b.passed) return b.weight - a.weight;
-                    return a.passed ? 1 : -1;
-                  });
-
-                  return (
-                    <div className="border-t p-4 space-y-2" style={{ borderColor: 'var(--yv-border)' }}>
-                      {/* AI Tip */}
-                      {aiTip && (
-                        <div className="mb-4 p-3 rounded-lg border border-purple-500/30" style={{ background: 'rgba(139,92,246,0.08)' }}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2">
-                              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                            </svg>
-                            <span className="font-mono-jb text-[13px] tracking-wider text-purple-400 uppercase">
-                              {t('Consejo IA', 'AI Tip')}
-                            </span>
-                          </div>
-                          <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>
-                            {lang === 'en' ? aiTip.detail.en : aiTip.detail.es}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Thumbnail AI analysis */}
-                      {thumbAi && (
-                        <div className="mb-4 p-3 rounded-lg border" style={{
-                          borderColor: thumbAi.passed ? 'rgba(34,197,94,0.3)' : 'rgba(232,77,91,0.3)',
-                          background: thumbAi.passed ? 'rgba(34,197,94,0.06)' : 'rgba(232,77,91,0.06)',
-                        }}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm">🖼️</span>
-                            <span className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: thumbAi.passed ? '#22c55e' : '#e84d5b' }}>
-                              {t('Análisis de thumbnail (IA)', 'Thumbnail analysis (AI)')}
-                            </span>
-                          </div>
-                          <p className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-2)' }}>
-                            {lang === 'en' ? thumbAi.detail.en : thumbAi.detail.es}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Check items — failed first, then passed, sorted by weight */}
-                      {failedFirst.map(check => (
-                        <div
-                          key={check.key}
-                          className="flex items-start gap-3 p-3 rounded-lg"
-                          style={{ background: check.passed ? 'rgba(34,197,94,0.05)' : 'rgba(232,77,91,0.05)' }}
-                        >
-                          <div className="flex-shrink-0 mt-0.5">
-                            {check.passed ? (
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5">
-                                <path d="M20 6L9 17l-5-5" />
-                              </svg>
-                            ) : (
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e84d5b" strokeWidth="2.5">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-display font-medium">
-                              {lang === 'en' ? check.label.en : check.label.es}
-                            </p>
-                            <p className="text-[13px] font-mono-jb mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
-                              {lang === 'en' ? check.detail.en : check.detail.es}
-                            </p>
-                          </div>
-                          {check.weight > 0 && (
-                            <span className="flex-shrink-0 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
-                              {t('peso', 'weight')}: {check.weight}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <SeoScoreContent />
     </DashboardShell>
   );
 }

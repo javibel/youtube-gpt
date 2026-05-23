@@ -155,8 +155,9 @@
   </div>
 
   <div class="nav-section">
-    <div class="nav-section-title">Overview</div>
-    <a class="nav-item active" data-page="home" onclick="navigate('home')"><span class="icon">📊</span> Dashboard<span class="dot"></span></a>
+    <div class="nav-section-title">Ecosistema</div>
+    <a class="nav-item active" data-page="ecosystem" onclick="navigate('ecosystem')"><span class="icon">🌐</span> Ecosystem Map<span class="dot"></span></a>
+    <a class="nav-item" data-page="home" onclick="navigate('home')"><span class="icon">📊</span> Dashboard</a>
   </div>
 
   <div class="nav-section">
@@ -174,9 +175,13 @@
   </div>
 
   <div class="nav-section">
+    <div class="nav-section-title">Outreach</div>
+    <a class="nav-item" data-page="outreach" onclick="navigate('outreach')"><span class="icon">📡</span> Pipeline</a>
+  </div>
+
+  <div class="nav-section">
     <div class="nav-section-title">YCMR — Publicacion</div>
     <a class="nav-item" data-page="meta-agent" onclick="navigate('meta-agent')"><span class="icon">📱</span> Meta (FB + IG)</a>
-    <a class="nav-item" data-page="linkedin-agent" onclick="navigate('linkedin-agent')"><span class="icon">💼</span> LinkedIn</a>
   </div>
 
   <div class="nav-section">
@@ -202,11 +207,6 @@
   </div>
 
   <div class="nav-section">
-    <div class="nav-section-title">Ecosistema</div>
-    <a class="nav-item" data-page="ecosystem" onclick="navigate('ecosystem')"><span class="icon">🌐</span> Ecosystem Map</a>
-  </div>
-
-  <div class="nav-section">
     <div class="nav-section-title">Datos</div>
     <a class="nav-item" data-page="reports" onclick="navigate('reports')"><span class="icon">📋</span> Reports</a>
   </div>
@@ -222,7 +222,7 @@
   <div class="content">
 
     <!-- ═══ HOME ═══ -->
-    <div class="page active" id="page-home">
+    <div class="page" id="page-home">
       <div class="stats-row" id="statsRow">
         <div class="stat-card"><div class="label">PM2 Status</div><div class="value" id="stat-pm2">--</div></div>
         <div class="stat-card" style="cursor:pointer" onclick="promptBalance()">
@@ -297,16 +297,22 @@
             <text x="90" y="234" text-anchor="middle" fill="#d4d4d8" font-size="12">Personas</text>
           </g>
 
-          <!-- ══ ROW 2: YCMR (center) ══ -->
-          <rect x="300" y="140" width="220" height="120" rx="10" fill="#141418" stroke="#db2777" stroke-width="1" opacity="0.7"/>
-          <text x="410" y="158" text-anchor="middle" fill="#a1a1aa" font-size="10" font-weight="600" letter-spacing="1.5">YCMR — PUBLICACION</text>
-          <g class="node-click" data-page="meta-agent">
-            <rect x="314" y="168" width="100" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="364" y="190" text-anchor="middle" fill="#d4d4d8" font-size="12">Meta Agent</text>
+          <!-- ══ ROW 2: OUTREACH (center-left) ══ -->
+          <rect x="300" y="140" width="220" height="120" rx="10" fill="#141418" stroke="#f59e0b" stroke-width="1" opacity="0.7"/>
+          <text x="410" y="158" text-anchor="middle" fill="#a1a1aa" font-size="10" font-weight="600" letter-spacing="1.5">OUTREACH</text>
+          <g class="node-click" data-page="outreach">
+            <rect x="314" y="168" width="100" height="36" rx="7" fill="#1c1c22" stroke="#f59e0b" stroke-width="1" class="hoverable"/>
+            <text x="364" y="182" text-anchor="middle" fill="#d4d4d8" font-size="10">Email + DM</text>
+            <text x="364" y="196" text-anchor="middle" fill="#71717a" font-size="9">Discover+Send</text>
           </g>
-          <g class="node-click" data-page="linkedin-agent">
-            <rect x="422" y="168" width="88" height="36" rx="7" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="466" y="190" text-anchor="middle" fill="#d4d4d8" font-size="12">LinkedIn</text>
+          <g class="node-click" data-page="outreach">
+            <rect x="422" y="168" width="88" height="36" rx="7" fill="#1c1c22" stroke="#f59e0b" stroke-width="1" class="hoverable"/>
+            <text x="466" y="182" text-anchor="middle" fill="#d4d4d8" font-size="10">Reddit</text>
+            <text x="466" y="196" text-anchor="middle" fill="#71717a" font-size="9">DM+Comment</text>
+          </g>
+          <g class="node-click" data-page="meta-agent">
+            <rect x="314" y="212" width="100" height="36" rx="7" fill="#1c1c22" stroke="#db2777" stroke-width="1" class="hoverable"/>
+            <text x="364" y="234" text-anchor="middle" fill="#d4d4d8" font-size="10">Meta Agent</text>
           </g>
 
           <!-- ══ ROW 2: Nocturnos (right) ══ -->
@@ -407,6 +413,10 @@
           <div class="card-header"><div class="card-icon" style="background:#5e1f3b">📱</div><h3>Meta Agent (YCMR)</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">Activo</span></div>
           <p>Publicacion Facebook + Instagram via Graph API v19 desde Vercel.</p>
         </div>
+        <div class="card" onclick="navigate('outreach')">
+          <div class="card-header"><div class="card-icon" style="background:#451a03">📡</div><h3>Outreach Pipeline</h3><span class="badge" style="background:var(--orange-bg);color:var(--orange)">~150/dia</span></div>
+          <p>Discover → Email → Reddit DM → Reddit Comments → Follow-up → Monitor. 7 modulos, 4 canales.</p>
+        </div>
         <div class="card" onclick="navigate('guardian')">
           <div class="card-header"><div class="card-icon" style="background:#451a03">🔒</div><h3>Guardian</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">02:15</span></div>
           <p>Auditoria seguridad: npm audit, code patterns, .env, HTTPS, TypeScript.</p>
@@ -469,7 +479,7 @@
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Persona Runner (YCML)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 2x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecuta las personas Alex y Ferran en horarios de mañana (9-11h) y noche (22-23h). Estos horarios simulan actividad humana real en redes sociales.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Follow-up</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 2x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Revisa si alguien ha respondido a comentarios de las personas. Se ejecuta despues de las personas para maximizar la ventana de deteccion de replies.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Meta Agent (YCMR)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 1x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Publica contenido en Facebook + Instagram via Graph API. Horario fijo para consistencia de la marca.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">LinkedIn Agent</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza 1x/dia</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Publica posts profesionales en LinkedIn via UGC API. Contenido adaptado al tono corporativo.</div></div>
+
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Gmail</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Lanza cada 30 min</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Monitorea el inbox de ytbeviral@gmail.com. Lee emails nuevos, genera respuestas con IA, y envia via Resend.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Ciclo nocturno (Guardian → Infra → SEO → Funnel → Social Opt. → Manager)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">02:00-03:30</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Cadena nocturna de 8+ agentes en secuencia. Se ejecutan de madrugada porque consumen recursos (IA, APIs) y no interfieren con la actividad social diurna. Scout + Watchdog solo lunes. Meta-Optimizer solo domingos.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Reports</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">08:05 diario</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Genera y envia el reporte diario por email al owner. Resume toda la actividad de las ultimas 24h: posts, comentarios, alertas, metricas.</div></div>
@@ -602,20 +612,6 @@
       </div></div>
     </div>
 
-    <!-- LINKEDIN -->
-    <div class="page" id="page-linkedin-agent">
-      <div class="detail-hero"><div class="hero-icon" style="background:#1e3a5f">💼</div><div><h1>LinkedIn Agent</h1><div class="desc">UGC Posts API v2 con image upload nativo | Vercel serverless</div></div></div>
-      <div class="section"><div class="config-grid">
-        <div class="field"><label>Carpetas de imagenes</label><input data-module="linkedin-agent" data-key="imageFolders" value="javier, oficina"><div class="hint">Dentro de public/social-images/</div></div>
-        <div class="field"><label>Dias de rotacion</label><input type="number" data-module="linkedin-agent" data-key="rotationDays" value="30"><div class="hint">No repetir imagen en N dias</div></div>
-      </div><div class="actions"><button class="btn btn-primary" onclick="saveModule('linkedin-agent')">Guardar</button></div></div>
-      <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado 1 vez al dia. Publica posts profesionales en la pagina de LinkedIn de YTubViral.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">LinkedIn API v2</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa UGC Posts API para crear posts con imagen. Upload de imagen nativo (registerUpload → PUT binary → create post).</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude genera el copy profesional adaptado al tono corporativo de LinkedIn, diferente al de Facebook/Instagram.</div></div>
-      </div></div>
-    </div>
-
     <!-- GUARDIAN -->
     <div class="page" id="page-guardian">
       <div class="detail-hero"><div class="hero-icon" style="background:#451a03">🔒</div><div><h1>Guardian</h1><div class="desc">Auditoria de seguridad automatizada — diario 02:15</div></div></div>
@@ -650,10 +646,10 @@
     <!-- WATCHDOG -->
     <div class="page" id="page-watchdog">
       <div class="detail-hero"><div class="hero-icon" style="background:#5e1f3b">⚖️</div><div><h1>Watchdog</h1><div class="desc">Compliance legal semanal — lunes 02:45</div></div></div>
-      <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="watchdog" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('watchdog')">Guardar</button></div><p style="margin-top:1rem">Verifica ToS de APIs (Meta, LinkedIn, YouTube), GDPR, politica de privacidad, licencias npm.</p></div>
+      <div class="section"><div class="config-grid"><div class="field"><label>Modelo IA</label><select data-module="watchdog" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option></select></div></div><div class="actions"><button class="btn btn-primary" onclick="saveModule('watchdog')">Guardar</button></div><p style="margin-top:1rem">Verifica ToS de APIs (Meta, YouTube), GDPR, politica de privacidad, licencias npm.</p></div>
       <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Ejecutado semanalmente los lunes a las 02:45, despues del Scout.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">APIs externas (ToS)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Verifica</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Revisa los Terms of Service de Meta Graph API, LinkedIn API, YouTube Data API para detectar cambios que puedan afectar nuestro uso.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">APIs externas (ToS)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Verifica</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Revisa los Terms of Service de Meta Graph API, YouTube Data API para detectar cambios que puedan afectar nuestro uso.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI + Manager</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Claude evalua riesgos legales y el Manager incluye alertas de compliance en el resumen ejecutivo.</div></div>
       </div></div>
     </div>
@@ -849,7 +845,7 @@
         <div class="field"><label>Max chars Reddit</label><input type="number" data-module="claude" data-key="maxCharsReddit" value="800"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('claude')">Resetear</button><button class="btn btn-primary" onclick="saveModule('claude')">Guardar</button></div></div>
       <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Persona Runner + Follow-up + Meta + LinkedIn + Gmail</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Todos los agentes que generan texto llaman a este wrapper. Es el unico punto de acceso a la API de Anthropic en el local-agent.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Persona Runner + Follow-up + Meta + Gmail</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Todos los agentes que generan texto llaman a este wrapper. Es el unico punto de acceso a la API de Anthropic en el local-agent.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Anthropic API</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Envia prompts a la API de Claude (messages endpoint). Pasa por API Guard para rate limiting y budget control antes de cada llamada.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#f59e0b">⇄</span><span style="font-weight:600">API Guard</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Bidireccional</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Antes de cada llamada, API Guard verifica rate limits, budget diario y circuit breaker. Si esta abierto, bloquea la llamada. Despues, registra tokens consumidos.</div></div>
       </div></div>
@@ -908,8 +904,114 @@
       </div></div>
     </div>
 
+    <!-- ═══ OUTREACH PIPELINE ═══ -->
+    <div class="page" id="page-outreach">
+      <div class="detail-hero"><div class="hero-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">📡</div><div><h1>Outreach Pipeline</h1><div class="desc">Sistema automatizado de adquisicion de usuarios: discover → email → DM → comment → follow-up → monitor</div></div></div>
+      <div class="tabs"><div class="tab active" onclick="switchTab(this,'out-desc')">Descripcion</div><div class="tab" onclick="switchTab(this,'out-flow')">Flujo</div><div class="tab" onclick="switchTab(this,'out-cfg')">Canales</div></div>
+
+      <div class="tab-content active" id="out-desc"><div class="section"><div class="section-title">Pipeline completo</div>
+        <p>Sistema de 6 etapas que funciona 24/7 para encontrar creadores de YouTube, contactarlos por multiples canales y convertirlos en usuarios de YTubViral.</p>
+        <ul>
+          <li><strong>Discover</strong> (outreach-discover.js) — 6x/dia. Busca canales de YouTube via API (500-25K subs), extrae email publico, calcula SEO Score del ultimo video. ~60 contactos nuevos/dia.</li>
+          <li><strong>Email Send</strong> (outreach-send.js) — 6x/dia. Envia emails personalizados via Resend con analisis SEO value-upfront (HTML + score card + tips). Hasta 60 emails/dia.</li>
+          <li><strong>Reddit DM</strong> (outreach-reddit-dm.js) — 3x/dia. Escanea 18 subreddits de YouTube, detecta creadores compartiendo sus videos, envia DM personalizado ofreciendo analisis SEO gratis. ~15 DMs/dia.</li>
+          <li><strong>Reddit Targeted</strong> (outreach-reddit-targeted.js) — 2x/dia. Encuentra posts donde creadores piden ayuda/feedback SEO, comenta con consejos utiles + mencion sutil a YTubViral usando personas Alex y Ferran. ~16 comments/dia.</li>
+          <li><strong>Follow-up</strong> (outreach-followup.js) — 2x/dia. Reenvia email a contactos que no respondieron despues de 3 dias.</li>
+          <li><strong>Monitor</strong> (outreach-monitor.js) — cada 3h. Revisa replies en Reddit posts y tweets donde publicamos.</li>
+          <li><strong>Community Posts</strong> (outreach-post.js) — 1x/dia. Publica posts de beta testers en subreddits relevantes.</li>
+        </ul>
+        <p style="margin-top:1rem"><strong>Volumen total: ~150+ interacciones/dia</strong> distribuidas en email, Reddit DMs, Reddit comments y community posts.</p>
+      </div></div>
+
+      <div class="tab-content" id="out-flow"><div class="section"><div class="section-title">Flujo de datos</div>
+        <div class="diagram-container" style="text-align:center;padding:1.5rem">
+          <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" style="width:80%;height:auto;font-family:Inter,sans-serif;margin:0 auto;display:block;">
+            <defs>
+              <marker id="oarrow" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0, 7 2.5, 0 5" fill="#f59e0b"/></marker>
+            </defs>
+
+            <!-- Discover -->
+            <rect x="10" y="100" width="120" height="50" rx="8" fill="#1c1c22" stroke="#3b82f6" stroke-width="1.5"/>
+            <text x="70" y="120" text-anchor="middle" fill="#3b82f6" font-size="10" font-weight="600">DISCOVER</text>
+            <text x="70" y="135" text-anchor="middle" fill="#71717a" font-size="9">YouTube API</text>
+
+            <!-- Email -->
+            <rect x="160" y="60" width="100" height="45" rx="8" fill="#1c1c22" stroke="#ec4899" stroke-width="1"/>
+            <text x="210" y="80" text-anchor="middle" fill="#ec4899" font-size="10" font-weight="600">EMAIL</text>
+            <text x="210" y="93" text-anchor="middle" fill="#71717a" font-size="9">Resend</text>
+
+            <!-- Reddit DM -->
+            <rect x="160" y="115" width="100" height="45" rx="8" fill="#1c1c22" stroke="#f59e0b" stroke-width="1"/>
+            <text x="210" y="135" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="600">REDDIT DM</text>
+            <text x="210" y="148" text-anchor="middle" fill="#71717a" font-size="9">Puppeteer</text>
+
+            <!-- Reddit Comment -->
+            <rect x="160" y="170" width="100" height="45" rx="8" fill="#1c1c22" stroke="#f59e0b" stroke-width="1"/>
+            <text x="210" y="190" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="600">REDDIT CMT</text>
+            <text x="210" y="203" text-anchor="middle" fill="#71717a" font-size="9">Personas</text>
+
+            <!-- Follow-up -->
+            <rect x="300" y="85" width="100" height="45" rx="8" fill="#1c1c22" stroke="#a855f7" stroke-width="1"/>
+            <text x="350" y="105" text-anchor="middle" fill="#a855f7" font-size="10" font-weight="600">FOLLOW-UP</text>
+            <text x="350" y="118" text-anchor="middle" fill="#71717a" font-size="9">3 dias</text>
+
+            <!-- Monitor -->
+            <rect x="300" y="150" width="100" height="45" rx="8" fill="#1c1c22" stroke="#22c55e" stroke-width="1"/>
+            <text x="350" y="170" text-anchor="middle" fill="#22c55e" font-size="10" font-weight="600">MONITOR</text>
+            <text x="350" y="183" text-anchor="middle" fill="#71717a" font-size="9">cada 3h</text>
+
+            <!-- Tracker -->
+            <rect x="440" y="110" width="110" height="50" rx="8" fill="#1c1c22" stroke="#52525b" stroke-width="1.5"/>
+            <text x="495" y="130" text-anchor="middle" fill="#a1a1aa" font-size="10" font-weight="600">TRACKER</text>
+            <text x="495" y="145" text-anchor="middle" fill="#71717a" font-size="9">outreach-tracker.json</text>
+
+            <!-- Conversion -->
+            <rect x="580" y="110" width="110" height="50" rx="8" fill="#1c1c22" stroke="#22c55e" stroke-width="1.5"/>
+            <text x="635" y="130" text-anchor="middle" fill="#22c55e" font-size="10" font-weight="600">CONVERSION</text>
+            <text x="635" y="145" text-anchor="middle" fill="#71717a" font-size="9">ytubviral.com/signup</text>
+
+            <!-- Arrows -->
+            <path d="M130 115 L160 82" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#oarrow)" opacity="0.6"/>
+            <path d="M130 125 L160 137" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#oarrow)" opacity="0.6"/>
+            <path d="M130 135 L160 190" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#oarrow)" opacity="0.6"/>
+            <path d="M260 82 L300 100" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#oarrow)" opacity="0.5"/>
+            <path d="M260 137 L300 165" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#oarrow)" opacity="0.5"/>
+            <path d="M400 107 L440 130" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#oarrow)" opacity="0.5"/>
+            <path d="M400 172 L440 140" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#oarrow)" opacity="0.5"/>
+            <path d="M550 135 L580 135" stroke="#22c55e" stroke-width="1.2" fill="none" marker-end="url(#oarrow)" opacity="0.6"/>
+          </svg>
+        </div>
+      </div></div>
+
+      <div class="tab-content" id="out-cfg"><div class="section"><div class="section-title">Canales activos</div>
+        <table>
+          <thead><tr><th>Canal</th><th>Frecuencia</th><th>Volumen/dia</th><th>Modulo</th></tr></thead>
+          <tbody>
+            <tr><td>Email (Resend)</td><td>6x/dia (7:45-20:45)</td><td>~60 emails</td><td>outreach-send.js</td></tr>
+            <tr><td>Reddit DMs</td><td>3x/dia (9:15, 14:15, 19:15)</td><td>~15 DMs</td><td>outreach-reddit-dm.js</td></tr>
+            <tr><td>Reddit Comments</td><td>2x/dia (11:00, 18:00)</td><td>~16 comments</td><td>outreach-reddit-targeted.js</td></tr>
+            <tr><td>Community Posts</td><td>1x/dia (11:00)</td><td>1-2 posts</td><td>outreach-post.js</td></tr>
+            <tr><td>Discovery</td><td>6x/dia (7:30-20:30)</td><td>~60 contactos</td><td>outreach-discover.js</td></tr>
+            <tr><td>Follow-up</td><td>2x/dia (10:00, 16:00)</td><td>Variable</td><td>outreach-followup.js</td></tr>
+            <tr><td>Monitor</td><td>Cada 3h (9-21h)</td><td>—</td><td>outreach-monitor.js</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section"><div class="section-title">Cuentas usadas</div>
+        <table>
+          <thead><tr><th>Cuenta</th><th>Perfil</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td>brand-reddit</td><td>chrome-profiles/brand-reddit</td><td>DMs directos, community posts</td></tr>
+            <tr><td>persona-alex</td><td>chrome-profiles/persona-alex</td><td>Reddit targeted comments</td></tr>
+            <tr><td>persona-ferran</td><td>chrome-profiles/persona-ferran</td><td>Reddit targeted comments</td></tr>
+            <tr><td>hello@ytubviral.com</td><td>Resend API</td><td>Emails de outreach + follow-up</td></tr>
+          </tbody>
+        </table>
+      </div></div>
+    </div>
+
     <!-- ═══ ECOSYSTEM MAP ═══ -->
-    <div class="page" id="page-ecosystem">
+    <div class="page active" id="page-ecosystem">
       <div class="detail-hero"><div class="hero-icon" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">🌐</div><div><h1>Ecosystem Map</h1><div class="desc">Relaciones entre YTubViral, usuarios y plataformas externas — click en cada bloque para ver detalles</div></div></div>
 
       <div class="stats-row" id="eco-stats"></div>
@@ -943,10 +1045,11 @@
 
           <!-- ══ LOCAL AGENT (center bottom) ══ -->
           <g class="eco-node" data-eco="pm2" style="cursor:pointer">
-            <rect x="350" y="440" width="300" height="80" rx="12" fill="#141418" stroke="#f59e0b" stroke-width="1.5"/>
-            <text x="500" y="465" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" letter-spacing="1">LOCAL AGENT (PM2)</text>
-            <text x="500" y="485" text-anchor="middle" fill="#d4d4d8" font-size="12">YCML + YCMR + Nocturnos</text>
-            <text x="500" y="502" text-anchor="middle" fill="#71717a" font-size="10">Sentinel · Personas · Guardian · Scout</text>
+            <rect x="330" y="440" width="340" height="90" rx="12" fill="#141418" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="500" y="462" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" letter-spacing="1">LOCAL AGENT (PM2)</text>
+            <text x="500" y="482" text-anchor="middle" fill="#d4d4d8" font-size="12">YCML + Outreach + YCMR + Nocturnos</text>
+            <text x="500" y="498" text-anchor="middle" fill="#71717a" font-size="10">Sentinel · Personas · Outreach (7 modulos)</text>
+            <text x="500" y="514" text-anchor="middle" fill="#71717a" font-size="10">Guardian · Optimizers · Manager · Doctor</text>
           </g>
 
           <!-- ══ CLOUDFLARE (top center) ══ -->
@@ -1021,17 +1124,11 @@
 
           <!-- ══ CHROME/PUPPETEER (bottom) ══ -->
           <g class="eco-node" data-eco="chrome" style="cursor:pointer">
-            <rect x="350" y="555" width="300" height="50" rx="10" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
-            <text x="500" y="577" text-anchor="middle" fill="#a1a1aa" font-size="11" font-weight="600">CHROME (Puppeteer Stealth)</text>
-            <text x="500" y="593" text-anchor="middle" fill="#71717a" font-size="10">Twitter · Reddit · LinkedIn</text>
+            <rect x="330" y="565" width="340" height="50" rx="10" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
+            <text x="500" y="587" text-anchor="middle" fill="#a1a1aa" font-size="11" font-weight="600">CHROME (Puppeteer Stealth)</text>
+            <text x="500" y="603" text-anchor="middle" fill="#71717a" font-size="10">Twitter · Reddit (DMs + Comments)</text>
           </g>
 
-          <!-- ══ LINKEDIN (bottom far right) ══ -->
-          <g class="eco-node" data-eco="linkedin" style="cursor:pointer">
-            <rect x="780" y="510" width="190" height="55" rx="10" fill="#1c1c22" stroke="#3b82f6" stroke-width="1" class="hoverable"/>
-            <text x="875" y="532" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">LINKEDIN</text>
-            <text x="875" y="548" text-anchor="middle" fill="#71717a" font-size="10">API v2 · YCMR publishing</text>
-          </g>
 
           <!-- ═══ CONNECTIONS ═══ -->
 
@@ -1063,15 +1160,13 @@
           <!-- Local Agent → Gmail API -->
           <path d="M650 490 L780 465" stroke="#f59e0b" stroke-width="1" fill="none" marker-end="url(#earrow-o)" opacity="0.4"/>
           <!-- Local Agent → Chrome/Puppeteer -->
-          <path d="M500 520 L500 555" stroke="#52525b" stroke-width="1.2" fill="none" marker-end="url(#earrow)" opacity="0.5"/>
+          <path d="M500 530 L500 565" stroke="#52525b" stroke-width="1.2" fill="none" marker-end="url(#earrow)" opacity="0.5"/>
           <!-- Local Agent → GSC -->
           <path d="M350 490 L220 400" stroke="#22c55e" stroke-width="1" fill="none" marker-end="url(#earrow-g)" opacity="0.4"/>
           <!-- Local Agent → YouTube API -->
           <path d="M350 500 L220 470" stroke="#ef4444" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
           <!-- Local Agent → Meta -->
           <path d="M650 480 L780 395" stroke="#3b82f6" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
-          <!-- Local Agent → LinkedIn -->
-          <path d="M650 505 L780 535" stroke="#3b82f6" stroke-width="1" fill="none" marker-end="url(#earrow)" opacity="0.4"/>
           <!-- Local Agent → Neon -->
           <path d="M650 460 L780 210" stroke="#22c55e" stroke-width="1" fill="none" marker-end="url(#earrow-g)" opacity="0.3"/>
         </svg>
@@ -1131,7 +1226,7 @@ const API = window.location.origin;
 
 
 // ── Navigation ──
-let currentPage = 'home';
+let currentPage = 'ecosystem';
 function navigate(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const page = document.getElementById('page-' + pageId);
@@ -1333,9 +1428,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadStatus();
   loadBalance();
   loadOverrides();
+  loadEcoData();
   setInterval(loadStatus, 30000);
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') navigate('home'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') navigate('ecosystem'); });
 
 // ── Social Overrides ──
 async function loadOverrides() {
@@ -1720,11 +1816,11 @@ const ECO_INFO = {
     desc: 'Base de datos PostgreSQL serverless. Es el nexo entre la web y el agente local.',
     connections: [
       { dir: 'in', from: 'YTubViral (Vercel)', why: 'La web lee/escribe usuarios, generaciones, suscripciones, sesiones y feedback via Prisma ORM.' },
-      { dir: 'in', from: 'Local Agent', why: 'El agente lee/escribe acciones sociales (likes, replies, posts), prospectos LinkedIn, mensajes Gmail y reportes via driver pg directo.' },
+      { dir: 'in', from: 'Local Agent', why: 'El agente lee/escribe acciones sociales (likes, replies, posts), mensajes Gmail y reportes via driver pg directo.' },
     ],
     sections: [
       { title: 'Conexion', items: ['Region: eu-west-2 (London)', 'Branch: main', 'Pooler: habilitado', 'SSL: requerido'] },
-      { title: 'Tablas principales', items: ['User, Account, Session (auth)', 'Generation, Subscription (producto)', 'SocialPost, SocialMessage (redes)', 'LinkedinProspect, LinkedinAction', 'TwitterAction, RedditAction', 'WaitlistEntry, Review, Feedback'] },
+      { title: 'Tablas principales', items: ['User, Account, Session (auth)', 'Generation, Subscription (producto)', 'SocialPost, SocialMessage (redes)', 'TwitterAction, RedditAction', 'WaitlistEntry, Review, Feedback'] },
       { title: 'Patron de acceso compartido', items: ['Web (Vercel): Prisma ORM — tipado, migraciones', 'Local Agent: pg driver — queries directas SQL', 'Misma BD, mismas tablas, sin conflictos porque escriben en columnas/tablas diferentes'] },
     ],
   },
@@ -1740,6 +1836,7 @@ const ECO_INFO = {
       { title: 'Uso en Web (Vercel)', items: ['14 herramientas de generacion', 'AI Coach (conversacional, streaming)', 'Prompt caching activado (ahorra ~80% en prompts repetidos)'] },
       { title: 'Uso en Local Agent', items: ['claude.js: genera tweets y Reddit replies para personas', 'gmail agent: genera respuestas automaticas a emails', 'Guardian: analiza codigo fuente buscando vulnerabilidades', 'Scout: analiza webs de competidores', 'Manager: sintetiza todos los reportes nocturnos'] },
       { title: 'Protecciones (API Guard)', items: ['Rate limit: 10 calls/min', 'Budget diario: 200K tokens', 'Circuit breaker: 5 fallos → pausa 5min', 'Max tokens por llamada: 4000'] },
+      { title: 'Auto-heal (Doctor)', items: ['3 capas: KNOWN patterns → LEARNED patterns → Claude AI', 'Patrones aprendidos ahorran tokens (0-cost heal)', 'Meta-Optimizer promueve/poda patrones semanalmente'] },
     ],
   },
   stripe: {
@@ -1766,7 +1863,7 @@ const ECO_INFO = {
     sections: [
       { title: 'Direcciones de dominio', items: ['hello@ytubviral.com — reportes, notificaciones generales', 'support@ytubviral.com — auto-replies a usuarios, replyTo', 'legal@ytubviral.com — avisos legales (futuro)', 'privacy@ytubviral.com — privacidad (futuro)'] },
       { title: 'Emails desde la Web', items: ['Verificacion de email (signup) — isTransactional: sin List-Unsubscribe', 'Reset/cambio de contraseña — isTransactional', 'Waitlist welcome', 'Feedback requests'] },
-      { title: 'Emails desde Local Agent', items: ['Daily report → javijimenoplata@gmail.com', 'Persona report → javijimenoplata@gmail.com', 'Session expired alerts → javijimenoplata@gmail.com', 'Gmail auto-replies → usuario que escribio', 'Email forwards → javijimenoplata@gmail.com'] },
+      { title: 'Emails desde Local Agent', items: ['Outreach: emails personalizados de SEO a creadores YouTube (~60/dia)', 'Outreach follow-up: reenvios a no-respondidos despues de 3 dias', 'Daily report → javijimenoplata@gmail.com', 'Persona report → javijimenoplata@gmail.com', 'Session expired alerts → javijimenoplata@gmail.com', 'Gmail auto-replies → usuario que escribio', 'Email forwards → javijimenoplata@gmail.com'] },
       { title: 'Autenticacion DNS', items: ['SPF PASS: include:send.resend.com en registro TXT', 'DKIM PASS: resend._domainkey con clave publica', 'DMARC PASS: p=quarantine'] },
     ],
   },
@@ -1778,7 +1875,7 @@ const ECO_INFO = {
       { dir: 'related', to: 'YTubViral (Vercel)', why: 'Google rastrea ytubviral.com siguiendo el sitemap.xml generado por la web. No hay conexion API directa desde Vercel — la indexacion se gestiona desde el agente local.' },
     ],
     sections: [
-      { title: 'Estado', items: ['30+ paginas indexadas', 'Sitemap: /sitemap.xml (generado por app/sitemap.ts)', 'Indexacion solicitada manualmente tras cada nuevo articulo/pagina'] },
+      { title: 'Estado', items: ['70 URLs en sitemap, ~2 indexadas (/ y /blog) — resto en Discovered', 'Sitemap: /sitemap.xml (generado por app/sitemap.ts)', 'SEO Optimizer monitorea estado diariamente y alerta anomalias', 'Indexacion solicitada manualmente tras cada nuevo articulo/pagina'] },
       { title: 'Scripts locales', items: ['gsc-index-urls.js — lista de URLs a indexar, las envia a la API', 'gsc-inspect-urls.js — verifica si cada URL esta indexada o pendiente'] },
       { title: 'URLs indexadas', items: ['Landing, pricing, features/* (14 feature pages)', 'Blog (16 articulos)', 'Learning Hub (14 guias publicas)', 'Legal (terms, privacy, legal)', 'Gear, extension, launch'] },
     ],
@@ -1796,9 +1893,10 @@ const ECO_INFO = {
   },
   youtubeApi: {
     title: 'YouTube Data API', icon: '▶️', color: '#ef4444',
-    desc: 'Datos de canales, videos y analytics de YouTube.',
+    desc: 'Datos de canales, videos y analytics de YouTube. Tambien usado para outreach discovery.',
     connections: [
       { dir: 'in', from: 'YTubViral (Vercel)', why: 'Cuando un usuario conecta su canal, la web usa OAuth2 para obtener acceso y luego consulta estadisticas, metadata de videos y analytics para las herramientas de analisis.' },
+      { dir: 'in', from: 'Local Agent (Outreach)', why: 'Outreach Discover busca canales de YouTube via API Key (search + channels + videos endpoints). Encuentra creadores con 500-25K subs, extrae emails publicos de sus descripciones, y calcula SEO score del ultimo video. ~600 quota units por run, 6 runs/dia.' },
     ],
     sections: [
       { title: 'Autenticacion', items: ['OAuth2: el usuario autoriza acceso a su canal', 'API Key: para datos publicos (search, trending)', 'Refresh token almacenado en BD por usuario'] },
@@ -1829,17 +1927,6 @@ const ECO_INFO = {
       { title: 'Flujo de publicacion', items: ['1. Scheduler trigger → meta-agent.js', '2. Selecciona imagen del banco (rotacion)', '3. Claude genera texto del post', '4. Publica en FB Page via Graph API', '5. Publica en IG via Container → Publish flow', '6. Guarda en BD como SocialPost'] },
     ],
   },
-  linkedin: {
-    title: 'LinkedIn', icon: '💼', color: '#3b82f6',
-    desc: 'Publicacion automatica y prospecting.',
-    connections: [
-      { dir: 'in', from: 'Local Agent', why: 'El LinkedIn Agent publica posts con imagenes via API, y hace prospecting (visitas a perfiles, conexiones) via Puppeteer.' },
-    ],
-    sections: [
-      { title: 'API', items: ['LinkedIn API v2', 'OAuth2 access token', 'Posts con imagenes rotativas (carpeta javier/)'] },
-      { title: 'Funciones', items: ['Publicacion automatica (texto + imagen)', 'Prospecting: visitar perfiles de creadores', 'Rotacion de imagenes cada 30 dias'] },
-    ],
-  },
   pm2: {
     title: 'Local Agent (PM2)', icon: '⚙️', color: '#f59e0b',
     desc: 'Sistema de agentes autonomos corriendo 24/7 en la maquina local.',
@@ -1848,29 +1935,29 @@ const ECO_INFO = {
       { dir: 'out', to: 'Anthropic', why: 'Genera contenido para tweets, Reddit replies, email replies y analisis nocturnos (Guardian, Scout, Watchdog, Manager).' },
       { dir: 'out', to: 'Resend', why: 'Envia reportes diarios, alertas y auto-replies via email de dominio (@ytubviral.com).' },
       { dir: 'out', to: 'Gmail API', why: 'Lee inbox de ytbeviral@gmail.com cada 30 min para detectar emails de usuarios o plataformas.' },
-      { dir: 'out', to: 'Chrome (Puppeteer)', why: 'Lanza Chrome headless para engagement en Twitter/Reddit (personas) y prospecting en LinkedIn.' },
+      { dir: 'out', to: 'Chrome (Puppeteer)', why: 'Lanza Chrome headless para engagement en Twitter/Reddit (personas).' },
       { dir: 'out', to: 'Search Console', why: 'Scripts locales solicitan indexacion de nuevas URLs y verifican estado.' },
       { dir: 'out', to: 'Meta (FB + IG)', why: 'Publica posts automaticos en Facebook Page e Instagram via Graph API.' },
-      { dir: 'out', to: 'LinkedIn', why: 'Publica posts y hace prospecting.' },
       { dir: 'out', to: 'YouTube Data API', why: 'Consulta datos de canal para los reportes nocturnos (Social Optimizer).' },
     ],
     sections: [
       { title: 'Agentes Core', items: ['Scheduler (orquestador — index.js)', 'Sentinel (uptime cada 5 min — prioridad 1)', 'Doctor (auto-diagnostico y self-healing)'] },
       { title: 'YCML (Engagement)', items: ['Persona Runner: Alex + Ferran en Twitter/Reddit', 'Follow-up: detecta replies y responde', 'Humanize: delays aleatorios, skip sessions'] },
-      { title: 'YCMR (Publicacion)', items: ['Meta Agent: FB + IG via Graph API', 'LinkedIn Agent: posts + prospecting'] },
-      { title: 'Nocturnos (02:00-03:15)', items: ['Guardian: auditoria de seguridad del codigo', 'Scout: analisis de competencia', 'Watchdog: cumplimiento legal (terms, privacy)', 'Social Optimizer: metricas y tasa de mencion', 'Manager: sintesis ejecutiva de todos los reportes'] },
+      { title: 'Outreach Pipeline (7 modulos)', items: ['Discover: busca creadores YouTube via API (6x/dia, ~60 contactos)', 'Email Send: emails personalizados con SEO score via Resend (6x/dia, ~60 emails)', 'Reddit DM: DMs a creadores en 18 subreddits (3x/dia, ~15 DMs)', 'Reddit Targeted: comments utiles en posts de ayuda/feedback (2x/dia, ~16 comments)', 'Follow-up: reenvio a no-respondidos despues de 3 dias (2x/dia)', 'Community Posts: posts de beta testers en subreddits (1x/dia)', 'Monitor: revisa replies cada 3h (9-21h)'] },
+      { title: 'YCMR (Publicacion)', items: ['Meta Agent: FB + IG via Graph API'] },
+      { title: 'Nocturnos (02:00-03:15)', items: ['Guardian: auditoria de seguridad del codigo', 'Scout: analisis de competencia', 'Watchdog: cumplimiento legal (terms, privacy)', 'Social/SEO/Funnel/Infra Optimizers: analisis diario con Claude', 'Manager: sintesis ejecutiva de todos los reportes', 'Meta-Optimizer: evaluacion semanal de la efectividad del sistema', 'Feature Monitor: health check end-to-end de 24 features (2x/dia)'] },
     ],
   },
   chrome: {
     title: 'Chrome (Puppeteer Stealth)', icon: '🌐', color: '#a1a1aa',
     desc: 'Navegador headless que simula usuarios reales en redes sociales.',
     connections: [
-      { dir: 'in', from: 'Local Agent', why: 'El Persona Runner y LinkedIn Agent lanzan Chrome con perfiles persistentes para hacer engagement (likes, replies) y prospecting sin ser detectados como bots.' },
-      { dir: 'out', to: 'Twitter/Reddit/LinkedIn', why: 'Chrome navega a las plataformas sociales, busca contenido relevante, interactua (like, reply, connect) y guarda las acciones en BD.' },
+      { dir: 'in', from: 'Local Agent', why: 'El Persona Runner lanza Chrome con perfiles persistentes para hacer engagement (likes, replies) sin ser detectados como bots.' },
+      { dir: 'out', to: 'Twitter/Reddit', why: 'Chrome navega a las plataformas sociales, busca contenido relevante, interactua (like, reply) y guarda las acciones en BD.' },
     ],
     sections: [
       { title: 'Configuracion', items: ['Puppeteer Extra + Stealth Plugin (anti-deteccion)', 'Chrome real instalado localmente', 'Headless por defecto', 'Protocol timeout: 60s'] },
-      { title: 'Perfiles persistentes', items: ['brand — cuenta principal de Twitter', 'alex — persona Alex Sastre (Twitter + Reddit)', 'ferran — persona Ferran Gomez (Twitter + Reddit)', 'Cada perfil tiene cookies, localStorage y session propios'] },
+      { title: 'Perfiles persistentes', items: ['brand — cuenta principal de Twitter', 'brand-reddit — cuenta YTubViral Reddit (outreach DMs + community posts)', 'alex — persona Alex Sastre (Twitter + Reddit engagement + outreach comments)', 'ferran — persona Ferran Gomez (Twitter + Reddit engagement + outreach comments)', 'Cada perfil tiene cookies, localStorage y session propios'] },
       { title: 'Auto-heal (3 capas)', items: ['browser.js: detecta lockfiles bloqueados → mata zombies → limpia locks', 'resilience.js: 3 fallos consecutivos → auto-heal completo (cierra, mata, limpia, resetea)', 'doctor.js: diagnostica causa raiz y sugiere fix antes de alertar humano'] },
     ],
   },

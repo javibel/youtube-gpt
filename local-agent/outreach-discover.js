@@ -62,12 +62,12 @@ const SEARCH_QUERIES = [
   { q: 'primeros 1000 suscriptores youtube', lang: 'es', niche: 'Crecimiento YouTube' },
 ];
 
-// Max new contacts to add per run (4 runs/day × 4 = ~16 new contacts/day)
-const MAX_NEW_PER_RUN = 4;
+// Max new contacts to add per run (6 runs/day × 10 = ~60 new contacts/day)
+const MAX_NEW_PER_RUN = 10;
 
 // Sub range to target (too small = hobbyist, too big = unreachable)
 const MIN_SUBS = 500;
-const MAX_SUBS = 100000;
+const MAX_SUBS = 25000;
 
 // Email regex — matches common patterns in channel descriptions
 const EMAIL_RE = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;

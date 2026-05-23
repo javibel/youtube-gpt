@@ -23,6 +23,8 @@ const { runFollowUp } = require('./outreach-followup');
 const { runDiscovery } = require('./outreach-discover');
 const { runOutreachSend } = require('./outreach-send');
 const { runOutreachPost } = require('./outreach-post');
+const { runRedditDm } = require('./outreach-reddit-dm');
+const { runRedditTargeted } = require('./outreach-reddit-targeted');
 const { runFeatureMonitor } = require('./feature-monitor');
 const { runCleanup: runGmailCleanup } = require('./gmail-cleanup');
 
@@ -193,23 +195,23 @@ cron.schedule('45 2 * * 1', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
-// Outreach Discovery — 4x/day, find new YouTube creators via API
+// Outreach Discovery — 6x/day, find new YouTube creators via API
 // Staggered: discover at :30, send at :45 (gives 15min to populate tracker)
-cron.schedule('30 8,12,16,20 * * *', async () => {
+cron.schedule('30 7,9,11,14,17,20 * * *', async () => {
   console.log('[cron] Outreach discovery — finding new creators');
   await runDiscovery().catch(err => console.error('[outreach-discover]', err.message));
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
-// Outreach Send — 4x/day, send emails to pending-email contacts (15min after discovery)
-cron.schedule('45 8,12,16,20 * * *', async () => {
+// Outreach Send — 6x/day, send emails to pending-email contacts (15min after discovery)
+cron.schedule('45 7,9,11,14,17,20 * * *', async () => {
   console.log('[cron] Outreach send — emailing new contacts');
   await runOutreachSend().catch(err => console.error('[outreach-send]', err.message));
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
-// Outreach Follow-up — daily at 10:00, sends follow-up emails to contacts due today
-cron.schedule('0 10 * * *', async () => {
+// Outreach Follow-up — 2x/day, sends follow-up emails to contacts due today
+cron.schedule('0 10,16 * * *', async () => {
   console.log('[cron] Outreach follow-up — checking for due contacts');
   await runFollowUp().catch(err => console.error('[outreach-followup]', err.message));
   await db.disconnect().catch(() => {});
@@ -220,6 +222,18 @@ cron.schedule('0 11 * * *', async () => {
   console.log('[cron] Outreach post — publishing community posts');
   await runOutreachPost().catch(err => console.error('[outreach-post]', err.message));
   await db.disconnect().catch(() => {});
+}, { timezone: 'Europe/Madrid' });
+
+// Outreach Reddit DMs — 3x/day, DM creators who share videos in YouTube subreddits
+cron.schedule('15 9,14,19 * * *', async () => {
+  console.log('[cron] Outreach Reddit DM — sending personalized DMs to creators');
+  await runRedditDm().catch(err => console.error('[outreach-reddit-dm]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
+// Outreach Reddit Targeted Comments — 2x/day, reply to help/feedback posts
+cron.schedule('0 11,18 * * *', async () => {
+  console.log('[cron] Outreach Reddit targeted — commenting on feedback/help posts');
+  await runRedditTargeted().catch(err => console.error('[outreach-reddit-targeted]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
 // Outreach Monitor — every 3 hours 9-23h, check for new replies to outreach posts

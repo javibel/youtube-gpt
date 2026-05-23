@@ -73,12 +73,6 @@
     "duplicateCheck": true,
     "fallbackImage": "/social-images/default.jpg"
   },
-  "linkedin-agent": {
-    "imageFolders": [
-      "javier"
-    ],
-    "rotationDays": 30
-  },
   "browser": {
     "chromePath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
     "headless": true,
@@ -150,16 +144,11 @@
       "mentionRate": 0.3
     }
   },
-  "_lastModified": "2026-05-21T00:50:56.087Z",
+  "_lastModified": "2026-05-23T00:50:52.434Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 2.120328,
+    "amount": 26.82,
     "currency": "USD",
-    "totalCredit": 6,
-    "totalSpent": 3.84,
-    "lastChecked": "2026-05-22T01:15:10.518Z",
-    "lastDeduction": "2026-05-22T17:00:21.467Z",
-    "totalSpentToday": 0.039672,
-    "spendDate": "2026-05-22"
+    "lastChecked": "2026-05-23T07:28:29.440Z"
   }
 }

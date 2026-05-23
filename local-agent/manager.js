@@ -18,7 +18,7 @@ const mem = require('./agent-memory');
 const { registerFixes, applyFixes, getRecentFixes, getEffectivenessReport, getDisabledFixes, readConfig, writeConfig } = require('./auto-fix');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
-const ANTHROPIC_CREDIT_TOTAL = 6.00; // USD loaded into Anthropic prepaid credits (remaining: check console)
+// Balance is managed via the dashboard (PUT /api/balance) — agent-config.json is the source of truth
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -261,44 +261,23 @@ function buildRawSummary(date) {
 }
 
 // ── Anthropic API balance ─────────────────────────────────────────────────
+// Source of truth: agent-config.json._anthropicBalance.amount
+// Set via dashboard PUT /api/balance. claude.js deducts per-call costs.
+// Manager only READS, never overwrites.
 
-async function getAnthropicBalance() {
-  const adminKey = process.env.ANTHROPIC_ADMIN_KEY;
-  if (!adminKey) return null;
-
+function getAnthropicBalance() {
   try {
-    // Query all costs from account start to now
-    let totalCents = 0;
-    const now = new Date().toISOString();
-    const months = [];
-    for (let y = 2025; y <= new Date().getFullYear(); y++) {
-      for (let m = 1; m <= 12; m++) {
-        const start = `${y}-${String(m).padStart(2, '0')}-01T00:00:00Z`;
-        if (start > now) break;
-        const endM = m === 12
-          ? `${y + 1}-01-01T00:00:00Z`
-          : `${y}-${String(m + 1).padStart(2, '0')}-01T00:00:00Z`;
-        months.push({ start, end: endM > now ? now : endM });
-      }
-    }
-
-    for (const { start, end } of months) {
-      const url = `https://api.anthropic.com/v1/organizations/cost_report?starting_at=${start}&ending_at=${end}&bucket_width=1d&limit=31`;
-      const res = await fetch(url, {
-        headers: { 'anthropic-version': '2023-06-01', 'x-api-key': adminKey },
-      });
-      const data = await res.json();
-      if (data.error) continue;
-      for (const b of data.data || []) {
-        for (const r of b.results || []) totalCents += parseFloat(r.amount || '0');
-      }
-    }
-
-    const totalSpent = totalCents / 100;
-    const balance = ANTHROPIC_CREDIT_TOTAL - totalSpent;
-    return { totalCredit: ANTHROPIC_CREDIT_TOTAL, totalSpent: +totalSpent.toFixed(2), balance: +balance.toFixed(2) };
+    const cfgPath = path.join(__dirname, 'agent-config.json');
+    const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
+    const bal = cfg._anthropicBalance || {};
+    return {
+      balance: bal.amount ?? null,
+      totalSpent: bal.totalSpent ?? null,
+      spentToday: bal.totalSpentToday ?? 0,
+      lastChecked: bal.lastChecked ?? null,
+    };
   } catch (err) {
-    console.warn('[manager] Anthropic balance check failed:', err.message);
+    console.warn('[manager] Anthropic balance read failed:', err.message);
     return null;
   }
 }
@@ -313,26 +292,11 @@ async function runManager() {
   const today = new Date().toISOString().slice(0, 10);
   const sections = buildRawSummary(today);
 
-  // Anthropic API balance
-  console.log('[manager] Checking Anthropic API balance...');
-  const anthropicBalance = await getAnthropicBalance();
-
-  // Sync balance to dashboard config for real-time display
-  if (anthropicBalance) {
-    try {
-      const cfgPath = require('path').join(__dirname, 'agent-config.json');
-      const cfgFs = require('fs');
-      const cfg = cfgFs.existsSync(cfgPath) ? JSON.parse(cfgFs.readFileSync(cfgPath, 'utf8')) : {};
-      cfg._anthropicBalance = {
-        amount: anthropicBalance.balance,
-        currency: 'USD',
-        totalCredit: anthropicBalance.totalCredit,
-        totalSpent: anthropicBalance.totalSpent,
-        lastChecked: new Date().toISOString(),
-      };
-      cfgFs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2), 'utf8');
-      console.log(`[manager] Dashboard balance synced: $${anthropicBalance.balance.toFixed(2)}`);
-    } catch (err) { console.warn('[manager] Failed to sync balance to dashboard:', err.message); }
+  // Anthropic API balance — read from agent-config.json (set via dashboard)
+  console.log('[manager] Reading Anthropic API balance...');
+  const anthropicBalance = getAnthropicBalance();
+  if (anthropicBalance?.balance != null) {
+    console.log(`[manager] Balance: $${anthropicBalance.balance.toFixed(2)}`);
   }
 
   // ── Collect memory summaries from all agents ──────────────────────────
@@ -521,12 +485,13 @@ Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
   emailBody += `   Tokens: ${apiStats.dailyTokensUsed} / ${apiStats.dailyBudget} (${apiStats.budgetUsedPercent}%)\n`;
   emailBody += `   Circuit breaker: ${apiStats.circuitBreakerOpen ? 'ABIERTO ⚠️' : 'Cerrado ✅'}\n`;
 
-  if (anthropicBalance) {
-    const balanceIcon = anthropicBalance.balance < 1 ? '🔴' : anthropicBalance.balance < 2 ? '🟡' : '🟢';
+  if (anthropicBalance?.balance != null) {
+    const balanceIcon = anthropicBalance.balance < 1 ? '🔴' : anthropicBalance.balance < 5 ? '🟡' : '🟢';
     emailBody += `\n${'─'.repeat(60)}\n${balanceIcon} SALDO ANTHROPIC API\n`;
-    emailBody += `   Crédito total: $${anthropicBalance.totalCredit.toFixed(2)}\n`;
-    emailBody += `   Gastado: $${anthropicBalance.totalSpent.toFixed(2)}\n`;
-    emailBody += `   Saldo restante: $${anthropicBalance.balance.toFixed(2)}\n`;
+    emailBody += `   Saldo: $${anthropicBalance.balance.toFixed(2)}\n`;
+    if (anthropicBalance.spentToday > 0) {
+      emailBody += `   Gasto hoy: $${anthropicBalance.spentToday.toFixed(4)}\n`;
+    }
   }
 
   emailBody += `\n${'='.repeat(60)}\nYTubViral Agent System — Manager v2.0 (con memoria)\n`;

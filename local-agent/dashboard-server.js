@@ -107,10 +107,6 @@ const DEFAULTS = {
     duplicateCheck: true,
     fallbackImage: '/social-images/default.jpg',
   },
-  'linkedin-agent': {
-    imageFolders: ['javier', 'oficina'],
-    rotationDays: 30,
-  },
   browser: {
     chromePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
     headless: true,
@@ -401,14 +397,7 @@ async function getEcosystemStatus() {
     use: 'YCMR publishing',
   };
 
-  // 12. LinkedIn
-  results.linkedin = {
-    status: 'ok',
-    api: 'LinkedIn API v2',
-    use: 'YCMR publishing + prospecting',
-  };
-
-  // 13. PM2
+  // 12. PM2
   try {
     const { execSync } = require('child_process');
     const output = execSync('pm2 jlist', { encoding: 'utf8', timeout: 5000, windowsHide: true });

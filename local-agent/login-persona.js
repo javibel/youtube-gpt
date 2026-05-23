@@ -25,13 +25,6 @@ const { persistSession, newPageForProfile, closeBrowserForProfile } = require('.
 const { diagnose } = require('./doctor');
 
 const PLATFORM_CONFIG = {
-  linkedin: {
-    loginUrl: 'https://www.linkedin.com/login',
-    feedUrl: 'https://www.linkedin.com/feed/',
-    feedCheck: '/feed',
-    cookieDomain: '.www.linkedin.com',
-    cookieName: 'li_at',
-  },
   twitter: {
     loginUrl: 'https://x.com/i/flow/login',
     feedUrl: 'https://x.com/home',
@@ -68,12 +61,12 @@ function cleanLocks(profileDir) {
 
 async function main() {
   const personaId = process.argv[2];
-  const platform = process.argv[3] || 'linkedin';
+  const platform = process.argv[3] || 'twitter';
 
   if (!personaId) {
     console.error('Usage: node login-persona.js <persona-id> [platform]');
     console.error('  persona-id: persona-alex | persona-ferran');
-    console.error('  platform:   linkedin | twitter | facebook | reddit');
+    console.error('  platform:   twitter | facebook | reddit');
     process.exit(1);
   }
 

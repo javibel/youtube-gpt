@@ -241,7 +241,7 @@ function buildFallbackHtml(lang, name, topic) {
 
 const TEMPLATES_SEO = {
   es: {
-    subject: (videoTitle) => `Tu video "${videoTitle.slice(0, 40)}..." — análisis SEO gratuito`,
+    subject: (videoTitle, seoScore) => `Tu video tiene un ${seoScore}/100 en SEO — te muestro cómo subirlo`,
     body: (name, videoTitle, videoUrl, seoScore, tips) => {
       const tipsText = tips.map((t, i) => `${i + 1}. ${t.tip_es}`).join('\n');
       return `Hola ${name},
@@ -267,7 +267,7 @@ https://ytubviral.com`;
     },
   },
   en: {
-    subject: (videoTitle) => `Your video "${videoTitle.slice(0, 40)}..." — free SEO analysis`,
+    subject: (videoTitle, seoScore) => `Your video scored ${seoScore}/100 on YouTube SEO — here's how to fix it`,
     body: (name, videoTitle, videoUrl, seoScore, tips) => {
       const tipsText = tips.map((t, i) => `${i + 1}. ${t.tip_en}`).join('\n');
       return `Hi ${name},
@@ -344,8 +344,8 @@ async function runOutreachSend() {
   const dryRun = DRY_RUN;
   console.log(`[outreach] ${dryRun ? 'DRY RUN — ' : ''}Sending to ${toSend.length} contacts...\n`);
 
-  // Max 5 emails per run to stay under Resend rate limits
-  const batch = toSend.slice(0, 5);
+  // Max 10 emails per run (Resend allows 100/day on free tier)
+  const batch = toSend.slice(0, 10);
   let sent = 0;
   for (const contact of batch) {
     const firstName = contact.name.split(' ')[0].split('/')[0].trim();
@@ -356,7 +356,7 @@ async function runOutreachSend() {
     if (contact.latestVideo && contact.seoScore && contact.seoTips?.length > 0) {
       // Value-upfront: personalized SEO analysis
       const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
-      subject = tpl.subject(contact.latestVideo.title);
+      subject = tpl.subject(contact.latestVideo.title, contact.seoScore);
       body = tpl.body(firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
       html = buildSeoHtml(lang, firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
       console.log(`  → ${contact.name} <${contact.email}> [${lang}] SEO: ${contact.seoScore}/100 [HTML]`);
@@ -388,7 +388,7 @@ async function runOutreachSend() {
       console.log(`    ✓ Sent (id: ${result.id})`);
       contact.status = 'sent';
       contact.dateSent = new Date().toISOString().split('T')[0];
-      contact.dateFollowUp = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
+      contact.dateFollowUp = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
       sent++;
     } catch (err) {
       console.error(`    ✗ Failed: ${err.message}`);

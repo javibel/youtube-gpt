@@ -99,7 +99,7 @@ function init(callbacks) {
         { title: 'Ver logs', tooltip: 'Abrir carpeta de logs', checked: false, enabled: true },
         { title: '<SEPARATOR>', tooltip: '', checked: false, enabled: false },
         { title: 'Pausar agente', tooltip: 'Pausa los crons', checked: false, enabled: true },
-        { title: 'Forzar ejecucion', tooltip: 'Ejecuta LinkedIn ahora', checked: false, enabled: true },
+        { title: 'Forzar ejecucion', tooltip: 'Ejecuta agente ahora', checked: false, enabled: true },
         { title: '<SEPARATOR>', tooltip: '', checked: false, enabled: false },
         { title: 'Salir', tooltip: 'Cierra el agente', checked: false, enabled: true },
       ],
