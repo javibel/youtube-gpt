@@ -329,6 +329,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMin: 10,
     date: { es: '23 may 2026', en: 'May 23, 2026' },
     author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: 'JJ' },
+    image: '/blog/best-youtube-title-generator-2026.webp',
     title: {
       es: 'Mejores Generadores de Títulos YouTube 2026 - Guía Completa',
       en: 'Best YouTube Title Generator 2026 - Complete Guide',
