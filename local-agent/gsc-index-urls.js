@@ -52,6 +52,7 @@ async function main() {
     'https://ytubviral.com/blog/auditoria-canal-youtube-guia',
     'https://ytubviral.com/blog/tour-completo-ytubviral-14-herramientas',
     'https://ytubviral.com/blog/ideas-videos-youtube-no-se-que-subir',
+    'https://ytubviral.com/blog/best-youtube-title-generator-2026',
     'https://ytubviral.com/features/keyword-research',
     'https://ytubviral.com/features/seo-score',
     'https://ytubviral.com/features/competitor-analysis',

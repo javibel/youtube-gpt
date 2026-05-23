@@ -20,11 +20,11 @@ const config = require('./config');
 // ── Config ──────────────────────────────────────────────────────────────────
 
 const HARDCODED_DEFAULTS = {
-  maxTokensPerCall: 2500,
+  maxTokensPerCall: 4500,
   maxInputChars: 15000,
   dailyBudgetTokens: 100000,
   maxCallsPerMinute: 10,
-  timeoutMs: 30000,
+  timeoutMs: 60000,
   circuitBreakerThreshold: 5,
   circuitBreakerResetMs: 300000,
 };

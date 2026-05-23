@@ -27,11 +27,11 @@
     "ownerEmail": "ytbeviral@gmail.com"
   },
   "api-guard": {
-    "maxTokensPerCall": 4000,
+    "maxTokensPerCall": 4500,
     "maxInputChars": 25000,
     "dailyBudgetTokens": 200000,
     "maxCallsPerMinute": 10,
-    "timeoutMs": 30000,
+    "timeoutMs": 90000,
     "circuitBreakerThreshold": 5,
     "circuitBreakerResetMs": 300000
   },
@@ -147,8 +147,11 @@
   "_lastModified": "2026-05-23T00:50:52.434Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 26.82,
+    "amount": 26.580968749999997,
     "currency": "USD",
-    "lastChecked": "2026-05-23T07:28:29.440Z"
+    "lastChecked": "2026-05-23T07:28:29.440Z",
+    "lastDeduction": "2026-05-23T10:53:20.566Z",
+    "totalSpentToday": 0.23903124999999997,
+    "spendDate": "2026-05-23"
   }
 }

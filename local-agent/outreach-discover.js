@@ -17,6 +17,8 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const { newPageForProfile, closeBrowserForProfile } = require('./browser');
+const { safeGoto } = require('./resilience');
 
 const TRACKER_PATH = path.join(__dirname, 'outreach-tracker.json');
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -60,6 +62,19 @@ const SEARCH_QUERIES = [
   { q: 'ganar dinero youtube canal pequeño', lang: 'es', niche: 'Monetización YouTube' },
   { q: 'ideas para videos youtube 2026', lang: 'es', niche: 'Ideas contenido' },
   { q: 'primeros 1000 suscriptores youtube', lang: 'es', niche: 'Crecimiento YouTube' },
+  // Expanded niches — creators who could benefit from SEO tools
+  { q: 'gaming youtube channel tips grow', lang: 'en', niche: 'Gaming' },
+  { q: 'tech review channel tips youtube', lang: 'en', niche: 'Tech reviews' },
+  { q: 'cooking channel tips grow youtube', lang: 'en', niche: 'Cooking' },
+  { q: 'fitness youtube channel tips beginners', lang: 'en', niche: 'Fitness' },
+  { q: 'education channel youtube tips', lang: 'en', niche: 'Education' },
+  { q: 'lifestyle vlog tips grow youtube', lang: 'en', niche: 'Lifestyle' },
+  { q: 'music producer youtube channel grow', lang: 'en', niche: 'Music' },
+  { q: 'podcast clips youtube channel strategy', lang: 'en', niche: 'Podcasting' },
+  { q: 'como crecer canal gaming youtube', lang: 'es', niche: 'Gaming ES' },
+  { q: 'canal de cocina youtube consejos', lang: 'es', niche: 'Cocina' },
+  { q: 'canal educativo youtube crecer', lang: 'es', niche: 'Educación' },
+  { q: 'vlogs en español como empezar youtube', lang: 'es', niche: 'Vlogs ES' },
 ];
 
 // Max new contacts to add per run (6 runs/day × 10 = ~60 new contacts/day)
@@ -67,7 +82,7 @@ const MAX_NEW_PER_RUN = 10;
 
 // Sub range to target (too small = hobbyist, too big = unreachable)
 const MIN_SUBS = 500;
-const MAX_SUBS = 25000;
+const MAX_SUBS = 50000;
 
 // Email regex — matches common patterns in channel descriptions
 const EMAIL_RE = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
@@ -288,6 +303,144 @@ async function getChannelDetails(channelIds) {
   return results;
 }
 
+// ── Puppeteer-based About page scraping ─────────────────────────────────────
+// For channels with no email in description, try their About page + linked website
+
+const ABOUT_PROFILE = 'brand-reddit'; // No login needed for public pages
+const MAX_ABOUT_SCRAPES = 15;
+const ABOUT_DELAY_MIN = 3000;
+const ABOUT_DELAY_MAX = 8000;
+
+async function scrapeAboutPageEmail(page, channelUrl) {
+  try {
+    const aboutUrl = channelUrl.replace(/\/?$/, '/about');
+    const ok = await safeGoto(page, aboutUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    if (!ok) return { email: null, links: [] };
+
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Extract email from the About page
+    const result = await page.evaluate(() => {
+      const text = document.body?.innerText || '';
+      const emailRe = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+      const emails = text.match(emailRe) || [];
+
+      // Extract links section
+      const links = [];
+      const linkEls = document.querySelectorAll('#link-list-container a, a[href*="redirect"]');
+      linkEls.forEach(a => {
+        const href = a.href || '';
+        if (href && !href.includes('youtube.com') && !href.includes('google.com')) {
+          links.push(href);
+        }
+      });
+
+      return { emails, links };
+    });
+
+    const validEmails = (result.emails || []).filter(e => !shouldSkipEmail(e));
+    return {
+      email: validEmails[0] || null,
+      links: result.links || [],
+    };
+  } catch (err) {
+    console.error(`[outreach-discover] About scrape failed for ${channelUrl}: ${err.message}`);
+    return { email: null, links: [] };
+  }
+}
+
+async function scrapeWebsiteForEmail(page, websiteUrl) {
+  try {
+    // Try to find email on their website (contact page, footer, about)
+    const ok = await safeGoto(page, websiteUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    if (!ok) return null;
+
+    await new Promise(r => setTimeout(r, 1500));
+
+    const email = await page.evaluate(() => {
+      const text = document.body?.innerText || '';
+      const emailRe = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+      const emails = text.match(emailRe) || [];
+      return emails[0] || null;
+    });
+
+    if (email && !shouldSkipEmail(email)) return email;
+
+    // Try /contact page
+    try {
+      const contactUrl = new URL('/contact', websiteUrl).toString();
+      const okContact = await safeGoto(page, contactUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
+      if (okContact) {
+        await new Promise(r => setTimeout(r, 1000));
+        const contactEmail = await page.evaluate(() => {
+          const text = document.body?.innerText || '';
+          const emailRe = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+          return (text.match(emailRe) || [])[0] || null;
+        });
+        if (contactEmail && !shouldSkipEmail(contactEmail)) return contactEmail;
+      }
+    } catch { /* /contact doesn't exist */ }
+
+    return null;
+  } catch (err) {
+    console.error(`[outreach-discover] Website scrape failed for ${websiteUrl}: ${err.message}`);
+    return null;
+  }
+}
+
+async function enhancedEmailDiscovery(channelsWithoutEmail) {
+  if (channelsWithoutEmail.length === 0) return [];
+
+  const toScrape = channelsWithoutEmail.slice(0, MAX_ABOUT_SCRAPES);
+  console.log(`[outreach-discover] Enhanced discovery: scraping ${toScrape.length} About pages...`);
+
+  let page;
+  try {
+    page = await newPageForProfile(ABOUT_PROFILE, { headless: true });
+  } catch (err) {
+    console.error(`[outreach-discover] Cannot launch browser for About scraping: ${err.message}`);
+    return [];
+  }
+
+  const found = [];
+
+  try {
+    for (const ch of toScrape) {
+      const channelUrl = ch.customUrl
+        ? `https://www.youtube.com/${ch.customUrl}`
+        : `https://www.youtube.com/channel/${ch.channelId}`;
+
+      const { email, links } = await scrapeAboutPageEmail(page, channelUrl);
+
+      if (email) {
+        console.log(`  📧 Found email on About: ${ch.title} <${email}>`);
+        found.push({ ...ch, emails: [email] });
+      } else if (links.length > 0) {
+        // Try scraping their website for an email
+        for (const link of links.slice(0, 2)) {
+          try {
+            const websiteEmail = await scrapeWebsiteForEmail(page, link);
+            if (websiteEmail) {
+              console.log(`  🌐 Found email on website: ${ch.title} <${websiteEmail}> (${link})`);
+              found.push({ ...ch, emails: [websiteEmail] });
+              break;
+            }
+          } catch { /* skip broken links */ }
+        }
+      }
+
+      // Rate limit
+      const delay = ABOUT_DELAY_MIN + Math.random() * (ABOUT_DELAY_MAX - ABOUT_DELAY_MIN);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  } finally {
+    try { await closeBrowserForProfile(ABOUT_PROFILE); } catch {}
+  }
+
+  console.log(`[outreach-discover] Enhanced discovery found ${found.length} emails from ${toScrape.length} pages`);
+  return found;
+}
+
 async function runDiscovery() {
   if (!YT_API_KEY) {
     console.error('[outreach-discover] YOUTUBE_API_KEY not set in .env');
@@ -373,6 +526,36 @@ async function runDiscovery() {
   }
 
   console.log(`[outreach-discover] ${candidates.length} candidates with email in target range (${MIN_SUBS}-${MAX_SUBS} subs)`);
+
+  // Step 3.5: Enhanced discovery — scrape About pages for channels without email
+  const noEmailChannels = details.filter(ch =>
+    ch.subs >= MIN_SUBS && ch.subs <= MAX_SUBS &&
+    ch.emails.length === 0 &&
+    !existingNames.has(ch.title.toLowerCase())
+  );
+
+  if (noEmailChannels.length > 0 && !DRY_RUN) {
+    try {
+      const extraContacts = await enhancedEmailDiscovery(noEmailChannels);
+      for (const ch of extraContacts) {
+        const email = ch.emails[0].toLowerCase();
+        if (existingEmails.has(email)) continue;
+        const searchData = uniqueChannels.find(c => c.channelId === ch.channelId);
+        candidates.push({
+          channelId: ch.channelId,
+          name: ch.title,
+          email,
+          lang: searchData?.lang || 'en',
+          niche: searchData?.niche || 'YouTube',
+          subs: ch.subs,
+          source: `youtube.com/${ch.customUrl || 'channel/' + ch.channelId}`,
+        });
+      }
+      console.log(`[outreach-discover] After enhanced discovery: ${candidates.length} total candidates`);
+    } catch (err) {
+      console.error(`[outreach-discover] Enhanced discovery failed: ${err.message}`);
+    }
+  }
 
   // Step 4: Fetch latest video + SEO score for top candidates (value-upfront email)
   const toAdd = candidates.slice(0, MAX_NEW_PER_RUN);

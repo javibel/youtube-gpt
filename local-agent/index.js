@@ -27,6 +27,10 @@ const { runRedditDm } = require('./outreach-reddit-dm');
 const { runRedditTargeted } = require('./outreach-reddit-targeted');
 const { runFeatureMonitor } = require('./feature-monitor');
 const { runCleanup: runGmailCleanup } = require('./gmail-cleanup');
+const { runBlogGenerator } = require('./blog-generator');
+const { runBlogSyndicator } = require('./blog-syndicator');
+const { runQuoraCommenter } = require('./quora-commenter');
+const { runYoutubeCommenter } = require('./youtube-commenter');
 
 console.log('[agent] YTubViral local agent starting...');
 
@@ -297,6 +301,30 @@ cron.schedule('30 3 * * 0', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
+// Blog Generator — Monday & Thursday at 04:00 (2 articles/week)
+cron.schedule('0 4 * * 1,4', async () => {
+  console.log('[cron] Blog Generator — auto-generating SEO article');
+  await runBlogGenerator().catch(err => console.error('[blog-generator]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
+// Blog Syndicator — daily at 05:00 (cross-post to Dev.to/Hashnode)
+cron.schedule('0 5 * * *', async () => {
+  console.log('[cron] Blog Syndicator — cross-posting article');
+  await runBlogSyndicator().catch(err => console.error('[blog-syndicator]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
+// Quora Commenter — 13:00 + 19:00 daily
+cron.schedule('0 13,19 * * *', async () => {
+  console.log('[cron] Quora Commenter — answering YouTube questions');
+  await runQuoraCommenter().catch(err => console.error('[quora-commenter]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
+// YouTube Commenter — 10:30 + 21:00 daily (HIGH RISK — conservative limits)
+cron.schedule('30 10,21 * * *', async () => {
+  console.log('[cron] YouTube Commenter — commenting via personas');
+  await runYoutubeCommenter().catch(err => console.error('[youtube-commenter]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');
 console.log('  Twitter brand: DISABLED (manual)');
@@ -319,6 +347,10 @@ console.log('  Funnel Optimizer: 02:55 daily (Europe/Madrid)');
 console.log('  Social Optimizer: 03:00 daily (Europe/Madrid)');
 console.log('  Manager: 03:15 daily (Europe/Madrid)');
 console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
+console.log('  Blog Generator: 04:00 Mon+Thu (Europe/Madrid)');
+console.log('  Blog Syndicator: 05:00 daily (Europe/Madrid)');
+console.log('  Quora Commenter: 13:00, 19:00 daily (Europe/Madrid)');
+console.log('  YouTube Commenter: 10:30, 21:00 daily (Europe/Madrid)');
 
 // Keep process alive
 process.on('uncaughtException', err => console.error('[agent] Uncaught exception:', err));
