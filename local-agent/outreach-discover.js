@@ -81,8 +81,8 @@ const SEARCH_QUERIES = [
 const MAX_NEW_PER_RUN = 10;
 
 // Sub range to target (too small = hobbyist, too big = unreachable)
-const MIN_SUBS = 500;
-const MAX_SUBS = 50000;
+const MIN_SUBS = 200;
+const MAX_SUBS = 10000;
 
 // Email regex — matches common patterns in channel descriptions
 const EMAIL_RE = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
@@ -306,7 +306,7 @@ async function getChannelDetails(channelIds) {
 // ── Puppeteer-based About page scraping ─────────────────────────────────────
 // For channels with no email in description, try their About page + linked website
 
-const ABOUT_PROFILE = 'brand-reddit'; // No login needed for public pages
+const ABOUT_PROFILE = 'chrome-profiles/brand-reddit'; // No login needed for public pages
 const MAX_ABOUT_SCRAPES = 15;
 const ABOUT_DELAY_MIN = 3000;
 const ABOUT_DELAY_MAX = 8000;

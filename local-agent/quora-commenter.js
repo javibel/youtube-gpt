@@ -9,7 +9,7 @@ const { guardedCall } = require('./api-guard');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const LOG_PATH = path.join(__dirname, 'reports', 'quora-comments-log.json');
-const PROFILE = 'brand-quora';
+const PROFILE = 'chrome-profiles/brand-quora';
 
 const MAX_ANSWERS_PER_RUN = 3;
 const MIN_DELAY_BETWEEN = 60000; // 60s between answers
@@ -146,15 +146,15 @@ async function postQuoraAnswer(page, questionUrl, answerText) {
   const ok = await safeGoto(page, questionUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
   if (!ok) throw new Error('Failed to navigate to question');
 
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise(r => setTimeout(r, 4000));
 
-  // Click "Answer" button
+  // Click "Answer" button (text is "Answer·{count}" not just "Answer")
   const answerBtn = await page.evaluate(() => {
-    const buttons = Array.from(document.querySelectorAll('button, a'));
-    const answerButton = buttons.find(b =>
-      /^Answer$/i.test((b.textContent || '').trim()) ||
-      /^Responder$/i.test((b.textContent || '').trim())
-    );
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const answerButton = buttons.find(b => {
+      const text = (b.textContent || '').trim();
+      return /^Answer/i.test(text) || /^Responder/i.test(text);
+    });
     if (answerButton) {
       answerButton.click();
       return true;
@@ -162,44 +162,62 @@ async function postQuoraAnswer(page, questionUrl, answerText) {
     return false;
   });
 
-  if (!answerBtn) {
-    // Try clicking the "Write your answer" placeholder
-    const placeholder = await page.$('[class*="AnswerEditor"], [placeholder*="Write"], [class*="editable"]');
-    if (placeholder) await placeholder.click();
-    else throw new Error('Cannot find answer input');
-  }
+  if (!answerBtn) throw new Error('Cannot find Answer button');
 
-  await new Promise(r => setTimeout(r, 2000));
+  // Wait for editor to appear
+  await new Promise(r => setTimeout(r, 4000));
 
-  // Find the editor and type
-  const editor = await page.$('[contenteditable="true"], [class*="editor"] [contenteditable], .doc');
+  // Find the editor (div.doc with contenteditable)
+  const editor = await page.$('div.doc[contenteditable="true"]');
   if (!editor) throw new Error('Cannot find editor');
 
   await editor.click();
   await new Promise(r => setTimeout(r, 500));
 
-  // Type with human-like delay
-  await page.keyboard.type(answerText, { delay: 35 });
+  // Type in chunks to avoid protocol timeout (full char-by-char is too slow for 2000+ chars)
+  // Split into paragraphs, type first paragraph char-by-char, paste the rest
+  const paragraphs = answerText.split('\n\n');
+  if (paragraphs.length > 0) {
+    // Type first paragraph with human-like delay
+    await page.keyboard.type(paragraphs[0], { delay: 25 });
+    // Paste remaining paragraphs via clipboard
+    for (let i = 1; i < paragraphs.length; i++) {
+      await page.keyboard.press('Enter');
+      await page.keyboard.press('Enter');
+      await new Promise(r => setTimeout(r, 200));
+      await page.evaluate((text) => {
+        document.execCommand('insertText', false, text);
+      }, paragraphs[i]);
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
 
   await new Promise(r => setTimeout(r, 2000));
 
-  // Click submit button
+  // Click Post button (puppeteer_test_modal_submit class)
   const submitted = await page.evaluate(() => {
+    // Try the specific Quora submit button first
+    const modalSubmit = document.querySelector('.puppeteer_test_modal_submit');
+    if (modalSubmit && !modalSubmit.disabled) {
+      modalSubmit.click();
+      return 'modal_submit';
+    }
+    // Fallback: any Post/Submit button
     const buttons = Array.from(document.querySelectorAll('button'));
     const submitBtn = buttons.find(b => {
       const text = (b.textContent || '').trim().toLowerCase();
-      return text === 'submit' || text === 'post' || text === 'publicar' || text === 'enviar';
+      return (text === 'submit' || text === 'post') && !b.disabled;
     });
-    if (submitBtn && !submitBtn.disabled) {
+    if (submitBtn) {
       submitBtn.click();
-      return true;
+      return 'text_match';
     }
     return false;
   });
 
-  if (!submitted) throw new Error('Cannot find or click submit button');
+  if (!submitted) throw new Error('Cannot find or click Post button (may be disabled)');
 
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise(r => setTimeout(r, 4000));
 
   // Check for CAPTCHA or error
   const hasCaptcha = await page.evaluate(() => {
@@ -219,7 +237,7 @@ async function runQuoraCommenter() {
   console.log(`[quora-commenter] Starting${DRY_RUN ? ' (DRY RUN)' : ''}...`);
 
   // Check if profile directory exists
-  const profileDir = path.join(__dirname, 'chrome-profiles', PROFILE);
+  const profileDir = path.join(__dirname, PROFILE);
   if (!fs.existsSync(profileDir)) {
     console.log(`[quora-commenter] Chrome profile "${PROFILE}" not found. Create it and log in to Quora manually first.`);
     return;

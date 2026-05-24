@@ -27,7 +27,7 @@
     "ownerEmail": "ytbeviral@gmail.com"
   },
   "api-guard": {
-    "maxTokensPerCall": 4500,
+    "maxTokensPerCall": 8500,
     "maxInputChars": 25000,
     "dailyBudgetTokens": 200000,
     "maxCallsPerMinute": 10,
@@ -141,17 +141,17 @@
       "job": "Consultor marketing digital",
       "platforms": "Twitter, Reddit",
       "mentionYtubviral": true,
-      "mentionRate": 0.3
+      "mentionRate": 0.4
     }
   },
-  "_lastModified": "2026-05-23T00:50:52.434Z",
+  "_lastModified": "2026-05-24T01:00:45.439Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 26.580968749999997,
+    "amount": 26.035807999999996,
     "currency": "USD",
-    "lastChecked": "2026-05-23T07:28:29.440Z",
-    "lastDeduction": "2026-05-23T10:53:20.566Z",
-    "totalSpentToday": 0.23903124999999997,
-    "spendDate": "2026-05-23"
+    "lastChecked": "2026-05-24T08:46:12.922Z",
+    "lastDeduction": "2026-05-24T09:03:21.868Z",
+    "totalSpentToday": 0.014192,
+    "spendDate": "2026-05-24"
   }
 }

@@ -7,8 +7,7 @@ import {
   getSocialImageUrl,
 } from '@/lib/agent/meta-agent';
 import { getHumanImageUrl } from '@/lib/agent/linkedin-agent';
-import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
-import { sendNotificationEmail, sendOwnerEmail } from '@/lib/agent/gmail-agent';
+import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
 import { prisma } from '@/lib/prisma';
 
@@ -200,26 +199,21 @@ export async function GET(request: Request) {
     });
     results.dailyIdeas = ideasGenerated;
 
-    // 2. Generate content for Facebook + Instagram + LinkedIn + TikTok + Twitter (morning networks)
-    const [facebook, instagram, linkedin, tiktok, twitter] = await Promise.allSettled([
+    // 2. Generate content for Facebook + Instagram + LinkedIn (morning networks)
+    // TikTok + Twitter DISABLED — owner manages these manually
+    const [facebook, instagram, linkedin] = await Promise.allSettled([
       generateSocialPost('facebook', 'morning'),
       generateSocialPost('instagram', 'morning'),
       generateSocialPost('linkedin', 'morning'),
-      generateSocialPost('tiktok', 'morning'),
-      generateSocialPost('twitter', 'morning'),
     ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;
     const ig = instagram.status === 'fulfilled' ? instagram.value : null;
     const li = linkedin.status === 'fulfilled' ? linkedin.value : null;
-    const tt = tiktok.status === 'fulfilled' ? tiktok.value : null;
-    const tw = twitter.status === 'fulfilled' ? twitter.value : null;
 
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
     if (linkedin.status === 'rejected') errors.push(`LinkedIn content: ${linkedin.reason}`);
-    if (tiktok.status === 'rejected') errors.push(`TikTok content: ${tiktok.reason}`);
-    if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
     // 3. Publish Facebook (via Graph API — reactivado 2026-05-16)
     if (fb) {
@@ -244,29 +238,7 @@ export async function GET(request: Request) {
       results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
     }
 
-    // 5. TikTok + X by email (manual)
-    if (tt || tw) {
-      const emailBody = [
-        'AGENTE YTUBVIRAL - POST MATUTINO (MANUAL)',
-        '='.repeat(50),
-        tt ? `TIKTOK\n${'-'.repeat(30)}\n${tt}\n` : '',
-        tw ? `X/TWITTER\n${'-'.repeat(30)}\n${tw}\n` : '',
-        '='.repeat(50),
-        'Copia el contenido y publícalo directamente en cada plataforma.',
-      ].filter(Boolean).join('\n');
-
-      await sendOwnerEmail('[YTubViral Agent] Post matutino - TikTok + X', emailBody).catch(
-        err => errors.push(`Email TikTok/X: ${err instanceof Error ? err.message : err}`)
-      );
-
-      for (const [platform, content] of [['tiktok', tt], ['twitter', tw]] as [string, string | null][]) {
-        if (content) {
-          await prisma.socialPost.create({
-            data: { platform, content, status: 'email_sent', publishedAt: new Date() },
-          }).catch(() => {});
-        }
-      }
-    }
+    // 5. TikTok + X — DISABLED (owner manages these manually, no more emails)
 
     // 6. Send daily report to owner
     await sendDailyReport().catch(err =>

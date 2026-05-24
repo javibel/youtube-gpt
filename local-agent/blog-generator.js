@@ -123,7 +123,7 @@ Requirements:
 Output ONLY the JSON array. No wrapping, no explanation.`;
 
   const { text: result } = await guardedCall(prompt, {
-    maxTokens: 4000,
+    maxTokens: 8000,
     agentId: 'blog-generator',
     model: 'claude-sonnet-4-6',
     system,
