@@ -145,8 +145,8 @@ function buildSeoHtml(lang, name, videoTitle, videoUrl, seoScore, tips) {
     </td></tr></table>
     <p style="margin:14px 0 0;color:#9ca3af;font-size:13px;">
       ${isEs
-        ? 'Reg&iacute;strate y responde con tu email — te doy Pro gratis 1 mes.'
-        : 'Sign up and reply with your email — I\'ll give you free Pro for 1 month.'}
+        ? 'Reg&iacute;strate y responde con tu email — te doy Pro gratis 3 meses.'
+        : 'Sign up and reply with your email — I\'ll give you free Pro for 3 months.'}
     </p>
   </td></tr>
 
@@ -215,8 +215,8 @@ function buildFallbackHtml(lang, name, topic) {
     </td></tr></table>
     <p style="margin:14px 0 0;color:#9ca3af;font-size:13px;">
       ${isEs
-        ? 'Si te interesa el paquete completo, te doy Pro gratis 1 mes. Solo reg&iacute;strate y responde con tu email.'
-        : 'Want the full suite? I\'ll give you Pro free for 1 month. Just sign up and reply with your email.'}
+        ? 'Si te interesa el paquete completo, te doy Pro gratis 3 meses. Solo reg&iacute;strate y responde con tu email.'
+        : 'Want the full suite? I\'ll give you Pro free for 3 months. Just sign up and reply with your email.'}
     </p>
   </td></tr>
 
@@ -256,7 +256,7 @@ Estos ajustes son rápidos y pueden marcar una diferencia real en cómo YouTube 
 
 Ver análisis completo gratis: https://ytubviral.com/features/seo-score
 
-Si quieres el paquete completo (keywords, retención, thumbnails, ideas de contenido), te doy acceso Pro gratis 1 mes — solo regístrate y responde con tu email de registro.
+Si quieres el paquete completo (keywords, retención, thumbnails, ideas de contenido), te doy acceso Pro gratis 3 meses — solo regístrate y responde con tu email de registro.
 
 Sin compromiso. Si te sirve, genial. Si no, espero que al menos estos tips te sean útiles.
 
@@ -282,7 +282,7 @@ These are quick fixes that can make a real difference in how YouTube ranks your 
 
 See full analysis free: https://ytubviral.com/features/seo-score
 
-If you'd like the full suite (keywords, retention, thumbnails, content ideas), I'll give you free Pro access for 1 month — just sign up and reply with your registration email.
+If you'd like the full suite (keywords, retention, thumbnails, content ideas), I'll give you free Pro access for 3 months — just sign up and reply with your registration email.
 
 No strings attached. If it helps, great. If not, I hope these tips are useful regardless.
 
@@ -306,7 +306,7 @@ YTubViral tiene una herramienta de SEO Score gratuita — analizas cualquiera de
 
 Pruébala gratis en https://ytubviral.com/features/seo-score
 
-Si te interesa el paquete completo (keywords, ideas de contenido, retención), te doy Pro gratis 1 mes. Solo regístrate y responde con tu email.
+Si te interesa el paquete completo (keywords, ideas de contenido, retención), te doy Pro gratis 3 meses. Solo regístrate y responde con tu email.
 
 Un saludo,
 Javier Jimeno
@@ -323,7 +323,7 @@ YTubViral has a free SEO Score tool — analyze any of your videos and get actio
 
 Try it free at https://ytubviral.com/features/seo-score
 
-If you'd like the full suite (keywords, content ideas, retention analysis), I'll give you Pro free for 1 month. Just sign up and reply with your email.
+If you'd like the full suite (keywords, content ideas, retention analysis), I'll give you Pro free for 3 months. Just sign up and reply with your email.
 
 Best,
 Javier Jimeno

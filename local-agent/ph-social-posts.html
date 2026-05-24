@@ -300,6 +300,145 @@ Would love feedback from other solo builders — especially on pricing strategy 
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════ REDDIT WAVE 2 ═══════════ -->
+<div class="platform">
+  <div class="platform-header">
+    <div class="platform-icon" style="background:#FF4500;">R</div>
+    <div>
+      <div class="platform-name">Reddit — Wave 2</div>
+      <div class="platform-sub">New subreddits. Post from Javier's account. Each has a different angle.</div>
+    </div>
+  </div>
+
+  <!-- r/EntrepreneurRideAlong -->
+  <div class="post">
+    <button class="copy-btn" onclick="copyPost(this)">Copy</button>
+    <div class="post-label">Post</div>
+    <div class="post-target">r/EntrepreneurRideAlong</div>
+    <div class="post-content">From programming car factory robots to launching a SaaS — my first 4 months as a solo founder
+
+I'm a PLC/SCADA engineer in Spain. I program industrial robots in car factories. This year I decided to build my own thing.
+
+First attempt: a mobile game. Downloaded 12 times, 11 of those were me testing on different devices.
+
+Second attempt: a fintech app. Hit regulatory walls before I wrote a single line of code.
+
+Third attempt: YTubViral. A platform with 14 AI tools for YouTube creators — SEO analyzer, title generator, keyword research, competitor tracking, content calendar, A/B testing, and more.
+
+Why YouTube tools? I spent weeks in creator communities and noticed the same complaints everywhere: "I make great videos but nobody watches them." Turns out most small creators have zero SEO strategy. And the existing tools (VidIQ, TubeBuddy) charge $49+/mo.
+
+Where I am now (being honest):
+- Product: live, 14 tools working
+- Users: early stage, still in single digits
+- Revenue: EUR 0
+- Monthly costs: about EUR 30 (Neon DB + Vercel + OpenAI API)
+- Marketing: the part I'm worst at
+
+What I've learned:
+1. Building is the easy part. Getting someone to care is the hard part.
+2. Pricing at EUR 9.99/mo felt low until I realized I had 0 users paying $0. Low price > no users.
+3. Every feature you add is a feature you maintain forever.
+
+Currently offering 3 months free Pro to anyone who wants to test it and give honest feedback: https://ytubviral.com
+
+What marketing channels worked for your first 100 users? That's the wall I'm hitting right now.</div>
+    <div class="post-note">Journey format. Lead with the story, end with a question. This sub loves real numbers and honest struggle.</div>
+  </div>
+
+  <!-- r/SaaS -->
+  <div class="post">
+    <button class="copy-btn" onclick="copyPost(this)">Copy</button>
+    <div class="post-label">Post</div>
+    <div class="post-target">r/SaaS — Share Your SaaS thread</div>
+    <div class="post-content">YTubViral — 14 AI tools for YouTube creators (free tier + Pro at EUR 9.99/mo)
+
+Built as a solo developer from Spain. My background is industrial automation (PLCs, not SaaS), so this has been a learning experience.
+
+What it does: SEO scoring, title/description generator, keyword research, competitor analysis, A/B testing, content calendar, retention analyzer, revenue estimator, AI coach, and more. All in one platform.
+
+Stack: Next.js, Prisma, PostgreSQL (Neon), Vercel, Claude API, Stripe.
+
+Differentiator vs VidIQ/TubeBuddy: free tier with all 14 tools (usage-limited), Pro at EUR 9.99 vs their $49+, and the AI generators actually produce usable content instead of just keyword lists.
+
+Current state: live product, early users, pre-Product Hunt launch. Offering 3 months free Pro to beta testers.
+
+Link: https://ytubviral.com
+
+Would appreciate feedback on the product, pricing, or positioning. First SaaS — thick skin ready.</div>
+    <div class="post-note">r/SaaS allows 1 promo post per 60 days. Keep it factual. Can also post in the weekly "Share Your SaaS" thread.</div>
+  </div>
+
+  <!-- r/webdev -->
+  <div class="post">
+    <button class="copy-btn" onclick="copyPost(this)">Copy</button>
+    <div class="post-label">Post</div>
+    <div class="post-target">r/webdev</div>
+    <div class="post-content">I built a SaaS with 14 AI tools as a solo dev — here's my stack and what I'd change
+
+Background: I'm a PLC/SCADA programmer (industrial automation). JavaScript wasn't even my main language a year ago. Built YTubViral — a platform with 14 AI-powered tools for YouTube creators.
+
+The stack:
+- Next.js 16 (App Router, server components everywhere, client only where needed)
+- Prisma ORM + PostgreSQL on Neon (serverless driver)
+- Vercel for hosting (Edge functions for some API routes)
+- Claude API for AI generations (switched from OpenAI mid-project — better output quality for structured content)
+- Stripe for billing (webhook-based subscription management)
+- NextAuth for authentication
+- Puppeteer + PM2 on a local Windows machine for social media automation agents
+
+Decisions I'm happy with:
+- Server components by default. My pages load fast because almost nothing ships JS to the client.
+- Rate limiting via DB upsert instead of Redis. On Vercel serverless there's no shared memory, and adding Redis felt like overkill for my scale.
+- Neon's serverless driver. Cold starts are real but acceptable. Connection pooling just works.
+- Bilingual from day 1 (ES + EN). Internationalization is painful to add later.
+
+Decisions I'd reconsider:
+- 14 features = 14 API routes = 14 things to maintain. I should have launched with 4.
+- Prisma generates huge query engines. Bundle size is a thing.
+- Using local Puppeteer agents for social media. Works but it's fragile — Chrome profiles corrupt, sessions expire, lock files pile up.
+
+If anyone's interested in the product side: https://ytubviral.com — it's free to try.
+
+Curious what stack others are using for AI-heavy SaaS projects. Anyone gone the self-hosted LLM route instead of API calls?</div>
+    <div class="post-note">r/webdev wants technical content. Lead with the stack, architecture decisions, lessons learned. The product link is secondary.</div>
+  </div>
+
+  <!-- r/shamelessplug -->
+  <div class="post">
+    <button class="copy-btn" onclick="copyPost(this)">Copy</button>
+    <div class="post-label">Post</div>
+    <div class="post-target">r/shamelessplug</div>
+    <div class="post-content">YTubViral — free AI toolkit for YouTube creators (14 tools, no credit card needed)
+
+I built a platform with 14 AI tools for YouTubers: SEO analyzer, title generator, keyword research, competitor analysis, A/B testing, content calendar, and more.
+
+Free plan available. Pro plan (EUR 9.99/mo) free for 3 months if you want to test it.
+
+https://ytubviral.com</div>
+    <div class="post-note">r/shamelessplug — anything goes. Keep it short and direct.</div>
+  </div>
+
+  <!-- r/SmallYTChannel -->
+  <div class="post">
+    <button class="copy-btn" onclick="copyPost(this)">Copy</button>
+    <div class="post-label">Post</div>
+    <div class="post-target">r/SmallYTChannel</div>
+    <div class="post-content">I built a free YouTube SEO toolkit — would love feedback from small creators
+
+Hey everyone. I'm a developer (not a YouTuber) who spent the last few months building tools specifically for small creators. It's called YTubViral and it has 14 tools: SEO score checker, title generator, keyword research, competitor analysis, content calendar, and more.
+
+I built it because the existing tools (VidIQ, TubeBuddy) charge $49+/mo and most of you are trying to reach your first 1,000 subs — that price doesn't make sense at that stage.
+
+YTubViral has a free tier with all 14 tools (daily limits) and I'm offering 3 months free Pro to anyone who wants to test it properly and give me honest feedback.
+
+https://ytubviral.com
+
+What I'd really like to know: which of these tools would actually make a difference in your workflow? I want to double down on the ones that matter and drop the ones that don't.</div>
+    <div class="post-note">Be helpful, not salesy. Ask for feedback. This community is small creators — speak their language.</div>
+  </div>
+
+</div>
+
 <div class="divider"></div>
 
 <!-- TIPS -->

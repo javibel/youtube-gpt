@@ -13,7 +13,7 @@ Hey everyone,
 
 I've been building YTubViral for the past few months — it's a set of AI-powered tools for YouTube creators: SEO optimizer, keyword research, title/description generator, thumbnail ideas, retention analysis, content calendar, and more.
 
-The core tools are free, but I'm offering the full Pro plan (normally $10/mo) free for 1 month to anyone willing to test it and give honest feedback.
+The core tools are free, but I'm offering the full Pro plan (normally $10/mo) free for 3 months to anyone willing to test it and give honest feedback.
 
 What I'm looking for:
 - You have a YouTube channel (any size)
@@ -38,7 +38,7 @@ Thanks!
 
 I'm Javier, I've been building YTubViral — basically a toolkit that helps with the stuff that takes forever: finding the right keywords, writing SEO-optimized titles and descriptions, analyzing what makes people click away from your videos, generating thumbnail concepts, etc.
 
-Looking for creators who'd be willing to test the Pro plan for free (1 month) and tell me what they think. Any channel size welcome.
+Looking for creators who'd be willing to test the Pro plan for free (3 months) and tell me what they think. Any channel size welcome.
 
 What's in it:
 - YouTube SEO Optimizer (titles, descriptions, tags)
@@ -86,7 +86,7 @@ I'm Javier, building YTubViral — an AI-powered YouTube growth platform. Think 
 
 **What I need:** 30-50 creators willing to test the Pro plan for free and give honest feedback. Any channel size.
 
-**The offer:** Sign up at https://ytubviral.com, comment with your email, I activate Pro for 1 month. No catch.
+**The offer:** Sign up at https://ytubviral.com, comment with your email, I activate Pro for 3 months. No catch.
 
 If you know any YouTube creators, I'd appreciate a share too.
 
@@ -104,7 +104,7 @@ Hola a todos,
 
 Llevo meses desarrollando YTubViral, un conjunto de herramientas con IA para creadores de YouTube: optimizador SEO, investigación de keywords, generador de títulos y descripciones, análisis de retención, ideas de contenido, calendario de subidas, y más.
 
-Las herramientas básicas son gratis, pero estoy ofreciendo el plan Pro completo (normalmente 9,99 EUR/mes) gratis durante 1 mes a quien quiera probarlo y darme feedback honesto.
+Las herramientas básicas son gratis, pero estoy ofreciendo el plan Pro completo (normalmente 9,99 EUR/mes) gratis durante 3 meses a quien quiera probarlo y darme feedback honesto.
 
 Lo que busco:
 - Tienes un canal de YouTube (cualquier tamaño)
@@ -129,7 +129,7 @@ Gracias!
 
 Hola! Soy Javier, fundador de YTubViral.
 
-He construido una plataforma de herramientas con IA para crecer en YouTube (SEO, keywords, retención, thumbnails, calendario...) y estoy buscando 30 creadores que quieran probar el plan Pro gratis durante 1 mes a cambio de feedback.
+He construido una plataforma de herramientas con IA para crecer en YouTube (SEO, keywords, retención, thumbnails, calendario...) y estoy buscando 30 creadores que quieran probar el plan Pro gratis durante 3 meses a cambio de feedback.
 
 Cualquier tamaño de canal. Sin compromiso. Solo quiero saber qué funciona y qué mejorar.
 

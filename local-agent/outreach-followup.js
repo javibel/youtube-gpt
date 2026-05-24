@@ -24,7 +24,7 @@ const TEMPLATES_SEO = {
 
 Te escribí hace unos días con un análisis SEO de tu último video (${seoScore}/100). Espero que los tips te hayan servido.
 
-Solo quería asegurarme de que no se perdió en el inbox. Si quieres el análisis completo con keywords, retención y más, regístrate en https://ytubviral.com — te activo Pro gratis 1 mes.
+Solo quería asegurarme de que no se perdió en el inbox. Si quieres el análisis completo con keywords, retención y más, regístrate en https://ytubviral.com — te activo Pro gratis 3 meses.
 
 También puedes probar la herramienta de SEO Score gratis sin registrarte: https://ytubviral.com/features/seo-score
 
@@ -39,7 +39,7 @@ Fundador, YTubViral`,
 
 I sent you a quick SEO analysis of your latest video a few days ago (scored ${seoScore}/100). Hope the tips were useful.
 
-Just making sure it didn't get buried. If you'd like the full analysis with keywords, retention data and more, sign up at https://ytubviral.com — I'll activate Pro free for 1 month.
+Just making sure it didn't get buried. If you'd like the full analysis with keywords, retention data and more, sign up at https://ytubviral.com — I'll activate Pro free for 3 months.
 
 You can also try the SEO Score tool free without signing up: https://ytubviral.com/features/seo-score
 
@@ -59,7 +59,7 @@ Te escribí hace unos días sobre YTubViral. Solo quería asegurarme de que no s
 
 Puedes probar gratis nuestra herramienta de SEO Score — analiza cualquier video y te dice qué mejorar: https://ytubviral.com/features/seo-score
 
-Si te interesa el paquete completo, te doy Pro gratis 1 mes. Solo regístrate y responde con tu email.
+Si te interesa el paquete completo, te doy Pro gratis 3 meses. Solo regístrate y responde con tu email.
 
 Si no es para ti, sin problema — agradezco tu tiempo.
 
@@ -74,7 +74,7 @@ I reached out a few days ago about YTubViral. Just making sure it didn't get bur
 
 You can try our SEO Score tool free — analyze any video and get actionable tips: https://ytubviral.com/features/seo-score
 
-If you'd like the full suite, I'll activate Pro free for 1 month. Just sign up and reply with your email.
+If you'd like the full suite, I'll activate Pro free for 3 months. Just sign up and reply with your email.
 
 No worries if it's not your thing — appreciate your time.
 
