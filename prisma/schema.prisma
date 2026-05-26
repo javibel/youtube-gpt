@@ -612,3 +612,16 @@ model LaunchWaitlist {
 
   @@map("launch_waitlist")
 }
+
+model PageView {
+  id        String   @id @default(cuid())
+  path      String
+  referrer  String?
+  userAgent String?  @map("user_agent")
+  country   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([path, createdAt])
+  @@index([createdAt])
+  @@map("page_views")
+}

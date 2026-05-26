@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 import { LangProvider } from "@/components/LangProvider";
 import ChatWidget from "@/components/ChatWidget";
+import PageViewTracker from "@/components/PageViewTracker";
 import "./globals.css";
 
 const BASE_URL = "https://ytubviral.com";
@@ -96,6 +97,7 @@ export default async function RootLayout({
           <SessionProviderWrapper>
             {children}
             <ChatWidget />
+            <PageViewTracker />
           </SessionProviderWrapper>
         </LangProvider>
       </body>
