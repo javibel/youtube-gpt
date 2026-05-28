@@ -139,7 +139,7 @@ function buildSeoHtml(lang, name, videoTitle, videoUrl, seoScore, tips) {
         : 'These are quick fixes that can make a real difference in how YouTube ranks your content.'}
     </p>
     <table cellpadding="0" cellspacing="0"><tr><td style="background:#dc2626;border-radius:8px;">
-      <a href="https://ytubviral.com/features/seo-score" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
+      <a href="https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
         ${isEs ? 'Ver an&aacute;lisis completo gratis &rarr;' : 'See full analysis free &rarr;'}
       </a>
     </td></tr></table>
@@ -162,7 +162,7 @@ function buildSeoHtml(lang, name, videoTitle, videoUrl, seoScore, tips) {
     </p>
     <p style="margin:16px 0 0;color:#374151;font-size:14px;line-height:1.4;">
       Javier Jimeno<br>
-      <span style="color:#6b7280;">${isEs ? 'Fundador' : 'Founder'}, <a href="https://ytubviral.com" style="color:#dc2626;text-decoration:none;">YTubViral</a></span>
+      <span style="color:#6b7280;">${isEs ? 'Fundador' : 'Founder'}, <a href="https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach" style="color:#dc2626;text-decoration:none;">YTubViral</a></span>
     </p>
   </td></tr>
 
@@ -209,7 +209,7 @@ function buildFallbackHtml(lang, name, topic) {
   <!-- CTA -->
   <tr><td style="padding:0 32px 28px;" align="center">
     <table cellpadding="0" cellspacing="0"><tr><td style="background:#dc2626;border-radius:8px;">
-      <a href="https://ytubviral.com/features/seo-score" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
+      <a href="https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
         ${isEs ? 'Probar SEO Score gratis &rarr;' : 'Try SEO Score free &rarr;'}
       </a>
     </td></tr></table>
@@ -227,7 +227,7 @@ function buildFallbackHtml(lang, name, topic) {
   <tr><td style="padding:20px 32px 24px;">
     <p style="margin:0;color:#374151;font-size:14px;line-height:1.4;">
       Javier Jimeno<br>
-      <span style="color:#6b7280;">${isEs ? 'Fundador' : 'Founder'}, <a href="https://ytubviral.com" style="color:#dc2626;text-decoration:none;">YTubViral</a></span>
+      <span style="color:#6b7280;">${isEs ? 'Fundador' : 'Founder'}, <a href="https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach" style="color:#dc2626;text-decoration:none;">YTubViral</a></span>
     </p>
   </td></tr>
 
@@ -254,7 +254,7 @@ ${tipsText}
 
 Estos ajustes son rápidos y pueden marcar una diferencia real en cómo YouTube posiciona tu contenido.
 
-Ver análisis completo gratis: https://ytubviral.com/features/seo-score
+Ver análisis completo gratis: https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach
 
 Si quieres el paquete completo (keywords, retención, thumbnails, ideas de contenido), te doy acceso Pro gratis 3 meses — solo regístrate y responde con tu email de registro.
 
@@ -263,7 +263,7 @@ Sin compromiso. Si te sirve, genial. Si no, espero que al menos estos tips te se
 Un saludo,
 Javier Jimeno
 Fundador, YTubViral
-https://ytubviral.com`;
+https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach`;
     },
   },
   en: {
@@ -280,7 +280,7 @@ ${tipsText}
 
 These are quick fixes that can make a real difference in how YouTube ranks your content.
 
-See full analysis free: https://ytubviral.com/features/seo-score
+See full analysis free: https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach
 
 If you'd like the full suite (keywords, retention, thumbnails, content ideas), I'll give you free Pro access for 3 months — just sign up and reply with your registration email.
 
@@ -289,7 +289,7 @@ No strings attached. If it helps, great. If not, I hope these tips are useful re
 Best,
 Javier Jimeno
 Founder, YTubViral
-https://ytubviral.com`;
+https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach`;
     },
   },
 };
@@ -304,14 +304,14 @@ Soy Javier Jimeno, fundador de YTubViral. Estoy contactando a creadores como tú
 
 YTubViral tiene una herramienta de SEO Score gratuita — analizas cualquiera de tus videos y te dice exactamente qué mejorar en título, descripción, tags y thumbnail para posicionarte mejor.
 
-Pruébala gratis en https://ytubviral.com/features/seo-score
+Pruébala gratis en https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach
 
 Si te interesa el paquete completo (keywords, ideas de contenido, retención), te doy Pro gratis 3 meses. Solo regístrate y responde con tu email.
 
 Un saludo,
 Javier Jimeno
 Fundador, YTubViral
-https://ytubviral.com`,
+https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach`,
   },
   en: {
     subject: 'Free SEO tool for your channel — YTubViral',
@@ -321,14 +321,14 @@ I'm Javier Jimeno, founder of YTubViral. I'm reaching out to creators like you i
 
 YTubViral has a free SEO Score tool — analyze any of your videos and get actionable tips on what to improve in your title, description, tags, and thumbnail to rank better.
 
-Try it free at https://ytubviral.com/features/seo-score
+Try it free at https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach
 
 If you'd like the full suite (keywords, content ideas, retention analysis), I'll give you Pro free for 3 months. Just sign up and reply with your email.
 
 Best,
 Javier Jimeno
 Founder, YTubViral
-https://ytubviral.com`,
+https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach`,
   },
 };
 

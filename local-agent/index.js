@@ -32,6 +32,8 @@ const { runBlogSyndicator } = require('./blog-syndicator');
 const { runQuoraCommenter } = require('./quora-commenter');
 const { runYoutubeCommenter } = require('./youtube-commenter');
 const { runDmarcMonitor } = require('./dmarc-monitor');
+const { runAutoResolver } = require('./auto-resolver');
+const { runPersonaMonitor } = require('./persona-monitor');
 const { enqueue: bq } = require('./browser-queue');
 
 console.log('[agent] YTubViral local agent starting...');
@@ -319,6 +321,19 @@ cron.schedule('30 3 * * 0', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
+// Persona Monitor — cada hora en horario activo (08:00-23:00)
+// Detecta silencio >14h en Twitter, >26h en Reddit; auto-retry + email si falla
+cron.schedule('12 8-23 * * *', async () => {
+  await runPersonaMonitor().catch(err => console.error('[persona-monitor]', err.message));
+  await db.disconnect().catch(() => {});
+}, { timezone: 'Europe/Madrid' });
+
+// Auto-Resolver — daily at 09:17 (reads manager report + applies programmatic fixes)
+cron.schedule('17 9 * * *', async () => {
+  console.log('[cron] Auto-Resolver — reading manager report and applying fixes');
+  await runAutoResolver().catch(err => console.error('[auto-resolver]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
 // Blog Generator — Monday & Thursday at 04:00 (2 articles/week)
 cron.schedule('0 4 * * 1,4', async () => {
   console.log('[cron] Blog Generator — auto-generating SEO article');
@@ -375,6 +390,8 @@ console.log('  Funnel Optimizer: 02:55 daily (Europe/Madrid)');
 console.log('  Social Optimizer: 03:00 daily (Europe/Madrid)');
 console.log('  Manager: 03:15 daily (Europe/Madrid)');
 console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
+console.log('  Persona Monitor: every hour 08:00-23:00 (Europe/Madrid) — detects silence + auto-retry');
+console.log('  Auto-Resolver: 09:17 daily (Europe/Madrid) — fixes manager issues automatically');
 console.log('  Blog Generator: 04:00 Mon+Thu (Europe/Madrid)');
 console.log('  Blog Syndicator: 05:00 daily (Europe/Madrid)');
 console.log('  Quora Commenter: 13:00, 19:00 daily (Europe/Madrid)');

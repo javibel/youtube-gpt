@@ -609,6 +609,25 @@ Post: "${postContent}"${mentionInstruction}
 
   if (!result) return result;
 
+  // UTM attribution: replace bare ytubviral.com links with UTM-tagged versions
+  // so we can track which persona/platform drives signups
+  const utmTagged = result.replace(
+    /\bhttps?:\/\/ytubviral\.com([^\s"')]*)/gi,
+    (_, rest) => {
+      if (rest.includes('utm_source')) return `https://ytubviral.com${rest}`;
+      const sep = rest.includes('?') ? '&' : '?';
+      return `https://ytubviral.com${rest}${sep}utm_source=${encodeURIComponent(platform)}&utm_medium=social&utm_campaign=${encodeURIComponent(persona.id)}`;
+    }
+  ).replace(
+    /(?<![/:])(?<!\w)ytubviral\.com([^\s"')\],]*)/gi,
+    (_, rest) => {
+      if (rest.includes('utm_source')) return `ytubviral.com${rest}`;
+      const sep = rest.includes('?') ? '&' : '?';
+      return `ytubviral.com${rest}${sep}utm_source=${encodeURIComponent(platform)}&utm_medium=social&utm_campaign=${encodeURIComponent(persona.id)}`;
+    }
+  );
+  const resultWithUtm = utmTagged !== result ? utmTagged : result;
+
   // Second-line defense: if the model broke character and wrote a meta-comment
   // (asking for more info, referencing "post content", etc.) return empty to skip
   const metaPhrases = [
@@ -619,12 +638,12 @@ Post: "${postContent}"${mentionInstruction}
     /give you a genuine comment/i,
     /need more (context|info|detail)/i,
   ];
-  if (metaPhrases.some(p => p.test(result))) {
+  if (metaPhrases.some(p => p.test(resultWithUtm))) {
     console.log(`[persona-runner] ⚠️ Meta-phrase detected in output — discarding comment`);
     return '';
   }
 
-  return result;
+  return resultWithUtm;
 }
 
 // ── Follow-up reply generation ──

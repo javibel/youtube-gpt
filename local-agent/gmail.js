@@ -424,4 +424,32 @@ async function processInbox() {
   console.log('[gmail] Inbox processing complete');
 }
 
-module.exports = { processInbox };
+/**
+ * Read-only fetch of recent emails for the morning-fix audit.
+ * Does NOT mark as read or take any action.
+ * Returns an array of { from, subject, snippet, classification, date }.
+ */
+async function getRecentEmails(maxResults = 20) {
+  let token;
+  try { token = await getAccessToken(); }
+  catch (err) { return { error: 'auth_failed', message: err.message }; }
+
+  const messages = await listUnreadMessages(token, maxResults);
+  const results = [];
+
+  for (const { id: messageId } of messages) {
+    try {
+      const msg = await getMessage(token, messageId);
+      const { payload, snippet } = msg;
+      const headers = payload?.headers || [];
+      const from    = extractHeader(headers, 'From') || '';
+      const subject = extractHeader(headers, 'Subject') || '';
+      const date    = extractHeader(headers, 'Date') || '';
+      const cls     = classifyEmail(from, subject, snippet, headers);
+      results.push({ from, subject, snippet: (snippet || '').slice(0, 300), classification: cls, date });
+    } catch {}
+  }
+  return results;
+}
+
+module.exports = { processInbox, getRecentEmails };

@@ -140,7 +140,12 @@ async function main() {
 
   // Step 2: Navigate to feed — if cookies work, we're logged in
   console.log(`Navigating to ${platformCfg.feedUrl}...`);
-  await page.goto(platformCfg.feedUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  try {
+    await page.goto(platformCfg.feedUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  } catch (err) {
+    // Navigation timeout is non-fatal — fall through to manual login polling
+    console.log(`Navigation timed out (${err.message}) — continuing to manual login...`);
+  }
   await new Promise(r => setTimeout(r, 3000));
 
   let loggedIn;
@@ -163,7 +168,7 @@ async function main() {
     let disconnected = false;
     browser.on('disconnected', () => { disconnected = true; });
 
-    for (let attempt = 0; attempt < 200 && !disconnected; attempt++) {
+    for (let attempt = 0; attempt < 400 && !disconnected; attempt++) {
       await new Promise(r => setTimeout(r, 3000));
       try {
         const currentUrl = page.url();

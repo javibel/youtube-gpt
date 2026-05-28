@@ -37,12 +37,26 @@ export default function SignupForm() {
       return;
     }
 
+    // Read first-touch UTM attribution from cookie
+    let utmSource: string | undefined;
+    let utmMedium: string | undefined;
+    let utmCampaign: string | undefined;
+    try {
+      const utmCookie = document.cookie.split('; ').find(r => r.startsWith('ytv_utm='));
+      if (utmCookie) {
+        const parsed = JSON.parse(decodeURIComponent(utmCookie.split('=').slice(1).join('=')));
+        utmSource = parsed.source ?? undefined;
+        utmMedium = parsed.medium ?? undefined;
+        utmCampaign = parsed.campaign ?? undefined;
+      }
+    } catch {}
+
     setLoading(true);
     try {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, lang }),
+        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign }),
       });
       const data = await res.json();
       if (!res.ok) {

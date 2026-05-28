@@ -378,6 +378,24 @@ async function disconnect() {
   } catch {}
 }
 
+/**
+ * Get the timestamp of the last recorded action for a persona on a given platform.
+ * platform: 'twitter' | 'reddit' | 'facebook' | 'linkedin'
+ * Returns a Date or null if no actions exist.
+ */
+async function getLastActivity(accountId, platform) {
+  const tableMap = { twitter: 'twitter_actions', reddit: 'reddit_actions', facebook: 'facebook_actions', linkedin: 'linkedin_actions' };
+  const table = tableMap[platform];
+  if (!table) return null;
+  const urlCol = platform === 'twitter' ? 'tweet_url' : platform === 'reddit' ? 'post_url' : 'post_url';
+  const rows = await query(
+    `SELECT MAX(created_at) as last_at FROM ${table} WHERE account_id = $1`,
+    [accountId]
+  );
+  const val = rows[0]?.last_at;
+  return val ? new Date(val) : null;
+}
+
 module.exports = {
   query, disconnect,
   saveProspect, updateProspectStatus, getProspectsByStatus,
@@ -386,5 +404,6 @@ module.exports = {
   getRecentComments, saveFollowup, hasFollowup, countTodayFollowups,
   getDailyStats, getTodayComments,
   getPersonaStats, getPersonaComments,
+  getLastActivity,
   initDb,
 };
