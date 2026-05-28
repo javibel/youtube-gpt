@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { cookies } from 'next/headers';
 import { BLOG_POSTS, BLOG_CATEGORIES, type Lang } from '@/lib/blog-data';
+import { getServerLang } from '@/lib/server-lang';
 
 export const metadata: Metadata = {
   title: 'Blog — Estrategias, IA y crecimiento para YouTubers',
@@ -63,8 +63,7 @@ export default async function BlogListPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const cookieStore = await cookies();
-  const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
   const { cat: activeCat } = await searchParams;
   const selectedCat = typeof activeCat === 'string' ? activeCat : undefined;
 

@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import LangToggle from '@/components/LangToggle';
+import { getServerLang } from '@/lib/server-lang';
 
 export default async function FeaturesLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
 
   return (
     <>

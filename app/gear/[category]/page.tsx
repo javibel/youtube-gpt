@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import {
   GEAR_ITEMS, GEAR_CATEGORIES, ACCESSIBILITY_SUBCATEGORIES,
   ALL_GEAR_SLUGS, getCategoryBySlug, getItemsForSlug,
   TIER_LABELS, TIER_COLORS, AMAZON_TAGS, type Lang,
 } from '@/lib/gear-data';
+import { getServerLang } from '@/lib/server-lang';
 
 export function generateStaticParams() {
   return ALL_GEAR_SLUGS.map(category => ({ category }));
@@ -40,8 +40,7 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
   const cat = getCategoryBySlug(category);
   if (!cat) notFound();
 
-  const cookieStore = await cookies();
-  const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   const items = getItemsForSlug(category);

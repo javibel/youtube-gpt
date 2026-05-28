@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { GEAR_ITEMS, GEAR_CATEGORIES, ACCESSIBILITY_SUBCATEGORIES, type Lang } from '@/lib/gear-data';
+import { getServerLang } from '@/lib/server-lang';
 
 export const metadata: Metadata = {
   title: 'Equipo Recomendado para YouTubers',
@@ -24,8 +24,7 @@ export const metadata: Metadata = {
 };
 
 export default async function GearPage() {
-  const cookieStore = await cookies();
-  const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   const jsonLd = {

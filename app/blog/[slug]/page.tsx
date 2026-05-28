@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { cookies } from 'next/headers';
 import {
   BLOG_POSTS, BLOG_CATEGORIES, ARTICLE_BODIES,
   getPost, getRelated, type Lang, type BlockType,
 } from '@/lib/blog-data';
 import ArticleBlock from '@/components/ArticleBlock';
+import { getServerLang } from '@/lib/server-lang';
 
 export async function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
@@ -68,8 +68,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const post = getPost(slug);
   if (!post) notFound();
 
-  const cookieStore = await cookies();
-  const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
 
   const body = ARTICLE_BODIES[slug]?.[lang] ?? null;
   const related = getRelated(slug, post.cat, 3);

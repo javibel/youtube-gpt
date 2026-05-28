@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video 1 — YouTube SEO en 10 Minutos desde Cero | YTubViral Learning Hub</title>
+<style>
+  :root {
+    --red: #E53E3E;
+    --red-dark: #C53030;
+    --dark: #1A1A2E;
+    --darker: #0F0F1A;
+    --gray-100: #F7F7F8;
+    --gray-200: #E8E8EC;
+    --gray-300: #D1D1D8;
+    --gray-600: #6B6B80;
+    --gray-800: #2D2D3A;
+    --green: #38A169;
+    --blue: #3182CE;
+    --orange: #DD6B20;
+    --purple: #805AD5;
+    --yellow: #D69E2E;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--darker);
+    color: var(--gray-100);
+    line-height: 1.6;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
+    border-bottom: 3px solid var(--red);
+    padding: 40px 0;
+    text-align: center;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .badge {
+    display: inline-block;
+    background: var(--red);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+  .header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    background: linear-gradient(90deg, #fff, var(--gray-200));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .subtitle {
+    color: var(--gray-600);
+    font-size: 1.05rem;
+  }
+  .meta-row {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--gray-300);
+    font-size: 0.9rem;
+  }
+  .meta-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  /* Main */
+  .main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* TOC */
+  .toc {
+    background: var(--dark);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 48px;
+  }
+  .toc h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--gray-600);
+    margin-bottom: 16px;
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 32px;
+  }
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    color: var(--gray-300);
+    font-size: 0.92rem;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .toc-item:hover { color: var(--red); }
+  .toc-time {
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    color: var(--red);
+    min-width: 42px;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 48px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .section-number {
+    width: 40px;
+    height: 40px;
+    background: var(--red);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .section-title-group { flex: 1; }
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+  .section-time {
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    color: var(--red);
+    margin-top: 2px;
+  }
+
+  /* Script block */
+  .script {
+    background: var(--dark);
+    border-left: 3px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--gray-100);
+  }
+  .script p { margin-bottom: 12px; }
+  .script p:last-child { margin-bottom: 0; }
+  .script strong { color: #fff; }
+
+  /* Screen direction */
+  .screen {
+    background: rgba(49, 130, 206, 0.08);
+    border: 1px solid rgba(49, 130, 206, 0.2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    font-size: 0.88rem;
+    color: var(--blue);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .screen-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* Tips */
+  .tip {
+    background: rgba(56, 161, 105, 0.08);
+    border: 1px solid rgba(56, 161, 105, 0.2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    font-size: 0.92rem;
+    color: var(--green);
+  }
+
+  /* Examples */
+  .example-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .example {
+    flex: 1;
+    min-width: 250px;
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .example.bad {
+    background: rgba(229, 62, 62, 0.08);
+    border: 1px solid rgba(229, 62, 62, 0.2);
+  }
+  .example.good {
+    background: rgba(56, 161, 105, 0.08);
+    border: 1px solid rgba(56, 161, 105, 0.2);
+  }
+  .example-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .example.bad .example-label { color: var(--red); }
+  .example.good .example-label { color: var(--green); }
+  .example-text {
+    font-size: 0.95rem;
+    color: var(--gray-200);
+    font-style: italic;
+  }
+
+  /* Bullet list */
+  .bullets {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 16px;
+  }
+  .bullets li {
+    padding: 8px 0 8px 28px;
+    position: relative;
+    color: var(--gray-200);
+    font-size: 0.95rem;
+  }
+  .bullets li::before {
+    content: '▸';
+    position: absolute;
+    left: 8px;
+    color: var(--red);
+    font-weight: bold;
+  }
+
+  /* Formula */
+  .formula {
+    background: linear-gradient(135deg, rgba(229, 62, 62, 0.1), rgba(128, 90, 213, 0.1));
+    border: 1px solid rgba(229, 62, 62, 0.25);
+    border-radius: 10px;
+    padding: 18px 24px;
+    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 16px;
+    letter-spacing: 0.3px;
+  }
+  .formula span {
+    color: var(--red);
+  }
+
+  /* Quick wins */
+  .qw-card {
+    background: var(--dark);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .qw-number {
+    width: 36px;
+    height: 36px;
+    background: var(--orange);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .qw-content h4 {
+    font-size: 1rem;
+    margin-bottom: 4px;
+  }
+  .qw-content p {
+    font-size: 0.9rem;
+    color: var(--gray-300);
+  }
+
+  /* Divider sections */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 56px 0 32px;
+  }
+  .divider-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+  }
+  .divider-text {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--gray-600);
+    font-weight: 700;
+  }
+
+  /* Production table */
+  .prod-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .prod-table th {
+    background: var(--red-dark);
+    padding: 12px 18px;
+    text-align: left;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .prod-table td {
+    background: var(--dark);
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 0.92rem;
+    color: var(--gray-200);
+  }
+  .prod-table tr:last-child td { border-bottom: none; }
+  .prod-table td:first-child {
+    font-weight: 600;
+    color: var(--gray-100);
+    width: 180px;
+  }
+
+  /* Copy blocks (descriptions, captions) */
+  .copy-block {
+    background: var(--dark);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .copy-block h3 {
+    font-size: 1rem;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lang-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 4px;
+  }
+  .lang-es { background: rgba(221, 107, 32, 0.2); color: var(--orange); }
+  .lang-en { background: rgba(49, 130, 206, 0.2); color: var(--blue); }
+  .copy-text {
+    font-size: 0.9rem;
+    color: var(--gray-300);
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  .copy-text a {
+    color: var(--red);
+    text-decoration: none;
+  }
+
+  /* Thumbnail section */
+  .thumb-preview {
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+    border: 2px solid rgba(229, 62, 62, 0.3);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .thumb-preview::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(229,62,62,0.15), transparent 70%);
+  }
+  .thumb-text-main {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #fff;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+    line-height: 1.2;
+  }
+  .thumb-text-sub {
+    font-size: 1rem;
+    color: var(--red);
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+    margin-top: 8px;
+  }
+  .thumb-cross {
+    font-size: 3rem;
+    position: relative;
+    z-index: 1;
+    margin-top: 4px;
+  }
+
+  /* Hashtags */
+  .hashtags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .hashtag {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: var(--gray-300);
+  }
+
+  /* Checklist */
+  .checklist {
+    list-style: none;
+    padding: 0;
+  }
+  .checklist li {
+    padding: 10px 0 10px 32px;
+    position: relative;
+    color: var(--gray-200);
+    font-size: 0.92rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before {
+    content: '☐';
+    position: absolute;
+    left: 4px;
+    font-size: 1.1rem;
+  }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; color: #1a1a1a; }
+    .header { border-bottom-color: var(--red); }
+    .section, .copy-block, .toc, .qw-card { break-inside: avoid; }
+    .script { background: #f5f5f5; }
+    .screen { background: #eef6ff; }
+  }
+
+  @media (max-width: 640px) {
+    .header h1 { font-size: 1.6rem; }
+    .toc-grid { grid-template-columns: 1fr; }
+    .example-row { flex-direction: column; }
+    .meta-row { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="badge">Learning Hub &middot; Video 1</div>
+    <h1>YouTube SEO en 10 Minutos desde Cero</h1>
+    <p class="subtitle">Guion completo, direcciones de pantalla y material de produccion</p>
+    <div class="meta-row">
+      <div class="meta-item"><span class="meta-icon">&#9202;</span> ~10 minutos</div>
+      <div class="meta-item"><span class="meta-icon">&#127909;</span> Screencast + voiceover</div>
+      <div class="meta-item"><span class="meta-icon">&#127919;</span> Principiantes</div>
+      <div class="meta-item"><span class="meta-icon">&#128204;</span> Canal YTubViral</div>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- TOC -->
+  <nav class="toc">
+    <h2>Estructura del video</h2>
+    <div class="toc-grid">
+      <a class="toc-item" href="#hook"><span class="toc-time">0:00</span> Hook</a>
+      <a class="toc-item" href="#p4"><span class="toc-time">4:30</span> Thumbnails y CTR</a>
+      <a class="toc-item" href="#intro"><span class="toc-time">0:05</span> Intro</a>
+      <a class="toc-item" href="#p5"><span class="toc-time">5:30</span> Retencion</a>
+      <a class="toc-item" href="#p1"><span class="toc-time">0:30</span> Titulos</a>
+      <a class="toc-item" href="#demo"><span class="toc-time">6:30</span> Demo SEO Score</a>
+      <a class="toc-item" href="#p2"><span class="toc-time">2:00</span> Descripciones</a>
+      <a class="toc-item" href="#qw"><span class="toc-time">8:30</span> 3 Quick Wins</a>
+      <a class="toc-item" href="#p3"><span class="toc-time">3:30</span> Tags</a>
+      <a class="toc-item" href="#outro"><span class="toc-time">9:20</span> Outro y CTA</a>
+    </div>
+  </nav>
+
+  <!-- ==================== SCRIPT ==================== -->
+
+  <!-- HOOK -->
+  <section class="section" id="hook">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--yellow);">&#9889;</div>
+      <div class="section-title-group">
+        <div class="section-title">Hook</div>
+        <div class="section-time">0:00 &ndash; 0:05</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"El 90% de los videos en YouTube nunca llegan a las 1,000 vistas. Y la razon no es la calidad del video... es que nadie los puede encontrar."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar estadistica en pantalla con texto animado grande: <strong>"90% de videos = menos de 1,000 vistas"</strong></span>
+    </div>
+  </section>
+
+  <!-- INTRO -->
+  <section class="section" id="intro">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--blue);">&#128204;</div>
+      <div class="section-title-group">
+        <div class="section-title">Intro</div>
+        <div class="section-time">0:05 &ndash; 0:30</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Hola, que tal. Si tienes un canal de YouTube y sientes que estas publicando al vacio, este video es para ti. En los proximos 10 minutos te voy a ensenar exactamente como funciona el SEO en YouTube, los 5 factores que determinan si tu video aparece o desaparece, y te voy a mostrar en vivo como usar una herramienta gratuita para optimizar tu proximo video desde cero. Sin tecnicismos, sin relleno. Empezamos."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Indice visual con los 5 puntos apareciendo uno a uno: 1. Titulos &bull; 2. Descripciones &bull; 3. Tags &bull; 4. Thumbnails &bull; 5. Retencion</span>
+    </div>
+  </section>
+
+  <!-- PUNTO 1: TITULOS -->
+  <section class="section" id="p1">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <div class="section-title-group">
+        <div class="section-title">Titulos &mdash; Tu primera oportunidad de existir</div>
+        <div class="section-time">0:30 &ndash; 2:00</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Primero lo primero: el titulo. Este es literalmente el factor numero uno que YouTube usa para entender de que trata tu video. Si tu titulo no tiene la palabra clave correcta, el algoritmo simplemente no sabe a quien mostrarselo."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Zoom en barra de busqueda de YouTube, escribir lentamente <strong>"como hacer crecer mi canal"</strong></span>
+    </div>
+    <div class="script">
+      <p><strong>"Mira esto. Cuando alguien escribe algo en YouTube, el algoritmo escanea millones de titulos buscando coincidencias. Si tu titulo no tiene esas palabras exactas o similares... no existes."</strong></p>
+    </div>
+    <div class="example-row">
+      <div class="example bad">
+        <div class="example-label">&#10060; Titulo malo</div>
+        <div class="example-text">"Mi experiencia con YouTube"</div>
+      </div>
+      <div class="example good">
+        <div class="example-label">&#9989; Titulo bueno</div>
+        <div class="example-text">"Como Crecer en YouTube desde Cero en 2024 (Paso a Paso)"</div>
+      </div>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Comparacion lado a lado de ambos titulos con iconos visuales</span>
+    </div>
+    <div class="script">
+      <p><strong>"La diferencia es simple: el segundo titulo tiene palabras que la gente realmente busca. A eso le llamamos intencion de busqueda. Tu titulo tiene que responder exactamente lo que alguien esta buscando."</strong></p>
+      <p><strong>"Regla de oro para titulos:"</strong></p>
+    </div>
+    <div class="formula">
+      <span>Palabra clave principal</span> + Beneficio claro + <span>Numero o ano</span>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar formula en pantalla con highlight de cada elemento</span>
+    </div>
+    <div class="script">
+      <p><strong>"Y un dato rapido: los titulos entre 50 y 60 caracteres tienen mejor rendimiento porque no se cortan en los resultados de busqueda. Mas largo que eso y pierdes el remate."</strong></p>
+    </div>
+  </section>
+
+  <!-- PUNTO 2: DESCRIPCIONES -->
+  <section class="section" id="p2">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <div class="section-title-group">
+        <div class="section-title">Descripciones &mdash; El texto que el algoritmo devora</div>
+        <div class="section-time">2:00 &ndash; 3:30</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Okay, siguiente. La descripcion. Y aqui quiero ser honesto contigo: la mayoria de creadores pone dos lineas genericas y ya. Error enorme."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar ejemplo de descripcion vacia vs. descripcion optimizada</span>
+    </div>
+    <div class="script">
+      <p><strong>"YouTube lee tu descripcion completa para entender el contexto de tu video. No es solo para los viewers, es para el algoritmo."</strong></p>
+      <p><strong>"Que debe tener una buena descripcion?"</strong></p>
+    </div>
+    <ul class="bullets">
+      <li><strong>Las primeras 2-3 lineas son criticas</strong> &mdash; aparecen antes del "ver mas", pon tu palabra clave principal aqui, en las primeras 25 palabras</li>
+      <li><strong>Incluye variaciones de tu keyword</strong> &mdash; si tu tema es "YouTube SEO", tambien menciona "posicionamiento en YouTube", "como aparecer en busquedas de YouTube"</li>
+      <li><strong>Minimo 150-200 palabras</strong> &mdash; le das mas contexto al algoritmo para clasificar tu video</li>
+    </ul>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar descripcion de ejemplo con partes senaladas: keyword en primeras lineas, variaciones, links, timestamps</span>
+    </div>
+    <div class="tip">
+      &#128161; <strong>Tip:</strong> Anade timestamps. Mejoran la experiencia del usuario, YouTube los muestra como rich snippets en resultados de busqueda, y eso aumenta tu CTR. Win-win.
+    </div>
+  </section>
+
+  <!-- PUNTO 3: TAGS -->
+  <section class="section" id="p3">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <div class="section-title-group">
+        <div class="section-title">Tags &mdash; &iquest;Siguen importando en 2026?</div>
+        <div class="section-time">3:30 &ndash; 4:30</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Los tags. Pregunta que me hacen todo el tiempo: todavia sirven? Respuesta corta: si, pero no son lo mas importante."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Ir a configuracion de un video en YouTube Studio, seccion de tags</span>
+    </div>
+    <div class="script">
+      <p><strong>"Los tags ayudan a YouTube a entender el contexto de tu video y a relacionarlo con otros videos similares. Eso significa que puedes aparecer en la seccion de 'videos relacionados', que es donde ocurre mucho del trafico organico."</strong></p>
+    </div>
+    <ul class="bullets">
+      <li><strong>Primer tag:</strong> tu keyword exacta tal como la escribiste en el titulo</li>
+      <li><strong>Segundo y tercero:</strong> variaciones de la keyword</li>
+      <li><strong>Cuarto en adelante:</strong> tags de contexto mas amplio (tu nicho, tu categoria)</li>
+    </ul>
+    <div class="script">
+      <p><strong>"Lo que NO debes hacer: poner tags random esperando aparecer en busquedas masivas. Si haces un video sobre 'recetas veganas' y pones el tag 'MrBeast'... YouTube va a pensar que tu canal es inconsistente y va a penalizar tu distribucion. En serio."</strong></p>
+    </div>
+    <div class="formula">
+      <span>5 a 10 tags</span> relevantes, especificos y relacionados directamente con tu video
+    </div>
+  </section>
+
+  <!-- PUNTO 4: THUMBNAILS -->
+  <section class="section" id="p4">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <div class="section-title-group">
+        <div class="section-title">Thumbnails &mdash; El SEO que se ve</div>
+        <div class="section-time">4:30 &ndash; 5:30</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Punto cuatro: thumbnails. Y se que piensas que esto no es SEO, pero te equivocas."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar grid de resultados de YouTube con thumbnails visibles</span>
+    </div>
+    <div class="script">
+      <p><strong>"El CTR, el Click Through Rate, es decir el porcentaje de personas que ven tu miniatura y hacen clic, es una senal directa de ranking para YouTube. Si mucha gente ve tu video en los resultados y nadie hace clic... el algoritmo interpreta que tu contenido no es relevante y deja de mostrarlo."</strong></p>
+    </div>
+    <ul class="bullets">
+      <li><strong>Contraste alto:</strong> colores que destacan sobre el fondo blanco/gris de YouTube</li>
+      <li><strong>Texto legible en movil:</strong> el 70% del trafico de YouTube es desde celular</li>
+      <li><strong>Una cara con emocion:</strong> thumbnails con caras tienen hasta 38% mas CTR</li>
+      <li><strong>Consistencia visual:</strong> todos tus thumbnails deben verse del mismo canal</li>
+    </ul>
+    <div class="tip">
+      &#128161; <strong>Tip:</strong> Tu thumbnail y tu titulo tienen que contar la misma historia, pero de forma complementaria. No repitas el mismo texto del titulo en el thumbnail. Sumale algo, genera mas curiosidad.
+    </div>
+  </section>
+
+  <!-- PUNTO 5: RETENCION -->
+  <section class="section" id="p5">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <div class="section-title-group">
+        <div class="section-title">Retencion &mdash; La senal mas poderosa de todas</div>
+        <div class="section-time">5:30 &ndash; 6:30</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Y llegamos al numero cinco, el mas importante y el que menos control parece que tienes... pero en realidad si puedes trabajarlo. La retencion."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar grafica de retencion en YouTube Analytics &mdash; la curva tipica que baja</span>
+    </div>
+    <div class="script">
+      <p><strong>"YouTube mira cuanto tiempo la gente ve tu video. Si alguien hace clic en tu video y se va a los 30 segundos, eso le dice al algoritmo: 'este video no cumple lo que promete'. Y lo distribuye menos."</strong></p>
+      <p><strong>"Pero si la gente ve el 60%, 70%, 80% de tu video... YouTube entiende que ese contenido es valioso y lo muestra a mas personas. Es un ciclo virtuoso."</strong></p>
+    </div>
+    <ul class="bullets">
+      <li><strong>Hook fuerte en los primeros 30 segundos</strong> &mdash; el pico de abandono mas grande ocurre ahi</li>
+      <li><strong>Pattern interrupts cada 60-90 segundos</strong> &mdash; cambia el plano, agrega un grafico, haz una pregunta</li>
+      <li><strong>No des todo de golpe</strong> &mdash; crea micro-anticipaciones: <em>"al final del video te voy a mostrar..."</em></li>
+      <li><strong>Edita sin piedad</strong> &mdash; cada segundo de relleno es una oportunidad para que alguien cierre el video</li>
+    </ul>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar antes/despues de grafica de retencion con cambios implementados</span>
+    </div>
+  </section>
+
+  <!-- DEMO -->
+  <section class="section" id="demo">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--purple);">&#9881;</div>
+      <div class="section-title-group">
+        <div class="section-title">Demo en vivo: SEO Score con YTubViral</div>
+        <div class="section-time">6:30 &ndash; 8:30</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Okay, teoria suficiente. Ahora te muestro como aplicar todo esto en tiempo real con una herramienta que se llama YTubViral. Voy a coger un video real y vamos a ver su score de SEO."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Abrir navegador, ir a <strong>ytubviral.com</strong></span>
+    </div>
+    <div class="script">
+      <p><strong>"Esto es YTubViral. Tiene una funcion especifica que se llama SEO Score y lo que hace es analizar tu video en funcion de los factores que acabamos de ver: titulo, descripcion, tags, thumbnail, y engagement. Te da una puntuacion y te dice exactamente que esta fallando."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Pegar URL de un video de ejemplo en la herramienta. Esperar resultado, mostrar dashboard de SEO Score.</span>
+    </div>
+    <div class="script">
+      <p><strong>"Mira esto. Nos da un score general, y luego desglosa cada factor. Este video por ejemplo tiene un titulo decente, pero mira la descripcion: score bajo. Y los tags estan practicamente vacios."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Hacer zoom en cada seccion del analisis mientras lo explica</span>
+    </div>
+    <div class="script">
+      <p><strong>"Lo bueno de esta herramienta es que no solo te dice el problema, te dice como solucionarlo. Aqui en recomendaciones puedes ver exactamente que cambiar para subir ese score."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar seccion de recomendaciones de YTubViral</span>
+    </div>
+    <div class="script">
+      <p><strong>"Y lo mejor: puedes usarlo antes de publicar. Antes de que tu video salga, lo optimizas, subes el score, y tienes muchas mas posibilidades de que el algoritmo lo distribuya bien desde el primer dia. Porque los primeros 48 horas de un video son criticos para su posicionamiento a largo plazo."</strong></p>
+    </div>
+  </section>
+
+  <!-- QUICK WINS -->
+  <section class="section" id="qw">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--orange);">&#9889;</div>
+      <div class="section-title-group">
+        <div class="section-title">3 Quick Wins aplicables HOY</div>
+        <div class="section-time">8:30 &ndash; 9:20</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Para terminar, te doy 3 cosas que puedes hacer hoy mismo, en los proximos 30 minutos, que van a mejorar tu SEO inmediatamente."</strong></p>
+    </div>
+    <div class="qw-card">
+      <div class="qw-number">1</div>
+      <div class="qw-content">
+        <h4>Audita tus ultimos 5 videos</h4>
+        <p>Entra a YouTube Studio, mira el CTR de cada uno. Si alguno tiene menos del 4%, ese thumbnail necesita cambiar. YouTube te deja cambiar la miniatura en cualquier momento. Cambiala, espera 2 semanas, compara.</p>
+      </div>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar ruta en YouTube Studio &gt; Analytics &gt; CTR</span>
+    </div>
+    <div class="qw-card">
+      <div class="qw-number">2</div>
+      <div class="qw-content">
+        <h4>Reescribe las descripciones de tus 3 videos con mas vistas</h4>
+        <p>Edita la descripcion, anade tu keyword en las primeras lineas y amplia el texto a minimo 150 palabras. Esto puede reactivar videos antiguos que el algoritmo tiene olvidados.</p>
+      </div>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar YouTube Studio &gt; Content &gt; editar descripcion</span>
+    </div>
+    <div class="qw-card">
+      <div class="qw-number">3</div>
+      <div class="qw-content">
+        <h4>Corre el SEO Score de YTubViral en tu proximo video ANTES de publicarlo</h4>
+        <p>No despues, antes. Tomate 10 minutos para optimizar segun las recomendaciones. Este solo paso puede hacer la diferencia entre un video que se distribuye bien y uno que nace muerto.</p>
+      </div>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Mostrar YTubViral con campo para pegar URL</span>
+    </div>
+  </section>
+
+  <!-- OUTRO -->
+  <section class="section" id="outro">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--red);">&#128308;</div>
+      <div class="section-title-group">
+        <div class="section-title">Outro</div>
+        <div class="section-time">9:20 &ndash; 10:00</div>
+      </div>
+    </div>
+    <div class="script">
+      <p><strong>"Eso es todo. En menos de 10 minutos tienes los 5 factores de YouTube SEO, una demo real de como optimizar, y 3 acciones concretas para empezar hoy."</strong></p>
+      <p><strong>"El SEO no es magia. Es consistencia. Cada video que publiques optimizado correctamente es un activo que trabaja para ti 24/7."</strong></p>
+      <p><strong>"Si este video te fue util, dale like porque le ayuda a llegar a mas creadores que necesitan esto. Suscribete si quieres mas contenido asi, sin relleno, directo al punto. Y si tienes dudas sobre cualquier cosa que viste hoy, dejamela en los comentarios que respondo a todos."</strong></p>
+    </div>
+    <div class="screen">
+      <span class="screen-icon">&#128187;</span>
+      <span>Pantalla final: video sugerido + boton de suscripcion animado + texto: "Nuevo video cada [dia de la semana]"</span>
+    </div>
+    <div class="script">
+      <p><strong>"Nos vemos en el proximo. Suerte con tu canal."</strong></p>
+    </div>
+  </section>
+
+  <!-- ==================== PRODUCCION ==================== -->
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <div class="divider-text">Produccion</div>
+    <div class="divider-line"></div>
+  </div>
+
+  <!-- THUMBNAIL -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--purple);">&#127912;</div>
+      <div class="section-title-group">
+        <div class="section-title">Miniatura</div>
+      </div>
+    </div>
+    <div class="thumb-preview">
+      <div class="thumb-text-main">Por que nadie<br>ve tus videos</div>
+      <div class="thumb-cross">&#10060;</div>
+      <div class="thumb-text-sub">+ Captura de SEO Score &bull; Fondo rojo/negro marca YTubViral</div>
+    </div>
+  </section>
+
+  <!-- PRODUCTION TABLE -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--gray-600);">&#9881;</div>
+      <div class="section-title-group">
+        <div class="section-title">Notas de produccion</div>
+      </div>
+    </div>
+    <table class="prod-table">
+      <thead>
+        <tr><th>Elemento</th><th>Detalle</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>B-roll necesario</td><td>Pantallas de YouTube Studio, YTubViral, ejemplos de thumbnails</td></tr>
+        <tr><td>Graficos animados</td><td>Estadistica del hook, indice de puntos, formula de titulo</td></tr>
+        <tr><td>Ritmo de edicion</td><td>Corte cada 3-4 segundos en secciones informativas</td></tr>
+        <tr><td>Musica de fondo</td><td>Lo-fi suave, volumen 10-15% para no distraer</td></tr>
+        <tr><td>Pinned comment</td><td>Link a YTubViral + resumen de los 5 factores</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- CHECKLIST -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--green);">&#9745;</div>
+      <div class="section-title-group">
+        <div class="section-title">Checklist pre-grabacion</div>
+      </div>
+    </div>
+    <ul class="checklist">
+      <li>Preparar video de ejemplo para la demo (URL con SEO mejorable)</li>
+      <li>Tener YTubViral abierto y logueado para el screencast</li>
+      <li>Preparar graficos animados: estadistica 90%, indice 5 puntos, formula titulo</li>
+      <li>Preparar ejemplos de thumbnails buenos vs malos</li>
+      <li>Configurar OBS/grabacion de pantalla</li>
+      <li>Preparar musica lo-fi de fondo</li>
+      <li>Revisar iluminacion y encuadre si hay camara</li>
+      <li>Tener script abierto en segundo monitor como teleprompter</li>
+    </ul>
+  </section>
+
+  <!-- ==================== YOUTUBE STUDIO ==================== -->
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <div class="divider-text">Material para YouTube Studio</div>
+    <div class="divider-line"></div>
+  </div>
+
+  <!-- CAPTIONS -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--blue);">&#128172;</div>
+      <div class="section-title-group">
+        <div class="section-title">Captions y CTAs para redes</div>
+      </div>
+    </div>
+    <div class="copy-block">
+      <h3><span class="lang-badge lang-es">ES</span> Caption</h3>
+      <div class="copy-text">&iquest;Publicas y nadie te ve? Esto cambia hoy</div>
+    </div>
+    <div class="copy-block">
+      <h3><span class="lang-badge lang-es">ES</span> CTA</h3>
+      <div class="copy-text">Prueba tu video GRATIS en ytubviral.com/seo-score y dime en comentarios: &iquest;que puntuacion obtuviste?</div>
+    </div>
+    <div class="copy-block">
+      <h3><span class="lang-badge lang-es">ES</span> Hashtags</h3>
+      <div class="hashtags">
+        <span class="hashtag">#YouTubeSEO</span>
+        <span class="hashtag">#CreadorDeContenido</span>
+        <span class="hashtag">#SEOenEspanol</span>
+        <span class="hashtag">#YouTubePrincipiantes</span>
+        <span class="hashtag">#CrecerEnYouTube</span>
+        <span class="hashtag">#TutorialYouTube</span>
+        <span class="hashtag">#EstrategiaYouTube</span>
+        <span class="hashtag">#MarketingDigital</span>
+        <span class="hashtag">#ContentCreator</span>
+        <span class="hashtag">#VideoMarketing</span>
+        <span class="hashtag">#TipsYouTube</span>
+        <span class="hashtag">#HacerCrecer</span>
+        <span class="hashtag">#AprendeYouTube</span>
+        <span class="hashtag">#OptimizacionYouTube</span>
+        <span class="hashtag">#CreadorLatino</span>
+      </div>
+    </div>
+    <div class="copy-block">
+      <h3><span class="lang-badge lang-en">EN</span> Caption</h3>
+      <div class="copy-text">Nobody watching your videos? Fix it today</div>
+    </div>
+    <div class="copy-block">
+      <h3><span class="lang-badge lang-en">EN</span> CTA</h3>
+      <div class="copy-text">Drop your video URL at ytubviral.com/seo-score &mdash; it's FREE. Tell me your score below!</div>
+    </div>
+    <div class="copy-block">
+      <h3><span class="lang-badge lang-en">EN</span> Hashtags</h3>
+      <div class="hashtags">
+        <span class="hashtag">#YouTubeSEO</span>
+        <span class="hashtag">#YouTubeForBeginners</span>
+        <span class="hashtag">#GrowOnYouTube</span>
+        <span class="hashtag">#YouTubeTips</span>
+        <span class="hashtag">#ContentCreator</span>
+        <span class="hashtag">#VideoSEO</span>
+        <span class="hashtag">#YouTubeGrowth</span>
+        <span class="hashtag">#LearnYouTube</span>
+        <span class="hashtag">#SEOTips</span>
+        <span class="hashtag">#YouTubeStrategy</span>
+        <span class="hashtag">#NewYouTuber</span>
+        <span class="hashtag">#VideoMarketing</span>
+        <span class="hashtag">#YouTubeTutorial</span>
+        <span class="hashtag">#CreatorTips</span>
+        <span class="hashtag">#GetMoreViews</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- DESCRIPCION ES -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-number" style="background: var(--orange);">&#128196;</div>
+      <div class="section-title-group">
+        <div class="section-title">Descripcion del video</div>
+      </div>
+    </div>
+    <div class="copy-block">
+      <h3><span class="lang-badge lang-es">ES</span> Descripcion</h3>
+      <div class="copy-text">&iquest;Subes videos y nadie los encuentra? No es mala suerte &mdash; es SEO. En este tutorial aprenderas los 5 factores que YouTube usa para decidir si muestra tu video o lo entierra: titulo, descripcion, tags, thumbnail y retencion. Sin tecnicismos, sin teoria aburrida. Solo lo que realmente funciona para creadores que estan empezando.
+
+Ademas hacemos una demo en vivo analizando un canal real en ytubviral.com/seo-score &mdash; veras exactamente que puntuacion obtiene y que mejorar primero.
+
+TIMESTAMPS:
+00:00 - Por que tus videos no tienen vistas (y como cambiarlo)
+00:30 - Factor 1: Titulos que rankean
+02:00 - Factor 2: Descripciones que posicionan
+03:30 - Factor 3: Tags que si funcionan
+04:30 - Factor 4: Thumbnails y CTR
+05:30 - Factor 5: Retencion de audiencia
+06:30 - Demo en vivo: SEO Score con YTubViral
+08:30 - 3 quick wins aplicables HOY
+09:20 - Cierre y proximos pasos
+
+Lo que aprenderas:
+- Como escribir titulos que rankeen en busqueda de YouTube
+- Que poner en la descripcion para que el algoritmo entienda tu video
+- Como elegir tags que si funcionan en 2026
+- Por que el thumbnail afecta tu posicionamiento
+- Como la retencion de audiencia impacta tu SEO
+
+Prueba tu puntuacion SEO gratis: <a>ytubviral.com/seo-score</a>
+
+&iquest;Te sirvio este video? Suscribete &mdash; cada semana publicamos tutoriales practicos para creadores que quieren crecer sin adivinar.
+
+Links:
+- Analizador SEO gratuito &rarr; ytubviral.com/seo-score
+- Learning Hub (todos los tutoriales) &rarr; ytubviral.com/learning-hub
+- Newsletter para creadores &rarr; ytubviral.com/newsletter</div>
+    </div>
+    <div class="copy-block">
+      <h3><span class="lang-badge lang-en">EN</span> Description</h3>
+      <div class="copy-text">Uploading videos nobody finds? That's not bad luck &mdash; that's missing SEO. In this tutorial you'll learn the 5 factors YouTube actually uses to rank your videos: title, description, tags, thumbnail, and audience retention. No fluff, no complicated jargon. Just what works for beginner creators who want real results.
+
+We also do a live demo analyzing a real channel at ytubviral.com/seo-score &mdash; you'll see the exact score and a checklist of what to fix first.
+
+TIMESTAMPS:
+00:00 - Why your videos aren't getting views (and how to fix it)
+00:30 - Factor 1: Titles that rank
+02:00 - Factor 2: Descriptions that position
+03:30 - Factor 3: Tags that still work
+04:30 - Factor 4: Thumbnails and CTR
+05:30 - Factor 5: Audience retention
+06:30 - Live demo: SEO Score with YTubViral
+08:30 - 3 quick wins you can apply TODAY
+09:20 - Wrap-up and next steps
+
+What you'll learn:
+- How to write titles that rank in YouTube search
+- What to include in your description so the algorithm understands your video
+- How to pick tags that still work in 2026
+- Why your thumbnail directly affects your ranking
+- How audience retention impacts your YouTube SEO score
+
+Check your SEO score for free: <a>ytubviral.com/seo-score</a>
+
+Found this helpful? Subscribe &mdash; we publish weekly tutorials for creators who want to grow without guessing.
+
+Links:
+- Free SEO Analyzer &rarr; ytubviral.com/seo-score
+- Learning Hub (all tutorials) &rarr; ytubviral.com/learning-hub
+- Creator Newsletter &rarr; ytubviral.com/newsletter</div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>

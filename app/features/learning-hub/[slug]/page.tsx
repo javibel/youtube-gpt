@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { cookies } from 'next/headers';
 import {
   LEARN_GUIDES, GUIDE_BODIES, getGuide, getRelatedGuides, getAllGuideSlugs,
   type LearnBlockType,
@@ -10,6 +9,7 @@ import {
 import type { Lang, BlockType } from '@/lib/blog-data';
 import ArticleBlock from '@/components/ArticleBlock';
 import GuideCard from '@/components/GuideCard';
+import { getServerLang } from '@/lib/server-lang';
 
 export async function generateStaticParams() {
   return getAllGuideSlugs().map((slug) => ({ slug }));
@@ -45,8 +45,7 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
   const guide = getGuide(slug);
   if (!guide) notFound();
 
-  const cookieStore = await cookies();
-  const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
 
   const body = GUIDE_BODIES[slug]?.[lang] ?? null;
   const related = getRelatedGuides(slug, 3);

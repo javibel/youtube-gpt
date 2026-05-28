@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
+import { getServerLang } from '@/lib/server-lang';
 
 
 export const metadata: Metadata = {
@@ -40,8 +40,7 @@ const FAQ_EN = [
 ];
 
 export default async function ChannelAnalyticsFeature() {
-  const cookieStore = await cookies();
-  const lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
   const t = (es: string, en: string) => lang === 'en' ? en : es;
   const FAQ = lang === 'en' ? FAQ_EN : FAQ_ES;
 

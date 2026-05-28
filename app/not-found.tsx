@@ -1,9 +1,8 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
+import { getServerLang } from '@/lib/server-lang';
 
 export default async function NotFound() {
-  const cookieStore = await cookies();
-  const lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
   const isEn = lang === 'en';
 
   return (

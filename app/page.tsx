@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import LandingHeroDemo from '@/components/LandingHeroDemo';
 import LandingFeatures from '@/components/LandingFeatures';
@@ -8,6 +7,7 @@ import LandingFAQ from '@/components/LandingFAQ';
 import LangToggle from '@/components/LangToggle';
 import ChatWidgetPreview from '@/components/ChatWidgetPreview';
 import WaitlistInline from '@/components/WaitlistInline';
+import { getServerLang } from '@/lib/server-lang';
 
 export const metadata: Metadata = {
   title: 'YTubViral — 14 herramientas de IA para crecer en YouTube',
@@ -717,8 +717,7 @@ function Footer({ lang }: { lang: Lang }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function LandingPage() {
-  const cookieStore = await cookies();
-  const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
 
   let approvedReviews: { id: string; rating: number; text: string; user: { name: string | null } }[] = [];
   try {

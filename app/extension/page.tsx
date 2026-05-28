@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { ExtensionDetector } from './ExtensionDetector';
+import { getServerLang } from '@/lib/server-lang';
 
 export const metadata: Metadata = {
   title: 'Chrome Extension — SEO y IA en YouTube',
@@ -94,8 +94,7 @@ const featureIcons = [
 ];
 
 export default async function ExtensionPage() {
-  const cookieStore = await cookies();
-  const lang: Lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
   const t = COPY[lang];
 
   return (

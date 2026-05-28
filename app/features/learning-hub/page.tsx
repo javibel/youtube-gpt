@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { LEARN_GUIDES } from '@/lib/learn-data';
 import GuideCard from '@/components/GuideCard';
+import { getServerLang } from '@/lib/server-lang';
 
 export const metadata: Metadata = {
   title: 'YouTube Learning Hub — Free Creator Guides',
@@ -47,8 +47,7 @@ const FAQ_EN = [
 ];
 
 export default async function LearningHubFeature() {
-  const cookieStore = await cookies();
-  const lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  const lang = getServerLang();
   const t = (es: string, en: string) => lang === 'en' ? en : es;
   const FAQ = lang === 'en' ? FAQ_EN : FAQ_ES;
 
