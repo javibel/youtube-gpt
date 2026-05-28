@@ -9,6 +9,8 @@ import ChatWidgetPreview from '@/components/ChatWidgetPreview';
 import WaitlistInline from '@/components/WaitlistInline';
 import { getServerLang } from '@/lib/server-lang';
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: 'YTubViral — 14 herramientas de IA para crecer en YouTube',
   description:
