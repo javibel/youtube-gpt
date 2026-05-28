@@ -355,8 +355,10 @@ async function runManager() {
   }
 
   // Auto-fix: apply manager-level corrections
+  // 'ÚLTIMO REPORTE' means the agent ran but found nothing new — not an error, exclude from issues
+  const NOISE_STATUSES = new Set(['OK', 'SIN CAMBIOS', 'ÚLTIMO REPORTE', 'NO CHANGES', 'SIN DATOS']);
   const managerIssues = sections
-    .filter(s => s.status !== 'OK' && s.status !== 'SIN CAMBIOS')
+    .filter(s => !NOISE_STATUSES.has(s.status))
     .map(s => `${s.agent}: ${s.data} ${s.ai?.slice(0, 100) || ''}`);
   managerIssues._sections = sections;
 

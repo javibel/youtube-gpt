@@ -243,6 +243,45 @@ function getMemorySummary(agentId) {
   };
 }
 
+/**
+ * Manually close an issue across all agent memories.
+ * Call this when the user confirms an issue is resolved.
+ * Searches all agent memory files for any open issue matching the keyword.
+ */
+function closeIssueByKeyword(keyword) {
+  const fs = require('fs');
+  const MEMORY_DIR = require('path').join(__dirname, 'memory');
+  const today = new Date().toISOString().slice(0, 10);
+  const closed = [];
+
+  try {
+    const files = fs.readdirSync(MEMORY_DIR).filter(f => f.endsWith('.json'));
+    for (const file of files) {
+      const filePath = require('path').join(MEMORY_DIR, file);
+      try {
+        const memory = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        if (!Array.isArray(memory.knownIssues)) continue;
+        let changed = false;
+        for (const issue of memory.knownIssues) {
+          if (issue.status === 'open' && issue.description?.toLowerCase().includes(keyword.toLowerCase())) {
+            issue.status = 'resolved';
+            issue.resolvedAt = today;
+            issue.resolvedNote = `Cerrado manualmente por el owner: confirmado resuelto`;
+            issue.escalated = false;
+            memory.changelog = memory.changelog || [];
+            memory.changelog.push({ date: today, type: 'resolved', message: `Cerrado manualmente: ${issue.description}` });
+            closed.push({ agent: file.replace('.json',''), description: issue.description });
+            changed = true;
+          }
+        }
+        if (changed) fs.writeFileSync(filePath, JSON.stringify(memory, null, 2));
+      } catch {}
+    }
+  } catch {}
+
+  return closed;
+}
+
 module.exports = {
   loadMemory,
   saveMemory,
@@ -252,4 +291,5 @@ module.exports = {
   getTrendComparison,
   recordRun,
   getMemorySummary,
+  closeIssueByKeyword,
 };
