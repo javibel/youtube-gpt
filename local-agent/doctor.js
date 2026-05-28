@@ -575,7 +575,7 @@ async function executeClaudeAction(action, details, ctx, tag) {
         return { healed: false, action: `Claude recommended restarting "${details}" but service not in allowlist.` };
       }
       try {
-        execSync(`pm2 restart ${service} --update-env`, { timeout: 15000, stdio: 'pipe' });
+        execSync(`pm2 restart ${service} --update-env`, { timeout: 15000, stdio: 'pipe', windowsHide: true });
         return { healed: true, action: `Claude: restarted ${service}. ${details || ''}` };
       } catch (e) {
         return { healed: false, action: `Claude: pm2 restart ${service} failed: ${e.message}` };

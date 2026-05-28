@@ -140,8 +140,8 @@ export async function POST(request: Request) {
           const totalViews = parseInt(chStats.viewCount || '0', 10);
           const videoCount = parseInt(chStats.videoCount || '1', 10);
           channelAvgViews = videoCount > 0 ? Math.round(totalViews / videoCount) : 0;
-          if (channelAvgViews > 0 && views >= channelAvgViews * 5) {
-            outlierMultiplier = Math.round(views / channelAvgViews);
+          if (channelAvgViews > 0) {
+            outlierMultiplier = Math.round((views / channelAvgViews) * 10) / 10;
           }
         }
       }

@@ -98,7 +98,8 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
   if (/\s—\s.{20,}/i.test(processed) && /\b(post|comment|engage|spam|ad|promo|sales|comercial|regla|rule|skip|empty|vac[ií]o)\b/i.test(processed)) return '';
 
   // 5. Long response starting with "No" + contains meta words = refusal explanation
-  if (/^No\b/i.test(processed) && processed.length > 80 && /\b(post|comment|engage|regla|rule|spam|ad|promo|devuelvo|return|skip)\b/i.test(processed)) return '';
+  //    Only reject if clearly a meta-refusal, not a normal disagreement
+  if (/^No\b/i.test(processed) && processed.length > 80 && /\b(devuelvo|return empty|skip this|not commenting|no comento)\b/i.test(processed)) return '';
 
   // Pattern-based reject (specific phrases)
   const rejectPatterns = [
@@ -127,18 +128,20 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
     /I('m| am) not comfortable/i, /no me siento cómodo/i,
     /motivacional vac[ií]o/i, /generic hype/i, /motivational air/i,
     /nada que ver con/i, /nothing to .* engage/i,
-    /autoayuda genérica/i, /self-help/i,
-    /huele a/i,
+    /autoayuda genérica/i,
     /no puedo generar/i, /no tengo suficiente/i,
     /basándome solo/i, /sin contexto/i, /cannot write/i, /can't write/i,
     /I would need/i, /not enough context/i, /can't .* comment/i,
     /ver el contenido/i,
     /I('m| am) not clicking/i, /no voy a hacer clic/i,
-    // AI-sounding generic phrases
-    /gran post/i, /great post/i, /totalmente de acuerdo/i,
-    /no podr[ií]a estar m[aá]s de acuerdo/i, /couldn't agree more/i,
-    /esto es oro/i, /this is gold/i,
-    /amazing post/i,
+    // Meta-commentary about post being spam/commercial
+    /this is a spam/i, /esto es spam/i,
+    /commercial service pitch/i, /service pitch/i,
+    // AI-sounding generic phrases (only reject if the ENTIRE comment is just this)
+    /^gran post\.?$/i, /^great post\.?$/i,
+    /^totalmente de acuerdo\.?$/i, /^couldn't agree more\.?$/i,
+    /^esto es oro\.?$/i, /^this is gold\.?$/i,
+    /^amazing post\.?$/i,
     // Commercial / self-promo sounding
     /check out my/i, /mira mi/i, /visita mi/i,
     /link in bio/i, /enlace en bio/i,
@@ -368,8 +371,8 @@ const PERSONA_CORE_RULES = {
 - NUNCA comentes en posts que sean publicidad, spam, venta directa, o promoción de cursos/servicios. Si el post huele a comercial, devuelve vacío.
 - NUNCA faltes al respeto a nadie. Puedes discrepar con educación, pero jamás insultar ni ser agresivo.
 - Tu objetivo es CONECTAR con la gente — crear vínculos genuinos con otros creadores y profesionales del sector.
-- Comenta solo si tienes algo real que aportar: una experiencia, un dato, una pregunta honesta, un matiz.
-- Si no tienes nada interesante que decir sobre este post, devuelve vacío.
+- Intenta encontrar algo que aportar: una experiencia, un dato, una pregunta honesta, un matiz, una opinión, o incluso un desacuerdo educado. Las preguntas genuinas y las opiniones cortas también valen.
+- Solo devuelve vacío si el post es spam, publicidad, o completamente irrelevante para tu perfil. En caso de duda, comenta.
 - NUNCA suenes como bot, marca, o IA. Nada de frases genéricas, halagos vacíos, ni fórmulas repetitivas.
 - NUNCA te presentes ni digas quién eres o a qué te dedicas (a menos que encaje de forma 100% natural).
 - Escribe con errores menores ocasionales (una tilde que falta, una abreviatura) — como una persona real desde el móvil.`,
@@ -378,8 +381,8 @@ const PERSONA_CORE_RULES = {
 - NEVER comment on posts that are ads, spam, direct sales pitches, or course/service promotions. If the post smells commercial, return empty.
 - NEVER disrespect anyone. You can disagree politely, but never insult or be aggressive.
 - Your goal is to CONNECT with people — build genuine relationships with other creators and professionals.
-- Only comment if you have something real to add: an experience, a data point, an honest question, a nuance.
-- If you have nothing interesting to say about this post, return empty.
+- Try to find something to contribute: an experience, a data point, an honest question, a nuance, an opinion, or even a polite disagreement. Genuine questions and short opinions count too.
+- Only return empty if the post is spam, advertising, or completely irrelevant to your profile. When in doubt, comment.
 - NEVER sound like a bot, brand, or AI. No generic phrases, empty compliments, or repetitive formulas.
 - NEVER introduce yourself or say what you do (unless it fits 100% naturally).
 - Write with occasional minor mistakes (a missing accent, an abbreviation) — like a real person on their phone.`,
@@ -599,10 +602,29 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   // PROMPT CACHING: personality + core rules are static per persona/platform combo → cache them
   const systemPrompt = `${personality}\n\n${coreRules}\n\n${effectiveRules}`;
 
-  return callClaude(`You just read this ${platform} post by ${authorName}. Write the comment you'd naturally leave.
+  const result = await callClaude(`You just read this ${platform} post by ${authorName}. Write the comment you'd naturally leave.
 
 Post: "${postContent}"${mentionInstruction}
 `, maxTokens, { caller: 'persona-runner', system: systemPrompt });
+
+  if (!result) return result;
+
+  // Second-line defense: if the model broke character and wrote a meta-comment
+  // (asking for more info, referencing "post content", etc.) return empty to skip
+  const metaPhrases = [
+    /i.{0,10}d need to see/i,
+    /post content/i,
+    /write something real/i,
+    /drop the (post|text)/i,
+    /give you a genuine comment/i,
+    /need more (context|info|detail)/i,
+  ];
+  if (metaPhrases.some(p => p.test(result))) {
+    console.log(`[persona-runner] ⚠️ Meta-phrase detected in output — discarding comment`);
+    return '';
+  }
+
+  return result;
 }
 
 // ── Follow-up reply generation ──

@@ -54,6 +54,8 @@ async function main() {
     'https://ytubviral.com/blog/ideas-videos-youtube-no-se-que-subir',
     'https://ytubviral.com/blog/best-youtube-title-generator-2026',
     'https://ytubviral.com/blog/vidiq-alternative-free-2026',
+    'https://ytubviral.com/blog/tubebuddy-vs-vidiq-2026',
+    'https://ytubviral.com/blog/youtube-description-generator-ai',
     'https://ytubviral.com/features/keyword-research',
     'https://ytubviral.com/features/seo-score',
     'https://ytubviral.com/features/competitor-analysis',

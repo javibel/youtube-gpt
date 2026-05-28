@@ -214,5 +214,18 @@ Punto 2: [Título]
 
 🔴 OUTRO:
 [Cierre + CTA para suscribirse]`
+  },
+
+  reply: {
+    name: '💬 Reply to Comment',
+    description: 'Generate a reply to a viewer comment',
+    inputs: ['comment', 'videoTitle'],
+    prompt: (data) => `You are a YouTube creator replying to a viewer comment on your video "${data.videoTitle}".
+
+VIEWER COMMENT: "${data.comment}"
+
+Write a short, friendly reply (1-2 sentences max). Be appreciative, natural, and encourage further engagement. Don't be overly formal or use excessive emojis. Match the language of the comment (Spanish or English).
+
+Reply only with the text of your response, nothing else.`
   }
 };

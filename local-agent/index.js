@@ -31,6 +31,8 @@ const { runBlogGenerator } = require('./blog-generator');
 const { runBlogSyndicator } = require('./blog-syndicator');
 const { runQuoraCommenter } = require('./quora-commenter');
 const { runYoutubeCommenter } = require('./youtube-commenter');
+const { runDmarcMonitor } = require('./dmarc-monitor');
+const { enqueue: bq } = require('./browser-queue');
 
 console.log('[agent] YTubViral local agent starting...');
 
@@ -112,16 +114,20 @@ const personaHour1 = 9 + Math.floor(Math.random() * 2);
 const personaMin1 = Math.floor(Math.random() * 60);
 cron.schedule(`${personaMin1} ${personaHour1} * * *`, async () => {
   console.log('[cron] Persona engagement (morning)');
-  await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
-  await db.disconnect().catch(() => {});
+  await bq('persona-runner:morning', async () => {
+    await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
+    await db.disconnect().catch(() => {});
+  });
 }, { timezone: 'Europe/Madrid' });
 
 const personaHour2 = 22 + Math.floor(Math.random() * 1);
 const personaMin2 = Math.floor(Math.random() * 60);
 cron.schedule(`${personaMin2} ${personaHour2} * * *`, async () => {
   console.log('[cron] Persona engagement (evening)');
-  await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
-  await db.disconnect().catch(() => {});
+  await bq('persona-runner:evening', async () => {
+    await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
+    await db.disconnect().catch(() => {});
+  });
 }, { timezone: 'Europe/Madrid' });
 
 // Persona reports — 12:00 and 00:00 Madrid
@@ -142,16 +148,20 @@ const followupHour1 = 10 + Math.floor(Math.random() * 2);
 const followupMin1 = Math.floor(Math.random() * 60);
 cron.schedule(`${followupMin1} ${followupHour1} * * *`, async () => {
   console.log('[cron] Follow-up reply checks (morning)');
-  await followup.runFollowupChecks().catch(err => console.error('[followup]', err.message));
-  await db.disconnect().catch(() => {});
+  await bq('followup:morning', async () => {
+    await followup.runFollowupChecks().catch(err => console.error('[followup]', err.message));
+    await db.disconnect().catch(() => {});
+  });
 }, { timezone: 'Europe/Madrid' });
 
 const followupHour2 = 17 + Math.floor(Math.random() * 2);
 const followupMin2 = Math.floor(Math.random() * 60);
 cron.schedule(`${followupMin2} ${followupHour2} * * *`, async () => {
   console.log('[cron] Follow-up reply checks (evening)');
-  await followup.runFollowupChecks().catch(err => console.error('[followup]', err.message));
-  await db.disconnect().catch(() => {});
+  await bq('followup:evening', async () => {
+    await followup.runFollowupChecks().catch(err => console.error('[followup]', err.message));
+    await db.disconnect().catch(() => {});
+  });
 }, { timezone: 'Europe/Madrid' });
 
 // Weekly backup reminder — Sundays 10:00
@@ -224,8 +234,10 @@ cron.schedule('0 10,16 * * *', async () => {
 // Outreach Community Posts — daily at 11:00, publish pending Reddit posts
 cron.schedule('0 11 * * *', async () => {
   console.log('[cron] Outreach post — publishing community posts');
-  await runOutreachPost().catch(err => console.error('[outreach-post]', err.message));
-  await db.disconnect().catch(() => {});
+  await bq('outreach-post', async () => {
+    await runOutreachPost().catch(err => console.error('[outreach-post]', err.message));
+    await db.disconnect().catch(() => {});
+  });
 }, { timezone: 'Europe/Madrid' });
 
 // Outreach Reddit DMs — DISABLED: Reddit requires CAPTCHA for DMs on low-karma accounts
@@ -237,25 +249,31 @@ cron.schedule('0 11 * * *', async () => {
 // Outreach Reddit Targeted Comments — 2x/day, reply to help/feedback posts
 cron.schedule('0 11,18 * * *', async () => {
   console.log('[cron] Outreach Reddit targeted — commenting on feedback/help posts');
-  await runRedditTargeted().catch(err => console.error('[outreach-reddit-targeted]', err.message));
+  await bq('outreach-reddit-targeted', async () => {
+    await runRedditTargeted().catch(err => console.error('[outreach-reddit-targeted]', err.message));
+  });
 }, { timezone: 'Europe/Madrid' });
 
 // Outreach Monitor — every 3 hours 9-23h, check for new replies to outreach posts
 cron.schedule('0 9,12,15,18,21 * * *', async () => {
   console.log('[cron] Outreach monitor — checking for replies');
-  const { execSync } = require('child_process');
-  try {
-    execSync('node outreach-monitor.js', { cwd: __dirname, timeout: 180000, stdio: 'inherit' });
-  } catch (err) {
-    console.error('[outreach-monitor]', err.message);
-  }
+  await bq('outreach-monitor', async () => {
+    const { execSync } = require('child_process');
+    try {
+      execSync('node outreach-monitor.js', { cwd: __dirname, timeout: 180000, stdio: 'inherit', windowsHide: true });
+    } catch (err) {
+      console.error('[outreach-monitor]', err.message);
+    }
+  });
 }, { timezone: 'Europe/Madrid' });
 
 // Feature Monitor — 2x/day, end-to-end feature health checks
 cron.schedule('0 7,19 * * *', async () => {
   console.log('[cron] Feature Monitor — testing all platform features');
-  await runFeatureMonitor().catch(err => console.error('[feature-monitor]', err.message));
-  await db.disconnect().catch(() => {});
+  await bq('feature-monitor', async () => {
+    await runFeatureMonitor().catch(err => console.error('[feature-monitor]', err.message));
+    await db.disconnect().catch(() => {});
+  });
 }, { timezone: 'Europe/Madrid' });
 
 // Infra Optimizer — daily at 02:45
@@ -307,16 +325,20 @@ cron.schedule('0 4 * * 1,4', async () => {
   await runBlogGenerator().catch(err => console.error('[blog-generator]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
-// Blog Syndicator — daily at 05:00 (cross-post to Dev.to/Hashnode)
+// Blog Syndicator — daily at 05:00 (cross-post to Blogger/Tumblr)
 cron.schedule('0 5 * * *', async () => {
   console.log('[cron] Blog Syndicator — cross-posting article');
-  await runBlogSyndicator().catch(err => console.error('[blog-syndicator]', err.message));
+  await bq('blog-syndicator', async () => {
+    await runBlogSyndicator().catch(err => console.error('[blog-syndicator]', err.message));
+  });
 }, { timezone: 'Europe/Madrid' });
 
 // Quora Commenter — 13:00 + 19:00 daily
 cron.schedule('0 13,19 * * *', async () => {
   console.log('[cron] Quora Commenter — answering YouTube questions');
-  await runQuoraCommenter().catch(err => console.error('[quora-commenter]', err.message));
+  await bq('quora-commenter', async () => {
+    await runQuoraCommenter().catch(err => console.error('[quora-commenter]', err.message));
+  });
 }, { timezone: 'Europe/Madrid' });
 
 // YouTube Commenter — DISABLED (risk to persona accounts)
@@ -324,6 +346,12 @@ cron.schedule('0 13,19 * * *', async () => {
 //   console.log('[cron] YouTube Commenter — commenting via personas');
 //   await runYoutubeCommenter().catch(err => console.error('[youtube-commenter]', err.message));
 // }, { timezone: 'Europe/Madrid' });
+
+// DMARC Monitor — daily at 06:00 (analyze email authentication reports)
+cron.schedule('0 6 * * *', async () => {
+  console.log('[cron] DMARC Monitor — analyzing email auth reports');
+  await runDmarcMonitor().catch(err => console.error('[dmarc-monitor]', err.message));
+}, { timezone: 'Europe/Madrid' });
 
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');

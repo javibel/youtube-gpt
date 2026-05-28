@@ -69,14 +69,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { cookies } = await import('next/headers');
-  const cookieStore = await cookies();
-  const lang = cookieStore.get('ytubviral_lang')?.value === 'en' ? 'en' : 'es';
+  // Default to 'es' on server — LangProvider hydrates the actual preference client-side.
+  // This keeps ALL pages statically cacheable (no cookies() call = no forced dynamic rendering).
+  const lang = 'es' as const;
 
   return (
     <html lang={lang}>

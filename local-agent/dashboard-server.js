@@ -630,6 +630,21 @@ const server = http.createServer(async (req, res) => {
     return sendJSON(res, 200, { success: true, balance: config._anthropicBalance });
   }
 
+  // Site Analytics (proxy to ytubviral.com API)
+  if (pathname === '/api/analytics' && req.method === 'GET') {
+    const days = url.searchParams.get('days') || '7';
+    try {
+      const r = await fetch(`https://ytubviral.com/api/analytics?days=${days}&token=${DASHBOARD_TOKEN}`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!r.ok) return sendJSON(res, r.status, { error: `Analytics API: ${r.status}` });
+      const data = await r.json();
+      return sendJSON(res, 200, data);
+    } catch (e) {
+      return sendJSON(res, 500, { error: `Analytics fetch failed: ${e.message}` });
+    }
+  }
+
   // Reports listing
   if (pathname === '/api/reports' && req.method === 'GET') {
     const reports = [];

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
 type Lang = 'es' | 'en';
 
@@ -8,10 +8,25 @@ const LangContext = createContext<Lang>('es');
 
 /**
  * Provides the user's language to all client components.
- * The lang value comes from the server (cookie reading in RootLayout),
- * so SSR and client hydration always agree — no mismatch flash.
+ *
+ * The server renders with lang='es' (static, cacheable).
+ * On hydration, reads the ytubviral_lang cookie client-side.
+ * EN users see one render cycle (~16ms) in 'es' before switching — imperceptible.
+ *
+ * This design keeps ALL pages statically cacheable by Vercel CDN,
+ * which is critical for SEO indexation and performance.
  */
-export function LangProvider({ lang, children }: { lang: Lang; children: ReactNode }) {
+export function LangProvider({ lang: initialLang, children }: { lang: Lang; children: ReactNode }) {
+  const [lang, setLang] = useState<Lang>(initialLang);
+
+  useEffect(() => {
+    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('ytubviral_lang='));
+    if (cookie) {
+      const val = cookie.split('=')[1]?.trim();
+      if (val === 'en' || val === 'es') setLang(val);
+    }
+  }, []);
+
   return <LangContext.Provider value={lang}>{children}</LangContext.Provider>;
 }
 

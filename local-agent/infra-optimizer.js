@@ -30,7 +30,7 @@ function today() {
 
 function safeExec(cmd, timeoutMs = 10000) {
   try {
-    const result = execSync(cmd, { timeout: timeoutMs, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const result = execSync(cmd, { timeout: timeoutMs, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     return { ok: true, data: result.trim() };
   } catch (err) {
     return { ok: false, error: err.message };

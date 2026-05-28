@@ -9,9 +9,12 @@
     "dashboard": "node dashboard-server.js"
   },
   "dependencies": {
+    "adm-zip": "^0.5.17",
     "dotenv": "^16.4.5",
+    "fast-xml-parser": "^5.8.0",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.13",
+    "oauth": "^0.10.2",
     "pg": "^8.11.5",
     "puppeteer": "^22.0.0",
     "puppeteer-extra": "^3.3.6",

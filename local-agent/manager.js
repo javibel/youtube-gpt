@@ -257,6 +257,21 @@ function buildRawSummary(date) {
     });
   }
 
+  // DMARC Monitor report
+  const dmarcReport = readReport('dmarc', date);
+  if (dmarcReport) {
+    const severity = dmarcReport.severity || 'ok';
+    const statusLabel = severity === 'critical' ? 'ALERTA' : severity === 'info' ? 'REVISAR' : 'OK';
+    const issueText = (dmarcReport.issues || []).join(' | ');
+    sections.push({
+      agent: 'DMARC Monitor (Email Auth)',
+      status: statusLabel,
+      data: `Reportes: ${dmarcReport.reportsAnalyzed || 0}, Emails: ${dmarcReport.totalEmails || 0}, Pass: ${dmarcReport.passRate || 100}%, Fails: ${dmarcReport.totalFails || 0}`,
+      ai: issueText || 'Autenticación email OK — sin suplantación detectada',
+      duration: 0,
+    });
+  }
+
   return sections;
 }
 

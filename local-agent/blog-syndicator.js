@@ -3,14 +3,28 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
+const { OAuth } = require('oauth');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const LOG_PATH = path.join(__dirname, 'reports', 'blog-syndication-log.json');
 const BLOG_DATA_PATH = path.join(__dirname, '..', 'youtube-gpt', 'lib', 'blog-data.ts');
 
-const DEV_TO_API_KEY = (process.env.DEV_TO_API_KEY || '').trim();
-const HASHNODE_API_KEY = (process.env.HASHNODE_API_KEY || '').trim();
-const HASHNODE_PUBLICATION_ID = (process.env.HASHNODE_PUBLICATION_ID || '').trim();
+// WordPress.com credentials
+const WP_SITE = (process.env.WP_COM_SITE || '').trim();          // e.g. "ytubviral.wordpress.com"
+const WP_TOKEN = (process.env.WP_COM_TOKEN || '').trim();         // OAuth2 bearer token
+
+// Blogger credentials (reuses existing Google OAuth)
+const BLOGGER_BLOG_ID = (process.env.BLOGGER_BLOG_ID || '').trim();
+const BLOGGER_CLIENT_ID = (process.env.GMAIL_CLIENT_ID || '').trim();
+const BLOGGER_CLIENT_SECRET = (process.env.GMAIL_CLIENT_SECRET || '').trim();
+const BLOGGER_REFRESH_TOKEN = (process.env.BLOGGER_REFRESH_TOKEN || '').trim();
+
+// Tumblr credentials (OAuth 1.0a)
+const TUMBLR_CONSUMER_KEY = (process.env.TUMBLR_CONSUMER_KEY || '').trim();
+const TUMBLR_CONSUMER_SECRET = (process.env.TUMBLR_CONSUMER_SECRET || '').trim();
+const TUMBLR_ACCESS_TOKEN = (process.env.TUMBLR_ACCESS_TOKEN || '').trim();
+const TUMBLR_ACCESS_TOKEN_SECRET = (process.env.TUMBLR_ACCESS_TOKEN_SECRET || '').trim();
+const TUMBLR_BLOG_NAME = (process.env.TUMBLR_BLOG_NAME || '').trim();
 
 const MAX_PER_RUN = 1; // Syndicate 1 article per run to avoid rate limits
 
@@ -47,7 +61,6 @@ function getAllSlugs() {
 function extractArticleData(slug) {
   const content = fs.readFileSync(BLOG_DATA_PATH, 'utf8');
 
-  // Extract title (EN)
   const slugIdx = content.indexOf(`slug: '${slug}'`);
   if (slugIdx === -1) return null;
 
@@ -63,16 +76,24 @@ function extractArticleData(slug) {
   const excerptEn = excerptEnMatch?.[1] || '';
   const cat = catMatch?.[1] || 'tutorials';
 
-  // Extract article body blocks (EN version)
-  const varName = slug.replace(/-/g, '_').toUpperCase();
-  const bodyVarName = `ART_${varName}_EN`;
+  // Extract article body variable name from ARTICLE_BODIES mapping
+  // Find the slug entry and extract the EN variable name
+  const bodiesStart = content.indexOf('export const ARTICLE_BODIES');
+  const bodiesSection = content.slice(bodiesStart);
+  const slugPos = bodiesSection.indexOf(`'${slug}'`);
+  if (slugPos === -1) return null;
+  const afterSlug = bodiesSection.slice(slugPos, slugPos + 200);
+  const enVarMatch = afterSlug.match(/en:\s*(\w+)/);
+  if (!enVarMatch) return null;
+  const bodyVarName = enVarMatch[1];
 
-  // Find the const declaration for EN body
   const bodyStart = content.indexOf(`const ${bodyVarName}`);
   if (bodyStart === -1) return null;
 
-  // Find the closing "];" for this array
-  const arrayStart = content.indexOf('[', bodyStart);
+  // Skip past "BlockType[] = " to find the actual array opening bracket
+  const eqSign = content.indexOf('= [', bodyStart);
+  if (eqSign === -1) return null;
+  const arrayStart = eqSign + 2; // points to the '[' after '= '
   let depth = 0;
   let arrayEnd = arrayStart;
   for (let i = arrayStart; i < content.length; i++) {
@@ -81,7 +102,6 @@ function extractArticleData(slug) {
     if (depth === 0) { arrayEnd = i + 1; break; }
   }
 
-  // We can't JSON.parse TypeScript directly, so we'll regex-extract blocks
   const bodyStr = content.slice(arrayStart, arrayEnd);
   const blocks = parseBlocksFromTS(bodyStr);
 
@@ -90,7 +110,6 @@ function extractArticleData(slug) {
 
 function parseBlocksFromTS(tsArrayStr) {
   const blocks = [];
-  // Match each { type: '...', ... } block
   const blockRe = /\{\s*type:\s*'([^']+)'[^}]*\}/g;
   let m;
   while ((m = blockRe.exec(tsArrayStr)) !== null) {
@@ -131,7 +150,60 @@ function parseBlocksFromTS(tsArrayStr) {
   return blocks;
 }
 
-// ── BlockType → Markdown conversion ─────────────────────────────────────────
+// ── BlockType → HTML conversion (for Blogger + WordPress) ───────────────────
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function blocksToHtml(blocks, slug) {
+  const lines = [];
+
+  for (const block of blocks) {
+    switch (block.type) {
+      case 'p':
+        lines.push(`<p>${escapeHtml(block.t)}</p>`);
+        break;
+      case 'h2':
+        lines.push(`<h2>${escapeHtml(block.t)}</h2>`);
+        break;
+      case 'h3':
+        lines.push(`<h3>${escapeHtml(block.t)}</h3>`);
+        break;
+      case 'list':
+        lines.push('<ul>');
+        for (const item of block.items) {
+          lines.push(`  <li>${escapeHtml(item)}</li>`);
+        }
+        lines.push('</ul>');
+        break;
+      case 'callout':
+        lines.push(`<blockquote><p>${escapeHtml(block.t)}</p></blockquote>`);
+        break;
+      case 'callout-mid':
+      case 'callout-final':
+        lines.push('<blockquote>');
+        lines.push(`  <p><strong>${escapeHtml(block.t)}</strong></p>`);
+        lines.push(`  <p>${escapeHtml(block.sub)}</p>`);
+        if (block.href) {
+          lines.push(`  <p><a href="https://ytubviral.com${block.href}">${escapeHtml(block.cta)}</a></p>`);
+        }
+        lines.push('</blockquote>');
+        break;
+      case 'video':
+        lines.push(`<p><a href="https://www.youtube.com/watch?v=${block.videoId}">Watch on YouTube</a></p>`);
+        break;
+    }
+  }
+
+  // Syndication footer with backlink
+  lines.push('<hr>');
+  lines.push(`<p><em>Originally published on <a href="https://ytubviral.com/blog/${slug}">YTubViral Blog</a>. YTubViral is a free AI-powered toolkit for YouTube creators — SEO analysis, title generation, keyword research, and more.</em></p>`);
+
+  return lines.join('\n');
+}
+
+// ── BlockType → Markdown conversion (kept for compatibility) ────────────────
 
 function blocksToMarkdown(blocks, slug) {
   const lines = [];
@@ -170,13 +242,12 @@ function blocksToMarkdown(blocks, slug) {
         lines.push('');
         break;
       case 'video':
-        lines.push(`{% youtube ${block.videoId} %}`);
+        lines.push(`[Watch on YouTube](https://www.youtube.com/watch?v=${block.videoId})`);
         lines.push('');
         break;
     }
   }
 
-  // Add syndication footer
   lines.push('---');
   lines.push('');
   lines.push(`*Originally published on [YTubViral Blog](https://ytubviral.com/blog/${slug}). YTubViral is a free AI-powered toolkit for YouTube creators — SEO analysis, title generation, keyword research, and more.*`);
@@ -197,105 +268,165 @@ function getCategoryTags(cat) {
   return tagMap[cat] || ['youtube', 'contentcreation'];
 }
 
-// ── Dev.to API ──────────────────────────────────────────────────────────────
+// ── Blogger API (Google OAuth2) ─────────────────────────────────────────────
 
-async function publishToDevTo(title, markdown, canonicalUrl, tags) {
-  if (!DEV_TO_API_KEY) {
-    console.log('[blog-syndicator] Dev.to: No API key, skipping');
+async function getBloggerAccessToken() {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: BLOGGER_CLIENT_ID,
+      client_secret: BLOGGER_CLIENT_SECRET,
+      refresh_token: BLOGGER_REFRESH_TOKEN,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error(`Blogger OAuth failed: ${JSON.stringify(data)}`);
+  return data.access_token;
+}
+
+async function publishToBlogger(title, htmlContent, canonicalUrl, tags) {
+  if (!BLOGGER_BLOG_ID || !BLOGGER_REFRESH_TOKEN) {
+    console.log('[blog-syndicator] Blogger: No blog ID or refresh token, skipping');
     return null;
   }
 
-  const body = {
-    article: {
-      title,
-      body_markdown: markdown,
-      published: true,
-      canonical_url: canonicalUrl,
-      tags: tags.slice(0, 4), // Dev.to max 4 tags
-    },
-  };
-
   if (DRY_RUN) {
-    console.log(`[blog-syndicator] DRY RUN Dev.to: "${title}" (${tags.join(', ')})`);
-    return { url: 'dry-run', id: 0 };
+    console.log(`[blog-syndicator] DRY RUN Blogger: "${title}" (${tags.join(', ')})`);
+    return { url: 'dry-run', id: 'dry-run' };
   }
 
-  const res = await fetch('https://dev.to/api/articles', {
+  const accessToken = await getBloggerAccessToken();
+
+  // Inject canonical link at the top of the HTML content
+  const contentWithCanonical = `<link rel="canonical" href="${canonicalUrl}" />\n${htmlContent}`;
+
+  const body = {
+    kind: 'blogger#post',
+    title,
+    content: contentWithCanonical,
+    labels: tags,
+  };
+
+  const res = await fetch(`https://www.googleapis.com/blogger/v3/blogs/${BLOGGER_BLOG_ID}/posts`, {
     method: 'POST',
     headers: {
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'api-key': DEV_TO_API_KEY,
     },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Dev.to API ${res.status}: ${err}`);
+    throw new Error(`Blogger API ${res.status}: ${err}`);
   }
 
   const data = await res.json();
-  console.log(`[blog-syndicator] Published to Dev.to: ${data.url}`);
+  console.log(`[blog-syndicator] Published to Blogger: ${data.url}`);
   return { url: data.url, id: data.id };
 }
 
-// ── Hashnode API (GraphQL) ──────────────────────────────────────────────────
+// ── WordPress.com REST API ──────────────────────────────────────────────────
 
-async function publishToHashnode(title, markdown, canonicalUrl, tags) {
-  if (!HASHNODE_API_KEY || !HASHNODE_PUBLICATION_ID) {
-    console.log('[blog-syndicator] Hashnode: No API key or publication ID, skipping');
+async function publishToWordPress(title, htmlContent, canonicalUrl, tags) {
+  if (!WP_SITE || !WP_TOKEN) {
+    console.log('[blog-syndicator] WordPress.com: No site or token, skipping');
     return null;
   }
 
-  const mutation = `
-    mutation PublishPost($input: PublishPostInput!) {
-      publishPost(input: $input) {
-        post {
-          id
-          url
-          slug
-        }
-      }
-    }
-  `;
-
-  const variables = {
-    input: {
-      title,
-      contentMarkdown: markdown,
-      publicationId: HASHNODE_PUBLICATION_ID,
-      originalArticleURL: canonicalUrl,
-      tags: tags.map(t => ({ slug: t, name: t })),
-    },
-  };
-
   if (DRY_RUN) {
-    console.log(`[blog-syndicator] DRY RUN Hashnode: "${title}" (${tags.join(', ')})`);
-    return { url: 'dry-run', id: 'dry-run' };
+    console.log(`[blog-syndicator] DRY RUN WordPress.com: "${title}" (${tags.join(', ')})`);
+    return { url: 'dry-run', id: 0 };
   }
 
-  const res = await fetch('https://gql.hashnode.com', {
+  const body = {
+    title,
+    content: htmlContent,
+    status: 'publish',
+    tags: tags.join(','),
+    format: 'standard',
+    meta: { canonical_url: canonicalUrl },
+  };
+
+  const res = await fetch(`https://public-api.wordpress.com/rest/v1.1/sites/${WP_SITE}/posts/new`, {
     method: 'POST',
     headers: {
+      'Authorization': `Bearer ${WP_TOKEN}`,
       'Content-Type': 'application/json',
-      'Authorization': HASHNODE_API_KEY,
     },
-    body: JSON.stringify({ query: mutation, variables }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Hashnode API ${res.status}: ${err}`);
+    throw new Error(`WordPress.com API ${res.status}: ${err}`);
   }
 
   const data = await res.json();
-  if (data.errors?.length) {
-    throw new Error(`Hashnode: ${data.errors[0].message}`);
+  console.log(`[blog-syndicator] Published to WordPress.com: ${data.URL}`);
+  return { url: data.URL, id: data.ID };
+}
+
+// ── Tumblr API (OAuth 1.0a) ─────────────────────────────────────────────────
+
+async function publishToTumblr(title, htmlContent, canonicalUrl, tags) {
+  if (!TUMBLR_CONSUMER_KEY || !TUMBLR_ACCESS_TOKEN || !TUMBLR_BLOG_NAME) {
+    console.log('[blog-syndicator] Tumblr: No credentials or blog name, skipping');
+    return null;
   }
 
-  const post = data.data?.publishPost?.post;
-  console.log(`[blog-syndicator] Published to Hashnode: ${post?.url}`);
-  return { url: post?.url || '', id: post?.id || '' };
+  if (DRY_RUN) {
+    console.log(`[blog-syndicator] DRY RUN Tumblr: "${title}" (${tags.join(', ')})`);
+    return { url: 'dry-run', id: 'dry-run' };
+  }
+
+  const oauth = new OAuth(
+    'https://www.tumblr.com/oauth/request_token',
+    'https://www.tumblr.com/oauth/access_token',
+    TUMBLR_CONSUMER_KEY,
+    TUMBLR_CONSUMER_SECRET,
+    '1.0A',
+    null,
+    'HMAC-SHA1'
+  );
+
+  const postUrl = `https://api.tumblr.com/v2/blog/${TUMBLR_BLOG_NAME}/post`;
+
+  // Add source link at the bottom
+  const contentWithSource = `${htmlContent}\n<p><a href="${canonicalUrl}">Read the original article on YTubViral</a></p>`;
+
+  const postData = {
+    type: 'text',
+    title,
+    body: contentWithSource,
+    tags: tags.join(','),
+    format: 'html',
+    state: 'published',
+  };
+
+  return new Promise((resolve, reject) => {
+    oauth.post(
+      postUrl,
+      TUMBLR_ACCESS_TOKEN,
+      TUMBLR_ACCESS_TOKEN_SECRET,
+      postData,
+      'application/x-www-form-urlencoded',
+      (err, data) => {
+        if (err) {
+          const errMsg = typeof err.data === 'string' ? err.data : JSON.stringify(err);
+          return reject(new Error(`Tumblr API: ${errMsg}`));
+        }
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+        const postId = parsed.response?.id;
+        const url = `https://www.tumblr.com/${TUMBLR_BLOG_NAME}/${postId}`;
+        // Also fetch the real post_url from the API
+        console.log(`[blog-syndicator] Published to Tumblr: ${url}`);
+        resolve({ url, id: String(postId) });
+      }
+    );
+  });
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
@@ -303,10 +434,16 @@ async function publishToHashnode(title, markdown, canonicalUrl, tags) {
 async function runBlogSyndicator() {
   console.log(`[blog-syndicator] Starting${DRY_RUN ? ' (DRY RUN)' : ''}...`);
 
-  if (!DEV_TO_API_KEY && !HASHNODE_API_KEY) {
-    console.log('[blog-syndicator] No platform API keys configured. Set DEV_TO_API_KEY and/or HASHNODE_API_KEY in .env');
+  const hasWordPress = WP_SITE && WP_TOKEN;
+  const hasBlogger = BLOGGER_BLOG_ID && BLOGGER_REFRESH_TOKEN;
+  const hasTumblr = TUMBLR_CONSUMER_KEY && TUMBLR_ACCESS_TOKEN && TUMBLR_BLOG_NAME;
+
+  if (!hasWordPress && !hasBlogger && !hasTumblr) {
+    console.log('[blog-syndicator] No platform configured. Set credentials in .env');
     return;
   }
+
+  console.log(`[blog-syndicator] Platforms: ${hasWordPress ? 'WordPress.com' : '-'} | ${hasBlogger ? 'Blogger' : '-'} | ${hasTumblr ? 'Tumblr' : '-'}`);
 
   const log = loadLog();
   const allSlugs = getAllSlugs();
@@ -333,7 +470,7 @@ async function runBlogSyndicator() {
       continue;
     }
 
-    const markdown = blocksToMarkdown(article.blocks, slug);
+    const htmlContent = blocksToHtml(article.blocks, slug);
     const canonicalUrl = `https://ytubviral.com/blog/${slug}`;
     const tags = getCategoryTags(article.cat);
 
@@ -341,24 +478,33 @@ async function runBlogSyndicator() {
       slug,
       title: article.titleEn,
       syndicatedAt: new Date().toISOString(),
-      devTo: null,
-      hashnode: null,
+      wordpress: null,
+      blogger: null,
+      tumblr: null,
     };
 
-    // Publish to Dev.to
+    // Publish to WordPress.com
     try {
-      entry.devTo = await publishToDevTo(article.titleEn, markdown, canonicalUrl, tags);
+      entry.wordpress = await publishToWordPress(article.titleEn, htmlContent, canonicalUrl, tags);
     } catch (err) {
-      console.error(`[blog-syndicator] Dev.to error for ${slug}:`, err.message);
-      entry.devTo = { error: err.message };
+      console.error(`[blog-syndicator] WordPress.com error for ${slug}:`, err.message);
+      entry.wordpress = { error: err.message };
     }
 
-    // Publish to Hashnode
+    // Publish to Blogger
     try {
-      entry.hashnode = await publishToHashnode(article.titleEn, markdown, canonicalUrl, tags);
+      entry.blogger = await publishToBlogger(article.titleEn, htmlContent, canonicalUrl, tags);
     } catch (err) {
-      console.error(`[blog-syndicator] Hashnode error for ${slug}:`, err.message);
-      entry.hashnode = { error: err.message };
+      console.error(`[blog-syndicator] Blogger error for ${slug}:`, err.message);
+      entry.blogger = { error: err.message };
+    }
+
+    // Publish to Tumblr
+    try {
+      entry.tumblr = await publishToTumblr(article.titleEn, htmlContent, canonicalUrl, tags);
+    } catch (err) {
+      console.error(`[blog-syndicator] Tumblr error for ${slug}:`, err.message);
+      entry.tumblr = { error: err.message };
     }
 
     log.syndicated.push(entry);

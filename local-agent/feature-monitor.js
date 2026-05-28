@@ -491,7 +491,7 @@ Respond in JSON only:
       // Try restarting tunnel (most likely culprit for external access issues)
       try {
         const { execSync } = require('child_process');
-        execSync('pm2 restart ytubviral-tunnel', { timeout: 15000 });
+        execSync('pm2 restart ytubviral-tunnel', { timeout: 15000, windowsHide: true });
         return { changed: true, detail: 'Restarted ytubviral-tunnel — may resolve connectivity' };
       } catch (e) {
         return { changed: false, detail: `PM2 restart failed: ${e.message}` };

@@ -177,7 +177,12 @@ function classifyEmail(from, subject, snippet, headers = []) {
     return 'ignore';
   }
 
-  // 0b. Filter irrelevant SaaSHub newsletters before anything else
+  // 0b. DMARC reports — handled by dmarc-monitor.js, skip here
+  if (fromLower.includes('dmarc') && subjectLower.includes('report domain')) {
+    return 'ignore';
+  }
+
+  // 0c. Filter irrelevant SaaSHub newsletters before anything else
   if (isSaashubIrrelevantNewsletter(from, subject)) {
     return 'ignore';
   }

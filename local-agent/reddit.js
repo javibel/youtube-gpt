@@ -242,13 +242,13 @@ async function engageWithPosts(opts = {}) {
       const commentChance = isQuestion ? 0.85 : 0.25; // 85% for questions (was 70%), 25% for others (was 35%)
 
       // Comment (probability-based, only if under limit and post has content to reply to)
+      // Require minimum body text — title-only posts give Claude too little context and
+      // cause it to break character (seen: "I'd need to see the post content...")
       if (todayComments + commentsGiven < limits.comments
-        && (post.text.length > 20 || post.title.length > 30)
+        && post.text.length > 50
         && Math.random() < commentChance) {
         try {
-          const postContent = post.text
-            ? `${post.title}\n\n${post.text}`
-            : post.title;
+          const postContent = `${post.title}\n\n${post.text}`;
 
           let comment;
           if (persona) {
@@ -260,6 +260,23 @@ async function engageWithPosts(opts = {}) {
 
           if (!comment) {
             console.log(`[${tag}] Claude rejected comment for ${post.author} — skipping`);
+            continue;
+          }
+
+          // Sanity check: reject comments that reveal the AI generation process
+          // (meta-phrases indicate Claude broke character due to insufficient context)
+          const metaPhrases = [
+            /i.{0,10}d need to see/i,
+            /post content/i,
+            /write something real/i,
+            /drop the (post|text)/i,
+            /can.t tell (if|without)/i,
+            /give you a genuine comment/i,
+            /need more (context|info|detail)/i,
+            /what (setting|platform|metric).{0,30}exactly/i,
+          ];
+          if (metaPhrases.some(p => p.test(comment))) {
+            console.log(`[${tag}] ⚠️ Meta-phrase detected in generated comment — skipping (insufficient post context)`);
             continue;
           }
 

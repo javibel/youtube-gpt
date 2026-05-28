@@ -82,7 +82,7 @@
     "stealthPlugin": true
   },
   "guardian": {
-    "model": "claude-sonnet-4-6",
+    "model": "claude-haiku-4-5-20251001",
     "webDir": "../youtube-gpt",
     "timeoutMs": 60000,
     "dangerousPatterns": "eval(, innerHTML, dangerouslySetInnerHTML, AKIA[0-9A-Z]",
@@ -97,32 +97,32 @@
     "activeHours": "8-23"
   },
   "scout": {
-    "model": "claude-opus-4-6"
+    "model": "claude-haiku-4-5-20251001"
   },
   "watchdog": {
-    "model": "claude-opus-4-6"
+    "model": "claude-haiku-4-5-20251001"
   },
   "social-optimizer": {
-    "model": "claude-opus-4-6"
+    "model": "claude-haiku-4-5-20251001"
   },
   "manager": {
-    "model": "claude-opus-4-6"
+    "model": "claude-haiku-4-5-20251001"
   },
   "seo-optimizer": {
-    "model": "claude-opus-4-6"
+    "model": "claude-haiku-4-5-20251001"
   },
   "funnel-optimizer": {
-    "model": "claude-opus-4-6"
+    "model": "claude-haiku-4-5-20251001"
   },
   "infra-optimizer": {
-    "model": "claude-opus-4-6"
+    "model": "claude-haiku-4-5-20251001"
   },
   "meta-optimizer": {
-    "model": "claude-opus-4-6",
+    "model": "claude-haiku-4-5-20251001",
     "enabled": true
   },
   "feature-monitor": {
-    "model": "claude-opus-4-6"
+    "model": "claude-haiku-4-5-20251001"
   },
   "personas": {
     "alex": {
@@ -144,14 +144,14 @@
       "mentionRate": 0.4
     }
   },
-  "_lastModified": "2026-05-24T01:00:45.439Z",
+  "_lastModified": "2026-05-26T00:50:37.821Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 26.035807999999996,
+    "amount": 25.706113749999986,
     "currency": "USD",
     "lastChecked": "2026-05-24T08:46:12.922Z",
-    "lastDeduction": "2026-05-24T09:03:21.868Z",
-    "totalSpentToday": 0.014192,
-    "spendDate": "2026-05-24"
+    "lastDeduction": "2026-05-28T02:02:15.674Z",
+    "totalSpentToday": 0.11411925,
+    "spendDate": "2026-05-28"
   }
 }

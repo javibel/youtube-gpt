@@ -313,7 +313,7 @@ function addToGscIndex(slug) {
 
 function triggerIndexing() {
   try {
-    execSync(`node "${GSC_INDEX_PATH}"`, { cwd: __dirname, timeout: 60000, stdio: 'pipe' });
+    execSync(`node "${GSC_INDEX_PATH}"`, { cwd: __dirname, timeout: 60000, stdio: 'pipe', windowsHide: true });
     console.log('[blog-generator] Google indexing triggered');
   } catch (err) {
     console.error('[blog-generator] Indexing failed:', err.message);

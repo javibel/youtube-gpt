@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async headers() {
     return [
+      // Security headers — all routes
       {
         source: '/:path*',
         headers: [
@@ -13,6 +14,20 @@ const nextConfig: NextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
           { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://api.stripe.com https://*.vercel.live https://*.anthropic.com wss:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com; object-src 'none'; base-uri 'self'" },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self)' },
+        ],
+      },
+      // Public pages — allow CDN/browser caching (critical for SEO indexation)
+      {
+        source: '/(|blog|blog/:slug*|pricing|features/:slug*|gear|learn|about|legal|privacy)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
+      // API routes — never cache
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store' },
         ],
       },
     ];

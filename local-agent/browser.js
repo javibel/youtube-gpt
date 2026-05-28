@@ -9,6 +9,7 @@ const { diagnose } = require('./doctor');
 const config = require('./config');
 
 const CHROME_PROFILE_DIR = path.join(__dirname, 'chrome-profile');
+const COOKIE_BACKUP_DIR = path.join(__dirname, 'reports', 'cookie-backups');
 
 // Map of profileDir -> browser instance (supports multiple simultaneous profiles)
 const browsers = new Map();
@@ -26,6 +27,97 @@ function resetNavFailures(profileDir) {
   navFailures.set(profileDir, 0);
 }
 
+// ── Cookie backup & restore ─────────────────────────────────────────────
+// Backs up Network/Cookies file after successful browser use.
+// Restores from backup if profile is corrupted (missing Cookies file).
+
+function backupCookies(absDir) {
+  try {
+    const cookieSrc = path.join(absDir, 'Default', 'Network', 'Cookies');
+    if (!fs.existsSync(cookieSrc)) return;
+    const size = fs.statSync(cookieSrc).size;
+    if (size < 1024) return; // Skip tiny/empty cookie files
+    if (!fs.existsSync(COOKIE_BACKUP_DIR)) fs.mkdirSync(COOKIE_BACKUP_DIR, { recursive: true });
+    const profileName = path.basename(absDir);
+    const dest = path.join(COOKIE_BACKUP_DIR, `${profileName}-Cookies.bak`);
+    fs.copyFileSync(cookieSrc, dest);
+  } catch (e) {
+    // Silent — backup is best-effort
+  }
+}
+
+function restoreCookiesIfMissing(absDir) {
+  try {
+    const cookieDest = path.join(absDir, 'Default', 'Network', 'Cookies');
+    if (fs.existsSync(cookieDest)) return false; // Cookies exist, nothing to restore
+    const profileName = path.basename(absDir);
+    const backupSrc = path.join(COOKIE_BACKUP_DIR, `${profileName}-Cookies.bak`);
+    if (!fs.existsSync(backupSrc)) return false; // No backup available
+    // Ensure directory structure exists
+    const networkDir = path.join(absDir, 'Default', 'Network');
+    if (!fs.existsSync(networkDir)) fs.mkdirSync(networkDir, { recursive: true });
+    fs.copyFileSync(backupSrc, cookieDest);
+    console.log(`[browser] Restored cookies from backup for ${profileName}`);
+    return true;
+  } catch (e) {
+    console.error(`[browser] Cookie restore failed: ${e.message}`);
+    return false;
+  }
+}
+
+// ── Deep profile cleanup (preserves cookies & login data) ───────────────
+// Removes cache/GPU/shader/crash data that can corrupt a profile without
+// affecting session cookies or saved passwords.
+
+function deepCleanProfile(absDir) {
+  const profileName = path.basename(absDir);
+  console.log(`[browser] Deep-cleaning profile ${profileName}...`);
+  let cleaned = 0;
+
+  // Root-level junk
+  const rootJunk = [
+    'Crashpad', 'ShaderCache', 'GrShaderCache', 'GraphiteDawnCache',
+    'BrowserMetrics-spare.pma', 'CrashpadMetrics-active.pma',
+    'component_crx_cache', 'extensions_crx_cache',
+  ];
+  for (const item of rootJunk) {
+    const fp = path.join(absDir, item);
+    if (fs.existsSync(fp)) {
+      try {
+        const stat = fs.statSync(fp);
+        if (stat.isDirectory()) fs.rmSync(fp, { recursive: true, force: true });
+        else fs.unlinkSync(fp);
+        cleaned++;
+      } catch {}
+    }
+  }
+
+  // Default/ sub-directory caches
+  const defaultDir = path.join(absDir, 'Default');
+  if (fs.existsSync(defaultDir)) {
+    const defaultJunk = [
+      'Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache',
+      'Service Worker', 'blob_storage',
+    ];
+    for (const item of defaultJunk) {
+      const fp = path.join(defaultDir, item);
+      if (fs.existsSync(fp)) {
+        try { fs.rmSync(fp, { recursive: true, force: true }); cleaned++; } catch {}
+      }
+    }
+  }
+
+  // Clean ALL leveldb LOCK files (stale locks crash Chrome on startup)
+  try {
+    const { execSync } = require('child_process');
+    execSync(`powershell -Command "Get-ChildItem -Path '${absDir.replace(/'/g, "''")}' -Recurse -Filter 'LOCK' -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue"`, { timeout: 5000, stdio: 'pipe', windowsHide: true });
+    cleaned++;
+  } catch {}
+
+  console.log(`[browser] Deep-clean done for ${profileName}: ${cleaned} items removed`);
+  return cleaned > 0;
+}
+
 /**
  * Kill zombie Chrome processes that hold lockfiles.
  * Uses taskkill on Windows to kill chrome.exe instances tied to a profile dir.
@@ -35,7 +127,7 @@ async function killZombieChromeForProfile(absDir) {
   try {
     // On Windows, find chrome.exe processes whose command line includes the profile dir
     const cmd = `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${absDir.replace(/\\/g, '\\\\')}') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`;
-    execSync(cmd, { timeout: 10000, stdio: 'pipe' });
+    execSync(cmd, { timeout: 10000, stdio: 'pipe', windowsHide: true });
     console.log(`[browser] Killed zombie Chrome processes for ${path.basename(absDir)}`);
     // Brief wait for OS to release file handles
     await new Promise(r => setTimeout(r, 1000));
@@ -45,8 +137,7 @@ async function killZombieChromeForProfile(absDir) {
   }
 }
 
-async function launchBrowser(absDir) {
-  // Remove stale lock/port files if exists (zombie Chrome)
+function cleanLockFiles(absDir) {
   let lockBlocked = false;
   for (const lockName of ['SingletonLock', 'SingletonCookie', 'DevToolsActivePort', 'lockfile']) {
     const lockFile = path.join(absDir, lockName);
@@ -54,18 +145,27 @@ async function launchBrowser(absDir) {
       try { fs.unlinkSync(lockFile); } catch {
         lockBlocked = true;
       }
-      console.log(`[browser] Removed stale ${lockName} for ${absDir}`);
+      console.log(`[browser] Removed stale ${lockName} for ${path.basename(absDir)}`);
     }
   }
+  return lockBlocked;
+}
 
-  // If any lock couldn't be removed, a zombie Chrome holds it — kill and retry
+async function launchBrowser(absDir, { deepClean = false } = {}) {
+  // Step 0: Deep-clean if requested (second attempt after crash)
+  if (deepClean) {
+    deepCleanProfile(absDir);
+    restoreCookiesIfMissing(absDir);
+  }
+
+  // Step 1: Remove stale lock/port files
+  let lockBlocked = cleanLockFiles(absDir);
+
+  // Step 2: If any lock couldn't be removed, a zombie Chrome holds it — kill and retry
   if (lockBlocked) {
     console.log(`[browser] Lock files held by zombie process — killing Chrome for ${path.basename(absDir)}`);
     await killZombieChromeForProfile(absDir);
-    for (const lockName of ['SingletonLock', 'SingletonCookie', 'DevToolsActivePort', 'lockfile']) {
-      const lockFile = path.join(absDir, lockName);
-      try { fs.unlinkSync(lockFile); } catch {}
-    }
+    cleanLockFiles(absDir);
   }
 
   const chromePath = config.get('browser', 'chromePath',
@@ -75,12 +175,16 @@ async function launchBrowser(absDir) {
     headless: config.get('browser', 'headless', true),
     executablePath: chromePath,
     userDataDir: absDir,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    args: [
+      '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+      '--disable-blink-features=AutomationControlled',
+    ],
     defaultViewport: {
       width: config.get('browser', 'viewportWidth', 1280),
       height: config.get('browser', 'viewportHeight', 800),
     },
     protocolTimeout: config.get('browser', 'protocolTimeout', 60000),
+    ignoreDefaultArgs: ['--enable-automation'],
   });
 }
 
@@ -100,12 +204,12 @@ async function getBrowserForProfile(profileDir) {
     });
 
     if (result.healed) {
-      // Doctor fixed something (e.g. renamed corrupt profile) — retry
-      console.log(`[browser] Doctor healed: ${result.action} — retrying launch...`);
+      // Doctor fixed something — retry with deep-clean to remove corrupt cache/locks
+      console.log(`[browser] Doctor healed: ${result.action} — retrying with deep-clean...`);
       try {
-        b = await launchBrowser(absDir);
+        b = await launchBrowser(absDir, { deepClean: true });
       } catch (retryErr) {
-        console.error(`[browser] Retry after doctor fix also failed: ${retryErr.message}`);
+        console.error(`[browser] Retry after deep-clean also failed: ${retryErr.message}`);
         throw retryErr;
       }
     } else {
@@ -123,6 +227,8 @@ async function closeBrowserForProfile(profileDir) {
   if (b) {
     await b.close().catch(() => {});
     browsers.delete(absDir);
+    // Backup cookies after clean shutdown
+    backupCookies(absDir);
   }
 }
 
@@ -138,7 +244,7 @@ async function newPageForProfile(profileDir) {
   const b = await getBrowserForProfile(profileDir);
   const p = await b.newPage();
   await p.setUserAgent(
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
   );
   return p;
 }
@@ -251,6 +357,74 @@ async function persistSession(page, { domain, cookieFile }) {
   }
 }
 
+// ── Graceful shutdown ────────────────────────────────────────────────────
+// Close all browsers cleanly when PM2 sends SIGINT/SIGTERM, preventing
+// zombie Chrome processes and corrupt profiles.
+
+let shuttingDown = false;
+async function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[browser] ${signal} received — closing all browsers gracefully...`);
+  for (const [absDir, b] of browsers) {
+    try {
+      await b.close();
+      backupCookies(absDir);
+      console.log(`[browser] Closed ${path.basename(absDir)}`);
+    } catch {}
+  }
+  browsers.clear();
+  // Don't call process.exit — let the caller handle it
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('beforeExit', () => gracefulShutdown('beforeExit'));
+
+// ── Periodic zombie reaper ──────────────────────────────────────────────
+// Every 5 minutes, check for Chrome processes tied to our profiles that
+// are NOT tracked in the browsers Map (= zombies from crashes).
+
+const ZOMBIE_REAP_INTERVAL = 5 * 60 * 1000; // 5 min
+let zombieReaperTimer = null;
+
+function startZombieReaper() {
+  if (zombieReaperTimer) return;
+  zombieReaperTimer = setInterval(async () => {
+    try {
+      const { execSync } = require('child_process');
+      // Get all chrome.exe PIDs using our profile dirs
+      const output = execSync(
+        `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and ($_.CommandLine.Contains('chrome-profiles') -or $_.CommandLine.Contains('chrome-profile')) -and $_.CommandLine.Contains('${__dirname.replace(/\\/g, '\\\\')}') } | Select-Object ProcessId, @{N='Profile';E={if($_.CommandLine -match 'user-data-dir=(.+?)( |$)'){$matches[1]}}} | ConvertTo-Json"`,
+        { timeout: 10000, stdio: 'pipe', windowsHide: true }
+      ).toString().trim();
+
+      if (!output || output === '') return;
+      let procs = JSON.parse(output);
+      if (!Array.isArray(procs)) procs = [procs];
+
+      // Which profile dirs do we actively track?
+      const activeProfiles = new Set([...browsers.keys()].map(d => d.replace(/\\/g, '/')));
+
+      for (const proc of procs) {
+        if (!proc.Profile) continue;
+        const normalizedProfile = proc.Profile.replace(/\\/g, '/').replace(/"/g, '');
+        const isTracked = [...activeProfiles].some(ap => normalizedProfile.includes(ap) || ap.includes(normalizedProfile));
+        if (!isTracked) {
+          console.log(`[browser] Zombie reaper: killing orphan Chrome PID ${proc.ProcessId} (profile: ${path.basename(normalizedProfile)})`);
+          try { execSync(`taskkill /F /PID ${proc.ProcessId}`, { timeout: 5000, stdio: 'pipe', windowsHide: true }); } catch {}
+        }
+      }
+    } catch {
+      // Silent — reaper is best-effort
+    }
+  }, ZOMBIE_REAP_INTERVAL);
+  zombieReaperTimer.unref(); // Don't prevent Node.js from exiting
+}
+
+// Start the zombie reaper automatically
+startZombieReaper();
+
 module.exports = {
   // New multi-profile API
   getBrowserForProfile,
@@ -267,4 +441,8 @@ module.exports = {
   recordNavFailure,
   resetNavFailures,
   killZombieChromeForProfile,
+  // Profile maintenance
+  backupCookies,
+  restoreCookiesIfMissing,
+  deepCleanProfile,
 };

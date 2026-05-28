@@ -109,8 +109,8 @@ const SEARCH_QUERIES = [
 const MAX_NEW_PER_RUN = 10;
 
 // Sub range to target (too small = hobbyist, too big = unreachable)
-const MIN_SUBS = 200;
-const MAX_SUBS = 10000;
+const MIN_SUBS = 500;
+const MAX_SUBS = 50000;
 
 // Email regex — matches common patterns in channel descriptions
 const EMAIL_RE = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
@@ -335,7 +335,7 @@ async function getChannelDetails(channelIds) {
 // For channels with no email in description, try their About page + linked website
 
 const ABOUT_PROFILE = 'chrome-profiles/brand-reddit'; // No login needed for public pages
-const MAX_ABOUT_SCRAPES = 15;
+const MAX_ABOUT_SCRAPES = 30;
 const ABOUT_DELAY_MIN = 3000;
 const ABOUT_DELAY_MAX = 8000;
 
@@ -347,24 +347,48 @@ async function scrapeAboutPageEmail(page, channelUrl) {
 
     await new Promise(r => setTimeout(r, 2000));
 
-    // Extract email from the About page
+    // Extract email from the About page — try multiple selectors (YouTube changes DOM often)
     const result = await page.evaluate(() => {
       const text = document.body?.innerText || '';
       const emailRe = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
       const emails = text.match(emailRe) || [];
 
-      // Extract links section
+      // Also check for "Business email" button that YouTube hides behind a click
+      const businessBtn = document.querySelector('button[aria-label*="email"], button[aria-label*="correo"], #business-email-button');
+      if (businessBtn) businessBtn.click();
+
+      // Extract links section — try multiple selectors (YouTube evolves)
       const links = [];
-      const linkEls = document.querySelectorAll('#link-list-container a, a[href*="redirect"]');
-      linkEls.forEach(a => {
-        const href = a.href || '';
-        if (href && !href.includes('youtube.com') && !href.includes('google.com')) {
-          links.push(href);
-        }
-      });
+      const selectors = [
+        '#link-list-container a',
+        'a[href*="redirect"]',
+        '#links-section a',
+        'yt-channel-external-link-view-model a',
+        '#about-links a',
+        'a[href*="youtube.com/redirect"]',
+      ];
+      for (const sel of selectors) {
+        document.querySelectorAll(sel).forEach(a => {
+          const href = a.href || '';
+          if (href && !href.includes('youtube.com') && !href.includes('google.com') && !links.includes(href)) {
+            links.push(href);
+          }
+        });
+      }
 
       return { emails, links };
     });
+
+    // If business email button was clicked, wait and re-check
+    if (!result.emails.length) {
+      await new Promise(r => setTimeout(r, 1500));
+      const extraEmails = await page.evaluate(() => {
+        const text = document.body?.innerText || '';
+        const emailRe = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+        return text.match(emailRe) || [];
+      });
+      if (extraEmails.length) result.emails.push(...extraEmails);
+    }
 
     const validEmails = (result.emails || []).filter(e => !shouldSkipEmail(e));
     return {
@@ -553,7 +577,7 @@ async function runDiscovery() {
     });
   }
 
-  console.log(`[outreach-discover] ${candidates.length} candidates with email in target range (${MIN_SUBS}-${MAX_SUBS} subs)`);
+  console.log(`[outreach-discover] ${candidates.length} candidates with email in target range (${MIN_SUBS}-${MAX_SUBS.toLocaleString()} subs)`);
 
   // Step 3.5: Enhanced discovery — scrape About pages for channels without email
   const noEmailChannels = details.filter(ch =>
