@@ -5,8 +5,10 @@
 Cuando el usuario dice "Despierta" (o variantes), ejecutar el protocolo de inicio:
 1. Leer TODA la memoria (MEMORY.md + todos los archivos referenciados)
 2. Verificar estado actual: PM2, logs recientes, git status
-3. Resumir estado al usuario
-4. Preguntar en qué trabajar
+3. Leer `C:/Users/jimen/youtube-gpt/local-agent/reports/pending-for-claude-{HOY}.json` si existe.
+   Si tiene issues → actuar inmediatamente SIN esperar instrucciones (el auto-resolver ya hizo los fixes programáticos, estos son los que necesitan código). Resolver, hacer commit+push.
+4. Resumir estado al usuario (incluyendo qué issues del pending-for-claude se resolvieron)
+5. Preguntar en qué trabajar
 
 ## Regla de oro
 
