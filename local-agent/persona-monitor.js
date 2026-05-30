@@ -87,12 +87,14 @@ function cookieFileOk(persona, platform) {
  */
 async function retryPersona(persona, platform) {
   const key = `${persona.id}:${platform}`;
-  retryCount[key] = (retryCount[key] || 0) + 1;
+  const current = retryCount[key] || 0;
 
-  if (retryCount[key] > 2) {
-    log(`${persona.id}/${platform}: max retries reached today (${retryCount[key]}), skipping`);
+  if (current >= 2) {
+    log(`${persona.id}/${platform}: max retries reached today (${current}), skipping`);
     return false;
   }
+
+  retryCount[key] = current + 1;
 
   log(`${persona.id}/${platform}: attempting retry #${retryCount[key]}...`);
 
@@ -105,22 +107,18 @@ async function retryPersona(persona, platform) {
     await new Promise((resolve, reject) => {
       enqueue(`persona-retry-${persona.id}-${platform}`, async () => {
         if (platform === 'twitter') {
-          await twitter.runTwitterSession({
+          await twitter.engageWithTweets({
             accountId: persona.id,
             profileDir: path.join(__dirname, persona.profileDir || `chrome-profiles/${persona.id}`),
             cookieFile: path.join(__dirname, persona.platforms.twitter.cookieFile),
-            personality: persona.personality,
-            mentionYtubviral: persona.mentionYtubviral,
-            mentionRate: persona.mentionRate,
+            persona,
           });
         } else if (platform === 'reddit') {
-          await reddit.runRedditSession({
+          await reddit.engageWithPosts({
             accountId: persona.id,
             profileDir: path.join(__dirname, persona.profileDir || `chrome-profiles/${persona.id}`),
             cookieFile: path.join(__dirname, persona.platforms.reddit.cookieFile),
-            personality: persona.personality,
-            mentionYtubviral: persona.mentionYtubviral,
-            mentionRate: persona.mentionRate,
+            persona,
           });
         }
         resolve();
@@ -224,10 +222,17 @@ async function runPersonaMonitor() {
         continue;
       }
 
+      const cookieOk  = cookieFileOk(persona, platform);
+
+      // Skip platforms that have never had activity AND no cookie file — not configured yet
+      if (!lastActivity && !cookieOk) {
+        log(`${persona.id}/${platform}: UNCONFIGURED — no cookie file and no activity, skipping`);
+        continue;
+      }
+
       const silenceMs = lastActivity ? Date.now() - lastActivity.getTime() : Infinity;
       const silenceH  = Math.round(silenceMs / 3600000);
       const isSilent  = silenceMs > threshold;
-      const cookieOk  = cookieFileOk(persona, platform);
       const status    = isSilent ? 'SILENT' : 'OK';
 
       log(`${persona.id}/${platform}: ${status} — last activity ${lastActivity ? lastActivity.toISOString() : 'never'} (${silenceH}h ago)`);

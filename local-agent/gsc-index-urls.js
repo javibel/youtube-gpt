@@ -100,6 +100,7 @@ async function main() {
     'https://ytubviral.com/gear/wearables-rings',
     'https://ytubviral.com/gear/movement',
     'https://ytubviral.com/gear/timers',
+    'https://ytubviral.com/pricing',
     'https://ytubviral.com/signup',
     'https://ytubviral.com/privacy',
     'https://ytubviral.com/terms',

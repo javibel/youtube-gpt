@@ -14,7 +14,17 @@ const LOGS_DIR = path.join(__dirname, 'logs');
 const MEMORY_DIR = path.join(__dirname, 'memory');
 const AGENT_ID = 'infra-optimizer';
 
-const EXPECTED_AGENTS = ['guardian', 'watchdog', 'scout', 'social-optimizer', 'gmail', 'manager'];
+// Agent schedule awareness: maxGapHours = max acceptable hours since last report
+// Agents that run AFTER infra-optimizer (02:45) are checked against yesterday's report
+// Weekly agents (watchdog=Mon 02:45, scout=Mon 02:30) tolerate up to 168h gap
+const EXPECTED_AGENTS = [
+  { id: 'guardian',        maxGapHours: 26  }, // runs 02:15 daily — should always be present
+  { id: 'social-optimizer',maxGapHours: 32  }, // runs 03:00 daily — check yesterday's
+  { id: 'gmail',           maxGapHours: 32  }, // runs 08:00+ daily — check yesterday's
+  { id: 'manager',         maxGapHours: 32  }, // runs 03:15 daily — check yesterday's
+  { id: 'watchdog',        maxGapHours: 168 }, // runs Mon 02:45 — weekly
+  { id: 'scout',           maxGapHours: 168 }, // runs Mon 02:30 — weekly
+];
 
 const ALLOWED_PM2_SERVICES = ['ytubviral-agent', 'ytubviral-dashboard', 'ytubviral-tunnel'];
 
@@ -129,15 +139,35 @@ function collectErrorRate() {
 
 function collectAgentReports() {
   const todayStr = today();
+  const now = Date.now();
   const present = [];
   const missing = [];
 
-  for (const agent of EXPECTED_AGENTS) {
-    const reportFile = path.join(REPORTS_DIR, `${agent}-${todayStr}.json`);
-    if (fs.existsSync(reportFile)) {
-      present.push(agent);
+  for (const agentDef of EXPECTED_AGENTS) {
+    const { id, maxGapHours } = agentDef;
+    const maxGapMs = maxGapHours * 60 * 60 * 1000;
+    let found = false;
+
+    // Scan reports dir for this agent's most recent report
+    try {
+      const files = fs.readdirSync(REPORTS_DIR)
+        .filter(f => f.startsWith(`${id}-`) && f.endsWith('.json'))
+        .sort()
+        .reverse();
+
+      for (const file of files) {
+        const mtime = fs.statSync(path.join(REPORTS_DIR, file)).mtimeMs;
+        if (now - mtime <= maxGapMs) {
+          found = true;
+          break;
+        }
+      }
+    } catch {}
+
+    if (found) {
+      present.push(id);
     } else {
-      missing.push(agent);
+      missing.push(id);
     }
   }
 

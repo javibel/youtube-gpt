@@ -111,7 +111,7 @@ async function main() {
 
   // Step 1: Seed cookies from JSON file into this profile
   if (cookieFile) {
-    const filePath = path.join(__dirname, cookieFile);
+    const filePath = path.isAbsolute(cookieFile) ? cookieFile : path.join(__dirname, cookieFile);
     if (fs.existsSync(filePath)) {
       try {
         const cookies = JSON.parse(fs.readFileSync(filePath, 'utf8'));

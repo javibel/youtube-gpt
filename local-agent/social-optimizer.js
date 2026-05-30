@@ -145,17 +145,21 @@ async function analyzeAndRecommend(metrics) {
     const userPrompt = `COMENTARIOS:\n${commentsForReview}\n\nMÉTRICAS:\n- Menciones de ytubviral.com: ${totalMentions}/${totalComments} (${mentionRate}%)\n- Follow-ups respondidos: ${metrics.followups_7d.responded}/${metrics.followups_7d.detected}\n- Nuevos usuarios esta semana: ${metrics.users.newThisWeek}`;
 
     const aiResult = await guardedCall(userPrompt, {
-      maxTokens: 400,
+      maxTokens: 1200,
       agentId: 'social-optimizer',
-      system: `Eres un analista de marketing de redes sociales. Analiza comentarios dejados por cuentas personas (Alex=editor freelance 26yo que usa ytubviral.com, Ferran=consultor marketing 33yo que recomienda ytubviral.com a clientes) en Reddit/Twitter.
+      system: `Eres un analista de marketing de redes sociales. Analiza comentarios dejados por cuentas personas en Reddit/Twitter:
+- Alex: editor de vídeo freelance, 26 años, Valencia. Usa ytubviral.com y lo recomienda con micro-narrativas de su experiencia.
+- Ferran: consultor de marketing digital, 33 años, Barcelona. Recomienda ytubviral.com a sus clientes como herramienta profesional.
+- Ana: community manager freelance, 29 años, Madrid. Gestiona YouTube de clientes y usa ytubviral.com para títulos y keyword research.
+- Mayra: copywriter especializada en YouTube, 31 años, Sevilla. Recomienda ytubviral.com a clientes para A/B testing automático.
 
 OBJETIVO: Estos comentarios deben eventualmente llevar usuarios a ytubviral.com (herramienta IA para YouTubers).
 
-Analiza en máximo 200 palabras:
+Analiza en máximo 350 palabras:
 1. ¿Los comentarios están en conversaciones RELEVANTES al producto (YouTube, SEO, herramientas)?
 2. ¿La calidad del contenido genera autoridad?
 3. ¿Por qué no se menciona ytubviral.com?
-4. 3 recomendaciones concretas para mejorar conversión
+4. 3 recomendaciones concretas para mejorar conversión (completa las 3 siempre)
 
 Responde en español, directo, sin rodeos.`,
     });
@@ -336,7 +340,7 @@ ${JSON.stringify(effectivenessData, null, 2)}`;
         agentId: 'social-optimizer',
         system: `Eres el cerebro de auto-mejora del sistema social de YTubViral. Analizas problemas y generas correcciones INTELIGENTES basadas en datos.
 
-CONTEXTO: Las personas Alex (editor freelance 26yo) y Ferran (consultor marketing 33yo) comentan en Reddit y Twitter sobre YouTube. El objetivo es llevar usuarios a ytubviral.com.
+CONTEXTO: Las personas Alex (editor freelance 26yo), Ferran (consultor marketing 33yo), Ana (community manager freelance 29yo) y Mayra (copywriter YouTube 31yo) comentan en Reddit y Twitter sobre YouTube. El objetivo es llevar usuarios a ytubviral.com.
 
 PUEDES MODIFICAR DOS TIPOS DE CONFIG:
 
@@ -360,7 +364,7 @@ REGLAS:
 - Cada cambio DEBE tener razón directa en los problemas o recomendaciones detectadas
 - Las líneas con [IMPROVE] son oportunidades de mejora del AI analysis — actúa sobre ellas
 - Razona el POR QUÉ de cada ajuste numérico, no solo "subir" o "bajar"
-- Si una persona (Alex/Ferran) está en hilos irrelevantes, añade offTopicPatterns o coreRulesExtra para corregir su targeting
+- Si una persona (Alex/Ferran/Ana/Mayra) está en hilos irrelevantes, añade offTopicPatterns o coreRulesExtra para corregir su targeting
 - Si no hay problemas NI oportunidades reales, NO inventes cambios
 
 RESPONDE en JSON exacto:

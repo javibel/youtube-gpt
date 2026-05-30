@@ -276,7 +276,7 @@ async function ensureSession(page, { domain, sessionCookieName, cookieFile }) {
     return true;
   }
 
-  const filePath = path.join(__dirname, cookieFile);
+  const filePath = path.isAbsolute(cookieFile) ? cookieFile : path.join(__dirname, cookieFile);
   if (!fs.existsSync(filePath)) {
     console.error(`[browser] No cookie file found: ${cookieFile}`);
     return false;
@@ -349,7 +349,7 @@ async function persistSession(page, { domain, cookieFile }) {
       value: c.value,
     }));
 
-    const filePath = path.join(__dirname, cookieFile);
+    const filePath = path.isAbsolute(cookieFile) ? cookieFile : path.join(__dirname, cookieFile);
     fs.writeFileSync(filePath, JSON.stringify(exported, null, 4), 'utf8');
     console.log(`[browser] Cookies persisted back to ${cookieFile} (${exported.length} cookies)`);
   } catch (err) {

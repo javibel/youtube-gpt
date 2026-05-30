@@ -282,10 +282,19 @@ async function markAsRead(token, messageId) {
   });
 }
 
+function sanitizeSubject(s) {
+  return (s || '')
+    .replace(/\\[rnt]/g, ' ')   // literal escape sequences e.g. \n \r \t in header value
+    .replace(/[\r\n\t]+/g, ' ') // actual control characters
+    .trim()
+    .slice(0, 200);
+}
+
 async function sendReply(_token, { to, subject, body, bcc }) {
+  const clean = sanitizeSubject(subject);
   await sendViaResend({
     to,
-    subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
+    subject: clean.startsWith('Re:') ? clean : `Re: ${clean}`,
     body,
     from: 'support',
     replyTo: 'support@ytubviral.com',
@@ -296,7 +305,7 @@ async function sendReply(_token, { to, subject, body, bcc }) {
 async function forwardToOwner(_token, { from, subject, body, snippet }) {
   await sendViaResend({
     to: OWNER_EMAIL,
-    subject: `[FWD] ${subject}`,
+    subject: `[FWD] ${sanitizeSubject(subject)}`,
     body: `── Reenvío automático del agente ──\nDe: ${from}\nAsunto: ${subject}\n${'─'.repeat(40)}\n\n${body || snippet}\n\n${'─'.repeat(40)}\nReenviado por el agente YTubViral`,
     from: 'agent',
   });
@@ -407,6 +416,8 @@ async function processInbox() {
       await new Promise(r => setTimeout(r, 2000));
     } catch (err) {
       console.error(`[gmail] Error processing message ${messageId}:`, err.message);
+      // Mark as read so we don't retry the same broken message on every cron run
+      try { await markAsRead(token, messageId); } catch {}
     }
   }
 

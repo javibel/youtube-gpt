@@ -240,14 +240,21 @@ async function runRedditTargeted() {
       });
       console.log(`[${TAG}] ${personaId} logged in as: ${username}`);
 
-      // Shuffle subreddits
-      const shuffled = [...FEEDBACK_SUBREDDITS].sort(() => Math.random() - 0.5);
+      // Shuffle subreddits — limit to 4 per run to avoid timeout cascade
+      const shuffled = [...FEEDBACK_SUBREDDITS].sort(() => Math.random() - 0.5).slice(0, 4);
+      let consecutiveFailures = 0;
 
       for (const { sub } of shuffled) {
         if (personaComments >= MAX_COMMENTS_PER_PERSONA) break;
+        if (consecutiveFailures >= 2) {
+          console.log(`[${TAG}] ${personaId}: 2 consecutive failures — Reddit may be blocking, aborting`);
+          break;
+        }
 
         console.log(`[${TAG}] ${personaId}: Scanning r/${sub}...`);
         const posts = await scrapeSubredditPosts(page, sub);
+        if (!posts || posts.length === 0) { consecutiveFailures++; continue; }
+        consecutiveFailures = 0;
 
         for (const post of posts) {
           if (personaComments >= MAX_COMMENTS_PER_PERSONA) break;

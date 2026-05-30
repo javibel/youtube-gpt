@@ -44,7 +44,7 @@
   },
   "humanize": {
     "skipSessionProbability": 0.15,
-    "skipPostProbability": 0.2,
+    "skipPostProbability": 0.1,
     "readingPauseMin": 5,
     "readingPauseMax": 15,
     "actionPauseMin": 3,
@@ -55,8 +55,8 @@
   },
   "persona-runner": {
     "model": "claude-haiku-4-5-20251001",
-    "maxTweetsPerSession": 10,
-    "maxRedditPerSession": 5
+    "maxTweetsPerSession": 12,
+    "maxRedditPerSession": 8
   },
   "followup": {
     "model": "claude-haiku-4-5-20251001",
@@ -144,14 +144,14 @@
       "mentionRate": 0.4
     }
   },
-  "_lastModified": "2026-05-26T00:50:37.821Z",
+  "_lastModified": "2026-05-29T01:00:27.631Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 25.699118999999985,
+    "amount": 24.9877685,
     "currency": "USD",
-    "lastChecked": "2026-05-24T08:46:12.922Z",
-    "lastDeduction": "2026-05-28T20:34:02.937Z",
-    "totalSpentToday": 0.121114,
-    "spendDate": "2026-05-28"
+    "lastChecked": "2026-05-30T07:51:23.553Z",
+    "lastDeduction": "2026-05-30T08:20:51.410Z",
+    "totalSpentToday": 0.0122315,
+    "spendDate": "2026-05-30"
   }
 }

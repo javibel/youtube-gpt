@@ -59,6 +59,9 @@ El Manager deja de alertar sobre ese issue desde ese momento.
 ## Regla de oro
 Verificar SIEMPRE que un problema sigue existiendo ANTES de tocarlo. Logs de ayer ≠ estado actual. Si funciona, no tocar.
 
+## Report de estado = leer el manager del día
+Cuando el usuario pide "estado del sistema", "report", "cómo va todo" o similar — SIEMPRE leer primero `reports/manager-{HOY}.json` del día actual antes de responder. No usar el report de ayer aunque esté en contexto. Si no existe el de hoy, indicarlo explícitamente.
+
 ## Memoria
 Actualizar memoria con CADA cambio significativo — en el momento, no al final de la sesión.
 
