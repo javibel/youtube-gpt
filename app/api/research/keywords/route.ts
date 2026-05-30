@@ -142,11 +142,13 @@ export async function POST(request: Request) {
         { headers: { 'User-Agent': 'Mozilla/5.0' } }
       );
       const text = await autoRes.text();
-      // Response format: window.google.ac.h(["keyword", [["suggestion", 0, []], ...]])
-      const bracketMatch = text.match(/\["[^"]*",\s*\[(\[[\s\S]*?\])\s*\]/);
-      if (bracketMatch) {
-        const inner = JSON.parse(`[${bracketMatch[1]}]`);
-        relatedKeywords = inner.slice(0, 8).map((item: [string]) => item[0]).filter(Boolean);
+      // Response format: window.google.ac.h(["keyword", [["suggestion", 0, [512,433]], ...], {...}])
+      const pStart = text.indexOf('(');
+      const pEnd = text.lastIndexOf(')');
+      if (pStart !== -1 && pEnd !== -1) {
+        const parsed = JSON.parse(text.slice(pStart + 1, pEnd));
+        const suggestions = parsed[1] || [];
+        relatedKeywords = suggestions.slice(0, 8).map((item: [string]) => item[0]).filter(Boolean);
       }
     } catch {
       // Autocomplete is unofficial — fail silently
