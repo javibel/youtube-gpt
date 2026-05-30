@@ -7,6 +7,7 @@ import {
   getSocialImageUrl,
 } from '@/lib/agent/meta-agent';
 import { getHumanImageUrl } from '@/lib/agent/linkedin-agent';
+import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
 import { prisma } from '@/lib/prisma';
@@ -199,21 +200,23 @@ export async function GET(request: Request) {
     });
     results.dailyIdeas = ideasGenerated;
 
-    // 2. Generate content for Facebook + Instagram + LinkedIn (morning networks)
-    // TikTok + Twitter DISABLED — owner manages these manually
-    const [facebook, instagram, linkedin] = await Promise.allSettled([
+    // 2. Generate content for Facebook + Instagram + LinkedIn + Twitter
+    const [facebook, instagram, linkedin, twitter] = await Promise.allSettled([
       generateSocialPost('facebook', 'morning'),
       generateSocialPost('instagram', 'morning'),
       generateSocialPost('linkedin', 'morning'),
+      generateSocialPost('twitter', 'morning'),
     ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;
     const ig = instagram.status === 'fulfilled' ? instagram.value : null;
     const li = linkedin.status === 'fulfilled' ? linkedin.value : null;
+    const tw = twitter.status === 'fulfilled' ? twitter.value : null;
 
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
     if (linkedin.status === 'rejected') errors.push(`LinkedIn content: ${linkedin.reason}`);
+    if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
     // 3. Publish Facebook (via Graph API — reactivado 2026-05-16)
     if (fb) {
@@ -238,7 +241,12 @@ export async function GET(request: Request) {
       results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
     }
 
-    // 5. TikTok + X — DISABLED (owner manages these manually, no more emails)
+    // 5. Publish Twitter/X thread (via API v2 — activado 2026-05-30)
+    if (tw) {
+      const twResult = await publishThreadToTwitter(tw);
+      results.twitter = twResult;
+      if (!twResult.success) errors.push(`Twitter: ${twResult.error}`);
+    }
 
     // 6. Send daily report to owner
     await sendDailyReport().catch(err =>

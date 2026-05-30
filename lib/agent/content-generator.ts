@@ -4,7 +4,7 @@ export type Platform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'twitt
 export type PostType = 'morning' | 'evening';
 
 const API_KEY = () => process.env.ANTHROPIC_API_KEY?.trim() ?? '';
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'claude-sonnet-4-6';
 
 // ── Memoria narrativa ─────────────────────────────────────────────────────────
 
@@ -113,25 +113,51 @@ Principios de tu forma de escribir:
 - Preguntas genuinas al final si encajan, no de forma mecánica.
 `.trim();
 
+// ── Post format rotation ─────────────────────────────────────────────────────
+
+type PostFormat = { nombre: string; instruccion: string };
+
+const POST_FORMATS: PostFormat[] = [
+  { nombre: 'listicle', instruccion: 'Formato LISTA numerada: "X cosas que..." o "X errores que...". Cada punto con emoji + frase corta + explicación de 1 línea.' },
+  { nombre: 'micro-story', instruccion: 'Formato HISTORIA: Arranca con un momento concreto ("La semana pasada analicé un canal que..."). Conflicto → descubrimiento → lección accionable.' },
+  { nombre: 'hot-take', instruccion: 'Formato OPINIÓN FUERTE: Empieza con una afirmación contraintuitiva o polémica sobre YouTube. Defiéndela con datos o experiencia. Invita al debate.' },
+  { nombre: 'framework', instruccion: 'Formato MÉTODO/FRAMEWORK: Presenta un sistema de 3-5 pasos con nombre propio. Ej: "El método 3T para títulos", "La regla del 80/20 en thumbnails". Que sea guardable como referencia.' },
+];
+
+function getTodayFormat(): PostFormat {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  return POST_FORMATS[dayOfYear % POST_FORMATS.length];
+}
+
 // ── Prompts ──────────────────────────────────────────────────────────────────
 
 const FACEBOOK_PROMPT = (): string => {
   const theme = getTodayTheme();
   const day = getTodayDayName();
+  const format = getTodayFormat();
+  const isShort = format.nombre === 'hot-take';
   return `
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
-${theme.mencionarProducto ? 'Menciona YTubViral (ytubviral.com) de forma natural como herramienta que usas/construyes. No como anuncio — como parte de la historia.' : 'No menciones YTubViral hoy.'}
+${theme.mencionarProducto ? 'Menciona YTubViral (ytubviral.com) de forma natural, como parte de tu historia, NUNCA como anuncio.' : 'No menciones YTubViral hoy.'}
 
-Escribe un post de Facebook (150-250 palabras) que la gente quiera GUARDAR o COMPARTIR.
-- El post debe aportar VALOR PRÁCTICO: un dato, un tip, un método, algo accionable
-- Empieza con una frase que enganche (dato sorprendente, pregunta provocadora, o afirmación contraintuitiva)
-- Tono conversacional pero con sustancia — no reflexiones vacías
-- Si incluyes números o datos, que sean específicos (no "muchos youtubers", sino "el 73% de canales pequeños")
-- Emojis solo si salen naturales
-- SIEMPRE incluye 4-6 hashtags relevantes al final (mezcla ES + EN: #youtube #youtubeseo #creadordecontenido #youtubetips #creadores)
-- Termina con pregunta que invite a comentar O con un "guarda este post"
-- Sin CTA de marketing forzado, sin urgencia artificial
+${format.instruccion}
+
+Escribe un post de Facebook (${isShort ? '60-100' : '350-500'} palabras) optimizado para COMPARTIR.
+
+REGLAS DE ENGAGEMENT:
+- Primera frase: DEBE parar el scroll. Usa una de estas fórmulas:
+  * Dato con número: "El 92% de los canales de YouTube mueren antes de los 100 subs"
+  * Contradicción: "Publicar más vídeos NO hace crecer tu canal"
+  * Confesión: "Cometí este error durante 6 meses y me costó 10K views"
+  * Pregunta directa: "¿Cuántas horas pierdes optimizando títulos que nadie busca?"
+- Cada párrafo debe aportar VALOR CONCRETO — si quitas un párrafo y no se pierde nada útil, sobra
+- Datos específicos siempre: "el 73% de canales pequeños" no "muchos youtubers"
+- Tono: como hablarías con un amigo creador en un café, no como un post corporativo
+- CERO frases hechas: nada de "en este mundo digital", "el contenido es rey", "la clave del éxito"
+- Cierra con UNA de estas: pregunta polarizante / "comparte si conoces a alguien que..." / dato que deje pensando
+- 4-5 hashtags al final: #YouTube #YouTubeSEO #Creadores #YouTubeTips + 1 del tema
+- Sin markdown, sin asteriscos, sin negritas
 
 Devuelve SOLO el texto del post.
 `.trim();
@@ -140,18 +166,39 @@ Devuelve SOLO el texto del post.
 const INSTAGRAM_PROMPT = (): string => {
   const theme = getTodayTheme();
   const day = getTodayDayName();
+  const format = getTodayFormat();
   return `
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
-${theme.mencionarProducto ? 'Menciona YTubViral (ytubviral.com) como herramienta que usas/construyes, de forma natural.' : 'No menciones YTubViral hoy.'}
+${theme.mencionarProducto ? 'Menciona YTubViral (ytubviral.com) de forma natural como herramienta que usas.' : 'No menciones YTubViral hoy.'}
 
-Escribe un caption de Instagram (100-180 palabras) que la gente quiera GUARDAR.
-- Primera línea BRUTAL que enganche (dato, pregunta provocadora, afirmación contraintuitiva)
-- Contenido de VALOR: tip práctico, dato real, método paso a paso, o comparativa
-- Emojis estratégicos (✅ para listas, 📊 para datos, 💡 para tips — no exagerar)
-- Termina con pregunta que genere comentarios O con "🔗 Link en bio" si mencionas ytubviral
-- 8-12 hashtags al final (mezcla): #youtube #youtubeseo #youtubetips #contentcreator #creadordecontenido #youtubegrowth #smallyoutuber #creadores #marketingdigital #youtuber
-- El contenido debe ser ÚTIL para alguien que quiere crecer en YouTube
+${format.instruccion}
+
+Escribe un caption de Instagram (300-500 palabras) diseñado para que lo GUARDEN.
+
+ESTRUCTURA OBLIGATORIA:
+1. HOOK (primera línea, separada del resto): La frase que decide si leen o siguen scrolleando. Fórmulas probadas:
+   - "Nadie te dice esto sobre [tema] pero..."
+   - "[Número]% de YouTubers hacen esto mal"
+   - "Dejé de hacer [X] y mi canal creció [Y]%"
+   - "Si tu CTR está bajo 5%, lee esto"
+   NO uses: "Hoy vamos a hablar de...", "En este post...", "Sabes que..."
+
+2. CUERPO (valor denso, cada línea debe enseñar algo):
+   - Usa emojis como bullets: ✅ para tips, ❌ para errores, 📊 para datos, 🔥 para énfasis
+   - Párrafos de 1-2 líneas máximo
+   - Incluye al menos UN dato numérico real
+   - Si es listicle: cada punto = emoji + afirmación corta + por qué importa
+   - Si es historia: situación concreta → qué descubriste → qué cambió
+
+3. CTA (último párrafo, separado):
+   - "Guarda este post" o "Comparte con un creador" (el algoritmo premia saves y shares)
+   - Si mencionas ytubviral: "Link en bio"
+   - O pregunta que genere comentarios: "¿Cuál de estos errores cometiste?"
+
+4. HASHTAGS (línea final, separada por un salto):
+   5-8 hashtags mezclando ES + EN, relevantes al tema concreto del post.
+   Pool: #YouTube #YouTubeSEO #YouTubeTips #ContentCreator #CreadorDeContenido #YouTubeGrowth #SmallYouTuber #SEO #Thumbnails #CTR #YouTubeAlgorithm #Creadores
 
 Devuelve SOLO el caption con hashtags.
 `.trim();
@@ -216,25 +263,42 @@ Devuelve SOLO el contenido en el formato indicado.
 const TWITTER_PROMPT = (): string => {
   const theme = getTodayTheme();
   const day = getTodayDayName();
+  const format = getTodayFormat();
   return `
 Hoy es ${day}. El tema del día es: ${theme.tema}
 Contexto: ${theme.descripcion}
 
-Escribe un hilo de X/Twitter (2-3 tweets) con voz personal y directa.
+${format.instruccion}
 
-Formato:
-TWEET 1 (máx 280 chars, arranca con algo real):
+Escribe un hilo de X/Twitter de 6-8 tweets que pueda viralizarse en el feed "Para ti".
+
+REGLAS CRÍTICAS:
+- TWEET 1 es el que decide TODO. Debe funcionar SOLO, sin contexto. Fórmulas que funcionan:
+  * "Analicé [X] canales de YouTube. Esto es lo que encontré:"
+  * "[Dato brutal]. Y nadie habla de esto."
+  * "El mayor error que veo en canales pequeños (y cómo evitarlo):"
+  * Opinión fuerte: "Los Shorts están matando canales. Y la gente no se da cuenta."
+- Cada tweet = UNA idea clara, completa en sí misma
+- Usa numeración: 1/, 2/, 3/... (señal visual de hilo, genera clicks)
+- MÁXIMO 270 caracteres por tweet (deja margen para el numerador)
+- El penúltimo tweet: el insight más potente o el dato más sorprendente (la gente suele abandonar al final, pon lo mejor antes)
+- Último tweet: cierre + "Sígueme para más sobre YouTube" + ${theme.mencionarProducto ? 'mención natural a ytubviral.com' : 'pregunta que genere respuestas'}
+- Sin hashtags dentro del hilo (rompen la lectura)
+- Tono: directo, seguro, con datos. No hedging ("creo que", "tal vez"). Afirma.
+
+Formato EXACTO (respeta esto al pie de la letra):
+TWEET 1:
 [texto]
 
-TWEET 2 (desarrollo honesto, máx 280 chars):
+TWEET 2:
 [texto]
 
-TWEET 3 (cierre o pregunta genuina, máx 280 chars):
-[texto${theme.mencionarProducto ? ' — puedes incluir ytubviral.com si viene natural' : ''}]
+TWEET 3:
+[texto]
 
-HASHTAGS SUGERIDOS: [3-4 hashtags relevantes]
+(continúa hasta TWEET 6-8)
 
-Devuelve SOLO el hilo en el formato indicado.
+Devuelve SOLO los tweets en el formato indicado, nada más.
 `.trim();
 };
 
@@ -257,7 +321,8 @@ export async function generateSocialPost(
 
   // VOZ + narrative context as cached system prompt (static per session)
   const systemPrompt = context ? `${VOZ}\n\n${context}` : VOZ;
-  return callClaude(prompt!, 700, systemPrompt);
+  const tokens = platform === 'twitter' ? 1500 : 1200;
+  return callClaude(prompt!, tokens, systemPrompt);
 }
 
 export async function generateYoutubeReply(
