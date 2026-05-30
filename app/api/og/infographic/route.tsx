@@ -6,8 +6,10 @@ export const runtime = 'edge';
 const BG = '#0B0B0D';
 const ACCENT = '#ee4d5e';
 const ACCENT_GLOW = 'rgba(232,77,91,0.15)';
+const ACCENT_GLOW_STRONG = 'rgba(232,77,91,0.25)';
 const TEXT = '#ffffff';
 const MUTED = '#71717a';
+const MUTED_LIGHT = '#a1a1aa';
 
 type Format = 'listicle' | 'story' | 'hot-take' | 'framework';
 
@@ -15,7 +17,6 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const format = (searchParams.get('format') ?? 'story') as Format;
   const title = searchParams.get('title') ?? 'YouTube Tips';
-  // Points/steps as p1, p2, p3... params
   const points: string[] = [];
   for (let i = 1; i <= 8; i++) {
     const p = searchParams.get(`p${i}`);
@@ -38,129 +39,312 @@ export async function GET(request: Request) {
   }
 }
 
+// ── Shared layout wrapper ───────────────────────────────────────────────────
+// All templates use the same 3-zone layout:
+//   [header: tag]  [content: centered, flex-1]  [footer: logo]
+
+function TagBadge({ label }: { label: string }) {
+  return (
+    <div style={{ display: 'flex' }}>
+      <span style={{
+        background: ACCENT_GLOW_STRONG,
+        color: ACCENT,
+        fontSize: '15px',
+        fontWeight: 700,
+        padding: '8px 20px',
+        borderRadius: '20px',
+        textTransform: 'uppercase',
+        letterSpacing: '1.5px',
+      }}>{label}</span>
+    </div>
+  );
+}
+
+function LogoBar() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: ACCENT, display: 'flex' }} />
+      <span style={{ fontSize: '17px', fontWeight: 600, color: MUTED }}>ytubviral.com</span>
+    </div>
+  );
+}
+
+function AccentBar() {
+  return (
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, height: '6px',
+      background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT}88)`,
+      display: 'flex',
+    }} />
+  );
+}
+
+function DecorLine() {
+  return (
+    <div style={{
+      width: '60px', height: '3px', borderRadius: '2px',
+      background: `linear-gradient(90deg, ${ACCENT}, transparent)`,
+      display: 'flex',
+    }} />
+  );
+}
+
+// ── LISTICLE ────────────────────────────────────────────────────────────────
+
 function renderListicle(title: string, points: string[], tag: string) {
+  const fontSize = points.length > 5 ? '20px' : '24px';
+  const gap = points.length > 5 ? '22px' : '30px';
+  const badgeSize = points.length > 5 ? '34px' : '42px';
+  const badgeFont = points.length > 5 ? '16px' : '20px';
+
   return new ImageResponse(
     (
-      <div style={{ width: '1080px', height: '1080px', display: 'flex', flexDirection: 'column', background: BG, padding: '60px', position: 'relative', fontFamily: 'sans-serif' }}>
-        {/* Accent bar */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT}88)`, display: 'flex' }} />
+      <div style={{
+        width: '1080px', height: '1080px', display: 'flex', flexDirection: 'column',
+        background: BG, padding: '70px', position: 'relative', fontFamily: 'sans-serif',
+      }}>
+        <AccentBar />
 
-        {/* Tag */}
-        <div style={{ display: 'flex', marginBottom: '20px' }}>
-          <span style={{ background: ACCENT_GLOW, color: ACCENT, fontSize: '14px', fontWeight: 700, padding: '6px 16px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>{tag}</span>
+        {/* Header */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '10px' }}>
+          <TagBadge label={tag} />
+          <div style={{
+            fontSize: title.length > 50 ? '38px' : '46px',
+            fontWeight: 700, lineHeight: 1.15, color: TEXT, display: 'flex',
+          }}>{title}</div>
+          <DecorLine />
         </div>
 
-        {/* Title */}
-        <div style={{ fontSize: title.length > 60 ? '36px' : '42px', fontWeight: 700, lineHeight: 1.2, color: TEXT, marginBottom: '40px', display: 'flex' }}>{title}</div>
-
-        {/* Points */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+        {/* Content — centered vertically */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', flex: 1,
+          justifyContent: 'center', gap,
+        }}>
           {points.map((p, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-              <div style={{ minWidth: '36px', height: '36px', background: ACCENT, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '18px', color: TEXT }}>{i + 1}</div>
-              <div style={{ fontSize: '22px', lineHeight: 1.4, color: `${TEXT}dd`, paddingTop: '4px', display: 'flex' }}>{p}</div>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <div style={{
+                minWidth: badgeSize, height: badgeSize, background: ACCENT,
+                borderRadius: '10px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontWeight: 700, fontSize: badgeFont, color: TEXT,
+              }}>{i + 1}</div>
+              <div style={{ fontSize, lineHeight: 1.5, color: `${TEXT}ee`, display: 'flex' }}>{p}</div>
             </div>
           ))}
         </div>
 
-        {/* Logo bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: ACCENT, display: 'flex' }} />
-          <span style={{ fontSize: '16px', fontWeight: 600, color: MUTED }}>ytubviral.com</span>
-        </div>
+        {/* Footer */}
+        <LogoBar />
       </div>
     ),
-    { width: 1080, height: 1080 }
+    { width: 1080, height: 1080 },
   );
 }
+
+// ── STORY ───────────────────────────────────────────────────────────────────
 
 function renderStory(quote: string, tag: string) {
+  const quoteSize = quote.length > 120 ? '34px' : quote.length > 80 ? '40px' : '46px';
+
   return new ImageResponse(
     (
-      <div style={{ width: '1080px', height: '1080px', display: 'flex', flexDirection: 'column', background: BG, padding: '60px', position: 'relative', fontFamily: 'sans-serif', justifyContent: 'space-between' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT}88)`, display: 'flex' }} />
+      <div style={{
+        width: '1080px', height: '1080px', display: 'flex', flexDirection: 'column',
+        background: BG, padding: '70px', position: 'relative', fontFamily: 'sans-serif',
+      }}>
+        <AccentBar />
+        {/* Subtle corner glow */}
+        <div style={{
+          position: 'absolute', bottom: 0, right: 0, width: '500px', height: '500px',
+          background: `radial-gradient(circle at 100% 100%, ${ACCENT_GLOW} 0%, transparent 70%)`,
+          display: 'flex',
+        }} />
 
-        <div style={{ display: 'flex' }}>
-          <span style={{ background: ACCENT_GLOW, color: ACCENT, fontSize: '14px', fontWeight: 700, padding: '6px 16px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>{tag}</span>
-        </div>
+        {/* Header */}
+        <TagBadge label={tag} />
 
-        <div style={{ display: 'flex', paddingLeft: '30px', paddingRight: '20px', position: 'relative' }}>
+        {/* Content — centered */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', flex: 1,
+          justifyContent: 'center', paddingLeft: '36px', paddingRight: '20px',
+          position: 'relative',
+        }}>
+          {/* Decorative large quote mark */}
+          <div style={{
+            position: 'absolute', top: '60px', left: '-10px',
+            fontSize: '180px', fontWeight: 700, color: ACCENT,
+            opacity: 0.15, lineHeight: 1, display: 'flex',
+          }}>"</div>
+
           {/* Quote bar */}
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: ACCENT, display: 'flex' }} />
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: quote.length > 100 ? '34px' : '40px', fontWeight: 600, lineHeight: 1.35, color: TEXT, display: 'flex' }}>"{quote}"</div>
-            <div style={{ fontSize: '20px', color: MUTED, marginTop: '30px', display: 'flex' }}>— Javier Jimeno, fundador de YTubViral</div>
+          <div style={{
+            position: 'absolute', left: 0, top: '30%', bottom: '20%',
+            width: '4px', background: ACCENT, borderRadius: '2px', display: 'flex',
+          }} />
+
+          <div style={{
+            fontSize: quoteSize, fontWeight: 600, lineHeight: 1.4,
+            color: TEXT, display: 'flex', marginBottom: '36px',
+          }}>"{quote}"</div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '44px', height: '3px', background: ACCENT,
+              borderRadius: '2px', display: 'flex',
+            }} />
+            <div style={{ fontSize: '19px', color: MUTED_LIGHT, display: 'flex' }}>
+              Javier Jimeno, fundador de YTubViral
+            </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: ACCENT, display: 'flex' }} />
-          <span style={{ fontSize: '16px', fontWeight: 600, color: MUTED }}>ytubviral.com</span>
-        </div>
+        {/* Footer */}
+        <LogoBar />
       </div>
     ),
-    { width: 1080, height: 1080 }
+    { width: 1080, height: 1080 },
   );
 }
+
+// ── HOT TAKE ────────────────────────────────────────────────────────────────
 
 function renderHotTake(quote: string) {
+  const quoteSize = quote.length > 100 ? '42px' : quote.length > 60 ? '52px' : '58px';
+
   return new ImageResponse(
     (
-      <div style={{ width: '1080px', height: '1080px', display: 'flex', flexDirection: 'column', background: BG, padding: '60px', position: 'relative', fontFamily: 'sans-serif', justifyContent: 'space-between' }}>
-        {/* Glow */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: `radial-gradient(ellipse at 30% 50%, ${ACCENT_GLOW} 0%, transparent 60%)`, display: 'flex' }} />
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT}88)`, display: 'flex' }} />
+      <div style={{
+        width: '1080px', height: '1080px', display: 'flex', flexDirection: 'column',
+        background: BG, padding: '70px', position: 'relative', fontFamily: 'sans-serif',
+      }}>
+        {/* Multi-layer glow */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: `radial-gradient(ellipse at 20% 40%, rgba(232,77,91,0.12) 0%, transparent 50%)`,
+          display: 'flex',
+        }} />
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: `radial-gradient(ellipse at 80% 70%, rgba(232,77,91,0.08) 0%, transparent 50%)`,
+          display: 'flex',
+        }} />
+        {/* Top + bottom accent bars */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '6px',
+          background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT}88)`,
+          display: 'flex',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px',
+          background: `linear-gradient(90deg, ${ACCENT}44, ${ACCENT}22)`,
+          display: 'flex',
+        }} />
 
-        <div style={{ display: 'flex' }}>
-          <span style={{ background: ACCENT_GLOW, color: ACCENT, fontSize: '14px', fontWeight: 700, padding: '6px 16px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>Opinión</span>
+        {/* Header */}
+        <div style={{ display: 'flex', position: 'relative' }}>
+          <TagBadge label="Opinión" />
         </div>
 
-        <div style={{ fontSize: quote.length > 80 ? '40px' : '48px', fontWeight: 700, lineHeight: 1.25, color: TEXT, padding: '0 10px', display: 'flex' }}>{quote}</div>
+        {/* Content — centered, big and bold */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', flex: 1,
+          justifyContent: 'center', position: 'relative', padding: '0 10px',
+        }}>
+          <div style={{
+            fontSize: quoteSize, fontWeight: 700, lineHeight: 1.2,
+            color: TEXT, display: 'flex',
+          }}>{quote}</div>
+        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '18px', color: MUTED, display: 'flex' }}>¿Estás de acuerdo? Comenta abajo</span>
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '28px', display: 'flex' }}>💬</div>
+            <span style={{ fontSize: '18px', color: MUTED_LIGHT, display: 'flex' }}>¿Estás de acuerdo? Comenta abajo</span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: ACCENT, display: 'flex' }} />
-            <span style={{ fontSize: '16px', fontWeight: 600, color: MUTED }}>ytubviral.com</span>
+            <span style={{ fontSize: '17px', fontWeight: 600, color: MUTED }}>ytubviral.com</span>
           </div>
         </div>
       </div>
     ),
-    { width: 1080, height: 1080 }
+    { width: 1080, height: 1080 },
   );
 }
 
+// ── FRAMEWORK ───────────────────────────────────────────────────────────────
+
 function renderFramework(title: string, steps: string[], tag: string) {
+  const stepFontSize = steps.length > 4 ? '21px' : '24px';
+  const circleSize = steps.length > 4 ? '44px' : '50px';
+  const circleFont = steps.length > 4 ? '18px' : '22px';
+  const connectorH = steps.length > 4 ? '20px' : '28px';
+
   return new ImageResponse(
     (
-      <div style={{ width: '1080px', height: '1080px', display: 'flex', flexDirection: 'column', background: BG, padding: '60px', position: 'relative', fontFamily: 'sans-serif', justifyContent: 'space-between' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT}88)`, display: 'flex' }} />
+      <div style={{
+        width: '1080px', height: '1080px', display: 'flex', flexDirection: 'column',
+        background: BG, padding: '70px', position: 'relative', fontFamily: 'sans-serif',
+      }}>
+        <AccentBar />
+        {/* Subtle side glow */}
+        <div style={{
+          position: 'absolute', top: '20%', left: 0, width: '300px', height: '60%',
+          background: `linear-gradient(90deg, ${ACCENT_GLOW} 0%, transparent 100%)`,
+          display: 'flex',
+        }} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex' }}>
-            <span style={{ background: ACCENT_GLOW, color: ACCENT, fontSize: '14px', fontWeight: 700, padding: '6px 16px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>{tag}</span>
-          </div>
-          <div style={{ fontSize: title.length > 50 ? '36px' : '40px', fontWeight: 700, lineHeight: 1.2, color: TEXT, display: 'flex' }}>{title}</div>
+        {/* Header */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
+          <TagBadge label={tag} />
+          <div style={{
+            fontSize: title.length > 40 ? '38px' : '44px',
+            fontWeight: 700, lineHeight: 1.15, color: TEXT, display: 'flex',
+          }}>{title}</div>
+          <DecorLine />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Steps — centered vertically */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', flex: 1,
+          justifyContent: 'center', position: 'relative',
+          paddingLeft: '10px',
+        }}>
           {steps.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ width: '40px', height: '40px', border: `3px solid ${ACCENT}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '18px', color: ACCENT }}>{i + 1}</div>
-                {i < steps.length - 1 && <div style={{ width: '2px', height: '24px', background: `${ACCENT}44`, marginTop: '4px', display: 'flex' }} />}
+            <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                <div style={{
+                  width: circleSize, height: circleSize,
+                  border: `3px solid ${ACCENT}`, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 700, fontSize: circleFont, color: ACCENT,
+                  background: ACCENT_GLOW,
+                }}>{i + 1}</div>
+                <div style={{
+                  fontSize: stepFontSize, lineHeight: 1.5, color: `${TEXT}ee`,
+                  display: 'flex', flex: 1,
+                }}>{s}</div>
               </div>
-              <div style={{ fontSize: '22px', lineHeight: 1.4, paddingTop: '6px', color: `${TEXT}dd`, display: 'flex' }}>{s}</div>
+              {i < steps.length - 1 && (
+                <div style={{
+                  display: 'flex', justifyContent: 'flex-start',
+                  paddingLeft: `${parseInt(circleSize) / 2 - 1}px`,
+                }}>
+                  <div style={{
+                    width: '3px', height: connectorH,
+                    background: `linear-gradient(180deg, ${ACCENT}66, ${ACCENT}22)`,
+                    borderRadius: '2px', display: 'flex',
+                  }} />
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: ACCENT, display: 'flex' }} />
-          <span style={{ fontSize: '16px', fontWeight: 600, color: MUTED }}>ytubviral.com</span>
-        </div>
+        {/* Footer */}
+        <LogoBar />
       </div>
     ),
-    { width: 1080, height: 1080 }
+    { width: 1080, height: 1080 },
   );
 }
