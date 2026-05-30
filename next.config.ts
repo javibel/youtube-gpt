@@ -18,7 +18,25 @@ const nextConfig: NextConfig = {
       },
       // Public pages — allow CDN/browser caching (critical for SEO indexation)
       {
-        source: '/(|blog|blog/:slug*|pricing|features/:slug*|gear|learn|about|legal|privacy)',
+        source: '/',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
+      {
+        source: '/blog/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
+      {
+        source: '/features/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
+      {
+        source: '/:path(pricing|gear|learn|about|legal|privacy|login|signup)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
         ],
