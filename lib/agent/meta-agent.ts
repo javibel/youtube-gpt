@@ -1,6 +1,6 @@
 import { createHmac } from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { getHumanImageUrl } from '@/lib/agent/linkedin-agent';
+
 
 const FB_GRAPH = 'https://graph.facebook.com/v19.0';
 const IG_GRAPH = 'https://graph.instagram.com/v19.0';
@@ -252,7 +252,8 @@ export async function retryPendingFacebookPost(): Promise<{ success: boolean; po
 // --- Instagram publishing ---
 
 export async function publishToInstagram(
-  content: string
+  content: string,
+  imageUrl?: string
 ): Promise<{ success: boolean; postId?: string; error?: string }> {
   const igId = process.env.INSTAGRAM_ACCOUNT_ID;
   const token = process.env.INSTAGRAM_ACCESS_TOKEN;
@@ -268,8 +269,7 @@ export async function publishToInstagram(
   try {
     const caption = stripMarkdown(content);
 
-    const humanImg = await getHumanImageUrl('instagram');
-    const primaryImageUrl = humanImg ?? getSocialImageUrl();
+    const primaryImageUrl = imageUrl ?? getSocialImageUrl();
 
     async function createContainer(imgUrl: string) {
       return fetch(`${IG_GRAPH}/${igId}/media`, {
@@ -337,10 +337,8 @@ export async function publishToInstagram(
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error('[meta-agent/instagram]', errorMsg);
 
-    const humanImg = await getHumanImageUrl('instagram').catch(() => null);
-    const attemptedImage = humanImg ?? getSocialImageUrl();
     await prisma.socialPost.create({
-      data: { platform: 'instagram', content, status: 'failed', errorMsg, imageUrl: attemptedImage },
+      data: { platform: 'instagram', content, status: 'failed', errorMsg, imageUrl: imageUrl ?? getSocialImageUrl() },
     });
 
     return { success: false, error: errorMsg };

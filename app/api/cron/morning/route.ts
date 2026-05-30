@@ -4,9 +4,8 @@ import {
   publishToFacebook,
   publishToFacebookWithImage,
   publishToInstagram,
-  getSocialImageUrl,
 } from '@/lib/agent/meta-agent';
-import { getHumanImageUrl } from '@/lib/agent/linkedin-agent';
+import { buildInfographicUrl } from '@/lib/agent/infographic-generator';
 import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
@@ -218,20 +217,18 @@ export async function GET(request: Request) {
     if (linkedin.status === 'rejected') errors.push(`LinkedIn content: ${linkedin.reason}`);
     if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
-    // 3. Publish Facebook (via Graph API — reactivado 2026-05-16)
+    // 3. Publish Facebook with infographic (via Graph API)
     if (fb) {
-      const useImage = Math.random() < 0.3;
-      const fbImageUrl = (await getHumanImageUrl('facebook')) ?? getSocialImageUrl();
-      const fbResult = useImage
-        ? await publishToFacebookWithImage(fb, fbImageUrl)
-        : await publishToFacebook(fb);
+      const fbImageUrl = buildInfographicUrl(fb);
+      const fbResult = await publishToFacebookWithImage(fb, fbImageUrl);
       results.facebook = fbResult;
       if (!fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
     }
 
-    // 3b. Publish Instagram (via Graph API — activado 2026-05-16)
+    // 3b. Publish Instagram with infographic (via Graph API)
     if (ig) {
-      const igResult = await publishToInstagram(ig);
+      const igImageUrl = buildInfographicUrl(ig);
+      const igResult = await publishToInstagram(ig, igImageUrl);
       results.instagram = igResult;
       if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
     }
