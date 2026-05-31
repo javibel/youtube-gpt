@@ -86,6 +86,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${BASE_URL}/trends`,
+      lastModified: new Date('2026-05-31'),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/seo-score`,
+      lastModified: new Date('2026-05-31'),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/embed`,
+      lastModified: new Date('2026-05-31'),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
       url: `${BASE_URL}/pricing`,
       lastModified: new Date('2026-05-21'),
       changeFrequency: 'monthly',
