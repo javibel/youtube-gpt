@@ -476,26 +476,47 @@ function handleCopy(id: string, out: string) {
         <div className="grid lg:grid-cols-[1fr_320px] gap-8 min-w-0">
         <main className="space-y-8 min-w-0">
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { icon: '/icons/rocket.webp', label: t('Este mes', 'This month'), num: `${stats?.generationsThisMonth ?? 0}`, sub: isBusiness ? '' : `/ ${stats?.limit}`, color: '#e84d5b' },
-              { icon: '/icons/flame.webp', label: t('Racha', 'Streak'),        num: `${stats?.streak ?? 0}`,               sub: t('días', 'days'),    color: '#FFE800' },
-              { icon: '/icons/bar-chart.webp', label: t('Total generado', 'Total generated'), num: `${stats?.totalGenerations ?? 0}`, sub: '', color: '#00E5FF' },
-              { icon: '/icons/clock-fast.webp',  label: t('Tiempo ahorrado', 'Time saved'),    num: `${Math.round((stats?.totalGenerations ?? 0) * 0.06)}h`, sub: t('aprox.', 'approx.'), color: '#7CFF00' },
-            ].map((s, i) => (
-              <div key={i} className="yv-card p-5 relative">
-                <div className="flex items-center justify-between mb-4">
-                  <img src={s.icon} alt="" width={84} height={84} style={{ filter: `drop-shadow(0 0 6px ${s.color}40)` }} />
-                  <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>0{i + 1}</span>
+          {/* Stat cards — or welcome card if brand new user */}
+          {(stats?.totalGenerations ?? 0) === 0 ? (
+            <a href="/generate" className="yv-card p-8 block group hover:border-[var(--yv-brand)] transition-colors">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(232,77,91,0.12)', border: '1px solid rgba(232,77,91,0.3)' }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
                 </div>
-                <p className="font-display font-bold stat-num" style={{ fontSize: '36px', color: '#fff' }}>
-                  {s.num}<span className="text-lg ml-1" style={{ color: 'var(--yv-text-3)' }}>{s.sub}</span>
-                </p>
-                <p className="font-mono-jb text-[13px] tracking-wider uppercase mt-2" style={{ color: 'var(--yv-text-2)' }}>{s.label}</p>
+                <div>
+                  <h3 className="font-display font-bold text-lg text-white mb-1">
+                    {t('Tu primer paso: genera un título con IA', 'Your first step: generate a title with AI')}
+                  </h3>
+                  <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>
+                    {t('Escribe tu tema y en 8 segundos tendrás títulos optimizados para YouTube. Tienes 10 generaciones gratis.', 'Enter your topic and in 8 seconds you\'ll have YouTube-optimized titles. You have 10 free generations.')}
+                  </p>
+                  <span className="inline-flex items-center gap-1.5 mt-3 font-mono-jb text-[13px] group-hover:gap-2.5 transition-all" style={{ color: 'var(--yv-brand)' }}>
+                    {t('Generar ahora', 'Generate now')} →
+                  </span>
+                </div>
               </div>
-            ))}
-          </div>
+            </a>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { icon: '/icons/rocket.webp', label: t('Este mes', 'This month'), num: `${stats?.generationsThisMonth ?? 0}`, sub: isBusiness ? '' : `/ ${stats?.limit}`, color: '#e84d5b' },
+                { icon: '/icons/flame.webp', label: t('Racha', 'Streak'),        num: `${stats?.streak ?? 0}`,               sub: t('días', 'days'),    color: '#FFE800' },
+                { icon: '/icons/bar-chart.webp', label: t('Total generado', 'Total generated'), num: `${stats?.totalGenerations ?? 0}`, sub: '', color: '#00E5FF' },
+                { icon: '/icons/clock-fast.webp',  label: t('Tiempo ahorrado', 'Time saved'),    num: `${Math.round((stats?.totalGenerations ?? 0) * 0.06)}h`, sub: t('aprox.', 'approx.'), color: '#7CFF00' },
+              ].map((s, i) => (
+                <div key={i} className="yv-card p-5 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <img src={s.icon} alt="" width={84} height={84} style={{ filter: `drop-shadow(0 0 6px ${s.color}40)` }} />
+                    <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>0{i + 1}</span>
+                  </div>
+                  <p className="font-display font-bold stat-num" style={{ fontSize: '36px', color: '#fff' }}>
+                    {s.num}<span className="text-lg ml-1" style={{ color: 'var(--yv-text-3)' }}>{s.sub}</span>
+                  </p>
+                  <p className="font-mono-jb text-[13px] tracking-wider uppercase mt-2" style={{ color: 'var(--yv-text-2)' }}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Usage */}
           <div className="yv-card p-6">
