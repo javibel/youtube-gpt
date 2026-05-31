@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
+import ExitIntentPopup from '@/components/ExitIntentPopup';
 
 type Lang = 'es' | 'en';
 
@@ -460,6 +461,7 @@ export default function SeoScorePage() {
         <div className="max-w-4xl mx-auto px-6 py-10">
           <SeoScoreContent />
         </div>
+        <ExitIntentPopup lang={lang} />
       </div>
     );
   }
