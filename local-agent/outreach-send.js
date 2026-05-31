@@ -42,198 +42,49 @@ function escHtml(str) {
 }
 
 function buildSeoHtml(lang, name, videoTitle, videoUrl, seoScore, tips) {
-  const color = scoreColor(seoScore);
-  const label = scoreLabel(seoScore, lang);
-  const barWidth = Math.max(5, Math.min(100, seoScore));
   const isEs = lang === 'es';
-
-  const tipIcons = ['&#x1F3AF;', '&#x1F4DD;', '&#x26A1;']; // 🎯 📝 ⚡
   const tipsHtml = tips.map((t, i) => {
     const tipText = escHtml(isEs ? t.tip_es : t.tip_en);
-    const icon = tipIcons[i] || '&#x2714;';
-    return `<tr>
-      <td style="padding:8px 12px;vertical-align:top;font-size:20px;line-height:1;">${icon}</td>
-      <td style="padding:8px 0;color:#374151;font-size:15px;line-height:1.5;">${tipText}</td>
-    </tr>`;
+    return `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.5;">${i + 1}. ${tipText}</p>`;
   }).join('');
 
+  // Minimal plain-looking HTML — no headers, no gradients, looks like a personal email
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-
-  <!-- Header -->
-  <tr><td style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding:24px 32px;">
-    <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">YTubViral</td>
-      <td align="right" style="color:rgba(255,255,255,0.8);font-size:13px;">${isEs ? 'An&aacute;lisis SEO gratuito' : 'Free SEO Analysis'}</td>
-    </tr></table>
-  </td></tr>
-
-  <!-- Greeting -->
-  <tr><td style="padding:28px 32px 12px;">
-    <p style="margin:0;color:#111827;font-size:16px;line-height:1.6;">
-      ${isEs ? `Hola <strong>${escHtml(name)}</strong>,` : `Hi <strong>${escHtml(name)}</strong>,`}
-    </p>
-    <p style="margin:12px 0 0;color:#374151;font-size:15px;line-height:1.6;">
-      ${isEs
-        ? `Soy Javier Jimeno, fundador de YTubViral. Analic&eacute; tu &uacute;ltimo video y estos son los resultados:`
-        : `I'm Javier Jimeno, founder of YTubViral. I ran a quick SEO analysis on your latest video:`}
-    </p>
-  </td></tr>
-
-  <!-- Video title -->
-  <tr><td style="padding:0 32px 16px;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
-      <tr><td style="padding:14px 16px;">
-        <p style="margin:0;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">${isEs ? 'Video analizado' : 'Video analyzed'}</p>
-        <p style="margin:4px 0 0;color:#111827;font-size:15px;font-weight:600;">
-          <a href="${escHtml(videoUrl)}" style="color:#111827;text-decoration:none;">${escHtml(videoTitle)}</a>
-        </p>
-      </td></tr>
-    </table>
-  </td></tr>
-
-  <!-- Score card -->
-  <tr><td style="padding:0 32px 24px;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#111827;border-radius:10px;overflow:hidden;">
-      <tr><td style="padding:24px 24px 12px;">
-        <table width="100%" cellpadding="0" cellspacing="0"><tr>
-          <td style="color:#ffffff;font-size:14px;">${isEs ? 'Puntuaci&oacute;n SEO de YouTube' : 'YouTube SEO Score'}</td>
-          <td align="right" style="color:${color};font-size:14px;font-weight:600;">${label}</td>
-        </tr></table>
-      </td></tr>
-      <tr><td style="padding:0 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0"><tr>
-          <td style="color:#ffffff;font-size:48px;font-weight:800;line-height:1;">${seoScore}</td>
-          <td style="color:#9ca3af;font-size:20px;vertical-align:bottom;padding-bottom:6px;">/100</td>
-          <td width="100%"></td>
-        </tr></table>
-      </td></tr>
-      <tr><td style="padding:12px 24px 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#374151;border-radius:6px;height:10px;">
-          <tr><td style="width:${barWidth}%;background:${color};border-radius:6px;height:10px;"></td>
-          <td style="height:10px;"></td></tr>
-        </table>
-      </td></tr>
-    </table>
-  </td></tr>
-
-  <!-- Tips -->
-  <tr><td style="padding:0 32px 8px;">
-    <p style="margin:0;color:#111827;font-size:16px;font-weight:700;">
-      ${isEs ? 'Los 3 puntos donde m&aacute;s puedes mejorar:' : 'Top 3 areas for improvement:'}
-    </p>
-  </td></tr>
-  <tr><td style="padding:0 20px 20px;">
-    <table width="100%" cellpadding="0" cellspacing="0">${tipsHtml}</table>
-  </td></tr>
-
-  <!-- CTA -->
-  <tr><td style="padding:0 32px 28px;" align="center">
-    <p style="margin:0 0 16px;color:#6b7280;font-size:14px;line-height:1.5;">
-      ${isEs
-        ? 'Estos ajustes son r&aacute;pidos y pueden marcar una diferencia real en c&oacute;mo YouTube posiciona tu contenido.'
-        : 'These are quick fixes that can make a real difference in how YouTube ranks your content.'}
-    </p>
-    <table cellpadding="0" cellspacing="0"><tr><td style="background:#dc2626;border-radius:8px;">
-      <a href="https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
-        ${isEs ? 'Ver an&aacute;lisis completo gratis &rarr;' : 'See full analysis free &rarr;'}
-      </a>
-    </td></tr></table>
-    <p style="margin:14px 0 0;color:#9ca3af;font-size:13px;">
-      ${isEs
-        ? 'Reg&iacute;strate y responde con tu email — te doy Pro gratis 3 meses.'
-        : 'Sign up and reply with your email — I\'ll give you free Pro for 3 months.'}
-    </p>
-  </td></tr>
-
-  <!-- Divider -->
-  <tr><td style="padding:0 32px;"><hr style="border:none;border-top:1px solid #e5e7eb;margin:0;"></td></tr>
-
-  <!-- Footer -->
-  <tr><td style="padding:20px 32px 24px;">
-    <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.5;">
-      ${isEs
-        ? 'Sin compromiso. Si te sirve, genial. Si no, espero que al menos estos tips te sean &uacute;tiles.'
-        : 'No strings attached. If it helps, great. If not, I hope these tips are useful regardless.'}
-    </p>
-    <p style="margin:16px 0 0;color:#374151;font-size:14px;line-height:1.4;">
-      Javier Jimeno<br>
-      <span style="color:#6b7280;">${isEs ? 'Fundador' : 'Founder'}, <a href="https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach" style="color:#dc2626;text-decoration:none;">YTubViral</a></span>
-    </p>
-  </td></tr>
-
-</table>
-</td></tr>
-</table>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#333;">
+<p>${isEs ? `Hola ${escHtml(name)},` : `Hey ${escHtml(name)},`}</p>
+<p>${isEs
+  ? `Soy Javier &mdash; estoy construyendo una herramienta de SEO para YouTube y mientras la testeaba analic&eacute; tu video &ldquo;<a href="${escHtml(videoUrl)}" style="color:#333;">${escHtml(videoTitle)}</a>&rdquo;.`
+  : `I'm Javier &mdash; building a YouTube SEO tool and was testing it on channels in your niche. Ran your video &ldquo;<a href="${escHtml(videoUrl)}" style="color:#333;">${escHtml(videoTitle)}</a>&rdquo; through it.`}</p>
+<p><strong>${isEs ? `Resultado: ${seoScore}/100.` : `Score: ${seoScore}/100.`}</strong> ${isEs ? 'Los 3 puntos donde m&aacute;s podr&iacute;as mejorar:' : 'Top 3 things that would move the needle:'}</p>
+${tipsHtml}
+<p>${isEs ? 'Son cambios r&aacute;pidos que pueden mover el ranking.' : 'Quick fixes that can actually impact your rankings.'}</p>
+<p>${isEs
+  ? 'Si te interesa probar la herramienta completa, te doy acceso Pro gratis 3 meses (normalmente 9,99&euro;/mes). Solo dime y te lo activo.'
+  : 'If you want to try the full tool, I\'ll give you Pro free for 3 months (normally $10/mo). Just say the word and I\'ll set it up.'}</p>
+<p><strong>${isEs ? '&iquest;Qu&eacute; te parece? &iquest;Te es &uacute;til este tipo de an&aacute;lisis?' : 'Would this kind of analysis be useful for you?'}</strong></p>
+<p>Javier<br><span style="color:#999;font-size:13px;"><a href="https://ytubviral.com?utm_source=outreach&utm_medium=email" style="color:#999;">ytubviral.com</a></span></p>
 </body></html>`;
 }
 
 function buildFallbackHtml(lang, name, topic) {
   const isEs = lang === 'es';
+  // Minimal plain-looking HTML — looks like a personal email, not a newsletter
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-
-  <!-- Header -->
-  <tr><td style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding:24px 32px;">
-    <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">YTubViral</td>
-      <td align="right" style="color:rgba(255,255,255,0.8);font-size:13px;">${isEs ? 'Herramienta SEO gratuita' : 'Free SEO Tool'}</td>
-    </tr></table>
-  </td></tr>
-
-  <!-- Body -->
-  <tr><td style="padding:28px 32px;">
-    <p style="margin:0;color:#111827;font-size:16px;line-height:1.6;">
-      ${isEs ? `Hola <strong>${escHtml(name)}</strong>,` : `Hi <strong>${escHtml(name)}</strong>,`}
-    </p>
-    <p style="margin:14px 0;color:#374151;font-size:15px;line-height:1.6;">
-      ${isEs
-        ? `Soy Javier Jimeno, fundador de YTubViral. Estoy contactando a creadores como t&uacute; en el espacio de <strong>${escHtml(topic)}</strong> porque creo que nuestra herramienta puede ayudarte.`
-        : `I'm Javier Jimeno, founder of YTubViral. I'm reaching out to creators like you in the <strong>${escHtml(topic)}</strong> space because I think our tool can genuinely help.`}
-    </p>
-    <p style="margin:14px 0;color:#374151;font-size:15px;line-height:1.6;">
-      ${isEs
-        ? 'YTubViral tiene una herramienta de <strong>SEO Score gratuita</strong> &mdash; analizas cualquiera de tus videos y te dice exactamente qu&eacute; mejorar en t&iacute;tulo, descripci&oacute;n, tags y thumbnail para posicionarte mejor.'
-        : 'YTubViral has a <strong>free SEO Score tool</strong> &mdash; analyze any of your videos and get actionable tips on what to improve in your title, description, tags, and thumbnail to rank better.'}
-    </p>
-  </td></tr>
-
-  <!-- CTA -->
-  <tr><td style="padding:0 32px 28px;" align="center">
-    <table cellpadding="0" cellspacing="0"><tr><td style="background:#dc2626;border-radius:8px;">
-      <a href="https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
-        ${isEs ? 'Probar SEO Score gratis &rarr;' : 'Try SEO Score free &rarr;'}
-      </a>
-    </td></tr></table>
-    <p style="margin:14px 0 0;color:#9ca3af;font-size:13px;">
-      ${isEs
-        ? 'Si te interesa el paquete completo, te doy Pro gratis 3 meses. Solo reg&iacute;strate y responde con tu email.'
-        : 'Want the full suite? I\'ll give you Pro free for 3 months. Just sign up and reply with your email.'}
-    </p>
-  </td></tr>
-
-  <!-- Divider -->
-  <tr><td style="padding:0 32px;"><hr style="border:none;border-top:1px solid #e5e7eb;margin:0;"></td></tr>
-
-  <!-- Footer -->
-  <tr><td style="padding:20px 32px 24px;">
-    <p style="margin:0;color:#374151;font-size:14px;line-height:1.4;">
-      Javier Jimeno<br>
-      <span style="color:#6b7280;">${isEs ? 'Fundador' : 'Founder'}, <a href="https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach" style="color:#dc2626;text-decoration:none;">YTubViral</a></span>
-    </p>
-  </td></tr>
-
-</table>
-</td></tr>
-</table>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#333;">
+<p>${isEs ? `Hola ${escHtml(name)},` : `Hey ${escHtml(name)},`}</p>
+<p>${isEs
+  ? `Soy Javier &mdash; estoy construyendo una herramienta de SEO para YouTube. Vi tu canal en el nicho de ${escHtml(topic)} y me pareci&oacute; interesante.`
+  : `I'm Javier &mdash; building a YouTube SEO tool. Came across your channel in the ${escHtml(topic)} space and thought you might find this useful.`}</p>
+<p>${isEs
+  ? `Tenemos un analizador SEO gratuito que te dice exactamente qu&eacute; mejorar en cada video (t&iacute;tulo, descripci&oacute;n, tags) para posicionarte mejor. Si quieres probarlo: <a href="https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/features/seo-score</a>`
+  : `We have a free SEO analyzer that tells you exactly what to fix on each video (title, description, tags) to rank better. Try it if you want: <a href="https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/features/seo-score</a>`}</p>
+<p>${isEs
+  ? 'Tambi&eacute;n puedo darte acceso Pro gratis 3 meses si te interesa &mdash; keywords, an&aacute;lisis de competidores, ideas de contenido.'
+  : 'I can also give you full Pro access free for 3 months if you\'re interested &mdash; keywords, competitor analysis, content ideas.'}</p>
+<p><strong>${isEs ? '&iquest;Te ser&iacute;a &uacute;til algo as&iacute;?' : 'Would something like this be useful for you?'}</strong></p>
+<p>Javier<br><span style="color:#999;font-size:13px;"><a href="https://ytubviral.com?utm_source=outreach&utm_medium=email" style="color:#999;">ytubviral.com</a></span></p>
 </body></html>`;
 }
 
@@ -241,55 +92,47 @@ function buildFallbackHtml(lang, name, topic) {
 
 const TEMPLATES_SEO = {
   es: {
-    subject: (videoTitle, seoScore) => `Tu video tiene un ${seoScore}/100 en SEO — te muestro cómo subirlo`,
+    subject: (videoTitle, seoScore) => `${seoScore}/100 — análisis SEO de "${videoTitle.slice(0, 40)}"`,
     body: (name, videoTitle, videoUrl, seoScore, tips) => {
       const tipsText = tips.map((t, i) => `${i + 1}. ${t.tip_es}`).join('\n');
       return `Hola ${name},
 
-Soy Javier Jimeno, fundador de YTubViral. Analicé tu último video "${videoTitle}" y tiene un ${seoScore}/100 en SEO de YouTube.
+Soy Javier, estoy construyendo una herramienta de SEO para YouTube y mientras la testeaba analicé tu video "${videoTitle}".
 
-Estos son los 3 puntos donde más puedes mejorar:
+Resultado: ${seoScore}/100. Los 3 puntos donde más podrías mejorar:
 
 ${tipsText}
 
-Estos ajustes son rápidos y pueden marcar una diferencia real en cómo YouTube posiciona tu contenido.
+Son cambios rápidos que pueden mover el ranking.
 
-Ver análisis completo gratis: https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach
+Si te interesa probar la herramienta completa, te doy acceso Pro gratis 3 meses (normalmente 9,99€/mes). Solo dime y te lo activo.
 
-Si quieres el paquete completo (keywords, retención, thumbnails, ideas de contenido), te doy acceso Pro gratis 3 meses — solo regístrate y responde con tu email de registro.
+¿Qué te parece? ¿Te es útil este tipo de análisis?
 
-Sin compromiso. Si te sirve, genial. Si no, espero que al menos estos tips te sean útiles.
-
-Un saludo,
-Javier Jimeno
-Fundador, YTubViral
-https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach`;
+Javier
+https://ytubviral.com`;
     },
   },
   en: {
-    subject: (videoTitle, seoScore) => `Your video scored ${seoScore}/100 on YouTube SEO — here's how to fix it`,
+    subject: (videoTitle, seoScore) => `${seoScore}/100 — SEO analysis of "${videoTitle.slice(0, 40)}"`,
     body: (name, videoTitle, videoUrl, seoScore, tips) => {
       const tipsText = tips.map((t, i) => `${i + 1}. ${t.tip_en}`).join('\n');
-      return `Hi ${name},
+      return `Hey ${name},
 
-I'm Javier Jimeno, founder of YTubViral. I ran a quick analysis on your latest video "${videoTitle}" and it scored ${seoScore}/100 on YouTube SEO.
+I'm Javier — building a YouTube SEO tool and was testing it on channels in your niche. Ran your video "${videoTitle}" through it.
 
-Here are the 3 areas with the biggest room for improvement:
+Score: ${seoScore}/100. Top 3 things that would move the needle:
 
 ${tipsText}
 
-These are quick fixes that can make a real difference in how YouTube ranks your content.
+Quick fixes that can actually impact your rankings.
 
-See full analysis free: https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach
+If you want to try the full tool, I'll give you Pro free for 3 months (normally $10/mo). Just say the word and I'll set it up.
 
-If you'd like the full suite (keywords, retention, thumbnails, content ideas), I'll give you free Pro access for 3 months — just sign up and reply with your registration email.
+Would this kind of analysis be useful for you?
 
-No strings attached. If it helps, great. If not, I hope these tips are useful regardless.
-
-Best,
-Javier Jimeno
-Founder, YTubViral
-https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach`;
+Javier
+https://ytubviral.com`;
     },
   },
 };
@@ -297,38 +140,34 @@ https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-
 // Fallback templates for contacts without video data (legacy contacts)
 const TEMPLATES_FALLBACK = {
   es: {
-    subject: 'Herramienta SEO gratuita para tu canal — YTubViral',
+    subject: 'Pregunta rápida sobre tu canal',
     body: (name, topic) => `Hola ${name},
 
-Soy Javier Jimeno, fundador de YTubViral. Estoy contactando a creadores como tú en el espacio de ${topic} porque creo que nuestra herramienta puede ayudarte.
+Soy Javier — estoy construyendo una herramienta de SEO para YouTube. Vi tu canal en el nicho de ${topic} y me pareció interesante.
 
-YTubViral tiene una herramienta de SEO Score gratuita — analizas cualquiera de tus videos y te dice exactamente qué mejorar en título, descripción, tags y thumbnail para posicionarte mejor.
+Tenemos un analizador SEO gratuito que te dice exactamente qué mejorar en cada video (título, descripción, tags) para posicionarte mejor. Si quieres probarlo: https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email
 
-Pruébala gratis en https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach
+También puedo darte acceso Pro gratis 3 meses si te interesa — keywords, análisis de competidores, ideas de contenido.
 
-Si te interesa el paquete completo (keywords, ideas de contenido, retención), te doy Pro gratis 3 meses. Solo regístrate y responde con tu email.
+¿Te sería útil algo así?
 
-Un saludo,
-Javier Jimeno
-Fundador, YTubViral
-https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach`,
+Javier
+ytubviral.com`,
   },
   en: {
-    subject: 'Free SEO tool for your channel — YTubViral',
-    body: (name, topic) => `Hi ${name},
+    subject: 'Quick question about your channel',
+    body: (name, topic) => `Hey ${name},
 
-I'm Javier Jimeno, founder of YTubViral. I'm reaching out to creators like you in the ${topic} space because I think our tool can genuinely help.
+I'm Javier — building a YouTube SEO tool. Came across your channel in the ${topic} space and thought you might find this useful.
 
-YTubViral has a free SEO Score tool — analyze any of your videos and get actionable tips on what to improve in your title, description, tags, and thumbnail to rank better.
+We have a free SEO analyzer that tells you exactly what to fix on each video (title, description, tags) to rank better. Try it if you want: https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email
 
-Try it free at https://ytubviral.com/features/seo-score?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach
+I can also give you full Pro access free for 3 months if you're interested — keywords, competitor analysis, content ideas.
 
-If you'd like the full suite (keywords, content ideas, retention analysis), I'll give you Pro free for 3 months. Just sign up and reply with your email.
+Would something like this be useful for you?
 
-Best,
-Javier Jimeno
-Founder, YTubViral
-https://ytubviral.com?utm_source=email&utm_medium=outreach&utm_campaign=creator-outreach`,
+Javier
+ytubviral.com`,
   },
 };
 

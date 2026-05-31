@@ -151,38 +151,37 @@ function Hero({ lang }: { lang: Lang }) {
         <h1 className="font-display font-bold text-center leading-[0.95] tracking-tight" style={{ fontSize: 'clamp(44px,7vw,104px)' }}>
           {lang === 'en' ? (
             <>
-              <span className="block">Stop fighting</span>
-              <span className="block red-underline">the algorithm.</span>
-              <span className="block"><span style={{ color: 'var(--red)' }}>→</span> Start winning it.</span>
+              <span className="block">Know your</span>
+              <span className="block red-underline">YouTube SEO Score</span>
+              <span className="block"><span style={{ color: 'var(--red)' }}>→</span> in 30 seconds.</span>
             </>
           ) : (
             <>
-              <span className="block">Deja de pelearte con</span>
-              <span className="block red-underline">el algoritmo.</span>
-              <span className="block"><span style={{ color: 'var(--red)' }}>→</span> Empieza a ganarlo.</span>
+              <span className="block">Conoce tu</span>
+              <span className="block red-underline">YouTube SEO Score</span>
+              <span className="block"><span style={{ color: 'var(--red)' }}>→</span> en 30 segundos.</span>
             </>
           )}
         </h1>
 
         <p className="max-w-2xl mx-auto text-center text-zinc-400 text-lg md:text-xl mt-8 leading-relaxed">
           {lang === 'en'
-            ? "Check your SEO Score, find winning keywords, spy on competitors, generate titles that get clicks — and 10 more AI tools built for YouTube creators who want to grow faster."
-            : 'Analiza tu SEO Score, encuentra keywords ganadoras, espía a la competencia, genera títulos que consiguen clics — y 10 herramientas más de IA para creadores de YouTube que quieren crecer más rápido.'}
+            ? "Paste any video URL and get an instant diagnosis: what's holding you back, what to fix first, and how to rank higher. Free, no signup required."
+            : 'Pega cualquier URL de video y obtén un diagnóstico instantáneo: qué te frena, qué arreglar primero y cómo posicionarte mejor. Gratis, sin registro.'}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
-          <Link href="/signup" className="btn-offset px-8 py-4 text-[15px] font-display font-bold">
-            {lang === 'en' ? 'Get started free →' : 'Empezar gratis →'}
+          <Link href="/seo-score" className="btn-offset px-8 py-4 text-[15px] font-display font-bold">
+            {lang === 'en' ? 'Check my SEO Score →' : 'Analizar mi SEO Score →'}
           </Link>
-          <a href="#how" className="btn-offset btn-offset-ghost px-8 py-4 text-[15px] font-display font-bold inline-flex items-center gap-2 justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M6 4l14 8-14 8V4z" /></svg>
-            {lang === 'en' ? 'See how it works' : 'Ver cómo funciona'}
-          </a>
+          <Link href="/signup" className="btn-offset btn-offset-ghost px-8 py-4 text-[15px] font-display font-bold inline-flex items-center gap-2 justify-center">
+            {lang === 'en' ? 'Create free account' : 'Crear cuenta gratis'}
+          </Link>
         </div>
         <p className="text-center text-zinc-500 text-[13px] font-mono-jb mt-5">
           {lang === 'en'
-            ? 'No credit card · 10 free generations · Cancel anytime'
-            : 'Sin tarjeta · 10 generaciones gratis · Cancela cuando quieras'}
+            ? 'No signup needed · Free forever · 14 more AI tools inside'
+            : 'Sin registro · Gratis para siempre · 14 herramientas más dentro'}
         </p>
 
         <LandingHeroDemo lang={lang} />

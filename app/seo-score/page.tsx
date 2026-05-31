@@ -408,19 +408,26 @@ function SeoScoreContent() {
 
       {/* CTA for unauthenticated users */}
       {!isAuthed && urlResult && (
-        <div className="mt-10 text-center p-6 rounded-xl" style={{ background: 'var(--yv-surface)', border: '1px solid var(--yv-border)' }}>
-          <p className="font-display font-semibold text-white text-lg mb-2">
-            {t('Analiza todos los vídeos de tu canal', 'Analyze all your channel videos')}
+        <div className="mt-10 p-8 rounded-xl text-center" style={{ background: 'linear-gradient(135deg, rgba(232,77,91,0.06), rgba(0,229,255,0.04))', border: '1px solid rgba(232,77,91,0.2)' }}>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+            {t('SOLO HAS VISTO 1 DE 14 HERRAMIENTAS', 'YOU JUST SAW 1 OF 14 TOOLS')}
           </p>
-          <p className="font-mono-jb text-sm mb-4" style={{ color: 'var(--yv-text-3)' }}>
+          <p className="font-display font-bold text-white text-xl mb-2">
+            {t('Genera títulos, scripts y descripciones virales con IA', 'Generate viral titles, scripts & descriptions with AI')}
+          </p>
+          <p className="font-mono-jb text-sm mb-5" style={{ color: 'var(--yv-text-3)' }}>
             {t(
-              'Crea una cuenta gratis para guardar tus análisis y acceder a 14 herramientas más de optimización YouTube.',
-              'Create a free account to save your analyses and access 14+ YouTube optimization tools.'
+              '10 generaciones gratis al mes. Sin tarjeta de crédito.',
+              '10 free generations per month. No credit card required.'
             )}
           </p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">
-            {t('Crear cuenta gratis', 'Create free account')}
+          <a href="/signup" className="btn-offset inline-flex px-8 py-3.5 text-sm font-display font-bold">
+            {t('Crear cuenta gratis →', 'Create free account →')}
           </a>
+          <p className="mt-3 font-mono-jb text-[12px]" style={{ color: 'var(--yv-text-4)' }}>
+            {t('Ya tienes cuenta?', 'Already have an account?')}{' '}
+            <a href="/login" className="underline" style={{ color: 'var(--yv-text-2)' }}>{t('Inicia sesión', 'Sign in')}</a>
+          </p>
         </div>
       )}
     </div>

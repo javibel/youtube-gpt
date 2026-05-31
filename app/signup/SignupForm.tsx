@@ -1,12 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import PasswordInput from '@/components/PasswordInput';
 
 export default function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const refCode = searchParams.get('ref') || '';
+
+  // Store ref in cookie so Google OAuth signIn callback can read it
+  useEffect(() => {
+    if (refCode) {
+      document.cookie = `ytv_ref=${refCode};path=/;max-age=3600;samesite=lax`;
+    }
+  }, [refCode]);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,7 +67,7 @@ export default function SignupForm() {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign }),
+        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign, ref: refCode || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -101,7 +111,7 @@ export default function SignupForm() {
 
         <div className="soft-card p-8">
           <button
-            onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+            onClick={() => signIn('google', { callbackUrl: refCode ? `/dashboard?ref=${refCode}` : '/dashboard' })}
             className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-medium text-white transition hover:brightness-110"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
           >

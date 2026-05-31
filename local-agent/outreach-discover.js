@@ -103,14 +103,27 @@ const SEARCH_QUERIES = [
   { q: 'canal de música youtube consejos', lang: 'es', niche: 'Música' },
   { q: 'programación tutorial youtube canal', lang: 'es', niche: 'Programación' },
   { q: 'animación youtube canal pequeño tips', lang: 'es', niche: 'Animación' },
+  // Wave 3 — professional niches with higher email disclosure rate
+  { q: 'business youtube channel for entrepreneurs', lang: 'en', niche: 'Business' },
+  { q: 'marketing agency youtube channel', lang: 'en', niche: 'Marketing' },
+  { q: 'saas product demo youtube', lang: 'en', niche: 'SaaS' },
+  { q: 'freelancer youtube tips clients', lang: 'en', niche: 'Freelancing' },
+  { q: 'ecommerce dropshipping youtube channel', lang: 'en', niche: 'Ecommerce' },
+  { q: 'youtube automation tools review', lang: 'en', niche: 'YouTube Tools' },
+  { q: 'social media manager youtube tips', lang: 'en', niche: 'Social Media' },
+  { q: 'video editing tutorial premiere pro', lang: 'en', niche: 'Video Editing' },
+  { q: 'youtube coach grow channel consulting', lang: 'en', niche: 'YouTube Coaching' },
+  { q: 'digital nomad youtube channel', lang: 'en', niche: 'Digital Nomad' },
+  { q: 'online course creator youtube', lang: 'en', niche: 'Course Creator' },
+  { q: 'affiliate marketing youtube beginner', lang: 'en', niche: 'Affiliate Marketing' },
 ];
 
 // Max new contacts to add per run (6 runs/day × 10 = ~60 new contacts/day)
 const MAX_NEW_PER_RUN = 10;
 
 // Sub range to target (too small = hobbyist, too big = unreachable)
-const MIN_SUBS = 500;
-const MAX_SUBS = 50000;
+const MIN_SUBS = 1000;
+const MAX_SUBS = 200000;
 
 // Email regex — matches common patterns in channel descriptions
 const EMAIL_RE = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
@@ -334,7 +347,7 @@ async function getChannelDetails(channelIds) {
 // ── Puppeteer-based About page scraping ─────────────────────────────────────
 // For channels with no email in description, try their About page + linked website
 
-const ABOUT_PROFILE = 'chrome-profiles/brand-reddit'; // No login needed for public pages
+const ABOUT_PROFILE = 'chrome-profiles/brand-reddit'; // Disposable profile — NEVER use persona profiles for scraping (ban risk)
 const MAX_ABOUT_SCRAPES = 30;
 const ABOUT_DELAY_MIN = 3000;
 const ABOUT_DELAY_MAX = 8000;
@@ -347,15 +360,32 @@ async function scrapeAboutPageEmail(page, channelUrl) {
 
     await new Promise(r => setTimeout(r, 2000));
 
+    // Click "View email address" button first (YouTube hides business email behind login+click)
+    try {
+      const clicked = await page.evaluate(() => {
+        // Multiple selectors — YouTube changes DOM frequently
+        const selectors = [
+          'button[aria-label*="email"]',
+          'button[aria-label*="correo"]',
+          '#business-email-button',
+          'button.yt-spec-button-shape-next--outline[aria-label*="mail"]',
+          'yt-button-shape button[aria-label*="View email"]',
+          'yt-button-shape button[aria-label*="Ver dirección"]',
+        ];
+        for (const sel of selectors) {
+          const btn = document.querySelector(sel);
+          if (btn) { btn.click(); return true; }
+        }
+        return false;
+      });
+      if (clicked) await new Promise(r => setTimeout(r, 2500));
+    } catch {}
+
     // Extract email from the About page — try multiple selectors (YouTube changes DOM often)
     const result = await page.evaluate(() => {
       const text = document.body?.innerText || '';
       const emailRe = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
       const emails = text.match(emailRe) || [];
-
-      // Also check for "Business email" button that YouTube hides behind a click
-      const businessBtn = document.querySelector('button[aria-label*="email"], button[aria-label*="correo"], #business-email-button');
-      if (businessBtn) businessBtn.click();
 
       // Extract links section — try multiple selectors (YouTube evolves)
       const links = [];

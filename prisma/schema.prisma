@@ -24,6 +24,8 @@ model User {
 
   feedbackEmailSentAt DateTime?
   onboardingStep      Int       @default(0)
+  referralCode        String?   @unique
+  referredBy          String?
 
   accounts        Account[]
   sessions        Session[]

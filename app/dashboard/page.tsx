@@ -5,6 +5,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { useLang } from '@/components/LangProvider';
+import ReferralCard from '@/components/ReferralCard';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 const PlaybackModal = lazy(() => import('@/components/PlaybackModal'));
@@ -678,6 +679,9 @@ function handleCopy(id: string, out: string) {
               ))}
             </div>
           </div>
+
+          {/* Referral card */}
+          <ReferralCard lang={lang} />
 
           {/* My Previews — TV3 decorative + title list */}
           {(isPro || dbPreviews.length > 0) && (

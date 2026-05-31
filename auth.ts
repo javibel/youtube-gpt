@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google";
 import { authConfig } from "./auth.config";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -66,12 +67,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           user.id = existing.id;
         } else {
-          // Create new user from Google
+          // Create new user from Google — check for referral cookie
+          let referredBy: string | undefined;
+          try {
+            const cookieStore = await cookies();
+            const refCookie = cookieStore.get('ytv_ref');
+            if (refCookie?.value) referredBy = refCookie.value.slice(0, 20);
+          } catch {}
           const newUser = await prisma.user.create({
             data: {
               email: user.email,
               name: user.name || null,
               emailVerified: new Date(),
+              referredBy,
             },
           });
           user.id = newUser.id;

@@ -44,7 +44,7 @@
   },
   "humanize": {
     "skipSessionProbability": 0.15,
-    "skipPostProbability": 0.1,
+    "skipPostProbability": 0.15,
     "readingPauseMin": 5,
     "readingPauseMax": 15,
     "actionPauseMin": 3,
@@ -132,7 +132,7 @@
       "job": "Editor de video freelance",
       "platforms": "Twitter, Reddit",
       "mentionYtubviral": true,
-      "mentionRate": 0.35
+      "mentionRate": 0.38
     },
     "ferran": {
       "name": "Ferran Gómez",
@@ -141,17 +141,17 @@
       "job": "Consultor marketing digital",
       "platforms": "Twitter, Reddit",
       "mentionYtubviral": true,
-      "mentionRate": 0.4
+      "mentionRate": 0.35
     }
   },
-  "_lastModified": "2026-05-29T01:00:27.631Z",
+  "_lastModified": "2026-05-31T01:00:28.335Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 24.98739475,
+    "amount": 24.85911225,
     "currency": "USD",
-    "lastChecked": "2026-05-30T07:51:23.553Z",
-    "lastDeduction": "2026-05-30T08:21:11.823Z",
-    "totalSpentToday": 0.01260525,
-    "spendDate": "2026-05-30"
+    "lastChecked": "2026-05-31T10:05:03.957Z",
+    "lastDeduction": "2026-05-31T11:13:12.879Z",
+    "totalSpentToday": 0.00088775,
+    "spendDate": "2026-05-31"
   }
 }
