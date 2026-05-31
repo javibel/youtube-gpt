@@ -47,6 +47,7 @@ Una tabla limpia: estado de servicios, problemas detectados, qué se resolvió s
 - Consultar SIEMPRE antes de modificar un proceso que funciona bien.
 - Consultar SIEMPRE antes de decisiones de precios, ofertas o comunicación con clientes.
 - No interrumpir entre pasos de una misma tarea — implementar y seguir.
+- Permiso concedido para trabajar en modo lectura / escritura en todos los archivos dentro de esta ruta: C:\Users\jimen\youtube-gpt\youtube-gpt
 
 ## Cierre de issues
 Cuando el usuario confirme que algo está resuelto, cerrarlo en todos los agentes:
@@ -58,6 +59,14 @@ El Manager deja de alertar sobre ese issue desde ese momento.
 
 ## Regla de oro
 Verificar SIEMPRE que un problema sigue existiendo ANTES de tocarlo. Logs de ayer ≠ estado actual. Si funciona, no tocar.
+
+## Registro obligatorio de cambios
+Después de implementar cualquier cambio y ANTES de hacer commit, actualizar la memoria correspondiente:
+- Cambios SEO → `project_seo.md` (historial cronológico + tabla + pendientes)
+- Cambios extensión → `project_chrome_extension.md`
+- Cambios agentes → `project_social_agent.md` o el archivo relevante
+- Cualquier otro → el archivo de memoria que corresponda
+NO hacer commit sin haber registrado el cambio primero. Si no hay archivo de memoria relevante, crear uno.
 
 ## Report de estado = leer el manager del día
 Cuando el usuario pide "estado del sistema", "report", "cómo va todo" o similar — SIEMPRE leer primero `reports/manager-{HOY}.json` del día actual antes de responder. No usar el report de ayer aunque esté en contexto. Si no existe el de hoy, indicarlo explícitamente.
