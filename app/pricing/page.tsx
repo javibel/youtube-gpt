@@ -22,6 +22,24 @@ export default function PricingPage() {
 
   return (
     <main className="min-h-screen bg-black">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: 'YTubViral',
+            description: 'AI-powered YouTube tools: SEO scoring, keyword research, competitor analysis, title generation, and more.',
+            brand: { '@type': 'Brand', name: 'YTubViral' },
+            url: 'https://ytubviral.com/pricing',
+            offers: [
+              { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: 'https://ytubviral.com/signup' },
+              { '@type': 'Offer', name: 'Pro', price: '9.99', priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: 'https://ytubviral.com/signup' },
+              { '@type': 'Offer', name: 'Business', price: '29.99', priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: 'https://ytubviral.com/signup' },
+            ],
+          }),
+        }}
+      />
       <div className="max-w-6xl mx-auto px-6 pt-8 pb-4">
         <Link href="/" className="text-zinc-500 text-sm hover:text-white transition">
           ← {lang === 'en' ? 'Back to home' : 'Volver al inicio'}

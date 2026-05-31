@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getServerLang } from '@/lib/server-lang';
+import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
@@ -171,6 +172,8 @@ export default async function CompetitorAnalysisFeature() {
           ))}
         </div>
       </section>
+
+      <RelatedTools slug="competitor-analysis" lang={lang} />
 
       <script
         type="application/ld+json"

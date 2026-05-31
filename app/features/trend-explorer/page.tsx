@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getServerLang } from '@/lib/server-lang';
+import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
@@ -214,6 +215,8 @@ export default async function TrendExplorerFeature() {
           ))}
         </div>
       </section>
+
+      <RelatedTools slug="trend-explorer" lang={lang} />
 
       <script
         type="application/ld+json"

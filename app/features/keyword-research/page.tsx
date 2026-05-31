@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getServerLang } from '@/lib/server-lang';
+import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
@@ -188,6 +189,8 @@ export default async function KeywordResearchFeature() {
           ))}
         </div>
       </section>
+
+      <RelatedTools slug="keyword-research" lang={lang} />
 
       <script
         type="application/ld+json"

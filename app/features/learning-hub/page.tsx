@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { LEARN_GUIDES } from '@/lib/learn-data';
 import GuideCard from '@/components/GuideCard';
 import { getServerLang } from '@/lib/server-lang';
+import RelatedTools from '@/components/RelatedTools';
 
 export const metadata: Metadata = {
   title: 'YouTube Learning Hub — Free Creator Guides',
@@ -182,6 +183,8 @@ export default async function LearningHubFeature() {
           ))}
         </div>
       </section>
+
+      <RelatedTools slug="learning-hub" lang={lang} />
 
       <script
         type="application/ld+json"

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getServerLang } from '@/lib/server-lang';
+import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
@@ -169,6 +170,8 @@ export default async function SeoScoreFeature() {
           ))}
         </div>
       </section>
+
+      <RelatedTools slug="seo-score" lang={lang} />
 
       <script
         type="application/ld+json"
