@@ -12,6 +12,11 @@ const MUTED_LIGHT = '#a1a1aa';
 
 type Format = 'listicle' | 'story' | 'hot-take' | 'framework';
 
+// Cache for 24h on CDN so Instagram can reliably fetch the rendered image
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=3600',
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const format = (searchParams.get('format') ?? 'story') as Format;
@@ -24,13 +29,18 @@ export async function GET(request: Request) {
   const quote = searchParams.get('quote') ?? title;
   const tag = searchParams.get('tag') ?? 'YouTube Tips';
 
+  let response: ImageResponse;
   switch (format) {
-    case 'listicle': return renderListicle(title, points, tag);
-    case 'story': return renderStory(quote, tag);
-    case 'hot-take': return renderHotTake(quote);
-    case 'framework': return renderFramework(title, points, tag);
-    default: return renderStory(quote, tag);
+    case 'listicle': response = renderListicle(title, points, tag); break;
+    case 'story': response = renderStory(quote, tag); break;
+    case 'hot-take': response = renderHotTake(quote); break;
+    case 'framework': response = renderFramework(title, points, tag); break;
+    default: response = renderStory(quote, tag); break;
   }
+
+  // Append CDN cache headers so Instagram fetches a pre-rendered image
+  Object.entries(CACHE_HEADERS).forEach(([k, v]) => response.headers.set(k, v));
+  return response;
 }
 
 // ── LISTICLE ────────────────────────────────────────────────────────────────

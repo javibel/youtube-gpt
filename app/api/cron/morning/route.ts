@@ -220,6 +220,8 @@ export async function GET(request: Request) {
     // 3. Publish Facebook with infographic (via Graph API)
     if (fb) {
       const fbImageUrl = buildInfographicUrl(fb);
+      // Pre-warm CDN cache so Meta fetches instantly
+      await fetch(fbImageUrl).catch(() => {});
       const fbResult = await publishToFacebookWithImage(fb, fbImageUrl);
       results.facebook = fbResult;
       if (!fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
@@ -228,6 +230,8 @@ export async function GET(request: Request) {
     // 3b. Publish Instagram with infographic (via Graph API)
     if (ig) {
       const igImageUrl = buildInfographicUrl(ig);
+      // Pre-warm CDN cache so Instagram fetches instantly
+      await fetch(igImageUrl).catch(() => {});
       const igResult = await publishToInstagram(ig, igImageUrl);
       results.instagram = igResult;
       if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);

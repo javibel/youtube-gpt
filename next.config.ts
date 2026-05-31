@@ -49,11 +49,18 @@ const nextConfig: NextConfig = {
           { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors *" },
         ],
       },
-      // API routes — never cache
+      // API routes — never cache by default
       {
         source: '/api/:path*',
         headers: [
           { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+      // OG image routes — override no-store with CDN cache (Meta fetches these for social posts)
+      {
+        source: '/api/og/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=86400, stale-while-revalidate=3600' },
         ],
       },
     ];
