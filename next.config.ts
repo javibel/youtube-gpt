@@ -41,6 +41,14 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
         ],
       },
+      // Embed routes — allow iframing
+      {
+        source: '/embed/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors *" },
+        ],
+      },
       // API routes — never cache
       {
         source: '/api/:path*',

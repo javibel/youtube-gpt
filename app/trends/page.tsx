@@ -109,6 +109,120 @@ function vphColor(vph: number): string {
   return '#9ca3af';
 }
 
+// ── Public Trends (no auth) ─────────────────────────────────────────────
+
+function PublicTrends({ lang }: { lang: Lang }) {
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const [items, setItems] = useState<{ videoId: string; title: string; channelTitle: string; thumbnail: string; publishedAt: string; categoryLabel: { es: string; en: string }; views: number; likes: number; comments: number; vph: number; durationSec: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [region, setRegion] = useState('US');
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/youtube/trending-public?region=${region}`)
+      .then(r => r.json())
+      .then(data => { if (data.items) setItems(data.items); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [region]);
+
+  return (
+    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <nav className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--yv-border)' }}>
+        <a href="/" className="font-display font-bold text-lg text-white">YTubViral</a>
+        <a href="/login" className="font-mono-jb text-sm px-4 py-2 rounded-lg transition" style={{ color: 'var(--yv-text-2)', border: '1px solid var(--yv-border)' }}>
+          {t('Iniciar sesión', 'Sign in')}
+        </a>
+      </nav>
+
+      <div className="max-w-5xl mx-auto px-6 py-10">
+        <header className="mb-8">
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>
+            {t('TENDENCIAS YOUTUBE · EN VIVO', 'YOUTUBE TRENDS · LIVE')}
+          </p>
+          <h1 className="font-display font-bold text-3xl text-white mb-2">
+            {t('¿Qué está viral ahora en YouTube?', "What's going viral on YouTube right now?")}
+          </h1>
+          <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>
+            {t('Los 20 vídeos más explosivos del momento. Actualizado cada 30 minutos.', 'The 20 most explosive videos right now. Updated every 30 minutes.')}
+          </p>
+        </header>
+
+        {/* Region selector */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {REGIONS.slice(0, 6).map(r => (
+            <button
+              key={r.code}
+              onClick={() => setRegion(r.code)}
+              className="px-3 py-1.5 rounded-lg font-mono-jb text-[13px] transition"
+              style={{
+                background: region === r.code ? 'rgba(232,77,91,0.15)' : 'rgba(255,255,255,0.03)',
+                border: region === r.code ? '1px solid rgba(232,77,91,0.4)' : '1px solid var(--yv-border)',
+                color: region === r.code ? '#e84d5b' : 'var(--yv-text-3)',
+              }}
+            >
+              {r.label[lang]}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {items.map((item, i) => (
+              <a
+                key={item.videoId}
+                href={`https://youtube.com/watch?v=${item.videoId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-4 p-4 rounded-xl transition group"
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--yv-border)' }}
+              >
+                <span className="font-mono-jb text-[13px] w-6 text-center flex-shrink-0" style={{ color: i < 3 ? '#e84d5b' : 'var(--yv-text-4)' }}>
+                  {i + 1}
+                </span>
+                <img src={item.thumbnail} alt="" width={120} height={68} className="rounded flex-shrink-0 object-cover" style={{ width: 120, height: 68 }} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-display font-bold text-sm text-white truncate group-hover:text-[#e84d5b] transition">{item.title}</p>
+                  <p className="font-mono-jb text-[13px] mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
+                    {item.channelTitle} · {item.categoryLabel[lang]}
+                  </p>
+                </div>
+                <div className="flex-shrink-0 text-right hidden sm:block">
+                  <p className="font-mono-jb text-[13px] font-bold" style={{ color: vphColor(item.vph) }}>{fmtNum(item.vph)}/h</p>
+                  <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(item.views)} views</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* CTA */}
+        <div className="mt-10 p-8 rounded-xl text-center" style={{ background: 'linear-gradient(135deg, rgba(232,77,91,0.06), rgba(0,229,255,0.04))', border: '1px solid rgba(232,77,91,0.2)' }}>
+          <p className="font-mono-jb text-[12px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+            {t('VERSIÓN LIMITADA', 'LIMITED VERSION')}
+          </p>
+          <p className="font-display font-bold text-white text-xl mb-2">
+            {t('Desbloquea filtros avanzados, alertas y más regiones', 'Unlock advanced filters, alerts & more regions')}
+          </p>
+          <p className="font-mono-jb text-sm mb-5" style={{ color: 'var(--yv-text-3)' }}>
+            {t(
+              'Con Pro: filtra por idioma, duración, categoría. Recibe alertas cuando un tema explota en tu nicho.',
+              'With Pro: filter by language, duration, category. Get alerts when a topic explodes in your niche.'
+            )}
+          </p>
+          <a href="/signup" className="btn-offset inline-flex px-8 py-3.5 text-sm font-display font-bold">
+            {t('Crear cuenta gratis →', 'Create free account →')}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────────────────
 
 export default function TrendsPage() {
@@ -233,15 +347,7 @@ export default function TrendsPage() {
   }
 
   if (status === 'unauthenticated') {
-    return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Tendencias', 'Trends')}</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para explorar tendencias.', 'Sign in to explore trends.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
-    );
+    return <PublicTrends lang={lang} />;
   }
 
   return (
