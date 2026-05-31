@@ -387,6 +387,21 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'Learn how a YouTube description generator AI can optimize your videos, improve SEO, and increase views automatically with smart descriptions.',
     },
   },
+  {
+    slug: 'youtube-trending-videos-free-tool',
+    cat: 'youtube',
+    readMin: 6,
+    date: { es: '31 may 2026', en: 'May 31, 2026' },
+    author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: 'JJ' },
+    title: {
+      es: 'Cómo Ver los Vídeos Trending de YouTube en Tiempo Real (Herramienta Gratis)',
+      en: 'How to See YouTube Trending Videos in Real Time (Free Tool)',
+    },
+    excerpt: {
+      es: 'Descubre qué está viral ahora en YouTube por país y categoría. Herramienta gratuita con views/hora, engagement y widget embebible para tu web.',
+      en: 'See what\'s going viral on YouTube right now by country and category. Free tool with views/hour, engagement metrics, and embeddable widget.',
+    },
+  },
 ];
 
 // ── Article bodies ────────────────────────────────────────────────────────────
@@ -4287,6 +4302,60 @@ const ART_YOUTUBE_DESCRIPTION_GENERATOR_AI_EN: BlockType[] = [
   { type: 'callout-final', t: 'Start writing better YouTube descriptions today', sub: 'YTubViral\'s AI generator, SEO scoring, and keyword research tools work together to optimize every video you publish.', cta: 'Try YTubViral Free', href: '/generate' },
 ];
 
+const ART_YOUTUBE_TRENDING_TOOL_ES: BlockType[] = [
+  { type: 'p', t: 'Saber qué está en tendencia en YouTube es una de las ventajas competitivas más infravaloradas para un creador. No se trata de copiar lo que otros hacen, sino de detectar oportunidades antes que el resto y adaptar tu contenido a lo que la audiencia ya está buscando.' },
+  { type: 'p', t: 'El problema es que la pestaña de Trending de YouTube es limitada: solo muestra los vídeos más populares de tu país, sin métricas útiles como views por hora o engagement rate. Necesitas algo mejor.' },
+
+  { type: 'h2', t: 'Cómo Funciona Nuestra Herramienta de Trending' },
+  { type: 'p', t: 'YTubViral ofrece un explorador de tendencias gratuito que muestra los 20 vídeos más explosivos del momento en 6 regiones diferentes: EE.UU., España, México, Reino Unido, Argentina y Colombia. Se actualiza cada 30 minutos.' },
+  { type: 'list', items: ['Views por hora (VPH): mide la velocidad de crecimiento, no solo el total', 'Categoría del vídeo para identificar nichos en tendencia', 'Canal del creador para analizar qué están haciendo bien', 'Actualización cada 30 minutos con datos de la API de YouTube'] },
+
+  { type: 'h2', t: 'Para Qué Usar los Trending Videos' },
+  { type: 'p', t: 'Los creadores más inteligentes usan las tendencias para tres cosas concretas:' },
+  { type: 'list', items: ['Detectar temas calientes antes de que se saturen — si un formato está explotando, tienes 24-48h para subirte al tren', 'Inspiración para títulos y thumbnails — analiza qué hace que un vídeo trending tenga millones de clicks', 'Validar ideas de contenido — si un tema relacionado con tu nicho está trending, es señal de que hay demanda'] },
+
+  { type: 'h2', t: 'Cómo Acceder a la Herramienta' },
+  { type: 'p', t: 'La versión pública es 100% gratuita y no requiere cuenta. Solo entra a ytubviral.com/trends y selecciona tu región. Verás los 20 vídeos más explosivos con métricas de velocidad.' },
+  { type: 'p', t: 'Si quieres filtros avanzados (por idioma, duración, categoría), alertas automáticas cuando un tema explota en tu nicho, y acceso a 12 regiones, puedes crear una cuenta Pro.' },
+  { type: 'callout-mid', t: 'Explora las tendencias ahora', sub: 'Gratis, sin registro, actualizado cada 30 minutos.', cta: 'Ver Trending →', href: '/trends' },
+
+  { type: 'h2', t: 'Widget Embebible para Tu Web' },
+  { type: 'p', t: 'Si tienes un blog o web sobre YouTube, puedes añadir nuestro widget de SEO Score. Es una línea de HTML que permite a tus visitantes analizar cualquier vídeo de YouTube directamente desde tu página.' },
+  { type: 'p', t: 'El widget es gratuito, responsive, y no tiene límites de uso. Solo copia el iframe desde ytubviral.com/embed y pégalo en tu HTML.' },
+
+  { type: 'h2', t: 'Estrategia: Trending + SEO Score' },
+  { type: 'p', t: 'El combo más potente es usar trending para encontrar ideas y luego el SEO Score para optimizar tu vídeo antes de publicar. Así te subes a la ola con un vídeo perfectamente optimizado desde el primer minuto.' },
+  { type: 'p', t: 'Los creadores que combinan timing (trending) con optimización (SEO) ven resultados 3-5x superiores a los que solo hacen una de las dos cosas.' },
+  { type: 'callout-final', t: 'Empieza a crear contenido que explota', sub: '14 herramientas de IA para YouTube. SEO Score, trending, generador de títulos, scripts y más.', cta: 'Crear cuenta gratis', href: '/signup' },
+];
+
+const ART_YOUTUBE_TRENDING_TOOL_EN: BlockType[] = [
+  { type: 'p', t: 'Knowing what\'s trending on YouTube is one of the most underrated competitive advantages for a creator. It\'s not about copying what others do — it\'s about spotting opportunities before everyone else and adapting your content to what audiences are already looking for.' },
+  { type: 'p', t: 'The problem is that YouTube\'s Trending tab is limited: it only shows the most popular videos in your country, without useful metrics like views per hour or engagement rate. You need something better.' },
+
+  { type: 'h2', t: 'How Our Trending Tool Works' },
+  { type: 'p', t: 'YTubViral offers a free trend explorer showing the 20 most explosive videos right now across 6 regions: USA, Spain, Mexico, UK, Argentina, and Colombia. It updates every 30 minutes.' },
+  { type: 'list', items: ['Views per hour (VPH): measures growth velocity, not just total views', 'Video category to identify trending niches', 'Creator channel to analyze what they\'re doing right', 'Updates every 30 minutes using the YouTube API'] },
+
+  { type: 'h2', t: 'What to Use Trending Videos For' },
+  { type: 'p', t: 'The smartest creators use trends for three specific things:' },
+  { type: 'list', items: ['Spot hot topics before they\'re saturated — if a format is exploding, you have 24-48h to jump on it', 'Inspiration for titles and thumbnails — analyze what makes a trending video get millions of clicks', 'Validate content ideas — if a topic related to your niche is trending, it signals demand'] },
+
+  { type: 'h2', t: 'How to Access the Tool' },
+  { type: 'p', t: 'The public version is 100% free and requires no account. Just go to ytubviral.com/trends and select your region. You\'ll see the 20 most explosive videos with velocity metrics.' },
+  { type: 'p', t: 'If you want advanced filters (by language, duration, category), automatic alerts when a topic explodes in your niche, and access to 12 regions, you can upgrade to Pro.' },
+  { type: 'callout-mid', t: 'Explore trends now', sub: 'Free, no signup, updated every 30 minutes.', cta: 'See Trending →', href: '/trends' },
+
+  { type: 'h2', t: 'Embeddable Widget for Your Website' },
+  { type: 'p', t: 'If you have a blog or website about YouTube, you can add our SEO Score widget. It\'s one line of HTML that lets your visitors analyze any YouTube video directly from your page.' },
+  { type: 'p', t: 'The widget is free, responsive, and has no usage limits. Just copy the iframe from ytubviral.com/embed and paste it into your HTML.' },
+
+  { type: 'h2', t: 'Strategy: Trending + SEO Score' },
+  { type: 'p', t: 'The most powerful combo is using trending to find ideas and then SEO Score to optimize your video before publishing. That way you ride the wave with a perfectly optimized video from minute one.' },
+  { type: 'p', t: 'Creators who combine timing (trending) with optimization (SEO) see 3-5x better results than those who only do one of the two.' },
+  { type: 'callout-final', t: 'Start creating content that explodes', sub: '14 AI tools for YouTube. SEO Score, trending, title generator, scripts and more.', cta: 'Create free account', href: '/signup' },
+];
+
 export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }> = {
   'herramientas-ia-para-youtubers-2026': {
     es: ART_HERRAMIENTAS_IA,
@@ -4375,6 +4444,10 @@ export const ARTICLE_BODIES: Record<string, { es: BlockType[]; en: BlockType[] }
   'youtube-description-generator-ai': {
     es: ART_YOUTUBE_DESCRIPTION_GENERATOR_AI_ES,
     en: ART_YOUTUBE_DESCRIPTION_GENERATOR_AI_EN,
+  },
+  'youtube-trending-videos-free-tool': {
+    es: ART_YOUTUBE_TRENDING_TOOL_ES,
+    en: ART_YOUTUBE_TRENDING_TOOL_EN,
   },
 };
 
