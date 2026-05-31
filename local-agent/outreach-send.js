@@ -60,8 +60,8 @@ function buildSeoHtml(lang, name, videoTitle, videoUrl, seoScore, tips) {
 ${tipsHtml}
 <p>${isEs ? 'Son cambios r&aacute;pidos que pueden mover el ranking.' : 'Quick fixes that can actually impact your rankings.'}</p>
 <p>${isEs
-  ? 'Si te interesa probar la herramienta completa, te doy acceso Pro gratis 3 meses (normalmente 9,99&euro;/mes). Solo dime y te lo activo.'
-  : 'If you want to try the full tool, I\'ll give you Pro free for 3 months (normally $10/mo). Just say the word and I\'ll set it up.'}</p>
+  ? 'Si te interesa probar la herramienta completa, te doy acceso Pro gratis 1 mes (normalmente 9,99&euro;/mes). Solo dime y te lo activo.'
+  : 'If you want to try the full tool, I\'ll give you Pro free for 1 month (normally $10/mo). Just say the word and I\'ll set it up.'}</p>
 <p><strong>${isEs ? '&iquest;Qu&eacute; te parece? &iquest;Te es &uacute;til este tipo de an&aacute;lisis?' : 'Would this kind of analysis be useful for you?'}</strong></p>
 <p>Javier<br><span style="color:#999;font-size:13px;"><a href="https://ytubviral.com?utm_source=outreach&utm_medium=email" style="color:#999;">ytubviral.com</a></span></p>
 </body></html>`;
@@ -81,8 +81,8 @@ function buildFallbackHtml(lang, name, topic) {
   ? `Tenemos un analizador SEO gratuito que te dice exactamente qu&eacute; mejorar en cada video (t&iacute;tulo, descripci&oacute;n, tags) para posicionarte mejor. Si quieres probarlo: <a href="https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/features/seo-score</a>`
   : `We have a free SEO analyzer that tells you exactly what to fix on each video (title, description, tags) to rank better. Try it if you want: <a href="https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/features/seo-score</a>`}</p>
 <p>${isEs
-  ? 'Tambi&eacute;n puedo darte acceso Pro gratis 3 meses si te interesa &mdash; keywords, an&aacute;lisis de competidores, ideas de contenido.'
-  : 'I can also give you full Pro access free for 3 months if you\'re interested &mdash; keywords, competitor analysis, content ideas.'}</p>
+  ? 'Tambi&eacute;n puedo darte acceso Pro gratis 1 mes si te interesa &mdash; keywords, an&aacute;lisis de competidores, ideas de contenido.'
+  : 'I can also give you full Pro access free for 1 month if you\'re interested &mdash; keywords, competitor analysis, content ideas.'}</p>
 <p><strong>${isEs ? '&iquest;Te ser&iacute;a &uacute;til algo as&iacute;?' : 'Would something like this be useful for you?'}</strong></p>
 <p>Javier<br><span style="color:#999;font-size:13px;"><a href="https://ytubviral.com?utm_source=outreach&utm_medium=email" style="color:#999;">ytubviral.com</a></span></p>
 </body></html>`;
@@ -105,7 +105,7 @@ ${tipsText}
 
 Son cambios rápidos que pueden mover el ranking.
 
-Si te interesa probar la herramienta completa, te doy acceso Pro gratis 3 meses (normalmente 9,99€/mes). Solo dime y te lo activo.
+Si te interesa probar la herramienta completa, te doy acceso Pro gratis 1 mes (normalmente 9,99€/mes). Solo dime y te lo activo.
 
 ¿Qué te parece? ¿Te es útil este tipo de análisis?
 
@@ -127,7 +127,7 @@ ${tipsText}
 
 Quick fixes that can actually impact your rankings.
 
-If you want to try the full tool, I'll give you Pro free for 3 months (normally $10/mo). Just say the word and I'll set it up.
+If you want to try the full tool, I'll give you Pro free for 1 month (normally $10/mo). Just say the word and I'll set it up.
 
 Would this kind of analysis be useful for you?
 
@@ -147,7 +147,7 @@ Soy Javier — estoy construyendo una herramienta de SEO para YouTube. Vi tu can
 
 Tenemos un analizador SEO gratuito que te dice exactamente qué mejorar en cada video (título, descripción, tags) para posicionarte mejor. Si quieres probarlo: https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email
 
-También puedo darte acceso Pro gratis 3 meses si te interesa — keywords, análisis de competidores, ideas de contenido.
+También puedo darte acceso Pro gratis 1 mes si te interesa — keywords, análisis de competidores, ideas de contenido.
 
 ¿Te sería útil algo así?
 
@@ -162,7 +162,7 @@ I'm Javier — building a YouTube SEO tool. Came across your channel in the ${to
 
 We have a free SEO analyzer that tells you exactly what to fix on each video (title, description, tags) to rank better. Try it if you want: https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email
 
-I can also give you full Pro access free for 3 months if you're interested — keywords, competitor analysis, content ideas.
+I can also give you full Pro access free for 1 month if you're interested — keywords, competitor analysis, content ideas.
 
 Would something like this be useful for you?
 
@@ -190,24 +190,17 @@ async function runOutreachSend() {
     const firstName = contact.name.split(' ')[0].split('/')[0].trim();
     const lang = contact.lang || 'en';
 
-    // Choose template based on whether we have video SEO data
-    let subject, body, html;
-    if (contact.latestVideo && contact.seoScore && contact.seoTips?.length > 0) {
-      // Value-upfront: personalized SEO analysis
-      const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
-      subject = tpl.subject(contact.latestVideo.title, contact.seoScore);
-      body = tpl.body(firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
-      html = buildSeoHtml(lang, firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
-      console.log(`  → ${contact.name} <${contact.email}> [${lang}] SEO: ${contact.seoScore}/100 [HTML]`);
-    } else {
-      // Fallback: lead with free SEO Score tool
-      const tpl = TEMPLATES_FALLBACK[lang] || TEMPLATES_FALLBACK.en;
-      const topic = contact.niche || 'YouTube';
-      subject = tpl.subject;
-      body = tpl.body(firstName, topic);
-      html = buildFallbackHtml(lang, firstName, topic);
-      console.log(`  → ${contact.name} <${contact.email}> [${lang}] (no video data — using fallback) [HTML]`);
+    // Only send emails with real SEO data — skip contacts without analysis
+    if (!contact.latestVideo || !contact.seoScore || !contact.seoTips?.length) {
+      console.log(`  ⏭ ${contact.name} <${contact.email}> — skipped (no SEO data)`);
+      continue;
     }
+
+    const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
+    const subject = tpl.subject(contact.latestVideo.title, contact.seoScore);
+    const body = tpl.body(firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
+    const html = buildSeoHtml(lang, firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
+    console.log(`  → ${contact.name} <${contact.email}> [${lang}] SEO: ${contact.seoScore}/100`);
 
     if (dryRun) {
       console.log(`    [DRY RUN] Would send: "${subject}"\n`);
