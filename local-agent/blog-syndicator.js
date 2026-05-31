@@ -299,13 +299,13 @@ async function publishToBlogger(title, htmlContent, canonicalUrl, tags) {
 
   const accessToken = await getBloggerAccessToken();
 
-  // Inject canonical link at the top of the HTML content
-  const contentWithCanonical = `<link rel="canonical" href="${canonicalUrl}" />\n${htmlContent}`;
+  // Note: canonical in <body> is ignored by Google — Blogger must be configured
+  // via theme settings to add noindex or canonical in <head> for syndicated posts.
 
   const body = {
     kind: 'blogger#post',
     title,
-    content: contentWithCanonical,
+    content: htmlContent,
     labels: tags,
   };
 
@@ -404,6 +404,7 @@ async function publishToTumblr(title, htmlContent, canonicalUrl, tags) {
     tags: tags.join(','),
     format: 'html',
     state: 'published',
+    source_url: canonicalUrl,
   };
 
   return new Promise((resolve, reject) => {

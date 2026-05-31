@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { prisma } from '@/lib/prisma';
+
 import LandingHeroDemo from '@/components/LandingHeroDemo';
 import LandingFeatures from '@/components/LandingFeatures';
 import LandingFAQ from '@/components/LandingFAQ';
@@ -578,17 +578,8 @@ function Footer({ lang }: { lang: Lang }) {
 export default async function LandingPage() {
   const lang = getServerLang();
 
-  let approvedReviews: { id: string; rating: number; text: string; user: { name: string | null } }[] = [];
-  try {
-    approvedReviews = await prisma.review.findMany({
-      where: { status: 'approved' },
-      orderBy: { updatedAt: 'desc' },
-      take: 12,
-      select: { id: true, rating: true, text: true, user: { select: { name: true } } },
-    });
-  } catch {
-    // fallback to static testimonials
-  }
+  // Static testimonials are the fallback — skip DB query to avoid Neon cold starts on ISR revalidation
+  const approvedReviews: { id: string; rating: number; text: string; user: { name: string | null } }[] = [];
 
   const jsonLd = [
     {
