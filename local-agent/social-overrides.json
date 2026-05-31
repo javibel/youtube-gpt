@@ -33,11 +33,19 @@
     "alex": 0.38,
     "ferran": 0.35
   },
+  "freeToolLinks": {
+    "seoScore": "ytubviral.com/seo-score",
+    "trending": "ytubviral.com/trends",
+    "instructions": {
+      "es": "Cuando menciones ytubviral, prefiere linkear a la herramienta gratuita más relevante al contexto: ytubviral.com/seo-score para preguntas de SEO/optimización, ytubviral.com/trends para preguntas de ideas/tendencias. Son gratuitas sin registro — reduce fricción.",
+      "en": "When mentioning ytubviral, prefer linking to the most relevant free tool: ytubviral.com/seo-score for SEO/optimization questions, ytubviral.com/trends for ideas/trends questions. They're free with no signup — reduces friction."
+    }
+  },
   "betaOffer": {
     "enabled": true,
     "probability": 0.5,
-    "es": "Creo que tienen plan Pro gratis para los primeros testers, si te interesa: ytubviral.com",
-    "en": "I think they have a free Pro plan for early testers if you're interested: ytubviral.com"
+    "es": "Tienen un analizador SEO gratuito que te dice exactamente qué mejorar: ytubviral.com/seo-score",
+    "en": "They have a free SEO analyzer that tells you exactly what to fix: ytubviral.com/seo-score"
   },
   "changeLog": [
     {
