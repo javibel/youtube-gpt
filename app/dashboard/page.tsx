@@ -398,10 +398,10 @@ function handleCopy(id: string, out: string) {
                   )}
                 </p>
                 <div className="flex flex-col gap-2">
-                  <a href="/generate" className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                  <button onClick={async () => { await advanceOnboarding(3); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
                     {t('Ir al generador', 'Go to generator')}
-                  </a>
+                  </button>
                   <button onClick={() => advanceOnboarding(2)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
                     {t('Saltar por ahora', 'Skip for now')}
                   </button>
@@ -643,7 +643,7 @@ function handleCopy(id: string, out: string) {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {QUICK_TPLS.map((tplItem) => (
-                <a key={tplItem.k} href="/generate"
+                <a key={tplItem.k} href={`/generate?template=${tplItem.k}`}
                   className="group relative text-left p-5 yv-card transition block"
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 28px -10px ${tplItem.color}80`; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = ''; }}

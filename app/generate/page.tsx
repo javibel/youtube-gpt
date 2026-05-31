@@ -70,11 +70,13 @@ export default function GeneratePage() {
     if (status === 'unauthenticated') router.push('/login');
   }, [status, router]);
 
-  // Pre-fill topic from query param (e.g. from Calendar)
+  // Pre-fill topic and template from query params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const topic = params.get('topic');
+    const template = params.get('template');
     if (topic) setFormData(prev => ({ ...prev, tema: topic }));
+    if (template) setSelectedTemplate(template);
   }, []);
 
   useEffect(() => {

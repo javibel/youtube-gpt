@@ -117,7 +117,7 @@ export default function SignupForm() {
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Contraseña', 'Password')}</label>
               <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm"
-                placeholder={t('Mínimo 6 caracteres', 'At least 6 characters')} required />
+                placeholder={t('Mínimo 10 caracteres', 'At least 10 characters')} required />
             </div>
 
             <div>
