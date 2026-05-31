@@ -385,6 +385,36 @@ function ComparisonTable({ lang }: { lang: Lang }) {
   );
 }
 
+function FreeToolsStrip({ lang }: { lang: Lang }) {
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const tools = [
+    { href: '/seo-score', icon: '📊', label: 'SEO Score', desc: t('Analiza cualquier vídeo', 'Analyze any video') },
+    { href: '/trends', icon: '🔥', label: 'Trending', desc: t('Qué está viral ahora', "What's viral now") },
+    { href: '/embed', icon: '🧩', label: 'Widget', desc: t('Para tu web', 'For your site') },
+  ];
+  return (
+    <section className="border-b border-white/10 bg-black">
+      <div className="max-w-7xl mx-auto px-6 py-16 text-center">
+        <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: '#00FFA3' }}>
+          {t('GRATIS · SIN REGISTRO', 'FREE · NO SIGNUP')}
+        </p>
+        <h2 className="font-display font-bold text-2xl md:text-3xl mb-8">
+          {t('Prueba antes de registrarte', 'Try before you sign up')}
+        </h2>
+        <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+          {tools.map(tool => (
+            <Link key={tool.href} href={tool.href} className="group p-5 rounded-xl transition text-left" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span className="text-2xl">{tool.icon}</span>
+              <p className="font-display font-bold text-sm text-white mt-2 group-hover:text-[#e84d5b] transition">{tool.label}</p>
+              <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{tool.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // Pricing section extracted to components/PricingSection.tsx (shared with /pricing page)
 
 function Testimonials({ reviews, lang }: { reviews: { id: string; rating: number; text: string; user: { name: string | null } }[]; lang: Lang }) {
@@ -628,6 +658,7 @@ export default async function LandingPage() {
       <HowItWorks lang={lang} />
       <LandingFeatures lang={lang} />
       <ComparisonTable lang={lang} />
+      <FreeToolsStrip lang={lang} />
       <PricingSection lang={lang} />
       <Testimonials reviews={approvedReviews} lang={lang} />
       <LandingFAQ lang={lang} />
