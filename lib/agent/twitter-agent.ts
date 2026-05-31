@@ -55,16 +55,140 @@ function generateOAuthHeader(method: string, url: string, body?: Record<string, 
   return `OAuth ${header}`;
 }
 
+// ── Media upload (v1.1) ─────────────────────────────────────────────────────
+
+const UPLOAD_URL = 'https://upload.twitter.com/1.1/media/upload.json';
+
+function generateOAuthHeaderForForm(method: string, url: string, formParams: Record<string, string>): string {
+  const creds = getCredentials();
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = randomBytes(16).toString('hex');
+
+  const oauthParams: Record<string, string> = {
+    oauth_consumer_key: creds.apiKey,
+    oauth_nonce: nonce,
+    oauth_signature_method: 'HMAC-SHA1',
+    oauth_timestamp: timestamp,
+    oauth_token: creds.accessToken,
+    oauth_version: '1.0',
+  };
+
+  // For multipart, only OAuth params go into signature base (not body params)
+  // For form-urlencoded INIT/FINALIZE, include form params
+  const allParams = { ...oauthParams, ...formParams };
+
+  const paramString = Object.keys(allParams)
+    .sort()
+    .map(k => `${percentEncode(k)}=${percentEncode(allParams[k])}`)
+    .join('&');
+
+  const baseString = `${method.toUpperCase()}&${percentEncode(url)}&${percentEncode(paramString)}`;
+  const signingKey = `${percentEncode(creds.apiSecret)}&${percentEncode(creds.accessSecret)}`;
+  const signature = createHmac('sha1', signingKey).update(baseString).digest('base64');
+
+  oauthParams['oauth_signature'] = signature;
+
+  const header = Object.keys(oauthParams)
+    .sort()
+    .map(k => `${percentEncode(k)}="${percentEncode(oauthParams[k])}"`)
+    .join(', ');
+
+  return `OAuth ${header}`;
+}
+
+async function uploadMediaFromUrl(imageUrl: string): Promise<string | null> {
+  try {
+    // Fetch the image bytes
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) return null;
+    const buffer = Buffer.from(await imgRes.arrayBuffer());
+    const totalBytes = buffer.length;
+
+    // INIT
+    const initParams: Record<string, string> = {
+      command: 'INIT',
+      media_type: 'image/png',
+      total_bytes: totalBytes.toString(),
+      media_category: 'tweet_image',
+    };
+    const initAuth = generateOAuthHeaderForForm('POST', UPLOAD_URL, initParams);
+    const initRes = await fetch(UPLOAD_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': initAuth,
+      },
+      body: new URLSearchParams(initParams).toString(),
+    });
+    const initData = await initRes.json();
+    if (!initRes.ok) throw new Error(`Media INIT failed: ${JSON.stringify(initData)}`);
+    const mediaId = initData.media_id_string;
+
+    // APPEND (single chunk for images < 5MB)
+    const boundary = `----boundary${randomBytes(8).toString('hex')}`;
+    const appendOauthParams: Record<string, string> = {}; // multipart: no body params in signature
+    const appendAuth = generateOAuthHeaderForForm('POST', UPLOAD_URL, appendOauthParams);
+
+    const parts = [
+      `--${boundary}\r\nContent-Disposition: form-data; name="command"\r\n\r\nAPPEND`,
+      `--${boundary}\r\nContent-Disposition: form-data; name="media_id"\r\n\r\n${mediaId}`,
+      `--${boundary}\r\nContent-Disposition: form-data; name="segment_index"\r\n\r\n0`,
+      `--${boundary}\r\nContent-Disposition: form-data; name="media_data"\r\n\r\n${buffer.toString('base64')}`,
+      `--${boundary}--`,
+    ];
+    const multipartBody = parts.join('\r\n');
+
+    const appendRes = await fetch(UPLOAD_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Authorization': appendAuth,
+      },
+      body: multipartBody,
+    });
+    if (!appendRes.ok && appendRes.status !== 204) {
+      const appendErr = await appendRes.text();
+      throw new Error(`Media APPEND failed: ${appendErr}`);
+    }
+
+    // FINALIZE
+    const finalizeParams: Record<string, string> = {
+      command: 'FINALIZE',
+      media_id: mediaId,
+    };
+    const finalizeAuth = generateOAuthHeaderForForm('POST', UPLOAD_URL, finalizeParams);
+    const finalizeRes = await fetch(UPLOAD_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': finalizeAuth,
+      },
+      body: new URLSearchParams(finalizeParams).toString(),
+    });
+    const finalizeData = await finalizeRes.json();
+    if (!finalizeRes.ok) throw new Error(`Media FINALIZE failed: ${JSON.stringify(finalizeData)}`);
+
+    return mediaId;
+  } catch (err) {
+    console.error('[twitter-agent/media]', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 // ── Tweet publishing ────────────────────────────────────────────────────────
 
 async function postTweet(
   text: string,
-  replyToId?: string
+  replyToId?: string,
+  mediaId?: string
 ): Promise<{ id: string; text: string }> {
   const url = `${X_API}/tweets`;
   const body: Record<string, unknown> = { text };
   if (replyToId) {
     body.reply = { in_reply_to_tweet_id: replyToId };
+  }
+  if (mediaId) {
+    body.media = { media_ids: [mediaId] };
   }
 
   const authHeader = generateOAuthHeader('POST', url, body);
@@ -139,7 +263,8 @@ async function alreadyPublishedToday(): Promise<boolean> {
 }
 
 export async function publishThreadToTwitter(
-  content: string
+  content: string,
+  imageUrl?: string
 ): Promise<{ success: boolean; tweetIds?: string[]; error?: string }> {
   const creds = getCredentials();
   if (!creds.apiKey || !creds.accessToken) {
@@ -156,16 +281,20 @@ export async function publishThreadToTwitter(
   }
 
   try {
+    // Upload infographic image for the first tweet
+    const mediaId = imageUrl ? await uploadMediaFromUrl(imageUrl) : null;
+
     const tweetIds: string[] = [];
     let previousId: string | undefined;
 
-    for (const tweet of tweets) {
+    for (let i = 0; i < tweets.length; i++) {
       // Small delay between tweets to look natural
       if (previousId) {
         await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
       }
 
-      const result = await postTweet(tweet, previousId);
+      // Attach image only to first tweet
+      const result = await postTweet(tweets[i], previousId, i === 0 ? mediaId ?? undefined : undefined);
       tweetIds.push(result.id);
       previousId = result.id;
     }

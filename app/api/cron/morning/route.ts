@@ -242,9 +242,11 @@ export async function GET(request: Request) {
       results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
     }
 
-    // 5. Publish Twitter/X thread (via API v2 — activado 2026-05-30)
+    // 5. Publish Twitter/X thread with infographic (via API v2 — activado 2026-05-30)
     if (tw) {
-      const twResult = await publishThreadToTwitter(tw);
+      const twImageUrl = buildInfographicUrl(tw);
+      await fetch(twImageUrl).catch(() => {});
+      const twResult = await publishThreadToTwitter(tw, twImageUrl);
       results.twitter = twResult;
       if (!twResult.success) errors.push(`Twitter: ${twResult.error}`);
     }
