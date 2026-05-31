@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { authConfig } from "./auth.config";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
@@ -7,6 +8,10 @@ import bcrypt from "bcryptjs";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID?.trim(),
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim(),
+    }),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
@@ -50,12 +55,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async signIn({ user, account }) {
+      // Google OAuth: create or link user in DB
+      if (account?.provider === 'google' && user.email) {
+        const existing = await prisma.user.findUnique({ where: { email: user.email } });
+        if (existing) {
+          // Link Google to existing account — mark as verified
+          if (!existing.emailVerified) {
+            await prisma.user.update({ where: { id: existing.id }, data: { emailVerified: new Date() } });
+          }
+          user.id = existing.id;
+        } else {
+          // Create new user from Google
+          const newUser = await prisma.user.create({
+            data: {
+              email: user.email,
+              name: user.name || null,
+              emailVerified: new Date(),
+            },
+          });
+          user.id = newUser.id;
+        }
+      }
+      return true;
+    },
+    async jwt({ token, user, trigger, account }) {
       if (user) {
         token.id = user.id;
-        const ev = (user as { emailVerified?: Date | null }).emailVerified;
-        // Only explicitly null means "new unverified user" — undefined means legacy session
-        token.requiresVerification = ev === null;
+        // Google users are always verified
+        if (account?.provider === 'google') {
+          token.requiresVerification = false;
+        } else {
+          const ev = (user as { emailVerified?: Date | null }).emailVerified;
+          // Only explicitly null means "new unverified user" — undefined means legacy session
+          token.requiresVerification = ev === null;
+        }
         token.isAdmin = user.email === process.env.ADMIN_EMAIL;
       }
       // On session update(), re-check emailVerified from DB to unblock verified users
