@@ -12,6 +12,23 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'YouTube Trending Explorer',
+  url: 'https://ytubviral.com/trends',
+  description: 'Free tool to see the top 20 trending YouTube videos in real time, updated every 30 minutes.',
+  applicationCategory: 'UtilitiesApplication',
+  operatingSystem: 'Web',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+  creator: { '@type': 'Organization', name: 'YTubViral', url: 'https://ytubviral.com' },
+};
+
 export default function TrendsLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {children}
+    </>
+  );
 }

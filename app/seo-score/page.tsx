@@ -407,6 +407,30 @@ function SeoScoreContent() {
         ))}
       </div>
 
+      {/* Share button */}
+      {urlResult && (
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={() => {
+              const text = lang === 'en'
+                ? `My YouTube video scored ${urlResult.score}/100 on SEO! Check yours free:`
+                : `Mi vídeo de YouTube tiene ${urlResult.score}/100 en SEO! Comprueba el tuyo gratis:`;
+              const shareUrl = `https://ytubviral.com/seo-score`;
+              if (navigator.share) {
+                navigator.share({ text, url: shareUrl }).catch(() => {});
+              } else {
+                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+              }
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-mono-jb text-[13px] transition hover:brightness-110"
+            style={{ background: 'rgba(29,155,240,0.1)', border: '1px solid rgba(29,155,240,0.3)', color: '#1d9bf0' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            {t('Compartir mi score', 'Share my score')}
+          </button>
+        </div>
+      )}
+
       {/* CTA for unauthenticated users */}
       {!isAuthed && urlResult && (
         <div className="mt-10 p-8 rounded-xl text-center" style={{ background: 'linear-gradient(135deg, rgba(232,77,91,0.06), rgba(0,229,255,0.04))', border: '1px solid rgba(232,77,91,0.2)' }}>
