@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import ExitIntentPopup from '@/components/ExitIntentPopup';
+import PublicNav from '@/components/PublicNav';
 
 type Lang = 'es' | 'en';
 
@@ -415,7 +416,7 @@ function SeoScoreContent() {
               const text = lang === 'en'
                 ? `My YouTube video scored ${urlResult.score}/100 on SEO! Check yours free:`
                 : `Mi vídeo de YouTube tiene ${urlResult.score}/100 en SEO! Comprueba el tuyo gratis:`;
-              const shareUrl = `https://ytubviral.com/seo-score`;
+              const shareUrl = `https://ytubviral.com/seo-score?url=https://youtube.com/watch?v=${urlResult.videoId}`;
               if (navigator.share) {
                 navigator.share({ text, url: shareUrl }).catch(() => {});
               } else {
@@ -476,12 +477,7 @@ export default function SeoScorePage() {
   if (status === 'unauthenticated') {
     return (
       <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <nav className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--yv-border)' }}>
-          <a href="/" className="font-display font-bold text-lg text-white">YTubViral</a>
-          <a href="/login" className="font-mono-jb text-sm px-4 py-2 rounded-lg transition" style={{ color: 'var(--yv-text-2)', border: '1px solid var(--yv-border)' }}>
-            {t('Iniciar sesión', 'Sign in')}
-          </a>
-        </nav>
+        <PublicNav />
         <div className="max-w-4xl mx-auto px-6 py-10">
           <SeoScoreContent />
         </div>

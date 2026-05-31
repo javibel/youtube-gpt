@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useLang } from '@/components/LangProvider';
+import PublicNav from '@/components/PublicNav';
 
 export default function EmbedPage() {
   const lang = useLang();
@@ -24,12 +25,7 @@ export default function EmbedPage() {
 
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      <nav className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--yv-border)' }}>
-        <a href="/" className="font-display font-bold text-lg text-white">YTubViral</a>
-        <a href="/signup" className="font-mono-jb text-sm px-4 py-2 rounded-lg transition btn-offset">
-          {t('Crear cuenta gratis', 'Create free account')}
-        </a>
-      </nav>
+      <PublicNav />
 
       <div className="max-w-3xl mx-auto px-6 py-16">
         <header className="mb-12">

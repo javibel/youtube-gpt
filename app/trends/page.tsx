@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
+import PublicNav from '@/components/PublicNav';
 
 type Lang = 'es' | 'en';
 type Tab = 'explore' | 'alerts';
@@ -128,12 +129,7 @@ function PublicTrends({ lang }: { lang: Lang }) {
 
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      <nav className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--yv-border)' }}>
-        <a href="/" className="font-display font-bold text-lg text-white">YTubViral</a>
-        <a href="/login" className="font-mono-jb text-sm px-4 py-2 rounded-lg transition" style={{ color: 'var(--yv-text-2)', border: '1px solid var(--yv-border)' }}>
-          {t('Iniciar sesión', 'Sign in')}
-        </a>
-      </nav>
+      <PublicNav />
 
       <div className="max-w-5xl mx-auto px-6 py-10">
         <header className="mb-8">
