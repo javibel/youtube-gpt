@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
 import PublicNav from '@/components/PublicNav';
+import ExitIntentPopup from '@/components/ExitIntentPopup';
 
 type Lang = 'es' | 'en';
 type Tab = 'explore' | 'alerts';
@@ -130,6 +131,7 @@ function PublicTrends({ lang }: { lang: Lang }) {
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
       <PublicNav />
+      <ExitIntentPopup lang={lang} />
 
       <div className="max-w-5xl mx-auto px-6 py-10">
         <header className="mb-8">
@@ -143,6 +145,20 @@ function PublicTrends({ lang }: { lang: Lang }) {
             {t('Los 20 vídeos más explosivos del momento. Actualizado cada 30 minutos.', 'The 20 most explosive videos right now. Updated every 30 minutes.')}
           </p>
         </header>
+
+        {/* Inline signup nudge */}
+        <a
+          href="/signup"
+          className="flex items-center justify-between p-4 rounded-xl mb-6 transition hover:opacity-90"
+          style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}
+        >
+          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
+            🔓 {t('Regístrate gratis para filtrar por nicho, idioma y duración', 'Sign up free to filter by niche, language & duration')}
+          </span>
+          <span className="font-display font-bold text-sm" style={{ color: '#e84d5b' }}>
+            {t('Gratis →', 'Free →')}
+          </span>
+        </a>
 
         {/* Region selector */}
         <div className="flex flex-wrap gap-2 mb-6">

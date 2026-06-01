@@ -494,18 +494,17 @@ function FinalCTA({ lang }: { lang: Lang }) {
         </h2>
         <p className="text-zinc-400 text-lg md:text-xl mt-8 max-w-xl mx-auto">
           {lang === 'en'
-            ? 'Join the waitlist — get 50% off for a year and early access before the public launch.'
-            : 'Únete a la waitlist — 50% de descuento durante un año y acceso anticipado antes del lanzamiento público.'}
+            ? 'Analyze your first video for free. No credit card, no limits on the SEO Score.'
+            : 'Analiza tu primer vídeo gratis. Sin tarjeta, sin límites en el SEO Score.'}
         </p>
-        <WaitlistInline lang={lang} />
-        <p className="text-center text-zinc-600 text-[13px] font-mono-jb mt-4">
-          {lang === 'en'
-            ? 'or '
-            : 'o '}
-          <Link href="/signup" className="text-zinc-400 hover:text-white underline underline-offset-2 transition">
-            {lang === 'en' ? 'start free now →' : 'empieza gratis ahora →'}
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Link href="/seo-score" className="btn-offset inline-flex px-10 py-4 text-base font-display font-bold">
+            {lang === 'en' ? 'Check my SEO Score →' : 'Analizar mi SEO Score →'}
           </Link>
-        </p>
+          <Link href="/signup" className="text-zinc-400 hover:text-white text-sm font-mono-jb underline underline-offset-2 transition">
+            {lang === 'en' ? 'or create free account' : 'o crear cuenta gratis'}
+          </Link>
+        </div>
       </div>
     </section>
   );

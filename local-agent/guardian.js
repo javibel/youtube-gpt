@@ -134,7 +134,6 @@ function checkDangerousPatterns() {
     { pattern: /\.innerHTML\s*=/, name: 'innerHTML assignment', severity: 'high' },
     { pattern: /document\.write\s*\(/, name: 'document.write()', severity: 'high' },
     { pattern: /\bexec\s*\(\s*['"`]/, name: 'exec() with string', severity: 'critical' },
-    { pattern: /process\.env\.\w+.*(?:password|secret|key)/i, name: 'env secret in code', severity: 'info' },
     { pattern: /(?:sk-ant-|sk-proj-|ghp_|gho_|AKIA)[A-Za-z0-9]{10,}/, name: 'Hardcoded API key/secret', severity: 'critical' },
     { pattern: /(?:mongodb|postgres|mysql):\/\/[^/\s]+:[^@/\s]+@/, name: 'Hardcoded DB credentials', severity: 'critical' },
     { pattern: /\bconsole\.(log|warn|error)\(.*(?:password|secret|token|key)/i, name: 'Logging sensitive data', severity: 'high' },

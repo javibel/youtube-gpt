@@ -60,9 +60,11 @@ function buildSeoHtml(lang, name, videoTitle, videoUrl, seoScore, tips) {
 ${tipsHtml}
 <p>${isEs ? 'Son cambios r&aacute;pidos que pueden mover el ranking.' : 'Quick fixes that can actually impact your rankings.'}</p>
 <p>${isEs
-  ? 'Si te interesa probar la herramienta completa, te doy acceso Pro gratis 1 mes (normalmente 9,99&euro;/mes). Solo dime y te lo activo.'
-  : 'If you want to try the full tool, I\'ll give you Pro free for 1 month (normally $10/mo). Just say the word and I\'ll set it up.'}</p>
-<p><strong>${isEs ? '&iquest;Qu&eacute; te parece? &iquest;Te es &uacute;til este tipo de an&aacute;lisis?' : 'Would this kind of analysis be useful for you?'}</strong></p>
+  ? 'Puedes analizar cualquier video gratis aqu&iacute;: <a href="https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/seo-score</a>'
+  : 'You can analyze any video for free here: <a href="https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/seo-score</a>'}</p>
+<p>${isEs
+  ? 'Si quieres acceso a la herramienta completa (keywords, competidores, ideas), te doy Pro gratis 1 mes (normalmente 9,99&euro;/mes). Solo dime.'
+  : 'If you want the full toolkit (keywords, competitors, content ideas), I\'ll give you Pro free for 1 month (normally $10/mo). Just say the word.'}</p>
 <p>Javier<br><span style="color:#999;font-size:13px;"><a href="https://ytubviral.com?utm_source=outreach&utm_medium=email" style="color:#999;">ytubviral.com</a></span></p>
 </body></html>`;
 }
@@ -105,12 +107,12 @@ ${tipsText}
 
 Son cambios rápidos que pueden mover el ranking.
 
-Si te interesa probar la herramienta completa, te doy acceso Pro gratis 1 mes (normalmente 9,99€/mes). Solo dime y te lo activo.
+Puedes analizar cualquier video gratis aquí: https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-¿Qué te parece? ¿Te es útil este tipo de análisis?
+Si quieres la herramienta completa (keywords, competidores, ideas), te doy Pro gratis 1 mes (normalmente 9,99€/mes). Solo dime.
 
 Javier
-https://ytubviral.com`;
+https://ytubviral.com?utm_source=outreach&utm_medium=email`;
     },
   },
   en: {
@@ -127,12 +129,12 @@ ${tipsText}
 
 Quick fixes that can actually impact your rankings.
 
-If you want to try the full tool, I'll give you Pro free for 1 month (normally $10/mo). Just say the word and I'll set it up.
+You can analyze any video for free here: https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-Would this kind of analysis be useful for you?
+If you want the full toolkit (keywords, competitors, content ideas), I'll give you Pro free for 1 month (normally $10/mo). Just say the word.
 
 Javier
-https://ytubviral.com`;
+https://ytubviral.com?utm_source=outreach&utm_medium=email`;
     },
   },
 };
