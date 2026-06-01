@@ -149,12 +149,16 @@ export default function SignupForm() {
               <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm"
                 placeholder={t('Mínimo 10 caracteres', 'At least 10 characters')} required />
+              <p className="font-mono-jb text-[11px] mt-1.5" style={{ color: 'var(--yv-text-4)' }}>
+                {t('Mayúscula, minúscula, número y carácter especial', 'Uppercase, lowercase, number & special character')}
+              </p>
             </div>
 
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Confirmar contraseña', 'Confirm password')}</label>
               <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                className="py-3 px-4 text-sm" required />
+                className="py-3 px-4 text-sm"
+                placeholder={t('Repite tu contraseña', 'Repeat your password')} required />
             </div>
 
             {error && (

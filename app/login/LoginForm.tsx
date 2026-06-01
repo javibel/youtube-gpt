@@ -12,10 +12,12 @@ export default function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<'es'|'en'>('es');
+  const [justVerified, setJustVerified] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
     if (stored) setLang(stored);
+    if (new URLSearchParams(window.location.search).get('verified') === '1') setJustVerified(true);
   }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -114,9 +116,15 @@ export default function LoginForm() {
                 className="py-3 px-4 text-sm" required />
             </div>
 
+            {justVerified && (
+              <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(0,255,163,0.06)', border: '1px solid rgba(0,255,163,0.3)', color: '#4ade80' }}>
+                {t('Email verificado. Inicia sesión para continuar.', 'Email verified. Sign in to continue.')}
+              </div>
+            )}
+
             {error && (
               <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
-                ⚠️ {error}
+                {error}
               </div>
             )}
 

@@ -207,9 +207,34 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           {post.excerpt[lang]}
         </p>
 
-        {/* Article body */}
+        {/* Article body with mid-article CTA */}
         {body ? (
-          body.map((block, i) => <ArticleBlock key={i} block={block} lang={lang} />)
+          <>
+            {body.slice(0, Math.ceil(body.length / 2)).map((block, i) => (
+              <ArticleBlock key={i} block={block} lang={lang} />
+            ))}
+            {/* Mid-article CTA */}
+            <div className="my-10 p-6 md:p-8 rounded-xl relative overflow-hidden" style={{ background: 'rgba(232,77,91,0.04)', border: '1px solid rgba(232,77,91,0.2)' }}>
+              <div className="flex flex-col md:flex-row items-center gap-5">
+                <div className="flex-1">
+                  <p className="font-display font-bold text-white text-lg mb-1">
+                    {lang === 'en' ? 'Want to see this in action?' : '¿Quieres verlo en acción?'}
+                  </p>
+                  <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
+                    {lang === 'en'
+                      ? 'Analyze any YouTube video for free and get your personalized SEO score with specific recommendations.'
+                      : 'Analiza cualquier vídeo de YouTube gratis y obtén tu puntuación SEO personalizada con recomendaciones específicas.'}
+                  </p>
+                </div>
+                <Link href="/seo-score" className="btn-offset shrink-0 px-6 py-3 text-sm font-display font-bold inline-flex">
+                  {lang === 'en' ? 'Free SEO Score →' : 'SEO Score gratis →'}
+                </Link>
+              </div>
+            </div>
+            {body.slice(Math.ceil(body.length / 2)).map((block, i) => (
+              <ArticleBlock key={i + Math.ceil(body.length / 2)} block={block} lang={lang} />
+            ))}
+          </>
         ) : (
           <div className="border border-white/10 p-10 text-center bg-black">
             <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--red)' }}>

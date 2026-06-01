@@ -120,8 +120,8 @@ function VerifyEmailContent() {
           return;
         }
       }
-      // Fallback: redirect to login
-      setTimeout(() => router.push('/login'), 2000);
+      // Fallback: redirect to login with message
+      setTimeout(() => router.push('/login?verified=1'), 2000);
     } catch {
       setError(t('Error de conexión. Intenta de nuevo.', 'Connection error. Try again.'));
     } finally {
