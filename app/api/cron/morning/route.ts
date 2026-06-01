@@ -11,7 +11,7 @@ import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
 import { prisma } from '@/lib/prisma';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function verifyCronSecret(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -227,29 +227,35 @@ export async function GET(request: Request) {
       if (!fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
     }
 
-    // 3b. Publish Instagram with infographic (via Graph API)
+    // 3b. Publish Instagram + Twitter in parallel (both independent)
+    const socialPublishTasks: Promise<void>[] = [];
+
     if (ig) {
-      const igImageUrl = buildInfographicUrl(ig);
-      // Pre-warm CDN cache so Instagram fetches instantly
-      await fetch(igImageUrl).catch(() => {});
-      const igResult = await publishToInstagram(ig, igImageUrl);
-      results.instagram = igResult;
-      if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
+      socialPublishTasks.push((async () => {
+        const igImageUrl = buildInfographicUrl(ig);
+        await fetch(igImageUrl).catch(() => {});
+        const igResult = await publishToInstagram(ig, igImageUrl);
+        results.instagram = igResult;
+        if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
+      })());
     }
 
-    // 4. Publish LinkedIn — DESACTIVADO: cuenta bloqueada por LinkedIn (2026-05-07)
+    if (tw) {
+      socialPublishTasks.push((async () => {
+        const twImageUrl = buildInfographicUrl(tw);
+        await fetch(twImageUrl).catch(() => {});
+        const twResult = await publishThreadToTwitter(tw, twImageUrl);
+        results.twitter = twResult;
+        if (!twResult.success) errors.push(`Twitter: ${twResult.error}`);
+      })());
+    }
+
+    // LinkedIn — DESACTIVADO: cuenta bloqueada por LinkedIn (2026-05-07)
     if (li) {
       results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
     }
 
-    // 5. Publish Twitter/X thread with infographic (via API v2 — activado 2026-05-30)
-    if (tw) {
-      const twImageUrl = buildInfographicUrl(tw);
-      await fetch(twImageUrl).catch(() => {});
-      const twResult = await publishThreadToTwitter(tw, twImageUrl);
-      results.twitter = twResult;
-      if (!twResult.success) errors.push(`Twitter: ${twResult.error}`);
-    }
+    await Promise.allSettled(socialPublishTasks);
 
     // 6. Send daily report to owner
     await sendDailyReport().catch(err =>
