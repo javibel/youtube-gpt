@@ -392,6 +392,7 @@ export const BLOG_POSTS: BlogPost[] = [
     cat: 'youtube',
     readMin: 6,
     date: { es: '31 may 2026', en: 'May 31, 2026' },
+    image: '/blog/youtube-trending-videos-free-tool.webp',
     author: { name: 'Javier Jimeno', role: { es: 'CEO & Fundador de YTubViral', en: 'CEO & Founder of YTubViral' }, avatar: 'JJ' },
     title: {
       es: 'Cómo Ver los Vídeos Trending de YouTube en Tiempo Real (Herramienta Gratis)',
