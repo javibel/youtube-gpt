@@ -155,16 +155,26 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
       }),
     });
 
+    const ideogramBody = await ideogramRes.text();
     if (!ideogramRes.ok) {
-      const err = await ideogramRes.json().catch(() => ({}));
-      console.error('[generate-thumbnail] Ideogram error:', ideogramRes.status, err);
+      console.error('[generate-thumbnail] Ideogram error:', ideogramRes.status, ideogramBody.slice(0, 500));
       return Response.json(
         { error: isEn ? 'Error generating thumbnail image' : 'Error generando imagen de miniatura' },
         { status: 500 }
       );
     }
 
-    const ideogramData = await ideogramRes.json();
+    let ideogramData;
+    try {
+      ideogramData = JSON.parse(ideogramBody);
+    } catch {
+      console.error('[generate-thumbnail] Ideogram non-JSON response:', ideogramBody.slice(0, 500));
+      return Response.json(
+        { error: isEn ? 'Error generating thumbnail image' : 'Error generando imagen de miniatura' },
+        { status: 500 }
+      );
+    }
+
     const imageUrl = ideogramData.data?.[0]?.url;
 
     if (!imageUrl) {
