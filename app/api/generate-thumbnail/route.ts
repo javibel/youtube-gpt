@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     }
 
     const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
-    const ideogramKey = process.env.IDEOGRAM_API_KEY?.trim();
+    const ideogramKey = (process.env.IDEOGRAM_API_KEY || process.env.ideogram)?.trim();
 
     if (!anthropicKey || !ideogramKey) {
       return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
