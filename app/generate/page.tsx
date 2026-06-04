@@ -17,7 +17,7 @@ const TPL_META: Record<string, { icon: string; color: string; est: string }> = {
   description:    { icon: '/icons/description.webp', color: '#00E5FF', est: '12s' },
   script:         { icon: '/icons/script.webp', color: '#FFE800', est: '30s' },
   caption:        { icon: '/icons/caption.webp', color: '#FF00AA', est: '10s' },
-  thumbnail:      { icon: '/icons/thumbnail.webp', color: '#7CFF00', est: '5s' },
+  thumbnail:      { icon: '/icons/thumbnail.webp', color: '#7CFF00', est: '15s' },
   niche_analysis: { icon: '/icons/magnifying-glass.webp', color: '#B388FF', est: '45s' },
   series:         { icon: '/icons/clapperboard.webp', color: '#FF8A00', est: '60s' },
   shorts_hook:    { icon: '/icons/lightning.webp', color: '#00FFA3', est: '6s' },
@@ -65,6 +65,8 @@ export default function GeneratePage() {
   const [previewScript, setPreviewScript] = useState('');
   const [previewTitle, setPreviewTitle] = useState('');
   const [previewSaved, setPreviewSaved] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
+  const [thumbnailPrompt, setThumbnailPrompt] = useState<string>('');
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -106,6 +108,8 @@ export default function GeneratePage() {
     setOutput('');
     setError('');
     setTruncated(false);
+    setThumbnailUrl('');
+    setThumbnailPrompt('');
   };
 
   const handleGenerate = async () => {
@@ -123,6 +127,34 @@ export default function GeneratePage() {
     setError('');
     setOutput('');
     setTruncated(false);
+    setThumbnailUrl('');
+    setThumbnailPrompt('');
+
+    // Thumbnail uses a separate image generation endpoint
+    if (selectedTemplate === 'thumbnail') {
+      try {
+        const res = await fetch('/api/generate-thumbnail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tema: formData.tema, estilo: formData.estilo, lang }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.limitReached) { setShowLimitModal(true); return; }
+          throw new Error(data.error || 'Error generating thumbnail');
+        }
+        setThumbnailUrl(data.imageUrl);
+        setThumbnailPrompt(data.prompt);
+        setUsageCount((prev) => prev + 1);
+        setRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Error desconocido');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       const result = await callClaudeAPI(selectedTemplate, formData, lang);
       setOutput(result.content);
@@ -371,6 +403,11 @@ export default function GeneratePage() {
                     <span>📺</span>
                     {t('Crear Vídeo Tips', 'Create Video Tips')}
                   </>
+                ) : selectedTemplate === 'thumbnail' ? (
+                  <>
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="white"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                    {t('Generar miniatura', 'Generate thumbnail')}
+                  </>
                 ) : (
                   <>
                     <svg width={16} height={16} viewBox="0 0 24 24" fill="white"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
@@ -404,8 +441,65 @@ export default function GeneratePage() {
               </div>
             )}
 
-            {/* Output */}
-            {(loading || output) && (
+            {/* Thumbnail image output */}
+            {(selectedTemplate === 'thumbnail' && (loading || thumbnailUrl)) && (
+              <div className="yv-card overflow-hidden page-enter">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
+                  <div className="flex items-center gap-3">
+                    <span className="live-dot" />
+                    <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
+                      {loading ? t('Generando miniatura...', 'Generating thumbnail...') : t('Tu miniatura', 'Your thumbnail')}
+                    </p>
+                  </div>
+                </div>
+                <div className="p-5">
+                  {loading && (
+                    <div className="space-y-2 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
+                      <p><span style={{ color: '#7CFF00' }}>▸</span> {t('Analizando tema y estilo...', 'Analysing topic and style...')}</p>
+                      <p><span style={{ color: '#7CFF00' }}>▸</span> {t('Diseñando composición visual...', 'Designing visual composition...')}</p>
+                      <p style={{ color: 'var(--yv-text-2)' }}><span style={{ color: '#7CFF00' }}>▸</span> {t('Generando imagen con IA', 'Generating image with AI')}<span className="typing-cursor" /></p>
+                    </div>
+                  )}
+                  {thumbnailUrl && (
+                    <div className="space-y-4">
+                      <div className="rounded-lg overflow-hidden border border-white/10" style={{ maxWidth: 640 }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={thumbnailUrl} alt="Generated thumbnail" className="w-full h-auto" style={{ aspectRatio: '16/9', objectFit: 'cover' }} />
+                      </div>
+                      {thumbnailPrompt && (
+                        <details className="text-[13px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
+                          <summary className="cursor-pointer hover:text-white transition">{t('Ver prompt utilizado', 'View prompt used')}</summary>
+                          <p className="mt-2 p-3 rounded-lg" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-3)' }}>{thumbnailPrompt}</p>
+                        </details>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {thumbnailUrl && (
+                  <div className="flex items-center gap-2 px-5 pb-4 pt-2 border-t border-white/10 flex-wrap">
+                    <a
+                      href={thumbnailUrl}
+                      download="thumbnail.png"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-offset px-4 py-2 text-[13px] font-display"
+                      style={{ borderColor: '#7CFF00', color: '#7CFF00' }}
+                    >
+                      {t('Descargar imagen', 'Download image')}
+                    </a>
+                    <button onClick={handleGenerate} className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display">
+                      {t('Generar otra', 'Generate another')}
+                    </button>
+                    <a href="/dashboard" className="ml-auto font-mono-jb text-[13px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
+                      {t('Ver en panel', 'View in dashboard')} →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Text output (all templates except thumbnail) */}
+            {(selectedTemplate !== 'thumbnail' && (loading || output)) && (
               <div className="yv-card overflow-hidden page-enter">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
                   <div className="flex items-center gap-3">

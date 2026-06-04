@@ -87,24 +87,11 @@ El caption debe ser:
   },
 
   thumbnail: {
-    name: '🎨 Idea para Thumbnail',
-    description: 'Textos cortos para el thumbnail del video',
+    name: '🎨 Miniatura con IA',
+    description: 'Genera una miniatura profesional para tu vídeo',
     inputs: ['tema', 'estilo'],
-    prompt: (data) => `Eres un experto en thumbnails virales. Creas textos que generan clics.
-
-TEMA: ${data.tema}
-ESTILO: ${data.estilo}
-
-Genera 3 opciones de TEXT para el thumbnail:
-- Máximo 5-8 palabras
-- Alto contraste y legible
-- Emocionales (miedo, curiosidad, sorpresa, rabia)
-- Bold y cortos
-
-Formato: Solo devuelve los 3 textos:
-1. [texto]
-2. [texto]
-3. [texto]`
+    imageGeneration: true,
+    prompt: (data) => `Thumbnail for: ${data.tema} (style: ${data.estilo})`,
   },
 
   shorts_hook: {
