@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
+import { put } from '@vercel/blob';
 
 export const maxDuration = 60;
 
@@ -186,21 +187,38 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
       );
     }
 
-    // Save generation
+    // Download from Ideogram and upload to Vercel Blob for permanent storage
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) {
+      console.error('[generate-thumbnail] Failed to download image from Ideogram');
+      return Response.json(
+        { error: isEn ? 'Error saving thumbnail' : 'Error guardando miniatura' },
+        { status: 500 }
+      );
+    }
+    const imgBuffer = await imgRes.arrayBuffer();
+    const filename = `thumbnails/${user.id}/${Date.now()}.png`;
+    const blob = await put(filename, imgBuffer, {
+      access: 'public',
+      contentType: 'image/png',
+    });
+    const permanentUrl = blob.url;
+
+    // Save generation with permanent URL
     const ip = getIp(request);
     await prisma.generation.create({
       data: {
         userId: user.id,
         template: 'thumbnail',
         inputs: { tema, estilo, imagePrompt },
-        output: imageUrl,
+        output: permanentUrl,
         tokensUsed: claudeData.usage?.output_tokens ?? 0,
         ipAddress: ip,
       },
     });
 
     return Response.json({
-      imageUrl,
+      imageUrl: permanentUrl,
       prompt: imagePrompt,
     });
   } catch (error) {

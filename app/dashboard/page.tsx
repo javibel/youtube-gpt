@@ -851,20 +851,45 @@ function handleCopy(id: string, out: string) {
                             <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{gen.tokensUsed} tokens</span>
                           </div>
                           {gen.inputs?.tema && <p className="font-display font-semibold mt-0.5 truncate break-all">{gen.inputs.tema}</p>}
-                          <p className="text-sm mt-0.5 truncate break-all" style={{ color: 'var(--yv-text-3)' }}>{gen.output?.slice(0, 80)}</p>
+                          {gen.template === 'thumbnail' ? (
+                            <p className="text-sm mt-0.5 truncate break-all" style={{ color: '#7CFF00' }}>{t('Miniatura generada', 'Generated thumbnail')}</p>
+                          ) : (
+                            <p className="text-sm mt-0.5 truncate break-all" style={{ color: 'var(--yv-text-3)' }}>{gen.output?.slice(0, 80)}</p>
+                          )}
                         </div>
                         <span className="font-mono-jb text-[13px] transition shrink-0" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', color: 'var(--yv-text-3)' }}>▾</span>
                       </button>
                       {isOpen && (
                         <div className="px-5 pb-5 page-enter">
-                          <div className="ml-14 p-4 rounded-xl border border-white/10 bg-black font-mono-jb text-[13px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--yv-text-2)' }}>
-                            {gen.output}
-                          </div>
+                          {gen.template === 'thumbnail' && gen.output?.startsWith('http') ? (
+                            <div className="ml-14 space-y-3">
+                              <div className="rounded-xl overflow-hidden border border-white/10" style={{ maxWidth: 480 }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={gen.output} alt="Thumbnail" className="w-full h-auto" style={{ aspectRatio: '16/9', objectFit: 'cover' }} />
+                              </div>
+                              {gen.inputs?.imagePrompt && (
+                                <details className="text-[13px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
+                                  <summary className="cursor-pointer hover:text-white transition">{t('Ver prompt utilizado', 'View prompt used')}</summary>
+                                  <p className="mt-2 p-3 rounded-lg" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-3)' }}>{gen.inputs.imagePrompt}</p>
+                                </details>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="ml-14 p-4 rounded-xl border border-white/10 bg-black font-mono-jb text-[13px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--yv-text-2)' }}>
+                              {gen.output}
+                            </div>
+                          )}
                           <div className="ml-14 mt-3 flex items-center gap-2 flex-wrap">
-                            <button onClick={() => handleCopy(gen.id, gen.output)} className="btn-offset btn-offset-white px-3 py-1.5 text-[13px] font-display gap-1.5">
-                              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
-                              {isCopied ? t('¡Copiado!', 'Copied!') : t('Copiar', 'Copy')}
-                            </button>
+                            {gen.template === 'thumbnail' && gen.output?.startsWith('http') ? (
+                              <a href={gen.output} download="thumbnail.png" target="_blank" rel="noopener noreferrer" className="btn-offset px-3 py-1.5 text-[13px] font-display gap-1.5" style={{ borderColor: '#7CFF00', color: '#7CFF00' }}>
+                                {t('Descargar', 'Download')}
+                              </a>
+                            ) : (
+                              <button onClick={() => handleCopy(gen.id, gen.output)} className="btn-offset btn-offset-white px-3 py-1.5 text-[13px] font-display gap-1.5">
+                                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+                                {isCopied ? t('¡Copiado!', 'Copied!') : t('Copiar', 'Copy')}
+                              </button>
+                            )}
                             {isPro && gen.template === 'script' && (
                               <button
                                 onClick={() => setPreviewGen({ id: gen.id, output: gen.output, title: gen.inputs?.tema ?? 'Script' })}
