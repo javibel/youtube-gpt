@@ -188,23 +188,23 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
     }
 
     // Download from Ideogram and upload to Vercel Blob for permanent storage
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) {
-      console.error('[generate-thumbnail] Failed to download image from Ideogram');
-      return Response.json(
-        { error: isEn ? 'Error saving thumbnail' : 'Error guardando miniatura' },
-        { status: 500 }
-      );
+    let permanentUrl = imageUrl; // fallback to ephemeral URL
+    try {
+      const imgRes = await fetch(imageUrl);
+      if (imgRes.ok) {
+        const imgBuffer = await imgRes.arrayBuffer();
+        const filename = `thumbnails/${user.id}/${Date.now()}.png`;
+        const blob = await put(filename, imgBuffer, {
+          access: 'public',
+          contentType: 'image/png',
+        });
+        permanentUrl = blob.url;
+      }
+    } catch (blobErr) {
+      console.error('[generate-thumbnail] Blob upload failed, using ephemeral URL:', blobErr instanceof Error ? blobErr.message : blobErr);
     }
-    const imgBuffer = await imgRes.arrayBuffer();
-    const filename = `thumbnails/${user.id}/${Date.now()}.png`;
-    const blob = await put(filename, imgBuffer, {
-      access: 'public',
-      contentType: 'image/png',
-    });
-    const permanentUrl = blob.url;
 
-    // Save generation with permanent URL
+    // Save generation
     const ip = getIp(request);
     await prisma.generation.create({
       data: {
