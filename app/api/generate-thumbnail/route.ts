@@ -2,7 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function getIp(request: Request): string | null {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -152,6 +152,7 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
       body: JSON.stringify({
         text_prompt: imagePrompt,
         aspect_ratio: '16x9',
+        rendering_speed: 'TURBO',
       }),
     });
 
