@@ -44,7 +44,7 @@
   },
   "humanize": {
     "skipSessionProbability": 0.15,
-    "skipPostProbability": 0.15,
+    "skipPostProbability": 0.12,
     "readingPauseMin": 5,
     "readingPauseMax": 15,
     "actionPauseMin": 3,
@@ -55,8 +55,8 @@
   },
   "persona-runner": {
     "model": "claude-haiku-4-5-20251001",
-    "maxTweetsPerSession": 12,
-    "maxRedditPerSession": 8
+    "maxTweetsPerSession": 14,
+    "maxRedditPerSession": 9
   },
   "followup": {
     "model": "claude-haiku-4-5-20251001",
@@ -132,7 +132,7 @@
       "job": "Editor de video freelance",
       "platforms": "Twitter, Reddit",
       "mentionYtubviral": true,
-      "mentionRate": 0.38
+      "mentionRate": 0.42
     },
     "ferran": {
       "name": "Ferran Gómez",
@@ -141,17 +141,17 @@
       "job": "Consultor marketing digital",
       "platforms": "Twitter, Reddit",
       "mentionYtubviral": true,
-      "mentionRate": 0.35
+      "mentionRate": 0.38
     }
   },
-  "_lastModified": "2026-05-31T01:00:28.335Z",
+  "_lastModified": "2026-06-04T04:28:06.977Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 24.85911225,
+    "amount": 24.70986274999999,
     "currency": "USD",
     "lastChecked": "2026-05-31T10:05:03.957Z",
-    "lastDeduction": "2026-05-31T11:13:12.879Z",
-    "totalSpentToday": 0.00088775,
-    "spendDate": "2026-05-31"
+    "lastDeduction": "2026-06-04T11:04:33.564Z",
+    "totalSpentToday": 0.11785674999999998,
+    "spendDate": "2026-06-04"
   }
 }

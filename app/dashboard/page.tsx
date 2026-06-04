@@ -328,8 +328,8 @@ function handleCopy(id: string, out: string) {
   return (
     <DashboardShell>
 
-      {/* Onboarding modal */}
-      {onboardingStep !== null && onboardingStep < 3 && (
+      {/* Onboarding modal — 4 steps: Welcome → Connect YouTube → SEO Score → Generate */}
+      {onboardingStep !== null && onboardingStep < 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
           <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/10 p-8" style={{ background: '#111114' }}>
 
@@ -353,7 +353,7 @@ function handleCopy(id: string, out: string) {
 
                 {/* Progress dots */}
                 <div className="flex justify-center gap-2 mb-6">
-                  {[0, 1, 2].map(i => (
+                  {[0, 1, 2, 3].map(i => (
                     <div key={i} className="w-2 h-2 rounded-full" style={{ background: i === 0 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
                   ))}
                 </div>
@@ -361,9 +361,9 @@ function handleCopy(id: string, out: string) {
                 {/* 3 features */}
                 <div className="grid grid-cols-3 gap-3 mb-8 text-left">
                   {[
-                    { icon: 'M13 2L3 14h7l-1 8 10-12h-7l1-8z', es: 'Genera títulos, scripts y descripciones con IA', en: 'Generate titles, scripts & descriptions with AI' },
+                    { icon: 'M13 2L3 14h7l-1 8 10-12h-7l1-8z', es: 'Genera titulos, scripts y descripciones con IA', en: 'Generate titles, scripts & descriptions with AI' },
                     { icon: 'M11 11L11 2M11 11L2 11M11 11L20 11M11 11L11 20', es: 'Investiga keywords y analiza competidores', en: 'Research keywords & analyze competitors' },
-                    { icon: 'M22 12h-4l-3 9L9 3l-3 9H2', es: 'SEO Score, mejor hora y más con tu canal conectado', en: 'SEO Score, best time & more with your channel connected' },
+                    { icon: 'M22 12h-4l-3 9L9 3l-3 9H2', es: 'SEO Score, mejor hora y mas con tu canal conectado', en: 'SEO Score, best time & more with your channel connected' },
                   ].map((f, i) => (
                     <div key={i} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" className="mb-2"><path d={f.icon}/></svg>
@@ -378,30 +378,36 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {/* Step 1: First generation */}
+            {/* Step 1: Connect YouTube — THE critical step */}
             {onboardingStep === 1 && (
               <div className="text-center">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,0,0,0.12)' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43z" fill="#FF0000"/><path d="M9.75 15.02l5.75-3.27-5.75-3.27v6.54z" fill="#fff"/></svg>
                 </div>
                 <div className="flex justify-center gap-2 mb-4">
-                  {[0, 1, 2].map(i => (
+                  {[0, 1, 2, 3].map(i => (
                     <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 1 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
                   ))}
                 </div>
                 <h2 className="font-display font-bold text-xl text-white mb-2">
-                  {t('Tu primera generación', 'Your first generation')}
+                  {t('Conecta tu canal de YouTube', 'Connect your YouTube channel')}
                 </h2>
-                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                <p className="text-zinc-400 text-sm mb-3 max-w-sm mx-auto">
                   {t(
-                    'Usa los botones de generación rápida en tu panel para crear tu primer título, script o descripción. Tienes 10 generaciones gratis al mes.',
-                    'Use the quick launch buttons on your dashboard to create your first title, script or description. You get 10 free generations per month.'
+                    'Con tu canal conectado las herramientas se personalizan para ti: SEO Score, mejor hora para publicar, ideas diarias y mas.',
+                    'With your channel connected, tools are personalized for you: SEO Score, best time to publish, daily ideas and more.'
+                  )}
+                </p>
+                <p className="text-zinc-500 text-xs mb-6 max-w-xs mx-auto">
+                  {t(
+                    'Solo lectura — no publicamos ni modificamos nada en tu canal.',
+                    'Read-only — we never publish or modify anything on your channel.'
                   )}
                 </p>
                 <div className="flex flex-col gap-2">
-                  <button onClick={async () => { await advanceOnboarding(3); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                    {t('Ir al generador', 'Go to generator')}
+                  <button onClick={async () => { await advanceOnboarding(2); setYtConnecting(true); window.location.href = '/api/youtube/connect'; }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43z" fill="currentColor"/><path d="M9.75 15.02l5.75-3.27-5.75-3.27v6.54z" fill="#111"/></svg>
+                    {t('Conectar canal', 'Connect channel')}
                   </button>
                   <button onClick={() => advanceOnboarding(2)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
                     {t('Saltar por ahora', 'Skip for now')}
@@ -410,42 +416,61 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {/* Step 2: Explore tools */}
+            {/* Step 2: Try SEO Score */}
             {onboardingStep === 2 && (
               <div className="text-center">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,229,255,0.12)' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                 </div>
                 <div className="flex justify-center gap-2 mb-4">
-                  {[0, 1, 2].map(i => (
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 2 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
+                  ))}
+                </div>
+                <h2 className="font-display font-bold text-xl text-white mb-2">
+                  {t('Analiza tu SEO', 'Analyze your SEO')}
+                </h2>
+                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                  {t(
+                    'Pega la URL de cualquier video de YouTube y obtendras un analisis completo: titulo, descripcion, tags, puntuacion de 0 a 100 y sugerencias concretas.',
+                    'Paste any YouTube video URL and get a full analysis: title, description, tags, score from 0 to 100 and specific suggestions.'
+                  )}
+                </p>
+                <div className="flex flex-col gap-2">
+                  <button onClick={async () => { await advanceOnboarding(3); router.push('/seo-score'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    {t('Probar SEO Score', 'Try SEO Score')}
+                  </button>
+                  <button onClick={() => advanceOnboarding(3)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
+                    {t('Saltar por ahora', 'Skip for now')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Generate a title */}
+            {onboardingStep === 3 && (
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                </div>
+                <div className="flex justify-center gap-2 mb-4">
+                  {[0, 1, 2, 3].map(i => (
                     <div key={i} className="w-2 h-2 rounded-full" style={{ background: 'var(--red)' }} />
                   ))}
                 </div>
                 <h2 className="font-display font-bold text-xl text-white mb-2">
-                  {t('Explora tus herramientas', 'Explore your tools')}
+                  {t('Genera tu primer titulo', 'Generate your first title')}
                 </h2>
                 <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
                   {t(
-                    'Investiga keywords, analiza competidores, revisa el SEO de tus vídeos y descubre tu mejor hora para publicar. Todo desde el menú superior.',
-                    'Research keywords, analyze competitors, check your video SEO scores and discover your best time to publish. All from the top menu.'
+                    'Escribe el tema de tu proximo video y la IA te genera titulos optimizados para clics y SEO. Tienes 10 generaciones gratis al mes.',
+                    'Enter your next video topic and AI generates titles optimized for clicks and SEO. You get 10 free generations per month.'
                   )}
                 </p>
-                <div className="grid grid-cols-2 gap-2 mb-6 max-w-xs mx-auto">
-                  {[
-                    { href: '/research',    label: t('Keywords', 'Keywords'),     icon: 'M21 21l-4.35-4.35M11 3a8 8 0 110 16 8 8 0 010-16z' },
-                    { href: '/competitors', label: t('Competidores', 'Competitors'), icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 3a4 4 0 110 8 4 4 0 010-8z' },
-                    { href: '/seo-score',   label: 'SEO Score',                    icon: 'M22 12h-4l-3 9L9 3l-3 9H2' },
-                    { href: '/best-time',   label: t('Mejor Hora', 'Best Time'),   icon: 'M12 2a10 10 0 110 20 10 10 0 010-20zM12 6v6l4 2' },
-                    { href: '/ab-test',     label: 'A/B Test',                     icon: 'M16 3H8a2 2 0 00-2 2v14l6-3 6 3V5a2 2 0 00-2-2z' },
-                  ].map((tool, i) => (
-                    <a key={i} href={tool.href} className="flex items-center gap-2 p-2.5 rounded-lg text-[13px] font-mono-jb text-zinc-400 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={tool.icon}/></svg>
-                      {tool.label}
-                    </a>
-                  ))}
-                </div>
-                <button onClick={() => advanceOnboarding(3)} className="btn-offset px-10 py-3 text-sm font-display">
-                  {t('Listo, empezar a usar YTubViral', 'Done, start using YTubViral')}
+                <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                  {t('Ir al generador', 'Go to generator')}
                 </button>
               </div>
             )}

@@ -26,6 +26,17 @@ export async function POST(request: Request) {
 
     const { template, inputs, lang } = await request.json();
 
+    // Require topic/tema — prevents empty generations that waste API credits
+    const tema = inputs?.tema;
+    if (!tema || (typeof tema === 'string' && tema.trim().length < 3)) {
+      return Response.json(
+        { error: lang === 'en'
+          ? 'Please describe your video topic (at least 3 characters)'
+          : 'Describe el tema de tu vídeo (mínimo 3 caracteres)' },
+        { status: 400 }
+      );
+    }
+
     // Validar longitud de inputs (previene prompts gigantes y costes desorbitados)
     const MAX_INPUT_LENGTH = 500;
     if (inputs && typeof inputs === 'object') {

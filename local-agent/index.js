@@ -34,6 +34,7 @@ const { runYoutubeCommenter } = require('./youtube-commenter');
 const { runDmarcMonitor } = require('./dmarc-monitor');
 const { runAutoResolver } = require('./auto-resolver');
 const { runPersonaMonitor } = require('./persona-monitor');
+const { run: runBrandTwitterPost } = require('./brand-twitter-post');
 const { enqueue: bq } = require('./browser-queue');
 
 console.log('[agent] YTubViral local agent starting...');
@@ -242,6 +243,14 @@ cron.schedule('0 11 * * *', async () => {
   });
 }, { timezone: 'Europe/Madrid' });
 
+// Brand Twitter Post — daily at 10:30, tweet + infographic via Puppeteer (replaces paid API)
+cron.schedule('30 10 * * *', async () => {
+  console.log('[cron] Brand Twitter post — daily tweet with infographic');
+  await bq('brand-twitter-post', async () => {
+    await runBrandTwitterPost().catch(err => console.error('[brand-twitter-post]', err.message));
+  });
+}, { timezone: 'Europe/Madrid' });
+
 // Outreach Reddit DMs — DISABLED: Reddit requires CAPTCHA for DMs on low-karma accounts
 // cron.schedule('15 9,14,19 * * *', async () => {
 //   console.log('[cron] Outreach Reddit DM — sending personalized DMs to creators');
@@ -382,6 +391,7 @@ console.log('  Outreach discover: 08:30,12:30,16:30,20:30 (Europe/Madrid)');
 console.log('  Outreach send: 08:45,12:45,16:45,20:45 (Europe/Madrid)');
 console.log('  Outreach follow-up: 10:00 daily (Europe/Madrid)');
 console.log('  Outreach posts: 11:00 daily (Europe/Madrid)');
+console.log('  Brand Twitter post: 10:30 daily (Europe/Madrid) — Puppeteer + infographic');
 console.log('  Feature Monitor: 07:00, 19:00 daily (Europe/Madrid)');
 console.log('  Outreach monitor: every 3h 9-21h (Europe/Madrid)');
 console.log('  Infra Optimizer: 02:45 daily (Europe/Madrid)');

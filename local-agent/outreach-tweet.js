@@ -68,7 +68,7 @@ async function openTwitterSession(personaId) {
   return { page, profileDir, cookieFile, tag };
 }
 
-async function postTweet(personaId, tweetText) {
+async function postTweet(personaId, tweetText, imagePath) {
   const { page, profileDir, cookieFile, tag } = await openTwitterSession(personaId);
 
   try {
@@ -81,6 +81,19 @@ async function postTweet(personaId, tweetText) {
     await delay(500, 1000);
     await page.keyboard.type(tweetText, { delay: 40 });
     await delay(1500, 2500);
+
+    // Upload image if provided
+    if (imagePath && fs.existsSync(imagePath)) {
+      console.log(`[${tag}] Uploading image: ${path.basename(imagePath)}`);
+      const fileInput = await page.$('input[data-testid="fileInput"]');
+      if (fileInput) {
+        await fileInput.uploadFile(imagePath);
+        await delay(3000, 5000); // wait for image to process
+        console.log(`[${tag}] Image attached`);
+      } else {
+        console.log(`[${tag}] File input not found — posting without image`);
+      }
+    }
 
     const postBtn = await page.$('button[data-testid="tweetButtonInline"]');
     if (!postBtn) throw new Error('Post button not found');
@@ -255,9 +268,11 @@ async function main() {
   await postTweet(personaId, tweetText);
 }
 
-main().catch(err => {
-  console.error(`[outreach-tweet] Error: ${err.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error(`[outreach-tweet] Error: ${err.message}`);
+    process.exit(1);
+  });
+}
 
 module.exports = { postTweet, postThread };

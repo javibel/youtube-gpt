@@ -6,9 +6,11 @@ import {
   publishToInstagram,
 } from '@/lib/agent/meta-agent';
 import { buildInfographicUrl } from '@/lib/agent/infographic-generator';
-import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
+// Twitter API desactivada — publicación migrada a Puppeteer en local-agent (brand-twitter-post.js)
+// import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
+import { sendOnboardingEmails } from '@/lib/agent/onboarding-email';
 import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 120;
@@ -187,6 +189,13 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
 
   try {
+    // 0. Send onboarding emails to users registered ~24h ago
+    const onboardingSent = await sendOnboardingEmails().catch(err => {
+      errors.push(`Onboarding: ${err instanceof Error ? err.message : err}`);
+      return 0;
+    });
+    results.onboarding = onboardingSent;
+
     // 1. Generate daily tip
     await generateAndSaveDailyTip().catch(err =>
       errors.push(`Daily tip: ${err instanceof Error ? err.message : err}`)
@@ -199,23 +208,18 @@ export async function GET(request: Request) {
     });
     results.dailyIdeas = ideasGenerated;
 
-    // 2. Generate content for Facebook + Instagram + LinkedIn + Twitter
-    const [facebook, instagram, linkedin, twitter] = await Promise.allSettled([
+    // 2. Generate content for Facebook + Instagram (LinkedIn + Twitter desactivados)
+    const [facebook, instagram] = await Promise.allSettled([
       generateSocialPost('facebook', 'morning'),
       generateSocialPost('instagram', 'morning'),
-      generateSocialPost('linkedin', 'morning'),
-      generateSocialPost('twitter', 'morning'),
     ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;
     const ig = instagram.status === 'fulfilled' ? instagram.value : null;
-    const li = linkedin.status === 'fulfilled' ? linkedin.value : null;
-    const tw = twitter.status === 'fulfilled' ? twitter.value : null;
+    const tw = null; // Twitter API desactivada — migrado a Puppeteer local-agent
 
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
-    if (linkedin.status === 'rejected') errors.push(`LinkedIn content: ${linkedin.reason}`);
-    if (twitter.status === 'rejected') errors.push(`Twitter content: ${twitter.reason}`);
 
     // 3. Publish Facebook with infographic (via Graph API)
     if (fb) {
@@ -240,20 +244,13 @@ export async function GET(request: Request) {
       })());
     }
 
+    // Twitter/X — DESACTIVADO: API de pago, migrado a Puppeteer en local-agent (brand-twitter-post.js)
     if (tw) {
-      socialPublishTasks.push((async () => {
-        const twImageUrl = buildInfographicUrl(tw);
-        await fetch(twImageUrl).catch(() => {});
-        const twResult = await publishThreadToTwitter(tw, twImageUrl);
-        results.twitter = twResult;
-        if (!twResult.success) errors.push(`Twitter: ${twResult.error}`);
-      })());
+      results.twitter = { success: false, error: 'Twitter API desactivada — publicación via Puppeteer en local-agent' };
     }
 
     // LinkedIn — DESACTIVADO: cuenta bloqueada por LinkedIn (2026-05-07)
-    if (li) {
-      results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
-    }
+    results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
 
     await Promise.allSettled(socialPublishTasks);
 
