@@ -2,7 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 function getIp(request: Request): string | null {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -142,13 +142,15 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
     const claudeData = await claudeRes.json();
     const imagePrompt = claudeData.content[0].text.trim();
 
-    // Step 2: Call Ideogram v4 to generate the thumbnail (best text rendering)
+    // Step 2: Call Ideogram v3 TURBO (~9s vs ~50s for v4)
     const formData = new FormData();
-    formData.append('text_prompt', imagePrompt);
-    formData.append('aspect_ratio', '16x9');
+    formData.append('prompt', imagePrompt);
+    formData.append('resolution', '1312x736');
     formData.append('rendering_speed', 'TURBO');
+    formData.append('magic_prompt', 'ON');
+    formData.append('style_type', 'REALISTIC');
 
-    const ideogramRes = await fetch('https://api.ideogram.ai/v1/ideogram-v4/generate', {
+    const ideogramRes = await fetch('https://api.ideogram.ai/v1/ideogram-v3/generate', {
       method: 'POST',
       headers: { 'Api-Key': ideogramKey },
       body: formData,
