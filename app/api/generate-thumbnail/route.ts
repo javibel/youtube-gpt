@@ -142,17 +142,16 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
     const claudeData = await claudeRes.json();
     const imagePrompt = claudeData.content[0].text.trim();
 
-    // Step 2: Call Ideogram v3 to generate the thumbnail
-    const ideogramRes = await fetch('https://api.ideogram.ai/v1/ideogram-v3/generate', {
+    // Step 2: Call Ideogram v4 to generate the thumbnail (best text rendering)
+    const ideogramRes = await fetch('https://api.ideogram.ai/v1/ideogram-v4/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Api-Key': ideogramKey,
       },
       body: JSON.stringify({
-        prompt: imagePrompt,
+        text_prompt: imagePrompt,
         aspect_ratio: '16x9',
-        rendering_speed: 'DEFAULT',
       }),
     });
 
