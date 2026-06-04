@@ -151,7 +151,7 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
       },
       body: JSON.stringify({
         prompt: imagePrompt,
-        aspect_ratio: '16:9',
+        aspect_ratio: '16x9',
         rendering_speed: 'DEFAULT',
       }),
     });
