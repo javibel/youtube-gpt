@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useLang } from './LangProvider';
@@ -112,7 +112,20 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const lang = useLang();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [usage, setUsage] = useState<{ used: number; limit: number; plan: string } | null>(null);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  useEffect(() => {
+    if (!session?.user) return;
+    fetch('/api/user/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.stats) {
+          setUsage({ used: data.stats.generationsThisMonth, limit: data.stats.limit, plan: data.stats.plan });
+        }
+      })
+      .catch(() => {});
+  }, [session?.user]);
 
   function isActive(href: string) {
     if (href === '/dashboard') return pathname === '/dashboard';
@@ -158,8 +171,31 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {/* Footer — user + sign out */}
+      {/* Footer — usage + user + sign out */}
       <div className="yv-sidebar__footer">
+        {usage && (
+          <div style={{ padding: '0 12px 8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: 11, color: 'var(--yv-text-3)', fontFamily: 'var(--font-mono-jb)' }}>
+                {usage.used}/{usage.limit} {t('generaciones', 'generations')}
+              </span>
+              {usage.plan === 'free' && (
+                <a href="/pricing" style={{ fontSize: 11, color: 'var(--yv-brand)', fontFamily: 'var(--font-mono-jb)', textDecoration: 'none' }}>
+                  {t('Mejorar', 'Upgrade')}
+                </a>
+              )}
+            </div>
+            <div style={{ height: 4, borderRadius: 2, background: 'var(--yv-border, rgba(255,255,255,0.08))' }}>
+              <div style={{
+                height: '100%',
+                borderRadius: 2,
+                width: `${Math.min(100, (usage.used / usage.limit) * 100)}%`,
+                background: usage.used >= usage.limit ? '#ef4444' : usage.used >= usage.limit * 0.8 ? '#f59e0b' : 'var(--yv-brand)',
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+          </div>
+        )}
         <div className="yv-sidebar__user">
           <div className="yv-sidebar__avatar">{userInitial}</div>
           <div className="yv-sidebar__user-info">

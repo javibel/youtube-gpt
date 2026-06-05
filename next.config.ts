@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/:path(pricing|gear|learn|about|legal|privacy|login|signup)',
+        source: '/:path(pricing|gear|learn|about|legal|privacy|login|signup|seo-score|trends|tools|extension|launch)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
         ],

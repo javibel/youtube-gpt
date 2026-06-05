@@ -5,11 +5,13 @@ import { useState } from 'react';
 interface LimitReachedModalProps {
   onClose: () => void;
   reason?: 'limit' | 'pro_feature';
+  lang?: 'es' | 'en';
 }
 
-export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitReachedModalProps) {
+export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'es' }: LimitReachedModalProps) {
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'business_monthly' | 'business_yearly'>('monthly');
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   async function handleUpgrade() {
     setLoading(true);
@@ -21,10 +23,10 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
       });
       const data = await res.json();
       if (data.error) { alert(data.error); return; }
-      if (!data.url) { alert('No se pudo iniciar el pago. Inténtalo de nuevo.'); return; }
+      if (!data.url) { alert(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.')); return; }
       window.location.href = data.url;
     } catch {
-      alert('Error de conexión. Inténtalo de nuevo.');
+      alert(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -59,13 +61,13 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
           <div className="text-5xl mb-3">{reason === 'pro_feature' ? '⚡' : '🔒'}</div>
           <h2 className="text-2xl font-bold text-white mb-2">
             {reason === 'pro_feature'
-              ? 'Función exclusiva de pago'
-              : 'Has usado todas tus generaciones'}
+              ? t('Función exclusiva de pago', 'Paid feature')
+              : t('Has usado todas tus generaciones', "You've used all your generations")}
           </h2>
           <p className="text-gray-500 text-sm">
             {reason === 'pro_feature'
-              ? <>Actualiza tu plan para desbloquear esta función y todas las demás.</>
-              : <>Has alcanzado el límite de <span className="font-semibold" style={{ color: '#00D9FF' }}>10 generaciones</span> del plan gratuito este mes.</>}
+              ? <>{t('Actualiza tu plan para desbloquear esta función y todas las demás.', 'Upgrade your plan to unlock this feature and all others.')}</>
+              : <>{t('Has alcanzado el límite de', "You've reached the limit of")} <span className="font-semibold" style={{ color: '#00D9FF' }}>{t('10 generaciones', '10 generations')}</span> {t('del plan gratuito este mes.', 'on the free plan this month.')}</>}
           </p>
         </div>
 
@@ -76,11 +78,11 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
             className="rounded-xl p-4"
             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
           >
-            <p className="text-[13px] text-gray-600 uppercase tracking-widest mb-2">Gratis</p>
+            <p className="text-[13px] text-gray-600 uppercase tracking-widest mb-2">{t('Gratis', 'Free')}</p>
             <p className="text-xl font-bold text-gray-400 mb-3">0 €</p>
             <ul className="space-y-1.5 text-[13px] text-gray-600">
-              <li className="flex items-center gap-1.5"><span className="text-gray-700">✗</span> 10 gen/mes</li>
-              <li className="flex items-center gap-1.5"><span className="text-gray-700">✗</span> Sin soporte</li>
+              <li className="flex items-center gap-1.5"><span className="text-gray-700">✗</span> {t('10 gen/mes', '10 gen/mo')}</li>
+              <li className="flex items-center gap-1.5"><span className="text-gray-700">✗</span> {t('Sin soporte', 'No support')}</li>
             </ul>
           </div>
 
@@ -105,11 +107,11 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
             </div>
             <p className="text-[13px] uppercase tracking-widest mb-2" style={{ color: isPro ? 'rgba(0,217,255,0.7)' : '#71717a' }}>Pro</p>
             <p className="text-xl font-bold text-white mb-1">9,99 €</p>
-            <p className="text-[13px] text-gray-500 mb-3">/mes · 200 gen</p>
+            <p className="text-[13px] text-gray-500 mb-3">{t('/mes · 200 gen', '/mo · 200 gen')}</p>
             <ul className="space-y-1 text-[13px]">
-              <li className="text-gray-300">⚡ 200 gen/mes</li>
-              <li className="text-gray-300">🎯 Todos los templates</li>
-              <li className="text-gray-300">💬 Soporte prioritario</li>
+              <li className="text-gray-300">{t('⚡ 200 gen/mes', '⚡ 200 gen/mo')}</li>
+              <li className="text-gray-300">{t('🎯 Todos los templates', '🎯 All templates')}</li>
+              <li className="text-gray-300">{t('💬 Soporte prioritario', '💬 Priority support')}</li>
             </ul>
           </button>
 
@@ -134,11 +136,11 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
             </div>
             <p className="text-[13px] uppercase tracking-widest mb-2" style={{ color: !isPro ? '#B388FF' : '#71717a' }}>Business</p>
             <p className="text-xl font-bold text-white mb-1">29,99 €</p>
-            <p className="text-[13px] text-gray-500 mb-3">/mes · Ilimitado</p>
+            <p className="text-[13px] text-gray-500 mb-3">{t('/mes · Ilimitado', '/mo · Unlimited')}</p>
             <ul className="space-y-1 text-[13px]">
-              <li className="text-gray-300">♾️ Ilimitado</li>
-              <li className="text-gray-300">👥 5 miembros</li>
-              <li className="text-gray-300">🏆 Todo incluido</li>
+              <li className="text-gray-300">{t('♾️ Ilimitado', '♾️ Unlimited')}</li>
+              <li className="text-gray-300">{t('👥 5 miembros', '👥 5 members')}</li>
+              <li className="text-gray-300">{t('🏆 Todo incluido', '🏆 Everything included')}</li>
             </ul>
           </button>
         </div>
@@ -154,7 +156,7 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
                 color: (selectedPlan === 'monthly' || selectedPlan === 'business_monthly') ? '#000' : '#a1a1aa',
               }}
             >
-              Mensual
+              {t('Mensual', 'Monthly')}
             </button>
             <button
               onClick={() => setSelectedPlan(isPro ? 'yearly' : 'business_yearly')}
@@ -164,7 +166,7 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
                 color: (selectedPlan === 'yearly' || selectedPlan === 'business_yearly') ? '#000' : '#a1a1aa',
               }}
             >
-              Anual
+              {t('Anual', 'Yearly')}
               <span className="rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ background: 'rgba(0,0,0,0.2)' }}>-17%</span>
             </button>
           </div>
@@ -172,8 +174,8 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
 
         {/* Price summary */}
         <div className="text-center mb-4">
-          {selectedPlan === 'yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>99,99€/año = 8,33€/mes</p>}
-          {selectedPlan === 'business_yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>299€/año = 24,92€/mes</p>}
+          {selectedPlan === 'yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>{t('99,99€/año = 8,33€/mes', '99.99€/yr = 8.33€/mo')}</p>}
+          {selectedPlan === 'business_yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>{t('299€/año = 24,92€/mes', '299€/yr = 24.92€/mo')}</p>}
         </div>
 
         {/* CTA */}
@@ -191,17 +193,17 @@ export default function LimitReachedModal({ onClose, reason = 'limit' }: LimitRe
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: '#000' }} />
-              Redirigiendo…
+              {t('Redirigiendo…', 'Redirecting…')}
             </span>
           ) : isPro ? (
-            `🚀 Actualizar a Pro — ${selectedPlan === 'yearly' ? '99,99 €/año' : '9,99 €/mes'}`
+            `🚀 ${t('Actualizar a Pro', 'Upgrade to Pro')} — ${selectedPlan === 'yearly' ? t('99,99 €/año', '99.99 €/yr') : t('9,99 €/mes', '9.99 €/mo')}`
           ) : (
-            `💎 Actualizar a Business — ${selectedPlan === 'business_yearly' ? '299 €/año' : '29,99 €/mes'}`
+            `💎 ${t('Actualizar a Business', 'Upgrade to Business')} — ${selectedPlan === 'business_yearly' ? t('299 €/año', '299 €/yr') : t('29,99 €/mes', '29.99 €/mo')}`
           )}
         </button>
 
         <p className="text-center text-[13px] text-gray-700 mt-3">
-          Cancela cuando quieras · Sin permanencia
+          {t('Cancela cuando quieras · Sin permanencia', 'Cancel anytime · No commitment')}
         </p>
       </div>
     </div>

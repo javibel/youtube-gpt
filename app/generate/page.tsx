@@ -210,7 +210,7 @@ export default function GeneratePage() {
   return (
     <DashboardShell>
 
-      {showLimitModal && <LimitReachedModal onClose={() => setShowLimitModal(false)} reason={modalReason} />}
+      {showLimitModal && <LimitReachedModal onClose={() => setShowLimitModal(false)} reason={modalReason} lang={lang} />}
 
       <div className="yv-page">
         <header className="yv-page-header">

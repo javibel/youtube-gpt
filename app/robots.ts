@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/dashboard', '/generate', '/admin', '/api/', '/profile', '/feedback', '/stripe/', '/reset-password', '/verify-email', '/seo-score', '/ab-test', '/research', '/competitors', '/best-time', '/retention', '/predictor', '/calendar', '/analytics', '/coach'],
+        disallow: ['/dashboard', '/generate', '/admin', '/api/', '/profile', '/feedback', '/stripe/', '/reset-password', '/verify-email', '/ab-test', '/research', '/competitors', '/best-time', '/retention', '/predictor', '/calendar', '/analytics', '/coach'],
       },
       // Block AI training bots (search indexing bots like Googlebot are allowed)
       ...[
