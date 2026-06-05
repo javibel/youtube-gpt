@@ -15,6 +15,7 @@ const RESEND_API = 'https://api.resend.com/emails';
 
 const FROM_ADDRESSES = {
   hello:   'YTubViral <hello@ytubviral.com>',
+  javier:  'Javier from YTubViral <hello@ytubviral.com>',
   support: 'YTubViral Support <support@ytubviral.com>',
   legal:   'YTubViral Legal <legal@ytubviral.com>',
   privacy: 'YTubViral Privacy <privacy@ytubviral.com>',

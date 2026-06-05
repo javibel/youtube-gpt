@@ -16,70 +16,55 @@ const { sendViaResend } = require('./resend');
 const TRACKER_PATH = path.join(__dirname, 'outreach-tracker.json');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-// Follow-up templates — reference the SEO analysis if contact has video data
+// Follow-up templates — short, personal, plain text
 const TEMPLATES_SEO = {
   es: {
-    subject: (videoTitle) => `Re: Tu video "${videoTitle.slice(0, 35)}..." — análisis SEO`,
+    subject: (videoTitle) => `Re: "${videoTitle.slice(0, 45)}"`,
     body: (name, seoScore) => `Hola ${name},
 
-Te escribí hace unos días con un análisis SEO de tu último video (${seoScore}/100). Espero que los tips te hayan servido.
+Te escribí hace unos días con un tip para tu video. ¿Llegaste a probarlo?
 
-Solo quería asegurarme de que no se perdió en el inbox. Si quieres el análisis completo con keywords, retención y más, regístrate en https://ytubviral.com — te activo Pro gratis 3 meses.
+Si quieres ver el análisis completo gratis (sin registro): https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-También puedes probar la herramienta de SEO Score gratis sin registrarte: https://ytubviral.com/features/seo-score
-
-Si no te interesa, sin problema. Gracias por tu tiempo.
-
-Javier Jimeno
-Fundador, YTubViral`,
+Javier`,
   },
   en: {
-    subject: (videoTitle) => `Re: Your video "${videoTitle.slice(0, 35)}..." — SEO analysis`,
-    body: (name, seoScore) => `Hi ${name},
+    subject: (videoTitle) => `Re: "${videoTitle.slice(0, 45)}"`,
+    body: (name, seoScore) => `Hey ${name},
 
-I sent you a quick SEO analysis of your latest video a few days ago (scored ${seoScore}/100). Hope the tips were useful.
+Sent you a quick tip about your video a few days ago — did you get a chance to try it?
 
-Just making sure it didn't get buried. If you'd like the full analysis with keywords, retention data and more, sign up at https://ytubviral.com — I'll activate Pro free for 3 months.
+If you want the full analysis for free (no signup): https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-You can also try the SEO Score tool free without signing up: https://ytubviral.com/features/seo-score
-
-If it's not for you, no worries at all. Thanks for your time.
-
-Javier Jimeno
-Founder, YTubViral`,
+Javier`,
   },
 };
 
+// Fallback for contacts without video data (skip follow-ups without SEO data)
 const TEMPLATES_FALLBACK = {
   es: {
-    subject: 'Re: Herramienta SEO gratuita para tu canal',
+    subject: 'Re: Tu canal de YouTube',
     body: (name) => `Hola ${name},
 
-Te escribí hace unos días sobre YTubViral. Solo quería asegurarme de que no se perdió.
+Te escribí hace unos días. Creé una herramienta gratuita que analiza el SEO de cualquier video de YouTube — sin registro:
 
-Puedes probar gratis nuestra herramienta de SEO Score — analiza cualquier video y te dice qué mejorar: https://ytubviral.com/features/seo-score
+https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-Si te interesa el paquete completo, te doy Pro gratis 3 meses. Solo regístrate y responde con tu email.
+¿Te sería útil?
 
-Si no es para ti, sin problema — agradezco tu tiempo.
-
-Javier Jimeno
-Fundador, YTubViral`,
+Javier`,
   },
   en: {
-    subject: 'Re: Free SEO tool for your channel',
-    body: (name) => `Hi ${name},
+    subject: 'Re: Your YouTube channel',
+    body: (name) => `Hey ${name},
 
-I reached out a few days ago about YTubViral. Just making sure it didn't get buried.
+Reached out a few days ago. Built a free tool that analyzes the SEO of any YouTube video — no signup needed:
 
-You can try our SEO Score tool free — analyze any video and get actionable tips: https://ytubviral.com/features/seo-score
+https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-If you'd like the full suite, I'll activate Pro free for 3 months. Just sign up and reply with your email.
+Would this be useful?
 
-No worries if it's not your thing — appreciate your time.
-
-Javier Jimeno
-Founder, YTubViral`,
+Javier`,
   },
 };
 
@@ -129,7 +114,7 @@ async function runFollowUp() {
         to: contact.email,
         subject,
         body,
-        from: 'hello',
+        from: 'javier',
         replyTo: 'hello@ytubviral.com',
       });
       console.log(`    ✓ Follow-up sent (id: ${result.id})`);

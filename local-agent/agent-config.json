@@ -147,11 +147,11 @@
   "_lastModified": "2026-06-04T04:28:06.977Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 24.70986274999999,
+    "amount": 24.703625749999986,
     "currency": "USD",
     "lastChecked": "2026-05-31T10:05:03.957Z",
-    "lastDeduction": "2026-06-04T11:04:33.564Z",
-    "totalSpentToday": 0.11785674999999998,
-    "spendDate": "2026-06-04"
+    "lastDeduction": "2026-06-05T11:02:16.507Z",
+    "totalSpentToday": 0.00440875,
+    "spendDate": "2026-06-05"
   }
 }

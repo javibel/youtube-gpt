@@ -15,126 +15,41 @@ const { sendViaResend } = require('./resend');
 const TRACKER_PATH = path.join(__dirname, 'outreach-tracker.json');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-// ── HTML email builder helpers ────────────────────────────────────────────────
-
-function scoreColor(score) {
-  if (score >= 80) return '#22c55e'; // green
-  if (score >= 60) return '#f59e0b'; // amber
-  if (score >= 40) return '#f97316'; // orange
-  return '#ef4444';                  // red
-}
-
-function scoreLabel(score, lang) {
-  if (lang === 'es') {
-    if (score >= 80) return 'Excelente';
-    if (score >= 60) return 'Bien';
-    if (score >= 40) return 'Mejorable';
-    return 'Necesita trabajo';
-  }
-  if (score >= 80) return 'Excellent';
-  if (score >= 60) return 'Good';
-  if (score >= 40) return 'Needs improvement';
-  return 'Needs work';
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function buildSeoHtml(lang, name, videoTitle, videoUrl, seoScore, tips) {
-  const isEs = lang === 'es';
-  const tipsHtml = tips.map((t, i) => {
-    const tipText = escHtml(isEs ? t.tip_es : t.tip_en);
-    return `<p style="margin:0 0 8px;color:#333;font-size:15px;line-height:1.5;">${i + 1}. ${tipText}</p>`;
-  }).join('');
-
-  // Minimal plain-looking HTML — no headers, no gradients, looks like a personal email
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#333;">
-<p>${isEs ? `Hola ${escHtml(name)},` : `Hey ${escHtml(name)},`}</p>
-<p>${isEs
-  ? `Soy Javier &mdash; estoy construyendo una herramienta de SEO para YouTube y mientras la testeaba analic&eacute; tu video &ldquo;<a href="${escHtml(videoUrl)}" style="color:#333;">${escHtml(videoTitle)}</a>&rdquo;.`
-  : `I'm Javier &mdash; building a YouTube SEO tool and was testing it on channels in your niche. Ran your video &ldquo;<a href="${escHtml(videoUrl)}" style="color:#333;">${escHtml(videoTitle)}</a>&rdquo; through it.`}</p>
-<p><strong>${isEs ? `Resultado: ${seoScore}/100.` : `Score: ${seoScore}/100.`}</strong> ${isEs ? 'Los 3 puntos donde m&aacute;s podr&iacute;as mejorar:' : 'Top 3 things that would move the needle:'}</p>
-${tipsHtml}
-<p>${isEs ? 'Son cambios r&aacute;pidos que pueden mover el ranking.' : 'Quick fixes that can actually impact your rankings.'}</p>
-<p>${isEs
-  ? 'Puedes analizar cualquier video gratis aqu&iacute;: <a href="https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/seo-score</a>'
-  : 'You can analyze any video for free here: <a href="https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/seo-score</a>'}</p>
-<p>${isEs
-  ? 'Si quieres acceso a la herramienta completa (keywords, competidores, ideas), te doy Pro gratis 1 mes (normalmente 9,99&euro;/mes). Solo dime.'
-  : 'If you want the full toolkit (keywords, competitors, content ideas), I\'ll give you Pro free for 1 month (normally $10/mo). Just say the word.'}</p>
-<p>Javier<br><span style="color:#999;font-size:13px;"><a href="https://ytubviral.com?utm_source=outreach&utm_medium=email" style="color:#999;">ytubviral.com</a></span></p>
-</body></html>`;
-}
-
-function buildFallbackHtml(lang, name, topic) {
-  const isEs = lang === 'es';
-  // Minimal plain-looking HTML — looks like a personal email, not a newsletter
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#333;">
-<p>${isEs ? `Hola ${escHtml(name)},` : `Hey ${escHtml(name)},`}</p>
-<p>${isEs
-  ? `Soy Javier &mdash; estoy construyendo una herramienta de SEO para YouTube. Vi tu canal en el nicho de ${escHtml(topic)} y me pareci&oacute; interesante.`
-  : `I'm Javier &mdash; building a YouTube SEO tool. Came across your channel in the ${escHtml(topic)} space and thought you might find this useful.`}</p>
-<p>${isEs
-  ? `Tenemos un analizador SEO gratuito que te dice exactamente qu&eacute; mejorar en cada video (t&iacute;tulo, descripci&oacute;n, tags) para posicionarte mejor. Si quieres probarlo: <a href="https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/features/seo-score</a>`
-  : `We have a free SEO analyzer that tells you exactly what to fix on each video (title, description, tags) to rank better. Try it if you want: <a href="https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email" style="color:#dc2626;">ytubviral.com/features/seo-score</a>`}</p>
-<p>${isEs
-  ? 'Tambi&eacute;n puedo darte acceso Pro gratis 1 mes si te interesa &mdash; keywords, an&aacute;lisis de competidores, ideas de contenido.'
-  : 'I can also give you full Pro access free for 1 month if you\'re interested &mdash; keywords, competitor analysis, content ideas.'}</p>
-<p><strong>${isEs ? '&iquest;Te ser&iacute;a &uacute;til algo as&iacute;?' : 'Would something like this be useful for you?'}</strong></p>
-<p>Javier<br><span style="color:#999;font-size:13px;"><a href="https://ytubviral.com?utm_source=outreach&utm_medium=email" style="color:#999;">ytubviral.com</a></span></p>
-</body></html>`;
-}
-
-// ── Plain text versions (email clients that don't render HTML) ────────────────
+// ── Plain text templates (no HTML — personal emails get higher reply rates) ──
 
 const TEMPLATES_SEO = {
   es: {
-    subject: (videoTitle, seoScore) => `${seoScore}/100 — análisis SEO de "${videoTitle.slice(0, 40)}"`,
+    subject: (videoTitle) => `Idea rápida para "${videoTitle.slice(0, 45)}"`,
     body: (name, videoTitle, videoUrl, seoScore, tips) => {
-      const tipsText = tips.map((t, i) => `${i + 1}. ${t.tip_es}`).join('\n');
+      const topTip = tips[0] ? tips[0].tip_es : 'Optimizar el título para incluir tu keyword principal';
       return `Hola ${name},
 
-Soy Javier, estoy construyendo una herramienta de SEO para YouTube y mientras la testeaba analicé tu video "${videoTitle}".
+Vi tu video "${videoTitle}" y lo pasé por una herramienta SEO que estoy creando. El cambio más rápido que podrías hacer: ${topTip.toLowerCase()}.
 
-Resultado: ${seoScore}/100. Los 3 puntos donde más podrías mejorar:
+Si quieres ver el análisis completo (puntuación, keywords, comparativa), puedes probarlo gratis aquí — sin registro:
 
-${tipsText}
+https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-Son cambios rápidos que pueden mover el ranking.
+¿Te resulta útil?
 
-Puedes analizar cualquier video gratis aquí: https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
-
-Si quieres la herramienta completa (keywords, competidores, ideas), te doy Pro gratis 1 mes (normalmente 9,99€/mes). Solo dime.
-
-Javier
-https://ytubviral.com?utm_source=outreach&utm_medium=email`;
+Javier`;
     },
   },
   en: {
-    subject: (videoTitle, seoScore) => `${seoScore}/100 — SEO analysis of "${videoTitle.slice(0, 40)}"`,
+    subject: (videoTitle) => `Quick tip for "${videoTitle.slice(0, 45)}"`,
     body: (name, videoTitle, videoUrl, seoScore, tips) => {
-      const tipsText = tips.map((t, i) => `${i + 1}. ${t.tip_en}`).join('\n');
+      const topTip = tips[0] ? tips[0].tip_en : 'Optimize your title to include your main keyword';
       return `Hey ${name},
 
-I'm Javier — building a YouTube SEO tool and was testing it on channels in your niche. Ran your video "${videoTitle}" through it.
+Watched your video "${videoTitle}" and ran it through a YouTube SEO tool I'm building. The quickest win I spotted: ${topTip.toLowerCase()}.
 
-Score: ${seoScore}/100. Top 3 things that would move the needle:
+If you want the full breakdown (score, keywords, competitor comparison), you can try it free here — no signup needed:
 
-${tipsText}
+https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-Quick fixes that can actually impact your rankings.
+Would this be useful?
 
-You can analyze any video for free here: https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
-
-If you want the full toolkit (keywords, competitors, content ideas), I'll give you Pro free for 1 month (normally $10/mo). Just say the word.
-
-Javier
-https://ytubviral.com?utm_source=outreach&utm_medium=email`;
+Javier`;
     },
   },
 };
@@ -143,33 +58,27 @@ https://ytubviral.com?utm_source=outreach&utm_medium=email`;
 const TEMPLATES_FALLBACK = {
   es: {
     subject: 'Pregunta rápida sobre tu canal',
-    body: (name, topic) => `Hola ${name},
+    body: (name) => `Hola ${name},
 
-Soy Javier — estoy construyendo una herramienta de SEO para YouTube. Vi tu canal en el nicho de ${topic} y me pareció interesante.
+Estoy creando una herramienta que analiza el SEO de cualquier video de YouTube y te dice qué mejorar para posicionarte mejor. Es gratis y sin registro:
 
-Tenemos un analizador SEO gratuito que te dice exactamente qué mejorar en cada video (título, descripción, tags) para posicionarte mejor. Si quieres probarlo: https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email
+https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-También puedo darte acceso Pro gratis 1 mes si te interesa — keywords, análisis de competidores, ideas de contenido.
+¿Te sería útil algo así para tu canal?
 
-¿Te sería útil algo así?
-
-Javier
-ytubviral.com`,
+Javier`,
   },
   en: {
     subject: 'Quick question about your channel',
-    body: (name, topic) => `Hey ${name},
+    body: (name) => `Hey ${name},
 
-I'm Javier — building a YouTube SEO tool. Came across your channel in the ${topic} space and thought you might find this useful.
+I'm building a tool that analyzes the SEO of any YouTube video and tells you exactly what to fix to rank better. It's free, no signup needed:
 
-We have a free SEO analyzer that tells you exactly what to fix on each video (title, description, tags) to rank better. Try it if you want: https://ytubviral.com/features/seo-score?utm_source=outreach&utm_medium=email
+https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
 
-I can also give you full Pro access free for 1 month if you're interested — keywords, competitor analysis, content ideas.
+Would something like this be useful for your channel?
 
-Would something like this be useful for you?
-
-Javier
-ytubviral.com`,
+Javier`,
   },
 };
 
@@ -199,9 +108,8 @@ async function runOutreachSend() {
     }
 
     const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
-    const subject = tpl.subject(contact.latestVideo.title, contact.seoScore);
+    const subject = tpl.subject(contact.latestVideo.title);
     const body = tpl.body(firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
-    const html = buildSeoHtml(lang, firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
     console.log(`  → ${contact.name} <${contact.email}> [${lang}] SEO: ${contact.seoScore}/100`);
 
     if (dryRun) {
@@ -214,8 +122,7 @@ async function runOutreachSend() {
         to: contact.email,
         subject,
         body,
-        html,
-        from: 'hello',
+        from: 'javier',
         replyTo: 'hello@ytubviral.com',
         bcc: process.env.OWNER_EMAIL || 'ytbeviral@gmail.com',
       });

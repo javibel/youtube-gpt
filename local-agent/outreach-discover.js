@@ -28,94 +28,49 @@ const YT_SEARCH = 'https://www.googleapis.com/youtube/v3/search';
 const YT_CHANNELS = 'https://www.googleapis.com/youtube/v3/channels';
 const YT_VIDEOS = 'https://www.googleapis.com/youtube/v3/videos';
 
-// Niches to search — rotates daily so we don't repeat queries
+// Niches to search — ONLY creators who actively care about YouTube growth/SEO
+// Purged: ASMR, Pets, Unboxing, Beauty, Cooking, Family, BookTube, Reactions,
+// DIY, Art, Music, Sports, Animation, Travel, Photography, Language, Automotive,
+// Fitness, Lifestyle, Real Estate (0% reply rate on 104 emails = wrong audience)
 const SEARCH_QUERIES = [
-  // English — SEO & growth
+  // English — YouTube growth & SEO (core audience)
   { q: 'youtube seo tips for small channels', lang: 'en', niche: 'YouTube SEO' },
   { q: 'how to grow on youtube 2026', lang: 'en', niche: 'YouTube growth' },
   { q: 'youtube algorithm explained small creators', lang: 'en', niche: 'YouTube strategy' },
-  { q: 'youtube thumbnail tips beginners', lang: 'en', niche: 'YouTube thumbnails' },
   { q: 'youtube keyword research tutorial', lang: 'en', niche: 'YouTube SEO' },
   { q: 'how to get more views on youtube', lang: 'en', niche: 'YouTube growth' },
-  { q: 'youtube content ideas for beginners', lang: 'en', niche: 'YouTube content' },
   { q: 'youtube analytics explained for beginners', lang: 'en', niche: 'YouTube analytics' },
   { q: 'best youtube tools for small creators 2026', lang: 'en', niche: 'YouTube tools' },
-  { q: 'youtube shorts strategy grow channel', lang: 'en', niche: 'YouTube Shorts' },
   { q: 'youtube title optimization tips', lang: 'en', niche: 'YouTube SEO' },
   { q: 'how to rank videos on youtube', lang: 'en', niche: 'YouTube SEO' },
-  { q: 'youtube niche ideas 2026', lang: 'en', niche: 'YouTube content' },
   { q: 'get first 1000 subscribers youtube', lang: 'en', niche: 'YouTube growth' },
   { q: 'youtube tags tutorial for beginners', lang: 'en', niche: 'YouTube SEO' },
-  { q: 'faceless youtube channel ideas', lang: 'en', niche: 'YouTube content' },
   { q: 'youtube monetization tips small channel', lang: 'en', niche: 'YouTube monetization' },
   { q: 'youtube description optimization seo', lang: 'en', niche: 'YouTube SEO' },
-  // Spanish
+  { q: 'youtube thumbnail tips beginners', lang: 'en', niche: 'YouTube thumbnails' },
+  { q: 'youtube shorts strategy grow channel', lang: 'en', niche: 'YouTube Shorts' },
+  // English — professional creators (high email disclosure, care about tools)
+  { q: 'youtube automation tools review', lang: 'en', niche: 'YouTube Tools' },
+  { q: 'youtube coach grow channel consulting', lang: 'en', niche: 'YouTube Coaching' },
+  { q: 'video editing tutorial premiere pro', lang: 'en', niche: 'Video Editing' },
+  { q: 'social media manager youtube tips', lang: 'en', niche: 'Social Media' },
+  { q: 'marketing agency youtube channel', lang: 'en', niche: 'Marketing' },
+  { q: 'online course creator youtube', lang: 'en', niche: 'Course Creator' },
+  { q: 'saas product demo youtube', lang: 'en', niche: 'SaaS' },
+  { q: 'business youtube channel for entrepreneurs', lang: 'en', niche: 'Business' },
+  { q: 'coding programming tutorial youtube', lang: 'en', niche: 'Programming' },
+  // Spanish — YouTube growth & SEO
   { q: 'como crecer en youtube 2026', lang: 'es', niche: 'Crecimiento YouTube' },
   { q: 'seo youtube tutorial español', lang: 'es', niche: 'YouTube SEO' },
   { q: 'como conseguir más visitas youtube', lang: 'es', niche: 'Crecimiento YouTube' },
   { q: 'herramientas para youtubers', lang: 'es', niche: 'Herramientas YouTube' },
   { q: 'tips para creadores de contenido', lang: 'es', niche: 'Creación contenido' },
-  { q: 'como hacer miniaturas youtube', lang: 'es', niche: 'Miniaturas YouTube' },
   { q: 'palabras clave youtube', lang: 'es', niche: 'YouTube SEO' },
   { q: 'algoritmo youtube 2026 como funciona', lang: 'es', niche: 'Algoritmo YouTube' },
   { q: 'youtube shorts como crecer', lang: 'es', niche: 'YouTube Shorts' },
   { q: 'ganar dinero youtube canal pequeño', lang: 'es', niche: 'Monetización YouTube' },
-  { q: 'ideas para videos youtube 2026', lang: 'es', niche: 'Ideas contenido' },
   { q: 'primeros 1000 suscriptores youtube', lang: 'es', niche: 'Crecimiento YouTube' },
-  // Expanded niches — creators who could benefit from SEO tools
-  { q: 'gaming youtube channel tips grow', lang: 'en', niche: 'Gaming' },
-  { q: 'tech review channel tips youtube', lang: 'en', niche: 'Tech reviews' },
-  { q: 'cooking channel tips grow youtube', lang: 'en', niche: 'Cooking' },
-  { q: 'fitness youtube channel tips beginners', lang: 'en', niche: 'Fitness' },
-  { q: 'education channel youtube tips', lang: 'en', niche: 'Education' },
-  { q: 'lifestyle vlog tips grow youtube', lang: 'en', niche: 'Lifestyle' },
-  { q: 'music producer youtube channel grow', lang: 'en', niche: 'Music' },
-  { q: 'podcast clips youtube channel strategy', lang: 'en', niche: 'Podcasting' },
-  { q: 'como crecer canal gaming youtube', lang: 'es', niche: 'Gaming ES' },
-  { q: 'canal de cocina youtube consejos', lang: 'es', niche: 'Cocina' },
-  { q: 'canal educativo youtube crecer', lang: 'es', niche: 'Educación' },
-  { q: 'vlogs en español como empezar youtube', lang: 'es', niche: 'Vlogs ES' },
-  // Wave 2 — specific small-creator niches (more likely to have email in description)
-  { q: 'diy crafts tutorial small channel', lang: 'en', niche: 'DIY/Crafts' },
-  { q: 'personal finance youtube beginner', lang: 'en', niche: 'Finance' },
-  { q: 'travel vlog tips small youtuber', lang: 'en', niche: 'Travel' },
-  { q: 'beauty makeup tutorial small creator', lang: 'en', niche: 'Beauty' },
-  { q: 'photography tips youtube channel', lang: 'en', niche: 'Photography' },
-  { q: 'language learning youtube channel tips', lang: 'en', niche: 'Language' },
-  { q: 'book review booktube small channel', lang: 'en', niche: 'BookTube' },
-  { q: 'productivity tips youtube creator', lang: 'en', niche: 'Productivity' },
-  { q: 'art drawing tutorial youtube grow', lang: 'en', niche: 'Art' },
-  { q: 'real estate youtube channel beginner', lang: 'en', niche: 'Real Estate' },
-  { q: 'parenting family vlog youtube small', lang: 'en', niche: 'Family' },
-  { q: 'car review automotive youtube channel', lang: 'en', niche: 'Automotive' },
-  { q: 'pet dog cat youtube channel tips', lang: 'en', niche: 'Pets' },
-  { q: 'unboxing haul youtube small creator', lang: 'en', niche: 'Unboxing' },
-  { q: 'motivational self improvement youtube', lang: 'en', niche: 'Self-help' },
-  { q: 'coding programming tutorial youtube', lang: 'en', niche: 'Programming' },
-  { q: 'asmr youtube channel tips beginners', lang: 'en', niche: 'ASMR' },
-  { q: 'reaction video youtube small channel', lang: 'en', niche: 'Reactions' },
-  // Wave 2 ES — nichos específicos
-  { q: 'canal manualidades youtube crecer', lang: 'es', niche: 'Manualidades' },
-  { q: 'finanzas personales youtube canal pequeño', lang: 'es', niche: 'Finanzas' },
-  { q: 'canal de viajes youtube como empezar', lang: 'es', niche: 'Viajes' },
-  { q: 'maquillaje belleza youtube canal pequeño', lang: 'es', niche: 'Belleza' },
-  { q: 'canal deportes youtube crecer', lang: 'es', niche: 'Deportes' },
-  { q: 'canal de música youtube consejos', lang: 'es', niche: 'Música' },
   { q: 'programación tutorial youtube canal', lang: 'es', niche: 'Programación' },
-  { q: 'animación youtube canal pequeño tips', lang: 'es', niche: 'Animación' },
-  // Wave 3 — professional niches with higher email disclosure rate
-  { q: 'business youtube channel for entrepreneurs', lang: 'en', niche: 'Business' },
-  { q: 'marketing agency youtube channel', lang: 'en', niche: 'Marketing' },
-  { q: 'saas product demo youtube', lang: 'en', niche: 'SaaS' },
-  { q: 'freelancer youtube tips clients', lang: 'en', niche: 'Freelancing' },
-  { q: 'ecommerce dropshipping youtube channel', lang: 'en', niche: 'Ecommerce' },
-  { q: 'youtube automation tools review', lang: 'en', niche: 'YouTube Tools' },
-  { q: 'social media manager youtube tips', lang: 'en', niche: 'Social Media' },
-  { q: 'video editing tutorial premiere pro', lang: 'en', niche: 'Video Editing' },
-  { q: 'youtube coach grow channel consulting', lang: 'en', niche: 'YouTube Coaching' },
-  { q: 'digital nomad youtube channel', lang: 'en', niche: 'Digital Nomad' },
-  { q: 'online course creator youtube', lang: 'en', niche: 'Course Creator' },
-  { q: 'affiliate marketing youtube beginner', lang: 'en', niche: 'Affiliate Marketing' },
 ];
 
 // Max new contacts to add per run (6 runs/day × 10 = ~60 new contacts/day)
@@ -220,50 +175,74 @@ function generateSeoTips(video, score) {
 
 // ── Fetch latest video from a channel ──────────────────────────────────────
 
-async function getLatestVideo(channelId, channelSubs) {
+async function getBestVideoForOutreach(channelId, channelSubs) {
   try {
-    // Search for latest video from this channel (costs 100 quota units)
+    // Fetch 5 most recent videos (costs 100 quota units for search)
     const searchData = await ytFetch(YT_SEARCH, {
       key: YT_API_KEY,
       part: 'snippet',
       channelId,
       type: 'video',
       order: 'date',
-      maxResults: 1,
+      maxResults: 5,
     });
 
     if (!searchData.items || searchData.items.length === 0) return null;
 
-    const videoId = searchData.items[0].id.videoId;
-    if (!videoId) return null;
+    const videoIds = searchData.items
+      .map(item => item.id.videoId)
+      .filter(Boolean);
+    if (videoIds.length === 0) return null;
 
-    // Get full video details (costs 1 quota unit per video)
+    // Get full details for all videos in one batch request (costs 1 unit per video)
     const videoData = await ytFetch(YT_VIDEOS, {
       key: YT_API_KEY,
       part: 'snippet,statistics',
-      id: videoId,
+      id: videoIds.join(','),
     });
 
     if (!videoData.items || videoData.items.length === 0) return null;
 
-    const v = videoData.items[0];
-    const snippet = v.snippet || {};
-    const stats = v.statistics || {};
+    // Score each video and pick the one with WORST SEO (most room for improvement)
+    // Skip Shorts (<60s title patterns) and sponsored/promo videos
+    const candidates = [];
+    for (const v of videoData.items) {
+      const snippet = v.snippet || {};
+      const stats = v.statistics || {};
+      const title = snippet.title || '';
 
-    return {
-      videoId,
-      title: snippet.title || '',
-      description: (snippet.description || '').slice(0, 1000),
-      tags: snippet.tags || [],
-      viewCount: parseInt(stats.viewCount || '0', 10),
-      likeCount: parseInt(stats.likeCount || '0', 10),
-      commentCount: parseInt(stats.commentCount || '0', 10),
-      publishedAt: snippet.publishedAt || '',
-      hasThumbnail: !!(snippet.thumbnails?.maxres || snippet.thumbnails?.high),
-      channelSubs: channelSubs || 0,
-    };
+      // Skip likely Shorts and sponsored content
+      if (title.length < 15) continue;
+      if (/\b(#shorts|#short)\b/i.test(title)) continue;
+      if (/\b(SHOP|USE CODE|DISCOUNT|GIVEAWAY|SPONSORED)\b/i.test(title)) continue;
+      if (/\b(COMPRA|CÓDIGO|DESCUENTO|SORTEO|PATROCINADO)\b/i.test(title)) continue;
+
+      const video = {
+        videoId: v.id,
+        title,
+        description: (snippet.description || '').slice(0, 1000),
+        tags: snippet.tags || [],
+        viewCount: parseInt(stats.viewCount || '0', 10),
+        likeCount: parseInt(stats.likeCount || '0', 10),
+        commentCount: parseInt(stats.commentCount || '0', 10),
+        publishedAt: snippet.publishedAt || '',
+        hasThumbnail: !!(snippet.thumbnails?.maxres || snippet.thumbnails?.high),
+        channelSubs: channelSubs || 0,
+      };
+
+      video._seoScore = quickSeoScore(video);
+      candidates.push(video);
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Pick the video with worst SEO score (most actionable tips to offer)
+    candidates.sort((a, b) => a._seoScore - b._seoScore);
+    const best = candidates[0];
+    delete best._seoScore;
+    return best;
   } catch (err) {
-    console.error(`[outreach-discover] Failed to get latest video for ${channelId}: ${err.message}`);
+    console.error(`[outreach-discover] Failed to get videos for ${channelId}: ${err.message}`);
     return null;
   }
 }
@@ -645,7 +624,7 @@ async function runDiscovery() {
 
   for (const c of toAdd) {
     try {
-      const video = await getLatestVideo(c.channelId, c.subs);
+      const video = await getBestVideoForOutreach(c.channelId, c.subs);
       if (video) {
         c.latestVideo = {
           videoId: video.videoId,
