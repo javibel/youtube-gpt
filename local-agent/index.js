@@ -379,7 +379,7 @@ cron.schedule('0 6 * * *', async () => {
 
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');
-console.log('  Twitter brand: DISABLED (manual)');
+console.log('  Twitter brand: 10:30 daily (Europe/Madrid) — Puppeteer + infographic');
 console.log(`  Personas morning: ${personaHour1}:${String(personaMin1).padStart(2, '0')} (Europe/Madrid)`);
 console.log(`  Personas evening: ${personaHour2}:${String(personaMin2).padStart(2, '0')} (Europe/Madrid)`);
 console.log(`  Follow-up morning: ${followupHour1}:${String(followupMin1).padStart(2, '0')} (Europe/Madrid)`);
