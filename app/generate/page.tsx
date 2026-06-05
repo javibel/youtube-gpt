@@ -101,7 +101,7 @@ export default function GeneratePage() {
   const inputs: string[] = (currentTpl as { inputs: string[] })?.inputs ?? [];
 
   const handleSelect = (key: string) => {
-    if (key === 'video_preview' && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
+    if ((key === 'video_preview' || key === 'thumbnail') && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
     const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean };
     if (tpl?.proOnly && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
     setSelectedTemplate(key);
@@ -239,7 +239,7 @@ export default function GeneratePage() {
             {([...Object.keys(TEMPLATES), 'video_preview'] as string[]).map((key) => {
               const tplMeta = TPL_META[key] ?? { icon: '/icons/description.webp', color: '#e84d5b', est: '~' };
               const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean } | undefined;
-              const locked = key === 'video_preview' ? !isPro : (tpl?.proOnly && !isPro);
+              const locked = (key === 'video_preview' || key === 'thumbnail') ? !isPro : (tpl?.proOnly && !isPro);
               const active = selectedTemplate === key;
               const isVideoPreview = key === 'video_preview';
               return (

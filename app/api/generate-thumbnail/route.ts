@@ -40,6 +40,17 @@ export async function POST(request: Request) {
 
     const plan = await getUserPlan(user.id);
     const isPro = isPaid(plan);
+
+    if (!isPro) {
+      return Response.json(
+        { error: lang === 'en'
+          ? 'AI Thumbnails are available on Pro and Business plans'
+          : 'Las miniaturas con IA están disponibles en los planes Pro y Business',
+          limitReached: true },
+        { status: 403 }
+      );
+    }
+
     const limit = getLimits(plan).generationsPerMonth;
 
     const startOfMonth = new Date();
