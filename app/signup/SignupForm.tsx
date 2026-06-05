@@ -40,10 +40,10 @@ export default function SignupForm() {
       setError(t('Las contraseñas no coinciden', 'Passwords do not match'));
       return;
     }
-    if (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) {
+    if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
       setError(t(
-        'Mínimo 10 caracteres, con mayúscula, minúscula, número y carácter especial',
-        'At least 10 characters, with uppercase, lowercase, number and special character'
+        'Mínimo 8 caracteres, con al menos 1 letra y 1 número',
+        'At least 8 characters, with at least 1 letter and 1 number'
       ));
       return;
     }
@@ -148,9 +148,9 @@ export default function SignupForm() {
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Contraseña', 'Password')}</label>
               <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm"
-                placeholder={t('Mínimo 10 caracteres', 'At least 10 characters')} required />
+                placeholder={t('Mínimo 8 caracteres', 'At least 8 characters')} required />
               <p className="font-mono-jb text-[11px] mt-1.5" style={{ color: 'var(--yv-text-4)' }}>
-                {t('Mayúscula, minúscula, número y carácter especial', 'Uppercase, lowercase, number & special character')}
+                {t('Al menos 1 letra y 1 número', 'At least 1 letter and 1 number')}
               </p>
             </div>
 

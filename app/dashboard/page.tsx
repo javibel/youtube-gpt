@@ -800,7 +800,59 @@ function handleCopy(id: string, out: string) {
             </div>
           )}
 
-          {/* History */}
+          {/* History — or quick-start cards for new users */}
+          {(stats?.totalGenerations ?? 0) === 0 ? (
+            <div>
+              <div className="mb-4">
+                <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>
+                  {t('EMPIEZA AQUI', 'START HERE')}
+                </p>
+                <h2 className="font-display font-bold text-2xl">{t('Genera tu primer titulo viral', 'Generate your first viral title')}</h2>
+                <p className="text-sm mt-1" style={{ color: 'var(--yv-text-3)' }}>
+                  {t('Empieza con una de estas herramientas', 'Start with one of these tools')}
+                </p>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  {
+                    href: '/generate',
+                    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e84d5b" strokeWidth="2"><path d="M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
+                    color: '#e84d5b',
+                    title: { es: 'Generar titulo', en: 'Generate title' },
+                    desc: { es: 'Escribe tu tema y obtén títulos optimizados para clics y SEO en 8 segundos', en: 'Enter your topic and get click & SEO optimized titles in 8 seconds' },
+                  },
+                  {
+                    href: '/seo-score',
+                    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+                    color: '#00E5FF',
+                    title: { es: 'SEO Score', en: 'SEO Score' },
+                    desc: { es: 'Analiza cualquier video de YouTube y obtén una puntuación de 0 a 100 con sugerencias', en: 'Analyze any YouTube video and get a score from 0 to 100 with suggestions' },
+                  },
+                  {
+                    href: '/generate?template=thumbnail',
+                    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7CFF00" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,
+                    color: '#7CFF00',
+                    title: { es: 'Miniatura con IA', en: 'AI Thumbnail' },
+                    desc: { es: 'Genera miniaturas llamativas con inteligencia artificial para tu próximo video', en: 'Generate eye-catching AI thumbnails for your next video' },
+                  },
+                ].map((card, i) => (
+                  <a key={i} href={card.href}
+                    className="yv-card p-6 block group hover:border-[var(--yv-brand)] transition-colors">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                      style={{ background: `${card.color}15`, border: `1px solid ${card.color}30` }}>
+                      {card.icon}
+                    </div>
+                    <h3 className="font-display font-bold text-base text-white mb-1">{card.title[lang]}</h3>
+                    <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>{card.desc[lang]}</p>
+                    <span className="inline-flex items-center gap-1.5 mt-3 font-mono-jb text-[13px] group-hover:gap-2.5 transition-all"
+                      style={{ color: card.color }}>
+                      {t('Probar', 'Try it')} →
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : (
           <div>
             <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
               <div>
@@ -821,7 +873,7 @@ function handleCopy(id: string, out: string) {
             <div className="yv-card overflow-hidden" style={{ borderRadius: '14px' }}>
               {!filtered.length ? (
                 <div className="text-center py-12">
-                  <p className="text-sm mb-3" style={{ color: 'var(--yv-text-4)' }}>{t('Aún no hay generaciones', 'No generations yet')}</p>
+                  <p className="text-sm mb-3" style={{ color: 'var(--yv-text-4)' }}>{t('Aún no hay generaciones de este tipo', 'No generations of this type yet')}</p>
                   <a href="/generate" className="btn-offset px-5 py-2.5 text-sm font-display gap-2">
                     <svg width={13} height={13} viewBox="0 0 24 24" fill="white"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
                     {t('Empezar a generar', 'Start generating')}
@@ -937,6 +989,7 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
           </div>
+          )}
 
           {/* Review */}
           <div className="yv-card p-6">

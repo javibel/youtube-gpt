@@ -1,28 +1,18 @@
 export function validatePassword(password: string, lang: 'es' | 'en' = 'es'): string | null {
-  if (password.length < 10) {
+  if (password.length < 8) {
     return lang === 'en'
-      ? 'Password must be at least 10 characters'
-      : 'La contraseña debe tener al menos 10 caracteres';
+      ? 'Password must be at least 8 characters'
+      : 'La contraseña debe tener al menos 8 caracteres';
   }
-  if (!/[a-z]/.test(password)) {
+  if (!/[a-zA-Z]/.test(password)) {
     return lang === 'en'
-      ? 'Password must contain at least one lowercase letter'
-      : 'La contraseña debe contener al menos una letra minúscula';
-  }
-  if (!/[A-Z]/.test(password)) {
-    return lang === 'en'
-      ? 'Password must contain at least one uppercase letter'
-      : 'La contraseña debe contener al menos una letra mayúscula';
+      ? 'Password must contain at least one letter'
+      : 'La contraseña debe contener al menos una letra';
   }
   if (!/[0-9]/.test(password)) {
     return lang === 'en'
       ? 'Password must contain at least one number'
       : 'La contraseña debe contener al menos un número';
-  }
-  if (!/[^a-zA-Z0-9]/.test(password)) {
-    return lang === 'en'
-      ? 'Password must contain at least one special character'
-      : 'La contraseña debe contener al menos un carácter especial';
   }
   return null;
 }

@@ -57,10 +57,10 @@ export default function ProfilePage() {
       setPwdError(t('Las contraseñas no coinciden', 'Passwords do not match'));
       return;
     }
-    if (newPwd.length < 10 || !/[a-z]/.test(newPwd) || !/[A-Z]/.test(newPwd) || !/[0-9]/.test(newPwd) || !/[^a-zA-Z0-9]/.test(newPwd)) {
+    if (newPwd.length < 8 || !/[a-zA-Z]/.test(newPwd) || !/[0-9]/.test(newPwd)) {
       setPwdError(t(
-        'Mínimo 10 caracteres, con mayúscula, minúscula, número y carácter especial',
-        'At least 10 characters, with uppercase, lowercase, number and special character'
+        'Mínimo 8 caracteres, con al menos 1 letra y 1 número',
+        'At least 8 characters, with at least 1 letter and 1 number'
       ));
       return;
     }
