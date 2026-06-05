@@ -829,11 +829,11 @@ function handleCopy(id: string, out: string) {
                     desc: { es: 'Analiza cualquier video de YouTube y obtén una puntuación de 0 a 100 con sugerencias', en: 'Analyze any YouTube video and get a score from 0 to 100 with suggestions' },
                   },
                   {
-                    href: '/generate?template=thumbnail',
-                    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7CFF00" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,
+                    href: '/research',
+                    icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7CFF00" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>,
                     color: '#7CFF00',
-                    title: { es: 'Miniatura con IA', en: 'AI Thumbnail' },
-                    desc: { es: 'Genera miniaturas llamativas con inteligencia artificial para tu próximo video', en: 'Generate eye-catching AI thumbnails for your next video' },
+                    title: { es: 'Keywords', en: 'Keywords' },
+                    desc: { es: 'Descubre qué busca la gente en YouTube y encuentra ideas de contenido con volumen real', en: 'Discover what people search on YouTube and find content ideas with real volume' },
                   },
                 ].map((card, i) => (
                   <a key={i} href={card.href}
