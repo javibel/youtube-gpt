@@ -103,7 +103,7 @@ export default function EmbedPage() {
             {t('¿Quieres el toolkit completo?', 'Want the full toolkit?')}
           </p>
           <p className="font-mono-jb text-sm mb-4" style={{ color: 'var(--yv-text-3)' }}>
-            {t('14 herramientas de IA para optimizar tu canal de YouTube.', '14 AI tools to optimize your YouTube channel.')}
+            {t('SEO Score, IA personalizada y más para optimizar tu canal.', 'SEO Score, personalized AI, and more to optimize your channel.')}
           </p>
           <a href="/signup" className="btn-offset inline-flex px-8 py-3.5 text-sm font-display font-bold">
             {t('Crear cuenta gratis →', 'Create free account →')}
