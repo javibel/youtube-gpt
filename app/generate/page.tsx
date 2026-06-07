@@ -70,6 +70,7 @@ export default function GeneratePage() {
   const [facePhoto, setFacePhoto] = useState<File | null>(null);
   const [facePhotoPreview, setFacePhotoPreview] = useState<string>('');
   const [facePosition, setFacePosition] = useState<'left' | 'right'>('right');
+  const [removingBg, setRemovingBg] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -400,27 +401,45 @@ export default function GeneratePage() {
                   {t('Tu foto (opcional)', 'Your photo (optional)')}
                 </p>
                 <p className="text-[13px] mb-4" style={{ color: 'var(--yv-text-4)' }}>
-                  {t('Sube tu foto para incluirla en la miniatura. PNG con fondo transparente recomendado.', 'Upload your photo to include it in the thumbnail. Transparent PNG recommended.')}
+                  {t('Sube tu foto y eliminaremos el fondo automáticamente.', 'Upload your photo and we\'ll remove the background automatically.')}
                 </p>
                 <div className="flex items-start gap-4 flex-wrap">
-                  <label className="flex flex-col items-center justify-center w-32 h-32 rounded-xl border-2 border-dashed cursor-pointer hover:border-white/40 transition overflow-hidden" style={{ borderColor: facePhotoPreview ? '#7CFF00' : 'var(--yv-border)', background: 'var(--yv-bg-0)' }}>
-                    {facePhotoPreview ? (
+                  <label className={`flex flex-col items-center justify-center w-32 h-32 rounded-xl border-2 border-dashed transition overflow-hidden ${removingBg ? 'pointer-events-none opacity-60' : 'cursor-pointer hover:border-white/40'}`} style={{ borderColor: facePhotoPreview ? '#7CFF00' : 'var(--yv-border)', background: 'var(--yv-bg-0)' }}>
+                    {removingBg ? (
+                      <div className="flex flex-col items-center gap-2 text-center px-2">
+                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full spin-r" />
+                        <span className="text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{t('Quitando fondo...', 'Removing bg...')}</span>
+                      </div>
+                    ) : facePhotoPreview ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={facePhotoPreview} alt="Face" className="w-full h-full object-cover" />
+                      <img src={facePhotoPreview} alt="Face" className="w-full h-full object-contain" style={{ background: 'repeating-conic-gradient(#1a1a1a 0% 25%, #111 0% 50%) 50% / 16px 16px' }} />
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-center px-2">
                         <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: 'var(--yv-text-4)' }}><path d="M12 5v14M5 12h14"/></svg>
                         <span className="text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{t('Subir foto', 'Upload photo')}</span>
                       </div>
                     )}
-                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => {
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       if (file.size > 5 * 1024 * 1024) { setError(t('La foto no puede superar 5MB', 'Photo must be under 5MB')); return; }
-                      setFacePhoto(file);
-                      const reader = new FileReader();
-                      reader.onload = () => setFacePhotoPreview(reader.result as string);
-                      reader.readAsDataURL(file);
+                      setError('');
+                      setRemovingBg(true);
+                      try {
+                        const { removeBackground } = await import('@imgly/background-removal');
+                        const blob = await removeBackground(file, { output: { format: 'image/png' } });
+                        const pngFile = new File([blob], 'face.png', { type: 'image/png' });
+                        setFacePhoto(pngFile);
+                        setFacePhotoPreview(URL.createObjectURL(blob));
+                      } catch (err) {
+                        console.error('Background removal failed, using original:', err);
+                        setFacePhoto(file);
+                        const reader = new FileReader();
+                        reader.onload = () => setFacePhotoPreview(reader.result as string);
+                        reader.readAsDataURL(file);
+                      } finally {
+                        setRemovingBg(false);
+                      }
                     }} />
                   </label>
                   <div className="flex flex-col gap-3">
