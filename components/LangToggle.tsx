@@ -1,32 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLang, useSetLang } from './LangProvider';
 
-export default function LangToggle({ currentLang = 'es' }: { currentLang?: 'es' | 'en' }) {
-  const [lang, setLangState] = useState<'es' | 'en'>(currentLang);
+export default function LangToggle() {
+  const lang = useLang();
+  const setLang = useSetLang();
   const [mounted, setMounted] = useState(false);
-  const router = useRouter();
 
-  useEffect(() => {
-    setMounted(true);
-    const stored = localStorage.getItem('ytubviral_lang') as 'es' | 'en' | null;
-    if (stored === 'en' || stored === 'es') {
-      setLangState(stored);
-      // Bootstrap cookie from localStorage so server reads it on next request
-      document.cookie = `ytubviral_lang=${stored};path=/;max-age=31536000;samesite=lax`;
-    }
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const toggle = () => {
-    const next = lang === 'es' ? 'en' : 'es';
-    setLangState(next);
-    localStorage.setItem('ytubviral_lang', next);
-    document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`;
-    router.refresh();
+    setLang(lang === 'es' ? 'en' : 'es');
   };
 
-  const activeLang = mounted ? lang : currentLang;
+  const activeLang = mounted ? lang : 'es';
 
   return (
     <button

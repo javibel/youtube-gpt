@@ -18,7 +18,7 @@ export default async function FeaturesLayout({ children }: { children: React.Rea
             </span>
           </Link>
           <div className="flex items-center gap-4">
-            <LangToggle currentLang={lang} />
+            <LangToggle />
             <Link href="/login" className="font-mono-jb text-[13px] text-zinc-400 hover:text-white transition">
               {lang === 'en' ? 'Log in' : 'Iniciar sesión'}
             </Link>
