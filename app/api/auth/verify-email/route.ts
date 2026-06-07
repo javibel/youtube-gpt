@@ -34,22 +34,22 @@ export async function POST(request: NextRequest) {
   const firstName = user.name?.split(' ')[0] || '';
   sendTransactionalEmail({
     to: email,
-    subject: firstName ? `${firstName}, your AI toolkit is ready 🚀` : 'Your AI toolkit is ready 🚀',
+    subject: firstName ? `${firstName}, check your video's SEO score` : 'Check your video\'s SEO score',
     html: `
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:32px 0;">
         <img src="https://ytubviral.com/logo.png" alt="YTubViral" width="120" style="margin-bottom:24px;" />
-        <h1 style="font-size:22px;color:#fff;margin:0 0 12px;">Welcome to YTubViral${firstName ? `, ${firstName}` : ''}!</h1>
+        <h1 style="font-size:22px;color:#fff;margin:0 0 12px;">Welcome${firstName ? `, ${firstName}` : ''}!</h1>
         <p style="font-size:15px;color:#a1a1aa;line-height:1.6;margin:0 0 24px;">
-          Your account is verified. You have <strong style="color:#fff;">10 free AI generations</strong> this month — titles, descriptions, scripts, and more.
+          Your account is ready. Start by checking how well your latest video is optimized — paste any YouTube URL and get a score from 0 to 100 with specific fixes.
         </p>
-        <a href="https://ytubviral.com/generate" style="display:inline-block;background:#e84d5b;color:#fff;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
-          Generate your first title →
+        <a href="https://ytubviral.com/seo-score" style="display:inline-block;background:#e84d5b;color:#fff;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
+          Check your SEO Score →
         </a>
         <p style="font-size:13px;color:#71717a;margin-top:32px;line-height:1.5;">
-          Quick wins to try:<br/>
-          · <a href="https://ytubviral.com/generate?template=title" style="color:#e84d5b;text-decoration:none;">AI Title Generator</a> — optimized for CTR<br/>
+          You also get <strong style="color:#fff;">10 free AI generations</strong> per month:<br/>
+          · <a href="https://ytubviral.com/generate?template=title" style="color:#e84d5b;text-decoration:none;">AI Title Generator</a> — titles optimized for clicks<br/>
           · <a href="https://ytubviral.com/research" style="color:#e84d5b;text-decoration:none;">Keyword Research</a> — find what people search<br/>
-          · <a href="https://ytubviral.com/seo-score" style="color:#e84d5b;text-decoration:none;">SEO Score</a> — audit any video in seconds
+          · <a href="https://ytubviral.com/generate?template=description" style="color:#e84d5b;text-decoration:none;">Description Generator</a> — SEO-optimized descriptions
         </p>
         <hr style="border:none;border-top:1px solid #27272a;margin:32px 0 16px;" />
         <p style="font-size:12px;color:#52525b;">YTubViral · AI-powered YouTube growth toolkit</p>

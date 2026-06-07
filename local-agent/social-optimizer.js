@@ -336,7 +336,7 @@ EFECTIVIDAD ACUMULADA:
 ${JSON.stringify(effectivenessData, null, 2)}`;
 
       const diagnosisResult = await guardedCall(userPrompt, {
-        maxTokens: 2500,
+        maxTokens: 4000,
         agentId: 'social-optimizer',
         system: `Eres el cerebro de auto-mejora del sistema social de YTubViral. Analizas problemas y generas correcciones INTELIGENTES basadas en datos.
 
@@ -382,25 +382,44 @@ Responde SOLO con el JSON, sin markdown, sin explicación adicional.`,
         return { changed: false, detail: 'Claude unified diagnosis: no response' };
       }
 
-      // Parse Claude's response (robust: handles markdown fences and truncated JSON)
+      // Parse Claude's response (robust: handles markdown fences, truncated JSON, trailing commas)
       let claudeResponse;
       try {
         let raw = diagnosisResult.text;
+        // Strip markdown fences
         const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (fenceMatch) raw = fenceMatch[1].trim();
+        // Try direct parse first
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          claudeResponse = JSON.parse(jsonMatch[0]);
-        } else {
-          const openBraces = (raw.match(/\{/g) || []).length;
-          const closeBraces = (raw.match(/\}/g) || []).length;
-          if (openBraces > closeBraces) {
-            let patched = raw.replace(/,\s*"[^"]*"?\s*:?\s*[^,}]*$/, '');
-            patched += '}'.repeat(openBraces - closeBraces);
-            const patchedMatch = patched.match(/\{[\s\S]*\}/);
-            if (patchedMatch) claudeResponse = JSON.parse(patchedMatch[0]);
+          try {
+            claudeResponse = JSON.parse(jsonMatch[0]);
+          } catch {
+            // Clean trailing commas and retry
+            let cleaned = jsonMatch[0].replace(/,\s*([\]}])/g, '$1');
+            try {
+              claudeResponse = JSON.parse(cleaned);
+            } catch {
+              // Truncated JSON — close open braces
+              const openBraces = (cleaned.match(/\{/g) || []).length;
+              const closeBraces = (cleaned.match(/\}/g) || []).length;
+              if (openBraces > closeBraces) {
+                cleaned = cleaned.replace(/,\s*"[^"]*"?\s*:?\s*[^,}\]]*$/, '');
+                cleaned = cleaned.replace(/,\s*$/, '');
+                cleaned += '}'.repeat(openBraces - closeBraces);
+                claudeResponse = JSON.parse(cleaned);
+              }
+            }
           }
-          if (!claudeResponse) throw new Error('No JSON found');
+        }
+        if (!claudeResponse) {
+          // Last resort: extract just the diagnosis field
+          const diagMatch = raw.match(/"diagnosis"\s*:\s*"([^"]*)"/);
+          if (diagMatch) {
+            claudeResponse = { diagnosis: diagMatch[1], overrideChanges: null, configChanges: null };
+          } else {
+            throw new Error('No JSON found');
+          }
         }
       } catch (e) {
         console.warn(`[claude-unified] JSON parse failed: ${e.message}. Raw: ${diagnosisResult.text.slice(0, 200)}`);
