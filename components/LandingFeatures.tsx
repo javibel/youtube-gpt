@@ -429,7 +429,7 @@ export default function LandingFeatures({ lang = 'es' }: { lang?: Lang }) {
         <div className="mb-14">
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>04 · TOOLS</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
-            {lang === 'en' ? <>Start with SEO Score.<br />Unlock everything else.</> : <>Empieza con SEO Score.<br />Descubre el resto.</>}
+            {lang === 'en' ? <>Start with SEO Score.<br />Go deeper with AI.</> : <>Empieza con SEO Score.<br />Profundiza con IA.</>}
           </h2>
         </div>
 

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { getChannelContext } from '@/lib/channel-context';
 
 export const maxDuration = 60;
 
@@ -43,88 +43,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'throttled' }, { status: 429 });
   }
 
-  // Build channel context
-  let channelContext = 'No YouTube channel connected.';
-
-  const yt = await prisma.youtubeToken.findUnique({ where: { userId: session.user.id } });
-  if (yt?.channelId) {
-    // Fetch fresh channel data
-    const token = await getAccessToken(session.user.id);
-    let recentVideos: { title: string; views: string; publishedAt: string }[] = [];
-
-    if (token) {
-      try {
-        const searchRes = await fetch(
-          `https://www.googleapis.com/youtube/v3/search?part=id&forMine=true&type=video&order=date&maxResults=10`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        if (searchRes.ok) {
-          const searchData = await searchRes.json();
-          const ids = (searchData.items || []).map((i: { id: { videoId: string } }) => i.id.videoId).join(',');
-          if (ids) {
-            const vidsRes = await fetch(
-              `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids}`,
-              { headers: { Authorization: `Bearer ${token}` } },
-            );
-            if (vidsRes.ok) {
-              const vidsData = await vidsRes.json();
-              recentVideos = (vidsData.items || []).map((v: { snippet: { title: string; publishedAt: string }; statistics: { viewCount: string } }) => ({
-                title: v.snippet.title,
-                views: v.statistics.viewCount,
-                publishedAt: v.snippet.publishedAt,
-              }));
-            }
-          }
-        }
-      } catch { /* non-critical */ }
-    }
-
-    // Get SEO scores
-    const seoScores = await prisma.videoSeoScore.findMany({
-      where: { userId: session.user.id },
-      orderBy: { analyzedAt: 'desc' },
-      take: 10,
-      select: { videoId: true, score: true },
-    });
-
-    // Get growth data
-    const snapshots = await prisma.channelSnapshot.findMany({
-      where: { userId: session.user.id },
-      orderBy: { recordedAt: 'desc' },
-      take: 30,
-      select: { subscribers: true, totalViews: true, recordedAt: true },
-    });
-
-    const growthInfo = snapshots.length >= 2
-      ? `Growth trend (last ${snapshots.length} data points): subs went from ${snapshots[snapshots.length - 1].subscribers} to ${snapshots[0].subscribers}`
-      : '';
-
-    // Get competitors
-    const competitors = await prisma.trackedCompetitor.findMany({
-      where: { userId: session.user.id },
-      select: { channelName: true, subscribers: true, videoCount: true },
-      take: 5,
-    });
-
-    const competitorInfo = competitors.length > 0
-      ? `Tracked competitors: ${competitors.map(c => `${c.channelName} (${c.subscribers} subs, ${c.videoCount} vids)`).join('; ')}`
-      : '';
-
-    channelContext = [
-      `Channel: ${yt.channelName || 'Unknown'}`,
-      `Subscribers: ${yt.subscribers || '0'}`,
-      `Total views: ${yt.totalViews || '0'}`,
-      `Total videos: ${yt.videoCount || '0'}`,
-      recentVideos.length > 0
-        ? `Last 10 videos:\n${recentVideos.map(v => `- "${v.title}" (${v.views} views, ${v.publishedAt.slice(0, 10)})`).join('\n')}`
-        : '',
-      seoScores.length > 0
-        ? `SEO scores (0-100): avg ${Math.round(seoScores.reduce((s, v) => s + v.score, 0) / seoScores.length)}, range ${Math.min(...seoScores.map(s => s.score))}-${Math.max(...seoScores.map(s => s.score))}`
-        : '',
-      growthInfo,
-      competitorInfo,
-    ].filter(Boolean).join('\n');
-  }
+  // Build channel context (shared with AI Generator)
+  const ctx = await getChannelContext(session.user.id);
+  const channelContext = ctx?.summary || 'No YouTube channel connected.';
 
   const MODE_PROMPTS: Record<string, string> = {
     create: `You are the YTubViral AI Coach in CREATE MODE — a creative content strategist for YouTube.

@@ -1,3 +1,10 @@
+function channelBlock(ctx) {
+  if (!ctx) return '';
+  return `\n\nYOUR CHANNEL DATA (use this to personalize your output):
+${ctx}
+Use this data to tailor your suggestions to THIS specific channel — its size, niche, recent content, and performance patterns.`;
+}
+
 export const TEMPLATES = {
   title: {
     name: '📌 Título de Video',
@@ -8,14 +15,14 @@ export const TEMPLATES = {
 TEMA: ${data.tema}
 TONO: ${data.tono}
 DURACIÓN: ${data.duracion} minutos
-
+${channelBlock(data._channelContext)}
 Genera EXACTAMENTE 5 opciones de títulos únicos:
 - Cada título debe tener 40-60 caracteres
 - Usa números cuando sea relevante
 - Usa verbos fuertes (Descubre, Aprende, Gana, etc)
 - Hazlos clickbait pero honestos
 - Optimizados para YouTube
-
+${data._channelContext ? '- Adapt the style, language and references to match this channel\'s niche and audience size' : ''}
 Formato: Solo devuelve los 5 títulos, uno por línea:
 1. [título]
 2. [título]
@@ -33,14 +40,14 @@ Formato: Solo devuelve los 5 títulos, uno por línea:
 TEMA: ${data.tema}
 DURACIÓN: ${data.duracion} minutos
 KEYWORDS: ${data.keywords || 'auto-generadas'}
-
+${channelBlock(data._channelContext)}
 Crea una descripción YouTube que:
 - Tenga 200-300 palabras
 - Incluya keywords naturalmente
 - Tenga timestamps cada 2-3 minutos
 - Call to action para suscribirse
 - Links section al final
-
+${data._channelContext ? '- Reference the channel name and niche naturally in the intro' : ''}
 FORMATO:
 [Párrafo intro 50-100 palabras]
 
@@ -65,7 +72,7 @@ FORMATO:
 TEMA: ${data.tema}
 TONO: ${data.tono}
 PLATAFORMA: ${data.plataforma}
-
+${channelBlock(data._channelContext)}
 Genera:
 1. Un caption principal (50-100 caracteres)
 2. Emojis estratégicos
@@ -103,7 +110,7 @@ El caption debe ser:
 
 TEMA: ${data.tema}
 NICHO: ${data.nicho}
-
+${channelBlock(data._channelContext)}
 Genera 5 hooks diferentes para los primeros 3 segundos de un Short:
 - Máximo 15 palabras cada uno
 - Deben generar curiosidad o sorpresa instantánea
@@ -129,7 +136,7 @@ Formato:
 TEMA DE LA SERIE: ${data.tema}
 NÚMERO DE VÍDEOS: ${data.num_videos || '5'}
 TONO: ${data.tono}
-
+${channelBlock(data._channelContext)}
 Crea un plan completo para esta serie:
 - Título de la serie (con subtítulo)
 - Lógica de progresión (por qué este orden engancha)
@@ -154,7 +161,7 @@ ${Array.from({length: parseInt(data.num_videos) || 5}, (_, i) => `Ep ${i+1}: [t�
 
 NICHO: ${data.nicho}
 ÁREA TEMÁTICA: ${data.tema}
-
+${channelBlock(data._channelContext)}
 Genera un análisis completo con:
 
 1. **OPORTUNIDADES DE CONTENIDO** — 5 tipos de vídeos con alta demanda en este nicho que están infrautilizados
@@ -166,6 +173,34 @@ Genera un análisis completo con:
 Sé específico, práctico y orientado a resultados. Basa el análisis en patrones conocidos del nicho.`
   },
 
+  next_video: {
+    name: '🎯 Qué grabar ahora',
+    description: 'Ideas personalizadas basadas en tu canal y tendencias',
+    proOnly: true,
+    inputs: ['tema'],
+    prompt: (data) => `You are a YouTube content strategist who helps creators decide their next video. Your job is to cross-reference the creator's channel data with current demand and competitive gaps to suggest the best next videos to make.
+${channelBlock(data._channelContext)}
+CREATOR'S FOCUS AREA: ${data.tema}
+
+Analyze:
+1. What topics this channel has already covered (from recent videos)
+2. What's working well (high-view videos) and what's underperforming
+3. Content gaps — topics the audience likely wants but the channel hasn't covered
+4. The channel's size and what type of content works at this subscriber level
+
+Then suggest EXACTLY 5 concrete video ideas, ranked by potential impact:
+
+For each idea provide:
+- **TITLE**: A ready-to-use title (40-60 chars)
+- **WHY NOW**: Why this video would work right now for this specific channel (2-3 sentences)
+- **ANGLE**: What makes this different from what already exists on YouTube
+- **ESTIMATED EFFORT**: Low / Medium / High
+- **SUCCESS SIGNAL**: What metric to watch (views, CTR, subs gained, etc.)
+
+${!data._channelContext ? 'NOTE: No channel is connected. Base your suggestions on the focus area provided and general best practices for the niche.' : ''}
+Be specific, actionable, and honest. Don't suggest ideas that are too ambitious for the channel's current size. Prioritize videos that can realistically outperform the channel's average.`
+  },
+
   script: {
     name: '🎬 Script Video',
     description: 'Estructura completa del script',
@@ -175,13 +210,13 @@ Sé específico, práctico y orientado a resultados. Basa el análisis en patron
 TEMA: ${data.tema}
 DURACIÓN: ${data.duracion} minutos
 TONO: ${data.tono}
-
+${channelBlock(data._channelContext)}
 Crea estructura de script que:
 - Engancha en primeros 5 segundos
 - Es natural y conversacional
 - Tiene flow lógico
 - Mantiene engagement
-
+${data._channelContext ? '- Adapta el estilo y referencias al nicho y tamaño de este canal' : ''}
 FORMATO:
 
 🎯 HOOK (0-5 segundos):

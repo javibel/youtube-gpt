@@ -142,6 +142,27 @@ export default function PricingSection({ lang }: { lang: Lang }) {
           {t('30 días de garantía · Cancela cuando quieras · Facturación transparente',
             '30-day guarantee · Cancel anytime · Transparent billing')}
         </p>
+
+        <div className="mt-8 max-w-xl mx-auto p-5 border border-white/10 bg-white/[0.02] text-center">
+          <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-3">
+            {t('COMPARADO CON LA COMPETENCIA', 'COMPARED TO THE COMPETITION')}
+          </p>
+          <div className="flex items-center justify-center gap-6 flex-wrap">
+            <div>
+              <p className="font-display font-bold text-2xl" style={{ color: 'var(--red)' }}>€9.99<span className="text-zinc-500 text-sm font-normal">/{t('mes', 'mo')}</span></p>
+              <p className="text-zinc-400 text-sm mt-1">YTubViral Pro</p>
+            </div>
+            <span className="text-zinc-600 font-mono-jb text-sm">vs</span>
+            <div>
+              <p className="font-display font-bold text-2xl text-zinc-500 line-through" style={{ textDecorationColor: 'rgba(232,77,91,0.6)' }}>$49<span className="text-zinc-600 text-sm font-normal no-underline">/{t('mes', 'mo')}</span></p>
+              <p className="text-zinc-500 text-sm mt-1">VidIQ Pro</p>
+            </div>
+          </div>
+          <p className="text-zinc-500 text-[13px] font-mono-jb mt-3">
+            {t('Keyword research, análisis de competidores, IA generativa — incluido en ambos.',
+              'Keyword research, competitor analysis, generative AI — included in both.')}
+          </p>
+        </div>
       </div>
     </section>
   );

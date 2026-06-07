@@ -13,18 +13,15 @@ import { getServerLang } from '@/lib/server-lang';
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: 'YTubViral — 14 herramientas de IA para crecer en YouTube',
+  title: 'YTubViral — Free YouTube SEO Score & AI Tools for Creators',
   description:
-    'Títulos virales, scripts, SEO, keyword research, análisis de competidores, estimador de ingresos, calendario IA, retención y más. 14 herramientas en una plataforma. Empieza gratis.',
+    'Paste any YouTube video and get an instant SEO score with specific fixes. Plus AI-powered titles, scripts, keyword research and competitor analysis. Start free.',
   alternates: { canonical: 'https://ytubviral.com' },
 };
 
 type Lang = 'es' | 'en';
 
-const LOGO_CREATORS = [
-  'TechConTodo', 'CreatorDAO', 'FinanzasYA', 'Cocina Fácil',
-  'GamingES', 'Viajes360', 'FitnessPro', 'EduCanal',
-];
+// Logo marquee removed — only show real users/brands when we have them
 
 const STATIC_TESTIMONIALS = {
   es: [
@@ -180,8 +177,8 @@ function Hero({ lang }: { lang: Lang }) {
         </div>
         <p className="text-center text-zinc-500 text-[13px] font-mono-jb mt-5">
           {lang === 'en'
-            ? 'No signup needed · Free forever · 14 more AI tools inside'
-            : 'Sin registro · Gratis para siempre · 14 herramientas más dentro'}
+            ? 'No signup needed · Free forever · Pro from €9.99/mo (VidIQ charges $49)'
+            : 'Sin registro · Gratis para siempre · Pro desde 9,99€/mes (VidIQ cobra $49)'}
         </p>
 
         <LandingHeroDemo lang={lang} />
@@ -193,16 +190,16 @@ function Hero({ lang }: { lang: Lang }) {
 function StatsStrip({ lang }: { lang: Lang }) {
   const items = lang === 'en'
     ? [
-        { n: '12,847', l: 'Active creators', sub: '↗ +412 this week' },
-        { n: '1.4M', l: 'Contents generated', sub: '↗ since 2024' },
-        { n: '+27%', l: 'Average CTR boost', sub: 'month 1 vs. month 0' },
-        { n: '6h 22m', l: 'Time saved/video', sub: 'according to our users' },
+        { n: '0→100', l: 'SEO Score in 30 seconds', sub: 'Instant video diagnosis' },
+        { n: '€9.99', l: 'Pro plan / month', sub: 'VidIQ charges $49/mo' },
+        { n: '100%', l: 'Free SEO Score', sub: 'No signup, no limits' },
+        { n: 'AI', l: 'Personalized to your channel', sub: 'Connect YouTube · get tailored results' },
       ]
     : [
-        { n: '12,847', l: 'Creadores activos', sub: '↗ +412 esta semana' },
-        { n: '1.4M', l: 'Contenidos generados', sub: '↗ desde 2024' },
-        { n: '+27%', l: 'Mejora media de CTR', sub: 'mes 1 vs. mes 0' },
-        { n: '6h 22m', l: 'Tiempo ahorrado/vídeo', sub: 'según nuestros usuarios' },
+        { n: '0→100', l: 'SEO Score en 30 segundos', sub: 'Diagnóstico instantáneo' },
+        { n: '9,99€', l: 'Plan Pro / mes', sub: 'VidIQ cobra $49/mes' },
+        { n: '100%', l: 'SEO Score gratis', sub: 'Sin registro, sin límites' },
+        { n: 'IA', l: 'Personalizada a tu canal', sub: 'Conecta YouTube · resultados a medida' },
       ];
 
   return (
@@ -221,21 +218,31 @@ function StatsStrip({ lang }: { lang: Lang }) {
   );
 }
 
-function LogoMarquee({ lang }: { lang: Lang }) {
-  const logos = [...LOGO_CREATORS, ...LOGO_CREATORS];
+function WhyDifferent({ lang }: { lang: Lang }) {
+  const items = lang === 'en'
+    ? [
+        { icon: '🎯', title: 'Honest diagnostics', desc: 'SEO Score tells you exactly what to fix — no vague advice.' },
+        { icon: '🧠', title: 'AI that knows your channel', desc: 'Connect YouTube and every generation is tailored to your niche, audience, and recent performance.' },
+        { icon: '💰', title: '5× cheaper than VidIQ', desc: '€9.99/mo vs $49/mo. Same core features. No enterprise upsell.' },
+      ]
+    : [
+        { icon: '🎯', title: 'Diagnóstico honesto', desc: 'SEO Score te dice exactamente qué arreglar — sin consejos vagos.' },
+        { icon: '🧠', title: 'IA que conoce tu canal', desc: 'Conecta YouTube y cada generación se adapta a tu nicho, audiencia y rendimiento.' },
+        { icon: '💰', title: '5× más barato que VidIQ', desc: '9,99€/mes vs $49/mes. Mismas funciones core. Sin upsell enterprise.' },
+      ];
+
   return (
-    <section className="py-12 border-b border-white/10 bg-black overflow-hidden">
-      <p className="text-center font-mono-jb text-[13px] tracking-[0.3em] text-zinc-500 uppercase mb-8">
-        {lang === 'en' ? 'Used by creators who move the needle' : 'Usado por creadores que mueven la aguja'}
-      </p>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(90deg,#0A0A0A,transparent)' }} />
-        <div className="absolute inset-y-0 right-0 w-32 z-10 pointer-events-none" style={{ background: 'linear-gradient(-90deg,#0A0A0A,transparent)' }} />
-        <div className="marquee-track slow gap-14">
-          {logos.map((l, i) => (
-            <div key={i} className="flex items-center gap-3 shrink-0 mr-14">
-              <div className="w-6 h-6 rounded-full border border-white/20" />
-              <span className="font-display font-bold text-xl text-zinc-400">{l}</span>
+    <section className="py-16 border-b border-white/10 bg-black">
+      <div className="max-w-5xl mx-auto px-6">
+        <p className="text-center font-mono-jb text-[13px] tracking-[0.3em] text-zinc-500 uppercase mb-10">
+          {lang === 'en' ? 'Why creators switch to YTubViral' : 'Por qué los creadores eligen YTubViral'}
+        </p>
+        <div className="grid md:grid-cols-3 gap-6">
+          {items.map((item, i) => (
+            <div key={i} className="p-6 border border-white/10 bg-white/[0.02]">
+              <span className="text-2xl">{item.icon}</span>
+              <h3 className="font-display font-bold text-lg mt-3 mb-2">{item.title}</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -274,14 +281,14 @@ function DemoVideo({ lang }: { lang: Lang }) {
 function HowItWorks({ lang }: { lang: Lang }) {
   const steps = lang === 'en'
     ? [
-        { n: '01', t: 'Tell us the topic', d: "A channel, a niche, a half-baked idea. Whatever. Our engine understands context." },
-        { n: '02', t: 'Choose what to generate', d: "Title, description, script, captions, thumbnails. Or everything in sprint mode." },
-        { n: '03', t: 'Publish and grow', d: "Copy, paste, upload. Algorithm-optimized content without creative blocks." },
+        { n: '01', t: 'Check your SEO Score', d: "Paste any video URL. Get a 0-100 score with specific fixes — no signup needed." },
+        { n: '02', t: 'Connect your channel', d: "Link YouTube and every AI tool adapts to your niche, audience size, and recent performance." },
+        { n: '03', t: 'Create and grow', d: "Titles, scripts, thumbnails — all personalized to your channel. Not generic AI slop." },
       ]
     : [
-        { n: '01', t: 'Cuéntanos el tema', d: 'Un canal, un nicho, una idea a medio cocinar. Lo que sea. Nuestro motor entiende contexto.' },
-        { n: '02', t: 'Elige qué generar', d: 'Título, descripción, script, captions, miniaturas. O todo en modo sprint.' },
-        { n: '03', t: 'Publica y crece', d: 'Copia, pega, sube. Contenido optimizado para el algoritmo sin bloqueos creativos.' },
+        { n: '01', t: 'Analiza tu SEO Score', d: 'Pega cualquier URL de vídeo. Obtén una puntuación 0-100 con fixes concretos — sin registro.' },
+        { n: '02', t: 'Conecta tu canal', d: 'Vincula YouTube y cada herramienta IA se adapta a tu nicho, tamaño de audiencia y rendimiento.' },
+        { n: '03', t: 'Crea y crece', d: 'Títulos, scripts, miniaturas — todo personalizado a tu canal. No IA genérica.' },
       ];
 
   return (
@@ -438,7 +445,7 @@ function Testimonials({ reviews, lang }: { reviews: { id: string; rating: number
             </h2>
           </div>
           <p className="text-zinc-400 max-w-sm">
-            {lang === 'en' ? 'Real reviews. Real CTR. Real growth.' : 'Reseñas reales. CTR reales. Crecimiento real.'}
+            {lang === 'en' ? 'What our early users are saying.' : 'Lo que dicen nuestros primeros usuarios.'}
           </p>
         </div>
 
@@ -616,7 +623,7 @@ export default async function LandingPage() {
       '@type': 'WebSite',
       name: 'YTubViral',
       url: 'https://ytubviral.com',
-      description: 'AI-powered YouTube SEO and growth toolkit',
+      description: 'Free YouTube SEO Score and AI-powered growth toolkit for creators',
       publisher: { '@type': 'Organization', name: 'YTubViral' },
     },
     {
@@ -626,7 +633,7 @@ export default async function LandingPage() {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       url: 'https://ytubviral.com',
-      description: 'AI-powered YouTube SEO and growth toolkit. Keyword research, competitor analysis, A/B testing, and content generation.',
+      description: 'Free YouTube SEO Score with instant diagnostics. AI-powered titles, scripts, keyword research, competitor analysis and more. From €9.99/mo.',
       offers: [
         { '@type': 'Offer', price: '0', priceCurrency: 'EUR', name: 'Free' },
         { '@type': 'Offer', price: '9.99', priceCurrency: 'EUR', name: 'Pro' },
@@ -652,7 +659,7 @@ export default async function LandingPage() {
       <LiveTicker lang={lang} />
       <Hero lang={lang} />
       <StatsStrip lang={lang} />
-      <LogoMarquee lang={lang} />
+      <WhyDifferent lang={lang} />
       <DemoVideo lang={lang} />
       <HowItWorks lang={lang} />
       <LandingFeatures lang={lang} />

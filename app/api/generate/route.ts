@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getExtensionUser } from '@/lib/extension-auth';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
+import { getChannelContext } from '@/lib/channel-context';
 
 const IP_FREE_LIMIT = 30; // máximo por IP/mes para usuarios free (anti multi-cuenta)
 
@@ -196,8 +197,19 @@ export async function POST(request: Request) {
     }
 
     // Token limits per template — long-form content needs more tokens
-    const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis']);
+    const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis', 'next_video']);
     const maxTokens = LONG_TEMPLATES.has(template) ? 8192 : 2048;
+
+    // Inject channel context for personalized generation (Pro users with connected channels)
+    const CONTEXT_TEMPLATES = new Set(['title', 'description', 'script', 'caption', 'shorts_hook', 'series', 'niche_analysis', 'next_video']);
+    if (userId && CONTEXT_TEMPLATES.has(template)) {
+      try {
+        const ctx = await getChannelContext(userId);
+        if (ctx) {
+          inputs._channelContext = ctx.summary;
+        }
+      } catch { /* non-critical — generate without context */ }
+    }
 
     // Continuation support — if previousContent is provided, ask Claude to continue
     const previousContent = inputs._previousContent as string | undefined;
