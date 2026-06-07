@@ -2,6 +2,8 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { put } from '@vercel/blob';
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const sharp: any = require('sharp');
 
 export const maxDuration = 60;
 
@@ -18,11 +20,17 @@ export async function POST(request: Request) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const { tema, estilo, lang } = await request.json();
+    const form = await request.formData();
+    const tema = (form.get('tema') as string)?.trim();
+    const estilo = (form.get('estilo') as string)?.trim() || 'viral';
+    const lang = (form.get('lang') as string) || 'en';
+    const facePosition = (form.get('facePosition') as string) || 'right';
+    const facePhotoFile = form.get('facePhoto') as File | null;
+    const isEn = lang === 'en';
 
-    if (!tema || typeof tema !== 'string' || tema.trim().length < 3) {
+    if (!tema || tema.length < 3) {
       return Response.json(
-        { error: lang === 'en'
+        { error: isEn
           ? 'Please describe your video topic (at least 3 characters)'
           : 'Describe el tema de tu vídeo (mínimo 3 caracteres)' },
         { status: 400 }
@@ -43,7 +51,7 @@ export async function POST(request: Request) {
 
     if (!isPro) {
       return Response.json(
-        { error: lang === 'en'
+        { error: isEn
           ? 'AI Thumbnails are available on Pro and Business plans'
           : 'Las miniaturas con IA están disponibles en los planes Pro y Business',
           limitReached: true },
@@ -89,7 +97,7 @@ export async function POST(request: Request) {
     `;
     if (Number(rlResult[0].hits) > 3) {
       return Response.json(
-        { error: lang === 'en'
+        { error: isEn
           ? 'Too many requests. Wait a moment before trying again.'
           : 'Demasiadas solicitudes. Espera un momento antes de continuar.' },
         { status: 429 }
@@ -103,30 +111,54 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
 
+    // Validate face photo if provided
+    let facePhotoBuffer: Buffer | null = null;
+    if (facePhotoFile && facePhotoFile.size > 0) {
+      if (facePhotoFile.size > 5 * 1024 * 1024) {
+        return Response.json(
+          { error: isEn ? 'Photo must be under 5MB' : 'La foto no puede superar 5MB' },
+          { status: 400 }
+        );
+      }
+      facePhotoBuffer = Buffer.from(await facePhotoFile.arrayBuffer());
+    }
+
+    const hasFace = !!facePhotoBuffer;
+    const faceOnLeft = facePosition === 'left';
+
     // Step 1: Claude generates an optimized image prompt for Ideogram
-    const isEn = lang === 'en';
-    const claudePrompt = `You are an expert YouTube thumbnail designer. Generate a detailed image generation prompt for creating a professional, click-worthy YouTube thumbnail.
+    const compositionInstruction = hasFace
+      ? `CRITICAL COMPOSITION RULE: A person's photo will be composited on the ${faceOnLeft ? 'LEFT' : 'RIGHT'} side of the thumbnail.
+Therefore, the generated background must:
+- Leave the ${faceOnLeft ? 'left ~40%' : 'right ~40%'} of the image relatively clean/simple (no important elements there — they will be covered by the person)
+- Place all text, key visual elements, and focal points on the ${faceOnLeft ? 'RIGHT ~60%' : 'LEFT ~60%'} of the image
+- Use dramatic lighting, gradients, or subtle patterns in the empty zone (not flat color — it should look intentional)
+- The background should complement a person standing/posing on that side
+- DO NOT generate any people or faces in the image — the real person will be added later`
+      : `The thumbnail should have a clear focal point and bold visual elements distributed across the image.
+You may include stylized silhouettes or abstract human forms if relevant, but avoid photorealistic faces.`;
 
-VIDEO TOPIC: ${tema.trim()}
-VISUAL STYLE: ${(estilo || 'viral').trim()}
+    const claudePrompt = `You are an expert YouTube thumbnail designer. Generate a detailed image generation prompt for creating a professional, click-worthy YouTube thumbnail background.
 
-Create a prompt that will generate a stunning YouTube thumbnail image. The prompt should describe:
-- The main visual elements (objects, people, scenes)
-- Color palette and lighting (high contrast, vibrant)
-- Composition (rule of thirds, focal point)
+VIDEO TOPIC: ${tema}
+VISUAL STYLE: ${estilo}
+
+${compositionInstruction}
+
+Create a prompt that describes:
+- Background scene, environment, or abstract design that fits the topic
+- Color palette and lighting (high contrast, vibrant, cinematic)
+- Any text overlay to include (max 3-5 bold words) — position on the ${hasFace ? (faceOnLeft ? 'right side' : 'left side') : 'image'}
 - Mood and emotion that drives clicks
-- Any text overlay to include (max 3-5 bold words)
+- Style should look professional, not AI-generated
 
 Rules:
-- The thumbnail must look professional, not AI-generated
 - Use bold, contrasting colors
-- Include clear focal points
-- Text should be minimal but impactful
 - Optimize for small display size (mobile)
-- DO NOT describe generic stock-photo scenes
 - Be SPECIFIC to the video topic
+- The image must work as a YouTube thumbnail (16:9 ratio, 1312x736px)
 
-Respond with ONLY the image generation prompt, nothing else. Write the prompt in English regardless of input language.`;
+Respond with ONLY the image generation prompt, nothing else. Write in English.`;
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -154,18 +186,18 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
     const claudeData = await claudeRes.json();
     const imagePrompt = claudeData.content[0].text.trim();
 
-    // Step 2: Call Ideogram v3 TURBO (~9s vs ~50s for v4)
-    const formData = new FormData();
-    formData.append('prompt', imagePrompt);
-    formData.append('resolution', '1312x736');
-    formData.append('rendering_speed', 'TURBO');
-    formData.append('magic_prompt', 'ON');
-    formData.append('style_type', 'REALISTIC');
+    // Step 2: Call Ideogram v3 TURBO
+    const ideogramForm = new FormData();
+    ideogramForm.append('prompt', imagePrompt);
+    ideogramForm.append('resolution', '1312x736');
+    ideogramForm.append('rendering_speed', 'TURBO');
+    ideogramForm.append('magic_prompt', 'ON');
+    ideogramForm.append('style_type', 'REALISTIC');
 
     const ideogramRes = await fetch('https://api.ideogram.ai/v1/ideogram-v3/generate', {
       method: 'POST',
       headers: { 'Api-Key': ideogramKey },
-      body: formData,
+      body: ideogramForm,
     });
 
     const ideogramBody = await ideogramRes.text();
@@ -198,21 +230,31 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
       );
     }
 
-    // Download from Ideogram and upload to Vercel Blob for permanent storage
-    let permanentUrl = imageUrl; // fallback to ephemeral URL
+    // Step 3: Download background and optionally composite with face photo
+    const bgRes = await fetch(imageUrl);
+    if (!bgRes.ok) {
+      return Response.json(
+        { error: isEn ? 'Error downloading generated image' : 'Error descargando imagen generada' },
+        { status: 500 }
+      );
+    }
+    let finalBuffer: Buffer = Buffer.from(await bgRes.arrayBuffer());
+
+    if (facePhotoBuffer) {
+      finalBuffer = Buffer.from(await compositeFaceOnBackground(finalBuffer, facePhotoBuffer, faceOnLeft));
+    }
+
+    // Step 4: Upload to Vercel Blob
+    let permanentUrl = imageUrl;
     try {
-      const imgRes = await fetch(imageUrl);
-      if (imgRes.ok) {
-        const imgBuffer = await imgRes.arrayBuffer();
-        const filename = `thumbnails/${user.id}/${Date.now()}.png`;
-        const blob = await put(filename, imgBuffer, {
-          access: 'public',
-          contentType: 'image/png',
-        });
-        permanentUrl = blob.url;
-      }
+      const filename = `thumbnails/${user.id}/${Date.now()}.png`;
+      const blob = await put(filename, finalBuffer, {
+        access: 'public',
+        contentType: 'image/png',
+      });
+      permanentUrl = blob.url;
     } catch (blobErr) {
-      console.error('[generate-thumbnail] Blob upload failed, using ephemeral URL:', blobErr instanceof Error ? blobErr.message : blobErr);
+      console.error('[generate-thumbnail] Blob upload failed:', blobErr instanceof Error ? blobErr.message : blobErr);
     }
 
     // Save generation
@@ -221,7 +263,7 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
       data: {
         userId: user.id,
         template: 'thumbnail',
-        inputs: { tema, estilo, imagePrompt },
+        inputs: { tema, estilo, imagePrompt, hasFace, facePosition },
         output: permanentUrl,
         tokensUsed: claudeData.usage?.output_tokens ?? 0,
         ipAddress: ip,
@@ -236,4 +278,68 @@ Respond with ONLY the image generation prompt, nothing else. Write the prompt in
     console.error('[generate-thumbnail] Error:', error);
     return Response.json({ error: 'Error al procesar la solicitud' }, { status: 500 });
   }
+}
+
+/**
+ * Composite a face photo onto a background image.
+ * - Resizes face to ~45% of background height, anchored to bottom
+ * - Positions on left or right side
+ * - Adds subtle drop shadow for depth
+ */
+async function compositeFaceOnBackground(
+  bgBuffer: Buffer,
+  faceBuffer: Buffer,
+  faceOnLeft: boolean,
+): Promise<Buffer> {
+  const BG_W = 1312;
+  const BG_H = 736;
+
+  // Ensure background is exactly 1312x736
+  const bg = sharp(bgBuffer).resize(BG_W, BG_H, { fit: 'cover' });
+
+  // Process face: resize to ~65% of background height, maintain aspect ratio
+  const faceHeight = Math.round(BG_H * 0.85);
+  const resizedFace = await sharp(faceBuffer)
+    .resize({ height: faceHeight, withoutEnlargement: true })
+    .ensureAlpha()
+    .png()
+    .toBuffer();
+
+  const faceMeta = await sharp(resizedFace).metadata();
+  const faceW = faceMeta.width || 300;
+  const faceH = faceMeta.height || faceHeight;
+
+  // Position: anchored to bottom, offset from edge
+  const margin = Math.round(BG_W * 0.02); // 2% margin from edge
+  const left = faceOnLeft ? margin : BG_W - faceW - margin;
+  const top = BG_H - faceH; // anchor to bottom
+
+  // Create shadow layer (slightly offset, blurred)
+  const shadowOffset = 4;
+  const shadowBuffer = await sharp(resizedFace)
+    .modulate({ brightness: 0 }) // make fully black
+    .blur(12)
+    .ensureAlpha(0.35) // semi-transparent
+    .toBuffer();
+
+  // Composite: shadow first, then face
+  const composites = [
+    {
+      input: shadowBuffer,
+      left: left + shadowOffset,
+      top: top + shadowOffset,
+      blend: 'over' as const,
+    },
+    {
+      input: resizedFace,
+      left,
+      top,
+      blend: 'over' as const,
+    },
+  ];
+
+  return bg
+    .composite(composites)
+    .png({ quality: 90 })
+    .toBuffer();
 }

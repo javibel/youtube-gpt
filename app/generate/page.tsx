@@ -67,6 +67,9 @@ export default function GeneratePage() {
   const [previewSaved, setPreviewSaved] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
   const [thumbnailPrompt, setThumbnailPrompt] = useState<string>('');
+  const [facePhoto, setFacePhoto] = useState<File | null>(null);
+  const [facePhotoPreview, setFacePhotoPreview] = useState<string>('');
+  const [facePosition, setFacePosition] = useState<'left' | 'right'>('right');
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -133,10 +136,15 @@ export default function GeneratePage() {
     // Thumbnail uses a separate image generation endpoint
     if (selectedTemplate === 'thumbnail') {
       try {
+        const body = new FormData();
+        body.append('tema', formData.tema);
+        body.append('estilo', formData.estilo || 'viral');
+        body.append('lang', lang);
+        body.append('facePosition', facePosition);
+        if (facePhoto) body.append('facePhoto', facePhoto);
         const res = await fetch('/api/generate-thumbnail', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tema: formData.tema, estilo: formData.estilo, lang }),
+          body,
         });
         const data = await res.json();
         if (!res.ok) {
@@ -381,6 +389,58 @@ export default function GeneratePage() {
                       <textarea rows={2} value={formData.cta} onChange={(e) => set('cta', e.target.value)} className="soft-field resize-none text-sm" placeholder={t('Ej: Suscribirse, ver la parte 2...', 'E.g. Subscribe, watch part 2...')} />
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Thumbnail: face photo upload + position */}
+            {selectedTemplate === 'thumbnail' && (
+              <div className="yv-card p-6">
+                <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-3)' }}>
+                  {t('Tu foto (opcional)', 'Your photo (optional)')}
+                </p>
+                <p className="text-[13px] mb-4" style={{ color: 'var(--yv-text-4)' }}>
+                  {t('Sube tu foto para incluirla en la miniatura. PNG con fondo transparente recomendado.', 'Upload your photo to include it in the thumbnail. Transparent PNG recommended.')}
+                </p>
+                <div className="flex items-start gap-4 flex-wrap">
+                  <label className="flex flex-col items-center justify-center w-32 h-32 rounded-xl border-2 border-dashed cursor-pointer hover:border-white/40 transition overflow-hidden" style={{ borderColor: facePhotoPreview ? '#7CFF00' : 'var(--yv-border)', background: 'var(--yv-bg-0)' }}>
+                    {facePhotoPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={facePhotoPreview} alt="Face" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-center px-2">
+                        <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: 'var(--yv-text-4)' }}><path d="M12 5v14M5 12h14"/></svg>
+                        <span className="text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{t('Subir foto', 'Upload photo')}</span>
+                      </div>
+                    )}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) { setError(t('La foto no puede superar 5MB', 'Photo must be under 5MB')); return; }
+                      setFacePhoto(file);
+                      const reader = new FileReader();
+                      reader.onload = () => setFacePhotoPreview(reader.result as string);
+                      reader.readAsDataURL(file);
+                    }} />
+                  </label>
+                  <div className="flex flex-col gap-3">
+                    <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>
+                      {t('Posición', 'Position')}
+                    </p>
+                    <div className="flex gap-2">
+                      {(['left', 'right'] as const).map((pos) => (
+                        <button key={pos} onClick={() => setFacePosition(pos)}
+                          className={`soft-chip px-4 py-2 text-[13px] font-mono-jb tracking-wider uppercase ${facePosition === pos ? 'soft-chip-active' : 'hover:text-white'}`}>
+                          {pos === 'left' ? t('◀ Izquierda', '◀ Left') : t('Derecha ▶', 'Right ▶')}
+                        </button>
+                      ))}
+                    </div>
+                    {facePhotoPreview && (
+                      <button onClick={() => { setFacePhoto(null); setFacePhotoPreview(''); }} className="text-[12px] hover:text-white transition" style={{ color: 'var(--yv-text-4)' }}>
+                        {t('Quitar foto', 'Remove photo')}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
