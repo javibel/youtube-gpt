@@ -1,15 +1,13 @@
 'use strict';
 
 /**
- * Brand Twitter Post — generates a daily tweet with infographic and posts
+ * Brand Twitter Post — generates a daily tweet with AI-generated image and posts
  * via Puppeteer using the brand account (chrome-profile).
  *
- * Replaces the Twitter API (paid) with free Puppeteer-based posting.
- * Called from index.js cron at 09:00 Europe/Madrid.
+ * Uses Ideogram v3 TURBO to generate unique, visually rich images for each post.
+ * Falls back to Satori infographic if Ideogram fails.
  *
- * Usage:
- *   node brand-twitter-post.js          # run manually
- *   require('./brand-twitter-post').run() # from cron
+ * Called from index.js cron at 10:30 Europe/Madrid.
  */
 
 require('dotenv').config();
@@ -22,8 +20,9 @@ const { postTweet } = require('./outreach-tweet');
 
 const TAG = 'brand-twitter-post';
 const BASE_URL = (process.env.NEXTAUTH_URL || 'https://ytubviral.com').replace(/\/$/, '');
+const IDEOGRAM_KEY = process.env.IDEOGRAM_API_KEY;
 
-// ── Day themes (mirrored from content-generator.ts) ─────────────────────────
+// ── Day themes ──────────────────────────────────────────────────────────────
 
 const TEMAS_SEMANA = {
   0: { tema: 'dato o estadística de YouTube', mencionarProducto: true },
@@ -37,22 +36,16 @@ const TEMAS_SEMANA = {
 
 const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-const DAY_TAGS = {
-  0: 'Dato YouTube',
-  1: 'Error Común',
-  2: 'Tip Práctico',
-  3: 'Tutorial',
-  4: 'Herramienta',
-  5: 'Debate',
-  6: 'Comparativa',
-};
-
-const FORMATS = ['listicle', 'micro-story', 'hot-take', 'framework'];
-
-function getTodayFormat() {
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-  return FORMATS[dayOfYear % FORMATS.length];
-}
+// Visual styles that rotate daily for variety
+const IMAGE_STYLES = [
+  { scene: 'a sleek dark workspace with neon monitor glow, YouTube analytics dashboard visible', palette: 'dark blue, cyan neon, deep black' },
+  { scene: 'a creator studio with camera, ring light, and laptop showing video editing software', palette: 'warm orange, soft white, dark gray' },
+  { scene: 'an abstract data visualization with glowing nodes and connections, tech aesthetic', palette: 'electric purple, teal, dark background' },
+  { scene: 'a modern minimalist desk with a phone showing a trending YouTube video', palette: 'coral red, clean white, charcoal' },
+  { scene: 'a dramatic aerial view of a city at night with screens showing social media metrics', palette: 'gold, deep navy, bright white highlights' },
+  { scene: 'a futuristic holographic display showing growth charts and video thumbnails', palette: 'green glow, deep black, white accents' },
+  { scene: 'a cozy creative space with mood lighting, journal and laptop, inspiration board on wall', palette: 'warm amber, soft cream, rich brown' },
+];
 
 // ── Content generation ──────────────────────────────────────────────────────
 
@@ -87,65 +80,132 @@ Devuelve SOLO el texto del tweet, nada más.
   });
 
   if (!text || text.length < 10) throw new Error('Claude returned empty tweet');
-  // Trim to 280 chars max
   return text.slice(0, 280);
 }
 
-// ── Infographic URL builder (mirrored from infographic-generator.ts) ────────
+// ── Ideogram image generation ───────────────────────────────────────────────
 
-function extractTitle(content) {
-  const firstLine = content.split('\n').find(l => l.trim().length > 10);
-  if (!firstLine) return 'YouTube Tips';
-  return firstLine
-    .replace(/#\S+/g, '')
-    .replace(/[^\w\sáéíóúñüÁÉÍÓÚÑÜ¿?¡!.,:\-–—%()'"]/g, '')
-    .trim()
-    .slice(0, 120);
+async function generateImagePrompt(tweetText) {
+  const prompt = `Given this tweet about YouTube:
+"${tweetText}"
+
+Write a concise image generation prompt (max 200 chars) for a 1:1 social media visual.
+The image should be eye-catching and related to the tweet's topic.
+
+RULES:
+- NO text, NO words, NO letters, NO numbers in the image
+- Focus on a strong visual scene/metaphor related to the topic
+- Modern, premium, editorial photography or 3D render style
+- Dramatic lighting, rich colors, professional composition
+- Think: what image would make someone stop scrolling?
+
+Return ONLY the image prompt, nothing else.`;
+
+  const imagePrompt = await callClaude(prompt, 100, {
+    caller: TAG,
+    system: 'You are a visual art director. Write concise, vivid image prompts.',
+  });
+
+  return imagePrompt?.trim() || null;
 }
 
-function extractQuote(content) {
-  const sentences = content
-    .split(/[.!?]\s/)
-    .map(s => s.trim())
-    .filter(s => s.length > 15 && s.length < 150);
-  return (sentences[0] || content.slice(0, 100)).replace(/[.!?]$/, '');
+async function generateIdeogramImage(tweetText) {
+  if (!IDEOGRAM_KEY) {
+    console.log(`[${TAG}] No IDEOGRAM_API_KEY — skipping AI image`);
+    return null;
+  }
+
+  // Get today's visual style for variety
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  const style = IMAGE_STYLES[dayOfYear % IMAGE_STYLES.length];
+
+  // Generate a prompt based on tweet content
+  let imagePrompt = await generateImagePrompt(tweetText);
+
+  if (!imagePrompt) {
+    // Fallback: use the rotating style directly
+    imagePrompt = `${style.scene}, professional photography, dramatic lighting`;
+  }
+
+  // Enhance the prompt with style guidelines
+  const fullPrompt = `${imagePrompt}. Color palette: ${style.palette}. No text, no words, no letters. Cinematic lighting, 4K quality, editorial style.`;
+
+  console.log(`[${TAG}] Ideogram prompt: "${fullPrompt.slice(0, 100)}..."`);
+
+  try {
+    const body = JSON.stringify({
+      prompt: fullPrompt,
+      resolution: '1024x1024',
+      rendering_speed: 'TURBO',
+      magic_prompt: 'ON',
+      style_type: 'REALISTIC',
+      negative_prompt: 'text, words, letters, numbers, watermark, logo, blurry, low quality, distorted',
+    });
+
+    const res = await fetch('https://api.ideogram.ai/v1/ideogram-v3/generate', {
+      method: 'POST',
+      headers: {
+        'Api-Key': IDEOGRAM_KEY,
+        'Content-Type': 'application/json',
+      },
+      body,
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[${TAG}] Ideogram error ${res.status}: ${errText.slice(0, 200)}`);
+      return null;
+    }
+
+    const data = await res.json();
+    const imageUrl = data.data?.[0]?.url;
+    if (!imageUrl) {
+      console.error(`[${TAG}] No image URL in Ideogram response`);
+      return null;
+    }
+
+    // Download to temp file
+    const tmpPath = path.join(os.tmpdir(), `ytubviral-ai-${Date.now()}.png`);
+    await downloadUrl(imageUrl, tmpPath);
+    console.log(`[${TAG}] AI image generated and downloaded`);
+    return tmpPath;
+  } catch (err) {
+    console.error(`[${TAG}] Ideogram failed: ${err.message}`);
+    return null;
+  }
 }
 
-function buildInfographicUrl(content) {
-  const fmt = getTodayFormat();
-  const tag = DAY_TAGS[new Date().getDay()] || 'YouTube Tips';
+// ── Fallback: Satori infographic ────────────────────────────────────────────
+
+function buildFallbackInfographicUrl(content) {
+  const sentences = content.split(/[.!?]\s/).map(s => s.trim()).filter(s => s.length > 15 && s.length < 150);
+  const quote = (sentences[0] || content.slice(0, 100)).replace(/[.!?]$/, '');
   const params = new URLSearchParams();
-  params.set('format', fmt === 'micro-story' ? 'story' : fmt);
-  params.set('tag', tag);
-
-  // For a single tweet, use quote/story format (most versatile)
   params.set('format', 'story');
-  params.set('quote', extractQuote(content));
-
+  params.set('quote', quote);
+  params.set('tag', 'YouTube Tips');
   return `${BASE_URL}/api/og/infographic?${params.toString()}`;
 }
 
-// ── Image download ──────────────────────────────────────────────────────────
+// ── Download helper ─────────────────────────────────────────────────────────
 
-function downloadImage(url) {
+function downloadUrl(url, destPath) {
   return new Promise((resolve, reject) => {
-    const tmpPath = path.join(os.tmpdir(), `ytubviral-infographic-${Date.now()}.png`);
-
     const get = (targetUrl, redirects = 0) => {
       if (redirects > 5) return reject(new Error('Too many redirects'));
       const mod = targetUrl.startsWith('https') ? https : require('http');
 
-      mod.get(targetUrl, { timeout: 15000 }, (res) => {
+      mod.get(targetUrl, { timeout: 20000 }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           return get(res.headers.location, redirects + 1);
         }
         if (res.statusCode !== 200) {
-          return reject(new Error(`HTTP ${res.statusCode} downloading infographic`));
+          return reject(new Error(`HTTP ${res.statusCode}`));
         }
 
-        const file = fs.createWriteStream(tmpPath);
+        const file = fs.createWriteStream(destPath);
         res.pipe(file);
-        file.on('finish', () => { file.close(); resolve(tmpPath); });
+        file.on('finish', () => { file.close(); resolve(destPath); });
         file.on('error', reject);
       }).on('error', reject).on('timeout', function () {
         this.destroy();
@@ -166,16 +226,24 @@ async function run() {
   const tweetText = await generateTweetContent();
   console.log(`[${TAG}] Generated tweet (${tweetText.length} chars): "${tweetText.slice(0, 60)}..."`);
 
-  // 2. Build infographic URL and download
-  const infographicUrl = buildInfographicUrl(tweetText);
-  console.log(`[${TAG}] Downloading infographic...`);
-
+  // 2. Generate AI image (or fall back to Satori)
   let imagePath = null;
   try {
-    imagePath = await downloadImage(infographicUrl);
-    console.log(`[${TAG}] Infographic downloaded: ${imagePath}`);
+    imagePath = await generateIdeogramImage(tweetText);
   } catch (err) {
-    console.error(`[${TAG}] Infographic download failed: ${err.message} — posting without image`);
+    console.error(`[${TAG}] AI image failed: ${err.message}`);
+  }
+
+  // Fallback to old Satori infographic
+  if (!imagePath) {
+    console.log(`[${TAG}] Falling back to Satori infographic...`);
+    try {
+      const fallbackUrl = buildFallbackInfographicUrl(tweetText);
+      const tmpPath = path.join(os.tmpdir(), `ytubviral-infographic-${Date.now()}.png`);
+      imagePath = await downloadUrl(fallbackUrl, tmpPath);
+    } catch (err) {
+      console.error(`[${TAG}] Satori fallback also failed: ${err.message} — posting without image`);
+    }
   }
 
   // 3. Post via Puppeteer with brand account
@@ -183,7 +251,6 @@ async function run() {
     await postTweet('brand', tweetText, imagePath);
     console.log(`[${TAG}] Brand tweet posted successfully!`);
   } finally {
-    // Clean up temp image
     if (imagePath && fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }

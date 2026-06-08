@@ -5,7 +5,7 @@ import {
   publishToFacebookWithImage,
   publishToInstagram,
 } from '@/lib/agent/meta-agent';
-import { buildInfographicUrl } from '@/lib/agent/infographic-generator';
+import { generateSocialImageWithFallback } from '@/lib/agent/ideogram-image';
 // Twitter API desactivada — publicación migrada a Puppeteer en local-agent (brand-twitter-post.js)
 // import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
@@ -221,11 +221,14 @@ export async function GET(request: Request) {
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
 
-    // 3. Publish Facebook with infographic (via Graph API)
-    if (fb) {
-      const fbImageUrl = buildInfographicUrl(fb);
-      // Pre-warm CDN cache so Meta fetches instantly
-      await fetch(fbImageUrl).catch(() => {});
+    // 3. Generate AI images for Facebook + Instagram in parallel
+    const [fbImageUrl, igImageUrl] = await Promise.all([
+      fb ? generateSocialImageWithFallback(fb) : Promise.resolve(null),
+      ig ? generateSocialImageWithFallback(ig) : Promise.resolve(null),
+    ]);
+
+    // 3a. Publish Facebook with AI image (via Graph API)
+    if (fb && fbImageUrl) {
       const fbResult = await publishToFacebookWithImage(fb, fbImageUrl);
       results.facebook = fbResult;
       if (!fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
@@ -236,9 +239,7 @@ export async function GET(request: Request) {
 
     if (ig) {
       socialPublishTasks.push((async () => {
-        const igImageUrl = buildInfographicUrl(ig);
-        await fetch(igImageUrl).catch(() => {});
-        const igResult = await publishToInstagram(ig, igImageUrl);
+        const igResult = await publishToInstagram(ig, igImageUrl ?? undefined);
         results.instagram = igResult;
         if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
       })());

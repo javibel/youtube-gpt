@@ -558,7 +558,12 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   const mentionRate = ov.personaMentionRates?.[persona.id] ?? persona.mentionRate ?? 0.2;
 
   if (isRelevant) {
-    const formula = ov.mentionFormula?.forced?.[lang] || ov.mentionFormula?.forced?.en || '';
+    // Post matches YTubViral-solvable problems → always include mention instruction
+    const formula = ov.mentionFormula?.forced?.[lang]
+      || ov.mentionFormula?.forced?.en
+      || ov.mentionFormula?.probabilistic?.[lang]
+      || ov.mentionFormula?.probabilistic?.en
+      || '';
     mentionInstruction = formula ? `\n\n${formula}` : '';
   } else if (persona.mentionYtubviral && Math.random() < mentionRate) {
     const formula = ov.mentionFormula?.probabilistic?.[lang] || ov.mentionFormula?.probabilistic?.en || '';

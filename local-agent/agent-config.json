@@ -44,7 +44,7 @@
   },
   "humanize": {
     "skipSessionProbability": 0.15,
-    "skipPostProbability": 0.12,
+    "skipPostProbability": 0.1,
     "readingPauseMin": 5,
     "readingPauseMax": 15,
     "actionPauseMin": 3,
@@ -55,8 +55,8 @@
   },
   "persona-runner": {
     "model": "claude-haiku-4-5-20251001",
-    "maxTweetsPerSession": 14,
-    "maxRedditPerSession": 9
+    "maxTweetsPerSession": 15,
+    "maxRedditPerSession": 10
   },
   "followup": {
     "model": "claude-haiku-4-5-20251001",
@@ -141,17 +141,17 @@
       "job": "Consultor marketing digital",
       "platforms": "Twitter, Reddit",
       "mentionYtubviral": true,
-      "mentionRate": 0.38
+      "mentionRate": 0.4
     }
   },
-  "_lastModified": "2026-06-04T04:28:06.977Z",
+  "_lastModified": "2026-06-08T01:00:39.365Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 24.703625749999986,
+    "amount": 24.526884249999988,
     "currency": "USD",
     "lastChecked": "2026-05-31T10:05:03.957Z",
-    "lastDeduction": "2026-06-05T11:02:16.507Z",
-    "totalSpentToday": 0.00440875,
-    "spendDate": "2026-06-05"
+    "lastDeduction": "2026-06-08T11:00:56.996Z",
+    "totalSpentToday": 0.13732425000000004,
+    "spendDate": "2026-06-08"
   }
 }

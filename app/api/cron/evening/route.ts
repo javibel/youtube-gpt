@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
 import { publishToInstagram, retryPendingFacebookPost } from '@/lib/agent/meta-agent';
+import { generateSocialImageWithFallback } from '@/lib/agent/ideogram-image';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { runFeedbackAgent } from '@/lib/agent/feedback-agent';
@@ -58,9 +59,10 @@ export async function GET(request: Request) {
     errors.push(...youtube.errors);
     results.youtube = { processed: youtube.processed, replied: youtube.replied };
 
-    // 2. Publish Instagram (evening slot — 18:30 Madrid)
+    // 2. Publish Instagram with AI image (evening slot — 18:30 Madrid)
     if (ig) {
-      const igResult = await publishToInstagram(ig);
+      const igImageUrl = await generateSocialImageWithFallback(ig);
+      const igResult = await publishToInstagram(ig, igImageUrl);
       results.instagram = igResult;
       if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
     }

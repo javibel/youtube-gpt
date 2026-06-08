@@ -126,11 +126,12 @@ async function killZombieChromeForProfile(absDir) {
   const { execSync } = require('child_process');
   try {
     // On Windows, find chrome.exe processes whose command line includes the profile dir
-    const cmd = `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${absDir.replace(/\\/g, '\\\\')}') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`;
+    // Use /T flag with taskkill to also terminate child processes (renderer, GPU, etc.)
+    const cmd = `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${absDir.replace(/\\/g, '\\\\')}') } | ForEach-Object { try { taskkill /F /T /PID $($_.ProcessId) } catch {} }"`;
     execSync(cmd, { timeout: 10000, stdio: 'pipe', windowsHide: true });
     console.log(`[browser] Killed zombie Chrome processes for ${path.basename(absDir)}`);
     // Brief wait for OS to release file handles
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1500));
   } catch {
     // Fallback: if targeted kill fails, don't nuke all Chrome (user might have browser open)
     console.log(`[browser] No zombie Chrome found for ${path.basename(absDir)}`);
@@ -225,9 +226,25 @@ async function closeBrowserForProfile(profileDir) {
   const absDir = path.resolve(__dirname, profileDir);
   const b = browsers.get(absDir);
   if (b) {
-    await b.close().catch(() => {});
+    // Grab the PID before closing — if .close() hangs, we can force-kill
+    let pid = null;
+    try { pid = b.process()?.pid; } catch {}
+
+    const closed = await Promise.race([
+      b.close().then(() => true),
+      new Promise(r => setTimeout(() => r(false), 8000)),
+    ]).catch(() => false);
+
+    if (!closed && pid) {
+      console.log(`[browser] close() timed out for ${path.basename(absDir)} — force-killing PID ${pid} tree`);
+      try {
+        const { execSync } = require('child_process');
+        execSync(`taskkill /F /T /PID ${pid}`, { timeout: 5000, stdio: 'pipe', windowsHide: true });
+      } catch {}
+    }
+
     browsers.delete(absDir);
-    // Backup cookies after clean shutdown
+    // Backup cookies after shutdown
     backupCookies(absDir);
   }
 }
@@ -386,6 +403,7 @@ process.on('beforeExit', () => gracefulShutdown('beforeExit'));
 // are NOT tracked in the browsers Map (= zombies from crashes).
 
 const ZOMBIE_REAP_INTERVAL = 5 * 60 * 1000; // 5 min
+const MAX_CHROME_PROCESSES = 20; // If more than this, something is wrong
 let zombieReaperTimer = null;
 
 function startZombieReaper() {
@@ -393,27 +411,57 @@ function startZombieReaper() {
   zombieReaperTimer = setInterval(async () => {
     try {
       const { execSync } = require('child_process');
-      // Get all chrome.exe PIDs using our profile dirs
+
+      // Strategy 1: Kill orphaned Chrome processes tied to our profiles but not tracked
       const output = execSync(
         `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and ($_.CommandLine.Contains('chrome-profiles') -or $_.CommandLine.Contains('chrome-profile')) -and $_.CommandLine.Contains('${__dirname.replace(/\\/g, '\\\\')}') } | Select-Object ProcessId, @{N='Profile';E={if($_.CommandLine -match 'user-data-dir=(.+?)( |$)'){$matches[1]}}} | ConvertTo-Json"`,
         { timeout: 10000, stdio: 'pipe', windowsHide: true }
       ).toString().trim();
 
-      if (!output || output === '') return;
-      let procs = JSON.parse(output);
-      if (!Array.isArray(procs)) procs = [procs];
+      if (output && output !== '') {
+        let procs = JSON.parse(output);
+        if (!Array.isArray(procs)) procs = [procs];
 
-      // Which profile dirs do we actively track?
-      const activeProfiles = new Set([...browsers.keys()].map(d => d.replace(/\\/g, '/')));
+        // Which profile dirs do we actively track?
+        const activeProfiles = new Set([...browsers.keys()].map(d => d.replace(/\\/g, '/')));
 
-      for (const proc of procs) {
-        if (!proc.Profile) continue;
-        const normalizedProfile = proc.Profile.replace(/\\/g, '/').replace(/"/g, '');
-        const isTracked = [...activeProfiles].some(ap => normalizedProfile.includes(ap) || ap.includes(normalizedProfile));
-        if (!isTracked) {
-          console.log(`[browser] Zombie reaper: killing orphan Chrome PID ${proc.ProcessId} (profile: ${path.basename(normalizedProfile)})`);
-          try { execSync(`taskkill /F /PID ${proc.ProcessId}`, { timeout: 5000, stdio: 'pipe', windowsHide: true }); } catch {}
+        for (const proc of procs) {
+          if (!proc.Profile) continue;
+          const normalizedProfile = proc.Profile.replace(/\\/g, '/').replace(/"/g, '');
+          const isTracked = [...activeProfiles].some(ap => normalizedProfile.includes(ap) || ap.includes(normalizedProfile));
+          if (!isTracked) {
+            console.log(`[browser] Zombie reaper: killing orphan Chrome PID ${proc.ProcessId} (profile: ${path.basename(normalizedProfile)})`);
+            // Use /T to also kill child processes (renderer, GPU, etc.)
+            try { execSync(`taskkill /F /T /PID ${proc.ProcessId}`, { timeout: 5000, stdio: 'pipe', windowsHide: true }); } catch {}
+          }
         }
+      }
+
+      // Strategy 2: Safety net — if total chrome.exe count is excessive, kill ALL
+      // headless Chrome processes tied to our directory (nuclear option)
+      const countOutput = execSync(
+        `powershell -Command "(Get-Process chrome -ErrorAction SilentlyContinue | Measure-Object).Count"`,
+        { timeout: 5000, stdio: 'pipe', windowsHide: true }
+      ).toString().trim();
+      const totalChrome = parseInt(countOutput, 10) || 0;
+
+      if (totalChrome > MAX_CHROME_PROCESSES && browsers.size === 0) {
+        // No active browser sessions but tons of Chrome processes = all zombies
+        console.log(`[browser] Zombie reaper: ${totalChrome} Chrome processes with 0 active sessions — killing all headless Chrome`);
+        try {
+          execSync(
+            `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${__dirname.replace(/\\/g, '\\\\')}') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
+            { timeout: 10000, stdio: 'pipe', windowsHide: true }
+          );
+        } catch {}
+        // Also kill child processes (renderer, GPU) that may not reference our dir
+        // These are Chrome children spawned by our headless sessions
+        try {
+          execSync(
+            `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('--type=') -and -not $_.CommandLine.Contains('Google\\\\Chrome\\\\User Data') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
+            { timeout: 10000, stdio: 'pipe', windowsHide: true }
+          );
+        } catch {}
       }
     } catch {
       // Silent — reaper is best-effort

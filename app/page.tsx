@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import LandingContent from '@/components/LandingContent';
 
-export const revalidate = 3600;
+export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
   title: 'YTubViral — Free YouTube SEO Score & AI Tools for Creators',
