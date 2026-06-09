@@ -1,6 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      // www → non-www permanent redirect (SEO canonical)
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.ytubviral.com' }],
+        destination: 'https://ytubviral.com/:path*',
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       // Security headers — all routes
