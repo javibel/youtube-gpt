@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import PricingSection from '@/components/PricingSection';
+import PricingComparisonTable from '@/components/PricingComparisonTable';
+import PricingFAQ from '@/components/PricingFAQ';
 import { getServerLang } from '@/lib/server-lang';
 
 export const metadata: Metadata = {
@@ -46,6 +48,28 @@ export default function PricingPage() {
         </Link>
       </div>
       <PricingSection lang={lang} />
+
+      {/* Trust badges */}
+      <div className="border-b border-white/10 bg-black">
+        <div className="max-w-4xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          {[
+            { icon: '🔒', es: 'Pago seguro con Stripe', en: 'Secure payment via Stripe' },
+            { icon: '↩️', es: 'Garantía de 30 días', en: '30-day money-back' },
+            { icon: '✂️', es: 'Cancela cuando quieras', en: 'Cancel anytime' },
+            { icon: '🇪🇺', es: 'Cumplimiento RGPD', en: 'GDPR compliant' },
+          ].map((b, i) => (
+            <div key={i} className="flex flex-col items-center gap-2">
+              <span className="text-2xl" aria-hidden>{b.icon}</span>
+              <span className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400">
+                {lang === 'en' ? b.en : b.es}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <PricingComparisonTable lang={lang} />
+      <PricingFAQ lang={lang} />
     </main>
   );
 }
