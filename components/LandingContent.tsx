@@ -126,9 +126,9 @@ function Hero({ lang }: { lang: Lang }) {
       <div className="relative max-w-7xl mx-auto px-6 pt-16 pb-20">
         <div className="flex justify-center mb-6">
           <div className="inline-flex items-center gap-2 border border-white/15 rounded-full pl-1 pr-4 py-1 backdrop-blur" style={{ background: 'rgba(0,0,0,0.6)' }}>
-            <span className="red-tape py-1">v4.2</span>
+            <span className="red-tape py-1">CLAUDE</span>
             <span className="font-mono-jb text-[13px] tracking-wider text-zinc-400 uppercase">
-              {lang === 'en' ? 'AI for creators · Engine v4.2' : 'IA para creadores · Motor v4.2'}
+              {lang === 'en' ? 'Powered by Claude — Anthropic AI' : 'Impulsado por Claude — IA de Anthropic'}
             </span>
           </div>
         </div>
@@ -136,23 +136,23 @@ function Hero({ lang }: { lang: Lang }) {
         <h1 className="font-display font-bold text-center leading-[0.95] tracking-tight" style={{ fontSize: 'clamp(44px,7vw,104px)' }}>
           {lang === 'en' ? (
             <>
-              <span className="block">Know your</span>
-              <span className="block red-underline">YouTube SEO Score</span>
-              <span className="block"><span style={{ color: 'var(--red)' }}>→</span> in 30 seconds.</span>
+              <span className="block">Grow on YouTube</span>
+              <span className="block red-underline">with the best AI</span>
+              <span className="block"><span style={{ color: 'var(--red)' }}>→</span> start free.</span>
             </>
           ) : (
             <>
-              <span className="block">Conoce tu</span>
-              <span className="block red-underline">YouTube SEO Score</span>
-              <span className="block"><span style={{ color: 'var(--red)' }}>→</span> en 30 segundos.</span>
+              <span className="block">Crece en YouTube</span>
+              <span className="block red-underline">con la mejor IA</span>
+              <span className="block"><span style={{ color: 'var(--red)' }}>→</span> empieza gratis.</span>
             </>
           )}
         </h1>
 
         <p className="max-w-2xl mx-auto text-center text-zinc-400 text-lg md:text-xl mt-8 leading-relaxed">
           {lang === 'en'
-            ? "Paste any video URL and get an instant diagnosis: what's holding you back, what to fix first, and how to rank higher. Free, no signup required."
-            : 'Pega cualquier URL de video y obtén un diagnóstico instantáneo: qué te frena, qué arreglar primero y cómo posicionarte mejor. Gratis, sin registro.'}
+            ? '14 AI tools to grow on YouTube, powered by Claude — the AI that writes best, not generic GPT. Start with the free SEO Score: paste a video URL and see what is holding you back. No signup.'
+            : '14 herramientas de IA para crecer en YouTube, impulsadas por Claude — la IA que mejor escribe, no GPT genérico. Empieza con el SEO Score gratis: pega la URL de un vídeo y descubre qué te frena. Sin registro.'}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
@@ -165,8 +165,8 @@ function Hero({ lang }: { lang: Lang }) {
         </div>
         <p className="text-center text-zinc-500 text-[13px] font-mono-jb mt-5">
           {lang === 'en'
-            ? 'No signup needed · Free forever · Pro from €9.99/mo (VidIQ charges $49)'
-            : 'Sin registro · Gratis para siempre · Pro desde 9,99€/mes (VidIQ cobra $49)'}
+            ? 'No signup · SEO Score & Trends free forever · Pro €9.99/mo (VidIQ charges $49)'
+            : 'Sin registro · SEO Score y Trends gratis para siempre · Pro 9,99€/mes (VidIQ cobra $49)'}
         </p>
 
         <LandingHeroDemo lang={lang} />
