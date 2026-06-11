@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import PasswordInput from '@/components/PasswordInput';
+import { hasTrackingConsent } from '@/components/CookieConsent';
 
 export default function SignupForm() {
   const router = useRouter();
@@ -11,8 +12,9 @@ export default function SignupForm() {
   const refCode = searchParams.get('ref') || '';
 
   // Store ref in cookie so Google OAuth signIn callback can read it
+  // RGPD: cookie de atribución — solo con consentimiento de tracking
   useEffect(() => {
-    if (refCode) {
+    if (refCode && hasTrackingConsent()) {
       document.cookie = `ytv_ref=${refCode};path=/;max-age=3600;samesite=lax`;
     }
   }, [refCode]);

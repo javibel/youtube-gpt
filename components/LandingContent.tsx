@@ -574,6 +574,7 @@ function Footer({ lang }: { lang: Lang }) {
               <li><Link href="/terms" className="text-zinc-500 text-sm hover:text-white transition">{t('Términos', 'Terms')}</Link></li>
               <li><Link href="/privacy" className="text-zinc-500 text-sm hover:text-white transition">{t('Privacidad', 'Privacy')}</Link></li>
               <li><Link href="/legal" className="text-zinc-500 text-sm hover:text-white transition">{t('Aviso Legal', 'Legal Notice')}</Link></li>
+              <li><button onClick={() => window.dispatchEvent(new CustomEvent('ytv-consent-open'))} className="text-zinc-500 text-sm hover:text-white transition">Cookies</button></li>
             </ul>
           </div>
         </div>

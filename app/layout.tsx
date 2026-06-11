@@ -5,6 +5,7 @@ import { LangProvider } from "@/components/LangProvider";
 import ChatWidget from "@/components/ChatWidget";
 import PageViewTracker from "@/components/PageViewTracker";
 import UTMCapture from "@/components/UTMCapture";
+import CookieConsent from "@/components/CookieConsent";
 import "./globals.css";
 
 const BASE_URL = "https://ytubviral.com";
@@ -100,6 +101,7 @@ export default function RootLayout({
             <ChatWidget />
             <PageViewTracker />
             <Suspense fallback={null}><UTMCapture /></Suspense>
+            <CookieConsent />
           </SessionProviderWrapper>
         </LangProvider>
       </body>
