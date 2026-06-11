@@ -200,6 +200,16 @@ function SeoScoreContent() {
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
+  // Autorun desde el onboarding: /seo-score?url=... analiza directamente
+  useEffect(() => {
+    const u = new URLSearchParams(window.location.search).get('url');
+    if (u) {
+      setUrlInput(u);
+      handleUrlAnalyze(undefined, u);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!isAuthed) return;
     fetch('/api/youtube/seo-score')
@@ -211,9 +221,10 @@ function SeoScoreContent() {
       .catch(() => setHasLoadedChannel(true));
   }, [isAuthed]);
 
-  async function handleUrlAnalyze(e?: React.FormEvent) {
+  async function handleUrlAnalyze(e?: React.FormEvent, overrideUrl?: string) {
     e?.preventDefault();
-    if (!urlInput.trim()) return;
+    const url = (overrideUrl ?? urlInput).trim();
+    if (!url) return;
     setUrlLoading(true);
     setUrlError('');
     setUrlResult(null);
@@ -221,7 +232,7 @@ function SeoScoreContent() {
       const res = await fetch('/api/youtube/seo-score-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlInput.trim() }),
+        body: JSON.stringify({ url }),
       });
       const data = await res.json();
       if (!res.ok) {

@@ -146,6 +146,7 @@ export default function DashboardPage() {
   const [dailyIdeas, setDailyIdeas] = useState<VideoIdea[] | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
   const [onboardingName, setOnboardingName] = useState('');
+  const [onboardingUrl, setOnboardingUrl] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -328,7 +329,7 @@ function handleCopy(id: string, out: string) {
   return (
     <DashboardShell>
 
-      {/* Onboarding modal — 4 steps: Welcome → Connect YouTube → SEO Score → Generate */}
+      {/* Onboarding modal — 4 steps: Welcome → SEO Score (input embebido) → Connect YouTube → Generate */}
       {onboardingStep !== null && onboardingStep < 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
           <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/10 p-8" style={{ background: '#111114' }}>
@@ -378,15 +379,65 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {/* Step 1: Connect YouTube — THE critical step */}
+            {/* Step 1: SEO Score con input embebido — el momento de activación, <30s desde registro */}
             {onboardingStep === 1 && (
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,229,255,0.12)' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </div>
+                <div className="flex justify-center gap-2 mb-4">
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 1 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
+                  ))}
+                </div>
+                <h2 className="font-display font-bold text-xl text-white mb-2">
+                  {t('Analiza tu último vídeo', 'Analyze your latest video')}
+                </h2>
+                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                  {t(
+                    'Pega la URL de un vídeo tuyo (o de cualquier canal) y obtén su SEO Score de 0 a 100 con mejoras concretas. Es lo primero que prueban todos.',
+                    'Paste the URL of one of your videos (or any channel) and get its 0-100 SEO Score with specific fixes. It\'s the first thing everyone tries.'
+                  )}
+                </p>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const url = onboardingUrl.trim();
+                    if (!url) return;
+                    await advanceOnboarding(2);
+                    router.push(`/seo-score?url=${encodeURIComponent(url)}`);
+                  }}
+                  className="flex flex-col gap-2"
+                >
+                  <input
+                    type="url"
+                    value={onboardingUrl}
+                    onChange={(e) => setOnboardingUrl(e.target.value)}
+                    placeholder="https://youtube.com/watch?v=..."
+                    autoFocus
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-zinc-600 outline-none focus:border-white/30"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  />
+                  <button type="submit" disabled={!onboardingUrl.trim()} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2 disabled:opacity-40">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    {t('Analizar mi SEO Score →', 'Analyze my SEO Score →')}
+                  </button>
+                </form>
+                <button onClick={() => advanceOnboarding(2)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2 mt-1">
+                  {t('Saltar por ahora', 'Skip for now')}
+                </button>
+              </div>
+            )}
+
+            {/* Step 2: Connect YouTube */}
+            {onboardingStep === 2 && (
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,0,0,0.12)' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43z" fill="#FF0000"/><path d="M9.75 15.02l5.75-3.27-5.75-3.27v6.54z" fill="#fff"/></svg>
                 </div>
                 <div className="flex justify-center gap-2 mb-4">
                   {[0, 1, 2, 3].map(i => (
-                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 1 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
+                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 2 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
                   ))}
                 </div>
                 <h2 className="font-display font-bold text-xl text-white mb-2">
@@ -405,41 +456,9 @@ function handleCopy(id: string, out: string) {
                   )}
                 </p>
                 <div className="flex flex-col gap-2">
-                  <button onClick={async () => { await advanceOnboarding(2); setYtConnecting(true); window.location.href = '/api/youtube/connect'; }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                  <button onClick={async () => { await advanceOnboarding(3); setYtConnecting(true); window.location.href = '/api/youtube/connect'; }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43z" fill="currentColor"/><path d="M9.75 15.02l5.75-3.27-5.75-3.27v6.54z" fill="#111"/></svg>
                     {t('Conectar canal', 'Connect channel')}
-                  </button>
-                  <button onClick={() => advanceOnboarding(2)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
-                    {t('Saltar por ahora', 'Skip for now')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Try SEO Score */}
-            {onboardingStep === 2 && (
-              <div className="text-center">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,229,255,0.12)' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                </div>
-                <div className="flex justify-center gap-2 mb-4">
-                  {[0, 1, 2, 3].map(i => (
-                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 2 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
-                  ))}
-                </div>
-                <h2 className="font-display font-bold text-xl text-white mb-2">
-                  {t('Analiza tu SEO', 'Analyze your SEO')}
-                </h2>
-                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
-                  {t(
-                    'Pega la URL de cualquier video de YouTube y obtendras un analisis completo: titulo, descripcion, tags, puntuacion de 0 a 100 y sugerencias concretas.',
-                    'Paste any YouTube video URL and get a full analysis: title, description, tags, score from 0 to 100 and specific suggestions.'
-                  )}
-                </p>
-                <div className="flex flex-col gap-2">
-                  <button onClick={async () => { await advanceOnboarding(3); router.push('/seo-score'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                    {t('Probar SEO Score', 'Try SEO Score')}
                   </button>
                   <button onClick={() => advanceOnboarding(3)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
                     {t('Saltar por ahora', 'Skip for now')}
