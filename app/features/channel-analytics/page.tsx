@@ -5,7 +5,7 @@ import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
-  title: 'YouTube Channel Analytics Dashboard — Views, Traffic & Growth',
+  title: 'YouTube Channel Analytics — Views & Growth',
   description:
     'Dashboard de analytics avanzado para tu canal de YouTube: vistas diarias, watch time, fuentes de tráfico, top vídeos y suscriptores.',
   alternates: { canonical: 'https://ytubviral.com/features/channel-analytics' },

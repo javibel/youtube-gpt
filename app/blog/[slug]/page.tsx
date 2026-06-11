@@ -8,6 +8,7 @@ import {
 } from '@/lib/blog-data';
 import ArticleBlock from '@/components/ArticleBlock';
 import { getServerLang } from '@/lib/server-lang';
+import { BLOG_SEO } from '@/lib/blog-seo';
 
 export async function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
@@ -17,9 +18,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = getPost(slug);
   if (!post) return {};
+  // Meta title/description cortos para SERP (blog-seo.ts); OG/Twitter mantienen el título largo
+  const seo = BLOG_SEO[slug];
   return {
-    title: post.title.es,
-    description: post.excerpt.es,
+    title: seo?.title.es ?? post.title.es,
+    description: seo?.desc?.es ?? post.excerpt.es,
     alternates: { canonical: `https://ytubviral.com/blog/${slug}` },
     openGraph: {
       title: post.title.es,

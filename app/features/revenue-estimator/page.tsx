@@ -5,7 +5,7 @@ import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
-  title: 'YouTube Money Calculator — Revenue Estimator by Country',
+  title: 'YouTube Money Calculator by Country — Free',
   description:
     'Estimate YouTube earnings for any channel. Real CPM data for 40+ countries, revenue projections, and AI monetization tips. Free YouTube money calculator.',
   alternates: { canonical: 'https://ytubviral.com/features/revenue-estimator' },

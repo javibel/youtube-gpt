@@ -5,7 +5,7 @@ import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
-  title: 'YouTube AI Content Generator — Titles, Scripts & More',
+  title: 'YouTube AI Generator — Titles, Scripts & More',
   description:
     'Genera contenido para YouTube con IA: títulos, guiones, descripciones, hooks para Shorts y más. 9 plantillas listas para usar.',
   alternates: { canonical: 'https://ytubviral.com/features/ai-generator' },

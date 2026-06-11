@@ -20,7 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const guide = getGuide(slug);
   if (!guide) return {};
   return {
-    title: `${guide.title.es} — Learning Hub`,
+    // Sin sufijo "— Learning Hub": con el template "| YTubViral" algunos titles superaban 65 chars
+    title: guide.title.es,
     description: guide.description.es,
     alternates: { canonical: `https://ytubviral.com/features/learning-hub/${slug}` },
     openGraph: {

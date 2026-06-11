@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     title: 'Free YouTube SEO Score Checker',
     description: 'Paste any YouTube video URL and get an instant SEO score with recommendations. Free.',
     url: 'https://ytubviral.com/seo-score',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
 };
 

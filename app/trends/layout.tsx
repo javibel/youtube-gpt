@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     title: 'YouTube Trending Videos Right Now',
     description: 'Top 20 trending videos updated every 30 minutes. See what\'s exploding on YouTube.',
     url: 'https://ytubviral.com/trends',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
 };
 

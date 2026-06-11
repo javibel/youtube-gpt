@@ -5,7 +5,7 @@ import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
-  title: 'YouTube Video Performance Predictor — AI Views Estimator',
+  title: 'YouTube Video Predictor — AI Views Estimator',
   description:
     'Predice el rendimiento de tu vídeo de YouTube antes de publicarlo: vistas estimadas, engagement, potencial viral y sugerencias de IA.',
   alternates: { canonical: 'https://ytubviral.com/features/video-predictor' },

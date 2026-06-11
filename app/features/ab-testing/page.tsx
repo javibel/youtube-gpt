@@ -5,7 +5,7 @@ import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
-  title: 'YouTube A/B Testing Tool — Test Titles & Thumbnails Free',
+  title: 'A/B Test YouTube Titles & Thumbnails — Free',
   description:
     'A/B test your YouTube titles automatically. Swap versions, track CTR, and find what gets more clicks. The only free A/B testing tool for YouTube creators.',
   alternates: { canonical: 'https://ytubviral.com/features/ab-testing' },

@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     title: 'Free YouTube Tools for Creators',
     description: 'SEO Score, Trending Explorer, AI Generator and 11 more tools to grow your YouTube channel.',
     url: 'https://ytubviral.com/tools',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
 };
 

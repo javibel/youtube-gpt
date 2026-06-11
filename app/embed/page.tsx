@@ -1,15 +1,15 @@
-'use client';
-
-import { useState } from 'react';
-import { useLang } from '@/components/LangProvider';
+import type { Metadata } from 'next';
 import PublicNav from '@/components/PublicNav';
+import CopyButton from './CopyButton';
 
-export default function EmbedPage() {
-  const lang = useLang();
-  const t = (es: string, en: string) => lang === 'en' ? en : es;
-  const [copied, setCopied] = useState(false);
+export const metadata: Metadata = {
+  title: 'Embeddable YouTube SEO Score Widget',
+  description:
+    'Add a free YouTube SEO analyzer to your website with one line of HTML. Responsive, no API key required.',
+  alternates: { canonical: 'https://ytubviral.com/embed' },
+};
 
-  const snippet = `<iframe
+const snippet = `<iframe
   src="https://ytubviral.com/embed/seo-score"
   width="100%"
   height="400"
@@ -17,12 +17,7 @@ export default function EmbedPage() {
   style="border-radius:12px;border:1px solid #222;"
 ></iframe>`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(snippet);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
+export default function EmbedPage() {
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
       <PublicNav />
@@ -30,16 +25,13 @@ export default function EmbedPage() {
       <div className="max-w-3xl mx-auto px-6 py-16">
         <header className="mb-12">
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand)' }}>
-            {t('WIDGET EMBEBIBLE', 'EMBEDDABLE WIDGET')}
+            EMBEDDABLE WIDGET
           </p>
           <h1 className="font-display font-bold text-4xl text-white mb-4">
-            {t('Añade el SEO Score a tu web', 'Add SEO Score to your website')}
+            Add SEO Score to your website
           </h1>
           <p className="font-mono-jb text-sm leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
-            {t(
-              'Ofrece a tus visitantes un analizador SEO de YouTube gratuito. Copia el código y pégalo en tu HTML.',
-              'Give your visitors a free YouTube SEO analyzer. Copy the code and paste it into your HTML.'
-            )}
+            Give your visitors a free YouTube SEO analyzer. Copy the code and paste it into your HTML.
           </p>
         </header>
 
@@ -47,17 +39,7 @@ export default function EmbedPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <p className="font-mono-jb text-[13px] uppercase tracking-wider" style={{ color: 'var(--yv-text-4)' }}>HTML</p>
-            <button
-              onClick={handleCopy}
-              className="font-mono-jb text-[13px] px-3 py-1 rounded-lg transition"
-              style={{
-                background: copied ? 'rgba(0,255,163,0.1)' : 'rgba(255,255,255,0.05)',
-                border: copied ? '1px solid rgba(0,255,163,0.3)' : '1px solid var(--yv-border)',
-                color: copied ? '#00FFA3' : 'var(--yv-text-2)',
-              }}
-            >
-              {copied ? t('Copiado ✓', 'Copied ✓') : t('Copiar código', 'Copy code')}
-            </button>
+            <CopyButton snippet={snippet} />
           </div>
           <pre
             className="p-5 rounded-xl overflow-x-auto font-mono-jb text-[13px] leading-relaxed"
@@ -70,7 +52,7 @@ export default function EmbedPage() {
         {/* Live preview */}
         <div className="mb-12">
           <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-3" style={{ color: 'var(--yv-text-4)' }}>
-            {t('PREVIEW EN VIVO', 'LIVE PREVIEW')}
+            LIVE PREVIEW
           </p>
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--yv-border)' }}>
             <iframe
@@ -85,9 +67,9 @@ export default function EmbedPage() {
         {/* Features */}
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           {[
-            { icon: '⚡', title: t('Gratis', 'Free'), desc: t('Sin límites de uso ni API key.', 'No usage limits, no API key.') },
-            { icon: '🎨', title: t('Responsive', 'Responsive'), desc: t('Se adapta a cualquier ancho.', 'Adapts to any width.') },
-            { icon: '🔗', title: t('Backlink incluido', 'Backlink included'), desc: t('Link a YTubViral para atribución.', 'Links to YTubViral for attribution.') },
+            { icon: '⚡', title: 'Free', desc: 'No usage limits, no API key.' },
+            { icon: '🎨', title: 'Responsive', desc: 'Adapts to any width.' },
+            { icon: '🔗', title: 'Backlink included', desc: 'Links to YTubViral for attribution.' },
           ].map(f => (
             <div key={f.title} className="p-5 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--yv-border)' }}>
               <p className="text-2xl mb-2">{f.icon}</p>
@@ -100,13 +82,13 @@ export default function EmbedPage() {
         {/* CTA */}
         <div className="text-center p-8 rounded-xl" style={{ background: 'rgba(232,77,91,0.04)', border: '1px solid rgba(232,77,91,0.15)' }}>
           <p className="font-display font-bold text-white text-lg mb-2">
-            {t('¿Quieres el toolkit completo?', 'Want the full toolkit?')}
+            Want the full toolkit?
           </p>
           <p className="font-mono-jb text-sm mb-4" style={{ color: 'var(--yv-text-3)' }}>
-            {t('SEO Score, IA personalizada y más para optimizar tu canal.', 'SEO Score, personalized AI, and more to optimize your channel.')}
+            SEO Score, personalized AI, and more to optimize your channel.
           </p>
           <a href="/signup" className="btn-offset inline-flex px-8 py-3.5 text-sm font-display font-bold">
-            {t('Crear cuenta gratis →', 'Create free account →')}
+            Create free account →
           </a>
         </div>
       </div>

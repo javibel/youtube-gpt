@@ -5,7 +5,7 @@ import RelatedTools from '@/components/RelatedTools';
 
 
 export const metadata: Metadata = {
-  title: 'YouTube Retention Analyzer — Hook Score & Drop-Off Points',
+  title: 'YouTube Retention Analyzer — Hook Score',
   description:
     'Analiza la retención de audiencia de tus vídeos de YouTube: curvas, hook score, puntos de abandono y consejos de IA para mejorar.',
   alternates: { canonical: 'https://ytubviral.com/features/retention-analyzer' },
