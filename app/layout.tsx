@@ -65,10 +65,9 @@ export const metadata: Metadata = {
     description:
       "Títulos, descripciones, scripts y miniaturas para YouTube generados por IA en segundos.",
   },
-  alternates: {
-    canonical: BASE_URL,
-    languages: { 'en-US': BASE_URL },
-  },
+  // NO alternates here: a root-layout canonical is inherited by every page
+  // without its own, marking them as duplicates of the homepage for Google.
+  // Each page declares its own canonical (homepage's lives in app/page.tsx).
 };
 
 export default function RootLayout({

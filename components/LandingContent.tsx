@@ -563,7 +563,7 @@ function Footer({ lang }: { lang: Lang }) {
               <li><Link href="/blog" className="text-zinc-500 text-sm hover:text-white transition">Blog</Link></li>
               <li><Link href="/gear" className="text-zinc-500 text-sm hover:text-white transition">{t('Equipo recomendado', 'Recommended gear')}</Link></li>
               <li><Link href="/extension" className="text-zinc-500 text-sm hover:text-white transition">{t('Extensión Chrome', 'Chrome Extension')}</Link></li>
-              <li><a href="#pricing" className="text-zinc-500 text-sm hover:text-white transition">{t('Precios', 'Pricing')}</a></li>
+              <li><Link href="/pricing" className="text-zinc-500 text-sm hover:text-white transition">{t('Precios', 'Pricing')}</Link></li>
             </ul>
           </div>
           <div>
