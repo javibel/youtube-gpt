@@ -635,8 +635,8 @@ const ART_SETUP_500_EN: BlockType[] = [
 ];
 
 const ART_HERRAMIENTAS_IA: BlockType[] = [
-  { type: 'p', t: '¿Eres YouTuber y sientes que pierdes demasiado tiempo en tareas repetitivas? La inteligencia artificial ha revolucionado la forma en que los creadores de contenido trabajan. En 2026, existen herramientas increíbles que te permiten ahorrar horas cada semana.' },
-  { type: 'p', t: 'En este artículo te presentamos las 10 mejores herramientas de IA para YouTubers, tanto gratuitas como de pago.' },
+  { type: 'p', t: 'Las herramientas de IA para YouTubers han cambiado las reglas del juego: tareas que antes tomaban horas — títulos, descripciones, guiones, miniaturas — hoy se resuelven en minutos. Si sientes que pierdes demasiado tiempo en trabajo repetitivo, esta guía es para ti.' },
+  { type: 'p', t: 'Aquí tienes las 10 mejores herramientas de inteligencia artificial para YouTubers en 2026, gratuitas y de pago, con precios y para qué sirve cada una.' },
   { type: 'h2', t: '¿Por Qué Usar IA en Tu Canal de YouTube?' },
   { type: 'p', t: 'Antes de entrar en materia, es importante entender por qué la IA se ha convertido en el mejor aliado de los creadores de contenido:' },
   { type: 'list', items: [
@@ -660,7 +660,7 @@ const ART_HERRAMIENTAS_IA: BlockType[] = [
     'Keyword research integrado',
   ]},
   { type: 'p', t: 'Precio: Gratis (10 generaciones/mes) | Pro desde $9.99/mes — Ideal para creadores que quieren escalar su producción sin perder horas escribiendo.' },
-  { type: 'callout-mid', t: 'Prueba YTubViral gratis', sub: '10 generaciones gratis. Sin tarjeta de crédito.', cta: 'Empezar gratis en ytubviral.com' },
+  { type: 'callout-mid', t: 'Prueba YTubViral gratis', sub: '10 generaciones gratis. Sin tarjeta de crédito.', cta: 'Empezar gratis en ytubviral.com', href: '/features/ai-generator' },
   { type: 'h3', t: '2. vidIQ — Análisis y SEO para YouTube' },
   { type: 'p', t: 'vidIQ es una de las herramientas más populares para optimizar tus vídeos en YouTube. Ofrece análisis de keywords, seguimiento de competidores, coaching con IA y sugerencias diarias de contenido.' },
   { type: 'list', items: [
@@ -1000,7 +1000,7 @@ const ART_7_FRAMEWORKS_EN: BlockType[] = [
 ];
 
 const ART_CUANTO_GANA_YOUTUBER: BlockType[] = [
-  { type: 'p', t: 'Voy a ser directo: si estás leyendo esto esperando que te diga que puedes hacerte rico subiendo vídeos a YouTube, este artículo te va a decepcionar. Pero si quieres entender de verdad cómo funciona el dinero en YouTube España en 2026 — con números reales, no los de los vídeos de "gané 50.000€ en un mes" — entonces quédate.' },
+  { type: 'p', t: 'Voy a ser directo: si estás leyendo esto esperando que te diga que puedes hacerte rico subiendo vídeos a YouTube, este artículo te va a decepcionar. Pero si quieres saber de verdad cuánto gana un youtuber en España en 2026 — con números reales, no los de los vídeos de "gané 50.000€ en un mes" — entonces quédate.' },
   { type: 'p', t: 'Llevo años trabajando con creadores de contenido y hay una cosa que me frustra profundamente: la cantidad de desinformación que circula sobre cuánto se gana en YouTube. Se habla de facturación bruta como si fuera beneficio neto. Se omiten los impuestos. Se ignora que el 90% de los canales abandonan antes de cobrar su primer cheque de 100€. Y sobre todo, nadie te cuenta lo que pasa entre el mes 1 y el mes 18.' },
 
   { type: 'h2', t: 'Lo primero: CPM y RPM no son lo mismo (y la diferencia importa mucho)' },
@@ -1127,6 +1127,7 @@ const ART_CUANTO_GANA_YOUTUBER: BlockType[] = [
 
   { type: 'h2', t: 'Entonces, ¿cuánto gana realmente un YouTuber en España?' },
   { type: 'p', t: 'La respuesta honesta es: depende de si actúas como creador o como empresario.' },
+  { type: 'callout-mid', t: '¿Cuánto ganaría TU canal?', sub: 'El estimador de ingresos de YTubViral calcula lo que generaría tu canal con CPMs reales de 40+ países. Gratis y sin registro complicado.', cta: 'Calcular mis ingresos', href: '/features/revenue-estimator' },
   { type: 'p', t: 'Un creador que solo confía en las visitas de YouTube está jugando a una lotería con muy pocas papeletas ganadoras. Un creador que profesionaliza su gestión, entiende sus métricas por nicho, diversifica con productos propios y optimiza sus impuestos puede construir algo realmente rentable.' },
   { type: 'p', t: 'La industria española en 2026 va hacia una polarización clara: canales de alta calidad técnica y especialización económica, frente a una masa de creadores de entretenimiento que luchan por sobrevivir con CPMs decrecientes y costes operativos crecientes.' },
   { type: 'p', t: 'La verdad que nadie te cuenta es que YouTube no es un billete de lotería. Es un negocio de márgenes estrechos donde la creatividad es el 20% del éxito. El otro 80% es contabilidad, estrategia fiscal y gestión comercial.' },
@@ -1136,7 +1137,7 @@ const ART_CUANTO_GANA_YOUTUBER: BlockType[] = [
 ];
 
 const ART_CUANTO_GANA_YOUTUBER_EN: BlockType[] = [
-  { type: 'p', t: 'Let me be upfront: if you are reading this hoping I will tell you that you can get rich uploading videos to YouTube, this article will disappoint you. But if you want to truly understand how money works on YouTube in Spain in 2026 — with real numbers, not the ones from those "I earned \u20ac50,000 in one month" videos — then stick around.' },
+  { type: 'p', t: 'Let me be upfront: if you are reading this hoping I will tell you that you can get rich uploading videos to YouTube, this article will disappoint you. But if you want to know how much a YouTuber really earns in Spain in 2026 — with real numbers, not the ones from those "I earned \u20ac50,000 in one month" videos — then stick around.' },
   { type: 'p', t: 'I have been working with content creators for years, and there is one thing that deeply frustrates me: the sheer amount of misinformation floating around about how much you can earn on YouTube. People talk about gross revenue as if it were net profit. Taxes get omitted. The fact that 90% of channels quit before cashing their first \u20ac100 check is ignored. And above all, nobody tells you what happens between month 1 and month 18.' },
 
   { type: 'h2', t: 'First things first: CPM and RPM are not the same (and the difference matters a lot)' },
@@ -1263,6 +1264,7 @@ const ART_CUANTO_GANA_YOUTUBER_EN: BlockType[] = [
 
   { type: 'h2', t: 'So how much does a YouTuber in Spain actually earn?' },
   { type: 'p', t: 'The honest answer is: it depends on whether you act as a creator or as a business owner.' },
+  { type: 'callout-mid', t: 'How much would YOUR channel earn?', sub: 'YTubViral\'s revenue estimator calculates what your channel would generate using real CPMs from 40+ countries. Free.', cta: 'Estimate my revenue', href: '/features/revenue-estimator' },
   { type: 'p', t: 'A creator who relies solely on YouTube views is playing a lottery with very few winning tickets. A creator who professionalizes their operations, understands their niche metrics, diversifies with own products, and optimizes their taxes can build something genuinely profitable.' },
   { type: 'p', t: 'The Spanish industry in 2026 is heading toward a clear polarization: high-quality, economically specialized channels on one side, versus a mass of entertainment creators struggling to survive on shrinking CPMs and rising operational costs.' },
   { type: 'p', t: 'The truth nobody tells you is that YouTube is not a lottery ticket. It is a thin-margin business where creativity accounts for 20% of the success. The other 80% is accounting, tax strategy, and sales management.' },
@@ -1272,8 +1274,8 @@ const ART_CUANTO_GANA_YOUTUBER_EN: BlockType[] = [
 ];
 
 const ART_HERRAMIENTAS_IA_EN: BlockType[] = [
-  { type: 'p', t: 'Are you a YouTuber who feels like you waste too much time on repetitive tasks? Artificial intelligence has revolutionized how content creators work. In 2026, there are incredible tools that can save you hours every week.' },
-  { type: 'p', t: 'In this article, we present the 10 best AI tools for YouTubers — both free and paid.' },
+  { type: 'p', t: 'AI tools for YouTubers have changed the rules of the game: tasks that used to take hours — titles, descriptions, scripts, thumbnails — now take minutes. If you feel like you waste too much time on repetitive work, this guide is for you.' },
+  { type: 'p', t: 'Here are the 10 best AI tools for YouTubers in 2026, free and paid, with pricing and what each one is for.' },
   { type: 'h2', t: 'Why Use AI for Your YouTube Channel?' },
   { type: 'p', t: 'Before diving in, it\'s important to understand why AI has become every content creator\'s best ally:' },
   { type: 'list', items: [
@@ -1297,7 +1299,7 @@ const ART_HERRAMIENTAS_IA_EN: BlockType[] = [
     'Built-in keyword research',
   ]},
   { type: 'p', t: 'Price: Free (10 generations/month) | Pro from $9.99/month — Ideal for creators who want to scale their production without spending hours writing.' },
-  { type: 'callout-mid', t: 'Try YTubViral for free', sub: '10 free generations. No credit card required.', cta: 'Start free at ytubviral.com' },
+  { type: 'callout-mid', t: 'Try YTubViral for free', sub: '10 free generations. No credit card required.', cta: 'Start free at ytubviral.com', href: '/features/ai-generator' },
   { type: 'h3', t: '2. vidIQ — YouTube Analytics & SEO' },
   { type: 'p', t: 'vidIQ is one of the most popular tools for optimizing your YouTube videos. It offers keyword analysis, competitor tracking, AI coaching, and daily content suggestions.' },
   { type: 'list', items: [
@@ -2039,7 +2041,8 @@ const ART_ALGORITMO_2026_EN: BlockType[] = [
 
 const ART_SUSCRIPTORES_ES: BlockType[] = [
   { type: 'p', t: 'Conseguir suscriptores en YouTube en 2026 es un juego completamente diferente al de hace tres años. El algoritmo ha cambiado, la competencia se ha multiplicado y los espectadores son más selectivos que nunca. Pero hay buenas noticias: los canales que aplican las estrategias correctas crecen más rápido que nunca, porque YouTube está mejor que nunca encontrando audiencias para contenido de nicho.' },
-  { type: 'p', t: 'En este artículo te voy a enseñar 12 estrategias probadas para ganar suscriptores reales — no bots, no comprados, no trucos que funcionan una semana. Son las mismas técnicas que usan canales que pasan de 0 a 100K suscriptores en 2026, respaldadas por datos reales y confirmaciones directas de YouTube.' },
+  { type: 'p', t: 'En este artículo te voy a enseñar cómo conseguir suscriptores en YouTube con 12 estrategias probadas — no bots, no comprados, no trucos que funcionan una semana. Son las mismas técnicas que usan canales que pasan de 0 a 100K suscriptores en 2026, respaldadas por datos reales y confirmaciones directas de YouTube.' },
+  { type: 'callout-mid', t: 'Primero, entiende el algoritmo', sub: 'Las 12 estrategias funcionan mejor si sabes cómo decide YouTube a quién mostrar tu contenido en 2026.', cta: 'Leer: cómo funciona el algoritmo', href: '/blog/algoritmo-youtube-2026-como-funciona' },
 
   { type: 'h2', t: '1. El primer vídeo importa menos de lo que crees (pero los primeros 10 lo son todo)' },
   { type: 'p', t: 'El error más común de un canal nuevo es obsesionarse con que el primer vídeo sea perfecto. La realidad es que casi ningún primer vídeo se hace viral. Lo que sí importa es que publiques al menos 10 vídeos buenos en tu nicho antes de juzgar si "funciona" o no.' },
@@ -2145,7 +2148,8 @@ const ART_SUSCRIPTORES_ES: BlockType[] = [
 
 const ART_SUSCRIPTORES_EN: BlockType[] = [
   { type: 'p', t: 'Getting subscribers on YouTube in 2026 is a completely different game than it was three years ago. The algorithm has changed, competition has multiplied, and viewers are more selective than ever. But there\'s good news: channels that apply the right strategies grow faster than ever, because YouTube is better than ever at finding audiences for niche content.' },
-  { type: 'p', t: 'In this article, I\'ll show you 12 proven strategies to gain real subscribers — not bots, not purchased, not tricks that work for a week. These are the same techniques used by channels going from 0 to 100K subscribers in 2026, backed by real data and direct confirmations from YouTube.' },
+  { type: 'p', t: 'In this article, I\'ll show you how to get subscribers on YouTube with 12 proven strategies — not bots, not purchased, not tricks that work for a week. These are the same techniques used by channels going from 0 to 100K subscribers in 2026, backed by real data and direct confirmations from YouTube.' },
+  { type: 'callout-mid', t: 'First, understand the algorithm', sub: 'These 12 strategies work better when you know how YouTube decides who sees your content in 2026.', cta: 'Read: how the algorithm works', href: '/blog/algoritmo-youtube-2026-como-funciona' },
 
   { type: 'h2', t: '1. Your First Video Matters Less Than You Think (but Your First 10 Are Everything)' },
   { type: 'p', t: 'The most common mistake for a new channel is obsessing over making the first video perfect. The reality is that almost no first video goes viral. What does matter is publishing at least 10 solid videos in your niche before judging whether it\'s "working" or not.' },
@@ -4127,6 +4131,7 @@ const ART_VIDIQ_ALTERNATIVE_FREE_2026_ES: BlockType[] = [
   { type: 'p', t: 'Lo más importante es no caer en la trampa de creer que pagar más significa crecer más rápido. He visto canales pequeños con herramientas gratuitas superar en crecimiento a canales grandes con todos los planes premium activados, simplemente porque publicaban contenido relevante de forma constante y optimizaban cada video antes de publicarlo. La herramienta es solo el multiplicador; el trabajo sigue siendo tuyo.' },
   { type: 'p', t: 'En 2026, buscar una vidiq alternative free que funcione de verdad ya no es una quimera. YTubViral y otras plataformas han democratizado el acceso a herramientas de nivel profesional. Ahora el diferencial no es quién tiene acceso a qué herramienta, sino quién la usa de forma más inteligente y constante.' },
   { type: 'callout-mid', t: 'Analiza a tu competencia y descubre qué les funciona', sub: 'Con el análisis de competidores de YTubViral puedes ver las palabras clave, títulos y estrategias de los canales más exitosos de tu nicho.', cta: 'Ver análisis de competidores', href: '/features/competitor-analysis' },
+  { type: 'callout-mid', t: '¿Dudas entre TubeBuddy y VidIQ?', sub: 'Tenemos la comparativa completa 2026: precios, funciones, y cuál conviene según el tamaño de tu canal.', cta: 'Leer TubeBuddy vs VidIQ', href: '/blog/tubebuddy-vs-vidiq-2026' },
   { type: 'callout-final', t: 'Empieza a optimizar tu canal hoy mismo, gratis', sub: 'YTubViral es la alternativa gratuita a VidIQ que más está creciendo en 2026. SEO en tiempo real, generación de títulos con IA, investigación de palabras clave y análisis de competidores, todo sin pagar nada.', cta: 'Probar YTubViral gratis', href: '/seo-score' },
 ];
 
@@ -4174,6 +4179,7 @@ const ART_VIDIQ_ALTERNATIVE_FREE_2026_EN: BlockType[] = [
   { type: 'h2', t: 'Final Verdict: The Best Free vidIQ Alternative in 2026' },
   { type: 'p', t: 'The search for the best vidiq alternative free 2026 comes down to one question: which tool gives you real, actionable data and useful AI features without locking the important stuff behind a paywall? Based on what\'s actually available right now, YTubViral comes out ahead for most creators. It offers more on the free tier than vidIQ does, the AI features are genuinely useful rather than token gestures, and the keyword research goes deeper than a single score.' },
   { type: 'p', t: 'TubeBuddy is worth keeping around if you want A/B testing and you\'re willing to pay for it. Social Blade is a useful free companion for tracking competitor growth. But as a primary YouTube SEO platform — especially if you\'re looking for a vidiq alternative free 2026 that handles everything from keyword research to AI title generation to channel audits — YTubViral is the strongest option available right now.' },
+  { type: 'callout-mid', t: 'Torn between TubeBuddy and vidIQ?', sub: 'We wrote the full 2026 comparison: pricing, features, and which one fits your channel size.', cta: 'Read TubeBuddy vs vidIQ', href: '/blog/tubebuddy-vs-vidiq-2026' },
   { type: 'callout-final', t: 'Switch to the Smarter vidIQ Alternative — Free', sub: 'Get your channel SEO score, run AI-powered keyword research, and generate optimized titles at no cost. No credit card, no extension required.', cta: 'Try YTubViral Free', href: '/seo-score' },
 ];
 
@@ -4214,6 +4220,7 @@ const ART_TUBEBUDDY_VS_VIDIQ_2026_ES: BlockType[] = [
   { type: 'h2', t: 'Conclusión: el mejor stack de herramientas para YouTube en 2026' },
   { type: 'p', t: 'Después de analizar en detalle la comparativa tubebuddy vs vidiq 2026, la conclusión es que ambas herramientas son buenas pero ninguna es perfecta. TubeBuddy sigue siendo la mejor opción para A/B testing y gestión de canal dentro de YouTube Studio. VidIQ destaca en generación de ideas con IA y análisis de tendencias. El problema es que las dos juntas pueden ser un gasto elevado para la mayoría de creadores.' },
   { type: 'p', t: 'La tendencia en 2026 es usar herramientas más especializadas y complementarlas según las necesidades concretas de cada canal. Muchos creadores están optando por combinar una de las dos herramientas principales con soluciones de IA más modernas como YTubViral, que cubren la parte de generación de contenido optimizado a un coste más razonable. Al final, la mejor herramienta es la que usas de verdad y que se traduce en vídeos con más vistas y más suscriptores. No la que tiene más funciones en su página de ventas.' },
+  { type: 'callout-mid', t: '¿Buscas una alternativa gratuita a VidIQ?', sub: 'Analizamos las mejores opciones gratis y de bajo coste de 2026, con sus límites reales y cuándo conviene cada una.', cta: 'Ver alternativas a VidIQ', href: '/blog/vidiq-alternative-free-2026' },
   { type: 'callout-final', t: 'Empieza a optimizar tu canal hoy mismo', sub: 'YTubViral combina investigación de palabras clave, generación de títulos con IA y análisis SEO en una sola plataforma. Sin compromisos, sin extensiones, sin precios inflados.', cta: 'Probar YTubViral gratis', href: '/seo-score' },
 ];
 
@@ -4258,6 +4265,7 @@ const ART_TUBEBUDDY_VS_VIDIQ_2026_EN: BlockType[] = [
   { type: 'callout-mid', t: 'Analyze your competitors before your next upload', sub: 'See what keywords and title structures are working for the top channels in your niche — and replicate what\'s proven to work.', cta: 'Try Competitor Analysis', href: '/features/competitor-analysis' },
   { type: 'h2', t: 'Final Verdict' },
   { type: 'p', t: 'Both TubeBuddy and vidIQ are legitimate tools with real use cases. Neither is a scam, and neither is universally better than the other in 2026. TubeBuddy wins on bulk management and SEO data depth. vidIQ wins on AI coaching and trend alerts. YTubViral wins on title optimization, pre-publish SEO scoring, and pricing transparency. For most solo creators, the smartest move is to use a combination of tools rather than going all-in on one platform. Start with what solves your most immediate problem, measure the results, and expand from there.' },
+  { type: 'callout-mid', t: 'Looking for a free vidIQ alternative?', sub: 'We reviewed the best free and low-cost options of 2026, with their real limits and when each one makes sense.', cta: 'See vidIQ alternatives', href: '/blog/vidiq-alternative-free-2026' },
   { type: 'callout-final', t: 'Stop guessing and start optimizing', sub: 'YTubViral gives you AI-powered title generation, keyword research, SEO scoring, and competitor analysis — all in one place. Start free today.', cta: 'Try YTubViral Free', href: '/features/ai-generator' },
 ];
 
