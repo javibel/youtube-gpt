@@ -302,6 +302,13 @@ function SeoScoreContent() {
               'Paste any YouTube video link and get a complete SEO analysis with a 0-100 score and AI-powered specific recommendations.'
             )}
           </p>
+          {/* Disclosure requerido por YouTube API Developer Policies III.E.4.h (métricas derivadas) */}
+          <p className="text-zinc-600 text-[12px] mt-2">
+            {t(
+              'El SEO Score es una métrica propia de YTubViral calculada a partir de datos de la API de YouTube — no es un dato oficial de YouTube.',
+              'The SEO Score is YTubViral\'s own metric calculated from YouTube API data — it is not an official YouTube metric.'
+            )}
+          </p>
         </div>
       </div>
 
