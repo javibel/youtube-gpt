@@ -348,7 +348,9 @@ function ComparisonTable({ lang }: { lang: Lang }) {
           </p>
         </div>
 
-        <div className="grid border border-white/10 bg-black" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
+        {/* En móvil la tabla scrollea horizontal — con 3 columnas fijas reventaba el viewport (E3) */}
+        <div className="overflow-x-auto">
+        <div className="grid border border-white/10 bg-black min-w-[560px]" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
           <div className="p-5 border-r border-white/10" />
           <div className="p-5 border-r border-white/10 text-center">
             <p className="font-mono-jb text-[13px] tracking-wider text-zinc-500 uppercase mb-2">A</p>
@@ -374,6 +376,7 @@ function ComparisonTable({ lang }: { lang: Lang }) {
               </div>
             </div>
           ))}
+        </div>
         </div>
       </div>
     </section>
@@ -536,7 +539,7 @@ function Footer({ lang }: { lang: Lang }) {
             <ul className="space-y-2">
               {creationTools.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="text-zinc-500 text-sm hover:text-white transition">{l.label}</Link>
+                  <Link href={l.href} className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{l.label}</Link>
                 </li>
               ))}
             </ul>
@@ -548,7 +551,7 @@ function Footer({ lang }: { lang: Lang }) {
             <ul className="space-y-2">
               {analysisTools.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="text-zinc-500 text-sm hover:text-white transition">{l.label}</Link>
+                  <Link href={l.href} className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{l.label}</Link>
                 </li>
               ))}
             </ul>
@@ -558,12 +561,12 @@ function Footer({ lang }: { lang: Lang }) {
               {t('Recursos', 'Resources')}
             </p>
             <ul className="space-y-2">
-              <li><Link href="/tools" className="text-zinc-500 text-sm hover:text-white transition">{t('Herramientas gratis', 'Free Tools')}</Link></li>
-              <li><Link href="/trends" className="text-zinc-500 text-sm hover:text-white transition">{t('Trending', 'Trending')}</Link></li>
-              <li><Link href="/blog" className="text-zinc-500 text-sm hover:text-white transition">Blog</Link></li>
-              <li><Link href="/gear" className="text-zinc-500 text-sm hover:text-white transition">{t('Equipo recomendado', 'Recommended gear')}</Link></li>
-              <li><Link href="/extension" className="text-zinc-500 text-sm hover:text-white transition">{t('Extensión Chrome', 'Chrome Extension')}</Link></li>
-              <li><Link href="/pricing" className="text-zinc-500 text-sm hover:text-white transition">{t('Precios', 'Pricing')}</Link></li>
+              <li><Link href="/tools" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Herramientas gratis', 'Free Tools')}</Link></li>
+              <li><Link href="/trends" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Trending', 'Trending')}</Link></li>
+              <li><Link href="/blog" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">Blog</Link></li>
+              <li><Link href="/gear" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Equipo recomendado', 'Recommended gear')}</Link></li>
+              <li><Link href="/extension" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Extensión Chrome', 'Chrome Extension')}</Link></li>
+              <li><Link href="/pricing" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Precios', 'Pricing')}</Link></li>
             </ul>
           </div>
           <div>
@@ -571,10 +574,10 @@ function Footer({ lang }: { lang: Lang }) {
               {t('Legal', 'Legal')}
             </p>
             <ul className="space-y-2">
-              <li><Link href="/terms" className="text-zinc-500 text-sm hover:text-white transition">{t('Términos', 'Terms')}</Link></li>
-              <li><Link href="/privacy" className="text-zinc-500 text-sm hover:text-white transition">{t('Privacidad', 'Privacy')}</Link></li>
-              <li><Link href="/legal" className="text-zinc-500 text-sm hover:text-white transition">{t('Aviso Legal', 'Legal Notice')}</Link></li>
-              <li><button onClick={() => window.dispatchEvent(new CustomEvent('ytv-consent-open'))} className="text-zinc-500 text-sm hover:text-white transition">Cookies</button></li>
+              <li><Link href="/terms" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Términos', 'Terms')}</Link></li>
+              <li><Link href="/privacy" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Privacidad', 'Privacy')}</Link></li>
+              <li><Link href="/legal" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Aviso Legal', 'Legal Notice')}</Link></li>
+              <li><button onClick={() => window.dispatchEvent(new CustomEvent('ytv-consent-open'))} className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">Cookies</button></li>
             </ul>
           </div>
         </div>

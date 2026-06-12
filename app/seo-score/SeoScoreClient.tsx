@@ -313,7 +313,8 @@ function SeoScoreContent() {
       </div>
 
       <form onSubmit={handleUrlAnalyze} className="mb-8">
-        <div className="flex gap-3">
+        {/* Apilado en móvil: en fila el botón se salía del viewport a 375px (E3) */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={urlInput}

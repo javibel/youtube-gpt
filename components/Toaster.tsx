@@ -40,7 +40,9 @@ export default function Toaster() {
   if (items.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[300] flex flex-col gap-2 w-[calc(100%-32px)] max-w-md" role="status" aria-live="polite">
+    // pointer-events-none: los toasts son informativos; sin esto bloqueaban los
+    // botones del banner de cookies cuando coincidían abajo en móvil (E3)
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[300] flex flex-col gap-2 w-[calc(100%-32px)] max-w-md pointer-events-none" role="status" aria-live="polite">
       {items.map((t) => (
         <div
           key={t.id}

@@ -782,4 +782,6 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
   .yv-page-header { flex-direction: column; align-items: flex-start; }
   /* Tap target mínimo 44px en táctil (E1 #4) */
   .yv-sidebar__item { height: 44px; }
+  /* iOS Safari hace zoom automático al enfocar inputs con fuente <16px (E3) */
+  input, select, textarea { font-size: 16px !important; }
 }
