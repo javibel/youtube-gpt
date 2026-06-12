@@ -9,6 +9,7 @@ import LandingFeatures from '@/components/LandingFeatures';
 import LandingFAQ from '@/components/LandingFAQ';
 import ChatWidgetPreview from '@/components/ChatWidgetPreview';
 import PricingSection from '@/components/PricingSection';
+import RealTestimonials from '@/components/RealTestimonials';
 
 type Lang = 'es' | 'en';
 
@@ -557,6 +558,7 @@ export default function LandingContent({ jsonLd }: { jsonLd: object[] }) {
       <FreeToolsStrip lang={lang} />
       <AlternativesSection lang={lang} />
       <PricingSection lang={lang} />
+      <RealTestimonials lang={lang} />
       <LandingFAQ lang={lang} />
       <FinalCTA lang={lang} />
       <Footer lang={lang} />

@@ -55,6 +55,7 @@ export default function GeneratePage() {
   const [continuing, setContinuing] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [slowHint, setSlowHint] = useState<boolean>(false);
+  const [reviewNudge, setReviewNudge] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [usageCount, setUsageCount] = useState<number>(0);
   const [limit, setLimit] = useState<number>(10);
@@ -180,6 +181,12 @@ export default function GeneratePage() {
       setTruncated(result.truncated);
       setUsageCount((prev) => prev + 1);
       setRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
+      // Recogida de reseñas reales (B5): tras 3 generaciones exitosas, invitación única
+      try {
+        const n = parseInt(localStorage.getItem('ytv_gen_ok') || '0', 10) + 1;
+        localStorage.setItem('ytv_gen_ok', String(n));
+        if (n >= 3 && !localStorage.getItem('ytv_review_nudge_off')) setReviewNudge(true);
+      } catch {}
     } catch (err: unknown) {
       if (err instanceof Error && (err as Error & { limitReached?: boolean }).limitReached) {
         setShowLimitModal(true);
@@ -525,6 +532,26 @@ export default function GeneratePage() {
                 </p>
               )}
             </div>
+
+            {/* Invitación a reseña real tras 3 generaciones (B5) */}
+            {reviewNudge && output && !loading && (
+              <div className="yv-card p-5 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(255,232,0,0.25)' }}>
+                <p className="text-sm" style={{ color: 'var(--yv-text-2)' }}>
+                  {t('¿Te está sirviendo YTubViral? Una reseña honesta (buena o mala) nos ayuda más que nada.', 'Is YTubViral helping you? An honest review (good or bad) helps us more than anything.')}
+                </p>
+                <div className="flex items-center gap-3">
+                  <a href="/dashboard#review" className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display">
+                    {t('Dejar reseña', 'Leave a review')}
+                  </a>
+                  <button
+                    onClick={() => { setReviewNudge(false); try { localStorage.setItem('ytv_review_nudge_off', '1'); } catch {} }}
+                    className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition"
+                  >
+                    {t('Ahora no', 'Not now')}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Error */}
             {error && (

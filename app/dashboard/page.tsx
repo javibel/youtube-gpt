@@ -1017,7 +1017,7 @@ function handleCopy(id: string, out: string) {
           )}
 
           {/* Review */}
-          <div className="yv-card p-6">
+          <div id="review" className="yv-card p-6 scroll-mt-24">
             <p className="font-display font-bold text-lg mb-1">
               {existingReview ? t('Tu reseña', 'Your review') : t('Deja tu reseña', 'Leave a review')}
             </p>

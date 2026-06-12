@@ -80,6 +80,13 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, s-maxage=86400, stale-while-revalidate=3600' },
         ],
       },
+      // Public reviews — la landing lo consulta en cada visita; cache CDN evita golpear la DB (B5)
+      {
+        source: '/api/reviews/public',
+        headers: [
+          { key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
     ];
   },
 };
