@@ -300,10 +300,11 @@ export default function GeneratePage() {
             {/* Topic */}
             <div className="yv-card p-6">
               <div className="flex items-center justify-between mb-3">
-                <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>02 · {t('Cuéntanos tu idea', 'Tell us your idea')}</p>
+                <label htmlFor="gen-tema" className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>02 · {t('Cuéntanos tu idea', 'Tell us your idea')}</label>
                 <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{(formData.tema || '').length} / 500</p>
               </div>
               <textarea
+                id="gen-tema"
                 rows={5}
                 value={formData.tema}
                 onChange={(e) => set('tema', e.target.value.slice(0, 500))}
@@ -330,8 +331,8 @@ export default function GeneratePage() {
                 <div className="space-y-5">
                   {inputs.includes('tono') && (
                     <div>
-                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Tono', 'Tone')}</p>
-                      <div className="flex flex-wrap gap-2">
+                      <p id="gen-tono-label" className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Tono', 'Tone')}</p>
+                      <div className="flex flex-wrap gap-2" role="group" aria-labelledby="gen-tono-label">
                         {(lang === 'en' ? TONES_EN : TONES_ES).map(([k, label]) => (
                           <button key={k} onClick={() => set('tono', k)}
                             className={`soft-chip px-3 py-2 text-[13px] font-mono-jb tracking-wider uppercase ${formData.tono === k ? 'soft-chip-active' : 'hover:text-white'}`}>
@@ -343,8 +344,8 @@ export default function GeneratePage() {
                   )}
                   {inputs.includes('nicho') && (
                     <div>
-                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Nicho', 'Niche')}</p>
-                      <div className="flex flex-wrap gap-2">
+                      <p id="gen-nicho-label" className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Nicho', 'Niche')}</p>
+                      <div className="flex flex-wrap gap-2" role="group" aria-labelledby="gen-nicho-label">
                         {(lang === 'en' ? NICHES_EN : NICHES_ES).map(([k, label]) => (
                           <button key={k} onClick={() => set('nicho', k)}
                             className={`soft-chip px-3 py-2 text-[13px] font-mono-jb tracking-wider uppercase ${formData.nicho === k ? 'soft-chip-active' : 'hover:text-white'}`}>
@@ -356,8 +357,8 @@ export default function GeneratePage() {
                   )}
                   {inputs.includes('plataforma') && (
                     <div>
-                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Plataforma', 'Platform')}</p>
-                      <select value={formData.plataforma} onChange={(e) => set('plataforma', e.target.value)} className="soft-field py-2 px-3 text-sm">
+                      <label htmlFor="gen-plataforma" className="block font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Plataforma', 'Platform')}</label>
+                      <select id="gen-plataforma" value={formData.plataforma} onChange={(e) => set('plataforma', e.target.value)} className="soft-field py-2 px-3 text-sm">
                         <option value="youtube">YouTube</option>
                         <option value="youtube-shorts">YouTube Shorts</option>
                         <option value="tiktok">TikTok</option>
@@ -367,8 +368,8 @@ export default function GeneratePage() {
                   )}
                   {inputs.includes('estilo') && (
                     <div>
-                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Estilo visual', 'Visual style')}</p>
-                      <select value={formData.estilo} onChange={(e) => set('estilo', e.target.value)} className="soft-field py-2 px-3 text-sm">
+                      <label htmlFor="gen-estilo" className="block font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Estilo visual', 'Visual style')}</label>
+                      <select id="gen-estilo" value={formData.estilo} onChange={(e) => set('estilo', e.target.value)} className="soft-field py-2 px-3 text-sm">
                         {(lang === 'en'
                           ? [['viral','Viral'],['cómico','Comic'],['dramático','Dramatic'],['sorpresa','Surprise'],['mysterious','Mysterious']]
                           : [['viral','Viral'],['cómico','Cómico'],['dramático','Dramático'],['sorpresa','Sorpresa'],['mysterious','Misterioso']]
@@ -380,26 +381,26 @@ export default function GeneratePage() {
                   )}
                   {inputs.includes('duracion') && (
                     <div>
-                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Duración (minutos)', 'Duration (minutes)')}</p>
-                      <input type="number" min={1} max={240} value={formData.duracion} onChange={(e) => set('duracion', e.target.value)} className="soft-field py-2 px-3 text-sm w-28" />
+                      <label htmlFor="gen-duracion" className="block font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Duración (minutos)', 'Duration (minutes)')}</label>
+                      <input id="gen-duracion" type="number" min={1} max={240} value={formData.duracion} onChange={(e) => set('duracion', e.target.value)} className="soft-field py-2 px-3 text-sm w-28" />
                     </div>
                   )}
                   {inputs.includes('num_videos') && (
                     <div>
-                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Nº de episodios', 'No. of episodes')}</p>
-                      <input type="number" min={3} max={20} value={formData.num_videos} onChange={(e) => set('num_videos', e.target.value)} className="soft-field py-2 px-3 text-sm w-28" />
+                      <label htmlFor="gen-num-videos" className="block font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Nº de episodios', 'No. of episodes')}</label>
+                      <input id="gen-num-videos" type="number" min={3} max={20} value={formData.num_videos} onChange={(e) => set('num_videos', e.target.value)} className="soft-field py-2 px-3 text-sm w-28" />
                     </div>
                   )}
                   {inputs.includes('keywords') && (
                     <div>
-                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>Keywords</p>
-                      <textarea rows={2} value={formData.keywords} onChange={(e) => set('keywords', e.target.value)} className="soft-field resize-none text-sm" placeholder={t('Ej: programación, tutorial, principiantes', 'E.g. programming, tutorial, beginners')} />
+                      <label htmlFor="gen-keywords" className="block font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>Keywords</label>
+                      <textarea id="gen-keywords" rows={2} value={formData.keywords} onChange={(e) => set('keywords', e.target.value)} className="soft-field resize-none text-sm" placeholder={t('Ej: programación, tutorial, principiantes', 'E.g. programming, tutorial, beginners')} />
                     </div>
                   )}
                   {inputs.includes('cta') && (
                     <div>
-                      <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>Call to Action</p>
-                      <textarea rows={2} value={formData.cta} onChange={(e) => set('cta', e.target.value)} className="soft-field resize-none text-sm" placeholder={t('Ej: Suscribirse, ver la parte 2...', 'E.g. Subscribe, watch part 2...')} />
+                      <label htmlFor="gen-cta" className="block font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-text-3)' }}>Call to Action</label>
+                      <textarea id="gen-cta" rows={2} value={formData.cta} onChange={(e) => set('cta', e.target.value)} className="soft-field resize-none text-sm" placeholder={t('Ej: Suscribirse, ver la parte 2...', 'E.g. Subscribe, watch part 2...')} />
                     </div>
                   )}
                 </div>
@@ -481,7 +482,7 @@ export default function GeneratePage() {
               <button
                 onClick={handleGenerate}
                 disabled={loading || !formData.tema.trim()}
-                className="btn-offset px-8 py-4 font-display font-bold text-[15px] gap-3"
+                className="btn-offset px-8 py-4 font-display font-bold text-[15px] gap-3 disabled:cursor-not-allowed disabled:opacity-40"
                 style={selectedTemplate === 'video_preview' ? { background: '#00D9FF', borderColor: '#00D9FF', color: '#000' } : {}}
               >
                 {loading ? (
@@ -624,7 +625,7 @@ export default function GeneratePage() {
                   )}
                   {output && (
                     <>
-                      <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans max-h-[1200px] overflow-y-auto" style={{ color: 'var(--yv-text-1)' }}>
+                      <pre className="text-base leading-relaxed whitespace-pre-wrap font-sans max-h-[1200px] overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full" style={{ color: 'var(--yv-text-1)' }}>
                         {output}
                       </pre>
                       {truncated && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useLang } from './LangProvider';
@@ -113,7 +113,30 @@ export default function Sidebar() {
   const lang = useLang();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [usage, setUsage] = useState<{ used: number; limit: number; plan: string } | null>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  // Drawer móvil accesible (E1 #5): Escape cierra, foco entra al abrir
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
+    document.addEventListener('keydown', onKey);
+    // Mover el foco al primer elemento enfocable del drawer
+    const first = drawerRef.current?.querySelector<HTMLElement>('button, a');
+    first?.focus();
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
+
+  // Focus trap: Tab circula dentro del drawer mientras está abierto
+  function handleDrawerKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab' || !drawerRef.current) return;
+    const focusables = drawerRef.current.querySelectorAll<HTMLElement>('button, a, [tabindex]:not([tabindex="-1"])');
+    if (focusables.length === 0) return;
+    const firstEl = focusables[0];
+    const lastEl = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === firstEl) { e.preventDefault(); lastEl.focus(); }
+    else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); firstEl.focus(); }
+  }
 
   useEffect(() => {
     if (!session?.user) return;
@@ -156,7 +179,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav groups */}
-      <div className="yv-sidebar__nav">
+      <nav className="yv-sidebar__nav" aria-label={lang === 'en' ? 'Tools' : 'Herramientas'}>
         {SECTIONS.map(section => (
           <div className="yv-sidebar__group" key={section.title.en}>
             <div className="yv-sidebar__group-label">{section.title[lang]}</div>
@@ -178,7 +201,7 @@ export default function Sidebar() {
             })}
           </div>
         ))}
-      </div>
+      </nav>
 
       {/* Footer — usage + user + sign out */}
       <div className="yv-sidebar__footer">
@@ -234,6 +257,8 @@ export default function Sidebar() {
       <button
         onClick={() => setMobileOpen(true)}
         className="yv-sidebar-mobile-toggle"
+        aria-label={lang === 'en' ? 'Open navigation menu' : 'Abrir menú de navegación'}
+        aria-expanded={mobileOpen}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--yv-text-3)' }}>
           <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -244,12 +269,17 @@ export default function Sidebar() {
       {mobileOpen && (
         <div className="yv-sidebar-overlay" onClick={() => setMobileOpen(false)}>
           <aside
+            ref={drawerRef}
             className="yv-sidebar yv-sidebar--mobile"
+            role="dialog"
+            aria-label={lang === 'en' ? 'Navigation menu' : 'Menú de navegación'}
             onClick={e => e.stopPropagation()}
+            onKeyDown={handleDrawerKeyDown}
           >
             <button
               onClick={() => setMobileOpen(false)}
               className="yv-sidebar-close"
+              aria-label={lang === 'en' ? 'Close menu' : 'Cerrar menú'}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 6 6 18"/><path d="m6 6 12 12"/>

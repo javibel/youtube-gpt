@@ -10,8 +10,9 @@ interface Props {
 export default function DashboardShell({ children }: Props) {
   return (
     <div className="yv-shell">
+      <a href="#main-content" className="yv-skip-link">Saltar al contenido · Skip to content</a>
       <Sidebar />
-      <main className="min-w-0 overflow-hidden">{children}</main>
+      <main id="main-content" className="min-w-0 overflow-hidden">{children}</main>
     </div>
   );
 }

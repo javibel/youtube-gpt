@@ -441,6 +441,8 @@ body {
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--yv-space-6);
+  /* Altura reservada para evitar layout shift mientras cargan datos (E1 #10) */
+  min-height: 80px;
   padding-bottom: var(--yv-space-6);
   border-bottom: 1px solid var(--yv-border-subtle);
   margin-bottom: var(--yv-space-8);
@@ -639,7 +641,8 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
   border-radius: 6px;
   font-size: 15px;
   font-weight: 450;
-  color: var(--yv-text-3);
+  /* Contraste AA para texto pequeño: --yv-text-3 (#8b8b8b) daba ~2.8:1 sobre #0a0a0a */
+  color: #b0b0b0;
   cursor: pointer;
   transition: background 150ms cubic-bezier(0.2,0.7,0.3,1), color 150ms cubic-bezier(0.2,0.7,0.3,1);
   text-decoration: none;
@@ -750,6 +753,24 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
   transition: color 150ms;
 }
 .yv-sidebar-close:hover { color: var(--yv-text-1); }
+
+/* Skip-to-content (E1 #5): invisible hasta que recibe foco por teclado */
+.yv-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 200;
+  padding: 10px 16px;
+  background: var(--yv-brand);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.yv-skip-link:focus {
+  left: 8px;
+}
 
 @media (max-width: 768px) {
   :root {

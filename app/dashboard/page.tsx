@@ -883,10 +883,11 @@ function handleCopy(id: string, out: string) {
                 <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>HISTORY</p>
                 <h2 className="font-display font-bold text-2xl">{t('Generaciones recientes', 'Recent generations')}</h2>
               </div>
-              <div className="flex items-center rounded-full border border-white/10 bg-black font-mono-jb text-[13px] tracking-wider uppercase overflow-hidden">
+              <div className="flex items-center rounded-full border border-white/10 bg-black font-mono-jb text-[13px] tracking-wider uppercase overflow-x-auto max-w-full [scrollbar-width:none]">
                 {FILTERS.map(([k, label]) => (
                   <button key={k} onClick={() => setFilterType(k)}
-                    className="px-3 py-2 transition"
+                    className="px-3 py-2 transition shrink-0"
+                    aria-pressed={filterType === k}
                     style={{ background: filterType === k ? 'var(--yv-brand)' : 'transparent', color: filterType === k ? '#000' : '#a1a1aa' }}>
                     {label}
                   </button>
@@ -910,7 +911,7 @@ function handleCopy(id: string, out: string) {
                   const color = TPL_COLORS[gen.template] ?? 'var(--yv-brand)';
                   return (
                     <div key={gen.id} className="hover:bg-white/[0.02] transition" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                      <button onClick={() => setExpandedId(isOpen ? null : gen.id)} className="w-full text-left p-5 flex items-start gap-4">
+                      <button onClick={() => setExpandedId(isOpen ? null : gen.id)} aria-expanded={isOpen} aria-label={`${isOpen ? t('Contraer', 'Collapse') : t('Expandir', 'Expand')} ${tpl(gen.template)}`} className="w-full text-left p-5 flex items-start gap-4">
                         <span className="w-20 h-20 rounded-lg flex items-center justify-center border border-white/10 bg-black shrink-0">
                           <img src={TPL_ICONS[gen.template] ?? '/icons/description.webp'} alt="" width={72} height={72} />
                         </span>
@@ -926,11 +927,11 @@ function handleCopy(id: string, out: string) {
                             <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>·</span>
                             <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{gen.tokensUsed} tokens</span>
                           </div>
-                          {gen.inputs?.tema && <p className="font-display font-semibold mt-0.5 truncate break-all">{gen.inputs.tema}</p>}
+                          {gen.inputs?.tema && <p className="font-display font-semibold mt-0.5 truncate">{gen.inputs.tema}</p>}
                           {gen.template === 'thumbnail' ? (
-                            <p className="text-sm mt-0.5 truncate break-all" style={{ color: '#7CFF00' }}>{t('Miniatura generada', 'Generated thumbnail')}</p>
+                            <p className="text-sm mt-0.5 truncate" style={{ color: '#7CFF00' }}>{t('Miniatura generada', 'Generated thumbnail')}</p>
                           ) : (
-                            <p className="text-sm mt-0.5 truncate break-all" style={{ color: 'var(--yv-text-3)' }}>{gen.output?.slice(0, 80)}</p>
+                            <p className="text-sm mt-0.5 truncate" style={{ color: 'var(--yv-text-3)' }}>{gen.output?.slice(0, 80)}</p>
                           )}
                         </div>
                         <span className="font-mono-jb text-[13px] transition shrink-0" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', color: 'var(--yv-text-3)' }}>▾</span>
@@ -1030,9 +1031,11 @@ function handleCopy(id: string, out: string) {
                 : t('¿Cómo te está yendo con YTubViral.com? Tu opinión ayuda a otros creadores.', 'How is YTubViral.com working for you? Your feedback helps other creators.')}
             </p>
             <form onSubmit={handleReviewSubmit} className="space-y-4">
-              <div className="flex gap-1">
+              <div className="flex gap-1" role="radiogroup" aria-label={t('Valoración', 'Rating')}>
                 {[1,2,3,4,5].map((star) => (
                   <button key={star} type="button" onClick={() => setReviewRating(star)}
+                    role="radio" aria-checked={reviewRating === star}
+                    aria-label={t(`${star} estrella${star > 1 ? 's' : ''}`, `${star} star${star > 1 ? 's' : ''}`)}
                     className="text-2xl transition"
                     style={{ color: star <= reviewRating ? '#FFE800' : 'rgba(255,255,255,0.15)' }}>★</button>
                 ))}
