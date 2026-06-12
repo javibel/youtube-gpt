@@ -6,6 +6,7 @@ import ChatWidget from "@/components/ChatWidget";
 import PageViewTracker from "@/components/PageViewTracker";
 import UTMCapture from "@/components/UTMCapture";
 import CookieConsent from "@/components/CookieConsent";
+import Toaster from "@/components/Toaster";
 import "./globals.css";
 
 const BASE_URL = "https://ytubviral.com";
@@ -102,6 +103,7 @@ export default function RootLayout({
             <PageViewTracker />
             <Suspense fallback={null}><UTMCapture /></Suspense>
             <CookieConsent />
+            <Toaster />
           </SessionProviderWrapper>
         </LangProvider>
       </body>

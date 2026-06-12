@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from '@/components/Toaster';
 
 interface LimitReachedModalProps {
   onClose: () => void;
@@ -22,11 +23,11 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
         body: JSON.stringify({ plan: selectedPlan }),
       });
       const data = await res.json();
-      if (data.error) { alert(data.error); return; }
-      if (!data.url) { alert(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.')); return; }
+      if (data.error) { toast(data.error, 'error'); return; }
+      if (!data.url) { toast(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.'), 'error'); return; }
       window.location.href = data.url;
     } catch {
-      alert(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'));
+      toast(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'), 'error');
     } finally {
       setLoading(false);
     }

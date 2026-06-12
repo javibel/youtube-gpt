@@ -84,9 +84,19 @@ export default function CoachPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Paywall al entrar (E1 #2): null = comprobando, false = free → pantalla de upgrade
+  const [isPro, setIsPro] = useState<boolean | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    fetch('/api/user/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setIsPro(d?.stats?.isPro ?? false))
+      .catch(() => setIsPro(false));
+  }, [status]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -151,6 +161,51 @@ export default function CoachPage() {
           <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
         </div>
       </div>
+    );
+  }
+
+  // Comprobando plan: spinner breve
+  if (isPro === null) {
+    return (
+      <DashboardShell>
+        <div className="yv-page flex items-center justify-center" style={{ minHeight: '60vh' }}>
+          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  // Paywall ANTES de invertir esfuerzo: el free user no entra al chat (E1 #2)
+  if (!isPro) {
+    return (
+      <DashboardShell>
+        <div className="yv-page flex items-center justify-center" style={{ minHeight: '70vh' }}>
+          <div className="max-w-md text-center px-6">
+            <span className="yv-sidebar__badge inline-block mb-4">PRO</span>
+            <h1 className="font-display font-bold text-3xl text-white mb-3">AI Coach</h1>
+            <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+              {t(
+                'Tu asesor de crecimiento personalizado: analiza tu canal, sugiere ideas, optimiza títulos y investiga a tu competencia conversando. Disponible en el plan Pro (50 mensajes/mes) y Business (ilimitado).',
+                'Your personalized growth advisor: analyzes your channel, suggests ideas, optimizes titles and researches your competition conversationally. Available on Pro (50 messages/mo) and Business (unlimited).'
+              )}
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-8 text-left">
+              {MODES.map(m => (
+                <div key={m.key} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p className="text-white text-sm font-display font-bold mb-0.5">{m.label[lang]}</p>
+                  <p className="text-zinc-500 text-[13px] leading-snug">{m.desc[lang]}</p>
+                </div>
+              ))}
+            </div>
+            <a href="/pricing" className="btn-offset inline-flex px-8 py-3 text-sm font-display">
+              {t('Desbloquear con Pro — 9,99€/mes →', 'Unlock with Pro — €9.99/mo →')}
+            </a>
+            <p className="text-zinc-600 text-[13px] font-mono-jb mt-4">
+              {t('Garantía de 30 días · Cancela cuando quieras', '30-day guarantee · Cancel anytime')}
+            </p>
+          </div>
+        </div>
+      </DashboardShell>
     );
   }
 

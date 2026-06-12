@@ -8,6 +8,7 @@ import LimitReachedModal from '@/components/LimitReachedModal';
 import { TEMPLATES } from '@/utils/prompts';
 import { callClaudeAPI, continueGeneration } from '@/utils/claudeAPI';
 import { useLang } from '@/components/LangProvider';
+import { toast } from '@/components/Toaster';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 
@@ -53,6 +54,7 @@ export default function GeneratePage() {
   const [truncated, setTruncated] = useState<boolean>(false);
   const [continuing, setContinuing] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [slowHint, setSlowHint] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [usageCount, setUsageCount] = useState<number>(0);
   const [limit, setLimit] = useState<number>(10);
@@ -98,7 +100,8 @@ export default function GeneratePage() {
           setIsPro(data.stats.isPro);
         }
       })
-      .catch(() => {});
+      .catch(() => toast(lang === 'en' ? 'Could not load your plan limits. Reload the page.' : 'No se pudieron cargar los límites de tu plan. Recarga la página.', 'error'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currentTpl = TEMPLATES[selectedTemplate as keyof typeof TEMPLATES];
@@ -135,6 +138,9 @@ export default function GeneratePage() {
     setTruncated(false);
     setThumbnailUrl('');
     setThumbnailPrompt('');
+    // Aviso "está tardando" a los 15s (E1 #3) — el timeout duro vive en claudeAPI.js (90s)
+    setSlowHint(false);
+    const slowTimer = setTimeout(() => setSlowHint(true), 15_000);
 
     // Thumbnail uses a separate image generation endpoint
     if (selectedTemplate === 'thumbnail') {
@@ -161,6 +167,8 @@ export default function GeneratePage() {
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
+        clearTimeout(slowTimer);
+        setSlowHint(false);
         setLoading(false);
       }
       return;
@@ -179,6 +187,8 @@ export default function GeneratePage() {
         setError(err instanceof Error ? err.message : 'Error desconocido');
       }
     } finally {
+      clearTimeout(slowTimer);
+      setSlowHint(false);
       setLoading(false);
     }
   };
@@ -517,8 +527,11 @@ export default function GeneratePage() {
 
             {/* Error */}
             {error && (
-              <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
-                ⚠️ {error}
+              <div className="rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-4 flex-wrap" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
+                <span>⚠️ {error}</span>
+                <button onClick={handleGenerate} disabled={loading} className="shrink-0 px-4 py-1.5 rounded-lg text-[13px] font-display font-bold text-white transition hover:opacity-90 disabled:opacity-40" style={{ background: 'rgba(232,77,91,0.8)' }}>
+                  {t('Reintentar', 'Retry')}
+                </button>
               </div>
             )}
 
@@ -602,6 +615,11 @@ export default function GeneratePage() {
                       <p><span style={{ color: 'var(--yv-brand)' }}>▸</span> {t('Analizando nicho y tono...', 'Analysing niche and tone...')}</p>
                       <p><span style={{ color: 'var(--yv-brand)' }}>▸</span> {t('Aplicando frameworks virales...', 'Applying viral frameworks...')}</p>
                       <p style={{ color: 'var(--yv-text-2)' }}><span style={{ color: 'var(--yv-brand)' }}>▸</span> {t('Optimizando para el algoritmo', 'Optimising for the algorithm')}<span className="typing-cursor" /></p>
+                      {slowHint && (
+                        <p className="pt-2" style={{ color: 'var(--yv-text-2)' }}>
+                          {t('Está tardando más de lo normal — los guiones largos pueden llevar hasta un minuto. Seguimos en ello...', 'Taking longer than usual — long scripts can take up to a minute. Still working on it...')}
+                        </p>
+                      )}
                     </div>
                   )}
                   {output && (

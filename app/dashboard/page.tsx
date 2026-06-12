@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { useLang } from '@/components/LangProvider';
 import ReferralCard from '@/components/ReferralCard';
+import { toast } from '@/components/Toaster';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 const PlaybackModal = lazy(() => import('@/components/PlaybackModal'));
@@ -154,11 +155,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      fetch('/api/user/stats').then((r) => r.json()).then(setData).finally(() => setLoading(false));
-      fetch('/api/daily-tip').then((r) => r.json()).then((d) => { if (d.es) setDailyTip(d); });
+      fetch('/api/user/stats').then((r) => r.json()).then(setData)
+        .catch(() => toast(lang === 'en' ? 'Could not load your dashboard. Check your connection and reload.' : 'No se pudo cargar el dashboard. Revisa tu conexión y recarga.', 'error'))
+        .finally(() => setLoading(false));
+      fetch('/api/daily-tip').then((r) => r.json()).then((d) => { if (d.es) setDailyTip(d); }).catch(() => {});
       fetch('/api/user/generations?page=1').then((r) => r.json()).then((d) => {
         if (d.generations) { setHistoryGens(d.generations); setHistoryHasMore(d.hasMore); }
-      });
+      }).catch(() => toast(lang === 'en' ? 'Could not load your history.' : 'No se pudo cargar tu historial.', 'error'));
       loadDbPreviews();
       fetch('/api/reviews').then((r) => r.json()).then((d) => {
         if (d.review) { setExistingReview(d.review); setReviewRating(d.review.rating); setReviewText(d.review.text); }
@@ -236,10 +239,10 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, lang }) });
       const d = await res.json();
-      if (d.error) { alert(d.error); return; }
-      if (!d.url) { alert(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.')); return; }
+      if (d.error) { toast(d.error, 'error'); return; }
+      if (!d.url) { toast(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.'), 'error'); return; }
       window.location.href = d.url;
-    } catch { alert(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.')); }
+    } catch { toast(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'), 'error'); }
     finally { setUpgrading(false); }
   }
 
@@ -283,7 +286,7 @@ function handleCopy(id: string, out: string) {
     try {
       const res = await fetch('/api/stripe/cancel', { method: 'POST' });
       if (res.ok) { setData((prev) => prev ? { ...prev, subscription: prev.subscription ? { ...prev.subscription, cancelAtPeriodEnd: true } : null } : null); }
-      else { const { error } = await res.json(); alert(error ?? t('Error al cancelar', 'Cancellation error')); }
+      else { const { error } = await res.json(); toast(error ?? t('Error al cancelar', 'Cancellation error'), 'error'); }
     } finally { setCancelling(false); }
   }
 
@@ -790,10 +793,11 @@ function handleCopy(id: string, out: string) {
                               onClick={() => handleDownloadPreview(p)}
                               disabled={loadingPreviewId === p.id}
                               title={t('Descargar', 'Download')}
-                              className="flex-shrink-0 opacity-30 hover:opacity-100 transition disabled:opacity-20"
+                              aria-label={t('Descargar preview', 'Download preview')}
+                              className="flex-shrink-0 p-2.5 -m-1 opacity-40 hover:opacity-100 transition disabled:opacity-20"
                               style={{ color: '#00D9FF' }}
                             >
-                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                               </svg>
                             </button>
@@ -802,9 +806,10 @@ function handleCopy(id: string, out: string) {
                               onClick={() => handleDeletePreview(p.id)}
                               disabled={loadingPreviewId === p.id}
                               title={t('Eliminar', 'Delete')}
-                              className="flex-shrink-0 opacity-30 hover:opacity-100 transition disabled:opacity-20 hover:text-red-400"
+                              aria-label={t('Eliminar preview', 'Delete preview')}
+                              className="flex-shrink-0 p-2.5 -m-1 opacity-40 hover:opacity-100 transition disabled:opacity-20 hover:text-red-400"
                             >
-                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                               </svg>
                             </button>

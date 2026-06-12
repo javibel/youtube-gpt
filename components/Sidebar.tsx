@@ -128,8 +128,16 @@ export default function Sidebar() {
   }, [session?.user]);
 
   function isActive(href: string) {
-    if (href === '/dashboard') return pathname === '/dashboard';
-    return pathname.startsWith(href);
+    // Gana el match más específico: /generate no se marca activo en /generate/bulk (E1 #6)
+    if (pathname === href) return true;
+    if (!pathname.startsWith(href + '/')) return false;
+    const hasMoreSpecific = SECTIONS.some(s =>
+      s.items.some(i =>
+        i.href !== href && i.href.startsWith(href + '/') &&
+        (pathname === i.href || pathname.startsWith(i.href + '/'))
+      )
+    );
+    return !hasMoreSpecific;
   }
 
   const userName = session?.user?.name || session?.user?.email?.split('@')[0] || 'User';
@@ -159,6 +167,7 @@ export default function Sidebar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
+                  aria-current={active ? 'page' : undefined}
                   className={`yv-sidebar__item${active ? ' yv-sidebar__item--active' : ''}`}
                 >
                   <span className="yv-sidebar__icon"><YvIcon name={item.iconName} /></span>
