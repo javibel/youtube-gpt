@@ -171,7 +171,7 @@ export default async function TrendExplorerFeature() {
                 <th className="py-3 px-4 font-display font-bold">{t('Característica', 'Feature')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center" style={{ color: 'var(--red)' }}>YTubViral</th>
                 <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">YouTube</th>
-                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">VidIQ</th>
+                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">{t('Otras herramientas', 'Other tools')}</th>
               </tr>
             </thead>
             <tbody className="text-zinc-400">

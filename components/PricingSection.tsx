@@ -155,7 +155,7 @@ export default function PricingSection({ lang }: { lang: Lang }) {
             <span className="text-zinc-600 font-mono-jb text-sm">vs</span>
             <div>
               <p className="font-display font-bold text-2xl text-zinc-500 line-through" style={{ textDecorationColor: 'rgba(232,77,91,0.6)' }}>$49<span className="text-zinc-600 text-sm font-normal no-underline">/{t('mes', 'mo')}</span></p>
-              <p className="text-zinc-500 text-sm mt-1">VidIQ Pro</p>
+              <p className="text-zinc-500 text-sm mt-1">{t('Herramienta típica', 'Typical tool')}</p>
             </div>
           </div>
           <p className="text-zinc-500 text-[13px] font-mono-jb mt-3">

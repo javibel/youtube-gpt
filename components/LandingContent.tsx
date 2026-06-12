@@ -12,25 +12,6 @@ import PricingSection from '@/components/PricingSection';
 
 type Lang = 'es' | 'en';
 
-const STATIC_TESTIMONIALS = {
-  es: [
-    { name: 'Carlos M.', channel: 'Tech · 48K subs', avatar: 'CM', metric: 'CTR +23%', color: '#e84d5b', text: 'Antes tardaba 2 horas en escribir un título y descripción decentes. Ahora en 30 segundos tengo 10 opciones entre las que elegir. Mi CTR subió un 23% el primer mes.' },
-    { name: 'Laura G.', channel: 'Lifestyle · 12K subs', avatar: 'LG', metric: '+4K subs/mes', color: '#00E5FF', text: 'Los scripts son increíbles. Estructura completa con gancho, desarrollo y CTA. Solo adapto a mi estilo. Ha cambiado por completo cómo produzco.' },
-    { name: 'Sergio R.', channel: 'Finanzas · 91K subs', avatar: 'SR', metric: 'Search +41%', color: '#FFE800', text: 'Lo que más me ha sorprendido son las descripciones SEO. Empecé a aparecer en búsquedas donde antes era invisible. El plan Pro se paga solo.' },
-    { name: 'Marta P.', channel: 'Cocina · 7K subs', avatar: 'MP', metric: 'IG → YT +60%', color: '#e84d5b', text: 'Soy pequeña aún, pero los captions para Instagram llevan tráfico de redes a YouTube. Es la herramienta que le faltaba a mi estrategia.' },
-    { name: 'Alejandro F.', channel: 'Gaming · 210K subs', avatar: 'AF', metric: '5 uploads/sem', color: '#00E5FF', text: 'Publico 5 vídeos a la semana. Sin YTubViral sería imposible mantener ese ritmo con contenido bien optimizado. Parte fija de mi flujo.' },
-    { name: 'Inés D.', channel: 'Educación · 34K subs', avatar: 'ID', metric: '3× output', color: '#FFE800', text: 'Fácil de usar y los resultados sorprendentemente buenos. Los conceptos de miniaturas se los paso a mi diseñador. Ahorra tiempo y dinero.' },
-  ],
-  en: [
-    { name: 'Carlos M.', channel: 'Tech · 48K subs', avatar: 'CM', metric: 'CTR +23%', color: '#e84d5b', text: 'I used to spend 2 hours writing a decent title and description. Now in 30 seconds I have 10 options to choose from. My CTR went up 23% in the first month.' },
-    { name: 'Laura G.', channel: 'Lifestyle · 12K subs', avatar: 'LG', metric: '+4K subs/mo', color: '#00E5FF', text: 'The scripts are incredible. Complete structure with hook, body and CTA. I just adapt it to my style. It has completely changed how I produce.' },
-    { name: 'Sergio R.', channel: 'Finance · 91K subs', avatar: 'SR', metric: 'Search +41%', color: '#FFE800', text: "What surprised me most were the SEO descriptions. I started showing up in searches where I was invisible before. The Pro plan pays for itself." },
-    { name: 'Marta P.', channel: 'Cooking · 7K subs', avatar: 'MP', metric: 'IG → YT +60%', color: '#e84d5b', text: "I'm still small, but Instagram captions drive social traffic to YouTube. It's the tool my strategy was missing." },
-    { name: 'Alejandro F.', channel: 'Gaming · 210K subs', avatar: 'AF', metric: '5 uploads/wk', color: '#00E5FF', text: "I publish 5 videos a week. Without YTubViral it would be impossible to keep that pace with well-optimized content. It's a fixed part of my workflow." },
-    { name: 'Inés D.', channel: 'Education · 34K subs', avatar: 'ID', metric: '3× output', color: '#FFE800', text: 'Easy to use and surprisingly good results. I send the thumbnail concepts to my designer. Saves time and money.' },
-  ],
-};
-
 // ── Section components ────────────────────────────────────────────────────────
 
 function TopNav({ lang }: { lang: Lang }) {
@@ -72,48 +53,6 @@ function TopNav({ lang }: { lang: Lang }) {
         </div>
       </div>
     </nav>
-  );
-}
-
-function LiveTicker({ lang }: { lang: Lang }) {
-  const feed = lang === 'en'
-    ? [
-        { who: 'Andrea K.', what: 'generated a title', topic: '· Gaming · Valorant' },
-        { who: 'Diego R.', what: 'published with Pro', topic: '· Lifestyle' },
-        { who: 'Saray M.', what: 'unlocked thumbnails', topic: '· Cooking' },
-        { who: 'Marc T.', what: 'generated 12 captions', topic: '· Tech reviews' },
-        { who: 'Pablo V.', what: 'CTR up +18%', topic: '· This week' },
-        { who: 'Noa L.', what: 'created an 8-min script', topic: '· Travel' },
-      ]
-    : [
-        { who: 'Andrea K.', what: 'generó un título', topic: '· Gaming · Valorant' },
-        { who: 'Diego R.', what: 'publicó con Pro', topic: '· Lifestyle' },
-        { who: 'Saray M.', what: 'desbloqueó miniaturas', topic: '· Cocina' },
-        { who: 'Marc T.', what: 'generó 12 captions', topic: '· Tech reviews' },
-        { who: 'Pablo V.', what: 'subió CTR +18%', topic: '· Esta semana' },
-        { who: 'Noa L.', what: 'creó un script de 8 min', topic: '· Viajes' },
-      ];
-  const items = [...feed, ...feed, ...feed];
-
-  return (
-    <div className="border-b border-white/10 overflow-hidden" style={{ background: 'linear-gradient(90deg,#0a0a0a,#1a000b,#0a0a0a)' }}>
-      <div className="relative h-8 flex items-center">
-        <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center px-4" style={{ background: 'var(--red)' }}>
-          <span className="live-dot mr-2" />
-          <span className="font-mono-jb text-[13px] font-bold tracking-wider text-white">{lang === 'en' ? 'LIVE' : 'EN VIVO'}</span>
-        </div>
-        <div className="marquee-track pl-36 gap-12 font-mono-jb text-[13px] text-zinc-400">
-          {items.map((f, i) => (
-            <span key={i} className="flex items-center gap-2 shrink-0 mr-12">
-              <span className="w-1 h-1 bg-zinc-600 rounded-full" />
-              <span className="text-white">{f.who}</span>
-              <span>{f.what}</span>
-              <span className="text-zinc-600">{f.topic}</span>
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -166,8 +105,8 @@ function Hero({ lang }: { lang: Lang }) {
         </div>
         <p className="text-center text-zinc-500 text-[13px] font-mono-jb mt-5">
           {lang === 'en'
-            ? 'No signup · SEO Score & Trends free forever · Pro €9.99/mo (VidIQ charges $49)'
-            : 'Sin registro · SEO Score y Trends gratis para siempre · Pro 9,99€/mes (VidIQ cobra $49)'}
+            ? 'No signup · SEO Score & Trends free forever · Pro €9.99/mo (others charge up to $49)'
+            : 'Sin registro · SEO Score y Trends gratis para siempre · Pro 9,99€/mes (otras cobran hasta $49)'}
         </p>
 
         <LandingHeroDemo lang={lang} />
@@ -180,13 +119,13 @@ function StatsStrip({ lang }: { lang: Lang }) {
   const items = lang === 'en'
     ? [
         { n: '0→100', l: 'SEO Score in 30 seconds', sub: 'Instant video diagnosis' },
-        { n: '€9.99', l: 'Pro plan / month', sub: 'VidIQ charges $49/mo' },
+        { n: '€9.99', l: 'Pro plan / month', sub: 'Others charge up to $49/mo' },
         { n: '100%', l: 'Free SEO Score', sub: 'No signup, no limits' },
         { n: 'AI', l: 'Personalized to your channel', sub: 'Connect YouTube · get tailored results' },
       ]
     : [
         { n: '0→100', l: 'SEO Score en 30 segundos', sub: 'Diagnóstico instantáneo' },
-        { n: '9,99€', l: 'Plan Pro / mes', sub: 'VidIQ cobra $49/mes' },
+        { n: '9,99€', l: 'Plan Pro / mes', sub: 'Otras cobran hasta $49/mes' },
         { n: '100%', l: 'SEO Score gratis', sub: 'Sin registro, sin límites' },
         { n: 'IA', l: 'Personalizada a tu canal', sub: 'Conecta YouTube · resultados a medida' },
       ];
@@ -212,12 +151,12 @@ function WhyDifferent({ lang }: { lang: Lang }) {
     ? [
         { icon: '🎯', title: 'Honest diagnostics', desc: 'SEO Score tells you exactly what to fix — no vague advice.' },
         { icon: '🧠', title: 'AI that knows your channel', desc: 'Connect YouTube and every generation is tailored to your niche, audience, and recent performance.' },
-        { icon: '💰', title: '5× cheaper than VidIQ', desc: '€9.99/mo vs $49/mo. Same core features. No enterprise upsell.' },
+        { icon: '💰', title: '5× cheaper than the alternatives', desc: '€9.99/mo vs the usual $20–49/mo. Same core features. No enterprise upsell.' },
       ]
     : [
         { icon: '🎯', title: 'Diagnóstico honesto', desc: 'SEO Score te dice exactamente qué arreglar — sin consejos vagos.' },
         { icon: '🧠', title: 'IA que conoce tu canal', desc: 'Conecta YouTube y cada generación se adapta a tu nicho, audiencia y rendimiento.' },
-        { icon: '💰', title: '5× más barato que VidIQ', desc: '9,99€/mes vs $49/mes. Mismas funciones core. Sin upsell enterprise.' },
+        { icon: '💰', title: '5× más barato que las alternativas', desc: '9,99€/mes frente a los $20–49/mes habituales. Mismas funciones core. Sin upsell enterprise.' },
       ];
 
   return (
@@ -473,62 +412,6 @@ function AlternativesSection({ lang }: { lang: Lang }) {
   );
 }
 
-function Testimonials({ lang }: { lang: Lang }) {
-  const items = STATIC_TESTIMONIALS[lang];
-
-  return (
-    <section className="border-b border-white/10 bg-black">
-      <div className="max-w-7xl mx-auto px-6 py-24">
-        <div className="flex items-end justify-between flex-wrap gap-4 mb-12">
-          <div>
-            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>07 · CREATORS</p>
-            <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95] max-w-2xl">
-              {lang === 'en' ? "Creators who stopped guessing." : "Creadores que ya no escriben a ciegas."}
-            </h2>
-          </div>
-          <p className="text-zinc-400 max-w-sm">
-            {lang === 'en' ? 'What our early users are saying.' : 'Lo que dicen nuestros primeros usuarios.'}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border border-white/10">
-          {items.map((it, i) => (
-            <div
-              key={i}
-              className={`p-7 relative border-white/10 hover:bg-white/[0.02] transition ${i % 3 !== 2 ? 'lg:border-r' : ''} ${i < items.length - 3 ? 'lg:border-b' : ''} ${i < items.length - 2 ? 'md:border-b' : ''} border-b`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <svg key={s} width={13} height={13} viewBox="0 0 20 20" fill="#FFE800">
-                      <path d="M10 2l2.4 5 5.6.8-4 4 1 5.6L10 14.8 5 17.4l1-5.6-4-4L7.6 7z" />
-                    </svg>
-                  ))}
-                </div>
-                {it.metric && (
-                  <span className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-0.5 border" style={{ color: it.color, borderColor: it.color + '66' }}>
-                    {it.metric}
-                  </span>
-                )}
-              </div>
-              <p className="text-zinc-200 text-[15px] leading-relaxed mb-5">&ldquo;{it.text}&rdquo;</p>
-              <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-                <div className="w-9 h-9 flex items-center justify-center font-display font-bold text-[13px] shrink-0" style={{ background: it.color, color: '#000' }}>
-                  {it.avatar}
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">{it.name}</p>
-                  {it.channel && <p className="font-mono-jb text-[13px] text-zinc-500 tracking-wider">{it.channel}</p>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function FinalCTA({ lang }: { lang: Lang }) {
   return (
     <section className="border-b border-white/10 bg-black relative overflow-hidden">
@@ -664,7 +547,6 @@ export default function LandingContent({ jsonLd }: { jsonLd: object[] }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <TopNav lang={lang} />
-      <LiveTicker lang={lang} />
       <Hero lang={lang} />
       <StatsStrip lang={lang} />
       <WhyDifferent lang={lang} />
@@ -675,7 +557,6 @@ export default function LandingContent({ jsonLd }: { jsonLd: object[] }) {
       <FreeToolsStrip lang={lang} />
       <AlternativesSection lang={lang} />
       <PricingSection lang={lang} />
-      <Testimonials lang={lang} />
       <LandingFAQ lang={lang} />
       <FinalCTA lang={lang} />
       <Footer lang={lang} />

@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 const FAQ_ES = [
   { q: '¿La herramienta de keywords es realmente gratis?', a: 'Sí. Volumen de búsqueda, competencia, oportunidad y términos relacionados son 100% gratis sin tarjeta. Pro añade sugerencias de títulos con IA y analítica avanzada.' },
-  { q: '¿Cómo se compara con VidIQ o TubeBuddy?', a: 'YTubViral ofrece los mismos datos (volumen, competencia, oportunidad) más análisis con IA y clusters de keywords — todo en una interfaz web. Sin extensión, sin ralentizar el navegador. Y gratis vs $19+/mes.' },
+  { q: '¿Cómo se compara con otras herramientas de keywords?', a: 'YTubViral ofrece los mismos datos (volumen, competencia, oportunidad) más análisis con IA y clusters de keywords — todo en una interfaz web. Sin extensión, sin ralentizar el navegador. Y gratis frente a los $19+/mes habituales.' },
   { q: '¿Qué fuentes de datos usa?', a: 'Combinamos autocompletado de YouTube, estimaciones de volumen de búsqueda, análisis de competencia de vídeos existentes y señales de tendencias para calcular una puntuación de oportunidad.' },
   { q: '¿Funciona para YouTube Shorts?', a: 'Sí. La herramienta funciona para cualquier formato: vídeos largos, Shorts, podcasts y directos. Filtra por keywords en tendencia para encontrar temas ideales para Shorts.' },
   { q: '¿Cuántas búsquedas puedo hacer al día?', a: 'Las búsquedas de keywords son ilimitadas en el plan gratuito. Sin límites diarios.' },
@@ -34,7 +34,7 @@ const FAQ_ES = [
 
 const FAQ_EN = [
   { q: 'Is YTubViral keyword research really free?', a: 'Yes. Search volume, competition score, opportunity rating, and related terms are 100% free with no credit card. Pro adds AI title suggestions and deeper analytics.' },
-  { q: 'How does it compare to VidIQ or TubeBuddy?', a: 'YTubViral provides the same data (volume, competition, opportunity) plus AI analysis and keyword clusters — all in one web interface. No extension, no slowdowns. Free vs $19+/month.' },
+  { q: 'How does it compare to other keyword tools?', a: 'YTubViral provides the same data (volume, competition, opportunity) plus AI analysis and keyword clusters — all in one web interface. No extension, no slowdowns. Free vs the usual $19+/month.' },
   { q: 'What data sources does it use?', a: 'We combine YouTube autocomplete, search volume estimates, competition analysis from existing videos, and trend signals to calculate an opportunity score for each keyword.' },
   { q: 'Can I use it for YouTube Shorts?', a: 'Absolutely. Works for any format — long-form, Shorts, podcasts, livestreams. Filter by trending keywords to find Shorts-friendly topics.' },
   { q: 'How many keywords can I research per day?', a: 'Free users get unlimited keyword searches. No daily caps on the core research tool.' },
@@ -144,8 +144,8 @@ export default async function KeywordResearchFeature() {
               <tr className="border-b border-white/10">
                 <th className="py-3 px-4 font-display font-bold">{t('Característica', 'Feature')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center" style={{ color: 'var(--red)' }}>YTubViral</th>
-                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">VidIQ</th>
-                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">TubeBuddy</th>
+                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">{t('Alternativa A', 'Alternative A')}</th>
+                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">{t('Alternativa B', 'Alternative B')}</th>
               </tr>
             </thead>
             <tbody className="text-zinc-400">

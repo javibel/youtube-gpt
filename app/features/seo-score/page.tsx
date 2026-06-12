@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 const FAQ_ES = [
   { q: '¿Cómo se calcula la puntuación SEO?', a: 'Analizamos más de 16 factores: keywords en título y descripción, coherencia keyword título-descripción, longitud, timestamps, tags, análisis visual del thumbnail con IA, engagement ajustado por categoría y más. Cada factor se pondera según su impacto demostrado en el ranking de YouTube.' },
   { q: '¿Puedo analizar cualquier vídeo o solo los míos?', a: 'Puedes analizar cualquier vídeo público de YouTube, tuyo o de la competencia. Solo pega la URL y obtendrás resultados al instante. Genial para hacer ingeniería inversa de lo que hacen bien los top creadores.' },
-  { q: '¿En qué se diferencia del SEO score de VidIQ?', a: 'VidIQ necesita una extensión de navegador y solo muestra puntuaciones mientras navegas por YouTube. YTubViral funciona desde cualquier dispositivo vía web, da un checklist más detallado con correcciones específicas e incluye sugerencias de mejora con IA.' },
+  { q: '¿En qué se diferencia de otros SEO scores?', a: 'La mayoría de herramientas necesitan una extensión de navegador y solo muestran puntuaciones mientras navegas por YouTube. YTubViral funciona desde cualquier dispositivo vía web, da un checklist más detallado con correcciones específicas e incluye sugerencias de mejora con IA.' },
   { q: '¿Una puntuación SEO alta garantiza más vistas?', a: 'La puntuación SEO mide lo bien optimizado que está tu vídeo para la búsqueda de YouTube. Mejora tus probabilidades de posicionar, pero las vistas también dependen del CTR, retención y demanda del tema. Recomendamos combinar SEO Score con nuestro Keyword Research.' },
   { q: '¿El checker de SEO es gratis?', a: 'Sí. El análisis de puntuación SEO es gratis sin límites. Los usuarios Pro obtienen sugerencias de mejora con IA y la posibilidad de guardar puntuaciones para seguir tu progreso de optimización.' },
 ];
@@ -35,7 +35,7 @@ const FAQ_ES = [
 const FAQ_EN = [
   { q: 'How is the SEO score calculated?', a: 'We analyze 16+ factors: title keywords, title-description keyword consistency, description front-loading, timestamps, tag relevance, AI-powered thumbnail visual analysis, category-adjusted engagement benchmarks, and more. Each factor is weighted by its proven impact on YouTube rankings.' },
   { q: 'Can I check any video or only my own?', a: 'You can analyze any public YouTube video — yours or your competitors\'. Just paste the URL and get instant results. Great for reverse-engineering what top creators do right.' },
-  { q: 'What makes this different from VidIQ SEO score?', a: 'VidIQ requires a browser extension and only shows scores while browsing YouTube. YTubViral works from any device via web, gives a more detailed checklist with specific fixes, and includes AI-powered improvement suggestions.' },
+  { q: 'What makes this different from other SEO scores?', a: 'Most tools require a browser extension and only show scores while browsing YouTube. YTubViral works from any device via web, gives a more detailed checklist with specific fixes, and includes AI-powered improvement suggestions.' },
   { q: 'Does a higher SEO score guarantee more views?', a: 'SEO score measures how well-optimized your video is for YouTube search. It improves your chances of ranking, but views also depend on CTR, retention, and topic demand. We recommend combining SEO Score with our Keyword Research tool.' },
   { q: 'Is the SEO checker free?', a: 'Yes. The SEO score analysis is free with no limits. Pro users get AI-powered improvement suggestions and the ability to save scores over time to track optimization progress.' },
 ];
@@ -139,8 +139,8 @@ export default async function SeoScoreFeature() {
               <tr className="border-b border-white/10">
                 <th className="py-3 px-4 font-display font-bold">{t('Característica', 'Feature')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center" style={{ color: 'var(--red)' }}>YTubViral</th>
-                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">VidIQ</th>
-                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">TubeBuddy</th>
+                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">{t('Alternativa A', 'Alternative A')}</th>
+                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">{t('Alternativa B', 'Alternative B')}</th>
               </tr>
             </thead>
             <tbody className="text-zinc-400">

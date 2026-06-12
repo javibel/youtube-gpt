@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 const FAQ_ES = [
   { q: '¿Cómo funciona el A/B testing en YouTube?', a: 'Escribes dos variaciones de título para un vídeo. YTubViral las rota automáticamente a intervalos fijos (ej. cada 24 horas) y registra impresiones, CTR y vistas de cada versión. Cuando hay suficientes datos, declaramos un ganador estadísticamente significativo.' },
   { q: '¿Puedo hacer A/B test de thumbnails también?', a: 'YouTube ya tiene test nativo de thumbnails (Test & Compare). Nuestra herramienta se centra en el test de títulos, que YouTube NO ofrece de forma nativa. Combina ambos: testea thumbnails con YouTube, testea títulos con YTubViral.' },
-  { q: '¿VidIQ ofrece A/B testing?', a: 'No. VidIQ no tiene A/B testing de títulos. TubeBuddy lo ofrece en su plan Legend ($49/mes). YTubViral lo incluye en Pro a 9,99 euros/mes — un 80% más barato.' },
+  { q: '¿Otras herramientas ofrecen A/B testing?', a: 'Muy pocas — y las que lo tienen lo reservan para planes premium de unos $49/mes. YTubViral lo incluye en Pro a 9,99 euros/mes — un 80% más barato.' },
   { q: '¿Cuánto tiempo necesita un test?', a: 'Normalmente 7-14 días para obtener resultados estadísticamente significativos, dependiendo del volumen de vistas de tu vídeo. La herramienta te avisa cuando hay suficientes datos para elegir un ganador con confianza.' },
   { q: '¿El A/B testing perjudica el rendimiento de mi vídeo?', a: 'No. Los cambios de título no resetean el algoritmo de YouTube ni afectan las recomendaciones. YouTube lo trata como una actualización de metadatos. Tu vídeo conserva todas sus impresiones, likes y comentarios.' },
   { q: '¿Cambia los títulos en YouTube automáticamente?', a: 'Sí. Con YouTube OAuth conectado, YTubViral rota los títulos automáticamente vía la API. Lo configuras una vez y revisas los resultados después. Sin cambios manuales.' },
@@ -36,7 +36,7 @@ const FAQ_ES = [
 const FAQ_EN = [
   { q: 'How does YouTube A/B testing work?', a: 'You provide two title variations for a video. YTubViral automatically swaps between them at set intervals (e.g., every 24 hours) and tracks impressions, CTR, and views for each version. After enough data, we declare a statistically significant winner.' },
   { q: 'Can I A/B test thumbnails too?', a: 'YouTube now has native thumbnail testing (Test & Compare). Our tool focuses on title testing, which YouTube does NOT offer natively. Combine both: test thumbnails with YouTube, test titles with YTubViral.' },
-  { q: 'Does VidIQ offer A/B testing?', a: 'No. VidIQ does not have A/B testing for titles. TubeBuddy offers it in their Legend plan ($49/month). YTubViral includes it in Pro at \u20ac9.99/month \u2014 80% cheaper.' },
+  { q: 'Do other tools offer A/B testing?', a: 'Very few \u2014 and those that do reserve it for premium plans around $49/month. YTubViral includes it in Pro at \u20ac9.99/month \u2014 80% cheaper.' },
   { q: 'How long does a test need to run?', a: 'Typically 7-14 days to get statistically significant results, depending on your video\'s view volume. The tool tells you when there\'s enough data to pick a winner with confidence.' },
   { q: 'Will A/B testing hurt my video performance?', a: 'No. Title changes don\'t reset YouTube\'s algorithm or affect recommendations. YouTube treats it as a metadata update. Your video keeps all its existing impressions, likes, and comments.' },
   { q: 'Does it push title changes to YouTube automatically?', a: 'Yes. With YouTube OAuth connected, YTubViral swaps titles automatically via the API. You set it up once and check results later. No manual switching needed.' },
@@ -55,12 +55,12 @@ export default async function AbTestingFeature() {
   ];
 
   const comparison = [
-    [t('A/B test de títulos', 'Title A/B testing'), '✓', t('✓ (solo Legend)', '✓ (Legend only)'), '✗', '✗'],
-    [t('A/B test de thumbnails', 'Thumbnail A/B testing'), '✗', t('✓ (solo Legend)', '✓ (Legend only)'), '✗', t('✓ (nativo)', '✓ (native)')],
+    [t('A/B test de títulos', 'Title A/B testing'), '✓', t('✓ (solo plan premium)', '✓ (premium plan only)'), '✗', '✗'],
+    [t('A/B test de thumbnails', 'Thumbnail A/B testing'), '✗', t('✓ (solo plan premium)', '✓ (premium plan only)'), '✗', t('✓ (nativo)', '✓ (native)')],
     [t('Rotación automática', 'Automatic rotation'), '✓', '✓', '\u2014', '✓'],
     [t('Significancia estadística', 'Statistical significance'), '✓', '✓', '\u2014', '✓'],
     [t('Sugerencias de títulos con IA', 'AI title suggestions'), '✓', '✗', '✓', '✗'],
-    [t('Plan mínimo necesario', 'Min plan required'), 'Pro (\u20ac9.99)', 'Legend ($49)', 'N/A', t('Gratis', 'Free')],
+    [t('Plan mínimo necesario', 'Min plan required'), 'Pro (\u20ac9.99)', 'Premium ($49)', 'N/A', t('Gratis', 'Free')],
   ];
 
   return (
@@ -74,8 +74,8 @@ export default async function AbTestingFeature() {
           <span style={{ color: 'var(--red)' }}>{t('títulos de YouTube', 'YouTube Titles')}</span>
         </h1>
         <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-8">
-          {t('Deja de adivinar qué título consigue más clics. Configura un A/B test en 30 segundos, déjalo correr automáticamente y obtendrás resultados basados en datos. La función que VidIQ no tiene.',
-            'Stop guessing which title gets more clicks. Set up an A/B test in 30 seconds, let it run automatically, and get data-driven results. The feature VidIQ doesn\'t have.')}
+          {t('Deja de adivinar qué título consigue más clics. Configura un A/B test en 30 segundos, déjalo correr automáticamente y obtendrás resultados basados en datos. La función que casi ninguna herramienta tiene.',
+            'Stop guessing which title gets more clicks. Set up an A/B test in 30 seconds, let it run automatically, and get data-driven results. The feature almost no other tool has.')}
         </p>
         <div className="flex flex-wrap justify-center gap-4">
           <Link href="/signup" className="btn-offset px-8 py-3 text-[15px] font-display">
@@ -98,8 +98,8 @@ export default async function AbTestingFeature() {
             {t('. Multiplica eso por tu catálogo y la diferencia es brutal.', '. Multiply that across your catalog and the difference is massive.')}
           </p>
           <p>
-            {t('La mayoría de creadores eligen títulos por instinto. El top 1% los testea con datos. Hasta ahora, la única forma de hacer esto era TubeBuddy Legend a $49/mes. YTubViral trae la misma funcionalidad a una fracción del precio.',
-              'Most creators pick titles based on gut feeling. The top 1% test them with data. Until now, the only way to do this was TubeBuddy Legend at $49/month. YTubViral brings the same capability at a fraction of the price.')}
+            {t('La mayoría de creadores eligen títulos por instinto. El top 1% los testea con datos. Hasta ahora, la única forma de hacer esto era un plan premium de $49/mes en otras herramientas. YTubViral trae la misma funcionalidad a una fracción del precio.',
+              'Most creators pick titles based on gut feeling. The top 1% test them with data. Until now, the only way to do this was a $49/month premium plan elsewhere. YTubViral brings the same capability at a fraction of the price.')}
           </p>
           <p>
             {t('Combinado con el test nativo de thumbnails de YouTube, ahora puedes optimizar ambos elementos que impulsan el CTR — y YouTube recompensa un CTR más alto con más impresiones. Es un efecto compuesto.',
@@ -137,8 +137,8 @@ export default async function AbTestingFeature() {
               <tr className="border-b border-white/10">
                 <th className="py-3 px-4 font-display font-bold">{t('Característica', 'Feature')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center" style={{ color: 'var(--red)' }}>YTubViral</th>
-                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">TubeBuddy</th>
-                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">VidIQ</th>
+                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">{t('Alternativa A', 'Alternative A')}</th>
+                <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">{t('Alternativa B', 'Alternative B')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">YouTube</th>
               </tr>
             </thead>
@@ -210,7 +210,7 @@ export default async function AbTestingFeature() {
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-4">
           {t('Deja de adivinar. Empieza a testear.', 'Stop guessing. Start testing.')}
         </h2>
-        <p className="text-zinc-400 mb-8">{t('Testea tus títulos de YouTube por 9,99 euros/mes. VidIQ no puede hacer esto a ningún precio.', 'A/B test your YouTube titles for \u20ac9.99/month. VidIQ can\'t do this at any price.')}</p>
+        <p className="text-zinc-400 mb-8">{t('Testea tus títulos de YouTube por 9,99 euros/mes. La mayoría de herramientas no pueden hacer esto a ningún precio.', 'A/B test your YouTube titles for \u20ac9.99/month. Most tools can\'t do this at any price.')}</p>
         <Link href="/signup" className="btn-offset px-10 py-4 text-[15px] font-display">
           {t('Empieza tu primer A/B test', 'Start your first A/B test')}
         </Link>
