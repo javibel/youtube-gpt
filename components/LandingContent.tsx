@@ -408,6 +408,71 @@ function FreeToolsStrip({ lang }: { lang: Lang }) {
   );
 }
 
+function AlternativesSection({ lang }: { lang: Lang }) {
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+  // B2: comparativa sutil — sin nombrar competidores
+  const rows = [
+    { label: t('Motor de IA', 'AI engine'), them: t('GPT genérico', 'Generic GPT'), us: t('Claude — la IA que mejor escribe', 'Claude — the AI that writes best') },
+    { label: t('SEO Score de cualquier vídeo', 'SEO Score for any video'), them: t('Solo con registro o de pago', 'Signup or paid only'), us: t('Gratis, sin registro', 'Free, no signup') },
+    { label: t('Explorador de tendencias', 'Trending explorer'), them: t('Bloqueado tras un plan de pago', 'Locked behind a paid plan'), us: t('Gratis · 12 países', 'Free · 12 countries') },
+    { label: t('Plan completo', 'Full plan'), them: '$20–49/mes', us: t('9,99 €/mes', '€9.99/mo') },
+    { label: t('Español', 'Spanish'), them: t('Traducción parcial o solo inglés', 'Partial translation or English only'), us: t('Bilingüe ES/EN de serie', 'Native ES/EN bilingual') },
+    { label: t('Garantía de devolución', 'Money-back guarantee'), them: '—', us: t('30 días', '30 days') },
+  ];
+
+  return (
+    <section className="border-b border-white/10 bg-black">
+      <div className="max-w-7xl mx-auto px-6 py-24">
+        <div className="mb-12">
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>{t('ALTERNATIVAS', 'ALTERNATIVES')}</p>
+          <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
+            {t('Lo que otras herramientas cobran, aquí es gratis.', 'What other tools charge for, here is free.')}
+          </h2>
+          <p className="text-zinc-400 text-lg mt-4 max-w-2xl">
+            {t('No hace falta que nos creas: compara lo que incluye cada herramienta típica de YouTube con lo que incluye YTubViral.',
+               "Don't take our word for it: compare what a typical YouTube tool includes with what YTubViral includes.")}
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+        <div className="grid border border-white/10 bg-black min-w-[560px]" style={{ gridTemplateColumns: '1.3fr 1fr 1fr' }}>
+          <div className="p-5 border-r border-white/10" />
+          <div className="p-5 border-r border-white/10 text-center">
+            <p className="font-display font-bold text-lg text-zinc-400">{t('Herramientas típicas', 'Typical tools')}</p>
+          </div>
+          <div className="p-5 text-center relative" style={{ background: 'rgba(232,77,91,0.05)' }}>
+            <p className="font-display font-bold text-lg">YTubViral</p>
+          </div>
+          {rows.map((row, i) => (
+            <div key={i} className="contents">
+              <div className="p-5 border-t border-r border-white/10 flex items-center gap-3">
+                <span className="font-mono-jb text-[13px] text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
+                <span className="text-zinc-300 text-sm">{row.label}</span>
+              </div>
+              <div className="p-5 border-t border-r border-white/10 text-center">
+                <span className="font-mono-jb text-sm text-zinc-500">{row.them}</span>
+              </div>
+              <div className="p-5 border-t border-white/10 text-center" style={{ background: 'rgba(232,77,91,0.05)' }}>
+                <span className="font-display font-bold text-sm" style={{ color: 'var(--red)' }}>{row.us}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
+          <Link href="/seo-score" className="btn-offset px-8 py-4 text-[15px] font-display font-bold">
+            {t('Compruébalo gratis — analiza un vídeo →', 'See for yourself — analyze a video free →')}
+          </Link>
+          <p className="text-zinc-500 text-[13px] font-mono-jb">
+            {t('Sin registro · Sin tarjeta', 'No signup · No card')}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Testimonials({ lang }: { lang: Lang }) {
   const items = STATIC_TESTIMONIALS[lang];
 
@@ -608,6 +673,7 @@ export default function LandingContent({ jsonLd }: { jsonLd: object[] }) {
       <LandingFeatures lang={lang} />
       <ComparisonTable lang={lang} />
       <FreeToolsStrip lang={lang} />
+      <AlternativesSection lang={lang} />
       <PricingSection lang={lang} />
       <Testimonials lang={lang} />
       <LandingFAQ lang={lang} />
