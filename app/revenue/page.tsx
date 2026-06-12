@@ -137,6 +137,7 @@ export default function RevenuePage() {
             {data && !data.hasRealRevenue && (
               <p className="yv-page-header__desc font-mono-jb text-[13px]">
                 {t('Estimaciones basadas en CPM por país. Los datos reales aparecerán si el canal está monetizado.', 'Estimates based on country CPM. Real data will appear if channel is monetized.')}
+                {' '}{t('Cálculo propio de YTubViral — no es un dato oficial de YouTube.', 'YTubViral\'s own calculation — not an official YouTube figure.')}
               </p>
             )}
             {data?.hasRealRevenue && (

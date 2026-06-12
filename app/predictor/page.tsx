@@ -119,7 +119,7 @@ export default function PredictorPage() {
               {t('¿Cómo rendirá tu vídeo?', 'How will your video perform?')}
             </h1>
             <p className="yv-page-header__desc" style={{ fontSize: 'var(--yv-text-xs)' }}>
-              {t('Predicción basada en los datos reales de tu canal.', 'Prediction based on your real channel data.')}
+              {t('Predicción basada en los datos reales de tu canal. Estimación propia de YTubViral — no es un dato oficial de YouTube.', 'Prediction based on your real channel data. YTubViral\'s own estimate — not an official YouTube metric.')}
             </p>
           </div>
         </header>

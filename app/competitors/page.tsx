@@ -200,6 +200,10 @@ export default function CompetitorsPage() {
               {t('Introduce la URL de cualquier canal de YouTube para ver sus métricas, vídeos top y frecuencia de publicación.',
                  'Enter any YouTube channel URL to see their metrics, top videos, and upload frequency.')}
             </p>
+            <p className="text-zinc-600 text-[12px] mt-1">
+              {t('Las métricas derivadas (VPH, medias) son cálculos propios de YTubViral — no datos oficiales de YouTube.',
+                 'Derived metrics (VPH, averages) are YTubViral\'s own calculations — not official YouTube data.')}
+            </p>
           </div>
         </div>
 

@@ -126,5 +126,26 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, users: users.length, snapped, errors, compSnapped });
+  // ── Limpieza de datos no-estadísticos de la API de YouTube ────────────────
+  // YouTube API Developer Policies III.E.4.c/d: los datos que no son estadísticas
+  // (títulos, thumbnails) deben refrescarse o borrarse a los 30 días.
+  // Aprobado por el CEO el 2026-06-12 (auditoría D3).
+  let cleanedCache = 0;
+  let cleanedScores = 0;
+  try {
+    const expiredCache = await prisma.youtubeCache.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+    cleanedCache = expiredCache.count;
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const staleScores = await prisma.videoSeoScore.deleteMany({
+      where: { analyzedAt: { lt: thirtyDaysAgo } },
+    });
+    cleanedScores = staleScores.count;
+  } catch {
+    // La limpieza no debe tumbar el cron de snapshots
+  }
+
+  return NextResponse.json({ ok: true, users: users.length, snapped, errors, compSnapped, cleanedCache, cleanedScores });
 }
