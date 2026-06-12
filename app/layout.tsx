@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 import { LangProvider } from "@/components/LangProvider";
-import ChatWidget from "@/components/ChatWidget";
+import DeferredChatWidget from "@/components/DeferredChatWidget";
 import PageViewTracker from "@/components/PageViewTracker";
 import UTMCapture from "@/components/UTMCapture";
 import CookieConsent from "@/components/CookieConsent";
@@ -10,6 +11,13 @@ import Toaster from "@/components/Toaster";
 import "./globals.css";
 
 const BASE_URL = "https://ytubviral.com";
+
+// Fuentes self-hosted via next/font (A2): elimina el CSS render-blocking de
+// fonts.googleapis.com y la transferencia de IP a Google (RGPD). next/font
+// añade size-adjust automático al fallback → menos CLS por font-swap.
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-inter", display: "swap" });
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-space-grotesk", display: "swap" });
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-mono-jb", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -82,24 +90,18 @@ export default function RootLayout({
   const lang = 'es' as const;
 
   return (
-    <html lang={lang}>
+    <html lang={lang} className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="YTubViral" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body>
         <LangProvider lang={lang as 'es' | 'en'}>
           <SessionProviderWrapper>
             {children}
-            <ChatWidget />
+            <DeferredChatWidget />
             <PageViewTracker />
             <Suspense fallback={null}><UTMCapture /></Suspense>
             <CookieConsent />

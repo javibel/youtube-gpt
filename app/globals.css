@@ -158,9 +158,10 @@ body {
   --yv-info-soft: rgba(59, 130, 246, 0.12);
 
   /* Typography */
-  --yv-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --yv-font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
-  --yv-font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  /* Familias servidas por next/font (self-hosted) — ver app/layout.tsx (A2) */
+  --yv-font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --yv-font-display: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
+  --yv-font-mono: var(--font-mono-jb), "SF Mono", ui-monospace, Menlo, monospace;
 
   --yv-text-xs: 13px;
   --yv-text-sm: 14px;
@@ -208,8 +209,8 @@ body {
   --yv-transition: 150ms cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
-.font-display { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
-.font-mono-jb { font-family: 'JetBrains Mono', monospace; }
+.font-display { font-family: var(--font-space-grotesk), sans-serif; letter-spacing: -0.02em; }
+.font-mono-jb { font-family: var(--font-mono-jb), monospace; }
 
 /* Grain film overlay */
 .grain::before {
@@ -312,7 +313,7 @@ body {
 /* Red tape badge */
 .red-tape {
   background: var(--red); color: #fff; font-weight: 800;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono-jb), monospace;
   padding: 2px 10px; display: inline-block;
   font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
 }

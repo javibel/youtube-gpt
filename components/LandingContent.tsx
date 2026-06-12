@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useLang } from '@/components/LangProvider';
 import LangToggle from '@/components/LangToggle';
 import LandingHeroDemo from '@/components/LandingHeroDemo';
+import LiteYouTube from '@/components/LiteYouTube';
 import LandingFeatures from '@/components/LandingFeatures';
 import LandingFAQ from '@/components/LandingFAQ';
 import ChatWidgetPreview from '@/components/ChatWidgetPreview';
@@ -252,14 +253,8 @@ function DemoVideo({ lang }: { lang: Lang }) {
             : 'Un recorrido rápido por todas las herramientas — del análisis SEO a los guiones con IA.'}
         </p>
         <div className="relative w-full rounded-2xl overflow-hidden border border-white/10" style={{ paddingBottom: '56.25%' }}>
-          <iframe
-            className="absolute inset-0 w-full h-full"
-            src="https://www.youtube.com/embed/sTvct-XXyGk?rel=0"
-            title="YTubViral Demo"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            loading="lazy"
-          />
+          {/* Facade: el player de YouTube (~1MB) solo carga al hacer clic (A2) */}
+          <LiteYouTube videoId="sTvct-XXyGk" title="YTubViral Demo" />
         </div>
       </div>
     </section>
