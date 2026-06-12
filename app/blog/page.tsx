@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { getServerLang } from '@/lib/server-lang';
+import { BLOG_POSTS } from '@/lib/blog-data';
 import BlogContent from './BlogContent';
 
 export const metadata: Metadata = {
@@ -23,11 +24,32 @@ export const metadata: Metadata = {
   },
 };
 
+// JSON-LD del índice del blog (A3): Blog + lista de los últimos posts
+const blogJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: 'YTubViral Blog',
+  url: 'https://ytubviral.com/blog',
+  description: 'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización.',
+  publisher: { '@type': 'Organization', name: 'YTubViral', url: 'https://ytubviral.com' },
+  blogPost: BLOG_POSTS.slice(-10).reverse().map((p) => ({
+    '@type': 'BlogPosting',
+    headline: p.title.es,
+    url: `https://ytubviral.com/blog/${p.slug}`,
+    // date.en ('Oct 15, 2025') es el formato parseable — date.es no lo es
+    datePublished: new Date(p.date.en).toISOString().slice(0, 10),
+    author: { '@type': 'Person', name: p.author.name },
+  })),
+};
+
 export default function BlogListPage() {
   const lang = getServerLang();
   return (
-    <Suspense>
-      <BlogContent lang={lang} />
-    </Suspense>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }} />
+      <Suspense>
+        <BlogContent lang={lang} />
+      </Suspense>
+    </>
   );
 }
