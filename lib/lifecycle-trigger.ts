@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { SEQUENCES } from '@/lib/lifecycle-emails';
+import { isInternalAccount } from '@/lib/internal-accounts';
 
 // Disparo de emails lifecycle por EVENTO (G4): C1 (límite alcanzado) y C3
 // (paywall tocado). Mismas garantías que el cron: DRY_RUN por defecto, respeta
@@ -19,6 +20,7 @@ export async function triggerConversionEmail(userId: string, step: ConvStep, ext
       select: { email: true, name: true, lang: true, emailVerified: true, marketingOptOut: true },
     });
     if (!user || !user.email || !user.emailVerified || user.marketingOptOut) return;
+    if (isInternalAccount(user.email)) return; // cuentas internas/de prueba
 
     // Idempotencia: este paso ya enviado.
     const already = await prisma.emailLog.findUnique({

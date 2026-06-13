@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { SEQUENCES } from '@/lib/lifecycle-emails';
+import { isInternalAccount } from '@/lib/internal-accounts';
 
 export const maxDuration = 60;
 
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
   const candidates: Candidate[] = [];
 
   for (const u of users) {
+    if (isInternalAccount(u.email)) continue; // cuentas internas/de prueba
     if (sentToday.has(u.id)) continue; // máx 1 email/día
     const lang = (u.lang === 'en' ? 'en' : 'es') as Lang;
     const name = u.name?.split(' ')[0] || (lang === 'en' ? 'there' : 'crack');
