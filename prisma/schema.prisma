@@ -19,6 +19,8 @@ model User {
   utmSource     String?
   utmMedium     String?
   utmCampaign   String?
+  signupReferrer   String?  // document.referrer at signup (e.g. google.com, reddit.com)
+  signupLandingPage String? // first page the user landed on (e.g. /seo-score, /blog/...)
   // G4: baja de emails comerciales (LSSI) — los transaccionales no se ven afectados
   marketingOptOut Boolean @default(false)
   createdAt     DateTime  @default(now())

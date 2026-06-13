@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
         END
       RETURNING hits
     `;
-    const { email, password, name, lang = 'es', utmSource, utmMedium, utmCampaign, ref } = await req.json();
+    const { email, password, name, lang = 'es', utmSource, utmMedium, utmCampaign, ref, signupReferrer, signupLandingPage } = await req.json();
     const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
     const isEn = emailLang === 'en';
 
@@ -186,6 +186,8 @@ export async function POST(req: NextRequest) {
         utmMedium: typeof utmMedium === 'string' ? utmMedium.slice(0, 100) : undefined,
         utmCampaign: typeof utmCampaign === 'string' ? utmCampaign.slice(0, 100) : undefined,
         referredBy: typeof ref === 'string' ? ref.slice(0, 20) : undefined,
+        signupReferrer: typeof signupReferrer === 'string' ? signupReferrer.slice(0, 500) : undefined,
+        signupLandingPage: typeof signupLandingPage === 'string' ? signupLandingPage.slice(0, 500) : undefined,
       },
     });
 

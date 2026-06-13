@@ -98,6 +98,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: `try{if(!sessionStorage.getItem('ytv_landing'))sessionStorage.setItem('ytv_landing',location.pathname+location.search)}catch(e){}` }} />
         <LangProvider lang={lang as 'es' | 'en'}>
           <SessionProviderWrapper>
             {children}

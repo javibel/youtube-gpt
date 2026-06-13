@@ -26,6 +26,8 @@ export default function SignupForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<'es'|'en'>('es');
+  const [signupReferrer] = useState(() => typeof document !== 'undefined' ? document.referrer || '' : '');
+  const [signupLandingPage] = useState(() => typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ytv_landing') || '' : '');
 
   useEffect(() => {
     const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
@@ -69,7 +71,7 @@ export default function SignupForm() {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign, ref: refCode || undefined }),
+        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign, ref: refCode || undefined, signupReferrer: signupReferrer || undefined, signupLandingPage: signupLandingPage || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
