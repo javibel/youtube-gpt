@@ -19,6 +19,8 @@ model User {
   utmSource     String?
   utmMedium     String?
   utmCampaign   String?
+  // G4: baja de emails comerciales (LSSI) — los transaccionales no se ven afectados
+  marketingOptOut Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -31,6 +33,7 @@ model User {
   accounts        Account[]
   sessions        Session[]
   generations     Generation[]
+  emailLogs       EmailLog[]
   subscription    Subscription?
   review          Review?
   youtubeToken    YoutubeToken?
@@ -127,6 +130,22 @@ model Generation {
   @@index([userId, createdAt])
   @@index([ipAddress, createdAt])
   @@map("generations")
+}
+
+// G4: registro de emails lifecycle enviados — idempotencia (nunca repetir un paso)
+// y tope de 1 email/día/usuario. sequence='paywall' registra toques de paywall para C3.
+model EmailLog {
+  id       String   @id @default(cuid())
+  userId   String
+  sequence String
+  step     String
+  sentAt   DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sequence, step])
+  @@index([userId, sentAt])
+  @@map("email_logs")
 }
 
 model Review {
