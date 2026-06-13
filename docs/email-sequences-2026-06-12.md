@@ -1,8 +1,20 @@
 # Email sequences — Diseño (Tarea G4, 2026-06-12)
 
-Estado: DISEÑO COMPLETO, NO IMPLEMENTADO. Enviar emails a usuarios es línea roja —
-la activación requiere OK explícito de Javier. Este doc deja todo listo para
-implementar en ~medio día cuando se apruebe.
+Estado: IMPLEMENTADO en DRY_RUN (2026-06-13, commits e9cab02 + 682d76c). El sistema
+corre cada día a las 08:00 y devuelve el preview de lo que enviaría SIN enviar nada.
+Para activar el envío real: poner `LIFECYCLE_EMAILS_LIVE=true` en las env vars de
+Vercel (decisión final de Javier, tras revisar unos días de preview).
+
+### Cómo revisar el preview diario (DRY_RUN)
+`curl -H "Authorization: Bearer $CRON_SECRET" https://ytubviral.com/api/cron/lifecycle-emails`
+Devuelve `{ mode, eligibleUsers, candidates, preview[] }`. Si los candidatos tienen
+sentido varios días seguidos → activar LIVE. CRON_SECRET está en youtube-gpt/.env.local.
+
+### Cómo activar el envío real
+1. Vercel → proyecto → Settings → Environment Variables → `LIFECYCLE_EMAILS_LIVE=true`
+2. Redeploy (o esperar al siguiente). El cron de las 08:00 empezará a enviar y a
+   registrar en EmailLog (idempotente: nunca repite un paso).
+3. Para parar: borrar la env var o ponerla a cualquier valor != 'true'.
 
 ## 0. Fundamentos (obligatorios antes de enviar el primer email)
 
