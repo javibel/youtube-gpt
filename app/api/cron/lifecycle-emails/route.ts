@@ -66,8 +66,10 @@ export async function GET(request: Request) {
     const push = (sequence: string, step: string, tpl: Candidate['tpl'], extra?: Record<string, string | number>) =>
       candidates.push({ userId: u.id, email: u.email, name, lang, sequence, step, tpl, extra });
 
-    // ── A · Onboarding (skip-on-action) — solo no pagados aún en ventana ───────
-    if (!isPaid) {
+    // ── A · Onboarding (skip-on-action) — solo cuentas recientes (≤21 días).
+    //    Evita mandar "bienvenida" a cuentas antiguas en el arranque en frío;
+    //    esas caen a reactivación. ───────────────────────────────────────────
+    if (!isPaid && ageDays <= 21) {
       if (ageDays >= 0 && !has('onboarding', 'a1')) push('onboarding', 'a1', SEQUENCES.onboarding.a1);
       else if (ageDays >= 1 && genCount === 0 && !has('onboarding', 'a2')) push('onboarding', 'a2', SEQUENCES.onboarding.a2);
       else if (ageDays >= 3 && !has('onboarding', 'a3')) push('onboarding', 'a3', SEQUENCES.onboarding.a3);
