@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
+import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 
 export const maxDuration = 60;
 
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
 
   const plan = await getUserPlan(session.user.id);
   if (!isPaid(plan)) {
+    // C3: tocó el paywall del Coach — email explicativo (idempotente, DRY_RUN por defecto)
+    await triggerConversionEmail(session.user.id, 'c3');
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 

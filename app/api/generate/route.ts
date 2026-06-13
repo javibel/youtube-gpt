@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getExtensionUser } from '@/lib/extension-auth';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
+import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 
 const IP_FREE_LIMIT = 30; // máximo por IP/mes para usuarios free (anti multi-cuenta)
 
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
         where: { userId, createdAt: { gte: startOfMonth } },
       });
       if (usedThisMonth >= limit) {
+        if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
         return Response.json(
           { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
           { status: 429 }
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
       }
 
       if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
+        await triggerConversionEmail(userId, 'c3');
         return Response.json(
           { error: 'Este template es exclusivo del plan Pro', limitReached: true },
           { status: 403 }
@@ -137,6 +140,7 @@ export async function POST(request: Request) {
         });
 
         if (usedThisMonth >= limit) {
+          if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
           return Response.json(
             { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
             { status: 429 }
@@ -145,6 +149,7 @@ export async function POST(request: Request) {
 
         // Bloquear templates Pro para usuarios free
         if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
+          await triggerConversionEmail(userId, 'c3');
           return Response.json(
             { error: 'Este template es exclusivo del plan Pro', limitReached: true },
             { status: 403 }
