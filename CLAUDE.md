@@ -7,6 +7,26 @@ Javier Jimeno Plata, CEO y único responsable del proyecto. Tiene base técnica 
 
 ---
 
+# Capacidades en este entorno (Claude Code)
+
+Además de leer/escribir archivos y ejecutar comandos, dispongo de:
+- **Shell**: PowerShell (Windows) y Bash. Working dir por defecto: el padre `C:/Users/jimen/youtube-gpt`.
+- **MCP de Vercel**: leer deployments, build logs y runtime logs, listar proyectos (proyecto `youtube-gpt`, team `javibels-projects`). Sirve para diagnosticar producción. NO puedo escribir env vars (eso es el panel de Vercel → tarea de Javier).
+- **MCP de Gmail / Google Calendar / Google Drive**: buscar y leer correos, gestionar calendario y archivos.
+- **Web search + fetch**: investigación en vivo (verificar docs, URLs, estado de proveedores).
+- **Preview local**: levantar el dev server para verificar cambios de la web antes de desplegar (ver "Entorno técnico clave").
+- **Git**: commit + push (mensajes terminan con `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`).
+- **Memoria persistente**: `C:/Users/jimen/.claude/projects/C--Users-jimen-youtube-gpt/memory/` con índice `MEMORY.md`. Leerla al empezar, alimentarla con cada cambio.
+
+# Entorno técnico clave
+
+- **Layout del repo**: el repo git vive en `C:/Users/jimen/youtube-gpt/youtube-gpt` (los comandos `git` van ahí). La webapp Next.js se despliega en Vercel **automáticamente al hacer push a `main`**. `local-agent/` está versionado en ese mismo repo pero **NO se despliega** (corre en PM2 desde disco) → commitear `local-agent` es solo backup, sin efecto en el agente vivo.
+- **Verificación antes de desplegar**: `npx tsc --noEmit` (typecheck) antes de commitear cambios de la web. Para previsualizar visualmente, levantar el **dev server (puerto 3011)** — NO el prod (3010 sirve un build viejo). El `launch.json` que lee el preview está en el **directorio padre**: `C:/Users/jimen/youtube-gpt/.claude/launch.json` (config `ytubviral-dev`).
+- **Next.js 16**: tiene breaking changes (ver AGENTS.md) — p.ej. `middleware.ts` → `proxy.ts`. Leer `node_modules/next/dist/docs/` antes de escribir código de framework.
+- **Base de datos**: PostgreSQL en Neon, COMPARTIDA entre webapp y agente local. Prisma `User` mapea a la tabla `users` (minúsculas), columnas camelCase entre comillas (`"createdAt"`, `"userId"`).
+
+---
+
 # Protocolo DESPIERTA (inicio de sesión)
 
 Ejecutar siempre que el usuario diga "Despierta", invoque `/audit`, o inicie sesión sin contexto previo.
@@ -103,10 +123,10 @@ pm2 list                          # estado de los 3 servicios
 pm2 restart ytubviral-agent       # reiniciar agente local
 pm2 logs ytubviral-agent --lines 50  # logs recientes
 
-# Restaurar sesión de persona
+# Restaurar sesión de persona (Puppeteer)
 node login-persona.js <id> <platform>
-# ids: persona-alex, persona-ferran, persona-ana, persona-mayra, brand-reddit
-# platforms: twitter, reddit, facebook
+# ids: persona-alex, persona-ferran, persona-ana, persona-mayra
+# platforms: twitter, facebook  (reddit MUERTO; bluesky NO usa esto — va por app password en bluesky-accounts.json)
 
 # Indexación Google Search Console
 node gsc-index-urls.js
@@ -131,14 +151,14 @@ node -e "require('dotenv').config();const {runManager}=require('./manager');runM
 | DMARC Monitor | Autenticación de email | 06:00 diario |
 | Auto-Resolver | Lee Manager + aplica fixes | 09:17 diario |
 | Morning Fix (Task Scheduler) | Claude revisa y corrige código | 09:35 diario |
-| Persona Runner | Sesiones sociales | ~09:30 y ~22:00 |
+| Persona Runner | Sesiones sociales (Twitter; FB/Bluesky gateados OFF) | ~09:30 y ~22:00 |
 | Persona Monitor | Detecta silencio en personas | Cada hora 08-23h |
 | Followup | Responde a replies de personas | 10-11h y 17-18h |
 | Gmail | Procesa inbox | Cada 30 min 08-23h |
 | Outreach Discovery | Encuentra YouTubers | 6x/día |
 | Outreach Send | Emails a creadores | 6x/día |
-| Outreach Community | Posts en Reddit | 11:00 diario |
-| Outreach Reddit Targeted | Comenta en posts de ayuda | 11:00 y 18:00 |
+| Outreach Community | Posts en Reddit — INACTIVO (Reddit muerto) | — |
+| Outreach Reddit Targeted | Comenta en posts de ayuda — INACTIVO (Reddit muerto) | — |
 | Outreach Monitor | Detecta respuestas | Cada 3h 09-21h |
 | Blog Generator | Artículos SEO | Lun+Jue 04:00 |
 | Blog Syndicator | Cross-posting | 05:00 diario |
@@ -155,13 +175,13 @@ node -e "require('dotenv').config();const {runManager}=require('./manager');runM
 ## Personas sociales
 | Persona | Plataformas | Perfil |
 |---------|------------|--------|
-| Alex Sastre | Twitter, Reddit | Editor de vídeo freelance, Valencia, 26 años |
-| Ferran Gómez | Twitter, Reddit | Consultor marketing digital, Barcelona, 33 años |
-| Ana Reyes | Twitter, Reddit | Community manager freelance, Madrid, 29 años |
-| Mayra Vidal | Twitter, Reddit | Copywriter YouTube, Sevilla, 31 años |
-| Javier (brand) | Reddit | Fundador YTubViral — solo responde, no inicia |
+| Alex Sastre | Twitter (FB/Bluesky pend.) | Editor de vídeo freelance, Valencia, 26 años |
+| Ferran Gómez | Twitter (FB/Bluesky pend.) | Consultor marketing digital, Barcelona, 33 años |
+| Ana Reyes | Twitter (FB/Bluesky pend.) | Community manager freelance, Madrid, 29 años |
+| Mayra Vidal | Twitter (FB/Bluesky pend.) | Copywriter YouTube, Sevilla, 31 años |
 
-**Estado actual:** cuentas nuevas (semanas), karma 0. Fase de calentamiento — objetivo: credibilidad antes que conversión.
+**Canales (2026-06-14):** Reddit ABANDONADO (todas las cuentas baneadas/shadowbanned). Twitter vivo. Reemplazos: **Facebook + Bluesky**, ya cableados pero gateados OFF (`FACEBOOK_AUTOMATION_ENABLED`/`BLUESKY_AUTOMATION_ENABLED`) hasta que Javier cree las cuentas — guía en `local-agent/persona-channels-setup-2026-06-14.md`. La cuenta brand-reddit queda `disabled`.
+**Fase:** calentamiento — credibilidad antes que conversión. Arrancar canales nuevos despacio (1-2 personas, volumen bajo).
 
 ## Archivos de configuración clave
 | Archivo | Qué controla |
@@ -176,7 +196,7 @@ node -e "require('dotenv').config();const {runManager}=require('./manager');runM
 ---
 
 # SEO — Estado y acciones
-- Fix de Cache-Control desplegado (mayo 2026) — páginas ahora cacheables por Google
-- 73 URLs en sitemap, indexación pendiente de re-crawl (2-8 semanas)
-- Para acelerar: `node gsc-index-urls.js`
-- Prioridad de indexación: /, /features/*, /pricing, /blog, /blog/*
+- Fixes técnicos A1-A5 COMPLETOS (Cache-Control, sitemap, etc.). Último check 14/06: descubrimiento sube (+18 URLs) pero indexación PLANA (12→12).
+- DIAGNÓSTICO: el cuello ya NO es técnico — es **autoridad de dominio (backlinks) + tiempo**. La palanca restante es off-page (embeds/widget `/embed`, partnerships, menciones) y paciencia, no más fixes on-page.
+- Para empujar indexación puntual: `node gsc-index-urls.js`. Sweep de estado: `node gsc-sweep-all.js`.
+- Detalle e historial en memoria `project_seo.md`. Próximo check sugerido ~1 julio.
