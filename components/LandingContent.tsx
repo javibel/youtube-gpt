@@ -151,14 +151,14 @@ function StatsStrip({ lang }: { lang: Lang }) {
 function WhyDifferent({ lang }: { lang: Lang }) {
   const items = lang === 'en'
     ? [
-        { icon: '🎯', title: 'Honest diagnostics', desc: 'SEO Score tells you exactly what to fix — no vague advice.' },
-        { icon: '🧠', title: 'AI that knows your channel', desc: 'Connect YouTube and every generation is tailored to your niche, audience, and recent performance.' },
-        { icon: '💰', title: '5× cheaper than the alternatives', desc: '€9.99/mo vs the usual $20–49/mo. Same core features. No enterprise upsell.' },
+        { icon: '/icons/target.webp', title: 'Honest diagnostics', desc: 'SEO Score tells you exactly what to fix — no vague advice.' },
+        { icon: '/icons/brain.webp', title: 'AI that knows your channel', desc: 'Connect YouTube and every generation is tailored to your niche, audience, and recent performance.' },
+        { icon: '/icons/diamond.webp', title: '5× cheaper than the alternatives', desc: '€9.99/mo vs the usual $20–49/mo. Same core features. No enterprise upsell.' },
       ]
     : [
-        { icon: '🎯', title: 'Diagnóstico honesto', desc: 'SEO Score te dice exactamente qué arreglar — sin consejos vagos.' },
-        { icon: '🧠', title: 'IA que conoce tu canal', desc: 'Conecta YouTube y cada generación se adapta a tu nicho, audiencia y rendimiento.' },
-        { icon: '💰', title: '5× más barato que las alternativas', desc: '9,99€/mes frente a los $20–49/mes habituales. Mismas funciones core. Sin upsell enterprise.' },
+        { icon: '/icons/target.webp', title: 'Diagnóstico honesto', desc: 'SEO Score te dice exactamente qué arreglar — sin consejos vagos.' },
+        { icon: '/icons/brain.webp', title: 'IA que conoce tu canal', desc: 'Conecta YouTube y cada generación se adapta a tu nicho, audiencia y rendimiento.' },
+        { icon: '/icons/diamond.webp', title: '5× más barato que las alternativas', desc: '9,99€/mes frente a los $20–49/mes habituales. Mismas funciones core. Sin upsell enterprise.' },
       ];
 
   return (
@@ -170,7 +170,7 @@ function WhyDifferent({ lang }: { lang: Lang }) {
         <div className="grid md:grid-cols-3 gap-6">
           {items.map((item, i) => (
             <div key={i} className="p-6 border border-white/10 bg-white/[0.02]">
-              <span className="text-2xl">{item.icon}</span>
+              <img src={item.icon} alt="" width={48} height={48} className="object-contain" />
               <h3 className="font-display font-bold text-lg mt-3 mb-2">{item.title}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{item.desc}</p>
             </div>
@@ -322,9 +322,9 @@ function ComparisonTable({ lang }: { lang: Lang }) {
 function FreeToolsStrip({ lang }: { lang: Lang }) {
   const t = (es: string, en: string) => lang === 'en' ? en : es;
   const tools = [
-    { href: '/seo-score', icon: '📊', label: 'SEO Score', desc: t('Analiza cualquier vídeo', 'Analyze any video') },
-    { href: '/trends', icon: '🔥', label: 'Trending', desc: t('Qué está viral ahora', "What's viral now") },
-    { href: '/embed', icon: '🧩', label: 'Widget', desc: t('Para tu web', 'For your site') },
+    { href: '/seo-score', icon: '/icons/bar-chart.webp', label: 'SEO Score', desc: t('Analiza cualquier vídeo', 'Analyze any video') },
+    { href: '/trends', icon: '/icons/trend.webp', label: 'Trending', desc: t('Qué está viral ahora', "What's viral now") },
+    { href: '/embed', icon: '/icons/globe.webp', label: 'Widget', desc: t('Para tu web', 'For your site') },
   ];
   return (
     <section className="border-b border-white/10 bg-black">
@@ -338,7 +338,7 @@ function FreeToolsStrip({ lang }: { lang: Lang }) {
         <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {tools.map(tool => (
             <Link key={tool.href} href={tool.href} className="group p-5 rounded-xl transition text-left" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <span className="text-2xl">{tool.icon}</span>
+              <img src={tool.icon} alt="" width={48} height={48} className="object-contain" />
               <p className="font-display font-bold text-sm text-white mt-2 group-hover:text-[#e84d5b] transition">{tool.label}</p>
               <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{tool.desc}</p>
             </Link>
