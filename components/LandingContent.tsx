@@ -10,6 +10,7 @@ import LandingFAQ from '@/components/LandingFAQ';
 import ChatWidgetPreview from '@/components/ChatWidgetPreview';
 import PricingSection from '@/components/PricingSection';
 import RealTestimonials from '@/components/RealTestimonials';
+import LaunchBanner from '@/components/LaunchBanner';
 
 type Lang = 'es' | 'en';
 
@@ -547,6 +548,7 @@ export default function LandingContent({ jsonLd }: { jsonLd: object[] }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <LaunchBanner lang={lang} />
       <TopNav lang={lang} />
       <Hero lang={lang} />
       <StatsStrip lang={lang} />
