@@ -7,6 +7,7 @@ import {
   getPost, getRelated, type Lang, type BlockType,
 } from '@/lib/blog-data';
 import ArticleBlock from '@/components/ArticleBlock';
+import WaitlistInline from '@/components/WaitlistInline';
 import { getServerLang } from '@/lib/server-lang';
 import { BLOG_SEO } from '@/lib/blog-seo';
 
@@ -264,6 +265,22 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <p className="font-display font-bold">{post.author.name}</p>
             <p className="text-zinc-400 text-sm">{post.author.role[lang]}</p>
           </div>
+        </div>
+
+        {/* ── Launch waitlist (J2) — secondary, event-based ask; does not compete with signup ── */}
+        <div className="mt-12 p-6 md:p-8 rounded-xl text-center" style={{ background: 'rgba(232,77,91,0.04)', border: '1px solid rgba(232,77,91,0.2)' }}>
+          <p className="font-mono-jb text-[12px] tracking-[0.2em] uppercase mb-2" style={{ color: 'var(--red)' }}>
+            {lang === 'en' ? 'Launching soon on Product Hunt' : 'Lanzamos pronto en Product Hunt'}
+          </p>
+          <p className="font-display font-bold text-white text-xl mb-1">
+            {lang === 'en' ? 'Be first on launch day' : 'Sé de los primeros el día del lanzamiento'}
+          </p>
+          <p className="font-mono-jb text-[13px] mb-1" style={{ color: 'var(--yv-text-3)' }}>
+            {lang === 'en'
+              ? "Join the list — we'll email you on launch day with an early-bird deal for the first creators."
+              : 'Apúntate — te avisamos el día del lanzamiento con una ventaja early-bird para los primeros.'}
+          </p>
+          <WaitlistInline lang={lang} source="blog" />
         </div>
       </article>
 

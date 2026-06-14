@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function WaitlistInline({ lang }: { lang: 'es' | 'en' }) {
+export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang: 'es' | 'en'; source?: string }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'already' | 'error'>('idle');
   const [position, setPosition] = useState(0);
@@ -12,10 +12,16 @@ export default function WaitlistInline({ lang }: { lang: 'es' | 'en' }) {
     if (!email || state === 'loading') return;
     setState('loading');
     try {
+      // Attribute origin so we know which channel fills the list (J2)
+      let referrer: string | null = null;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        referrer = params.get('utm_source') || document.referrer || null;
+      } catch { /* noop */ }
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'homepage-cta', lang }),
+        body: JSON.stringify({ email, source, referrer, lang }),
       });
       const data = await res.json();
       if (!res.ok) { setState('error'); return; }
