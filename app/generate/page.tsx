@@ -39,6 +39,10 @@ const TPL_NAMES: Record<string, Record<'es'|'en', string>> = {
   video_preview:  { es: 'Video Tips',        en: 'Video Tips' },
 };
 
+// E2: guided creation pipeline — after a result, suggest the natural next step (same topic carries
+// over), so the user flows title → description → script → thumbnail instead of hunting tabs.
+const PIPELINE_NEXT: Record<string, string> = { title: 'description', description: 'script', script: 'thumbnail' };
+
 const NICHES_ES = [['tech','Tech'],['gaming','Gaming'],['life','Lifestyle'],['edu','EDU'],['fit','Fitness'],['food','Cocina']];
 const NICHES_EN = [['tech','Tech'],['gaming','Gaming'],['life','Lifestyle'],['edu','EDU'],['fit','Fitness'],['food','Cooking']];
 const TONES_ES  = [['viral','Viral'],['profesional','Pro'],['casual','Casual'],['educativo','EDU']];
@@ -680,6 +684,16 @@ export default function GeneratePage() {
                     <button onClick={handleGenerate} className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display">
                       ⟳ {t('Regenerar', 'Regenerate')}
                     </button>
+                    {PIPELINE_NEXT[selectedTemplate] && (
+                      <button
+                        onClick={() => { handleSelect(PIPELINE_NEXT[selectedTemplate]); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className="btn-offset px-4 py-2 text-[13px] font-display"
+                        style={{ borderColor: 'var(--yv-brand)', color: 'var(--yv-brand)' }}
+                        title={t('Mismo tema, siguiente paso', 'Same topic, next step')}
+                      >
+                        {t('Siguiente', 'Next')}: {TPL_NAMES[PIPELINE_NEXT[selectedTemplate]]?.[lang]} →
+                      </button>
+                    )}
                     {selectedTemplate === 'script' && isPro && (
                       <button
                         onClick={() => {
