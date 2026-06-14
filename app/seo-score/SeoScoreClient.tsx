@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import ExitIntentPopup from '@/components/ExitIntentPopup';
+import ExtensionInstallBanner from '@/components/ExtensionInstallBanner';
 import PublicNav from '@/components/PublicNav';
 
 type Lang = 'es' | 'en';
@@ -489,6 +490,7 @@ export default function SeoScoreClient() {
         <PublicNav />
         <div className="max-w-4xl mx-auto px-6 py-10">
           <SeoScoreContent />
+          <ExtensionInstallBanner lang={lang} />
         </div>
         <ExitIntentPopup lang={lang} />
       </div>

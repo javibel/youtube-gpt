@@ -6,6 +6,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
 import PublicNav from '@/components/PublicNav';
 import ExitIntentPopup from '@/components/ExitIntentPopup';
+import ExtensionInstallBanner from '@/components/ExtensionInstallBanner';
 
 type Lang = 'es' | 'en';
 type Tab = 'explore' | 'alerts';
@@ -219,6 +220,8 @@ function PublicTrends({ lang }: { lang: Lang }) {
             {t('Crear cuenta gratis →', 'Create free account →')}
           </a>
         </div>
+
+        <ExtensionInstallBanner lang={lang} />
       </div>
     </div>
   );
