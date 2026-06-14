@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { prisma } from '@/lib/prisma';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -188,6 +189,27 @@ function checkTags(tags: string[], title: string): CheckItem[] {
 // ── POST: analyze any public video by URL ──────────────────────────────────
 
 export async function POST(request: Request) {
+  // F1 security: this endpoint is PUBLIC (no auth) and hits the YouTube API + Anthropic (costs
+  // money per call). Rate-limit by IP — atomic in DB so it holds across serverless instances.
+  // 20 analyses / 10 min is generous for a real lead-magnet user, blocks scripted abuse.
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
+    ?? request.headers.get('x-real-ip')
+    ?? 'unknown';
+  try {
+    const rl = await prisma.$queryRaw<{ hits: number }[]>`
+      INSERT INTO rate_limits (key, hits, window_start)
+      VALUES (${`seo-url:${ip}`}, 1, NOW())
+      ON CONFLICT (key) DO UPDATE SET
+        hits = CASE WHEN rate_limits.window_start < NOW() - INTERVAL '10 minutes' THEN 1 ELSE rate_limits.hits + 1 END,
+        window_start = CASE WHEN rate_limits.window_start < NOW() - INTERVAL '10 minutes' THEN NOW() ELSE rate_limits.window_start END
+      RETURNING hits`;
+    if (Number(rl[0]?.hits ?? 0) > 20) {
+      return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+    }
+  } catch {
+    // If the rate-limit store is unavailable, fail open (don't block legit users on infra hiccup)
+  }
+
   const body = await request.json().catch(() => ({}));
   const url = (body.url as string) || (body.videoId as string) || '';
 
