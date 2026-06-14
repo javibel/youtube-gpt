@@ -485,6 +485,12 @@ export default function GeneratePage() {
                     )}
                   </div>
                 </div>
+                <p className="text-[12px] mt-4 leading-relaxed" style={{ color: 'var(--yv-text-4)' }}>
+                  {t(
+                    'Privacidad: el texto del tema se envía a Ideogram (EE.UU.) para crear el fondo — no incluyas datos personales en él. Tu foto se compone en nuestros servidores y NO se envía a Ideogram.',
+                    'Privacy: the topic text is sent to Ideogram (US) to create the background — don\'t include personal data in it. Your photo is composited on our servers and is NOT sent to Ideogram.'
+                  )}
+                </p>
               </div>
             )}
 
