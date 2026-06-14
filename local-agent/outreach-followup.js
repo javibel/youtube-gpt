@@ -16,15 +16,20 @@ const { sendViaResend } = require('./resend');
 const TRACKER_PATH = path.join(__dirname, 'outreach-tracker.json');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-// Follow-up templates — short, personal, plain text
+// Follow-up = TOUCH 2 of the two-touch outreach (Javier's call 2026-06-13): this is the "ask"
+// — the free month of Pro. Subject keeps "Re:" to thread under touch 1. Plain text, personal.
 const TEMPLATES_SEO = {
   es: {
     subject: (videoTitle) => `Re: "${videoTitle.slice(0, 45)}"`,
     body: (name, seoScore) => `Hola ${name},
 
-Te escribí hace unos días con un tip para tu video. ¿Llegaste a probarlo?
+Te escribí hace unos días con un tip para tu vídeo. Por si te sirve: además del analizador gratis, te puedo dar un mes de YTubViral Pro gratis (sin tarjeta) para que lo pruebes entero — generador de títulos y descripciones, ideas de contenido y análisis de competidores.
 
-Si quieres ver el análisis completo gratis (sin registro): https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
+Si te interesa, respóndeme a este correo o regístrate aquí y te lo activo a mano:
+
+https://ytubviral.com/signup?utm_source=outreach&utm_medium=email
+
+P.D.: si ahora no es el momento, lanzamos pronto en Product Hunt — te puedo avisar el día (con ventaja early-bird): https://ytubviral.com/launch?ref=outreach
 
 Javier`,
   },
@@ -32,41 +37,20 @@ Javier`,
     subject: (videoTitle) => `Re: "${videoTitle.slice(0, 45)}"`,
     body: (name, seoScore) => `Hey ${name},
 
-Sent you a quick tip about your video a few days ago — did you get a chance to try it?
+Sent you a quick tip about your video a few days ago. In case it helps: on top of the free analyzer, I can give you a free month of YTubViral Pro (no card) to try the whole thing — title and description generators, content ideas, and competitor analysis.
 
-If you want the full analysis for free (no signup): https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
+If you're interested, just reply to this email or sign up here and I'll activate it for you:
 
-Javier`,
-  },
-};
+https://ytubviral.com/signup?utm_source=outreach&utm_medium=email
 
-// Fallback for contacts without video data (skip follow-ups without SEO data)
-const TEMPLATES_FALLBACK = {
-  es: {
-    subject: 'Re: Tu canal de YouTube',
-    body: (name) => `Hola ${name},
-
-Te escribí hace unos días. Creé una herramienta gratuita que analiza el SEO de cualquier video de YouTube — sin registro:
-
-https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
-
-¿Te sería útil?
-
-Javier`,
-  },
-  en: {
-    subject: 'Re: Your YouTube channel',
-    body: (name) => `Hey ${name},
-
-Reached out a few days ago. Built a free tool that analyzes the SEO of any YouTube video — no signup needed:
-
-https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
-
-Would this be useful?
+PS: if now's not the time, we're launching on Product Hunt soon — I can give you a heads-up on launch day (with an early-bird perk): https://ytubviral.com/launch?ref=outreach
 
 Javier`,
   },
 };
+
+// NOTE: a generic TEMPLATES_FALLBACK used to live here. Removed (2026-06-13) — same policy as
+// outreach-send: only personalized SEO follow-ups. Contacts without SEO data are skipped below.
 
 async function runFollowUp() {
   const tracker = JSON.parse(fs.readFileSync(TRACKER_PATH, 'utf-8'));
@@ -91,16 +75,15 @@ async function runFollowUp() {
     const firstName = contact.name.split(' ')[0].split('/')[0].trim();
     const lang = contact.lang || 'en';
 
-    let subject, body;
-    if (contact.latestVideo && contact.seoScore) {
-      const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
-      subject = tpl.subject(contact.latestVideo.title);
-      body = tpl.body(firstName, contact.seoScore);
-    } else {
-      const tpl = TEMPLATES_FALLBACK[lang] || TEMPLATES_FALLBACK.en;
-      subject = tpl.subject;
-      body = tpl.body(firstName);
+    // Only personalized SEO follow-ups (policy). Legacy contacts without SEO data are skipped
+    // rather than sent a generic email.
+    if (!contact.latestVideo || !contact.seoScore) {
+      console.log(`  ⏭ ${contact.name} — skipped (no SEO data)`);
+      continue;
     }
+    const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
+    const subject = tpl.subject(contact.latestVideo.title);
+    const body = tpl.body(firstName, contact.seoScore);
 
     console.log(`  → ${contact.name} <${contact.email}> [${lang}]`);
 

@@ -325,6 +325,31 @@ async function saveMessage({ from, content, replied, replyContent, externalId })
   });
 }
 
+// ── Outreach reply attribution ──
+const OUTREACH_TRACKER_PATH = path.join(__dirname, 'outreach-tracker.json');
+
+// If an inbound email is from someone we cold-emailed, attribute the reply back to the
+// outreach tracker. This was a measurement void — meta.stats.totalReplied was a hardcoded 0
+// that no code ever incremented, so we were flying blind. Idempotent: marks each contact once.
+function markOutreachReply(senderEmail) {
+  try {
+    const email = (senderEmail || '').toLowerCase().trim();
+    if (!email) return;
+    const tracker = JSON.parse(fs.readFileSync(OUTREACH_TRACKER_PATH, 'utf8'));
+    const contact = (tracker.contacts || []).find(c => (c.email || '').toLowerCase().trim() === email);
+    if (!contact || contact.dateReplied) return; // not an outreach contact, or already counted
+    contact.dateReplied = new Date().toISOString().split('T')[0];
+    if (contact.status === 'sent' || contact.status === 'followed-up') contact.status = 'replied';
+    tracker.meta = tracker.meta || {};
+    tracker.meta.stats = tracker.meta.stats || {};
+    tracker.meta.stats.totalReplied = (tracker.contacts || []).filter(c => c.dateReplied).length;
+    fs.writeFileSync(OUTREACH_TRACKER_PATH, JSON.stringify(tracker, null, 2));
+    console.log(`[gmail] 📨 Outreach REPLY from ${email} (${contact.name}) — marked in tracker`);
+  } catch (err) {
+    console.error(`[gmail] markOutreachReply failed (non-fatal): ${err.message}`);
+  }
+}
+
 // ── Main processing ──
 
 async function processInbox() {
@@ -370,6 +395,11 @@ async function processInbox() {
         await markAsRead(token, messageId);
         continue;
       }
+
+      // Attribute outreach replies BEFORE classification — a reply from a cold-emailed
+      // creator may be classified 'important' (forwarded) or 'actionable' (auto-replied);
+      // either way we want to count it in the tracker.
+      markOutreachReply(senderEmail);
 
       const classification = classifyEmail(from, subject, snippet, headers);
       console.log(`[gmail] ${classification.toUpperCase()}: "${subject}" from ${senderEmail}`);

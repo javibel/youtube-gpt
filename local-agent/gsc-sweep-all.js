@@ -41,8 +41,10 @@ async function main() {
   for (const r of results) summary[r.state] = (summary[r.state] || 0) + 1;
   console.log('\n=== SUMMARY ===');
   console.log(JSON.stringify(summary, null, 2));
-  require('fs').writeFileSync('reports/gsc-sweep-2026-06-11.json', JSON.stringify({ date: '2026-06-11', summary, results }, null, 2));
-  console.log('Saved to reports/gsc-sweep-2026-06-11.json');
+  // Date-stamped output (was hardcoded to 2026-06-11, which overwrote the baseline on every run).
+  const today = new Date().toISOString().slice(0, 10);
+  require('fs').writeFileSync(`reports/gsc-sweep-${today}.json`, JSON.stringify({ date: today, summary, results }, null, 2));
+  console.log(`Saved to reports/gsc-sweep-${today}.json`);
 }
 
 main().catch(console.error);

@@ -6,6 +6,9 @@
 *-cookies.json
 cookies/
 
+# Bluesky app passwords (account access)
+bluesky-accounts.json
+
 # Browser profiles (session data, passwords)
 chrome-profile/
 chrome-profiles/

@@ -182,6 +182,13 @@ async function engageWithPosts(opts = {}) {
   if (!page) return;
 
   try {
+    // Capture the real logged-in username so account-health can detect suspension/shadowban
+    // (the monitor checks the public profile logged-out). Best-effort, non-fatal.
+    try {
+      const uname = await safeEval(page, () => document.querySelector('.user a')?.textContent?.trim() || null);
+      if (uname && accountId) require('./account-health').saveUsername(accountId, uname);
+    } catch { /* ignore */ }
+
     const subreddits = pickSubreddits();
     console.log(`[${tag}] Session subreddits: ${subreddits.map(s => 'r/' + s).join(', ')}`);
 
@@ -239,13 +246,21 @@ async function engageWithPosts(opts = {}) {
 
       // Prioritize posts where someone is asking for help (higher conversion potential)
       const isQuestion = post._isIntent || /\?|help|recommend|suggest|advice|stuck|how do|what tool|best way|looking for|need a|consejo|ayuda|recomendar|herramienta|cómo/i.test(post.title + ' ' + post.text);
-      const commentChance = isQuestion ? 0.85 : 0.25; // 85% for questions (was 70%), 25% for others (was 35%)
+      // Founder/brand karma-building mode (I5 Fase 0): comment on most relevant posts to earn
+      // standing. Otherwise the usual probabilistic mix. opts.commentChance = {question, other}.
+      const cc = opts.commentChance;
+      const commentChance = cc
+        ? (isQuestion ? cc.question : cc.other)
+        : (isQuestion ? 0.85 : 0.25); // 85% for questions, 25% for others
 
-      // Comment (probability-based, only if under limit and post has content to reply to)
-      // Require minimum body text — title-only posts give Claude too little context and
-      // cause it to break character (seen: "I'd need to see the post content...")
+      // Comment (probability-based, only if under limit and post has content to reply to).
+      // Body text >50 chars gives Claude context. EXCEPTION: a clearly high-intent question
+      // title (e.g. "What's the best free YouTube SEO tool?") is answerable on its own and is
+      // the highest-conversion post type — don't skip it just because the body is empty.
+      // (The meta-phrase + structural-meta rejects in claude.js catch any break-character.)
+      const hasEnoughContext = post.text.length > 50 || (post._isIntent && post.title.length > 30);
       if (todayComments + commentsGiven < limits.comments
-        && post.text.length > 50
+        && hasEnoughContext
         && Math.random() < commentChance) {
         try {
           const postContent = `${post.title}\n\n${post.text}`;

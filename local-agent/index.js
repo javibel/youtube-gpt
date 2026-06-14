@@ -22,6 +22,7 @@ const { runMetaOptimizer } = require('./meta-optimizer');
 const { runFollowUp } = require('./outreach-followup');
 const { runDiscovery } = require('./outreach-discover');
 const { runOutreachSend } = require('./outreach-send');
+const { runAttribution } = require('./outreach-attribution');
 const { runOutreachPost } = require('./outreach-post');
 const { runRedditDm } = require('./outreach-reddit-dm');
 const { runRedditTargeted } = require('./outreach-reddit-targeted');
@@ -234,14 +235,24 @@ cron.schedule('0 10,16 * * *', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
-// Outreach Community Posts — daily at 11:00, publish pending Reddit posts
-cron.schedule('0 11 * * *', async () => {
-  console.log('[cron] Outreach post — publishing community posts');
-  await bq('outreach-post', async () => {
-    await runOutreachPost().catch(err => console.error('[outreach-post]', err.message));
-    await db.disconnect().catch(() => {});
-  });
+// Outreach Attribution — daily at 02:50, cross-reference contacts vs registered users and
+// recompute meta.stats (J1: replied/registered/activated were hardcoded zeros nothing updated).
+// Runs before the 03:00 reports so manager/funnel see real outreach numbers.
+cron.schedule('50 2 * * *', async () => {
+  console.log('[cron] Outreach attribution — matching contacts to signups');
+  await runAttribution().catch(err => console.error('[outreach-attribution]', err.message));
+  await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
+
+// Outreach Community Posts — DISABLED 2026-06-14: Reddit abandoned (brand account suspended/
+// shadowbanned, posting forbidden). Posts would be invisible. Re-enable on a healthy account.
+// cron.schedule('0 11 * * *', async () => {
+//   console.log('[cron] Outreach post — publishing community posts');
+//   await bq('outreach-post', async () => {
+//     await runOutreachPost().catch(err => console.error('[outreach-post]', err.message));
+//     await db.disconnect().catch(() => {});
+//   });
+// }, { timezone: 'Europe/Madrid' });
 
 // Brand Twitter Post — daily at 10:30, tweet + infographic via Puppeteer (replaces paid API)
 cron.schedule('30 10 * * *', async () => {
@@ -257,13 +268,14 @@ cron.schedule('30 10 * * *', async () => {
 //   await runRedditDm().catch(err => console.error('[outreach-reddit-dm]', err.message));
 // }, { timezone: 'Europe/Madrid' });
 
-// Outreach Reddit Targeted Comments — 2x/day, reply to help/feedback posts
-cron.schedule('0 11,18 * * *', async () => {
-  console.log('[cron] Outreach Reddit targeted — commenting on feedback/help posts');
-  await bq('outreach-reddit-targeted', async () => {
-    await runRedditTargeted().catch(err => console.error('[outreach-reddit-targeted]', err.message));
-  });
-}, { timezone: 'Europe/Madrid' });
+// Outreach Reddit Targeted Comments — DISABLED 2026-06-14: Reddit abandoned (persona accounts
+// shadowbanned — u/Javi_Mart, u/AdNearby3690 confirmed; comments invisible to everyone).
+// cron.schedule('0 11,18 * * *', async () => {
+//   console.log('[cron] Outreach Reddit targeted — commenting on feedback/help posts');
+//   await bq('outreach-reddit-targeted', async () => {
+//     await runRedditTargeted().catch(err => console.error('[outreach-reddit-targeted]', err.message));
+//   });
+// }, { timezone: 'Europe/Madrid' });
 
 // Outreach Monitor — every 3 hours 9-23h, check for new replies to outreach posts
 cron.schedule('0 9,12,15,18,21 * * *', async () => {
@@ -390,7 +402,7 @@ console.log('  Persona reports: 12:00, 00:00 (Europe/Madrid)');
 console.log('  Outreach discover: 08:30,12:30,16:30,20:30 (Europe/Madrid)');
 console.log('  Outreach send: 08:45,12:45,16:45,20:45 (Europe/Madrid)');
 console.log('  Outreach follow-up: 10:00 daily (Europe/Madrid)');
-console.log('  Outreach posts: 11:00 daily (Europe/Madrid)');
+console.log('  Outreach posts + Reddit comments: DISABLED (Reddit abandoned — accounts shadowbanned)');
 console.log('  Brand Twitter post: 10:30 daily (Europe/Madrid) — Puppeteer + infographic');
 console.log('  Feature Monitor: 07:00, 19:00 daily (Europe/Madrid)');
 console.log('  Outreach monitor: every 3h 9-21h (Europe/Madrid)');

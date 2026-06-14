@@ -34,21 +34,24 @@ const SEARCH_QUERIES = [
 const HASHTAGS = SEARCH_QUERIES;
 
 // Relevance filter: tweet must contain at least one niche keyword to engage
-const RELEVANCE_KEYWORDS = [
-  // EN
-  'youtube', 'youtuber', 'video', 'creator', 'content', 'channel', 'subscribe',
-  'thumbnail', 'upload', 'monetize', 'monetization', 'vlog', 'vlogger',
-  'streaming', 'shorts', 'reels', 'tiktok', 'podcast', 'editing', 'editor',
-  'seo', 'algorithm', 'views', 'growth', 'audience', 'niche',
-  // ES
-  'canal', 'suscriptor', 'suscríbete', 'miniatura', 'subir', 'monetizar',
-  'creador', 'contenido', 'edición', 'audiencia', 'nicho', 'viral',
-  'crecimiento', 'emprendedor', 'digital',
-];
+// Unambiguous YouTube-creator signals — any one is enough to engage.
+// Deliberately does NOT include bare "youtube"/"video"/"channel": those appear in
+// political/news/sports tweets that merely link a YouTube video (the observed failure
+// — personas replied to football/election tweets). Bare terms go through the weak path.
+const STRONG_YT = /\b(youtubers?|small ?youtubers?|newtubers?|(mi |tu |su )?canal de youtube|youtube channel|yt channel|suscriptores?|subscribers?|thumbnails?|miniaturas?|youtube seo|seo (de |en )?youtube|youtube algorithm|algoritmo de youtube|watch ?time|tiempo de visualizaci|views per hour|\bvph\b|click.?through rate|\bctr\b|monetiz)\b/i;
+
+// Off-niche poison: politics, news, sports, crypto. If present, skip even when a
+// YouTube word is also there (a political tweet linking a YouTube video is not for us).
+const OFF_TOPIC = /\b(elecci[oó]n|election|gobierno|govern(ment|or)|pol[ií]tic|president|congres|senad|diputad|partido (popular|socialista)|madridista|bar[çc]a|real madrid|f[úu]tbol|football|premier league|nba|crypto|bitcoin|\bnft\b|forex|trading|stock market|ucrani|ukrain|israel|gaza|palestin|trump|biden|psoe|\bvox\b|feij[oó]o)\b/i;
 
 function isRelevantTweet(text) {
   const lower = text.toLowerCase();
-  return RELEVANCE_KEYWORDS.some(kw => lower.includes(kw));
+  if (OFF_TOPIC.test(lower)) return false;        // off-niche → never engage
+  if (STRONG_YT.test(lower)) return true;         // unambiguous creator signal → engage
+  // Weak signal: a YouTube-ish word AND a creator-problem word must co-occur.
+  const hasYt = /\b(youtube|youtuber|mi canal|tu canal|su canal|channel|creator|creador)\b/i.test(lower);
+  const hasProblem = /\b(seo|keywords?|palabras? clave|t[íi]tulos?|titles?|tags?|thumbnails?|miniaturas?|views|visitas|grow|crec|stuck|estancad|optimiz|analytic|anal[íi]tic|tools?|herramientas?|ideas?|guion|script|retenci|retention|engagement|algoritmo|algorithm)\b/i.test(lower);
+  return hasYt && hasProblem;
 }
 
 function delay(min = 1500, max = 4000) {
@@ -223,6 +226,11 @@ async function engageWithTweets(opts = {}) {
       // Skip off-topic tweets that don't match our niche
       if (!isRelevantTweet(tweet.text)) continue;
 
+      // Skip tweets still truncated after the show-more expansion (Twitter appends an
+      // ellipsis char). Replying to half a tweet makes the persona say "the tweet's cut
+      // off but..." — observed and embarrassing.
+      if (tweet.text.trim().endsWith('…')) continue;
+
       // Randomly skip some posts (humans don't engage with everything)
       if (shouldSkipPost()) continue;
 
@@ -255,8 +263,13 @@ async function engageWithTweets(opts = {}) {
         // If liked === null (timeout), just skip this tweet silently and continue
       }
 
-      // Reply (if under limit, not already replied, ~50% chance per tweet to keep it natural)
-      if (!alreadyReplied && todayReplies + repliesGiven < limits.replies && Math.random() < 0.5) {
+      // Reply chance scaled by intent (replaces the blind 50% coin flip): high-intent
+      // tweets — an explicit question or a strong YouTube-creator signal — are worth
+      // replying to far more often than ambiguous-but-relevant ones. Mirrors Reddit.
+      const isHighIntent = STRONG_YT.test(tweet.text)
+        || /\?|help|recommend|how (do|to)|what tool|looking for|any (good|tool)|stuck|no views|nadie ve|c[óo]mo |ayuda|recomien|qu[ée] herramienta/i.test(tweet.text);
+      const replyChance = isHighIntent ? 0.85 : 0.4;
+      if (!alreadyReplied && todayReplies + repliesGiven < limits.replies && Math.random() < replyChance) {
         try {
           const reply = await replyGenerator(tweet.author, tweet.text);
           if (!reply) {

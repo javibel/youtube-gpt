@@ -48,12 +48,9 @@ I'll be here all day — every comment gets a reply!
 6. 06-calendar.png — Content Calendar
 
 ## Thumbnail / Hero image
-NEEDS RECREATION — current one says "14 AI TOOLS", should show:
-- SEO Score gauge (87/100) as hero visual
-- Tagline: "Free YouTube SEO Score"
-- Subtitle: "Know exactly what to fix"
-- YTubViral.com
-- Can reuse og-seo-score.webp as base (1424x752, already has the gauge)
+DONE (verified 2026-06-14) — `public/ph-assets/gallery-hero.png` and
+`public/ph-assets/screenshots/Thumbnail.png` both show the SEO Score gauge (87/100) +
+"YouTube SEO Score" + YTubViral.com. They do NOT say "14 tools" (old note was stale).
 
 ## OG Image for social sharing
 Use og-seo-score.webp (1424x752) — already perfect, shows the SEO gauge

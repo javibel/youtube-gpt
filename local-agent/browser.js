@@ -235,12 +235,18 @@ async function closeBrowserForProfile(profileDir) {
       new Promise(r => setTimeout(() => r(false), 8000)),
     ]).catch(() => false);
 
-    if (!closed && pid) {
-      console.log(`[browser] close() timed out for ${path.basename(absDir)} — force-killing PID ${pid} tree`);
-      try {
-        const { execSync } = require('child_process');
-        execSync(`taskkill /F /T /PID ${pid}`, { timeout: 5000, stdio: 'pipe', windowsHide: true });
-      } catch {}
+    if (!closed) {
+      // Force-kill by PID tree if we have it, otherwise kill by profile dir
+      if (pid) {
+        console.log(`[browser] close() timed out for ${path.basename(absDir)} — force-killing PID ${pid} tree`);
+        try {
+          const { execSync } = require('child_process');
+          execSync(`taskkill /F /T /PID ${pid}`, { timeout: 5000, stdio: 'pipe', windowsHide: true });
+        } catch {}
+      } else {
+        console.log(`[browser] close() timed out for ${path.basename(absDir)} — no PID, killing by profile dir`);
+        await killZombieChromeForProfile(absDir);
+      }
     }
 
     browsers.delete(absDir);
@@ -445,21 +451,36 @@ function startZombieReaper() {
       ).toString().trim();
       const totalChrome = parseInt(countOutput, 10) || 0;
 
+      // Clean up stale entries from browsers Map — if a tracked browser's PID is gone,
+      // remove it from the Map so Strategy 2 can fire
+      for (const [dir, b] of browsers) {
+        try {
+          const bPid = b.process()?.pid;
+          if (!bPid) {
+            console.log(`[browser] Zombie reaper: removing stale Map entry for ${path.basename(dir)} (no PID)`);
+            browsers.delete(dir);
+          }
+        } catch {
+          console.log(`[browser] Zombie reaper: removing stale Map entry for ${path.basename(dir)} (error)`);
+          browsers.delete(dir);
+        }
+      }
+
       if (totalChrome > MAX_CHROME_PROCESSES && browsers.size === 0) {
         // No active browser sessions but tons of Chrome processes = all zombies
         console.log(`[browser] Zombie reaper: ${totalChrome} Chrome processes with 0 active sessions — killing all headless Chrome`);
         try {
           execSync(
-            `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${__dirname.replace(/\\/g, '\\\\')}') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
-            { timeout: 10000, stdio: 'pipe', windowsHide: true }
+            `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${__dirname.replace(/\\/g, '\\\\')}') } | ForEach-Object { taskkill /F /T /PID $($_.ProcessId) 2>&1 | Out-Null }"`,
+            { timeout: 15000, stdio: 'pipe', windowsHide: true }
           );
         } catch {}
-        // Also kill child processes (renderer, GPU) that may not reference our dir
-        // These are Chrome children spawned by our headless sessions
+        // Also kill orphan child processes (renderer, GPU) that don't reference our dir
+        // but aren't from the user's regular Chrome (they have --type= flag and no User Data dir)
         try {
           execSync(
-            `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('--type=') -and -not $_.CommandLine.Contains('Google\\\\Chrome\\\\User Data') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"`,
-            { timeout: 10000, stdio: 'pipe', windowsHide: true }
+            `powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name='chrome.exe'\\" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('--type=') -and -not $_.CommandLine.Contains('Google\\\\Chrome\\\\User Data') } | ForEach-Object { taskkill /F /PID $($_.ProcessId) 2>&1 | Out-Null }"`,
+            { timeout: 15000, stdio: 'pipe', windowsHide: true }
           );
         } catch {}
       }

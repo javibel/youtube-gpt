@@ -17,70 +17,61 @@ const DRY_RUN = process.argv.includes('--dry-run');
 
 // ── Plain text templates (no HTML — personal emails get higher reply rates) ──
 
+// Two-touch outreach (Javier's call 2026-06-13): TOUCH 1 (this file) = personalized SEO value
+// + free no-signup tool, soft reply CTA. The Pro-free-month "ask" lives in the follow-up.
+// A/B on the SUBJECT only (drives open rate; reply rate per variant is now measurable via
+// gmail.js reply detection + the `variant` field stored on each contact).
+const SUBJECTS = {
+  es: [
+    (t) => `Idea rápida para "${t.slice(0, 45)}"`,
+    (t) => `Vi tu vídeo "${t.slice(0, 40)}" — una cosa`,
+  ],
+  en: [
+    (t) => `Quick tip for "${t.slice(0, 45)}"`,
+    (t) => `Watched "${t.slice(0, 40)}" — one thing`,
+  ],
+};
+
 const TEMPLATES_SEO = {
   es: {
-    subject: (videoTitle) => `Idea rápida para "${videoTitle.slice(0, 45)}"`,
     body: (name, videoTitle, videoUrl, seoScore, tips) => {
       const topTip = tips[0] ? tips[0].tip_es : 'Optimizar el título para incluir tu keyword principal';
+      const more = tips.length > 1
+        ? `\n\nVi un par de puntos más — si te cuadra, dime y te los paso.`
+        : `\n\n¿Te encaja algo así?`;
       return `Hola ${name},
 
-Vi tu video "${videoTitle}" y lo pasé por una herramienta SEO que estoy creando. El cambio más rápido que podrías hacer: ${topTip.toLowerCase()}.
+Vi tu vídeo "${videoTitle}" y lo pasé por un analizador SEO que estoy creando. El cambio más rápido que harías: ${topTip.toLowerCase()}.
 
-Si quieres ver el análisis completo (puntuación, keywords, comparativa), puedes probarlo gratis aquí — sin registro:
+Puedes ver el análisis completo gratis (puntuación, keywords, comparativa) — sin registro:
 
-https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
-
-¿Te resulta útil?
+https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email${more}
 
 Javier`;
     },
   },
   en: {
-    subject: (videoTitle) => `Quick tip for "${videoTitle.slice(0, 45)}"`,
     body: (name, videoTitle, videoUrl, seoScore, tips) => {
       const topTip = tips[0] ? tips[0].tip_en : 'Optimize your title to include your main keyword';
+      const more = tips.length > 1
+        ? `\n\nSpotted a couple more things — happy to share them if useful.`
+        : `\n\nWould something like this help?`;
       return `Hey ${name},
 
-Watched your video "${videoTitle}" and ran it through a YouTube SEO tool I'm building. The quickest win I spotted: ${topTip.toLowerCase()}.
+Watched your video "${videoTitle}" and ran it through a YouTube SEO analyzer I'm building. The quickest win: ${topTip.toLowerCase()}.
 
-If you want the full breakdown (score, keywords, competitor comparison), you can try it free here — no signup needed:
+You can see the full breakdown free (score, keywords, competitor comparison) — no signup:
 
-https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
-
-Would this be useful?
+https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email${more}
 
 Javier`;
     },
   },
 };
 
-// Fallback templates for contacts without video data (legacy contacts)
-const TEMPLATES_FALLBACK = {
-  es: {
-    subject: 'Pregunta rápida sobre tu canal',
-    body: (name) => `Hola ${name},
-
-Estoy creando una herramienta que analiza el SEO de cualquier video de YouTube y te dice qué mejorar para posicionarte mejor. Es gratis y sin registro:
-
-https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
-
-¿Te sería útil algo así para tu canal?
-
-Javier`,
-  },
-  en: {
-    subject: 'Quick question about your channel',
-    body: (name) => `Hey ${name},
-
-I'm building a tool that analyzes the SEO of any YouTube video and tells you exactly what to fix to rank better. It's free, no signup needed:
-
-https://ytubviral.com/seo-score?utm_source=outreach&utm_medium=email
-
-Would something like this be useful for your channel?
-
-Javier`,
-  },
-};
+// NOTE: a generic TEMPLATES_FALLBACK used to live here but it was dead code — the SEO-data
+// skip below returns before any contact without analysis reaches template selection. Removed
+// (2026-06-13). Policy: only send personalized emails that carry a real SEO insight.
 
 async function runOutreachSend() {
   const tracker = JSON.parse(fs.readFileSync(TRACKER_PATH, 'utf-8'));
@@ -108,9 +99,13 @@ async function runOutreachSend() {
     }
 
     const tpl = TEMPLATES_SEO[lang] || TEMPLATES_SEO.en;
-    const subject = tpl.subject(contact.latestVideo.title);
+    const subjects = SUBJECTS[lang] || SUBJECTS.en;
+    // A/B: alternate subject variant per email and remember which one (for reply-rate analysis)
+    const variantIdx = (tracker.meta.stats.totalSent + sent) % subjects.length;
+    contact.variant = ['A', 'B'][variantIdx] || 'A';
+    const subject = subjects[variantIdx](contact.latestVideo.title);
     const body = tpl.body(firstName, contact.latestVideo.title, contact.latestVideo.url, contact.seoScore, contact.seoTips);
-    console.log(`  → ${contact.name} <${contact.email}> [${lang}] SEO: ${contact.seoScore}/100`);
+    console.log(`  → ${contact.name} <${contact.email}> [${lang}] SEO: ${contact.seoScore}/100 (variant ${contact.variant})`);
 
     if (dryRun) {
       console.log(`    [DRY RUN] Would send: "${subject}"\n`);

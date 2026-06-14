@@ -25,77 +25,75 @@ const TAG = 'outreach-post';
 
 // Max posts per run to avoid looking spammy
 const MAX_POSTS_PER_RUN = 2;
+// Reddit blocks submissions from low-standing accounts (forbidden even on r/test). Don't even
+// attempt below this — build karma via comments first (I5 Fase 0). Tune as the account grows.
+const MIN_KARMA_TO_POST = 50;
 
 function delay(min = 2000, max = 4000) {
   return new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min + 1)) + min));
 }
 
 async function submitRedditPost(page, subreddit, title, body) {
-  // Use new Reddit — old Reddit requires CAPTCHA for low-karma accounts
-  const submitUrl = `https://www.reddit.com/r/${subreddit}/submit?type=self`;
+  // Use OLD reddit: stable, simple DOM (plain textareas) — same domain/selectors that already
+  // work for comments in outreach-reddit-targeted.js. The new-reddit shadow-DOM composer was
+  // unreliable (all 11 queued posts failed on "Body input not found" / "still on submit page").
+  const submitUrl = `https://old.reddit.com/r/${subreddit}/submit?selftext=true`;
   const ok = await safeGoto(page, submitUrl, { tag: TAG, timeout: 45000, profileDir: PROFILE });
   if (!ok) throw new Error(`Failed to load submit page for r/${subreddit}`);
-  await delay(3000, 4000);
+  await delay(2500, 3500);
 
-  // Check if redirected to login
   const currentUrl = page.url();
-  if (currentUrl.includes('/login') || currentUrl.includes('/account/login')) {
-    throw new Error('Not logged in to Reddit');
-  }
+  if (currentUrl.includes('/login')) throw new Error('Not logged in to Reddit');
 
-  // Check for subreddit restrictions
-  const restricted = await safeEval(page, () => {
-    const txt = document.body.innerText || '';
-    return txt.includes('restricted') || txt.includes('you aren\'t allowed') || txt.includes('Sorry, you don\'t have access');
+  // Restriction / not-allowed / must-subscribe checks
+  const blocked = await safeEval(page, () => {
+    const txt = (document.body.innerText || '').toLowerCase();
+    if (txt.includes("you aren't allowed to post") || txt.includes('this community') && txt.includes('restricted')) return 'restricted';
+    if (txt.includes('you must be a moderator') || txt.includes("don't have access")) return 'no-access';
+    return null;
   });
-  if (restricted) throw new Error(`r/${subreddit} is restricted — cannot post`);
+  if (blocked) throw new Error(`r/${subreddit} blocked: ${blocked}`);
 
-  // Fill title — new Reddit uses <faceplate-textarea-input name="title">
-  const titleEl = await page.$('faceplate-textarea-input[name="title"]');
-  if (!titleEl) throw new Error('Title input not found (faceplate-textarea-input)');
+  // CAPTCHA check — old reddit shows one for low-karma/new accounts. If present we can't post
+  // programmatically; fail clearly so it's obvious karma-building (I5 Fase 0) is needed first.
+  const hasCaptcha = await safeEval(page, () => {
+    return !!document.querySelector('.captcha, .g-recaptcha, iframe[src*="recaptcha"], iframe[title*="recaptcha"]');
+  });
+  if (hasCaptcha) throw new Error('CAPTCHA required (karma too low) — build karma via comments first (I5 Fase 0)');
+
+  // Title — old reddit: textarea[name="title"]
+  const titleEl = await page.$('textarea[name="title"], #title-field textarea, input[name="title"]');
+  if (!titleEl) throw new Error('Title input not found');
   await titleEl.click();
   await delay(300, 500);
-  await page.keyboard.type(title, { delay: 25 });
-  await delay(500, 1000);
+  await page.keyboard.type(title, { delay: 20 });
+  await delay(400, 800);
 
-  // Fill body — contenteditable div with aria-label="Post body text field"
-  const bodyEl = await page.$('div[contenteditable="true"][aria-label*="body text field"], div[contenteditable="true"][aria-label*="Body text field"]');
+  // Body — old reddit: textarea[name="text"]
+  const bodyEl = await page.$('textarea[name="text"]');
   if (!bodyEl) throw new Error('Body input not found');
   await bodyEl.click();
   await delay(300, 500);
-  await page.keyboard.type(body, { delay: 12 });
-  await delay(1000, 2000);
+  await page.keyboard.type(body, { delay: 8 });
+  await delay(800, 1500);
 
-  // Click Post button — it's inside shadow DOM of shreddit-composer
+  // Submit — old reddit self-post form submit button
   const submitted = await safeEval(page, () => {
-    // Traverse shadow DOMs to find the Post button
-    function findButton(root, targetText, depth = 0) {
-      if (depth > 3) return null;
-      for (const el of root.querySelectorAll('*')) {
-        if (el.tagName === 'BUTTON' && el.textContent?.trim() === targetText && !el.disabled) return el;
-        if (el.shadowRoot) {
-          const found = findButton(el.shadowRoot, targetText, depth + 1);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-    const postBtn = findButton(document, 'Post');
-    if (postBtn) { postBtn.click(); return true; }
+    const form = document.querySelector('form.submit, form#newlink, form[action*="submit"]') || document;
+    const btn = form.querySelector('button[type="submit"], button.save-button')
+      || Array.from(form.querySelectorAll('button')).find(b => /submit|post/i.test(b.textContent || ''));
+    if (btn && !btn.disabled) { btn.click(); return true; }
     return false;
   });
-  if (!submitted) throw new Error('Post button not found or disabled');
+  if (!submitted) throw new Error('Submit button not found or disabled');
 
-  // Wait for navigation to post page
-  await delay(5000, 8000);
+  await delay(4000, 7000);
 
   const finalUrl = page.url();
   if (finalUrl.includes('/submit')) {
-    // Check for error messages
     const error = await safeEval(page, () => {
-      const errEls = document.querySelectorAll('[class*="error"], [class*="Error"], [role="alert"]');
-      const msgs = Array.from(errEls).map(e => e.textContent?.trim()).filter(Boolean);
-      return msgs.join('; ') || null;
+      const el = document.querySelector('.error, .status, [role="alert"]');
+      return el?.textContent?.trim() || null;
     });
     throw new Error(`Post submission failed: ${error || 'still on submit page'}`);
   }
@@ -146,8 +144,20 @@ async function runOutreachPost() {
     if (!loggedIn) {
       throw new Error('brand-reddit session expired');
     }
-    const username = 'YTbeViral'; // Known brand account
-    console.log(`[${TAG}] Logged in as: ${username}`);
+
+    // Read the REAL logged-in user + karma (the old hardcoded 'YTbeViral' was wrong — the
+    // brand-reddit profile is actually u/Complex-Specific1379). Karma gate: Reddit returns
+    // "forbidden" on submit (even r/test) for low-standing accounts, so attempting just
+    // accumulates failures. Skip posting until karma is built via comments (I5 Fase 0).
+    const acct = await safeEval(page, () => ({
+      user: document.querySelector('.user a')?.textContent?.trim() || 'unknown',
+      karma: parseInt((document.querySelector('.userkarma, .karma')?.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0,
+    }));
+    console.log(`[${TAG}] Logged in as: ${acct.user} (karma ${acct.karma})`);
+    if (acct.karma < MIN_KARMA_TO_POST) {
+      console.log(`[${TAG}] SKIP: karma ${acct.karma} < ${MIN_KARMA_TO_POST} — Reddit blocks posting from low-standing accounts. Build karma via comments first (I5 Fase 0). Queue left intact (not marked failed).`);
+      return { posted: 0, skipped: batch.length, reason: 'karma-too-low' };
+    }
 
     for (const post of batch) {
       console.log(`[${TAG}] Posting to r/${post.subreddit}: "${post.title.slice(0, 60)}..."`);

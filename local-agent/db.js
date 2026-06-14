@@ -56,7 +56,30 @@ function _actionTable(type) {
   if (type.startsWith('ig_')) return { table: 'instagram_actions', urlCol: 'post_url' };
   if (type.startsWith('fb_')) return { table: 'facebook_actions', urlCol: 'post_url' };
   if (type.startsWith('rd_')) return { table: 'reddit_actions', urlCol: 'post_url' };
+  if (type.startsWith('bsky_')) return { table: 'bluesky_actions', urlCol: 'post_url' };
   return { table: 'linkedin_actions', urlCol: 'profile_url' };
+}
+
+// Bluesky table is created lazily by the driver (additive, IF NOT EXISTS).
+async function ensureBlueskyTable() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS bluesky_actions (
+      id SERIAL PRIMARY KEY,
+      type TEXT NOT NULL,
+      post_url TEXT,
+      content TEXT,
+      account_id TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+async function hasBlueskyAction(postUrl, accountId = null) {
+  const rows = await query(`
+    SELECT COUNT(*) as count FROM bluesky_actions
+    WHERE post_url = $1 AND (account_id = $2 OR ($2 IS NULL AND account_id IS NULL))
+  `, [postUrl, accountId]);
+  return parseInt(rows[0]?.count ?? '0') > 0;
 }
 
 async function saveAction({ type, profileUrl, content = null, accountId = null }) {
@@ -401,6 +424,7 @@ module.exports = {
   saveProspect, updateProspectStatus, getProspectsByStatus,
   saveAction, countTodayActions,
   hasTwitterAction, hasTwitterActionOfType, hasInstagramAction, hasFacebookAction, hasRedditAction,
+  ensureBlueskyTable, hasBlueskyAction,
   getRecentComments, saveFollowup, hasFollowup, countTodayFollowups,
   getDailyStats, getTodayComments,
   getPersonaStats, getPersonaComments,

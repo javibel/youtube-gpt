@@ -58,6 +58,7 @@ async function main() {
     'https://ytubviral.com/blog/youtube-description-generator-ai',
     'https://ytubviral.com/blog/youtube-tag-generator-free-2026',
     'https://ytubviral.com/blog/youtube-keyword-research-free-tool',
+    'https://ytubviral.com/blog/youtube-analytics-tools-free-2026',
     'https://ytubviral.com/features/keyword-research',
     'https://ytubviral.com/features/seo-score',
     'https://ytubviral.com/features/competitor-analysis',

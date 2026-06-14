@@ -18,6 +18,8 @@ const fs = require('fs');
 const path = require('path');
 const { newPageForProfile, closeBrowserForProfile } = require('./browser');
 const { safeGoto, safeEval } = require('./resilience');
+const db = require('./db');
+const { generatePersonaComment } = require('./claude');
 
 const COMMENT_LOG_PATH = path.join(__dirname, 'reports/outreach-reddit-targeted-log.json');
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -273,12 +275,24 @@ async function runRedditTargeted() {
           if (post.commentCount > 30) continue;
 
           const lang = detectLang(post.title, sub);
-          const comment = generateComment(persona, post.title, lang);
 
           console.log(`[${TAG}] ${personaId}: Target post by u/${post.author}: "${post.title.slice(0, 60)}..." [${lang}]`);
 
+          // AI-generated, per-post comment (varies by post, carries the persona's value
+          // signals, passes the I4 reject guards). Falls back to the static template only
+          // if the model returns empty/errors — the template was identical across posts,
+          // which reads as a bot. The title is an explicit help question → enough context.
+          let comment = '';
+          try {
+            comment = await generatePersonaComment(persona, 'reddit', post.author, post.title);
+          } catch (genErr) {
+            console.error(`[${TAG}] ${personaId}: AI generation failed (${genErr.message}) — falling back to template`);
+          }
+          if (!comment) comment = generateComment(persona, post.title, lang);
+
           if (DRY_RUN) {
             console.log(`[${TAG}] [DRY] Would comment on: ${post.url}`);
+            console.log(`[${TAG}] [DRY] Comment: ${comment.slice(0, 200)}`);
             personaComments++;
             totalComments++;
             continue;
@@ -289,13 +303,22 @@ async function runRedditTargeted() {
             personaComments++;
             totalComments++;
 
-            // Log
+            // Record in reddit_actions so the social-optimizer mention rate counts this
+            // channel (it was invisible before — the optimizer only saw Twitter). Best-effort.
+            try {
+              await db.saveAction({ type: 'rd_comment', profileUrl: post.url, content: comment, accountId: personaId });
+            } catch (dbErr) {
+              console.error(`[${TAG}] ${personaId}: saveAction failed (non-fatal): ${dbErr.message}`);
+            }
+
+            // Log — now stores the full comment text so its quality is auditable
             log.comments.push({
               persona: personaId,
               subreddit: sub,
               author: post.author,
               postTitle: post.title.slice(0, 100),
               postUrl: post.url,
+              comment,
               lang,
               date: new Date().toISOString(),
             });

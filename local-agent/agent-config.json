@@ -43,7 +43,7 @@
     "maxCharsReddit": 800
   },
   "humanize": {
-    "skipSessionProbability": 0.15,
+    "skipSessionProbability": 0.1,
     "skipPostProbability": 0.1,
     "readingPauseMin": 5,
     "readingPauseMax": 15,
@@ -144,14 +144,14 @@
       "mentionRate": 0.4
     }
   },
-  "_lastModified": "2026-06-08T01:00:39.365Z",
+  "_lastModified": "2026-06-13T01:00:45.806Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 24.526884249999988,
+    "amount": 24.336468999999994,
     "currency": "USD",
     "lastChecked": "2026-05-31T10:05:03.957Z",
-    "lastDeduction": "2026-06-08T11:00:56.996Z",
-    "totalSpentToday": 0.13732425000000004,
-    "spendDate": "2026-06-08"
+    "lastDeduction": "2026-06-14T20:24:44.495Z",
+    "totalSpentToday": 0.015566250000000002,
+    "spendDate": "2026-06-14"
   }
 }

@@ -9,6 +9,7 @@
     "dashboard": "node dashboard-server.js"
   },
   "dependencies": {
+    "@atproto/api": "^0.20.15",
     "adm-zip": "^0.5.17",
     "dotenv": "^16.4.5",
     "fast-xml-parser": "^5.8.0",

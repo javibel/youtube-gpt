@@ -27,10 +27,15 @@ const path = require('path');
 const db   = require('./db');
 const { sendEmail } = require('./reports');
 const { loadPersonas } = require('./persona-runner');
+const { checkRedditAccount, loadUsernames } = require('./account-health');
 
 const REPORTS_DIR  = path.join(__dirname, 'reports');
 const HEALTH_FILE  = () => path.join(REPORTS_DIR, `persona-health-${today()}.json`);
 const COOKIES_DIR  = path.join(__dirname, 'cookies');
+
+// Reddit abandoned 2026-06-14 (accounts shadowbanned) — don't monitor it (no silence/health
+// alerts for a dead channel). Flip to true if Reddit is ever re-enabled on healthy accounts.
+const MONITOR_REDDIT = false;
 
 // Retry count tracker (in-memory, resets on PM2 restart)
 const retryCount = {};
@@ -192,6 +197,34 @@ async function sendPersonaAlert(persona, platform, lastActivity, retryFailed, co
   }
 }
 
+/**
+ * Alert for a suspended/shadowbanned account. Unlike a silence alert, re-login does NOT fix
+ * this — the account is dead and needs an appeal or a fresh, organically-warmed account.
+ */
+async function sendAccountAlert(persona, username, status) {
+  const label = status === 'suspended' ? 'SUSPENDIDA (ban sitewide)' : 'SHADOWBANEADA (invisible para todos)';
+  const subject = `🚫 CUENTA REDDIT ${status.toUpperCase()} — ${persona.name} (u/${username})`;
+  let body = `CUENTA DE REDDIT COMPROMETIDA\n${'='.repeat(50)}\n\n`;
+  body += `Persona:  ${persona.name} (${persona.id})\n`;
+  body += `Cuenta:   u/${username}\n`;
+  body += `Estado:   ${label}\n\n`;
+  body += status === 'shadowbanned'
+    ? `La cuenta funciona para ti al loguearte, pero su perfil da 404 a quien no está logueado y todo lo que publica es invisible. Re-loguear NO lo arregla.\n`
+    : `La cuenta está suspendida por Reddit. No puede comentar ni postear. Re-loguear NO lo arregla.\n`;
+  body += `\nQUÉ HACER:\n`;
+  body += `  1. Confirmar: comenta en r/ShadowBan logueado como u/${username} (un bot responde al instante).\n`;
+  body += `  2. Apelar en reddit.com/appeals o r/reddit — a veces es falso positivo reversible.\n`;
+  body += `  3. Si no, crear cuenta nueva y calentarla orgánicamente ANTES de automatizar (evitar autopromo + Puppeteer agresivo en cuenta nueva).\n`;
+  body += `  4. Esta persona puede dejarse 'disabled:true' en personas.json mientras tanto.\n`;
+  body += `\nPersona Monitor — YTubViral Agent System\n`;
+  try {
+    await sendEmail(subject, body);
+    log(`${persona.id}: account alert sent (${status})`);
+  } catch (err) {
+    log(`${persona.id}: failed to send account alert — ${err.message}`);
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function runPersonaMonitor() {
@@ -208,10 +241,34 @@ async function runPersonaMonitor() {
   const alerts = [];
 
   for (const persona of personas) {
+    if (persona.disabled) {
+      log(`${persona.id}: SKIPPED (disabled: ${persona.disabledReason || 'no reason'})`);
+      continue;
+    }
     const platforms = Object.keys(persona.platforms || {});
     health.personas[persona.id] = health.personas[persona.id] || {};
 
+    // Account-health check (suspension / shadowban) for the Reddit account, if we know its
+    // username. Runs once per persona; a dead account alerts even when it's not "silent".
+    if (MONITOR_REDDIT && persona.platforms?.reddit) {
+      const username = loadUsernames()[persona.id]?.username;
+      if (username) {
+        const acc = await checkRedditAccount(username);
+        health.personas[persona.id].redditAccount = { username, ...acc, checkedAt: new Date().toISOString() };
+        if (acc.status === 'suspended' || acc.status === 'shadowbanned') {
+          log(`${persona.id}: ⚠️ Reddit account u/${username} is ${acc.status.toUpperCase()} — ${acc.reason}`);
+          const alreadyAlerted = health.personas[persona.id].accountAlertedAt?.startsWith(today());
+          if (!alreadyAlerted) {
+            await sendAccountAlert(persona, username, acc.status);
+            health.personas[persona.id].accountAlertedAt = new Date().toISOString();
+            alerts.push({ persona: persona.id, platform: 'reddit', issue: acc.status });
+          }
+        }
+      }
+    }
+
     for (const platform of platforms) {
+      if (platform === 'reddit' && !MONITOR_REDDIT) continue; // Reddit abandoned — no alerts
       const threshold = silenceThresholdMs(platform);
       let lastActivity = null;
 

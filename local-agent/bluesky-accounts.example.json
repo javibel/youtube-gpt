@@ -1,0 +1,7 @@
+{
+  "_comment": "Plantilla. Copia a bluesky-accounts.json (gitignored) y rellena con los datos reales. El appPassword se genera en Bluesky > Settings > App Passwords (NO es la contraseña real de la cuenta).",
+  "persona-alex": { "handle": "alexsastre.bsky.social", "appPassword": "xxxx-xxxx-xxxx-xxxx" },
+  "persona-ferran": { "handle": "ferrangomez.bsky.social", "appPassword": "xxxx-xxxx-xxxx-xxxx" },
+  "persona-ana": { "handle": "anareyes.bsky.social", "appPassword": "xxxx-xxxx-xxxx-xxxx" },
+  "persona-mayra": { "handle": "mayravidal.bsky.social", "appPassword": "xxxx-xxxx-xxxx-xxxx" }
+}

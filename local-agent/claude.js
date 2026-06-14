@@ -81,25 +81,38 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
   let processed = text;
   if (maxTokens <= 150 && text.includes('\n')) {
     processed = text.split(/\n/)[0].trim();
-    if (!processed || processed.length < 20) return '';
+    if (!processed || processed.length < 20) { console.log(`[claude] Reply REJECTED: first paragraph too short (${processed?.length || 0} chars)`); return ''; }
   }
 
   // 2. Starts with meta markers
-  if (/^\s*[\(\[\{"']/.test(processed)) return '';         // ( [ { " '
-  if (/^empty/i.test(processed)) return '';
-  if (/^vac[ií]o/i.test(processed)) return '';
-  if (/^(N\/A|n\/a|none|ninguno|pass|skip)/i.test(processed)) return '';
+  if (/^\s*[\(\[\{"']/.test(processed)) { console.log(`[claude] Reply REJECTED: starts with meta marker — "${processed.slice(0, 80)}"`); return ''; }
+  if (/^empty/i.test(processed)) { console.log(`[claude] Reply REJECTED: starts with "empty"`); return ''; }
+  if (/^vac[ií]o/i.test(processed)) { console.log(`[claude] Reply REJECTED: starts with "vacío"`); return ''; }
+  if (/^(N\/A|n\/a|none|ninguno|pass|skip)/i.test(processed)) { console.log(`[claude] Reply REJECTED: starts with N/A/skip marker`); return ''; }
 
   // 3. Too long for platform (twitter: 300, reddit: 800)
   const maxLen = maxTokens <= 150 ? 300 : 800;
-  if (processed.length > maxLen) return '';
+  if (processed.length > maxLen) { console.log(`[claude] Reply REJECTED: too long (${processed.length}>${maxLen})`); return ''; }
 
   // 4. Contains em-dash (—) followed by explanation = meta-commentary pattern
-  if (/\s—\s.{20,}/i.test(processed) && /\b(post|comment|engage|spam|ad|promo|sales|comercial|regla|rule|skip|empty|vac[ií]o)\b/i.test(processed)) return '';
+  if (/\s—\s.{20,}/i.test(processed) && /\b(post|comment|engage|spam|ad|promo|sales|comercial|regla|rule|skip|empty|vac[ií]o)\b/i.test(processed)) { console.log(`[claude] Reply REJECTED: em-dash meta-commentary — "${processed.slice(0, 120)}"`); return ''; }
 
   // 5. Long response starting with "No" + contains meta words = refusal explanation
   //    Only reject if clearly a meta-refusal, not a normal disagreement
-  if (/^No\b/i.test(processed) && processed.length > 80 && /\b(devuelvo|return empty|skip this|not commenting|no comento)\b/i.test(processed)) return '';
+  if (/^No\b/i.test(processed) && processed.length > 80 && /\b(devuelvo|return empty|skip this|not commenting|no comento)\b/i.test(processed)) { console.log(`[claude] Reply REJECTED: "No" + meta refusal`); return ''; }
+
+  // 6. Structural meta-commentary: the model ANALYZING or REFUSING the post instead of
+  //    replying to it. These leak past the exact-phrase blacklist below (e.g. a comment
+  //    opening "I can see this is promotional content…" slipped through and got posted
+  //    live, because only "promotional post" was listed). Require a meta opener AND a
+  //    negative concept nearby → high precision, won't fire on genuine replies like
+  //    "this post is gold" or "this looks like exactly what I needed".
+  const metaOpener = /^\s*((this|that) (post|comment|thread|tweet|reads|looks|sounds)|this is (a |an )|i can see (this|that) is|i think this (is|post)|i'?m (not (going to|gonna|engaging|commenting)|returning empty|not seeing)|i (have|'?ve got) nothing|(este|esta) (post|publicaci[oó]n|tweet|comentario|hilo)|esto (parece|es)|no voy a comentar)/i;
+  const metaConcept = /\b(promo|promotion|promotional|sales pitch|spam|advert|conversation starter|genuine discussion|real substance|hot take|off.?topic|not (really )?my (lane|area|niche)|returning empty|nothing (to add|here)|self.?promo|publicidad|comercial|anuncio|fuera de (lugar|tema)|no aporta|vac[ií]o)\b/i;
+  if (metaOpener.test(processed) && metaConcept.test(processed.slice(0, 220))) {
+    console.log(`[claude] Reply REJECTED: structural meta-commentary — "${processed.slice(0, 120)}"`);
+    return '';
+  }
 
   // Pattern-based reject (specific phrases)
   const rejectPatterns = [
@@ -107,22 +120,23 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
     /returning empty/i, /return empty/i, /devuelvo vac[ií]o/i,
     /devuelvo comentario/i, /no devuelvo/i,
     /not commenting/i, /no comento/i, /skip this/i, /I('ll| will) pass/i,
-    /I got nothing/i, /not my (lane|area|expertise)/i, /not gonna comment/i,
+    /I got nothing/i, /not (really )?my (lane|area|niche|expertise)/i, /not gonna comment/i,
     /nothing to add/i, /nada que aportar/i, /nada que añadir/i,
-    /passing on/i, /I('m| am) passing/i, /paso de/i,
+    /passing on this/i, /I('m| am) passing on/i, /paso de (comentar|responder|este|esto)/i,
     /out of place/i, /fuera de lugar/i,
     /not my area/i, /no es mi área/i, /no es mi tema/i,
     /looks like a (service |casting )?pitch/i, /parece (un )?pitch/i,
     /looks like a casting call/i,
     /doesn't spark/i, /no genera conversación/i,
     // Promotional/sales detection
-    /promotional post/i, /post promocional/i, /sales pitch/i,
+    /promotional post/i, /promotional content/i, /post promocional/i, /sales pitch/i,
+    /conversation starter/i, /genuine discussion/i, /real substance/i,
     /direct sales/i, /venta directa/i, /commercial post/i,
     /post comercial/i, /this is (a |an )?ad\b/i, /esto es (un )?anuncio/i,
     /venta de cursos/i,
     // Claude refusing
-    /I('m| am) not going to/i, /no voy a/i,
-    /doesn't .* comment/i, /no merece/i,
+    /I('m| am) not going to (comment|engage|reply|respond|weigh in)/i, /no voy a (comentar|responder|participar|opinar|entrar)/i,
+    /doesn'?t (deserve|warrant|merit|need|call for) (a )?(comment|reply|response)/i, /no merece (un |una |la pena )?(comentario|respuesta|que (comente|responda))/i,
     /per the (core )?rules/i, /según las reglas/i,
     /not engaging/i, /no interactúo/i,
     /I('m| am) not comfortable/i, /no me siento cómodo/i,
@@ -130,9 +144,9 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
     /nada que ver con/i, /nothing to .* engage/i,
     /autoayuda genérica/i,
     /no puedo generar/i, /no tengo suficiente/i,
-    /basándome solo/i, /sin contexto/i, /cannot write/i, /can't write/i,
-    /I would need/i, /not enough context/i, /can't .* comment/i,
-    /ver el contenido/i,
+    /basándome solo/i, /sin (el |más |suficiente )?contexto,? (no|para sab|es dif|me falta)/i, /cannot write/i, /can't write/i,
+    /I would need (more |to see )?(the |the full )?(post|context|content|info)/i, /not enough context/i, /can'?t (really )?(comment|engage|reply)\b/i,
+    /(necesito|tendr[ií]a que|habr[ií]a que|hay que) ver el contenido/i, /ver el contenido (del post|completo|real|antes)/i,
     /I('m| am) not clicking/i, /no voy a hacer clic/i,
     // Meta-commentary about post being spam/commercial
     /this is a spam/i, /esto es spam/i,
@@ -147,17 +161,26 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
     /link in bio/i, /enlace en bio/i,
     /use code/i, /usa el c[oó]digo/i,
     /DM me/i, /escr[ií]beme/i,
-    /free trial/i, /prueba gratis/i,
+    // Meta-reasoning exposed as reply (model thinking out loud instead of replying)
+    /I don.t see a clear/i, /no veo una pregunta/i,
+    /doesn.t contain a (clear |specific )?technical/i,
+    /no contiene.*pregunta t[eé]cnica/i,
+    /this post (doesn.t|isn.t|does not)/i,
   ];
   // Merge additional reject patterns from overrides (hot-patchable by Claude)
   const overrides = loadOverrides();
   const extraPatterns = (overrides.additionalRejectPatterns || []).map(p => new RegExp(p, 'i'));
-  if ([...rejectPatterns, ...extraPatterns].some(p => p.test(processed))) return '';
+  const allPatterns = [...rejectPatterns, ...extraPatterns];
+  const matchedPattern = allPatterns.find(p => p.test(processed));
+  if (matchedPattern) {
+    console.log(`[claude] Reply REJECTED by pattern: ${matchedPattern} — text: "${processed.slice(0, 120)}..."`);
+    return '';
+  }
 
   // For longer-form comments (reddit): trim to max 3 paragraphs, remove markdown formatting
   if (maxTokens > 150 && processed.includes('\n')) {
     const paragraphs = processed.split(/\n{1,}/).filter(p => p.trim());
-    if (paragraphs.length > 5) return '';
+    if (paragraphs.length > 5) { console.log(`[claude] Reply REJECTED: too many paragraphs (${paragraphs.length})`); return ''; }
     const cleaned = paragraphs.slice(0, 3).join('\n\n')
       .replace(/\*\*/g, '')
       .replace(/^#+\s/gm, '')
@@ -441,6 +464,24 @@ Solo el comentario.`,
 - WRITE IN ENGLISH
 Only the comment.`,
   },
+  bluesky: {
+    es: `REGLAS BLUESKY:
+- Corto — 1 o 2 frases, menos de 250 caracteres
+- Tono conversacional y relajado — Bluesky es menos agresivo que Twitter
+- Aporta algo concreto: una observación, un dato, una pregunta genuina
+- Texto plano, sin hashtags (en Bluesky no se estilan), sin sonar a marca
+- 1 emoji como mucho o ninguno
+- ESCRIBE EN ESPAÑOL
+Solo el reply.`,
+    en: `BLUESKY RULES:
+- Short — 1 or 2 sentences, under 250 chars
+- Conversational, laid-back tone — Bluesky is less combative than Twitter
+- Add something concrete: an observation, a data point, a genuine question
+- Plain text, no hashtags (uncommon on Bluesky), don't sound like a brand
+- 1 emoji max or none
+- WRITE IN ENGLISH
+Only the reply.`,
+  },
   reddit: {
     es: `REGLAS REDDIT:
 - 1-3 frases útiles. Reddit valora aportar algo real, no palmaditas
@@ -551,35 +592,46 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   // Smart mention logic: ALWAYS mention when post is about a problem YTubViral solves
   // Otherwise use probability-based mention
   const isRelevant = isYtubviralRelevantPost(postContent);
-  let mentionInstruction = '';
+  let mentionInSystem = ''; // Mention goes in system prompt for authority
 
   // Read mention formulas and rates from overrides (Claude can edit these)
   const ov = loadOverrides();
   const mentionRate = ov.personaMentionRates?.[persona.id] ?? persona.mentionRate ?? 0.2;
 
-  if (isRelevant) {
-    // Post matches YTubViral-solvable problems → always include mention instruction
-    const formula = ov.mentionFormula?.forced?.[lang]
-      || ov.mentionFormula?.forced?.en
-      || ov.mentionFormula?.probabilistic?.[lang]
-      || ov.mentionFormula?.probabilistic?.en
-      || '';
-    mentionInstruction = formula ? `\n\n${formula}` : '';
+  if (isRelevant && persona.mentionYtubviral !== false) {
+    // Post matches YTubViral-solvable problems → UNCONDITIONAL mention.
+    // EXCEPT founder/brand accounts (mentionYtubviral:false): they NEVER shill — they comment
+    // pure value to build karma/trust (I5 Fase 0). The flag now genuinely gates the forced path.
+    const personaName = persona.name?.toLowerCase() || persona.id;
+    mentionInSystem = lang === 'es'
+      ? `\n\nINSTRUCCIÓN DE MENCIÓN (NO OPCIONAL): Este post trata un tema que resuelve ytubviral.com. Tu respuesta DEBE incluir una referencia natural a ytubviral.com como herramienta que usas. Estructura: (1) responde con valor genuino desde tu expertise, (2) menciona ytubviral.com en primera persona ("yo uso ytubviral para eso", "lo analizo con ytubviral.com"). NO escribas meta-comentarios sobre si debes o no mencionar. NO analices si hay "pregunta técnica". Simplemente responde al post e incluye la mención de forma natural.`
+      : `\n\nMENTION INSTRUCTION (NOT OPTIONAL): This post is about a topic ytubviral.com solves. Your reply MUST include a natural reference to ytubviral.com as a tool you use. Structure: (1) reply with genuine value from your expertise, (2) mention ytubviral.com in first person ("I use ytubviral for that", "I check it with ytubviral.com"). Do NOT write meta-commentary about whether to mention. Do NOT analyze if there's a "technical question". Just reply to the post and include the mention naturally.`;
   } else if (persona.mentionYtubviral && Math.random() < mentionRate) {
-    const formula = ov.mentionFormula?.probabilistic?.[lang] || ov.mentionFormula?.probabilistic?.en || '';
-    mentionInstruction = formula ? `\n\n${formula}` : '';
+    mentionInSystem = lang === 'es'
+      ? `\n\nINSTRUCCIÓN DE MENCIÓN: Si tu respuesta toca el tema de herramientas, SEO, o análisis de YouTube, incluye una referencia natural a ytubviral.com como algo que usas. En primera persona, sin sonar a anuncio.`
+      : `\n\nMENTION INSTRUCTION: If your reply touches on tools, SEO, or YouTube analytics, include a natural reference to ytubviral.com as something you use. First person, don't sound like an ad.`;
   }
 
   // Beta offer: when mentioning ytubviral, sometimes add free Pro tester line
-  if (mentionInstruction && ov.betaOffer?.enabled && Math.random() < (ov.betaOffer.probability || 0.3)) {
+  if (mentionInSystem && ov.betaOffer?.enabled && Math.random() < (ov.betaOffer.probability || 0.3)) {
     const offerLine = ov.betaOffer[lang] || ov.betaOffer.en || '';
-    if (offerLine) mentionInstruction += `\n\nAdemás, añade casualmente al final algo como: "${offerLine}"`;
+    if (offerLine) mentionInSystem += ` Añade casualmente al final algo como: "${offerLine}"`;
   }
 
   let coreRules = PERSONA_CORE_RULES[lang] || PERSONA_CORE_RULES.en;
   // Append dynamic rules from overrides (Claude can add/modify these)
   const extraRules = ov.coreRulesExtra?.[lang] || ov.coreRulesExtra?.en || '';
   if (extraRules) coreRules += '\n' + extraRules;
+
+  // Inject the persona's concrete value signals — the raw material that turns a generic
+  // reaction ("totally agree") into a real contribution. Tell the model to weave in ONE
+  // specific fact/number/example when it fits, never to dump the list.
+  const valueSignals = persona.valueSignals?.[lang] || persona.valueSignals?.en || '';
+  if (valueSignals) {
+    coreRules += lang === 'es'
+      ? `\n\nTU VALOR DIFERENCIAL (aporta algo CONCRETO, no opiniones genéricas): ${valueSignals}\nUsa UNO de estos puntos solo si encaja con el post — un número, un antes/después, algo que viste. Nunca sueltes la lista entera ni suenes a manual.`
+      : `\n\nYOUR EDGE (contribute something CONCRETE, not generic opinions): ${valueSignals}\nUse ONE of these points only if it fits the post — a number, a before/after, something you saw. Never dump the whole list or sound like a manual.`;
+  }
 
   // Inject lessons from removed comments (auto-learning from Reddit moderation)
   if (platform === 'reddit') {
@@ -605,33 +657,20 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   }
 
   // PROMPT CACHING: personality + core rules are static per persona/platform combo → cache them
-  const systemPrompt = `${personality}\n\n${coreRules}\n\n${effectiveRules}`;
+  // Mention instruction goes in SYSTEM prompt so Claude treats it as authoritative
+  const systemPrompt = `${personality}\n\n${coreRules}\n\n${effectiveRules}${mentionInSystem}`;
 
   const result = await callClaude(`You just read this ${platform} post by ${authorName}. Write the comment you'd naturally leave.
 
-Post: "${postContent}"${mentionInstruction}
+Post: "${postContent}"
 `, maxTokens, { caller: 'persona-runner', system: systemPrompt });
 
   if (!result) return result;
 
-  // UTM attribution: replace bare ytubviral.com links with UTM-tagged versions
-  // so we can track which persona/platform drives signups
-  const utmTagged = result.replace(
-    /\bhttps?:\/\/ytubviral\.com([^\s"')]*)/gi,
-    (_, rest) => {
-      if (rest.includes('utm_source')) return `https://ytubviral.com${rest}`;
-      const sep = rest.includes('?') ? '&' : '?';
-      return `https://ytubviral.com${rest}${sep}utm_source=${encodeURIComponent(platform)}&utm_medium=social&utm_campaign=${encodeURIComponent(persona.id)}`;
-    }
-  ).replace(
-    /(?<![/:])(?<!\w)ytubviral\.com([^\s"')\],]*)/gi,
-    (_, rest) => {
-      if (rest.includes('utm_source')) return `ytubviral.com${rest}`;
-      const sep = rest.includes('?') ? '&' : '?';
-      return `ytubviral.com${rest}${sep}utm_source=${encodeURIComponent(platform)}&utm_medium=social&utm_campaign=${encodeURIComponent(persona.id)}`;
-    }
-  );
-  const resultWithUtm = utmTagged !== result ? utmTagged : result;
+  // NOTE: UTM tagging of ytubviral.com links was REMOVED (2026-06-13, Javier's call).
+  // A "?utm_source=twitter&utm_campaign=persona-alex" link in a supposedly organic
+  // comment screams "automated bot" and kills credibility — the social-optimizer flagged
+  // it as spam-looking. Links now stay clean; attribution comes from other signals.
 
   // Second-line defense: if the model broke character and wrote a meta-comment
   // (asking for more info, referencing "post content", etc.) return empty to skip
@@ -643,12 +682,12 @@ Post: "${postContent}"${mentionInstruction}
     /give you a genuine comment/i,
     /need more (context|info|detail)/i,
   ];
-  if (metaPhrases.some(p => p.test(resultWithUtm))) {
+  if (metaPhrases.some(p => p.test(result))) {
     console.log(`[persona-runner] ⚠️ Meta-phrase detected in output — discarding comment`);
     return '';
   }
 
-  return resultWithUtm;
+  return result;
 }
 
 // ── Follow-up reply generation ──
