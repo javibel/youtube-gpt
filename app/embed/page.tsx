@@ -9,13 +9,19 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://ytubviral.com/embed' },
 };
 
+// The attribution line below the iframe lives in the HOST page's HTML (a link inside the iframe
+// does NOT pass SEO authority). Keyword-rich anchors → real backlinks to ytubviral.com.
 const snippet = `<iframe
   src="https://ytubviral.com/embed/seo-score"
   width="100%"
   height="400"
   frameborder="0"
   style="border-radius:12px;border:1px solid #222;"
-></iframe>`;
+></iframe>
+<p style="font:13px sans-serif;color:#888;text-align:center;margin-top:6px">
+  Free <a href="https://ytubviral.com/seo-score">YouTube SEO Score</a> by
+  <a href="https://ytubviral.com">YTubViral</a>
+</p>`;
 
 export default function EmbedPage() {
   return (

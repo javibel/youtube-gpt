@@ -491,6 +491,11 @@ export default function SeoScoreClient() {
         <div className="max-w-4xl mx-auto px-6 py-10">
           <SeoScoreContent />
           <ExtensionInstallBanner lang={lang} />
+          <p className="text-center mt-6 text-[13px] font-mono-jb">
+            <a href="/embed" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2">
+              {lang === 'en' ? '🔗 Add this free SEO analyzer to your website →' : '🔗 Añade este analizador SEO gratis a tu web →'}
+            </a>
+          </p>
         </div>
         <ExitIntentPopup lang={lang} />
       </div>
