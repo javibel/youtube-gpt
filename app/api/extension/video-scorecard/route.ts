@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getExtensionUser } from '@/lib/extension-auth';
+import { prisma } from '@/lib/prisma';
 
 // ── SEO checks (lightweight, no Claude) ────────────────────────────────
 
@@ -106,8 +107,34 @@ export async function POST(request: Request) {
   const ageHours = Math.max(1, (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60));
   const ageDays = Math.floor(ageHours / 24);
 
-  // Views per hour
-  const vph = Math.round(views / ageHours * 10) / 10;
+  // Views per hour — lifetime average (views ÷ age)
+  const vphLifetime = Math.round(views / ageHours * 10) / 10;
+
+  // RECENT velocity (VPH "mejorado"): compare against a stored snapshot to reflect how fast the
+  // video is gaining views RIGHT NOW, not its lifetime average. Falls back to lifetime until a
+  // second data point exists. Write-light: refresh the snapshot at most once every ~2h per video.
+  let vph = vphLifetime;
+  let vphRecent = false;
+  try {
+    const prev = await prisma.videoVelocitySnapshot.findUnique({ where: { videoId } });
+    if (prev) {
+      const hoursElapsed = (Date.now() - prev.capturedAt.getTime()) / 3_600_000;
+      const delta = views - Number(prev.viewCount);
+      if (hoursElapsed >= 0.5 && hoursElapsed <= 24 * 30 && delta >= 0) {
+        vph = Math.round((delta / hoursElapsed) * 10) / 10;
+        vphRecent = true;
+      }
+    }
+    if (!prev || (Date.now() - prev.capturedAt.getTime()) > 2 * 3_600_000) {
+      await prisma.videoVelocitySnapshot.upsert({
+        where: { videoId },
+        create: { videoId, viewCount: BigInt(views) },
+        update: { viewCount: BigInt(views), capturedAt: new Date() },
+      });
+    }
+  } catch {
+    // non-fatal — keep the lifetime VPH
+  }
 
   // Engagement %
   const engagement = views > 0 ? Math.round(((likes + comments) / views) * 1000) / 10 : 0;
@@ -161,6 +188,8 @@ export async function POST(request: Request) {
     likes,
     comments,
     vph,
+    vphLifetime,
+    vphRecent,
     engagement,
     likesRatio,
     ageDays,

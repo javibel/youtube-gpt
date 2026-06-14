@@ -244,6 +244,17 @@ model ExtensionToken {
   @@map("extension_tokens")
 }
 
+// Rolling viewCount snapshot per video, used by the extension scorecard to compute RECENT
+// views-per-hour velocity (delta since last snapshot) instead of the lifetime average.
+// Write-light: refreshed at most once every ~2h per video.
+model VideoVelocitySnapshot {
+  videoId    String   @id
+  viewCount  BigInt
+  capturedAt DateTime @default(now())
+
+  @@map("video_velocity_snapshots")
+}
+
 model VideoSeoScore {
   id          String   @id @default(cuid())
   userId      String
