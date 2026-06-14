@@ -356,6 +356,8 @@ function AlternativesSection({ lang }: { lang: Lang }) {
     { label: t('Motor de IA', 'AI engine'), them: t('GPT genérico', 'Generic GPT'), us: t('Claude — la IA que mejor escribe', 'Claude — the AI that writes best') },
     { label: t('SEO Score de cualquier vídeo', 'SEO Score for any video'), them: t('Solo con registro o de pago', 'Signup or paid only'), us: t('Gratis, sin registro', 'Free, no signup') },
     { label: t('Explorador de tendencias', 'Trending explorer'), them: t('Bloqueado tras un plan de pago', 'Locked behind a paid plan'), us: t('Gratis · 12 países', 'Free · 12 countries') },
+    { label: t('Detección de outliers (vídeos que rompen su media)', 'Outlier detection (videos breaking their average)'), them: t('Herramienta aparte de pago', 'A separate paid tool'), us: t('Incluida en la extensión', 'Built into the extension') },
+    { label: t('Del descubrimiento a la subida', 'From discovery to upload'), them: t('Solo research — luego tú', 'Research only — then you\'re on your own'), us: t('Idea → IA → SEO → subida, en uno', 'Idea → AI → SEO → upload, in one') },
     { label: t('Plan completo', 'Full plan'), them: '$20–49/mes', us: t('9,99 €/mes', '€9.99/mo') },
     { label: t('Español', 'Spanish'), them: t('Traducción parcial o solo inglés', 'Partial translation or English only'), us: t('Bilingüe ES/EN de serie', 'Native ES/EN bilingual') },
     { label: t('Garantía de devolución', 'Money-back guarantee'), them: '—', us: t('30 días', '30 days') },
