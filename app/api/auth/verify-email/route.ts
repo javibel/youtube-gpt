@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
+import { rateLimitRequest } from '@/lib/rate-limit-db';
 
 export async function POST(request: NextRequest) {
+  // F2: throttle to prevent brute-forcing the 6-digit verification code
+  if (!(await rateLimitRequest(request, 'verify-email', 10, 15))) {
+    return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+  }
   const { email, code } = await request.json();
 
   if (!email || !code) {

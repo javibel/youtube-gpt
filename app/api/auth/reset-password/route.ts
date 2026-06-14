@@ -4,8 +4,13 @@ import bcrypt from 'bcryptjs';
 import { passwordChangedEmail } from '@/lib/emails';
 import { validatePassword } from '@/lib/password';
 import { sendTransactionalEmail } from '@/lib/send-email';
+import { rateLimitRequest } from '@/lib/rate-limit-db';
 
 export async function POST(request: Request) {
+  // F2: throttle to prevent brute-forcing reset tokens
+  if (!(await rateLimitRequest(request, 'reset-pw', 10, 15))) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
   try {
     const { token, password, lang = 'es' } = await request.json();
     const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';

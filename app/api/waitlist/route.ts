@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { waitlistWelcomeEmail } from '@/lib/emails';
+import { rateLimitRequest } from '@/lib/rate-limit-db';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  // F2: throttle to prevent waitlist spam / welcome-email bombing
+  if (!(await rateLimitRequest(request, 'waitlist', 8, 60))) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
   const { email, source, referrer, lang } = await request.json() as {
     email?: string;
     source?: string;

@@ -3,8 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { verificationEmail } from '@/lib/emails';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import crypto from 'crypto';
+import { rateLimitRequest } from '@/lib/rate-limit-db';
 
 export async function POST(request: NextRequest) {
+  // F2: throttle to prevent verification-email bombing / Resend quota abuse
+  if (!(await rateLimitRequest(request, 'resend-verif', 5, 60))) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
   const { email, lang = 'es' } = await request.json();
   const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
 
