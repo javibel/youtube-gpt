@@ -14,6 +14,11 @@ const COOKIE_BACKUP_DIR = path.join(__dirname, 'reports', 'cookie-backups');
 // Map of profileDir -> browser instance (supports multiple simultaneous profiles)
 const browsers = new Map();
 
+// Map of profileDir -> timestamp of last use. Lets the reaper distinguish a
+// browser actively in use by a running task from one a finished task leaked.
+const lastUsed = new Map();
+function touchProfile(absDir) { lastUsed.set(absDir, Date.now()); }
+
 // Track consecutive navigation failures per profile for auto-healing
 const navFailures = new Map();
 
@@ -179,6 +184,18 @@ async function launchBrowser(absDir, { deepClean = false } = {}) {
     args: [
       '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
       '--disable-blink-features=AutomationControlled',
+      // Process-count trimming: each Chrome instance otherwise spawns GPU +
+      // crashpad + extra renderers + utility processes (~10 procs). These cut
+      // it to ~4-5 without affecting headless automation reliability.
+      '--disable-gpu',                    // no GPU process (headless doesn't need it)
+      '--disable-software-rasterizer',    // pairs with --disable-gpu
+      '--renderer-process-limit=1',       // single-tab automation needs only one renderer
+      '--disable-extensions',             // no extension host processes
+      '--disable-background-networking',  // fewer background utility processes
+      '--disable-breakpad',               // no crash-reporter (crashpad) process
+      '--mute-audio',                     // no audio service process
+      '--disable-default-apps',
+      '--disable-features=Translate,BackForwardCache',
     ],
     defaultViewport: {
       width: config.get('browser', 'viewportWidth', 1280),
@@ -191,6 +208,7 @@ async function launchBrowser(absDir, { deepClean = false } = {}) {
 
 async function getBrowserForProfile(profileDir) {
   const absDir = path.resolve(__dirname, profileDir);
+  touchProfile(absDir);
   let b = browsers.get(absDir);
   if (b && b.isConnected()) return b;
 
@@ -250,6 +268,7 @@ async function closeBrowserForProfile(profileDir) {
     }
 
     browsers.delete(absDir);
+    lastUsed.delete(absDir);
     // Backup cookies after shutdown
     backupCookies(absDir);
   }
@@ -491,8 +510,39 @@ function startZombieReaper() {
   zombieReaperTimer.unref(); // Don't prevent Node.js from exiting
 }
 
-// Start the zombie reaper automatically
+// ── In-process idle reaper ──────────────────────────────────────────────
+// Browser-heavy tasks are serialized by browser-queue (one at a time). So
+// whenever the queue is idle, ANY browser still tracked in the Map is a leak
+// from a task that finished without closing it. Close it cleanly (which also
+// force-kills its child processes). Runs every 60s — pure JS, no PowerShell —
+// and feeds the 5-min zombie reaper by letting browsers.size return to 0.
+
+const IDLE_REAP_INTERVAL = 60 * 1000; // 1 min
+const IDLE_GRACE_MS = 60 * 1000;      // close if idle > 1 min with no task running
+let idleReaperTimer = null;
+
+function startIdleReaper() {
+  if (idleReaperTimer) return;
+  idleReaperTimer = setInterval(async () => {
+    let queueIdle = true;
+    try { queueIdle = !require('./browser-queue').status().running; } catch {}
+    if (!queueIdle || browsers.size === 0) return;
+
+    const now = Date.now();
+    for (const [absDir] of [...browsers]) {
+      const idleMs = now - (lastUsed.get(absDir) || 0);
+      if (idleMs > IDLE_GRACE_MS) {
+        console.log(`[browser] Idle reaper: closing leaked browser ${path.basename(absDir)} (idle ${Math.round(idleMs / 1000)}s, no task running)`);
+        await closeBrowserForProfile(absDir).catch(() => {});
+      }
+    }
+  }, IDLE_REAP_INTERVAL);
+  idleReaperTimer.unref(); // Don't keep Node.js alive
+}
+
+// Start the reapers automatically
 startZombieReaper();
+startIdleReaper();
 
 module.exports = {
   // New multi-profile API
