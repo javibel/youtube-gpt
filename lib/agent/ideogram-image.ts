@@ -9,6 +9,7 @@
 
 import { put } from '@vercel/blob';
 import { buildInfographicUrl } from './infographic-generator';
+import { prisma } from '@/lib/prisma';
 
 const IDEOGRAM_KEY = (process.env.IDEOGRAM_API_KEY || process.env.ideogram)?.trim();
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY?.trim();
@@ -139,4 +140,60 @@ export async function generateSocialImageWithFallback(postContent: string): Prom
   // Fallback to Satori infographic
   console.log('[ideogram-image] Falling back to Satori infographic');
   return buildInfographicUrl(postContent);
+}
+
+/**
+ * Returns the brand's shared AI image for today, generating it once if needed.
+ *
+ * One image per UTC day is reused across all brand channels (Facebook,
+ * Instagram morning + evening, and the local-agent Twitter post) to avoid
+ * paying for several Ideogram generations of the same daily content. The URL
+ * is cached in the shared `daily_brand_image` table; the first caller of the
+ * day generates + stores it, everyone else reads it.
+ *
+ * @returns the cached/new AI image URL, or null if Ideogram failed (caller
+ *          should fall back to a Satori infographic).
+ */
+async function ensureDailyBrandImageTable(): Promise<void> {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS daily_brand_image (
+      image_date DATE PRIMARY KEY,
+      url TEXT NOT NULL,
+      source TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+export async function getOrCreateDailyBrandImage(postContent: string): Promise<string | null> {
+  const date = new Date().toISOString().slice(0, 10); // UTC day, matches local-agent
+
+  // 1. Reuse today's cached image if present
+  try {
+    await ensureDailyBrandImageTable();
+    const rows = await prisma.$queryRawUnsafe<{ url: string }[]>(
+      `SELECT url FROM daily_brand_image WHERE image_date = $1::date LIMIT 1`,
+      date,
+    );
+    if (rows?.[0]?.url) {
+      console.log(`[ideogram-image] Reusing cached daily brand image for ${date}`);
+      return rows[0].url;
+    }
+  } catch (err) {
+    console.error(`[ideogram-image] daily cache read failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // 2. None yet today — generate once and store it for the other channels
+  const url = await generateSocialImage(postContent);
+  if (url) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO daily_brand_image (image_date, url, source) VALUES ($1::date, $2, 'vercel') ON CONFLICT (image_date) DO NOTHING`,
+        date, url,
+      );
+    } catch (err) {
+      console.error(`[ideogram-image] daily cache write failed: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+  return url;
 }

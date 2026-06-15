@@ -419,6 +419,35 @@ async function getLastActivity(accountId, platform) {
   return val ? new Date(val) : null;
 }
 
+// ── Daily brand image (shared across FB/IG/Twitter to avoid duplicate Ideogram calls) ──
+// One AI image per day, keyed by UTC date. The Vercel cron generates + stores it;
+// local-agent's brand tweet reads it and reuses instead of generating its own.
+async function ensureDailyBrandImageTable() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS daily_brand_image (
+      image_date DATE PRIMARY KEY,
+      url TEXT NOT NULL,
+      source TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+async function getDailyBrandImage(dateStr) {
+  await ensureDailyBrandImageTable();
+  const rows = await query(`SELECT url FROM daily_brand_image WHERE image_date = $1`, [dateStr]);
+  return rows[0]?.url || null;
+}
+
+async function saveDailyBrandImage(dateStr, url, source = null) {
+  await ensureDailyBrandImageTable();
+  await query(`
+    INSERT INTO daily_brand_image (image_date, url, source)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (image_date) DO NOTHING
+  `, [dateStr, url, source]);
+}
+
 module.exports = {
   query, disconnect,
   saveProspect, updateProspectStatus, getProspectsByStatus,
@@ -429,5 +458,6 @@ module.exports = {
   getDailyStats, getTodayComments,
   getPersonaStats, getPersonaComments,
   getLastActivity,
+  getDailyBrandImage, saveDailyBrandImage,
   initDb,
 };

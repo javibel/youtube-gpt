@@ -17,6 +17,7 @@ const os = require('os');
 const https = require('https');
 const { callClaude } = require('./claude');
 const { postTweet } = require('./outreach-tweet');
+const db = require('./db');
 
 const TAG = 'brand-twitter-post';
 const BASE_URL = (process.env.NEXTAUTH_URL || 'https://ytubviral.com').replace(/\/$/, '');
@@ -226,10 +227,19 @@ async function run() {
   const tweetText = await generateTweetContent();
   console.log(`[${TAG}] Generated tweet (${tweetText.length} chars): "${tweetText.slice(0, 60)}..."`);
 
-  // 2. Generate AI image (or fall back to Satori)
+  // 2. Reuse the day's shared brand image if the Vercel cron already generated one
+  //    (avoids a duplicate Ideogram call). Otherwise generate our own.
   let imagePath = null;
   try {
-    imagePath = await generateIdeogramImage(tweetText);
+    const today = new Date().toISOString().slice(0, 10);
+    const sharedUrl = await db.getDailyBrandImage(today).catch(() => null);
+    if (sharedUrl) {
+      const tmpPath = path.join(os.tmpdir(), `ytubviral-shared-${Date.now()}.png`);
+      imagePath = await downloadUrl(sharedUrl, tmpPath);
+      console.log(`[${TAG}] Reusing shared daily brand image (no Ideogram call)`);
+    } else {
+      imagePath = await generateIdeogramImage(tweetText);
+    }
   } catch (err) {
     console.error(`[${TAG}] AI image failed: ${err.message}`);
   }

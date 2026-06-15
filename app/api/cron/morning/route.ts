@@ -5,7 +5,8 @@ import {
   publishToFacebookWithImage,
   publishToInstagram,
 } from '@/lib/agent/meta-agent';
-import { generateSocialImageWithFallback } from '@/lib/agent/ideogram-image';
+import { getOrCreateDailyBrandImage } from '@/lib/agent/ideogram-image';
+import { buildInfographicUrl } from '@/lib/agent/infographic-generator';
 // Twitter API desactivada — publicación migrada a Puppeteer en local-agent (brand-twitter-post.js)
 // import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
@@ -221,11 +222,12 @@ export async function GET(request: Request) {
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
 
-    // 3. Generate AI images for Facebook + Instagram in parallel
-    const [fbImageUrl, igImageUrl] = await Promise.all([
-      fb ? generateSocialImageWithFallback(fb) : Promise.resolve(null),
-      ig ? generateSocialImageWithFallback(ig) : Promise.resolve(null),
-    ]);
+    // 3. One shared AI image for the whole day (FB + IG + the local-agent Twitter
+    //    post all reuse it) to avoid duplicate Ideogram generations. Falls back to a
+    //    per-platform Satori infographic only if Ideogram itself fails.
+    const sharedAiUrl = (fb || ig) ? await getOrCreateDailyBrandImage((fb || ig) as string) : null;
+    const fbImageUrl = fb ? (sharedAiUrl ?? buildInfographicUrl(fb)) : null;
+    const igImageUrl = ig ? (sharedAiUrl ?? buildInfographicUrl(ig)) : null;
 
     // 3a. Publish Facebook with AI image (via Graph API)
     if (fb && fbImageUrl) {
