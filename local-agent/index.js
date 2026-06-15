@@ -31,6 +31,7 @@ const { runCleanup: runGmailCleanup } = require('./gmail-cleanup');
 const { runBlogGenerator } = require('./blog-generator');
 const { runBlogSyndicator } = require('./blog-syndicator');
 const { runQuoraCommenter } = require('./quora-commenter');
+const { runBlueskyDrip } = require('./bluesky-drip');
 const { runYoutubeCommenter } = require('./youtube-commenter');
 const { runDmarcMonitor } = require('./dmarc-monitor');
 const { runAutoResolver } = require('./auto-resolver');
@@ -132,6 +133,13 @@ cron.schedule(`${personaMin2} ${personaHour2} * * *`, async () => {
     await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
     await db.disconnect().catch(() => {});
   });
+}, { timezone: 'Europe/Madrid' });
+
+// Bluesky warm-up drip — one queued original post per day (12:35 Madrid).
+// Posts only while bluesky-post-queue.json has items, then goes quiet.
+cron.schedule('35 12 * * *', async () => {
+  console.log('[cron] Bluesky warm-up drip');
+  await runBlueskyDrip().catch(err => console.error('[bluesky-drip]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
 // Persona reports — 12:00 and 00:00 Madrid
