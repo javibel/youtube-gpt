@@ -23,19 +23,23 @@ const TAG = 'brand-twitter-post';
 const BASE_URL = (process.env.NEXTAUTH_URL || 'https://ytubviral.com').replace(/\/$/, '');
 const IDEOGRAM_KEY = process.env.IDEOGRAM_API_KEY;
 
-// ── Day themes ──────────────────────────────────────────────────────────────
+// ── Mensaje de fondo + pilares de contenido (material REAL, sin calendario) ──
 
-const TEMAS_SEMANA = {
-  0: { tema: 'dato o estadística de YouTube', mencionarProducto: true },
-  1: { tema: 'error común de YouTubers', mencionarProducto: false },
-  2: { tema: 'tip práctico y accionable', mencionarProducto: true },
-  3: { tema: 'tutorial o how-to', mencionarProducto: false },
-  4: { tema: 'herramienta destacada + uso real', mencionarProducto: true },
-  5: { tema: 'pregunta / debate con opinión', mencionarProducto: false },
-  6: { tema: 'comparativa / antes vs después', mencionarProducto: true },
-};
+const MENSAJE_DE_FONDO =
+  'Crecer en YouTube es decidir con datos, no adivinar — y casi siempre empieza por el título, el CTR y las keywords. ' +
+  'YTubViral existe para que esas decisiones dejen de ser a ciegas.';
 
-const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const PILARES = [
+  { id: 'principio', brief: 'Explica un principio REAL de cómo funciona YouTube (cómo pesa el título, búsqueda vs navegación, retención de los primeros segundos). Sin inventar cifras: si no sabes el número real, habla del mecanismo.', mencionarProducto: false },
+  { id: 'opinion', brief: 'Una opinión GENUINA y honesta sobre estrategia de YouTube o el ecosistema de creadores. Algo en lo que crees de verdad. Invita al debate.', mencionarProducto: false },
+  { id: 'leccion', brief: 'Un consejo accionable y concreto que el creador pueda aplicar hoy (títulos, keywords, miniaturas, retención). Sin inventar casos de estudio; si ilustras, en hipotético explícito.', mencionarProducto: true },
+  { id: 'producto', brief: 'Algo REAL que hace YTubViral (SEO de vídeos, keyword research de YouTube, análisis de competencia, SEO score). Honesto, sin inventar resultados de usuarios.', mencionarProducto: true },
+  { id: 'pregunta', brief: 'Una pregunta GENUINA a la comunidad de creadores. No finjas tener la respuesta. Corto.', mencionarProducto: false },
+];
+
+function pickPilar() {
+  return PILARES[Math.floor(Math.random() * PILARES.length)];
+}
 
 // Visual styles that rotate daily for variety
 const IMAGE_STYLES = [
@@ -50,38 +54,50 @@ const IMAGE_STYLES = [
 
 // ── Content generation ──────────────────────────────────────────────────────
 
+// Lee los posts recientes (cualquier plataforma) para no repetir arranque/ejemplo/tema.
+async function getRecentPostsContext() {
+  try {
+    const rows = await db.query(
+      `SELECT platform, content FROM social_posts
+       WHERE status = 'published' AND "createdAt" >= NOW() - INTERVAL '14 days'
+       ORDER BY "createdAt" DESC LIMIT 12`
+    );
+    if (!rows.length) return '';
+    return rows.map(r => `[${r.platform}] ${String(r.content || '').slice(0, 200)}`).join('\n\n');
+  } catch { return ''; }
+}
+
 async function generateTweetContent() {
-  const day = DAYS[new Date().getDay()];
-  const theme = TEMAS_SEMANA[new Date().getDay()];
+  const pilar = pickPilar();
+  const recent = await getRecentPostsContext();
 
-  const prompt = `
-Hoy es ${day}. El tema del día es: ${theme.tema}
+  const system = [
+    'Eres Javier, fundador de YTubViral (ytubviral.com). Voz directa, honesta y humana — una persona real, no un community manager.',
+    '',
+    `MENSAJE DE FONDO (hilo conductor de todo lo que publicas): ${MENSAJE_DE_FONDO}`,
+    '',
+    'REGLA INNEGOCIABLE — CERO INVENCIÓN: no inventes estadísticas, porcentajes, casos de estudio ni resultados de clientes. PROHIBIDO el patrón "Analicé N canales" / "esta semana analicé un canal de X que pasó de A a B vistas". Si no tienes un dato real y verificable, habla del principio, no de una cifra. Si ilustras con un ejemplo que no ocurrió, enmárcalo en hipotético explícito ("imagina un título tipo…").',
+    '',
+    'NATURALIDAD: varía el arranque, la estructura y el registro. No suenes a plantilla ni a anuncio.',
+  ].join('\n');
 
-Escribe UN SOLO tweet de X/Twitter (máximo 250 caracteres) que pueda funcionar en el feed "Para ti".
+  const prompt = [
+    `PILAR DE HOY: ${pilar.id}`,
+    pilar.brief,
+    '',
+    'Escribe UN SOLO tweet (máximo 270 caracteres) que funcione solo, sin contexto, y pare el scroll de forma natural — sin fórmulas manidas.',
+    pilar.mencionarProducto
+      ? 'Puedes mencionar ytubviral.com si encaja con naturalidad, nunca forzado.'
+      : 'No menciones YTubViral hoy.',
+    'Sin hashtags. Sin comillas. Sin markdown. Máximo 1 emoji, y solo si aporta.',
+    recent ? `\nTUS POSTS RECIENTES (NO repitas su arranque, ejemplo, cifra ni tema):\n${recent}` : '',
+    '\nDevuelve SOLO el texto del tweet.',
+  ].join('\n');
 
-REGLAS:
-- Debe funcionar SOLO, sin contexto. Que pare el scroll.
-- Fórmulas que funcionan:
-  * Un dato brutal + opinión corta
-  * Una pregunta provocadora
-  * Un error común + solución en 1 línea
-  * Una afirmación contraintuitiva
-- Tono: directo, seguro, con datos. Sin hedging.
-- Sin hashtags (la infografía complementa el tweet)
-- Sin emojis excesivos (máximo 1-2)
-- ${theme.mencionarProducto ? 'Puedes mencionar ytubviral.com si encaja naturalmente, pero no fuerces.' : 'No menciones YTubViral hoy.'}
-- Sin comillas ni markdown
-
-Devuelve SOLO el texto del tweet, nada más.
-`.trim();
-
-  const text = await callClaude(prompt, 150, {
-    caller: TAG,
-    system: 'Eres Javier, fundador de YTubViral. Tu voz es directa, honesta y basada en datos reales sobre YouTube.',
-  });
+  const text = await callClaude(prompt, 200, { caller: TAG, system });
 
   if (!text || text.length < 10) throw new Error('Claude returned empty tweet');
-  return text.slice(0, 280);
+  return text.trim().slice(0, 280);
 }
 
 // ── Ideogram image generation ───────────────────────────────────────────────
@@ -260,6 +276,16 @@ async function run() {
   try {
     await postTweet('brand', tweetText, imagePath);
     console.log(`[${TAG}] Brand tweet posted successfully!`);
+    // Persist so the narrative memory (this file + the Vercel content engine) avoids repeating it
+    try {
+      await db.query(
+        `INSERT INTO social_posts (id, platform, content, status, "createdAt", "publishedAt")
+         VALUES (gen_random_uuid()::text, 'twitter', $1, 'published', NOW(), NOW())`,
+        [tweetText]
+      );
+    } catch (e) {
+      console.error(`[${TAG}] Could not save tweet to social_posts: ${e.message}`);
+    }
   } finally {
     if (imagePath && fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
@@ -277,4 +303,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { run };
+module.exports = { run, generateTweetContent };
