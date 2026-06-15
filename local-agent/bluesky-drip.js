@@ -24,6 +24,15 @@ function getAgentCtor() {
   return Agent;
 }
 
+// Build a post record with proper rich-text facets so hashtags, links and
+// mentions become real clickable/searchable tags (plain text alone is inert).
+async function buildPost(agent, text) {
+  const { RichText } = require('@atproto/api');
+  const rt = new RichText({ text });
+  await rt.detectFacets(agent);
+  return { text: rt.text, facets: rt.facets };
+}
+
 async function runBlueskyDrip() {
   const queue = loadJson(QUEUE_FILE);
   const accounts = loadJson(ACCOUNTS_FILE);
@@ -49,7 +58,8 @@ async function runBlueskyDrip() {
     const agent = new Agent({ service: creds.service || 'https://bsky.social' });
     try {
       await agent.login({ identifier: creds.handle, password: creds.appPassword });
-      await agent.post({ text });
+      const record = await buildPost(agent, text);
+      await agent.post(record);
       // Only remove from queue after a confirmed successful post
       queue[accountId].shift();
       fs.writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2), 'utf8');
