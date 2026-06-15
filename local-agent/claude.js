@@ -86,6 +86,12 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
 
   // 2. Starts with meta markers
   if (/^\s*[\(\[\{"']/.test(processed)) { console.log(`[claude] Reply REJECTED: starts with meta marker — "${processed.slice(0, 80)}"`); return ''; }
+  // Sentinel skip-words, even when wrapped in markdown/punctuation (e.g. *empty*, _vacío_, "skip", `empty`, [empty])
+  const core = processed.replace(/^[\s*_`~"'\[\(\{>#.-]+/, '').replace(/[\s*_`~"'\]\)\}.!]+$/, '');
+  if (/^(empty|vac[ií]o|n\/?a|none|null|nil|ninguno|nada|pass|skip|omitir)$/i.test(core)) {
+    console.log(`[claude] Reply REJECTED: empty/skip sentinel — "${processed.slice(0, 40)}"`);
+    return '';
+  }
   if (/^empty/i.test(processed)) { console.log(`[claude] Reply REJECTED: starts with "empty"`); return ''; }
   if (/^vac[ií]o/i.test(processed)) { console.log(`[claude] Reply REJECTED: starts with "vacío"`); return ''; }
   if (/^(N\/A|n\/a|none|ninguno|pass|skip)/i.test(processed)) { console.log(`[claude] Reply REJECTED: starts with N/A/skip marker`); return ''; }
