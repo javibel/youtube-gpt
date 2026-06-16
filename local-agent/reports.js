@@ -22,16 +22,6 @@ async function sendDailyReport() {
     ? stats.posts.map(p => `  - ${p.platform}: ${p.count} publicaciones`).join('\n')
     : '  - Sin publicaciones hoy';
 
-  // Prospectos LinkedIn
-  const prospectsLines = stats.prospects.length > 0
-    ? stats.prospects.map(p => `  - ${p.status}: ${p.count}`).join('\n')
-    : '  - Sin prospectos aún';
-
-  // Acciones LinkedIn del día
-  const actionsLines = stats.actions.length > 0
-    ? stats.actions.map(a => `  - ${a.type}: ${a.count}`).join('\n')
-    : '  - Sin acciones hoy';
-
   // Acciones Twitter del día
   const twitterLines = stats.twitterActions?.length > 0
     ? stats.twitterActions.map(a => `  - ${a.type}: ${a.count}`).join('\n')
@@ -66,7 +56,6 @@ async function sendDailyReport() {
   }
 
   const allComments = [
-    formatComments(comments.linkedin, 'LinkedIn'),
     formatComments(comments.twitter, 'Twitter/X'),
     formatComments(comments.instagram, 'Instagram'),
     formatComments(comments.facebook, 'Facebook'),
@@ -83,12 +72,6 @@ ${'='.repeat(60)}
 
 📱 PUBLICACIONES EN REDES SOCIALES (últimas 24h)
 ${postsLines}
-
-🎯 PROSPECTOS LINKEDIN (total acumulado)
-${prospectsLines}
-
-⚡ ACCIONES LINKEDIN (últimas 24h)
-${actionsLines}
 
 🐦 ACCIONES TWITTER/X (últimas 24h)
 ${twitterLines}
