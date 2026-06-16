@@ -79,6 +79,8 @@ async function generateTweetContent() {
     'REGLA INNEGOCIABLE — CERO INVENCIÓN: no inventes estadísticas, porcentajes, casos de estudio ni resultados de clientes. PROHIBIDO el patrón "Analicé N canales" / "esta semana analicé un canal de X que pasó de A a B vistas". Si no tienes un dato real y verificable, habla del principio, no de una cifra. Si ilustras con un ejemplo que no ocurrió, enmárcalo en hipotético explícito ("imagina un título tipo…").',
     '',
     'NATURALIDAD: varía el arranque, la estructura y el registro. No suenes a plantilla ni a anuncio.',
+    '',
+    'ESPAÑOL DE ESPAÑA: usa "vosotros" (nunca "ustedes"), conjugación y léxico peninsular ("vale", "móvil", "ordenador", "vídeo"). Eres de Barcelona.',
   ].join('\n');
 
   const prompt = [
