@@ -12,6 +12,7 @@ import { buildInfographicUrl } from '@/lib/agent/infographic-generator';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
 import { sendOnboardingEmails } from '@/lib/agent/onboarding-email';
+import { sendVerificationReminders } from '@/lib/agent/verification-reminder';
 import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 120;
@@ -196,6 +197,13 @@ export async function GET(request: Request) {
       return 0;
     });
     results.onboarding = onboardingSent;
+
+    // 0b. Verification reminders to unverified signups (gated by VERIFY_REMINDER_ENABLED)
+    const verifyReminders = await sendVerificationReminders().catch(err => {
+      errors.push(`VerifyReminder: ${err instanceof Error ? err.message : err}`);
+      return 0;
+    });
+    results.verifyReminders = verifyReminders;
 
     // 1. Generate daily tip
     await generateAndSaveDailyTip().catch(err =>
