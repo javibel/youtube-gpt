@@ -8,14 +8,14 @@
  * at 14 days old so we never pester long-stale accounts). State lives in a raw
  * `verify_reminders` table (kept out of the Prisma schema, like the other agent tables).
  *
- * GATED: only actually sends when VERIFY_REMINDER_ENABLED === 'true'. Otherwise it runs
- * in dry-run and just logs who it WOULD email. Runs from the morning cron.
+ * LIVE by default. Set VERIFY_REMINDER_ENABLED='false' to pause it (then it runs in
+ * dry-run and just logs who it WOULD email). Runs from the morning cron.
  */
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 
 const BASE_URL = (process.env.NEXTAUTH_URL ?? 'https://ytubviral.com').trim().replace(/\/$/, '');
-const LIVE = process.env.VERIFY_REMINDER_ENABLED === 'true';
+const LIVE = process.env.VERIFY_REMINDER_ENABLED !== 'false';
 
 function buildHtml(name: string, lang: 'es' | 'en'): string {
   const firstName = (name || '').split(' ')[0] || (lang === 'es' ? 'Hola' : 'Hi');
