@@ -110,6 +110,8 @@ async function generateTweetContent() {
     'NATURALIDAD: varía el arranque, la estructura y el registro. No suenes a plantilla ni a anuncio.',
     '',
     'ESPAÑOL DE ESPAÑA: usa "vosotros" (nunca "ustedes"), conjugación y léxico peninsular ("vale", "móvil", "ordenador", "vídeo"). Eres de Barcelona.',
+    '',
+    'NUNCA nombres ni cites herramientas de la competencia (OutlierKit, VidIQ, TubeBuddy, ViewStats y similares).',
   ].join('\n');
 
   const prompt = [

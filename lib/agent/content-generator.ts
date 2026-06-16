@@ -114,6 +114,7 @@ Cada post, sea del formato que sea, debe remar hacia este mensaje sin repetirlo 
 - No empieces siempre igual. No cierres siempre con "Guarda este post" ni con una pregunta mecánica.
 - Escribes como hablas, sin jerga de marketing ni frases hechas. El lenguaje natural a veces es imperfecto, y está bien.
 - Escribe SIEMPRE en español de España: usa "vosotros" (nunca "ustedes" salvo trato formal puntual), conjugación y léxico peninsular ("vale", "móvil", "ordenador", "vídeo"). Eres de Barcelona.
+- NUNCA nombres, cites ni enlaces a herramientas de la competencia (OutlierKit, VidIQ, TubeBuddy, ViewStats y similares).
 - Las emociones caben: frustración, duda, ilusión, opinión fuerte. Nunca suenas a anuncio.
 `.trim();
 
@@ -149,7 +150,7 @@ const PILLARS: Pillar[] = [
   },
   {
     id: 'noticia',
-    brief: 'Busca una noticia o novedad REAL y RECIENTE del ecosistema YouTube/creadores (cambios del algoritmo, nuevas funciones, movimientos del sector). Usa SOLO lo que encuentres de verdad en la búsqueda; menciona la fuente. Añade tu lectura honesta. Si no encuentras nada relevante y verificable, escribe sobre un principio en su lugar — NO te inventes la noticia.',
+    brief: 'Busca una noticia o novedad REAL y RECIENTE del ecosistema YouTube/creadores (cambios del algoritmo, nuevas funciones, movimientos del sector). Usa SOLO lo que encuentres de verdad en la búsqueda. FUENTES: cita el anuncio oficial de YouTube o un medio neutral; NUNCA cites, nombres ni enlaces a herramientas de la competencia (OutlierKit, VidIQ, TubeBuddy, ViewStats y similares) como fuente — si la noticia solo aparece en sus blogs, preséntala como información pública ampliamente reportada, sin atribuirla a ninguna herramienta concreta. Añade tu lectura honesta. Si no encuentras nada relevante y verificable, escribe sobre un principio en su lugar — NO te inventes la noticia.',
     mencionarProducto: false,
     useWebSearch: true,
   },
