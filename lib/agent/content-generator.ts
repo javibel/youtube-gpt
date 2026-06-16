@@ -155,8 +155,45 @@ const PILLARS: Pillar[] = [
   },
 ];
 
-function pickPillar(): Pillar {
-  return PILLARS[Math.floor(Math.random() * PILLARS.length)];
+// Anti-repetición: registra el pilar usado por canal y excluye los 2 últimos
+// al elegir, para que no salga el mismo pilar dos veces seguidas (ni A-B-A).
+async function ensurePillarHistoryTable(): Promise<void> {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS social_pillar_history (
+      id SERIAL PRIMARY KEY,
+      channel TEXT NOT NULL,
+      pillar TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
+
+async function pickPillar(channel: string): Promise<Pillar> {
+  let recent: string[] = [];
+  try {
+    await ensurePillarHistoryTable();
+    const rows = await prisma.$queryRawUnsafe<{ pillar: string }[]>(
+      `SELECT pillar FROM social_pillar_history WHERE channel = $1 ORDER BY created_at DESC LIMIT 2`,
+      channel,
+    );
+    recent = rows.map(r => r.pillar);
+  } catch {
+    // DB hiccup — fall back to pure random, never block posting
+  }
+
+  const pool = PILLARS.filter(p => !recent.includes(p.id));
+  const arr = pool.length ? pool : PILLARS;
+  const choice = arr[Math.floor(Math.random() * arr.length)];
+
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO social_pillar_history (channel, pillar) VALUES ($1, $2)`,
+      channel, choice.id,
+    );
+  } catch {
+    // best effort
+  }
+  return choice;
 }
 
 // Sugerencias de formato — se eligen al azar y NO son obligatorias: la naturalidad manda.
@@ -209,11 +246,9 @@ export async function generateSocialPost(
   platform: Platform,
   _type: PostType,
 ): Promise<string> {
-  const pillar = pickPillar();
-  const [context, prompt] = await Promise.all([
-    getNarrativeContext(),
-    Promise.resolve(buildPrompt(platform, pillar)),
-  ]);
+  const pillar = await pickPillar(platform);
+  const context = await getNarrativeContext();
+  const prompt = buildPrompt(platform, pillar);
 
   const systemPrompt = context ? `${VOZ}\n\n${context}` : VOZ;
   const tokens = platform === 'twitter' ? 1500 : 1200;

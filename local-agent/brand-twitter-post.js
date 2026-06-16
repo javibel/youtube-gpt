@@ -37,8 +37,37 @@ const PILARES = [
   { id: 'pregunta', brief: 'Una pregunta GENUINA a la comunidad de creadores. No finjas tener la respuesta. Corto.', mencionarProducto: false },
 ];
 
-function pickPilar() {
-  return PILARES[Math.floor(Math.random() * PILARES.length)];
+// Anti-repetición: excluye los 2 últimos pilares usados en Twitter (tabla
+// compartida con el motor del webapp). Si la BD falla, cae a aleatorio puro.
+async function pickPilar() {
+  let recent = [];
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS social_pillar_history (
+        id SERIAL PRIMARY KEY,
+        channel TEXT NOT NULL,
+        pillar TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    const rows = await db.query(
+      `SELECT pillar FROM social_pillar_history WHERE channel = 'twitter' ORDER BY created_at DESC LIMIT 2`
+    );
+    recent = rows.map(r => r.pillar);
+  } catch {
+    // BD caída — aleatorio puro, nunca bloquea publicar
+  }
+
+  const pool = PILARES.filter(p => !recent.includes(p.id));
+  const arr = pool.length ? pool : PILARES;
+  const choice = arr[Math.floor(Math.random() * arr.length)];
+
+  try {
+    await db.query(`INSERT INTO social_pillar_history (channel, pillar) VALUES ('twitter', $1)`, [choice.id]);
+  } catch {
+    // best effort
+  }
+  return choice;
 }
 
 // Visual styles that rotate daily for variety
@@ -68,7 +97,7 @@ async function getRecentPostsContext() {
 }
 
 async function generateTweetContent() {
-  const pilar = pickPilar();
+  const pilar = await pickPilar();
   const recent = await getRecentPostsContext();
 
   const system = [
@@ -305,4 +334,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { run, generateTweetContent };
+module.exports = { run, generateTweetContent, pickPilar };
