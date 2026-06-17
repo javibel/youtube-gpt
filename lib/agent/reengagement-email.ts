@@ -7,14 +7,14 @@
  * who haven't been re-engaged yet. One email per user (tracked in reengagement_emails,
  * which is MODELED in schema.prisma so deploys don't drop it).
  *
- * GATED: only sends when REENGAGEMENT_ENABLED === 'true'. Otherwise dry-run (logs only).
+ * LIVE by default. Set REENGAGEMENT_ENABLED='false' to pause it (then dry-run, logs only).
  * Runs from the morning cron.
  */
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 
 const BASE_URL = (process.env.NEXTAUTH_URL ?? 'https://ytubviral.com').trim().replace(/\/$/, '');
-const LIVE = process.env.REENGAGEMENT_ENABLED === 'true';
+const LIVE = process.env.REENGAGEMENT_ENABLED !== 'false';
 
 function buildHtml(name: string, lang: 'es' | 'en'): string {
   const firstName = (name || '').split(' ')[0] || (lang === 'es' ? 'Hola' : 'Hi');
