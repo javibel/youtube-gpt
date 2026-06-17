@@ -664,3 +664,45 @@ model PageView {
   @@index([createdAt])
   @@map("page_views")
 }
+
+// ── Agent-owned tables ──────────────────────────────────────────────────────
+// These were created at runtime via raw SQL (CREATE TABLE IF NOT EXISTS) by the
+// agent/cron code. They MUST be modeled here so `prisma db push --accept-data-loss`
+// (run on every deploy) does not drop them and wipe their data each release.
+
+model VerifyReminder {
+  userId        String   @id @map("user_id")
+  remindersSent Int      @default(0) @map("reminders_sent")
+  lastSentAt    DateTime @default(now()) @map("last_sent_at")
+
+  @@map("verify_reminders")
+}
+
+model DailyBrandImage {
+  imageDate DateTime @id @map("image_date") @db.Date
+  url       String
+  source    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("daily_brand_image")
+}
+
+model SocialPillarHistory {
+  id        Int      @id @default(autoincrement())
+  channel   String
+  pillar    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("social_pillar_history")
+}
+
+model BlueskyAction {
+  id        Int      @id @default(autoincrement())
+  type      String
+  postUrl   String?  @map("post_url")
+  content   String?
+  accountId String?  @map("account_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("bluesky_actions")
+}
