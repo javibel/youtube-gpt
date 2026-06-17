@@ -587,7 +587,9 @@ function isYtubviralRelevantPost(postContent) {
 }
 
 async function generatePersonaComment(persona, platform, authorName, postContent) {
-  const lang = detectPostLang(postContent);
+  // Each persona replies ONLY in its own language (Javier 2026-06-17), never matching the
+  // post's language. All current personas are from Spain → default español de España.
+  const lang = persona.lang || 'es';
 
   // ── YouTube-only gate: skip posts about TikTok, podcasts, etc. ──
   if (isOffTopicPost(postContent)) return '';
@@ -639,6 +641,13 @@ async function generatePersonaComment(persona, platform, authorName, postContent
       : `\n\nYOUR EDGE (contribute something CONCRETE, not generic opinions): ${valueSignals}\nUse ONE of these points only if it fits the post — a number, a before/after, something you saw. Never dump the whole list or sound like a manual.`;
   }
 
+  // Authenticity + language lock (Javier 2026-06-17). The valueSignals above ask for a
+  // concrete number/example — make sure it's REAL, never fabricated, and always reply in
+  // the persona's own language.
+  coreRules += lang === 'es'
+    ? `\n\nAUTENTICIDAD (innegociable): NO te inventes datos, cifras ni casos. PROHIBIDO el patrón "analicé N canales" / "lo vi en 30 canales que analicé" — es falso y se nota. Si das un número o ejemplo, que sea REAL de tu experiencia; si no lo tienes, habla del principio sin inventar cifras.\nIDIOMA: entiendes el post en cualquier idioma, pero TÚ contestas SIEMPRE en español de España (vosotros, léxico peninsular), con naturalidad y al grano. NO expliques ni menciones que respondes en otro idioma, NO escribas meta-comentarios sobre el idioma: simplemente responde en español como si nada.`
+    : `\n\nAUTHENTICITY (non-negotiable): do NOT invent data, numbers or cases. The "I analyzed N channels" pattern is banned — it's fake and obvious. Any number or example must be REAL from your experience; if you don't have one, speak to the principle without inventing figures.\nLANGUAGE: you understand posts in any language, but you ALWAYS reply in your own language, naturally. Do NOT explain or mention that you're replying in a different language; just answer.`;
+
   // Inject lessons from removed comments (auto-learning from Reddit moderation)
   if (platform === 'reddit') {
     const removalLessons = getRemovalLessons();
@@ -687,6 +696,11 @@ Post: "${postContent}"
     /drop the (post|text)/i,
     /give you a genuine comment/i,
     /need more (context|info|detail)/i,
+    // Spanish meta-refusals (e.g. narrating the language rule instead of replying)
+    /devolver[ée]? vac[ií]o/i,
+    /mis instrucciones/i,
+    /regla de idioma/i,
+    /responder[ée]? en espa[nñ]ol/i,
   ];
   if (metaPhrases.some(p => p.test(result))) {
     console.log(`[persona-runner] ⚠️ Meta-phrase detected in output — discarding comment`);
@@ -707,10 +721,11 @@ const FOLLOWUP_RULES = {
 - El tono debe sentirse como el de alguien que de verdad se interesa
 - NUNCA suenes como bot, marca, o IA
 - NUNCA fuerces temas ni vendas nada
+- NUNCA te inventes datos, cifras ni casos ("analicé N canales" está prohibido)
 - SIEMPRE responde algo — esta persona se tomó el tiempo de responderte
 - Máximo 2-3 frases cortas
 - 1 emoji como mucho o ninguno
-- ESCRIBE EN EL IDIOMA DEL MENSAJE
+- ESCRIBE SIEMPRE EN ESPAÑOL DE ESPAÑA (vosotros), nunca en otro idioma aunque te escriban en otro
 Solo la respuesta.`,
   en: `RULES FOR CONTINUING THE CONVERSATION:
 - Reply naturally, like a casual chat between people who recognize each other
@@ -720,10 +735,11 @@ Solo la respuesta.`,
 - The tone should feel like someone who genuinely cares
 - NEVER sound like a bot, brand, or AI
 - NEVER force topics or sell anything
+- NEVER invent data, numbers or cases (the "I analyzed N channels" pattern is banned)
 - ALWAYS reply something — this person took time to respond to you
 - Max 2-3 short sentences
 - 1 emoji max or none
-- WRITE IN THE LANGUAGE OF THE MESSAGE
+- ALWAYS write in your own language, never switch to mirror the message
 Only the reply.`,
 };
 
@@ -737,7 +753,8 @@ Only the reply.`,
  * @param {boolean} [shouldMentionYtubviral] - whether to organically mention ytubviral
  */
 async function generateFollowupReply(platform, ourOriginalComment, theirReply, theirName, persona = null, shouldMentionYtubviral = false) {
-  const lang = detectPostLang(theirReply);
+  // A persona always replies in its own language (default español de España), not the message's.
+  const lang = persona ? (persona.lang || 'es') : detectPostLang(theirReply);
   const personaDesc = persona
     ? (persona.personality[lang] || persona.personality.en)
     : (PERSONA[lang] || PERSONA.en);
