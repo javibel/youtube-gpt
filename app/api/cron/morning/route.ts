@@ -13,6 +13,7 @@ import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
 import { sendOnboardingEmails } from '@/lib/agent/onboarding-email';
 import { sendVerificationReminders } from '@/lib/agent/verification-reminder';
+import { sendReengagementEmails } from '@/lib/agent/reengagement-email';
 import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 120;
@@ -204,6 +205,13 @@ export async function GET(request: Request) {
       return 0;
     });
     results.verifyReminders = verifyReminders;
+
+    // 0c. Re-engagement emails to dormant activated users (gated by REENGAGEMENT_ENABLED)
+    const reengaged = await sendReengagementEmails().catch(err => {
+      errors.push(`Reengagement: ${err instanceof Error ? err.message : err}`);
+      return 0;
+    });
+    results.reengaged = reengaged;
 
     // 1. Generate daily tip
     await generateAndSaveDailyTip().catch(err =>

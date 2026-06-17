@@ -678,6 +678,13 @@ model VerifyReminder {
   @@map("verify_reminders")
 }
 
+model ReengagementEmail {
+  userId String   @id @map("user_id")
+  sentAt DateTime @default(now()) @map("sent_at")
+
+  @@map("reengagement_emails")
+}
+
 model DailyBrandImage {
   imageDate DateTime @id @map("image_date") @db.Date
   url       String
