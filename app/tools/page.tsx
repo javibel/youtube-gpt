@@ -37,6 +37,15 @@ const TOOLS = [
     free: true,
   },
   {
+    href: '/youtube-money-calculator',
+    icon: '💰',
+    color: '#7CFF00',
+    title: 'YouTube Money Calculator',
+    desc: 'Estimate AdSense earnings from your monthly views and niche. Instant, no signup.',
+    tag: 'FREE',
+    free: true,
+  },
+  {
     href: '/trends',
     icon: '🔥',
     color: '#FF8A00',

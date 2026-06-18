@@ -23,6 +23,12 @@ export const FREE_TOOLS: FreeTool[] = [
     desc: { es: 'Calcula y compara tu CTR', en: 'Calculate and benchmark your CTR' },
   },
   {
+    href: '/youtube-money-calculator',
+    icon: '💰',
+    title: { es: 'Calculadora de Ingresos', en: 'Money Calculator' },
+    desc: { es: 'Estima cuánto ganarías por tus vistas', en: 'Estimate earnings from your views' },
+  },
+  {
     href: '/seo-score',
     icon: '📊',
     title: { es: 'SEO Score', en: 'SEO Score' },
