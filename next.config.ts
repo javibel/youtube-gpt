@@ -53,7 +53,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/:path(pricing|gear|learn|about|legal|privacy|terms|login|signup|seo-score|title-analyzer|ctr-calculator|youtube-money-calculator|engagement-rate-calculator|trends|tools|extension|launch|embed)',
+        source: '/:path(pricing|gear|learn|about|legal|privacy|terms|login|signup|seo-score|title-analyzer|ctr-calculator|youtube-money-calculator|engagement-rate-calculator|youtube-title-ideas|trends|tools|extension|launch|embed)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
+      {
+        source: '/youtube-title-ideas/:path*',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
         ],

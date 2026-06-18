@@ -8,96 +8,49 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://ytubviral.com/tools' },
 };
 
-const TOOLS = [
+interface Tool {
+  href: string;
+  icon: string;
+  color: string;
+  title: string;
+  desc: string;
+  tag: string;
+  free: boolean;
+}
+
+// Agrupadas por propósito para que no sea un muro plano de tarjetas.
+const GROUPS: { id: string; title: string; subtitle: string; tools: Tool[] }[] = [
   {
-    href: '/title-analyzer',
-    icon: '📝',
-    color: '#FFE800',
-    title: 'YouTube Title Analyzer',
-    desc: 'Score any video title 0-100 with instant CTR & SEO tips — before you publish. No signup.',
-    tag: 'FREE',
-    free: true,
+    id: 'instant',
+    title: 'Instant free tools',
+    subtitle: 'No signup, no card — results in your browser as you type.',
+    tools: [
+      { href: '/title-analyzer', icon: '📝', color: '#FFE800', title: 'Title Analyzer', desc: 'Score any video title 0-100 with instant CTR & SEO tips, before you publish.', tag: 'FREE', free: true },
+      { href: '/seo-score', icon: '📊', color: '#e84d5b', title: 'SEO Score', desc: 'Analyze any published video and get a 0-100 SEO score with recommendations.', tag: 'FREE', free: true },
+      { href: '/ctr-calculator', icon: '🎯', color: '#22c55e', title: 'CTR Calculator', desc: 'Calculate your click-through rate and benchmark it against YouTube averages.', tag: 'FREE', free: true },
+      { href: '/youtube-money-calculator', icon: '💰', color: '#7CFF00', title: 'Money Calculator', desc: 'Estimate AdSense earnings from your monthly views and niche.', tag: 'FREE', free: true },
+      { href: '/engagement-rate-calculator', icon: '❤️', color: '#ee4d5e', title: 'Engagement Rate Calculator', desc: 'Measure a video\'s engagement from views, likes and comments and benchmark it.', tag: 'FREE', free: true },
+    ],
   },
   {
-    href: '/seo-score',
-    icon: '📊',
-    color: '#e84d5b',
-    title: 'YouTube SEO Score',
-    desc: 'Analyze any video and get a 0-100 SEO score with specific recommendations.',
-    tag: 'FREE',
-    free: true,
+    id: 'discover',
+    title: 'Discover & create',
+    subtitle: 'Find what works right now and turn it into content.',
+    tools: [
+      { href: '/youtube-title-ideas', icon: '💡', color: '#FFE800', title: 'Title Ideas by Niche', desc: 'Dozens of ready-to-use viral title ideas for your niche: gaming, cooking, fitness and more.', tag: 'FREE', free: true },
+      { href: '/trends', icon: '🔥', color: '#FF8A00', title: 'Trending Explorer', desc: 'The 20 most explosive videos right now across 6 countries. Updated every 30 minutes.', tag: 'FREE', free: true },
+      { href: '/generate', icon: '✍️', color: '#FFE800', title: 'AI Generator', desc: 'Titles, descriptions, scripts, captions and thumbnails generated with YouTube-optimized AI.', tag: '10 FREE/MO', free: true },
+      { href: '/embed', icon: '🧩', color: '#00E5FF', title: 'Embeddable Widget', desc: 'Add the SEO analyzer to your site with one line of HTML. Free and unlimited.', tag: 'FREE', free: true },
+    ],
   },
   {
-    href: '/ctr-calculator',
-    icon: '🎯',
-    color: '#22c55e',
-    title: 'YouTube CTR Calculator',
-    desc: 'Calculate your click-through rate and benchmark it against YouTube averages. Instant, no signup.',
-    tag: 'FREE',
-    free: true,
-  },
-  {
-    href: '/youtube-money-calculator',
-    icon: '💰',
-    color: '#7CFF00',
-    title: 'YouTube Money Calculator',
-    desc: 'Estimate AdSense earnings from your monthly views and niche. Instant, no signup.',
-    tag: 'FREE',
-    free: true,
-  },
-  {
-    href: '/engagement-rate-calculator',
-    icon: '❤️',
-    color: '#ee4d5e',
-    title: 'YouTube Engagement Rate Calculator',
-    desc: 'Measure a video\'s engagement from views, likes and comments and benchmark it. Instant, no signup.',
-    tag: 'FREE',
-    free: true,
-  },
-  {
-    href: '/trends',
-    icon: '🔥',
-    color: '#FF8A00',
-    title: 'Trending Explorer',
-    desc: 'The 20 most explosive videos right now across 6 countries. Updated every 30 minutes.',
-    tag: 'FREE',
-    free: true,
-  },
-  {
-    href: '/embed',
-    icon: '🧩',
-    color: '#00E5FF',
-    title: 'Embeddable Widget',
-    desc: 'Add the SEO analyzer to your site with one line of HTML. Free and unlimited.',
-    tag: 'FREE',
-    free: true,
-  },
-  {
-    href: '/generate',
-    icon: '✍️',
-    color: '#FFE800',
-    title: 'AI Generator',
-    desc: 'Titles, descriptions, scripts, captions and thumbnails generated with YouTube-optimized AI.',
-    tag: '10 FREE/MO',
-    free: true,
-  },
-  {
-    href: '/features/keyword-research',
-    icon: '🔑',
-    color: '#7CFF00',
-    title: 'Keyword Research',
-    desc: 'Find the keywords your audience searches for. Volume, competition, and related suggestions.',
-    tag: 'PRO',
-    free: false,
-  },
-  {
-    href: '/features/competitor-analysis',
-    icon: '🕵️',
-    color: '#B388FF',
-    title: 'Competitor Analysis',
-    desc: 'Analyze any channel: top videos, keywords they use, publishing frequency.',
-    tag: 'PRO',
-    free: false,
+    id: 'pro',
+    title: 'Pro tools',
+    subtitle: 'Deeper research and channel data with a Pro account.',
+    tools: [
+      { href: '/features/keyword-research', icon: '🔑', color: '#7CFF00', title: 'Keyword Research', desc: 'Find the keywords your audience searches for. Volume, competition, and related suggestions.', tag: 'PRO', free: false },
+      { href: '/features/competitor-analysis', icon: '🕵️', color: '#B388FF', title: 'Competitor Analysis', desc: 'Analyze any channel: top videos, keywords they use, publishing frequency.', tag: 'PRO', free: false },
+    ],
   },
 ];
 
@@ -119,34 +72,44 @@ export default function ToolsPage() {
           </p>
         </header>
 
-        <div className="grid md:grid-cols-2 gap-5">
-          {TOOLS.map(tool => (
-            <a
-              key={tool.href}
-              href={tool.href}
-              className="group p-6 rounded-xl transition"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--yv-border)' }}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <span className="text-3xl">{tool.icon}</span>
-                <span
-                  className="font-mono-jb text-[11px] tracking-wider font-bold px-2 py-0.5 rounded"
-                  style={{
-                    background: tool.free ? 'rgba(0,255,163,0.1)' : 'rgba(232,77,91,0.1)',
-                    color: tool.free ? '#00FFA3' : '#e84d5b',
-                    border: tool.free ? '1px solid rgba(0,255,163,0.3)' : '1px solid rgba(232,77,91,0.3)',
-                  }}
-                >
-                  {tool.tag}
-                </span>
+        <div className="space-y-12">
+          {GROUPS.map(group => (
+            <section key={group.id}>
+              <div className="mb-5">
+                <h2 className="font-display font-bold text-xl text-white">{group.title}</h2>
+                <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{group.subtitle}</p>
               </div>
-              <h3 className="font-display font-bold text-lg text-white mb-2 group-hover:text-[#e84d5b] transition">
-                {tool.title}
-              </h3>
-              <p className="font-mono-jb text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
-                {tool.desc}
-              </p>
-            </a>
+              <div className="grid md:grid-cols-2 gap-5">
+                {group.tools.map(tool => (
+                  <a
+                    key={tool.href}
+                    href={tool.href}
+                    className="group p-6 rounded-xl transition"
+                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--yv-border)' }}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-3xl">{tool.icon}</span>
+                      <span
+                        className="font-mono-jb text-[11px] tracking-wider font-bold px-2 py-0.5 rounded"
+                        style={{
+                          background: tool.free ? 'rgba(0,255,163,0.1)' : 'rgba(232,77,91,0.1)',
+                          color: tool.free ? '#00FFA3' : '#e84d5b',
+                          border: tool.free ? '1px solid rgba(0,255,163,0.3)' : '1px solid rgba(232,77,91,0.3)',
+                        }}
+                      >
+                        {tool.tag}
+                      </span>
+                    </div>
+                    <h3 className="font-display font-bold text-lg text-white mb-2 group-hover:text-[#e84d5b] transition">
+                      {tool.title}
+                    </h3>
+                    <p className="font-mono-jb text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
+                      {tool.desc}
+                    </p>
+                  </a>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
 

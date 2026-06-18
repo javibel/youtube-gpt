@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next';
 import { BLOG_POSTS } from '@/lib/blog-data';
 import { LEARN_GUIDES } from '@/lib/learn-data';
 import { ALL_GEAR_SLUGS } from '@/lib/gear-data';
+import { NICHES } from '@/lib/niches-data';
 
 const BASE_URL = 'https://ytubviral.com';
 
@@ -123,6 +124,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.9,
     },
+    {
+      url: `${BASE_URL}/youtube-title-ideas`,
+      lastModified: new Date('2026-06-18'),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    ...NICHES.map((n) => ({
+      url: `${BASE_URL}/youtube-title-ideas/${n.slug}`,
+      lastModified: new Date('2026-06-18'),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
     {
       url: `${BASE_URL}/embed`,
       lastModified: new Date('2026-05-31'),
