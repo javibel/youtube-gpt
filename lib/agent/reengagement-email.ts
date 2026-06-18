@@ -7,14 +7,16 @@
  * who haven't been re-engaged yet. One email per user (tracked in reengagement_emails,
  * which is MODELED in schema.prisma so deploys don't drop it).
  *
- * LIVE by default. Set REENGAGEMENT_ENABLED='false' to pause it (then dry-run, logs only).
- * Runs from the morning cron.
+ * PAUSED (2026-06-18): overlaps with the lifecycle-emails "react" sequence, which already
+ * handles reactivation more robustly (EmailLog idempotency, opt-out). Disabled by default to
+ * avoid double-emailing dormant users; pending decision to retire this in favour of lifecycle.
+ * Set REENGAGEMENT_ENABLED='true' to re-enable. Runs from the morning cron (dry-run while paused).
  */
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 
 const BASE_URL = (process.env.NEXTAUTH_URL ?? 'https://ytubviral.com').trim().replace(/\/$/, '');
-const LIVE = process.env.REENGAGEMENT_ENABLED !== 'false';
+const LIVE = process.env.REENGAGEMENT_ENABLED === 'true';
 
 function buildHtml(name: string, lang: 'es' | 'en'): string {
   const firstName = (name || '').split(' ')[0] || (lang === 'es' ? 'Hola' : 'Hi');
