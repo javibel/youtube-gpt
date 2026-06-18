@@ -29,6 +29,12 @@ export const FREE_TOOLS: FreeTool[] = [
     desc: { es: 'Estima cuánto ganarías por tus vistas', en: 'Estimate earnings from your views' },
   },
   {
+    href: '/engagement-rate-calculator',
+    icon: '❤️',
+    title: { es: 'Engagement Rate', en: 'Engagement Rate' },
+    desc: { es: 'Mide el engagement de un vídeo', en: 'Measure a video\'s engagement' },
+  },
+  {
     href: '/seo-score',
     icon: '📊',
     title: { es: 'SEO Score', en: 'SEO Score' },

@@ -46,6 +46,15 @@ const TOOLS = [
     free: true,
   },
   {
+    href: '/engagement-rate-calculator',
+    icon: '❤️',
+    color: '#ee4d5e',
+    title: 'YouTube Engagement Rate Calculator',
+    desc: 'Measure a video\'s engagement from views, likes and comments and benchmark it. Instant, no signup.',
+    tag: 'FREE',
+    free: true,
+  },
+  {
     href: '/trends',
     icon: '🔥',
     color: '#FF8A00',
