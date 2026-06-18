@@ -10,6 +10,15 @@ export const metadata: Metadata = {
 
 const TOOLS = [
   {
+    href: '/title-analyzer',
+    icon: '📝',
+    color: '#FFE800',
+    title: 'YouTube Title Analyzer',
+    desc: 'Score any video title 0-100 with instant CTR & SEO tips — before you publish. No signup.',
+    tag: 'FREE',
+    free: true,
+  },
+  {
     href: '/seo-score',
     icon: '📊',
     color: '#e84d5b',

@@ -492,6 +492,11 @@ export default function SeoScoreClient() {
           <SeoScoreContent />
           <ExtensionInstallBanner lang={lang} />
           <p className="text-center mt-6 text-[13px] font-mono-jb">
+            <a href="/title-analyzer" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2">
+              {lang === 'en' ? '📝 Analyze your title before publishing — free →' : '📝 Analiza tu título antes de publicar — gratis →'}
+            </a>
+          </p>
+          <p className="text-center mt-2 text-[13px] font-mono-jb">
             <a href="/embed" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2">
               {lang === 'en' ? '🔗 Add this free SEO analyzer to your website →' : '🔗 Añade este analizador SEO gratis a tu web →'}
             </a>
