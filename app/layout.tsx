@@ -6,6 +6,7 @@ import { LangProvider } from "@/components/LangProvider";
 import DeferredChatWidget from "@/components/DeferredChatWidget";
 import PageViewTracker from "@/components/PageViewTracker";
 import UTMCapture from "@/components/UTMCapture";
+import LandingCapture from "@/components/LandingCapture";
 import CookieConsent from "@/components/CookieConsent";
 import Toaster from "@/components/Toaster";
 import "./globals.css";
@@ -98,7 +99,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body>
-        <script dangerouslySetInnerHTML={{ __html: `try{if(!sessionStorage.getItem('ytv_landing'))sessionStorage.setItem('ytv_landing',location.pathname+location.search)}catch(e){}` }} />
+        <LandingCapture />
         <LangProvider lang={lang as 'es' | 'en'}>
           <SessionProviderWrapper>
             {children}
