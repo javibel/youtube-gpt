@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useLang } from '@/components/LangProvider';
 import PublicNav from '@/components/PublicNav';
 import ExitIntentPopup from '@/components/ExitIntentPopup';
+import FreeToolsCrossLinks from '@/components/FreeToolsCrossLinks';
 
 type Lang = 'es' | 'en';
 
@@ -324,26 +325,8 @@ export default function TitleAnalyzerClient() {
             ))}
           </div>
 
-          {/* Cross-linking interno (SEO Fase 0/1) */}
-          <div className="rounded-xl p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--yv-border)' }}>
-            <p className="font-mono-jb text-[12px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-text-4)' }}>
-              {t('Más herramientas gratis', 'More free tools')}
-            </p>
-            <div className="grid sm:grid-cols-3 gap-3">
-              <a href="/seo-score" className="block p-3 rounded-lg transition hover:bg-white/[0.03]" style={{ border: '1px solid var(--yv-border)' }}>
-                <span className="text-white text-sm font-display font-semibold">📊 SEO Score</span>
-                <p className="font-mono-jb text-[12px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{t('Analiza un vídeo publicado', 'Analyze a published video')}</p>
-              </a>
-              <a href="/trends" className="block p-3 rounded-lg transition hover:bg-white/[0.03]" style={{ border: '1px solid var(--yv-border)' }}>
-                <span className="text-white text-sm font-display font-semibold">🔥 Trending</span>
-                <p className="font-mono-jb text-[12px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{t('Vídeos virales por país', 'Viral videos by country')}</p>
-              </a>
-              <a href="/tools" className="block p-3 rounded-lg transition hover:bg-white/[0.03]" style={{ border: '1px solid var(--yv-border)' }}>
-                <span className="text-white text-sm font-display font-semibold">🧰 {t('Todas', 'All tools')}</span>
-                <p className="font-mono-jb text-[12px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{t('Ver todas las herramientas', 'See all the tools')}</p>
-              </a>
-            </div>
-          </div>
+          {/* Cross-linking interno (SEO Fase 1) — fuente única en FreeToolsCrossLinks */}
+          <FreeToolsCrossLinks current="/title-analyzer" lang={lang} />
         </section>
       </div>
 

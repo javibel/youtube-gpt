@@ -28,6 +28,15 @@ const TOOLS = [
     free: true,
   },
   {
+    href: '/ctr-calculator',
+    icon: '🎯',
+    color: '#22c55e',
+    title: 'YouTube CTR Calculator',
+    desc: 'Calculate your click-through rate and benchmark it against YouTube averages. Instant, no signup.',
+    tag: 'FREE',
+    free: true,
+  },
+  {
     href: '/trends',
     icon: '🔥',
     color: '#FF8A00',

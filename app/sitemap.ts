@@ -106,6 +106,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${BASE_URL}/ctr-calculator`,
+      lastModified: new Date('2026-06-18'),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
       url: `${BASE_URL}/embed`,
       lastModified: new Date('2026-05-31'),
       changeFrequency: 'monthly',
