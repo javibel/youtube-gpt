@@ -54,7 +54,9 @@ async function fetchPageContent(urlPath) {
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    return { status: res.status, content: text.slice(0, 10000), error: null };
+    // 50k cubre las páginas legales completas (privacy ~12.4k). Antes 10k truncaba
+    // y daba falsos "missing" de keywords que caían más abajo (p.ej. brechas GDPR @10.8k).
+    return { status: res.status, content: text.slice(0, 50000), error: null };
   } catch (err) {
     clearTimeout(timeout);
     return { status: 0, content: '', error: err.message };
