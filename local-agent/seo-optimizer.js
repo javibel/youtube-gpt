@@ -244,19 +244,16 @@ function detectAnomalies(metrics) {
     }
   }
 
-  // Indexed pages < 80% of submitted
-  let totalSubmitted = 0, totalIndexed = 0;
-  for (const sitemap of metrics.sitemaps) {
-    if (sitemap.error) continue;
-    for (const c of sitemap.contents || []) {
-      totalSubmitted += parseInt(c.submitted) || 0;
-      totalIndexed += parseInt(c.indexed) || 0;
-    }
-  }
-  if (totalSubmitted > 0) {
-    const indexRate = totalIndexed / totalSubmitted;
-    if (indexRate < 0.80) {
-      issues.push(`SEO_INDEXING: Only ${(indexRate * 100).toFixed(1)}% indexed (${totalIndexed}/${totalSubmitted} pages)`);
+  // Indexed pages — basado en los verdicts REALES de URL Inspection (verdict === PASS),
+  // NO en el contador "indexed" del endpoint legacy /sitemaps (siempre devuelve 0, no fiable).
+  // Ese contador legacy generaba el falso "0% indexado (0/82)" que alarmaba al Manager cada día.
+  const inspectable = (metrics.keyPages || []).filter(p => !p.error);
+  const indexedCount = inspectable.filter(p => p.indexed).length;
+  if (inspectable.length > 0) {
+    const indexRate = indexedCount / inspectable.length;
+    // Solo es issue si la mayoría de páginas clave inspeccionadas NO están indexadas.
+    if (indexRate < 0.50) {
+      issues.push(`SEO_INDEXING: Only ${indexedCount}/${inspectable.length} key pages indexed (${(indexRate * 100).toFixed(0)}%, via URL Inspection)`);
     }
   }
 
