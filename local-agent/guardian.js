@@ -152,6 +152,12 @@ function checkDangerousPatterns() {
         // Skip false positives using surrounding context
         const ctx = (m.context || '').toLowerCase();
 
+        // Skip code-execution patterns when they only appear inside a comment line
+        // (e.g. a JSDoc note explaining why dangerouslySetInnerHTML was removed).
+        // NOT applied to secret/credential patterns — a leaked key in a comment is still a leak.
+        const CODE_EXEC_PATTERNS = new Set(['dangerouslySetInnerHTML', 'eval()', 'innerHTML assignment', 'document.write()', 'exec() with string']);
+        if (CODE_EXEC_PATTERNS.has(name) && /^(\/\/|\*|\/\*|\{\/\*|<!--)/.test((m.match || '').trim())) continue;
+
         // dangerouslySetInnerHTML in JSON-LD <script type="application/ld+json"> is safe
         if (name === 'dangerouslySetInnerHTML' && (ctx.includes('json.stringify') || ctx.includes('ld+json'))) continue;
 

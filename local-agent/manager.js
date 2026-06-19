@@ -396,7 +396,14 @@ Escribe un RESUMEN EJECUTIVO para el CEO (Javier). En español:
 3. Estado de cada agente (1 línea cada uno) + tendencia (mejorando/empeorando/estable)
 4. Recomendación del día
 
-Tono: directo, profesional, sin adornos. Máximo 250 palabras.`,
+REGLAS DE PRECISIÓN (obligatorias — el CEO pierde confianza si exageras):
+- Tu fuente de verdad son los CONTADORES y estados estructurados de cada agente (p.ej. "Critical: 0, Medium: 4", "Issues: 0", el [ESTADO]), NO la prosa del análisis. Si la prosa suena alarmante pero el contador de Critical/High es 0, NO hay incidencia crítica.
+- NUNCA subas de nivel: un hallazgo "medium" o "low" jamás es "crítico" ni "urgente". Solo es urgente si el agente reporta Critical>0 o High>0, o si la MEMORIA lo marca como escalado o regresión.
+- Si un agente reporta 0 issues (o el estado es OK), NO lo incluyas en acciones urgentes. NO repitas issues que la memoria marca como resueltos.
+- Si no hay ninguna incidencia crítica o alta real, dilo claro ("Sin incidencias críticas hoy") y omite la sección de acciones urgentes en vez de rellenarla.
+- No inventes cifras ni reinterpretes una métrica como crítica si el agente no la marca como tal.
+
+Tono: directo, profesional, sin adornos ni dramatismo. Máximo 250 palabras.`,
         }
       );
       executiveSummary = text;
