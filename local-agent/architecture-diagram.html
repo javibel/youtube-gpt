@@ -348,7 +348,7 @@
           </g>
           <g class="node-click" data-page="outreach">
             <rect x="422" y="168" width="88" height="36" rx="7" fill="#1c1c22" stroke="#f59e0b" stroke-width="1" class="hoverable"/>
-            <text x="466" y="182" text-anchor="middle" fill="#d4d4d8" font-size="10">Reddit</text>
+            <text x="466" y="182" text-anchor="middle" fill="#d4d4d8" font-size="10">Bluesky</text>
             <text x="466" y="196" text-anchor="middle" fill="#71717a" font-size="9">DM+Comment</text>
           </g>
           <g class="node-click" data-page="meta-agent">
@@ -448,7 +448,7 @@
         </div>
         <div class="card" onclick="navigate('persona-runner')">
           <div class="card-header"><div class="card-icon" style="background:#3b1f5e">🎭</div><h3>Personas (YCML)</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">2x/dia</span></div>
-          <p>Alex + Ferran en Twitter y Reddit via Puppeteer con perfiles persistentes.</p>
+          <p>Alex, Ferran, Ana y Mayra en Twitter y Bluesky via Puppeteer con perfiles persistentes.</p>
         </div>
         <div class="card" onclick="navigate('meta-agent')">
           <div class="card-header"><div class="card-icon" style="background:#5e1f3b">📱</div><h3>Meta Agent (YCMR)</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">Activo</span></div>
@@ -456,7 +456,7 @@
         </div>
         <div class="card" onclick="navigate('outreach')">
           <div class="card-header"><div class="card-icon" style="background:#451a03">📡</div><h3>Outreach Pipeline</h3><span class="badge" style="background:var(--orange-bg);color:var(--orange)">~150/dia</span></div>
-          <p>Discover → Email → Reddit DM → Reddit Comments → Follow-up → Monitor. 7 modulos, 4 canales.</p>
+          <p>Discover → Email → Follow-up → Monitor. Outreach por email (canales Reddit DM/Comments INACTIVOS — Reddit abandonado).</p>
         </div>
         <div class="card" onclick="navigate('guardian')">
           <div class="card-header"><div class="card-icon" style="background:#451a03">🔒</div><h3>Guardian</h3><span class="badge" style="background:var(--green-bg);color:var(--green)">02:15</span></div>
@@ -562,9 +562,9 @@
 
     <!-- PERSONA RUNNER -->
     <div class="page" id="page-persona-runner">
-      <div class="detail-hero"><div class="hero-icon" style="background:#3b1f5e">🎭</div><div><h1>Persona Runner (YCML)</h1><div class="desc">Engagement social organico con identidades ficticias en Twitter + Reddit</div></div></div>
+      <div class="detail-hero"><div class="hero-icon" style="background:#3b1f5e">🎭</div><div><h1>Persona Runner (YCML)</h1><div class="desc">Engagement social organico con identidades ficticias en Twitter + Bluesky</div></div></div>
       <div class="tabs"><div class="tab active" onclick="switchTab(this,'pr-desc')">Descripcion</div><div class="tab" onclick="switchTab(this,'pr-personas')">Personas</div><div class="tab" onclick="switchTab(this,'pr-cfg')">Configuracion</div></div>
-      <div class="tab-content active" id="pr-desc"><div class="section"><div class="section-title">Flujo</div><ul><li>Carga personas de personas.json</li><li>Secuencial (1 browser a la vez por memoria)</li><li>Twitter: busca hilos → Claude genera comment → publica</li><li>Cierra browser entre plataformas</li><li>Reddit: busca posts → Claude genera reply → publica</li><li>Registra en BD para follow-up posterior</li></ul></div></div>
+      <div class="tab-content active" id="pr-desc"><div class="section"><div class="section-title">Flujo</div><ul><li>Carga personas de personas.json</li><li>Secuencial (1 browser a la vez por memoria)</li><li>Twitter: busca hilos → Claude genera comment → publica</li><li>Cierra browser entre plataformas</li><li>Bluesky: busca posts → Claude genera reply → publica</li><li>Registra en BD para follow-up posterior</li></ul></div></div>
       <div class="tab-content" id="pr-personas"><div class="section"><div class="section-title">Alex Sastre</div><div class="config-grid">
         <div class="field"><label>Nombre</label><input data-module="personas" data-key="alex.name" value="Alex Sastre"></div>
         <div class="field"><label>Edad</label><input type="number" data-module="personas" data-key="alex.age" value="26"></div>
@@ -582,12 +582,11 @@
       <div class="tab-content" id="pr-cfg"><div class="section"><div class="config-grid">
         <div class="field"><label>Modelo IA</label><select data-module="persona-runner" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5 (rapido/barato)</option><option value="claude-sonnet-4-6">Sonnet 4.6 (equilibrado)</option><option value="claude-opus-4-8">Opus 4.8 (premium)</option><option value="claude-opus-4-6">Opus 4.6 (legacy)</option></select><div class="hint">Modelo para generar comentarios de personas</div></div>
         <div class="field"><label>Max tweets/sesion</label><input type="number" data-module="persona-runner" data-key="maxTweetsPerSession" value="10"><div class="hint">Limite base (±40% variacion)</div></div>
-        <div class="field"><label>Max Reddit/sesion</label><input type="number" data-module="persona-runner" data-key="maxRedditPerSession" value="5"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('persona-runner')">Resetear</button><button class="btn btn-primary" onclick="saveModule('persona-runner')">Guardar</button></div></div></div>
       <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Orquestador</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">El Orquestador ejecuta las personas 2 veces al dia (mañana y noche) en horarios que simulan actividad humana real.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Claude AI</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Para cada hilo encontrado, envia el contexto del tweet/post + la personalidad de la persona a Claude, que genera un comentario unico y natural.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Browser (Puppeteer)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa Puppeteer con perfil Chrome persistente para navegar Twitter/Reddit, buscar hilos y publicar comentarios como si fuera un usuario real.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Browser (Puppeteer)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa Puppeteer con perfil Chrome persistente para navegar Twitter/Bluesky, buscar hilos y publicar comentarios como si fuera un usuario real.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Humanize</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Usa el modulo Humanize para añadir delays aleatorios, saltar posts aleatoriamente y variar limites diarios. Esto evita patrones detectables por las plataformas.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Neon (PostgreSQL)</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Registra cada comentario publicado en la BD (SocialAction) con URL, plataforma, persona y contenido. Necesario para el follow-up posterior y para evitar duplicados.</div></div>
       </div></div>
@@ -599,7 +598,6 @@
       <div class="section"><div class="config-grid">
         <div class="field"><label>Modelo IA</label><select data-module="followup" data-key="model"><option value="claude-haiku-4-5-20251001">Haiku 4.5</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-8">Opus 4.8 (premium)</option><option value="claude-opus-4-6">Opus 4.6 (legacy)</option></select><div class="hint">Modelo para generar follow-up replies</div></div>
         <div class="field"><label>Limite Twitter/dia</label><input type="number" data-module="followup" data-key="twitterLimit" value="4"></div>
-        <div class="field"><label>Limite Reddit/dia</label><input type="number" data-module="followup" data-key="redditLimit" value="4"></div>
         <div class="field"><label>Dias hacia atras</label><input type="number" data-module="followup" data-key="daysBack" value="14"></div>
         <div class="field"><label>Fuzzy threshold</label><input type="number" data-module="followup" data-key="fuzzyMatchThreshold" value="0.4" step="0.05"><div class="hint">Min ratio palabras para match (0.4 = 40%)</div></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('followup')">Resetear</button><button class="btn btn-primary" onclick="saveModule('followup')">Guardar</button></div></div>
@@ -881,9 +879,7 @@
       <div class="section"><div class="config-grid">
         <div class="field"><label>Modelo</label><select data-module="claude" data-key="model"><option value="claude-haiku-4-5-20251001" selected>Haiku 4.5 (barato)</option><option value="claude-sonnet-4-6">Sonnet 4.6 (calidad)</option><option value="claude-opus-4-8">Opus 4.8 (premium)</option><option value="claude-opus-4-6">Opus 4.6 (legacy)</option></select></div>
         <div class="field"><label>Max tokens Twitter</label><input type="number" data-module="claude" data-key="maxTokensTwitter" value="150"></div>
-        <div class="field"><label>Max tokens Reddit</label><input type="number" data-module="claude" data-key="maxTokensReddit" value="200"></div>
         <div class="field"><label>Max chars Twitter</label><input type="number" data-module="claude" data-key="maxCharsTwitter" value="300"></div>
-        <div class="field"><label>Max chars Reddit</label><input type="number" data-module="claude" data-key="maxCharsReddit" value="800"></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('claude')">Resetear</button><button class="btn btn-primary" onclick="saveModule('claude')">Guardar</button></div></div>
       <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Persona Runner + Follow-up + Meta + Gmail</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Todos los agentes que generan texto llaman a este wrapper. Es el unico punto de acceso a la API de Anthropic en el local-agent.</div></div>
@@ -922,9 +918,9 @@
         <div class="field"><label>Stealth Plugin</label><select data-module="browser" data-key="stealthPlugin"><option value="true" selected>Activado</option><option value="false">Desactivado</option></select></div>
       </div><div class="actions"><button class="btn btn-ghost" onclick="resetModule('browser')">Resetear</button><button class="btn btn-primary" onclick="saveModule('browser')">Guardar</button></div></div>
       <div class="section"><div class="section-title">🔗 Conexiones</div><div style="display:flex;flex-direction:column;gap:0.75rem">
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Persona Runner + Follow-up</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Las personas y follow-up usan Puppeteer para navegar Twitter y Reddit. Cada persona tiene su propio perfil Chrome persistente con sesion guardada.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Persona Runner + Follow-up</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Las personas y follow-up usan Puppeteer para navegar Twitter y Bluesky. Cada persona tiene su propio perfil Chrome persistente con sesion guardada.</div></div>
         <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#22c55e">←</span><span style="font-weight:600">Scout</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Recibe de</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Scout usa el browser para visitar webs de competidores y extraer informacion de features/pricing.</div></div>
-        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Twitter / Reddit</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Navega con Stealth Plugin (evasion de deteccion de bots) y perfiles Chrome reales. Cada sesion simula comportamiento humano con Humanize.</div></div>
+        <div style="background:var(--bg);border:1px solid var(--surface2);border-radius:8px;padding:0.75rem 1rem"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1.3rem;color:#3b82f6">→</span><span style="font-weight:600">Twitter / Bluesky</span><span style="font-size:0.75rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:4px">Envia a</span></div><div style="font-size:0.85rem;color:var(--text);line-height:1.5;padding-left:1.8rem">Navega con Stealth Plugin (evasion de deteccion de bots) y perfiles Chrome reales. Cada sesion simula comportamiento humano con Humanize.</div></div>
       </div></div>
     </div>
 
@@ -955,13 +951,13 @@
         <ul>
           <li><strong>Discover</strong> (outreach-discover.js) — 6x/dia. Busca canales de YouTube via API (500-25K subs), extrae email publico, calcula SEO Score del ultimo video. ~60 contactos nuevos/dia.</li>
           <li><strong>Email Send</strong> (outreach-send.js) — 6x/dia. Envia emails personalizados via Resend con analisis SEO value-upfront (HTML + score card + tips). Hasta 60 emails/dia.</li>
-          <li><strong>Reddit DM</strong> (outreach-reddit-dm.js) — 3x/dia. Escanea 18 subreddits de YouTube, detecta creadores compartiendo sus videos, envia DM personalizado ofreciendo analisis SEO gratis. ~15 DMs/dia.</li>
-          <li><strong>Reddit Targeted</strong> (outreach-reddit-targeted.js) — 2x/dia. Encuentra posts donde creadores piden ayuda/feedback SEO, comenta con consejos utiles + mencion sutil a YTubViral usando personas Alex y Ferran. ~16 comments/dia.</li>
+          <li><strong>[INACTIVO] Reddit DM</strong> (outreach-reddit-dm.js) — 3x/dia. Escanea 18 subreddits de YouTube, detecta creadores compartiendo sus videos, envia DM personalizado ofreciendo analisis SEO gratis. ~15 DMs/dia.</li>
+          <li><strong>[INACTIVO] Reddit Targeted</strong> (outreach-reddit-targeted.js) — 2x/dia. Encuentra posts donde creadores piden ayuda/feedback SEO, comenta con consejos utiles + mencion sutil a YTubViral usando personas Alex y Ferran. ~16 comments/dia.</li>
           <li><strong>Follow-up</strong> (outreach-followup.js) — 2x/dia. Reenvia email a contactos que no respondieron despues de 3 dias.</li>
-          <li><strong>Monitor</strong> (outreach-monitor.js) — cada 3h. Revisa replies en Reddit posts y tweets donde publicamos.</li>
-          <li><strong>Community Posts</strong> (outreach-post.js) — 1x/dia. Publica posts de beta testers en subreddits relevantes.</li>
+          <li><strong>Monitor</strong> (outreach-monitor.js) — cada 3h. Revisa replies en tweets y Bluesky donde publicamos.</li>
+          <li><strong>[INACTIVO] Community Posts</strong> (outreach-post.js) — 1x/dia. Publica posts de beta testers en subreddits relevantes.</li>
         </ul>
-        <p style="margin-top:1rem"><strong>Volumen total: ~150+ interacciones/dia</strong> distribuidas en email, Reddit DMs, Reddit comments y community posts.</p>
+        <p style="margin-top:1rem"><strong>Volumen total: ~150+ interacciones/dia</strong> principalmente por email (canales Reddit inactivos).</p>
       </div></div>
 
       <div class="tab-content" id="out-flow"><div class="section"><div class="section-title">Flujo de datos</div>
@@ -983,12 +979,12 @@
 
             <!-- Reddit DM -->
             <rect x="160" y="115" width="100" height="45" rx="8" fill="#1c1c22" stroke="#f59e0b" stroke-width="1"/>
-            <text x="210" y="135" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="600">REDDIT DM</text>
+            <text x="210" y="135" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="600">DM (OFF)</text>
             <text x="210" y="148" text-anchor="middle" fill="#71717a" font-size="9">Puppeteer</text>
 
             <!-- Reddit Comment -->
             <rect x="160" y="170" width="100" height="45" rx="8" fill="#1c1c22" stroke="#f59e0b" stroke-width="1"/>
-            <text x="210" y="190" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="600">REDDIT CMT</text>
+            <text x="210" y="190" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="600">CMT (OFF)</text>
             <text x="210" y="203" text-anchor="middle" fill="#71717a" font-size="9">Personas</text>
 
             <!-- Follow-up -->
@@ -1029,9 +1025,6 @@
           <thead><tr><th>Canal</th><th>Frecuencia</th><th>Volumen/dia</th><th>Modulo</th></tr></thead>
           <tbody>
             <tr><td>Email (Resend)</td><td>6x/dia (7:45-20:45)</td><td>~60 emails</td><td>outreach-send.js</td></tr>
-            <tr><td>Reddit DMs</td><td>3x/dia (9:15, 14:15, 19:15)</td><td>~15 DMs</td><td>outreach-reddit-dm.js</td></tr>
-            <tr><td>Reddit Comments</td><td>2x/dia (11:00, 18:00)</td><td>~16 comments</td><td>outreach-reddit-targeted.js</td></tr>
-            <tr><td>Community Posts</td><td>1x/dia (11:00)</td><td>1-2 posts</td><td>outreach-post.js</td></tr>
             <tr><td>Discovery</td><td>6x/dia (7:30-20:30)</td><td>~60 contactos</td><td>outreach-discover.js</td></tr>
             <tr><td>Follow-up</td><td>2x/dia (10:00, 16:00)</td><td>Variable</td><td>outreach-followup.js</td></tr>
             <tr><td>Monitor</td><td>Cada 3h (9-21h)</td><td>—</td><td>outreach-monitor.js</td></tr>
@@ -1042,9 +1035,9 @@
         <table>
           <thead><tr><th>Cuenta</th><th>Perfil</th><th>Uso</th></tr></thead>
           <tbody>
-            <tr><td>brand-reddit</td><td>chrome-profiles/brand-reddit</td><td>DMs directos, community posts</td></tr>
-            <tr><td>persona-alex</td><td>chrome-profiles/persona-alex</td><td>Reddit targeted comments</td></tr>
-            <tr><td>persona-ferran</td><td>chrome-profiles/persona-ferran</td><td>Reddit targeted comments</td></tr>
+            <tr><td>brand-reddit</td><td>chrome-profiles/brand-reddit</td><td>DMs directos, community posts (INACTIVO)</td></tr>
+            <tr><td>persona-alex</td><td>chrome-profiles/persona-alex</td><td>Engagement Twitter/Bluesky</td></tr>
+            <tr><td>persona-ferran</td><td>chrome-profiles/persona-ferran</td><td>Engagement Twitter/Bluesky</td></tr>
             <tr><td>hello@ytubviral.com</td><td>Resend API</td><td>Emails de outreach + follow-up</td></tr>
           </tbody>
         </table>
@@ -1167,7 +1160,7 @@
           <g class="eco-node" data-eco="chrome" style="cursor:pointer">
             <rect x="330" y="565" width="340" height="50" rx="10" fill="#1c1c22" stroke="#52525b" stroke-width="1" class="hoverable"/>
             <text x="500" y="587" text-anchor="middle" fill="#a1a1aa" font-size="11" font-weight="600">CHROME (Puppeteer Stealth)</text>
-            <text x="500" y="603" text-anchor="middle" fill="#71717a" font-size="10">Twitter · Reddit (DMs + Comments)</text>
+            <text x="500" y="603" text-anchor="middle" fill="#71717a" font-size="10">Twitter · Bluesky</text>
           </g>
 
 
@@ -1723,14 +1716,6 @@ function formatReport(data) {
       kv('Menciones marca (7d)', `${m.mentions_7d?.twitter?.withBrand||0} / ${m.mentions_7d?.twitter?.total||0}`)
     );
 
-    // Reddit
-    html += card(
-      `<div style="font-weight:600;font-size:0.83rem;margin-bottom:0.4rem">Reddit</div>` +
-      kv('Upvotes (24h / 7d)', `${m.reddit_24h?.upvotes||0} / ${m.reddit_7d?.upvotes||0}`) +
-      kv('Comments (24h / 7d)', `${m.reddit_24h?.comments||0} / ${m.reddit_7d?.comments||0}`) +
-      kv('Menciones marca (7d)', `${m.mentions_7d?.reddit?.withBrand||0} / ${m.mentions_7d?.reddit?.total||0}`)
-    );
-
     // Follow-ups
     if (m.followups_7d) {
       html += card(
@@ -1922,12 +1907,12 @@ const ECO_INFO = {
     desc: 'API de IA. Cerebro de toda la generacion de contenido y analisis autonomo.',
     connections: [
       { dir: 'in', from: 'YTubViral (Vercel)', why: 'Cada vez que un usuario genera contenido (titulo, descripcion, script, etc.), la web envia un prompt a la API de Claude y devuelve la respuesta al usuario.' },
-      { dir: 'in', from: 'Local Agent', why: 'Los agentes usan Claude para generar tweets, replies de Reddit, respuestas de email, analisis de seguridad (Guardian), competencia (Scout), legal (Watchdog) y sintesis diaria (Manager).' },
+      { dir: 'in', from: 'Local Agent', why: 'Los agentes usan Claude para generar tweets, replies de Bluesky, respuestas de email, analisis de seguridad (Guardian), competencia (Scout), legal (Watchdog) y sintesis diaria (Manager).' },
     ],
     sections: [
       { title: 'Modelos en uso', items: ['Haiku 4.5: Personas, Follow-up, Gmail replies, generacion web (rapido, barato)', 'Opus 4.8: Guardian, Scout, Watchdog, Social/SEO/Funnel/Infra Optimizers, Manager, Meta-Optimizer (analisis profundo)'] },
       { title: 'Uso en Web (Vercel)', items: ['14 herramientas de generacion', 'AI Coach (conversacional, streaming)', 'Prompt caching activado (ahorra ~80% en prompts repetidos)'] },
-      { title: 'Uso en Local Agent', items: ['claude.js: genera tweets y Reddit replies para personas', 'gmail agent: genera respuestas automaticas a emails', 'Guardian: analiza codigo fuente buscando vulnerabilidades', 'Scout: analiza webs de competidores', 'Manager: sintetiza todos los reportes nocturnos'] },
+      { title: 'Uso en Local Agent', items: ['claude.js: genera tweets y Bluesky replies para personas', 'gmail agent: genera respuestas automaticas a emails', 'Guardian: analiza codigo fuente buscando vulnerabilidades', 'Scout: analiza webs de competidores', 'Manager: sintetiza todos los reportes nocturnos'] },
       { title: 'Protecciones (API Guard)', items: ['Rate limit: 10 calls/min', 'Budget diario: 200K tokens', 'Circuit breaker: 5 fallos → pausa 5min', 'Max tokens por llamada: 4000'] },
       { title: 'Auto-heal (Doctor)', items: ['3 capas: KNOWN patterns → LEARNED patterns → Claude AI', 'Patrones aprendidos ahorran tokens (0-cost heal)', 'Meta-Optimizer promueve/poda patrones semanalmente'] },
     ],
@@ -2025,18 +2010,18 @@ const ECO_INFO = {
     desc: 'Sistema de agentes autonomos corriendo 24/7 en la maquina local.',
     connections: [
       { dir: 'both', to: 'Neon (PostgreSQL)', why: 'Lee datos de usuarios y generaciones escritos por la web. Escribe acciones sociales, mensajes de email y prospectos que la web puede consultar.' },
-      { dir: 'out', to: 'Anthropic', why: 'Genera contenido para tweets, Reddit replies, email replies y analisis nocturnos (Guardian, Scout, Watchdog, Manager).' },
+      { dir: 'out', to: 'Anthropic', why: 'Genera contenido para tweets, Bluesky replies, email replies y analisis nocturnos (Guardian, Scout, Watchdog, Manager).' },
       { dir: 'out', to: 'Resend', why: 'Envia reportes diarios, alertas y auto-replies via email de dominio (@ytubviral.com).' },
       { dir: 'out', to: 'Gmail API', why: 'Lee inbox de ytbeviral@gmail.com cada 30 min para detectar emails de usuarios o plataformas.' },
-      { dir: 'out', to: 'Chrome (Puppeteer)', why: 'Lanza Chrome headless para engagement en Twitter/Reddit (personas).' },
+      { dir: 'out', to: 'Chrome (Puppeteer)', why: 'Lanza Chrome headless para engagement en Twitter/Bluesky (personas).' },
       { dir: 'out', to: 'Search Console', why: 'Scripts locales solicitan indexacion de nuevas URLs y verifican estado.' },
       { dir: 'out', to: 'Meta (FB + IG)', why: 'Publica posts automaticos en Facebook Page e Instagram via Graph API.' },
       { dir: 'out', to: 'YouTube Data API', why: 'Consulta datos de canal para los reportes nocturnos (Social Optimizer).' },
     ],
     sections: [
       { title: 'Agentes Core', items: ['Scheduler (orquestador — index.js)', 'Sentinel (uptime cada 5 min — prioridad 1)', 'Doctor (auto-diagnostico y self-healing)'] },
-      { title: 'YCML (Engagement)', items: ['Persona Runner: Alex + Ferran en Twitter/Reddit', 'Follow-up: detecta replies y responde', 'Humanize: delays aleatorios, skip sessions'] },
-      { title: 'Outreach Pipeline (7 modulos)', items: ['Discover: busca creadores YouTube via API (6x/dia, ~60 contactos)', 'Email Send: emails personalizados con SEO score via Resend (6x/dia, ~60 emails)', 'Reddit DM: DMs a creadores en 18 subreddits (3x/dia, ~15 DMs)', 'Reddit Targeted: comments utiles en posts de ayuda/feedback (2x/dia, ~16 comments)', 'Follow-up: reenvio a no-respondidos despues de 3 dias (2x/dia)', 'Community Posts: posts de beta testers en subreddits (1x/dia)', 'Monitor: revisa replies cada 3h (9-21h)'] },
+      { title: 'YCML (Engagement)', items: ['Persona Runner: Alex, Ferran, Ana y Mayra en Twitter/Bluesky', 'Follow-up: detecta replies y responde', 'Humanize: delays aleatorios, skip sessions'] },
+      { title: 'Outreach Pipeline (7 modulos)', items: ['Discover: busca creadores YouTube via API (6x/dia, ~60 contactos)', 'Email Send: emails personalizados con SEO score via Resend (6x/dia, ~60 emails)', '[INACTIVO] Reddit DM (3x/dia, ~15 DMs)', 'Reddit Targeted: comments utiles en posts de ayuda/feedback (2x/dia, ~16 comments)', 'Follow-up: reenvio a no-respondidos despues de 3 dias (2x/dia)', 'Community Posts: posts de beta testers en subreddits (1x/dia)', 'Monitor: revisa replies cada 3h (9-21h)'] },
       { title: 'YCMR (Publicacion)', items: ['Meta Agent: FB + IG via Graph API'] },
       { title: 'Nocturnos (02:00-03:15)', items: ['Guardian: auditoria de seguridad del codigo', 'Scout: analisis de competencia', 'Watchdog: cumplimiento legal (terms, privacy)', 'Social/SEO/Funnel/Infra Optimizers: analisis diario con Claude', 'Manager: sintesis ejecutiva de todos los reportes', 'Meta-Optimizer: evaluacion semanal de la efectividad del sistema', 'Feature Monitor: health check end-to-end de 24 features (2x/dia)'] },
     ],
@@ -2050,7 +2035,7 @@ const ECO_INFO = {
     ],
     sections: [
       { title: 'Configuracion', items: ['Puppeteer Extra + Stealth Plugin (anti-deteccion)', 'Chrome real instalado localmente', 'Headless por defecto', 'Protocol timeout: 60s'] },
-      { title: 'Perfiles persistentes', items: ['brand — cuenta principal de Twitter', 'brand-reddit — cuenta YTubViral Reddit (outreach DMs + community posts)', 'alex — persona Alex Sastre (Twitter + Reddit engagement + outreach comments)', 'ferran — persona Ferran Gomez (Twitter + Reddit engagement + outreach comments)', 'Cada perfil tiene cookies, localStorage y session propios'] },
+      { title: 'Perfiles persistentes', items: ['brand — cuenta principal de Twitter', 'brand-reddit — cuenta Reddit INACTIVA (outreach DMs + community posts)', 'alex — persona Alex Sastre (Twitter + Bluesky engagement)', 'ferran — persona Ferran Gomez (Twitter + Reddit engagement + outreach comments)', 'Cada perfil tiene cookies, localStorage y session propios'] },
       { title: 'Auto-heal (3 capas)', items: ['browser.js: detecta lockfiles bloqueados → mata zombies → limpia locks', 'resilience.js: 3 fallos consecutivos → auto-heal completo (cierra, mata, limpia, resetea)', 'doctor.js: diagnostica causa raiz y sugiere fix antes de alertar humano'] },
     ],
   },
