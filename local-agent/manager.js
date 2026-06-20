@@ -379,12 +379,30 @@ async function runManager() {
   if (hasReports) {
     console.log('[manager] Requesting AI executive summary...');
     try {
+      // ── GROUND TRUTH: compute the ONLY real incidents that may drive "urgent actions" ──
+      // Parses structured counts (Critical/High) + memory regressions/escalations. The AI
+      // summary must NOT invent urgency beyond this list — kills the recurring false alarms.
+      const realIncidents = [];
+      for (const s of sections) {
+        const d = s.data || '';
+        const crit = parseInt((d.match(/Critical:\s*(\d+)/i) || [])[1] || '0', 10);
+        const high = parseInt((d.match(/High:\s*(\d+)/i) || [])[1] || '0', 10);
+        if (crit > 0 || high > 0) realIncidents.push(`${s.agent}: ${crit} critical, ${high} high`);
+      }
+      for (const r of (allRegressions || [])) realIncidents.push(`REGRESIÓN [${r.agent}]: ${r.description}`);
+      for (const e of (allEscalated || [])) realIncidents.push(`ESCALADO [${e.agent}]: ${e.description} (${e.daysSinceFirst}d)`);
+      const incidentsBlock = realIncidents.length
+        ? realIncidents.map(i => '- ' + i).join('\n')
+        : 'NINGUNA — cero incidencias críticas, altas, escaladas o regresiones hoy.';
+
+      // Section data only (counts/status). The AI prose is given as low-trust context, never as severity.
       const sectionTexts = sections.map(s =>
-        `${s.agent} [${s.status}]: ${s.data}${s.ai ? '\nAnálisis: ' + s.ai.slice(0, 300) : ''}`
+        `${s.agent} [${s.status}]: ${s.data}${s.ai ? '\n  (contexto, NO determina urgencia): ' + s.ai.slice(0, 140) : ''}`
       ).join('\n\n');
 
+      const todayStr = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid', day: 'numeric', month: 'long', year: 'numeric' });
       const { text } = await guardedCall(
-        `Reportes de hoy:\n\n${sectionTexts}\n\nMEMORIA DEL SISTEMA (historial de issues):${memoryBlock || '\nSin historial previo — primera ejecución.'}`,
+        `FECHA DE HOY: ${todayStr} (úsala, no inventes otra).\n\nINCIDENCIAS REALES HOY (única fuente válida para "acciones urgentes"):\n${incidentsBlock}\n\nReportes por agente:\n\n${sectionTexts}\n\nMEMORIA DEL SISTEMA (historial):${memoryBlock || '\nSin historial previo.'}`,
         {
           maxTokens: 600,
           agentId: 'manager',
@@ -392,18 +410,17 @@ async function runManager() {
 
 Escribe un RESUMEN EJECUTIVO para el CEO (Javier). En español:
 1. Estado general del sistema (1 línea)
-2. Acciones urgentes si las hay — PRIORIZA regresiones y escalados (máx 3 bullets)
-3. Estado de cada agente (1 línea cada uno) + tendencia (mejorando/empeorando/estable)
+2. Acciones urgentes — copia EXACTAMENTE los items del bloque "INCIDENCIAS REALES HOY". Si dice "NINGUNA", escribe literalmente "Sin incidencias críticas hoy." y NADA más en esta sección.
+3. Estado de cada agente (1 línea) + tendencia (mejorando/empeorando/estable)
 4. Recomendación del día
 
 REGLAS DE PRECISIÓN (obligatorias — el CEO pierde confianza si exageras):
-- Tu fuente de verdad son los CONTADORES y estados estructurados de cada agente (p.ej. "Critical: 0, Medium: 4", "Issues: 0", el [ESTADO]), NO la prosa del análisis. Si la prosa suena alarmante pero el contador de Critical/High es 0, NO hay incidencia crítica.
-- NUNCA subas de nivel: un hallazgo "medium" o "low" jamás es "crítico" ni "urgente". Solo es urgente si el agente reporta Critical>0 o High>0, o si la MEMORIA lo marca como escalado o regresión.
-- Si un agente reporta 0 issues (o el estado es OK), NO lo incluyas en acciones urgentes. NO repitas issues que la memoria marca como resueltos.
-- Si no hay ninguna incidencia crítica o alta real, dilo claro ("Sin incidencias críticas hoy") y omite la sección de acciones urgentes en vez de rellenarla.
-- No inventes cifras ni reinterpretes una métrica como crítica si el agente no la marca como tal.
+- El bloque "INCIDENCIAS REALES HOY" es la ÚNICA fuente de urgencia. PROHIBIDO marcar como urgente/crítico cualquier cosa que NO esté literalmente en ese bloque.
+- La prosa de "contexto" y la memoria NO determinan urgencia. Si la prosa suena alarmante pero la incidencia no está en el bloque, NO es urgente.
+- NUNCA subas de nivel un medium/low a crítico. NUNCA repitas un issue que la memoria marca como resuelto o que el agente reporta a 0.
+- No inventes cifras. Usa la fecha de HOY.
 
-Tono: directo, profesional, sin adornos ni dramatismo. Máximo 250 palabras.`,
+Tono: directo, profesional, sin dramatismo. Máximo 250 palabras.`,
         }
       );
       executiveSummary = text;
