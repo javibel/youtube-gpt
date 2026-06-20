@@ -36,11 +36,9 @@
     "circuitBreakerResetMs": 300000
   },
   "claude": {
-    "model": "claude-haiku-4-5-20251001",
+    "model": "claude-opus-4-8",
     "maxTokensTwitter": 150,
-    "maxTokensReddit": 200,
-    "maxCharsTwitter": 300,
-    "maxCharsReddit": 800
+    "maxCharsTwitter": 300
   },
   "humanize": {
     "skipSessionProbability": 0.1,
@@ -54,14 +52,12 @@
     "dailyLimitVariance": 40
   },
   "persona-runner": {
-    "model": "claude-haiku-4-5-20251001",
-    "maxTweetsPerSession": 15,
-    "maxRedditPerSession": 10
+    "model": "claude-opus-4-8",
+    "maxTweetsPerSession": 15
   },
   "followup": {
-    "model": "claude-haiku-4-5-20251001",
+    "model": "claude-opus-4-8",
     "twitterLimit": 4,
-    "redditLimit": 4,
     "daysBack": 14,
     "fuzzyMatchThreshold": 0.4
   },
@@ -82,7 +78,7 @@
     "stealthPlugin": true
   },
   "guardian": {
-    "model": "claude-haiku-4-5-20251001",
+    "model": "claude-opus-4-8",
     "webDir": "../youtube-gpt",
     "timeoutMs": 60000,
     "dangerousPatterns": "eval(, innerHTML, dangerouslySetInnerHTML, AKIA[0-9A-Z]",
@@ -92,33 +88,33 @@
   },
   "gmail": {
     "model": "claude-haiku-4-5-20251001",
-    "agentEmail": "ytbeviral@gmail.com",
-    "ownerEmail": "ytbeviral@gmail.com",
+    "agentEmail": "hello@ytubviral.com",
+    "ownerEmail": "javier.jimeno@ytubviral.com",
     "activeHours": "8-23"
   },
   "scout": {
     "model": "claude-haiku-4-5-20251001"
   },
   "watchdog": {
-    "model": "claude-haiku-4-5-20251001"
+    "model": "claude-opus-4-8"
   },
   "social-optimizer": {
-    "model": "claude-haiku-4-5-20251001"
+    "model": "claude-opus-4-8"
   },
   "manager": {
-    "model": "claude-haiku-4-5-20251001"
+    "model": "claude-opus-4-8"
   },
   "seo-optimizer": {
-    "model": "claude-haiku-4-5-20251001"
+    "model": "claude-opus-4-8"
   },
   "funnel-optimizer": {
-    "model": "claude-haiku-4-5-20251001"
+    "model": "claude-opus-4-6"
   },
   "infra-optimizer": {
     "model": "claude-haiku-4-5-20251001"
   },
   "meta-optimizer": {
-    "model": "claude-haiku-4-5-20251001",
+    "model": "claude-opus-4-8",
     "enabled": true
   },
   "feature-monitor": {
@@ -130,7 +126,7 @@
       "age": 26,
       "city": "Valencia",
       "job": "Editor de video freelance",
-      "platforms": "Twitter, Reddit",
+      "platforms": "Twitter, Bluesky",
       "mentionYtubviral": true,
       "mentionRate": 0.42
     },
@@ -139,19 +135,19 @@
       "age": 33,
       "city": "Barcelona",
       "job": "Consultor marketing digital",
-      "platforms": "Twitter, Reddit",
+      "platforms": "Twitter, Bluesky",
       "mentionYtubviral": true,
       "mentionRate": 0.4
     }
   },
-  "_lastModified": "2026-06-13T01:00:45.806Z",
-  "_lastModifiedBy": "auto-fix",
+  "_lastModified": "2026-06-20T16:27:08.641Z",
+  "_lastModifiedBy": "dashboard",
   "_anthropicBalance": {
-    "amount": 24.336468999999994,
+    "amount": 23.956062000000003,
     "currency": "USD",
     "lastChecked": "2026-05-31T10:05:03.957Z",
-    "lastDeduction": "2026-06-14T20:24:44.495Z",
-    "totalSpentToday": 0.015566250000000002,
-    "spendDate": "2026-06-14"
+    "lastDeduction": "2026-06-20T17:03:18.046Z",
+    "totalSpentToday": 0.017705749999999992,
+    "spendDate": "2026-06-20"
   }
 }

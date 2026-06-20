@@ -2,7 +2,7 @@
 
 /**
  * Monitor outreach posts for new replies/comments.
- * Checks Reddit posts and X tweet for responses from non-persona accounts.
+ * Checks the X tweet for responses from non-persona accounts.
  * Sends email alert when new replies are detected.
  *
  * Usage: node outreach-monitor.js
@@ -21,14 +21,6 @@ const KNOWN_PERSONAS = ['Javi_Mart', 'AdNearby3690', 'Complex-Specific1379', 'YT
 const STATE_FILE = path.join(__dirname, 'outreach-monitor-state.json');
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'ytbeviral@gmail.com';
 
-const REDDIT_POSTS = [
-  { name: 'r/alphaandbetausers', url: 'https://www.reddit.com/r/alphaandbetausers/comments/1thw159/' },
-  { name: 'r/IMadeThis', url: 'https://www.reddit.com/r/IMadeThis/comments/1thwcbf/' },
-  { name: 'r/roastmystartup', url: 'https://www.reddit.com/r/roastmystartup/comments/1thwd9g/' },
-  { name: 'r/indiebiz', url: 'https://www.reddit.com/r/indiebiz/comments/1thwp4e/' },
-  { name: 'profile post', url: 'https://www.reddit.com/user/Complex-Specific1379/comments/1thvige/' },
-];
-
 const TWITTER_TWEET = 'https://x.com/YTubViral/status/2056832037382660247';
 
 function loadState() {
@@ -38,31 +30,6 @@ function loadState() {
 
 function saveState(state) {
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
-}
-
-async function checkRedditPost(page, post, tag) {
-  const oldUrl = post.url.replace('www.reddit.com', 'old.reddit.com');
-  const ok = await safeGoto(page, oldUrl, { tag, timeout: 45000, profileDir: 'chrome-profiles/persona-alex' });
-  if (!ok) return [];
-
-  await new Promise(r => setTimeout(r, 3000));
-
-  const comments = await safeEval(page, (knownPersonas) => {
-    const results = [];
-    const commentEls = document.querySelectorAll('.comment');
-    for (const c of commentEls) {
-      const author = c.querySelector('.author')?.textContent?.trim() || '[deleted]';
-      if (knownPersonas.includes(author)) continue;
-      const text = c.querySelector('.md')?.textContent?.trim() || '';
-      const time = c.querySelector('time')?.getAttribute('datetime') || '';
-      if (text) {
-        results.push({ author, text: text.slice(0, 300), time, platform: 'reddit' });
-      }
-    }
-    return results;
-  }, KNOWN_PERSONAS);
-
-  return (comments || []).map(c => ({ ...c, source: post.name, url: post.url }));
 }
 
 async function checkTwitterReplies(tag) {
@@ -134,85 +101,6 @@ async function main() {
   const state = loadState();
   const knownKeys = new Set(state.knownComments || []);
   const newReplies = [];
-
-  console.log(`[${tag}] Checking ${REDDIT_POSTS.length} Reddit posts + 1 X tweet...`);
-
-  const PROFILE = 'chrome-profiles/persona-alex';
-  const doctorCtx = { platform: 'reddit', account: 'persona-alex', profileDir: PROFILE };
-
-  // Check Reddit (reuse one browser session)
-  let page;
-  try {
-    page = await newPageForProfile(PROFILE);
-  } catch (launchErr) {
-    console.error(`[${tag}] Browser launch failed: ${launchErr.message}`);
-    // Let Doctor diagnose + attempt healing (heuristic patterns → Claude AI fallback)
-    const result = await diagnose(launchErr, { ...doctorCtx, action: 'launch' });
-    if (result.healed) {
-      console.log(`[${tag}] Doctor healed: ${result.action} — retrying launch...`);
-      try { page = await newPageForProfile(PROFILE); } catch { page = null; }
-    } else {
-      page = null;
-    }
-  }
-
-  if (page) {
-    try {
-      // Verify Reddit session
-      const ok = await safeGoto(page, 'https://old.reddit.com/', { tag, timeout: 60000, profileDir: PROFILE });
-      if (!ok) { console.log(`[${tag}] Reddit session failed`); }
-      else {
-        await new Promise(r => setTimeout(r, 2000));
-        for (const post of REDDIT_POSTS) {
-          // Health check before each post — detect dead page early
-          if (!await isPageHealthy(page)) {
-            console.log(`[${tag}] Page died — consulting Doctor...`);
-            const deadPageErr = new Error('Page detached — browser frame died mid-session');
-            const healResult = await diagnose(deadPageErr, { ...doctorCtx, action: 'navigate' });
-            console.log(`[${tag}] Doctor: ${healResult.healed ? 'HEALED' : 'NOT HEALED'} — ${healResult.action}`);
-
-            // Close stale references and attempt relaunch
-            await page.close().catch(() => {});
-            await closeBrowserForProfile(PROFILE);
-            try {
-              page = await newPageForProfile(PROFILE);
-              const reOk = await safeGoto(page, 'https://old.reddit.com/', { tag, timeout: 60000, profileDir: PROFILE });
-              if (!reOk) {
-                console.log(`[${tag}] Relaunch failed — skipping remaining Reddit posts`);
-                break;
-              }
-              await new Promise(r => setTimeout(r, 2000));
-            } catch (relaunchErr) {
-              console.error(`[${tag}] Browser relaunch failed: ${relaunchErr.message}`);
-              await diagnose(relaunchErr, { ...doctorCtx, action: 'launch' });
-              break;
-            }
-          }
-
-          try {
-            console.log(`[${tag}] Checking ${post.name}...`);
-            const comments = await checkRedditPost(page, post, tag);
-            for (const c of comments) {
-              const key = `${c.platform}:${c.author}:${c.text.slice(0, 50)}`;
-              if (!knownKeys.has(key)) {
-                newReplies.push(c);
-                knownKeys.add(key);
-              }
-            }
-          } catch (err) {
-            const errMsg = err.message || String(err);
-            console.error(`[${tag}] Failed checking ${post.name}: ${errMsg}`);
-            // Feed ALL errors into Doctor (heuristic patterns → Claude AI fallback)
-            await diagnose(err, { ...doctorCtx, action: 'check-post' }).catch(() => {});
-          }
-          await new Promise(r => setTimeout(r, 1500));
-        }
-      }
-    } finally {
-      await page.close().catch(() => {});
-      await closeBrowserForProfile(PROFILE);
-    }
-  }
 
   // Check Twitter
   console.log(`[${tag}] Checking X tweet...`);

@@ -23,9 +23,6 @@ const { runFollowUp } = require('./outreach-followup');
 const { runDiscovery } = require('./outreach-discover');
 const { runOutreachSend } = require('./outreach-send');
 const { runAttribution } = require('./outreach-attribution');
-const { runOutreachPost } = require('./outreach-post');
-const { runRedditDm } = require('./outreach-reddit-dm');
-const { runRedditTargeted } = require('./outreach-reddit-targeted');
 const { runFeatureMonitor } = require('./feature-monitor');
 const { runCleanup: runGmailCleanup } = require('./gmail-cleanup');
 const { runBlogGenerator } = require('./blog-generator');
@@ -252,16 +249,6 @@ cron.schedule('50 2 * * *', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
-// Outreach Community Posts — DISABLED 2026-06-14: Reddit abandoned (brand account suspended/
-// shadowbanned, posting forbidden). Posts would be invisible. Re-enable on a healthy account.
-// cron.schedule('0 11 * * *', async () => {
-//   console.log('[cron] Outreach post — publishing community posts');
-//   await bq('outreach-post', async () => {
-//     await runOutreachPost().catch(err => console.error('[outreach-post]', err.message));
-//     await db.disconnect().catch(() => {});
-//   });
-// }, { timezone: 'Europe/Madrid' });
-
 // Brand Twitter Post — daily at 10:30, tweet + infographic via Puppeteer (replaces paid API)
 cron.schedule('30 10 * * *', async () => {
   console.log('[cron] Brand Twitter post — daily tweet with infographic');
@@ -269,21 +256,6 @@ cron.schedule('30 10 * * *', async () => {
     await runBrandTwitterPost().catch(err => console.error('[brand-twitter-post]', err.message));
   });
 }, { timezone: 'Europe/Madrid' });
-
-// Outreach Reddit DMs — DISABLED: Reddit requires CAPTCHA for DMs on low-karma accounts
-// cron.schedule('15 9,14,19 * * *', async () => {
-//   console.log('[cron] Outreach Reddit DM — sending personalized DMs to creators');
-//   await runRedditDm().catch(err => console.error('[outreach-reddit-dm]', err.message));
-// }, { timezone: 'Europe/Madrid' });
-
-// Outreach Reddit Targeted Comments — DISABLED 2026-06-14: Reddit abandoned (persona accounts
-// shadowbanned — u/Javi_Mart, u/AdNearby3690 confirmed; comments invisible to everyone).
-// cron.schedule('0 11,18 * * *', async () => {
-//   console.log('[cron] Outreach Reddit targeted — commenting on feedback/help posts');
-//   await bq('outreach-reddit-targeted', async () => {
-//     await runRedditTargeted().catch(err => console.error('[outreach-reddit-targeted]', err.message));
-//   });
-// }, { timezone: 'Europe/Madrid' });
 
 // Outreach Monitor — every 3 hours 9-23h, check for new replies to outreach posts
 cron.schedule('0 9,12,15,18,21 * * *', async () => {
@@ -351,7 +323,7 @@ cron.schedule('30 3 * * 0', async () => {
 }, { timezone: 'Europe/Madrid' });
 
 // Persona Monitor — cada hora en horario activo (08:00-23:00)
-// Detecta silencio >14h en Twitter, >26h en Reddit; auto-retry + email si falla
+// Detecta silencio en Twitter y Bluesky; auto-retry + email si falla
 cron.schedule('12 8-23 * * *', async () => {
   await runPersonaMonitor().catch(err => console.error('[persona-monitor]', err.message));
   await db.disconnect().catch(() => {});
@@ -410,7 +382,7 @@ console.log('  Persona reports: 12:00, 00:00 (Europe/Madrid)');
 console.log('  Outreach discover: 08:30,12:30,16:30,20:30 (Europe/Madrid)');
 console.log('  Outreach send: 08:45,12:45,16:45,20:45 (Europe/Madrid)');
 console.log('  Outreach follow-up: 10:00 daily (Europe/Madrid)');
-console.log('  Outreach posts + Reddit comments: DISABLED (Reddit abandoned — accounts shadowbanned)');
+console.log('  Bluesky warm-up drip: 12:35 daily (Europe/Madrid)');
 console.log('  Brand Twitter post: 10:30 daily (Europe/Madrid) — Puppeteer + infographic');
 console.log('  Feature Monitor: 07:00, 19:00 daily (Europe/Madrid)');
 console.log('  Outreach monitor: every 3h 9-21h (Europe/Madrid)');

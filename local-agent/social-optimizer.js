@@ -35,29 +35,29 @@ async function collectMetrics() {
   const metrics = {};
 
   // 1. Engagement volume (last 24h and 7d)
-  const [tw24h, tw7d, rd24h, rd7d] = await Promise.all([
+  const [tw24h, tw7d, bs24h, bs7d] = await Promise.all([
     db.query("SELECT type, COUNT(*) as count FROM twitter_actions WHERE created_at >= NOW() - INTERVAL '1 day' GROUP BY type"),
     db.query("SELECT type, COUNT(*) as count FROM twitter_actions WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY type"),
-    db.query("SELECT type, COUNT(*) as count FROM reddit_actions WHERE created_at >= NOW() - INTERVAL '1 day' GROUP BY type"),
-    db.query("SELECT type, COUNT(*) as count FROM reddit_actions WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY type"),
+    db.query("SELECT type, COUNT(*) as count FROM bluesky_actions WHERE created_at >= NOW() - INTERVAL '1 day' GROUP BY type"),
+    db.query("SELECT type, COUNT(*) as count FROM bluesky_actions WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY type"),
   ]);
 
   metrics.twitter_24h = { likes: 0, replies: 0 };
   tw24h.forEach(r => { if (r.type === 'x_like') metrics.twitter_24h.likes = +r.count; if (r.type === 'x_reply') metrics.twitter_24h.replies = +r.count; });
   metrics.twitter_7d = { likes: 0, replies: 0 };
   tw7d.forEach(r => { if (r.type === 'x_like') metrics.twitter_7d.likes = +r.count; if (r.type === 'x_reply') metrics.twitter_7d.replies = +r.count; });
-  metrics.reddit_24h = { upvotes: 0, comments: 0 };
-  rd24h.forEach(r => { if (r.type === 'rd_upvote') metrics.reddit_24h.upvotes = +r.count; if (r.type === 'rd_comment') metrics.reddit_24h.comments = +r.count; });
-  metrics.reddit_7d = { upvotes: 0, comments: 0 };
-  rd7d.forEach(r => { if (r.type === 'rd_upvote') metrics.reddit_7d.upvotes = +r.count; if (r.type === 'rd_comment') metrics.reddit_7d.comments = +r.count; });
+  metrics.bluesky_24h = { likes: 0, replies: 0 };
+  bs24h.forEach(r => { if (r.type === 'bsky_like') metrics.bluesky_24h.likes = +r.count; if (r.type === 'bsky_reply') metrics.bluesky_24h.replies = +r.count; });
+  metrics.bluesky_7d = { likes: 0, replies: 0 };
+  bs7d.forEach(r => { if (r.type === 'bsky_like') metrics.bluesky_7d.likes = +r.count; if (r.type === 'bsky_reply') metrics.bluesky_7d.replies = +r.count; });
 
   // 2. YTubViral mentions
-  const [rdMentions, twMentions] = await Promise.all([
-    db.query("SELECT COUNT(*) as total, COUNT(CASE WHEN content ILIKE '%ytubviral%' THEN 1 END) as mentions FROM reddit_actions WHERE type = 'rd_comment' AND created_at >= NOW() - INTERVAL '7 days'"),
+  const [bsMentions, twMentions] = await Promise.all([
+    db.query("SELECT COUNT(*) as total, COUNT(CASE WHEN content ILIKE '%ytubviral%' THEN 1 END) as mentions FROM bluesky_actions WHERE type = 'bsky_reply' AND created_at >= NOW() - INTERVAL '7 days'"),
     db.query("SELECT COUNT(*) as total, COUNT(CASE WHEN content ILIKE '%ytubviral%' THEN 1 END) as mentions FROM twitter_actions WHERE type = 'x_reply' AND created_at >= NOW() - INTERVAL '7 days'"),
   ]);
   metrics.mentions_7d = {
-    reddit: { total: +rdMentions[0]?.total || 0, withBrand: +rdMentions[0]?.mentions || 0 },
+    bluesky: { total: +bsMentions[0]?.total || 0, withBrand: +bsMentions[0]?.mentions || 0 },
     twitter: { total: +twMentions[0]?.total || 0, withBrand: +twMentions[0]?.mentions || 0 },
   };
 
@@ -82,9 +82,9 @@ async function collectMetrics() {
   const users = await db.query("SELECT COUNT(*) as total, COUNT(CASE WHEN \"createdAt\" >= NOW() - INTERVAL '7 days' THEN 1 END) as week FROM users");
   metrics.users = { total: +users[0]?.total || 0, newThisWeek: +users[0]?.week || 0 };
 
-  // 6. Recent comments content (to evaluate quality)
-  const recentComments = await db.query("SELECT account_id, LEFT(content, 300) as content, post_url, created_at FROM reddit_actions WHERE type = 'rd_comment' AND created_at >= NOW() - INTERVAL '1 day' ORDER BY created_at DESC LIMIT 5");
-  metrics.recentRedditComments = recentComments;
+  // 6. Recent replies content (to evaluate quality)
+  const recentComments = await db.query("SELECT account_id, LEFT(content, 300) as content, post_url, created_at FROM bluesky_actions WHERE type = 'bsky_reply' AND created_at >= NOW() - INTERVAL '1 day' ORDER BY created_at DESC LIMIT 5");
+  metrics.recentBlueskyComments = recentComments;
 
   const recentTweets = await db.query("SELECT account_id, LEFT(content, 280) as content, tweet_url, created_at FROM twitter_actions WHERE type = 'x_reply' AND created_at >= NOW() - INTERVAL '1 day' ORDER BY created_at DESC LIMIT 5");
   metrics.recentTweetReplies = recentTweets;
@@ -100,20 +100,20 @@ async function analyzeAndRecommend(metrics) {
   if (metrics.twitter_24h.likes === 0 && metrics.twitter_24h.replies === 0) {
     issues.push('TWITTER: 0 actividad en 24h — posible sesión caída o skip aleatorio');
   }
-  if (metrics.reddit_24h.upvotes === 0 && metrics.reddit_24h.comments === 0) {
-    issues.push('REDDIT: 0 actividad en 24h — posible sesión caída');
+  if (metrics.bluesky_24h.likes === 0 && metrics.bluesky_24h.replies === 0) {
+    issues.push('BLUESKY: 0 actividad en 24h — posible sesión caída');
   }
 
   // Check mention rate
-  const totalComments = metrics.mentions_7d.reddit.total + metrics.mentions_7d.twitter.total;
-  const totalMentions = metrics.mentions_7d.reddit.withBrand + metrics.mentions_7d.twitter.withBrand;
+  const totalComments = metrics.mentions_7d.bluesky.total + metrics.mentions_7d.twitter.total;
+  const totalMentions = metrics.mentions_7d.bluesky.withBrand + metrics.mentions_7d.twitter.withBrand;
   const mentionRate = totalComments > 0 ? (totalMentions / totalComments * 100).toFixed(1) : '0';
 
   if (totalMentions === 0 && totalComments > 5) {
-    issues.push(`MENCIONES: 0 menciones de YTubViral en ${totalComments} comments — el sistema de menciones no está funcionando`);
-    recommendations.push('Revisar prompt de generación de comments: Claude está ignorando las instrucciones de mención');
+    issues.push(`MENCIONES: 0 menciones de YTubViral en ${totalComments} replies — el sistema de menciones no está funcionando`);
+    recommendations.push('Revisar prompt de generación de replies: Claude está ignorando las instrucciones de mención');
   } else if (parseFloat(mentionRate) < 15 && totalComments > 10) {
-    issues.push(`MENCIONES: Solo ${mentionRate}% de comments mencionan YTubViral (objetivo: 25%+)`);
+    issues.push(`MENCIONES: Solo ${mentionRate}% de replies mencionan YTubViral (objetivo: 25%+)`);
   }
 
   // Check follow-ups
@@ -131,14 +131,14 @@ async function analyzeAndRecommend(metrics) {
   // Check user growth
   if (metrics.users.newThisWeek === 0) {
     issues.push('USUARIOS: 0 registros nuevos esta semana');
-    recommendations.push('Aumentar frecuencia de menciones y mejorar CTA en comments');
+    recommendations.push('Aumentar frecuencia de menciones y mejorar CTA en replies');
   }
 
-  // Use Claude to analyze content quality if we have comments
+  // Use Claude to analyze content quality if we have replies
   let aiAnalysis = '';
-  if (metrics.recentRedditComments.length > 0 || metrics.recentTweetReplies.length > 0) {
+  if (metrics.recentBlueskyComments.length > 0 || metrics.recentTweetReplies.length > 0) {
     const commentsForReview = [
-      ...metrics.recentRedditComments.map(c => `[Reddit/${c.account_id}] ${c.content}`),
+      ...metrics.recentBlueskyComments.map(c => `[Bluesky/${c.account_id}] ${c.content}`),
       ...metrics.recentTweetReplies.map(c => `[Twitter/${c.account_id || 'brand'}] ${c.content}`),
     ].join('\n\n');
 
@@ -147,7 +147,7 @@ async function analyzeAndRecommend(metrics) {
     const aiResult = await guardedCall(userPrompt, {
       maxTokens: 1200,
       agentId: 'social-optimizer',
-      system: `Eres un analista de marketing de redes sociales. Analiza comentarios dejados por cuentas personas en Reddit/Twitter:
+      system: `Eres un analista de marketing de redes sociales. Analiza comentarios dejados por cuentas personas en Bluesky/Twitter:
 - Alex: editor de vídeo freelance, 26 años, Valencia. Usa ytubviral.com y lo recomienda con micro-narrativas de su experiencia.
 - Ferran: consultor de marketing digital, 33 años, Barcelona. Recomienda ytubviral.com a sus clientes como herramienta profesional.
 - Ana: community manager freelance, 29 años, Madrid. Gestiona YouTube de clientes y usa ytubviral.com para títulos y keyword research.
@@ -184,8 +184,8 @@ async function runSocialOptimizer() {
       metrics: {
         twitter_24h: metrics.twitter_24h,
         twitter_7d: metrics.twitter_7d,
-        reddit_24h: metrics.reddit_24h,
-        reddit_7d: metrics.reddit_7d,
+        bluesky_24h: metrics.bluesky_24h,
+        bluesky_7d: metrics.bluesky_7d,
         mentions_7d: metrics.mentions_7d,
         followups_7d: metrics.followups_7d,
         brandPosts_7d: metrics.brandPosts_7d,
@@ -249,7 +249,7 @@ async function runSocialOptimizer() {
         '',
         '── MÉTRICAS ──',
         `Twitter (7d): ${metrics.twitter_7d.likes} likes, ${metrics.twitter_7d.replies} replies`,
-        `Reddit (7d): ${metrics.reddit_7d.upvotes} upvotes, ${metrics.reddit_7d.comments} comments`,
+        `Bluesky (7d): ${metrics.bluesky_7d.likes} likes, ${metrics.bluesky_7d.replies} replies`,
         `Menciones YTubViral: ${analysis.totalMentions}/${analysis.totalComments} (${analysis.mentionRate}%)`,
         `Follow-ups: ${metrics.followups_7d.responded}/${metrics.followups_7d.detected} respondidos`,
         `Usuarios nuevos (7d): ${metrics.users.newThisWeek}`,
@@ -310,7 +310,7 @@ registerFixes('social-optimizer', [
       };
 
       const mentionRate = metrics.mentions_7d
-        ? ((metrics.mentions_7d.reddit.withBrand + metrics.mentions_7d.twitter.withBrand) / Math.max(1, metrics.mentions_7d.reddit.total + metrics.mentions_7d.twitter.total) * 100).toFixed(1)
+        ? ((metrics.mentions_7d.bluesky.withBrand + metrics.mentions_7d.twitter.withBrand) / Math.max(1, metrics.mentions_7d.bluesky.total + metrics.mentions_7d.twitter.total) * 100).toFixed(1)
         : '?';
 
       const userPrompt = `PROBLEMAS DETECTADOS:
@@ -319,7 +319,7 @@ ${issues.join('\n')}
 MÉTRICAS:
 - Mention rate: ${mentionRate}%
 - Twitter 24h: ${metrics.twitter_24h?.likes || 0} likes, ${metrics.twitter_24h?.replies || 0} replies
-- Reddit 24h: ${metrics.reddit_24h?.upvotes || 0} upvotes, ${metrics.reddit_24h?.comments || 0} comments
+- Bluesky 24h: ${metrics.bluesky_24h?.likes || 0} likes, ${metrics.bluesky_24h?.replies || 0} replies
 - Follow-ups: ${metrics.followups_7d?.responded || 0}/${metrics.followups_7d?.detected || 0} respondidos
 - Nuevos usuarios 7d: ${metrics.users?.newThisWeek || 0}
 
@@ -340,7 +340,7 @@ ${JSON.stringify(effectivenessData, null, 2)}`;
         agentId: 'social-optimizer',
         system: `Eres el cerebro de auto-mejora del sistema social de YTubViral. Analizas problemas y generas correcciones INTELIGENTES basadas en datos.
 
-CONTEXTO: Las personas Alex (editor freelance 26yo), Ferran (consultor marketing 33yo), Ana (community manager freelance 29yo) y Mayra (copywriter YouTube 31yo) comentan en Reddit y Twitter sobre YouTube. El objetivo es llevar usuarios a ytubviral.com.
+CONTEXTO: Las personas Alex (editor freelance 26yo), Ferran (consultor marketing 33yo), Ana (community manager freelance 29yo) y Mayra (copywriter YouTube 31yo) comentan en Bluesky y Twitter sobre YouTube. El objetivo es llevar usuarios a ytubviral.com.
 
 PUEDES MODIFICAR DOS TIPOS DE CONFIG:
 
@@ -357,7 +357,6 @@ PUEDES MODIFICAR DOS TIPOS DE CONFIG:
    - humanize.skipSessionProbability: prob de saltar sesión (0.0-0.30)
    - humanize.skipPostProbability: prob de saltar post (0.05-0.40)
    - persona-runner.maxTweetsPerSession: max tweets por sesión (3-20)
-   - persona-runner.maxRedditPerSession: max comments Reddit por sesión (2-12)
 
 REGLAS:
 - Analiza el historial: NO repitas fixes que ya fallaron (mira EFECTIVIDAD)
@@ -475,7 +474,6 @@ Responde SOLO con el JSON, sin markdown, sin explicación adicional.`,
           'humanize.skipSessionProbability': { min: 0.0, max: 0.30 },
           'humanize.skipPostProbability': { min: 0.05, max: 0.40 },
           'persona-runner.maxTweetsPerSession': { min: 3, max: 20 },
-          'persona-runner.maxRedditPerSession': { min: 2, max: 12 },
         };
 
         for (const [dotKey, value] of Object.entries(claudeResponse.configChanges)) {

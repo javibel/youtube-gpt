@@ -77,7 +77,7 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
 
   // 1. Newline handling per platform length
   //    Short-form (twitter ≤120 tokens): take first paragraph only (Claude often over-generates)
-  //    Longer-form (reddit ≤200 tokens): allow multiple paragraphs
+  //    Longer-form (bluesky ≤200 tokens): allow multiple paragraphs
   let processed = text;
   if (maxTokens <= 150 && text.includes('\n')) {
     processed = text.split(/\n/)[0].trim();
@@ -96,7 +96,7 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
   if (/^vac[ií]o/i.test(processed)) { console.log(`[claude] Reply REJECTED: starts with "vacío"`); return ''; }
   if (/^(N\/A|n\/a|none|ninguno|pass|skip)/i.test(processed)) { console.log(`[claude] Reply REJECTED: starts with N/A/skip marker`); return ''; }
 
-  // 3. Too long for platform (twitter: 300, reddit: 800)
+  // 3. Too long for platform (twitter: 300, bluesky: 800)
   const maxLen = maxTokens <= 150 ? 300 : 800;
   if (processed.length > maxLen) { console.log(`[claude] Reply REJECTED: too long (${processed.length}>${maxLen})`); return ''; }
 
@@ -183,7 +183,7 @@ async function callClaude(prompt, maxTokens = 200, opts = {}) {
     return '';
   }
 
-  // For longer-form comments (reddit): trim to max 3 paragraphs, remove markdown formatting
+  // For longer-form comments (bluesky): trim to max 3 paragraphs, remove markdown formatting
   if (maxTokens > 150 && processed.includes('\n')) {
     const paragraphs = processed.split(/\n{1,}/).filter(p => p.trim());
     if (paragraphs.length > 5) { console.log(`[claude] Reply REJECTED: too many paragraphs (${paragraphs.length})`); return ''; }
@@ -280,18 +280,6 @@ Retorne APENAS o comentário.`,
 Renvoie UNIQUEMENT le commentaire.`,
 };
 
-// Genera un comentario genuino para un post de LinkedIn
-async function generateComment(authorName, postContent) {
-  const lang = detectPostLang(postContent);
-  const persona = PERSONA[lang] || PERSONA.en;
-  const rules = RULES[lang] || RULES.en;
-
-  const systemPrompt = `${persona}\n\n${rules}`;
-  return callClaude(`You just read this post by ${authorName} on LinkedIn. Write the comment you'd naturally leave.
-
-Post: "${postContent}"
-`, 150, { caller: 'persona-runner', system: systemPrompt });
-}
 
 // Genera una respuesta genuina para un tweet de X/Twitter
 async function generateTweetReply(authorName, tweetContent) {
@@ -452,24 +440,6 @@ Solo el comentario.`,
 - WRITE IN ENGLISH
 Only the comment.`,
   },
-  linkedin: {
-    es: `REGLAS LINKEDIN:
-- Frases cortas, directas, sin florituras
-- Tono profesional pero cercano — como hablar con un colega de trabajo
-- Puedes discrepar o matizar algo con datos o experiencia
-- Comparte algo concreto que hayas visto o vivido trabajando en el sector
-- Máximo 2 frases. 1 emoji como mucho o ninguno
-- ESCRIBE EN ESPAÑOL
-Solo el comentario.`,
-    en: `LINKEDIN RULES:
-- Short, direct sentences. No fluff
-- Professional but approachable — like talking to a work colleague
-- You can disagree or nuance something with data or experience
-- Share something concrete you've seen or experienced in the industry
-- Max 2 sentences. 1 emoji max or none
-- WRITE IN ENGLISH
-Only the comment.`,
-  },
   bluesky: {
     es: `REGLAS BLUESKY:
 - Corto — 1 o 2 frases, menos de 250 caracteres
@@ -488,30 +458,12 @@ Solo el reply.`,
 - WRITE IN ENGLISH
 Only the reply.`,
   },
-  reddit: {
-    es: `REGLAS REDDIT:
-- 1-3 frases útiles. Reddit valora aportar algo real, no palmaditas
-- Da un consejo concreto, comparte experiencia propia, o haz una pregunta genuina
-- Tono directo, sin formalidades. Puedes tutear. Puedes ser un poco borde si va con tu personalidad
-- NO uses emojis (Reddit los odia)
-- NO suenes corporativo ni como marca
-- ESCRIBE EN ESPAÑOL
-Solo el comentario.`,
-    en: `REDDIT RULES:
-- 1-3 useful sentences. Reddit values real substance, not back-patting
-- Give a concrete tip, share personal experience, or ask a genuine question
-- Direct tone, no formalities. Can be slightly blunt if that's your personality
-- NO emojis (Reddit hates them)
-- Do NOT sound corporate or like a brand
-- WRITE IN ENGLISH
-Only the comment.`,
-  },
 };
 
 /**
  * Generate a comment as a persona (multi-account system).
  * @param {object} persona - persona config from personas.json
- * @param {string} platform - 'twitter' | 'facebook' | 'linkedin' | 'reddit'
+ * @param {string} platform - 'twitter' | 'facebook' | 'bluesky'
  * @param {string} authorName - post author
  * @param {string} postContent - post text
  */
@@ -523,29 +475,6 @@ function loadOverrides() {
   catch { return {}; }
 }
 
-const REMOVALS_PATH = require('path').join(__dirname, 'reports', 'reddit-removals.json');
-
-/**
- * Build a prompt section from recent Reddit removals. Uses Claude-generated
- * lessons (specific diagnosis per removal) instead of generic warnings.
- */
-function getRemovalLessons() {
-  try {
-    const removals = JSON.parse(require('fs').readFileSync(REMOVALS_PATH, 'utf8'));
-    if (!removals.length) return '';
-    // Only use removals that have Claude-generated lessons
-    const withLessons = removals.filter(r => r.lesson && r.lesson !== 'Análisis no disponible — revisar manualmente.');
-    if (!withLessons.length) return '';
-    // Last 5 lessons — concise, specific, actionable
-    const recent = withLessons.slice(-5);
-    const lessons = recent.map(r =>
-      `- ${r.subreddit} (${r.date?.slice(0, 10)}): ${r.lesson}`
-    ).join('\n');
-    return `\n\nCOMENTARIOS NUESTROS ELIMINADOS POR REDDIT — LECCIONES APRENDIDAS:
-${lessons}
-Aplica estas lecciones al generar tu comentario. Adapta tu tono y contenido al subreddit específico.`;
-  } catch { return ''; }
-}
 
 // ── YouTube-only topic filter (reads patterns from overrides) ──
 function isOffTopicPost(postContent) {
@@ -648,12 +577,6 @@ async function generatePersonaComment(persona, platform, authorName, postContent
     ? `\n\nAUTENTICIDAD (innegociable): NO te inventes datos, cifras ni casos. PROHIBIDO el patrón "analicé N canales" / "lo vi en 30 canales que analicé" — es falso y se nota. Si das un número o ejemplo, que sea REAL de tu experiencia; si no lo tienes, habla del principio sin inventar cifras.\nIDIOMA: entiendes el post en cualquier idioma, pero TÚ contestas SIEMPRE en español de España (vosotros, léxico peninsular), con naturalidad y al grano. NO expliques ni menciones que respondes en otro idioma, NO escribas meta-comentarios sobre el idioma: simplemente responde en español como si nada.`
     : `\n\nAUTHENTICITY (non-negotiable): do NOT invent data, numbers or cases. The "I analyzed N channels" pattern is banned — it's fake and obvious. Any number or example must be REAL from your experience; if you don't have one, speak to the principle without inventing figures.\nLANGUAGE: you understand posts in any language, but you ALWAYS reply in your own language, naturally. Do NOT explain or mention that you're replying in a different language; just answer.`;
 
-  // Inject lessons from removed comments (auto-learning from Reddit moderation)
-  if (platform === 'reddit') {
-    const removalLessons = getRemovalLessons();
-    if (removalLessons) coreRules += removalLessons;
-  }
-
   const maxTokens = platform === 'twitter' ? 150 : 200;
 
   if (isRelevant) {
@@ -745,7 +668,7 @@ Only the reply.`,
 
 /**
  * Generate a follow-up reply to someone who replied to our comment.
- * @param {string} platform - 'twitter' | 'reddit' | 'linkedin' | 'facebook'
+ * @param {string} platform - 'twitter' | 'bluesky' | 'facebook'
  * @param {string} ourOriginalComment - what we originally said
  * @param {string} theirReply - what they replied to us
  * @param {string} theirName - who replied
@@ -770,11 +693,7 @@ async function generateFollowupReply(platform, ourOriginalComment, theirReply, t
   const maxTokens = platform === 'twitter' ? 120 : 200;
 
   // PROMPT CACHING: persona + rules are static per persona → cached
-  let fullRules = rules;
-  if (platform === 'reddit') {
-    const removalLessons = getRemovalLessons();
-    if (removalLessons) fullRules += removalLessons;
-  }
+  const fullRules = rules;
   const systemPrompt = `${personaDesc}\n\n${fullRules}`;
 
   return callClaude(`You previously left this comment on ${platform}: "${ourOriginalComment}"
@@ -827,7 +746,7 @@ Write a reply.
 
 module.exports = {
   // Brand (existing)
-  generateComment, generateTweetReply, generateInstagramComment, generateFacebookComment,
+  generateTweetReply, generateInstagramComment, generateFacebookComment,
   // Personas (new)
   generatePersonaComment,
   // Follow-up

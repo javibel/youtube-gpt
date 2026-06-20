@@ -6,15 +6,12 @@ const { closeBrowserForProfile } = require('./browser');
 const { generatePersonaComment } = require('./claude');
 
 const twitter = require('./twitter');
-const reddit = require('./reddit');
 const facebook = require('./facebook');
 const { diagnose } = require('./doctor');
 
-// Canales de personas. Reddit ABANDONADO (cuentas shadowbanned). Facebook + Bluesky son los
-// reemplazos (Javier's call 2026-06-14). Cada canal arranca en false hasta que las cuentas de
-// las personas estén creadas y con sesión iniciada — así el runner no intenta postear desde
-// sesiones inexistentes ni rompe el proceso vivo. Poner a true cuando estén listas.
-const REDDIT_AUTOMATION_ENABLED = false;
+// Canales de personas: Twitter + Facebook + Bluesky (Reddit/LinkedIn retirados 2026-06-20).
+// Cada canal arranca en false hasta que las cuentas de las personas estén creadas y con sesión
+// iniciada — así el runner no intenta postear desde sesiones inexistentes ni rompe el proceso vivo.
 const FACEBOOK_AUTOMATION_ENABLED = process.env.FACEBOOK_AUTOMATION_ENABLED === 'true';
 const BLUESKY_AUTOMATION_ENABLED = process.env.BLUESKY_AUTOMATION_ENABLED === 'true';
 let bluesky = null;
@@ -90,32 +87,6 @@ async function runAllPersonas() {
         await diagnose(err, { platform: 'facebook', account: persona.id, profileDir: persona.profileDir, action: 'engage' }).catch(() => {});
       }
       await closeBrowserForProfile(persona.profileDir).catch(() => {});
-    }
-
-    // Reddit
-    // ABANDONED 2026-06-14 (Javier's call): the persona Reddit accounts are shadowbanned
-    // (u/Javi_Mart, u/AdNearby3690 confirmed; profiles 404 to logged-out) — their comments are
-    // invisible to everyone, so Reddit automation produced 0 real reach for weeks. Puppeteer
-    // automation + self-promo from dedicated accounts is exactly what Reddit shadowbans. Channel
-    // disabled. Twitter (verified alive) + email outreach + SEO are the live channels.
-    // To re-enable on healthy accounts: set REDDIT_AUTOMATION_ENABLED = true (módulo arriba).
-    if (REDDIT_AUTOMATION_ENABLED && persona.platforms.reddit) {
-      try {
-        console.log(`[persona-runner] ${persona.name} → Reddit`);
-        const founderKarmaMode = persona.mentionYtubviral === false;
-        await reddit.engageWithPosts({
-          accountId: persona.id,
-          cookieFile: persona.platforms.reddit.cookieFile,
-          profileDir: persona.profileDir,
-          persona,
-          ...(founderKarmaMode ? { commentChance: { question: 0.95, other: 0.6 } } : {}),
-        });
-      } catch (err) {
-        const msg = err.message || String(err);
-        console.error(`[persona-runner] ${persona.name} Reddit error: ${msg}`);
-        _errors.push({ persona: persona.name, platform: 'Reddit', error: msg, at: new Date().toISOString() });
-        await diagnose(err, { platform: 'reddit', account: persona.id, profileDir: persona.profileDir, action: 'engage' }).catch(() => {});
-      }
     }
 
     await closeBrowserForProfile(persona.profileDir).catch(() => {});
