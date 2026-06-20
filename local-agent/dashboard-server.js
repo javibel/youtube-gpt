@@ -137,22 +137,22 @@ const DEFAULTS = {
     model: 'claude-haiku-4-5-20251001',
   },
   'social-optimizer': {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-8',
   },
   manager: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-8',
   },
   'seo-optimizer': {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-8',
   },
   'funnel-optimizer': {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-8',
   },
   'infra-optimizer': {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-8',
   },
   'meta-optimizer': {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-8',
     enabled: true,
   },
   personas: {
