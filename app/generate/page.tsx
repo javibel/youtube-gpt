@@ -455,7 +455,7 @@ export default function GeneratePage() {
                       setBgRemovalFailed(false);
                       try {
                         const { removeBackground } = await import('@imgly/background-removal');
-                        const blob = await removeBackground(file, { output: { format: 'image/png' } });
+                        const blob = await removeBackground(file, { model: 'isnet', output: { format: 'image/png' } });
                         const pngFile = new File([blob], 'face.png', { type: 'image/png' });
                         setFacePhoto(pngFile);
                         setFacePhotoPreview(URL.createObjectURL(blob));

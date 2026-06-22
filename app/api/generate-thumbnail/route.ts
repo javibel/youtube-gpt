@@ -140,7 +140,7 @@ MANDATORY:
 You may include stylized silhouettes or abstract human forms if relevant, but avoid photorealistic faces.`;
 
     const textDirective = customText
-      ? `TEXT OVERLAY (USER-SUPPLIED, MUST BE RENDERED EXACTLY): Render the following text verbatim — do NOT change, translate, shorten, add to, or paraphrase it: "${customText.replace(/"/g, '')}". Place it prominently on the ${hasFace ? (faceOnLeft ? 'RIGHT side' : 'LEFT side') : 'image'}${hasFace ? ' (away from the person zone)' : ''}, large, bold, high-contrast, easy to read on mobile.`
+      ? `TEXT OVERLAY: DO NOT render any text in this image — the user's text will be added as a separate overlay on top by us. Generate only the background/scene. Keep ${hasFace ? `the ${faceOnLeft ? 'right' : 'left'} side (where the overlay will sit)` : 'the central area'} relatively uncluttered so the text reads clearly.`
       : `TEXT OVERLAY: Choose a short, punchy text overlay (max 3-5 bold words) relevant to the topic, positioned ${hasFace ? `on the ${faceOnLeft ? 'right' : 'left'} side (away from the person zone)` : 'on the image'}, large, bold, high-contrast.`;
 
     const claudePrompt = `You are an expert YouTube thumbnail designer. Generate a detailed image generation prompt for creating a professional, click-worthy YouTube thumbnail background.
@@ -250,6 +250,13 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
       finalBuffer = Buffer.from(await compositeFaceOnBackground(finalBuffer, facePhotoBuffer, faceOnLeft));
     }
 
+    // User-supplied text: render as a bold overlay ON TOP of everything (above the
+    // face too), on the opposite side from the face so it never gets covered and
+    // never covers the person. Ideogram is told NOT to draw text in this case.
+    if (customText) {
+      finalBuffer = Buffer.from(await overlayText(finalBuffer, customText, faceOnLeft, hasFace));
+    }
+
     // Step 4: Upload to Vercel Blob
     let permanentUrl = imageUrl;
     try {
@@ -311,7 +318,7 @@ async function compositeFaceOnBackground(
   const srcMeta = await sharp(faceBuffer).metadata();
   if (srcMeta.hasAlpha) {
     try {
-      const trimmed = await sharp(faceBuffer).trim({ threshold: 12 }).png().toBuffer();
+      const trimmed = await sharp(faceBuffer).trim({ threshold: 2 }).png().toBuffer();
       const tMeta = await sharp(trimmed).metadata();
       if ((tMeta.width || 0) > 10 && (tMeta.height || 0) > 10) faceSrc = trimmed;
     } catch {
@@ -366,6 +373,88 @@ async function compositeFaceOnBackground(
 
   return bg
     .composite(composites)
+    .png({ quality: 90 })
+    .toBuffer();
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Build an SVG text overlay: large, bold, white with black outline + drop shadow,
+ * wrapped to fit the safe zone. Placed on the side OPPOSITE the face (or centered
+ * when there's no face), so it never covers the person and is always on top.
+ */
+function buildTextSvg(text: string, faceOnLeft: boolean, hasFace: boolean): string {
+  const W = 1312;
+  const H = 736;
+  const padX = Math.round(W * 0.04);
+  let zoneX: number;
+  let zoneW: number;
+  if (hasFace) {
+    if (faceOnLeft) {
+      zoneX = Math.round(W * 0.46);
+      zoneW = W - zoneX - padX;
+    } else {
+      zoneX = padX;
+      zoneW = Math.round(W * 0.50);
+    }
+  } else {
+    zoneX = padX;
+    zoneW = W - padX * 2;
+  }
+
+  const t = text.trim();
+  const len = t.length;
+  // Big by default, shrink as the text gets longer so it fits.
+  let fontSize: number;
+  if (len <= 10) fontSize = 108;
+  else if (len <= 16) fontSize = 92;
+  else if (len <= 24) fontSize = 76;
+  else if (len <= 36) fontSize = 62;
+  else fontSize = 50;
+
+  const charW = fontSize * 0.60;
+  const maxChars = Math.max(6, Math.floor(zoneW / charW));
+  const words = t.split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (test.length > maxChars && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+
+  const lineH = Math.round(fontSize * 1.08);
+  const blockH = lines.length * lineH;
+  const startY = Math.round((H - blockH) / 2 + fontSize * 0.78);
+  const cx = zoneX + zoneW / 2;
+  const stroke = Math.max(5, Math.round(fontSize * 0.09));
+  const tspans = lines
+    .map((l, i) => `<tspan x="${cx}" y="${startY + i * lineH}">${escapeXml(l.toUpperCase())}</tspan>`)
+    .join('');
+
+  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000000" flood-opacity="0.9"/></filter></defs><text x="${cx}" y="${startY}" font-family="Arial Black, Impact, Arial, sans-serif" font-weight="900" font-size="${fontSize}" text-anchor="middle" fill="#ffffff" stroke="#000000" stroke-width="${stroke}" paint-order="stroke" stroke-linejoin="round" letter-spacing="2" filter="url(#ds)">${tspans}</text></svg>`;
+}
+
+async function overlayText(
+  bgBuffer: Buffer,
+  text: string,
+  faceOnLeft: boolean,
+  hasFace: boolean,
+): Promise<Buffer> {
+  const W = 1312;
+  const H = 736;
+  const svg = Buffer.from(buildTextSvg(text, faceOnLeft, hasFace));
+  return sharp(bgBuffer)
+    .resize(W, H, { fit: 'cover' })
+    .composite([{ input: svg, blend: 'over' as const }])
     .png({ quality: 90 })
     .toBuffer();
 }
