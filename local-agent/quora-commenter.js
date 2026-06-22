@@ -148,21 +148,47 @@ async function postQuoraAnswer(page, questionUrl, answerText) {
 
   await new Promise(r => setTimeout(r, 4000));
 
-  // Click "Answer" button (text is "Answer·{count}" not just "Answer")
+  // Click "Answer" button. Quora has changed this button's markup/text repeatedly,
+  // so match broadly across button/a/[role=button] and prefer the shortest match
+  // (the real Answer button is short: "Answer", "Answer (5)", "Write Answer"...).
   const answerBtn = await page.evaluate(() => {
-    const buttons = Array.from(document.querySelectorAll('button'));
-    const answerButton = buttons.find(b => {
-      const text = (b.textContent || '').trim();
-      return /^Answer/i.test(text) || /^Responder/i.test(text);
-    });
-    if (answerButton) {
-      answerButton.click();
-      return true;
+    const candidates = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+    const scored = [];
+    for (const el of candidates) {
+      const raw = (el.textContent || '').trim();
+      if (!raw || raw.length > 40) continue; // skip section headers / long links
+      const t = raw.toLowerCase();
+      if (/answers\b/.test(t) && !/^answer\b/.test(t)) continue; // "View Answers" etc.
+      if (/view|see all|read all|more comments|show more/.test(t)) continue;
+      const isAnswer =
+        t === 'answer' ||
+        /^answer\b/.test(t) ||            // "Answer", "Answer (5)", "Answer·5", "Answer Question"
+        /^(write|add)\s+answer/.test(t) || // "Write Answer", "Add Answer"
+        /^responder\b/.test(t);
+      if (!isAnswer) continue;
+      scored.push({ el, len: raw.length });
     }
-    return false;
+    if (!scored.length) return false;
+    scored.sort((a, b) => a.len - b.len);
+    scored[0].el.click();
+    return true;
   });
 
-  if (!answerBtn) throw new Error('Cannot find Answer button');
+  if (!answerBtn) {
+    // Diagnose: dump visible clickable texts + detect login wall, save screenshot.
+    const ts = Date.now();
+    const diag = await page.evaluate(() => {
+      const loginWall = !!(document.querySelector('[class*="SignupModal"]') || document.querySelector('[class*="LoginModal"]') || document.querySelector('[class*="login_form"]'));
+      const texts = Array.from(document.querySelectorAll('button, a, [role="button"]'))
+        .map(b => (b.textContent || '').trim())
+        .filter(t => t && t.length <= 40)
+        .slice(0, 50);
+      return { url: location.href, loginWall, title: document.title, clickables: texts };
+    });
+    try { await page.screenshot({ path: path.join(__dirname, 'reports', `quora-debug-${ts}.png`), fullPage: false }); } catch {}
+    fs.writeFileSync(path.join(__dirname, 'reports', `quora-debug-${ts}.json`), JSON.stringify(diag, null, 2));
+    throw new Error(`Cannot find Answer button (loginWall=${diag.loginWall}, clickables=${(diag.clickables || []).slice(0, 12).join(' | ')})`);
+  }
 
   // Wait for editor to appear
   await new Promise(r => setTimeout(r, 4000));
@@ -244,7 +270,17 @@ async function runQuoraCommenter() {
   }
 
   const log = loadLog();
-  const answeredUrls = new Set(log.answers.map(a => a.url));
+  // Normalize by question slug, not full URL — Quora serves the same question at
+  // /X and /unanswered/X (and with/without trailing slash), so exact-URL dedup
+  // fails and the agent retries already-answered questions (which have no Answer
+  // button, only "Edit" → "Cannot find Answer button").
+  const slugOf = (url) => {
+    try {
+      const p = new URL(url).pathname.replace(/^\/unanswered\//, '/').replace(/\/+$/, '');
+      return p.split('/').pop().toLowerCase();
+    } catch { return (url || '').toLowerCase(); }
+  };
+  const answeredSlugs = new Set(log.answers.map(a => slugOf(a.url)));
 
   let page;
   try {
@@ -280,7 +316,7 @@ async function runQuoraCommenter() {
     for (const q of queries) {
       try {
         const questions = await searchQuoraQuestions(page, q);
-        allQuestions.push(...questions.filter(q => !answeredUrls.has(q.url)));
+        allQuestions.push(...questions.filter(q => !answeredSlugs.has(slugOf(q.url))));
       } catch (err) {
         console.error(`[quora-commenter] Search failed for "${q}": ${err.message}`);
       }
