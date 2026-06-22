@@ -132,7 +132,7 @@ export default function MoneyCalculatorClient() {
 
         {!result && (
           <div className="text-center py-16">
-            <div className="text-5xl mb-4">💰</div>
+            <div className="mb-4"><img src="/icons/chart-up.webp" alt="" width={56} height={56} className="inline-block object-contain" /></div>
             <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
               {t('Introduce tus vistas mensuales y tu nicho para estimar tus ingresos.', 'Enter your monthly views and niche to estimate earnings.')}
             </p>

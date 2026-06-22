@@ -12,43 +12,43 @@ export interface FreeTool {
 export const FREE_TOOLS: FreeTool[] = [
   {
     href: '/title-analyzer',
-    icon: '📝',
+    icon: '/icons/title.webp',
     title: { es: 'Analizador de Títulos', en: 'Title Analyzer' },
     desc: { es: 'Puntúa tu título antes de publicar', en: 'Score your title before publishing' },
   },
   {
     href: '/ctr-calculator',
-    icon: '🎯',
+    icon: '/icons/target.webp',
     title: { es: 'Calculadora de CTR', en: 'CTR Calculator' },
     desc: { es: 'Calcula y compara tu CTR', en: 'Calculate and benchmark your CTR' },
   },
   {
     href: '/youtube-money-calculator',
-    icon: '💰',
+    icon: '/icons/chart-up.webp',
     title: { es: 'Calculadora de Ingresos', en: 'Money Calculator' },
     desc: { es: 'Estima cuánto ganarías por tus vistas', en: 'Estimate earnings from your views' },
   },
   {
     href: '/engagement-rate-calculator',
-    icon: '❤️',
+    icon: '/icons/community.webp',
     title: { es: 'Engagement Rate', en: 'Engagement Rate' },
     desc: { es: 'Mide el engagement de un vídeo', en: 'Measure a video\'s engagement' },
   },
   {
     href: '/seo-score',
-    icon: '📊',
+    icon: '/icons/bar-chart.webp',
     title: { es: 'SEO Score', en: 'SEO Score' },
     desc: { es: 'Analiza un vídeo publicado', en: 'Analyze a published video' },
   },
   {
     href: '/trends',
-    icon: '🔥',
+    icon: '/icons/trend.webp',
     title: { es: 'Trending', en: 'Trending' },
     desc: { es: 'Vídeos virales por país', en: 'Viral videos by country' },
   },
   {
     href: '/tools',
-    icon: '🧰',
+    icon: '/icons/wrench.webp',
     title: { es: 'Todas', en: 'All tools' },
     desc: { es: 'Ver todas las herramientas', en: 'See all the tools' },
   },
@@ -66,7 +66,10 @@ export default function FreeToolsCrossLinks({ current, lang }: { current: string
       <div className="grid sm:grid-cols-3 gap-3">
         {tools.map(tool => (
           <a key={tool.href} href={tool.href} className="block p-3 rounded-lg transition hover:bg-white/[0.03]" style={{ border: '1px solid var(--yv-border)' }}>
-            <span className="text-white text-sm font-display font-semibold">{tool.icon} {lang === 'en' ? tool.title.en : tool.title.es}</span>
+            <span className="flex items-center gap-2 text-white text-sm font-display font-semibold">
+              <img src={tool.icon} alt="" width={20} height={20} className="object-contain shrink-0" />
+              {lang === 'en' ? tool.title.en : tool.title.es}
+            </span>
             <p className="font-mono-jb text-[12px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{lang === 'en' ? tool.desc.en : tool.desc.es}</p>
           </a>
         ))}

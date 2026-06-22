@@ -117,7 +117,7 @@ export default function EngagementRateClient() {
 
         {!result && (
           <div className="text-center py-16">
-            <div className="text-5xl mb-4">❤️</div>
+            <div className="mb-4"><img src="/icons/community.webp" alt="" width={56} height={56} className="inline-block object-contain" /></div>
             <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
               {t('Introduce vistas, likes y comentarios para calcular el engagement.', 'Enter views, likes and comments to calculate engagement.')}
             </p>

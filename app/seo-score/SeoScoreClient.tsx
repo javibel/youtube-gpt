@@ -400,7 +400,7 @@ function SeoScoreContent() {
 
       {!urlResult && (!isAuthed || (hasLoadedChannel && channelScores.length === 0)) && !urlLoading && !channelLoading && (
         <div className="text-center py-20">
-          <div className="text-5xl mb-4">📊</div>
+          <div className="mb-4"><img src="/icons/bar-chart.webp" alt="" width={56} height={56} className="inline-block object-contain" /></div>
           <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
             {t(
               'Pega el enlace de cualquier vídeo de YouTube para obtener su SEO Score gratis.',

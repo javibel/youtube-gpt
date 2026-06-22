@@ -211,7 +211,7 @@ export default function TitleAnalyzerClient() {
 
         {!result && (
           <div className="text-center py-16">
-            <div className="text-5xl mb-4">📝</div>
+            <div className="mb-4"><img src="/icons/title.webp" alt="" width={56} height={56} className="inline-block object-contain" /></div>
             <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
               {t('Escribe un título arriba para analizarlo gratis.', 'Type a title above to analyze it for free.')}
             </p>

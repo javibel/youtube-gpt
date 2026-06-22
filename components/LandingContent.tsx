@@ -18,8 +18,8 @@ type Lang = 'es' | 'en';
 
 function TopNav({ lang }: { lang: Lang }) {
   const nav = lang === 'en'
-    ? [['#how', 'How it works'], ['#tools', 'Tools'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear']]
-    : [['#how', 'Cómo funciona'], ['#tools', 'Herramientas'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo']];
+    ? [['#how', 'How it works'], ['/tools', 'Tools'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear']]
+    : [['#how', 'Cómo funciona'], ['/tools', 'Herramientas'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo']];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
@@ -343,6 +343,15 @@ function FreeToolsStrip({ lang }: { lang: Lang }) {
               <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{tool.desc}</p>
             </Link>
           ))}
+        </div>
+        <div className="mt-8">
+          <Link
+            href="/tools"
+            className="font-mono-jb text-[13px] font-bold inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg transition"
+            style={{ color: '#00FFA3', border: '1px solid rgba(0,255,163,0.3)', background: 'rgba(0,255,163,0.06)' }}
+          >
+            {t('Ver las 9 herramientas gratis', 'See all 9 free tools')} →
+          </Link>
         </div>
       </div>
     </section>

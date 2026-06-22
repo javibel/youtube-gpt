@@ -11,7 +11,6 @@ export const metadata: Metadata = {
 interface Tool {
   href: string;
   icon: string;
-  color: string;
   title: string;
   desc: string;
   tag: string;
@@ -19,17 +18,18 @@ interface Tool {
 }
 
 // Agrupadas por propósito para que no sea un muro plano de tarjetas.
+// Iconos: set WebP de /public/icons (los mismos que usa la landing) — coherencia de marca.
 const GROUPS: { id: string; title: string; subtitle: string; tools: Tool[] }[] = [
   {
     id: 'instant',
     title: 'Instant free tools',
     subtitle: 'No signup, no card — results in your browser as you type.',
     tools: [
-      { href: '/title-analyzer', icon: '📝', color: '#FFE800', title: 'Title Analyzer', desc: 'Score any video title 0-100 with instant CTR & SEO tips, before you publish.', tag: 'FREE', free: true },
-      { href: '/seo-score', icon: '📊', color: '#e84d5b', title: 'SEO Score', desc: 'Analyze any published video and get a 0-100 SEO score with recommendations.', tag: 'FREE', free: true },
-      { href: '/ctr-calculator', icon: '🎯', color: '#22c55e', title: 'CTR Calculator', desc: 'Calculate your click-through rate and benchmark it against YouTube averages.', tag: 'FREE', free: true },
-      { href: '/youtube-money-calculator', icon: '💰', color: '#7CFF00', title: 'Money Calculator', desc: 'Estimate AdSense earnings from your monthly views and niche.', tag: 'FREE', free: true },
-      { href: '/engagement-rate-calculator', icon: '❤️', color: '#ee4d5e', title: 'Engagement Rate Calculator', desc: 'Measure a video\'s engagement from views, likes and comments and benchmark it.', tag: 'FREE', free: true },
+      { href: '/title-analyzer', icon: '/icons/title.webp', title: 'Title Analyzer', desc: 'Score any video title 0-100 with instant CTR & SEO tips, before you publish.', tag: 'FREE', free: true },
+      { href: '/seo-score', icon: '/icons/bar-chart.webp', title: 'SEO Score', desc: 'Analyze any published video and get a 0-100 SEO score with recommendations.', tag: 'FREE', free: true },
+      { href: '/ctr-calculator', icon: '/icons/target.webp', title: 'CTR Calculator', desc: 'Calculate your click-through rate and benchmark it against YouTube averages.', tag: 'FREE', free: true },
+      { href: '/youtube-money-calculator', icon: '/icons/chart-up.webp', title: 'Money Calculator', desc: 'Estimate AdSense earnings from your monthly views and niche.', tag: 'FREE', free: true },
+      { href: '/engagement-rate-calculator', icon: '/icons/community.webp', title: 'Engagement Rate Calculator', desc: 'Measure a video\'s engagement from views, likes and comments and benchmark it.', tag: 'FREE', free: true },
     ],
   },
   {
@@ -37,10 +37,10 @@ const GROUPS: { id: string; title: string; subtitle: string; tools: Tool[] }[] =
     title: 'Discover & create',
     subtitle: 'Find what works right now and turn it into content.',
     tools: [
-      { href: '/youtube-title-ideas', icon: '💡', color: '#FFE800', title: 'Title Ideas by Niche', desc: 'Dozens of ready-to-use viral title ideas for your niche: gaming, cooking, fitness and more.', tag: 'FREE', free: true },
-      { href: '/trends', icon: '🔥', color: '#FF8A00', title: 'Trending Explorer', desc: 'The 20 most explosive videos right now across 6 countries. Updated every 30 minutes.', tag: 'FREE', free: true },
-      { href: '/generate', icon: '✍️', color: '#FFE800', title: 'AI Generator', desc: 'Titles, descriptions, scripts, captions and thumbnails generated with YouTube-optimized AI.', tag: '10 FREE/MO', free: true },
-      { href: '/embed', icon: '🧩', color: '#00E5FF', title: 'Embeddable Widget', desc: 'Add the SEO analyzer to your site with one line of HTML. Free and unlimited.', tag: 'FREE', free: true },
+      { href: '/youtube-title-ideas', icon: '/icons/bulb.webp', title: 'Title Ideas by Niche', desc: 'Dozens of ready-to-use viral title ideas for your niche: gaming, cooking, fitness and more.', tag: 'FREE', free: true },
+      { href: '/trends', icon: '/icons/trend.webp', title: 'Trending Explorer', desc: 'The 20 most explosive videos right now across 6 countries. Updated every 30 minutes.', tag: 'FREE', free: true },
+      { href: '/generate', icon: '/icons/magic-wand.webp', title: 'AI Generator', desc: 'Titles, descriptions, scripts, captions and thumbnails generated with YouTube-optimized AI.', tag: '10 FREE/MO', free: true },
+      { href: '/embed', icon: '/icons/globe.webp', title: 'Embeddable Widget', desc: 'Add the SEO analyzer to your site with one line of HTML. Free and unlimited.', tag: 'FREE', free: true },
     ],
   },
   {
@@ -48,8 +48,8 @@ const GROUPS: { id: string; title: string; subtitle: string; tools: Tool[] }[] =
     title: 'Pro tools',
     subtitle: 'Deeper research and channel data with a Pro account.',
     tools: [
-      { href: '/features/keyword-research', icon: '🔑', color: '#7CFF00', title: 'Keyword Research', desc: 'Find the keywords your audience searches for. Volume, competition, and related suggestions.', tag: 'PRO', free: false },
-      { href: '/features/competitor-analysis', icon: '🕵️', color: '#B388FF', title: 'Competitor Analysis', desc: 'Analyze any channel: top videos, keywords they use, publishing frequency.', tag: 'PRO', free: false },
+      { href: '/features/keyword-research', icon: '/icons/key.webp', title: 'Keyword Research', desc: 'Find the keywords your audience searches for. Volume, competition, and related suggestions.', tag: 'PRO', free: false },
+      { href: '/features/competitor-analysis', icon: '/icons/swords.webp', title: 'Competitor Analysis', desc: 'Analyze any channel: top videos, keywords they use, publishing frequency.', tag: 'PRO', free: false },
     ],
   },
 ];
@@ -88,7 +88,7 @@ export default function ToolsPage() {
                     style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--yv-border)' }}
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <span className="text-3xl">{tool.icon}</span>
+                      <img src={tool.icon} alt="" width={40} height={40} className="object-contain" />
                       <span
                         className="font-mono-jb text-[11px] tracking-wider font-bold px-2 py-0.5 rounded"
                         style={{

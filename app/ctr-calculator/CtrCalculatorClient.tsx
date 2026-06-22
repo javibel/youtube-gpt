@@ -129,7 +129,7 @@ export default function CtrCalculatorClient() {
 
         {!result && (
           <div className="text-center py-16">
-            <div className="text-5xl mb-4">🎯</div>
+            <div className="mb-4"><img src="/icons/target.webp" alt="" width={56} height={56} className="inline-block object-contain" /></div>
             <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
               {t('Introduce impresiones y clics para calcular tu CTR.', 'Enter impressions and clicks to calculate your CTR.')}
             </p>
