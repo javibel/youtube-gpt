@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     const lang = (form.get('lang') as string) || 'en';
     const facePosition = (form.get('facePosition') as string) || 'right';
     const facePhotoFile = form.get('facePhoto') as File | null;
+    const customText = ((form.get('thumbnailText') as string) || '').trim().slice(0, 60);
     const isEn = lang === 'en';
 
     if (!tema || tema.length < 3) {
@@ -138,6 +139,10 @@ MANDATORY:
       : `The thumbnail should have a clear focal point and bold visual elements distributed across the image.
 You may include stylized silhouettes or abstract human forms if relevant, but avoid photorealistic faces.`;
 
+    const textDirective = customText
+      ? `TEXT OVERLAY (USER-SUPPLIED, MUST BE RENDERED EXACTLY): Render the following text verbatim — do NOT change, translate, shorten, add to, or paraphrase it: "${customText.replace(/"/g, '')}". Place it prominently on the ${hasFace ? (faceOnLeft ? 'RIGHT side' : 'LEFT side') : 'image'}${hasFace ? ' (away from the person zone)' : ''}, large, bold, high-contrast, easy to read on mobile.`
+      : `TEXT OVERLAY: Choose a short, punchy text overlay (max 3-5 bold words) relevant to the topic, positioned ${hasFace ? `on the ${faceOnLeft ? 'right' : 'left'} side (away from the person zone)` : 'on the image'}, large, bold, high-contrast.`;
+
     const claudePrompt = `You are an expert YouTube thumbnail designer. Generate a detailed image generation prompt for creating a professional, click-worthy YouTube thumbnail background.
 
 VIDEO TOPIC: ${tema}
@@ -145,10 +150,11 @@ VISUAL STYLE: ${estilo}
 
 ${compositionInstruction}
 
+${textDirective}
+
 Create a prompt that describes:
 - Background scene, environment, or abstract design that fits the topic
 - Color palette and lighting (high contrast, vibrant, cinematic)
-- Any text overlay to include (max 3-5 bold words) — position on the ${hasFace ? (faceOnLeft ? 'right side' : 'left side') : 'image'}
 - Mood and emotion that drives clicks
 - Style should look professional, not AI-generated
 
@@ -263,7 +269,7 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
       data: {
         userId: user.id,
         template: 'thumbnail',
-        inputs: { tema, estilo, imagePrompt, hasFace, facePosition },
+        inputs: { tema, estilo, imagePrompt, hasFace, facePosition, customText },
         output: permanentUrl,
         tokensUsed: claudeData.usage?.output_tokens ?? 0,
         ipAddress: ip,
@@ -297,12 +303,28 @@ async function compositeFaceOnBackground(
   // Ensure background is exactly 1312x736
   const bg = sharp(bgBuffer).resize(BG_W, BG_H, { fit: 'cover' });
 
+  // Trim the transparent padding around the bg-removed cutout so the person is
+  // tight in its bounding box (otherwise it floats in the middle of the reserved
+  // zone). Only trim when the image has an alpha channel (bg-removed PNG); a raw
+  // uploaded photo (fallback path) is an opaque rectangle and must NOT be trimmed.
+  let faceSrc = faceBuffer;
+  const srcMeta = await sharp(faceBuffer).metadata();
+  if (srcMeta.hasAlpha) {
+    try {
+      const trimmed = await sharp(faceBuffer).trim({ threshold: 12 }).png().toBuffer();
+      const tMeta = await sharp(trimmed).metadata();
+      if ((tMeta.width || 0) > 10 && (tMeta.height || 0) > 10) faceSrc = trimmed;
+    } catch {
+      /* trim failed — keep original */
+    }
+  }
+
   // Process face: fit inside a bounded box so it never dominates the thumbnail
   // or spills into the text zone. Claude's composition prompt keeps text on the
   // opposite side, so the face stays on its clean side. ~40% width × ~58% height.
   const maxFaceW = Math.round(BG_W * 0.40);
   const maxFaceH = Math.round(BG_H * 0.58);
-  const resizedFace = await sharp(faceBuffer)
+  const resizedFace = await sharp(faceSrc)
     .resize(maxFaceW, maxFaceH, { fit: 'inside', withoutEnlargement: true })
     .ensureAlpha()
     .png()
@@ -312,12 +334,11 @@ async function compositeFaceOnBackground(
   const faceW = faceMeta.width || maxFaceW;
   const faceH = faceMeta.height || maxFaceH;
 
-  // Position: anchored to bottom on the chosen side, small insets so it doesn't
-  // touch the edges or cross the centerline into the text zone.
-  const sideMargin = Math.round(BG_W * 0.03);
-  const bottomInset = Math.round(BG_H * 0.02);
-  const left = faceOnLeft ? sideMargin : BG_W - faceW - sideMargin;
-  const top = BG_H - faceH - bottomInset;
+  // Position: flush to the bottom + chosen side edge (no inset) so the person is
+  // aligned with the corner — never floating/offset. The opposite side stays free
+  // for the text (Claude's keep-out zone).
+  const left = faceOnLeft ? 0 : BG_W - faceW;
+  const top = BG_H - faceH;
 
   // Create shadow layer (slightly offset, blurred)
   const shadowOffset = 4;

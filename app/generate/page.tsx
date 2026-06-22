@@ -79,6 +79,7 @@ export default function GeneratePage() {
   const [facePhoto, setFacePhoto] = useState<File | null>(null);
   const [facePhotoPreview, setFacePhotoPreview] = useState<string>('');
   const [facePosition, setFacePosition] = useState<'left' | 'right'>('right');
+  const [thumbnailText, setThumbnailText] = useState('');
   const [removingBg, setRemovingBg] = useState(false);
   const [bgRemovalFailed, setBgRemovalFailed] = useState(false);
 
@@ -156,6 +157,7 @@ export default function GeneratePage() {
         body.append('estilo', formData.estilo || 'viral');
         body.append('lang', lang);
         body.append('facePosition', facePosition);
+        if (thumbnailText.trim()) body.append('thumbnailText', thumbnailText.trim());
         if (facePhoto) body.append('facePhoto', facePhoto);
         const res = await fetch('/api/generate-thumbnail', {
           method: 'POST',
@@ -495,6 +497,23 @@ export default function GeneratePage() {
                       </p>
                     )}
                   </div>
+                </div>
+                <div className="mt-5">
+                  <label htmlFor="thumb-text" className="block font-mono-jb text-[13px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-3)' }}>
+                    {t('Texto de la miniatura (opcional)', 'Thumbnail text (optional)')}
+                  </label>
+                  <input
+                    id="thumb-text"
+                    type="text"
+                    maxLength={60}
+                    value={thumbnailText}
+                    onChange={(e) => setThumbnailText(e.target.value)}
+                    className="soft-field w-full text-sm"
+                    placeholder={t('Ej: EL TRUCO DEFINITIVO — déjalo vacío para que la IA lo elija', 'E.g. THE ULTIMATE TRICK — leave empty to let AI pick')}
+                  />
+                  <p className="text-[12px] mt-1.5" style={{ color: 'var(--yv-text-4)' }}>
+                    {t('Si escribes algo, aparecerá exactamente en la miniatura. Si lo dejas vacío, la IA elige el texto.', 'If you write something, it appears verbatim on the thumbnail. Leave empty and AI picks the text.')}
+                  </p>
                 </div>
                 <p className="text-[12px] mt-4 leading-relaxed" style={{ color: 'var(--yv-text-4)' }}>
                   {t(
