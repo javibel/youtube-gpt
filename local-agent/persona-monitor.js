@@ -32,6 +32,18 @@ const REPORTS_DIR  = path.join(__dirname, 'reports');
 const HEALTH_FILE  = () => path.join(REPORTS_DIR, `persona-health-${today()}.json`);
 const COOKIES_DIR  = path.join(__dirname, 'cookies');
 
+// Solo vigilar plataformas cuya automatización está activa. Si una plataforma
+// está gateada OFF (ej. Facebook), nunca publica → no tiene sentido alertar
+// de "silencio" cada hora. Debe espejar el gating de persona-runner.js.
+const FACEBOOK_AUTOMATION_ENABLED = process.env.FACEBOOK_AUTOMATION_ENABLED === 'true';
+const BLUESKY_AUTOMATION_ENABLED  = process.env.BLUESKY_AUTOMATION_ENABLED === 'true';
+function platformEnabled(platform) {
+  if (platform === 'twitter')  return true; // siempre activo
+  if (platform === 'facebook') return FACEBOOK_AUTOMATION_ENABLED;
+  if (platform === 'bluesky')  return BLUESKY_AUTOMATION_ENABLED;
+  return true;
+}
+
 // Retry count tracker (in-memory, resets on PM2 restart)
 const retryCount = {};
 
@@ -201,6 +213,10 @@ async function runPersonaMonitor() {
     health.personas[persona.id] = health.personas[persona.id] || {};
 
     for (const platform of platforms) {
+      if (!platformEnabled(platform)) {
+        log(`${persona.id}/${platform}: SKIPPED (automatización desactivada)`);
+        continue;
+      }
       const threshold = silenceThresholdMs(platform);
       let lastActivity = null;
 
@@ -226,12 +242,17 @@ async function runPersonaMonitor() {
 
       log(`${persona.id}/${platform}: ${status} — last activity ${lastActivity ? lastActivity.toISOString() : 'never'} (${silenceH}h ago)`);
 
+      // Preservar alertedAt del estado previo: rebuild completo borraba el
+      // marcador de dedup diario → re-alertaba cada hora. El archivo de salud
+      // es por-día, así que conservarlo dentro del mismo día es correcto.
+      const prevHealth = health.personas[persona.id][platform] || {};
       health.personas[persona.id][platform] = {
         status,
         lastActivity: lastActivity?.toISOString() || null,
         silenceHours: silenceH,
         cookieOk,
         checkedAt: new Date().toISOString(),
+        alertedAt: prevHealth.alertedAt,
       };
 
       if (!isSilent) continue;
