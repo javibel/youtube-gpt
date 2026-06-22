@@ -128,13 +128,13 @@ export async function POST(request: Request) {
 
     // Step 1: Claude generates an optimized image prompt for Ideogram
     const compositionInstruction = hasFace
-      ? `CRITICAL COMPOSITION RULE: A person's photo will be composited on the ${faceOnLeft ? 'LEFT' : 'RIGHT'} side of the thumbnail.
-Therefore, the generated background must:
-- Leave the ${faceOnLeft ? 'left ~40%' : 'right ~40%'} of the image relatively clean/simple (no important elements there — they will be covered by the person)
-- Place all text, key visual elements, and focal points on the ${faceOnLeft ? 'RIGHT ~60%' : 'LEFT ~60%'} of the image
-- Use dramatic lighting, gradients, or subtle patterns in the empty zone (not flat color — it should look intentional)
-- The background should complement a person standing/posing on that side
-- DO NOT generate any people or faces in the image — the real person will be added later`
+      ? `CRITICAL COMPOSITION RULE (NON-NEGOTIABLE): A real person's photo will be composited on the ${faceOnLeft ? 'LEFT' : 'RIGHT'} side of the thumbnail and will cover roughly the ${faceOnLeft ? 'left 42%' : 'right 42%'} of the image, full height. ANYTHING drawn in that zone gets hidden behind the person and is wasted.
+
+MANDATORY:
+- The ${faceOnLeft ? 'LEFT 42%' : 'RIGHT 42%'} of the image is a RESERVED KEEP-OUT ZONE for the person. Put NOTHING important there: no text, no faces, no characters, no logos, no key objects, no focal points. Only background texture (gradients, lighting, subtle patterns) that complements a person standing there.
+- ALL text (max 3-5 bold words), key visual elements, and the main focal point MUST go on the ${faceOnLeft ? 'RIGHT ~58%' : 'LEFT ~58%'} of the image.
+- DO NOT generate any people, characters, or faces anywhere in the image — the real person is added later.
+- The keep-out zone must still look intentional (dramatic lighting/gradient), never flat or empty.`
       : `The thumbnail should have a clear focal point and bold visual elements distributed across the image.
 You may include stylized silhouettes or abstract human forms if relevant, but avoid photorealistic faces.`;
 
