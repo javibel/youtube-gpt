@@ -297,22 +297,27 @@ async function compositeFaceOnBackground(
   // Ensure background is exactly 1312x736
   const bg = sharp(bgBuffer).resize(BG_W, BG_H, { fit: 'cover' });
 
-  // Process face: resize to ~65% of background height, maintain aspect ratio
-  const faceHeight = Math.round(BG_H * 0.85);
+  // Process face: fit inside a bounded box so it never dominates the thumbnail
+  // or spills into the text zone. Claude's composition prompt keeps text on the
+  // opposite side, so the face stays on its clean side. ~40% width × ~58% height.
+  const maxFaceW = Math.round(BG_W * 0.40);
+  const maxFaceH = Math.round(BG_H * 0.58);
   const resizedFace = await sharp(faceBuffer)
-    .resize({ height: faceHeight, withoutEnlargement: true })
+    .resize(maxFaceW, maxFaceH, { fit: 'inside', withoutEnlargement: true })
     .ensureAlpha()
     .png()
     .toBuffer();
 
   const faceMeta = await sharp(resizedFace).metadata();
-  const faceW = faceMeta.width || 300;
-  const faceH = faceMeta.height || faceHeight;
+  const faceW = faceMeta.width || maxFaceW;
+  const faceH = faceMeta.height || maxFaceH;
 
-  // Position: anchored to bottom, offset from edge
-  const margin = Math.round(BG_W * 0.02); // 2% margin from edge
-  const left = faceOnLeft ? margin : BG_W - faceW - margin;
-  const top = BG_H - faceH; // anchor to bottom
+  // Position: anchored to bottom on the chosen side, small insets so it doesn't
+  // touch the edges or cross the centerline into the text zone.
+  const sideMargin = Math.round(BG_W * 0.03);
+  const bottomInset = Math.round(BG_H * 0.02);
+  const left = faceOnLeft ? sideMargin : BG_W - faceW - sideMargin;
+  const top = BG_H - faceH - bottomInset;
 
   // Create shadow layer (slightly offset, blurred)
   const shadowOffset = 4;

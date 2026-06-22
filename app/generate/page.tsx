@@ -80,6 +80,7 @@ export default function GeneratePage() {
   const [facePhotoPreview, setFacePhotoPreview] = useState<string>('');
   const [facePosition, setFacePosition] = useState<'left' | 'right'>('right');
   const [removingBg, setRemovingBg] = useState(false);
+  const [bgRemovalFailed, setBgRemovalFailed] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -449,6 +450,7 @@ export default function GeneratePage() {
                       if (file.size > 5 * 1024 * 1024) { setError(t('La foto no puede superar 5MB', 'Photo must be under 5MB')); return; }
                       setError('');
                       setRemovingBg(true);
+                      setBgRemovalFailed(false);
                       try {
                         const { removeBackground } = await import('@imgly/background-removal');
                         const blob = await removeBackground(file, { output: { format: 'image/png' } });
@@ -457,6 +459,7 @@ export default function GeneratePage() {
                         setFacePhotoPreview(URL.createObjectURL(blob));
                       } catch (err) {
                         console.error('Background removal failed, using original:', err);
+                        setBgRemovalFailed(true);
                         setFacePhoto(file);
                         const reader = new FileReader();
                         reader.onload = () => setFacePhotoPreview(reader.result as string);
@@ -479,9 +482,17 @@ export default function GeneratePage() {
                       ))}
                     </div>
                     {facePhotoPreview && (
-                      <button onClick={() => { setFacePhoto(null); setFacePhotoPreview(''); }} className="text-[12px] hover:text-white transition" style={{ color: 'var(--yv-text-4)' }}>
+                      <button onClick={() => { setFacePhoto(null); setFacePhotoPreview(''); setBgRemovalFailed(false); }} className="text-[12px] hover:text-white transition" style={{ color: 'var(--yv-text-4)' }}>
                         {t('Quitar foto', 'Remove photo')}
                       </button>
+                    )}
+                    {bgRemovalFailed && (
+                      <p className="text-[11px] leading-snug" style={{ color: '#f5a623' }}>
+                        {t(
+                          'No pudimos recortar el fondo automáticamente (tu navegador bloqueó el modelo). Se usará la foto tal cual; el fondo saldrá visible.',
+                          'We couldn\'t remove the background automatically (your browser blocked the model). The photo will be used as-is; the background will show.'
+                        )}
+                      </p>
                     )}
                   </div>
                 </div>
