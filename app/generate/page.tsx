@@ -11,6 +11,7 @@ import { useLang } from '@/components/LangProvider';
 import { toast } from '@/components/Toaster';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
+const ThumbnailEditor = lazy(() => import('@/components/ThumbnailEditor'));
 
 // Template metadata for the new UI
 const TPL_META: Record<string, { icon: string; color: string; est: string }> = {
@@ -423,135 +424,15 @@ export default function GeneratePage() {
               </div>
             )}
 
-            {/* Thumbnail: face photo upload + position */}
+            {/* Thumbnail: canvas editor */}
             {selectedTemplate === 'thumbnail' && (
-              <div className="yv-card p-6">
-                <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-3)' }}>
-                  {t('Tu foto (opcional)', 'Your photo (optional)')}
-                </p>
-                <p className="text-[13px] mb-4" style={{ color: 'var(--yv-text-4)' }}>
-                  {t('Sube tu foto y eliminaremos el fondo automáticamente.', 'Upload your photo and we\'ll remove the background automatically.')}
-                </p>
-                <div className="flex items-start gap-4 flex-wrap">
-                  <label className={`flex flex-col items-center justify-center w-32 h-32 rounded-xl border-2 border-dashed transition overflow-hidden ${removingBg ? 'pointer-events-none opacity-60' : 'cursor-pointer hover:border-white/40'}`} style={{ borderColor: facePhotoPreview ? '#7CFF00' : 'var(--yv-border)', background: 'var(--yv-bg-0)' }}>
-                    {removingBg ? (
-                      <div className="flex flex-col items-center gap-2 text-center px-2">
-                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full spin-r" />
-                        <span className="text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{t('Quitando fondo...', 'Removing bg...')}</span>
-                      </div>
-                    ) : facePhotoPreview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={facePhotoPreview} alt="Face" className="w-full h-full object-contain" style={{ background: 'repeating-conic-gradient(#1a1a1a 0% 25%, #111 0% 50%) 50% / 16px 16px' }} />
-                    ) : (
-                      <div className="flex flex-col items-center gap-1 text-center px-2">
-                        <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} style={{ color: 'var(--yv-text-4)' }}><path d="M12 5v14M5 12h14"/></svg>
-                        <span className="text-[11px]" style={{ color: 'var(--yv-text-4)' }}>{t('Subir foto', 'Upload photo')}</span>
-                      </div>
-                    )}
-                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.size > 5 * 1024 * 1024) { setError(t('La foto no puede superar 5MB', 'Photo must be under 5MB')); return; }
-                      setError('');
-                      setRemovingBg(true);
-                      setBgRemovalFailed(false);
-                      try {
-                        const { removeBackground } = await import('@imgly/background-removal');
-                        const blob = await removeBackground(file, { model: 'isnet_fp16', output: { format: 'image/png' } });
-                        const pngFile = new File([blob], 'face.png', { type: 'image/png' });
-                        setFacePhoto(pngFile);
-                        setFacePhotoPreview(URL.createObjectURL(blob));
-                      } catch (err) {
-                        console.error('Background removal failed, using original:', err);
-                        setBgRemovalFailed(true);
-                        setFacePhoto(file);
-                        const reader = new FileReader();
-                        reader.onload = () => setFacePhotoPreview(reader.result as string);
-                        reader.readAsDataURL(file);
-                      } finally {
-                        setRemovingBg(false);
-                      }
-                    }} />
-                  </label>
-                  <div className="flex flex-col gap-3">
-                    <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>
-                      {t('Posición', 'Position')}
-                    </p>
-                    <div className="flex gap-2">
-                      {(['left', 'right'] as const).map((pos) => (
-                        <button key={pos} onClick={() => setFacePosition(pos)}
-                          className={`soft-chip px-4 py-2 text-[13px] font-mono-jb tracking-wider uppercase ${facePosition === pos ? 'soft-chip-active' : 'hover:text-white'}`}>
-                          {pos === 'left' ? t('◀ Izquierda', '◀ Left') : t('Derecha ▶', 'Right ▶')}
-                        </button>
-                      ))}
-                    </div>
-                    {facePhotoPreview && (
-                      <button onClick={() => { setFacePhoto(null); setFacePhotoPreview(''); setBgRemovalFailed(false); }} className="text-[12px] hover:text-white transition" style={{ color: 'var(--yv-text-4)' }}>
-                        {t('Quitar foto', 'Remove photo')}
-                      </button>
-                    )}
-                    {facePhotoPreview && (
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>
-                            {t('Tamaño', 'Size')}
-                          </p>
-                          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{faceScale}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={40}
-                          max={100}
-                          step={5}
-                          value={faceScale}
-                          onChange={(e) => setFaceScale(Number(e.target.value))}
-                          className="w-full accent-[#7CFF00] cursor-pointer"
-                        />
-                        <div className="flex justify-between text-[10px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
-                          <span>40%</span>
-                          <span>{t('alto del thumbnail', 'thumbnail height')}</span>
-                          <span>100%</span>
-                        </div>
-                      </div>
-                    )}
-                    {bgRemovalFailed && (
-                      <p className="text-[11px] leading-snug" style={{ color: '#f5a623' }}>
-                        {t(
-                          'No pudimos recortar el fondo automáticamente (tu navegador bloqueó el modelo). Se usará la foto tal cual; el fondo saldrá visible.',
-                          'We couldn\'t remove the background automatically (your browser blocked the model). The photo will be used as-is; the background will show.'
-                        )}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-5">
-                  <label htmlFor="thumb-text" className="block font-mono-jb text-[13px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-3)' }}>
-                    {t('Texto de la miniatura (opcional)', 'Thumbnail text (optional)')}
-                  </label>
-                  <input
-                    id="thumb-text"
-                    type="text"
-                    maxLength={60}
-                    value={thumbnailText}
-                    onChange={(e) => setThumbnailText(e.target.value)}
-                    className="soft-field w-full text-sm"
-                    placeholder={t('Ej: EL TRUCO DEFINITIVO — déjalo vacío para que la IA lo elija', 'E.g. THE ULTIMATE TRICK — leave empty to let AI pick')}
-                  />
-                  <p className="text-[12px] mt-1.5" style={{ color: 'var(--yv-text-4)' }}>
-                    {t('Si escribes algo, aparecerá exactamente en la miniatura. Si lo dejas vacío, la IA elige el texto.', 'If you write something, it appears verbatim on the thumbnail. Leave empty and AI picks the text.')}
-                  </p>
-                </div>
-                <p className="text-[12px] mt-4 leading-relaxed" style={{ color: 'var(--yv-text-4)' }}>
-                  {t(
-                    'Privacidad: el texto del tema se envía a Ideogram (EE.UU.) para crear el fondo — no incluyas datos personales en él. Tu foto se compone en nuestros servidores y NO se envía a Ideogram.',
-                    'Privacy: the topic text is sent to Ideogram (US) to create the background — don\'t include personal data in it. Your photo is composited on our servers and is NOT sent to Ideogram.'
-                  )}
-                </p>
-              </div>
+              <Suspense fallback={<div className="yv-card p-8 text-center text-sm" style={{ color: 'var(--yv-text-4)' }}>{t('Cargando editor…', 'Loading editor…')}</div>}>
+                <ThumbnailEditor lang={lang} isPro={isPro} />
+              </Suspense>
             )}
 
-            {/* Generate */}
-            <div className="flex items-center gap-4 flex-wrap">
+            {/* Generate — hidden when the canvas editor is active (it has its own save button) */}
+            <div className={`flex items-center gap-4 flex-wrap${selectedTemplate === 'thumbnail' ? ' hidden' : ''}`}>
               <button
                 onClick={handleGenerate}
                 disabled={loading || !formData.tema.trim()}
