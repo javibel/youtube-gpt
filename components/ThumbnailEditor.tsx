@@ -5,6 +5,102 @@ import dynamic from 'next/dynamic';
 import type Konva from 'konva';
 import { THUMB_W, THUMB_H, type PhotoItem, type TextItem } from '@/lib/thumbnail-types';
 
+// ─── Image pre/post processing helpers ───────────────────────────────────────
+
+/**
+ * Unsharp mask (amount=1.4) before sending to IS-Net.
+ * Sharper edges → the model localises subject boundaries more accurately,
+ * preserving thin structures like arms and hair.
+ * Images larger than MAX_SIDE are downscaled first (IS-Net works at ~512px
+ * internally so there is no quality loss for the alpha mask).
+ */
+async function edgeEnhanceForRemoval(file: File): Promise<Blob> {
+  const MAX_SIDE = 1800;
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+  const W = Math.round(bmp.width  * scale);
+  const H = Math.round(bmp.height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(bmp, 0, 0, W, H);
+  bmp.close?.();
+
+  const id  = ctx.getImageData(0, 0, W, H);
+  const src = id.data;
+  const out = new Uint8ClampedArray(src.length);
+
+  // 3×3 USM kernel: center=2.4, each of 8 neighbours=-0.175  (sum=1.0 → brightness preserved)
+  const CENTER = 2.4;
+  const SIDE   = -0.175;
+  const STRIDE = W * 4;
+
+  for (let y = 0; y < H; y++) {
+    const yT = Math.max(0, y - 1) * STRIDE;
+    const yM = y                  * STRIDE;
+    const yB = Math.min(H - 1, y + 1) * STRIDE;
+    for (let x = 0; x < W; x++) {
+      const xL = Math.max(0, x - 1)      * 4;
+      const xC = x                        * 4;
+      const xR = Math.min(W - 1, x + 1)  * 4;
+      const i  = yM + xC;
+      for (let c = 0; c < 3; c++) {
+        const neighbours =
+          src[yT + xL + c] + src[yT + xC + c] + src[yT + xR + c] +
+          src[yM + xL + c]                      + src[yM + xR + c] +
+          src[yB + xL + c] + src[yB + xC + c] + src[yB + xR + c];
+        out[i + c] = Math.max(0, Math.min(255, Math.round(src[i + c] * CENTER + neighbours * SIDE)));
+      }
+      out[i + 3] = src[i + 3];
+    }
+  }
+
+  ctx.putImageData(new ImageData(out, W, H), 0, 0);
+  return new Promise((res, rej) =>
+    canvas.toBlob(b => (b ? res(b) : rej(new Error('edgeEnhance: toBlob failed'))), 'image/png'),
+  );
+}
+
+/**
+ * Smooth the alpha channel at boundary pixels (alpha 8–247) with a 3×3 mean.
+ * IS-Net outputs slightly jagged masks; this one pass softens those edges
+ * without blurring the interior of the subject.
+ */
+async function smoothBgMaskEdges(blob: Blob): Promise<Blob> {
+  const bmp = await createImageBitmap(blob);
+  const { width: W, height: H } = bmp;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(bmp, 0, 0);
+  bmp.close?.();
+
+  const id  = ctx.getImageData(0, 0, W, H);
+  const src = id.data;
+  const out = new Uint8ClampedArray(src.length);
+  out.set(src);
+
+  const STRIDE = W * 4;
+  for (let y = 1; y < H - 1; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      const i = y * STRIDE + x * 4;
+      const a = src[i + 3];
+      if (a < 8 || a > 247) continue; // skip fully transparent / fully opaque
+      const avg =
+        src[(y-1)*STRIDE+(x-1)*4+3] + src[(y-1)*STRIDE+x*4+3] + src[(y-1)*STRIDE+(x+1)*4+3] +
+        src[ y   *STRIDE+(x-1)*4+3] + a                         + src[ y   *STRIDE+(x+1)*4+3] +
+        src[(y+1)*STRIDE+(x-1)*4+3] + src[(y+1)*STRIDE+x*4+3] + src[(y+1)*STRIDE+(x+1)*4+3];
+      out[i + 3] = Math.round(avg / 9);
+    }
+  }
+
+  ctx.putImageData(new ImageData(out, W, H), 0, 0);
+  return new Promise((res, rej) =>
+    canvas.toBlob(b => (b ? res(b) : rej(new Error('smoothEdges: toBlob failed'))), 'image/png'),
+  );
+}
+
 // Konva requires DOM — load only on the client
 const ThumbnailCanvasInner = dynamic(
   () => import('./ThumbnailCanvasInner'),
@@ -132,9 +228,14 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     let src = '';
     try {
       if (removeBgEnabled) {
+        // 1. Sharpen edges so IS-Net segments more accurately
+        const enhanced = await edgeEnhanceForRemoval(file);
+        // 2. Remove background from the edge-enhanced version
         const { removeBackground } = await import('@imgly/background-removal');
-        const blob = await removeBackground(file, { model: 'isnet_fp16', output: { format: 'image/png' } });
-        src = URL.createObjectURL(blob);
+        const rawBlob = await removeBackground(enhanced, { model: 'isnet_fp16', output: { format: 'image/png' } });
+        // 3. Smooth jagged alpha boundary from IS-Net
+        const refined = await smoothBgMaskEdges(rawBlob);
+        src = URL.createObjectURL(refined);
       } else {
         src = URL.createObjectURL(file);
       }
