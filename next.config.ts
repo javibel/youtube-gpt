@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://js.stripe.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' blob: https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com wss:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com; object-src 'none'; base-uri 'self'" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://js.stripe.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' blob: https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com wss:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'" },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self)' },
         ],
       },
