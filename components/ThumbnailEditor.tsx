@@ -196,6 +196,95 @@ async function smoothBgMaskEdges(blob: Blob): Promise<Blob> {
   return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
 }
 
+/**
+ * Fill interior transparent holes: BFS from border transparent pixels marks
+ * "real background". Any transparent pixel not reachable from the border is
+ * an interior hole (e.g. inside hair or clothing) — set alpha to 255.
+ */
+async function fillAlphaHoles(blob: Blob): Promise<Blob> {
+  const bmp = await createImageBitmap(blob);
+  const { width: W, height: H } = bmp;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(bmp, 0, 0);
+  bmp.close?.();
+  const id  = ctx.getImageData(0, 0, W, H);
+  const pix = id.data;
+
+  const alpha = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) alpha[i] = pix[i * 4 + 3];
+
+  const visited = new Uint8Array(W * H);
+  const queue: number[] = [];
+
+  const seed = (idx: number) => {
+    if (!visited[idx] && alpha[idx] < 128) { visited[idx] = 1; queue.push(idx); }
+  };
+  for (let x = 0; x < W; x++) { seed(x); seed((H - 1) * W + x); }
+  for (let y = 1; y < H - 1; y++) { seed(y * W); seed(y * W + W - 1); }
+
+  let qi = 0;
+  while (qi < queue.length) {
+    const idx = queue[qi++];
+    const x = idx % W, y = (idx / W) | 0;
+    if (y > 0)     seed(idx - W);
+    if (y < H - 1) seed(idx + W);
+    if (x > 0)     seed(idx - 1);
+    if (x < W - 1) seed(idx + 1);
+  }
+
+  for (let i = 0; i < W * H; i++) {
+    if (!visited[i] && alpha[i] < 128) pix[i * 4 + 3] = 255;
+  }
+
+  ctx.putImageData(id, 0, 0);
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
+}
+
+/**
+ * Expand the alpha mask by `radius` pixels (separable max-filter: H then V).
+ * Recovers edges that IS-Net eroded without touching RGB values.
+ */
+async function dilateAlpha(blob: Blob, radius = 3): Promise<Blob> {
+  const bmp = await createImageBitmap(blob);
+  const { width: W, height: H } = bmp;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(bmp, 0, 0);
+  bmp.close?.();
+  const id  = ctx.getImageData(0, 0, W, H);
+  const pix = id.data;
+
+  const alpha = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) alpha[i] = pix[i * 4 + 3];
+
+  // Horizontal pass
+  const hPass = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let max = 0;
+      const x0 = Math.max(0, x - radius), x1 = Math.min(W - 1, x + radius);
+      for (let nx = x0; nx <= x1; nx++) { const v = alpha[y * W + nx]; if (v > max) max = v; }
+      hPass[y * W + x] = max;
+    }
+  }
+
+  // Vertical pass
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let max = 0;
+      const y0 = Math.max(0, y - radius), y1 = Math.min(H - 1, y + radius);
+      for (let ny = y0; ny <= y1; ny++) { const v = hPass[ny * W + x]; if (v > max) max = v; }
+      pix[(y * W + x) * 4 + 3] = max;
+    }
+  }
+
+  ctx.putImageData(id, 0, 0);
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
+}
+
 // ─── Crop UI ─────────────────────────────────────────────────────────────────
 
 type CropHandle = 'move' | 'tl' | 'tr' | 'bl' | 'br';
@@ -570,8 +659,12 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
       const masked = await removeBackground(enhanced, { model: 'isnet_fp16', output: { format: 'image/png' } });
       // 4. Transfer IS-Net's alpha to the ORIGINAL photo (real colours)
       const withOrig = await applyAlphaMaskToOriginal(photoOrigFile, masked);
-      // 5. Smooth jagged boundary pixels
-      const refined  = await smoothBgMaskEdges(withOrig);
+      // 5. Fill interior holes (hair gaps, clothing gaps IS-Net missed)
+      const filled   = await fillAlphaHoles(withOrig);
+      // 6. Dilate 3px to recover edges IS-Net eroded
+      const dilated  = await dilateAlpha(filled, 3);
+      // 7. Feather the boundary
+      const refined  = await smoothBgMaskEdges(dilated);
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(refined) } : p);
       setBgRemoved(true);
     } catch {
