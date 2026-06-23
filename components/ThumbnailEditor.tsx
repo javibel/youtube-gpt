@@ -5,6 +5,53 @@ import dynamic from 'next/dynamic';
 import type Konva from 'konva';
 import { THUMB_W, THUMB_H, type PhotoItem, type TextItem } from '@/lib/thumbnail-types';
 
+// ─── BiRefNet model cache (loads once per browser session) ───────────────────
+let _biRefNetModel: unknown = null;
+let _biRefNetProcessor: unknown = null;
+
+async function getOrLoadBiRefNet(onStatus?: (msg: string) => void) {
+  if (_biRefNetModel && _biRefNetProcessor) return { model: _biRefNetModel as any, processor: _biRefNetProcessor as any };
+  onStatus?.('Descargando modelo IA (~60 MB, solo la primera vez)…');
+  const { AutoModel, AutoProcessor } = await import('@huggingface/transformers');
+  const modelId = 'onnx-community/BiRefNet_lite';
+  const [model, processor] = await Promise.all([
+    AutoModel.from_pretrained(modelId, { dtype: 'fp32' }),
+    AutoProcessor.from_pretrained(modelId),
+  ]);
+  _biRefNetModel = model;
+  _biRefNetProcessor = processor;
+  return { model: model as any, processor: processor as any };
+}
+
+/** Remove background using BiRefNet_lite (MIT, commercial-safe, runs client-side). */
+async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
+  const { model, processor } = await getOrLoadBiRefNet(onStatus);
+  const { RawImage } = await import('@huggingface/transformers');
+  onStatus?.('Analizando imagen…');
+  const url = URL.createObjectURL(source);
+  const image = await RawImage.fromURL(url);
+  URL.revokeObjectURL(url);
+  const { pixel_values } = await processor(image);
+  const { output_image } = await model({ input_image: pixel_values });
+  // Sigmoid → [0,255] mask at original resolution
+  const mask = await RawImage.fromTensor(
+    output_image[0].sigmoid().mul(255).to('uint8')
+  ).resize(image.width, image.height);
+  // Apply mask as alpha channel, keep original RGB
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width; canvas.height = image.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const origBmp = await createImageBitmap(source);
+  ctx.drawImage(origBmp, 0, 0);
+  origBmp.close();
+  const imgData = ctx.getImageData(0, 0, image.width, image.height);
+  for (let i = 0; i < image.width * image.height; i++) {
+    imgData.data[i * 4 + 3] = mask.data[i];
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
+}
+
 // ─── Image processing helpers ─────────────────────────────────────────────────
 
 /**
@@ -622,6 +669,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   const [photoOrigSrc,  setPhotoOrigSrc]  = useState<string | null>(null);
   const [bgRemoved,     setBgRemoved]     = useState(false);
   const [removingBg,    setRemovingBg]    = useState(false);
+  const [bgStatus,      setBgStatus]      = useState('');
   const [bgKeyColor,    setBgKeyColor]    = useState('#ffffff'); // user's actual background colour
   const [selectedId,    setSelectedId]    = useState<string | null>(null);
 
@@ -650,27 +698,22 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     if (!photoOrigFile) return;
     setRemovingBg(true);
     try {
-      // 1. BFS flood-fill: replace background colour pixels with pure green
-      const colorKeyed = await colorKeyPreprocess(photoOrigFile, bgKeyColor);
-      // 2. 5×5 Gaussian USM: sharpen edges so IS-Net finds them accurately
-      const enhanced   = await edgeEnhanceForRemoval(colorKeyed);
-      // 3. IS-Net on the preprocessed image
-      const { removeBackground } = await import('@imgly/background-removal');
-      const masked = await removeBackground(enhanced, { model: 'isnet_fp16', output: { format: 'image/png' } });
-      // 4. Transfer IS-Net's alpha to the ORIGINAL photo (real colours)
-      const withOrig = await applyAlphaMaskToOriginal(photoOrigFile, masked);
-      // 5. Fill interior holes (hair gaps, clothing gaps IS-Net missed)
-      const filled   = await fillAlphaHoles(withOrig);
-      // 6. Dilate 3px to recover edges IS-Net eroded
-      const dilated  = await dilateAlpha(filled, 3);
-      // 7. Feather the boundary
-      const refined  = await smoothBgMaskEdges(dilated);
+      // 1. BiRefNet_lite — MIT license, client-side, far superior to IS-Net
+      const masked  = await removeBgBiRefNet(photoOrigFile, msg => setBgStatus(msg));
+      // 2. Fill interior holes (hair gaps, clothing gaps)
+      setBgStatus('Refinando bordes…');
+      const filled  = await fillAlphaHoles(masked);
+      // 3. Dilate 2px to recover any eroded edges
+      const dilated = await dilateAlpha(filled, 2);
+      // 4. Feather boundary
+      const refined = await smoothBgMaskEdges(dilated);
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(refined) } : p);
       setBgRemoved(true);
-    } catch {
-      // silent: photo stays unchanged
+    } catch (err) {
+      console.error('[BiRefNet] bg removal failed:', err);
     } finally {
       setRemovingBg(false);
+      setBgStatus('');
     }
   };
 
@@ -979,7 +1022,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                       {removingBg
                         ? <span className="flex items-center justify-center gap-1.5">
                             <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full spin-r" />
-                            {tr('Procesando…', 'Processing…')}
+                            <span className="truncate max-w-[130px]">{bgStatus || tr('Procesando…', 'Processing…')}</span>
                           </span>
                         : tr('Eliminar fondo', 'Remove BG')}
                     </button>
