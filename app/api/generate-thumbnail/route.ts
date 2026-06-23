@@ -27,6 +27,8 @@ export async function POST(request: Request) {
     const facePosition = (form.get('facePosition') as string) || 'right';
     const facePhotoFile = form.get('facePhoto') as File | null;
     const customText = ((form.get('thumbnailText') as string) || '').trim().slice(0, 60);
+    const faceScaleRaw = parseInt((form.get('faceScale') as string) || '80', 10);
+    const faceScalePct = Math.max(40, Math.min(100, isNaN(faceScaleRaw) ? 80 : faceScaleRaw));
     const isEn = lang === 'en';
 
     if (!tema || tema.length < 3) {
@@ -247,7 +249,7 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
     let finalBuffer: Buffer = Buffer.from(await bgRes.arrayBuffer());
 
     if (facePhotoBuffer) {
-      finalBuffer = Buffer.from(await compositeFaceOnBackground(finalBuffer, facePhotoBuffer, faceOnLeft));
+      finalBuffer = Buffer.from(await compositeFaceOnBackground(finalBuffer, facePhotoBuffer, faceOnLeft, faceScalePct));
     }
 
     // User-supplied text: render as a bold overlay ON TOP of everything (above the
@@ -276,7 +278,7 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
       data: {
         userId: user.id,
         template: 'thumbnail',
-        inputs: { tema, estilo, imagePrompt, hasFace, facePosition, customText },
+        inputs: { tema, estilo, imagePrompt, hasFace, facePosition, faceScalePct, customText },
         output: permanentUrl,
         tokensUsed: claudeData.usage?.output_tokens ?? 0,
         ipAddress: ip,
@@ -303,6 +305,7 @@ async function compositeFaceOnBackground(
   bgBuffer: Buffer,
   faceBuffer: Buffer,
   faceOnLeft: boolean,
+  faceScalePct: number = 80,
 ): Promise<Buffer> {
   const BG_W = 1312;
   const BG_H = 736;
@@ -346,11 +349,11 @@ async function compositeFaceOnBackground(
     }
   }
 
-  // Process face: fit inside a bounded box so it never dominates the thumbnail
-  // or spills into the text zone. Claude's composition prompt keeps text on the
-  // opposite side, so the face stays on its clean side. ~40% width × ~58% height.
-  const maxFaceW = Math.round(BG_W * 0.40);
-  const maxFaceH = Math.round(BG_H * 0.58);
+  // Process face: fit inside a bounded box controlled by faceScalePct (40–100% of
+  // BG height). Width stays capped at 42% of BG width so the text zone is never
+  // encroached regardless of how tall the person is.
+  const maxFaceW = Math.round(BG_W * 0.42);
+  const maxFaceH = Math.round(BG_H * (faceScalePct / 100));
   const resizedFace = await sharp(faceSrc)
     .resize(maxFaceW, maxFaceH, { fit: 'inside', withoutEnlargement: true })
     .ensureAlpha()

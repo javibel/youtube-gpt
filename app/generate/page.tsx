@@ -82,6 +82,7 @@ export default function GeneratePage() {
   const [thumbnailText, setThumbnailText] = useState('');
   const [removingBg, setRemovingBg] = useState(false);
   const [bgRemovalFailed, setBgRemovalFailed] = useState(false);
+  const [faceScale, setFaceScale] = useState<number>(80);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -159,6 +160,7 @@ export default function GeneratePage() {
         body.append('facePosition', facePosition);
         if (thumbnailText.trim()) body.append('thumbnailText', thumbnailText.trim());
         if (facePhoto) body.append('facePhoto', facePhoto);
+        body.append('faceScale', String(faceScale));
         const res = await fetch('/api/generate-thumbnail', {
           method: 'POST',
           body,
@@ -487,6 +489,30 @@ export default function GeneratePage() {
                       <button onClick={() => { setFacePhoto(null); setFacePhotoPreview(''); setBgRemovalFailed(false); }} className="text-[12px] hover:text-white transition" style={{ color: 'var(--yv-text-4)' }}>
                         {t('Quitar foto', 'Remove photo')}
                       </button>
+                    )}
+                    {facePhotoPreview && (
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>
+                            {t('Tamaño', 'Size')}
+                          </p>
+                          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{faceScale}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={40}
+                          max={100}
+                          step={5}
+                          value={faceScale}
+                          onChange={(e) => setFaceScale(Number(e.target.value))}
+                          className="w-full accent-[#7CFF00] cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[10px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
+                          <span>40%</span>
+                          <span>{t('alto del thumbnail', 'thumbnail height')}</span>
+                          <span>100%</span>
+                        </div>
+                      </div>
                     )}
                     {bgRemovalFailed && (
                       <p className="text-[11px] leading-snug" style={{ color: '#f5a623' }}>
