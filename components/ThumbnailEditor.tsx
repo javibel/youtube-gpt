@@ -303,11 +303,12 @@ async function fillAlphaHoles(blob: Blob): Promise<Blob> {
 }
 
 /**
- * Restore removed pixels whose ORIGINAL color is darker than `threshold`
- * (perceptual luminance 0-255). On a white/light background, dark pixels
- * (clothing, hair) are always subject — never background.
+ * BFS from border pixels that match the background color (sampled from corners).
+ * Any pixel the model removed that is NOT reachable from the border as background
+ * is part of the subject (skin, clothing, hair) and gets restored.
+ * Works regardless of subject color — arm skin, dark shirt, etc.
  */
-async function preserveDarkSubject(masked: Blob, original: File | Blob, threshold = 100): Promise<Blob> {
+async function restoreNonBackgroundPixels(masked: Blob, original: File | Blob, tolerance = 35): Promise<Blob> {
   const [maskedBmp, origBmp] = await Promise.all([
     createImageBitmap(masked),
     createImageBitmap(original as Blob),
@@ -321,6 +322,35 @@ async function preserveDarkSubject(masked: Blob, original: File | Blob, threshol
   origBmp.close?.();
   const orig = ctx.getImageData(0, 0, W, H).data;
 
+  // Sample background color from 4 corners of the original
+  const corners = [0, (W - 1), (H - 1) * W, (H - 1) * W + (W - 1)];
+  let bgR = 0, bgG = 0, bgB = 0;
+  for (const c of corners) { bgR += orig[c*4]; bgG += orig[c*4+1]; bgB += orig[c*4+2]; }
+  bgR = bgR / 4; bgG = bgG / 4; bgB = bgB / 4;
+
+  const T2 = tolerance * tolerance;
+  const isBg = (idx: number) => {
+    const dr = orig[idx*4] - bgR, dg = orig[idx*4+1] - bgG, db = orig[idx*4+2] - bgB;
+    return dr*dr + dg*dg + db*db < T2;
+  };
+
+  // BFS flood-fill from all border pixels that match the background color
+  const confirmed = new Uint8Array(W * H);
+  const queue: number[] = [];
+  const seed = (i: number) => { if (!confirmed[i] && isBg(i)) { confirmed[i] = 1; queue.push(i); } };
+  for (let x = 0; x < W; x++) { seed(x); seed((H - 1) * W + x); }
+  for (let y = 1; y < H - 1; y++) { seed(y * W); seed(y * W + W - 1); }
+  let qi = 0;
+  while (qi < queue.length) {
+    const i = queue[qi++];
+    const x = i % W, y = (i / W) | 0;
+    if (y > 0   && !confirmed[i-W] && isBg(i-W)) { confirmed[i-W] = 1; queue.push(i-W); }
+    if (y < H-1 && !confirmed[i+W] && isBg(i+W)) { confirmed[i+W] = 1; queue.push(i+W); }
+    if (x > 0   && !confirmed[i-1] && isBg(i-1)) { confirmed[i-1] = 1; queue.push(i-1); }
+    if (x < W-1 && !confirmed[i+1] && isBg(i+1)) { confirmed[i+1] = 1; queue.push(i+1); }
+  }
+
+  // Apply: model removed a pixel that isn't confirmed background → restore it
   ctx.clearRect(0, 0, W, H);
   ctx.drawImage(maskedBmp, 0, 0, W, H);
   maskedBmp.close?.();
@@ -328,13 +358,11 @@ async function preserveDarkSubject(masked: Blob, original: File | Blob, threshol
   const pix = id.data;
 
   for (let i = 0; i < W * H; i++) {
-    if (pix[i * 4 + 3] >= 200) continue; // already mostly opaque
-    const luma = (orig[i*4] * 299 + orig[i*4+1] * 587 + orig[i*4+2] * 114) / 1000;
-    if (luma < threshold) {
-      pix[i * 4]     = orig[i * 4];
-      pix[i * 4 + 1] = orig[i * 4 + 1];
-      pix[i * 4 + 2] = orig[i * 4 + 2];
-      pix[i * 4 + 3] = 255;
+    if (pix[i*4+3] < 200 && !confirmed[i]) {
+      pix[i*4]   = orig[i*4];
+      pix[i*4+1] = orig[i*4+1];
+      pix[i*4+2] = orig[i*4+2];
+      pix[i*4+3] = 255;
     }
   }
 
@@ -769,8 +797,9 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     }
     try {
       setBgStatus('Refinando bordes…');
-      // 1) Restore dark pixels (clothing, hair) the model wrongly removed on light bg
-      const recovered = await preserveDarkSubject(masked!, photoOrigFile);
+      // 1) Restore subject pixels (any color) the model wrongly removed:
+      //    BFS from corners finds confirmed background; non-background removed pixels → restore
+      const recovered = await restoreNonBackgroundPixels(masked!, photoOrigFile);
       // 2) Dilate to recover eroded edges
       const dilated = await dilateAlpha(recovered, 6);
       // 3) Fill interior holes
