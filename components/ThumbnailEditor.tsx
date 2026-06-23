@@ -218,45 +218,56 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   };
 
   // ─── Photo ───────────────────────────────────────────────────────────────
-  const [photo,           setPhoto]           = useState<PhotoItem | null>(null);
-  const [removingBg,      setRemovingBg]      = useState(false);
-  const [removeBgEnabled, setRemoveBgEnabled] = useState(true);
-  const [selectedId,      setSelectedId]      = useState<string | null>(null);
+  const [photo,          setPhoto]          = useState<PhotoItem | null>(null);
+  const [photoOrigFile,  setPhotoOrigFile]  = useState<File | null>(null);
+  const [photoOrigSrc,   setPhotoOrigSrc]   = useState<string | null>(null);
+  const [bgRemoved,      setBgRemoved]      = useState(false);
+  const [removingBg,     setRemovingBg]     = useState(false);
+  const [selectedId,     setSelectedId]     = useState<string | null>(null);
 
-  const handlePhotoUpload = async (file: File) => {
-    setRemovingBg(true);
-    let src = '';
-    try {
-      if (removeBgEnabled) {
-        // 1. Sharpen edges so IS-Net segments more accurately
-        const enhanced = await edgeEnhanceForRemoval(file);
-        // 2. Remove background from the edge-enhanced version
-        const { removeBackground } = await import('@imgly/background-removal');
-        const rawBlob = await removeBackground(enhanced, { model: 'isnet_fp16', output: { format: 'image/png' } });
-        // 3. Smooth jagged alpha boundary from IS-Net
-        const refined = await smoothBgMaskEdges(rawBlob);
-        src = URL.createObjectURL(refined);
-      } else {
-        src = URL.createObjectURL(file);
-      }
-    } catch {
-      src = URL.createObjectURL(file); // fallback: use original
-    } finally {
-      setRemovingBg(false);
-    }
-
-    // Measure natural dimensions to set default size
+  const placePhoto = async (src: string, file?: File) => {
     const img = new window.Image();
     img.src = src;
     await new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); });
-
-    const natW   = img.naturalWidth  || 400;
-    const natH   = img.naturalHeight || 600;
-    const defH   = Math.round(THUMB_H * 0.85);
-    const defW   = Math.round(defH * (natW / natH));
-
-    setPhoto({ src, x: 0, y: THUMB_H - defH, width: defW, height: defH, opacity: 1 });
+    const natW = img.naturalWidth  || 400;
+    const natH = img.naturalHeight || 600;
+    const defH = Math.round(THUMB_H * 0.85);
+    const defW = Math.round(defH * (natW / natH));
+    setPhoto(prev => prev
+      ? { ...prev, src }                                                    // keep position/size if already placed
+      : { src, x: 0, y: THUMB_H - defH, width: defW, height: defH, opacity: 1 }
+    );
+    if (file) { setPhotoOrigFile(file); setPhotoOrigSrc(src); setBgRemoved(false); }
     setSelectedId('photo');
+  };
+
+  const handlePhotoUpload = async (file: File) => {
+    const src = URL.createObjectURL(file);
+    await placePhoto(src, file);
+  };
+
+  const handleRemoveBg = async () => {
+    if (!photoOrigFile) return;
+    setRemovingBg(true);
+    try {
+      const enhanced = await edgeEnhanceForRemoval(photoOrigFile);
+      const { removeBackground } = await import('@imgly/background-removal');
+      const rawBlob  = await removeBackground(enhanced, { model: 'isnet_fp16', output: { format: 'image/png' } });
+      const refined  = await smoothBgMaskEdges(rawBlob);
+      const newSrc   = URL.createObjectURL(refined);
+      setPhoto(p => p ? { ...p, src: newSrc } : p);
+      setBgRemoved(true);
+    } catch {
+      // silent: keep current photo
+    } finally {
+      setRemovingBg(false);
+    }
+  };
+
+  const handleRestoreOriginal = () => {
+    if (!photoOrigSrc) return;
+    setPhoto(p => p ? { ...p, src: photoOrigSrc } : p);
+    setBgRemoved(false);
   };
 
   // ─── Texts ───────────────────────────────────────────────────────────────
@@ -396,6 +407,12 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
           </label>
         </div>
         {bgError && <p className="text-[12px] mt-2" style={{ color: '#f5a623' }}>{bgError}</p>}
+        <p className="text-[11px] mt-2.5 leading-relaxed" style={{ color: 'var(--yv-text-4)' }}>
+          {tr(
+            'YouTube recomienda 1920×1080 px (16:9). Mínimo: 1280×720. Menos de 2 MB.',
+            'YouTube recommends 1920×1080 px (16:9). Minimum: 1280×720. Under 2 MB.',
+          )}
+        </p>
       </div>
 
       {/* ── Editor row: canvas + controls ──────────────────────────────────── */}
@@ -425,28 +442,17 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
 
           {/* ── Photo ── */}
           <div className="yv-card p-4">
-            <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>
+            <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-1" style={{ color: 'var(--yv-text-3)' }}>
               {tr('Tu foto', 'Your photo')}
             </p>
+            <p className="text-[10px] mb-3 leading-snug" style={{ color: 'var(--yv-text-4)' }}>
+              {tr('Alta resolución, fondo liso o de estudio da mejor resultado.', 'High res with a plain or studio background works best.')}
+            </p>
 
-            {/* Remove BG toggle */}
-            <button
-              onClick={() => setRemoveBgEnabled(p => !p)}
-              className={`soft-chip w-full py-1.5 text-[11px] mb-3 ${removeBgEnabled ? 'soft-chip-active' : ''}`}
-            >
-              {removeBgEnabled ? '✓ ' : ''}{tr('Eliminar fondo', 'Remove BG')}
-            </button>
-
+            {/* Upload button */}
             <label className="block cursor-pointer">
               <div className="btn-offset w-full text-center py-2 text-[13px] font-bold">
-                {removingBg
-                  ? <span className="flex items-center justify-center gap-2">
-                      <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full spin-r" />
-                      {tr('Procesando…', 'Processing…')}
-                    </span>
-                  : photo
-                    ? tr('Cambiar foto', 'Change photo')
-                    : tr('+ Añadir foto', '+ Add photo')}
+                {photo ? tr('Cambiar foto', 'Change photo') : tr('+ Añadir foto', '+ Add photo')}
               </div>
               <input
                 type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
@@ -457,6 +463,31 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
 
             {photo && (
               <>
+                {/* Remove / restore BG — available after upload */}
+                <div className="mt-2.5 flex gap-1.5">
+                  {!bgRemoved ? (
+                    <button
+                      onClick={handleRemoveBg}
+                      disabled={removingBg}
+                      className="soft-chip flex-1 py-1.5 text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {removingBg
+                        ? <span className="flex items-center justify-center gap-1.5">
+                            <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full spin-r" />
+                            {tr('Procesando…', 'Processing…')}
+                          </span>
+                        : tr('Eliminar fondo', 'Remove BG')}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleRestoreOriginal}
+                      className="soft-chip flex-1 py-1.5 text-[11px] soft-chip-active"
+                    >
+                      {tr('Restaurar original', 'Restore original')}
+                    </button>
+                  )}
+                </div>
+
                 {/* Opacity */}
                 <div className="mt-3">
                   <div className="flex justify-between mb-1">
@@ -472,7 +503,10 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                 <button
                   className="mt-2 text-[11px] w-full text-center hover:text-white transition"
                   style={{ color: 'var(--yv-text-4)' }}
-                  onClick={() => { setPhoto(null); if (selectedId === 'photo') setSelectedId(null); }}
+                  onClick={() => {
+                    setPhoto(null); setPhotoOrigFile(null); setPhotoOrigSrc(null); setBgRemoved(false);
+                    if (selectedId === 'photo') setSelectedId(null);
+                  }}
                 >
                   {tr('Quitar foto', 'Remove photo')}
                 </button>
