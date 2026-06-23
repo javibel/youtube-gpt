@@ -596,7 +596,24 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
       setPhotoOrigFile(file);
       setPhotoOrigSrc(src);
       setBgRemoved(false);
-      await placePhoto(src);
+
+      // Measure cropped image natural dimensions to preserve aspect ratio on canvas
+      const img = new window.Image();
+      img.src = src;
+      await new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); });
+      const natW = img.naturalWidth  || 400;
+      const natH = img.naturalHeight || 600;
+      const ar   = natW / natH;
+
+      setPhoto(prev => {
+        if (!prev) {
+          const defH = Math.round(THUMB_H * 0.85);
+          return { src, x: 0, y: THUMB_H - defH, width: Math.round(defH * ar), height: defH, opacity: 1 };
+        }
+        // Keep current height, recalculate width from new AR — no deformation
+        return { ...prev, src, width: Math.round(prev.height * ar) };
+      });
+      setSelectedId('photo');
     } else {
       setBgLoading(true);
       try {
