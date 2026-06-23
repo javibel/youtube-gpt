@@ -1,17 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  webpack: (config) => {
-    // @huggingface/transformers tries to import Node-only packages that
-    // don't exist in the browser. Replace them with empty stubs so webpack
-    // can bundle the rest of the library normally.
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'onnxruntime-node': false,
-      'sharp': false,
-    };
-    return config;
-  },
+  turbopack: {},
   async redirects() {
     return [
       // www → non-www permanent redirect (SEO canonical)
