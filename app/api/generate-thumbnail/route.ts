@@ -326,6 +326,26 @@ async function compositeFaceOnBackground(
     }
   }
 
+  // Dilate the alpha channel to recover edges eroded by client-side background
+  // removal (e.g. an arm or finger silhouette that got clipped). We blur the
+  // alpha mask outward, threshold to a new binary boundary, then re-feather.
+  if (srcMeta.hasAlpha) {
+    try {
+      const alphaChannel = await sharp(faceSrc).extractChannel('alpha').png().toBuffer();
+      const dilatedAlpha = await sharp(alphaChannel)
+        .blur(5)        // expand signal ~5 px outward
+        .threshold(8)   // any value ≥ 8 → 255 (recovered boundary)
+        .blur(1)        // slight re-feather for smooth edge
+        .png()
+        .toBuffer();
+      const rgbOnly = await sharp(faceSrc).removeAlpha().png().toBuffer();
+      const dilatedFace = await sharp(rgbOnly).joinChannel(dilatedAlpha).png().toBuffer();
+      if (dilatedFace.length > 100) faceSrc = dilatedFace;
+    } catch {
+      /* dilation failed — keep original */
+    }
+  }
+
   // Process face: fit inside a bounded box so it never dominates the thumbnail
   // or spills into the text zone. Claude's composition prompt keeps text on the
   // opposite side, so the face stays on its clean side. ~40% width × ~58% height.
@@ -382,23 +402,27 @@ function escapeXml(s: string): string {
 }
 
 /**
- * Build an SVG text overlay: large, bold, white with black outline + drop shadow,
- * wrapped to fit the safe zone. Placed on the side OPPOSITE the face (or centered
- * when there's no face), so it never covers the person and is always on top.
+ * Build an SVG text overlay: large, bold, white with black outline + semi-transparent
+ * background box for guaranteed readability on any background. Uses no SVG filters
+ * (feDropShadow can fail in some librsvg builds); instead renders a dark shadow copy
+ * of the text offset by a few pixels, then the white stroked main text on top.
+ * Placed on the side OPPOSITE the face (or centered when there's no face).
  */
 function buildTextSvg(text: string, faceOnLeft: boolean, hasFace: boolean): string {
   const W = 1312;
   const H = 736;
-  const padX = Math.round(W * 0.04);
+  const padX = Math.round(W * 0.04); // 52 px
+
   let zoneX: number;
   let zoneW: number;
   if (hasFace) {
     if (faceOnLeft) {
-      zoneX = Math.round(W * 0.46);
+      // Text on the right — start at 44 % to give a wider usable zone
+      zoneX = Math.round(W * 0.44);
       zoneW = W - zoneX - padX;
     } else {
       zoneX = padX;
-      zoneW = Math.round(W * 0.50);
+      zoneW = Math.round(W * 0.52);
     }
   } else {
     zoneX = padX;
@@ -407,40 +431,64 @@ function buildTextSvg(text: string, faceOnLeft: boolean, hasFace: boolean): stri
 
   const t = text.trim();
   const len = t.length;
-  // Big by default, shrink as the text gets longer so it fits.
   let fontSize: number;
-  if (len <= 10) fontSize = 108;
-  else if (len <= 16) fontSize = 92;
-  else if (len <= 24) fontSize = 76;
-  else if (len <= 36) fontSize = 62;
-  else fontSize = 50;
+  if (len <= 8) fontSize = 120;
+  else if (len <= 14) fontSize = 100;
+  else if (len <= 20) fontSize = 84;
+  else if (len <= 30) fontSize = 68;
+  else fontSize = 56;
 
-  const charW = fontSize * 0.60;
+  const charW = fontSize * 0.55;
   const maxChars = Math.max(6, Math.floor(zoneW / charW));
   const words = t.split(/\s+/);
   const lines: string[] = [];
-  let line = '';
+  let curLine = '';
   for (const w of words) {
-    const test = line ? line + ' ' + w : w;
-    if (test.length > maxChars && line) {
-      lines.push(line);
-      line = w;
+    const test = curLine ? curLine + ' ' + w : w;
+    if (test.length > maxChars && curLine) {
+      lines.push(curLine);
+      curLine = w;
     } else {
-      line = test;
+      curLine = test;
     }
   }
-  if (line) lines.push(line);
+  if (curLine) lines.push(curLine);
 
-  const lineH = Math.round(fontSize * 1.08);
+  const lineH = Math.round(fontSize * 1.1);
   const blockH = lines.length * lineH;
-  const startY = Math.round((H - blockH) / 2 + fontSize * 0.78);
-  const cx = zoneX + zoneW / 2;
-  const stroke = Math.max(5, Math.round(fontSize * 0.09));
-  const tspans = lines
+  const padY = Math.round(fontSize * 0.35);
+  const startY = Math.round((H - blockH) / 2 + fontSize * 0.8);
+  const cx = Math.round(zoneX + zoneW / 2);
+
+  // Semi-transparent dark background box for contrast on any BG
+  const boxX = Math.max(0, zoneX - Math.round(padX * 0.3));
+  const boxY = Math.max(0, startY - Math.round(fontSize * 0.85) - padY);
+  const boxW = Math.min(W - boxX, zoneW + Math.round(padX * 0.6));
+  const boxH = blockH + padY * 2;
+  const rx = Math.round(fontSize * 0.12);
+
+  // Shadow offset (no filter — just a dark copy of the text, slightly shifted)
+  const sDx = Math.round(fontSize * 0.04);
+  const sDy = Math.round(fontSize * 0.05);
+  const strokeW = Math.max(6, Math.round(fontSize * 0.10));
+
+  const shadowTspans = lines
+    .map((l, i) => `<tspan x="${cx + sDx}" y="${startY + sDy + i * lineH}">${escapeXml(l.toUpperCase())}</tspan>`)
+    .join('');
+  const mainTspans = lines
     .map((l, i) => `<tspan x="${cx}" y="${startY + i * lineH}">${escapeXml(l.toUpperCase())}</tspan>`)
     .join('');
 
-  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="ds" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000000" flood-opacity="0.9"/></filter></defs><text x="${cx}" y="${startY}" font-family="Arial Black, Impact, Arial, sans-serif" font-weight="900" font-size="${fontSize}" text-anchor="middle" fill="#ffffff" stroke="#000000" stroke-width="${stroke}" paint-order="stroke" stroke-linejoin="round" letter-spacing="2" filter="url(#ds)">${tspans}</text></svg>`;
+  return (
+    `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">` +
+    // Dark translucent box behind the text block
+    `<rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="${rx}" fill="#000000" fill-opacity="0.60"/>` +
+    // Shadow: dark copy of the text, shifted a few pixels
+    `<text font-family="Arial Black, Impact, Arial, sans-serif" font-weight="900" font-size="${fontSize}" text-anchor="middle" fill="#000000" fill-opacity="0.70" letter-spacing="2">${shadowTspans}</text>` +
+    // Main text: white fill + thick black stroke (stroke rendered first via paint-order)
+    `<text font-family="Arial Black, Impact, Arial, sans-serif" font-weight="900" font-size="${fontSize}" text-anchor="middle" fill="#ffffff" stroke="#000000" stroke-width="${strokeW}" paint-order="stroke" stroke-linejoin="round" letter-spacing="2">${mainTspans}</text>` +
+    `</svg>`
+  );
 }
 
 async function overlayText(
