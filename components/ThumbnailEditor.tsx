@@ -303,6 +303,46 @@ async function fillAlphaHoles(blob: Blob): Promise<Blob> {
 }
 
 /**
+ * Restore removed pixels whose ORIGINAL color is darker than `threshold`
+ * (perceptual luminance 0-255). On a white/light background, dark pixels
+ * (clothing, hair) are always subject — never background.
+ */
+async function preserveDarkSubject(masked: Blob, original: File | Blob, threshold = 100): Promise<Blob> {
+  const [maskedBmp, origBmp] = await Promise.all([
+    createImageBitmap(masked),
+    createImageBitmap(original as Blob),
+  ]);
+  const W = maskedBmp.width, H = maskedBmp.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+
+  ctx.drawImage(origBmp, 0, 0, W, H);
+  origBmp.close?.();
+  const orig = ctx.getImageData(0, 0, W, H).data;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(maskedBmp, 0, 0, W, H);
+  maskedBmp.close?.();
+  const id  = ctx.getImageData(0, 0, W, H);
+  const pix = id.data;
+
+  for (let i = 0; i < W * H; i++) {
+    if (pix[i * 4 + 3] >= 200) continue; // already mostly opaque
+    const luma = (orig[i*4] * 299 + orig[i*4+1] * 587 + orig[i*4+2] * 114) / 1000;
+    if (luma < threshold) {
+      pix[i * 4]     = orig[i * 4];
+      pix[i * 4 + 1] = orig[i * 4 + 1];
+      pix[i * 4 + 2] = orig[i * 4 + 2];
+      pix[i * 4 + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(id, 0, 0);
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
+}
+
+/**
  * Expand the alpha mask by `radius` pixels (separable max-filter: H then V).
  * Recovers edges that IS-Net eroded without touching RGB values.
  */
@@ -729,11 +769,13 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     }
     try {
       setBgStatus('Refinando bordes…');
-      // Dilate first (recovers eroded sleeves/edges), then fill holes,
-      // then feather — order matters: dilate before fillHoles so the
-      // expanded mask can bridge gaps that were connected to border.
-      const dilated = await dilateAlpha(masked!, 6);
+      // 1) Restore dark pixels (clothing, hair) the model wrongly removed on light bg
+      const recovered = await preserveDarkSubject(masked!, photoOrigFile);
+      // 2) Dilate to recover eroded edges
+      const dilated = await dilateAlpha(recovered, 6);
+      // 3) Fill interior holes
       const filled  = await fillAlphaHoles(dilated);
+      // 4) Feather
       const refined = await smoothBgMaskEdges(filled);
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(refined) } : p);
       setBgRemoved(true);
