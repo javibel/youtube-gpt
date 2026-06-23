@@ -12,7 +12,9 @@ let _biRefNetProcessor: unknown = null;
 async function getOrLoadBiRefNet(onStatus?: (msg: string) => void) {
   if (_biRefNetModel && _biRefNetProcessor) return { model: _biRefNetModel as any, processor: _biRefNetProcessor as any };
   onStatus?.('Descargando modelo IA (~60 MB, solo la primera vez)…');
-  const { AutoModel, AutoProcessor } = await import('@huggingface/transformers');
+  const { AutoModel, AutoProcessor, env } = await import('@huggingface/transformers');
+  // Disable local model cache lookup — browser always fetches from HF CDN
+  (env as any).allowLocalModels = false;
   const modelId = 'onnx-community/BiRefNet_lite';
   const [model, processor] = await Promise.all([
     AutoModel.from_pretrained(modelId, { dtype: 'fp32' }),
@@ -32,10 +34,13 @@ async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) =>
   const image = await RawImage.fromURL(url);
   URL.revokeObjectURL(url);
   const { pixel_values } = await processor(image);
-  const { output_image } = await model({ input_image: pixel_values });
+  const rawOutput = await model({ input_image: pixel_values });
+  // BiRefNet_lite ONNX output tensor name varies by model version — try common keys
+  const maskTensor: any = rawOutput.output_image ?? rawOutput.output ?? rawOutput.pred ?? Object.values(rawOutput)[0];
+  if (!maskTensor) throw new Error(`BiRefNet: unexpected output keys: ${Object.keys(rawOutput).join(',')}`);
   // Sigmoid → [0,255] mask at original resolution
   const mask = await RawImage.fromTensor(
-    output_image[0].sigmoid().mul(255).to('uint8')
+    maskTensor[0].sigmoid().mul(255).to('uint8')
   ).resize(image.width, image.height);
   // Apply mask as alpha channel, keep original RGB
   const canvas = document.createElement('canvas');
@@ -50,6 +55,14 @@ async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) =>
   }
   ctx.putImageData(imgData, 0, 0);
   return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
+}
+
+/** Fallback: IS-Net fp16 via @imgly/background-removal. */
+async function removeBgISNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
+  onStatus?.('Cargando modelo de reserva…');
+  const { removeBackground } = await import('@imgly/background-removal');
+  onStatus?.('Procesando…');
+  return removeBackground(source as File, { model: 'isnet_fp16', output: { format: 'image/png' } });
 }
 
 // ─── Image processing helpers ─────────────────────────────────────────────────
@@ -697,20 +710,35 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   const handleRemoveBg = async () => {
     if (!photoOrigFile) return;
     setRemovingBg(true);
+    let masked: Blob | null = null;
     try {
-      // 1. BiRefNet_lite — MIT license, client-side, far superior to IS-Net
-      const masked  = await removeBgBiRefNet(photoOrigFile, msg => setBgStatus(msg));
-      // 2. Fill interior holes (hair gaps, clothing gaps)
+      // Try BiRefNet_lite first (superior quality)
+      masked = await removeBgBiRefNet(photoOrigFile, msg => setBgStatus(msg));
+    } catch (biErr) {
+      console.error('[BiRefNet] failed, falling back to IS-Net:', biErr);
+      try {
+        masked = await removeBgISNet(photoOrigFile, msg => setBgStatus(msg));
+      } catch (isNetErr) {
+        console.error('[ISNet] fallback also failed:', isNetErr);
+        const msg = String(biErr instanceof Error ? biErr.message : biErr).slice(0, 80);
+        setBgStatus(`Error: ${msg}`);
+        setTimeout(() => setBgStatus(''), 6000);
+        setRemovingBg(false);
+        return;
+      }
+    }
+    try {
       setBgStatus('Refinando bordes…');
-      const filled  = await fillAlphaHoles(masked);
-      // 3. Dilate 2px to recover any eroded edges
+      const filled  = await fillAlphaHoles(masked!);
       const dilated = await dilateAlpha(filled, 2);
-      // 4. Feather boundary
       const refined = await smoothBgMaskEdges(dilated);
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(refined) } : p);
       setBgRemoved(true);
-    } catch (err) {
-      console.error('[BiRefNet] bg removal failed:', err);
+    } catch (postErr) {
+      console.error('[BgRemoval] post-processing failed:', postErr);
+      // Still show the raw result
+      setPhoto(p => p ? { ...p, src: URL.createObjectURL(masked!) } : p);
+      setBgRemoved(true);
     } finally {
       setRemovingBg(false);
       setBgStatus('');
