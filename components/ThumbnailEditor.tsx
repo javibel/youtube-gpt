@@ -729,9 +729,12 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     }
     try {
       setBgStatus('Refinando bordes…');
-      const filled  = await fillAlphaHoles(masked!);
-      const dilated = await dilateAlpha(filled, 2);
-      const refined = await smoothBgMaskEdges(dilated);
+      // Dilate first (recovers eroded sleeves/edges), then fill holes,
+      // then feather — order matters: dilate before fillHoles so the
+      // expanded mask can bridge gaps that were connected to border.
+      const dilated = await dilateAlpha(masked!, 6);
+      const filled  = await fillAlphaHoles(dilated);
+      const refined = await smoothBgMaskEdges(filled);
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(refined) } : p);
       setBgRemoved(true);
     } catch (postErr) {
