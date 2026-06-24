@@ -8,9 +8,14 @@ export const maxDuration = 60;
 const MODELS = ['briaai/RMBG-2.0', 'ZhengPeng7/BiRefNet'];
 
 async function callHfModel(modelId: string, body: ArrayBuffer, token: string): Promise<ArrayBuffer> {
-  const res = await fetch(
+  // HF migrated to router.huggingface.co — the old api-inference subdomain no longer resolves
+  const endpoints = [
+    `https://router.huggingface.co/hf-inference/models/${modelId}`,
     `https://api-inference.huggingface.co/models/${modelId}`,
-    {
+  ];
+  let lastErr = '';
+  for (const url of endpoints) {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -18,13 +23,12 @@ async function callHfModel(modelId: string, body: ArrayBuffer, token: string): P
         Accept: 'image/png',
       },
       body,
-    }
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`HF ${modelId} ${res.status}: ${text.slice(0, 200)}`);
+    });
+    if (res.ok) return res.arrayBuffer();
+    lastErr = `${url} → ${res.status}: ${(await res.text()).slice(0, 150)}`;
+    console.error(`[remove-bg] ${lastErr}`);
   }
-  return res.arrayBuffer();
+  throw new Error(lastErr);
 }
 
 async function applyMaskToImage(original: ArrayBuffer, mask: ArrayBuffer): Promise<ArrayBuffer> {
