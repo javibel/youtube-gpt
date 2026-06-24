@@ -361,4 +361,51 @@ async function engageWithTweets(opts = {}) {
   }
 }
 
-module.exports = { engageWithTweets };
+// READ-ONLY search — para el X Coach (sugerencias a Javier, sin automatizar nada).
+// Inicia sesión (sesión brand por defecto), busca un término y devuelve los tweets
+// encontrados SIN dar like ni responder. No escribe en BD. Cierra la página al acabar.
+// Devuelve [{ text, tweetUrl, author, alreadyLiked }].
+async function searchTweets({ query, profileDir, cookieFile, max = 12 } = {}) {
+  const tag = 'x-coach:search';
+  const page = await login({ profileDir, cookieFile });
+  if (!page) return [];
+  try {
+    const searchUrl = query.startsWith('#')
+      ? `https://x.com/search?q=%23${query.slice(1)}&src=typed_query&f=live`
+      : `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query&f=live`;
+    const navOk = await safeGoto(page, searchUrl, { tag, timeout: 60000, profileDir });
+    if (!navOk) return [];
+    await delay(3000, 5000);
+    await safeEval(page, () => window.scrollBy(0, 800));
+    await delay(2000, 3000);
+    await safeEval(page, () => {
+      const btns = document.querySelectorAll('button[data-testid="tweet-text-show-more-link"], span[data-testid="tweet-text-show-more-link"]');
+      for (const btn of btns) btn.click();
+    });
+    await delay(500, 800);
+
+    const tweets = await safeEval(page, (lim) => {
+      const results = [];
+      const articles = document.querySelectorAll('article[data-testid="tweet"]');
+      for (const article of articles) {
+        const text = article.querySelector('div[data-testid="tweetText"]')?.innerText?.trim() ?? '';
+        if (!text || text.length < 20) continue;
+        const timeLink = article.querySelector('time')?.closest('a');
+        const tweetUrl = timeLink?.href ?? '';
+        const alreadyLiked = !!article.querySelector('button[data-testid="unlike"]');
+        const author = article.querySelector('div[data-testid="User-Name"] a span')?.innerText?.trim() ?? '';
+        if (tweetUrl) results.push({ text: text.slice(0, 300), tweetUrl, author, alreadyLiked });
+      }
+      return results.slice(0, lim);
+    }, max);
+
+    return tweets || [];
+  } catch (err) {
+    console.error(`[${tag}] ${err.message}`);
+    return [];
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+module.exports = { engageWithTweets, searchTweets, isRelevantTweet };

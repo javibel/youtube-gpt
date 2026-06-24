@@ -111,6 +111,18 @@ cron.schedule('5 8 * * *', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
+// X Coach — 08:00 diario. Plan de X listo para que Javier ejecute a mano (@plata24155):
+// tweets para publicar + posts concretos para dar like/responder (con respuesta redactada).
+// Búsqueda en X SOLO LECTURA — no automatiza la cuenta de Javier.
+cron.schedule('0 8 * * *', async () => {
+  console.log('[cron] X Coach — generando plan diario de X');
+  await bq('x-coach', async () => {
+    const { run: runXCoach } = require('./x-coach');
+    await runXCoach().catch(err => console.error('[x-coach]', err.message));
+    await db.disconnect().catch(() => {});
+  });
+}, { timezone: 'Europe/Madrid' });
+
 // ── Persona engagement (2 daily rounds) ─────────────────────────────────────
 const personaHour1 = 9 + Math.floor(Math.random() * 2);
 const personaMin1 = Math.floor(Math.random() * 60);
