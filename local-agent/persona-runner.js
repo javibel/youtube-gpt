@@ -82,8 +82,13 @@ async function runAllPersonas() {
     // Bluesky — API oficial (AT Protocol), sin Puppeteer → riesgo de ban mínimo. Seguro de vida
     // contra otro wipe tipo Reddit. Credenciales (handle + app password) en bluesky-accounts.json.
     if (BLUESKY_AUTOMATION_ENABLED && bluesky) {
+      // Stagger entre personas: 4-12 minutos aleatorios para que no aparezcan en los mismos
+      // posts al mismo tiempo (patrón de bot evidente).
+      const staggerMs = (4 + Math.floor(Math.random() * 9)) * 60 * 1000;
+      console.log(`[persona-runner] ${persona.name} → Bluesky (stagger ${Math.round(staggerMs/60000)}min)`);
+      await new Promise(r => setTimeout(r, staggerMs));
       try {
-        console.log(`[persona-runner] ${persona.name} → Bluesky`);
+        console.log(`[persona-runner] ${persona.name} → Bluesky starting`);
         await bluesky.engageWithPosts({
           accountId: persona.id,
           persona,

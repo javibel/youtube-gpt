@@ -13,16 +13,31 @@ const db = require('./db');
 const { sendEmail } = require('./reports');
 const { adjustedLimit, shouldSkipSession, shouldSkipPost, readingPause, actionPause, commentPause } = require('./humanize');
 
-const BASE_LIMITS = { likes: 8, replies: 3 };
+const BASE_LIMITS = { likes: 6, replies: 2 };
 
-// Términos de búsqueda — creadores de YouTube ES+EN (mismo espíritu que facebook/twitter).
-const SEARCH_TERMS = [
-  // EN
-  'youtube growth', 'small youtuber', 'youtube seo', 'youtube thumbnail',
-  'grow my channel', 'youtube algorithm', 'content creator tips',
-  // ES
-  'crecer en youtube', 'seo youtube', 'miniatura youtube', 'canal de youtube pequeño',
-  'algoritmo de youtube', 'creadores de contenido',
+// Términos de búsqueda por persona — cada una tiene su propio pool para que
+// no acaben en los mismos posts simultáneamente.
+const PERSONA_SEARCH_TERMS = {
+  'persona-alex': [
+    'youtube thumbnail', 'video editing tips', 'youtube production', 'miniatura youtube',
+    'editar vídeo youtube', 'content creator setup', 'youtube shorts editing',
+  ],
+  'persona-ferran': [
+    'youtube growth', 'youtube algorithm', 'youtube seo', 'crecer en youtube',
+    'algoritmo de youtube', 'youtube marketing', 'canal de youtube pequeño',
+  ],
+  'persona-ana': [
+    'content creator tips', 'youtube community', 'social media youtube', 'creadores de contenido',
+    'estrategia youtube', 'youtube engagement', 'gestionar canal youtube',
+  ],
+  'persona-mayra': [
+    'youtube titles', 'youtube description seo', 'small youtuber', 'seo youtube',
+    'títulos youtube', 'grow my channel', 'youtube keyword research',
+  ],
+};
+// Fallback pool si la persona no tiene asignados términos propios
+const DEFAULT_SEARCH_TERMS = [
+  'youtube growth', 'small youtuber', 'youtube seo', 'crecer en youtube', 'creadores de contenido',
 ];
 
 // Palabras que confirman que el post va de YouTube/creadores (filtro de relevancia ligero).
@@ -126,11 +141,12 @@ async function engageWithPosts(opts = {}) {
   let likesGiven = 0;
   let repliesGiven = 0;
 
+  const myTerms = PERSONA_SEARCH_TERMS[accountId] || DEFAULT_SEARCH_TERMS;
   const tried = new Set();
   for (let attempt = 0; attempt < 3; attempt++) {
     let term;
-    do { term = SEARCH_TERMS[Math.floor(Math.random() * SEARCH_TERMS.length)]; }
-    while (tried.has(term) && tried.size < SEARCH_TERMS.length);
+    do { term = myTerms[Math.floor(Math.random() * myTerms.length)]; }
+    while (tried.has(term) && tried.size < myTerms.length);
     tried.add(term);
 
     console.log(`[${tag}] Searching: "${term}" (attempt ${attempt + 1})`);
@@ -153,8 +169,13 @@ async function engageWithPosts(opts = {}) {
 
       await readingPause();
 
-      // Like
-      if (todayLikes + likesGiven < limits.likes) {
+      // Decide independently whether to like and/or reply — humans don't always do both.
+      // ~70% chance to like a matched post, ~40% chance to reply (and only if not already liking
+      // this same post — avoids the robotic like+reply-on-every-post pattern).
+      const willLike  = Math.random() < 0.70 && todayLikes + likesGiven < limits.likes;
+      const willReply = Math.random() < 0.40 && todayReplies + repliesGiven < limits.replies && !willLike;
+
+      if (willLike) {
         try {
           await agent.like(uri, cid);
           likesGiven++;
@@ -166,8 +187,7 @@ async function engageWithPosts(opts = {}) {
         }
       }
 
-      // Reply
-      if (todayReplies + repliesGiven < limits.replies) {
+      if (willReply) {
         try {
           const reply = await commentGen(post.author?.displayName || post.author?.handle || '', text);
           if (reply && reply.trim()) {
