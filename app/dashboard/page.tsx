@@ -147,7 +147,11 @@ export default function DashboardPage() {
   const [dailyIdeas, setDailyIdeas] = useState<VideoIdea[] | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
   const [onboardingName, setOnboardingName] = useState('');
-  const [onboardingUrl, setOnboardingUrl] = useState('');
+  const [onboardingTopic, setOnboardingTopic] = useState('');
+  const [onboardingGenerating, setOnboardingGenerating] = useState(false);
+  const [onboardingResult, setOnboardingResult] = useState<string | null>(null);
+  const [onboardingError, setOnboardingError] = useState('');
+  const [onboardingCopied, setOnboardingCopied] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -299,6 +303,35 @@ function handleCopy(id: string, out: string) {
     }).catch(() => {});
   }
 
+  // Genera el primer título DENTRO del onboarding — el "momento mágico" sin salir del modal.
+  async function handleOnboardingGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    const topic = onboardingTopic.trim();
+    if (topic.length < 3) return;
+    setOnboardingGenerating(true);
+    setOnboardingError('');
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: 'title', inputs: { tema: topic }, lang }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Generation failed' : 'Error al generar'));
+      setOnboardingResult(data.content);
+      await advanceOnboarding(2);
+      // Refresca stats para que el contador del panel refleje la generación recién hecha
+      fetch('/api/user/stats').then((r) => r.json()).then(setData).catch(() => {});
+      fetch('/api/user/generations?page=1').then((r) => r.json()).then((d) => {
+        if (d.generations) { setHistoryGens(d.generations); setHistoryHasMore(d.hasMore); }
+      }).catch(() => {});
+    } catch (err) {
+      setOnboardingError(err instanceof Error ? err.message : (lang === 'en' ? 'Generation failed' : 'Error al generar'));
+    } finally {
+      setOnboardingGenerating(false);
+    }
+  }
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-bg-0)' }}>
@@ -332,7 +365,7 @@ function handleCopy(id: string, out: string) {
   return (
     <DashboardShell>
 
-      {/* Onboarding modal — 4 steps: Welcome → SEO Score (input embebido) → Connect YouTube → Generate */}
+      {/* Onboarding modal — 3 steps: Welcome → Genera tu primer título (inline) → Resultado/celebración */}
       {onboardingStep !== null && onboardingStep < 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
           <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/10 p-8" style={{ background: '#111114' }}>
@@ -350,14 +383,14 @@ function handleCopy(id: string, out: string) {
                 </h2>
                 <p className="text-zinc-400 text-sm mb-8 max-w-sm mx-auto">
                   {t(
-                    'Tu asistente de IA para crecer en YouTube. Vamos a configurar todo en 30 segundos.',
-                    'Your AI assistant to grow on YouTube. Let\'s set everything up in 30 seconds.'
+                    'Tu asistente de IA para crecer en YouTube. En 20 segundos vas a generar tu primer título viral.',
+                    'Your AI assistant to grow on YouTube. In 20 seconds you\'ll generate your first viral title.'
                   )}
                 </p>
 
                 {/* Progress dots */}
                 <div className="flex justify-center gap-2 mb-6">
-                  {[0, 1, 2, 3].map(i => (
+                  {[0, 1, 2].map(i => (
                     <div key={i} className="w-2 h-2 rounded-full" style={{ background: i === 0 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
                   ))}
                 </div>
@@ -382,118 +415,134 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {/* Step 1: SEO Score con input embebido — el momento de activación, <30s desde registro */}
+            {/* Step 1: Genera tu primer título DENTRO del modal — el momento mágico, <30s desde registro */}
             {onboardingStep === 1 && (
-              <div className="text-center">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,229,255,0.12)' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                </div>
-                <div className="flex justify-center gap-2 mb-4">
-                  {[0, 1, 2, 3].map(i => (
-                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 1 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
-                  ))}
-                </div>
-                <h2 className="font-display font-bold text-xl text-white mb-2">
-                  {t('Analiza tu último vídeo', 'Analyze your latest video')}
-                </h2>
-                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
-                  {t(
-                    'Pega la URL de un vídeo tuyo (o de cualquier canal) y obtén su SEO Score de 0 a 100 con mejoras concretas. Es lo primero que prueban todos.',
-                    'Paste the URL of one of your videos (or any channel) and get its 0-100 SEO Score with specific fixes. It\'s the first thing everyone tries.'
-                  )}
-                </p>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const url = onboardingUrl.trim();
-                    if (!url) return;
-                    await advanceOnboarding(2);
-                    router.push(`/seo-score?url=${encodeURIComponent(url)}`);
-                  }}
-                  className="flex flex-col gap-2"
-                >
-                  <input
-                    type="url"
-                    value={onboardingUrl}
-                    onChange={(e) => setOnboardingUrl(e.target.value)}
-                    placeholder="https://youtube.com/watch?v=..."
-                    autoFocus
-                    className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-zinc-600 outline-none focus:border-white/30"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
-                  />
-                  <button type="submit" disabled={!onboardingUrl.trim()} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2 disabled:opacity-40">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                    {t('Analizar mi SEO Score →', 'Analyze my SEO Score →')}
-                  </button>
-                </form>
-                <button onClick={() => advanceOnboarding(2)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2 mt-1">
-                  {t('Saltar por ahora', 'Skip for now')}
-                </button>
-              </div>
-            )}
-
-            {/* Step 2: Connect YouTube */}
-            {onboardingStep === 2 && (
-              <div className="text-center">
-                <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,0,0,0.12)' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43z" fill="#FF0000"/><path d="M9.75 15.02l5.75-3.27-5.75-3.27v6.54z" fill="#fff"/></svg>
-                </div>
-                <div className="flex justify-center gap-2 mb-4">
-                  {[0, 1, 2, 3].map(i => (
-                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 2 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
-                  ))}
-                </div>
-                <h2 className="font-display font-bold text-xl text-white mb-2">
-                  {t('Conecta tu canal de YouTube', 'Connect your YouTube channel')}
-                </h2>
-                <p className="text-zinc-400 text-sm mb-3 max-w-sm mx-auto">
-                  {t(
-                    'Con tu canal conectado las herramientas se personalizan para ti: SEO Score, mejor hora para publicar, ideas diarias y mas.',
-                    'With your channel connected, tools are personalized for you: SEO Score, best time to publish, daily ideas and more.'
-                  )}
-                </p>
-                <p className="text-zinc-500 text-xs mb-6 max-w-xs mx-auto">
-                  {t(
-                    'Solo lectura — no publicamos ni modificamos nada en tu canal.',
-                    'Read-only — we never publish or modify anything on your channel.'
-                  )}
-                </p>
-                <div className="flex flex-col gap-2">
-                  <button onClick={async () => { await advanceOnboarding(3); setYtConnecting(true); window.location.href = '/api/youtube/connect'; }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43z" fill="currentColor"/><path d="M9.75 15.02l5.75-3.27-5.75-3.27v6.54z" fill="#111"/></svg>
-                    {t('Conectar canal', 'Connect channel')}
-                  </button>
-                  <button onClick={() => advanceOnboarding(3)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
-                    {t('Saltar por ahora', 'Skip for now')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Generate a title */}
-            {onboardingStep === 3 && (
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
                 </div>
                 <div className="flex justify-center gap-2 mb-4">
-                  {[0, 1, 2, 3].map(i => (
-                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: 'var(--red)' }} />
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="w-2 h-2 rounded-full" style={{ background: i <= 1 ? 'var(--red)' : 'rgba(255,255,255,0.15)' }} />
                   ))}
                 </div>
                 <h2 className="font-display font-bold text-xl text-white mb-2">
-                  {t('Genera tu primer titulo', 'Generate your first title')}
+                  {t('¿De qué trata tu próximo vídeo?', 'What\'s your next video about?')}
                 </h2>
-                <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                <p className="text-zinc-400 text-sm mb-5 max-w-sm mx-auto">
                   {t(
-                    'Escribe el tema de tu proximo video y la IA te genera titulos optimizados para clics y SEO. Tienes 10 generaciones gratis al mes.',
-                    'Enter your next video topic and AI generates titles optimized for clicks and SEO. You get 10 free generations per month.'
+                    'Escríbelo en una frase y la IA te genera títulos optimizados para clics al instante. Sin salir de aquí.',
+                    'Describe it in one line and AI instantly generates click-optimized titles. Right here.'
                   )}
                 </p>
-                <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                  {t('Ir al generador', 'Go to generator')}
+                <form onSubmit={handleOnboardingGenerate} className="flex flex-col gap-2">
+                  <input
+                    type="text"
+                    value={onboardingTopic}
+                    onChange={(e) => setOnboardingTopic(e.target.value)}
+                    placeholder={t('Ej: cómo edité este vídeo en 1 hora', 'E.g. how I edited this video in 1 hour')}
+                    autoFocus
+                    maxLength={200}
+                    disabled={onboardingGenerating}
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-zinc-600 outline-none focus:border-white/30 disabled:opacity-50"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  />
+                  <button type="submit" disabled={onboardingTopic.trim().length < 3 || onboardingGenerating} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2 disabled:opacity-40">
+                    {onboardingGenerating ? (
+                      <>
+                        <span className="w-4 h-4 rounded-full border-2 border-transparent spin-r" style={{ borderTopColor: 'currentColor' }} />
+                        {t('Generando…', 'Generating…')}
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                        {t('Generar mis títulos →', 'Generate my titles →')}
+                      </>
+                    )}
+                  </button>
+                </form>
+                {onboardingError && (
+                  <p className="text-[13px] mt-3" style={{ color: '#ff6b6b' }}>{onboardingError}</p>
+                )}
+                <button onClick={() => advanceOnboarding(4)} disabled={onboardingGenerating} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2 mt-1 disabled:opacity-40">
+                  {t('Saltar por ahora', 'Skip for now')}
                 </button>
+              </div>
+            )}
+
+            {/* Step 2: Resultado — celebración del momento mágico + siguientes pasos */}
+            {onboardingStep >= 2 && (
+              <div className="text-center">
+                {onboardingResult ? (
+                  <>
+                    <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124,255,0,0.12)' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7CFF00" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                    </div>
+                    <div className="flex justify-center gap-2 mb-4">
+                      {[0, 1, 2].map(i => (
+                        <div key={i} className="w-2 h-2 rounded-full" style={{ background: 'var(--red)' }} />
+                      ))}
+                    </div>
+                    <h2 className="font-display font-bold text-xl text-white mb-2">
+                      {t('¡Tus primeros títulos están listos!', 'Your first titles are ready!')}
+                    </h2>
+                    <p className="text-zinc-400 text-sm mb-4 max-w-sm mx-auto">
+                      {t(
+                        'Esto es lo que YTubViral genera en segundos. Cópialos y úsalos ya.',
+                        'This is what YTubViral generates in seconds. Copy them and use them now.'
+                      )}
+                    </p>
+                    <div className="text-left text-sm text-zinc-200 whitespace-pre-wrap rounded-xl p-4 mb-3 max-h-56 overflow-y-auto" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      {onboardingResult}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(onboardingResult).then(() => {
+                          setOnboardingCopied(true);
+                          setTimeout(() => setOnboardingCopied(false), 2000);
+                        }).catch(() => {});
+                      }}
+                      className="text-zinc-400 text-[13px] font-mono-jb hover:text-white transition py-1 mb-4 inline-flex items-center gap-1.5"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                      {onboardingCopied ? t('¡Copiado!', 'Copied!') : t('Copiar', 'Copy')}
+                    </button>
+                    <div className="flex flex-col gap-2">
+                      <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                        {t('Generar más contenido', 'Generate more content')}
+                      </button>
+                      <button onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
+                        {t('Ir a mi panel', 'Go to my dashboard')}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* Usuario que retoma el onboarding a medias (sin resultado en memoria) */
+                  <>
+                    <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                    </div>
+                    <h2 className="font-display font-bold text-xl text-white mb-2">
+                      {t('Ya casi está', 'Almost there')}
+                    </h2>
+                    <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                      {t(
+                        'Genera tu primer título y descubre lo rápido que es. Tienes 10 generaciones gratis al mes.',
+                        'Generate your first title and see how fast it is. You get 10 free generations per month.'
+                      )}
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                        {t('Ir al generador', 'Go to generator')}
+                      </button>
+                      <button onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
+                        {t('Ir a mi panel', 'Go to my dashboard')}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
