@@ -128,42 +128,64 @@ cron.schedule(`${personaMin2} ${personaHour2} * * *`, async () => {
   console.log('[cron] Persona engagement (evening)');
   await bq('persona-runner:evening', async () => {
     await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
-
-    // Informe Bluesky post-run
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const rows = await db.query(
-        `SELECT account_id, type, COUNT(*)::int AS n FROM bluesky_actions WHERE DATE("createdAt") = $1 GROUP BY account_id, type ORDER BY account_id, type`,
-        [today]
-      ).catch(() => ({ rows: [] }));
-      const errors = personaRunner.getAndClearErrors();
-      let body = `INFORME BLUESKY — Sesión nocturna ${today}\n${'='.repeat(50)}\n\n`;
-      if (!rows.rows.length && !errors.length) {
-        body += 'Sin actividad registrada esta noche.\n';
-      } else {
-        const byPersona = {};
-        for (const r of rows.rows) {
-          if (!byPersona[r.account_id]) byPersona[r.account_id] = {};
-          byPersona[r.account_id][r.type] = r.n;
-        }
-        for (const [id, acts] of Object.entries(byPersona)) {
-          const name = id.replace('persona-', '').replace(/^\w/, c => c.toUpperCase());
-          body += `${name}: likes=${acts.bsky_like || 0}  replies=${acts.bsky_reply || 0}\n`;
-        }
-        if (errors.length) {
-          body += `\nErrores (${errors.length}):\n`;
-          for (const e of errors) body += `  • ${e.persona} [${e.platform}]: ${e.error}\n`;
-        }
-      }
-      body += `\nYTubViral Agent — Bluesky Report\n`;
-      await reports.sendEmail('🦋 Bluesky — informe sesión nocturna', body);
-      console.log('[persona-runner] Bluesky evening report sent');
-    } catch (reportErr) {
-      console.error('[persona-runner] Bluesky report error:', reportErr.message);
-    }
-
     await db.disconnect().catch(() => {});
   });
+}, { timezone: 'Europe/Madrid' });
+
+// ── Bluesky dispatcher horario (ritmo por persona) ───────────────────────────
+// Cada hora 08–23 Madrid, en un minuto aleatorio. Para cada persona consulta su
+// ritmo (persona-rhythm.js): horas propias + ánimo del día. Si "le toca ahora",
+// engancha SOLO esa persona. Resultado: actividad repartida por el día, distinta
+// por persona, lumpy como un humano — nunca las 4 a la vez.
+const blueskyDispatchMin = Math.floor(Math.random() * 60);
+cron.schedule(`${blueskyDispatchMin} 8-23 * * *`, async () => {
+  const rhythm = require('./persona-rhythm');
+  const personas = personaRunner.loadPersonas();
+  for (const persona of personas) {
+    if (persona.disabled) continue;
+    if (!rhythm.shouldEngageNow(persona.id)) continue;
+    // Micro-jitter 0–90s para que ni siquiera dos personas que coincidan en la
+    // misma hora arranquen en el mismo segundo.
+    await new Promise(r => setTimeout(r, Math.floor(Math.random() * 90000)));
+    await personaRunner.runOnePersonaBluesky(persona.id).catch(err => console.error('[bluesky-dispatch]', persona.id, err.message));
+  }
+  await db.disconnect().catch(() => {});
+}, { timezone: 'Europe/Madrid' });
+
+// ── Informe Bluesky diario — 23:40 Madrid ────────────────────────────────────
+cron.schedule('40 23 * * *', async () => {
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    const rows = await db.query(
+      `SELECT account_id, type, COUNT(*)::int AS n FROM bluesky_actions WHERE DATE("createdAt") = $1 GROUP BY account_id, type ORDER BY account_id, type`,
+      [today]
+    ).catch(() => ({ rows: [] }));
+    const errors = personaRunner.getAndClearErrors();
+    let body = `INFORME BLUESKY — ${today}\n${'='.repeat(50)}\n\n`;
+    if (!rows.rows.length && !errors.length) {
+      body += 'Sin actividad registrada hoy.\n';
+    } else {
+      const byPersona = {};
+      for (const r of rows.rows) {
+        if (!byPersona[r.account_id]) byPersona[r.account_id] = {};
+        byPersona[r.account_id][r.type] = r.n;
+      }
+      for (const [id, acts] of Object.entries(byPersona)) {
+        const name = id.replace('persona-', '').replace(/^\w/, c => c.toUpperCase());
+        body += `${name}: likes=${acts.bsky_like || 0}  replies=${acts.bsky_reply || 0}\n`;
+      }
+      if (errors.length) {
+        body += `\nErrores (${errors.length}):\n`;
+        for (const e of errors) body += `  • ${e.persona} [${e.platform}]: ${e.error}\n`;
+      }
+    }
+    body += `\nYTubViral Agent — Bluesky Report\n`;
+    await reports.sendEmail('🦋 Bluesky — informe diario', body);
+    console.log('[bluesky-report] daily report sent');
+  } catch (reportErr) {
+    console.error('[bluesky-report] error:', reportErr.message);
+  }
+  await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
 // Bluesky warm-up drip — one queued original post per day (12:35 Madrid).

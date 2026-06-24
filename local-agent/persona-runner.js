@@ -79,28 +79,8 @@ async function runAllPersonas() {
 
     await closeBrowserForProfile(persona.profileDir).catch(() => {});
 
-    // Bluesky — API oficial (AT Protocol), sin Puppeteer → riesgo de ban mínimo. Seguro de vida
-    // contra otro wipe tipo Reddit. Credenciales (handle + app password) en bluesky-accounts.json.
-    if (BLUESKY_AUTOMATION_ENABLED && bluesky) {
-      // Stagger entre personas: 4-12 minutos aleatorios para que no aparezcan en los mismos
-      // posts al mismo tiempo (patrón de bot evidente).
-      const staggerMs = (4 + Math.floor(Math.random() * 9)) * 60 * 1000;
-      console.log(`[persona-runner] ${persona.name} → Bluesky (stagger ${Math.round(staggerMs/60000)}min)`);
-      await new Promise(r => setTimeout(r, staggerMs));
-      try {
-        console.log(`[persona-runner] ${persona.name} → Bluesky starting`);
-        await bluesky.engageWithPosts({
-          accountId: persona.id,
-          persona,
-          commentGenerator: makeCommentGen('bluesky'),
-        });
-      } catch (err) {
-        const msg = err.message || String(err);
-        console.error(`[persona-runner] ${persona.name} Bluesky error: ${msg}`);
-        _errors.push({ persona: persona.name, platform: 'Bluesky', error: msg, at: new Date().toISOString() });
-        await diagnose(err, { platform: 'bluesky', account: persona.id, action: 'engage' }).catch(() => {});
-      }
-    }
+    // Bluesky NO va aquí: corre por su propio dispatcher horario (runOnePersonaBluesky)
+    // con ritmo por persona. Meterlo en runAllPersonas dispararía las 4 a la vez = patrón bot.
 
     console.log(`[persona-runner] ${persona.name} done`);
   }
@@ -113,4 +93,26 @@ async function runAllPersonas() {
   }
 }
 
-module.exports = { runAllPersonas, loadPersonas, getAndClearErrors };
+// Bluesky de UNA persona — lo llama el dispatcher horario (index.js) cuando el ritmo
+// de esa persona dice que "ahora le toca". Bluesky no menciona ytubviral (solo valor).
+async function runOnePersonaBluesky(personaId) {
+  if (!BLUESKY_AUTOMATION_ENABLED || !bluesky) return;
+  const personas = loadPersonas();
+  const persona = personas.find(p => p.id === personaId);
+  if (!persona || persona.disabled) return;
+
+  const commentGenerator = (authorName, postContent) =>
+    generatePersonaComment({ ...persona, mentionYtubviral: false, mentionRate: 0 }, 'bluesky', authorName, postContent);
+
+  try {
+    console.log(`[persona-runner] ${persona.name} → Bluesky (ritmo)`);
+    await bluesky.engageWithPosts({ accountId: persona.id, persona, commentGenerator });
+  } catch (err) {
+    const msg = err.message || String(err);
+    console.error(`[persona-runner] ${persona.name} Bluesky error: ${msg}`);
+    _errors.push({ persona: persona.name, platform: 'Bluesky', error: msg, at: new Date().toISOString() });
+    await diagnose(err, { platform: 'bluesky', account: persona.id, action: 'engage' }).catch(() => {});
+  }
+}
+
+module.exports = { runAllPersonas, runOnePersonaBluesky, loadPersonas, getAndClearErrors };
