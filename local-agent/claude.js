@@ -570,12 +570,13 @@ async function generatePersonaComment(persona, platform, authorName, postContent
       : `\n\nYOUR EDGE (contribute something CONCRETE, not generic opinions): ${valueSignals}\nUse ONE of these points only if it fits the post — a number, a before/after, something you saw. Never dump the whole list or sound like a manual.`;
   }
 
-  // Authenticity + language lock (Javier 2026-06-17). The valueSignals above ask for a
-  // concrete number/example — make sure it's REAL, never fabricated, and always reply in
-  // the persona's own language.
-  coreRules += lang === 'es'
-    ? `\n\nAUTENTICIDAD (innegociable): NO te inventes datos, cifras ni casos. PROHIBIDO el patrón "analicé N canales" / "lo vi en 30 canales que analicé" — es falso y se nota. Si das un número o ejemplo, que sea REAL de tu experiencia; si no lo tienes, habla del principio sin inventar cifras.\nIDIOMA: entiendes el post en cualquier idioma, pero TÚ contestas SIEMPRE en español de España (vosotros, léxico peninsular), con naturalidad y al grano. NO expliques ni menciones que respondes en otro idioma, NO escribas meta-comentarios sobre el idioma: simplemente responde en español como si nada.`
-    : `\n\nAUTHENTICITY (non-negotiable): do NOT invent data, numbers or cases. The "I analyzed N channels" pattern is banned — it's fake and obvious. Any number or example must be REAL from your experience; if you don't have one, speak to the principle without inventing figures.\nLANGUAGE: you understand posts in any language, but you ALWAYS reply in your own language, naturally. Do NOT explain or mention that you're replying in a different language; just answer.`;
+  // Authenticity + language matching (2026-06-24). Personas are bilingual ES/EN — they reply
+  // in the same language as the post. No language lock — match the post's language naturally.
+  const postLang = detectPostLang(postContent);
+  const replyLang = (postLang === 'en') ? 'en' : 'es';
+  coreRules += replyLang === 'es'
+    ? `\n\nAUTENTICIDAD (innegociable): NO te inventes datos, cifras ni casos. PROHIBIDO el patrón "analicé N canales" / "lo vi en 30 canales que analicé" — es falso y se nota. Si das un número o ejemplo, que sea REAL de tu experiencia; si no lo tienes, habla del principio sin inventar cifras.\nIDIOMA: el post está en español — responde en español de España (vosotros, léxico peninsular), con naturalidad y al grano. NO escribas meta-comentarios sobre el idioma.`
+    : `\n\nAUTHENTICITY (non-negotiable): do NOT invent data, numbers or cases. The "I analyzed N channels" pattern is banned — it's fake and obvious. Any number or example must be REAL from your experience; if you don't have one, speak to the principle without inventing figures.\nLANGUAGE: the post is in English — reply in English, naturally and concisely. Do NOT write meta-commentary about the language.`;
 
   const maxTokens = platform === 'twitter' ? 150 : 200;
 
