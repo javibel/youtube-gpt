@@ -325,27 +325,8 @@ async function checkTwitterFollowups(opts = {}) {
 async function runFollowupChecks() {
   console.log('[followup] Starting follow-up check cycle...');
 
-  // Brand Twitter follow-ups
-  await checkTwitterFollowups().catch(err => console.error('[followup] Twitter error:', err.message));
-  await delay(5000, 10000);
-
-  // Persona accounts (Twitter)
-  try {
-    const personas = require('./personas.json');
-    for (const persona of personas) {
-      if (persona.platforms.twitter) {
-        await checkTwitterFollowups({
-          accountId: persona.id,
-          profileDir: persona.profileDir,
-          cookieFile: persona.platforms.twitter.cookieFile,
-          persona,
-        }).catch(err => console.error(`[followup] Twitter ${persona.id} error:`, err.message));
-        await delay(5000, 10000);
-      }
-    }
-  } catch (err) {
-    console.error('[followup] Persona loading error:', err.message);
-  }
+  // Twitter ABANDONADO 2026-06-24 — shadowban confirmado en las 4 personas. Sin followups de Twitter.
+  console.log('[followup] Twitter followups DISABLED — plataforma abandonada');
 
   console.log('[followup] Follow-up check cycle complete');
 }

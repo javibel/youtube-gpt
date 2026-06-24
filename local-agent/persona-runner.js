@@ -47,24 +47,8 @@ async function runAllPersonas() {
       return (authorName, postContent) => generatePersonaComment(persona, platform, authorName, postContent);
     };
 
-    // Twitter
-    if (persona.platforms.twitter) {
-      const cfg = persona.platforms.twitter;
-      try {
-        console.log(`[persona-runner] ${persona.name} → Twitter`);
-        await twitter.engageWithTweets({
-          accountId: persona.id,
-          cookieFile: cfg.cookieFile,
-          profileDir: persona.profileDir,
-          commentGenerator: makeCommentGen('twitter'),
-        });
-      } catch (err) {
-        const msg = err.message || String(err);
-        console.error(`[persona-runner] ${persona.name} Twitter error: ${msg}`);
-        _errors.push({ persona: persona.name, platform: 'Twitter', error: msg, at: new Date().toISOString() });
-        await diagnose(err, { platform: 'twitter', account: persona.id, profileDir: persona.profileDir, action: 'engage' }).catch(() => {});
-      }
-    }
+    // Twitter — ABANDONADO 2026-06-24 (shadowban confirmado en las 4 personas). Pivote a Bluesky.
+    // if (persona.platforms.twitter) { ... }
 
     // Close browser between platforms to save memory
     await closeBrowserForProfile(persona.profileDir).catch(() => {});

@@ -249,13 +249,8 @@ cron.schedule('50 2 * * *', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
-// Brand Twitter Post — daily at 10:30, tweet + infographic via Puppeteer (replaces paid API)
-cron.schedule('30 10 * * *', async () => {
-  console.log('[cron] Brand Twitter post — daily tweet with infographic');
-  await bq('brand-twitter-post', async () => {
-    await runBrandTwitterPost().catch(err => console.error('[brand-twitter-post]', err.message));
-  });
-}, { timezone: 'Europe/Madrid' });
+// Brand Twitter Post — DESACTIVADO 2026-06-24 (shadowban confirmado, pivote a Bluesky)
+// cron.schedule('30 10 * * *', async () => { ... });
 
 // Outreach Monitor — every 3 hours 9-23h, check for new replies to outreach posts
 cron.schedule('0 9,12,15,18,21 * * *', async () => {
@@ -371,7 +366,7 @@ cron.schedule('0 6 * * *', async () => {
 
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');
-console.log('  Twitter brand: 10:30 daily (Europe/Madrid) — Puppeteer + infographic');
+console.log('  Twitter brand: DISABLED (shadowban 2026-06-24, pivote a Bluesky)');
 console.log(`  Personas morning: ${personaHour1}:${String(personaMin1).padStart(2, '0')} (Europe/Madrid)`);
 console.log(`  Personas evening: ${personaHour2}:${String(personaMin2).padStart(2, '0')} (Europe/Madrid)`);
 console.log(`  Follow-up morning: ${followupHour1}:${String(followupMin1).padStart(2, '0')} (Europe/Madrid)`);
@@ -383,7 +378,7 @@ console.log('  Outreach discover: 08:30,12:30,16:30,20:30 (Europe/Madrid)');
 console.log('  Outreach send: 08:45,12:45,16:45,20:45 (Europe/Madrid)');
 console.log('  Outreach follow-up: 10:00 daily (Europe/Madrid)');
 console.log('  Bluesky warm-up drip: 12:35 daily (Europe/Madrid)');
-console.log('  Brand Twitter post: 10:30 daily (Europe/Madrid) — Puppeteer + infographic');
+console.log('  Brand Twitter post: DISABLED (shadowban 2026-06-24)');
 console.log('  Feature Monitor: 07:00, 19:00 daily (Europe/Madrid)');
 console.log('  Outreach monitor: every 3h 9-21h (Europe/Madrid)');
 console.log('  Infra Optimizer: 02:45 daily (Europe/Madrid)');

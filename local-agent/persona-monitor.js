@@ -38,7 +38,7 @@ const COOKIES_DIR  = path.join(__dirname, 'cookies');
 const FACEBOOK_AUTOMATION_ENABLED = process.env.FACEBOOK_AUTOMATION_ENABLED === 'true';
 const BLUESKY_AUTOMATION_ENABLED  = process.env.BLUESKY_AUTOMATION_ENABLED === 'true';
 function platformEnabled(platform) {
-  if (platform === 'twitter')  return true; // siempre activo
+  if (platform === 'twitter')  return false; // ABANDONADO 2026-06-24 — shadowban confirmado
   if (platform === 'facebook') return FACEBOOK_AUTOMATION_ENABLED;
   if (platform === 'bluesky')  return BLUESKY_AUTOMATION_ENABLED;
   return true;
