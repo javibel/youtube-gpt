@@ -22,26 +22,14 @@ async function removeBgServer(source: File | Blob, onStatus?: (msg: string) => v
 let _rmbgProcessor: any = null;
 let _rmbgModel: any = null;
 
-// Processor config required by RMBG-1.4 (matches the official HF Space)
-const RMBG_PROCESSOR_CONFIG = {
-  do_normalize: true,
-  do_pad: false,
-  do_rescale: true,
-  do_resize: true,
-  image_mean: [0.5, 0.5, 0.5],
-  image_std: [1, 1, 1],
-  resample: 2,
-  rescale_factor: 0.00392156862745098,
-  size: { width: 1024, height: 1024 },
-};
-
 async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
   const { AutoProcessor, AutoModelForImageSegmentation, RawImage } = await import('@huggingface/transformers');
-  const MODEL_ID = 'briaai/RMBG-1.4';
+  // BiRefNet_lite: supported by AutoModelForImageSegmentation in transformers.js v4, ~45MB
+  const MODEL_ID = 'ZhengPeng7/BiRefNet_lite';
 
   if (!_rmbgProcessor || !_rmbgModel) {
-    onStatus?.('Cargando modelo RMBG-1.4 (primera vez ~80MB)…');
-    _rmbgProcessor = await AutoProcessor.from_pretrained(MODEL_ID, { config: RMBG_PROCESSOR_CONFIG });
+    onStatus?.('Cargando modelo BiRefNet (primera vez ~45MB)…');
+    _rmbgProcessor = await AutoProcessor.from_pretrained(MODEL_ID);
     _rmbgModel = await AutoModelForImageSegmentation.from_pretrained(MODEL_ID, { dtype: 'fp32' });
   }
 
