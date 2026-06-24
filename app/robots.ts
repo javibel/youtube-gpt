@@ -8,11 +8,22 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: ['/dashboard', '/generate', '/admin', '/api/', '/profile', '/feedback', '/stripe/', '/reset-password', '/verify-email', '/ab-test', '/research', '/competitors', '/best-time', '/retention', '/predictor', '/calendar', '/analytics', '/coach'],
       },
-      // Block AI training bots (search indexing bots like Googlebot are allowed)
+      // Allow AI *search* bots — they read pages to answer a live user query (ChatGPT search,
+      // Perplexity, Claude search). This is discovery, not training: blocking them only removed
+      // us from AI answers without protecting anything. (2026-06-24)
       ...[
-        'GPTBot', 'ChatGPT-User', 'Google-Extended', 'ClaudeBot',
+        'OAI-SearchBot', 'ChatGPT-User',
+        'PerplexityBot', 'Perplexity-User',
+        'Claude-User', 'Claude-SearchBot',
+      ].map((bot) => ({
+        userAgent: bot,
+        allow: '/',
+      })),
+      // Block AI *training* bots — they scrape to train models. No SEO upside, so keep them out.
+      ...[
+        'GPTBot', 'Google-Extended', 'ClaudeBot',
         'Amazonbot', 'Applebot-Extended', 'Bytespider', 'CCBot',
-        'meta-externalagent', 'PerplexityBot', 'Diffbot',
+        'meta-externalagent', 'Diffbot',
       ].map((bot) => ({
         userAgent: bot,
         disallow: ['/'],
