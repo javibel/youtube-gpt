@@ -757,15 +757,15 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     setRemovingBg(true);
     let masked: Blob | null = null;
     try {
-      masked = await removeBgBiRefNet(photoOrigFile, msg => setBgStatus(msg));
-    } catch (biErr) {
-      console.error('[RMBG-1.4] failed, falling back to IS-Net:', biErr);
+      masked = await removeBgServer(photoOrigFile, msg => setBgStatus(msg));
+    } catch (serverErr) {
+      console.error('[remove-bg] server failed, falling back to IS-Net:', serverErr);
       setBgStatus('Usando modelo alternativo…');
       try {
         masked = await removeBgISNet(photoOrigFile, msg => setBgStatus(msg));
       } catch (isNetErr) {
         console.error('[ISNet] fallback also failed:', isNetErr);
-        const msg = String(biErr instanceof Error ? biErr.message : biErr).slice(0, 80);
+        const msg = String(serverErr instanceof Error ? serverErr.message : serverErr).slice(0, 80);
         setBgStatus(`Error: ${msg}`);
         setTimeout(() => setBgStatus(''), 6000);
         setRemovingBg(false);
