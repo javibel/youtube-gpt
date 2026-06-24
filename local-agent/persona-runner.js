@@ -42,9 +42,13 @@ async function runAllPersonas() {
     }
     console.log(`[persona-runner] === ${persona.name} (${persona.id}) ===`);
 
-    // Build comment generator bound to this persona
+    // Build comment generator bound to this persona.
+    // Bluesky: strip all ytubviral mentions — zero promotional patterns on a new platform.
     const makeCommentGen = (platform) => {
-      return (authorName, postContent) => generatePersonaComment(persona, platform, authorName, postContent);
+      const personaForPlatform = platform === 'bluesky'
+        ? { ...persona, mentionYtubviral: false, mentionRate: 0 }
+        : persona;
+      return (authorName, postContent) => generatePersonaComment(personaForPlatform, platform, authorName, postContent);
     };
 
     // Twitter — ABANDONADO 2026-06-24 (shadowban confirmado en las 4 personas). Pivote a Bluesky.
