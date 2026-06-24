@@ -22,14 +22,26 @@ async function removeBgServer(source: File | Blob, onStatus?: (msg: string) => v
 let _rmbgProcessor: any = null;
 let _rmbgModel: any = null;
 
+// Processor config required by RMBG-1.4 (matches the official HF Space)
+const RMBG_PROCESSOR_CONFIG = {
+  do_normalize: true,
+  do_pad: false,
+  do_rescale: true,
+  do_resize: true,
+  image_mean: [0.5, 0.5, 0.5],
+  image_std: [1, 1, 1],
+  resample: 2,
+  rescale_factor: 0.00392156862745098,
+  size: { width: 1024, height: 1024 },
+};
+
 async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
   const { AutoProcessor, AutoModelForImageSegmentation, RawImage } = await import('@huggingface/transformers');
-
   const MODEL_ID = 'briaai/RMBG-1.4';
 
   if (!_rmbgProcessor || !_rmbgModel) {
-    onStatus?.('Cargando modelo (primera vez ~80MB)…');
-    _rmbgProcessor = await AutoProcessor.from_pretrained(MODEL_ID);
+    onStatus?.('Cargando modelo RMBG-1.4 (primera vez ~80MB)…');
+    _rmbgProcessor = await AutoProcessor.from_pretrained(MODEL_ID, { config: RMBG_PROCESSOR_CONFIG });
     _rmbgModel = await AutoModelForImageSegmentation.from_pretrained(MODEL_ID, { dtype: 'fp32' });
   }
 
@@ -49,12 +61,12 @@ async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) =>
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(image.toCanvas(), 0, 0);
   const imgData = ctx.getImageData(0, 0, image.width, image.height);
-  for (let i = 0; i < mask.data.length; i++) {
+  for (let i = 0; i < mask.data.length; ++i) {
     imgData.data[i * 4 + 3] = mask.data[i];
   }
   ctx.putImageData(imgData, 0, 0);
 
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png'));
 }
 
 async function removeBgISNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
@@ -755,10 +767,10 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     setRemovingBg(true);
     let masked: Blob | null = null;
     try {
-      // BiRefNet full model — best free quality, runs in browser via WebGPU/WASM
       masked = await removeBgBiRefNet(photoOrigFile, msg => setBgStatus(msg));
     } catch (biErr) {
-      console.error('[BiRefNet] failed, falling back to IS-Net:', biErr);
+      console.error('[RMBG-1.4] failed, falling back to IS-Net:', biErr);
+      setBgStatus('Usando modelo alternativo…');
       try {
         masked = await removeBgISNet(photoOrigFile, msg => setBgStatus(msg));
       } catch (isNetErr) {
@@ -771,7 +783,6 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
       }
     }
     try {
-      // BiRefNet output is already clean — no post-processing to preserve thin areas (arms, hair)
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(masked!) } : p);
       setBgRemoved(true);
     } catch (postErr) {
