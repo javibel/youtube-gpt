@@ -716,9 +716,11 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     if (!photoOrigFile) return;
     setRemovingBg(true);
     let masked: Blob | null = null;
+    let serverSuccess = false;
     try {
-      // Server-side RMBG-2.0 / BiRefNet full — much better quality than client ONNX
+      // remove.bg API — already perfect quality, no post-processing needed
       masked = await removeBgServer(photoOrigFile, msg => setBgStatus(msg));
+      serverSuccess = true;
     } catch (srvErr) {
       console.error('[remove-bg server] failed, falling back to IS-Net:', srvErr);
       try {
@@ -733,10 +735,16 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
       }
     }
     try {
-      setBgStatus('Refinando bordes…');
-      const filled  = await fillAlphaHoles(masked!);
-      const refined = await smoothBgMaskEdges(filled);
-      setPhoto(p => p ? { ...p, src: URL.createObjectURL(refined) } : p);
+      let result: Blob;
+      if (serverSuccess) {
+        // remove.bg output is already clean — skip post-processing to preserve thin areas (arms, hair)
+        result = masked!;
+      } else {
+        setBgStatus('Refinando bordes…');
+        const filled = await fillAlphaHoles(masked!);
+        result = await smoothBgMaskEdges(filled);
+      }
+      setPhoto(p => p ? { ...p, src: URL.createObjectURL(result) } : p);
       setBgRemoved(true);
     } catch (postErr) {
       console.error('[BgRemoval] post-processing failed:', postErr);
