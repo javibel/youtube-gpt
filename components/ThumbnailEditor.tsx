@@ -5,59 +5,20 @@ import dynamic from 'next/dynamic';
 import type Konva from 'konva';
 import { THUMB_W, THUMB_H, type PhotoItem, type TextItem } from '@/lib/thumbnail-types';
 
-// ─── BiRefNet model cache (loads once per browser session) ───────────────────
-let _biRefNetModel: unknown = null;
-let _biRefNetProcessor: unknown = null;
-
-async function getOrLoadBiRefNet(onStatus?: (msg: string) => void) {
-  if (_biRefNetModel && _biRefNetProcessor) return { model: _biRefNetModel as any, processor: _biRefNetProcessor as any };
-  onStatus?.('Descargando modelo IA (~60 MB, solo la primera vez)…');
-  const { AutoModel, AutoProcessor, env } = await import('@huggingface/transformers');
-  // Disable local model cache lookup — browser always fetches from HF CDN
-  (env as any).allowLocalModels = false;
-  const modelId = 'onnx-community/BiRefNet_lite';
-  const [model, processor] = await Promise.all([
-    AutoModel.from_pretrained(modelId, { dtype: 'fp32' }),
-    AutoProcessor.from_pretrained(modelId),
-  ]);
-  _biRefNetModel = model;
-  _biRefNetProcessor = processor;
-  return { model: model as any, processor: processor as any };
-}
-
-/** Remove background using BiRefNet_lite (MIT, commercial-safe, runs client-side). */
-async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
-  const { model, processor } = await getOrLoadBiRefNet(onStatus);
-  const { RawImage } = await import('@huggingface/transformers');
-  onStatus?.('Analizando imagen…');
-  const url = URL.createObjectURL(source);
-  const image = await RawImage.fromURL(url);
-  URL.revokeObjectURL(url);
-  const { pixel_values } = await processor(image);
-  const rawOutput = await model({ input_image: pixel_values });
-  // BiRefNet_lite ONNX output tensor name varies by model version — try common keys
-  const maskTensor: any = rawOutput.output_image ?? rawOutput.output ?? rawOutput.pred ?? Object.values(rawOutput)[0];
-  if (!maskTensor) throw new Error(`BiRefNet: unexpected output keys: ${Object.keys(rawOutput).join(',')}`);
-  // Sigmoid → [0,255] mask at original resolution
-  const mask = await RawImage.fromTensor(
-    maskTensor[0].sigmoid().mul(255).to('uint8')
-  ).resize(image.width, image.height);
-  // Apply mask as alpha channel, keep original RGB
-  const canvas = document.createElement('canvas');
-  canvas.width = image.width; canvas.height = image.height;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  const origBmp = await createImageBitmap(source);
-  ctx.drawImage(origBmp, 0, 0);
-  origBmp.close();
-  const imgData = ctx.getImageData(0, 0, image.width, image.height);
-  for (let i = 0; i < image.width * image.height; i++) {
-    imgData.data[i * 4 + 3] = mask.data[i];
+/** Server-side background removal via /api/remove-bg (RMBG-2.0 → BiRefNet full). */
+async function removeBgServer(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
+  onStatus?.('Eliminando fondo…');
+  const form = new FormData();
+  form.append('file', source, 'photo.jpg');
+  const res = await fetch('/api/remove-bg', { method: 'POST', body: form });
+  if (!res.ok) {
+    const err = await res.text().catch(() => String(res.status));
+    throw new Error(`remove-bg server: ${err.slice(0, 120)}`);
   }
-  ctx.putImageData(imgData, 0, 0);
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
+  return res.blob();
 }
 
-/** Fallback: IS-Net fp16 via @imgly/background-removal. */
+/** Fallback: IS-Net fp16 via @imgly/background-removal (runs in browser). */
 async function removeBgISNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
   onStatus?.('Cargando modelo de reserva…');
   const { removeBackground } = await import('@imgly/background-removal');
@@ -756,15 +717,15 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     setRemovingBg(true);
     let masked: Blob | null = null;
     try {
-      // Try BiRefNet_lite first (superior quality)
-      masked = await removeBgBiRefNet(photoOrigFile, msg => setBgStatus(msg));
-    } catch (biErr) {
-      console.error('[BiRefNet] failed, falling back to IS-Net:', biErr);
+      // Server-side RMBG-2.0 / BiRefNet full — much better quality than client ONNX
+      masked = await removeBgServer(photoOrigFile, msg => setBgStatus(msg));
+    } catch (srvErr) {
+      console.error('[remove-bg server] failed, falling back to IS-Net:', srvErr);
       try {
         masked = await removeBgISNet(photoOrigFile, msg => setBgStatus(msg));
       } catch (isNetErr) {
         console.error('[ISNet] fallback also failed:', isNetErr);
-        const msg = String(biErr instanceof Error ? biErr.message : biErr).slice(0, 80);
+        const msg = String(srvErr instanceof Error ? srvErr.message : srvErr).slice(0, 80);
         setBgStatus(`Error: ${msg}`);
         setTimeout(() => setBgStatus(''), 6000);
         setRemovingBg(false);
@@ -773,18 +734,12 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     }
     try {
       setBgStatus('Refinando bordes…');
-      // Morphological close (dilate→erode same radius): bridges concave gaps
-      // (arm/body junction, armpits) without reintroducing the background.
-      const dilated = await dilateAlpha(masked!, 10);
-      const closed  = await erodeAlpha(dilated, 10);
-      // Fill any remaining interior holes, then feather edges
-      const filled  = await fillAlphaHoles(closed);
+      const filled  = await fillAlphaHoles(masked!);
       const refined = await smoothBgMaskEdges(filled);
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(refined) } : p);
       setBgRemoved(true);
     } catch (postErr) {
       console.error('[BgRemoval] post-processing failed:', postErr);
-      // Still show the raw result
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(masked!) } : p);
       setBgRemoved(true);
     } finally {
