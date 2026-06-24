@@ -523,6 +523,13 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   // ── YouTube-only gate: skip posts about TikTok, podcasts, etc. ──
   if (isOffTopicPost(postContent)) return '';
 
+  // ── Language gate: only reply to ES or EN posts ──
+  const _postLangGate = detectPostLang(postContent);
+  if (_postLangGate !== 'es' && _postLangGate !== 'en') {
+    console.log(`[claude] Skipping post in unsupported language (${_postLangGate})`);
+    return '';
+  }
+
   const personality = persona.personality[lang] || persona.personality.en;
   const rules = PLATFORM_RULES[platform]?.[lang] || PLATFORM_RULES[platform]?.en || PLATFORM_RULES.twitter.en;
 
