@@ -19,54 +19,44 @@ async function removeBgServer(source: File | Blob, onStatus?: (msg: string) => v
 }
 
 /** Fallback: IS-Net fp16 via @imgly/background-removal (runs in browser). */
-let _rmbgProcessor: any = null;
-let _rmbgModel: any = null;
+// Calls the briaai/BRIA-RMBG-1.4 HuggingFace Space Gradio API directly from the browser.
+// The Space runs RMBG-1.4 server-side on HF hardware — same model the user confirmed works.
+// Called from the browser (not Vercel), so HF IP restrictions don't apply.
+const HF_SPACE = 'https://not-lain-background-removal.hf.space';
 
 async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
-  const { AutoModelForImageSegmentation, Tensor, RawImage } = await import('@huggingface/transformers');
-  const MODEL_ID = 'ZhengPeng7/BiRefNet_lite';
-  const INPUT_SIZE = 1024;
-  // ImageNet normalization used by BiRefNet
-  const MEAN = [0.485, 0.456, 0.406];
-  const STD  = [0.229, 0.224, 0.225];
-
-  if (!_rmbgModel) {
-    onStatus?.('Cargando modelo BiRefNet (primera vez ~45MB)…');
-    _rmbgModel = await AutoModelForImageSegmentation.from_pretrained(MODEL_ID, { dtype: 'fp32' });
-  }
-
   onStatus?.('Eliminando fondo…');
 
-  // Preprocess: resize to 1024×1024, normalize manually
-  const objUrl = URL.createObjectURL(source);
-  const image = await RawImage.fromURL(objUrl);
-  URL.revokeObjectURL(objUrl);
+  // 1. Upload image to the Space
+  const form = new FormData();
+  form.append('files', source, 'photo.png');
+  const uploadRes = await fetch(`${HF_SPACE}/gradio_api/upload`, { method: 'POST', body: form });
+  if (!uploadRes.ok) throw new Error(`HF upload ${uploadRes.status}`);
+  const [filePath]: string[] = await uploadRes.json();
 
-  const resized = await image.resize(INPUT_SIZE, INPUT_SIZE);
-  const { data: px, width: W, height: H } = resized;
-  const float32 = new Float32Array(3 * H * W);
-  for (let i = 0; i < H * W; i++) {
-    float32[i]           = (px[i * 4]     / 255 - MEAN[0]) / STD[0]; // R
-    float32[H * W + i]   = (px[i * 4 + 1] / 255 - MEAN[1]) / STD[1]; // G
-    float32[2 * H * W + i] = (px[i * 4 + 2] / 255 - MEAN[2]) / STD[2]; // B
-  }
-  const pixel_values = new Tensor('float32', float32, [1, 3, H, W]);
+  // 2. Start processing
+  const callRes = await fetch(`${HF_SPACE}/gradio_api/call/image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: [{ path: filePath, orig_name: 'photo.png', mime_type: source.type || 'image/png' }] }),
+  });
+  if (!callRes.ok) throw new Error(`HF call ${callRes.status}`);
+  const { event_id } = await callRes.json();
 
-  const { output } = await _rmbgModel({ pixel_values });
-  const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width, image.height);
+  // 3. Poll SSE stream for result (max 50s)
+  const pollRes = await fetch(`${HF_SPACE}/gradio_api/call/image/${event_id}`);
+  const text = await pollRes.text();
+  if (text.includes('event: error')) throw new Error('HF Space processing error');
+  const dataLine = text.split('\n').find(l => l.startsWith('data:'));
+  if (!dataLine) throw new Error('No data in HF response');
+  const results = JSON.parse(dataLine.slice(5));
+  const resultUrl: string = results[0][0]?.url;
+  if (!resultUrl) throw new Error('No result URL from HF Space');
 
-  const canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(image.toCanvas(), 0, 0);
-  const imgData = ctx.getImageData(0, 0, image.width, image.height);
-  for (let i = 0; i < mask.data.length; ++i) {
-    imgData.data[i * 4 + 3] = mask.data[i];
-  }
-  ctx.putImageData(imgData, 0, 0);
-
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png'));
+  // 4. Download result PNG
+  const imgRes = await fetch(resultUrl);
+  if (!imgRes.ok) throw new Error(`HF result download ${imgRes.status}`);
+  return imgRes.blob();
 }
 
 async function removeBgISNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
