@@ -19,8 +19,43 @@ async function removeBgServer(source: File | Blob, onStatus?: (msg: string) => v
 }
 
 /** Fallback: IS-Net fp16 via @imgly/background-removal (runs in browser). */
+async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
+  onStatus?.('Cargando modelo BiRefNet (primera vez ~150MB)…');
+  const { AutoProcessor, AutoModelForImageSegmentation, RawImage } = await import('@huggingface/transformers');
+
+  const processor = await AutoProcessor.from_pretrained('ZhengPeng7/BiRefNet', { device: 'webgpu' }).catch(() =>
+    AutoProcessor.from_pretrained('ZhengPeng7/BiRefNet')
+  );
+  const model = await AutoModelForImageSegmentation.from_pretrained('ZhengPeng7/BiRefNet', {
+    dtype: 'fp32',
+  }).catch(() => AutoModelForImageSegmentation.from_pretrained('ZhengPeng7/BiRefNet'));
+
+  onStatus?.('Procesando con BiRefNet…');
+
+  const url = URL.createObjectURL(source);
+  const image = await RawImage.fromURL(url);
+  URL.revokeObjectURL(url);
+
+  const inputs = await processor(image);
+  const { output } = await (model as any)(inputs);
+  const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width, image.height);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(image.toCanvas(), 0, 0);
+  const imgData = ctx.getImageData(0, 0, image.width, image.height);
+  for (let i = 0; i < mask.data.length; i++) {
+    imgData.data[i * 4 + 3] = mask.data[i];
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
+}
+
 async function removeBgISNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
-  onStatus?.('Cargando modelo de reserva…');
+  onStatus?.('Cargando modelo IS-Net…');
   const { removeBackground } = await import('@imgly/background-removal');
   onStatus?.('Procesando…');
   return removeBackground(source as File, { model: 'isnet_fp16', output: { format: 'image/png' } });
@@ -716,18 +751,16 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     if (!photoOrigFile) return;
     setRemovingBg(true);
     let masked: Blob | null = null;
-    let serverSuccess = false;
     try {
-      // remove.bg API — already perfect quality, no post-processing needed
-      masked = await removeBgServer(photoOrigFile, msg => setBgStatus(msg));
-      serverSuccess = true;
-    } catch (srvErr) {
-      console.error('[remove-bg server] failed, falling back to IS-Net:', srvErr);
+      // BiRefNet full model — best free quality, runs in browser via WebGPU/WASM
+      masked = await removeBgBiRefNet(photoOrigFile, msg => setBgStatus(msg));
+    } catch (biErr) {
+      console.error('[BiRefNet] failed, falling back to IS-Net:', biErr);
       try {
         masked = await removeBgISNet(photoOrigFile, msg => setBgStatus(msg));
       } catch (isNetErr) {
         console.error('[ISNet] fallback also failed:', isNetErr);
-        const msg = String(srvErr instanceof Error ? srvErr.message : srvErr).slice(0, 80);
+        const msg = String(biErr instanceof Error ? biErr.message : biErr).slice(0, 80);
         setBgStatus(`Error: ${msg}`);
         setTimeout(() => setBgStatus(''), 6000);
         setRemovingBg(false);
@@ -735,21 +768,13 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
       }
     }
     try {
-      let result: Blob;
-      if (serverSuccess) {
-        // remove.bg output is already clean — skip post-processing to preserve thin areas (arms, hair)
-        result = masked!;
-      } else {
-        setBgStatus('Refinando bordes…');
-        const filled = await fillAlphaHoles(masked!);
-        result = await smoothBgMaskEdges(filled);
-      }
-      setPhoto(p => p ? { ...p, src: URL.createObjectURL(result) } : p);
-      setBgRemoved(true);
-    } catch (postErr) {
-      console.error('[BgRemoval] post-processing failed:', postErr);
+      // BiRefNet output is already clean — no post-processing to preserve thin areas (arms, hair)
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(masked!) } : p);
       setBgRemoved(true);
+    } catch (postErr) {
+      console.error('[BgRemoval] failed:', postErr);
+      setBgStatus('Error al aplicar resultado');
+      setTimeout(() => setBgStatus(''), 4000);
     } finally {
       setRemovingBg(false);
       setBgStatus('');
