@@ -128,6 +128,40 @@ cron.schedule(`${personaMin2} ${personaHour2} * * *`, async () => {
   console.log('[cron] Persona engagement (evening)');
   await bq('persona-runner:evening', async () => {
     await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
+
+    // Informe Bluesky post-run
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const rows = await db.query(
+        `SELECT account_id, type, COUNT(*)::int AS n FROM bluesky_actions WHERE DATE("createdAt") = $1 GROUP BY account_id, type ORDER BY account_id, type`,
+        [today]
+      ).catch(() => ({ rows: [] }));
+      const errors = personaRunner.getAndClearErrors();
+      let body = `INFORME BLUESKY — Sesión nocturna ${today}\n${'='.repeat(50)}\n\n`;
+      if (!rows.rows.length && !errors.length) {
+        body += 'Sin actividad registrada esta noche.\n';
+      } else {
+        const byPersona = {};
+        for (const r of rows.rows) {
+          if (!byPersona[r.account_id]) byPersona[r.account_id] = {};
+          byPersona[r.account_id][r.type] = r.n;
+        }
+        for (const [id, acts] of Object.entries(byPersona)) {
+          const name = id.replace('persona-', '').replace(/^\w/, c => c.toUpperCase());
+          body += `${name}: likes=${acts.bsky_like || 0}  replies=${acts.bsky_reply || 0}\n`;
+        }
+        if (errors.length) {
+          body += `\nErrores (${errors.length}):\n`;
+          for (const e of errors) body += `  • ${e.persona} [${e.platform}]: ${e.error}\n`;
+        }
+      }
+      body += `\nYTubViral Agent — Bluesky Report\n`;
+      await reports.sendEmail('🦋 Bluesky — informe sesión nocturna', body);
+      console.log('[persona-runner] Bluesky evening report sent');
+    } catch (reportErr) {
+      console.error('[persona-runner] Bluesky report error:', reportErr.message);
+    }
+
     await db.disconnect().catch(() => {});
   });
 }, { timezone: 'Europe/Madrid' });
