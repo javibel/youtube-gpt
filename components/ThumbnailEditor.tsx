@@ -23,23 +23,35 @@ let _rmbgProcessor: any = null;
 let _rmbgModel: any = null;
 
 async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
-  const { AutoProcessor, AutoModelForImageSegmentation, RawImage } = await import('@huggingface/transformers');
-  // BiRefNet_lite: supported by AutoModelForImageSegmentation in transformers.js v4, ~45MB
+  const { AutoModelForImageSegmentation, Tensor, RawImage } = await import('@huggingface/transformers');
   const MODEL_ID = 'ZhengPeng7/BiRefNet_lite';
+  const INPUT_SIZE = 1024;
+  // ImageNet normalization used by BiRefNet
+  const MEAN = [0.485, 0.456, 0.406];
+  const STD  = [0.229, 0.224, 0.225];
 
-  if (!_rmbgProcessor || !_rmbgModel) {
+  if (!_rmbgModel) {
     onStatus?.('Cargando modelo BiRefNet (primera vez ~45MB)…');
-    _rmbgProcessor = await AutoProcessor.from_pretrained(MODEL_ID);
     _rmbgModel = await AutoModelForImageSegmentation.from_pretrained(MODEL_ID, { dtype: 'fp32' });
   }
 
   onStatus?.('Eliminando fondo…');
 
+  // Preprocess: resize to 1024×1024, normalize manually
   const objUrl = URL.createObjectURL(source);
   const image = await RawImage.fromURL(objUrl);
   URL.revokeObjectURL(objUrl);
 
-  const { pixel_values } = await _rmbgProcessor(image);
+  const resized = await image.resize(INPUT_SIZE, INPUT_SIZE);
+  const { data: px, width: W, height: H } = resized;
+  const float32 = new Float32Array(3 * H * W);
+  for (let i = 0; i < H * W; i++) {
+    float32[i]           = (px[i * 4]     / 255 - MEAN[0]) / STD[0]; // R
+    float32[H * W + i]   = (px[i * 4 + 1] / 255 - MEAN[1]) / STD[1]; // G
+    float32[2 * H * W + i] = (px[i * 4 + 2] / 255 - MEAN[2]) / STD[2]; // B
+  }
+  const pixel_values = new Tensor('float32', float32, [1, 3, H, W]);
+
   const { output } = await _rmbgModel({ pixel_values });
   const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width, image.height);
 
