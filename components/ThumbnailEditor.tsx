@@ -303,66 +303,42 @@ async function fillAlphaHoles(blob: Blob): Promise<Blob> {
 }
 
 /**
- * BFS from border pixels that match the background color (sampled from corners).
- * Any pixel the model removed that is NOT reachable from the border as background
- * is part of the subject (skin, clothing, hair) and gets restored.
- * Works regardless of subject color — arm skin, dark shirt, etc.
+ * Shrink alpha mask by `radius` pixels (separable min-filter: H then V).
+ * Used after dilateAlpha to form a morphological close that fills concave
+ * gaps (arm/body junction) without changing the outer silhouette.
  */
-async function restoreNonBackgroundPixels(masked: Blob, original: File | Blob, tolerance = 35): Promise<Blob> {
-  const [maskedBmp, origBmp] = await Promise.all([
-    createImageBitmap(masked),
-    createImageBitmap(original as Blob),
-  ]);
-  const W = maskedBmp.width, H = maskedBmp.height;
+async function erodeAlpha(blob: Blob, radius = 3): Promise<Blob> {
+  const bmp = await createImageBitmap(blob);
+  const { width: W, height: H } = bmp;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-
-  ctx.drawImage(origBmp, 0, 0, W, H);
-  origBmp.close?.();
-  const orig = ctx.getImageData(0, 0, W, H).data;
-
-  // Sample background color from 4 corners of the original
-  const corners = [0, (W - 1), (H - 1) * W, (H - 1) * W + (W - 1)];
-  let bgR = 0, bgG = 0, bgB = 0;
-  for (const c of corners) { bgR += orig[c*4]; bgG += orig[c*4+1]; bgB += orig[c*4+2]; }
-  bgR = bgR / 4; bgG = bgG / 4; bgB = bgB / 4;
-
-  const T2 = tolerance * tolerance;
-  const isBg = (idx: number) => {
-    const dr = orig[idx*4] - bgR, dg = orig[idx*4+1] - bgG, db = orig[idx*4+2] - bgB;
-    return dr*dr + dg*dg + db*db < T2;
-  };
-
-  // BFS flood-fill from all border pixels that match the background color
-  const confirmed = new Uint8Array(W * H);
-  const queue: number[] = [];
-  const seed = (i: number) => { if (!confirmed[i] && isBg(i)) { confirmed[i] = 1; queue.push(i); } };
-  for (let x = 0; x < W; x++) { seed(x); seed((H - 1) * W + x); }
-  for (let y = 1; y < H - 1; y++) { seed(y * W); seed(y * W + W - 1); }
-  let qi = 0;
-  while (qi < queue.length) {
-    const i = queue[qi++];
-    const x = i % W, y = (i / W) | 0;
-    if (y > 0   && !confirmed[i-W] && isBg(i-W)) { confirmed[i-W] = 1; queue.push(i-W); }
-    if (y < H-1 && !confirmed[i+W] && isBg(i+W)) { confirmed[i+W] = 1; queue.push(i+W); }
-    if (x > 0   && !confirmed[i-1] && isBg(i-1)) { confirmed[i-1] = 1; queue.push(i-1); }
-    if (x < W-1 && !confirmed[i+1] && isBg(i+1)) { confirmed[i+1] = 1; queue.push(i+1); }
-  }
-
-  // Apply: model removed a pixel that isn't confirmed background → restore it
-  ctx.clearRect(0, 0, W, H);
-  ctx.drawImage(maskedBmp, 0, 0, W, H);
-  maskedBmp.close?.();
+  ctx.drawImage(bmp, 0, 0);
+  bmp.close?.();
   const id  = ctx.getImageData(0, 0, W, H);
   const pix = id.data;
 
-  for (let i = 0; i < W * H; i++) {
-    if (pix[i*4+3] < 200 && !confirmed[i]) {
-      pix[i*4]   = orig[i*4];
-      pix[i*4+1] = orig[i*4+1];
-      pix[i*4+2] = orig[i*4+2];
-      pix[i*4+3] = 255;
+  const alpha = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) alpha[i] = pix[i * 4 + 3];
+
+  // Horizontal min pass
+  const hPass = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let min = 255;
+      const x0 = Math.max(0, x - radius), x1 = Math.min(W - 1, x + radius);
+      for (let nx = x0; nx <= x1; nx++) { const v = alpha[y * W + nx]; if (v < min) min = v; }
+      hPass[y * W + x] = min;
+    }
+  }
+
+  // Vertical min pass
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let min = 255;
+      const y0 = Math.max(0, y - radius), y1 = Math.min(H - 1, y + radius);
+      for (let ny = y0; ny <= y1; ny++) { const v = hPass[ny * W + x]; if (v < min) min = v; }
+      pix[(y * W + x) * 4 + 3] = min;
     }
   }
 
@@ -797,14 +773,12 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     }
     try {
       setBgStatus('Refinando bordes…');
-      // 1) Restore subject pixels (any color) the model wrongly removed:
-      //    BFS from corners finds confirmed background; non-background removed pixels → restore
-      const recovered = await restoreNonBackgroundPixels(masked!, photoOrigFile);
-      // 2) Dilate to recover eroded edges
-      const dilated = await dilateAlpha(recovered, 6);
-      // 3) Fill interior holes
-      const filled  = await fillAlphaHoles(dilated);
-      // 4) Feather
+      // Morphological close (dilate→erode same radius): bridges concave gaps
+      // (arm/body junction, armpits) without reintroducing the background.
+      const dilated = await dilateAlpha(masked!, 10);
+      const closed  = await erodeAlpha(dilated, 10);
+      // Fill any remaining interior holes, then feather edges
+      const filled  = await fillAlphaHoles(closed);
       const refined = await smoothBgMaskEdges(filled);
       setPhoto(p => p ? { ...p, src: URL.createObjectURL(refined) } : p);
       setBgRemoved(true);
