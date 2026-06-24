@@ -4,87 +4,70 @@ import sharp from 'sharp';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// Model priority: RMBG-2.0 (best quality) → BiRefNet full (MIT, no gating)
-const MODELS = ['briaai/RMBG-2.0', 'ZhengPeng7/BiRefNet'];
+const GRADIO_SPACE = 'https://not-lain-background-removal.hf.space';
 
-async function callHfModel(modelId: string, body: ArrayBuffer, token: string): Promise<ArrayBuffer> {
-  // HF migrated to router.huggingface.co — the old api-inference subdomain no longer resolves
-  const endpoints = [
-    `https://router.huggingface.co/hf-inference/models/${modelId}`,
-    `https://api-inference.huggingface.co/models/${modelId}`,
-  ];
-  let lastErr = '';
-  for (const url of endpoints) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/octet-stream',
-        Accept: 'image/png',
-      },
-      body,
-    });
-    if (res.ok) return res.arrayBuffer();
-    lastErr = `${url} → ${res.status}: ${(await res.text()).slice(0, 150)}`;
-    console.error(`[remove-bg] ${lastErr}`);
+async function removeBgViaGradio(imageBuffer: ArrayBuffer, mimeType: string): Promise<ArrayBuffer> {
+  const blob = new Blob([imageBuffer], { type: mimeType });
+  const formData = new FormData();
+  formData.append('files', blob, 'image.png');
+
+  const uploadRes = await fetch(`${GRADIO_SPACE}/gradio_api/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!uploadRes.ok) throw new Error(`Gradio upload failed: ${uploadRes.status}`);
+  const uploadedPaths: string[] = await uploadRes.json();
+  const filePath = uploadedPaths[0];
+
+  const callRes = await fetch(`${GRADIO_SPACE}/gradio_api/call/image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      data: [{ path: filePath, orig_name: 'image.png', mime_type: mimeType }],
+    }),
+  });
+  if (!callRes.ok) throw new Error(`Gradio call failed: ${callRes.status}`);
+  const { event_id } = await callRes.json();
+
+  // Poll for result (max 50s)
+  for (let i = 0; i < 25; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const pollRes = await fetch(`${GRADIO_SPACE}/gradio_api/call/image/${event_id}`);
+    const text = await pollRes.text();
+
+    if (text.includes('event: error')) throw new Error('Gradio processing error');
+    if (!text.includes('event: complete')) continue;
+
+    const dataLine = text.split('\n').find(l => l.startsWith('data:'));
+    if (!dataLine) throw new Error('No data in Gradio response');
+    const results = JSON.parse(dataLine.slice(5));
+    const resultUrl = results[0][0]?.url;
+    if (!resultUrl) throw new Error('No result URL from Gradio');
+
+    const imgRes = await fetch(resultUrl);
+    if (!imgRes.ok) throw new Error(`Failed to fetch result image: ${imgRes.status}`);
+    return imgRes.arrayBuffer();
   }
-  throw new Error(lastErr);
-}
-
-async function applyMaskToImage(original: ArrayBuffer, mask: ArrayBuffer): Promise<ArrayBuffer> {
-  const { width, height } = await sharp(Buffer.from(original)).metadata();
-  const normalizedMask = await sharp(Buffer.from(mask))
-    .grayscale()
-    .resize(width!, height!)
-    .png()
-    .toBuffer();
-  const result = await sharp(Buffer.from(original))
-    .ensureAlpha()
-    .composite([{ input: normalizedMask, blend: 'dest-in' }])
-    .png()
-    .toBuffer();
-  return result.buffer as ArrayBuffer;
+  throw new Error('Gradio timeout');
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const token = process.env.HF_TOKEN;
-    if (!token) {
-      return NextResponse.json({ error: 'HF_TOKEN not configured' }, { status: 500 });
-    }
-
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
 
     const original = await file.arrayBuffer();
+    const mimeType = file.type || 'image/png';
 
-    let lastError: Error | null = null;
-    for (const modelId of MODELS) {
-      try {
-        const result = await callHfModel(modelId, original, token);
-        const meta = await sharp(Buffer.from(result)).metadata();
+    const resultPng = await removeBgViaGradio(original, mimeType);
 
-        let finalPng: ArrayBuffer;
-        if (meta.channels === 4) {
-          // Model returned RGBA directly (composited)
-          const buf = await sharp(Buffer.from(result)).png().toBuffer();
-          finalPng = buf.buffer as ArrayBuffer;
-        } else {
-          // Grayscale mask — compose with original
-          finalPng = await applyMaskToImage(original, result);
-        }
+    // Ensure output is valid PNG
+    const buf = await sharp(Buffer.from(resultPng)).png().toBuffer();
 
-        return new NextResponse(finalPng, {
-          headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' },
-        });
-      } catch (err) {
-        console.error(`[remove-bg] ${modelId} failed:`, err);
-        lastError = err as Error;
-      }
-    }
-
-    return NextResponse.json({ error: lastError?.message ?? 'All models failed' }, { status: 500 });
+    return new NextResponse(buf.buffer as ArrayBuffer, {
+      headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' },
+    });
   } catch (err) {
     console.error('[remove-bg]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
