@@ -19,25 +19,28 @@ async function removeBgServer(source: File | Blob, onStatus?: (msg: string) => v
 }
 
 /** Fallback: IS-Net fp16 via @imgly/background-removal (runs in browser). */
+let _rmbgProcessor: any = null;
+let _rmbgModel: any = null;
+
 async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
-  onStatus?.('Cargando modelo BiRefNet (primera vez ~150MB)…');
   const { AutoProcessor, AutoModelForImageSegmentation, RawImage } = await import('@huggingface/transformers');
 
-  const processor = await AutoProcessor.from_pretrained('ZhengPeng7/BiRefNet', { device: 'webgpu' }).catch(() =>
-    AutoProcessor.from_pretrained('ZhengPeng7/BiRefNet')
-  );
-  const model = await AutoModelForImageSegmentation.from_pretrained('ZhengPeng7/BiRefNet', {
-    dtype: 'fp32',
-  }).catch(() => AutoModelForImageSegmentation.from_pretrained('ZhengPeng7/BiRefNet'));
+  const MODEL_ID = 'briaai/RMBG-1.4';
 
-  onStatus?.('Procesando con BiRefNet…');
+  if (!_rmbgProcessor || !_rmbgModel) {
+    onStatus?.('Cargando modelo (primera vez ~80MB)…');
+    _rmbgProcessor = await AutoProcessor.from_pretrained(MODEL_ID);
+    _rmbgModel = await AutoModelForImageSegmentation.from_pretrained(MODEL_ID, { dtype: 'fp32' });
+  }
 
-  const url = URL.createObjectURL(source);
-  const image = await RawImage.fromURL(url);
-  URL.revokeObjectURL(url);
+  onStatus?.('Eliminando fondo…');
 
-  const inputs = await processor(image);
-  const { output } = await (model as any)(inputs);
+  const objUrl = URL.createObjectURL(source);
+  const image = await RawImage.fromURL(objUrl);
+  URL.revokeObjectURL(objUrl);
+
+  const { pixel_values } = await _rmbgProcessor(image);
+  const { output } = await _rmbgModel({ pixel_values });
   const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width, image.height);
 
   const canvas = document.createElement('canvas');
