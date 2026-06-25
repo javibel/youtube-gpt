@@ -147,9 +147,15 @@ async function draftBskyReply(author, text) {
 }
 
 async function collectBskyTargets() {
-  const agent = await bluesky.login(BSKY_ACCOUNT).catch(() => null);
+  // Login con cualquier cuenta disponible — solo necesitamos leer, no postear
+  const accounts = ['brand-ytubviral', 'persona-alex', 'persona-ferran', 'persona-ana', 'persona-mayra'];
+  let agent = null;
+  for (const acct of accounts) {
+    agent = await bluesky.login(acct).catch(() => null);
+    if (agent) { console.log(`[${TAG}] Bluesky search via ${acct}`); break; }
+  }
   if (!agent) {
-    console.log(`[${TAG}] Bluesky login failed for ${BSKY_ACCOUNT} — skipping engagement`);
+    console.log(`[${TAG}] No Bluesky account available — skipping engagement`);
     return [];
   }
 
