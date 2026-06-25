@@ -219,4 +219,4 @@ async function engageWithPosts(opts = {}) {
   console.log(`[${tag}] Session done — ${likesGiven} likes, ${repliesGiven} replies`);
 }
 
-module.exports = { engageWithPosts };
+module.exports = { engageWithPosts, login, searchRecent };

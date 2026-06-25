@@ -16,13 +16,18 @@ const twitter = require('./twitter');
 const { callClaude, detectPostLang } = require('./claude');
 const { sendViaResend } = require('./resend');
 
+const bluesky = require('./bluesky');
+
 const TAG = 'brand-x-coach';
 const RECIPIENT = 'javijimenoplata@gmail.com';
 const SEEN_FILE = path.join(__dirname, 'brand-x-coach-seen.json');
+const BSKY_SEEN_FILE = path.join(__dirname, 'brand-bsky-coach-seen.json');
 const MAX_SEEN = 400;
 
 const TARGET_ENGAGEMENTS = 6;
 const TARGET_POSTS = 2;
+const BSKY_TARGET_ENGAGEMENTS = 6;
+const BSKY_ACCOUNT = 'brand-ytubviral';
 
 // Búsquedas orientadas a problemas que YTubViral resuelve
 const SEARCH_QUERIES = [
@@ -81,6 +86,109 @@ async function draftReply(author, text) {
     console.error(`[${TAG}] draftReply error: ${err.message}`);
     return null;
   }
+}
+
+// --- Bluesky engagement ---
+
+const BSKY_SEARCH_QUERIES = [
+  'youtube seo', 'youtube tips', 'youtube growth', 'small youtuber',
+  'keyword research youtube', 'youtube thumbnail', 'creator tools',
+  'grow my channel', 'youtube algorithm', 'youtube analytics',
+  'crecer en youtube', 'seo youtube', 'herramienta youtube',
+];
+
+function loadBskySeen() {
+  try { return new Set(JSON.parse(fs.readFileSync(BSKY_SEEN_FILE, 'utf8'))); }
+  catch { return new Set(); }
+}
+function saveBskySeen(set) {
+  const arr = [...set].slice(-MAX_SEEN);
+  try { fs.writeFileSync(BSKY_SEEN_FILE, JSON.stringify(arr)); } catch {}
+}
+
+function postToUrl(post) {
+  const did = post.author?.did;
+  const handle = post.author?.handle;
+  const rkey = post.uri?.split('/').pop();
+  if (handle && rkey) return `https://bsky.app/profile/${handle}/post/${rkey}`;
+  if (did && rkey) return `https://bsky.app/profile/${did}/post/${rkey}`;
+  return null;
+}
+
+async function draftBskyReply(author, text) {
+  const lang = detectPostLang(text) === 'en' ? 'en' : 'es';
+  const system = lang === 'es'
+    ? [
+        'Eres el equipo de YTubViral (ytubviral.com), herramienta gratuita de IA para YouTubers.',
+        'Tono: cercano, profesional, útil. Equipo pequeño que quiere ayudar.',
+        'Puedes mencionar ytubviral.com cuando sea relevante. Hazlo natural.',
+        'Español de España. Cero invención. No nombres competidores.',
+        'Sin hashtags. Máximo 1 emoji. Máximo 280 caracteres.',
+      ].join('\n')
+    : [
+        'You are the YTubViral team (ytubviral.com), a free AI toolkit for YouTube creators.',
+        'Tone: approachable, professional, genuinely helpful. Small team that cares.',
+        'You CAN mention ytubviral.com when relevant. Keep it natural.',
+        'Never invent data. Never name competitors.',
+        'No hashtags. Max 1 emoji. Max 280 chars.',
+      ].join('\n');
+
+  const prompt = lang === 'es'
+    ? `Post de @${author} en Bluesky:\n"${text}"\n\nEscribe una respuesta breve (máx 280 car.) desde la cuenta de YTubViral. Útil primero, mención del producto solo si encaja. SOLO el texto.`
+    : `Post by @${author} on Bluesky:\n"${text}"\n\nWrite a short reply (max 280 chars) from the YTubViral account. Value first, product mention only if it fits. Return ONLY the reply text.`;
+
+  try {
+    const reply = await callClaude(prompt, 160, { caller: TAG, system });
+    return reply ? reply.trim().replace(/^["']|["']$/g, '').slice(0, 300) : null;
+  } catch (err) {
+    console.error(`[${TAG}] draftBskyReply error: ${err.message}`);
+    return null;
+  }
+}
+
+async function collectBskyTargets() {
+  const agent = await bluesky.login(BSKY_ACCOUNT).catch(() => null);
+  if (!agent) {
+    console.log(`[${TAG}] Bluesky login failed for ${BSKY_ACCOUNT} — skipping engagement`);
+    return [];
+  }
+
+  const seen = loadBskySeen();
+  const queries = [...BSKY_SEARCH_QUERIES].sort(() => Math.random() - 0.5).slice(0, 4);
+  const collected = [];
+  const usedKeys = new Set();
+
+  for (const query of queries) {
+    if (collected.length >= BSKY_TARGET_ENGAGEMENTS * 2) break;
+    console.log(`[${TAG}] Bluesky buscando: "${query}"`);
+    const posts = await bluesky.searchRecent(agent, query, 12).catch(() => []);
+    for (const post of posts) {
+      const text = post.record?.text || '';
+      const rkey = post.uri?.split('/').pop();
+      if (!rkey || usedKeys.has(rkey) || seen.has(rkey)) continue;
+      if (text.length < 20) continue;
+      const author = post.author?.handle || '';
+      if (author.includes('ytubviral')) continue;
+      usedKeys.add(rkey);
+      collected.push({
+        author,
+        text,
+        url: postToUrl(post),
+        key: rkey,
+        highIntent: isHighIntent(text),
+      });
+    }
+  }
+
+  collected.sort((a, b) => (b.highIntent ? 1 : 0) - (a.highIntent ? 1 : 0));
+  const chosen = collected.slice(0, BSKY_TARGET_ENGAGEMENTS);
+
+  for (const t of chosen) {
+    t.reply = await draftBskyReply(t.author, t.text);
+    seen.add(t.key);
+  }
+  saveBskySeen(seen);
+  return chosen;
 }
 
 // Posts de marca para Bluesky — más largos, con link, tono equipo
@@ -167,7 +275,7 @@ async function collectTargets() {
   return chosen;
 }
 
-function buildEmail(posts, targets, bskyPosts) {
+function buildEmail(posts, targets, bskyPosts, bskyTargets) {
   const fecha = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid', day: '2-digit', month: 'long', year: 'numeric' });
   let body = `Plan BRAND para hoy — ${fecha}\nCuentas: @YTubViral (X) + ytubviral.com (Bluesky)\n`;
   body += `${'='.repeat(55)}\n\n`;
@@ -215,10 +323,21 @@ function buildEmail(posts, targets, bskyPosts) {
     });
   }
 
-  body += `PARTE 4 — ENGAGEMENT en Bluesky\n`;
-  body += `Busca en Bluesky: "youtube seo", "youtube tips", "creator tools"\n`;
-  body += `Da like a 5-10 posts relevantes. Responde a 2-3 con voz de equipo.\n`;
-  body += `Sigue a 3-5 creadores de YouTube que encuentres.\n\n`;
+  body += `PARTE 4 — ENGAGEMENT (${bskyTargets.length} acciones en Bluesky)\n`;
+  body += `Pulsa el link. Da like. Si hay respuesta, cópiala y pégala.\n\n`;
+  if (!bskyTargets.length) {
+    body += `(No se encontraron posts relevantes o la cuenta brand no está configurada)\n`;
+    body += `Para activar: añade "brand-ytubviral" en bluesky-accounts.json\n\n`;
+  } else {
+    bskyTargets.forEach((t, i) => {
+      body += `${i + 1}. ${t.highIntent ? '🔥 ' : ''}@${t.author || 'usuario'}\n`;
+      body += `   Post: "${t.text.slice(0, 200)}${t.text.length > 200 ? '…' : ''}"\n`;
+      body += `   Link: ${t.url}\n`;
+      body += `   Acción: dar LIKE${t.reply ? ' + responder' : ''}\n`;
+      if (t.reply) body += `   Respuesta:\n   ${t.reply}\n`;
+      body += `\n`;
+    });
+  }
 
   body += `${'='.repeat(55)}\n`;
   body += `Recordatorio: voz de equipo, no personal. Mencionar producto cuando encaje.\n`;
@@ -229,18 +348,19 @@ function buildEmail(posts, targets, bskyPosts) {
 
 async function run() {
   console.log(`[${TAG}] Generando plan brand (X + Bluesky)...`);
-  const [posts, targets, bskyPosts] = await Promise.all([
+  const [posts, targets, bskyPosts, bskyTargets] = await Promise.all([
     generatePosts(),
     collectTargets(),
     generateBlueskyPosts(),
+    collectBskyTargets(),
   ]);
 
-  const subject = `🏷️ Plan Brand hoy — X: ${posts.length} posts + ${targets.length} acciones | Bluesky: ${bskyPosts.length} posts`;
-  const body = buildEmail(posts, targets, bskyPosts);
+  const subject = `🏷️ Plan Brand — X: ${posts.length}p+${targets.length}eng | Bsky: ${bskyPosts.length}p+${bskyTargets.length}eng`;
+  const body = buildEmail(posts, targets, bskyPosts, bskyTargets);
 
   try {
     await sendViaResend({ to: RECIPIENT, subject, body, from: 'agent' });
-    console.log(`[${TAG}] Plan enviado a ${RECIPIENT} — X: ${posts.length} posts + ${targets.length} eng, Bluesky: ${bskyPosts.length} posts`);
+    console.log(`[${TAG}] Plan enviado a ${RECIPIENT} — X: ${posts.length}p+${targets.length}eng, Bsky: ${bskyPosts.length}p+${bskyTargets.length}eng`);
   } catch (err) {
     console.error(`[${TAG}] Envío fallido: ${err.message}`);
     fs.writeFileSync(path.join(__dirname, 'reports', `brand-x-coach-${new Date().toISOString().slice(0, 10)}.txt`), body);
