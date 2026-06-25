@@ -33,8 +33,8 @@
     "persona-ferran": 0.4,
     "persona-ana": 0.3,
     "persona-mayra": 0.35,
-    "alex": 0.42,
-    "ferran": 0.4,
+    "alex": 0.25,
+    "ferran": 0.2,
     "ana": 0.3,
     "mayra": 0.35
   },
@@ -53,11 +53,6 @@
     "en": "They have a free SEO analyzer that tells you exactly what to fix: ytubviral.com/seo-score"
   },
   "changeLog": [
-    {
-      "date": "2026-05-19",
-      "by": "manual",
-      "summary": "Initial overrides: YouTube-only filter, anti meta-commentary, improved mention formula with diagnostic questions"
-    },
     {
       "date": "2026-05-19",
       "by": "manual",
@@ -218,6 +213,24 @@
       "fieldsChanged": [
         "mentionFormula",
         "coreRulesExtra",
+        "personaMentionRates"
+      ]
+    },
+    {
+      "date": "2026-06-15",
+      "by": "funnel-optimizer",
+      "summary": "El funnel presenta una CRISIS de retención: caída crítica del 66.7% en usuarios activos (de 3 a 1 esta semana). Aunque la activación inicial es aceptable (60% all-time), la retención post-activación es catastrófica. Con solo 1 suscripción activa y 0 nuevas esta semana, el producto no monetiza. La adopción de features se concentra solo en 'title' (22/40 usos), indicando que usuarios no exploran la plataforma más allá. El feedback es positivo (5/5) pero viene de pocos usuarios. El problema raíz: usuarios activados no vuelven.",
+      "reasoning": "1. ALERT (HIGH): La caída de 66.7% en DAU es insostenible y requiere intervención inmediata del owner. 2. TRIGGER_ACTIVATION_EMAIL: Los 6 nuevos usuarios este mes tienen tasa de activación del 50% (cohort 14d), pero no retornan. El email busca re-enganchar mostrando value-adds (templates avanzadas) que no descubrieron en onboarding, enfocándose en features sub-utilizadas (description, caption, script). 3. ADJUST_SOCIAL_MENTION: Reducir adquisición es contra-intuitivo pero correcto—el leak ocurre después de activación, no en sign-up. Reduciendo tráfico entrante, ganamos tiempo para fijar el funnel sin aumentar el churn absoluto.",
+      "fieldsChanged": [
+        "personaMentionRates"
+      ]
+    },
+    {
+      "date": "2026-06-18",
+      "by": "funnel-optimizer",
+      "summary": "El funnel presenta críticas deficiencias en activación y retención. Solo el 25% de usuarios nuevos (cohort 14d) se activan, muy por debajo del threshold del 30%. Más grave aún, la retención colapsó un 50% semana a semana (2 → 1 usuario activo). El engagement está concentrado en un solo template ('title' con 21 usos), indicando experiencia limitada. Con solo 1 suscripción activa de 16 usuarios, la conversión es crítica (6.25%).",
+      "reasoning": "1) Alert HIGH: El funnel está en crisis. Activation bajo threshold + retención colapsada = product-market fit cuestionable o crítica friction en onboarding. Owner necesita contexto urgente. 2) Activation email dirigido a los 7 usuarios inactivos (16 total - 9 all-time activos): refuerza value prop (templates específicos que sí generan engagement: title/thumbnail) y patrón social (5★ rating). Personalización por features observados. 3) Social mentions reducidas: es contraproducente traer más usuarios si no retenemos los actuales. Mejor consolidar base antes de crecer.",
+      "fieldsChanged": [
         "personaMentionRates"
       ]
     }

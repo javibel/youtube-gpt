@@ -34,6 +34,7 @@ const { runDmarcMonitor } = require('./dmarc-monitor');
 const { runAutoResolver } = require('./auto-resolver');
 const { runPersonaMonitor } = require('./persona-monitor');
 const { run: runBrandTwitterPost } = require('./brand-twitter-post');
+const { run: runBrandXCoach } = require('./brand-x-coach');
 const { enqueue: bq } = require('./browser-queue');
 
 console.log('[agent] YTubViral local agent starting...');
@@ -123,32 +124,28 @@ cron.schedule('0 8 * * *', async () => {
   });
 }, { timezone: 'Europe/Madrid' });
 
-// ── Persona engagement (2 daily rounds) ─────────────────────────────────────
-const personaHour1 = 9 + Math.floor(Math.random() * 2);
-const personaMin1 = Math.floor(Math.random() * 60);
-cron.schedule(`${personaMin1} ${personaHour1} * * *`, async () => {
-  console.log('[cron] Persona engagement (morning)');
-  await bq('persona-runner:morning', async () => {
-    await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
+// Brand X Coach — 08:30 diario. Plan de X para @YTubViral (cuenta brand).
+// Javier opera a mano: tweets de marca + engagement con voz de equipo.
+cron.schedule('30 8 * * *', async () => {
+  console.log('[cron] Brand X Coach — generando plan diario @YTubViral');
+  await bq('brand-x-coach', async () => {
+    await runBrandXCoach().catch(err => console.error('[brand-x-coach]', err.message));
     await db.disconnect().catch(() => {});
   });
 }, { timezone: 'Europe/Madrid' });
 
-const personaHour2 = 22 + Math.floor(Math.random() * 1);
-const personaMin2 = Math.floor(Math.random() * 60);
-cron.schedule(`${personaMin2} ${personaHour2} * * *`, async () => {
-  console.log('[cron] Persona engagement (evening)');
-  await bq('persona-runner:evening', async () => {
-    await personaRunner.runAllPersonas().catch(err => console.error('[persona-runner]', err.message));
-    await db.disconnect().catch(() => {});
-  });
-}, { timezone: 'Europe/Madrid' });
+// ── Persona engagement — DISABLED 2026-06-25 (all personas shut down)
+// const personaHour1 = 9 + Math.floor(Math.random() * 2);
+// const personaMin1 = Math.floor(Math.random() * 60);
+// cron.schedule(`${personaMin1} ${personaHour1} * * *`, async () => { ... });
+// const personaHour2 = 22 + Math.floor(Math.random() * 1);
+// const personaMin2 = Math.floor(Math.random() * 60);
+// cron.schedule(`${personaMin2} ${personaHour2} * * *`, async () => { ... });
 
 // ── Bluesky dispatcher horario (ritmo por persona) ───────────────────────────
 // Cada hora 08–23 Madrid, en un minuto aleatorio. Para cada persona consulta su
 // ritmo (persona-rhythm.js): horas propias + ánimo del día. Si "le toca ahora",
-// engancha SOLO esa persona. Resultado: actividad repartida por el día, distinta
-// por persona, lumpy como un humano — nunca las 4 a la vez.
+// engancha SOLO esa persona.
 const blueskyDispatchMin = Math.floor(Math.random() * 60);
 cron.schedule(`${blueskyDispatchMin} 8-23 * * *`, async () => {
   const rhythm = require('./persona-rhythm');
@@ -156,8 +153,6 @@ cron.schedule(`${blueskyDispatchMin} 8-23 * * *`, async () => {
   for (const persona of personas) {
     if (persona.disabled) continue;
     if (!rhythm.shouldEngageNow(persona.id)) continue;
-    // Micro-jitter 0–90s para que ni siquiera dos personas que coincidan en la
-    // misma hora arranquen en el mismo segundo.
     await new Promise(r => setTimeout(r, Math.floor(Math.random() * 90000)));
     await personaRunner.runOnePersonaBluesky(persona.id).catch(err => console.error('[bluesky-dispatch]', persona.id, err.message));
   }
@@ -207,39 +202,11 @@ cron.schedule('35 12 * * *', async () => {
   await runBlueskyDrip().catch(err => console.error('[bluesky-drip]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
-// Persona reports — 12:00 and 00:00 Madrid
-cron.schedule('0 12 * * *', async () => {
-  console.log('[cron] Sending persona report (noon)');
-  await reports.sendPersonaReport().catch(err => console.error('[reports]', err.message));
-  await db.disconnect().catch(() => {});
-}, { timezone: 'Europe/Madrid' });
+// Persona reports — DISABLED 2026-06-25 (all personas shut down)
+// Was: 12:00 and 00:00, reported Twitter/Facebook/Reddit activity for all personas.
 
-cron.schedule('0 0 * * *', async () => {
-  console.log('[cron] Sending persona report (midnight)');
-  await reports.sendPersonaReport().catch(err => console.error('[reports]', err.message));
-  await db.disconnect().catch(() => {});
-}, { timezone: 'Europe/Madrid' });
-
-// ── Follow-up checks (reply to people who replied to our comments) — 2x/day ──
-const followupHour1 = 10 + Math.floor(Math.random() * 2);
-const followupMin1 = Math.floor(Math.random() * 60);
-cron.schedule(`${followupMin1} ${followupHour1} * * *`, async () => {
-  console.log('[cron] Follow-up reply checks (morning)');
-  await bq('followup:morning', async () => {
-    await followup.runFollowupChecks().catch(err => console.error('[followup]', err.message));
-    await db.disconnect().catch(() => {});
-  });
-}, { timezone: 'Europe/Madrid' });
-
-const followupHour2 = 17 + Math.floor(Math.random() * 2);
-const followupMin2 = Math.floor(Math.random() * 60);
-cron.schedule(`${followupMin2} ${followupHour2} * * *`, async () => {
-  console.log('[cron] Follow-up reply checks (evening)');
-  await bq('followup:evening', async () => {
-    await followup.runFollowupChecks().catch(err => console.error('[followup]', err.message));
-    await db.disconnect().catch(() => {});
-  });
-}, { timezone: 'Europe/Madrid' });
+// ── Follow-up checks — DISABLED 2026-06-25 (all personas shut down)
+// Was: 2x/day, replied to people who replied to persona comments. Already was no-op (Twitter abandoned).
 
 // Weekly backup reminder — Sundays 10:00
 cron.schedule('0 10 * * 0', async () => {
@@ -386,7 +353,7 @@ cron.schedule('30 3 * * 0', async () => {
 }, { timezone: 'Europe/Madrid' });
 
 // Persona Monitor — cada hora en horario activo (08:00-23:00)
-// Detecta silencio en Twitter y Bluesky; auto-retry + email si falla
+// Detecta silencio en Bluesky; auto-retry + email si falla
 cron.schedule('12 8-23 * * *', async () => {
   await runPersonaMonitor().catch(err => console.error('[persona-monitor]', err.message));
   await db.disconnect().catch(() => {});
@@ -434,19 +401,20 @@ cron.schedule('0 6 * * *', async () => {
 
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');
-console.log('  Twitter brand: DISABLED (shadowban 2026-06-24, pivote a Bluesky)');
-console.log(`  Personas morning: ${personaHour1}:${String(personaMin1).padStart(2, '0')} (Europe/Madrid)`);
-console.log(`  Personas evening: ${personaHour2}:${String(personaMin2).padStart(2, '0')} (Europe/Madrid)`);
-console.log(`  Follow-up morning: ${followupHour1}:${String(followupMin1).padStart(2, '0')} (Europe/Madrid)`);
-console.log(`  Follow-up evening: ${followupHour2}:${String(followupMin2).padStart(2, '0')} (Europe/Madrid)`);
+console.log('  Personas Twitter/Facebook/Reddit: DISABLED 2026-06-25 (only Bluesky active)');
+console.log('  Persona follow-ups: DISABLED 2026-06-25 (Twitter abandoned)');
+console.log('  Persona reports (Twitter/FB/Reddit): DISABLED 2026-06-25');
+console.log(`  Bluesky dispatcher: hourly 08-23 (Europe/Madrid)`);
+console.log('  Bluesky daily report: 23:40 (Europe/Madrid)');
+console.log('  Bluesky warm-up drip: 12:35 daily (Europe/Madrid)');
+console.log('  Persona Monitor (Bluesky): every hour 08:00-23:00 (Europe/Madrid)');
+console.log('  Brand Twitter post (auto): DISABLED');
+console.log('  Brand X Coach (@YTubViral manual): 08:30 daily (Europe/Madrid)');
 console.log('  Gmail inbox: every 30min 8-23h (Europe/Madrid)');
 console.log('  Daily report: 08:05 (Europe/Madrid)');
-console.log('  Persona reports: 12:00, 00:00 (Europe/Madrid)');
-console.log('  Outreach discover: 08:30,12:30,16:30,20:30 (Europe/Madrid)');
-console.log('  Outreach send: 08:45,12:45,16:45,20:45 (Europe/Madrid)');
-console.log('  Outreach follow-up: 10:00 daily (Europe/Madrid)');
-console.log('  Bluesky warm-up drip: 12:35 daily (Europe/Madrid)');
-console.log('  Brand Twitter post: DISABLED (shadowban 2026-06-24)');
+console.log('  Outreach discover: 07:30,09:30,11:30,14:30,17:30,20:30 (Europe/Madrid)');
+console.log('  Outreach send: 07:45,09:45,11:45,14:45,17:45,20:45 (Europe/Madrid)');
+console.log('  Outreach follow-up: 10:00,16:00 daily (Europe/Madrid)');
 console.log('  Feature Monitor: 07:00, 19:00 daily (Europe/Madrid)');
 console.log('  Outreach monitor: every 3h 9-21h (Europe/Madrid)');
 console.log('  Infra Optimizer: 02:45 daily (Europe/Madrid)');
@@ -455,8 +423,7 @@ console.log('  Funnel Optimizer: 02:55 daily (Europe/Madrid)');
 console.log('  Social Optimizer: 03:00 daily (Europe/Madrid)');
 console.log('  Manager: 03:15 daily (Europe/Madrid)');
 console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
-console.log('  Persona Monitor: every hour 08:00-23:00 (Europe/Madrid) — detects silence + auto-retry');
-console.log('  Auto-Resolver: 09:17 daily (Europe/Madrid) — fixes manager issues automatically');
+console.log('  Auto-Resolver: 09:17 daily (Europe/Madrid)');
 console.log('  Blog Generator: 04:00 Mon+Thu (Europe/Madrid)');
 console.log('  Blog Syndicator: 05:00 daily (Europe/Madrid)');
 console.log('  Quora Commenter: 13:00, 19:00 daily (Europe/Madrid)');

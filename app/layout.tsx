@@ -53,28 +53,28 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    locale: "es_ES",
+    locale: "en_US",
     url: BASE_URL,
     siteName: "YTubViral",
-    title: "YTubViral — Genera contenido viral para YouTube con IA",
+    title: "YTubViral — Free AI Tools to Grow Your YouTube Channel",
     description:
-      "Títulos, descripciones, scripts y miniaturas para YouTube generados por IA en segundos. Empieza gratis.",
+      "Generate optimized titles, SEO scores, keyword research, thumbnails and more — powered by AI. Free to start.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "YTubViral — Genera contenido viral para YouTube con IA",
+        alt: "YTubViral — Free AI Tools to Grow Your YouTube Channel",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@ytubviral",
-    creator: "@ytubviral",
-    title: "YTubViral — Genera contenido viral para YouTube con IA",
+    site: "@YTubViral",
+    creator: "@YTubViral",
+    title: "YTubViral — Free AI Tools to Grow Your YouTube Channel",
     description:
-      "Títulos, descripciones, scripts y miniaturas para YouTube generados por IA en segundos.",
+      "Generate optimized titles, SEO scores, keyword research, thumbnails and more — powered by AI.",
   },
   // NO alternates here: a root-layout canonical is inherited by every page
   // without its own, marking them as duplicates of the homepage for Google.
