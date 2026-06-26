@@ -1,10 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 import { getDemoResponse } from "@/lib/demo-data";
+import { NextRequest, NextResponse } from "next/server";
+import type { Session } from "next-auth";
 
-const protectedRoutes = ["/dashboard", "/generate", "/admin", "/profile", "/ab-test", "/team", "/optimize", "/audit", "/achievements", "/thumbnail-preview", "/revenue"];
+// Edge-compatible auth — reads JWT from cookie, zero DB calls, zero cold start.
+// NOTE: do NOT import from "@/auth" here — that pulls in Prisma which is Node.js-only
+// and forces the middleware off the Edge Runtime onto Node.js serverless, adding 2-5s
+// cold start + Neon DB cold start on top = 9-16s landing times measured by Sentinel.
+const { auth } = NextAuth(authConfig);
 
-export default async function proxy(req: NextRequest) {
+const protectedRoutes = [
+  "/dashboard", "/generate", "/admin", "/profile", "/ab-test",
+  "/team", "/optimize", "/audit", "/achievements", "/thumbnail-preview", "/revenue",
+];
+
+type AuthRequest = NextRequest & { auth: Session | null };
+
+export default auth(function proxy(req: AuthRequest) {
   const path = req.nextUrl.pathname;
 
   // Demo mode: cookie ytv_demo=1 returns fake data for video recording
@@ -14,25 +27,20 @@ export default async function proxy(req: NextRequest) {
   }
 
   const isProtected = protectedRoutes.some((r) => path.startsWith(r));
-
   if (!isProtected) return NextResponse.next();
 
-  const session = await auth();
-
-  if (!session?.user) {
+  if (!req.auth?.user) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  // Redirect unverified users to /verify-email (except /admin which is already access-controlled)
-  // requiresVerification is only true for new signups that haven't verified yet.
-  // Old sessions without this field default to false (not blocked).
-  const requiresVerification = (session.user as { requiresVerification?: boolean }).requiresVerification ?? false;
+  const requiresVerification =
+    (req.auth.user as { requiresVerification?: boolean }).requiresVerification ?? false;
   if (requiresVerification && !path.startsWith('/admin')) {
     return NextResponse.redirect(new URL("/verify-email", req.nextUrl));
   }
 
   return NextResponse.next();
-}
+} as Parameters<typeof auth>[0]);
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
