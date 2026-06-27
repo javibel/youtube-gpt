@@ -83,6 +83,23 @@ const MAX_SUBS = 200000;
 // Email regex — matches common patterns in channel descriptions
 const EMAIL_RE = /[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
+// Language filter — only target ES/EN channels.
+// YouTube's relevanceLanguage param is advisory; non-ES/EN results still leak through
+// (including Hindi channels with Latin transliteration like "Jio Bharat phone mein...").
+// Primary filter: channel's defaultLanguage from the API (set by creator).
+// Secondary filter: non-latin unicode script detection for channels with no defaultLanguage set.
+const NON_LATIN_RE = /[؀-ۿऀ-ॿ一-鿿぀-ヿ가-힯Ѐ-ӿ฀-๿ᄀ-ᇿ]/;
+
+function isAllowedLanguage(defaultLanguage, title) {
+  // If channel has explicit defaultLanguage set, trust it
+  if (defaultLanguage) {
+    const lang = defaultLanguage.toLowerCase().split('-')[0];
+    return lang === 'es' || lang === 'en';
+  }
+  // Fallback: reject if title contains non-latin script characters
+  return !NON_LATIN_RE.test(title || '');
+}
+
 // Emails to skip (generic/no-reply)
 const SKIP_EMAILS = new Set([
   'example@example.com', 'noreply@youtube.com', 'press@', 'abuse@',
@@ -312,6 +329,7 @@ async function getChannelDetails(channelIds) {
       results.push({
         channelId: item.id,
         title: item.snippet.title,
+        defaultLanguage: item.snippet.defaultLanguage || null,
         subs,
         description: description.slice(0, 500),
         emails: validEmails,
@@ -334,7 +352,7 @@ const ABOUT_DELAY_MAX = 8000;
 async function scrapeAboutPageEmail(page, channelUrl) {
   try {
     const aboutUrl = channelUrl.replace(/\/?$/, '/about');
-    const ok = await safeGoto(page, aboutUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    const ok = await safeGoto(page, aboutUrl, { waitUntil: 'domcontentloaded', timeout: 15000, tag: 'outreach-discover', profileDir: ABOUT_PROFILE });
     if (!ok) return { email: null, links: [] };
 
     await new Promise(r => setTimeout(r, 2000));
@@ -463,6 +481,26 @@ async function enhancedEmailDiscovery(channelsWithoutEmail) {
     return [];
   }
 
+  // Una sola página se reusa para todos los canales. Si su frame se "detacha"
+  // (redirect/crash de YouTube), TODAS las llamadas siguientes fallan sobre la
+  // página muerta. Detectamos la muerte con un probe trivial y recreamos la página.
+  const isPageAlive = async (p) => {
+    if (!p) return false;
+    try { return await p.evaluate(() => true); } catch { return false; }
+  };
+  const ensurePage = async () => {
+    if (await isPageAlive(page)) return true;
+    console.log('[outreach-discover] Page dead (detached frame) — recreating browser page');
+    try { await closeBrowserForProfile(ABOUT_PROFILE); } catch {}
+    try {
+      page = await newPageForProfile(ABOUT_PROFILE, { headless: true });
+      return true;
+    } catch (err) {
+      console.error(`[outreach-discover] Cannot relaunch About browser: ${err.message}`);
+      return false;
+    }
+  };
+
   const found = [];
 
   try {
@@ -470,6 +508,9 @@ async function enhancedEmailDiscovery(channelsWithoutEmail) {
       const channelUrl = ch.customUrl
         ? `https://www.youtube.com/${ch.customUrl}`
         : `https://www.youtube.com/channel/${ch.channelId}`;
+
+      // Asegura que la página esté viva antes de cada canal (recrea si murió).
+      if (!(await ensurePage())) break; // no se pudo relanzar el browser → abandona
 
       const { email, links } = await scrapeAboutPageEmail(page, channelUrl);
 
@@ -567,6 +608,10 @@ async function runDiscovery() {
   for (const ch of details) {
     if (ch.subs < MIN_SUBS || ch.subs > MAX_SUBS) continue;
     if (ch.emails.length === 0) continue;
+    if (!isAllowedLanguage(ch.defaultLanguage, ch.title)) {
+      console.log(`  ⏭ ${ch.title} [lang:${ch.defaultLanguage || 'none'}] — skipped (non ES/EN)`);
+      continue;
+    }
 
     const email = ch.emails[0].toLowerCase();
     if (existingEmails.has(email)) continue;
@@ -592,6 +637,7 @@ async function runDiscovery() {
   const noEmailChannels = details.filter(ch =>
     ch.subs >= MIN_SUBS && ch.subs <= MAX_SUBS &&
     ch.emails.length === 0 &&
+    isAllowedLanguage(ch.defaultLanguage, ch.title) &&
     !existingNames.has(ch.title.toLowerCase())
   );
 

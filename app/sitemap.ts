@@ -107,6 +107,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${BASE_URL}/youtube-title-study`,
+      lastModified: new Date('2026-06-27'),
+      changeFrequency: 'yearly',
+      priority: 0.8,
+    },
+    {
       url: `${BASE_URL}/ctr-calculator`,
       lastModified: new Date('2026-06-18'),
       changeFrequency: 'monthly',

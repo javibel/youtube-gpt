@@ -206,15 +206,13 @@ function detectIssues(metrics) {
     }
   }
 
-  // Disk usage
-  if (metrics.disk?.ok) {
-    const { usedPct } = metrics.disk.data;
-    if (usedPct > 90) {
-      issues.push(`INFRA_DISK: Disk usage ${usedPct}% — CRITICAL`);
-    } else if (usedPct > 80) {
-      issues.push(`INFRA_DISK: Disk usage ${usedPct}% — WARNING`);
-    }
-  }
+  // Disk usage — NO se reporta como issue (decisión Javier 2026-06-27).
+  // El volumen C: lo ocupan archivos PERSONALES del usuario, no el proyecto.
+  // Se revisó varias veces: no es crítico para YTubViral. La métrica se sigue
+  // recogiendo y mostrando como dato informativo en el reporte (manager.js),
+  // pero no genera alertas WARNING/CRITICAL que ensucien el escalado.
+  // Si algún día el proyecto vuelve a ser responsable del volumen, reactivar:
+  //   if (usedPct > 90) issues.push(`INFRA_DISK: Disk usage ${usedPct}% — CRITICAL`);
 
   // PM2 memory and restarts
   if (metrics.pm2?.ok) {

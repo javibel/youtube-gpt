@@ -530,8 +530,12 @@ async function generatePersonaComment(persona, platform, authorName, postContent
     return '';
   }
 
-  const personality = persona.personality[lang] || persona.personality.en;
-  const rules = PLATFORM_RULES[platform]?.[lang] || PLATFORM_RULES[platform]?.en || PLATFORM_RULES.twitter.en;
+  // Detect post language early so personality + rules match the reply language (not the persona's native lang)
+  const postLangEarly = detectPostLang(postContent);
+  const replyLangEarly = (postLangEarly === 'en') ? 'en' : 'es';
+
+  const personality = persona.personality[replyLangEarly] || persona.personality[lang] || persona.personality.en;
+  const rules = PLATFORM_RULES[platform]?.[replyLangEarly] || PLATFORM_RULES[platform]?.en || PLATFORM_RULES.twitter.en;
 
   // Smart mention logic: ALWAYS mention when post is about a problem YTubViral solves
   // Otherwise use probability-based mention
@@ -542,45 +546,59 @@ async function generatePersonaComment(persona, platform, authorName, postContent
   const ov = loadOverrides();
   const mentionRate = ov.personaMentionRates?.[persona.id] ?? persona.mentionRate ?? 0.2;
 
-  if (isRelevant && persona.mentionYtubviral !== false) {
+  // Bluesky está en calentamiento: aunque la mención esté activada para esta persona,
+  // NUNCA usamos el path forzado incondicional (mete mención en cada post relevante = patrón
+  // promocional que quema cuentas jóvenes). Forzamos el path probabilístico suave de abajo.
+  const forcedAllowed = platform !== 'bluesky';
+
+  if (isRelevant && forcedAllowed && persona.mentionYtubviral !== false) {
     // Post matches YTubViral-solvable problems → UNCONDITIONAL mention.
     // EXCEPT founder/brand accounts (mentionYtubviral:false): they NEVER shill — they comment
     // pure value to build karma/trust (I5 Fase 0). The flag now genuinely gates the forced path.
     const personaName = persona.name?.toLowerCase() || persona.id;
-    mentionInSystem = lang === 'es'
+    mentionInSystem = replyLangEarly === 'es'
       ? `\n\nINSTRUCCIÓN DE MENCIÓN (NO OPCIONAL): Este post trata un tema que resuelve ytubviral.com. Tu respuesta DEBE incluir una referencia natural a ytubviral.com como herramienta que usas. Estructura: (1) responde con valor genuino desde tu expertise, (2) menciona ytubviral.com en primera persona ("yo uso ytubviral para eso", "lo analizo con ytubviral.com"). NO escribas meta-comentarios sobre si debes o no mencionar. NO analices si hay "pregunta técnica". Simplemente responde al post e incluye la mención de forma natural.`
       : `\n\nMENTION INSTRUCTION (NOT OPTIONAL): This post is about a topic ytubviral.com solves. Your reply MUST include a natural reference to ytubviral.com as a tool you use. Structure: (1) reply with genuine value from your expertise, (2) mention ytubviral.com in first person ("I use ytubviral for that", "I check it with ytubviral.com"). Do NOT write meta-commentary about whether to mention. Do NOT analyze if there's a "technical question". Just reply to the post and include the mention naturally.`;
   } else if (persona.mentionYtubviral && Math.random() < mentionRate) {
-    mentionInSystem = lang === 'es'
-      ? `\n\nINSTRUCCIÓN DE MENCIÓN: Si tu respuesta toca el tema de herramientas, SEO, o análisis de YouTube, incluye una referencia natural a ytubviral.com como algo que usas. En primera persona, sin sonar a anuncio.`
-      : `\n\nMENTION INSTRUCTION: If your reply touches on tools, SEO, or YouTube analytics, include a natural reference to ytubviral.com as something you use. First person, don't sound like an ad.`;
+    if (platform === 'bluesky') {
+      // Cierre problema→solución que pide el social-optimizer: el insight ya está en la
+      // respuesta, falta el puente. Preferir herramienta GRATUITA (sin registro) = baja
+      // fricción y genuinamente útil, no anuncio. Una sola vez, al final, en primera persona.
+      mentionInSystem = replyLangEarly === 'es'
+        ? `\n\nINSTRUCCIÓN DE MENCIÓN (suave): Si tu respuesta plantea un problema de títulos/SEO/keywords de YouTube, cierra el bucle apuntando a la solución que usas: una herramienta gratuita sin registro. Para SEO/optimización → ytubviral.com/seo-score; para ideas/tendencias → ytubviral.com/trends. En primera persona y al final ("yo el título lo saco con ytubviral.com/seo-score antes de tocar nada"). UNA sola referencia, sin sonar a anuncio. Si no encaja con naturalidad, no la metas.`
+        : `\n\nMENTION INSTRUCTION (soft): If your reply raises a YouTube titles/SEO/keywords problem, close the loop by pointing to the solution you use: a free tool, no signup. For SEO/optimization → ytubviral.com/seo-score; for ideas/trends → ytubviral.com/trends. First person, at the end ("I pull the title from ytubviral.com/seo-score before touching anything"). ONE reference only, don't sound like an ad. If it doesn't fit naturally, leave it out.`;
+    } else {
+      mentionInSystem = replyLangEarly === 'es'
+        ? `\n\nINSTRUCCIÓN DE MENCIÓN: Si tu respuesta toca el tema de herramientas, SEO, o análisis de YouTube, incluye una referencia natural a ytubviral.com como algo que usas. En primera persona, sin sonar a anuncio.`
+        : `\n\nMENTION INSTRUCTION: If your reply touches on tools, SEO, or YouTube analytics, include a natural reference to ytubviral.com as something you use. First person, don't sound like an ad.`;
+    }
   }
 
-  // Beta offer: when mentioning ytubviral, sometimes add free Pro tester line
-  if (mentionInSystem && ov.betaOffer?.enabled && Math.random() < (ov.betaOffer.probability || 0.3)) {
+  // Beta offer: when mentioning ytubviral, sometimes add free Pro tester line.
+  // NOT on Bluesky — there the mention must stay a single soft reference (warming phase).
+  if (mentionInSystem && platform !== 'bluesky' && ov.betaOffer?.enabled && Math.random() < (ov.betaOffer.probability || 0.3)) {
     const offerLine = ov.betaOffer[lang] || ov.betaOffer.en || '';
     if (offerLine) mentionInSystem += ` Añade casualmente al final algo como: "${offerLine}"`;
   }
 
-  let coreRules = PERSONA_CORE_RULES[lang] || PERSONA_CORE_RULES.en;
+  let coreRules = PERSONA_CORE_RULES[replyLangEarly] || PERSONA_CORE_RULES.en;
   // Append dynamic rules from overrides (Claude can add/modify these)
-  const extraRules = ov.coreRulesExtra?.[lang] || ov.coreRulesExtra?.en || '';
+  const extraRules = ov.coreRulesExtra?.[replyLangEarly] || ov.coreRulesExtra?.en || '';
   if (extraRules) coreRules += '\n' + extraRules;
 
   // Inject the persona's concrete value signals — the raw material that turns a generic
   // reaction ("totally agree") into a real contribution. Tell the model to weave in ONE
   // specific fact/number/example when it fits, never to dump the list.
-  const valueSignals = persona.valueSignals?.[lang] || persona.valueSignals?.en || '';
+  const valueSignals = persona.valueSignals?.[replyLangEarly] || persona.valueSignals?.en || '';
   if (valueSignals) {
-    coreRules += lang === 'es'
+    coreRules += replyLangEarly === 'es'
       ? `\n\nTU VALOR DIFERENCIAL (aporta algo CONCRETO, no opiniones genéricas): ${valueSignals}\nUsa UNO de estos puntos solo si encaja con el post — un número, un antes/después, algo que viste. Nunca sueltes la lista entera ni suenes a manual.`
       : `\n\nYOUR EDGE (contribute something CONCRETE, not generic opinions): ${valueSignals}\nUse ONE of these points only if it fits the post — a number, a before/after, something you saw. Never dump the whole list or sound like a manual.`;
   }
 
   // Authenticity + language matching (2026-06-24). Personas are bilingual ES/EN — they reply
-  // in the same language as the post. No language lock — match the post's language naturally.
-  const postLang = detectPostLang(postContent);
-  const replyLang = (postLang === 'en') ? 'en' : 'es';
+  // in the same language as the post. replyLang already computed above (replyLangEarly).
+  const replyLang = replyLangEarly;
   coreRules += replyLang === 'es'
     ? `\n\nAUTENTICIDAD (innegociable): NO te inventes datos, cifras ni casos. PROHIBIDO el patrón "analicé N canales" / "lo vi en 30 canales que analicé" — es falso y se nota. Si das un número o ejemplo, que sea REAL de tu experiencia; si no lo tienes, habla del principio sin inventar cifras.\nIDIOMA: el post está en español — responde en español de España (vosotros, léxico peninsular), con naturalidad y al grano. NO escribas meta-comentarios sobre el idioma.`
     : `\n\nAUTHENTICITY (non-negotiable): do NOT invent data, numbers or cases. The "I analyzed N channels" pattern is banned — it's fake and obvious. Any number or example must be REAL from your experience; if you don't have one, speak to the principle without inventing figures.\nLANGUAGE: the post is in English — reply in English, naturally and concisely. Do NOT write meta-commentary about the language.`;

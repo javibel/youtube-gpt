@@ -109,6 +109,35 @@ function cleanOldCallTimestamps() {
   state.callTimestamps = state.callTimestamps.filter(ts => ts > oneMinuteAgo);
 }
 
+/**
+ * Espera a que haya un hueco en la ventana de rate limit y reserva el slot.
+ * En vez de fallar ante una ráfaga (p.ej. Promise.all en un agente), suaviza
+ * las llamadas haciéndolas esperar hasta que el slot más antiguo salga de la
+ * ventana de 60s. La reserva es atómica: entre comprobar y hacer push() no hay
+ * await, así que Node (single-thread) garantiza que dos waiters no cojan el
+ * mismo hueco. Devuelve false si tras MAX_WAIT_MS sigue sin haber hueco.
+ */
+async function waitForRateSlot(cfg, agentId) {
+  const MAX_WAIT_MS = 120000;
+  const start = Date.now();
+  let warned = false;
+  while (true) {
+    cleanOldCallTimestamps();
+    if (state.callTimestamps.length < cfg.maxCallsPerMinute) {
+      state.callTimestamps.push(Date.now()); // reserva el slot (atómico, sin await intermedio)
+      return true;
+    }
+    if (Date.now() - start > MAX_WAIT_MS) return false;
+    if (!warned) {
+      console.log(`[api-guard] ${agentId}: rate limit alcanzado, esperando hueco...`);
+      warned = true;
+    }
+    const oldest = state.callTimestamps[0];
+    const waitMs = Math.min(5000, Math.max(250, (oldest + 60000) - Date.now() + 50));
+    await new Promise(r => setTimeout(r, waitMs));
+  }
+}
+
 // ── Guard checks ────────────────────────────────────────────────────────────
 
 function checkGuards(overrides = {}) {
@@ -160,11 +189,23 @@ async function guardedCall(prompt, options = {}) {
     || config.get(agentId, 'model', null)
     || config.get('claude', 'model', 'claude-haiku-4-5-20251001');
 
-  // Pre-flight checks
-  const check = checkGuards();
-  if (!check.ok) {
-    console.error(`[api-guard] ${agentId}: BLOQUEADO — ${check.reason}`);
-    throw new Error(`API Guard: ${check.reason}`);
+  // Pre-flight: circuit breaker + budget diario fallan al instante (no tiene sentido esperar).
+  resetDailyIfNeeded();
+  if (Date.now() < state.circuitOpenUntil) {
+    const waitSec = Math.ceil((state.circuitOpenUntil - Date.now()) / 1000);
+    console.error(`[api-guard] ${agentId}: BLOQUEADO — Circuit breaker abierto. Reintenta en ${waitSec}s`);
+    throw new Error(`API Guard: Circuit breaker abierto. Reintenta en ${waitSec}s`);
+  }
+  if (state.dailyTokensUsed >= cfg.dailyBudgetTokens) {
+    console.error(`[api-guard] ${agentId}: BLOQUEADO — Budget diario agotado: ${state.dailyTokensUsed}/${cfg.dailyBudgetTokens} tokens`);
+    throw new Error(`API Guard: Budget diario agotado: ${state.dailyTokensUsed}/${cfg.dailyBudgetTokens} tokens`);
+  }
+
+  // Rate limit: en vez de fallar ante una ráfaga, espera a que haya hueco y reserva el slot.
+  const gotSlot = await waitForRateSlot(cfg, agentId);
+  if (!gotSlot) {
+    console.error(`[api-guard] ${agentId}: BLOQUEADO — Rate limit: sin hueco tras esperar`);
+    throw new Error(`API Guard: Rate limit: ${cfg.maxCallsPerMinute} llamadas/min (timeout esperando hueco)`);
   }
 
   // Truncar prompt si es demasiado largo
@@ -177,8 +218,7 @@ async function guardedCall(prompt, options = {}) {
   // Cap maxTokens
   const safeMaxTokens = Math.min(maxTokens, cfg.maxTokensPerCall);
 
-  // Register call timestamp for rate limiting
-  state.callTimestamps.push(Date.now());
+  // Nota: el slot de rate limit ya fue reservado por waitForRateSlot() arriba.
 
   // Build request
   const body = {

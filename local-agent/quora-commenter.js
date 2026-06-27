@@ -193,9 +193,54 @@ async function postQuoraAnswer(page, questionUrl, answerText) {
   // Wait for editor to appear
   await new Promise(r => setTimeout(r, 4000));
 
-  // Find the editor (div.doc with contenteditable)
-  const editor = await page.$('div.doc[contenteditable="true"]');
-  if (!editor) throw new Error('Cannot find editor');
+  // Find the editor. Quora rota el markup del editor (a veces div.doc, a veces solo
+  // [contenteditable], a veces role=textbox), así que poll de varios selectores y
+  // elegimos el contenteditable VISIBLE más grande (el box de respuesta, no un
+  // buscador/cajita). Poll hasta ~10s porque el modal del editor tarda en montar.
+  const editorHandle = await (async () => {
+    const selectors = [
+      'div.doc[contenteditable="true"]',
+      '[contenteditable="true"]',
+      '[role="textbox"]',
+      '.q-box [contenteditable="true"]',
+    ];
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const handle = await page.evaluateHandle((sels) => {
+        let best = null, bestArea = 0;
+        for (const sel of sels) {
+          for (const el of document.querySelectorAll(sel)) {
+            const r = el.getBoundingClientRect();
+            // visible y con tamaño de caja de texto (evita inputs de búsqueda diminutos)
+            if (r.width < 200 || r.height < 30) continue;
+            if (el.offsetParent === null) continue;
+            const area = r.width * r.height;
+            if (area > bestArea) { bestArea = area; best = el; }
+          }
+          if (best) break; // respeta prioridad de selectores
+        }
+        return best;
+      }, selectors);
+      const el = handle.asElement();
+      if (el) return el;
+      await handle.dispose();
+      await new Promise(r => setTimeout(r, 800));
+    }
+    return null;
+  })();
+
+  if (!editorHandle) {
+    const ts = Date.now();
+    try { await page.screenshot({ path: path.join(__dirname, 'reports', `quora-editor-debug-${ts}.png`), fullPage: false }); } catch {}
+    const diag = await page.evaluate(() => ({
+      url: location.href,
+      editables: Array.from(document.querySelectorAll('[contenteditable="true"],[role="textbox"]'))
+        .map(e => { const r = e.getBoundingClientRect(); return `${e.tagName}.${(e.className||'').toString().slice(0,40)} ${Math.round(r.width)}x${Math.round(r.height)}`; })
+        .slice(0, 10),
+    }));
+    fs.writeFileSync(path.join(__dirname, 'reports', `quora-editor-debug-${ts}.json`), JSON.stringify(diag, null, 2));
+    throw new Error(`Cannot find editor (editables=${diag.editables.join(' | ') || 'none'})`);
+  }
+  const editor = editorHandle;
 
   await editor.click();
   await new Promise(r => setTimeout(r, 500));
