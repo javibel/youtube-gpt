@@ -67,12 +67,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           user.id = existing.id;
         } else {
-          // Create new user from Google — check for referral cookie
+          // Create new user from Google — capture attribution from first-party cookies.
+          // Mismo patrón (y mismo gating de consentimiento) que el formulario de email:
+          // ytv_ref = código de referido; ytv_utm = campaña UTM de entrada.
           let referredBy: string | undefined;
+          let utmSource: string | undefined;
+          let utmMedium: string | undefined;
+          let utmCampaign: string | undefined;
           try {
             const cookieStore = await cookies();
             const refCookie = cookieStore.get('ytv_ref');
             if (refCookie?.value) referredBy = refCookie.value.slice(0, 20);
+            const utmCookie = cookieStore.get('ytv_utm');
+            if (utmCookie?.value) {
+              let raw = utmCookie.value;
+              try { raw = decodeURIComponent(raw); } catch {}
+              try {
+                const parsed = JSON.parse(raw);
+                if (typeof parsed.source === 'string') utmSource = parsed.source.slice(0, 100);
+                if (typeof parsed.medium === 'string') utmMedium = parsed.medium.slice(0, 100);
+                if (typeof parsed.campaign === 'string') utmCampaign = parsed.campaign.slice(0, 100);
+              } catch {}
+            }
           } catch {}
           const newUser = await prisma.user.create({
             data: {
@@ -80,6 +96,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               name: user.name || null,
               emailVerified: new Date(),
               referredBy,
+              utmSource,
+              utmMedium,
+              utmCampaign,
             },
           });
           user.id = newUser.id;
