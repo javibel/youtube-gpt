@@ -304,10 +304,11 @@ function handleCopy(id: string, out: string) {
   }
 
   // Genera el primer título DENTRO del onboarding — el "momento mágico" sin salir del modal.
-  async function handleOnboardingGenerate(e: React.FormEvent) {
-    e.preventDefault();
-    const topic = onboardingTopic.trim();
+  // Acepta un tema explícito (botón "probar con un ejemplo") o usa el del input (formulario).
+  async function runOnboardingGenerate(rawTopic: string) {
+    const topic = rawTopic.trim();
     if (topic.length < 3) return;
+    setOnboardingTopic(topic);
     setOnboardingGenerating(true);
     setOnboardingError('');
     try {
@@ -330,6 +331,11 @@ function handleCopy(id: string, out: string) {
     } finally {
       setOnboardingGenerating(false);
     }
+  }
+
+  function handleOnboardingGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    runOnboardingGenerate(onboardingTopic);
   }
 
   if (status === 'loading' || loading) {
@@ -464,8 +470,12 @@ function handleCopy(id: string, out: string) {
                 {onboardingError && (
                   <p className="text-[13px] mt-3" style={{ color: '#ff6b6b' }}>{onboardingError}</p>
                 )}
-                <button onClick={() => advanceOnboarding(4)} disabled={onboardingGenerating} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2 mt-1 disabled:opacity-40">
-                  {t('Saltar por ahora', 'Skip for now')}
+                <button
+                  onClick={() => runOnboardingGenerate(t('cómo empecé mi canal de YouTube desde cero', 'how I started my YouTube channel from scratch'))}
+                  disabled={onboardingGenerating}
+                  className="text-zinc-500 text-[13px] font-mono-jb hover:text-zinc-300 transition py-2 mt-1 disabled:opacity-40 underline decoration-dotted underline-offset-4"
+                >
+                  {t('No sé qué poner — probar con un ejemplo', 'Not sure? Try an example')}
                 </button>
               </div>
             )}
