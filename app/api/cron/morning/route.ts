@@ -11,7 +11,8 @@ import { buildInfographicUrl } from '@/lib/agent/infographic-generator';
 // import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { sendDailyReport } from '@/lib/agent/reports-agent';
-import { sendOnboardingEmails } from '@/lib/agent/onboarding-email';
+// sendOnboardingEmails DESACTIVADO 2026-07-01 (duplicaba lifecycle) — ver bloque "0." abajo.
+// import { sendOnboardingEmails } from '@/lib/agent/onboarding-email';
 import { sendVerificationReminders } from '@/lib/agent/verification-reminder';
 import { sendReengagementEmails } from '@/lib/agent/reengagement-email';
 import { prisma } from '@/lib/prisma';
@@ -192,12 +193,21 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
 
   try {
-    // 0. Send onboarding emails to users registered ~24h ago
-    const onboardingSent = await sendOnboardingEmails().catch(err => {
-      errors.push(`Onboarding: ${err instanceof Error ? err.message : err}`);
-      return 0;
-    });
-    results.onboarding = onboardingSent;
+    // 0. Onboarding email del agente — DESACTIVADO 2026-07-01 (Javier).
+    //    MOTIVO: se solapaba con la secuencia lifecycle (lib/lifecycle-emails.ts,
+    //    onboarding a1-a5), que cubre lo mismo mejor escalonado, con skip-on-action
+    //    y link de baja (LSSI). Este mandaba un 2º nudge casi idéntico ~24-48h tras
+    //    registro (ej. usuario Luis Avila recibió a1 "SEO Score" el 30/06 y este
+    //    "3 cosas / conecta canal" el 01/07 → redundante). El lifecycle es la fuente
+    //    única de onboarding a partir de ahora.
+    //    PARA REACTIVAR: descomentar la llamada de abajo Y coordinar con el cron
+    //    lifecycle para no duplicar (o borrar los pasos solapados a1/a3).
+    //    Código intacto en lib/agent/onboarding-email.ts por si se reutiliza.
+    // const onboardingSent = await sendOnboardingEmails().catch(err => {
+    //   errors.push(`Onboarding: ${err instanceof Error ? err.message : err}`);
+    //   return 0;
+    // });
+    results.onboarding = 'disabled_2026-07-01_dup_lifecycle';
 
     // 0b. Verification reminders to unverified signups (gated by VERIFY_REMINDER_ENABLED)
     const verifyReminders = await sendVerificationReminders().catch(err => {

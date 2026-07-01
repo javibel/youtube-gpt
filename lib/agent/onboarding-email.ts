@@ -2,6 +2,13 @@
  * Onboarding email — sent ~24h after registration to users who haven't
  * connected YouTube or explored key features.
  *
+ * ⚠️ DESACTIVADO 2026-07-01 (Javier): la llamada en app/api/cron/morning/route.ts
+ * está comentada porque este email se solapaba con la secuencia lifecycle
+ * (lib/lifecycle-emails.ts, onboarding a1-a5), que cubre lo mismo mejor escalonado,
+ * con skip-on-action y link de baja. El lifecycle es ahora la ÚNICA fuente de
+ * onboarding. Este código se conserva intacto por si se reutiliza; para reactivar,
+ * descomentar en el cron y coordinar para no duplicar. Ver memoria [[lifecycle-emails]].
+ *
  * Runs as part of the morning cron. Sends max 1 onboarding email per user.
  */
 import { prisma } from '@/lib/prisma';
