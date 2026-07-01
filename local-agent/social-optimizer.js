@@ -97,9 +97,8 @@ async function analyzeAndRecommend(metrics) {
   const recommendations = [];
 
   // Check engagement volume
-  if (metrics.twitter_24h.likes === 0 && metrics.twitter_24h.replies === 0) {
-    issues.push('TWITTER: 0 actividad en 24h — posible sesión caída o skip aleatorio');
-  }
+  // Twitter personas DISABLED 2026-06-25 (Bluesky-only strategy) — no alertar sobre un
+  // canal apagado a propósito, generaba falsa alarma diaria "TWITTER: 0 actividad".
   if (metrics.bluesky_24h.likes === 0 && metrics.bluesky_24h.replies === 0) {
     issues.push('BLUESKY: 0 actividad en 24h — posible sesión caída');
   }

@@ -220,8 +220,12 @@ function detectIssues(metrics) {
       if (proc.memoryMB > 200) {
         issues.push(`INFRA_MEMORY: Process ${proc.name} using ${proc.memoryMB}MB — WARNING`);
       }
-      if (proc.restarts > 0) {
-        issues.push(`INFRA_RESTARTS: Process ${proc.name} has ${proc.restarts} restart(s)`);
+      // Solo alertar si el proceso reinició HACE POCO (uptime corto = crash reciente).
+      // Un contador acumulado con uptime largo = proceso estable → NO es alarma real.
+      // Evita el falso positivo diario "X has 11 restart(s)" con días de uptime estable.
+      const hoursUp = proc.uptime ? (Date.now() - proc.uptime) / 3600000 : Infinity;
+      if (proc.restarts > 0 && hoursUp < 6) {
+        issues.push(`INFRA_RESTARTS: Process ${proc.name} reinició hace poco (${proc.restarts} total, uptime ${hoursUp.toFixed(1)}h) — WARNING`);
       }
     }
   }
