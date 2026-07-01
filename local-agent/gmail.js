@@ -52,6 +52,13 @@ const IMPORTANT_SENDERS = [
   'security@mail.instagram.com', '@mail.instagram.com',
 ];
 
+// Hard blacklist — never reply AND never forward (spam resellers, known bad actors).
+// Checked BEFORE important-keyword matching so their "collaboration/sponsorship" wording
+// can't route them to the owner. Add senders here to make the agent go fully silent.
+const BLACKLIST_SENDERS = [
+  'collab.talent.tube@gmail.com', // TalenTube — revendedor de patrocinios YouTube (spam 2026-06-28)
+];
+
 // Keywords in subject/body that indicate importance (forward to owner)
 const IMPORTANT_KEYWORDS = [
   // Platform actions
@@ -68,8 +75,12 @@ const IMPORTANT_KEYWORDS = [
   // Legal
   'legal notice', 'aviso legal', 'DMCA', 'copyright', 'trademark',
   // Business opportunities (forward, don't auto-reply)
-  'partnership', 'colaboración', 'press', 'media', 'interview', 'entrevista',
-  'investment', 'inversión',
+  'partnership', 'colaboración', 'collaboration', 'collab', 'press', 'media',
+  'interview', 'entrevista', 'investment', 'inversión',
+  // Sponsorship/reseller offers — el agente NUNCA debe negociar dinero en automático
+  'sponsorship', 'sponsored', 'sponsor', 'paid promotion', 'paid placement',
+  'flat-fee', 'flat fee', 'rate card', 'media kit', 'promotional video',
+  'dedicated video', 'bundle package', 'patrocinio', 'patrocinado',
 ];
 
 // Emails to completely ignore (no reply, no forward) — automated/marketing/newsletters
@@ -184,6 +195,12 @@ function classifyEmail(from, subject, snippet, headers = []) {
 
   // 0c. Filter irrelevant SaaSHub newsletters before anything else
   if (isSaashubIrrelevantNewsletter(from, subject)) {
+    return 'ignore';
+  }
+
+  // 0d. Hard blacklist — never reply, never forward (spam resellers). Checked before
+  //     important-keyword matching so their commercial wording can't route to the owner.
+  if (BLACKLIST_SENDERS.some(s => fromLower.includes(s))) {
     return 'ignore';
   }
 
@@ -493,4 +510,4 @@ async function getRecentEmails(maxResults = 20) {
   return results;
 }
 
-module.exports = { processInbox, getRecentEmails };
+module.exports = { processInbox, getRecentEmails, classifyEmail };
