@@ -151,9 +151,12 @@ node -e "require('dotenv').config();const {runManager}=require('./manager');runM
 | DMARC Monitor | Autenticación de email | 06:00 diario |
 | Auto-Resolver | Lee Manager + aplica fixes | 09:17 diario |
 | Morning Fix (Task Scheduler) | Claude revisa y corrige código | 09:35 diario |
-| Persona Runner | Sesiones sociales (Twitter; FB/Bluesky gateados OFF) | ~09:30 y ~22:00 |
-| Persona Monitor | Detecta silencio en personas | Cada hora 08-23h |
-| Followup | Responde a replies de personas | 10-11h y 17-18h |
+| Bluesky Dispatcher | Engagement personas Bluesky (ritmo por persona) | Cada hora 08-23h |
+| Bluesky Informe | Resumen diario likes/replies por persona | 23:40 |
+| Bluesky Warm-up Drip | 1 post original/día mientras haya cola | 12:35 |
+| Persona Monitor | Detecta silencio en personas (Bluesky) | Cada hora 08-23h |
+| ~~Persona Runner (Twitter/FB/Reddit)~~ | DISABLED 2026-06-25 | — |
+| ~~Followup personas~~ | DISABLED 2026-06-25 (Twitter abandonado) | — |
 | Gmail | Procesa inbox | Cada 30 min 08-23h |
 | Outreach Discovery | Encuentra YouTubers | 6x/día |
 | Outreach Send | Emails a creadores | 6x/día |
@@ -175,13 +178,13 @@ node -e "require('dotenv').config();const {runManager}=require('./manager');runM
 ## Personas sociales
 | Persona | Plataformas | Perfil |
 |---------|------------|--------|
-| Alex Sastre | Twitter (FB/Bluesky pend.) | Editor de vídeo freelance, Valencia, 26 años |
-| Ferran Gómez | Twitter (FB/Bluesky pend.) | Consultor marketing digital, Barcelona, 33 años |
-| Ana Reyes | Twitter (FB/Bluesky pend.) | Community manager freelance, Madrid, 29 años |
-| Mayra Vidal | Twitter (FB/Bluesky pend.) | Copywriter YouTube, Sevilla, 31 años |
+| Alex Sastre | Bluesky (alex5000.bsky.social) | Editor de vídeo freelance, Valencia, 26 años |
+| Ferran Gómez | Bluesky (ferran5000.bsky.social) | Consultor marketing digital, Barcelona, 33 años |
+| Ana Reyes | Bluesky (ana5000.bsky.social) | Community manager freelance, Madrid, 29 años |
+| Mayra Vidal | Bluesky (mayra02.bsky.social) | Copywriter YouTube, Sevilla, 31 años |
 
-**Canales (2026-06-14):** Reddit ABANDONADO (todas las cuentas baneadas/shadowbanned). Twitter vivo. Reemplazos: **Facebook + Bluesky**, ya cableados pero gateados OFF (`FACEBOOK_AUTOMATION_ENABLED`/`BLUESKY_AUTOMATION_ENABLED`) hasta que Javier cree las cuentas — guía en `local-agent/persona-channels-setup-2026-06-14.md`. La cuenta brand-reddit queda `disabled`.
-**Fase:** calentamiento — credibilidad antes que conversión. Arrancar canales nuevos despacio (1-2 personas, volumen bajo).
+**Canales (actualizado 2026-07-01):** SOLO **Bluesky activo** (`BLUESKY_AUTOMATION_ENABLED=true`). Twitter/Facebook/Reddit personas DISABLED desde 2026-06-25 (apagado total y verificado: 0 acciones tras 24/06). Reddit ABANDONADO permanente (cuentas baneadas/shadowbanned). 5 cuentas Bluesky: 4 personas + brand `ytubviral.bsky.social`. Twitter de marca lo opera Javier a mano (X Coach genera el plan diario).
+**Fase:** calentamiento — credibilidad antes que conversión. Volumen bajo real: ~7-12 acciones/día entre las 4 personas, sin links en replies (decisión links-limpios 2026-06-13). NOTA ESTRATÉGICA: el engagement es sano pero convierte casi 0 clics al sitio (ver [[project_user_attribution_gap]]).
 
 ## Archivos de configuración clave
 | Archivo | Qué controla |
