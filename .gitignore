@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Chrome extension build artifact (regenerate with chrome-extension/pack.js)
+ytubviral-extension.zip

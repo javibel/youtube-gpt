@@ -104,7 +104,9 @@ async function handleMessage(msg) {
           if (res.status === 401) {
             // Token expired/revoked — clear it so the UI reflects logged-out next time
             await chrome.storage.local.remove(['ytv_token', 'ytv_user']);
-          } else if (res.ok) {
+          } else if (res.ok && data && data.email) {
+            // data.email guard: a 200 with a non-JSON body (proxy error page) leaves data={}
+            // — don't overwrite a good cached user with an empty object
             await chrome.storage.local.set({ ytv_user: data });
           }
         }).catch(() => {});
@@ -119,7 +121,7 @@ async function handleMessage(msg) {
           await chrome.storage.local.remove(['ytv_token', 'ytv_user']);
           return null;
         }
-        if (!res.ok) return null;
+        if (!res.ok || !data || !data.email) return null; // data.email: see guard note above
         await chrome.storage.local.set({ ytv_user: data });
         return data;
       } catch {

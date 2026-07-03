@@ -1235,12 +1235,22 @@
   line-height: 1.4 !important;
 }
 
-/* Tier 1 #1 — Shorts scorecard. Reuses .ytv-scorecard/.ytv-sc-pill styling (proven on /watch);
-   this modifier only adjusts sizing for the narrower Shorts actions column. Selector context
-   is the least battle-tested in this file — re-check spacing visually after any YouTube
-   Shorts UI update. */
+/* Tier 1 #1 — Shorts scorecard. Body-mounted with fixed positioning (self-review fix
+   2026-07-04): the first version anchored inside the reel's narrow #actions rail, which
+   would have squeezed/broken the feed layout. Fixed positioning depends on nothing in the
+   Shorts DOM. z-index stays below YouTube's own dialogs (~2200+). */
 .ytv-shorts-panel {
-  width: auto !important;
-  max-width: 220px !important;
-  margin: 8px 0 !important;
+  position: fixed !important;
+  right: 16px !important;
+  bottom: 80px !important;
+  width: 320px !important;
+  max-width: calc(100vw - 32px) !important;
+  z-index: 2000 !important;
+  margin: 0 !important;
+}
+
+/* Expanded detail inside the fixed panel: cap height, scroll internally */
+.ytv-shorts-panel .ytv-sc-detail {
+  max-height: min(60vh, 480px) !important;
+  overflow-y: auto !important;
 }

@@ -53,14 +53,9 @@ const SELECTORS = {
     videoRows: 'ytcp-video-row, .video-row, [class*="video-row"]',
     uploadDialog: 'ytcp-uploads-dialog',
   },
-  shorts: {
-    // YouTube Shorts DOM is a vertical feed of ytd-reel-video-renderer, one active at a time.
-    // Kept with fallbacks — this is the least battle-tested selector set in the extension
-    // (Shorts markup shifts more often than the watch page) and should be re-verified
-    // visually after any YouTube update if the panel stops appearing.
-    activeReel: 'ytd-reel-video-renderer[is-active], ytd-shorts #shorts-container ytd-reel-video-renderer[is-active]',
-    activeActions: 'ytd-reel-video-renderer[is-active] #actions, ytd-shorts [is-active] #actions',
-  },
+  // NOTE: no `shorts` selector set on purpose. The Shorts panels are mounted on
+  // document.body with fixed positioning and only need the videoId from the URL —
+  // the reel feed's internal DOM (the least stable markup on youtube.com) is never touched.
 };
 
 // ============================================================
@@ -805,28 +800,26 @@ async function injectVideoPanel() {
 }
 
 // ── Shorts scorecard (v2.5.0 Tier 1 #1) ────────────────────────────
-// Shorts are the format our smallest-creator ICP uses most, and the vertical-feed DOM is
-// meaningfully different from /watch (no fixed #secondary sidebar). We reuse the exact same
-// SCORECARD message/data and the same expanded-detail renderer as the watch page — only the
-// mount point and the compact layout differ. NOTE: the Shorts DOM (SELECTORS.shorts) is the
-// least battle-tested selector set here and should be re-checked visually after any YouTube
-// update if the panel stops appearing — this is flagged, not silently assumed correct.
+// Shorts are the format our smallest-creator ICP uses most. We reuse the exact same SCORECARD
+// message/data and the same expanded-detail renderer as the watch page.
+//
+// Self-review fix (2026-07-04): the first version anchored the panel inside the reel's
+// #actions rail — a ~60px-wide vertical column where a 220px panel would break the feed
+// layout, and it depended on the least-stable selectors in the file. The panel is now
+// mounted on document.body with fixed positioning (right edge): the ONLY thing it needs
+// from the page is the videoId in the URL, so no Shorts-DOM selector can break it.
 
 async function injectShortsPanel() {
   try {
-    if (document.getElementById('ytv-shorts-panel')) {
-      // Already mounted for this reel — just make sure the videoId matches (swipe = new short).
-      const existing = document.getElementById('ytv-shorts-panel');
-      if (existing.dataset.videoId === getShortsVideoId()) return;
-      existing.remove();
-    }
-
     const videoId = getShortsVideoId();
     if (!videoId) return;
 
-    const anchor = firstMatch([SELECTORS.shorts.activeActions, SELECTORS.shorts.activeReel])
-      || (await waitForEl(SELECTORS.shorts.activeReel, 6000).catch(() => null));
-    if (!anchor) return; // couldn't find a stable mount point — fail quietly rather than break the feed
+    const prev = document.getElementById('ytv-shorts-panel');
+    if (prev) {
+      // Already mounted — if it's the same short (no swipe), keep it as is.
+      if (prev.dataset.videoId === videoId) return;
+      prev.remove();
+    }
 
     const panel = document.createElement('div');
     panel.id = 'ytv-shorts-panel';
@@ -839,7 +832,7 @@ async function injectShortsPanel() {
       </div>
       <div class="ytv-sc-detail" id="ytv-shorts-detail" style="display:none"></div>
     `;
-    anchor.parentElement ? anchor.parentElement.insertBefore(panel, anchor) : anchor.appendChild(panel);
+    document.body.appendChild(panel);
 
     const pill = panel.querySelector('#ytv-shorts-pill');
     const detail = panel.querySelector('#ytv-shorts-detail');
@@ -848,6 +841,9 @@ async function injectShortsPanel() {
 
     try {
       data = await sendMsg({ type: 'SCORECARD', videoId });
+      // The user may have swiped to another short while the request was in flight — don't
+      // paint stale data over the new reel's panel lifecycle.
+      if (panel.dataset.videoId !== getShortsVideoId()) { panel.remove(); return; }
       pill.innerHTML = `<div class="ytv-sc-pill-logo">YTV</div>` + renderScorecard(data);
     } catch (e) {
       pill.innerHTML = `<div class="ytv-sc-pill-logo">YTV</div><div class="ytv-sc-pill-err">${escapeHtml(e.message === 'not_logged_in' ? t('Inicia sesión', 'Sign in') : e.message)}</div>`;
@@ -872,6 +868,32 @@ async function injectShortsPanel() {
             window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(tag.dataset.kw)}`, '_blank');
           });
         });
+
+        // Self-review fix (2026-07-04): the expanded view renders the same action buttons as
+        // the watch page, but the first version never wired them here — dead buttons.
+        // Comments and title generation work fine with just the videoId / document title.
+        // "Analyze channel" is HIDDEN on Shorts: there's no reliable channel-link selector in
+        // the Shorts DOM, and sending a /shorts/ URL to the competitor endpoint would fail.
+        const actionResults = detail.querySelector('#ytv-sc-action-results');
+        const btnComp = detail.querySelector('#ytv-sc-btn-competitor');
+        const btnTitles = detail.querySelector('#ytv-sc-btn-titles');
+        const btnComments = detail.querySelector('#ytv-sc-btn-comments');
+        const commentsArea = detail.querySelector('#ytv-sc-comments-area');
+        if (btnComp) btnComp.style.display = 'none';
+        if (btnTitles) {
+          btnTitles.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { title } = getVideoInfo(); // falls back to document.title on Shorts
+            await runGenerate(actionResults, title);
+          });
+        }
+        if (btnComments && commentsArea) {
+          btnComments.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            btnComments.style.display = 'none';
+            await loadComments(commentsArea, videoId);
+          });
+        }
       } else {
         detail.style.display = 'none';
       }
@@ -1765,14 +1787,16 @@ async function injectLoggedOutPanel() {
   if (location.hostname === 'studio.youtube.com') return;
   if (getPageType() !== 'video' && getPageType() !== 'shorts') return; // only the highest-intent pages, to avoid clutter
   try {
+    // Self-review fix (2026-07-04): on Shorts this used to anchor into the ~60px #actions
+    // rail WITHOUT the .ytv-shorts-panel class — a width:100% panel squeezed into a narrow
+    // column. Shorts now uses the same body-mounted fixed positioning as injectShortsPanel;
+    // /watch keeps its sidebar mount.
     const isShorts = getPageType() === 'shorts';
-    const container = isShorts
-      ? (firstMatch([SELECTORS.shorts.activeActions, SELECTORS.shorts.activeReel]) || await waitForEl(SELECTORS.shorts.activeReel, 6000))
-      : await waitForEl(SELECTORS.yt.videoSecondary, 8000);
+    const container = isShorts ? document.body : await waitForEl(SELECTORS.yt.videoSecondary, 8000);
     const { title } = getVideoInfo();
     const check = title ? renderLoggedOutScore(title) : '';
     const panel = createPanel('ytv-video-panel');
-    panel.className = 'ytv-scorecard';
+    panel.className = isShorts ? 'ytv-scorecard ytv-shorts-panel' : 'ytv-scorecard';
     panel.innerHTML = `
       <div class="ytv-sc-pill" style="flex-direction:column;align-items:stretch;gap:8px;cursor:default">
         <div style="display:flex;align-items:center;gap:8px"><span class="ytv-sc-pill-logo">YTV</span><strong>${t('Análisis SEO', 'SEO check')}</strong></div>
@@ -1783,7 +1807,7 @@ async function injectLoggedOutPanel() {
       </div>
     `;
     if (isShorts) {
-      container.parentElement ? container.parentElement.insertBefore(panel, container) : container.appendChild(panel);
+      document.body.appendChild(panel);
     } else {
       const parent = container.closest('#secondary-inner') || container.closest('#secondary') || container.parentElement;
       parent.insertBefore(panel, parent.firstChild);
