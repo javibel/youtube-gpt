@@ -19,6 +19,51 @@ async function initLang() {
 }
 
 // ============================================================
+// Centralized DOM selectors (v2.5.0 — B2 of the 2026-07-03 code review)
+// YouTube/Studio change their markup without notice (it happened in May 2026 with the
+// homepage thumbnail DOM). Keeping every selector here means a future breakage is a
+// one-place fix instead of a hunt across the file.
+// ============================================================
+
+const SELECTORS = {
+  yt: {
+    videoSecondary: '#secondary-inner, #secondary, ytd-watch-next-secondary-results-renderer',
+    searchResults: 'ytd-search #contents, ytd-section-list-renderer #contents',
+    channelHeader: '#channel-header-container, ytd-c4-tabbed-header-renderer, #header-container',
+    videoTitle: [
+      'ytd-watch-metadata h1 yt-formatted-string',
+      'h1.ytd-video-primary-info-renderer yt-formatted-string',
+      '#title h1 yt-formatted-string',
+      'h1.style-scope.ytd-watch-metadata',
+    ],
+    channelLink: [
+      '#owner #channel-name a',
+      'ytd-video-owner-renderer #channel-name a',
+      'ytd-channel-name a',
+      '#upload-info #channel-name a',
+    ],
+    thumbSelector: 'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer',
+  },
+  studio: {
+    navPanel: '#navigation-panel, ytcp-navigation-drawer, .left-nav-area',
+    metadataEditor: '#details, ytcp-video-metadata-editor, .metadata-editor',
+    titleField: '#title-textarea #textbox, ytcp-social-suggestion-input #textbox',
+    descField: '#description-textarea #textbox, [aria-label*="description" i] #textbox',
+    tagChips: 'ytcp-chip-bar ytcp-chip-bar-item, .tag-chip',
+    videoRows: 'ytcp-video-row, .video-row, [class*="video-row"]',
+    uploadDialog: 'ytcp-uploads-dialog',
+  },
+  shorts: {
+    // YouTube Shorts DOM is a vertical feed of ytd-reel-video-renderer, one active at a time.
+    // Kept with fallbacks — this is the least battle-tested selector set in the extension
+    // (Shorts markup shifts more often than the watch page) and should be re-verified
+    // visually after any YouTube update if the panel stops appearing.
+    activeReel: 'ytd-reel-video-renderer[is-active], ytd-shorts #shorts-container ytd-reel-video-renderer[is-active]',
+    activeActions: 'ytd-reel-video-renderer[is-active] #actions, ytd-shorts [is-active] #actions',
+  },
+};
+
+// ============================================================
 // Helpers
 // ============================================================
 
@@ -59,6 +104,14 @@ function waitForEl(selector, timeout = 6000) {
   });
 }
 
+function firstMatch(selectors) {
+  for (const sel of selectors) {
+    const el = document.querySelector(sel);
+    if (el) return el;
+  }
+  return null;
+}
+
 // ============================================================
 // Page detection
 // ============================================================
@@ -67,6 +120,7 @@ function getPageType() {
   const p = window.location.pathname;
   const s = window.location.search;
   if (p === '/watch' && s.includes('v=')) return 'video';
+  if (p.startsWith('/shorts/')) return 'shorts';
   if (p === '/results' && s.includes('search_query=')) return 'search';
   if (/^\/@|^\/channel\/|^\/c\//.test(p)) return 'channel';
   if (p === '/' || p.startsWith('/feed/')) return 'home';
@@ -77,19 +131,16 @@ function getVideoId() {
   return new URLSearchParams(window.location.search).get('v') || '';
 }
 
+function getShortsVideoId() {
+  const m = window.location.pathname.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : '';
+}
+
 function getVideoInfo() {
-  const titleEl =
-    document.querySelector('ytd-watch-metadata h1 yt-formatted-string') ||
-    document.querySelector('h1.ytd-video-primary-info-renderer yt-formatted-string') ||
-    document.querySelector('#title h1 yt-formatted-string') ||
-    document.querySelector('h1.style-scope.ytd-watch-metadata');
+  const titleEl = firstMatch(SELECTORS.yt.videoTitle);
   const title = titleEl?.textContent?.trim() || document.title.replace(' - YouTube', '').trim();
 
-  const channelLinkEl =
-    document.querySelector('#owner #channel-name a') ||
-    document.querySelector('ytd-video-owner-renderer #channel-name a') ||
-    document.querySelector('ytd-channel-name a') ||
-    document.querySelector('#upload-info #channel-name a');
+  const channelLinkEl = firstMatch(SELECTORS.yt.channelLink);
   const channelName = channelLinkEl?.textContent?.trim() || '';
   const channelUrl = channelLinkEl?.href || '';
 
@@ -225,7 +276,7 @@ function scoreColor(score) {
 }
 
 function fmtAge(days, hours) {
-  if (days >= 365) return Math.floor(days / 365) + (days >= 730 ? 'y' : 'y');
+  if (days >= 365) return Math.floor(days / 365) + 'y';
   if (days >= 30) return Math.floor(days / 30) + 'mo';
   if (days >= 1) return days + 'd';
   return hours + 'h';
@@ -336,6 +387,22 @@ function renderBestTime(data) {
     ${aiTip ? `<div class="ytv-besttime-tip">${escapeHtml(aiTip)}</div>` : ''}
     <a class="ytv-cta-link" href="https://ytubviral.com/best-time" target="_blank">${t('Actualizar análisis →', 'Update analysis →')}</a>
   `;
+}
+
+// One-line best-time hint reused by the Studio editor and upload panels (v2.5.0 Tier 1 #3):
+// fetch the user's #1 slot once and show it inline, right where they're about to publish.
+async function renderBestTimeHint() {
+  try {
+    const res = await sendMsg({ type: 'BEST_TIME' });
+    const top = res?.data?.topSlots?.[0];
+    if (!top) return '';
+    const DAY_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const DAY_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayName = (_lang === 'en' ? DAY_EN : DAY_ES)[top.day] || '';
+    return `<div class="ytv-besttime-hint">🥇 ${t('Tu mejor hora', 'Your best time')}: <b>${dayName} ${String(top.hour).padStart(2, '0')}:00 UTC</b></div>`;
+  } catch {
+    return ''; // not connected / no data yet — say nothing rather than show an error here
+  }
 }
 
 // ── Scorecard renderer ──────────────────────────────────────────────
@@ -628,7 +695,7 @@ async function loadComments(container, videoId) {
 
 async function injectVideoPanel() {
   try {
-    const container = await waitForEl('#secondary-inner, #secondary, ytd-watch-next-secondary-results-renderer', 8000);
+    const container = await waitForEl(SELECTORS.yt.videoSecondary, 8000);
     const videoId = getVideoId();
     if (!videoId) return;
 
@@ -737,12 +804,89 @@ async function injectVideoPanel() {
   }
 }
 
+// ── Shorts scorecard (v2.5.0 Tier 1 #1) ────────────────────────────
+// Shorts are the format our smallest-creator ICP uses most, and the vertical-feed DOM is
+// meaningfully different from /watch (no fixed #secondary sidebar). We reuse the exact same
+// SCORECARD message/data and the same expanded-detail renderer as the watch page — only the
+// mount point and the compact layout differ. NOTE: the Shorts DOM (SELECTORS.shorts) is the
+// least battle-tested selector set here and should be re-checked visually after any YouTube
+// update if the panel stops appearing — this is flagged, not silently assumed correct.
+
+async function injectShortsPanel() {
+  try {
+    if (document.getElementById('ytv-shorts-panel')) {
+      // Already mounted for this reel — just make sure the videoId matches (swipe = new short).
+      const existing = document.getElementById('ytv-shorts-panel');
+      if (existing.dataset.videoId === getShortsVideoId()) return;
+      existing.remove();
+    }
+
+    const videoId = getShortsVideoId();
+    if (!videoId) return;
+
+    const anchor = firstMatch([SELECTORS.shorts.activeActions, SELECTORS.shorts.activeReel])
+      || (await waitForEl(SELECTORS.shorts.activeReel, 6000).catch(() => null));
+    if (!anchor) return; // couldn't find a stable mount point — fail quietly rather than break the feed
+
+    const panel = document.createElement('div');
+    panel.id = 'ytv-shorts-panel';
+    panel.className = 'ytv-scorecard ytv-shorts-panel';
+    panel.dataset.videoId = videoId;
+    panel.innerHTML = `
+      <div class="ytv-sc-pill" id="ytv-shorts-pill" style="cursor:pointer">
+        <div class="ytv-sc-pill-logo">YTV</div>
+        <div class="ytv-sc-pill-loading"><span class="ytv-spinner-sm"></span></div>
+      </div>
+      <div class="ytv-sc-detail" id="ytv-shorts-detail" style="display:none"></div>
+    `;
+    anchor.parentElement ? anchor.parentElement.insertBefore(panel, anchor) : anchor.appendChild(panel);
+
+    const pill = panel.querySelector('#ytv-shorts-pill');
+    const detail = panel.querySelector('#ytv-shorts-detail');
+    let data = null;
+    let expanded = false;
+
+    try {
+      data = await sendMsg({ type: 'SCORECARD', videoId });
+      pill.innerHTML = `<div class="ytv-sc-pill-logo">YTV</div>` + renderScorecard(data);
+    } catch (e) {
+      pill.innerHTML = `<div class="ytv-sc-pill-logo">YTV</div><div class="ytv-sc-pill-err">${escapeHtml(e.message === 'not_logged_in' ? t('Inicia sesión', 'Sign in') : e.message)}</div>`;
+      return;
+    }
+
+    pill.addEventListener('click', () => {
+      expanded = !expanded;
+      if (expanded && data) {
+        detail.innerHTML = renderScorecardExpanded(data);
+        detail.style.display = 'block';
+        // Best Time + tag clicks reuse the same wiring as the watch-page panel
+        const bestTimeArea = detail.querySelector('#ytv-sc-besttime-area');
+        if (bestTimeArea) {
+          sendMsg({ type: 'BEST_TIME' })
+            .then(res => { bestTimeArea.innerHTML = renderBestTime(res?.data || null); })
+            .catch(() => { bestTimeArea.innerHTML = renderBestTime(null); });
+        }
+        detail.querySelectorAll('.ytv-tag[data-kw]').forEach(tag => {
+          tag.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(tag.dataset.kw)}`, '_blank');
+          });
+        });
+      } else {
+        detail.style.display = 'none';
+      }
+    });
+  } catch (e) {
+    console.log('[YTubViral] Shorts panel:', e.message);
+  }
+}
+
 async function injectSearchPanel() {
   try {
     const query = getSearchQuery();
     if (!query) return;
 
-    const container = await waitForEl('ytd-search #contents, ytd-section-list-renderer #contents', 5000);
+    const container = await waitForEl(SELECTORS.yt.searchResults, 5000);
     const panel = createPanel('ytv-search-panel');
     panel.innerHTML = `
       <div class="ytv-header">
@@ -764,10 +908,7 @@ async function injectSearchPanel() {
 
 async function injectChannelPanel() {
   try {
-    const container = await waitForEl(
-      '#channel-header-container, ytd-c4-tabbed-header-renderer, #header-container',
-      5000
-    );
+    const container = await waitForEl(SELECTORS.yt.channelHeader, 5000);
     const panel = createPanel('ytv-channel-panel');
     panel.innerHTML = `
       <div class="ytv-header">
@@ -885,10 +1026,10 @@ async function injectChannelStats() {
     let container;
 
     if (isStudio) {
-      container = await waitForEl('#navigation-panel, ytcp-navigation-drawer, .left-nav-area', 5000);
+      container = await waitForEl(SELECTORS.studio.navPanel, 5000);
     } else {
       // On regular YouTube, show in sidebar below scorecard
-      container = await waitForEl('#secondary-inner, #secondary', 5000);
+      container = await waitForEl(SELECTORS.yt.videoSecondary, 5000);
     }
 
     const panel = createPanel('ytv-channel-stats');
@@ -923,7 +1064,23 @@ async function injectChannelStats() {
       bodyEl.innerHTML = renderChannelStatsWidget(data);
     } catch (e) {
       if (e.message === 'youtube_not_connected') {
-        bodyEl.innerHTML = `<div class="ytv-error">${t('Conecta tu canal en ytubviral.com/dashboard', 'Connect your channel at ytubviral.com/dashboard')}</div>`;
+        // v2.5.0 (A2 fix): this used to render on EVERY video for any logged-in user who
+        // hasn't connected their YouTube channel — a permanent error banner for exactly the
+        // segment we most need to retain. Now it shows once, is dismissible, and stays quiet
+        // afterwards (same pattern as maybeShowReviewPrompt).
+        const dismissed = await new Promise(resolve => {
+          chrome.storage.local.get('ytv_connect_hint_dismissed', d => resolve(!!d.ytv_connect_hint_dismissed));
+        });
+        if (dismissed) { panel.remove(); return; }
+        bodyEl.innerHTML = `
+          <div class="ytv-error" style="display:flex;align-items:center;gap:8px">
+            <span style="flex:1">${t('Conecta tu canal en ytubviral.com/dashboard para ver tus stats aquí.', 'Connect your channel at ytubviral.com/dashboard to see your stats here.')}</span>
+            <button class="ytv-connect-hint-x" title="${t('No volver a mostrar', "Don't show again")}" style="background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:13px">✕</button>
+          </div>`;
+        bodyEl.querySelector('.ytv-connect-hint-x').addEventListener('click', () => {
+          chrome.storage.local.set({ ytv_connect_hint_dismissed: true });
+          panel.remove();
+        });
       } else if (e.message === 'not_logged_in') {
         // Don't show widget if not logged in
         panel.remove();
@@ -958,17 +1115,17 @@ function isStudioVideoEdit() {
 // ── Studio v2 helpers ──────────────────────────────────────────────
 
 function getStudioTitle() {
-  const el = document.querySelector('#title-textarea #textbox, ytcp-social-suggestion-input #textbox');
+  const el = document.querySelector(SELECTORS.studio.titleField);
   return el ? el.textContent.trim() : '';
 }
 
 function getStudioDescription() {
-  const el = document.querySelector('#description-textarea #textbox, [aria-label*="description" i] #textbox');
+  const el = document.querySelector(SELECTORS.studio.descField);
   return el ? el.textContent.trim() : '';
 }
 
 function getStudioTags() {
-  const chips = document.querySelectorAll('ytcp-chip-bar ytcp-chip-bar-item, .tag-chip');
+  const chips = document.querySelectorAll(SELECTORS.studio.tagChips);
   return Array.from(chips).map(c => c.textContent.trim()).filter(Boolean);
 }
 
@@ -1024,6 +1181,87 @@ function renderStudioScore(score, checks, titleLen) {
   `;
 }
 
+// ── Shared AI button wiring (v2.5.0 — B1 of the 2026-07-03 code review) ────────────────
+// injectStudioEditor and injectStudioUploadPanel used to each carry their own ~60-line copy
+// of the "generate titles" / "generate tags" logic. Both now call these two functions;
+// the editor additionally wires a "generate description" button the upload dialog doesn't have.
+
+function wireGenTitlesButton(btn, aiResults, isPro, titleFieldSelector) {
+  btn.addEventListener('click', async () => {
+    if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
+    const title = getStudioTitle();
+    if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
+    aiResults.innerHTML = renderLoading(t('Generando títulos...', 'Generating titles...'));
+    try {
+      const data = await sendMsg({ type: 'GENERATE', template: 'title', inputs: { tema: title, tono: 'engaging', duracion: '10' } });
+      const text = data.content || data.text || data.result || '';
+      const titles = text.split('\n').filter(l => l.trim()).slice(0, 5).map(l => l.replace(/^\d+[\.\)]\s*/, '').trim());
+      aiResults.innerHTML = titles.map(tt =>
+        `<div class="ytv-studio-suggest"><span>${escapeHtml(tt)}</span><button class="ytv-btn ytv-btn-sm ytv-btn-red ytv-btn-use" data-text="${escapeHtml(tt)}">${t('Usar', 'Use')}</button></div>`
+      ).join('');
+      aiResults.querySelectorAll('.ytv-btn-use').forEach(useBtn => {
+        useBtn.addEventListener('click', () => {
+          setStudioField(titleFieldSelector, useBtn.dataset.text);
+          btn.dispatchEvent(new CustomEvent('ytv-field-applied'));
+        });
+      });
+    } catch (e) { aiResults.innerHTML = renderError(e.message); }
+  });
+}
+
+function wireGenTagsButton(btn, aiResults, isPro) {
+  btn.addEventListener('click', async () => {
+    if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
+    const title = getStudioTitle();
+    if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
+    aiResults.innerHTML = renderLoading(t('Buscando keywords...', 'Searching keywords...'));
+    try {
+      let data = await sendMsg({ type: 'KEYWORDS', keyword: title });
+      let kws = (data.relatedKeywords || data.keywords || data.results || []).slice(0, 15);
+      // If no results with full title, retry with first 4 words (more generic)
+      if (kws.length === 0) {
+        const shortKw = title.split(/\s+/).slice(0, 4).join(' ');
+        if (shortKw !== title) {
+          data = await sendMsg({ type: 'KEYWORDS', keyword: shortKw });
+          kws = (data.relatedKeywords || data.keywords || data.results || []).slice(0, 15);
+        }
+      }
+      if (kws.length === 0) { aiResults.innerHTML = renderError(t('No se encontraron keywords', 'No keywords found')); return; }
+      aiResults.innerHTML = `<div class="ytv-studio-suggest">${kws.map(k => {
+        const kw = typeof k === 'string' ? k : (k.keyword || k.text || '');
+        return `<span class="ytv-studio-tag-pill" data-tag="${escapeHtml(kw)}">${escapeHtml(kw)} <b>+</b></span>`;
+      }).join('')}</div>`;
+      aiResults.querySelectorAll('.ytv-studio-tag-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          // Copy tag to clipboard as fallback (Studio tags input is complex)
+          navigator.clipboard.writeText(pill.dataset.tag).then(() => {
+            pill.style.opacity = '0.5';
+            pill.innerHTML = `${escapeHtml(pill.dataset.tag)} ✓`;
+          });
+        });
+      });
+    } catch (e) { aiResults.innerHTML = renderError(e.message); }
+  });
+}
+
+function wireGenDescButton(btn, aiResults, isPro, descFieldSelector) {
+  btn.addEventListener('click', async () => {
+    if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
+    const title = getStudioTitle();
+    if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
+    aiResults.innerHTML = renderLoading(t('Generando descripción...', 'Generating description...'));
+    try {
+      const data = await sendMsg({ type: 'GENERATE', template: 'description', inputs: { tema: title, duracion: '10', keywords: '' } });
+      const text = data.content || data.text || data.result || '';
+      aiResults.innerHTML = `<div class="ytv-studio-suggest"><div class="ytv-studio-desc-preview">${escapeHtml(text).replace(/\n/g, '<br>')}</div><button class="ytv-btn ytv-btn-sm ytv-btn-red" id="ytv-studio-use-desc">${t('📋 Insertar descripción', '📋 Insert description')}</button></div>`;
+      document.getElementById('ytv-studio-use-desc').addEventListener('click', () => {
+        setStudioField(descFieldSelector, text);
+        btn.dispatchEvent(new CustomEvent('ytv-field-applied'));
+      });
+    } catch (e) { aiResults.innerHTML = renderError(e.message); }
+  });
+}
+
 // ── Studio Editor v2 ──────────────────────────────────────────────
 
 async function injectStudioEditor() {
@@ -1031,7 +1269,7 @@ async function injectStudioEditor() {
     const videoId = getStudioVideoId();
     if (!videoId) return;
 
-    const container = await waitForEl('#details, ytcp-video-metadata-editor, .metadata-editor', 8000);
+    const container = await waitForEl(SELECTORS.studio.metadataEditor, 8000);
     if (document.getElementById('ytv-studio-scorecard')) return;
 
     const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
@@ -1048,6 +1286,7 @@ async function injectStudioEditor() {
       <div class="ytv-body">
         ${renderLoading(t('Analizando SEO...', 'Analyzing SEO...'))}
       </div>
+      <div id="ytv-studio-besttime"></div>
       <div class="ytv-studio-ai-section">
         <div class="ytv-studio-ai-buttons">
           <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-titles">✨ ${t('Generar títulos', 'Generate titles')} ${!isPro ? '<span class="ytv-pro-badge">PRO</span>' : ''}</button>
@@ -1073,6 +1312,11 @@ async function injectStudioEditor() {
     } catch (e) {
       bodyEl.innerHTML = renderError(e.message);
     }
+
+    // ─ Best Time hint (v2.5.0 Tier 1 #3) — non-blocking, appears once resolved ─
+    renderBestTimeHint().then(html => {
+      if (html) panel.querySelector('#ytv-studio-besttime').innerHTML = html;
+    });
 
     // ─ Live SEO: observe title/description edits ─
     let liveTimer = null;
@@ -1100,79 +1344,18 @@ async function injectStudioEditor() {
       obs.observe(el, { childList: true, subtree: true, characterData: true });
       el.addEventListener('input', scheduleLiveUpdate);
     };
-    // YouTube Studio uses these selectors
-    observeField('#title-textarea #textbox');
-    observeField('#description-textarea #textbox');
+    observeField(SELECTORS.studio.titleField);
+    observeField(SELECTORS.studio.descField);
 
-    // ─ AI Buttons ─
-    panel.querySelector('#ytv-studio-gen-titles').addEventListener('click', async () => {
-      if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
-      const title = getStudioTitle();
-      if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
-      aiResults.innerHTML = renderLoading(t('Generando títulos...', 'Generating titles...'));
-      try {
-        const data = await sendMsg({ type: 'GENERATE', template: 'title', inputs: { tema: title, tono: 'engaging', duracion: '10' } });
-        const text = data.content || data.text || data.result || '';
-        const titles = text.split('\n').filter(l => l.trim()).slice(0, 5);
-        const useLabel = _lang === 'es' ? 'Usar' : 'Use';
-        aiResults.innerHTML = `<div class="ytv-studio-suggest">${titles.map(title => `<div class="ytv-studio-suggest-item"><span>${escapeHtml(title.replace(/^\d+\.\s*/, ''))}</span><button class="ytv-btn ytv-btn-sm ytv-btn-use" data-text="${escapeHtml(title.replace(/^\d+\.\s*/, ''))}">${useLabel}</button></div>`).join('')}</div>`;
-        aiResults.querySelectorAll('.ytv-btn-use').forEach(btn => {
-          btn.addEventListener('click', () => {
-            setStudioField('#title-textarea #textbox, ytcp-social-suggestion-input #textbox', btn.dataset.text);
-            scheduleLiveUpdate();
-          });
-        });
-      } catch (e) { aiResults.innerHTML = renderError(e.message); }
-    });
-
-    panel.querySelector('#ytv-studio-gen-desc').addEventListener('click', async () => {
-      if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
-      const title = getStudioTitle();
-      if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
-      aiResults.innerHTML = renderLoading(t('Generando descripción...', 'Generating description...'));
-      try {
-        const data = await sendMsg({ type: 'GENERATE', template: 'description', inputs: { tema: title, duracion: '10', keywords: '' } });
-        const text = data.content || data.text || data.result || '';
-        aiResults.innerHTML = `<div class="ytv-studio-suggest"><div class="ytv-studio-desc-preview">${escapeHtml(text).replace(/\n/g, '<br>')}</div><button class="ytv-btn ytv-btn-sm ytv-btn-red" id="ytv-studio-use-desc">${t('📋 Insertar descripción', '📋 Insert description')}</button></div>`;
-        document.getElementById('ytv-studio-use-desc').addEventListener('click', () => {
-          setStudioField('#description-textarea #textbox, [aria-label*="description" i] #textbox', text);
-          scheduleLiveUpdate();
-        });
-      } catch (e) { aiResults.innerHTML = renderError(e.message); }
-    });
-
-    panel.querySelector('#ytv-studio-gen-tags').addEventListener('click', async () => {
-      if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
-      const title = getStudioTitle();
-      if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
-      aiResults.innerHTML = renderLoading(t('Buscando keywords...', 'Searching keywords...'));
-      try {
-        let data = await sendMsg({ type: 'KEYWORDS', keyword: title });
-        let kws = (data.relatedKeywords || data.keywords || data.results || []).slice(0, 15);
-        // If no results with full title, retry with first 4 words (more generic)
-        if (kws.length === 0) {
-          const shortKw = title.split(/\s+/).slice(0, 4).join(' ');
-          if (shortKw !== title) {
-            data = await sendMsg({ type: 'KEYWORDS', keyword: shortKw });
-            kws = (data.relatedKeywords || data.keywords || data.results || []).slice(0, 15);
-          }
-        }
-        if (kws.length === 0) { aiResults.innerHTML = renderError(t('No se encontraron keywords', 'No keywords found')); return; }
-        aiResults.innerHTML = `<div class="ytv-studio-suggest">${kws.map(k => {
-          const kw = typeof k === 'string' ? k : (k.keyword || k.text || '');
-          return `<span class="ytv-studio-tag-pill" data-tag="${escapeHtml(kw)}">${escapeHtml(kw)} <b>+</b></span>`;
-        }).join('')}</div>`;
-        aiResults.querySelectorAll('.ytv-studio-tag-pill').forEach(pill => {
-          pill.addEventListener('click', () => {
-            // Copy tag to clipboard as fallback (Studio tags input is complex)
-            navigator.clipboard.writeText(pill.dataset.tag).then(() => {
-              pill.style.opacity = '0.5';
-              pill.innerHTML = `${escapeHtml(pill.dataset.tag)} ✓`;
-            });
-          });
-        });
-      } catch (e) { aiResults.innerHTML = renderError(e.message); }
-    });
+    // ─ AI Buttons (shared wiring — B1) ─
+    const btnTitles = panel.querySelector('#ytv-studio-gen-titles');
+    const btnDesc = panel.querySelector('#ytv-studio-gen-desc');
+    const btnTags = panel.querySelector('#ytv-studio-gen-tags');
+    btnTitles.addEventListener('ytv-field-applied', scheduleLiveUpdate);
+    btnDesc.addEventListener('ytv-field-applied', scheduleLiveUpdate);
+    wireGenTitlesButton(btnTitles, aiResults, isPro, SELECTORS.studio.titleField);
+    wireGenDescButton(btnDesc, aiResults, isPro, SELECTORS.studio.descField);
+    wireGenTagsButton(btnTags, aiResults, isPro);
 
   } catch (e) {
     console.log('[YTubViral] Studio editor:', e.message);
@@ -1190,7 +1373,7 @@ function watchStudioUpload() {
   if (location.hostname !== 'studio.youtube.com') return;
   if (uploadDialogObserver) return; // already watching this session
   uploadDialogObserver = new MutationObserver(() => {
-    const dialog = document.querySelector('ytcp-uploads-dialog');
+    const dialog = document.querySelector(SELECTORS.studio.uploadDialog);
     if (dialog && !document.getElementById('ytv-studio-upload-scorecard')) {
       injectStudioUploadPanel(dialog);
     }
@@ -1223,6 +1406,7 @@ async function injectStudioUploadPanel(dialog) {
         <span class="ytv-badge">SEO Live</span>
       </div>
       <div class="ytv-body">${renderLoading(t('Escribe el título para ver tu SEO Score...', 'Type a title to see your SEO score...'))}</div>
+      <div id="ytv-up-besttime"></div>
       <div class="ytv-studio-ai-section">
         <div class="ytv-studio-ai-buttons">
           <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-up-gen-titles">✨ ${t('Generar títulos', 'Generate titles')} ${!isPro ? '<span class="ytv-pro-badge">PRO</span>' : ''}</button>
@@ -1235,6 +1419,11 @@ async function injectStudioUploadPanel(dialog) {
 
     const bodyEl = panel.querySelector('.ytv-body');
     const aiResults = panel.querySelector('#ytv-up-ai-results');
+
+    // ─ Best Time hint (v2.5.0 Tier 1 #3) ─
+    renderBestTimeHint().then(html => {
+      if (html) panel.querySelector('#ytv-up-besttime').innerHTML = html;
+    });
 
     let liveTimer = null;
     async function runLive() {
@@ -1256,61 +1445,17 @@ async function injectStudioUploadPanel(dialog) {
       obs.observe(el, { childList: true, subtree: true, characterData: true });
       el.addEventListener('input', scheduleLiveUpdate);
     };
-    observeField('#title-textarea #textbox');
-    observeField('#description-textarea #textbox');
+    observeField(SELECTORS.studio.titleField);
+    observeField(SELECTORS.studio.descField);
     runLive(); // title may be prefilled from the filename
 
-    panel.querySelector('#ytv-up-gen-titles').addEventListener('click', async () => {
-      if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
-      const title = getStudioTitle();
-      if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
-      aiResults.innerHTML = renderLoading(t('Generando títulos...', 'Generating titles...'));
-      try {
-        const data = await sendMsg({ type: 'GENERATE', template: 'title', inputs: { tema: title, tono: 'engaging', duracion: '10' } });
-        const text = data.content || data.text || data.result || '';
-        const titles = text.split('\n').filter(l => l.trim()).slice(0, 5).map(l => l.replace(/^\d+[\.\)]\s*/, '').trim());
-        aiResults.innerHTML = titles.map(tt =>
-          `<div class="ytv-studio-suggest"><span>${escapeHtml(tt)}</span><button class="ytv-btn ytv-btn-sm ytv-btn-red ytv-btn-use" data-text="${escapeHtml(tt)}">${t('Usar', 'Use')}</button></div>`
-        ).join('');
-        aiResults.querySelectorAll('.ytv-btn-use').forEach(btn => {
-          btn.addEventListener('click', () => {
-            setStudioField('#title-textarea #textbox, ytcp-social-suggestion-input #textbox', btn.dataset.text);
-            scheduleLiveUpdate();
-          });
-        });
-      } catch (e) { aiResults.innerHTML = renderError(e.message); }
-    });
+    // ─ AI Buttons (shared wiring — B1) ─
+    const btnTitles = panel.querySelector('#ytv-up-gen-titles');
+    const btnTags = panel.querySelector('#ytv-up-gen-tags');
+    btnTitles.addEventListener('ytv-field-applied', scheduleLiveUpdate);
+    wireGenTitlesButton(btnTitles, aiResults, isPro, SELECTORS.studio.titleField);
+    wireGenTagsButton(btnTags, aiResults, isPro);
 
-    panel.querySelector('#ytv-up-gen-tags').addEventListener('click', async () => {
-      if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
-      const title = getStudioTitle();
-      if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
-      aiResults.innerHTML = renderLoading(t('Buscando keywords...', 'Searching keywords...'));
-      try {
-        let data = await sendMsg({ type: 'KEYWORDS', keyword: title });
-        let kws = (data.relatedKeywords || data.keywords || data.results || []).slice(0, 15);
-        if (kws.length === 0) {
-          const shortKw = title.split(/\s+/).slice(0, 4).join(' ');
-          if (shortKw !== title) {
-            data = await sendMsg({ type: 'KEYWORDS', keyword: shortKw });
-            kws = (data.relatedKeywords || data.keywords || data.results || []).slice(0, 15);
-          }
-        }
-        if (kws.length === 0) { aiResults.innerHTML = renderError(t('No se encontraron keywords', 'No keywords found')); return; }
-        aiResults.innerHTML = `<div class="ytv-studio-suggest">${kws.map(k => {
-          const kw = typeof k === 'string' ? k : (k.keyword || k.text || '');
-          return `<span class="ytv-studio-tag-pill" data-tag="${escapeHtml(kw)}">${escapeHtml(kw)} <b>+</b></span>`;
-        }).join('')}</div>`;
-        aiResults.querySelectorAll('.ytv-studio-tag-pill').forEach(pill => {
-          pill.addEventListener('click', () => {
-            navigator.clipboard.writeText(pill.dataset.tag).then(() => {
-              pill.style.opacity = '0.5';
-              pill.innerHTML = `${escapeHtml(pill.dataset.tag)} ✓`;
-            });
-          });
-        });
-      } catch (e) { aiResults.innerHTML = renderError(e.message); }
-    });
   } catch (e) {
     console.log('[YTubViral] Studio upload:', e.message);
   }
@@ -1321,10 +1466,10 @@ async function injectStudioVideoList() {
     if (!isStudioVideoList()) return;
 
     // Wait for video rows to appear
-    await waitForEl('ytcp-video-row, .video-row, [class*="video-row"]', 8000);
+    await waitForEl(SELECTORS.studio.videoRows, 8000);
 
     // Find all video links in Studio — they contain /video/{id}
-    const rows = document.querySelectorAll('ytcp-video-row, [class*="video-row"]');
+    const rows = document.querySelectorAll(SELECTORS.studio.videoRows);
     if (!rows.length) return;
 
     // Don't inject twice
@@ -1345,25 +1490,27 @@ async function injectStudioVideoList() {
       }
     });
 
-    // Fetch scores one by one (to avoid rate limiting), max 10
+    // v2.5.0 (A1 fix): these used to be fetched one-by-one with an `await` inside the loop —
+    // up to 10 sequential round-trips (10-20s before the last badge appeared). Placeholders
+    // are inserted for all rows up front, then every SCORECARD call fires in parallel, so
+    // total wait time is roughly the slowest single call instead of the sum of all ten.
     const toFetch = videoIds.slice(0, 10);
-    for (const vid of toFetch) {
-      const row = rowMap.get(vid);
-      if (!row) continue;
+    const badgeFor = new Map();
 
-      // Insert placeholder badge
+    toFetch.forEach(vid => {
+      const row = rowMap.get(vid);
+      if (!row) return;
       const badge = document.createElement('span');
       badge.className = 'ytv-studio-badge';
       badge.innerHTML = '<span class="ytv-spinner-sm"></span>';
-
-      // Try to find a good insertion point
       const titleEl = row.querySelector('.video-title-text, h3, [class*="title"]');
-      if (titleEl) {
-        titleEl.parentElement.appendChild(badge);
-      } else {
-        row.appendChild(badge);
-      }
+      if (titleEl) titleEl.parentElement.appendChild(badge); else row.appendChild(badge);
+      badgeFor.set(vid, badge);
+    });
 
+    await Promise.allSettled(toFetch.map(async vid => {
+      const badge = badgeFor.get(vid);
+      if (!badge) return;
       try {
         const data = await sendMsg({ type: 'SCORECARD', videoId: vid });
         const color = scoreColor(data.score);
@@ -1378,7 +1525,7 @@ async function injectStudioVideoList() {
       } catch {
         badge.innerHTML = '<span class="ytv-studio-score" style="border-color:#666;color:#666">?</span>';
       }
-    }
+    }));
   } catch (e) {
     console.log('[YTubViral] Studio video list:', e.message);
   }
@@ -1421,6 +1568,12 @@ async function processBadgeBatch(videoIds) {
     try {
       const data = await sendMsg({ type: 'VIDEO_BATCH', videoIds: toFetch });
       (data.videos || []).forEach(v => vphCache.set(v.videoId, v));
+      // Simple size cap — a very long browsing session shouldn't grow this map unbounded
+      if (vphCache.size > 500) {
+        const excess = vphCache.size - 500;
+        const keys = vphCache.keys();
+        for (let i = 0; i < excess; i++) vphCache.delete(keys.next().value);
+      }
     } catch (err) {
       console.log('[YTV] VIDEO_BATCH error:', err.message);
     }
@@ -1467,7 +1620,7 @@ function injectVelocityBadges() {
   if (badgeObserver) { badgeObserver.disconnect(); badgeObserver = null; }
   if (badgeIO) { badgeIO.disconnect(); badgeIO = null; }
 
-  const selector = 'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer';
+  const selector = SELECTORS.yt.thumbSelector;
   let batchTimer = null;
   let pendingIds = new Set();
 
@@ -1517,23 +1670,107 @@ function injectVelocityBadges() {
 // Logged-out panel (win #1: show value without login)
 // ============================================================
 
-function titleLengthVerdict(len) {
-  if (!len) return null;
-  if (len < 40) return { color: '#f5a623', icon: '⚠', msg: t(`Título corto (${len} car.) — apunta a 40-70`, `Short title (${len} chars) — aim for 40-70`) };
-  if (len > 70) return { color: '#f5a623', icon: '⚠', msg: t(`Título largo (${len} car.) — se corta en búsqueda`, `Long title (${len} chars) — gets cut off in search`) };
-  return { color: '#22c55e', icon: '✓', msg: t(`Título ${len} car. — buena longitud`, `Title ${len} chars — good length`) };
+// v2.5.0 (Tier 1 #2 — A3 of the code review): this used to just report the title's length.
+// Now it runs the same 0-100 heuristic scorer as the public /title-analyzer tool (client-side,
+// zero API cost), so a visitor with no account gets a real score and concrete tips — the same
+// "give value before signup" hook vidIQ uses. Keep this in sync with
+// app/title-analyzer/TitleAnalyzerClient.tsx if that scoring ever changes; it's a deliberate,
+// duplicated port (a content script can't import from the Next.js app).
+
+const POWER_WORDS = [
+  'how', 'why', 'best', 'easy', 'fast', 'free', 'new', 'now', 'secret', 'secrets',
+  'proven', 'ultimate', 'simple', 'stop', 'never', 'always', 'avoid', 'mistake',
+  'mistakes', 'truth', 'finally', 'instantly', 'guide', 'tips', 'hacks', 'hack',
+  'tutorial', 'review', 'vs', 'before', 'after', 'worst', 'top', 'real', 'honest',
+  'beginner', 'beginners', 'pro', 'expert', 'crazy', 'insane', 'shocking', 'huge',
+  'cómo', 'como', 'por qué', 'porque', 'mejor', 'mejores', 'fácil', 'rápido',
+  'gratis', 'nuevo', 'nueva', 'secreto', 'secretos', 'probado', 'definitivo',
+  'sencillo', 'deja', 'nunca', 'siempre', 'evita', 'error', 'errores', 'verdad',
+  'por fin', 'al instante', 'guía', 'trucos', 'truco', 'tutorial', 'reseña',
+  'antes', 'después', 'peor', 'top', 'real', 'honesto', 'principiante',
+  'principiantes', 'experto', 'increíble', 'brutal', 'rápida',
+];
+
+function analyzeTitleHeuristic(title) {
+  const tt = title.trim();
+  const chars = tt.length;
+  const words = tt.split(/\s+/).filter(Boolean);
+  const wordCount = words.length;
+  const lower = tt.toLowerCase();
+  const checks = [];
+
+  let lengthEarned = 5;
+  let lengthTip = null;
+  if (chars >= 40 && chars <= 70) {
+    lengthEarned = 25;
+  } else if ((chars >= 30 && chars < 40) || (chars > 70 && chars <= 85)) {
+    lengthEarned = 15;
+    lengthTip = chars < 40
+      ? t('Algo corto. Apunta a 40-70 caracteres.', 'A bit short. Aim for 40-70 characters.')
+      : t('Algo largo. YouTube corta el título en búsqueda.', 'A bit long. YouTube truncates it in search.');
+  } else {
+    lengthEarned = 5;
+    lengthTip = chars < 30
+      ? t('Demasiado corto. 40-70 caracteres rinde mejor.', 'Too short. 40-70 characters performs best.')
+      : t('Demasiado largo. Se cortará en resultados.', 'Too long. It will get cut off in results.');
+  }
+  checks.push({ key: 'length', earned: lengthEarned, weight: 25, tip: lengthTip });
+
+  const hasNumber = /\d/.test(tt);
+  checks.push({ key: 'number', earned: hasNumber ? 15 : 0, weight: 15, tip: hasNumber ? null : t('Añade un número ("7 trucos", "2026") — sube el CTR.', 'Add a number ("7 tips", "2026") — boosts CTR.') });
+
+  const powerHits = POWER_WORDS.filter(w => lower.includes(w)).length;
+  const powerEarned = powerHits >= 2 ? 20 : powerHits === 1 ? 14 : 0;
+  checks.push({ key: 'power', earned: powerEarned, weight: 20, tip: powerEarned === 20 ? null : t('Usa palabras gancho: cómo, mejor, fácil, secreto.', 'Use power words: how, best, easy, secret.') });
+
+  const hasBrackets = /[\[\(].+[\]\)]/.test(tt);
+  checks.push({ key: 'brackets', earned: hasBrackets ? 10 : 0, weight: 10, tip: hasBrackets ? null : t('Añadir [2026] o (Tutorial) sube el CTR.', 'Adding [2026] or (Tutorial) boosts CTR.') });
+
+  let wcEarned = 0;
+  if (wordCount >= 4 && wordCount <= 9) wcEarned = 10;
+  else if (wordCount === 3 || (wordCount >= 10 && wordCount <= 12)) wcEarned = 5;
+  checks.push({ key: 'words', earned: wcEarned, weight: 10, tip: wcEarned === 10 ? null : t('Lo ideal son 4-9 palabras.', 'Aim for 4-9 words.') });
+
+  const capsWords = words.filter(w => w.length >= 3 && w === w.toUpperCase() && /[A-ZÁÉÍÓÚÑ]/.test(w)).length;
+  let capsEarned = 10;
+  if (capsWords === 1) capsEarned = 7; else if (capsWords >= 2) capsEarned = 0;
+  checks.push({ key: 'caps', earned: capsEarned, weight: 10, tip: capsEarned === 10 ? null : t('Demasiadas MAYÚSCULAS parecen spam.', 'Too many ALL-CAPS words look spammy.') });
+
+  const hasIntent = /(how to|how |why |what |cómo |como |por qué|qué |\?)/i.test(' ' + lower);
+  checks.push({ key: 'intent', earned: hasIntent ? 10 : 0, weight: 10, tip: hasIntent ? null : t('Empezar con "Cómo" o una pregunta conecta con la búsqueda.', 'Starting with "How" or a question matches search intent.') });
+
+  const score = Math.round(checks.reduce((s, c) => s + c.earned, 0));
+  return { score, checks };
+}
+
+function renderLoggedOutScore(title) {
+  const { score, checks } = analyzeTitleHeuristic(title);
+  const color = scoreColor(score);
+  const topTips = checks.filter(c => c.tip).slice(0, 2);
+  return `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="ytv-seo-ring" style="--score-color: ${color}; --score-pct: ${score}; width:44px; height:44px">
+        <span class="ytv-seo-num" style="font-size:15px">${score}</span>
+      </div>
+      <div style="font-size:12px;line-height:1.3">
+        <div style="font-weight:700">${t('Score del título', 'Title score')}</div>
+        <div style="opacity:.75">${score >= 70 ? t('Fuerte', 'Strong') : score >= 40 ? t('Mejorable', 'Needs work') : t('Flojo', 'Weak')}</div>
+      </div>
+    </div>
+    ${topTips.map(c => `<div style="font-size:12px;color:#f5a623;line-height:1.4;margin-top:6px">⚠ ${escapeHtml(c.tip)}</div>`).join('')}
+  `;
 }
 
 async function injectLoggedOutPanel() {
   if (location.hostname === 'studio.youtube.com') return;
-  if (getPageType() !== 'video') return; // only the highest-intent page, to avoid clutter
+  if (getPageType() !== 'video' && getPageType() !== 'shorts') return; // only the highest-intent pages, to avoid clutter
   try {
-    const container = await waitForEl('#secondary-inner, #secondary, ytd-watch-next-secondary-results-renderer', 8000);
+    const isShorts = getPageType() === 'shorts';
+    const container = isShorts
+      ? (firstMatch([SELECTORS.shorts.activeActions, SELECTORS.shorts.activeReel]) || await waitForEl(SELECTORS.shorts.activeReel, 6000))
+      : await waitForEl(SELECTORS.yt.videoSecondary, 8000);
     const { title } = getVideoInfo();
-    const v = titleLengthVerdict(title.length);
-    const check = v
-      ? `<div style="font-size:12px;color:${v.color};line-height:1.4">${v.icon} ${escapeHtml(v.msg)}</div>`
-      : '';
+    const check = title ? renderLoggedOutScore(title) : '';
     const panel = createPanel('ytv-video-panel');
     panel.className = 'ytv-scorecard';
     panel.innerHTML = `
@@ -1545,8 +1782,12 @@ async function injectLoggedOutPanel() {
         <div style="font-size:11px;opacity:.6;line-height:1.4">${t('¿Ya tienes cuenta? Abre ytubviral.com y te conectamos solo.', "Already have an account? Open ytubviral.com and we'll connect automatically.")}</div>
       </div>
     `;
-    const parent = container.closest('#secondary-inner') || container.closest('#secondary') || container.parentElement;
-    parent.insertBefore(panel, parent.firstChild);
+    if (isShorts) {
+      container.parentElement ? container.parentElement.insertBefore(panel, container) : container.appendChild(panel);
+    } else {
+      const parent = container.closest('#secondary-inner') || container.closest('#secondary') || container.parentElement;
+      parent.insertBefore(panel, parent.firstChild);
+    }
   } catch { /* container not found — skip */ }
 }
 
@@ -1561,7 +1802,7 @@ async function onPageChange() {
   const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
   if (!user) {
     // Logged-out: don't go invisible (the old behaviour killed adoption — vidIQ shows value at
-    // second 1). Show a client-side SEO teaser + connect CTA on video pages.
+    // second 1). Show a client-side SEO teaser + connect CTA on video and Shorts pages.
     injectLoggedOutPanel();
     return;
   }
@@ -1585,6 +1826,7 @@ async function onPageChange() {
     setTimeout(() => injectChannelStats(), 1500);
     injectVelocityBadges(); // badges on suggested videos sidebar
   }
+  else if (type === 'shorts') { injectShortsPanel(); }
   else if (type === 'search') { injectSearchPanel(); injectVelocityBadges(); }
   else if (type === 'channel') { injectChannelPanel(); injectVelocityBadges(); }
   else if (type === 'home') { injectVelocityBadges(); }

@@ -1,6 +1,7 @@
 'use strict';
 
 const API_BASE = 'https://ytubviral.com';
+const FETCH_TIMEOUT_MS = 15000;
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   handleMessage(msg)
@@ -8,6 +9,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     .catch(err => sendResponse({ error: err.message || 'Unknown error' }));
   return true; // keep channel open for async response
 });
+
+// Shared fetch wrapper (v2.5.0): adds a timeout — a hung request used to leave the panel
+// spinning forever — and never throws on a non-JSON response (a Vercel/Cloudflare error
+// page: 502, bot challenge — used to surface as a raw "Unexpected token '<'" to the user).
+async function apiFetch(url, opts = {}) {
+  let res;
+  try {
+    res = await fetch(url, { ...opts, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  } catch (err) {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') throw new Error('timeout');
+    throw new Error('network_error');
+  }
+  let data = {};
+  try { data = await res.json(); } catch { /* non-JSON response — keep data = {} */ }
+  return { res, data };
+}
 
 async function getToken() {
   return new Promise(resolve => {
@@ -21,18 +38,29 @@ async function getLang() {
   });
 }
 
+// Translates the two connection-level errors apiFetch can throw into the same bilingual
+// copy every handler already used for its own domain errors, so renderError() in
+// content.js doesn't need to know about them specially.
+function connErrorMessage(err, lang, fallback) {
+  if (err.message === 'timeout') return lang === 'en' ? 'Request timed out. Try again.' : 'La petición tardó demasiado. Inténtalo de nuevo.';
+  if (err.message === 'network_error') return lang === 'en' ? 'Connection error. Check your internet.' : 'Error de conexión. Comprueba tu internet.';
+  return fallback;
+}
+
 async function handleMessage(msg) {
   const lang = await getLang();
 
   switch (msg.type) {
 
     case 'LOGIN': {
-      const res = await fetch(`${API_BASE}/api/extension/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: msg.email, password: msg.password }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: msg.email, password: msg.password }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Login failed' : 'Error al iniciar sesión'));
       await chrome.storage.local.set({
         ytv_token: data.token,
@@ -70,22 +98,21 @@ async function handleMessage(msg) {
       });
       if (cached) {
         // Refresh in background (don't await — caller gets instant response)
-        fetch(`${API_BASE}/api/extension/me`, {
+        apiFetch(`${API_BASE}/api/extension/me`, {
           headers: { 'Authorization': `Bearer ${token}` },
-        }).then(async res => {
+        }).then(async ({ res, data }) => {
           if (res.status === 401) {
             // Token expired/revoked — clear it so the UI reflects logged-out next time
             await chrome.storage.local.remove(['ytv_token', 'ytv_user']);
           } else if (res.ok) {
-            const user = await res.json();
-            await chrome.storage.local.set({ ytv_user: user });
+            await chrome.storage.local.set({ ytv_user: data });
           }
         }).catch(() => {});
         return cached;
       }
       // No cache — must fetch (first load after login on new page)
       try {
-        const res = await fetch(`${API_BASE}/api/extension/me`, {
+        const { res, data } = await apiFetch(`${API_BASE}/api/extension/me`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (res.status === 401) {
@@ -93,9 +120,8 @@ async function handleMessage(msg) {
           return null;
         }
         if (!res.ok) return null;
-        const user = await res.json();
-        await chrome.storage.local.set({ ytv_user: user });
-        return user;
+        await chrome.storage.local.set({ ytv_user: data });
+        return data;
       } catch {
         return null;
       }
@@ -113,15 +139,14 @@ async function handleMessage(msg) {
     case 'COMPETITOR': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/youtube/competitor`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ url: msg.url, lang: msg.lang || lang }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/youtube/competitor`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ url: msg.url, lang: msg.lang || lang }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (res.status === 403 && data.error === 'pro_required') throw new Error(lang === 'en' ? 'Pro plan required. Upgrade at ytubviral.com' : 'Plan Pro requerido. Actualiza en ytubviral.com');
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Channel analysis error' : 'Error al analizar canal'));
       return data;
@@ -130,15 +155,14 @@ async function handleMessage(msg) {
     case 'KEYWORDS': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/research/keywords`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ keyword: msg.keyword }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/research/keywords`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ keyword: msg.keyword }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (res.status === 403 && data.error === 'pro_required') throw new Error(lang === 'en' ? 'Pro plan required. Upgrade at ytubviral.com' : 'Plan Pro requerido. Actualiza en ytubviral.com');
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Keyword search error' : 'Error al buscar keywords'));
       return data;
@@ -147,19 +171,18 @@ async function handleMessage(msg) {
     case 'GENERATE': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          template: msg.template,
-          inputs: msg.inputs,
-          lang: msg.lang || lang,
-        }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            template: msg.template,
+            inputs: msg.inputs,
+            lang: msg.lang || lang,
+          }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (res.status === 403 && data.error === 'pro_required') throw new Error(lang === 'en' ? 'Pro plan required. Upgrade at ytubviral.com' : 'Plan Pro requerido. Actualiza en ytubviral.com');
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Content generation error' : 'Error al generar contenido'));
       return data;
@@ -168,15 +191,14 @@ async function handleMessage(msg) {
     case 'SEO_QUICK': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/extension/seo-quick`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ videoId: msg.videoId, lang: msg.lang || lang }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/seo-quick`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ videoId: msg.videoId, lang: msg.lang || lang }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (res.status === 403 && data.error === 'pro_required') throw new Error(lang === 'en' ? 'Pro plan required. Upgrade at ytubviral.com' : 'Plan Pro requerido. Actualiza en ytubviral.com');
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'SEO analysis error' : 'Error al analizar SEO'));
       return data;
@@ -185,15 +207,14 @@ async function handleMessage(msg) {
     case 'CHANNEL_STATS': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/extension/channel-stats`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: '{}',
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/channel-stats`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: '{}',
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Stats error' : 'Error al cargar stats'));
       return data;
     }
@@ -201,15 +222,14 @@ async function handleMessage(msg) {
     case 'SCORECARD': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/extension/video-scorecard`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ videoId: msg.videoId }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/video-scorecard`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ videoId: msg.videoId }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Scorecard error' : 'Error al cargar scorecard'));
       return data;
     }
@@ -217,15 +237,14 @@ async function handleMessage(msg) {
     case 'SEO_LIVE': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/extension/seo-live`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title: msg.title, description: msg.description, tags: msg.tags || [] }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/seo-live`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ title: msg.title, description: msg.description, tags: msg.tags || [] }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (!res.ok) throw new Error(data.error || 'SEO live error');
       return data;
     }
@@ -233,15 +252,14 @@ async function handleMessage(msg) {
     case 'COMMENTS': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/extension/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ videoId: msg.videoId }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ videoId: msg.videoId }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Comments error' : 'Error al cargar comentarios'));
       return data;
     }
@@ -249,15 +267,14 @@ async function handleMessage(msg) {
     case 'VIDEO_BATCH': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/extension/video-batch`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ videoIds: msg.videoIds }),
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/video-batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ videoIds: msg.videoIds }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (!res.ok) throw new Error(data.error || 'Batch error');
       return data;
     }
@@ -265,10 +282,12 @@ async function handleMessage(msg) {
     case 'BEST_TIME': {
       const token = await getToken();
       if (!token) throw new Error('not_logged_in');
-      const res = await fetch(`${API_BASE}/api/extension/best-time`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      const data = await res.json();
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/best-time`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Best time error' : 'Error al cargar best time'));
       return data;
     }
