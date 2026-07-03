@@ -271,26 +271,35 @@ function appendToBlogData(tsCode) {
 
   let content = fs.readFileSync(BLOG_DATA_PATH, 'utf8');
 
-  // 1. Insert const arrays BEFORE "export const ARTICLE_BODIES"
+  // NOTE (2026-07-02): insertion points are found with plain indexOf/lastIndexOf on
+  // stable markers, not regex. A previous version matched a literal "// ── Article
+  // bodies" comment that no longer exists in the file (removed in some past edit),
+  // AND used bare \n in regexes which breaks once the file has CRLF line endings.
+  // Both together made every insertion fail with "Cannot find BLOG_POSTS closing
+  // bracket". lastIndexOf is safe here even though "];" and "};" appear many times
+  // in the file (inline arrays/objects inside post entries) — we only ever take the
+  // LAST occurrence before a fixed marker, which is always that marker's own closer.
+
   const bodiesMarker = 'export const ARTICLE_BODIES';
+  const getPostMarker = 'export function getPost';
+
+  // 1. Insert new entry into BLOG_POSTS array, before its closing "];".
   const bodiesIdx = content.indexOf(bodiesMarker);
   if (bodiesIdx === -1) throw new Error('Cannot find ARTICLE_BODIES marker in blog-data.ts');
-  content = content.slice(0, bodiesIdx) + tsCode.constBlock + '\n\n' + content.slice(bodiesIdx);
+  const postsCloseIdx = content.lastIndexOf('];', bodiesIdx);
+  if (postsCloseIdx === -1) throw new Error('Cannot find BLOG_POSTS closing bracket');
+  content = content.slice(0, postsCloseIdx) + tsCode.postsEntry + '\n' + content.slice(postsCloseIdx);
 
-  // 2. Insert new entry into BLOG_POSTS array (before the "];" that closes it)
-  // Find the BLOG_POSTS closing: last occurrence of "];" before ARTICLE_BODIES
-  const postsClosePattern = /\n\];\n\n\/\/ ── Article bodies/;
-  const postsMatch = content.match(postsClosePattern);
-  if (!postsMatch) throw new Error('Cannot find BLOG_POSTS closing bracket');
-  const postsCloseIdx = content.indexOf(postsMatch[0]);
-  content = content.slice(0, postsCloseIdx) + '\n' + tsCode.postsEntry + '\n];\n\n// ── Article bodies' + content.slice(postsCloseIdx + postsMatch[0].length);
+  // 2. Insert const arrays BEFORE "export const ARTICLE_BODIES" (re-locate: step 1 shifted it)
+  const bodiesIdx2 = content.indexOf(bodiesMarker);
+  content = content.slice(0, bodiesIdx2) + tsCode.constBlock + '\n\n' + content.slice(bodiesIdx2);
 
-  // 3. Insert new entry into ARTICLE_BODIES record (before the "};" that closes it)
-  const bodiesClosePattern = /\n\};\n\nexport function getPost/;
-  const bodiesCloseMatch = content.match(bodiesClosePattern);
-  if (!bodiesCloseMatch) throw new Error('Cannot find ARTICLE_BODIES closing brace');
-  const bodiesCloseIdx = content.indexOf(bodiesCloseMatch[0]);
-  content = content.slice(0, bodiesCloseIdx) + '\n' + tsCode.bodiesEntry + '\n};\n\nexport function getPost' + content.slice(bodiesCloseIdx + bodiesCloseMatch[0].length);
+  // 3. Insert new entry into ARTICLE_BODIES record, before its closing "};".
+  const getPostIdx = content.indexOf(getPostMarker);
+  if (getPostIdx === -1) throw new Error('Cannot find getPost function marker');
+  const bodiesCloseIdx = content.lastIndexOf('};', getPostIdx);
+  if (bodiesCloseIdx === -1) throw new Error('Cannot find ARTICLE_BODIES closing brace');
+  content = content.slice(0, bodiesCloseIdx) + tsCode.bodiesEntry + '\n' + content.slice(bodiesCloseIdx);
 
   fs.writeFileSync(BLOG_DATA_PATH, content, 'utf8');
   console.log(`[blog-generator] Appended article to blog-data.ts`);
