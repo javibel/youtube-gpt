@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<!--
+  Abre en Chrome → se descargan automáticamente 5 capturas JPEG 1280x800 (24-bit, sin alfa).
+  Listas para subir directamente a Chrome Web Store.
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>YTubViral — Store Screenshots</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #111; color: #ddd; font-family: Arial, sans-serif; padding: 24px; }
+h1   { color: #ff0000; font-size: 22px; margin-bottom: 4px; }
+p    { color: #666; font-size: 13px; margin-bottom: 28px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.card { background: #1a1a1a; border: 1px solid #2e2e2e; border-radius: 12px; padding: 16px; }
+.card h2 { font-size: 13px; color: #eee; margin-bottom: 6px; }
+.card small { font-size: 11px; color: #555; display: block; margin-bottom: 10px; }
+canvas { display: block; width: 100%; border-radius: 6px; border: 1px solid #333; }
+button { margin-top: 10px; background: #ff0000; color: #fff; border: none;
+         padding: 8px 18px; border-radius: 8px; font-size: 12px; font-weight: 700;
+         cursor: pointer; transition: opacity .15s; }
+button:hover { opacity: .8; }
+#all-btn { display: block; background: #222; border: 1px solid #444; color: #ddd;
+           font-size: 14px; font-weight: 700; padding: 12px 32px; border-radius: 10px;
+           cursor: pointer; margin: 0 auto 28px; transition: opacity .15s; }
+#all-btn:hover { opacity: .8; }
+</style>
+</head>
+<body>
+
+<h1>YTubViral — Chrome Web Store Assets</h1>
+<p>JPEG · 24-bit · sin alfa · listas para subir al Chrome Web Store</p>
+<button id="all-btn">⬇ Descargar todo de una vez (7 archivos)</button>
+
+<div class="grid">
+  <div class="card">
+    <h2>🖼 Mosaico pequeño — 440×280</h2>
+    <small>Imagen en mosaico promocional pequeña</small>
+    <canvas id="cp1" width="440" height="280"></canvas>
+    <button onclick="dl('cp1','promo-440x280.jpg')">⬇ Descargar promo-440x280.jpg</button>
+  </div>
+  <div class="card">
+    <h2>🖼 Mosaico con desplazamiento — 1400×560</h2>
+    <small>Imagen en mosaico promocional con desplazamiento</small>
+    <canvas id="cp2" width="1400" height="560"></canvas>
+    <button onclick="dl('cp2','promo-1400x560.jpg')">⬇ Descargar promo-1400x560.jpg</button>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>1 · Búsqueda — Keyword Stats</h2>
+    <small>Panel automático en resultados de YouTube</small>
+    <canvas id="c1" width="1280" height="800"></canvas>
+    <button onclick="dl('c1','screenshot-1-search.jpg')">⬇ Descargar</button>
+  </div>
+  <div class="card">
+    <h2>2 · Vídeo — Análisis de canal</h2>
+    <small>Panel lateral con datos del competidor</small>
+    <canvas id="c2" width="1280" height="800"></canvas>
+    <button onclick="dl('c2','screenshot-2-video-analysis.jpg')">⬇ Descargar</button>
+  </div>
+  <div class="card">
+    <h2>3 · Vídeo — Títulos generados con IA</h2>
+    <small>5 títulos virales generados al instante</small>
+    <canvas id="c3" width="1280" height="800"></canvas>
+    <button onclick="dl('c3','screenshot-3-video-titles.jpg')">⬇ Descargar</button>
+  </div>
+  <div class="card">
+    <h2>4 · Canal — Botón de análisis</h2>
+    <small>Panel bajo el header del canal</small>
+    <canvas id="c4" width="1280" height="800"></canvas>
+    <button onclick="dl('c4','screenshot-4-channel.jpg')">⬇ Descargar</button>
+  </div>
+  <div class="card">
+    <h2>5 · Popup — Login y estado de cuenta</h2>
+    <small>Popup de la extensión</small>
+    <canvas id="c5" width="1280" height="800"></canvas>
+    <button onclick="dl('c5','screenshot-5-popup.jpg')">⬇ Descargar</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+
+function rr(ctx,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+const fill=(ctx,x,y,w,h,r,c)=>{ctx.fillStyle=c;rr(ctx,x,y,w,h,r);ctx.fill();};
+const stroke=(ctx,x,y,w,h,r,c,lw=1)=>{ctx.strokeStyle=c;ctx.lineWidth=lw;rr(ctx,x,y,w,h,r);ctx.stroke();};
+
+function t(ctx,s,x,y,{sz=13,w='normal',c='#fff',a='left',b='top',mw=0}={}){
+  ctx.font=`${w} ${sz}px Arial,sans-serif`;
+  ctx.fillStyle=c; ctx.textAlign=a; ctx.textBaseline=b;
+  mw?ctx.fillText(s,x,y,mw):ctx.fillText(s,x,y);
+}
+
+function line(ctx,x1,y1,x2,y2,c,lw=1){
+  ctx.strokeStyle=c; ctx.lineWidth=lw;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+}
+
+// YouTube-style top nav
+function ytNav(ctx,W,query='gaming highlights'){
+  ctx.fillStyle='#0f0f0f'; ctx.fillRect(0,0,W,56);
+  line(ctx,0,56,W,56,'#272727');
+  // Logo
+  fill(ctx,18,16,22,24,3,'#ff0000');
+  t(ctx,'▶',29,28,{sz:11,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'YouTube',46,18,{sz:15,w:'bold',c:'#fff'});
+  // Search
+  fill(ctx,300,12,580,32,16,'#121212');
+  stroke(ctx,300,12,580,32,16,'#303030');
+  t(ctx,'🔍  '+query,318,28,{sz:12,c:'#888',b:'middle'});
+  // Avatar
+  fill(ctx,W-46,14,28,28,14,'#444');
+  t(ctx,'J',W-32,28,{sz:12,w:'bold',c:'#fff',a:'center',b:'middle'});
+}
+
+// Extension panel component
+function panel(ctx,x,y,w,mode='competitor'){
+  const s=w/300; // scale relative to 300px reference
+  const rowH=s*40, bodyPad=s*14;
+
+  // Card shadow + body
+  ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20; ctx.shadowOffsetY=8;
+  fill(ctx,x,y,w,mode==='competitor'?s*340:mode==='titles'?s*310:s*265,s*12,'#1a1a1a');
+  ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
+  stroke(ctx,x,y,w,mode==='competitor'?s*340:mode==='titles'?s*310:s*265,s*12,'#2e2e2e');
+
+  // Header
+  fill(ctx,x,y,w,rowH,s*12,'#111');
+  ctx.fillStyle='#111'; ctx.fillRect(x,y+rowH-s*12,w,s*12);
+  line(ctx,x,y+rowH,x+w,y+rowH,'#2e2e2e');
+  t(ctx,'YTubViral',x+bodyPad,y+rowH/2,{sz:s*14,w:'bold',c:'#ff0000',b:'middle'});
+  fill(ctx,x+s*104,y+s*11,s*30,s*18,s*4,'#ff0000');
+  t(ctx,'IA',x+s*119,y+s*20,{sz:s*10,w:'bold',c:'#fff',a:'center',b:'middle'});
+
+  const cy=y+rowH+bodyPad;
+
+  if(mode==='competitor'){
+    // Channel avatar + name
+    ctx.fillStyle='#555'; ctx.beginPath(); ctx.arc(x+bodyPad+s*14,cy+s*14,s*14,0,Math.PI*2); ctx.fill();
+    t(ctx,'A',x+bodyPad+s*14,cy+s*14,{sz:s*13,w:'bold',c:'#fff',a:'center',b:'middle'});
+    t(ctx,'AuronPlay',x+bodyPad+s*34,cy+s*4,{sz:s*13,w:'bold',c:'#fff'});
+    t(ctx,'13.2M suscriptores',x+bodyPad+s*34,cy+s*20,{sz:s*10,c:'#999'});
+
+    // Stats 2×2
+    const gx=x+bodyPad, gy=cy+s*38, gw=(w-bodyPad*2-s*4)/2, gh=s*44;
+    [['8.5B','Vistas totales'],['2.1M','Media vistas'],['1.240','Vídeos'],['Semanal','Frecuencia']].forEach(([v,l],i)=>{
+      const sx=gx+(i%2)*(gw+s*4), sy=gy+Math.floor(i/2)*(gh+s*6);
+      fill(ctx,sx,sy,gw,gh,s*8,'#222');
+      t(ctx,v,sx+gw/2,sy+s*8,{sz:s*13,w:'bold',c:'#fff',a:'center'});
+      t(ctx,l,sx+gw/2,sy+s*26,{sz:s*10,c:'#777',a:'center'});
+    });
+
+    // Keywords
+    t(ctx,'Keywords del canal',x+bodyPad,cy+s*144,{sz:s*10,c:'#888'});
+    const tags=['gaming highlights','react twitch','directo clips'];
+    let tx=x+bodyPad, ty=cy+s*158;
+    tags.forEach(tag=>{
+      const tw=tag.length*s*6+s*16;
+      fill(ctx,tx,ty,tw,s*22,s*11,'#262626');
+      stroke(ctx,tx,ty,tw,s*22,s*11,'#3a3a3a');
+      t(ctx,tag,tx+tw/2,ty+s*11,{sz:s*9,c:'#ccc',a:'center',b:'middle'});
+      tx+=tw+s*6;
+    });
+
+    t(ctx,'Ver análisis completo →',x+bodyPad,cy+s*192,{sz:s*10,c:'#ff6060'});
+
+    // Buttons
+    fill(ctx,x+bodyPad,cy+s*210,w/2-bodyPad-s*2,s*28,s*7,'#ff0000');
+    t(ctx,'📊 Analizar canal',x+w/4,cy+s*224,{sz:s*10,w:'bold',c:'#fff',a:'center',b:'middle'});
+    fill(ctx,x+w/2+s*2,cy+s*210,w/2-bodyPad-s*2,s*28,s*7,'#2a2a2a');
+    stroke(ctx,x+w/2+s*2,cy+s*210,w/2-bodyPad-s*2,s*28,s*7,'#444');
+    t(ctx,'✨ Generar títulos',x+w*0.75,cy+s*224,{sz:s*10,c:'#eee',a:'center',b:'middle'});
+
+  } else if(mode==='keywords'){
+    t(ctx,'Analizando: gaming highlights',x+bodyPad,cy+s*2,{sz:s*11,c:'#888'});
+    const gx=x+bodyPad, gy=cy+s*20, gw=(w-bodyPad*2-s*4)/2, gh=s*44;
+    [['🟢 Baja','Competencia'],['78 / 100','Oportunidad'],['4.2M','Resultados'],['320K','Vistas prom.']].forEach(([v,l],i)=>{
+      const sx=gx+(i%2)*(gw+s*4), sy=gy+Math.floor(i/2)*(gh+s*6);
+      fill(ctx,sx,sy,gw,gh,s*8,'#222');
+      t(ctx,v,sx+gw/2,sy+s*8,{sz:s*12,w:'bold',c:i===1?'#4caf50':'#fff',a:'center'});
+      t(ctx,l,sx+gw/2,sy+s*26,{sz:s*10,c:'#777',a:'center'});
+    });
+    t(ctx,'Búsquedas relacionadas',x+bodyPad,cy+s*116,{sz:s*10,c:'#888'});
+    ['gaming twitch','highlights clips','mejores momentos'].forEach((tag,i)=>{
+      const tw=tag.length*s*6+s*16;
+      const tx=x+bodyPad+(i*(tw+s*6));
+      fill(ctx,tx,cy+s*130,tw,s*22,s*11,'#262626');
+      stroke(ctx,tx,cy+s*130,tw,s*22,s*11,'#3a3a3a');
+      t(ctx,tag,tx+tw/2,cy+s*141,{sz:s*9,c:'#ccc',a:'center',b:'middle'});
+    });
+    t(ctx,'Explorar más keywords en YTubViral →',x+bodyPad,cy+s*168,{sz:s*10,c:'#ff6060'});
+
+  } else if(mode==='titles'){
+    t(ctx,'Títulos generados con IA',x+bodyPad,cy,{sz:s*11,c:'#888'});
+    const titles=[
+      '10 Técnicas de Gaming Que NADIE Te Cuenta',
+      'Mejora Tu Aim Con Este TRUCO Secreto',
+      'Los 5 Errores Que Todo Gamer Comete',
+      'Cómo Ganar SIEMPRE en Gaming (Guía 2024)',
+      'El Método Que Usan Los PRO Gamers',
+    ];
+    titles.forEach((title,i)=>{
+      const ty=cy+s*20+i*s*46;
+      fill(ctx,x+bodyPad,ty,w-bodyPad*2,s*38,s*0,'#222');
+      ctx.fillStyle='#ff0000'; ctx.fillRect(x+bodyPad,ty,s*3,s*38);
+      t(ctx,title,x+bodyPad+s*10,ty+s*19,{sz:s*11,c:'#eee',b:'middle',mw:w-bodyPad*2-s*16});
+    });
+    t(ctx,'Generar más en YTubViral →',x+bodyPad,cy+s*256,{sz:s*10,c:'#ff6060'});
+  }
+}
+
+// Fake YT video thumbnail block
+function videoBlock(ctx,x,y,w,h){
+  ctx.fillStyle='#000'; ctx.fillRect(x,y,w,h);
+  ctx.fillStyle='rgba(255,255,255,0.08)';
+  ctx.beginPath(); ctx.arc(x+w/2,y+h/2,h*0.18,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.moveTo(x+w/2-h*0.09,y+h/2-h*0.11);
+  ctx.lineTo(x+w/2+h*0.11,y+h/2);
+  ctx.lineTo(x+w/2-h*0.09,y+h/2+h*0.11);
+  ctx.closePath(); ctx.fill();
+  // Progress bar
+  ctx.fillStyle='#333'; ctx.fillRect(x,y+h-4,w,4);
+  ctx.fillStyle='#ff0000'; ctx.fillRect(x,y+h-4,w*0.38,4);
+}
+
+// Caption bar at bottom
+function caption(ctx,W,H,text){
+  ctx.fillStyle='rgba(0,0,0,0.88)'; ctx.fillRect(0,H-44,W,44);
+  t(ctx,text,W/2,H-22,{sz:14,c:'#aaa',a:'center',b:'middle'});
+  t(ctx,'ytubviral.com',W-20,H-22,{sz:12,c:'#555',a:'right',b:'middle'});
+}
+
+// Callout label
+function callout(ctx,text,x,y){
+  const w=ctx.measureText(text).width+32;
+  fill(ctx,x-w/2,y-14,w,28,8,'rgba(255,0,0,0.15)');
+  stroke(ctx,x-w/2,y-14,w,28,8,'rgba(255,0,0,0.5)');
+  t(ctx,text,x,y,{sz:12,w:'bold',c:'#ff9090',a:'center',b:'middle'});
+}
+
+// ═══════════════════════════════════════════
+// SCREENSHOT 1 — Search page keywords
+// ═══════════════════════════════════════════
+function draw1(){
+  const cv=document.getElementById('c1'), ctx=cv.getContext('2d');
+  const W=1280,H=800;
+  ctx.fillStyle='#0f0f0f'; ctx.fillRect(0,0,W,H);
+  ytNav(ctx,W,'gaming highlights');
+
+  // Filter pills
+  let fx=24;
+  ['Todos','Vídeos','Canales','Playlists'].forEach((f,i)=>{
+    const fw=f.length*8+22;
+    fill(ctx,fx,64,fw,28,14,i===0?'#fff':'#272727');
+    if(i>0) stroke(ctx,fx,64,fw,28,14,'#3a3a3a');
+    t(ctx,f,fx+fw/2,78,{sz:12,c:i===0?'#000':'#ccc',a:'center',b:'middle',w:i===0?'bold':'normal'});
+    fx+=fw+8;
+  });
+
+  // YTubViral keyword panel
+  panel(ctx,24,100,600,'keywords');
+
+  // Fake search results
+  const results=[
+    {title:'Gaming Highlights de la Semana ÉPICOS 🔥',ch:'AuronPlay',views:'2.1M vistas · hace 3 días'},
+    {title:'Los MEJORES Momentos Gaming de Twitch',ch:'IlloJuan',views:'890K vistas · hace 1 semana'},
+    {title:'Highlights Gaming Que NADIE Vio Venir...',ch:'xQc_ES',views:'4.3M vistas · hace 2 días'},
+    {title:'TOP 10 Clips Gaming Más VIRALES del Mes',ch:'Rubius',views:'1.7M vistas · hace 5 días'},
+  ];
+  results.forEach((r,i)=>{
+    const ry=390+i*88;
+    ctx.fillStyle='#1a1a1a'; ctx.fillRect(24,ry,160,90);
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.beginPath(); ctx.arc(104,ry+45,14,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    ctx.beginPath(); ctx.moveTo(96,ry+36); ctx.lineTo(116,ry+45); ctx.lineTo(96,ry+54); ctx.closePath(); ctx.fill();
+    t(ctx,r.title,196,ry+10,{sz:14,w:'bold',c:'#fff',mw:620});
+    t(ctx,r.ch,196,ry+34,{sz:12,c:'#aaa'});
+    t(ctx,r.views,196,ry+52,{sz:12,c:'#666'});
+  });
+
+  // Right sidebar
+  ctx.fillStyle='#161616'; ctx.fillRect(660,100,300,H-144);
+  t(ctx,'Relacionado',672,116,{sz:12,w:'bold',c:'#666'});
+  for(let i=0;i<5;i++){
+    ctx.fillStyle='#1e1e1e'; ctx.fillRect(672,140+i*84,100,56);
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.beginPath(); ctx.arc(722,140+i*84+28,10,0,Math.PI*2); ctx.fill();
+    fill(ctx,782,144+i*84,160,48,6,'#1a1a1a');
+    t(ctx,'Vídeo relacionado',784,150+i*84,{sz:11,c:'#ccc',mw:156});
+    t(ctx,'500K vistas',784,168+i*84,{sz:10,c:'#666'});
+  }
+
+  callout(ctx,'↑ Panel de keywords automático — sin hacer nada',320,378);
+  caption(ctx,W,H,'YTubViral Extension · Keyword research integrado en YouTube Search');
+}
+
+// ═══════════════════════════════════════════
+// SCREENSHOT 2 — Video page · channel analysis
+// ═══════════════════════════════════════════
+function draw2(){
+  const cv=document.getElementById('c2'), ctx=cv.getContext('2d');
+  const W=1280,H=800;
+  ctx.fillStyle='#0f0f0f'; ctx.fillRect(0,0,W,H);
+  ytNav(ctx,W,'AuronPlay gaming highlights');
+
+  // Video player
+  videoBlock(ctx,24,64,700,394);
+  t(ctx,'Los MEJORES Highlights de Gaming de la Semana 🔥 | AuronPlay',24,470,{sz:15,w:'bold',c:'#fff',mw:700});
+  t(ctx,'2.1M vistas · hace 3 días',24,494,{sz:12,c:'#aaa'});
+  ctx.fillStyle='#555'; ctx.beginPath(); ctx.arc(44,530,18,0,Math.PI*2); ctx.fill();
+  t(ctx,'A',44,530,{sz:13,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'AuronPlay',70,522,{sz:13,w:'bold',c:'#fff'});
+  t(ctx,'13.2M suscriptores',70,540,{sz:11,c:'#aaa'});
+  fill(ctx,600,516,120,32,16,'#fff');
+  t(ctx,'Suscribirse',660,532,{sz:12,w:'bold',c:'#000',a:'center',b:'middle'});
+
+  // Extension panel
+  panel(ctx,740,64,516,'competitor');
+
+  callout(ctx,'← Panel YTubViral · aparece automáticamente',370,56);
+  caption(ctx,W,H,'YTubViral Extension · Analiza cualquier canal competidor desde el vídeo');
+}
+
+// ═══════════════════════════════════════════
+// SCREENSHOT 3 — Video page · titles generated
+// ═══════════════════════════════════════════
+function draw3(){
+  const cv=document.getElementById('c3'), ctx=cv.getContext('2d');
+  const W=1280,H=800;
+  ctx.fillStyle='#0f0f0f'; ctx.fillRect(0,0,W,H);
+  ytNav(ctx,W,'gaming highlights twitch');
+
+  videoBlock(ctx,24,64,700,394);
+  t(ctx,'Mejores Clips de Gaming — Semana 47',24,470,{sz:15,w:'bold',c:'#fff',mw:700});
+  t(ctx,'IlloJuan · 890K vistas · hace 1 semana',24,494,{sz:12,c:'#aaa'});
+
+  panel(ctx,740,64,516,'titles');
+
+  callout(ctx,'← 5 títulos virales generados con IA en 3 segundos',370,56);
+  caption(ctx,W,H,'YTubViral Extension · Genera títulos virales con IA sin salir de YouTube');
+}
+
+// ═══════════════════════════════════════════
+// SCREENSHOT 4 — Channel page
+// ═══════════════════════════════════════════
+function draw4(){
+  const cv=document.getElementById('c4'), ctx=cv.getContext('2d');
+  const W=1280,H=800;
+  ctx.fillStyle='#0f0f0f'; ctx.fillRect(0,0,W,H);
+  ytNav(ctx,W,'');
+
+  // Channel banner
+  const bannerGrd=ctx.createLinearGradient(0,56,W,256);
+  bannerGrd.addColorStop(0,'#1a0505'); bannerGrd.addColorStop(1,'#0a0a0a');
+  ctx.fillStyle=bannerGrd; ctx.fillRect(0,56,W,200);
+  // Channel avatar
+  ctx.fillStyle='#cc0000'; ctx.beginPath(); ctx.arc(120,208,54,0,Math.PI*2); ctx.fill();
+  t(ctx,'A',120,208,{sz:40,w:'bold',c:'#fff',a:'center',b:'middle'});
+  // Channel name
+  t(ctx,'AuronPlay',194,188,{sz:24,w:'bold',c:'#fff'});
+  t(ctx,'@auronplay · 13.2M suscriptores · 1.240 vídeos',194,218,{sz:13,c:'#aaa'});
+  fill(ctx,194,244,130,34,17,'#fff');
+  t(ctx,'Suscribirse',259,261,{sz:13,w:'bold',c:'#000',a:'center',b:'middle'});
+
+  // Nav tabs
+  const tabs=['Inicio','Vídeos','Shorts','Directo','Playlists','Comunidad'];
+  let tx=24;
+  tabs.forEach((tab,i)=>{
+    const tw=tab.length*9+24;
+    if(i===1){
+      t(ctx,tab,tx+tw/2,295,{sz:13,w:'bold',c:'#fff',a:'center',b:'middle'});
+      line(ctx,tx,308,tx+tw,308,'#fff',2);
+    } else {
+      t(ctx,tab,tx+tw/2,295,{sz:13,c:'#aaa',a:'center',b:'middle'});
+    }
+    tx+=tw+8;
+  });
+  line(ctx,0,310,W,310,'#272727');
+
+  // YTubViral channel panel (horizontal, full width)
+  const px=24,py=322,pw=W-48;
+  fill(ctx,px,py,pw,200,12,'#1a1a1a');
+  stroke(ctx,px,py,pw,200,12,'#2e2e2e');
+  fill(ctx,px,py,pw,40,12,'#111');
+  ctx.fillStyle='#111'; ctx.fillRect(px,py+28,pw,12);
+  line(ctx,px,py+40,px+pw,py+40,'#2e2e2e');
+  t(ctx,'YTubViral',px+16,py+20,{sz:14,w:'bold',c:'#ff0000',b:'middle'});
+  fill(ctx,px+106,py+11,34,18,4,'#ff0000');
+  t(ctx,'IA',px+123,py+20,{sz:10,w:'bold',c:'#fff',a:'center',b:'middle'});
+
+  // Stats row inside panel
+  const stats=[['13.2M','Suscriptores'],['8.5B','Vistas totales'],['1.240','Vídeos'],['Semanal','Frecuencia'],['2.1M','Vistas prom.']];
+  const sw=(pw-32)/5;
+  stats.forEach(([v,l],i)=>{
+    const sx=px+16+i*(sw+6);
+    fill(ctx,sx,py+52,sw,60,8,'#222');
+    t(ctx,v,sx+sw/2,py+64,{sz:16,w:'bold',c:'#fff',a:'center'});
+    t(ctx,l,sx+sw/2,py+84,{sz:10,c:'#777',a:'center'});
+  });
+
+  // Analyze button
+  fill(ctx,px+16,py+128,200,40,10,'#ff0000');
+  t(ctx,'📊 Analizar este canal',px+116,py+148,{sz:13,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'Ver análisis completo en YTubViral →',px+240,py+148,{sz:12,c:'#ff6060',b:'middle'});
+
+  // Videos grid below
+  t(ctx,'Últimos vídeos',24,540,{sz:14,w:'bold',c:'#aaa'});
+  for(let i=0;i<4;i++){
+    const vx=24+i*310;
+    ctx.fillStyle='#1a1a1a'; ctx.fillRect(vx,564,290,160);
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    ctx.beginPath(); ctx.arc(vx+145,644,20,0,Math.PI*2); ctx.fill();
+    t(ctx,'Título del vídeo '+(i+1),vx+4,730,{sz:12,c:'#ddd',mw:282});
+    t(ctx,(i===0?'2.1M':(i===1?'890K':(i===2?'4.3M':'1.1M')))+' vistas',vx+4,750,{sz:11,c:'#777'});
+  }
+
+  callout(ctx,'↑ Panel YTubViral debajo del header del canal',W/2,316);
+  caption(ctx,W,H,'YTubViral Extension · Analiza canales competidores desde su página de YouTube');
+}
+
+// ═══════════════════════════════════════════
+// SCREENSHOT 5 — Popup
+// ═══════════════════════════════════════════
+function draw5(){
+  const cv=document.getElementById('c5'), ctx=cv.getContext('2d');
+  const W=1280,H=800;
+
+  // Background: blurred YouTube-like
+  ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,W,H);
+  const bgGrd=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,700);
+  bgGrd.addColorStop(0,'rgba(255,0,0,0.04)'); bgGrd.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=bgGrd; ctx.fillRect(0,0,W,H);
+
+  // Faint YouTube mockup in background
+  ctx.globalAlpha=0.15;
+  ytNav(ctx,W,'gaming');
+  videoBlock(ctx,80,80,560,320);
+  panel(ctx,660,80,400,'competitor');
+  ctx.globalAlpha=1;
+
+  // Dark overlay
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,W,H);
+
+  // Popup window — centered
+  const pw=300, ph=460, px=(W-pw)/2, py=(H-ph)/2;
+  ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=60; ctx.shadowOffsetY=20;
+  fill(ctx,px,py,pw,ph,16,'#111');
+  ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
+  stroke(ctx,px,py,pw,ph,16,'#2a2a2a');
+
+  // Popup header
+  fill(ctx,px,py,pw,54,16,'#0d0d0d');
+  ctx.fillStyle='#0d0d0d'; ctx.fillRect(px,py+38,pw,16);
+  line(ctx,px,py+54,px+pw,py+54,'#222');
+  t(ctx,'YTubViral',px+16,py+18,{sz:18,w:'800',c:'#ff0000'});
+  t(ctx,'IA para YouTubers',px+16,py+38,{sz:11,c:'#555',b:'bottom'});
+
+  // User card
+  fill(ctx,px+12,py+68,pw-24,64,10,'#1a1a1a');
+  stroke(ctx,px+12,py+68,pw-24,64,10,'#2e2e2e');
+  fill(ctx,px+24,py+80,40,40,20,'#ff0000');
+  t(ctx,'J',px+44,py+100,{sz:18,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'Javier',px+72,py+80,{sz:14,w:'bold',c:'#fff'});
+  t(ctx,'⭐ Plan Pro',px+72,py+99,{sz:12,c:'#ffc107'});
+
+  // Features
+  const feats=[
+    ['✅','Análisis de canales'],
+    ['✅','Keywords en búsquedas'],
+    ['✅','Títulos con IA (187 / 200)'],
+  ];
+  feats.forEach(([icon,label],i)=>{
+    t(ctx,icon+' '+label,px+16,py+152+i*32,{sz:13,c:'#bbb'});
+  });
+
+  // Stats pills
+  fill(ctx,px+12,py+256,pw-24,52,10,'#1a1a1a');
+  stroke(ctx,px+12,py+256,pw-24,52,10,'#2e2e2e');
+  t(ctx,'Este mes',px+24,py+268,{sz:10,c:'#666'});
+  t(ctx,'187',px+24,py+285,{sz:20,w:'bold',c:'#fff'});
+  t(ctx,'generaciones',px+24,py+300,{sz:10,c:'#666',b:'bottom'});
+  line(ctx,px+pw/2,py+262,px+pw/2,py+302,'#333');
+  t(ctx,'Plan Pro',px+pw/2+12,py+268,{sz:10,c:'#666'});
+  t(ctx,'200/mes',px+pw/2+12,py+285,{sz:16,w:'bold',c:'#ffc107'});
+  t(ctx,'generaciones IA',px+pw/2+12,py+300,{sz:10,c:'#666',b:'bottom'});
+
+  // Dashboard button
+  fill(ctx,px+12,py+324,pw-24,42,10,'#1a1a1a');
+  stroke(ctx,px+12,py+324,pw-24,42,10,'#333');
+  t(ctx,'Ir al dashboard →',px+pw/2,py+345,{sz:13,c:'#ccc',a:'center',b:'middle'});
+
+  // Logout
+  t(ctx,'Cerrar sesión',px+pw/2,py+388,{sz:12,c:'#444',a:'center'});
+
+  // Extension icon hint
+  t(ctx,'Haz clic en el icono de la extensión',W/2,py-28,{sz:13,c:'#666',a:'center'});
+  t(ctx,'en la barra de Chrome para ver esto',W/2,py-10,{sz:13,c:'#666',a:'center'});
+
+  caption(ctx,W,H,'YTubViral Extension · Inicio de sesión y estado de cuenta en el popup');
+}
+
+// ═══════════════════════════════════════════
+// DOWNLOAD (JPEG 24-bit, no alpha)
+// ═══════════════════════════════════════════
+function dl(id, fname){
+  const cv=document.getElementById(id);
+  // Draw white background first to ensure no alpha
+  const tmp=document.createElement('canvas');
+  tmp.width=cv.width; tmp.height=cv.height;
+  const tc=tmp.getContext('2d');
+  tc.fillStyle='#000'; tc.fillRect(0,0,tmp.width,tmp.height);
+  tc.drawImage(cv,0,0);
+  const a=document.createElement('a');
+  a.href=tmp.toDataURL('image/jpeg',0.93);
+  a.download=fname; a.click();
+}
+
+// ═══════════════════════════════════════════
+// PROMO 440×280
+// ═══════════════════════════════════════════
+function drawPromo440(){
+  const cv=document.getElementById('cp1'), ctx=cv.getContext('2d');
+  const W=440, H=280;
+  ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,W,H);
+
+  // Red glow top-left
+  const g=ctx.createRadialGradient(0,0,0,0,0,300);
+  g.addColorStop(0,'rgba(255,0,0,0.12)'); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // Left red bar
+  const bar=ctx.createLinearGradient(0,0,0,H);
+  bar.addColorStop(0,'rgba(255,0,0,0.7)'); bar.addColorStop(1,'rgba(255,0,0,0)');
+  ctx.fillStyle=bar; ctx.fillRect(0,0,4,H);
+
+  // Logo
+  t(ctx,'YTub',26,42,{sz:46,w:'900',c:'#fff'});
+  t(ctx,'Viral',138,42,{sz:46,w:'900',c:'#ff0000'});
+
+  // Red line
+  ctx.fillStyle='#ff0000'; ctx.fillRect(26,100,120,3);
+
+  // Tagline
+  t(ctx,'IA para YouTube',26,114,{sz:15,c:'#888'});
+  t(ctx,'directo en el navegador',26,135,{sz:15,c:'#888'});
+
+  // Features
+  const feats=['📊  Análisis de competidores','🔍  Keyword research','✨  Títulos con IA'];
+  feats.forEach((f,i)=>{
+    fill(ctx,26,168+i*32,220,26,6,'#161616');
+    ctx.fillStyle='#ff0000'; ctx.fillRect(26,168+i*32,3,26);
+    t(ctx,f,36,168+i*32+13,{sz:12,c:'#ccc',b:'middle'});
+  });
+
+  // Right: mini panel mockup
+  const px=276, py=24, pw=148;
+  fill(ctx,px,py,pw,232,10,'#1a1a1a');
+  stroke(ctx,px,py,pw,232,10,'#2e2e2e');
+  fill(ctx,px,py,pw,32,10,'#111');
+  ctx.fillStyle='#111'; ctx.fillRect(px,py+20,pw,12);
+  t(ctx,'YTubViral',px+10,py+16,{sz:11,w:'bold',c:'#ff0000',b:'middle'});
+
+  ctx.fillStyle='#555'; ctx.beginPath(); ctx.arc(px+20,py+56,12,0,Math.PI*2); ctx.fill();
+  t(ctx,'A',px+20,py+56,{sz:10,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'AuronPlay',px+36,py+48,{sz:10,w:'bold',c:'#fff'});
+  t(ctx,'13.2M subs',px+36,py+62,{sz:9,c:'#888'});
+
+  const gw=(pw-20)/2-2;
+  [['8.5B','Vistas'],['2.1M','Media'],['1.240','Vídeos'],['Semanal','Frec.']].forEach(([v,l],i)=>{
+    const sx=px+10+(i%2)*(gw+4), sy=py+84+Math.floor(i/2)*38;
+    fill(ctx,sx,sy,gw,32,6,'#222');
+    t(ctx,v,sx+gw/2,sy+6,{sz:10,w:'bold',c:'#fff',a:'center'});
+    t(ctx,l,sx+gw/2,sy+20,{sz:8,c:'#666',a:'center'});
+  });
+
+  t(ctx,'gaming highlights',px+10,py+166,{sz:8,c:'#666'});
+  ['react twitch','directo clips'].forEach((tag,i)=>{
+    const tw=tag.length*5.5+12;
+    fill(ctx,px+10+i*(tw+4),py+178,tw,18,9,'#262626');
+    stroke(ctx,px+10+i*(tw+4),py+178,tw,18,9,'#3a3a3a');
+    t(ctx,tag,px+10+i*(tw+4)+tw/2,py+187,{sz:8,c:'#ccc',a:'center',b:'middle'});
+  });
+
+  fill(ctx,px+10,py+204,pw-20,22,6,'#ff0000');
+  t(ctx,'Analizar canal',px+pw/2,py+215,{sz:10,w:'bold',c:'#fff',a:'center',b:'middle'});
+
+  // Bottom domain
+  t(ctx,'ytubviral.com',W/2,H-14,{sz:11,c:'#333',a:'center',b:'middle'});
+}
+
+// ═══════════════════════════════════════════
+// PROMO 1400×560
+// ═══════════════════════════════════════════
+function drawPromo1400(){
+  const cv=document.getElementById('cp2'), ctx=cv.getContext('2d');
+  const W=1400, H=560;
+  ctx.fillStyle='#080808'; ctx.fillRect(0,0,W,H);
+
+  // Background glow
+  const g1=ctx.createRadialGradient(0,H,0,0,H,600);
+  g1.addColorStop(0,'rgba(255,0,0,0.08)'); g1.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g1; ctx.fillRect(0,0,W,H);
+  const g2=ctx.createRadialGradient(W,0,0,W,0,700);
+  g2.addColorStop(0,'rgba(80,0,200,0.05)'); g2.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+
+  // Top red bar
+  const topBar=ctx.createLinearGradient(0,0,W,0);
+  topBar.addColorStop(0,'rgba(255,0,0,0.8)'); topBar.addColorStop(0.5,'rgba(255,0,0,0.3)'); topBar.addColorStop(1,'rgba(255,0,0,0)');
+  ctx.fillStyle=topBar; ctx.fillRect(0,0,W,4);
+
+  // ── LEFT: big logo + tagline ──────────────────
+  t(ctx,'YTub',80,100,{sz:110,w:'900',c:'#fff'});
+  t(ctx,'Viral',330,100,{sz:110,w:'900',c:'#ff0000'});
+  ctx.fillStyle='#ff0000'; ctx.fillRect(80,228,240,4);
+  t(ctx,'Herramientas de IA para YouTubers',80,248,{sz:22,c:'#777'});
+  t(ctx,'directamente en YouTube',80,278,{sz:22,c:'#777'});
+
+  // Feature pills
+  const feats=['📊 Análisis de canales','🔍 Keyword research','✨ Títulos con IA'];
+  feats.forEach((f,i)=>{
+    fill(ctx,80+i*230,330,218,44,10,'#141414');
+    ctx.fillStyle='#ff0000'; ctx.fillRect(80+i*230,330,3,44);
+    stroke(ctx,80+i*230,330,218,44,10,'#222');
+    t(ctx,f,94+i*230,352,{sz:14,c:'#ccc',b:'middle'});
+  });
+
+  // CTA area
+  fill(ctx,80,404,180,46,23,'#ff0000');
+  t(ctx,'Instalar gratis',170,427,{sz:15,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'ytubviral.com/extension',80,466,{sz:13,c:'#444'});
+
+  // ── CENTER divider ────────────────────────────
+  const divGrd=ctx.createLinearGradient(760,0,760,H);
+  divGrd.addColorStop(0,'rgba(255,0,0,0)'); divGrd.addColorStop(0.5,'rgba(255,0,0,0.15)'); divGrd.addColorStop(1,'rgba(255,0,0,0)');
+  ctx.fillStyle=divGrd; ctx.fillRect(756,40,2,H-80);
+
+  // ── RIGHT: 3 mini panel mockups ───────────────
+  // Panel 1: keywords (top)
+  const p1x=810, p1y=28, p1w=270;
+  fill(ctx,p1x,p1y,p1w,160,10,'#1a1a1a');
+  stroke(ctx,p1x,p1y,p1w,160,10,'#2e2e2e');
+  fill(ctx,p1x,p1y,p1w,34,10,'#111'); ctx.fillStyle='#111'; ctx.fillRect(p1x,p1y+22,p1w,12);
+  t(ctx,'YTubViral',p1x+12,p1y+17,{sz:12,w:'bold',c:'#ff0000',b:'middle'});
+  fill(ctx,p1x+92,p1y+9,28,16,4,'#ff0000'); t(ctx,'IA',p1x+106,p1y+17,{sz:9,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'gaming highlights',p1x+12,p1y+42,{sz:10,c:'#666'});
+  const gw2=(p1w-24)/4-3;
+  [['🟢 Baja','Competencia'],['78/100','Oportunidad'],['4.2M','Resultados'],['320K','Vistas']].forEach(([v,l],i)=>{
+    const sx=p1x+12+i*(gw2+4), sy=p1y+58;
+    fill(ctx,sx,sy,gw2,44,6,'#222');
+    t(ctx,v,sx+gw2/2,sy+8,{sz:i===0?8:11,w:'bold',c:i===1?'#4caf50':'#fff',a:'center'});
+    t(ctx,l,sx+gw2/2,sy+24,{sz:8,c:'#666',a:'center'});
+  });
+  t(ctx,'Explorar keywords →',p1x+12,p1y+116,{sz:10,c:'#ff6060'});
+  t(ctx,'🔍 En búsquedas',p1x+12,p1y+136,{sz:10,c:'#555'});
+
+  // Panel 2: competitor analysis (center)
+  const p2x=840, p2y=208, p2w=310;
+  ctx.shadowColor='rgba(255,0,0,0.15)'; ctx.shadowBlur=30;
+  fill(ctx,p2x,p2y,p2w,220,12,'#1a1a1a');
+  ctx.shadowColor='transparent'; ctx.shadowBlur=0;
+  stroke(ctx,p2x,p2y,p2w,220,12,'#333');
+  fill(ctx,p2x,p2y,p2w,36,12,'#111'); ctx.fillStyle='#111'; ctx.fillRect(p2x,p2y+24,p2w,12);
+  t(ctx,'YTubViral',p2x+14,p2y+18,{sz:13,w:'bold',c:'#ff0000',b:'middle'});
+  fill(ctx,p2x+104,p2y+10,28,16,4,'#ff0000'); t(ctx,'IA',p2x+118,p2y+18,{sz:9,w:'bold',c:'#fff',a:'center',b:'middle'});
+  ctx.fillStyle='#555'; ctx.beginPath(); ctx.arc(p2x+26,p2y+62,16,0,Math.PI*2); ctx.fill();
+  t(ctx,'A',p2x+26,p2y+62,{sz:13,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'AuronPlay',p2x+48,p2y+52,{sz:13,w:'bold',c:'#fff'});
+  t(ctx,'13.2M suscriptores',p2x+48,p2y+68,{sz:10,c:'#999'});
+  const gw3=(p2w-28)/2-3;
+  [['8.5B','Vistas totales'],['2.1M','Media vistas'],['1.240','Vídeos'],['Semanal','Frecuencia']].forEach(([v,l],i)=>{
+    const sx=p2x+14+(i%2)*(gw3+6), sy=p2y+90+Math.floor(i/2)*46;
+    fill(ctx,sx,sy,gw3,38,7,'#222');
+    t(ctx,v,sx+gw3/2,sy+8,{sz:12,w:'bold',c:'#fff',a:'center'});
+    t(ctx,l,sx+gw3/2,sy+24,{sz:9,c:'#666',a:'center'});
+  });
+  t(ctx,'gaming highlights · react twitch · directo clips',p2x+14,p2y+190,{sz:9,c:'#555',mw:p2w-24});
+  t(ctx,'📊 En vídeos y canales',p2x+14,p2y+206,{sz:10,c:'#555'});
+
+  // Panel 3: titles (right)
+  const p3x=1100, p3y=52, p3w=272;
+  fill(ctx,p3x,p3y,p3w,230,10,'#1a1a1a');
+  stroke(ctx,p3x,p3y,p3w,230,10,'#2e2e2e');
+  fill(ctx,p3x,p3y,p3w,34,10,'#111'); ctx.fillStyle='#111'; ctx.fillRect(p3x,p3y+22,p3w,12);
+  t(ctx,'YTubViral',p3x+12,p3y+17,{sz:12,w:'bold',c:'#ff0000',b:'middle'});
+  fill(ctx,p3x+92,p3y+9,28,16,4,'#ff0000'); t(ctx,'IA',p3x+106,p3y+17,{sz:9,w:'bold',c:'#fff',a:'center',b:'middle'});
+  t(ctx,'Títulos generados',p3x+12,p3y+42,{sz:10,c:'#888'});
+  ['10 Técnicas Que NADIE Te Cuenta','Mejora Tu Aim Con Este TRUCO','Los 5 Errores De Todo Gamer','Cómo Ganar SIEMPRE (Guía 2024)','El Método De Los PRO Gamers'].forEach((title,i)=>{
+    const ty=p3y+58+i*32;
+    fill(ctx,p3x+12,ty,p3w-24,26,0,'#222');
+    ctx.fillStyle='#ff0000'; ctx.fillRect(p3x+12,ty,3,26);
+    t(ctx,title,p3x+20,ty+13,{sz:10,c:'#ddd',b:'middle',mw:p3w-32});
+  });
+  t(ctx,'✨ En cualquier vídeo',p3x+12,p3y+224,{sz:10,c:'#555'});
+
+  // Bottom tagline
+  t(ctx,'ytubviral.com',W/2,H-18,{sz:13,c:'#2a2a2a',a:'center',b:'middle'});
+}
+
+document.getElementById('all-btn').addEventListener('click',()=>{
+  const ids   = ['cp1','cp2','c1','c2','c3','c4','c5'];
+  const names = ['promo-440x280.jpg','promo-1400x560.jpg',
+                 'screenshot-1-search.jpg','screenshot-2-video-analysis.jpg',
+                 'screenshot-3-video-titles.jpg','screenshot-4-channel.jpg','screenshot-5-popup.jpg'];
+  ids.forEach((id,i) => setTimeout(() => dl(id, names[i]), i * 300));
+});
+
+window.addEventListener('load',()=>{
+  drawPromo440(); drawPromo1400();
+  draw1(); draw2(); draw3(); draw4(); draw5();
+});
+</script>
+</body>
+</html>

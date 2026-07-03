@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YTubViral</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">YTubViral</div>
+    <div class="tagline" id="tagline">IA para YouTubers</div>
+    <button id="btn-lang" class="btn-lang" title="ES / EN">ES</button>
+  </div>
+
+  <!-- Login view -->
+  <div id="view-login" class="view">
+    <p class="intro" id="intro-text">Inicia sesión con tu cuenta de <strong>ytubviral.com</strong> para activar el análisis de canales y keywords directamente en YouTube.</p>
+    <form id="login-form" autocomplete="on">
+      <input
+        id="inp-email"
+        type="email"
+        placeholder="Email"
+        autocomplete="email"
+        required
+      >
+      <input
+        id="inp-password"
+        type="password"
+        placeholder=""
+        autocomplete="current-password"
+        required
+      >
+      <div id="login-error" class="error-msg hidden"></div>
+      <button type="submit" id="btn-login" class="btn btn-red">
+        Iniciar sesión
+      </button>
+    </form>
+    <a class="link-small" id="signup-link" href="https://ytubviral.com/signup" target="_blank">
+      ¿No tienes cuenta? Regístrate gratis →
+    </a>
+    <p class="intro" id="connect-hint" style="margin-top:10px;font-size:11px;opacity:.7"></p>
+  </div>
+
+  <!-- Logged-in view -->
+  <div id="view-user" class="view hidden">
+    <div class="user-card">
+      <div class="user-avatar" id="user-initials">?</div>
+      <div class="user-info">
+        <div class="user-name" id="user-name">—</div>
+        <div class="user-plan" id="user-plan">Free</div>
+      </div>
+    </div>
+
+    <div class="feature-list" id="feature-list">
+      <div class="feature-item">✅ SEO Score on videos</div>
+      <div class="feature-item">✅ Channel analysis on YouTube</div>
+      <div class="feature-item">✅ Keywords in search results</div>
+      <div class="feature-item">✅ AI title generation</div>
+    </div>
+
+    <a class="btn btn-outline" id="dashboard-link" href="https://ytubviral.com/dashboard" target="_blank">
+      Ir al dashboard →
+    </a>
+    <button class="btn btn-ghost" id="btn-logout">Cerrar sesión</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

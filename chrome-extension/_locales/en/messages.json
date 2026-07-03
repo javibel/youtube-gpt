@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "YTubViral: YouTube SEO, Analytics & AI Tools",
+    "description": "Extension name shown in the Chrome Web Store and chrome://extensions"
+  },
+  "appDesc": {
+    "message": "Free YouTube SEO tools: SEO Score on every video, keyword research, competitor analytics & AI titles — inside YouTube & Studio.",
+    "description": "Short description (max 132 chars) shown in the Chrome Web Store"
+  }
+}

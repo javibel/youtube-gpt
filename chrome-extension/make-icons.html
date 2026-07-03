@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!--
+  Abre este archivo en Chrome para generar los iconos de la extensión.
+  Se descargarán automáticamente icon16.png, icon48.png e icon128.png.
+  Muévellos a la carpeta icons/ y ya están listos.
+-->
+<html>
+<head><title>YTubViral Icon Generator</title></head>
+<body>
+<script>
+function makeIcon(size) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  // Background: deep dark with red gradient
+  const bg = ctx.createLinearGradient(0, 0, size, size);
+  bg.addColorStop(0, '#cc0000');
+  bg.addColorStop(1, '#ff2020');
+  ctx.fillStyle = bg;
+  const r = size * 0.18;
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.lineTo(size - r, 0);
+  ctx.quadraticCurveTo(size, 0, size, r);
+  ctx.lineTo(size, size - r);
+  ctx.quadraticCurveTo(size, size, size - r, size);
+  ctx.lineTo(r, size);
+  ctx.quadraticCurveTo(0, size, 0, size - r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // White "Y" letter
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${Math.round(size * 0.62)}px Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Y', size / 2, size / 2 + size * 0.04);
+
+  return canvas.toDataURL('image/png');
+}
+
+function download(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
+[16, 48, 128].forEach(size => {
+  setTimeout(() => {
+    download(makeIcon(size), `icon${size}.png`);
+  }, size);
+});
+</script>
+<p style="font-family:sans-serif;padding:20px">
+  Generando iconos... revisa la carpeta de descargas.<br>
+  Mueve los 3 archivos a <code>chrome-extension/icons/</code>
+</p>
+</body>
+</html>

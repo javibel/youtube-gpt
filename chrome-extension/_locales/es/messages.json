@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "YTubViral: SEO, Analytics y IA para YouTube",
+    "description": "Nombre de la extensión en Chrome Web Store y chrome://extensions"
+  },
+  "appDesc": {
+    "message": "Herramientas SEO gratis para YouTube: SEO Score en cada vídeo, keyword research, análisis de competidores y títulos con IA.",
+    "description": "Descripción corta (máx 132 chars) para Chrome Web Store"
+  }
+}
