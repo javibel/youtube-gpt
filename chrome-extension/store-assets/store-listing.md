@@ -1,98 +1,16 @@
-# Chrome Web Store Listing — YTubViral v2.0.0
+# Chrome Web Store Listing — YTubViral
 
-## Extension name
-YTubViral for YouTube
+**Actualizado 2026-07-04.** Este archivo se sincronizó con el texto REAL publicado en la Chrome Web Store (Javier lo pegó directamente) — el borrador anterior de este archivo incluía secciones ("SEO SCORE — ON EVERY VIDEO", "VELOCITY BADGES", "STUDIO INTEGRATION", "KEYWORD RESEARCH", "COMPETITOR ANALYSIS") que ya no están en la ficha publicada; se han quitado de aquí para no describir algo que no existe en producción.
 
-## Short description (max 132 chars)
-SEO scoring, keyword research, competitor analysis, outlier detection, and AI title generation — right inside YouTube and YouTube Studio.
+**IMPORTANTE — orden de publicación**: el texto de abajo ya incluye los cambios de la v2.5.0 (panel en Shorts, score 0-100 completo sin login en vez de solo longitud del título, pista de "mejor hora" en Studio). **No pegar en el listing hasta que la v2.5.0 esté subida y aprobada** en la Chrome Web Store — si se publica el texto antes que el código, la ficha describiría funciones que el usuario todavía no tiene instaladas.
 
-## Category
-Productivity
-
-## Language
-English (primary) — Spanish
+Cambios respecto a la versión que pegó Javier (marcados en el texto con la nota "[cambio]" que debe quitarse al copiar):
+- "HOW IT WORKS", punto 3: el check sin login ahora es un score 0-100 completo (no solo longitud del título) + nueva línea para Shorts + mención de la pista de mejor hora en Studio.
+- "PRIVACY & DATA HANDLING": bullet de "YouTube video IDs" ahora incluye Shorts; bullet de "channel stats" ahora menciona la recomendación de mejor hora; nota final sobre el check sin login actualizada al score completo; añadido el flag de "conectar canal descartado" a los contadores locales (ya existía el de reseñas, este es nuevo de la v2.5.0).
+- FAQ: nueva pregunta "Does it work on YouTube Shorts?"; la pregunta de Studio ahora menciona la pista de mejor hora; la pregunta de "¿necesito cuenta?" ahora dice "score completo" en vez de "check básico".
+- Nada de precios, planes, ni de las secciones que no tocó la v2.5.0 (sentiment, generación IA, ecosistema) se ha modificado en sustancia.
 
 ---
-
-## Full description
-
-Stop switching tabs. YTubViral brings AI-powered YouTube tools directly into your browser — SEO scoring, keyword research, competitor analysis, outlier detection, and viral title generation, all while you browse YouTube and YouTube Studio.
-
-Whether you're a beginner trying to grow your first channel or an experienced creator looking for an edge, YTubViral gives you the data you need without ever leaving YouTube.
-
-────────────────────────────────────────
-SEO SCORE — ON EVERY VIDEO
-────────────────────────────────────────
-
-On any YouTube watch page, a scorecard appears automatically:
-
-• SEO Score ring (0–100) — instant quality check for title, description, tags, and thumbnail
-• Detailed checklist — see exactly what's optimized and what's missing
-• Views per hour (VPH) — how fast the video is gaining traction right now
-• Engagement rate and likes ratio
-• Outlier detection — a pulsing badge appears when a video has 5x+ its channel's average views. Spot viral content instantly.
-
-Use case: You see a competitor's video with an OUTLIER x12 badge. That means it has 12x their usual views. Click "Generate titles" to create similar content on a proven topic.
-
-────────────────────────────────────────
-VELOCITY BADGES ON THUMBNAILS
-────────────────────────────────────────
-
-On the YouTube homepage, search results, and suggested videos sidebar, every thumbnail gets a small VPH (views per hour) badge. At a glance you can spot which videos are gaining traction right now:
-
-• Low VPH — normal pace
-• High VPH — trending content worth investigating
-
-The extension fetches public view counts and publish dates from the YouTube Data API to calculate velocity. Badges load as you scroll — no performance impact.
-
-────────────────────────────────────────
-YOUTUBE STUDIO INTEGRATION
-────────────────────────────────────────
-
-YTubViral works inside YouTube Studio too — no need to switch to another site to check your SEO:
-
-• Video list — SEO Score badges appear next to each video title. See at a glance which videos are well-optimized and which need work.
-• Video editor — full SEO panel with score ring, optimization checklist, and outlier badge. As you edit your title, description, and tags, the extension sends them to the YTubViral API for live SEO scoring that updates in real time.
-• AI tag suggestions — click "Suggest tags" and the extension searches for keywords related to your video title, then displays clickable tag pills you can copy directly into your tag field.
-• One-click actions — "Optimize on YTubViral" and "Full analysis" buttons link directly to your dashboard.
-• Channel Stats widget in the Studio sidebar — subscribers, views, growth trends for your own channel.
-
-Use case: You open YouTube Studio and instantly see that 3 of your last 10 videos score below 50. Click the optimize button on any of them to fix titles, descriptions, and tags.
-
-────────────────────────────────────────
-KEYWORD RESEARCH — RIGHT IN SEARCH RESULTS
-────────────────────────────────────────
-
-Every time you search on YouTube, a panel appears automatically above the results showing real data for that keyword:
-
-• Competition level — Low / Medium / High
-  Instantly know if a keyword is dominated by big channels or if there's room for a newcomer to rank.
-
-• Opportunity Score (0–100)
-  A combined metric that weighs competition against demand. A score above 70 means this keyword is worth targeting.
-
-• Total results — how many videos compete for this term.
-• Average views of top 5 videos — tells you if there's real audience demand.
-• Related search terms — click any suggestion to immediately search it on YouTube and see its own stats. Perfect for finding keyword variations you hadn't thought of.
-
-Use case: You're about to film a video about "gaming highlights". Search it on YouTube, see it has High competition and only 45/100 opportunity. Click "gaming highlights clips" in the suggestions — Low competition, 82/100 opportunity. Film that video instead.
-
-────────────────────────────────────────
-COMPETITOR CHANNEL ANALYSIS
-────────────────────────────────────────
-
-On any YouTube video page or channel page, click "Analyze channel" to instantly pull up a full breakdown:
-
-• Subscriber count and total view count
-• Number of uploaded videos
-• Upload frequency — does this channel post daily, weekly, or irregularly?
-• Average views per video across their top content
-• Keywords extracted from their last 30 videos — the recurring themes and phrases they use that drive traffic
-• Channel growth trends (7-day and 30-day) with estimated monetization
-
-The keywords section is especially powerful: these are bigrams (2-word phrases) extracted from the channel's most recent and most popular video titles. They're the exact terms their audience searches for. Click any keyword tag to instantly search it on YouTube.
-
-Use case: You find a channel in your niche with 500K subscribers. In two clicks you know they post twice a week, their average video gets 200K views, and their top recurring keywords are "react fails", "twitch moments", and "clip compilation". Now you know exactly what content works in that niche.
 
 ────────────────────────────────────────
 COMMENT SENTIMENT ANALYSIS
@@ -146,13 +64,14 @@ HOW IT WORKS
 ────────────────────────────────────────
 
 1. Install the extension — click "Add to Chrome" above
-2. Click the YTubViral icon in your toolbar and sign in with your ytubviral.com account (free to create — no credit card required)
+2. Connect your account — click the YTubViral icon and sign in with your ytubviral.com account. Or, if you signed up with Google, just open ytubviral.com while logged in and the extension connects automatically — no password needed. Creating an account is free (no credit card required).
 3. Browse YouTube normally:
-   • Open any video — SEO scorecard and channel stats appear automatically
-   • Search anything — keyword stats appear above results
-   • Visit any channel — analyze button appears below the header
-   • Open YouTube Studio — SEO badges appear on your video list and editor
-   • Scroll the homepage — velocity badges appear on every thumbnail
+• Open any video — SEO scorecard and channel stats appear automatically (even before you connect, you'll see a full 0–100 title score with specific tips, computed instantly on your device — no account needed)
+• Watch a Short — the same score card appears, docked to the side of your screen; tap it to expand
+• Search anything — keyword stats appear above results
+• Visit any channel — analyze button appears below the header
+• Open YouTube Studio — SEO badges appear on your video list, live scoring in the editor and upload dialog, plus a personalized "best time to post" hint
+• Scroll the homepage — velocity badges appear on every thumbnail
 4. That's it. Everything runs automatically.
 
 ────────────────────────────────────────
@@ -185,14 +104,18 @@ The extension requests the "storage" permission and access to three domains: you
 
 Data the extension collects and transmits to ytubviral.com over HTTPS:
 
-• Login credentials — your email and password are sent to ytubviral.com to authenticate you. They are not stored locally; only the resulting session token is kept in chrome.storage.local.
+• Login credentials — if you sign in via the extension popup, your email and password are sent to ytubviral.com to authenticate you. They are not stored locally; only the resulting session token is kept in chrome.storage.local.
+• Session-based connection (no password) — alternatively, when you are logged into ytubviral.com in your browser, the extension can obtain an authentication token from your existing ytubviral.com session over HTTPS. This lets Google sign-in users (who have no password) connect. Only the resulting token is stored in chrome.storage.local.
 • Authentication token — stored locally in chrome.storage.local to keep your session active.
 • Language preference — stored locally in chrome.storage.local ("es" or "en").
-• YouTube video IDs — when you visit a video, open YouTube Studio, or scroll past thumbnails on the homepage or search results, the extension sends video IDs to ytubviral.com to retrieve SEO scores, statistics, and views-per-hour velocity data. These are public identifiers, not private data.
+• Local usage counters — a count of how many times you've opened the scorecard, a flag for whether a review prompt has been shown, and a flag for whether you've dismissed the "connect your channel" hint — all stored only in chrome.storage.local. They never leave your device.
+• YouTube video IDs — when you visit a video or a Short, open YouTube Studio, or scroll past thumbnails on the homepage or search results, the extension sends video IDs to ytubviral.com to retrieve SEO scores, statistics, and views-per-hour velocity data. These are public identifiers, not private data.
 • YouTube search queries — when you search on YouTube, the search term is sent to ytubviral.com to return competition, opportunity scores, and related keywords.
 • YouTube channel identifiers — when you visit a channel page or use the competitor analysis feature, the channel URL or ID is sent to ytubviral.com to fetch public channel statistics.
 • YouTube Studio draft metadata — when you edit a video in YouTube Studio, the extension reads your draft title, description, and tags from the editor fields and sends them to ytubviral.com for live SEO scoring. This data is processed in real time and not stored on our servers.
-• Your own channel stats — the extension can display your channel's subscriber count, view count, and growth trends. This data is fetched from ytubviral.com using your authenticated session.
+• Your own channel stats — the extension can display your channel's subscriber count, view count, growth trends, and a personalized best-time-to-post recommendation. This data is fetched from ytubviral.com using your authenticated session.
+
+Note: before you connect, the extension can show a full 0–100 title score (length, keywords, hook words, formatting) on video and Shorts pages. This is computed locally from the page's own title text and is never transmitted anywhere.
 
 Data the extension does NOT collect:
 • Your browsing history outside the three domains listed above.
@@ -200,7 +123,7 @@ Data the extension does NOT collect:
 • Your watch history or YouTube recommendations.
 • Any data from websites other than youtube.com, studio.youtube.com, and ytubviral.com.
 
-On ytubviral.com itself, a minimal script (detect.js) sets a data attribute on the page so the website can detect the extension is installed (e.g., to show or hide an "Install extension" banner). No data is sent or received by this script.
+On ytubviral.com itself, a minimal script (detect.js) sets a data attribute on the page so the website can detect the extension is installed (e.g., to show or hide an "Install extension" banner). In addition, if you are logged into ytubviral.com and the extension is not yet connected, this script requests an authentication token from your session over HTTPS and passes it to the extension (the session-based connection described above). It communicates only with ytubviral.com.
 
 All data is transmitted exclusively to ytubviral.com over HTTPS. No data is shared with third parties. You can delete all locally stored data by logging out from the extension popup or by uninstalling the extension.
 
@@ -211,7 +134,10 @@ FREQUENTLY ASKED QUESTIONS
 ────────────────────────────────────────
 
 Do I need a ytubviral.com account?
-Yes — the extension connects to your account to fetch data and track your generation limit. Creating an account is free and takes 30 seconds.
+You get a full title score on any video or Short without one, but the complete SEO Score, keyword research, competitor analysis and AI tools need an account. Creating one is free and takes 30 seconds — and if you signed up with Google, the extension connects automatically when you visit ytubviral.com.
+
+Does it work on YouTube Shorts?
+Yes. A compact score card appears docked to the side of the screen while you watch — tap it to expand into the full breakdown, same as on regular videos.
 
 Does this work on Firefox?
 Not yet — Chrome and Chromium-based browsers only (Chrome, Brave, Edge, Opera) for now.
@@ -226,7 +152,7 @@ Can I use it on channels that aren't mine?
 Yes — that's the main use case. You can analyze any public YouTube channel.
 
 Does it work in YouTube Studio?
-Yes. SEO Score badges appear on your video list, a full analysis panel appears in the video editor with live scoring, and AI tools can suggest tags and generate descriptions.
+Yes. SEO Score badges appear on your video list, a full analysis panel appears in the video editor AND in the upload dialog (so you optimize new videos before publishing) with live scoring and a best-time-to-post hint, and AI tools can suggest tags and generate descriptions.
 
 ────────────────────────────────────────
 SUPPORT
@@ -239,65 +165,8 @@ We read every support email and typically reply within 24 hours.
 
 ---
 
-## Tags / Keywords
-YouTube, keyword research, SEO, AI, content creator, channel analysis, viral titles, YouTube tools, competitor analysis, YouTuber, VPH, velocity, outlier detection, YouTube Studio
+## Tags / Keywords (sin cambios)
+YouTube, keyword research, SEO, AI, content creator, channel analysis, viral titles, YouTube tools, competitor analysis, YouTuber, VPH, velocity, outlier detection, YouTube Studio, Shorts
 
----
-
-## Chrome Web Store Privacy Form — What to declare
-
-Single purpose: "Provides YouTube SEO analysis, keyword research, competitor insights, velocity tracking, and AI content generation directly on YouTube and YouTube Studio pages."
-
-Does the extension collect personal data? Yes
-- Email address (for login authentication)
-- Name (displayed in extension popup)
-- Authentication token (stored locally)
-
-Does it collect user activity data? Yes
-- YouTube video IDs being viewed (for SEO scoring and velocity badges)
-- YouTube search queries (for keyword research)
-- YouTube Studio draft metadata — title, description, tags (for live SEO scoring, not stored)
-
-Does it collect website content? Yes
-- Video titles and channel names from YouTube pages (for analysis features)
-- Draft title, description, and tags from YouTube Studio editor (for live SEO scoring)
-
-Host permission justifications:
-- youtube.com: Inject SEO panels, keyword research, velocity badges, and scorecard overlays on YouTube pages
-- studio.youtube.com: Inject live SEO scoring panel and AI content generation tools in the YouTube Studio video editor
-- ytubviral.com: Detect extension installation on the website and authenticate API calls to the YTubViral backend
-
----
-
-## Checklist de assets a subir
-
-### Imagenes
-- [ ] promo-1280x800.png         → "Promotional tile" (1280x800)
-- [ ] screenshot-1-video.png     → Screenshot: video page with SEO scorecard
-- [ ] screenshot-2-search.png    → Screenshot: search results with keyword panel
-- [ ] screenshot-3-studio.png    → Screenshot: YouTube Studio with SEO badges
-- [ ] screenshot-4-badges.png    → Screenshot: homepage with VPH velocity badges
-
-### Archivo
-- [ ] ytubviral-extension.zip    → generado con `node pack.js`
-
-### Datos
-- [ ] Developer name: YTubViral
-- [ ] Website: https://ytubviral.com
-- [ ] Privacy policy URL: https://ytubviral.com/privacy
-
----
-
-## Pasos en Chrome Web Store Developer Console
-https://chrome.google.com/webstore/devconsole
-
-1. Pagar $5 registro (una sola vez)
-2. "New Item" → subir ytubviral-extension.zip
-3. Rellenar:
-   - Store listing → pegar textos de arriba
-   - Graphics → subir las imagenes
-   - Privacy → rellenar formulario segun seccion "Privacy Form" de arriba
-4. Submit for review
-5. Esperar 1-3 dias habiles
-6. Cuando este aprobado, copiar la URL y actualizar en:
-   app/extension/page.tsx  →  const CHROME_STORE_URL = 'TU-URL'
+## Chrome Web Store Privacy Form — actualizar si se pide re-declarar
+Sin cambios de categorías de datos (Shorts video IDs son la misma categoría que video IDs normales; la pista de mejor hora usa el mismo canal autenticado que las stats de canal). No hace falta re-declarar el formulario de privacidad salvo que Google lo pida al revisar la v2.5.0.
