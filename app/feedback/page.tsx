@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
+import { CheckIcon, StarIcon } from '@/components/icons';
 
 const COPY = {
   es: {
@@ -102,14 +103,18 @@ function FeedbackForm() {
 
         {status === 'already' && (
           <div className="text-center">
-            <div className="text-4xl mb-4">🎉</div>
+            <div className="mb-4 flex justify-center">
+              <span className="inline-flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}><CheckIcon size={26} /></span>
+            </div>
             <p className="text-white font-semibold">{c.alreadyDone}</p>
           </div>
         )}
 
         {status === 'done' && (
           <div className="text-center">
-            <div className="text-4xl mb-4">🙌</div>
+            <div className="mb-4 flex justify-center">
+              <span className="inline-flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}><CheckIcon size={26} /></span>
+            </div>
             <h2 className="text-white font-bold text-xl mb-2">{c.thanks}</h2>
             <p className="text-white/60 text-sm">{c.thanksText}</p>
           </div>
@@ -128,10 +133,10 @@ function FeedbackForm() {
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHovered(star)}
                   onMouseLeave={() => setHovered(0)}
-                  className="text-4xl transition-transform hover:scale-110"
-                  style={{ filter: (hovered || rating) >= star ? 'none' : 'grayscale(1) opacity(0.3)' }}
+                  className="transition-transform hover:scale-110"
+                  style={{ color: '#FFE800', filter: (hovered || rating) >= star ? 'none' : 'grayscale(1) opacity(0.3)' }}
                 >
-                  ⭐
+                  <StarIcon size={36} />
                 </button>
               ))}
             </div>

@@ -237,12 +237,12 @@ function ResearchPageInner() {
           {/* Feature highlights */}
           <div className="grid md:grid-cols-3 gap-5 mb-14 text-left">
             {[
-              { icon: '🔍', title: t('Análisis de competencia', 'Competition analysis'), desc: t('Score de competencia y oportunidad para cada keyword', 'Competition and opportunity score for each keyword') },
-              { icon: '📊', title: t('Vídeos top', 'Top videos'), desc: t('Los vídeos mejor posicionados con sus métricas reales', 'Top ranking videos with their real metrics') },
-              { icon: '💡', title: t('Keywords relacionadas', 'Related keywords'), desc: t('Descubre términos que tu audiencia también busca', 'Discover terms your audience also searches for') },
+              { icon: '/icons/magnifying-glass.webp', title: t('Análisis de competencia', 'Competition analysis'), desc: t('Score de competencia y oportunidad para cada keyword', 'Competition and opportunity score for each keyword') },
+              { icon: '/icons/bar-chart.webp', title: t('Vídeos top', 'Top videos'), desc: t('Los vídeos mejor posicionados con sus métricas reales', 'Top ranking videos with their real metrics') },
+              { icon: '/icons/bulb.webp', title: t('Keywords relacionadas', 'Related keywords'), desc: t('Descubre términos que tu audiencia también busca', 'Discover terms your audience also searches for') },
             ].map(f => (
               <div key={f.title} className="yv-card p-5">
-                <div className="text-2xl mb-3">{f.icon}</div>
+                <img src={f.icon} alt="" width={32} height={32} className="object-contain mb-3" />
                 <h3 className="font-display font-bold text-sm mb-1">{f.title}</h3>
                 <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>{f.desc}</p>
               </div>

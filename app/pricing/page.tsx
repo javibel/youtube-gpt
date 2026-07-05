@@ -4,6 +4,7 @@ import PricingSection from '@/components/PricingSection';
 import PricingComparisonTable from '@/components/PricingComparisonTable';
 import PricingFAQ from '@/components/PricingFAQ';
 import { getServerLang } from '@/lib/server-lang';
+import { LockIcon, UndoIcon, CancelIcon, ShieldCheckIcon } from '@/components/icons';
 
 export const metadata: Metadata = {
   title: 'Pricing — Free, Pro & Business Plans | YTubViral',
@@ -53,13 +54,13 @@ export default function PricingPage() {
       <div className="border-b border-white/10 bg-black">
         <div className="max-w-4xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { icon: '🔒', es: 'Pago seguro con Stripe', en: 'Secure payment via Stripe' },
-            { icon: '↩️', es: 'Garantía de 30 días', en: '30-day money-back' },
-            { icon: '✂️', es: 'Cancela cuando quieras', en: 'Cancel anytime' },
-            { icon: '🇪🇺', es: 'Cumplimiento RGPD', en: 'GDPR compliant' },
+            { Icon: LockIcon, es: 'Pago seguro con Stripe', en: 'Secure payment via Stripe' },
+            { Icon: UndoIcon, es: 'Garantía de 30 días', en: '30-day money-back' },
+            { Icon: CancelIcon, es: 'Cancela cuando quieras', en: 'Cancel anytime' },
+            { Icon: ShieldCheckIcon, es: 'Cumplimiento RGPD', en: 'GDPR compliant' },
           ].map((b, i) => (
             <div key={i} className="flex flex-col items-center gap-2">
-              <span className="text-2xl" aria-hidden>{b.icon}</span>
+              <span className="text-zinc-400" aria-hidden><b.Icon size={24} /></span>
               <span className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400">
                 {lang === 'en' ? b.en : b.es}
               </span>

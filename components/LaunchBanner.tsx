@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { RocketIcon } from '@/components/icons';
 
 // Secondary, dismissible launch-waitlist announcement (J2). Normal-flow strip at the top of the
 // landing — promotes the Product Hunt launch list without competing with the hero's signup CTA.
@@ -27,8 +28,8 @@ export default function LaunchBanner({ lang }: { lang: 'es' | 'en' }) {
       className="relative flex items-center justify-center gap-3 px-10 py-2 text-center"
       style={{ background: 'rgba(232,77,91,0.12)', borderBottom: '1px solid rgba(232,77,91,0.25)' }}
     >
-      <p className="font-mono-jb text-[12px] sm:text-[13px]" style={{ color: 'var(--text)' }}>
-        <span aria-hidden>🚀 </span>
+      <p className="font-mono-jb text-[12px] sm:text-[13px] inline-flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
+        <span aria-hidden><RocketIcon size={13} /></span>
         {lang === 'en'
           ? 'Launching soon on Product Hunt — join the list for an early-bird perk on launch day'
           : 'Lanzamos pronto en Product Hunt — apúntate y consigue una ventaja early-bird el día del lanzamiento'}{' '}

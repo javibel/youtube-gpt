@@ -91,11 +91,11 @@ export default async function NicheTitleIdeasPage({ params }: { params: Promise<
             )}
           </p>
           <div className="flex flex-wrap gap-3">
-            <a href="/title-analyzer" className="font-mono-jb text-[13px] px-4 py-2 rounded-lg transition hover:bg-white/[0.04]" style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}>
-              📝 {t('Analizar un título', 'Analyze a title')}
+            <a href="/title-analyzer" className="font-mono-jb text-[13px] px-4 py-2 rounded-lg transition hover:bg-white/[0.04] inline-flex items-center gap-1.5" style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}>
+              <img src="/icons/title.webp" alt="" width={14} height={14} className="object-contain" /> {t('Analizar un título', 'Analyze a title')}
             </a>
-            <a href="/generate" className="font-mono-jb text-[13px] px-4 py-2 rounded-lg transition hover:bg-white/[0.04]" style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}>
-              ✍️ {t('Generar títulos con IA', 'Generate titles with AI')}
+            <a href="/generate" className="font-mono-jb text-[13px] px-4 py-2 rounded-lg transition hover:bg-white/[0.04] inline-flex items-center gap-1.5" style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}>
+              <img src="/icons/magic-wand.webp" alt="" width={14} height={14} className="object-contain" /> {t('Generar títulos con IA', 'Generate titles with AI')}
             </a>
           </div>
         </div>

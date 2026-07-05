@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { BoltIcon, LinkIcon, WarningIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
 
@@ -122,11 +123,11 @@ function PreviewSeoScore({ lang }: { lang: Lang }) {
 function PreviewDesc({ lang }: { lang: Lang }) {
   return (
     <div className="col-span-2 font-mono-jb text-[13px] bg-black border border-white/10 p-4 leading-relaxed text-zinc-300">
-      <p style={{ color: 'var(--red)' }}>⚡ TIMESTAMPS</p>
+      <p className="inline-flex items-center gap-1.5" style={{ color: 'var(--red)' }}><BoltIcon size={12} /> TIMESTAMPS</p>
       <p>0:00 · Intro</p>
       <p>0:42 · {lang === 'en' ? 'Full setup' : 'El setup completo'}</p>
       <p>2:15 · {lang === 'en' ? 'Why I chose this monitor' : 'Por qué elegí este monitor'}</p>
-      <p className="mt-3 text-[#00E5FF]">🔗 {lang === 'en' ? 'Gear mentioned' : 'Equipo mencionado'}</p>
+      <p className="mt-3 text-[#00E5FF] inline-flex items-center gap-1.5"><LinkIcon size={12} /> {lang === 'en' ? 'Gear mentioned' : 'Equipo mencionado'}</p>
       <p>— Monitor LG 27GP: ...</p>
       <p className="mt-3">#EditingSetup #BudgetSetup #ContentCreator</p>
     </div>
@@ -348,7 +349,7 @@ function PreviewRetention({ lang }: { lang: Lang }) {
         <span>0:00</span><span>2:30</span><span>5:00</span><span>7:30</span><span>10:00</span>
       </div>
       <div className="mt-3 p-2 border border-white/5">
-        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>{lang === 'en' ? '⚠ DROP at 7:30 — 38%' : '⚠ CAÍDA en 7:30 — 38%'}</p>
+        <p className="font-mono-jb text-[13px] inline-flex items-center gap-1.5" style={{ color: 'var(--red)' }}><WarningIcon size={12} /> {lang === 'en' ? 'DROP at 7:30 — 38%' : 'CAÍDA en 7:30 — 38%'}</p>
         <p className="text-[13px] text-zinc-400 mt-1">{lang === 'en' ? 'AI: Move CTA before this point. Add a pattern interrupt at 7:00.' : 'IA: Mueve el CTA antes de este punto. Añade cambio de patrón en 7:00.'}</p>
       </div>
     </div>

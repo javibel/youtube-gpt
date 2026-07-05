@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
+import { FlameIcon, BoltIcon, LeafIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
 
@@ -360,7 +361,7 @@ export default function CompetitorTrackingPage() {
                           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full transition hover:opacity-80"
                           style={{ background: 'rgba(255,107,0,0.12)', border: '1px solid rgba(255,107,0,0.25)' }}
                         >
-                          <span style={{ color: '#FF6B00', fontSize: '11px' }}>🔥</span>
+                          <FlameIcon size={13} style={{ color: '#FF6B00' }} />
                           <span className="font-mono-jb text-[13px] font-bold" style={{ color: '#FF6B00' }}>
                             {od.outliers.length} outlier{od.outliers.length > 1 ? 's' : ''}
                           </span>
@@ -392,12 +393,12 @@ export default function CompetitorTrackingPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[13px] text-zinc-300 truncate">{v.title}</p>
-                            <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded mt-0.5 inline-block"
+                            <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded mt-0.5 inline-flex items-center gap-1"
                               style={{
                                 background: v.type === 'viral' ? 'rgba(232,77,91,0.12)' : 'rgba(0,229,255,0.12)',
                                 color: v.type === 'viral' ? '#e84d5b' : '#00E5FF',
                               }}>
-                              {v.type === 'viral' ? '⚡ Viral' : '🌿 Evergreen'}
+                              {v.type === 'viral' ? <><BoltIcon size={11} /> Viral</> : <><LeafIcon size={11} /> Evergreen</>}
                             </span>
                           </div>
                           <p className="font-mono-jb text-[13px] font-bold flex-shrink-0" style={{ color: '#FF6B00' }}>

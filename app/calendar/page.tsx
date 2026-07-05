@@ -235,9 +235,9 @@ export default function CalendarPage() {
         }}
         featuresHref="/features/content-calendar"
         bullets={[
-          { icon: '🗓️', title: { es: 'Vista mensual', en: 'Monthly view' }, desc: { es: 'Ve de un vistazo qué días tienes contenido planificado', en: 'See at a glance which days have planned content' } },
-          { icon: '🔄', title: { es: '4 estados', en: '4 statuses' }, desc: { es: 'Idea → Borrador → Programado → Publicado', en: 'Idea → Draft → Scheduled → Published' } },
-          { icon: '🤖', title: { es: 'Sugerencias con IA', en: 'AI suggestions' }, desc: { es: 'La IA propone qué grabar según tendencias y tu competencia', en: 'AI suggests what to film based on trends and your competitors' } },
+          { icon: '/icons/clock-fast.webp', title: { es: 'Vista mensual', en: 'Monthly view' }, desc: { es: 'Ve de un vistazo qué días tienes contenido planificado', en: 'See at a glance which days have planned content' } },
+          { icon: '/icons/gears.webp', title: { es: '4 estados', en: '4 statuses' }, desc: { es: 'Idea → Borrador → Programado → Publicado', en: 'Idea → Draft → Scheduled → Published' } },
+          { icon: '/icons/brain.webp', title: { es: 'Sugerencias con IA', en: 'AI suggestions' }, desc: { es: 'La IA propone qué grabar según tendencias y tu competencia', en: 'AI suggests what to film based on trends and your competitors' } },
         ]}
       />
     );

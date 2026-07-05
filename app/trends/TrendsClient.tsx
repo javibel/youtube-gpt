@@ -7,6 +7,14 @@ import { useLang } from '@/components/LangProvider';
 import PublicNav from '@/components/PublicNav';
 import ExitIntentPopup from '@/components/ExitIntentPopup';
 import ExtensionInstallBanner from '@/components/ExtensionInstallBanner';
+import {
+  MonitorIcon, GamepadIcon, MusicNoteIcon, StarIcon, NewspaperIcon, BallIcon,
+  BagIcon, UtensilsIcon, PlaneIcon, UnlockIcon, ThumbsUpIcon,
+} from '@/components/icons';
+
+const WebpIcon = (src: string) => ({ size = 16 }: { size?: number }) => (
+  <img src={src} alt="" width={size} height={size} className="object-contain inline-block" />
+);
 
 type Lang = 'es' | 'en';
 type Tab = 'explore' | 'alerts';
@@ -49,11 +57,13 @@ interface ExplorerData {
   totalResults: number;
 }
 
-const ALERT_ICONS: Record<string, string> = {
-  tech: '💻', gaming: '🎮', education: '📚', entertainment: '🎬', music: '🎵',
-  lifestyle: '🌟', news: '📰', sports: '⚽', science: '🔬', business: '💼',
-  food: '🍳', travel: '✈️', general: '📊',
+const ALERT_ICONS: Record<string, (props: { size?: number }) => React.ReactElement> = {
+  tech: MonitorIcon, gaming: GamepadIcon, education: WebpIcon('/icons/graduation.webp'),
+  entertainment: WebpIcon('/icons/clapperboard.webp'), music: MusicNoteIcon, lifestyle: StarIcon,
+  news: NewspaperIcon, sports: BallIcon, science: WebpIcon('/icons/flask.webp'), business: BagIcon,
+  food: UtensilsIcon, travel: PlaneIcon, general: WebpIcon('/icons/bar-chart.webp'),
 };
+const DEFAULT_ALERT_ICON = WebpIcon('/icons/bar-chart.webp');
 
 const REGIONS = [
   { code: 'US', label: { es: '🇺🇸 EE.UU.', en: '🇺🇸 USA' }, lang: 'en' },
@@ -144,8 +154,8 @@ function PublicTrends({ lang }: { lang: Lang }) {
           className="flex items-center justify-between p-4 rounded-xl mb-6 transition hover:opacity-90"
           style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}
         >
-          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-            🔓 {t('Regístrate gratis para filtrar por nicho, idioma y duración', 'Sign up free to filter by niche, language & duration')}
+          <span className="font-mono-jb text-[13px] inline-flex items-center gap-1.5" style={{ color: 'var(--yv-text-3)' }}>
+            <UnlockIcon size={13} /> {t('Regístrate gratis para filtrar por nicho, idioma y duración', 'Sign up free to filter by niche, language & duration')}
           </span>
           <span className="font-display font-bold text-sm" style={{ color: '#e84d5b' }}>
             {t('Gratis →', 'Free →')}
@@ -556,7 +566,7 @@ export default function TrendsClient() {
                     <p className="font-mono-jb text-[13px] mt-1 truncate" style={{ color: 'var(--yv-text-3)' }}>{item.channelTitle}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                       <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(item.views)} views</span>
-                      <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>👍 {fmtNum(item.likes)}</span>
+                      <span className="font-mono-jb text-[13px] inline-flex items-center gap-1" style={{ color: 'var(--yv-text-2)' }}><ThumbsUpIcon size={12} /> {fmtNum(item.likes)}</span>
                       <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{item.engagementRate}% eng</span>
                       <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--yv-text-3)' }}>
                         {item.categoryLabel[lang]}
@@ -605,7 +615,7 @@ export default function TrendsClient() {
 
           {!alertsLoading && !alertsError && alerts.length === 0 && (
             <div className="text-center py-16">
-              <div className="text-4xl mb-4">📊</div>
+              <div className="mb-4 flex justify-center"><img src="/icons/bar-chart.webp" alt="" width={40} height={40} className="object-contain" /></div>
               <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>
                 {t('No hay alertas todavía. Las tendencias se generan diariamente.', 'No alerts yet. Trends are generated daily.')}
               </p>
@@ -627,7 +637,9 @@ export default function TrendsClient() {
                 onClick={() => toggleExpand(alert.id)}
               >
                 <div className="flex items-start gap-3 p-4">
-                  <span className="text-lg flex-shrink-0 mt-0.5">{ALERT_ICONS[alert.category] || '📊'}</span>
+                  <span className="flex-shrink-0 mt-0.5">
+                    {(() => { const AlertIcon = ALERT_ICONS[alert.category] || DEFAULT_ALERT_ICON; return <AlertIcon size={18} />; })()}
+                  </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-display font-bold text-sm text-white">{alert.title}</span>

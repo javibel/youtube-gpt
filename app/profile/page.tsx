@@ -8,6 +8,7 @@ import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import PasswordInput from '@/components/PasswordInput';
 import { toast } from '@/components/Toaster';
+import { CrossIcon, CheckIcon, WarningIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
 
@@ -213,7 +214,7 @@ export default function ProfilePage() {
                   className="btn-offset px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
                   {savingName ? '...' : t('Guardar', 'Save')}
                 </button>
-                <button onClick={() => setEditingName(false)} className="px-3 hover:text-white transition font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>✕</button>
+                <button onClick={() => setEditingName(false)} className="px-3 hover:text-white transition font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}><CrossIcon size={14} /></button>
               </div>
             ) : (
               <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }}>
@@ -225,7 +226,7 @@ export default function ProfilePage() {
               </div>
             )}
             {nameSaved && (
-              <p className="font-mono-jb text-[13px]" style={{ color: '#22c55e' }}>✓ {t('Nombre actualizado', 'Name updated')}</p>
+              <p className="font-mono-jb text-[13px] inline-flex items-center gap-1.5" style={{ color: '#22c55e' }}><CheckIcon size={13} /> {t('Nombre actualizado', 'Name updated')}</p>
             )}
           </div>
 
@@ -328,8 +329,8 @@ export default function ProfilePage() {
           )}
 
           {pwdSuccess && (
-            <p className="font-mono-jb text-[13px] py-2" style={{ color: '#22c55e' }}>
-              ✓ {t('Contraseña actualizada. Te hemos enviado un email de confirmación.', 'Password updated. A confirmation email has been sent.')}
+            <p className="font-mono-jb text-[13px] py-2 inline-flex items-start gap-1.5" style={{ color: '#22c55e' }}>
+              <CheckIcon size={13} className="mt-0.5 shrink-0" /> {t('Contraseña actualizada. Te hemos enviado un email de confirmación.', 'Password updated. A confirmation email has been sent.')}
             </p>
           )}
 
@@ -357,8 +358,8 @@ export default function ProfilePage() {
                   className="py-2.5 px-3 text-sm" />
               </div>
               {pwdError && (
-                <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'var(--yv-brand-soft)', border: '1px solid var(--yv-brand-border)', color: '#f87171' }}>
-                  ⚠️ {pwdError}
+                <div className="rounded-xl px-4 py-3 text-sm inline-flex items-center gap-1.5" style={{ background: 'var(--yv-brand-soft)', border: '1px solid var(--yv-brand-border)', color: '#f87171' }}>
+                  <WarningIcon size={14} /> {pwdError}
                 </div>
               )}
               <div className="flex gap-3">

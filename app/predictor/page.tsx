@@ -110,9 +110,9 @@ export default function PredictorPage() {
         color="#B388FF"
         featuresHref="/features/video-predictor"
         bullets={[
-          { icon: '🔮', title: { es: 'Rango de vistas', en: 'Views range' }, desc: { es: 'Estimación basada en tu histórico real', en: 'Estimate based on your real history' } },
-          { icon: '⚡', title: { es: 'Potencial viral', en: 'Viral potential' }, desc: { es: 'Score de probabilidad de despegue', en: 'Breakout probability score' } },
-          { icon: '💡', title: { es: 'Sugerencias', en: 'Suggestions' }, desc: { es: 'Qué ajustar antes de publicar', en: 'What to tweak before publishing' } },
+          { icon: '/icons/crystal-ball.webp', title: { es: 'Rango de vistas', en: 'Views range' }, desc: { es: 'Estimación basada en tu histórico real', en: 'Estimate based on your real history' } },
+          { icon: '/icons/lightning.webp', title: { es: 'Potencial viral', en: 'Viral potential' }, desc: { es: 'Score de probabilidad de despegue', en: 'Breakout probability score' } },
+          { icon: '/icons/bulb.webp', title: { es: 'Sugerencias', en: 'Suggestions' }, desc: { es: 'Qué ajustar antes de publicar', en: 'What to tweak before publishing' } },
         ]}
       />
     );

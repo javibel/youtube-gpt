@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useLang } from '@/components/LangProvider';
+import { CheckIcon } from '@/components/icons';
 
 export default function CopyButton({ snippet }: { snippet: string }) {
   const lang = useLang();
@@ -22,7 +23,7 @@ export default function CopyButton({ snippet }: { snippet: string }) {
         color: copied ? '#00FFA3' : 'var(--yv-text-2)',
       }}
     >
-      {copied ? t('Copiado ✓', 'Copied ✓') : t('Copiar código', 'Copy code')}
+      {copied ? <span className="inline-flex items-center gap-1">{t('Copiado', 'Copied')} <CheckIcon size={12} /></span> : t('Copiar código', 'Copy code')}
     </button>
   );
 }

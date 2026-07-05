@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from '@/components/Toaster';
+import { CrossIcon, LockIcon, BoltIcon, TargetIcon, ChatIcon, InfinityIcon, UsersIcon, TrophyIcon, RocketIcon, DiamondIcon } from '@/components/icons';
 
 interface LimitReachedModalProps {
   onClose: () => void;
@@ -54,12 +55,16 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
           className="absolute top-4 right-4 text-gray-600 hover:text-gray-400 transition text-lg leading-none"
           aria-label="Cerrar"
         >
-          ✕
+          <CrossIcon size={18} />
         </button>
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-5xl mb-3">{reason === 'pro_feature' ? '⚡' : '🔒'}</div>
+          <div className="mb-3 flex justify-center">
+            {reason === 'pro_feature'
+              ? <img src="/icons/lightning.webp" alt="" width={56} height={56} className="object-contain" />
+              : <span className="inline-flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: 'rgba(204,0,255,0.12)', color: '#CC00FF' }}><LockIcon size={26} /></span>}
+          </div>
           <h2 className="text-2xl font-bold text-white mb-2">
             {reason === 'pro_feature'
               ? t('Función exclusiva de pago', 'Paid feature')
@@ -82,8 +87,8 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
             <p className="text-[13px] text-gray-600 uppercase tracking-widest mb-2">{t('Gratis', 'Free')}</p>
             <p className="text-xl font-bold text-gray-400 mb-3">0 €</p>
             <ul className="space-y-1.5 text-[13px] text-gray-600">
-              <li className="flex items-center gap-1.5"><span className="text-gray-700">✗</span> {t('10 gen/mes', '10 gen/mo')}</li>
-              <li className="flex items-center gap-1.5"><span className="text-gray-700">✗</span> {t('Sin soporte', 'No support')}</li>
+              <li className="flex items-center gap-1.5"><CrossIcon size={12} className="text-gray-700 shrink-0" /> {t('10 gen/mes', '10 gen/mo')}</li>
+              <li className="flex items-center gap-1.5"><CrossIcon size={12} className="text-gray-700 shrink-0" /> {t('Sin soporte', 'No support')}</li>
             </ul>
           </div>
 
@@ -110,9 +115,9 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
             <p className="text-xl font-bold text-white mb-1">9,99 €</p>
             <p className="text-[13px] text-gray-500 mb-3">{t('/mes · 200 gen', '/mo · 200 gen')}</p>
             <ul className="space-y-1 text-[13px]">
-              <li className="text-gray-300">{t('⚡ 200 gen/mes', '⚡ 200 gen/mo')}</li>
-              <li className="text-gray-300">{t('🎯 Todos los templates', '🎯 All templates')}</li>
-              <li className="text-gray-300">{t('💬 Soporte prioritario', '💬 Priority support')}</li>
+              <li className="text-gray-300 flex items-center gap-1.5"><BoltIcon size={12} className="shrink-0" /> {t('200 gen/mes', '200 gen/mo')}</li>
+              <li className="text-gray-300 flex items-center gap-1.5"><TargetIcon size={12} className="shrink-0" /> {t('Todos los templates', 'All templates')}</li>
+              <li className="text-gray-300 flex items-center gap-1.5"><ChatIcon size={12} className="shrink-0" /> {t('Soporte prioritario', 'Priority support')}</li>
             </ul>
           </button>
 
@@ -139,9 +144,9 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
             <p className="text-xl font-bold text-white mb-1">29,99 €</p>
             <p className="text-[13px] text-gray-500 mb-3">{t('/mes · Ilimitado', '/mo · Unlimited')}</p>
             <ul className="space-y-1 text-[13px]">
-              <li className="text-gray-300">{t('♾️ Ilimitado', '♾️ Unlimited')}</li>
-              <li className="text-gray-300">{t('👥 5 miembros', '👥 5 members')}</li>
-              <li className="text-gray-300">{t('🏆 Todo incluido', '🏆 Everything included')}</li>
+              <li className="text-gray-300 flex items-center gap-1.5"><InfinityIcon size={12} className="shrink-0" /> {t('Ilimitado', 'Unlimited')}</li>
+              <li className="text-gray-300 flex items-center gap-1.5"><UsersIcon size={12} className="shrink-0" /> {t('5 miembros', '5 members')}</li>
+              <li className="text-gray-300 flex items-center gap-1.5"><TrophyIcon size={12} className="shrink-0" /> {t('Todo incluido', 'Everything included')}</li>
             </ul>
           </button>
         </div>
@@ -197,9 +202,15 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
               {t('Redirigiendo…', 'Redirecting…')}
             </span>
           ) : isPro ? (
-            `🚀 ${t('Actualizar a Pro', 'Upgrade to Pro')} — ${selectedPlan === 'yearly' ? t('99,99 €/año', '99.99 €/yr') : t('9,99 €/mes', '9.99 €/mo')}`
+            <span className="inline-flex items-center justify-center gap-2">
+              <RocketIcon size={16} />
+              {t('Actualizar a Pro', 'Upgrade to Pro')} — {selectedPlan === 'yearly' ? t('99,99 €/año', '99.99 €/yr') : t('9,99 €/mes', '9.99 €/mo')}
+            </span>
           ) : (
-            `💎 ${t('Actualizar a Business', 'Upgrade to Business')} — ${selectedPlan === 'business_yearly' ? t('299 €/año', '299 €/yr') : t('29,99 €/mes', '29.99 €/mo')}`
+            <span className="inline-flex items-center justify-center gap-2">
+              <DiamondIcon size={16} />
+              {t('Actualizar a Business', 'Upgrade to Business')} — {selectedPlan === 'business_yearly' ? t('299 €/año', '299 €/yr') : t('29,99 €/mes', '29.99 €/mo')}
+            </span>
           )}
         </button>
 

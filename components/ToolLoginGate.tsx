@@ -13,6 +13,7 @@ import { useLang } from '@/components/LangProvider';
  */
 
 interface Bullet {
+  /** Path under /public/icons/*.webp — never an emoji (see project_tool_icons_webp memory). */
   icon: string;
   title: { es: string; en: string };
   desc: { es: string; en: string };
@@ -73,7 +74,7 @@ export default function ToolLoginGate({ eyebrow, title, highlight, description, 
         <div className="grid md:grid-cols-3 gap-5 mb-14 text-left">
           {bullets.map((b) => (
             <div key={b.title.es} className="yv-card p-5">
-              <div className="text-2xl mb-3">{b.icon}</div>
+              <img src={b.icon} alt="" width={32} height={32} className="object-contain mb-3" />
               <h3 className="font-display font-bold text-sm mb-1">{t(b.title.es, b.title.en)}</h3>
               <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>{t(b.desc.es, b.desc.en)}</p>
             </div>

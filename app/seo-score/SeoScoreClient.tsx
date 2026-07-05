@@ -7,6 +7,7 @@ import DashboardShell from '@/components/DashboardShell';
 import ExitIntentPopup from '@/components/ExitIntentPopup';
 import ExtensionInstallBanner from '@/components/ExtensionInstallBanner';
 import PublicNav from '@/components/PublicNav';
+import { ImageIcon, LinkIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
 
@@ -142,7 +143,7 @@ function VideoCard({ video, lang, expanded, onToggle }: { video: VideoScore; lan
                 background: thumbAi.passed ? 'rgba(34,197,94,0.06)' : 'rgba(232,77,91,0.06)',
               }}>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm">🖼️</span>
+                  <ImageIcon size={14} />
                   <span className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: thumbAi.passed ? '#22c55e' : '#e84d5b' }}>
                     {t('Análisis de thumbnail (IA)', 'Thumbnail analysis (AI)')}
                   </span>
@@ -492,13 +493,13 @@ export default function SeoScoreClient() {
           <SeoScoreContent />
           <ExtensionInstallBanner lang={lang} />
           <p className="text-center mt-6 text-[13px] font-mono-jb">
-            <a href="/title-analyzer" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2">
-              {lang === 'en' ? '📝 Analyze your title before publishing — free →' : '📝 Analiza tu título antes de publicar — gratis →'}
+            <a href="/title-analyzer" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2 inline-flex items-center gap-1.5">
+              <img src="/icons/title.webp" alt="" width={14} height={14} className="object-contain" /> {lang === 'en' ? 'Analyze your title before publishing — free →' : 'Analiza tu título antes de publicar — gratis →'}
             </a>
           </p>
           <p className="text-center mt-2 text-[13px] font-mono-jb">
-            <a href="/embed" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2">
-              {lang === 'en' ? '🔗 Add this free SEO analyzer to your website →' : '🔗 Añade este analizador SEO gratis a tu web →'}
+            <a href="/embed" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2 inline-flex items-center gap-1.5">
+              <LinkIcon size={13} /> {lang === 'en' ? 'Add this free SEO analyzer to your website →' : 'Añade este analizador SEO gratis a tu web →'}
             </a>
           </p>
         </div>

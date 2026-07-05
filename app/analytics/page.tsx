@@ -108,9 +108,9 @@ export default function AnalyticsPage() {
         color="#00FFA3"
         featuresHref="/features/channel-analytics"
         bullets={[
-          { icon: '📈', title: { es: 'Vistas diarias', en: 'Daily views' }, desc: { es: 'Evolución real de tu canal día a día', en: 'Your channel\'s real day-by-day evolution' } },
-          { icon: '🌍', title: { es: 'Tráfico y países', en: 'Traffic & countries' }, desc: { es: 'De dónde vienen tus espectadores', en: 'Where your viewers come from' } },
-          { icon: '🎬', title: { es: 'Top vídeos', en: 'Top videos' }, desc: { es: 'Qué contenido está funcionando mejor', en: 'Which content is performing best' } },
+          { icon: '/icons/chart-up.webp', title: { es: 'Vistas diarias', en: 'Daily views' }, desc: { es: 'Evolución real de tu canal día a día', en: 'Your channel\'s real day-by-day evolution' } },
+          { icon: '/icons/globe.webp', title: { es: 'Tráfico y países', en: 'Traffic & countries' }, desc: { es: 'De dónde vienen tus espectadores', en: 'Where your viewers come from' } },
+          { icon: '/icons/clapperboard.webp', title: { es: 'Top vídeos', en: 'Top videos' }, desc: { es: 'Qué contenido está funcionando mejor', en: 'Which content is performing best' } },
         ]}
       />
     );

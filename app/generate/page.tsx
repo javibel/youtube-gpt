@@ -9,6 +9,7 @@ import { TEMPLATES } from '@/utils/prompts';
 import { callClaudeAPI, continueGeneration } from '@/utils/claudeAPI';
 import { useLang } from '@/components/LangProvider';
 import { toast } from '@/components/Toaster';
+import { LockIcon, VideoIcon, WarningIcon, BoltIcon, CheckIcon } from '@/components/icons';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 const ThumbnailEditor = lazy(() => import('@/components/ThumbnailEditor'));
@@ -290,7 +291,7 @@ export default function GeneratePage() {
                   {locked && (
                     <div className="absolute inset-0 rounded-[14px] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.28)' }}>
                       <div className="text-center">
-                        <div className="text-xl mb-1">🔒</div>
+                        <div className="mb-1 flex justify-center"><LockIcon size={20} /></div>
                         <span className="red-tape text-[13px]">PRO</span>
                       </div>
                     </div>
@@ -446,7 +447,7 @@ export default function GeneratePage() {
                   </>
                 ) : selectedTemplate === 'video_preview' ? (
                   <>
-                    <span>📺</span>
+                    <VideoIcon size={16} />
                     {t('Crear Vídeo Tips', 'Create Video Tips')}
                   </>
                 ) : selectedTemplate === 'thumbnail' ? (
@@ -462,16 +463,16 @@ export default function GeneratePage() {
                 )}
               </button>
               {selectedTemplate === 'video_preview' ? (
-                <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-                  📺 {t('Sin créditos · local', '0 credits · local')}
+                <p className="font-mono-jb text-[13px] inline-flex items-center gap-1.5" style={{ color: 'var(--yv-text-3)' }}>
+                  <VideoIcon size={13} /> {t('Sin créditos · local', '0 credits · local')}
                 </p>
               ) : isBusiness ? (
                 <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                   <span className="text-white font-semibold">∞</span> {t('Ilimitado', 'Unlimited')}
                 </p>
               ) : remainingDisplay === 0 ? (
-                <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-brand)' }}>
-                  ⚠ {t('Sin créditos este mes', 'No credits left this month')}
+                <p className="font-mono-jb text-[13px] inline-flex items-center gap-1.5" style={{ color: 'var(--yv-brand)' }}>
+                  <WarningIcon size={13} /> {t('Sin créditos este mes', 'No credits left this month')}
                 </p>
               ) : (
                 <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
@@ -503,7 +504,7 @@ export default function GeneratePage() {
             {/* Error */}
             {error && (
               <div className="rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-4 flex-wrap" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
-                <span>⚠️ {error}</span>
+                <span className="inline-flex items-center gap-1.5"><WarningIcon size={14} /> {error}</span>
                 <button onClick={handleGenerate} disabled={loading} className="shrink-0 px-4 py-1.5 rounded-lg text-[13px] font-display font-bold text-white transition hover:opacity-90 disabled:opacity-40" style={{ background: 'rgba(232,77,91,0.8)' }}>
                   {t('Reintentar', 'Retry')}
                 </button>
@@ -603,8 +604,8 @@ export default function GeneratePage() {
                         {output}
                       </pre>
                       {truncated && (
-                        <p className="mt-3 text-[13px] font-mono-jb" style={{ color: 'var(--yv-brand)' }}>
-                          ⚡ {t('El contenido fue cortado por longitud. Pulsa "Continuar generando" para obtener el resto.', 'Content was cut short due to length. Click "Continue generating" to get the rest.')}
+                        <p className="mt-3 text-[13px] font-mono-jb inline-flex items-start gap-1.5" style={{ color: 'var(--yv-brand)' }}>
+                          <BoltIcon size={13} className="shrink-0 mt-0.5" /> {t('El contenido fue cortado por longitud. Pulsa "Continuar generando" para obtener el resto.', 'Content was cut short due to length. Click "Continue generating" to get the rest.')}
                         </p>
                       )}
                     </>
@@ -646,15 +647,15 @@ export default function GeneratePage() {
                           setPreviewSaved(false);
                           setShowVideoPreview(true);
                         }}
-                        className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display"
+                        className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display inline-flex items-center gap-1.5"
                         style={{ borderColor: '#00D9FF', color: '#00D9FF' }}
                       >
-                        📺 {t('Generar Preview', 'Generate Preview')}
+                        <VideoIcon size={14} /> {t('Generar Preview', 'Generate Preview')}
                       </button>
                     )}
                     {previewSaved && (
-                      <span className="text-[13px] font-mono-jb" style={{ color: '#7CFF00' }}>
-                        ✓ {t('Preview guardada', 'Preview saved')}
+                      <span className="text-[13px] font-mono-jb inline-flex items-center gap-1.5" style={{ color: '#7CFF00' }}>
+                        <CheckIcon size={13} /> {t('Preview guardada', 'Preview saved')}
                       </span>
                     )}
                     <a href="/dashboard" className="ml-auto font-mono-jb text-[13px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>

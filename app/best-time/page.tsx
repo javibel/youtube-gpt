@@ -112,9 +112,9 @@ export default function BestTimePage() {
         color="#FFE800"
         featuresHref="/features/best-time"
         bullets={[
-          { icon: '🗓️', title: { es: 'Heatmap 7×24', en: '7×24 heatmap' }, desc: { es: 'Visualiza tu rendimiento por día y hora', en: 'Visualize your performance by day and hour' } },
-          { icon: '🥇', title: { es: 'Tus mejores franjas', en: 'Your top slots' }, desc: { es: 'Los 3 momentos con mejor rendimiento histórico', en: 'Your 3 best-performing time slots historically' } },
-          { icon: '🤖', title: { es: 'Consejo con IA', en: 'AI tip' }, desc: { es: 'Recomendación personalizada según tus datos', en: 'Personalized recommendation based on your data' } },
+          { icon: '/icons/clock-fast.webp', title: { es: 'Heatmap 7×24', en: '7×24 heatmap' }, desc: { es: 'Visualiza tu rendimiento por día y hora', en: 'Visualize your performance by day and hour' } },
+          { icon: '/icons/trophy.webp', title: { es: 'Tus mejores franjas', en: 'Your top slots' }, desc: { es: 'Los 3 momentos con mejor rendimiento histórico', en: 'Your 3 best-performing time slots historically' } },
+          { icon: '/icons/brain.webp', title: { es: 'Consejo con IA', en: 'AI tip' }, desc: { es: 'Recomendación personalizada según tus datos', en: 'Personalized recommendation based on your data' } },
         ]}
       />
     );

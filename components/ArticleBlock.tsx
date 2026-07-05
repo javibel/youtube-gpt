@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { BlockType, Lang } from '@/lib/blog-data';
+import { BagIcon } from '@/components/icons';
 
 export default function ArticleBlock({ block, lang }: { block: BlockType; lang: Lang }) {
   if (block.type === 'p') {
@@ -59,7 +60,7 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
       <div className="my-10 border border-white/15 p-8 relative overflow-hidden" style={{ background: '#0E0E10' }}>
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(255,138,0,0.12), transparent 70%)' }} />
         <div className="relative flex flex-col md:flex-row items-center gap-6">
-          <div className="text-4xl">🎒</div>
+          <div style={{ color: '#FF8A00' }}><BagIcon size={40} /></div>
           <div className="flex-1 text-center md:text-left">
             <p className="font-display font-bold text-xl mb-1">{block.t}</p>
             <p className="text-zinc-400 text-sm">{block.sub}</p>

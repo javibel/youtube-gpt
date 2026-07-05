@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { useLang } from '@/components/LangProvider';
 import ReferralCard from '@/components/ReferralCard';
 import { toast } from '@/components/Toaster';
+import { CheckIcon, CrossIcon, VideoIcon, StarIcon } from '@/components/icons';
 
 const VideoPreviewGenerator = lazy(() => import('@/components/VideoPreviewGenerator'));
 const PlaybackModal = lazy(() => import('@/components/PlaybackModal'));
@@ -63,7 +64,7 @@ export default function DashboardPage() {
   const [billingPlan, setBillingPlan] = useState<'monthly'|'yearly'|'business_monthly'|'business_yearly'>('monthly');
   const [cancelling, setCancelling] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [syncMsg, setSyncMsg] = useState<{ msg: string; ok: boolean } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState('all');
@@ -138,7 +139,7 @@ export default function DashboardPage() {
   const [ytExpired, setYtExpired]       = useState(false);
   const [ytConnecting, setYtConnecting] = useState(false);
   const [ytDisconnecting, setYtDisconnecting] = useState(false);
-  const [ytToast, setYtToast]           = useState<string | null>(null);
+  const [ytToast, setYtToast]           = useState<{ msg: string; ok: boolean } | null>(null);
   type GrowthData = { subs7d: number; subs30d: number; views7d: number; views30d: number; videos7d: number; videos30d: number };
   type StatsPoint = { subscribers: number; totalViews: number; recordedAt: string };
   const [ytGrowth, setYtGrowth] = useState<GrowthData | null>(null);
@@ -203,15 +204,15 @@ export default function DashboardPage() {
     const params = new URLSearchParams(window.location.search);
     const yt = params.get('yt');
     if (yt === 'connected') {
-      setYtToast(lang === 'en' ? '✓ YouTube channel connected!' : '✓ Canal de YouTube conectado');
+      setYtToast({ msg: lang === 'en' ? 'YouTube channel connected!' : 'Canal de YouTube conectado', ok: true });
       setTimeout(() => setYtToast(null), 4000);
       window.history.replaceState({}, '', '/dashboard');
     } else if (yt === 'error') {
-      setYtToast(lang === 'en' ? '✗ Could not connect YouTube' : '✗ No se pudo conectar YouTube');
+      setYtToast({ msg: lang === 'en' ? 'Could not connect YouTube' : 'No se pudo conectar YouTube', ok: false });
       setTimeout(() => setYtToast(null), 4000);
       window.history.replaceState({}, '', '/dashboard');
     } else if (yt === 'pro_required') {
-      setYtToast(lang === 'en' ? '✗ YouTube connect requires Pro plan' : '✗ Conectar YouTube requiere plan Pro');
+      setYtToast({ msg: lang === 'en' ? 'YouTube connect requires Pro plan' : 'Conectar YouTube requiere plan Pro', ok: false });
       setTimeout(() => setYtToast(null), 5000);
       window.history.replaceState({}, '', '/dashboard');
     }
@@ -272,13 +273,13 @@ function handleCopy(id: string, out: string) {
       const res = await fetch('/api/stripe/sync', { method: 'POST' });
       const d = await res.json();
       if (d.synced) {
-        setSyncMsg(t('✓ Suscripción activada. Recargando...', '✓ Subscription activated. Reloading...'));
+        setSyncMsg({ msg: t('Suscripción activada. Recargando...', 'Subscription activated. Reloading...'), ok: true });
         setTimeout(() => window.location.reload(), 1500);
       } else {
-        setSyncMsg(d.message ?? t('No se encontró suscripción activa en Stripe.', 'No active subscription found in Stripe.'));
+        setSyncMsg({ msg: d.message ?? t('No se encontró suscripción activa en Stripe.', 'No active subscription found in Stripe.'), ok: false });
       }
     } catch {
-      setSyncMsg(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'));
+      setSyncMsg({ msg: t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'), ok: false });
     } finally {
       setSyncing(false);
     }
@@ -1033,7 +1034,7 @@ function handleCopy(id: string, out: string) {
                                 style={{ borderColor: 'rgba(0,217,255,0.35)', color: '#00D9FF', background: 'rgba(0,217,255,0.06)' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,217,255,0.12)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,217,255,0.06)')}>
-                                🎬 {t('Generar Preview', 'Generate Preview')}
+                                <VideoIcon size={13} /> {t('Generar Preview', 'Generate Preview')}
                               </button>
                             )}
                             <a href="/generate" className="soft-pill px-3 py-1.5 text-[13px] font-mono-jb tracking-wider uppercase hover:text-white" style={{ color: 'var(--yv-text-2)' }}>
@@ -1095,8 +1096,8 @@ function handleCopy(id: string, out: string) {
                   <button key={star} type="button" onClick={() => setReviewRating(star)}
                     role="radio" aria-checked={reviewRating === star}
                     aria-label={t(`${star} estrella${star > 1 ? 's' : ''}`, `${star} star${star > 1 ? 's' : ''}`)}
-                    className="text-2xl transition"
-                    style={{ color: star <= reviewRating ? '#FFE800' : 'rgba(255,255,255,0.15)' }}>★</button>
+                    className="transition"
+                    style={{ color: star <= reviewRating ? '#FFE800' : 'rgba(255,255,255,0.15)' }}><StarIcon size={24} /></button>
                 ))}
               </div>
               <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)}
@@ -1138,7 +1139,7 @@ function handleCopy(id: string, out: string) {
               </div>
             </div>
             <div className="space-y-1.5 font-mono-jb text-[14px]">
-              <div className="flex justify-between"><span style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</span><span className="text-white">{isPro ? 'PRO ★' : 'FREE'}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</span><span className="text-white inline-flex items-center gap-1">{isPro ? <>PRO <StarIcon size={11} /></> : 'FREE'}</span></div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--yv-text-3)' }}>{t('Miembro desde', 'Member since')}</span>
                 <span className="text-white">{data?.user?.createdAt ? new Date(data.user.createdAt).toLocaleDateString(dateLocale, { month: 'short', year: 'numeric' }) : '—'}</span>
@@ -1409,8 +1410,8 @@ function handleCopy(id: string, out: string) {
                     {syncing ? t('Sincronizando...', 'Syncing...') : t('¿Ya pagaste? Sincronizar suscripción', 'Already paid? Sync subscription')}
                   </button>
                   {syncMsg && (
-                    <p className="font-mono-jb text-[13px] mt-2 text-center" style={{ color: syncMsg.startsWith('✓') ? '#16a34a' : '#f87171' }}>
-                      {syncMsg}
+                    <p className="font-mono-jb text-[13px] mt-2 text-center inline-flex items-center justify-center gap-1.5 w-full" style={{ color: syncMsg.ok ? '#16a34a' : '#f87171' }}>
+                      {syncMsg.ok ? <CheckIcon size={13} /> : <CrossIcon size={13} />} {syncMsg.msg}
                     </p>
                   )}
                 </div>
@@ -1511,7 +1512,7 @@ function handleCopy(id: string, out: string) {
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-white/15 p-5" style={{ background: '#0C0C0E' }}>
-              <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yellow)' }}>★ {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
+              <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2 inline-flex items-center gap-1.5" style={{ color: 'var(--yellow)' }}><StarIcon size={12} /> {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
                 {dailyTip ? t(dailyTip.es, dailyTip.en) : t(
                   'Los títulos con un número específico (7, 23, 147) superan a los genéricos en un 36% de CTR. Prueba \u201c7 errores...\u201d la próxima vez.',
@@ -1526,9 +1527,9 @@ function handleCopy(id: string, out: string) {
 
       {/* Toast */}
       {ytToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl font-mono-jb text-sm shadow-2xl"
-          style={{ background: ytToast.startsWith('✓') ? '#16a34a' : '#dc2626', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}>
-          {ytToast}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl font-mono-jb text-sm shadow-2xl inline-flex items-center gap-2"
+          style={{ background: ytToast.ok ? '#16a34a' : '#dc2626', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}>
+          {ytToast.ok ? <CheckIcon size={14} /> : <CrossIcon size={14} />} {ytToast.msg}
         </div>
       )}
 

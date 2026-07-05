@@ -123,9 +123,9 @@ export default function SubscribersPage() {
           en: 'Real demographics of your subscribers: age, gender, country, and subscription sources. With an AI-generated audience profile and collaboration ideas.',
         }}
         bullets={[
-          { icon: '📊', title: { es: 'Demografía real', en: 'Real demographics' }, desc: { es: 'Edad, género y país de tu audiencia', en: 'Age, gender and country of your audience' } },
-          { icon: '📈', title: { es: 'Evolución 90 días', en: '90-day timeline' }, desc: { es: 'Cómo ha crecido tu base de suscriptores', en: 'How your subscriber base has grown' } },
-          { icon: '🤖', title: { es: 'Perfil con IA', en: 'AI profile' }, desc: { es: 'Intereses y sugerencias de colaboración', en: 'Interests and collaboration suggestions' } },
+          { icon: '/icons/bar-chart.webp', title: { es: 'Demografía real', en: 'Real demographics' }, desc: { es: 'Edad, género y país de tu audiencia', en: 'Age, gender and country of your audience' } },
+          { icon: '/icons/chart-up.webp', title: { es: 'Evolución 90 días', en: '90-day timeline' }, desc: { es: 'Cómo ha crecido tu base de suscriptores', en: 'How your subscriber base has grown' } },
+          { icon: '/icons/brain.webp', title: { es: 'Perfil con IA', en: 'AI profile' }, desc: { es: 'Intereses y sugerencias de colaboración', en: 'Interests and collaboration suggestions' } },
         ]}
       />
     );

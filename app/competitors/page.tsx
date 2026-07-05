@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
+import { FlameIcon, BoltIcon, LeafIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
 
@@ -155,12 +156,12 @@ export default function CompetitorsPage() {
 
           <div className="grid md:grid-cols-3 gap-5 mb-14 text-left">
             {[
-              { icon: '📈', title: t('Métricas del canal', 'Channel metrics'), desc: t('Suscriptores, vistas totales, frecuencia de publicación y país.', 'Subscribers, total views, upload frequency and country') },
-              { icon: '🏆', title: t('Top vídeos', 'Top videos'), desc: t('Los vídeos con más vistas, likes y engagement de cualquier canal', 'The most viewed, liked and engaging videos from any channel') },
-              { icon: '🔑', title: t('Keywords y estrategia', 'Keywords & strategy'), desc: t('Las keywords que usa tu competencia para posicionar sus videos', 'The keywords your competition uses to rank their videos') },
+              { icon: '/icons/chart-up.webp', title: t('Métricas del canal', 'Channel metrics'), desc: t('Suscriptores, vistas totales, frecuencia de publicación y país.', 'Subscribers, total views, upload frequency and country') },
+              { icon: '/icons/trophy.webp', title: t('Top vídeos', 'Top videos'), desc: t('Los vídeos con más vistas, likes y engagement de cualquier canal', 'The most viewed, liked and engaging videos from any channel') },
+              { icon: '/icons/key.webp', title: t('Keywords y estrategia', 'Keywords & strategy'), desc: t('Las keywords que usa tu competencia para posicionar sus videos', 'The keywords your competition uses to rank their videos') },
             ].map(f => (
               <div key={f.title} className="yv-card p-5">
-                <div className="text-2xl mb-3">{f.icon}</div>
+                <img src={f.icon} alt="" width={32} height={32} className="object-contain mb-3" />
                 <h3 className="font-display font-bold text-sm mb-1">{f.title}</h3>
                 <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>{f.desc}</p>
               </div>
@@ -372,7 +373,7 @@ export default function CompetitorsPage() {
             <div className="yv-card p-5 space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <h3 className="font-display font-bold text-base text-white flex items-center gap-2">
-                  <span style={{ color: '#FF6B00' }}>🔥</span>
+                  <FlameIcon size={18} style={{ color: '#FF6B00' }} />
                   {t('Outlier Detection', 'Outlier Detection')}
                   {outliers && outliers.outliers.length > 0 && (
                     <span className="font-mono-jb text-[13px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,107,0,0.15)', color: '#FF6B00' }}>
@@ -424,12 +425,12 @@ export default function CompetitorsPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold text-zinc-300 truncate group-hover:text-white transition">{v.title}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded"
+                          <span className="font-mono-jb text-[13px] px-1.5 py-0.5 rounded inline-flex items-center gap-1"
                             style={{
                               background: v.type === 'viral' ? 'rgba(232,77,91,0.12)' : 'rgba(0,229,255,0.12)',
                               color: v.type === 'viral' ? '#e84d5b' : '#00E5FF',
                             }}>
-                            {v.type === 'viral' ? '⚡ Viral' : '🌿 Evergreen'}
+                            {v.type === 'viral' ? <><BoltIcon size={11} /> Viral</> : <><LeafIcon size={11} /> Evergreen</>}
                           </span>
                           <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtDate(v.publishedAt, lang)}</span>
                         </div>

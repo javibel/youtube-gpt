@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { CheckIcon } from '@/components/icons';
 
 export default function ReferralCard({ lang }: { lang: 'es' | 'en' }) {
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -71,7 +72,7 @@ export default function ReferralCard({ lang }: { lang: 'es' | 'en' }) {
             color: copied ? '#00FFA3' : '#FF8A00',
           }}
         >
-          {copied ? t('Copiado ✓', 'Copied ✓') : t('Copiar', 'Copy')}
+          {copied ? <span className="inline-flex items-center gap-1">{t('Copiado', 'Copied')} <CheckIcon size={12} /></span> : t('Copiar', 'Copy')}
         </button>
       </div>
     </div>

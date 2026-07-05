@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import PublicNav from '@/components/PublicNav';
 import CopyButton from './CopyButton';
+import { BoltIcon, ResponsiveIcon, LinkIcon } from '@/components/icons';
 
 export const metadata: Metadata = {
   title: 'Embeddable YouTube SEO Score Widget',
@@ -73,12 +74,12 @@ export default function EmbedPage() {
         {/* Features */}
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           {[
-            { icon: '⚡', title: 'Free', desc: 'No usage limits, no API key.' },
-            { icon: '🎨', title: 'Responsive', desc: 'Adapts to any width.' },
-            { icon: '🔗', title: 'Backlink included', desc: 'Links to YTubViral for attribution.' },
+            { Icon: BoltIcon, title: 'Free', desc: 'No usage limits, no API key.' },
+            { Icon: ResponsiveIcon, title: 'Responsive', desc: 'Adapts to any width.' },
+            { Icon: LinkIcon, title: 'Backlink included', desc: 'Links to YTubViral for attribution.' },
           ].map(f => (
             <div key={f.title} className="p-5 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--yv-border)' }}>
-              <p className="text-2xl mb-2">{f.icon}</p>
+              <p className="mb-2" style={{ color: 'var(--yv-brand)' }}><f.Icon size={24} /></p>
               <p className="font-display font-bold text-sm text-white mb-1">{f.title}</p>
               <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{f.desc}</p>
             </div>

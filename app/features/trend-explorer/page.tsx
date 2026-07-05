@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getServerLang } from '@/lib/server-lang';
 import RelatedTools from '@/components/RelatedTools';
+import ComparisonCell from '@/components/ComparisonCell';
 
 
 export const metadata: Metadata = {
@@ -178,9 +179,9 @@ export default async function TrendExplorerFeature() {
               {comparison.map(([feat, ytub, yt, vidiq]) => (
                 <tr key={feat} className="border-b border-white/5">
                   <td className="py-2.5 px-4">{feat}</td>
-                  <td className="py-2.5 px-4 text-center text-white font-medium">{ytub}</td>
-                  <td className="py-2.5 px-4 text-center">{yt}</td>
-                  <td className="py-2.5 px-4 text-center">{vidiq}</td>
+                  <td className="py-2.5 px-4 text-center text-white font-medium"><ComparisonCell value={ytub} /></td>
+                  <td className="py-2.5 px-4 text-center"><ComparisonCell value={yt} /></td>
+                  <td className="py-2.5 px-4 text-center"><ComparisonCell value={vidiq} /></td>
                 </tr>
               ))}
             </tbody>

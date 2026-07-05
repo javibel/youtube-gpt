@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type Konva from 'konva';
 import { THUMB_W, THUMB_H, type PhotoItem, type TextItem } from '@/lib/thumbnail-types';
+import { SparkleIcon, UploadIcon, ScissorsIcon, CheckIcon, SaveIcon, DownloadIcon } from '@/components/icons';
 
 /** Server-side background removal via /api/remove-bg (RMBG-2.0 → BiRefNet full). */
 async function removeBgServer(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
@@ -935,19 +936,19 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
           >
             {bgLoading
               ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r inline-block" />
-              : tr('✨ Generar con IA', '✨ Generate with AI')}
+              : <span className="inline-flex items-center gap-1.5"><SparkleIcon size={13} /> {tr('Generar con IA', 'Generate with AI')}</span>}
           </button>
-          <label className="soft-chip px-4 py-2.5 text-[13px] cursor-pointer hover:text-white transition whitespace-nowrap">
-            {tr('📁 Subir fondo', '📁 Upload BG')}
+          <label className="soft-chip px-4 py-2.5 text-[13px] cursor-pointer hover:text-white transition whitespace-nowrap inline-flex items-center gap-1.5">
+            <UploadIcon size={13} /> {tr('Subir fondo', 'Upload BG')}
             <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadBackground(f); e.target.value = ''; }} />
           </label>
           {backgroundUrl && (
             <button
               onClick={() => setCropTarget({ src: backgroundUrl, type: 'bg' })}
-              className="soft-chip px-4 py-2.5 text-[13px] hover:text-white transition whitespace-nowrap"
+              className="soft-chip px-4 py-2.5 text-[13px] hover:text-white transition whitespace-nowrap inline-flex items-center gap-1.5"
             >
-              {tr('✂ Recortar fondo', '✂ Crop BG')}
+              <ScissorsIcon size={13} /> {tr('Recortar fondo', 'Crop BG')}
             </button>
           )}
         </div>
@@ -1031,9 +1032,9 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                   <button
                     onClick={() => setCropTarget({ src: photoOrigSrc, type: 'photo' })}
                     disabled={removingBg}
-                    className="soft-chip w-full py-1.5 text-[11px] mt-2 disabled:opacity-40"
+                    className="soft-chip w-full py-1.5 text-[11px] mt-2 disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
                   >
-                    {tr('✂ Recortar foto', '✂ Crop photo')}
+                    <ScissorsIcon size={11} /> {tr('Recortar foto', 'Crop photo')}
                   </button>
                 )}
 
@@ -1210,9 +1211,9 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
           <div className="flex flex-col gap-2">
             {savedUrl && (
               <a href={savedUrl} target="_blank" rel="noopener noreferrer"
-                className="text-[12px] text-center py-1.5 rounded"
-                style={{ color:'#7CFF00', background:'rgba(124,255,0,0.08)', display:'block' }}>
-                {tr('✓ Guardado — abrir imagen', '✓ Saved — open image')}
+                className="text-[12px] text-center py-1.5 rounded inline-flex items-center justify-center gap-1.5"
+                style={{ color:'#7CFF00', background:'rgba(124,255,0,0.08)', display:'flex' }}>
+                <CheckIcon size={12} /> {tr('Guardado — abrir imagen', 'Saved — open image')}
               </a>
             )}
             {saveErr && <p className="text-[12px]" style={{ color:'#f5a623' }}>{saveErr}</p>}
@@ -1223,11 +1224,11 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r" />
                     {tr('Guardando…', 'Saving…')}
                   </span>
-                : tr('💾 Guardar miniatura', '💾 Save thumbnail')}
+                : <span className="inline-flex items-center justify-center gap-1.5"><SaveIcon size={14} /> {tr('Guardar miniatura', 'Save thumbnail')}</span>}
             </button>
             <button onClick={handleDownload} disabled={!backgroundUrl}
-              className="soft-chip w-full py-2.5 text-[13px] text-center disabled:opacity-40 disabled:cursor-not-allowed">
-              {tr('⬇ Descargar PNG', '⬇ Download PNG')}
+              className="soft-chip w-full py-2.5 text-[13px] text-center disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5">
+              <DownloadIcon size={13} /> {tr('Descargar PNG', 'Download PNG')}
             </button>
           </div>
 

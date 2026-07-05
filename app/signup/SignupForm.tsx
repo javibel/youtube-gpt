@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import PasswordInput from '@/components/PasswordInput';
 import { hasTrackingConsent } from '@/components/CookieConsent';
+import { WarningIcon } from '@/components/icons';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -226,8 +227,8 @@ export default function SignupForm() {
             {TURNSTILE_SITE_KEY && <div ref={turnstileRef} />}
 
             {error && (
-              <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
-                ⚠️ {error}
+              <div className="rounded-xl px-4 py-3 text-sm inline-flex items-center gap-1.5" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
+                <WarningIcon size={14} /> {error}
               </div>
             )}
 

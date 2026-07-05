@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
+import { CheckIcon, CrossIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
 
@@ -328,8 +329,8 @@ export default function AuditPage() {
                         <div className="mt-3 pt-3 border-t border-white/8 space-y-2">
                           {cat.checks.map(check => (
                             <div key={check.key} className="flex items-center gap-2">
-                              <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[13px] ${check.passed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                {check.passed ? '✓' : '✗'}
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${check.passed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                {check.passed ? <CheckIcon size={10} /> : <CrossIcon size={10} />}
                               </span>
                               <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{check.label[lang]}</span>
                             </div>

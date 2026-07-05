@@ -280,9 +280,9 @@ export default function RetentionPage() {
         color="#22c55e"
         featuresHref="/features/retention-analyzer"
         bullets={[
-          { icon: '📉', title: { es: 'Curva de retención', en: 'Retention curve' }, desc: { es: 'Ve exactamente dónde se va tu audiencia', en: 'See exactly where your audience leaves' } },
-          { icon: '🪝', title: { es: 'Hook Score', en: 'Hook Score' }, desc: { es: 'Puntúa el gancho de los primeros segundos', en: 'Scores the hook in your first few seconds' } },
-          { icon: '🤖', title: { es: 'Motivos con IA', en: 'AI reasons' }, desc: { es: 'La IA explica por qué se abandona cada punto', en: 'AI explains why viewers drop at each point' } },
+          { icon: '/icons/bar-chart.webp', title: { es: 'Curva de retención', en: 'Retention curve' }, desc: { es: 'Ve exactamente dónde se va tu audiencia', en: 'See exactly where your audience leaves' } },
+          { icon: '/icons/spark.webp', title: { es: 'Hook Score', en: 'Hook Score' }, desc: { es: 'Puntúa el gancho de los primeros segundos', en: 'Scores the hook in your first few seconds' } },
+          { icon: '/icons/brain.webp', title: { es: 'Motivos con IA', en: 'AI reasons' }, desc: { es: 'La IA explica por qué se abandona cada punto', en: 'AI explains why viewers drop at each point' } },
         ]}
       />
     );

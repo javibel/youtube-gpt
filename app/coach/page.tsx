@@ -166,9 +166,9 @@ export default function CoachPage() {
         color="#FF00AA"
         featuresHref="/features/ai-coach"
         bullets={[
-          { icon: '✨', title: { es: 'Crear', en: 'Create' }, desc: { es: 'Ideas y guiones adaptados a tu canal', en: 'Ideas and scripts tailored to your channel' } },
-          { icon: '📊', title: { es: 'Analizar', en: 'Analyze' }, desc: { es: 'Qué funciona y qué no en tus vídeos', en: 'What works and what doesn\'t in your videos' } },
-          { icon: '🔍', title: { es: 'Investigar', en: 'Research' }, desc: { es: 'Tendencias y huecos de contenido en tu nicho', en: 'Trends and content gaps in your niche' } },
+          { icon: '/icons/spark.webp', title: { es: 'Crear', en: 'Create' }, desc: { es: 'Ideas y guiones adaptados a tu canal', en: 'Ideas and scripts tailored to your channel' } },
+          { icon: '/icons/bar-chart.webp', title: { es: 'Analizar', en: 'Analyze' }, desc: { es: 'Qué funciona y qué no en tus vídeos', en: 'What works and what doesn\'t in your videos' } },
+          { icon: '/icons/magnifying-glass.webp', title: { es: 'Investigar', en: 'Research' }, desc: { es: 'Tendencias y huecos de contenido en tu nicho', en: 'Trends and content gaps in your niche' } },
         ]}
       />
     );

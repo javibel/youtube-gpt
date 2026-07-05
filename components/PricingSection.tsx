@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Lang } from '@/lib/server-lang';
+import { StarIcon } from '@/components/icons';
 
 export default function PricingSection({ lang }: { lang: Lang }) {
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -78,7 +79,7 @@ export default function PricingSection({ lang }: { lang: Lang }) {
 
           {/* Pro */}
           <div className="p-8 relative" style={{ background: 'linear-gradient(180deg,rgba(232,77,91,0.08),rgba(232,77,91,0.02))' }}>
-            <div className="absolute -top-3 left-8 red-tape">★ {t('MÁS ELEGIDO', 'MOST POPULAR')}</div>
+            <div className="absolute -top-3 left-8 red-tape inline-flex items-center gap-1"><StarIcon size={12} /> {t('MÁS ELEGIDO', 'MOST POPULAR')}</div>
             <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--red)' }}>B · Pro</p>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>9,99€</span>
@@ -86,8 +87,8 @@ export default function PricingSection({ lang }: { lang: Lang }) {
             </div>
             <div className="flex items-center gap-2 mb-6 mt-2 p-2.5 rounded-xl border border-white/10" style={{ background: 'rgba(124,255,0,0.06)', borderColor: 'rgba(124,255,0,0.2)' }}>
               <div>
-                <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: '#7CFF00' }}>
-                  {t('★ ANUAL — AHORRA 17%', '★ ANNUAL — SAVE 17%')}
+                <p className="font-mono-jb text-[13px] tracking-wider uppercase inline-flex items-center gap-1" style={{ color: '#7CFF00' }}>
+                  <StarIcon size={11} /> {t('ANUAL — AHORRA 17%', 'ANNUAL — SAVE 17%')}
                 </p>
                 <p className="font-display font-bold text-white text-base mt-0.5">
                   99,99€<span className="text-zinc-400 font-mono-jb text-[13px] ml-1">/{t('año', 'yr')}</span>
@@ -116,8 +117,8 @@ export default function PricingSection({ lang }: { lang: Lang }) {
             </div>
             <div className="flex items-center gap-2 mb-6 mt-2 p-2.5 rounded-xl border border-white/10" style={{ background: 'rgba(0,229,255,0.06)', borderColor: 'rgba(0,229,255,0.2)' }}>
               <div>
-                <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: '#00E5FF' }}>
-                  {t('★ ANUAL — AHORRA 17%', '★ ANNUAL — SAVE 17%')}
+                <p className="font-mono-jb text-[13px] tracking-wider uppercase inline-flex items-center gap-1" style={{ color: '#00E5FF' }}>
+                  <StarIcon size={11} /> {t('ANUAL — AHORRA 17%', 'ANNUAL — SAVE 17%')}
                 </p>
                 <p className="font-display font-bold text-white text-base mt-0.5">
                   299€<span className="text-zinc-400 font-mono-jb text-[13px] ml-1">/{t('año', 'yr')}</span>

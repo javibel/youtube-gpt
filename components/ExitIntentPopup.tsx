@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { CheckIcon, RocketIcon } from '@/components/icons';
 
 export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -91,7 +92,7 @@ export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
 
         {state === 'done' ? (
           <>
-            <span className="inline-block text-4xl mb-3">🎉</span>
+            <span className="inline-flex items-center justify-center rounded-full mb-3" style={{ width: 56, height: 56, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}><CheckIcon size={26} /></span>
             <h3 className="font-display font-bold text-xl text-white mb-2">
               {t(`¡Estás dentro! Eres el #${position}`, `You're in! You're #${position}`)}
             </h3>
@@ -101,7 +102,7 @@ export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
           </>
         ) : state === 'already' ? (
           <>
-            <span className="inline-block text-4xl mb-3">✅</span>
+            <span className="inline-flex items-center justify-center rounded-full mb-3" style={{ width: 56, height: 56, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}><CheckIcon size={26} /></span>
             <h3 className="font-display font-bold text-xl text-white mb-2">
               {t('¡Ya estabas en la lista!', "You're already on the list!")}
             </h3>
@@ -112,7 +113,7 @@ export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
         ) : (
           <>
             <div className="mb-4">
-              <span className="inline-block text-4xl mb-2">🚀</span>
+              <span className="inline-flex items-center justify-center rounded-full mb-2" style={{ width: 56, height: 56, background: 'rgba(232,77,91,0.12)', color: 'var(--red)' }}><RocketIcon size={26} /></span>
             </div>
 
             <p className="font-mono-jb text-[12px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
