@@ -185,8 +185,11 @@ function buildRawSummary(date) {
   const seoReport = readReport('seo-optimizer', date);
   if (seoReport) {
     const issueCount = seoReport.analysis?.issues?.length || 0;
-    const clicks = seoReport.metrics?.current?.clicks || 0;
-    const ctr = seoReport.metrics?.current?.ctr || 0;
+    // Bug fijo 2026-07-05: mismo patrón que Funnel Optimizer — leía metrics.current.clicks
+    // (no existe) en vez de metrics.current.totals.clicks. Hoy ambos dan 0 por casualidad
+    // (ver project_seo.md, 0% indexado), pero con el path viejo nunca reflejaría una mejora real.
+    const clicks = seoReport.metrics?.current?.totals?.clicks || 0;
+    const ctr = seoReport.metrics?.current?.totals?.ctr || 0;
     sections.push({
       agent: 'SEO Optimizer',
       status: issueCount > 2 ? 'ATENCIÓN' : issueCount > 0 ? 'REVISAR' : 'OK',
@@ -200,12 +203,15 @@ function buildRawSummary(date) {
   const funnelReport = readReport('funnel-optimizer', date);
   if (funnelReport) {
     const issueCount = funnelReport.analysis?.issues?.length || 0;
-    const activation = funnelReport.metrics?.activation?.cohortRate || 0;
+    // Bug fijo 2026-07-05: leía metrics.activation.cohortRate (no existe) en vez de
+    // metrics.activation.cohort14d.rate (ya viene en % , no en fracción) — desde el
+    // 29/06 el email ejecutivo mostraba siempre "0%" aunque la activación real subía.
+    const activation = funnelReport.metrics?.activation?.cohort14d?.rate || 0;
     const newUsers = funnelReport.metrics?.users?.newThisWeek || 0;
     sections.push({
       agent: 'Funnel Optimizer',
       status: issueCount > 2 ? 'ATENCIÓN' : issueCount > 0 ? 'REVISAR' : 'OK',
-      data: `Issues: ${issueCount}, Activación cohorte: ${(activation * 100).toFixed(0)}%, Nuevos 7d: ${newUsers}`,
+      data: `Issues: ${issueCount}, Activación cohorte: ${activation.toFixed(0)}%, Nuevos 7d: ${newUsers}`,
       ai: (funnelReport.analysis?.issues || []).join(' | '),
       duration: 0,
     });
@@ -228,12 +234,16 @@ function buildRawSummary(date) {
   // Meta-Optimizer report (weekly, may not exist today)
   const metaReport = readReport('meta-optimizer', date);
   if (metaReport) {
-    const actionsApplied = metaReport.actionsApplied || 0;
+    // Bug fijo 2026-07-05: mismo patrón — leía metaReport.actionsApplied/fixesAnalyzed/
+    // systemDiagnosis (no existen) en vez de metaReport.phases.autoTune.changesApplied,
+    // phases.analysis.fixCount y phases.claudeAnalysis.diagnosis. Antes SIEMPRE mostraba
+    // "0 acciones aplicadas" aunque el meta-optimizer sí ajustara cooldowns/fixes cada domingo.
+    const actionsApplied = metaReport.phases?.autoTune?.changesApplied || 0;
     sections.push({
       agent: 'Meta-Optimizer',
       status: actionsApplied > 0 ? 'AJUSTES' : 'OK',
-      data: `Acciones aplicadas: ${actionsApplied}, Fixes analizados: ${metaReport.fixesAnalyzed || 0}`,
-      ai: metaReport.systemDiagnosis || '',
+      data: `Acciones aplicadas: ${actionsApplied}, Fixes analizados: ${metaReport.phases?.analysis?.fixCount || 0}`,
+      ai: metaReport.phases?.claudeAnalysis?.diagnosis || '',
       duration: 0,
     });
   }
