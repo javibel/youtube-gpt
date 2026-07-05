@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? '';
+import { requireAdmin } from '@/lib/auth-guards';
 
 export async function GET() {
-  const session = await auth();
-  if (session?.user?.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const token = process.env.LINKEDIN_ACCESS_TOKEN;
   if (!token) return NextResponse.json({ error: 'LINKEDIN_ACCESS_TOKEN not set' }, { status: 500 });

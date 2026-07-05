@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
+import ToolLoginGate from '@/components/ToolLoginGate';
 
 type Lang = 'es' | 'en';
 
@@ -98,13 +99,22 @@ export default function PredictorPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Predictor', 'Predictor')}</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para predecir rendimiento.', 'Sign in to predict performance.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
+      <ToolLoginGate
+        eyebrow={{ es: 'PREDICTOR DE RENDIMIENTO', en: 'PERFORMANCE PREDICTOR' }}
+        title={{ es: 'Predice las vistas', en: 'Predict Your Views' }}
+        highlight={{ es: 'antes de publicar', en: 'Before You Publish' }}
+        description={{
+          es: '¿Merece la pena invertir 10 horas en este vídeo? La IA te da un rango de vistas estimado, viral potential y sugerencias para maximizar el impacto.',
+          en: 'Is it worth investing 10 hours in this video? AI gives you an estimated views range, viral potential, and suggestions to maximize impact.',
+        }}
+        color="#B388FF"
+        featuresHref="/features/video-predictor"
+        bullets={[
+          { icon: '🔮', title: { es: 'Rango de vistas', en: 'Views range' }, desc: { es: 'Estimación basada en tu histórico real', en: 'Estimate based on your real history' } },
+          { icon: '⚡', title: { es: 'Potencial viral', en: 'Viral potential' }, desc: { es: 'Score de probabilidad de despegue', en: 'Breakout probability score' } },
+          { icon: '💡', title: { es: 'Sugerencias', en: 'Suggestions' }, desc: { es: 'Qué ajustar antes de publicar', en: 'What to tweak before publishing' } },
+        ]}
+      />
     );
   }
 

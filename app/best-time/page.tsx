@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
+import ToolLoginGate from '@/components/ToolLoginGate';
 
 type Lang = 'es' | 'en';
 
@@ -100,13 +101,22 @@ export default function BestTimePage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Mejor Hora', 'Best Time')}</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para analizar tu canal.', 'Sign in to analyze your channel.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
+      <ToolLoginGate
+        eyebrow={{ es: 'MEJOR HORA PARA PUBLICAR', en: 'BEST TIME TO POST' }}
+        title={{ es: 'Publica a la hora perfecta', en: 'Post at the Perfect Time' }}
+        highlight={{ es: 'según los datos de tu canal', en: 'based on your channel data' }}
+        description={{
+          es: 'Deja de adivinar cuándo publicar. Analizamos el rendimiento real de tus vídeos para encontrar tu horario óptimo.',
+          en: 'Stop guessing when to publish. We analyze your real video performance to find your optimal schedule.',
+        }}
+        color="#FFE800"
+        featuresHref="/features/best-time"
+        bullets={[
+          { icon: '🗓️', title: { es: 'Heatmap 7×24', en: '7×24 heatmap' }, desc: { es: 'Visualiza tu rendimiento por día y hora', en: 'Visualize your performance by day and hour' } },
+          { icon: '🥇', title: { es: 'Tus mejores franjas', en: 'Your top slots' }, desc: { es: 'Los 3 momentos con mejor rendimiento histórico', en: 'Your 3 best-performing time slots historically' } },
+          { icon: '🤖', title: { es: 'Consejo con IA', en: 'AI tip' }, desc: { es: 'Recomendación personalizada según tus datos', en: 'Personalized recommendation based on your data' } },
+        ]}
+      />
     );
   }
 

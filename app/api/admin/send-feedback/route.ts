@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
+import { requireAdmin } from '@/lib/auth-guards';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? '';
 const APP_URL = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
 
 const COPY = {
@@ -28,10 +27,8 @@ function detectLang(email: string, name?: string | null): 'es' | 'en' {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (session?.user?.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const { email } = await request.json() as { email: string };
   if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 });

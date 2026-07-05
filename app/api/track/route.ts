@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { rateLimitRequest } from '@/lib/rate-limit-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,14 @@ export async function POST(req: NextRequest) {
 
     if (!isTrackable(path)) {
       return NextResponse.json({ ok: true });
+    }
+
+    // 2026-07-04 (audit A4): unauthenticated write with no limit — could be used to bloat
+    // page_views and pollute the (already low-volume) attribution data. 60/min per IP is far
+    // more than real navigation ever produces.
+    const allowed = await rateLimitRequest(req, 'track', 60, 1);
+    if (!allowed) {
+      return NextResponse.json({ ok: true }); // don't leak rate-limit state to the client
     }
 
     const userAgent = req.headers.get('user-agent') || undefined;

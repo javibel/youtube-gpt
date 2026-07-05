@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
+import ToolLoginGate from '@/components/ToolLoginGate';
 
 type Lang = 'es' | 'en';
 type CoachMode = 'create' | 'analyze' | 'optimize' | 'research';
@@ -154,13 +155,22 @@ export default function CoachPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('AI Coach', 'AI Coach')}</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para hablar con tu coach.', 'Sign in to talk to your coach.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
+      <ToolLoginGate
+        eyebrow={{ es: 'COACH DE IA', en: 'AI COACH' }}
+        title={{ es: 'Tu experto de YouTube', en: 'Your YouTube Expert' }}
+        highlight={{ es: 'disponible 24/7', en: 'Available 24/7' }}
+        description={{
+          es: 'Un coach de IA que conoce tu canal y te ayuda a crear, analizar, optimizar e investigar. Como tener un consultor de YouTube en tu bolsillo.',
+          en: 'An AI coach that knows your channel and helps you create, analyze, optimize, and research. Like having a YouTube consultant in your pocket.',
+        }}
+        color="#FF00AA"
+        featuresHref="/features/ai-coach"
+        bullets={[
+          { icon: '✨', title: { es: 'Crear', en: 'Create' }, desc: { es: 'Ideas y guiones adaptados a tu canal', en: 'Ideas and scripts tailored to your channel' } },
+          { icon: '📊', title: { es: 'Analizar', en: 'Analyze' }, desc: { es: 'Qué funciona y qué no en tus vídeos', en: 'What works and what doesn\'t in your videos' } },
+          { icon: '🔍', title: { es: 'Investigar', en: 'Research' }, desc: { es: 'Tendencias y huecos de contenido en tu nicho', en: 'Trends and content gaps in your niche' } },
+        ]}
+      />
     );
   }
 

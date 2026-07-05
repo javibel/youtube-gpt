@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
+import ToolLoginGate from '@/components/ToolLoginGate';
 
 type Lang = 'es' | 'en';
 
@@ -268,13 +269,22 @@ export default function RetentionPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Retención', 'Retention')}</h1>
-          <p className="font-mono-jb text-sm mb-6" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para analizar retención.', 'Sign in to analyze retention.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
+      <ToolLoginGate
+        eyebrow={{ es: 'ANALIZADOR DE RETENCIÓN', en: 'RETENTION ANALYZER' }}
+        title={{ es: 'Descubre dónde tu audiencia', en: 'Discover Where Your Audience' }}
+        highlight={{ es: 'deja de ver tus vídeos', en: 'Stops Watching' }}
+        description={{
+          es: 'La retención es el factor #1 del algoritmo de YouTube. Analiza tu curva, hook score y drop-offs con IA para multiplicar tu watch time.',
+          en: 'Retention is YouTube\'s #1 algorithm factor. Analyze your curve, hook score, and drop-offs with AI to multiply your watch time.',
+        }}
+        color="#22c55e"
+        featuresHref="/features/retention-analyzer"
+        bullets={[
+          { icon: '📉', title: { es: 'Curva de retención', en: 'Retention curve' }, desc: { es: 'Ve exactamente dónde se va tu audiencia', en: 'See exactly where your audience leaves' } },
+          { icon: '🪝', title: { es: 'Hook Score', en: 'Hook Score' }, desc: { es: 'Puntúa el gancho de los primeros segundos', en: 'Scores the hook in your first few seconds' } },
+          { icon: '🤖', title: { es: 'Motivos con IA', en: 'AI reasons' }, desc: { es: 'La IA explica por qué se abandona cada punto', en: 'AI explains why viewers drop at each point' } },
+        ]}
+      />
     );
   }
 

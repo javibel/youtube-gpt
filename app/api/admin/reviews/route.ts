@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+import { requireAdmin } from '@/lib/auth-guards';
 
 // GET — listar todas las reseñas pendientes
 export async function GET() {
-  const session = await auth();
-  if (!ADMIN_EMAIL || session?.user?.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const reviews = await prisma.review.findMany({
     orderBy: { createdAt: 'desc' },
@@ -28,10 +24,8 @@ export async function GET() {
 
 // PATCH — aprobar o rechazar
 export async function PATCH(req: NextRequest) {
-  const session = await auth();
-  if (!ADMIN_EMAIL || session?.user?.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const { id, status } = await req.json();
   if (!['approved', 'rejected'].includes(status)) {

@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+import { requireAdmin } from "@/lib/auth-guards";
 
 function toCSV(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return '';
@@ -21,10 +19,8 @@ function toCSV(rows: Record<string, unknown>[]): string {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!ADMIN_EMAIL || session?.user?.email !== ADMIN_EMAIL) {
-    return new Response('No autorizado', { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const type = req.nextUrl.searchParams.get('type') ?? 'users';
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
+import ToolLoginGate from '@/components/ToolLoginGate';
 
 type Lang = 'es' | 'en';
 
@@ -224,13 +225,21 @@ export default function CalendarPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Calendario', 'Calendar')}</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para planificar tu contenido.', 'Sign in to plan your content.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
+      <ToolLoginGate
+        eyebrow={{ es: 'CALENDARIO DE CONTENIDO', en: 'CONTENT CALENDAR' }}
+        title={{ es: 'Planifica tu contenido', en: 'Plan Your Content' }}
+        highlight={{ es: 'como un profesional', en: 'Like a Pro' }}
+        description={{
+          es: 'Calendario visual para planificar, programar y trackear tus vídeos de YouTube. Desde la idea hasta la publicación, todo en un sitio.',
+          en: 'Visual calendar to plan, schedule, and track your YouTube videos. From idea to publication, all in one place.',
+        }}
+        featuresHref="/features/content-calendar"
+        bullets={[
+          { icon: '🗓️', title: { es: 'Vista mensual', en: 'Monthly view' }, desc: { es: 'Ve de un vistazo qué días tienes contenido planificado', en: 'See at a glance which days have planned content' } },
+          { icon: '🔄', title: { es: '4 estados', en: '4 statuses' }, desc: { es: 'Idea → Borrador → Programado → Publicado', en: 'Idea → Draft → Scheduled → Published' } },
+          { icon: '🤖', title: { es: 'Sugerencias con IA', en: 'AI suggestions' }, desc: { es: 'La IA propone qué grabar según tendencias y tu competencia', en: 'AI suggests what to film based on trends and your competitors' } },
+        ]}
+      />
     );
   }
 

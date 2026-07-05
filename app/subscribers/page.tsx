@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
+import ToolLoginGate from '@/components/ToolLoginGate';
 
 type Lang = 'es' | 'en';
 
@@ -113,12 +114,20 @@ export default function SubscribersPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Audiencia', 'Audience')}</h1>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
+      <ToolLoginGate
+        eyebrow={{ es: 'ANÁLISIS DE AUDIENCIA', en: 'AUDIENCE ANALYSIS' }}
+        title={{ es: 'Conoce a quién le hablas', en: 'Know Who You\'re Talking To' }}
+        highlight={{ es: 'edad, país, y de dónde vienen', en: 'age, country, and where they come from' }}
+        description={{
+          es: 'Demografía real de tus suscriptores: edad, género, país y fuentes de suscripción. Con perfil de audiencia e ideas de colaboración generados por IA.',
+          en: 'Real demographics of your subscribers: age, gender, country, and subscription sources. With an AI-generated audience profile and collaboration ideas.',
+        }}
+        bullets={[
+          { icon: '📊', title: { es: 'Demografía real', en: 'Real demographics' }, desc: { es: 'Edad, género y país de tu audiencia', en: 'Age, gender and country of your audience' } },
+          { icon: '📈', title: { es: 'Evolución 90 días', en: '90-day timeline' }, desc: { es: 'Cómo ha crecido tu base de suscriptores', en: 'How your subscriber base has grown' } },
+          { icon: '🤖', title: { es: 'Perfil con IA', en: 'AI profile' }, desc: { es: 'Intereses y sugerencias de colaboración', en: 'Interests and collaboration suggestions' } },
+        ]}
+      />
     );
   }
 

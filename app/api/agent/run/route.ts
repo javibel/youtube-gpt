@@ -1,22 +1,14 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { generateSocialPost } from '@/lib/agent/content-generator';
 import { publishToFacebook, publishToInstagram } from '@/lib/agent/meta-agent';
 import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
 import { runGmailAgent, sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? '';
-
-async function isAdmin(): Promise<boolean> {
-  const session = await auth();
-  return session?.user?.email === ADMIN_EMAIL;
-}
+import { requireAdmin } from '@/lib/auth-guards';
 
 export async function POST(request: Request) {
-  if (!(await isAdmin())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const { action, type } = await request.json();
   // action: 'publish' | 'messages' | 'test'

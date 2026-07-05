@@ -313,6 +313,19 @@ export default function TitleAnalyzerClient() {
             ))}
           </ul>
 
+          <div className="rounded-xl p-5 mb-10 flex items-start gap-3" style={{ background: 'var(--yv-surface)', border: '1px solid var(--yv-border)' }}>
+            <span style={{ color: 'var(--yv-brand)' }}>→</span>
+            <p className="font-mono-jb text-sm leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
+              {t(
+                '¿De dónde salen estos criterios? Analizamos 1.814 títulos reales de YouTube con la API oficial. ',
+                'Where do these criteria come from? We analyzed 1,814 real YouTube titles with the official API. '
+              )}
+              <a href="/youtube-title-study" className="underline hover:text-white transition">
+                {t('Ver el estudio completo →', 'See the full study →')}
+              </a>
+            </p>
+          </div>
+
           <h2 className="font-display font-bold text-2xl text-white mb-5">
             {t('Preguntas frecuentes', 'Frequently asked questions')}
           </h2>

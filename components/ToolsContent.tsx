@@ -93,6 +93,12 @@ const GROUPS: Group[] = [
         descEs: 'Añade el analizador SEO a tu web con una línea de HTML. Gratis e ilimitado.',
         descEn: 'Add the SEO analyzer to your site with one line of HTML. Free and unlimited.',
       },
+      {
+        href: '/youtube-title-study', icon: '/icons/bar-chart.webp', tagEs: 'DATOS REALES', tagEn: 'REAL DATA', free: true,
+        titleEs: 'Estudio: Anatomía de un Título Viral', titleEn: 'Study: Anatomy of a Viral Title',
+        descEs: '1.814 títulos de YouTube analizados con la API oficial — qué diferencia a los más vistos de cada nicho.',
+        descEn: '1,814 YouTube titles analyzed with the official API — what sets the most-viewed apart in each niche.',
+      },
     ],
   },
   {

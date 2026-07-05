@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
+import ToolLoginGate from '@/components/ToolLoginGate';
 
 type Lang = 'es' | 'en';
 
@@ -96,13 +97,22 @@ export default function AnalyticsPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">Analytics</h1>
-          <p className="font-mono-jb text-sm mb-6" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para ver tus analytics.', 'Sign in to view your analytics.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
+      <ToolLoginGate
+        eyebrow={{ es: 'ANALYTICS DEL CANAL', en: 'CHANNEL ANALYTICS' }}
+        title={{ es: 'Entiende el crecimiento', en: 'Understand the Growth' }}
+        highlight={{ es: 'de tu canal', en: 'of Your Channel' }}
+        description={{
+          es: 'Dashboard de analytics avanzado: vistas diarias, fuentes de tráfico, países, top vídeos y suscriptores. Todo en una vista clara y accionable.',
+          en: 'Advanced analytics dashboard: daily views, traffic sources, countries, top videos, and subscribers. All in one clear, actionable view.',
+        }}
+        color="#00FFA3"
+        featuresHref="/features/channel-analytics"
+        bullets={[
+          { icon: '📈', title: { es: 'Vistas diarias', en: 'Daily views' }, desc: { es: 'Evolución real de tu canal día a día', en: 'Your channel\'s real day-by-day evolution' } },
+          { icon: '🌍', title: { es: 'Tráfico y países', en: 'Traffic & countries' }, desc: { es: 'De dónde vienen tus espectadores', en: 'Where your viewers come from' } },
+          { icon: '🎬', title: { es: 'Top vídeos', en: 'Top videos' }, desc: { es: 'Qué contenido está funcionando mejor', en: 'Which content is performing best' } },
+        ]}
+      />
     );
   }
 

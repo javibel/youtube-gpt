@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import crypto from 'crypto';
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? '';
+import { requireAdmin } from '@/lib/auth-guards';
 
 export async function GET() {
-  const session = await auth();
-  if (session?.user?.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const clientId = process.env.LINKEDIN_CLIENT_ID;
   if (!clientId) return NextResponse.json({ error: 'LINKEDIN_CLIENT_ID not set' }, { status: 500 });

@@ -22,6 +22,26 @@ export default async function NotFound() {
         <Link href="/" className="btn-offset px-6 py-2.5 text-sm font-display">
           {isEn ? 'Back to home' : 'Volver al inicio'}
         </Link>
+
+        <div className="mt-10 pt-8 border-t border-white/10">
+          <p className="font-mono-jb text-[12px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-text-4, #71717a)' }}>
+            {isEn ? 'Or try one of these' : 'O prueba una de estas'}
+          </p>
+          <div className="flex flex-col gap-2 items-center">
+            <Link href="/seo-score" className="text-zinc-400 text-sm hover:text-white transition">
+              {isEn ? 'Free SEO Score' : 'SEO Score gratis'}
+            </Link>
+            <Link href="/title-analyzer" className="text-zinc-400 text-sm hover:text-white transition">
+              {isEn ? 'Title Analyzer' : 'Analizador de títulos'}
+            </Link>
+            <Link href="/tools" className="text-zinc-400 text-sm hover:text-white transition">
+              {isEn ? 'All free tools' : 'Todas las herramientas gratis'}
+            </Link>
+            <Link href="/blog" className="text-zinc-400 text-sm hover:text-white transition">
+              Blog
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

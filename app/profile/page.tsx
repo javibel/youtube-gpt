@@ -7,12 +7,13 @@ import { setLangClient } from '@/lib/get-lang-client';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import PasswordInput from '@/components/PasswordInput';
+import { toast } from '@/components/Toaster';
 
 type Lang = 'es' | 'en';
 
 type UserData = {
   user: { email: string; name: string | null; createdAt: string };
-  stats: { isPro: boolean; totalGenerations: number; generationsThisMonth: number; limit: number };
+  stats: { isPro: boolean; plan: 'free' | 'pro' | 'business'; totalGenerations: number; generationsThisMonth: number; limit: number };
   subscription: { status: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
 };
 
@@ -34,6 +35,8 @@ export default function ProfilePage() {
   const [pwdError, setPwdError] = useState('');
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdSuccess, setPwdSuccess] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -78,6 +81,32 @@ export default function ProfilePage() {
     setTimeout(() => { setPwdSuccess(false); setShowPwdForm(false); }, 3000);
   }
 
+  async function handleUpgrade(plan: 'monthly' | 'yearly' | 'business_monthly' | 'business_yearly') {
+    setUpgrading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, lang }) });
+      const d = await res.json();
+      if (d.error) { toast(d.error, 'error'); return; }
+      if (!d.url) { toast(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.'), 'error'); return; }
+      window.location.href = d.url;
+    } catch { toast(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'), 'error'); }
+    finally { setUpgrading(false); }
+  }
+
+  async function handleCancel() {
+    if (!confirm(t('¿Seguro que quieres cancelar tu suscripción?', 'Are you sure you want to cancel your subscription?'))) return;
+    setCancelling(true);
+    try {
+      const res = await fetch('/api/stripe/cancel', { method: 'POST' });
+      if (res.ok) {
+        setData(prev => prev ? { ...prev, subscription: prev.subscription ? { ...prev.subscription, cancelAtPeriodEnd: true } : null } : null);
+      } else {
+        const { error } = await res.json();
+        toast(error ?? t('Error al cancelar', 'Cancellation error'), 'error');
+      }
+    } finally { setCancelling(false); }
+  }
+
   function handleLangChange(next: Lang) {
     setLang(next);
     setLangClient(next);
@@ -116,6 +145,9 @@ export default function ProfilePage() {
   if (!session) return null;
 
   const isPro = data?.stats?.isPro ?? false;
+  const plan = data?.stats?.plan ?? 'free';
+  const isBusiness = plan === 'business';
+  const planLabel = isBusiness ? 'Business' : isPro ? 'Pro' : 'Free';
   const displayName = data?.user?.name ?? session.user?.email ?? '';
   const initials = displayName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
   const dateLocale = lang === 'en' ? 'en-US' : 'es-ES';
@@ -216,12 +248,13 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        {/* Plan */}
+        {/* Plan — 2026-07-04 (audit E3): was showing "Pro" for Business users (isPro
+            covers both) and only linked to /dashboard instead of letting you act here. */}
         <div className="yv-card">
           <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</p>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <p className="font-display font-bold text-lg text-white">{isPro ? 'Pro' : 'Free'}</p>
+              <p className="font-display font-bold text-lg text-white">{planLabel}</p>
               <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>
                 {isPro
                   ? (data?.subscription?.cancelAtPeriodEnd
@@ -230,11 +263,26 @@ export default function ProfilePage() {
                   : `${data?.stats?.generationsThisMonth ?? 0} / ${data?.stats?.limit ?? 10} ${t('generaciones este mes', 'generations this month')}`}
               </p>
             </div>
-            {!isPro && (
-              <a href="/dashboard" className="btn-offset px-4 py-2 text-[13px] font-display">
-                Upgrade →
-              </a>
-            )}
+            <div className="flex items-center gap-3">
+              {!isPro && (
+                <button onClick={() => handleUpgrade('monthly')} disabled={upgrading}
+                  className="btn-offset px-4 py-2 text-[13px] font-display disabled:opacity-50">
+                  {upgrading ? '...' : 'Upgrade →'}
+                </button>
+              )}
+              {isPro && !isBusiness && !data?.subscription?.cancelAtPeriodEnd && (
+                <button onClick={() => handleUpgrade('business_monthly')} disabled={upgrading}
+                  className="font-mono-jb text-[13px] transition" style={{ color: '#00E5FF' }}>
+                  {upgrading ? '...' : t('Subir a Business', 'Upgrade to Business')}
+                </button>
+              )}
+              {isPro && !data?.subscription?.cancelAtPeriodEnd && (
+                <button onClick={handleCancel} disabled={cancelling}
+                  className="font-mono-jb text-[13px] hover:text-white transition" style={{ color: 'var(--yv-text-4)' }}>
+                  {cancelling ? t('Cancelando...', 'Cancelling...') : t('Cancelar suscripción', 'Cancel subscription')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

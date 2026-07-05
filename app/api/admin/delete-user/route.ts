@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+import { requireAdmin } from '@/lib/auth-guards';
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!ADMIN_EMAIL || session?.user?.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const { userId } = await req.json();
   if (!userId) {

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { launchDayEmail } from '@/lib/emails';
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL?.trim();
+import { requireAdmin } from '@/lib/auth-guards';
 
 /**
  * POST /api/waitlist/send-launch
@@ -12,10 +10,8 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL?.trim();
  * Admin-only. Body: { phUrl: string, couponCode: string }
  */
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const body = await request.json().catch(() => ({}));
   const { phUrl, couponCode } = body as { phUrl?: string; couponCode?: string };

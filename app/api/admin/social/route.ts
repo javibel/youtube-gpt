@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? '';
+import { requireAdmin } from '@/lib/auth-guards';
 
 export async function GET() {
-  const session = await auth();
-  if (session?.user?.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
   const [posts, messages] = await Promise.all([
     prisma.socialPost.findMany({

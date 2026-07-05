@@ -17,9 +17,14 @@ type Lang = 'es' | 'en';
 // ── Section components ────────────────────────────────────────────────────────
 
 function TopNav({ lang }: { lang: Lang }) {
+  // 2026-07-04 (audit E8): trimmed from 6 nav items + a separate "Launch" CTA to 4.
+  // Removed 'Generar' (/signup) and 'Equipo' (/gear) — both duplicated something else
+  // already in the nav (Generar duplicated the "Empezar gratis" CTA on the right; Equipo
+  // is a lower-priority affiliate page already linked from the footer). The standalone
+  // "Launch"/"Lanzamiento" link also duplicated the top waitlist banner, so it's gone too.
   const nav = lang === 'en'
-    ? [['#how', 'How it works'], ['/tools', 'Tools'], ['/signup', 'Generate'], ['#pricing', 'Pricing'], ['/blog', 'Blog'], ['/gear', 'Gear']]
-    : [['#how', 'Cómo funciona'], ['/tools', 'Herramientas'], ['/signup', 'Generar'], ['#pricing', 'Precios'], ['/blog', 'Blog'], ['/gear', 'Equipo']];
+    ? [['#how', 'How it works'], ['/tools', 'Tools'], ['#pricing', 'Pricing'], ['/blog', 'Blog']]
+    : [['#how', 'Cómo funciona'], ['/tools', 'Herramientas'], ['#pricing', 'Precios'], ['/blog', 'Blog']];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
@@ -39,9 +44,6 @@ function TopNav({ lang }: { lang: Lang }) {
               {label}
             </a>
           ))}
-          <Link href="/launch" className="btn-shimmer px-3 py-1.5 rounded-full bg-[#e84d5b] text-white font-bold transition hover:bg-[#d43d4b]">
-            {lang === 'en' ? 'Launch' : 'Lanzamiento'}
-          </Link>
         </div>
 
         <div className="flex items-center gap-3">
@@ -520,6 +522,7 @@ function Footer({ lang }: { lang: Lang }) {
               <li><Link href="/tools" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Herramientas gratis', 'Free Tools')}</Link></li>
               <li><Link href="/trends" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Trending', 'Trending')}</Link></li>
               <li><Link href="/blog" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">Blog</Link></li>
+              <li><Link href="/youtube-title-study" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Estudio de títulos', 'Title Study')}</Link></li>
               <li><Link href="/gear" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Equipo recomendado', 'Recommended gear')}</Link></li>
               <li><Link href="/extension" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Extensión Chrome', 'Chrome Extension')}</Link></li>
               <li><Link href="/pricing" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Precios', 'Pricing')}</Link></li>

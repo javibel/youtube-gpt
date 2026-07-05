@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Chrome extension build artifact (regenerate with chrome-extension/pack.js)
 ytubviral-extension.zip
+
+# Stray backup files (blog-generator etc.)
+*.bak
