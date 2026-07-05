@@ -14,12 +14,12 @@ type SocialMessage = {
   externalId: string | null; receivedAt: string; replied: boolean;
   replyContent: string | null; repliedAt: string | null;
 };
-type Status = { youtube: boolean; gmail: boolean; facebook: boolean; instagram: boolean; linkedin: boolean; tiktok: boolean; twitter: boolean };
+type Status = { youtube: boolean; gmail: boolean; facebook: boolean; instagram: boolean; tiktok: boolean; twitter: boolean };
 type AdminData = { posts: SocialPost[]; messages: SocialMessage[]; status: Status };
 type LogEntry = { type: 'info' | 'success' | 'error'; msg: string; ts: string };
 
 const PLATFORM_EMOJI: Record<string, string> = {
-  facebook: '📘', instagram: '📸', linkedin: '💼',
+  facebook: '📘', instagram: '📸',
   tiktok: '🎵', twitter: '🐦', youtube: '▶️', gmail: '📧',
 };
 
@@ -147,7 +147,7 @@ export default function SocialAdminPage() {
             {data?.status && (Object.entries({
               YouTube: data.status.youtube, Gmail: data.status.gmail,
               Facebook: data.status.facebook, Instagram: data.status.instagram,
-              LinkedIn: data.status.linkedin, TikTok: null, Twitter: null,
+              TikTok: null, Twitter: null,
             }) as [string, boolean | null][]).map(([label, connected]) => (
               <div key={label} className="yv-card p-3">
                 <div className="text-[13px] mb-1" style={{ color: 'var(--text-faint)' }}>

@@ -37,6 +37,7 @@ export default function ProfilePage() {
   const [pwdSuccess, setPwdSuccess] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [downgrading, setDowngrading] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -91,6 +92,21 @@ export default function ProfilePage() {
       window.location.href = d.url;
     } catch { toast(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'), 'error'); }
     finally { setUpgrading(false); }
+  }
+
+  async function handleDowngrade() {
+    if (!confirm(t('¿Bajar de Business a Pro? El cambio se aplica ahora, con prorrateo en tu próxima factura.', 'Downgrade from Business to Pro? This applies now, prorated on your next invoice.'))) return;
+    setDowngrading(true);
+    try {
+      const res = await fetch('/api/stripe/downgrade', { method: 'POST' });
+      if (res.ok) {
+        setData(prev => prev ? { ...prev, stats: { ...prev.stats, plan: 'pro' } } : null);
+        toast(t('Has bajado a Pro', 'You are now on Pro'), 'success');
+      } else {
+        const { error } = await res.json();
+        toast(error ?? t('Error al cambiar de plan', 'Error changing plan'), 'error');
+      }
+    } finally { setDowngrading(false); }
   }
 
   async function handleCancel() {
@@ -274,6 +290,12 @@ export default function ProfilePage() {
                 <button onClick={() => handleUpgrade('business_monthly')} disabled={upgrading}
                   className="font-mono-jb text-[13px] transition" style={{ color: '#00E5FF' }}>
                   {upgrading ? '...' : t('Subir a Business', 'Upgrade to Business')}
+                </button>
+              )}
+              {isBusiness && !data?.subscription?.cancelAtPeriodEnd && (
+                <button onClick={handleDowngrade} disabled={downgrading}
+                  className="font-mono-jb text-[13px] transition" style={{ color: 'var(--yv-text-3)' }}>
+                  {downgrading ? '...' : t('Bajar a Pro', 'Downgrade to Pro')}
                 </button>
               )}
               {isPro && !data?.subscription?.cancelAtPeriodEnd && (

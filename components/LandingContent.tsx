@@ -10,7 +10,6 @@ import LandingFAQ from '@/components/LandingFAQ';
 import ChatWidgetPreview from '@/components/ChatWidgetPreview';
 import PricingSection from '@/components/PricingSection';
 import RealTestimonials from '@/components/RealTestimonials';
-import LaunchBanner from '@/components/LaunchBanner';
 
 type Lang = 'es' | 'en';
 
@@ -95,8 +94,8 @@ function Hero({ lang }: { lang: Lang }) {
 
         <p className="max-w-2xl mx-auto text-center text-zinc-400 text-lg md:text-xl mt-8 leading-relaxed">
           {lang === 'en'
-            ? '14 AI tools to grow on YouTube, powered by Claude — the AI that writes best, not generic GPT. Start with the free SEO Score: paste a video URL and see what is holding you back. No signup.'
-            : '14 herramientas de IA para crecer en YouTube, impulsadas por Claude — la IA que mejor escribe, no GPT genérico. Empieza con el SEO Score gratis: pega la URL de un vídeo y descubre qué te frena. Sin registro.'}
+            ? 'Get your free SEO Score first: paste a video URL and see what is holding it back. No signup. Then use AI tools powered by Claude to fix it.'
+            : 'Empieza con tu SEO Score gratis: pega la URL de un vídeo y descubre qué le frena. Sin registro. Luego usa herramientas de IA impulsadas por Claude para arreglarlo.'}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
@@ -562,7 +561,6 @@ export default function LandingContent({ jsonLd }: { jsonLd: object[] }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <LaunchBanner lang={lang} />
       <TopNav lang={lang} />
       <Hero lang={lang} />
       <StatsStrip lang={lang} />

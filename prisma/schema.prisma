@@ -31,6 +31,7 @@ model User {
   onboardingStep         Int       @default(0)
   referralCode           String?   @unique
   referredBy          String?
+  referralRewardedAt     DateTime? // set once this user's paid conversion has credited their referrer (scripts/referral-rewards.js)
 
   accounts        Account[]
   sessions        Session[]

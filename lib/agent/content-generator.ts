@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 
-export type Platform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'twitter';
+export type Platform = 'facebook' | 'instagram' | 'tiktok' | 'twitter';
 export type PostType = 'morning' | 'evening';
 
 const API_KEY = () => process.env.ANTHROPIC_API_KEY?.trim() ?? '';
@@ -223,7 +223,6 @@ function buildPrompt(platform: Platform, pillar: Pillar): string {
     instagram: `Escribe un caption de Instagram. Longitud libre según lo que pida el tema (desde pocas líneas hasta ~400 palabras). Si usas hashtags, pon 4-6 al final, solo de alto volumen real (#YouTube #YouTubeSEO #CreadorDeContenido y similares). Sin markdown ni asteriscos.`,
     facebook: `Escribe un post de Facebook. Longitud libre. 3-4 hashtags al final como mucho, solo de alto volumen. Sin markdown.`,
     twitter: `Escribe para X/Twitter. Si el tema cabe en un solo tweet potente (≤270 caracteres), hazlo en uno. Si de verdad necesita desarrollo, haz un hilo corto (formato "TWEET 1:\\n...\\n\\nTWEET 2:\\n..."). No fuerces el hilo. Sin hashtags dentro del hilo. Sin markdown.`,
-    linkedin: `Escribe un post de LinkedIn (longitud libre, tono profesional y humano). 3-4 hashtags al final. Sin markdown.`,
     tiktok: `Escribe el guión de un TikTok corto (hook + desarrollo conversacional + caption con hashtags).`,
   };
 

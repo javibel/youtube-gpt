@@ -278,9 +278,6 @@ export async function GET(request: Request) {
       results.twitter = { success: false, error: 'Twitter API desactivada — publicación via Puppeteer en local-agent' };
     }
 
-    // LinkedIn — DESACTIVADO: cuenta bloqueada por LinkedIn (2026-05-07)
-    results.linkedin = { success: false, error: 'LinkedIn desactivado — cuenta bloqueada (2026-05-07)' };
-
     await Promise.allSettled(socialPublishTasks);
 
     // 6. Send daily report to owner

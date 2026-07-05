@@ -44,8 +44,8 @@ export default function ReferralCard({ lang }: { lang: 'es' | 'en' }) {
           </h3>
           <p className="font-mono-jb text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
             {t(
-              'Envía tu enlace a otros creadores. Próximamente: recompensas por cada referido.',
-              'Send your link to other creators. Coming soon: rewards for each referral.'
+              'Envía tu enlace a otros creadores. Si se hacen de pago, te regalamos 1 mes de Pro gratis.',
+              'Send your link to other creators. If they go paid, you get 1 month of Pro free.'
             )}
           </p>
         </div>

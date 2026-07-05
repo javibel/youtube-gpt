@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
 import { publishToFacebook, publishToInstagram } from '@/lib/agent/meta-agent';
-import { publishToLinkedIn } from '@/lib/agent/linkedin-agent';
 import { runGmailAgent, sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { requireAdmin } from '@/lib/auth-guards';
@@ -17,17 +16,15 @@ export async function POST(request: Request) {
   try {
     if (action === 'publish') {
       const postType = type === 'evening' ? 'evening' : 'morning';
-      const [facebook, instagram, linkedin, tiktok, twitter] = await Promise.allSettled([
+      const [facebook, instagram, tiktok, twitter] = await Promise.allSettled([
         generateSocialPost('facebook', postType),
         generateSocialPost('instagram', postType),
-        generateSocialPost('linkedin', postType),
         generateSocialPost('tiktok', postType),
         generateSocialPost('twitter', postType),
       ]);
 
       const fb = facebook.status === 'fulfilled' ? facebook.value : null;
       const ig = instagram.status === 'fulfilled' ? instagram.value : null;
-      const li = linkedin.status === 'fulfilled' ? linkedin.value : null;
       const tt = tiktok.status === 'fulfilled' ? tiktok.value : null;
       const tw = twitter.status === 'fulfilled' ? twitter.value : null;
 
@@ -35,7 +32,6 @@ export async function POST(request: Request) {
         fb ? publishToFacebook(fb) : Promise.resolve(null),
         ig ? publishToInstagram(ig) : Promise.resolve(null),
       ]);
-      if (li) await publishToLinkedIn(li);
 
       if (tt || tw) {
         const body = [
@@ -69,10 +65,9 @@ export async function POST(request: Request) {
 
     if (action === 'test') {
       const postType = type === 'evening' ? 'evening' : 'morning';
-      const [facebook, instagram, linkedin, tiktok, twitter] = await Promise.allSettled([
+      const [facebook, instagram, tiktok, twitter] = await Promise.allSettled([
         generateSocialPost('facebook', postType),
         generateSocialPost('instagram', postType),
-        generateSocialPost('linkedin', postType),
         generateSocialPost('tiktok', postType),
         generateSocialPost('twitter', postType),
       ]);
@@ -82,7 +77,6 @@ export async function POST(request: Request) {
         preview: {
           facebook: facebook.status === 'fulfilled' ? facebook.value : null,
           instagram: instagram.status === 'fulfilled' ? instagram.value : null,
-          linkedin: linkedin.status === 'fulfilled' ? linkedin.value : null,
           tiktok: tiktok.status === 'fulfilled' ? tiktok.value : null,
           twitter: twitter.status === 'fulfilled' ? twitter.value : null,
         },

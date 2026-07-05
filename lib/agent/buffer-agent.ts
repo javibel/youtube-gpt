@@ -2,13 +2,12 @@ import { prisma } from '@/lib/prisma';
 
 const BUFFER_REST = 'https://api.bufferapp.com/1';
 
-const PROFILE_IDS: Record<'facebook' | 'instagram' | 'linkedin', string> = {
+const PROFILE_IDS: Record<'facebook' | 'instagram', string> = {
   facebook: process.env.BUFFER_FACEBOOK_ID ?? '',
   instagram: process.env.BUFFER_INSTAGRAM_ID ?? '',
-  linkedin: process.env.BUFFER_LINKEDIN_ID ?? '',
 };
 
-type BufferPlatform = 'facebook' | 'instagram' | 'linkedin';
+type BufferPlatform = 'facebook' | 'instagram';
 
 // ── REST API v1 helper ────────────────────────────────────────────────────────
 
