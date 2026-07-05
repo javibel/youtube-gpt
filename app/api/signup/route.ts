@@ -7,6 +7,28 @@ import { validatePassword } from "@/lib/password";
 import { verificationEmail } from "@/lib/emails";
 import { sendTransactionalEmail } from "@/lib/send-email";
 
+// A8 (2026-07-05): Cloudflare Turnstile anti-bot check. Fail-open if the secret isn't
+// configured (dev/deploy window) or if Cloudflare itself is unreachable — losing a real
+// signup to a CF outage costs more than letting one bot through occasionally.
+async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) { console.warn('[signup] TURNSTILE_SECRET_KEY not set — skipping bot check'); return true; }
+  if (!token) return false;
+
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret, response: token, remoteip: ip }),
+    });
+    const data = await res.json();
+    return data.success === true;
+  } catch (err) {
+    console.error('[signup] Turnstile verification unreachable — failing open:', err);
+    return true;
+  }
+}
+
 function welcomeEmail(name: string, lang: 'es' | 'en'): string {
   const isEn = lang === 'en';
   const eyebrow = isEn ? 'WELCOME TO YTUBVIRAL' : 'BIENVENIDO A YTUBVIRAL';
@@ -140,7 +162,7 @@ export async function POST(req: NextRequest) {
         END
       RETURNING hits
     `;
-    const { email, password, name, lang = 'es', utmSource, utmMedium, utmCampaign, ref, signupReferrer, signupLandingPage } = await req.json();
+    const { email, password, name, lang = 'es', utmSource, utmMedium, utmCampaign, ref, signupReferrer, signupLandingPage, turnstileToken } = await req.json();
     const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
     const isEn = emailLang === 'en';
 
@@ -158,19 +180,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // A9 (2026-07-05): normalize before any lookup/write — auth-guards.ts's requireUser()
+    // already compares lowercase, and login/Google-signup do the same. Without this, casing
+    // differences between signup and later lookups create silent duplicate-account bugs.
+    const normalizedEmail: string = String(email).toLowerCase().trim();
+
+    const turnstileOk = await verifyTurnstile(turnstileToken, ip);
+    if (!turnstileOk) {
+      return NextResponse.json(
+        { error: isEn ? 'Bot verification failed. Please reload and try again.' : 'Verificación anti-bot fallida. Recarga la página e inténtalo de nuevo.' },
+        { status: 403 }
+      );
+    }
+
     const pwError = validatePassword(password, emailLang);
     if (pwError) {
       return NextResponse.json({ error: pwError }, { status: 400 });
     }
 
-    if (isDisposableEmail(email)) {
+    if (isDisposableEmail(normalizedEmail)) {
       return NextResponse.json(
         { error: isEn ? 'Disposable or temporary email addresses are not allowed.' : 'No se permiten direcciones de email temporales o desechables.' },
         { status: 400 }
       );
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) {
       return NextResponse.json(
         { error: isEn ? 'An account with that email already exists.' : 'Ya existe una cuenta con ese email.' },
@@ -181,7 +216,7 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
     await prisma.user.create({
       data: {
-        email, password: hashedPassword, name, lang: emailLang,
+        email: normalizedEmail, password: hashedPassword, name, lang: emailLang,
         utmSource: typeof utmSource === 'string' ? utmSource.slice(0, 100) : undefined,
         utmMedium: typeof utmMedium === 'string' ? utmMedium.slice(0, 100) : undefined,
         utmCampaign: typeof utmCampaign === 'string' ? utmCampaign.slice(0, 100) : undefined,
@@ -194,7 +229,7 @@ export async function POST(req: NextRequest) {
     // Create email verification code (6 digits, 15 min expiry)
     const verifyCode = String(crypto.randomInt(100000, 999999));
     await prisma.emailVerificationToken.create({
-      data: { email, token: verifyCode, expires: new Date(Date.now() + 15 * 60 * 1000) },
+      data: { email: normalizedEmail, token: verifyCode, expires: new Date(Date.now() + 15 * 60 * 1000) },
     });
 
     // Send verification email with code (non-blocking)
@@ -202,7 +237,7 @@ export async function POST(req: NextRequest) {
       ? `${verifyCode} — Verify your email - YTubViral`
       : `${verifyCode} — Verifica tu email - YTubViral`;
     sendTransactionalEmail({
-      to: email,
+      to: normalizedEmail,
       subject,
       html: verificationEmail(name, verifyCode, emailLang),
       isTransactional: true,

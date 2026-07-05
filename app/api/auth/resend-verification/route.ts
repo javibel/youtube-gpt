@@ -10,12 +10,13 @@ export async function POST(request: NextRequest) {
   if (!(await rateLimitRequest(request, 'resend-verif', 5, 60))) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
   }
-  const { email, lang = 'es' } = await request.json();
+  const { email: rawEmail, lang = 'es' } = await request.json();
   const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
 
-  if (!email) {
+  if (!rawEmail) {
     return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
   }
+  const email = String(rawEmail).toLowerCase().trim();
 
   const user = await prisma.user.findUnique({
     where: { email },

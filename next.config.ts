@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    // A5 (2026-07-05): hardened CSP candidate ships as Report-Only alongside the current
+    // enforced policy for 1-2 weeks before promotion — see docs/security-phase2-spec-2026-07-05.md.
+    // Drops 'unsafe-eval' and blob: from script-src (kept 'wasm-unsafe-eval' for onnxruntime/imgly)
+    // and http: from img-src; adds form-action/manifest-src. Report-only in dev too is noisy
+    // (React Refresh needs eval) so it's production-only.
+    const cspReportOnly = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://js.stripe.com https://vercel.live https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' blob: https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com https://*.huggingface.co https://huggingface.co https://*.hf.space wss:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com; form-action 'self' https://checkout.stripe.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; report-uri /api/csp-report";
+
     return [
       // Security headers — all routes
       {
@@ -24,7 +31,10 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://js.stripe.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' blob: https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com https://*.huggingface.co https://huggingface.co https://*.hf.space wss:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://js.stripe.com https://vercel.live https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' blob: https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com https://*.huggingface.co https://huggingface.co https://*.hf.space wss:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'" },
+          ...(process.env.NODE_ENV === 'production'
+            ? [{ key: 'Content-Security-Policy-Report-Only', value: cspReportOnly }]
+            : []),
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self)' },
         ],
       },
@@ -70,7 +80,7 @@ const nextConfig: NextConfig = {
         source: '/embed/:path*',
         headers: [
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self'; frame-ancestors *" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self'; frame-ancestors *" },
         ],
       },
       // API routes — never cache by default

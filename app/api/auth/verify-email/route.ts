@@ -8,11 +8,12 @@ export async function POST(request: NextRequest) {
   if (!(await rateLimitRequest(request, 'verify-email', 10, 15))) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
-  const { email, code } = await request.json();
+  const { email: rawEmail, code } = await request.json();
 
-  if (!email || !code) {
+  if (!rawEmail || !code) {
     return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   }
+  const email = String(rawEmail).toLowerCase().trim();
 
   const record = await prisma.emailVerificationToken.findFirst({
     where: { email, token: code },

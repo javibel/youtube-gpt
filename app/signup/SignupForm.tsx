@@ -1,10 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import PasswordInput from '@/components/PasswordInput';
 import { hasTrackingConsent } from '@/components/CookieConsent';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+type TurnstileGlobal = {
+  render: (container: HTMLElement, opts: {
+    sitekey: string;
+    theme?: 'dark' | 'light';
+    language?: string;
+    callback?: (token: string) => void;
+    'expired-callback'?: () => void;
+    'error-callback'?: () => void;
+  }) => string;
+  reset: (widgetId?: string) => void;
+};
+
+declare global {
+  interface Window { turnstile?: TurnstileGlobal }
+}
 
 export default function SignupForm() {
   const router = useRouter();
@@ -28,10 +46,46 @@ export default function SignupForm() {
   const [lang, setLang] = useState<'es'|'en'>('es');
   const [signupReferrer] = useState(() => typeof document !== 'undefined' ? document.referrer || '' : '');
   const [signupLandingPage] = useState(() => typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ytv_landing') || '' : '');
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
     if (stored) setLang(stored);
+  }, []);
+
+  // Turnstile anti-bot widget on signup (A8, 2026-07-05). No-op if the site key isn't
+  // configured (local dev) — signup works exactly as before in that case.
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+
+    function renderWidget() {
+      if (!turnstileRef.current || !window.turnstile) return;
+      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: TURNSTILE_SITE_KEY!,
+        theme: 'dark',
+        language: lang,
+        callback: (token) => setTurnstileToken(token),
+        'expired-callback': () => setTurnstileToken(''),
+        'error-callback': () => setTurnstileToken(''),
+      });
+    }
+
+    if (window.turnstile) {
+      renderWidget();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    script.async = true;
+    script.defer = true;
+    script.onload = renderWidget;
+    document.head.appendChild(script);
+
+    return () => { document.head.removeChild(script); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -71,11 +125,15 @@ export default function SignupForm() {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign, ref: refCode || undefined, signupReferrer: signupReferrer || undefined, signupLandingPage: signupLandingPage || undefined }),
+        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign, ref: refCode || undefined, signupReferrer: signupReferrer || undefined, signupLandingPage: signupLandingPage || undefined, turnstileToken: turnstileToken || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || t('Error al crear cuenta', 'Error creating account'));
+        if (TURNSTILE_SITE_KEY && window.turnstile) {
+          window.turnstile.reset(turnstileWidgetId.current);
+          setTurnstileToken('');
+        }
       } else {
         // Store password temporarily for auto-login after verification
         sessionStorage.setItem('ytv_signup_pw', password);
@@ -164,6 +222,8 @@ export default function SignupForm() {
                 className="py-3 px-4 text-sm"
                 placeholder={t('Repite tu contraseña', 'Repeat your password')} required />
             </div>
+
+            {TURNSTILE_SITE_KEY && <div ref={turnstileRef} />}
 
             {error && (
               <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>

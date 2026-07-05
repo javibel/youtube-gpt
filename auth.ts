@@ -5,6 +5,9 @@ import { authConfig } from "./auth.config";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { ADMIN_EMAIL } from "@/lib/admin-email";
+import { authenticator } from "otplib";
+import { rateLimitDb } from "@/lib/rate-limit-db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -17,12 +20,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        totp: { label: "2FA code", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null;
+        const email = String(credentials.email).toLowerCase().trim();
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
         });
 
         if (!user || !user.password) return null;
@@ -33,6 +38,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
 
         if (!passwordMatch) return null;
+
+        // A6 (2026-07-05): the admin account needs a second factor on top of the password.
+        // Secret lives in an env var, never in the DB — with a single admin that's simpler
+        // and means a read-only DB leak alone can't hand over the second factor. No-op for
+        // every other user, and a deliberate no-op for the admin too if the var isn't set
+        // (bootstrap window / recovery path is "delete the var, re-enroll").
+        const totpSecret = process.env.ADMIN_TOTP_SECRET;
+        if (ADMIN_EMAIL && email === ADMIN_EMAIL && totpSecret) {
+          const ip = request?.headers?.get('x-forwarded-for')?.split(',')[0]?.trim()
+            ?? request?.headers?.get('x-real-ip')
+            ?? 'unknown';
+          const allowed = await rateLimitDb(`admin-totp:${ip}`, 10, 15);
+          if (!allowed) return null;
+
+          const totp = String(credentials.totp ?? '').trim();
+          if (!totp || !authenticator.verify({ token: totp, secret: totpSecret })) return null;
+        }
 
         // Auto-verify legacy users created before email verification was added (pre-March 2026).
         if (!user.emailVerified) {
@@ -59,7 +81,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       // Google OAuth: create or link user in DB
       if (account?.provider === 'google' && user.email) {
-        const existing = await prisma.user.findUnique({ where: { email: user.email } });
+        const normalizedEmail = user.email.toLowerCase().trim();
+        // A6: the admin logs in with credentials + TOTP only — Google would bypass that
+        // second factor entirely, so it's blocked outright for that one email.
+        if (ADMIN_EMAIL && normalizedEmail === ADMIN_EMAIL) {
+          return false;
+        }
+        user.email = normalizedEmail;
+        const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
         if (existing) {
           // Link Google to existing account — mark as verified
           if (!existing.emailVerified) {
@@ -117,7 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Only explicitly null means "new unverified user" — undefined means legacy session
           token.requiresVerification = ev === null;
         }
-        token.isAdmin = user.email === process.env.ADMIN_EMAIL;
+        token.isAdmin = !!ADMIN_EMAIL && user.email?.toLowerCase().trim() === ADMIN_EMAIL;
       }
       // On session update(), re-check emailVerified from DB to unblock verified users
       if (trigger === 'update' && token.requiresVerification && token.id) {

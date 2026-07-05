@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { ADMIN_EMAIL } from '@/lib/admin-email';
 
 /**
  * Shared auth guards (2026-07-04, web audit A2/B1).
@@ -18,8 +19,6 @@ import { prisma } from '@/lib/prisma';
  *   if (!gate.ok) return gate.response;
  *   const { user } = gate; // resolved User row, not just the session email
  */
-
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? '').toLowerCase().trim();
 
 type Guard<T> = { ok: true } & T | { ok: false; response: NextResponse };
 

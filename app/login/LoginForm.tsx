@@ -13,6 +13,8 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<'es'|'en'>('es');
   const [justVerified, setJustVerified] = useState(false);
+  const [totp, setTotp] = useState('');
+  const [showTotp, setShowTotp] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
@@ -27,9 +29,20 @@ export default function LoginForm() {
     setLoading(true);
     setError('');
     try {
-      const result: any = await signIn('credentials', { email, password, redirect: false });
+      const result: any = await signIn('credentials', { email, password, totp: totp || undefined, redirect: false });
       if (result?.error) {
-        setError(t('Email o contraseña incorrectos', 'Incorrect email or password'));
+        if (!showTotp) {
+          // First failure: could be a wrong password, or an admin account missing its 2FA
+          // code — the message stays neutral either way so it doesn't reveal which account
+          // has 2FA enabled.
+          setShowTotp(true);
+          setError(t(
+            'Credenciales incorrectas. Si tu cuenta tiene verificación en dos pasos, introduce el código.',
+            'Incorrect credentials. If your account has two-step verification, enter the code.'
+          ));
+        } else {
+          setError(t('Email, contraseña o código incorrectos', 'Incorrect email, password, or code'));
+        }
       } else {
         // Check if the user needs verification (middleware would redirect anyway, but this is better UX)
         const sess = await fetch('/api/auth/session').then(r => r.json());
@@ -115,6 +128,17 @@ export default function LoginForm() {
               <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm" required />
             </div>
+
+            {showTotp && (
+              <div>
+                <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
+                  {t('Código de verificación', 'Verification code')}
+                </label>
+                <input type="text" inputMode="numeric" autoComplete="one-time-code" value={totp}
+                  onChange={(e) => setTotp(e.target.value)}
+                  className="soft-field py-3 px-4 text-sm" placeholder="123456" maxLength={6} />
+              </div>
+            )}
 
             {justVerified && (
               <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(0,255,163,0.06)', border: '1px solid rgba(0,255,163,0.3)', color: '#4ade80' }}>

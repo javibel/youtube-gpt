@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       END
     RETURNING hits
   `;
-  const { email, lang = 'es' } = await request.json();
+  const { email: rawEmail, lang = 'es' } = await request.json();
   const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
   const isEn = emailLang === 'en';
 
@@ -37,12 +37,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!email) {
+  if (!rawEmail) {
     return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
   }
+  const email = String(rawEmail).toLowerCase().trim();
 
   // Per-email rate limit: max 3 resets per email per hour
-  const emailRlKey = `forgot-password:email:${email.toLowerCase().trim()}`;
+  const emailRlKey = `forgot-password:email:${email}`;
   const emailRl = await prisma.$queryRaw<{ hits: number }[]>`
     INSERT INTO rate_limits (key, hits, window_start)
     VALUES (${emailRlKey}, 1, NOW())
