@@ -12,7 +12,12 @@ import { sendTransactionalEmail } from "@/lib/send-email";
 // signup to a CF outage costs more than letting one bot through occasionally.
 async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) { console.warn('[signup] TURNSTILE_SECRET_KEY not set — skipping bot check'); return true; }
+  if (!secret) {
+    // Guardian 2026-07-06: don't announce the anti-bot bypass on stdout in production —
+    // low-cost hardening, doesn't change the fail-open behavior itself (see note below).
+    if (process.env.NODE_ENV !== 'production') console.warn('[signup] TURNSTILE_SECRET_KEY not set — skipping bot check');
+    return true;
+  }
   if (!token) return false;
 
   try {
