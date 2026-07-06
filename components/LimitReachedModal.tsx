@@ -204,7 +204,7 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
           ) : isPro ? (
             <span className="inline-flex items-center justify-center gap-2">
               <RocketIcon size={16} />
-              {t('Actualizar a Pro', 'Upgrade to Pro')} — {selectedPlan === 'yearly' ? t('99,99 €/año', '99.99 €/yr') : t('9,99 €/mes', '9.99 €/mo')}
+              {t('Probar Pro gratis 7 días', 'Try Pro free for 7 days')} — {selectedPlan === 'yearly' ? t('99,99 €/año', '99.99 €/yr') : t('9,99 €/mes', '9.99 €/mo')}
             </span>
           ) : (
             <span className="inline-flex items-center justify-center gap-2">

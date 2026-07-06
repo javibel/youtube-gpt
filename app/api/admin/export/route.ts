@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guards";
+import { isPaidStatus } from "@/lib/plans";
 
 function toCSV(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return '';
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
       id: u.id,
       email: u.email,
       name: u.name ?? '',
-      plan: u.subscription?.status === 'active' ? 'Pro' : 'Free',
+      plan: u.subscription?.status === 'trialing' ? 'Trial' : isPaidStatus(u.subscription?.status) ? 'Pro' : 'Free',
       cancel_at_period_end: u.subscription?.cancelAtPeriodEnd ?? false,
       subscription_ends: u.subscription?.currentPeriodEnd?.toISOString() ?? '',
       total_generations: u._count.generations,

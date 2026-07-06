@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { requireAdmin } from '@/lib/auth-guards';
+import { isPaidStatus } from '@/lib/plans';
 
 export async function DELETE(req: NextRequest) {
   const gate = await requireAdmin();
@@ -21,16 +22,17 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
   }
 
-  // Cancelar suscripción en Stripe si existe y está activa
-  if (user.subscription?.stripeCustomerId && user.subscription.status === 'active') {
+  // Cancelar suscripción en Stripe si existe y está activa (incluye trials)
+  if (user.subscription?.stripeCustomerId && isPaidStatus(user.subscription.status)) {
     try {
       const subscriptions = await stripe.subscriptions.list({
         customer: user.subscription.stripeCustomerId,
-        status: 'active',
-        limit: 1,
+        status: 'all',
+        limit: 10,
       });
-      if (subscriptions.data.length > 0) {
-        await stripe.subscriptions.cancel(subscriptions.data[0].id);
+      const target = subscriptions.data.find((s) => isPaidStatus(s.status));
+      if (target) {
+        await stripe.subscriptions.cancel(target.id);
       }
     } catch (err) {
       console.error('Error cancelando suscripción Stripe:', err);

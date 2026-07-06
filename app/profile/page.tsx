@@ -271,11 +271,20 @@ export default function ProfilePage() {
           <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>{t('Plan', 'Plan')}</p>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <p className="font-display font-bold text-lg text-white">{planLabel}</p>
+              <p className="font-display font-bold text-lg text-white flex items-center gap-2">
+                {planLabel}
+                {data?.subscription?.status === 'trialing' && (
+                  <span className="font-mono-jb text-[11px] tracking-wider uppercase px-1.5 py-0.5 rounded" style={{ background: 'var(--yv-brand)', color: 'white' }}>
+                    {t('PRUEBA', 'TRIAL')}
+                  </span>
+                )}
+              </p>
               <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>
                 {isPro
                   ? (data?.subscription?.cancelAtPeriodEnd
                       ? t('Cancela el ', 'Cancels on ') + (data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—')
+                      : data?.subscription?.status === 'trialing'
+                      ? t('Tu prueba termina el ', 'Your trial ends on ') + (data?.subscription?.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—')
                       : t('Renovación el ', 'Renews on ') + (data?.subscription?.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—'))
                   : `${data?.stats?.generationsThisMonth ?? 0} / ${data?.stats?.limit ?? 10} ${t('generaciones este mes', 'generations this month')}`}
               </p>

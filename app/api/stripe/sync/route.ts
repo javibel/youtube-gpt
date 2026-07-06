@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
+import { isPaidStatus } from '@/lib/plans';
 import { NextResponse } from 'next/server';
 
 /**
@@ -22,16 +23,17 @@ export async function POST() {
       return NextResponse.json({ synced: false, message: 'No se encontró cliente en Stripe.' });
     }
 
-    // Check all customers for an active subscription
+    // Check all customers for an active (or trialing) subscription
     for (const customer of customers.data) {
       const subscriptions = await stripe.subscriptions.list({
         customer: customer.id,
-        status: 'active',
-        limit: 5,
+        status: 'all',
+        limit: 10,
       });
 
-      if (subscriptions.data.length > 0) {
-        const sub = subscriptions.data[0];
+      const sub = subscriptions.data.find((s) => isPaidStatus(s.status));
+
+      if (sub) {
         const item = sub.items.data[0];
 
         const user = await prisma.user.findUnique({ where: { email: session.user.email! } });

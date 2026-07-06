@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guards";
+import { isPaidStatus } from "@/lib/plans";
 
 export async function GET() {
   const gate = await requireAdmin();
@@ -143,8 +144,8 @@ export async function GET() {
       email: u.email,
       name: u.name,
       createdAt: u.createdAt,
-      isPro: u.subscription?.status === "active",
-      plan: u.subscription?.status === "active" ? ((u.subscription as { plan?: string })?.plan || 'pro') : 'free',
+      isPro: isPaidStatus(u.subscription?.status),
+      plan: u.subscription?.status === 'trialing' ? 'trial' : isPaidStatus(u.subscription?.status) ? ((u.subscription as { plan?: string })?.plan || 'pro') : 'free',
       generationCount: u._count.generations,
     })),
     recentGenerations: recentGenerations.map((g) => ({

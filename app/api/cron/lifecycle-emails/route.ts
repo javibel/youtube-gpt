@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { SEQUENCES } from '@/lib/lifecycle-emails';
 import { isInternalAccount } from '@/lib/internal-accounts';
+import { isPaidStatus } from '@/lib/plans';
 
 export const maxDuration = 60;
 
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
     const lang = (u.lang === 'en' ? 'en' : 'es') as Lang;
     const name = u.name?.split(' ')[0] || (lang === 'en' ? 'there' : 'crack');
     const ageDays = (now - u.createdAt.getTime()) / DAY;
-    const isPaid = u.subscription?.status === 'active';
+    const isPaid = isPaidStatus(u.subscription?.status);
     const genCount = u._count.generations;
     const lastGenAt = lastGen.get(u.id) ?? 0;
     const inactiveDays = lastGenAt ? (now - lastGenAt) / DAY : ageDays;

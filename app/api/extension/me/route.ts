@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { isPaidStatus } from '@/lib/plans';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       select: { status: true },
     });
 
-    const isPro = subscription?.status === 'active';
+    const isPro = isPaidStatus(subscription?.status);
 
     return NextResponse.json({
       name: extToken.user.name,

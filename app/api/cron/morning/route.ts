@@ -16,6 +16,7 @@ import { sendDailyReport } from '@/lib/agent/reports-agent';
 import { sendVerificationReminders } from '@/lib/agent/verification-reminder';
 import { sendReengagementEmails } from '@/lib/agent/reengagement-email';
 import { prisma } from '@/lib/prisma';
+import { PAID_STATUSES } from '@/lib/plans';
 
 export const maxDuration = 120;
 
@@ -91,7 +92,7 @@ async function generateDailyIdeas(): Promise<number> {
     where: {
       channelId: { not: null },
       user: {
-        subscription: { status: 'active' },
+        subscription: { status: { in: [...PAID_STATUSES] } },
         dailyIdeas: { none: { date } },
       },
     },

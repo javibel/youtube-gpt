@@ -44,12 +44,18 @@ export const PLAN_LIMITS = {
   },
 } as const;
 
+export const PAID_STATUSES = ['active', 'trialing'] as const;
+
+export function isPaidStatus(status: string | null | undefined): boolean {
+  return !!status && (PAID_STATUSES as readonly string[]).includes(status);
+}
+
 export async function getUserPlan(userId: string): Promise<PlanType> {
   const sub = await prisma.subscription.findUnique({
     where: { userId },
     select: { status: true, plan: true },
   });
-  if (sub?.status !== 'active') return 'free';
+  if (!sub || !isPaidStatus(sub.status)) return 'free';
   return (sub.plan === 'business' ? 'business' : 'pro') as PlanType;
 }
 

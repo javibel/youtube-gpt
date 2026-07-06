@@ -688,12 +688,22 @@ function handleCopy(id: string, out: string) {
                   <svg width={15} height={15} viewBox="0 0 24 24" fill={isBusiness ? 'black' : 'white'}><path d="M3 18h18M4 8l4 4 4-6 4 6 4-4-1 10H5z" /></svg>
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">
+                  <p className="font-semibold text-sm flex items-center gap-2">
                     {isBusiness ? t('Plan Business activo', 'Active Business plan') : t('Plan Pro activo', 'Active Pro plan')}
+                    {data.subscription.status === 'trialing' && (
+                      <span className="font-mono-jb text-[11px] tracking-wider uppercase px-1.5 py-0.5 rounded" style={{ background: 'var(--yv-brand)', color: 'white' }}>
+                        {t('PRUEBA', 'TRIAL')}
+                      </span>
+                    )}
                   </p>
                   {data.subscription.cancelAtPeriodEnd ? (
                     <p className="text-yellow-400 text-[13px] mt-0.5">
                       {t('No se renovará · Acceso hasta el', 'Will not renew · Access until')}{' '}
+                      {data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long' }) : '—'}
+                    </p>
+                  ) : data.subscription.status === 'trialing' ? (
+                    <p className="text-[13px] mt-0.5" style={{ color: 'var(--yv-text-3)' }}>
+                      {t('Tu prueba termina el', 'Your trial ends on')}{' '}
                       {data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long' }) : '—'}
                     </p>
                   ) : (

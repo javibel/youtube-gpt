@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { isPaidStatus } from './plans';
 
 export interface ExtensionUser {
   user: {
@@ -34,6 +35,6 @@ export async function getExtensionUser(request: Request): Promise<ExtensionUser 
 
   return {
     user: { id: ext.user.id, email: ext.user.email, name: ext.user.name },
-    isPro: ext.user.subscription?.status === 'active',
+    isPro: isPaidStatus(ext.user.subscription?.status),
   };
 }

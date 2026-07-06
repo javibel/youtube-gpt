@@ -104,8 +104,11 @@ export default function PricingSection({ lang }: { lang: Lang }) {
               ))}
             </ul>
             <Link href="/signup" className="btn-offset w-full px-5 py-3 text-sm font-display block text-center">
-              {t('Empezar con Pro →', 'Get Pro →')}
+              {t('Prueba Pro 7 días gratis →', 'Try Pro free for 7 days →')}
             </Link>
+            <p className="text-center text-zinc-500 text-xs mt-2">
+              {t('Sin cargo hasta el día 7 · Cancela cuando quieras', 'No charge until day 7 · Cancel anytime')}
+            </p>
           </div>
 
           {/* Business */}

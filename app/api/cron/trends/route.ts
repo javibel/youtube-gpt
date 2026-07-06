@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { PAID_STATUSES } from '@/lib/plans';
 
 export const maxDuration = 60;
 
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
   // Get all Pro users with connected YouTube channels
   const users = await prisma.user.findMany({
     where: {
-      subscription: { status: 'active' },
+      subscription: { status: { in: [...PAID_STATUSES] } },
       youtubeToken: { isNot: null },
     },
     select: {

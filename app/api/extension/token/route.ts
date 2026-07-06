@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
+import { isPaidStatus } from '@/lib/plans';
 
 // Session-based extension token mint. Lets the extension connect WITHOUT a password — works for
 // Google/OAuth users (who have no password and were locked out of the email+password login).
@@ -39,7 +40,7 @@ export async function GET() {
       where: { userId: user.id },
       select: { status: true },
     });
-    const isPro = subscription?.status === 'active';
+    const isPro = isPaidStatus(subscription?.status);
 
     return NextResponse.json({ token, name: user.name, email: user.email, isPro });
   } catch (err) {

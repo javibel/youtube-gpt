@@ -23,7 +23,7 @@ function getPlanDescription(plan: CheckoutPlan, isEn: boolean): string {
   }
 }
 
-function getSubmitMessage(plan: CheckoutPlan, isEn: boolean): string {
+function getSubmitMessage(plan: CheckoutPlan, isEn: boolean, trialEligible: boolean): string {
   if (plan === 'business_monthly' || plan === 'business_yearly') {
     const yearly = plan === 'business_yearly';
     return yearly
@@ -31,6 +31,11 @@ function getSubmitMessage(plan: CheckoutPlan, isEn: boolean): string {
       : (isEn ? 'Your YTubViral.com Business subscription activates instantly. Cancel anytime.' : 'Tu suscripción a YTubViral.com Business se activa al instante. Puedes cancelar en cualquier momento.');
   }
   const yearly = plan === 'yearly';
+  if (trialEligible) {
+    return yearly
+      ? (isEn ? '7 days free, then €99.99/yr. Cancel before day 7 at no cost.' : '7 días gratis, luego 99,99 €/año. Cancela antes del día 7 sin coste.')
+      : (isEn ? '7 days free, then €9.99/mo. Cancel before day 7 at no cost.' : '7 días gratis, luego 9,99 €/mes. Cancela antes del día 7 sin coste.');
+  }
   return yearly
     ? (isEn ? 'Annual plan — €99.99/yr. Your Pro access activates instantly. No surprise renewals.' : 'Plan anual — 99,99€/año. Tu acceso Pro se activa al instante. Sin renovaciones sorpresa.')
     : (isEn ? 'Your YTubViral.com Pro subscription activates instantly. Cancel anytime.' : 'Tu suscripción a YTubViral.com Pro se activa al instante. Puedes cancelar en cualquier momento.');
@@ -76,6 +81,7 @@ export async function POST(request: Request) {
     }
 
     const tierPlan = plan.startsWith('business') ? 'business' : 'pro';
+    const trialEligible = (plan === 'monthly' || plan === 'yearly') && !user.subscription?.stripePriceId;
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
@@ -89,9 +95,10 @@ export async function POST(request: Request) {
       subscription_data: {
         description: getPlanDescription(plan, isEn),
         metadata: { userId: user.id, service: 'YTubViral.com', plan: tierPlan },
+        ...(trialEligible ? { trial_period_days: 7 } : {}),
       },
       custom_text: {
-        submit: { message: getSubmitMessage(plan, isEn) },
+        submit: { message: getSubmitMessage(plan, isEn, trialEligible) },
       },
     });
 

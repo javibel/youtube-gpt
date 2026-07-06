@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
+import { PAID_STATUSES } from '@/lib/plans';
 
 export const maxDuration = 60;
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   const users = await prisma.youtubeToken.findMany({
     where: {
       channelId: { not: null },
-      user: { subscription: { status: 'active' } },
+      user: { subscription: { status: { in: [...PAID_STATUSES] } } },
     },
     select: { userId: true },
   });

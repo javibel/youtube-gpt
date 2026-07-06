@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getUserPlan, getLimits, isPaid, type PlanType } from "@/lib/plans";
+import { getLimits, isPaid, isPaidStatus, type PlanType } from "@/lib/plans";
 
 function calcStreak(dates: Date[]): number {
   if (!dates.length) return 0;
@@ -71,8 +71,8 @@ export async function GET() {
       }),
     ]);
 
-  const plan: PlanType = subscription?.status === 'active'
-    ? (subscription.plan === 'business' ? 'business' : 'pro')
+  const plan: PlanType = isPaidStatus(subscription?.status)
+    ? (subscription!.plan === 'business' ? 'business' : 'pro')
     : 'free';
   const isProUser = isPaid(plan);
   const limits = getLimits(plan);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { isPaidStatus } from '@/lib/plans';
 
 // 90 days token validity
 const TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id },
       select: { status: true },
     });
-    const isPro = subscription?.status === 'active';
+    const isPro = isPaidStatus(subscription?.status);
 
     return NextResponse.json({ token, name: user.name, email: user.email, isPro });
   } catch (err) {

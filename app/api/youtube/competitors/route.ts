@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
+import { getUserPlan, getLimits, isPaid, isPaidStatus } from '@/lib/plans';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -17,7 +17,7 @@ export async function GET() {
     where: { userId: session.user.id },
     select: { status: true },
   });
-  if (sub?.status !== 'active') {
+  if (!isPaidStatus(sub?.status)) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 

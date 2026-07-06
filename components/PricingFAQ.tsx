@@ -2,6 +2,13 @@ import type { Lang } from '@/lib/server-lang';
 
 const FAQS: { q: { es: string; en: string }; a: { es: string; en: string } }[] = [
   {
+    q: { es: '¿Cómo funciona la prueba gratis?', en: 'How does the free trial work?' },
+    a: {
+      es: 'Al elegir Pro tienes 7 días de acceso completo sin cargo. Pedimos la tarjeta al inicio, pero no cobramos nada hasta el día 7 — cancela antes desde tu perfil y no se te cobrará.',
+      en: 'When you pick Pro you get 7 days of full access at no charge. We ask for a card upfront, but nothing is charged until day 7 — cancel before then from your profile and you will not be billed.',
+    },
+  },
+  {
     q: { es: '¿Puedo cancelar mi suscripción cuando quiera?', en: 'Can I cancel my subscription anytime?' },
     a: {
       es: 'Sí, desde tu perfil en un clic, sin permanencia ni penalizaciones. Mantienes el acceso a tu plan hasta el final del período ya facturado.',
