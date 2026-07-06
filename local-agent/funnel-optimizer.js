@@ -100,16 +100,20 @@ async function collectFunnelMetrics() {
     changePercent: retentionChange,
   };
 
-  // 4. Subscriptions: active paid, new this week, churn (canceled this week)
+  // 4. Subscriptions: active paid, trials en curso (feature 06/07), new this week, churn (canceled this week)
   const subsRes = await db.query(`
     SELECT
       COUNT(CASE WHEN status = 'active' THEN 1 END) AS active_paid,
+      COUNT(CASE WHEN status = 'trialing' THEN 1 END) AS trialing,
+      COUNT(CASE WHEN status = 'trialing' AND "createdAt" >= NOW() - INTERVAL '7 days' THEN 1 END) AS trials_started_this_week,
       COUNT(CASE WHEN status = 'active' AND "createdAt" >= NOW() - INTERVAL '7 days' THEN 1 END) AS new_this_week,
       COUNT(CASE WHEN status = 'canceled' AND "currentPeriodEnd" >= NOW() - INTERVAL '7 days' THEN 1 END) AS canceled_this_week
     FROM subscriptions
   `);
   metrics.subscriptions = {
     activePaid: +subsRes[0]?.active_paid || 0,
+    trialing: +subsRes[0]?.trialing || 0,
+    trialsStartedThisWeek: +subsRes[0]?.trials_started_this_week || 0,
     newThisWeek: +subsRes[0]?.new_this_week || 0,
     canceledThisWeek: +subsRes[0]?.canceled_this_week || 0,
   };
