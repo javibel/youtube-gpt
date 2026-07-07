@@ -23,8 +23,8 @@ const PERSONA_SEARCH_TERMS = {
     'editar vídeo youtube', 'content creator setup', 'youtube shorts editing',
   ],
   'persona-ferran': [
-    'youtube growth', 'youtube algorithm', 'youtube seo', 'crecer en youtube',
-    'algoritmo de youtube', 'youtube marketing', 'canal de youtube pequeño',
+    'youtube growth', 'youtube channel strategy', 'youtube seo', 'crecer en youtube',
+    'estrategia canal youtube', 'youtube marketing', 'canal de youtube pequeño',
   ],
   'persona-ana': [
     'content creator tips', 'youtube community', 'social media youtube', 'creadores de contenido',
