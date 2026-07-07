@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { stripe } from '@/lib/stripe';
+import { stripe, subscriptionPeriod } from '@/lib/stripe';
 import { isPaidStatus } from '@/lib/plans';
 import { NextResponse } from 'next/server';
 
@@ -39,6 +39,7 @@ export async function POST() {
         const user = await prisma.user.findUnique({ where: { email: session.user.email! } });
         if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
 
+        const period = subscriptionPeriod(sub);
         await prisma.subscription.upsert({
           where: { userId: user.id },
           create: {
@@ -47,16 +48,16 @@ export async function POST() {
             stripePriceId: item.price.id,
             status: sub.status,
             cancelAtPeriodEnd: sub.cancel_at_period_end,
-            currentPeriodStart: new Date(sub.current_period_start * 1000),
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            currentPeriodStart: period.start,
+            currentPeriodEnd: period.end,
           },
           update: {
             stripeCustomerId: customer.id,
             stripePriceId: item.price.id,
             status: sub.status,
             cancelAtPeriodEnd: sub.cancel_at_period_end,
-            currentPeriodStart: new Date(sub.current_period_start * 1000),
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            currentPeriodStart: period.start,
+            currentPeriodEnd: period.end,
           },
         });
 

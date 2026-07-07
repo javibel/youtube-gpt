@@ -1,4 +1,4 @@
-import { stripe } from '@/lib/stripe';
+import { stripe, subscriptionPeriod } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
@@ -22,6 +22,7 @@ async function upsertSubscription(
 ) {
   const item = subscription.items.data[0];
   const plan = detectPlan(item.price.id);
+  const period = subscriptionPeriod(subscription);
   await prisma.subscription.upsert({
     where: { userId },
     create: {
@@ -31,8 +32,8 @@ async function upsertSubscription(
       plan,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : new Date(),
-      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date(),
+      currentPeriodStart: period.start,
+      currentPeriodEnd: period.end,
     },
     update: {
       stripeCustomerId: customerId,
@@ -40,8 +41,8 @@ async function upsertSubscription(
       plan,
       status: subscription.status,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : new Date(),
-      currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date(),
+      currentPeriodStart: period.start,
+      currentPeriodEnd: period.end,
     },
   });
 }
@@ -118,6 +119,7 @@ export async function POST(request: Request) {
         const item = subscription.items.data[0];
 
         const plan = item?.price?.id ? detectPlan(item.price.id) : undefined;
+        const period = subscriptionPeriod(subscription);
         await prisma.subscription.updateMany({
           where: { stripeCustomerId: customerId },
           data: {
@@ -125,8 +127,8 @@ export async function POST(request: Request) {
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
             stripePriceId: item?.price?.id,
             ...(plan ? { plan } : {}),
-            currentPeriodStart: subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : new Date(),
-            currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date(),
+            currentPeriodStart: period.start,
+            currentPeriodEnd: period.end,
           },
         });
         console.log(`${event.type}: updated subscription for customerId=${customerId}, status=${subscription.status}`);
