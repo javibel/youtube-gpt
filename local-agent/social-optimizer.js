@@ -216,8 +216,12 @@ async function runSocialOptimizer() {
     }
 
     // Run auto-fix with issues + improvements
-    // Note: if both are empty, the fix condition (issues.length > 0) won't trigger — no wasted API calls
-    let appliedFixes = await applyFixes('social-optimizer', allIssuesForFix, metrics, improvements);
+    // DISABLED 2026-07-08 — desconexión de personas: el auto-fix optimizaba menciones/volumen
+    // de cuentas ficticias (la noche del 07→08/07 puso la mención como "norma", pisando la
+    // política de menciones graduadas). Sin personas no hay nada legítimo que auto-corregir.
+    // El análisis/reporte diario sigue activo (cubre también Instagram/brand).
+    let appliedFixes = [];
+    // appliedFixes = await applyFixes('social-optimizer', allIssuesForFix, metrics, improvements);
     if (appliedFixes.length > 0) {
       console.log(`[social-optimizer] Auto-fixed ${appliedFixes.length} issue(s)`);
       report.autoFixes = appliedFixes;

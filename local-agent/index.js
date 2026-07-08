@@ -91,6 +91,36 @@ cron.schedule('*/5 * * * *', async () => {
 // Run sentinel immediately on startup
 runSentinel().catch(err => console.error('[sentinel] startup check:', err.message));
 
+// Watchdog catch-up: if no report this week (Mon-Sun), run now so the weekly audit doesn't get skipped
+// when the machine was off at 02:45 on Monday
+(async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const now = new Date();
+  // Get Monday of current week
+  const day = now.getDay(); // 0=Sun, 1=Mon...
+  const diffToMon = (day === 0 ? -6 : 1 - day);
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diffToMon);
+  const monStr = mon.toISOString().slice(0, 10);
+  // Check if a watchdog report exists for any day Mon-today
+  const reportsDir = path.join(__dirname, 'reports');
+  let found = false;
+  for (let i = 0; i <= (day === 0 ? 6 : day - 1); i++) {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    if (fs.existsSync(path.join(reportsDir, `watchdog-${d.toISOString().slice(0, 10)}.json`))) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    console.log('[watchdog] No report this week — running catch-up audit on startup');
+    await runWatchdog().catch(err => console.error('[watchdog] catch-up:', err.message));
+    await db.disconnect().catch(() => {});
+  }
+})();
+
 // ── Schedules ─────────────────────────────────────────────────────────────────
 
 // Twitter/X brand engagement — DISABLED (user manages brand Twitter manually)
@@ -143,9 +173,10 @@ cron.schedule('30 8 * * *', async () => {
 // cron.schedule(`${personaMin2} ${personaHour2} * * *`, async () => { ... });
 
 // ── Bluesky dispatcher horario (ritmo por persona) ───────────────────────────
-// Cada hora 08–23 Madrid, en un minuto aleatorio. Para cada persona consulta su
-// ritmo (persona-rhythm.js): horas propias + ánimo del día. Si "le toca ahora",
-// engancha SOLO esa persona.
+// DISABLED 2026-07-08 — desconexión total de personas (decisión Javier: no
+// siguen el espíritu de autenticidad de la marca; quedan solo cuentas
+// personales y de brand).
+/*
 const blueskyDispatchMin = Math.floor(Math.random() * 60);
 cron.schedule(`${blueskyDispatchMin} 8-23 * * *`, async () => {
   const rhythm = require('./persona-rhythm');
@@ -158,8 +189,11 @@ cron.schedule(`${blueskyDispatchMin} 8-23 * * *`, async () => {
   }
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
+*/
 
 // ── Informe Bluesky diario — 23:40 Madrid ────────────────────────────────────
+// DISABLED 2026-07-08 — desconexión de personas; sin dispatcher no hay actividad que reportar.
+/*
 cron.schedule('40 23 * * *', async () => {
   try {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
@@ -194,13 +228,16 @@ cron.schedule('40 23 * * *', async () => {
   }
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
+*/
 
 // Bluesky warm-up drip — one queued original post per day (12:35 Madrid).
-// Posts only while bluesky-post-queue.json has items, then goes quiet.
+// DISABLED 2026-07-08 — desconexión de personas (cola vacía; el drip era solo para personas).
+/*
 cron.schedule('35 12 * * *', async () => {
   console.log('[cron] Bluesky warm-up drip');
   await runBlueskyDrip().catch(err => console.error('[bluesky-drip]', err.message));
 }, { timezone: 'Europe/Madrid' });
+*/
 
 // Persona reports — DISABLED 2026-06-25 (all personas shut down)
 // Was: 12:00 and 00:00, reported Twitter/Facebook/Reddit activity for all personas.
@@ -353,11 +390,13 @@ cron.schedule('30 3 * * 0', async () => {
 }, { timezone: 'Europe/Madrid' });
 
 // Persona Monitor — cada hora en horario activo (08:00-23:00)
-// Detecta silencio en Bluesky; auto-retry + email si falla
+// DISABLED 2026-07-08 — desconexión de personas; ya no hay nada que monitorizar.
+/*
 cron.schedule('12 8-23 * * *', async () => {
   await runPersonaMonitor().catch(err => console.error('[persona-monitor]', err.message));
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
+*/
 
 // Auto-Resolver — daily at 09:17 (reads manager report + applies programmatic fixes)
 cron.schedule('17 9 * * *', async () => {
@@ -401,13 +440,7 @@ cron.schedule('0 6 * * *', async () => {
 
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');
-console.log('  Personas Twitter/Facebook/Reddit: DISABLED 2026-06-25 (only Bluesky active)');
-console.log('  Persona follow-ups: DISABLED 2026-06-25 (Twitter abandoned)');
-console.log('  Persona reports (Twitter/FB/Reddit): DISABLED 2026-06-25');
-console.log(`  Bluesky dispatcher: hourly 08-23 (Europe/Madrid)`);
-console.log('  Bluesky daily report: 23:40 (Europe/Madrid)');
-console.log('  Bluesky warm-up drip: 12:35 daily (Europe/Madrid)');
-console.log('  Persona Monitor (Bluesky): every hour 08:00-23:00 (Europe/Madrid)');
+console.log('  Personas (TODAS las plataformas): DISABLED 2026-07-08 — desconexión total, solo cuentas personales + brand');
 console.log('  Brand Twitter post (auto): DISABLED');
 console.log('  Brand X Coach (@YTubViral manual): 08:30 daily (Europe/Madrid)');
 console.log('  Gmail inbox: every 30min 8-23h (Europe/Madrid)');
