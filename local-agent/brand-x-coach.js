@@ -197,6 +197,13 @@ async function collectBskyTargets() {
   return chosen;
 }
 
+// Datos reales autorizados (estudio propio, API oficial de YouTube) — la ÚNICA
+// fuente de cifras propias citables. Público en ytubviral.com/youtube-title-study.
+const REAL_DATA =
+  'DATOS REALES citables (estudio propio de 1.814 títulos vía API de YouTube, en ytubviral.com/youtube-title-study): ' +
+  'longitud mediana 48 caracteres en trending global vs 69 en los más vistos por nicho; con número 29% vs 41%; listicles 6% vs 21%; palabras gancho 7% vs 27%. ' +
+  'Son las únicas cifras propias permitidas — cualquier otra, no la uses.';
+
 // Posts de marca para Bluesky — más largos, con link, tono equipo
 async function generateBlueskyPosts() {
   const system = [
@@ -204,6 +211,7 @@ async function generateBlueskyPosts() {
     'Tono: cercano, profesional, de equipo pequeño. Bluesky permite 300 caracteres.',
     'Puedes mencionar ytubviral.com en ~1 de cada 2 posts — siempre con contexto útil.',
     'NUNCA inventes cifras, casos de éxito ni testimonios. Todo real o genérico.',
+    REAL_DATA,
     'Sin hashtags. Máximo 1 emoji. Bilingüe: alterna español e inglés entre posts.',
     'Alterna entre: tip accionable, pregunta a la audiencia, dato/insight.',
   ].join('\n');
@@ -231,6 +239,7 @@ async function generatePosts() {
     'Tono: profesional pero cercano. Un equipo pequeño que sabe de SEO de YouTube.',
     'Puedes mencionar ytubviral.com en ~1 de cada 3 tweets, siempre con contexto útil.',
     'NUNCA inventes cifras, casos de éxito ni testimonios. Todo real o genérico.',
+    REAL_DATA,
     'Sin hashtags. Sin emojis excesivos (máx 1). Español de España.',
     'Alterna entre: tip accionable, pregunta a la audiencia, dato/insight, mini-hilo (2 tweets separados por \\n\\n).',
   ].join('\n');
