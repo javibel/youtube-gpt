@@ -173,14 +173,17 @@ export const D1_trialEnding: Tpl = {
     const date = trialEndTs
       ? new Date(trialEndTs * 1000).toLocaleDateString(en ? 'en-US' : 'es-ES', { day: 'numeric', month: 'long' })
       : '';
-    const amount = formatAmount(Number(extra?.amountCents ?? 0), String(extra?.currency ?? 'EUR'), lang);
+    const amountCents = Number(extra?.amountCents ?? 0);
+    // Si el importe no llegó (edge: price sin unit_amount), frase genérica antes
+    // que un "cobraremos 0,00 €" que confunde.
+    const charge = amountCents ? formatAmount(amountCents, String(extra?.currency ?? 'EUR'), lang) : '';
     const manageUrl = String(extra?.manageUrl ?? `${BASE}/profile`);
     return shell(lang, uid, 'trial-ending',
       eyebrow(en ? 'HEADS UP' : 'AVISO') +
       h(en ? `Your trial ends ${date}` : `Tu prueba termina el ${date}`) +
       p(en
-        ? `You started a 7-day free trial of Pro. In 3 days, on ${date}, we'll charge ${amount} to keep it going — no action needed if you want to continue. Changed your mind? Cancel before then and you won't be charged anything.`
-        : `Empezaste una prueba gratis de 7 días de Pro. En 3 días, el ${date}, cobraremos ${amount} para seguir — no hace falta que hagas nada si quieres continuar. ¿Te lo has pensado mejor? Cancela antes de esa fecha y no se te cobrará nada.`) +
+        ? `You started a 7-day free trial of Pro. In 3 days, on ${date}, we'll charge ${amountCents ? charge : 'your card'} to keep it going — no action needed if you want to continue. Changed your mind? Cancel before then and you won't be charged anything.`
+        : `Empezaste una prueba gratis de 7 días de Pro. En 3 días, el ${date}, se realizará ${amountCents ? `el cobro de ${charge}` : 'el primer cobro'} para seguir — no hace falta que hagas nada si quieres continuar. ¿Te lo has pensado mejor? Cancela antes de esa fecha y no se te cobrará nada.`) +
       button(manageUrl, en ? 'Manage my subscription →' : 'Gestionar mi suscripción →') +
       sign(en));
   },

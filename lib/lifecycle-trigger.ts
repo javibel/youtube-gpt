@@ -54,36 +54,50 @@ export async function triggerConversionEmail(userId: string, step: ConvStep, ext
 // estado de la cuenta, NO marketing: a diferencia de triggerConversionEmail,
 // deliberadamente NO gatean por marketingOptOut/emailVerified ni aplican cooldown
 // (isTransactional:true en sendTransactionalEmail omite el header de baja).
-// Sí conservan idempotencia por EmailLog porque Stripe reintenta webhooks.
+// Idempotentes por EmailLog porque Stripe reintenta webhooks.
+//
+// A diferencia de triggerConversionEmail, estos SÍ propagan errores: su único
+// caller es el webhook de Stripe, que responde 500 en error para que Stripe
+// reintente — si nos tragáramos el fallo aquí, un error transitorio de envío
+// perdería el email para siempre. Única excepción: si el email YA salió y solo
+// falla el registro en EmailLog, no se relanza (relanzar duplicaría el envío
+// en el reintento).
+async function sendBillingEmail(
+  userId: string,
+  step: string,
+  tpl: (typeof SEQUENCES.billing)[keyof typeof SEQUENCES.billing],
+  extra: Record<string, string | number>,
+): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, lang: true } });
+  if (!user?.email || isInternalAccount(user.email)) return;
+
+  const already = await prisma.emailLog.findUnique({
+    where: { userId_sequence_step: { userId, sequence: 'billing', step } },
+  });
+  if (already) return;
+
+  const lang = (user.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
+  const name = user.name?.split(' ')[0] || (lang === 'en' ? 'there' : 'crack');
+
+  if (!LIVE) {
+    console.log(`[lifecycle-trigger DRY_RUN] billing/${step} → ${user.email} (${lang})`);
+    return;
+  }
+
+  await sendTransactionalEmail({ to: user.email, subject: tpl.subject[lang], html: tpl.build(name, lang, userId, extra), isTransactional: true });
+  try {
+    await prisma.emailLog.create({ data: { userId, sequence: 'billing', step } });
+  } catch (e) {
+    console.error('[lifecycle-trigger] email sent but EmailLog failed', step, (e as Error).message);
+  }
+}
+
 export async function triggerTrialEndingEmail(
   userId: string,
   subscriptionId: string,
   extra: { trialEndTs: number; amountCents: number; currency: string; manageUrl: string },
 ): Promise<void> {
-  const step = `trial_ending_${subscriptionId}`;
-  try {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, lang: true } });
-    if (!user?.email || isInternalAccount(user.email)) return;
-
-    const already = await prisma.emailLog.findUnique({
-      where: { userId_sequence_step: { userId, sequence: 'billing', step } },
-    }).catch(() => null);
-    if (already) return;
-
-    const lang = (user.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
-    const name = user.name?.split(' ')[0] || (lang === 'en' ? 'there' : 'crack');
-    const tpl = SEQUENCES.billing.trialEnding;
-
-    if (!LIVE) {
-      console.log(`[lifecycle-trigger DRY_RUN] billing/${step} → ${user.email} (${lang})`);
-      return;
-    }
-
-    await sendTransactionalEmail({ to: user.email, subject: tpl.subject[lang], html: tpl.build(name, lang, userId, extra), isTransactional: true });
-    await prisma.emailLog.create({ data: { userId, sequence: 'billing', step } });
-  } catch (e) {
-    console.error('[lifecycle-trigger] failed', step, (e as Error).message);
-  }
+  await sendBillingEmail(userId, `trial_ending_${subscriptionId}`, SEQUENCES.billing.trialEnding, extra);
 }
 
 export async function triggerPaymentFailedEmail(
@@ -91,28 +105,5 @@ export async function triggerPaymentFailedEmail(
   invoiceId: string,
   extra: { amountCents: number; currency: string; manageUrl: string },
 ): Promise<void> {
-  const step = `payment_failed_${invoiceId}`;
-  try {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, lang: true } });
-    if (!user?.email || isInternalAccount(user.email)) return;
-
-    const already = await prisma.emailLog.findUnique({
-      where: { userId_sequence_step: { userId, sequence: 'billing', step } },
-    }).catch(() => null);
-    if (already) return;
-
-    const lang = (user.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
-    const name = user.name?.split(' ')[0] || (lang === 'en' ? 'there' : 'crack');
-    const tpl = SEQUENCES.billing.paymentFailed;
-
-    if (!LIVE) {
-      console.log(`[lifecycle-trigger DRY_RUN] billing/${step} → ${user.email} (${lang})`);
-      return;
-    }
-
-    await sendTransactionalEmail({ to: user.email, subject: tpl.subject[lang], html: tpl.build(name, lang, userId, extra), isTransactional: true });
-    await prisma.emailLog.create({ data: { userId, sequence: 'billing', step } });
-  } catch (e) {
-    console.error('[lifecycle-trigger] failed', step, (e as Error).message);
-  }
+  await sendBillingEmail(userId, `payment_failed_${invoiceId}`, SEQUENCES.billing.paymentFailed, extra);
 }

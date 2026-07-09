@@ -151,6 +151,9 @@ export async function POST(request: Request) {
       // descubra que perdió el acceso sin saber por qué.
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
+        // Solo facturas de suscripción (mismo guard que payment_succeeded) — una
+        // factura suelta no debe disparar un email que habla de "tu suscripción".
+        if (!(invoice as any).subscription) break;
         const customerId = invoice.customer as string;
         const userId = await resolveUserIdByCustomer(customerId);
         if (userId) {
