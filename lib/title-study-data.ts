@@ -50,17 +50,18 @@ export interface Finding {
 }
 
 type FeatureKey = keyof TopicStats['features'];
-export type Metric = { key: FeatureKey; rowLabel: { es: string; en: string }; es: string; en: string; higherIsNotable: boolean };
+export type Metric = { key: FeatureKey; rowLabel: { es: string; en: string }; es: string; en: string };
 
-// Config compartida entre la tabla comparativa y la generación de hallazgos.
+// Config compartida entre la tabla comparativa (madre y sub-páginas) y la
+// generación de hallazgos.
 export const METRIC_DEFS: Metric[] = [
-  { key: 'withNumber', rowLabel: { es: 'Incluyen un número', en: 'Include a number' }, es: 'incluyen un número en el título', en: 'include a number in the title', higherIsNotable: true },
-  { key: 'listicle', rowLabel: { es: 'Formato listicle', en: 'Listicle format' }, es: 'usan formato listicle ("7 trucos para...")', en: 'use a listicle format ("7 tips to...")', higherIsNotable: true },
-  { key: 'withHookWord', rowLabel: { es: 'Palabra gancho', en: 'Hook word' }, es: 'incluyen una palabra gancho', en: 'include a hook word', higherIsNotable: true },
-  { key: 'withQuestion', rowLabel: { es: 'Signo de interrogación', en: 'Question mark' }, es: 'usan signo de interrogación', en: 'use a question mark', higherIsNotable: true },
-  { key: 'howTo', rowLabel: { es: 'Formato "cómo hacer"', en: '"How to" format' }, es: 'son formato "cómo hacer"', en: 'are "how to" format', higherIsNotable: true },
-  { key: 'withBrackets', rowLabel: { es: 'Corchetes o paréntesis', en: 'Brackets or parentheses' }, es: 'llevan corchetes o paréntesis', en: 'have brackets or parentheses', higherIsNotable: false },
-  { key: 'withAllCapsWord', rowLabel: { es: 'Palabra en MAYÚSCULAS', en: 'ALL-CAPS word' }, es: 'tienen una palabra en MAYÚSCULAS', en: 'have an ALL-CAPS word', higherIsNotable: false },
+  { key: 'withNumber', rowLabel: { es: 'Incluyen un número', en: 'Include a number' }, es: 'incluyen un número en el título', en: 'include a number in the title' },
+  { key: 'listicle', rowLabel: { es: 'Formato listicle', en: 'Listicle format' }, es: 'usan formato listicle ("7 trucos para...")', en: 'use a listicle format ("7 tips to...")' },
+  { key: 'withHookWord', rowLabel: { es: 'Palabra gancho', en: 'Hook word' }, es: 'incluyen una palabra gancho', en: 'include a hook word' },
+  { key: 'withQuestion', rowLabel: { es: 'Signo de interrogación', en: 'Question mark' }, es: 'usan signo de interrogación', en: 'use a question mark' },
+  { key: 'howTo', rowLabel: { es: 'Formato "cómo hacer"', en: '"How to" format' }, es: 'son formato "cómo hacer"', en: 'are "how to" format' },
+  { key: 'withBrackets', rowLabel: { es: 'Corchetes o paréntesis', en: 'Brackets or parentheses' }, es: 'llevan corchetes o paréntesis', en: 'have brackets or parentheses' },
+  { key: 'withAllCapsWord', rowLabel: { es: 'Palabra en MAYÚSCULAS', en: 'ALL-CAPS word' }, es: 'tienen una palabra en MAYÚSCULAS', en: 'have an ALL-CAPS word' },
 ];
 
 function fmtPct(v: number): string {

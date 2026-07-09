@@ -12,6 +12,10 @@ export function generateStaticParams() {
 
 export const dynamicParams = false;
 
+// Solo primera letra — la clase CSS `capitalize` pondría en mayúscula cada
+// palabra ("Belleza Y Maquillaje"), incorrecto en español.
+const cap1 = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export async function generateMetadata({ params }: { params: Promise<{ topic: string }> }): Promise<Metadata> {
   const { topic: slug } = await params;
   const topic = getTopicStudy(slug);
@@ -65,7 +69,7 @@ export default async function TitleStudyTopicPage({ params }: { params: Promise<
         <nav className="mb-6 font-mono-jb text-[12px]" style={{ color: 'var(--yv-text-4)' }}>
           <a href="/youtube-title-study" className="hover:text-white transition">{t('Estudio de títulos', 'Title study')}</a>
           <span className="mx-2">/</span>
-          <span className="capitalize" style={{ color: 'var(--yv-text-2)' }}>{name}</span>
+          <span style={{ color: 'var(--yv-text-2)' }}>{cap1(name)}</span>
         </nav>
 
         <header className="mb-10">
@@ -117,7 +121,7 @@ export default async function TitleStudyTopicPage({ params }: { params: Promise<
                   <th className="font-mono-jb text-[12px] px-4 py-3" style={{ color: 'var(--yv-text-3)' }}></th>
                   <th className="font-mono-jb text-[12px] px-3 py-3 text-right whitespace-nowrap" style={{ color: 'var(--yv-text-4)' }}>{t('Trending', 'Trending')}<br /><span className="text-[10px]">N={trending.sampleSize}</span></th>
                   <th className="font-mono-jb text-[12px] px-3 py-3 text-right whitespace-nowrap" style={{ color: 'var(--yv-text-4)' }}>{t('Todos los nichos', 'All niches')}<br /><span className="text-[10px]">N={nicheGlobal.sampleSize}</span></th>
-                  <th className="font-mono-jb text-[12px] px-4 py-3 text-right whitespace-nowrap capitalize" style={{ color: 'var(--yv-brand)' }}>{name}<br /><span className="text-[10px]">N={topic.sampleSize}</span></th>
+                  <th className="font-mono-jb text-[12px] px-4 py-3 text-right whitespace-nowrap" style={{ color: 'var(--yv-brand)' }}>{cap1(name)}<br /><span className="text-[10px]">N={topic.sampleSize}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -180,8 +184,8 @@ export default async function TitleStudyTopicPage({ params }: { params: Promise<
               if (!other) return null;
               const otherName = lang === 'en' ? other.name.en : other.name.es;
               return (
-                <a key={s} href={`/youtube-title-study/${s}`} className="font-mono-jb text-[12px] px-3 py-1.5 rounded-lg capitalize transition hover:bg-white/[0.04]" style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}>
-                  {otherName}
+                <a key={s} href={`/youtube-title-study/${s}`} className="font-mono-jb text-[12px] px-3 py-1.5 rounded-lg transition hover:bg-white/[0.04]" style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}>
+                  {cap1(otherName)}
                 </a>
               );
             })}
