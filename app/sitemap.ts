@@ -3,6 +3,7 @@ import { BLOG_POSTS } from '@/lib/blog-data';
 import { LEARN_GUIDES } from '@/lib/learn-data';
 import { ALL_GEAR_SLUGS } from '@/lib/gear-data';
 import { NICHES } from '@/lib/niches-data';
+import { TOPIC_SLUGS } from '@/lib/title-study-data';
 
 const BASE_URL = 'https://ytubviral.com';
 
@@ -112,6 +113,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.8,
     },
+    ...TOPIC_SLUGS.map((slug) => ({
+      url: `${BASE_URL}/youtube-title-study/${slug}`,
+      lastModified: new Date('2026-07-09'),
+      changeFrequency: 'yearly' as const,
+      priority: 0.7,
+    })),
     {
       url: `${BASE_URL}/ctr-calculator`,
       lastModified: new Date('2026-06-18'),

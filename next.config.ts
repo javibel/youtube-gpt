@@ -75,6 +75,12 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
         ],
       },
+      {
+        source: '/youtube-title-study/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
       // Embed routes — allow iframing
       {
         source: '/embed/:path*',

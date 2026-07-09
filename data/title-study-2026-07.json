@@ -1,0 +1,255 @@
+{
+  "date": "2026-07-09",
+  "trending": {
+    "date": "2026-07-09",
+    "sampleSize": 936,
+    "regions": 30,
+    "source": "YouTube Data API v3 — chart=mostPopular (datos públicos reales)",
+    "titleLength": {
+      "avgChars": 50,
+      "medianChars": 47,
+      "avgWords": 8.8,
+      "medianWords": 8,
+      "minChars": 2,
+      "maxChars": 104,
+      "distribution": {
+        "≤30": 209,
+        "31–50": 311,
+        "51–70": 192,
+        "71–100": 216,
+        ">100": 8
+      }
+    },
+    "features": {
+      "withNumber": 31.3,
+      "withBrackets": 49,
+      "withQuestion": 3,
+      "withColon": 6.4,
+      "withAllCapsWord": 48.2,
+      "howTo": 0.1,
+      "listicle": 7.8,
+      "withHookWord": 10.5
+    },
+    "viewsByNumber": {
+      "medianViewsWithNumber": 113464,
+      "medianViewsWithoutNumber": 111188
+    },
+    "methodology": {
+      "hookWordsCount": 45,
+      "note": "Métricas calculadas sobre los títulos exactos devueltos por la API. Dedup por videoId entre regiones. Sin edición manual ni exclusiones."
+    }
+  },
+  "nicheGlobal": {
+    "sampleSize": 787,
+    "titleLength": {
+      "avgChars": 68,
+      "medianChars": 70,
+      "avgWords": 10.6,
+      "medianWords": 11
+    },
+    "features": {
+      "withNumber": 43.2,
+      "withBrackets": 31.6,
+      "withQuestion": 7.1,
+      "withColon": 7.4,
+      "withAllCapsWord": 39.5,
+      "howTo": 5.1,
+      "listicle": 21,
+      "withHookWord": 27.1
+    }
+  },
+  "topics": [
+    {
+      "id": "gaming",
+      "label": {
+        "es": "Gaming",
+        "en": "Gaming"
+      },
+      "sampleSize": 95,
+      "titleLength": {
+        "avgChars": 55,
+        "medianChars": 52,
+        "avgWords": 9.2,
+        "medianWords": 9
+      },
+      "features": {
+        "withNumber": 52.6,
+        "withBrackets": 33.7,
+        "withQuestion": 1.1,
+        "withColon": 4.2,
+        "withAllCapsWord": 33.7,
+        "howTo": 0,
+        "listicle": 10.5,
+        "withHookWord": 26.3
+      }
+    },
+    {
+      "id": "cocina",
+      "label": {
+        "es": "Cocina",
+        "en": "Cooking"
+      },
+      "sampleSize": 100,
+      "titleLength": {
+        "avgChars": 74,
+        "medianChars": 80,
+        "avgWords": 10.8,
+        "medianWords": 11
+      },
+      "features": {
+        "withNumber": 13,
+        "withBrackets": 16,
+        "withQuestion": 6,
+        "withColon": 5,
+        "withAllCapsWord": 30,
+        "howTo": 5,
+        "listicle": 9,
+        "withHookWord": 17
+      }
+    },
+    {
+      "id": "fitness",
+      "label": {
+        "es": "Fitness",
+        "en": "Fitness"
+      },
+      "sampleSize": 100,
+      "titleLength": {
+        "avgChars": 71,
+        "medianChars": 72,
+        "avgWords": 11.9,
+        "medianWords": 12
+      },
+      "features": {
+        "withNumber": 62,
+        "withBrackets": 49,
+        "withQuestion": 0,
+        "withColon": 6,
+        "withAllCapsWord": 52,
+        "howTo": 4,
+        "listicle": 52,
+        "withHookWord": 22
+      }
+    },
+    {
+      "id": "tecnologia",
+      "label": {
+        "es": "Tecnología",
+        "en": "Tech"
+      },
+      "sampleSize": 100,
+      "titleLength": {
+        "avgChars": 65,
+        "medianChars": 62,
+        "avgWords": 10.4,
+        "medianWords": 10
+      },
+      "features": {
+        "withNumber": 60,
+        "withBrackets": 24,
+        "withQuestion": 19,
+        "withColon": 27,
+        "withAllCapsWord": 32,
+        "howTo": 0,
+        "listicle": 17,
+        "withHookWord": 29
+      }
+    },
+    {
+      "id": "belleza",
+      "label": {
+        "es": "Belleza",
+        "en": "Beauty"
+      },
+      "sampleSize": 93,
+      "titleLength": {
+        "avgChars": 65,
+        "medianChars": 62,
+        "avgWords": 9.3,
+        "medianWords": 9
+      },
+      "features": {
+        "withNumber": 22.6,
+        "withBrackets": 37.6,
+        "withQuestion": 4.3,
+        "withColon": 0,
+        "withAllCapsWord": 35.5,
+        "howTo": 6.5,
+        "listicle": 10.8,
+        "withHookWord": 60.2
+      }
+    },
+    {
+      "id": "viajes",
+      "label": {
+        "es": "Viajes",
+        "en": "Travel"
+      },
+      "sampleSize": 100,
+      "titleLength": {
+        "avgChars": 61,
+        "medianChars": 59,
+        "avgWords": 10.3,
+        "medianWords": 10
+      },
+      "features": {
+        "withNumber": 42,
+        "withBrackets": 36,
+        "withQuestion": 6,
+        "withColon": 5,
+        "withAllCapsWord": 55,
+        "howTo": 2,
+        "listicle": 20,
+        "withHookWord": 12
+      }
+    },
+    {
+      "id": "finanzas",
+      "label": {
+        "es": "Finanzas personales",
+        "en": "Personal finance"
+      },
+      "sampleSize": 99,
+      "titleLength": {
+        "avgChars": 72,
+        "medianChars": 75,
+        "avgWords": 10.7,
+        "medianWords": 10
+      },
+      "features": {
+        "withNumber": 45.5,
+        "withBrackets": 24.2,
+        "withQuestion": 13.1,
+        "withColon": 10.1,
+        "withAllCapsWord": 34.3,
+        "howTo": 13.1,
+        "listicle": 26.3,
+        "withHookWord": 32.3
+      }
+    },
+    {
+      "id": "estudio",
+      "label": {
+        "es": "Productividad y estudio",
+        "en": "Study & productivity"
+      },
+      "sampleSize": 100,
+      "titleLength": {
+        "avgChars": 78,
+        "medianChars": 81,
+        "avgWords": 12.3,
+        "medianWords": 12
+      },
+      "features": {
+        "withNumber": 47,
+        "withBrackets": 33,
+        "withQuestion": 7,
+        "withColon": 1,
+        "withAllCapsWord": 43,
+        "howTo": 10,
+        "listicle": 21,
+        "withHookWord": 20
+      }
+    }
+  ]
+}

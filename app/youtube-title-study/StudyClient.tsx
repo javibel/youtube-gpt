@@ -4,6 +4,7 @@ import { useLang } from '@/components/LangProvider';
 import PublicNav from '@/components/PublicNav';
 import ExitIntentPopup from '@/components/ExitIntentPopup';
 import FreeToolsCrossLinks from '@/components/FreeToolsCrossLinks';
+import { TOPIC_SLUGS, getTopicStudy } from '@/lib/title-study-data';
 
 // ──────────────────────────────────────────────────────────────────────────
 // DATOS REALES del estudio (recogidos 2026-06-27 vía YouTube Data API v3).
@@ -235,6 +236,28 @@ export default function StudyClient() {
             </a>
           </div>
         </div>
+
+        {/* Índice de nichos — mismo dataset, desglose por tema */}
+        <section className="mb-12">
+          <h2 className="font-display font-bold text-xl text-white mb-2">
+            {t('¿Escribes en un nicho concreto?', 'Writing in a specific niche?')}
+          </h2>
+          <p className="font-mono-jb text-sm mb-4" style={{ color: 'var(--yv-text-3)' }}>
+            {t('Mismo estudio, desglosado por tema — con sus propios hallazgos.', 'Same study, broken down by topic — with its own findings.')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {TOPIC_SLUGS.map(slug => {
+              const topic = getTopicStudy(slug);
+              if (!topic) return null;
+              const name = lang === 'en' ? topic.name.en : topic.name.es;
+              return (
+                <a key={slug} href={`/youtube-title-study/${slug}`} className="font-mono-jb text-[13px] px-3 py-1.5 rounded-lg capitalize transition hover:bg-white/[0.04]" style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}>
+                  {name}
+                </a>
+              );
+            })}
+          </div>
+        </section>
 
         {/* Metodología (citabilidad) */}
         <section className="mb-10 border-t pt-8" style={{ borderColor: 'var(--yv-border)' }}>
