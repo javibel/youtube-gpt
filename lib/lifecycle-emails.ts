@@ -158,8 +158,55 @@ export const C3_paywall: Tpl = {
     sign(en)); },
 };
 
+// ── D · Facturación (transaccional — sin gate de opt-out, ver lifecycle-trigger) ──
+function formatAmount(cents: number, currency: string, lang: 'es' | 'en'): string {
+  const value = (cents / 100).toFixed(2);
+  if (currency.toUpperCase() !== 'EUR') return `${value} ${currency.toUpperCase()}`;
+  return lang === 'en' ? `€${value}` : `${value.replace('.', ',')} €`;
+}
+
+export const D1_trialEnding: Tpl = {
+  subject: { es: 'Tu prueba Pro termina en 3 días', en: 'Your Pro trial ends in 3 days' },
+  build: (name, lang, uid, extra) => {
+    const en = lang === 'en';
+    const trialEndTs = Number(extra?.trialEndTs ?? 0);
+    const date = trialEndTs
+      ? new Date(trialEndTs * 1000).toLocaleDateString(en ? 'en-US' : 'es-ES', { day: 'numeric', month: 'long' })
+      : '';
+    const amount = formatAmount(Number(extra?.amountCents ?? 0), String(extra?.currency ?? 'EUR'), lang);
+    const manageUrl = String(extra?.manageUrl ?? `${BASE}/profile`);
+    return shell(lang, uid, 'trial-ending',
+      eyebrow(en ? 'HEADS UP' : 'AVISO') +
+      h(en ? `Your trial ends ${date}` : `Tu prueba termina el ${date}`) +
+      p(en
+        ? `You started a 7-day free trial of Pro. In 3 days, on ${date}, we'll charge ${amount} to keep it going — no action needed if you want to continue. Changed your mind? Cancel before then and you won't be charged anything.`
+        : `Empezaste una prueba gratis de 7 días de Pro. En 3 días, el ${date}, cobraremos ${amount} para seguir — no hace falta que hagas nada si quieres continuar. ¿Te lo has pensado mejor? Cancela antes de esa fecha y no se te cobrará nada.`) +
+      button(manageUrl, en ? 'Manage my subscription →' : 'Gestionar mi suscripción →') +
+      sign(en));
+  },
+};
+
+export const D2_paymentFailed: Tpl = {
+  subject: { es: 'No pudimos procesar tu pago', en: "We couldn't process your payment" },
+  build: (name, lang, uid, extra) => {
+    const en = lang === 'en';
+    const amountCents = Number(extra?.amountCents ?? 0);
+    const amount = amountCents ? formatAmount(amountCents, String(extra?.currency ?? 'EUR'), lang) : '';
+    const manageUrl = String(extra?.manageUrl ?? `${BASE}/profile`);
+    return shell(lang, uid, 'payment-failed',
+      eyebrow(en ? 'PAYMENT ISSUE' : 'PROBLEMA DE PAGO') +
+      h(en ? 'Your card was declined' : 'Tu tarjeta ha sido rechazada') +
+      p(en
+        ? `We tried to charge${amount ? ` ${amount} for` : ''} your YTubViral Pro subscription and it didn't go through. Update your payment method to keep your access — we'll retry automatically over the next few days.`
+        : `Intentamos cobrar${amount ? ` ${amount} de` : ''} tu suscripción Pro de YTubViral y no se ha podido. Actualiza tu método de pago para conservar el acceso — lo reintentaremos automáticamente en los próximos días.`) +
+      button(manageUrl, en ? 'Update payment method →' : 'Actualizar método de pago →') +
+      sign(en));
+  },
+};
+
 export const SEQUENCES = {
   onboarding: { a1: A1_seoScore, a2: A2_generate, a3: A3_connect, a4: A4_discover, a5: A5_feedback },
   reactivation: { b1: B1_valueLeft, b2: B2_goodbye },
   conversion: { c1: C1_limitHit, c2: C2_powerUser, c3: C3_paywall },
+  billing: { trialEnding: D1_trialEnding, paymentFailed: D2_paymentFailed },
 } as const;

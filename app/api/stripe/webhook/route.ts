@@ -1,7 +1,8 @@
-import { stripe, subscriptionPeriod } from '@/lib/stripe';
+import { stripe, subscriptionPeriod, createBillingPortalUrl } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { triggerTrialEndingEmail, triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
 
 export const runtime = 'nodejs';
 
@@ -13,6 +14,20 @@ const BUSINESS_PRICE_IDS = new Set(
 
 function detectPlan(priceId: string): string {
   return BUSINESS_PRICE_IDS.has(priceId) ? 'business' : 'pro';
+}
+
+// Mismo fallback que invoice.payment_succeeded (nuestra Subscription por customerId,
+// si no existe busca por email del customer en Stripe) — factorizado porque los
+// dos handlers nuevos de abajo lo necesitan igual.
+async function resolveUserIdByCustomer(customerId: string): Promise<string | null> {
+  const sub = await prisma.subscription.findFirst({ where: { stripeCustomerId: customerId } });
+  if (sub) return sub.userId;
+  const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+  if (customer.email) {
+    const user = await prisma.user.findUnique({ where: { email: customer.email } });
+    if (user) return user.id;
+  }
+  return null;
 }
 
 async function upsertSubscription(
@@ -112,6 +127,43 @@ export async function POST(request: Request) {
         break;
       }
 
+      // 3 días antes de que termine el trial — dispara el recordatorio de cobro.
+      case 'customer.subscription.trial_will_end': {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+        const userId = await resolveUserIdByCustomer(customerId);
+        // Si ya canceló durante el trial, NO avisar de un cobro que no va a
+        // producirse — sería confuso/alarmante para alguien que ya decidió irse.
+        if (userId && subscription.trial_end && !subscription.cancel_at_period_end) {
+          const item = subscription.items.data[0];
+          const manageUrl = (await createBillingPortalUrl(customerId)) ?? 'https://ytubviral.com/profile';
+          await triggerTrialEndingEmail(userId, subscription.id, {
+            trialEndTs: subscription.trial_end,
+            amountCents: item?.price?.unit_amount ?? 0,
+            currency: (item?.price?.currency || 'eur').toUpperCase(),
+            manageUrl,
+          });
+        }
+        break;
+      }
+
+      // Cobro fallido (fin de trial o renovación) — avisar antes de que el usuario
+      // descubra que perdió el acceso sin saber por qué.
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        const userId = await resolveUserIdByCustomer(customerId);
+        if (userId) {
+          const manageUrl = (await createBillingPortalUrl(customerId)) ?? 'https://ytubviral.com/profile';
+          await triggerPaymentFailedEmail(userId, invoice.id, {
+            amountCents: invoice.amount_due ?? 0,
+            currency: (invoice.currency || 'eur').toUpperCase(),
+            manageUrl,
+          });
+        }
+        break;
+      }
+
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
@@ -137,7 +189,11 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     console.error(`Error processing webhook event ${event.type}:`, err);
-    // Still return 200 so Stripe doesn't keep retrying for non-recoverable errors
+    // 500 para que Stripe reintente (hasta 3 días, backoff) — los upserts y los
+    // triggers de email de arriba son idempotentes, así que reintentar es seguro.
+    // Antes esto devolvía 200 y un error transitorio (p.ej. un hipo de la BD)
+    // perdía el evento para siempre sin que nadie se enterara.
+    return NextResponse.json({ error: 'Error interno procesando el webhook' }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

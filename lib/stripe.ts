@@ -18,3 +18,23 @@ export function subscriptionPeriod(sub: Stripe.Subscription): { start: Date; end
     end: endTs ? new Date(endTs * 1000) : new Date(),
   };
 }
+
+/**
+ * URL de un Stripe Billing Portal session para que el usuario actualice tarjeta
+ * o gestione su suscripción. Requiere el portal activado en el dashboard de
+ * Stripe (Settings → Billing → Customer portal) — si no lo está, Stripe
+ * devuelve error y aquí se resuelve a null para que el caller haga fallback
+ * a /profile en vez de romper el envío del email.
+ */
+export async function createBillingPortalUrl(
+  customerId: string,
+  returnUrl = 'https://ytubviral.com/profile',
+): Promise<string | null> {
+  try {
+    const session = await stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+    return session.url;
+  } catch (e) {
+    console.error('createBillingPortalUrl failed:', (e as Error).message);
+    return null;
+  }
+}
