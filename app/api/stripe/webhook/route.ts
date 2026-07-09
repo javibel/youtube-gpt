@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { triggerTrialEndingEmail, triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
+import { accrueAffiliateCommission, reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
 
 export const runtime = 'nodejs';
 
@@ -106,22 +107,14 @@ export async function POST(request: Request) {
         if ((invoice as any).subscription) {
           const subscription = await stripe.subscriptions.retrieve((invoice as any).subscription as string);
           const customerId = invoice.customer as string;
+          const userId = await resolveUserIdByCustomer(customerId);
 
-          // Find user by customer ID
-          const existingSub = await prisma.subscription.findFirst({ where: { stripeCustomerId: customerId } });
-          if (existingSub) {
-            await upsertSubscription(existingSub.userId, customerId, subscription);
+          if (userId) {
+            await upsertSubscription(userId, customerId, subscription);
             console.log(`invoice.payment_succeeded: synced Pro for customerId=${customerId}`);
-          } else {
-            // Try to find user by email from Stripe customer
-            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
-            if (customer.email) {
-              const user = await prisma.user.findUnique({ where: { email: customer.email } });
-              if (user) {
-                await upsertSubscription(user.id, customerId, subscription);
-                console.log(`invoice.payment_succeeded: created Pro for email=${customer.email}`);
-              }
-            }
+            // Devengo de comisión de afiliado — solo facturas realmente pagadas,
+            // nunca en el alta del trial (que no genera invoice.payment_succeeded).
+            await accrueAffiliateCommission(userId, invoice);
           }
         }
         break;
@@ -163,6 +156,20 @@ export async function POST(request: Request) {
             currency: (invoice.currency || 'eur').toUpperCase(),
             manageUrl,
           });
+        }
+        break;
+      }
+
+      // Refund (garantía 30d u otro) — revertir la comisión de afiliado de esa
+      // factura si existía. No toca el plan del usuario: eso ya lo gestiona
+      // customer.subscription.deleted cuando Javier cancela tras el refund
+      // (ver runbook en docs/trial-stripe-hardening-2026-07-09.md).
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        const invoiceId = typeof charge.invoice === 'string' ? charge.invoice : charge.invoice?.id;
+        if (invoiceId) {
+          await reverseAffiliateCommissionForInvoice(invoiceId);
+          console.log(`charge.refunded: comisión revertida (si existía) para invoice=${invoiceId}`);
         }
         break;
       }

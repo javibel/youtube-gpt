@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
         END
       RETURNING hits
     `;
-    const { email, password, name, lang = 'es', utmSource, utmMedium, utmCampaign, ref, signupReferrer, signupLandingPage, turnstileToken } = await req.json();
+    const { email, password, name, lang = 'es', utmSource, utmMedium, utmCampaign, ref, aff, signupReferrer, signupLandingPage, turnstileToken } = await req.json();
     const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
     const isEn = emailLang === 'en';
 
@@ -226,6 +226,11 @@ export async function POST(req: NextRequest) {
         utmMedium: typeof utmMedium === 'string' ? utmMedium.slice(0, 100) : undefined,
         utmCampaign: typeof utmCampaign === 'string' ? utmCampaign.slice(0, 100) : undefined,
         referredBy: typeof ref === 'string' ? ref.slice(0, 20) : undefined,
+        // Programa de afiliados — namespace separado de `ref` (peer-to-peer), no
+        // validado contra Affiliate aquí (puede estar 'pending' de aprobar); la
+        // validación real ocurre al devengar comisión en el webhook de Stripe.
+        referredByCode: typeof aff === 'string' && aff.trim() ? aff.trim().slice(0, 40) : undefined,
+        referredAt: typeof aff === 'string' && aff.trim() ? new Date() : undefined,
         signupReferrer: typeof signupReferrer === 'string' ? signupReferrer.slice(0, 500) : undefined,
         signupLandingPage: typeof signupLandingPage === 'string' ? signupLandingPage.slice(0, 500) : undefined,
       },

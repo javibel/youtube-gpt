@@ -33,6 +33,15 @@ model User {
   referredBy          String?
   referralRewardedAt     DateTime? // set once this user's paid conversion has credited their referrer (scripts/referral-rewards.js)
 
+  // Programa de AFILIADOS (creadores curados a mano, comisión 30% recurrente 12m —
+  // ver docs/programa-afiliados-especificacion-2026-07-09.md). Deliberadamente
+  // SEPARADO del sistema de referidos peer-to-peer de arriba (referredBy/referralCode,
+  // recompensa = 1 mes gratis): son dos programas distintos, con namespace distinto
+  // (?aff= / cookie ytv_aff, no ?ref= / ytv_ref) para no colisionar con el existente.
+  referredByCode         String?   // Affiliate.code, first-touch, se congela en el signup
+  referredAt             DateTime?
+  affiliate              Affiliate?
+
   accounts        Account[]
   sessions        Session[]
   generations     Generation[]
@@ -713,4 +722,55 @@ model BlueskyAction {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("bluesky_actions")
+}
+
+// Programa de afiliados — ver docs/programa-afiliados-especificacion-2026-07-09.md
+model Affiliate {
+  id            String    @id @default(cuid())
+  code          String    @unique // corto, elegible por el afiliado: "erika"
+  name          String
+  email         String
+  userId        String?   @unique @map("user_id") // cuenta YTubViral vinculada (opcional hasta aprobar)
+  commissionPct Int       @default(30) @map("commission_pct")
+  monthsPaid    Int       @default(12) @map("months_paid")
+  status        String    @default("pending") // pending | active | paused | terminated
+  payoutMethod  String?   @map("payout_method") // "paypal:email" | "bank:IBAN" — texto libre, v1 manual
+  channelInfo   String?   @map("channel_info") // lo que puso en el form de solicitud (canal/audiencia/cómo promociona)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user        User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  clicks      AffiliateClick[]
+  commissions AffiliateCommission[]
+
+  @@map("affiliates")
+}
+
+model AffiliateClick {
+  id          String   @id @default(cuid())
+  affiliateId String   @map("affiliate_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  referer     String?
+  country     String?
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId, createdAt])
+  @@map("affiliate_clicks")
+}
+
+model AffiliateCommission {
+  id                 String    @id @default(cuid())
+  affiliateId        String    @map("affiliate_id")
+  referredUserId     String    @map("referred_user_id")
+  stripeInvoiceId    String    @unique @map("stripe_invoice_id") // idempotencia: 1 factura = 1 comisión
+  invoiceAmountCents Int       @map("invoice_amount_cents")
+  commissionCents    Int       @map("commission_cents")
+  status             String    @default("pending") // pending | approved | paid | reversed
+  createdAt          DateTime  @default(now()) @map("created_at")
+  paidAt             DateTime? @map("paid_at")
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId, status])
+  @@map("affiliate_commissions")
 }

@@ -98,8 +98,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         } else {
           // Create new user from Google — capture attribution from first-party cookies.
           // Mismo patrón (y mismo gating de consentimiento) que el formulario de email:
-          // ytv_ref = código de referido; ytv_utm = campaña UTM de entrada.
+          // ytv_ref = código de referido (peer-to-peer); ytv_utm = campaña UTM de entrada;
+          // ytv_aff = código de AFILIADO (programa de creadores, namespace separado a
+          // propósito de ytv_ref — ver prisma/schema.prisma User.referredByCode).
           let referredBy: string | undefined;
+          let referredByCode: string | undefined;
           let utmSource: string | undefined;
           let utmMedium: string | undefined;
           let utmCampaign: string | undefined;
@@ -107,6 +110,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             const cookieStore = await cookies();
             const refCookie = cookieStore.get('ytv_ref');
             if (refCookie?.value) referredBy = refCookie.value.slice(0, 20);
+            const affCookie = cookieStore.get('ytv_aff');
+            if (affCookie?.value) referredByCode = affCookie.value.slice(0, 40);
             const utmCookie = cookieStore.get('ytv_utm');
             if (utmCookie?.value) {
               let raw = utmCookie.value;
@@ -125,6 +130,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               name: user.name || null,
               emailVerified: new Date(),
               referredBy,
+              referredByCode,
+              referredAt: referredByCode ? new Date() : undefined,
               utmSource,
               utmMedium,
               utmCampaign,

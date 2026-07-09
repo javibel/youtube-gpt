@@ -191,6 +191,10 @@ export default function AdminPage() {
             <p className="yv-page-header__desc">Métricas en tiempo real de YTubViral</p>
           </div>
           <div className="yv-page-header__actions flex-wrap">
+            <a href="/admin/affiliates" className="text-[13px] font-mono-jb px-3 py-2 rounded-lg transition"
+              style={{ background: 'var(--ink-3)', border: '1px solid var(--line-2)', color: 'var(--text-dim)' }}>
+              Afiliados
+            </a>
             {[{ type: 'users', label: 'Usuarios' }, { type: 'generations', label: 'Generaciones' }, { type: 'subscriptions', label: 'Suscripciones' }].map(({ type, label }) => (
               <a key={type} href={`/api/admin/export?type=${type}`}
                 className="text-[13px] font-mono-jb px-3 py-2 rounded-lg transition"

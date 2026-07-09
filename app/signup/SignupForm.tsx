@@ -29,6 +29,7 @@ export default function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const refCode = searchParams.get('ref') || '';
+  const affQueryCode = searchParams.get('aff') || '';
 
   // Store ref in cookie so Google OAuth signIn callback can read it
   // RGPD: cookie de atribución — solo con consentimiento de tracking
@@ -37,6 +38,19 @@ export default function SignupForm() {
       document.cookie = `ytv_ref=${refCode};path=/;max-age=3600;samesite=lax`;
     }
   }, [refCode]);
+
+  // Programa de afiliados — namespace separado del ?ref= de arriba (ver
+  // components/AffiliateCapture.tsx, que ya pone ytv_aff globalmente en
+  // cualquier página; esto es solo el bridge de 1h para el round-trip de
+  // Google OAuth si el link de afiliado apuntó directo a /signup).
+  useEffect(() => {
+    if (affQueryCode && hasTrackingConsent()) {
+      document.cookie = `ytv_aff=${affQueryCode};path=/;max-age=3600;samesite=lax`;
+    }
+  }, [affQueryCode]);
+
+  const [showAffInput, setShowAffInput] = useState(false);
+  const [affTyped, setAffTyped] = useState('');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -121,12 +135,21 @@ export default function SignupForm() {
       }
     } catch {}
 
+    // Código de afiliado — prioridad: tecleado a mano > query ?aff= > cookie ytv_aff
+    // (first-touch, puesta por AffiliateCapture.tsx en cualquier página anterior).
+    let affCookie: string | undefined;
+    try {
+      const c = document.cookie.split('; ').find(r => r.startsWith('ytv_aff='));
+      if (c) affCookie = decodeURIComponent(c.split('=').slice(1).join('='));
+    } catch {}
+    const aff = affTyped.trim() || affQueryCode || affCookie || undefined;
+
     setLoading(true);
     try {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign, ref: refCode || undefined, signupReferrer: signupReferrer || undefined, signupLandingPage: signupLandingPage || undefined, turnstileToken: turnstileToken || undefined }),
+        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign, ref: refCode || undefined, aff, signupReferrer: signupReferrer || undefined, signupLandingPage: signupLandingPage || undefined, turnstileToken: turnstileToken || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -223,6 +246,21 @@ export default function SignupForm() {
                 className="py-3 px-4 text-sm"
                 placeholder={t('Repite tu contraseña', 'Repeat your password')} required />
             </div>
+
+            {!showAffInput ? (
+              <button type="button" onClick={() => setShowAffInput(true)}
+                className="font-mono-jb text-[12px] text-zinc-500 hover:text-zinc-300 transition underline">
+                {t('¿Te recomendó un creador? Añade su código', 'A creator recommend you? Add their code')}
+              </button>
+            ) : (
+              <div>
+                <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
+                  {t('Código de afiliado (opcional)', 'Affiliate code (optional)')}
+                </label>
+                <input type="text" value={affTyped} onChange={(e) => setAffTyped(e.target.value)}
+                  className="soft-field py-3 px-4 text-sm" placeholder={t('ej. erika', 'e.g. erika')} />
+              </div>
+            )}
 
             {TURNSTILE_SITE_KEY && <div ref={turnstileRef} />}
 

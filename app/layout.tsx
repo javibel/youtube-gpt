@@ -6,6 +6,7 @@ import { LangProvider } from "@/components/LangProvider";
 import DeferredChatWidget from "@/components/DeferredChatWidget";
 import PageViewTracker from "@/components/PageViewTracker";
 import UTMCapture from "@/components/UTMCapture";
+import AffiliateCapture from "@/components/AffiliateCapture";
 import LandingCapture from "@/components/LandingCapture";
 import CookieConsent from "@/components/CookieConsent";
 import Toaster from "@/components/Toaster";
@@ -106,6 +107,7 @@ export default function RootLayout({
             <DeferredChatWidget />
             <PageViewTracker />
             <Suspense fallback={null}><UTMCapture /></Suspense>
+            <Suspense fallback={null}><AffiliateCapture /></Suspense>
             <CookieConsent />
             <Toaster />
           </SessionProviderWrapper>
