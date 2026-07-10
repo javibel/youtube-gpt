@@ -135,6 +135,9 @@ export default function AffiliatesClient() {
           </form>
           <p className="font-mono-jb text-[12px] mt-4" style={{ color: 'var(--yv-text-4)' }}>
             {t('Todas las solicitudes se revisan a mano. Sin aprobación automática.', 'All applications are reviewed by hand. No automatic approval.')}
+            {' '}
+            {t('Al solicitar acceso aceptas los ', 'By applying you agree to the ')}
+            <a href="/affiliates/terms" className="underline hover:text-white transition">{t('términos del programa', 'program terms')}</a>.
           </p>
         </section>
       </article>

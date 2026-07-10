@@ -118,6 +118,10 @@ export default function AffiliateDashboardPage() {
             </tbody>
           </table>
         </div>
+
+        <p className="font-mono-jb text-[12px] mt-6" style={{ color: 'var(--yv-text-4)' }}>
+          <a href="/affiliates/terms" className="underline hover:text-white transition">{t('Términos del programa', 'Program terms')}</a>
+        </p>
       </div>
     </div>
   );
