@@ -250,7 +250,7 @@ export default function SignupForm() {
             {!showAffInput ? (
               <button type="button" onClick={() => setShowAffInput(true)}
                 className="font-mono-jb text-[12px] text-zinc-500 hover:text-zinc-300 transition underline">
-                {t('¿Te recomendó un creador? Añade su código', 'A creator recommend you? Add their code')}
+                {t('¿Te recomendó un creador? Añade su código', 'Did a creator recommend you? Add their code')}
               </button>
             ) : (
               <div>

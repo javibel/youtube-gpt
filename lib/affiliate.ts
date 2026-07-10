@@ -9,14 +9,23 @@ import { prisma } from '@/lib/prisma';
 // BD — el afiliado puede aprobarse DESPUÉS de la primera factura del usuario
 // (no habría AffiliateCommission del mes 1 en ese caso) y el reloj de 12 meses
 // debe arrancar igualmente en esa primera factura real, no en la aprobación.
+// OJO: el alta de un trial genera una factura de 0€ con status 'paid' — se
+// filtra por amount_paid > 0 para que el reloj arranque en el primer COBRO,
+// no en el inicio del trial (que es lo que dice el spec).
 async function getFirstPaidInvoiceDate(customerId: string): Promise<Date | null> {
   const invoices = await stripe.invoices.list({ customer: customerId, status: 'paid', limit: 100 });
-  if (!invoices.data.length) return null;
-  const earliest = invoices.data.reduce((min, inv) => (inv.created < min ? inv.created : min), invoices.data[0].created);
+  const realPaid = invoices.data.filter(inv => (inv.amount_paid ?? 0) > 0);
+  if (!realPaid.length) return null;
+  const earliest = realPaid.reduce((min, inv) => (inv.created < min ? inv.created : min), realPaid[0].created);
   return new Date(earliest * 1000);
 }
 
 export async function accrueAffiliateCommission(referredUserId: string, invoice: Stripe.Invoice): Promise<void> {
+  // Factura sin cobro real (la de 0€ que Stripe genera al INICIAR un trial
+  // también dispara invoice.payment_succeeded) — no es un caso de error,
+  // simplemente no comisiona.
+  if ((invoice.amount_paid ?? 0) <= 0) return;
+
   const user = await prisma.user.findUnique({
     where: { id: referredUserId },
     select: { referredByCode: true, email: true },
@@ -42,12 +51,10 @@ export async function accrueAffiliateCommission(referredUserId: string, invoice:
 
   // Comisión sobre el importe SIN IVA y con descuentos ya aplicados — comisionar
   // el IVA sería regalar dinero; comisionar el subtotal ignorando un cupón
-  // aplicado sobrepagaría al afiliado.
-  const amountCents = invoice.total_excluding_tax;
-  if (!amountCents || amountCents <= 0) {
-    console.error(`accrueAffiliateCommission: invoice ${invoice.id} sin total_excluding_tax utilizable — comisión omitida, revisar a mano`);
-    return;
-  }
+  // aplicado sobrepagaría al afiliado. Si total_excluding_tax viene null
+  // (facturas sin configuración de impuestos), total - tax es equivalente.
+  const amountCents = invoice.total_excluding_tax ?? (invoice.total - (invoice.tax ?? 0));
+  if (amountCents <= 0) return; // ya cubierto por el guard de amount_paid, defensivo
   const commissionCents = Math.round((amountCents * affiliate.commissionPct) / 100);
 
   // Idempotente por stripeInvoiceId — Stripe puede reenviar el evento.
@@ -66,8 +73,18 @@ export async function accrueAffiliateCommission(referredUserId: string, invoice:
 }
 
 export async function reverseAffiliateCommissionForInvoice(stripeInvoiceId: string): Promise<void> {
-  await prisma.affiliateCommission.updateMany({
-    where: { stripeInvoiceId, status: { not: 'reversed' } },
+  const existing = await prisma.affiliateCommission.findUnique({ where: { stripeInvoiceId } });
+  if (!existing || existing.status === 'reversed') return;
+
+  // Revertir una comisión YA PAGADA significa que hay que reclamar el dinero al
+  // afiliado a mano (clawback) — dejar rastro ruidoso en logs, que el flip de
+  // status por sí solo pasa desapercibido. paidAt se conserva como evidencia.
+  if (existing.status === 'paid') {
+    console.error(`[affiliate] CLAWBACK MANUAL NECESARIO: refund de la factura ${stripeInvoiceId} cuya comisión de ${(existing.commissionCents / 100).toFixed(2)}€ ya se pagó al afiliado ${existing.affiliateId} el ${existing.paidAt?.toISOString()}`);
+  }
+
+  await prisma.affiliateCommission.update({
+    where: { stripeInvoiceId },
     data: { status: 'reversed' },
   });
 }

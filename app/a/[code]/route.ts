@@ -15,22 +15,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
 
   const affiliate = await prisma.affiliate.findUnique({ where: { code } });
 
-  // Código inválido o afiliado no activo: no revelar cuál de los dos, redirigir
-  // limpio a home sin ?aff= (no queremos atribuir a un afiliado pausado/terminado).
+  // Código inválido o afiliado TERMINADO: redirigir limpio sin ?aff= (sin
+  // revelar cuál de los dos). pending/paused SÍ atribuyen a propósito: la
+  // atribución se congela en el signup pero la comisión solo se devenga si el
+  // afiliado está 'active' en el momento de cada factura — así un afiliado
+  // recién solicitado puede compartir su link sin esperar la aprobación.
   if (!affiliate || affiliate.status === 'terminated') {
     return NextResponse.redirect(`${BASE_URL}${safeTarget(req.nextUrl.searchParams.get('to'))}`);
   }
 
   // Clic siempre se registra (analítica agregada del afiliado, no requiere
   // consentimiento de cookies — no persiste nada en el dispositivo del visitante,
-  // es un log server-side, igual que PageViewTracker).
-  prisma.affiliateClick.create({
+  // es un log server-side, igual que PageViewTracker). Con await: en serverless
+  // un fire-and-forget puede morir al enviarse la respuesta; el insert es un
+  // único write (~10ms) y el catch garantiza que jamás bloquea el redirect.
+  await prisma.affiliateClick.create({
     data: {
       affiliateId: affiliate.id,
       referer: req.headers.get('referer') || undefined,
       country: req.headers.get('x-vercel-ip-country') || undefined,
     },
-  }).catch(() => {}); // fire-and-forget, nunca bloquear el redirect por esto
+  }).catch(() => {});
 
   const target = safeTarget(req.nextUrl.searchParams.get('to'));
   const sep = target.includes('?') ? '&' : '?';

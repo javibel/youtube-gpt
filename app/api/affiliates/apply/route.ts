@@ -19,6 +19,37 @@ export async function POST(req: NextRequest) {
   const { name, email, channelInfo, lang } = await req.json().catch(() => ({}));
   const isEn = lang === 'en';
 
+  // Rate limit: máx 3 solicitudes por IP por hora — POST público que crea filas
+  // y envía email a Javier; sin esto un bot le inunda el buzón. Mismo upsert
+  // atómico en BD que el signup (cross-instance safe).
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
+    ?? req.headers.get('x-real-ip')
+    ?? 'unknown';
+  const rlKey = `affapply:${ip}`;
+  const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
+    INSERT INTO rate_limits (key, hits, window_start)
+    VALUES (${rlKey}, 1, NOW())
+    ON CONFLICT (key) DO UPDATE
+    SET
+      hits = CASE
+        WHEN rate_limits.window_start < NOW() - INTERVAL '1 hour'
+        THEN 1
+        ELSE rate_limits.hits + 1
+      END,
+      window_start = CASE
+        WHEN rate_limits.window_start < NOW() - INTERVAL '1 hour'
+        THEN NOW()
+        ELSE rate_limits.window_start
+      END
+    RETURNING hits
+  `;
+  if (Number(rlResult[0].hits) > 3) {
+    return NextResponse.json(
+      { error: isEn ? 'Too many applications from this connection. Try again later.' : 'Demasiadas solicitudes desde esta conexión. Inténtalo más tarde.' },
+      { status: 429 },
+    );
+  }
+
   if (typeof name !== 'string' || !name.trim() || typeof email !== 'string' || !email.trim()) {
     return NextResponse.json(
       { error: isEn ? 'Name and email are required.' : 'Nombre y email son obligatorios.' },

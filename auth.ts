@@ -111,7 +111,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             const refCookie = cookieStore.get('ytv_ref');
             if (refCookie?.value) referredBy = refCookie.value.slice(0, 20);
             const affCookie = cookieStore.get('ytv_aff');
-            if (affCookie?.value) referredByCode = affCookie.value.slice(0, 40);
+            if (affCookie?.value) referredByCode = affCookie.value.trim().toLowerCase().slice(0, 40);
             const utmCookie = cookieStore.get('ytv_utm');
             if (utmCookie?.value) {
               let raw = utmCookie.value;

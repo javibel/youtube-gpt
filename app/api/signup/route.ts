@@ -229,7 +229,9 @@ export async function POST(req: NextRequest) {
         // Programa de afiliados — namespace separado de `ref` (peer-to-peer), no
         // validado contra Affiliate aquí (puede estar 'pending' de aprobar); la
         // validación real ocurre al devengar comisión en el webhook de Stripe.
-        referredByCode: typeof aff === 'string' && aff.trim() ? aff.trim().slice(0, 40) : undefined,
+        // Lowercase SIEMPRE: los codes se generan en minúsculas y la búsqueda del
+        // devengo es case-sensitive — "Erika" tecleado a mano nunca casaría.
+        referredByCode: typeof aff === 'string' && aff.trim() ? aff.trim().toLowerCase().slice(0, 40) : undefined,
         referredAt: typeof aff === 'string' && aff.trim() ? new Date() : undefined,
         signupReferrer: typeof signupReferrer === 'string' ? signupReferrer.slice(0, 500) : undefined,
         signupLandingPage: typeof signupLandingPage === 'string' ? signupLandingPage.slice(0, 500) : undefined,
