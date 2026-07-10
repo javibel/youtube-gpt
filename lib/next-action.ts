@@ -15,8 +15,6 @@ export interface NextAction {
 interface Ctx {
   userId: string;
   isPaid: boolean;
-  skip: Set<string>;
-  lang: 'es' | 'en';
 }
 
 type Rule = { id: string; check: (ctx: Ctx) => Promise<NextAction | null> };
@@ -138,6 +136,10 @@ const RULES: Rule[] = [
   {
     id: 'best_time_stale',
     check: async (ctx) => {
+      // /best-time calcula sobre los vídeos del propio canal — sin canal conectado
+      // (o con 0 vídeos) la sugerencia sería un callejón sin salida.
+      const yt = await prisma.youtubeToken.findUnique({ where: { userId: ctx.userId }, select: { channelId: true, videoCount: true } });
+      if (!yt?.channelId || Number(yt.videoCount || 0) === 0) return null;
       const bt = await prisma.bestTimeAnalysis.findUnique({ where: { userId: ctx.userId }, select: { analyzedAt: true } });
       if (bt && Date.now() - bt.analyzedAt.getTime() < 30 * DAY) return null;
       return {
@@ -227,9 +229,14 @@ const RULES: Rule[] = [
   },
 ];
 
-export async function getNextAction(userId: string, isPaid: boolean, skipIds: string[], lang: 'es' | 'en' = 'es'): Promise<NextAction | null> {
-  const ctx: Ctx = { userId, isPaid, skip: new Set(skipIds), lang };
+export async function getNextAction(userId: string, isPaid: boolean, skipIds: string[]): Promise<NextAction | null> {
+  const ctx: Ctx = { userId, isPaid };
+  const skip = new Set(skipIds);
   for (const rule of RULES) {
+    // El skip se comprueba ANTES de ejecutar la regla — una regla descartada no
+    // debe costar nada (score_recent_video llama a la API de YouTube; evaluarla
+    // para tirar el resultado sería pagar cuota en cada carga del dashboard).
+    if (skip.has(rule.id)) continue;
     let action: NextAction | null;
     try {
       action = await rule.check(ctx);
@@ -237,9 +244,7 @@ export async function getNextAction(userId: string, isPaid: boolean, skipIds: st
       console.error(`[next-action] regla "${rule.id}" falló, se salta:`, (e as Error).message);
       continue;
     }
-    if (!action) continue;
-    if (ctx.skip.has(action.id)) continue;
-    return action;
+    if (action) return action;
   }
   return null;
 }

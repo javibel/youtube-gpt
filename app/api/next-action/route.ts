@@ -8,14 +8,14 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const skip = (req.nextUrl.searchParams.get('skip') || '').split(',').filter(Boolean);
-  const langParam = req.nextUrl.searchParams.get('lang');
-  const lang: 'es' | 'en' = langParam === 'en' ? 'en' : 'es';
 
   // getUserPlan ya resuelve 'free' cuando la suscripción no está en estado
   // pagado (active/trialing) — no hace falta volver a consultarla aquí.
+  // No hay parámetro de idioma: la respuesta lleva siempre ES y EN y el
+  // cliente elige al renderizar.
   const plan = await getUserPlan(session.user.id);
   const isPaid = plan !== 'free';
 
-  const action = await getNextAction(session.user.id, isPaid, skip, lang);
+  const action = await getNextAction(session.user.id, isPaid, skip);
   return NextResponse.json({ action });
 }

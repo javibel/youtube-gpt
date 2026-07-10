@@ -48,8 +48,8 @@ export default function NextActionCard({ onAction }: { onAction?: (id: string | 
 
   const load = useCallback(() => {
     const skip = readSkipped();
-    const qs = new URLSearchParams({ lang, ...(skip.length ? { skip: skip.join(',') } : {}) });
-    fetch(`/api/next-action?${qs.toString()}`)
+    const qs = skip.length ? `?skip=${skip.join(',')}` : '';
+    fetch(`/api/next-action${qs}`)
       .then(r => r.json())
       .then(d => {
         setAction(d.action ?? null);
@@ -57,7 +57,7 @@ export default function NextActionCard({ onAction }: { onAction?: (id: string | 
       })
       .catch(() => { setAction(null); onAction?.(null); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
