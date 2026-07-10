@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { useLang } from '@/components/LangProvider';
 import ReferralCard from '@/components/ReferralCard';
+import NextActionCard from '@/components/NextActionCard';
 import { toast } from '@/components/Toaster';
 import { CheckIcon, CrossIcon, VideoIcon, StarIcon } from '@/components/icons';
 
@@ -146,6 +147,7 @@ export default function DashboardPage() {
   const [ytSparkline, setYtSparkline] = useState<StatsPoint[]>([]);
   type VideoIdea = { title_es: string; title_en: string; idea_es: string; idea_en: string };
   const [dailyIdeas, setDailyIdeas] = useState<VideoIdea[] | null>(null);
+  const [nextActionId, setNextActionId] = useState<string | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
   const [onboardingName, setOnboardingName] = useState('');
   const [onboardingTopic, setOnboardingTopic] = useState('');
@@ -1501,8 +1503,12 @@ function handleCopy(id: string, out: string) {
             )}
           </div>
 
-          {/* Daily Ideas (personalized for Pro) or generic Tip */}
-          {dailyIdeas && dailyIdeas.length > 0 ? (
+          {/* Siguiente acción — arriba de Ideas/Tip; ver docs/siguiente-accion-especificacion-2026-07-09.md */}
+          <NextActionCard onAction={setNextActionId} />
+
+          {/* Daily Ideas (personalized for Pro) or generic Tip — suprimido si Siguiente
+              acción ya está mostrando la idea del día (regla daily_idea), sería duplicado */}
+          {nextActionId === 'daily_idea' ? null : dailyIdeas && dailyIdeas.length > 0 ? (
             <div className="rounded-2xl border border-white/10 p-5" style={{ background: 'rgba(155,32,32,0.06)' }}>
               <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-brand)' }}>
                 {t('IDEAS PARA HOY', 'IDEAS FOR TODAY')}

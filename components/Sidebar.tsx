@@ -33,9 +33,9 @@ const SECTIONS: NavSection[] = [
     title: { es: 'Crear', en: 'Create' },
     items: [
       { href: '/generate', label: { es: 'Generar', en: 'Generate' }, iconName: 'plus' },
-      { href: '/generate/bulk', label: { es: 'Bulk', en: 'Bulk' }, iconName: 'stack' },
+      { href: '/generate/bulk', label: { es: 'Bulk', en: 'Bulk' }, iconName: 'stack', badge: 'PRO' },
       { href: '/calendar', label: { es: 'Calendario', en: 'Calendar' }, iconName: 'cal' },
-      { href: '/ab-test', label: { es: 'A/B Test', en: 'A/B Test' }, iconName: 'split' },
+      { href: '/ab-test', label: { es: 'A/B Test', en: 'A/B Test' }, iconName: 'split', badge: 'PRO' },
     ],
   },
   {
@@ -60,16 +60,16 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: '/subscribers', label: { es: 'Suscriptores', en: 'Subscribers' }, iconName: 'users' },
       { href: '/revenue', label: { es: 'Ingresos', en: 'Revenue' }, iconName: 'money' },
-      { href: '/audit', label: { es: 'Auditoría', en: 'Audit' }, iconName: 'doc' },
+      { href: '/audit', label: { es: 'Auditoría', en: 'Audit' }, iconName: 'doc', badge: 'PRO' },
       { href: '/best-time', label: { es: 'Mejor hora', en: 'Best Time' }, iconName: 'clock' },
-      { href: '/predictor', label: { es: 'Predictor', en: 'Predictor' }, iconName: 'diamond' },
+      { href: '/predictor', label: { es: 'Predictor', en: 'Predictor' }, iconName: 'diamond', badge: 'PRO' },
     ],
   },
   {
     title: { es: 'Cuenta', en: 'Account' },
     items: [
       { href: '/profile', label: { es: 'Perfil', en: 'Profile' }, iconName: 'user' },
-      { href: '/team', label: { es: 'Equipo', en: 'Team' }, iconName: 'team' },
+      { href: '/team', label: { es: 'Equipo', en: 'Team' }, iconName: 'team', badge: 'BUSINESS' },
       { href: '/learn', label: { es: 'Aprender', en: 'Learn' }, iconName: 'book' },
     ],
   },
