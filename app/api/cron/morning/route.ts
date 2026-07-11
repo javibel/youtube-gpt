@@ -159,15 +159,28 @@ Respond ONLY with JSON array, no other text:
         }),
       });
 
-      if (!res.ok) continue;
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        console.error(`[daily-ideas] Anthropic API error for user ${user.userId}: ${res.status} ${errBody.slice(0, 300)}`);
+        continue;
+      }
       const aiData = await res.json();
       const raw: string = (aiData.content?.[0]?.text ?? '')
         .trim()
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/\s*```$/, '')
         .trim();
-      const ideas = JSON.parse(raw);
-      if (!Array.isArray(ideas) || ideas.length === 0) continue;
+      let ideas: unknown;
+      try {
+        ideas = JSON.parse(raw);
+      } catch (parseErr) {
+        console.error(`[daily-ideas] JSON parse failed for user ${user.userId}: ${parseErr instanceof Error ? parseErr.message : parseErr} — raw: ${raw.slice(0, 300)}`);
+        continue;
+      }
+      if (!Array.isArray(ideas) || ideas.length === 0) {
+        console.error(`[daily-ideas] Empty/non-array ideas for user ${user.userId} — raw: ${raw.slice(0, 300)}`);
+        continue;
+      }
 
       await prisma.dailyIdea.create({
         data: {
@@ -177,8 +190,11 @@ Respond ONLY with JSON array, no other text:
         },
       });
       generated++;
-    } catch {
-      // Skip this user on error, continue with next
+    } catch (err) {
+      // Antes tragaba el error sin loguear nada — con 0 filas de DailyIdea
+      // en toda la historia de producción (11/07/2026) era imposible saber
+      // por qué. Ahora queda rastro para el próximo cron (07:15 UTC).
+      console.error(`[daily-ideas] Unexpected error for user ${user.userId}: ${err instanceof Error ? err.message : err}`);
     }
   }
 
