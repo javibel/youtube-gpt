@@ -76,6 +76,7 @@ export default function SignupForm() {
 
   // Turnstile anti-bot widget on signup (A8, 2026-07-05). No-op if the site key isn't
   // configured (local dev) — signup works exactly as before in that case.
+  // Keys live in Vercel as NEXT_PUBLIC_TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY (production, 2026-07-11).
   useEffect(() => {
     if (!TURNSTILE_SITE_KEY) return;
 
