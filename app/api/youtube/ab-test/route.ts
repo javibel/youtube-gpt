@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
-import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
+import { createAbTest } from '@/lib/ab-test';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+// fetchVideoSnippet/updateVideoTitle usados por PATCH (cancel/apply_winner)
+// viven en lib/ab-test.ts para POST; PATCH los necesita también, así que se
+// mantiene una copia mínima local hasta que PATCH se extraiga (fuera de
+// alcance de esta spec — solo tocamos POST).
 
 async function fetchVideoSnippet(token: string, videoId: string) {
   const res = await fetch(
@@ -67,87 +71,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Plan check
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
-
-  // YouTube token
-  const token = await getAccessToken(session.user.id);
-  if (!token) {
-    return NextResponse.json({ error: 'youtube_not_connected' }, { status: 400 });
-  }
-
-  const { videoId, variantA, variantB, hoursPerVariant = 48 } = await req.json();
-
-  if (!videoId || !variantA || !variantB) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
-  }
-
-  // Check no active test for this specific video
-  const active = await prisma.abTest.findFirst({
-    where: {
-      userId: session.user.id,
-      videoId,
-      status: { in: ['variant_a', 'variant_b'] },
-    },
-  });
-  if (active) {
-    return NextResponse.json({ error: 'active_test_exists' }, { status: 400 });
-  }
-
-  // Limit concurrent active tests based on plan
-  const maxTests = getLimits(plan).abTestsSimultaneous;
-  const activeCount = await prisma.abTest.count({
-    where: {
-      userId: session.user.id,
-      status: { in: ['variant_a', 'variant_b'] },
-    },
-  });
-  if (activeCount >= maxTests) {
-    return NextResponse.json({ error: 'max_active_tests' }, { status: 400 });
-  }
-
-  // Fetch current video data
-  const video = await fetchVideoSnippet(token, videoId);
-  if (!video) {
-    return NextResponse.json({ error: 'video_not_found' }, { status: 404 });
-  }
-
-  const originalTitle = video.snippet.title;
-  const categoryId = video.snippet.categoryId;
-  const thumbnail = video.snippet.thumbnails?.medium?.url ?? null;
-  const initialViews = parseInt(video.statistics?.viewCount ?? '0', 10);
-
-  // Set variant A title on YouTube
-  const result = await updateVideoTitle(token, videoId, variantA, categoryId);
+  const body = await req.json();
+  const result = await createAbTest(session.user.id, body);
   if (!result.ok) {
-    if (result.status === 403) {
-      return NextResponse.json({ error: 'youtube_reconnect_required' }, { status: 403 });
-    }
-    return NextResponse.json(
-      { error: `YouTube API error: ${result.error}` },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: result.error, limit: result.limit }, { status: result.status });
   }
-
-  // Create test record
-  const hours = Math.max(12, Math.min(168, hoursPerVariant));
-  const test = await prisma.abTest.create({
-    data: {
-      userId: session.user.id,
-      videoId,
-      thumbnail,
-      originalTitle,
-      variantA,
-      variantB,
-      hoursPerVariant: hours,
-      initialViews,
-    },
-  });
-
-  return NextResponse.json({ test }, { status: 201 });
+  return NextResponse.json({ test: result.test }, { status: 201 });
 }
 
 // ── PATCH — cancel test / apply winner ─────────────────────────────────────

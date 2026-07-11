@@ -80,7 +80,11 @@ function sendMsg(msg) {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(msg, response => {
       if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-      if (response?.error) return reject(new Error(response.error));
+      if (response?.error) {
+        const err = new Error(response.error);
+        err.limit = response.limit; // AB_CREATE / max_active_tests
+        return reject(err);
+      }
       resolve(response);
     });
   });
@@ -281,30 +285,6 @@ function fmtDuration(sec) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return m + ':' + String(s).padStart(2, '0');
-}
-
-function renderSeoScore(data) {
-  const { score, checklist } = data;
-  const color = scoreColor(score);
-
-  const checks = checklist.map(c => {
-    const icon = c.passed ? '✅' : '❌';
-    return `<div class="ytv-seo-check"><span>${icon}</span><span class="ytv-seo-label">${escapeHtml(c.label)}</span><span class="ytv-seo-detail">${escapeHtml(c.detail)}</span></div>`;
-  }).join('');
-
-  return `
-    <div class="ytv-seo-header">
-      <div class="ytv-seo-ring" style="--score-color: ${color}; --score-pct: ${score}">
-        <span class="ytv-seo-num">${score}</span>
-      </div>
-      <div class="ytv-seo-info">
-        <div class="ytv-seo-title">SEO Score</div>
-        <div class="ytv-seo-sub">${score >= 70 ? t('Buen SEO', 'Good SEO') : score >= 40 ? t('SEO mejorable', 'SEO needs work') : t('SEO débil', 'Weak SEO')}</div>
-      </div>
-    </div>
-    <div class="ytv-seo-checks">${checks}</div>
-    <a class="ytv-cta-link" href="https://ytubviral.com/seo-score" target="_blank">${t('Análisis completo en YTubViral →', 'Full analysis on YTubViral →')}</a>
-  `;
 }
 
 // ── Outlier multiplier → percentile label ──────────────────────────
@@ -574,16 +554,6 @@ async function runGenerate(resultsEl, videoTitle) {
       inputs: { tema: videoTitle, tono: 'informativo', duracion: '10' },
     });
     resultsEl.innerHTML = renderTitles(data.content);
-  } catch (e) {
-    resultsEl.innerHTML = renderError(e.message);
-  }
-}
-
-async function runSeoScore(resultsEl, videoId) {
-  resultsEl.innerHTML = renderLoading(t('Analizando SEO...', 'Analyzing SEO...'));
-  try {
-    const data = await sendMsg({ type: 'SEO_QUICK', videoId });
-    resultsEl.innerHTML = renderSeoScore(data);
   } catch (e) {
     resultsEl.innerHTML = renderError(e.message);
   }
@@ -1208,7 +1178,36 @@ function renderStudioScore(score, checks, titleLen) {
 // of the "generate titles" / "generate tags" logic. Both now call these two functions;
 // the editor additionally wires a "generate description" button the upload dialog doesn't have.
 
-function wireGenTitlesButton(btn, aiResults, isPro, titleFieldSelector) {
+// Mensaje/CTA por cada código de error que puede devolver AB_CREATE — el
+// content script necesita el código crudo (no traducido) precisamente para
+// poder pintar una tarjeta distinta por caso (pro_required es el momento de
+// conversión de la release, el resto son estados normales de uso).
+function renderAbTestOutcome(err, limit) {
+  const code = err?.message || '';
+  if (code === 'pro_required') {
+    return `<div class="ytv-ab-upsell">
+      <strong>${t('La rotación automática A/B es Pro', 'Automatic A/B rotation is Pro')}</strong>
+      <p>${t('Ni vidIQ la tiene — YTubViral rota tus dos títulos y te dice cuál gana con datos reales.', "Not even vidIQ has this — YTubViral rotates your two titles and tells you which one wins with real data.")}</p>
+      <a href="https://ytubviral.com/pricing" target="_blank" class="ytv-btn ytv-btn-sm ytv-btn-red">${t('Ver planes →', 'See plans →')}</a>
+    </div>`;
+  }
+  // renderError() escapa el mensaje (por diseño, para no inyectar HTML de
+  // fuentes externas) — estos 3 casos necesitan un link real, así que se
+  // construyen aparte con la misma clase visual .ytv-error.
+  if (code === 'active_test_exists') {
+    return `<div class="ytv-error">⚠ ${t('Este vídeo ya tiene un test activo. ', 'This video already has an active test. ')}<a href="https://ytubviral.com/ab-test" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
+  }
+  if (code === 'max_active_tests') {
+    const limitTxt = limit ? t(`(límite de tu plan: ${limit})`, `(your plan's limit: ${limit})`) : '';
+    return `<div class="ytv-error">⚠ ${t(`Has alcanzado el límite de tests activos ${limitTxt}. `, `You've reached your active test limit ${limitTxt}. `)}<a href="https://ytubviral.com/ab-test" target="_blank">${t('Gestionar →', 'Manage →')}</a></div>`;
+  }
+  if (code === 'youtube_not_connected' || code === 'youtube_reconnect_required') {
+    return `<div class="ytv-error">⚠ ${t('Conecta (o reconecta) tu canal de YouTube en YTubViral. ', 'Connect (or reconnect) your YouTube channel on YTubViral. ')}<a href="https://ytubviral.com/dashboard" target="_blank">${t('Ir al dashboard →', 'Go to dashboard →')}</a></div>`;
+  }
+  return renderError(code || t('Error al crear el test', 'Error creating the test'));
+}
+
+function wireGenTitlesButton(btn, aiResults, isPro, titleFieldSelector, videoId) {
   btn.addEventListener('click', async () => {
     if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
     const title = getStudioTitle();
@@ -1218,8 +1217,15 @@ function wireGenTitlesButton(btn, aiResults, isPro, titleFieldSelector) {
       const data = await sendMsg({ type: 'GENERATE', template: 'title', inputs: { tema: title, tono: 'engaging', duracion: '10' } });
       const text = data.content || data.text || data.result || '';
       const titles = text.split('\n').filter(l => l.trim()).slice(0, 5).map(l => l.replace(/^\d+[\.\)]\s*/, '').trim());
-      aiResults.innerHTML = titles.map(tt =>
-        `<div class="ytv-studio-suggest"><span>${escapeHtml(tt)}</span><button class="ytv-btn ytv-btn-sm ytv-btn-red ytv-btn-use" data-text="${escapeHtml(tt)}">${t('Usar', 'Use')}</button></div>`
+      // Botón "A/B" solo en el editor de vídeos ya publicados (videoId presente) —
+      // en el diálogo de subida el vídeo aún no existe públicamente, no se puede testear.
+      aiResults.innerHTML = titles.map((tt, i) =>
+        `<div class="ytv-studio-suggest">
+          <span>${escapeHtml(tt)}</span>
+          <button class="ytv-btn ytv-btn-sm ytv-btn-red ytv-btn-use" data-text="${escapeHtml(tt)}">${t('Usar', 'Use')}</button>
+          ${videoId ? `<button class="ytv-btn ytv-btn-sm ytv-btn-dark ytv-btn-ab" data-idx="${i}">A/B</button>` : ''}
+        </div>
+        ${videoId ? `<div class="ytv-ab-result" id="ytv-ab-result-${i}"></div>` : ''}`
       ).join('');
       aiResults.querySelectorAll('.ytv-btn-use').forEach(useBtn => {
         useBtn.addEventListener('click', () => {
@@ -1227,6 +1233,27 @@ function wireGenTitlesButton(btn, aiResults, isPro, titleFieldSelector) {
           btn.dispatchEvent(new CustomEvent('ytv-field-applied'));
         });
       });
+      if (videoId) {
+        aiResults.querySelectorAll('.ytv-btn-ab').forEach(abBtn => {
+          abBtn.addEventListener('click', async () => {
+            const idx = abBtn.dataset.idx;
+            const resultEl = aiResults.querySelector(`#ytv-ab-result-${idx}`);
+            const variantB = titles[idx];
+            // variantA = título actual del campo AHORA (no cacheado — el usuario
+            // puede haberlo editado desde que se generaron las sugerencias).
+            const variantA = getStudioTitle();
+            abBtn.disabled = true;
+            resultEl.innerHTML = renderLoading(t('Creando test...', 'Creating test...'));
+            try {
+              await sendMsg({ type: 'AB_CREATE', videoId, variantA, variantB });
+              resultEl.innerHTML = `<div class="ytv-ab-success">✓ ${t('Test creado. ', 'Test created. ')}<a href="https://ytubviral.com/ab-test" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
+            } catch (e) {
+              resultEl.innerHTML = renderAbTestOutcome(e, e.limit);
+              abBtn.disabled = false;
+            }
+          });
+        });
+      }
     } catch (e) { aiResults.innerHTML = renderError(e.message); }
   });
 }
@@ -1375,7 +1402,7 @@ async function injectStudioEditor() {
     const btnTags = panel.querySelector('#ytv-studio-gen-tags');
     btnTitles.addEventListener('ytv-field-applied', scheduleLiveUpdate);
     btnDesc.addEventListener('ytv-field-applied', scheduleLiveUpdate);
-    wireGenTitlesButton(btnTitles, aiResults, isPro, SELECTORS.studio.titleField);
+    wireGenTitlesButton(btnTitles, aiResults, isPro, SELECTORS.studio.titleField, videoId);
     wireGenDescButton(btnDesc, aiResults, isPro, SELECTORS.studio.descField);
     wireGenTagsButton(btnTags, aiResults, isPro);
 
@@ -1391,16 +1418,36 @@ async function injectStudioEditor() {
 
 let uploadDialogObserver = null;
 
+// B3 (code review 2026-07-03): esto vigilaba document.body/subtree para
+// siempre, sin desconectar nunca — un callback disparándose en CADA mutación
+// del DOM de Studio (que re-renderiza listas constantemente) de por vida.
+// Fix: desconectar en cuanto se detecta el diálogo, y re-armar solo cuando se
+// cierra (se reutiliza el mismo patrón de sondeo que ya usa
+// injectStudioUploadPanel para detectar el editor de metadatos).
 function watchStudioUpload() {
   if (location.hostname !== 'studio.youtube.com') return;
   if (uploadDialogObserver) return; // already watching this session
   uploadDialogObserver = new MutationObserver(() => {
     const dialog = document.querySelector(SELECTORS.studio.uploadDialog);
     if (dialog && !document.getElementById('ytv-studio-upload-scorecard')) {
+      uploadDialogObserver.disconnect();
+      uploadDialogObserver = null;
       injectStudioUploadPanel(dialog);
+      watchDialogClose(dialog);
     }
   });
   uploadDialogObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+// Sondeo ligero (1/s) mientras el diálogo está montado — mucho más barato que
+// el observer de subtree — y re-arma watchStudioUpload() al cerrarse, para
+// que un segundo "Subir vídeos" sin navegación (sin SPA nav) se siga detectando.
+function watchDialogClose(dialog) {
+  const interval = setInterval(() => {
+    if (document.body.contains(dialog)) return;
+    clearInterval(interval);
+    watchStudioUpload();
+  }, 1000);
 }
 
 async function injectStudioUploadPanel(dialog) {
@@ -1783,6 +1830,99 @@ function renderLoggedOutScore(title) {
   `;
 }
 
+// ============================================================
+// Panel "Qué grabar hoy" en la homepage (v2.6.0, Tier 2 #2)
+// ============================================================
+
+// Por defecto NO se muestra nada cuando el usuario no tiene ideas (Free o
+// sin canal) — spec: "por defecto nada". Poner a true activa la línea de
+// upsell semanal, dejarlo en false es la opción segura para el primer release.
+const SHOW_IDEAS_UPSELL = false;
+
+function storageGet(keys) {
+  return new Promise(resolve => chrome.storage.local.get(keys, resolve));
+}
+function storageSet(obj) {
+  return new Promise(resolve => chrome.storage.local.set(obj, resolve));
+}
+
+async function injectDailyIdeasPanel() {
+  // v1 solo la home raíz, no /feed/* (Suscripciones, etc.) — a diferencia de
+  // injectVelocityBadges() que sí corre en todo 'home', esto es más específico.
+  if (window.location.pathname !== '/') return;
+  if (document.getElementById('ytv-daily-ideas-panel')) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const dismissKey = `ytv_ideas_dismissed_${today}`;
+  const store = await storageGet([dismissKey, 'ytv_ideas_collapsed', 'ytv_ideas_upsell_last']);
+  if (store[dismissKey]) return;
+
+  let data;
+  try {
+    data = await sendMsg({ type: 'DAILY_IDEAS' });
+  } catch {
+    return; // panel discreto: fallar en silencio
+  }
+
+  if (!data || !data.ideas) {
+    if (!SHOW_IDEAS_UPSELL) return;
+    const lastShown = store.ytv_ideas_upsell_last;
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    if (lastShown && new Date(lastShown).getTime() > weekAgo) return; // máx. 1 vez/semana
+    const panel = createPanel('ytv-daily-ideas-panel');
+    panel.className = 'ytv-panel ytv-shorts-panel ytv-ideas-upsell-line';
+    panel.innerHTML = `
+      <span>${t('Los usuarios Pro ven aquí 5 ideas para su canal cada mañana.', 'Pro users see 5 ideas for their channel here every morning.')}</span>
+      <a href="https://ytubviral.com/pricing" target="_blank">${t('Ver planes →', 'See plans →')}</a>
+      <button class="ytv-ideas-dismiss" aria-label="${t('Cerrar', 'Dismiss')}">✕</button>
+    `;
+    document.body.appendChild(panel);
+    panel.querySelector('.ytv-ideas-dismiss').addEventListener('click', () => panel.remove());
+    await storageSet({ ytv_ideas_upsell_last: new Date().toISOString() });
+    return;
+  }
+
+  const ideas = Array.isArray(data.ideas) ? data.ideas.slice(0, 5) : [];
+  if (!ideas.length) return;
+
+  const collapsed = !!store.ytv_ideas_collapsed;
+  const panel = createPanel('ytv-daily-ideas-panel');
+  panel.className = `ytv-panel ytv-shorts-panel ytv-ideas-panel${collapsed ? ' ytv-ideas-collapsed' : ''}`;
+  panel.innerHTML = `
+    <div class="ytv-ideas-header">
+      <span>💡 ${t('Qué grabar hoy', 'What to film today')}</span>
+      <div class="ytv-ideas-header-actions">
+        <button class="ytv-ideas-toggle" aria-label="${t('Colapsar', 'Collapse')}">${collapsed ? '▸' : '▾'}</button>
+        <button class="ytv-ideas-dismiss" aria-label="${t('Cerrar', 'Dismiss')}">✕</button>
+      </div>
+    </div>
+    <div class="ytv-ideas-body">
+      ${ideas.map(idea => {
+        const title = t(idea.title_es, idea.title_en) || '';
+        const desc = t(idea.idea_es, idea.idea_en) || '';
+        const topic = encodeURIComponent(title);
+        return `<div class="ytv-idea-item">
+          <p class="ytv-idea-title">${escapeHtml(title)}</p>
+          <p class="ytv-idea-desc">${escapeHtml(desc)}</p>
+          <a href="https://ytubviral.com/generate?topic=${topic}" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+  document.body.appendChild(panel);
+
+  panel.querySelector('.ytv-ideas-dismiss').addEventListener('click', async () => {
+    panel.remove();
+    await storageSet({ [dismissKey]: true });
+  });
+  panel.querySelector('.ytv-ideas-toggle').addEventListener('click', async () => {
+    const nowCollapsed = !panel.classList.contains('ytv-ideas-collapsed');
+    panel.classList.toggle('ytv-ideas-collapsed', nowCollapsed);
+    panel.querySelector('.ytv-ideas-toggle').textContent = nowCollapsed ? '▸' : '▾';
+    await storageSet({ ytv_ideas_collapsed: nowCollapsed });
+  });
+}
+
 async function injectLoggedOutPanel() {
   if (location.hostname === 'studio.youtube.com') return;
   if (getPageType() !== 'video' && getPageType() !== 'shorts') return; // only the highest-intent pages, to avoid clutter
@@ -1853,7 +1993,7 @@ async function onPageChange() {
   else if (type === 'shorts') { injectShortsPanel(); }
   else if (type === 'search') { injectSearchPanel(); injectVelocityBadges(); }
   else if (type === 'channel') { injectChannelPanel(); injectVelocityBadges(); }
-  else if (type === 'home') { injectVelocityBadges(); }
+  else if (type === 'home') { injectVelocityBadges(); injectDailyIdeasPanel(); }
 }
 
 function scheduleInit() {

@@ -6,7 +6,7 @@ const FETCH_TIMEOUT_MS = 15000;
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   handleMessage(msg)
     .then(sendResponse)
-    .catch(err => sendResponse({ error: err.message || 'Unknown error' }));
+    .catch(err => sendResponse({ error: err.message || 'Unknown error', limit: err.limit }));
   return true; // keep channel open for async response
 });
 
@@ -291,6 +291,64 @@ async function handleMessage(msg) {
         }));
       } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Best time error' : 'Error al cargar best time'));
+      return data;
+    }
+
+    case 'AB_CREATE': {
+      // A diferencia del resto de handlers, aquí NO se traduce el error a un
+      // mensaje bonito — content.js necesita el código crudo (pro_required,
+      // active_test_exists, max_active_tests, youtube_not_connected,
+      // youtube_reconnect_required) para pintar una tarjeta distinta por caso
+      // (la de pro_required es el momento de conversión de la release).
+      const token = await getToken();
+      if (!token) throw new Error('not_logged_in');
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/ab-test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            videoId: msg.videoId,
+            variantA: msg.variantA,
+            variantB: msg.variantB,
+          }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
+      if (!res.ok) {
+        const e = new Error(data.error || 'ab_test_error');
+        e.limit = data.limit; // solo presente en max_active_tests
+        throw e;
+      }
+      return data;
+    }
+
+    case 'DAILY_IDEAS': {
+      const token = await getToken();
+      if (!token) return { ideas: null };
+
+      // Cache 1 fetch/día: la homepage se visita muchas veces y las ideas no
+      // cambian en el día. Limpia claves de días anteriores al escribir la nueva.
+      const today = new Date().toISOString().slice(0, 10);
+      const cacheKey = `ytv_ideas_${today}`;
+      const cached = await new Promise(resolve => {
+        chrome.storage.local.get(cacheKey, data => resolve(data[cacheKey]));
+      });
+      if (cached) return cached;
+
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/daily-ideas`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }));
+      } catch {
+        return { ideas: null }; // panel de homepage: fallar en silencio, no molestar
+      }
+      if (!res.ok) return { ideas: null };
+
+      const allKeys = await new Promise(resolve => chrome.storage.local.get(null, resolve));
+      const staleKeys = Object.keys(allKeys).filter(k => k.startsWith('ytv_ideas_') && k !== cacheKey);
+      if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
+      await chrome.storage.local.set({ [cacheKey]: data });
       return data;
     }
 

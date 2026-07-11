@@ -55,6 +55,25 @@ function sendMsg(msg) {
   });
 }
 
+// C4 (code review 2026-07-03): app/api/extension/login/route.ts devuelve sus
+// mensajes de error solo en español (server-side) — rompía el contrato
+// bilingüe que respeta el resto de la extensión si el usuario tenía lang=en.
+// No se toca el backend (esos strings son deliberados y compartidos con
+// otros flujos de auth); se traducen aquí los códigos conocidos.
+const LOGIN_ERROR_MAP = {
+  'Demasiados intentos. Espera unos minutos.': () => t('Demasiados intentos. Espera unos minutos.', 'Too many attempts. Wait a few minutes.'),
+  'Email y contraseña requeridos': () => t('Email y contraseña requeridos', 'Email and password required'),
+  'Credenciales incorrectas': () => t('Credenciales incorrectas', 'Incorrect credentials'),
+  'Verifica tu email antes de usar la extensión': () => t('Verifica tu email antes de usar la extensión', 'Verify your email before using the extension'),
+  'Error interno': () => t('Error interno. Inténtalo de nuevo.', 'Internal error. Please try again.'),
+};
+
+function loginErrorMessage(raw) {
+  if (!raw) return t('Error al iniciar sesión', 'Login failed');
+  const known = LOGIN_ERROR_MAP[raw];
+  return known ? known() : raw; // código ya bilingüe (viene de background.js) — usar tal cual
+}
+
 function showError(msg) {
   loginErr.textContent = msg;
   loginErr.classList.remove('hidden');
@@ -134,7 +153,7 @@ loginForm.addEventListener('submit', async e => {
     const user = await sendMsg({ type: 'LOGIN', email, password });
     showUserView(user);
   } catch (err) {
-    showError(err.message || t('Error al iniciar sesión', 'Login failed'));
+    showError(loginErrorMessage(err.message));
   } finally {
     btnLogin.disabled = false;
     btnLogin.textContent = t('Iniciar sesión', 'Sign in');

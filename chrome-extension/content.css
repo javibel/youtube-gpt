@@ -944,6 +944,47 @@
   background: #16a34a !important;
 }
 
+.ytv-ab-result {
+  font-size: 12px !important;
+  margin: 0 0 8px !important;
+}
+
+.ytv-ab-result:empty {
+  margin: 0 !important;
+}
+
+.ytv-ab-success {
+  color: #4ade80 !important;
+  padding: 4px 0 !important;
+}
+
+.ytv-ab-success a {
+  color: #4ade80 !important;
+  text-decoration: underline !important;
+}
+
+.ytv-ab-upsell {
+  background: rgba(232,77,91,0.08) !important;
+  border: 1px solid rgba(232,77,91,0.3) !important;
+  border-radius: 6px !important;
+  padding: 10px !important;
+  margin-bottom: 8px !important;
+  font-size: 12px !important;
+  color: #e5e7eb !important;
+}
+
+.ytv-ab-upsell strong {
+  display: block !important;
+  margin-bottom: 4px !important;
+  color: #fff !important;
+}
+
+.ytv-ab-upsell p {
+  margin: 0 0 8px !important;
+  color: #d1d5db !important;
+  line-height: 1.4 !important;
+}
+
 .ytv-studio-desc-preview {
   background: rgba(255,255,255,0.04) !important;
   border-radius: 6px !important;
@@ -1253,4 +1294,116 @@
 .ytv-shorts-panel .ytv-sc-detail {
   max-height: min(60vh, 480px) !important;
   overflow-y: auto !important;
+}
+
+/* v2.6.0 Tier 2 #2 — panel "Qué grabar hoy" en la homepage. Mismo mount fijo
+   que .ytv-shorts-panel (esquina inferior derecha, z-index 2000). */
+.ytv-ideas-panel {
+  background: #181818 !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+  font-family: Roboto, Arial, sans-serif !important;
+}
+
+.ytv-ideas-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  cursor: default !important;
+}
+
+.ytv-ideas-header-actions {
+  display: flex !important;
+  gap: 4px !important;
+}
+
+.ytv-ideas-toggle,
+.ytv-ideas-dismiss {
+  background: transparent !important;
+  border: none !important;
+  color: #9ca3af !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+}
+
+.ytv-ideas-toggle:hover,
+.ytv-ideas-dismiss:hover {
+  background: rgba(255,255,255,0.08) !important;
+  color: #fff !important;
+}
+
+.ytv-ideas-body {
+  margin-top: 10px !important;
+  max-height: min(50vh, 400px) !important;
+  overflow-y: auto !important;
+}
+
+.ytv-ideas-collapsed .ytv-ideas-body {
+  display: none !important;
+}
+
+.ytv-idea-item {
+  padding: 8px 0 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+.ytv-idea-item:last-child {
+  border-bottom: none !important;
+}
+
+.ytv-idea-title {
+  margin: 0 0 3px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #e5e7eb !important;
+  line-height: 1.35 !important;
+}
+
+.ytv-idea-desc {
+  margin: 0 0 5px !important;
+  font-size: 11px !important;
+  color: #9ca3af !important;
+  line-height: 1.4 !important;
+}
+
+.ytv-idea-item a {
+  font-size: 11px !important;
+  color: #ee4d5e !important;
+  text-decoration: none !important;
+  font-weight: 600 !important;
+}
+
+.ytv-idea-item a:hover {
+  text-decoration: underline !important;
+}
+
+/* Línea compacta de upsell (usuarios sin ideas, flag SHOW_IDEAS_UPSELL) */
+.ytv-ideas-upsell-line {
+  background: #181818 !important;
+  border: 1px solid rgba(232,77,91,0.3) !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 11px !important;
+  color: #d1d5db !important;
+}
+
+.ytv-ideas-upsell-line a {
+  color: #ee4d5e !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+}
+
+.ytv-ideas-upsell-line .ytv-ideas-dismiss {
+  margin-left: auto !important;
 }
