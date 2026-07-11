@@ -103,11 +103,14 @@ export default function RootLayout({
         <LandingCapture />
         <LangProvider lang={lang as 'es' | 'en'}>
           <SessionProviderWrapper>
-            {children}
-            <DeferredChatWidget />
+            {/* Captura de atribución ANTES del contenido: sus cookies (ytv_utm,
+                ytv_aff) deben existir para cualquier lectura que dependa del
+                orden de montaje, no solo para las que ya leen en submit. */}
             <PageViewTracker />
             <Suspense fallback={null}><UTMCapture /></Suspense>
             <Suspense fallback={null}><AffiliateCapture /></Suspense>
+            {children}
+            <DeferredChatWidget />
             <CookieConsent />
             <Toaster />
           </SessionProviderWrapper>
