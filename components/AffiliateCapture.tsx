@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { hasTrackingConsent } from '@/components/CookieConsent';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 
 /**
  * Captura el código de afiliado (?aff=) en cookie ytv_aff, first-touch (60 días).
@@ -16,6 +17,7 @@ export default function AffiliateCapture() {
 
   useEffect(() => {
     function capture() {
+      if (AFFILIATES_DORMANT) return;
       const code = searchParams.get('aff');
       if (!code) return;
       if (!hasTrackingConsent()) return;

@@ -6,6 +6,7 @@ import { isDisposableEmail } from "@/lib/disposable-domains";
 import { validatePassword } from "@/lib/password";
 import { verificationEmail } from "@/lib/emails";
 import { sendTransactionalEmail } from "@/lib/send-email";
+import { AFFILIATES_DORMANT } from "@/lib/features";
 
 // A8 (2026-07-05): Cloudflare Turnstile anti-bot check. Fail-open if the secret isn't
 // configured (dev/deploy window) or if Cloudflare itself is unreachable — losing a real
@@ -225,14 +226,17 @@ export async function POST(req: NextRequest) {
         utmSource: typeof utmSource === 'string' ? utmSource.slice(0, 100) : undefined,
         utmMedium: typeof utmMedium === 'string' ? utmMedium.slice(0, 100) : undefined,
         utmCampaign: typeof utmCampaign === 'string' ? utmCampaign.slice(0, 100) : undefined,
-        referredBy: typeof ref === 'string' ? ref.slice(0, 20) : undefined,
+        // Afiliados/referidos hibernados (ver docs/hibernacion-afiliados-referidos-2026-07-11.md):
+        // ignorar ref/aff aunque el cliente los envíe, para no crear atribución
+        // muerta mientras el programa está en pausa.
+        referredBy: AFFILIATES_DORMANT ? undefined : (typeof ref === 'string' ? ref.slice(0, 20) : undefined),
         // Programa de afiliados — namespace separado de `ref` (peer-to-peer), no
         // validado contra Affiliate aquí (puede estar 'pending' de aprobar); la
         // validación real ocurre al devengar comisión en el webhook de Stripe.
         // Lowercase SIEMPRE: los codes se generan en minúsculas y la búsqueda del
         // devengo es case-sensitive — "Erika" tecleado a mano nunca casaría.
-        referredByCode: typeof aff === 'string' && aff.trim() ? aff.trim().toLowerCase().slice(0, 40) : undefined,
-        referredAt: typeof aff === 'string' && aff.trim() ? new Date() : undefined,
+        referredByCode: AFFILIATES_DORMANT ? undefined : (typeof aff === 'string' && aff.trim() ? aff.trim().toLowerCase().slice(0, 40) : undefined),
+        referredAt: AFFILIATES_DORMANT ? undefined : (typeof aff === 'string' && aff.trim() ? new Date() : undefined),
         signupReferrer: typeof signupReferrer === 'string' ? signupReferrer.slice(0, 500) : undefined,
         signupLandingPage: typeof signupLandingPage === 'string' ? signupLandingPage.slice(0, 500) : undefined,
       },

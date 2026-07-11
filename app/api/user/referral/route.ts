@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 
 function generateCode(): string {
   return crypto.randomBytes(4).toString('hex'); // 8-char hex code
@@ -9,6 +10,8 @@ function generateCode(): string {
 
 // GET — return user's referral code + stats
 export async function GET() {
+  if (AFFILIATES_DORMANT) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 

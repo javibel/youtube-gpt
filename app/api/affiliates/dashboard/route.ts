@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 
 export async function GET() {
+  if (AFFILIATES_DORMANT) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 

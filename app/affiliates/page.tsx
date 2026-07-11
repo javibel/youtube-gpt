@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 import AffiliatesClient from './AffiliatesClient';
 
 export const metadata: Metadata = {
@@ -14,5 +16,6 @@ export const metadata: Metadata = {
 };
 
 export default function AffiliatesPage() {
+  if (AFFILIATES_DORMANT) notFound();
   return <AffiliatesClient />;
 }

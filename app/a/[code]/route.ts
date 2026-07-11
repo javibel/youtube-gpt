@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 
 const BASE_URL = 'https://ytubviral.com';
 
@@ -12,6 +13,12 @@ function safeTarget(to: string | null): string {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
+
+  // Programa hibernado (ver docs/hibernacion-afiliados-referidos-2026-07-11.md):
+  // el link no rompe, pero no registra clic ni atribuye — redirect limpio.
+  if (AFFILIATES_DORMANT) {
+    return NextResponse.redirect(`${BASE_URL}${safeTarget(req.nextUrl.searchParams.get('to'))}`);
+  }
 
   const affiliate = await prisma.affiliate.findUnique({ where: { code } });
 

@@ -4,6 +4,7 @@
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 
 // "Primera factura pagada" real del customer en Stripe, no derivada de nuestra
 // BD — el afiliado puede aprobarse DESPUÉS de la primera factura del usuario
@@ -21,6 +22,11 @@ async function getFirstPaidInvoiceDate(customerId: string): Promise<Date | null>
 }
 
 export async function accrueAffiliateCommission(referredUserId: string, invoice: Stripe.Invoice): Promise<void> {
+  // Hibernado (docs/hibernacion-afiliados-referidos-2026-07-11.md): con 0
+  // afiliados activos esto nunca devengaría nada, pero el gate evita sorpresas
+  // si alguien insertara datos de afiliado a mano mientras dura la pausa.
+  if (AFFILIATES_DORMANT) return;
+
   // Factura sin cobro real (la de 0€ que Stripe genera al INICIAR un trial
   // también dispara invoice.payment_succeeded) — no es un caso de error,
   // simplemente no comisiona.

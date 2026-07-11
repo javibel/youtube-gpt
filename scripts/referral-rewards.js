@@ -24,7 +24,18 @@ const Stripe = require('stripe');
 const prisma = new PrismaClient();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// Hibernado (11/07/2026): el programa de afiliados/referidos está en pausa —
+// ver docs/hibernacion-afiliados-referidos-2026-07-11.md y lib/features.ts
+// (AFFILIATES_DORMANT). Este script es manual (sin cron), pero por si acaso:
+// no ejecutar mientras dure la hibernación salvo --force explícito.
+const AFFILIATES_DORMANT = true;
+
 (async () => {
+  if (AFFILIATES_DORMANT && !process.argv.includes('--force')) {
+    console.error('[referral-rewards] Programa de referidos hibernado — usa --force si de verdad quieres saltarte esto.');
+    process.exit(1);
+  }
+
   const dryRun = process.argv.includes('--dry-run');
 
   const pending = await prisma.user.findMany({

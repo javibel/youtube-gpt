@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { isDisposableEmail } from '@/lib/disposable-domains';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { ADMIN_EMAIL } from '@/lib/admin-email';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 
 // Genera un code corto y legible a partir del nombre ("Erika Goncalves" → "erika"),
 // con sufijo numérico si ya existe — el afiliado puede pedir cambiarlo, Javier lo
@@ -16,6 +17,8 @@ function slugify(name: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  if (AFFILIATES_DORMANT) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
   const { name, email, channelInfo, lang } = await req.json().catch(() => ({}));
   const isEn = lang === 'en';
 

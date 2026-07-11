@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import { ADMIN_EMAIL } from "@/lib/admin-email";
 import { authenticator } from "otplib";
 import { rateLimitDb } from "@/lib/rate-limit-db";
+import { AFFILIATES_DORMANT } from "@/lib/features";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -108,9 +109,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           let utmCampaign: string | undefined;
           try {
             const cookieStore = await cookies();
-            const refCookie = cookieStore.get('ytv_ref');
+            // Afiliados/referidos hibernados (docs/hibernacion-afiliados-referidos-2026-07-11.md):
+            // las cookies ya no se setean en origen, pero el gate explícito evita
+            // atribución muerta si alguna quedara viva de antes de hibernar.
+            const refCookie = AFFILIATES_DORMANT ? undefined : cookieStore.get('ytv_ref');
             if (refCookie?.value) referredBy = refCookie.value.slice(0, 20);
-            const affCookie = cookieStore.get('ytv_aff');
+            const affCookie = AFFILIATES_DORMANT ? undefined : cookieStore.get('ytv_aff');
             if (affCookie?.value) referredByCode = affCookie.value.trim().toLowerCase().slice(0, 40);
             const utmCookie = cookieStore.get('ytv_utm');
             if (utmCookie?.value) {

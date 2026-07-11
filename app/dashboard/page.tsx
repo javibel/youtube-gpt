@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { useLang } from '@/components/LangProvider';
 import ReferralCard from '@/components/ReferralCard';
 import NextActionCard from '@/components/NextActionCard';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 import { toast } from '@/components/Toaster';
 import { CheckIcon, CrossIcon, VideoIcon, StarIcon } from '@/components/icons';
 
@@ -799,8 +800,8 @@ function handleCopy(id: string, out: string) {
             </div>
           </div>
 
-          {/* Referral card */}
-          <ReferralCard lang={lang} />
+          {/* Referral card — hibernado, ver docs/hibernacion-afiliados-referidos-2026-07-11.md */}
+          {!AFFILIATES_DORMANT && <ReferralCard lang={lang} />}
 
           {/* My Previews — TV3 decorative + title list */}
           {(isPro || dbPreviews.length > 0) && (

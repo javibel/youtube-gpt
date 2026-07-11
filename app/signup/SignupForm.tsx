@@ -6,6 +6,7 @@ import { signIn } from 'next-auth/react';
 import PasswordInput from '@/components/PasswordInput';
 import { hasTrackingConsent } from '@/components/CookieConsent';
 import { WarningIcon } from '@/components/icons';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -28,8 +29,11 @@ declare global {
 export default function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const refCode = searchParams.get('ref') || '';
-  const affQueryCode = searchParams.get('aff') || '';
+  // Afiliados/referidos hibernados (ver docs/hibernacion-afiliados-referidos-2026-07-11.md):
+  // forzar vacío desactiva en cascada las cookies ytv_ref/ytv_aff, el callback
+  // de Google OAuth y el envío de ref/aff al signup, sin tocar cada punto por separado.
+  const refCode = AFFILIATES_DORMANT ? '' : (searchParams.get('ref') || '');
+  const affQueryCode = AFFILIATES_DORMANT ? '' : (searchParams.get('aff') || '');
 
   // Store ref in cookie so Google OAuth signIn callback can read it
   // RGPD: cookie de atribución — solo con consentimiento de tracking
@@ -247,19 +251,21 @@ export default function SignupForm() {
                 placeholder={t('Repite tu contraseña', 'Repeat your password')} required />
             </div>
 
-            {!showAffInput ? (
-              <button type="button" onClick={() => setShowAffInput(true)}
-                className="font-mono-jb text-[12px] text-zinc-500 hover:text-zinc-300 transition underline">
-                {t('¿Te recomendó un creador? Añade su código', 'Did a creator recommend you? Add their code')}
-              </button>
-            ) : (
-              <div>
-                <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
-                  {t('Código de afiliado (opcional)', 'Affiliate code (optional)')}
-                </label>
-                <input type="text" value={affTyped} onChange={(e) => setAffTyped(e.target.value)}
-                  className="soft-field py-3 px-4 text-sm" placeholder={t('ej. erika', 'e.g. erika')} />
-              </div>
+            {!AFFILIATES_DORMANT && (
+              !showAffInput ? (
+                <button type="button" onClick={() => setShowAffInput(true)}
+                  className="font-mono-jb text-[12px] text-zinc-500 hover:text-zinc-300 transition underline">
+                  {t('¿Te recomendó un creador? Añade su código', 'Did a creator recommend you? Add their code')}
+                </button>
+              ) : (
+                <div>
+                  <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
+                    {t('Código de afiliado (opcional)', 'Affiliate code (optional)')}
+                  </label>
+                  <input type="text" value={affTyped} onChange={(e) => setAffTyped(e.target.value)}
+                    className="soft-field py-3 px-4 text-sm" placeholder={t('ej. erika', 'e.g. erika')} />
+                </div>
+              )
             )}
 
             {TURNSTILE_SITE_KEY && <div ref={turnstileRef} />}
