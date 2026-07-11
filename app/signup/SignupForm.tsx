@@ -141,12 +141,16 @@ export default function SignupForm() {
 
     // Código de afiliado — prioridad: tecleado a mano > query ?aff= > cookie ytv_aff
     // (first-touch, puesta por AffiliateCapture.tsx en cualquier página anterior).
+    // Hibernado: no leer ni enviar nada — una cookie ytv_aff anterior a la
+    // hibernación seguiría viva hasta 60 días (el servidor también la ignora).
     let affCookie: string | undefined;
-    try {
-      const c = document.cookie.split('; ').find(r => r.startsWith('ytv_aff='));
-      if (c) affCookie = decodeURIComponent(c.split('=').slice(1).join('='));
-    } catch {}
-    const aff = affTyped.trim() || affQueryCode || affCookie || undefined;
+    if (!AFFILIATES_DORMANT) {
+      try {
+        const c = document.cookie.split('; ').find(r => r.startsWith('ytv_aff='));
+        if (c) affCookie = decodeURIComponent(c.split('=').slice(1).join('='));
+      } catch {}
+    }
+    const aff = AFFILIATES_DORMANT ? undefined : (affTyped.trim() || affQueryCode || affCookie || undefined);
 
     setLoading(true);
     try {
