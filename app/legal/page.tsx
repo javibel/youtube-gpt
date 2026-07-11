@@ -33,8 +33,8 @@ export default function LegalPage() {
           {
             title: t('Objeto', 'Purpose'),
             body: t(
-              'YTubViral es un servicio de generación y análisis de contenido asistido por inteligencia artificial dirigido a creadores de contenido en YouTube. Ofrece 14 herramientas que incluyen generación de títulos, scripts, descripciones SEO, análisis de competidores, keyword research, estimación de ingresos, A/B testing, calendario de contenido, análisis de retención, predicción de vídeos, coaching con IA, explorador de tendencias y centro de aprendizaje. El servicio se presta a través de Internet y está disponible globalmente.',
-              'YTubViral is an AI-assisted content generation and analysis service aimed at YouTube content creators. It offers 14 tools including title generation, scripts, SEO descriptions, competitor analysis, keyword research, revenue estimation, A/B testing, content calendar, retention analysis, video prediction, AI coaching, trend explorer and learning hub. The service is provided over the Internet and is available globally.'
+              'YTubViral es un servicio de generación y análisis de contenido asistido por inteligencia artificial dirigido a creadores de contenido en YouTube. Ofrece herramientas que incluyen generación de títulos, scripts, descripciones SEO, análisis de competidores, keyword research, estimación de ingresos, A/B testing, calendario de contenido, análisis de retención, predicción de vídeos, coaching con IA, explorador de tendencias y centro de aprendizaje. El servicio se presta a través de Internet y está disponible globalmente.',
+              'YTubViral is an AI-assisted content generation and analysis service aimed at YouTube content creators. It offers tools including title generation, scripts, SEO descriptions, competitor analysis, keyword research, revenue estimation, A/B testing, content calendar, retention analysis, video prediction, AI coaching, trend explorer and learning hub. The service is provided over the Internet and is available globally.'
             ),
           },
           {

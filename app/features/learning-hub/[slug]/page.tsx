@@ -253,8 +253,8 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
             </h2>
             <p className="text-zinc-400 text-lg max-w-lg mx-auto mb-8">
               {lang === 'en'
-                ? '14 tools powered by AI to optimize every aspect of your YouTube channel. 10 free generations to start.'
-                : '14 herramientas potenciadas por IA para optimizar cada aspecto de tu canal. 10 generaciones gratis para empezar.'}
+                ? 'All the AI-powered tools to optimize every aspect of your YouTube channel. 10 free generations to start.'
+                : 'Todas las herramientas potenciadas por IA para optimizar cada aspecto de tu canal. 10 generaciones gratis para empezar.'}
             </p>
             <Link href="/signup" className="btn-offset px-10 py-4 text-base font-display font-bold inline-flex">
               {lang === 'en' ? 'Get started free →' : 'Empezar gratis →'}

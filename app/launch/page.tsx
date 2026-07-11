@@ -19,7 +19,7 @@ const TOOLS_EN = [
 
 const REASONS = [
   { title: '50% off for 1 year', desc: 'Early supporters pay half price for a full year.' },
-  { title: 'Early access', desc: 'Be among the first to try all 14 tools before the public launch.' },
+  { title: 'Early access', desc: 'Be among the first to try all the tools before the public launch.' },
   { title: 'Vote on Product Hunt', desc: 'Help us reach #1 on launch day and earn extra perks.' },
 ];
 

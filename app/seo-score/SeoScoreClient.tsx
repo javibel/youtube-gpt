@@ -449,7 +449,7 @@ function SeoScoreContent() {
       {!isAuthed && urlResult && (
         <div className="mt-10 p-8 rounded-xl text-center" style={{ background: 'linear-gradient(135deg, rgba(232,77,91,0.06), rgba(0,229,255,0.04))', border: '1px solid rgba(232,77,91,0.2)' }}>
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
-            {t('SOLO HAS VISTO 1 DE 14 HERRAMIENTAS', 'YOU JUST SAW 1 OF 14 TOOLS')}
+            {t('SOLO HAS VISTO 1 DE TODAS LAS HERRAMIENTAS', 'YOU JUST SAW 1 OF ALL THE TOOLS')}
           </p>
           <p className="font-display font-bold text-white text-xl mb-2">
             {t('Genera títulos, scripts y descripciones virales con IA', 'Generate viral titles, scripts & descriptions with AI')}
