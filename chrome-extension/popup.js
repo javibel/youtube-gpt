@@ -137,10 +137,26 @@ async function checkIdeasRestore() {
 btnRestoreIdeas.addEventListener('click', async () => {
   const today = new Date().toISOString().slice(0, 10);
   await new Promise(resolve => chrome.storage.local.remove(`ytv_ideas_dismissed_${today}`, resolve));
+
+  // Empujar la pestaña activa a refrescar el panel YA, si es una pestaña de
+  // YouTube — sin esto, borrar la marca en storage no hacía nada visible en
+  // una pestaña ya abierta hasta la siguiente navegación real (recarga o
+  // clic en un enlace). No requiere el permiso "tabs": tabs.query() no
+  // necesita permisos especiales para leer solo el id, y tabs.sendMessage()
+  // a un content script tampoco. Si la pestaña activa no es YouTube, el
+  // mensaje simplemente no tiene quien lo escuche — se ignora en silencio.
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tabId = tabs?.[0]?.id;
+    if (tabId == null) return;
+    chrome.tabs.sendMessage(tabId, { type: 'YTV_RECHECK_IDEAS' }, () => {
+      void chrome.runtime.lastError; // sin listener en esa pestaña = esperado, no es un error
+    });
+  });
+
   btnRestoreIdeas.classList.add('hidden');
   ideasRestoreDone.textContent = t(
-    '✓ Listo. Al abrir o recargar YouTube volverá a aparecer.',
-    "✓ Done. It'll show up next time you open or reload YouTube."
+    '✓ Listo. Si tenías YouTube abierto ya debería verse — si no, aparecerá al abrirlo.',
+    "✓ Done. If YouTube was already open it should show up now — otherwise, next time you open it."
   );
   ideasRestoreDone.classList.remove('hidden');
 });

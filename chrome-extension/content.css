@@ -790,6 +790,47 @@
   text-align: center !important;
 }
 
+/* Ideas de hoy dentro del panel "Tu Canal" (v2.6.0, 2026-07-12) */
+.ytv-cs-ideas {
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+.ytv-cs-ideas-title {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  margin-bottom: 6px !important;
+}
+
+.ytv-cs-idea-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 4px 0 !important;
+  font-size: 11px !important;
+}
+
+.ytv-cs-idea-item span {
+  color: #ccc !important;
+  line-height: 1.35 !important;
+  flex: 1 !important;
+}
+
+.ytv-cs-idea-item a {
+  color: #ee4d5e !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.ytv-cs-idea-item a:hover {
+  text-decoration: underline !important;
+}
+
 /* ===== OUTLIER BADGE (v1.4.0) ===== */
 
 .ytv-outlier-badge {

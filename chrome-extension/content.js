@@ -76,6 +76,15 @@ function fmtNum(n) {
   return String(n);
 }
 
+// El popup manda esto tras "Mostrar ideas de hoy" (ver popup.js) para
+// refrescar una pestaña de YouTube que YA estaba abierta — sin esto, borrar
+// la marca de "descartado" en storage no hacía nada visible hasta la
+// siguiente navegación real (recarga o clic en un enlace), que es lo que
+// reportó Javier como "pulsé y no reapareció".
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === 'YTV_RECHECK_IDEAS') injectDailyIdeasPanel();
+});
+
 function sendMsg(msg) {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(msg, response => {
@@ -1011,6 +1020,23 @@ function renderChannelStatsWidget(d) {
   `;
 }
 
+function renderDailyIdeasMini(ideas) {
+  const top = ideas.slice(0, 3);
+  return `
+    <div class="ytv-cs-ideas">
+      <div class="ytv-cs-ideas-title">💡 ${t('Qué grabar hoy', 'What to film today')}</div>
+      ${top.map((idea) => {
+        const title = t(idea.title_es, idea.title_en) || '';
+        const topic = encodeURIComponent(title);
+        return `<div class="ytv-cs-idea-item">
+          <span>${escapeHtml(title)}</span>
+          <a href="https://ytubviral.com/generate?topic=${topic}" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
 async function injectChannelStats() {
   try {
     // Only show on YouTube Studio or on regular YouTube (below scorecard)
@@ -1054,6 +1080,15 @@ async function injectChannelStats() {
     try {
       const data = await sendMsg({ type: 'CHANNEL_STATS' });
       bodyEl.innerHTML = renderChannelStatsWidget(data);
+
+      // Ideas de hoy dentro de "Tu Canal" (feedback de Javier, 2026-07-12):
+      // no depende de estar en la home ni del popup — aparece en cualquier
+      // vídeo y en Studio, donde el widget de canal ya se muestra. Fire and
+      // forget: si no hay ideas hoy, simplemente no añade nada.
+      sendMsg({ type: 'DAILY_IDEAS' }).then((ideaData) => {
+        if (!ideaData?.ideas?.length) return;
+        bodyEl.insertAdjacentHTML('beforeend', renderDailyIdeasMini(ideaData.ideas));
+      }).catch(() => {});
     } catch (e) {
       if (e.message === 'youtube_not_connected') {
         // v2.5.0 (A2 fix): this used to render on EVERY video for any logged-in user who
