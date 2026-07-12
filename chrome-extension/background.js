@@ -345,8 +345,13 @@ async function handleMessage(msg) {
       }
       if (!res.ok) return { ideas: null };
 
+      // Solo las claves de CACHÉ por fecha (ytv_ideas_YYYY-MM-DD), NO las de
+      // preferencias que comparten prefijo: ytv_ideas_dismissed_<fecha>,
+      // ytv_ideas_collapsed, ytv_ideas_upsell_last. Un `startsWith('ytv_ideas_')`
+      // las borraba todas en el primer fetch de cada día — reseteaba el estado
+      // colapsado a diario y rompía el throttle semanal del upsell.
       const allKeys = await new Promise(resolve => chrome.storage.local.get(null, resolve));
-      const staleKeys = Object.keys(allKeys).filter(k => k.startsWith('ytv_ideas_') && k !== cacheKey);
+      const staleKeys = Object.keys(allKeys).filter(k => /^ytv_ideas_\d{4}-\d{2}-\d{2}$/.test(k) && k !== cacheKey);
       if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
       await chrome.storage.local.set({ [cacheKey]: data });
       return data;

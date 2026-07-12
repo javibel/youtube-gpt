@@ -1998,6 +1998,16 @@ let lastUrl = location.href;
 let navTimer = null;
 
 async function onPageChange() {
+  // Los paneles fijos (montados en document.body con position:fixed) NO se
+  // limpian solos al navegar — YouTube es una SPA, el body persiste entre
+  // páginas. Sin esto, el panel de ideas (solo de la home raíz) y el scorecard
+  // de Shorts se quedaban flotando en páginas donde no pertenecen tras
+  // visitarlos una vez. Se limpian al entrar en cualquier página que no sea la
+  // suya; injectDailyIdeasPanel/injectShortsPanel los vuelven a montar si toca.
+  const path = window.location.pathname;
+  if (path !== '/') document.getElementById('ytv-daily-ideas-panel')?.remove();
+  if (!path.startsWith('/shorts/')) document.getElementById('ytv-shorts-panel')?.remove();
+
   const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
   if (!user) {
     // Logged-out: don't go invisible (the old behaviour killed adoption — vidIQ shows value at
