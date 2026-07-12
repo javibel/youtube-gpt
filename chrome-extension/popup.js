@@ -12,6 +12,9 @@ const userName  = document.getElementById('user-name');
 const userPlan  = document.getElementById('user-plan');
 const userInit  = document.getElementById('user-initials');
 const btnLang   = document.getElementById('btn-lang');
+const ideasRestore     = document.getElementById('ideas-restore');
+const btnRestoreIdeas  = document.getElementById('btn-restore-ideas');
+const ideasRestoreDone = document.getElementById('ideas-restore-done');
 
 let lang = 'es';
 
@@ -43,6 +46,7 @@ function applyLang() {
   `;
   document.getElementById('dashboard-link').textContent = t('Ir al dashboard →', 'Go to dashboard →');
   btnLogout.textContent = t('Cerrar sesión', 'Sign out');
+  btnRestoreIdeas.textContent = t('💡 Mostrar ideas de hoy', "💡 Show today's ideas");
 }
 
 function sendMsg(msg) {
@@ -104,7 +108,42 @@ function showLoginView() {
   viewUser.classList.add('hidden');
   viewLogin.classList.remove('hidden');
   hideError();
+  ideasRestore.classList.add('hidden');
+  ideasRestoreDone.classList.add('hidden');
+  btnRestoreIdeas.classList.remove('hidden');
 }
+
+// Un usuario que cierra el panel "Qué grabar hoy" por accidente en la
+// homepage de YouTube no debería tener que abrir las DevTools de la
+// extensión para recuperarlo — este botón hace lo mismo (borrar la marca
+// de "descartado" de hoy) desde una superficie que cualquiera conoce: el
+// propio icono de la extensión.
+async function checkIdeasRestore() {
+  ideasRestore.classList.add('hidden');
+  ideasRestoreDone.classList.add('hidden');
+  try {
+    const data = await sendMsg({ type: 'DAILY_IDEAS' });
+    if (!data?.ideas) return; // sin ideas hoy — nada que restaurar
+
+    const today = new Date().toISOString().slice(0, 10);
+    const dismissKey = `ytv_ideas_dismissed_${today}`;
+    const store = await new Promise(resolve => chrome.storage.local.get(dismissKey, resolve));
+    if (store[dismissKey]) ideasRestore.classList.remove('hidden');
+  } catch {
+    // sin conexión o sin ideas — no mostrar el botón, no es un error visible
+  }
+}
+
+btnRestoreIdeas.addEventListener('click', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  await new Promise(resolve => chrome.storage.local.remove(`ytv_ideas_dismissed_${today}`, resolve));
+  btnRestoreIdeas.classList.add('hidden');
+  ideasRestoreDone.textContent = t(
+    '✓ Listo. Al abrir o recargar YouTube volverá a aparecer.',
+    "✓ Done. It'll show up next time you open or reload YouTube."
+  );
+  ideasRestoreDone.classList.remove('hidden');
+});
 
 // Init: load lang then check user
 (async () => {
@@ -118,7 +157,7 @@ function showLoginView() {
 
   try {
     const user = await sendMsg({ type: 'GET_USER' });
-    if (user) showUserView(user);
+    if (user) { showUserView(user); checkIdeasRestore(); }
     else showLoginView();
   } catch {
     showLoginView();
@@ -133,7 +172,7 @@ btnLang.addEventListener('click', async () => {
   // Re-apply user view if logged in
   try {
     const user = await sendMsg({ type: 'GET_USER' });
-    if (user) showUserView(user);
+    if (user) { showUserView(user); checkIdeasRestore(); }
   } catch {}
 });
 
@@ -152,6 +191,7 @@ loginForm.addEventListener('submit', async e => {
   try {
     const user = await sendMsg({ type: 'LOGIN', email, password });
     showUserView(user);
+    checkIdeasRestore();
   } catch (err) {
     showError(loginErrorMessage(err.message));
   } finally {
