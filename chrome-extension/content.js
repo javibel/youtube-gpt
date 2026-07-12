@@ -669,12 +669,21 @@ async function loadComments(container, videoId) {
 
 async function injectVideoPanel() {
   try {
-    const container = await waitForEl(SELECTORS.yt.videoSecondary, 8000);
     const videoId = getVideoId();
     if (!videoId) return;
 
+    // Idempotencia para los reintentos de navegación (ver dispatchWithRetry): si
+    // el scorecard de ESTE vídeo ya está montado, no re-inyectar (evita re-fetch).
+    // Si YouTube lo borró al re-renderizar el sidebar, getElementById da null y se
+    // re-inyecta. Mismo patrón dataset.videoId que injectShortsPanel.
+    const existingPanel = document.getElementById('ytv-video-panel');
+    if (existingPanel && existingPanel.dataset.videoId === videoId) return;
+
+    const container = await waitForEl(SELECTORS.yt.videoSecondary, 8000);
+
     // ── Scorecard pill (compact, auto-loads) ──────────────────
     const panel = createPanel('ytv-video-panel');
+    panel.dataset.videoId = videoId;
     panel.className = 'ytv-scorecard';
     panel.innerHTML = `
       <div class="ytv-sc-pill" id="ytv-sc-pill">
@@ -887,8 +896,14 @@ async function injectSearchPanel() {
     const query = getSearchQuery();
     if (!query) return;
 
+    // Idempotencia por query (los reintentos de una misma búsqueda no re-piden;
+    // una búsqueda distinta sí re-inyecta porque la query cambia).
+    const existingPanel = document.getElementById('ytv-search-panel');
+    if (existingPanel && existingPanel.dataset.query === query) return;
+
     const container = await waitForEl(SELECTORS.yt.searchResults, 5000);
     const panel = createPanel('ytv-search-panel');
+    panel.dataset.query = query;
     panel.innerHTML = `
       <div class="ytv-header">
         <span class="ytv-logo">YTubViral</span>
@@ -909,8 +924,14 @@ async function injectSearchPanel() {
 
 async function injectChannelPanel() {
   try {
+    // Idempotencia por ruta de canal (los reintentos de un mismo canal no
+    // re-inyectan; otro canal sí, porque cambia el pathname).
+    const existingPanel = document.getElementById('ytv-channel-panel');
+    if (existingPanel && existingPanel.dataset.path === location.pathname) return;
+
     const container = await waitForEl(SELECTORS.yt.channelHeader, 5000);
     const panel = createPanel('ytv-channel-panel');
+    panel.dataset.path = location.pathname;
     panel.innerHTML = `
       <div class="ytv-header">
         <span class="ytv-logo">YTubViral</span>
@@ -1039,6 +1060,11 @@ function renderDailyIdeasMini(ideas) {
 
 async function injectChannelStats() {
   try {
+    // Idempotencia para los reintentos: son las stats del PROPIO canal, iguales
+    // en cualquier página; si ya está montado no re-inyectar, si YouTube lo borró
+    // se vuelve a montar (getElementById da null).
+    if (document.getElementById('ytv-channel-stats')) return;
+
     // Only show on YouTube Studio or on regular YouTube (below scorecard)
     const isStudio = location.hostname === 'studio.youtube.com';
     let container;
@@ -2041,14 +2067,43 @@ async function onPageChange() {
   else if (type === 'home') { injectVelocityBadges(); injectDailyIdeasPanel(); }
 }
 
+// El bug de "a veces hay que refrescar para que aparezca el panel" era esto:
+// un ÚNICO intento de inyección por navegación. YouTube (SPA) a veces no ha
+// terminado de montar el contenedor cuando corremos, o re-renderiza el sidebar
+// JUSTO DESPUÉS de insertar el panel y lo borra — y como no había reintento, el
+// panel quedaba ausente hasta un refresco manual. Ahora reintentamos, pero SOLO
+// mientras el panel principal de la página siga ausente (evita re-fetch cuando
+// el primer intento ya funcionó). Los injectores son idempotentes por objetivo
+// (dataset videoId/query/path), así que reintentar es seguro.
+function expectedPanelId() {
+  if (location.hostname === 'studio.youtube.com') return 'ytv-channel-stats'; // el panel siempre presente en Studio
+  const path = location.pathname;
+  if (path === '/watch') return 'ytv-video-panel';
+  if (path.startsWith('/shorts/')) return 'ytv-shorts-panel';
+  if (path === '/results') return 'ytv-search-panel';
+  if (/^\/(@|channel\/|c\/)/.test(path)) return 'ytv-channel-panel';
+  return null; // home/feed: badges/ideas, sin un panel único que vigilar
+}
+
+function dispatchWithRetry(attempt = 0) {
+  onPageChange();
+  if (attempt >= 2) return;
+  const id = expectedPanelId();
+  const startedAt = location.href;
+  setTimeout(() => {
+    if (location.href !== startedAt) return; // navegó a otra página: su propio ciclo se encarga
+    if (id && !document.getElementById(id)) dispatchWithRetry(attempt + 1);
+  }, attempt === 0 ? 1500 : 2000);
+}
+
 function scheduleInit() {
   if (navTimer) clearTimeout(navTimer);
   navTimer = setTimeout(() => {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
-      onPageChange();
+      dispatchWithRetry();
     }
-  }, 800);
+  }, 500);
 }
 
 document.addEventListener('yt-navigate-finish', () => {
@@ -2056,7 +2111,10 @@ document.addEventListener('yt-navigate-finish', () => {
   scheduleInit();
 });
 
-window.addEventListener('popstate', scheduleInit);
+window.addEventListener('popstate', () => {
+  lastUrl = ''; // back/forward: forzar re-check aunque la href coincida con la última
+  scheduleInit();
+});
 
 // Ensure critical CSS is present (manifest CSS can be lost on extension reload)
 (function ensureCss() {
@@ -2078,5 +2136,6 @@ window.addEventListener('popstate', scheduleInit);
   }
 })();
 
-// Initial load
-initLang().then(() => onPageChange());
+// Initial load — mismo retry que la navegación (en carga directa/refresco el
+// contenedor puede no estar listo cuando corre document_idle).
+initLang().then(() => dispatchWithRetry());
