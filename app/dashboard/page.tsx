@@ -214,10 +214,6 @@ export default function DashboardPage() {
       setYtToast({ msg: lang === 'en' ? 'Could not connect YouTube' : 'No se pudo conectar YouTube', ok: false });
       setTimeout(() => setYtToast(null), 4000);
       window.history.replaceState({}, '', '/dashboard');
-    } else if (yt === 'pro_required') {
-      setYtToast({ msg: lang === 'en' ? 'YouTube connect requires Pro plan' : 'Conectar YouTube requiere plan Pro', ok: false });
-      setTimeout(() => setYtToast(null), 5000);
-      window.history.replaceState({}, '', '/dashboard');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -484,10 +480,35 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {/* Step 2: Resultado — celebración del momento mágico + siguientes pasos */}
-            {onboardingStep >= 2 && (
+            {/* Step 2: Resultado — celebración del momento mágico. Step 3: conectar canal (gratis) */}
+            {onboardingStep >= 2 && onboardingStep < 4 && (
               <div className="text-center">
-                {onboardingResult ? (
+                {!onboardingResult ? (
+                  /* Usuario que retoma el onboarding a medias (sin resultado en memoria) */
+                  <>
+                    <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                    </div>
+                    <h2 className="font-display font-bold text-xl text-white mb-2">
+                      {t('Ya casi está', 'Almost there')}
+                    </h2>
+                    <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                      {t(
+                        'Genera tu primer título y descubre lo rápido que es. Tienes 10 generaciones gratis al mes.',
+                        'Generate your first title and see how fast it is. You get 10 free generations per month.'
+                      )}
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                        {t('Ir al generador', 'Go to generator')}
+                      </button>
+                      <button onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
+                        {t('Ir a mi panel', 'Go to my dashboard')}
+                      </button>
+                    </div>
+                  </>
+                ) : onboardingStep === 2 ? (
                   <>
                     <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124,255,0,0.12)' }}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7CFF00" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
@@ -522,37 +543,43 @@ function handleCopy(id: string, out: string) {
                       {onboardingCopied ? t('¡Copiado!', 'Copied!') : t('Copiar', 'Copy')}
                     </button>
                     <div className="flex flex-col gap-2">
-                      <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                        {t('Generar más contenido', 'Generate more content')}
+                      <button onClick={() => advanceOnboarding(ytConnected ? 4 : 3)} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                        {t('Continuar', 'Continue')}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                       </button>
-                      <button onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
-                        {t('Ir a mi panel', 'Go to my dashboard')}
+                      <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
+                        {t('Saltar, seguir generando', 'Skip, keep generating')}
                       </button>
                     </div>
                   </>
                 ) : (
-                  /* Usuario que retoma el onboarding a medias (sin resultado en memoria) */
+                  /* Step 3: conectar canal — gratis desde 13/07 (ver project_channel_connect_free.md).
+                     Momento de máxima confianza: justo después de ver el primer resultado. */
                   <>
-                    <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                    <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124,255,0,0.12)' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7CFF00" strokeWidth="2.5"><path d="M21.582 7.186a2.51 2.51 0 00-1.768-1.768C18.254 5 12 5 12 5s-6.254 0-7.814.418a2.51 2.51 0 00-1.768 1.768C2 8.746 2 12 2 12s0 3.254.418 4.814a2.51 2.51 0 001.768 1.768C5.746 19 12 19 12 19s6.254 0 7.814-.418a2.51 2.51 0 001.768-1.768C22 15.254 22 12 22 12s0-3.254-.418-4.814zM10 15V9l5.196 3L10 15z"/></svg>
                     </div>
                     <h2 className="font-display font-bold text-xl text-white mb-2">
-                      {t('Ya casi está', 'Almost there')}
+                      {t('Un paso más: conecta tu canal', 'One more step: connect your channel')}
                     </h2>
-                    <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
+                    <p className="text-zinc-400 text-sm mb-2 max-w-sm mx-auto">
                       {t(
-                        'Genera tu primer título y descubre lo rápido que es. Tienes 10 generaciones gratis al mes.',
-                        'Generate your first title and see how fast it is. You get 10 free generations per month.'
+                        'Gratis. Con tu canal conectado, cada mañana te preparamos ideas de vídeo nuevas basadas en tus datos reales — no genéricas.',
+                        "Free. With your channel connected, we prepare fresh video ideas every morning based on your real data — not generic ones."
                       )}
                     </p>
+                    <p className="text-zinc-500 text-[12px] mb-6 max-w-sm mx-auto">
+                      {t('Solo lectura: nunca publicamos ni cambiamos nada en tu canal.', "Read-only: we never publish or change anything on your channel.")}
+                    </p>
                     <div className="flex flex-col gap-2">
-                      <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                        {t('Ir al generador', 'Go to generator')}
+                      <button
+                        onClick={async () => { await advanceOnboarding(4); window.location.href = '/api/youtube/auth'; }}
+                        className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2"
+                      >
+                        {t('Conectar mi canal →', 'Connect my channel →')}
                       </button>
                       <button onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
-                        {t('Ir a mi panel', 'Go to my dashboard')}
+                        {t('Ahora no, ir a mi panel', 'Not now, go to my dashboard')}
                       </button>
                     </div>
                   </>
@@ -743,7 +770,7 @@ function handleCopy(id: string, out: string) {
               { id: 'streak',  icon: '/icons/flame.webp', label: t('Racha 7d',      '7d streak'),    desc: t('Usa YTubViral 7 días seguidos',    'Use YTubViral 7 days in a row'),       earned: streak >= 7 },
               { id: 'pro',     icon: '/icons/crown.webp', label: 'Pro',                              desc: t('Activa el plan Pro',               'Activate Pro plan'),                  earned: isPro },
               { id: 'biz',     icon: '/icons/diamond.webp', label: 'Business',                         desc: t('Activa el plan Business',          'Activate Business plan'),             earned: isBusiness },
-              { id: 'yt',      icon: '/icons/yt-play.webp', label: t('Canal YT',      'YT Channel'),   desc: t('Conecta tu canal de YouTube',      'Connect your YouTube channel'),       earned: isPro && ytConnected === true },
+              { id: 'yt',      icon: '/icons/yt-play.webp', label: t('Canal YT',      'YT Channel'),   desc: t('Conecta tu canal de YouTube',      'Connect your YouTube channel'),       earned: ytConnected === true },
             ];
             const earnedCount = badges.filter(b => b.earned).length;
             return (
@@ -1168,23 +1195,9 @@ function handleCopy(id: string, out: string) {
               {t('CANAL DE YOUTUBE', 'YOUTUBE CHANNEL')}
             </p>
 
-            {/* Free users — upsell */}
-            {!isPro && (
-              <div className="space-y-3">
-                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
-                  {t('Conecta tu canal de YouTube y analiza tus estadísticas en tiempo real.', 'Connect your YouTube channel and track your stats in real time.')}
-                </p>
-                <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}>
-                  <p className="font-mono-jb text-[13px] mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Función exclusiva Pro', 'Pro exclusive feature')}</p>
-                  <button onClick={() => handleUpgrade(billingPlan)}
-                    className="btn-offset px-4 py-1.5 text-[13px] font-display">
-                    {t('Activar Pro →', 'Activate Pro →')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {isPro && ytConnected === null && (
+            {/* Conectar canal es gratis desde 13/07 — ver project_channel_connect_free.md.
+                Ya no depende de isPro: cualquier usuario conectado ve su widget. */}
+            {ytConnected === null && (
               <div className="h-16 flex items-center justify-center">
                 <svg className="animate-spin w-5 h-5" style={{ color: 'var(--yv-text-4)' }} viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12"/>
@@ -1192,7 +1205,7 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {isPro && ytConnected === false && (
+            {ytConnected === false && (
               <div className="space-y-3">
                 {ytExpired && (
                   <div className="rounded-lg px-3 py-2 font-mono-jb text-[13px]" style={{ background: 'rgba(255,200,0,0.07)', border: '1px solid rgba(255,200,0,0.2)', color: '#FFE800' }}>
@@ -1210,7 +1223,7 @@ function handleCopy(id: string, out: string) {
               </div>
             )}
 
-            {isPro && ytConnected && ytChannel && (
+            {ytConnected && ytChannel && (
               <div className="space-y-4">
                 {/* Channel info */}
                 <div className="flex items-center gap-3">

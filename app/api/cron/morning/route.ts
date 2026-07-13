@@ -16,7 +16,6 @@ import { sendDailyReport } from '@/lib/agent/reports-agent';
 import { sendVerificationReminders } from '@/lib/agent/verification-reminder';
 import { sendReengagementEmails } from '@/lib/agent/reengagement-email';
 import { prisma } from '@/lib/prisma';
-import { PAID_STATUSES } from '@/lib/plans';
 
 export const maxDuration = 120;
 
@@ -87,12 +86,13 @@ Responde SOLO con JSON en este formato exacto, sin texto adicional:
 async function generateDailyIdeas(): Promise<number> {
   const date = todayUTC();
 
-  // Find Pro users with connected YouTube channel who don't have ideas for today
+  // Find users with connected YouTube channel who don't have ideas for today.
+  // Gratis desde 13/07 (decisión Javier) — ya no se filtra por plan de pago,
+  // ver project_channel_connect_free.md.
   const users = await prisma.youtubeToken.findMany({
     where: {
       channelId: { not: null },
       user: {
-        subscription: { status: { in: [...PAID_STATUSES] } },
         dailyIdeas: { none: { date } },
       },
     },

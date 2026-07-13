@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { getUserPlan, isPaid } from '@/lib/plans';
 import crypto from 'crypto';
 
+// Conectar canal es gratis desde 13/07 (decisión Javier: retención free — ver
+// project_channel_connect_free.md). El desbloqueo real de valor Pro (analytics,
+// competidores, auditoría, retención, ingresos, suscriptores) sigue gateado
+// por isPaid() en cada endpoint individual — no aquí.
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.redirect(new URL('/login', process.env.NEXTAUTH_URL!));
-  }
-
-  // YouTube connect is a Pro-only feature
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.redirect(new URL('/dashboard?yt=pro_required', process.env.NEXTAUTH_URL!));
   }
 
   const nonce = crypto.randomBytes(16).toString('hex');

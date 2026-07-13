@@ -205,7 +205,8 @@ export async function POST(request: Request) {
     const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis', 'next_video']);
     const maxTokens = LONG_TEMPLATES.has(template) ? 8192 : 2048;
 
-    // Inject channel context for personalized generation (Pro users with connected channels)
+    // Inject channel context for personalized generation (any plan, if channel is connected —
+    // conectar canal es gratis desde 13/07, ver project_channel_connect_free.md)
     const CONTEXT_TEMPLATES = new Set(['title', 'description', 'script', 'caption', 'shorts_hook', 'series', 'niche_analysis', 'next_video']);
     if (userId && CONTEXT_TEMPLATES.has(template)) {
       try {

@@ -62,6 +62,8 @@ export default function GeneratePage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [slowHint, setSlowHint] = useState<boolean>(false);
   const [reviewNudge, setReviewNudge] = useState<boolean>(false);
+  const [ytConnected, setYtConnected] = useState<boolean | null>(null);
+  const [connectNudgeDismissed, setConnectNudgeDismissed] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [usageCount, setUsageCount] = useState<number>(0);
   const [limit, setLimit] = useState<number>(10);
@@ -112,6 +114,15 @@ export default function GeneratePage() {
       })
       .catch(() => toast(lang === 'en' ? 'Could not load your plan limits. Reload the page.' : 'No se pudieron cargar los límites de tu plan. Recarga la página.', 'error'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Gancho de retención (13/07): conectar canal es gratis desde ahora — ver
+  // project_channel_connect_free.md. Se ofrece tras el primer resultado.
+  useEffect(() => {
+    fetch('/api/youtube/channel').then(r => r.ok ? r.json() : null).then(d => {
+      setYtConnected(!!d?.connected);
+    }).catch(() => setYtConnected(false));
+    try { if (localStorage.getItem('ytv_connect_nudge_off') === '1') setConnectNudgeDismissed(true); } catch {}
   }, []);
 
   const currentTpl = TEMPLATES[selectedTemplate as keyof typeof TEMPLATES];
@@ -481,8 +492,28 @@ export default function GeneratePage() {
               )}
             </div>
 
+            {/* Gancho de retención: conectar canal (gratis) — prioridad sobre el nudge de reseña */}
+            {output && !loading && ytConnected === false && !connectNudgeDismissed && (
+              <div className="yv-card p-5 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(124,255,0,0.25)' }}>
+                <p className="text-sm" style={{ color: 'var(--yv-text-2)' }}>
+                  {t('¿Ideas de vídeo para TU canal? Conéctalo (gratis) y mañana tienes ideas nuevas basadas en tus datos reales.', 'Want video ideas for YOUR channel? Connect it (free) and get fresh ideas tomorrow, based on your real data.')}
+                </p>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => { window.location.href = '/api/youtube/auth'; }} className="btn-offset px-4 py-2 text-[13px] font-display">
+                    {t('Conectar canal →', 'Connect channel →')}
+                  </button>
+                  <button
+                    onClick={() => { setConnectNudgeDismissed(true); try { localStorage.setItem('ytv_connect_nudge_off', '1'); } catch {} }}
+                    className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition"
+                  >
+                    {t('Ahora no', 'Not now')}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Invitación a reseña real tras 3 generaciones (B5) */}
-            {reviewNudge && output && !loading && (
+            {reviewNudge && output && !loading && !(ytConnected === false && !connectNudgeDismissed) && (
               <div className="yv-card p-5 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(255,232,0,0.25)' }}>
                 <p className="text-sm" style={{ color: 'var(--yv-text-2)' }}>
                   {t('¿Te está sirviendo YTubViral? Una reseña honesta (buena o mala) nos ayuda más que nada.', 'Is YTubViral helping you? An honest review (good or bad) helps us more than anything.')}
