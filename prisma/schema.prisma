@@ -668,10 +668,15 @@ model PageView {
   referrer  String?
   userAgent String?  @map("user_agent")
   country   String?
+  // 13/07: nullable a propósito — visitas anónimas siguen sin userId. Permite
+  // reconstruir el journey por usuario (retención: ¿vuelven a la web aunque no
+  // generen?). Sin FK a User para no borrar analytics al borrar la cuenta.
+  userId    String?  @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([path, createdAt])
   @@index([createdAt])
+  @@index([userId, createdAt])
   @@map("page_views")
 }
 

@@ -29,8 +29,8 @@ function applyLang() {
   );
   const connectHint = document.getElementById('connect-hint');
   if (connectHint) connectHint.innerHTML = t(
-    '¿Cuenta con Google? <a href="https://ytubviral.com/dashboard" target="_blank">Abre ytubviral.com</a> y te conectamos solo (sin contraseña).',
-    'Signed up with Google? <a href="https://ytubviral.com/dashboard" target="_blank">Open ytubviral.com</a> and we connect you automatically (no password).'
+    '¿Cuenta con Google? <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=popup" target="_blank">Abre ytubviral.com</a> y te conectamos solo (sin contraseña).',
+    'Signed up with Google? <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=popup" target="_blank">Open ytubviral.com</a> and we connect you automatically (no password).'
   );
   inpPass.placeholder = t('Contraseña', 'Password');
   btnLogin.textContent = t('Iniciar sesión', 'Sign in');

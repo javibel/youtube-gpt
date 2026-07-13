@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimitRequest } from '@/lib/rate-limit-db';
+import { auth } from '@/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,11 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') || undefined;
     const country = req.headers.get('x-vercel-ip-country') || undefined;
 
+    // 13/07: asociar la vista al usuario logueado (si lo hay) para poder
+    // reconstruir journeys de retención. Nunca bloquea el tracking anónimo.
+    const session = await auth().catch(() => null);
+    const userId = session?.user?.id || undefined;
+
     // Fire and forget — don't block the response
     prisma.pageView.create({
       data: {
@@ -66,6 +72,7 @@ export async function POST(req: NextRequest) {
         referrer: referrer || undefined,
         userAgent,
         country,
+        userId,
       },
     }).catch(() => {}); // silent fail
 

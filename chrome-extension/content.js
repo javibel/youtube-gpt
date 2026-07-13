@@ -208,7 +208,7 @@ function renderError(msg) {
     return `<div class="ytv-error">${t('Inicia sesión en el icono de la extensión para usar YTubViral.', 'Sign in via the extension icon to use YTubViral.')}</div>`;
   }
   if (msg.includes('Pro') || msg.includes('pro_required')) {
-    return `<div class="ytv-error ytv-upsell">🔒 ${t('Función Pro', 'Pro feature')}<br><a href="https://ytubviral.com/profile" target="_blank" class="ytv-cta-link">${t('Desbloquear por 9,99€/mes →', 'Unlock for €9.99/mo →')}</a></div>`;
+    return `<div class="ytv-error ytv-upsell">🔒 ${t('Función Pro', 'Pro feature')}<br><a href="https://ytubviral.com/profile?utm_source=extension&utm_medium=panel" target="_blank" class="ytv-cta-link">${t('Desbloquear por 9,99€/mes →', 'Unlock for €9.99/mo →')}</a></div>`;
   }
   return `<div class="ytv-error">⚠ ${escapeHtml(msg)}</div>`;
 }
@@ -234,7 +234,7 @@ function renderCompetitor(data) {
       <div class="ytv-stat"><b>${escapeHtml(uploadFrequency)}</b><span>${t('Frecuencia', 'Frequency')}</span></div>
     </div>
     ${kwTags ? `<div class="ytv-section-label">${t('Keywords del canal', 'Channel keywords')} <span class="ytv-hint">(${t('clic para buscar', 'click to search')})</span></div><div class="ytv-tags">${kwTags}</div>` : ''}
-    <a class="ytv-cta-link" href="https://ytubviral.com/competitors" target="_blank">${t('Ver análisis completo en YTubViral →', 'View full analysis on YTubViral →')}</a>
+    <a class="ytv-cta-link" href="https://ytubviral.com/competitors?utm_source=extension&utm_medium=panel" target="_blank">${t('Ver análisis completo en YTubViral →', 'View full analysis on YTubViral →')}</a>
   `;
 }
 
@@ -254,7 +254,7 @@ function renderKeywords(data) {
       <div class="ytv-stat"><b>${fmtNum(data.avgViews)}</b><span>${t('Vistas prom.', 'Avg views')}</span></div>
     </div>
     ${related ? `<div class="ytv-section-label">${t('Búsquedas relacionadas', 'Related searches')}</div><div class="ytv-tags">${related}</div>` : ''}
-    <a class="ytv-cta-link" href="https://ytubviral.com/research" target="_blank">${t('Explorar más keywords →', 'Explore more keywords →')}</a>
+    <a class="ytv-cta-link" href="https://ytubviral.com/research?utm_source=extension&utm_medium=panel" target="_blank">${t('Explorar más keywords →', 'Explore more keywords →')}</a>
   `;
 }
 
@@ -273,7 +273,7 @@ function renderTitles(content) {
   return `
     <div class="ytv-section-label">${t('Títulos generados', 'Generated titles')}</div>
     ${html}
-    <a class="ytv-cta-link" href="https://ytubviral.com/generate" target="_blank">${t('Generar más contenido →', 'Generate more content →')}</a>
+    <a class="ytv-cta-link" href="https://ytubviral.com/generate?utm_source=extension&utm_medium=panel" target="_blank">${t('Generar más contenido →', 'Generate more content →')}</a>
   `;
 }
 
@@ -346,7 +346,7 @@ function renderQuickWins(checks) {
 
 function renderBestTime(data) {
   if (!data) {
-    return `<div class="ytv-besttime-empty">${t('Ejecuta el análisis en', 'Run the analysis at')} <a href="https://ytubviral.com/best-time" target="_blank" class="ytv-cta-link">ytubviral.com →</a></div>`;
+    return `<div class="ytv-besttime-empty">${t('Ejecuta el análisis en', 'Run the analysis at')} <a href="https://ytubviral.com/best-time?utm_source=extension&utm_medium=panel" target="_blank" class="ytv-cta-link">ytubviral.com →</a></div>`;
   }
 
   const DAY_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -369,7 +369,7 @@ function renderBestTime(data) {
   return `
     <div class="ytv-besttime-slots">${slotsHtml}</div>
     ${aiTip ? `<div class="ytv-besttime-tip">${escapeHtml(aiTip)}</div>` : ''}
-    <a class="ytv-cta-link" href="https://ytubviral.com/best-time" target="_blank">${t('Actualizar análisis →', 'Update analysis →')}</a>
+    <a class="ytv-cta-link" href="https://ytubviral.com/best-time?utm_source=extension&utm_medium=panel" target="_blank">${t('Actualizar análisis →', 'Update analysis →')}</a>
   `;
 }
 
@@ -508,7 +508,7 @@ function renderScorecardExpanded(d) {
       <div class="ytv-sc-actions">
         <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-sc-btn-competitor">${t('🔍 Analizar canal', '🔍 Analyze channel')} <span class="ytv-pro-badge">PRO</span></button>
         <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-sc-btn-titles">${t('✨ Generar títulos', '✨ Generate titles')} <span class="ytv-pro-badge">PRO</span></button>
-        <a href="https://ytubviral.com/optimize?v=${d.videoId}" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('⚡ Optimizar', '⚡ Optimize')}</a>
+        <a href="https://ytubviral.com/optimize?v=${d.videoId}&utm_source=extension&utm_medium=panel" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('⚡ Optimizar', '⚡ Optimize')}</a>
       </div>
       <div id="ytv-sc-action-results"></div>
       <div style="margin-top:8px;font-size:10px;color:#777;line-height:1.4">
@@ -1037,7 +1037,7 @@ function renderChannelStatsWidget(d) {
         ${ch.subs >= 1000 ? `✅ ${t('Canal monetizable', 'Channel monetizable')}` : `⏳ ETA ${t('subs', 'subs')}: <b>${etaText}</b>`}
       </div>
     </div>
-    <a class="ytv-cta-link" href="https://ytubviral.com/dashboard" target="_blank">${t('Ver dashboard completo →', 'View full dashboard →')}</a>
+    <a class="ytv-cta-link" href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=studio" target="_blank">${t('Ver dashboard completo →', 'View full dashboard →')}</a>
   `;
 }
 
@@ -1051,7 +1051,7 @@ function renderDailyIdeasMini(ideas) {
         const topic = encodeURIComponent(title);
         return `<div class="ytv-cs-idea-item">
           <span>${escapeHtml(title)}</span>
-          <a href="https://ytubviral.com/generate?topic=${topic}" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
+          <a href="https://ytubviral.com/generate?topic=${topic}&utm_source=extension&utm_medium=ideas" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
         </div>`;
       }).join('')}
     </div>
@@ -1249,21 +1249,21 @@ function renderAbTestOutcome(err, limit) {
     return `<div class="ytv-ab-upsell">
       <strong>${t('La rotación automática A/B es Pro', 'Automatic A/B rotation is Pro')}</strong>
       <p>${t('Ni vidIQ la tiene — YTubViral rota tus dos títulos y te dice cuál gana con datos reales.', "Not even vidIQ has this — YTubViral rotates your two titles and tells you which one wins with real data.")}</p>
-      <a href="https://ytubviral.com/pricing" target="_blank" class="ytv-btn ytv-btn-sm ytv-btn-red">${t('Ver planes →', 'See plans →')}</a>
+      <a href="https://ytubviral.com/pricing?utm_source=extension&utm_medium=abtest" target="_blank" class="ytv-btn ytv-btn-sm ytv-btn-red">${t('Ver planes →', 'See plans →')}</a>
     </div>`;
   }
   // renderError() escapa el mensaje (por diseño, para no inyectar HTML de
   // fuentes externas) — estos 3 casos necesitan un link real, así que se
   // construyen aparte con la misma clase visual .ytv-error.
   if (code === 'active_test_exists') {
-    return `<div class="ytv-error">⚠ ${t('Este vídeo ya tiene un test activo. ', 'This video already has an active test. ')}<a href="https://ytubviral.com/ab-test" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
+    return `<div class="ytv-error">⚠ ${t('Este vídeo ya tiene un test activo. ', 'This video already has an active test. ')}<a href="https://ytubviral.com/ab-test?utm_source=extension&utm_medium=abtest" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
   }
   if (code === 'max_active_tests') {
     const limitTxt = limit ? t(`(límite de tu plan: ${limit})`, `(your plan's limit: ${limit})`) : '';
-    return `<div class="ytv-error">⚠ ${t(`Has alcanzado el límite de tests activos ${limitTxt}. `, `You've reached your active test limit ${limitTxt}. `)}<a href="https://ytubviral.com/ab-test" target="_blank">${t('Gestionar →', 'Manage →')}</a></div>`;
+    return `<div class="ytv-error">⚠ ${t(`Has alcanzado el límite de tests activos ${limitTxt}. `, `You've reached your active test limit ${limitTxt}. `)}<a href="https://ytubviral.com/ab-test?utm_source=extension&utm_medium=abtest" target="_blank">${t('Gestionar →', 'Manage →')}</a></div>`;
   }
   if (code === 'youtube_not_connected' || code === 'youtube_reconnect_required') {
-    return `<div class="ytv-error">⚠ ${t('Conecta (o reconecta) tu canal de YouTube en YTubViral. ', 'Connect (or reconnect) your YouTube channel on YTubViral. ')}<a href="https://ytubviral.com/dashboard" target="_blank">${t('Ir al dashboard →', 'Go to dashboard →')}</a></div>`;
+    return `<div class="ytv-error">⚠ ${t('Conecta (o reconecta) tu canal de YouTube en YTubViral. ', 'Connect (or reconnect) your YouTube channel on YTubViral. ')}<a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=abtest" target="_blank">${t('Ir al dashboard →', 'Go to dashboard →')}</a></div>`;
   }
   return renderError(code || t('Error al crear el test', 'Error creating the test'));
 }
@@ -1307,7 +1307,7 @@ function wireGenTitlesButton(btn, aiResults, isPro, titleFieldSelector, videoId)
             resultEl.innerHTML = renderLoading(t('Creando test...', 'Creating test...'));
             try {
               await sendMsg({ type: 'AB_CREATE', videoId, variantA, variantB });
-              resultEl.innerHTML = `<div class="ytv-ab-success">✓ ${t('Test creado. ', 'Test created. ')}<a href="https://ytubviral.com/ab-test" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
+              resultEl.innerHTML = `<div class="ytv-ab-success">✓ ${t('Test creado. ', 'Test created. ')}<a href="https://ytubviral.com/ab-test?utm_source=extension&utm_medium=abtest" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
             } catch (e) {
               resultEl.innerHTML = renderAbTestOutcome(e, e.limit);
               abBtn.disabled = false;
@@ -1406,7 +1406,7 @@ async function injectStudioEditor() {
         <div id="ytv-studio-ai-results"></div>
       </div>
       <div class="ytv-sc-actions" style="margin-top:8px">
-        <a href="https://ytubviral.com/optimize?v=${videoId}" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">⚡ ${t('Optimizar en YTubViral', 'Optimize on YTubViral')}</a>
+        <a href="https://ytubviral.com/optimize?v=${videoId}&utm_source=extension&utm_medium=studio" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">⚡ ${t('Optimizar en YTubViral', 'Optimize on YTubViral')}</a>
       </div>
     `;
 
@@ -1650,7 +1650,7 @@ async function injectStudioVideoList() {
         badge.innerHTML = `
           <span class="ytv-studio-score" style="border-color: ${color}; color: ${color}">${data.score}</span>
           ${outlierHtml}
-          <a href="https://ytubviral.com/optimize?v=${vid}" target="_blank" class="ytv-studio-opt" title="${t('Optimizar', 'Optimize')}">⚡</a>
+          <a href="https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio" target="_blank" class="ytv-studio-opt" title="${t('Optimizar', 'Optimize')}">⚡</a>
         `;
       } catch {
         badge.innerHTML = '<span class="ytv-studio-score" style="border-color:#666;color:#666">?</span>';
@@ -1934,7 +1934,7 @@ async function injectDailyIdeasPanel() {
     panel.className = 'ytv-panel ytv-shorts-panel ytv-ideas-upsell-line';
     panel.innerHTML = `
       <span>${t('Los usuarios Pro ven aquí 5 ideas para su canal cada mañana.', 'Pro users see 5 ideas for their channel here every morning.')}</span>
-      <a href="https://ytubviral.com/pricing" target="_blank">${t('Ver planes →', 'See plans →')}</a>
+      <a href="https://ytubviral.com/pricing?utm_source=extension&utm_medium=ideas" target="_blank">${t('Ver planes →', 'See plans →')}</a>
       <button class="ytv-ideas-dismiss" aria-label="${t('Cerrar', 'Dismiss')}">✕</button>
     `;
     document.body.appendChild(panel);
@@ -1965,7 +1965,7 @@ async function injectDailyIdeasPanel() {
         return `<div class="ytv-idea-item">
           <p class="ytv-idea-title">${escapeHtml(title)}</p>
           <p class="ytv-idea-desc">${escapeHtml(desc)}</p>
-          <a href="https://ytubviral.com/generate?topic=${topic}" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
+          <a href="https://ytubviral.com/generate?topic=${topic}&utm_source=extension&utm_medium=ideas" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
         </div>`;
       }).join('')}
     </div>
