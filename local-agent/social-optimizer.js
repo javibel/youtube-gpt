@@ -97,11 +97,10 @@ async function analyzeAndRecommend(metrics) {
   const recommendations = [];
 
   // Check engagement volume
-  // Twitter personas DISABLED 2026-06-25 (Bluesky-only strategy) — no alertar sobre un
-  // canal apagado a propósito, generaba falsa alarma diaria "TWITTER: 0 actividad".
-  if (metrics.bluesky_24h.likes === 0 && metrics.bluesky_24h.replies === 0) {
-    issues.push('BLUESKY: 0 actividad en 24h — posible sesión caída');
-  }
+  // Twitter personas DISABLED 2026-06-25, Bluesky personas DISABLED 2026-07-08
+  // (decisión Javier: personas abandonadas en todas las redes, solo quedan brand
+  // FB/IG vía API + cuentas personales). No alertar sobre canales apagados a
+  // propósito — generaba falsa alarma diaria "0 actividad / posible sesión caída".
 
   // Check mention rate
   const totalComments = metrics.mentions_7d.bluesky.total + metrics.mentions_7d.twitter.total;

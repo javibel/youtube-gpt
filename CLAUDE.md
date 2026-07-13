@@ -183,8 +183,8 @@ node -e "require('dotenv').config();const {runManager}=require('./manager');runM
 | Ana Reyes | Bluesky (ana5000.bsky.social) | Community manager freelance, Madrid, 29 años |
 | Mayra Vidal | Bluesky (mayra02.bsky.social) | Copywriter YouTube, Sevilla, 31 años |
 
-**Canales (actualizado 2026-07-01):** SOLO **Bluesky activo** (`BLUESKY_AUTOMATION_ENABLED=true`). Twitter/Facebook/Reddit personas DISABLED desde 2026-06-25 (apagado total y verificado: 0 acciones tras 24/06). Reddit ABANDONADO permanente (cuentas baneadas/shadowbanned). 5 cuentas Bluesky: 4 personas + brand `ytubviral.bsky.social`. Twitter de marca lo opera Javier a mano (X Coach genera el plan diario).
-**Fase:** calentamiento — credibilidad antes que conversión. Volumen bajo real: ~7-12 acciones/día entre las 4 personas, sin links en replies (decisión links-limpios 2026-06-13). NOTA ESTRATÉGICA: el engagement es sano pero convierte casi 0 clics al sitio (ver [[project_user_attribution_gap]]).
+**Canales (actualizado 2026-07-08):** TODAS las personas DESCONECTADAS en TODAS las redes (`BLUESKY_AUTOMATION_ENABLED=false`) — decisión Javier: no seguían el espíritu de autenticidad de la marca. Twitter/Facebook/Reddit ya estaban off desde 2026-06-25; Bluesky se apagó el 2026-07-08 (dispatcher, informe diario y warm-up drip comentados en `index.js`; persona-monitor también deshabilitado). Reddit ABANDONADO permanente (cuentas baneadas/shadowbanned). Solo quedan activos: **FB + Instagram de marca vía API** (gestionado desde Vercel, no desde local-agent) y **Twitter de marca** que opera Javier a mano (X Coach genera el plan diario). Las 4 cuentas de personas Bluesky quedan inactivas sin borrar.
+**Nota histórica:** antes del apagado, la fase era calentamiento con ~7-12 acciones/día entre las 4 personas; el engagement era sano pero convertía casi 0 clics al sitio (ver [[project_user_attribution_gap]]).
 
 ## Archivos de configuración clave
 | Archivo | Qué controla |
