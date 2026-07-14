@@ -19,20 +19,26 @@ interface NavSection {
   items: NavItem[];
 }
 
-const SECTIONS: NavSection[] = [
-  {
-    title: { es: 'Principal', en: 'Main' },
-    items: [
-      { href: '/dashboard', label: { es: 'Dashboard', en: 'Dashboard' }, iconName: 'grid' },
-      { href: '/analytics', label: { es: 'Analytics', en: 'Analytics' }, iconName: 'chart' },
-      { href: '/coach', label: { es: 'AI Coach', en: 'AI Coach' }, iconName: 'spark', badge: 'PRO' },
-      { href: '/achievements', label: { es: 'Logros', en: 'Achievements' }, iconName: 'trophy' },
-    ],
-  },
+// Simplificación 14/07 (divulgación progresiva): los datos de uso de 30d muestran
+// que ~80% de la navegación va a 6 herramientas (dashboard 93, generate 56,
+// seo-score 21, analytics 11, trends 10, coach 9; el resto ≤7 visitas/mes).
+// El CORE queda siempre visible (1 clic); el resto vive bajo el expansor "Más
+// herramientas" (se abre solo si la ruta activa está dentro, recuerda estado en
+// localStorage). Perfil se movió al bloque de usuario del footer. Las futuras
+// herramientas (Fase 8) entran en MORE_SECTIONS — el menú visible no crece más.
+const CORE_ITEMS: NavItem[] = [
+  { href: '/dashboard', label: { es: 'Dashboard', en: 'Dashboard' }, iconName: 'grid' },
+  { href: '/generate', label: { es: 'Generar', en: 'Generate' }, iconName: 'plus' },
+  { href: '/seo-score', label: { es: 'SEO Score', en: 'SEO Score' }, iconName: 'target' },
+  { href: '/trends', label: { es: 'Tendencias', en: 'Trends' }, iconName: 'trend' },
+  { href: '/analytics', label: { es: 'Analytics', en: 'Analytics' }, iconName: 'chart' },
+  { href: '/coach', label: { es: 'AI Coach', en: 'AI Coach' }, iconName: 'spark', badge: 'PRO' },
+];
+
+const MORE_SECTIONS: NavSection[] = [
   {
     title: { es: 'Crear', en: 'Create' },
     items: [
-      { href: '/generate', label: { es: 'Generar', en: 'Generate' }, iconName: 'plus' },
       { href: '/generate/bulk', label: { es: 'Bulk', en: 'Bulk' }, iconName: 'stack', badge: 'PRO' },
       { href: '/calendar', label: { es: 'Calendario', en: 'Calendar' }, iconName: 'cal' },
       { href: '/ab-test', label: { es: 'A/B Test', en: 'A/B Test' }, iconName: 'split', badge: 'PRO' },
@@ -42,14 +48,12 @@ const SECTIONS: NavSection[] = [
     title: { es: 'Investigar', en: 'Research' },
     items: [
       { href: '/research', label: { es: 'Keywords', en: 'Keywords' }, iconName: 'search' },
-      { href: '/trends', label: { es: 'Tendencias', en: 'Trends' }, iconName: 'trend' },
       { href: '/competitors', label: { es: 'Competidores', en: 'Competitors' }, iconName: 'user2' },
     ],
   },
   {
     title: { es: 'Optimizar', en: 'Optimize' },
     items: [
-      { href: '/seo-score', label: { es: 'SEO Score', en: 'SEO Score' }, iconName: 'target' },
       { href: '/optimize', label: { es: 'Optimizar', en: 'Optimize' }, iconName: 'edit' },
       { href: '/thumbnail-preview', label: { es: 'Thumbnails', en: 'Thumbnails' }, iconName: 'image' },
       { href: '/retention', label: { es: 'Retención', en: 'Retention' }, iconName: 'wave' },
@@ -68,11 +72,17 @@ const SECTIONS: NavSection[] = [
   {
     title: { es: 'Cuenta', en: 'Account' },
     items: [
-      { href: '/profile', label: { es: 'Perfil', en: 'Profile' }, iconName: 'user' },
+      { href: '/achievements', label: { es: 'Logros', en: 'Achievements' }, iconName: 'trophy' },
       { href: '/team', label: { es: 'Equipo', en: 'Team' }, iconName: 'team', badge: 'BUSINESS' },
       { href: '/learn', label: { es: 'Aprender', en: 'Learn' }, iconName: 'book' },
     ],
   },
+];
+
+// Para isActive(): todas las rutas del menú, core + expansor
+const SECTIONS: NavSection[] = [
+  { title: { es: 'Principal', en: 'Main' }, items: CORE_ITEMS },
+  ...MORE_SECTIONS,
 ];
 
 // 16x16 stroke icons — consistent with design system
@@ -103,6 +113,7 @@ function YvIcon({ name }: { name: string }) {
     user:   <><circle cx="8" cy="6" r="2.5" {...s} /><path d="M3 13.5c0-2.5 2-4.5 5-4.5s5 2 5 4.5" {...s} /></>,
     team:   <><circle cx="8" cy="4" r="2" {...s} /><circle cx="3.5" cy="6.5" r="1.5" {...s} /><circle cx="12.5" cy="6.5" r="1.5" {...s} /><path d="M5 13c0-1.5 1.5-3 3-3s3 1.5 3 3M1.5 13c0-1 .8-2 2-2M12.5 11c1.2 0 2 1 2 2" {...s} /></>,
     book:   <><path d="M2.5 3.5h4.5a1.5 1.5 0 011.5 1.5v8.5a1 1 0 00-1-1H2.5v-9zM13.5 3.5H9a1.5 1.5 0 00-1.5 1.5v8.5a1 1 0 011-1h5v-9z" {...s} /></>,
+    dots:   <><circle cx="4" cy="8" r="1" {...s} /><circle cx="8" cy="8" r="1" {...s} /><circle cx="12" cy="8" r="1" {...s} /></>,
   };
   return <svg width="28" height="28" viewBox="0 0 16 16" aria-hidden="true">{icons[name] || null}</svg>;
 }
@@ -113,8 +124,26 @@ export default function Sidebar() {
   const lang = useLang();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [usage, setUsage] = useState<{ used: number; limit: number; plan: string } | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  // Expansor "Más herramientas": abierto si la ruta activa vive dentro (que el
+  // usuario nunca "pierda" su ubicación), o si lo dejó abierto la última vez.
+  // Se resuelve en efecto (no en el initializer) para no romper la hidratación SSR.
+  const activeInMore = MORE_SECTIONS.some(s => s.items.some(i => pathname === i.href || pathname.startsWith(i.href + '/')));
+  useEffect(() => {
+    if (activeInMore) { setMoreOpen(true); return; }
+    try { setMoreOpen(localStorage.getItem('ytv_sidebar_more') === '1'); } catch {}
+  }, [activeInMore]);
+
+  function toggleMore() {
+    setMoreOpen(prev => {
+      const next = !prev;
+      try { localStorage.setItem('ytv_sidebar_more', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  }
 
   // Drawer móvil accesible (E1 #5): Escape cierra, foco entra al abrir
   useEffect(() => {
@@ -178,9 +207,44 @@ export default function Sidebar() {
         </a>
       </div>
 
-      {/* Nav groups */}
+      {/* Nav: core siempre visible + expansor "Más herramientas" (divulgación progresiva, 14/07) */}
       <nav className="yv-sidebar__nav" aria-label={lang === 'en' ? 'Tools' : 'Herramientas'}>
-        {SECTIONS.map(section => (
+        <div className="yv-sidebar__group">
+          {CORE_ITEMS.map(item => {
+            const active = isActive(item.href);
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                aria-current={active ? 'page' : undefined}
+                className={`yv-sidebar__item${active ? ' yv-sidebar__item--active' : ''}`}
+              >
+                <span className="yv-sidebar__icon"><YvIcon name={item.iconName} /></span>
+                <span>{item.label[lang]}</span>
+                {item.badge && <span className="yv-sidebar__badge">{item.badge}</span>}
+              </a>
+            );
+          })}
+
+          <button
+            onClick={toggleMore}
+            aria-expanded={moreOpen}
+            className="yv-sidebar__item"
+            style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
+          >
+            <span className="yv-sidebar__icon"><YvIcon name="dots" /></span>
+            <span>{t('Más herramientas', 'More tools')}</span>
+            <svg
+              width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"
+              style={{ marginLeft: 'auto', transition: 'transform .15s ease', transform: moreOpen ? 'rotate(180deg)' : 'none' }}
+            >
+              <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+          </button>
+        </div>
+
+        {moreOpen && MORE_SECTIONS.map(section => (
           <div className="yv-sidebar__group" key={section.title.en}>
             <div className="yv-sidebar__group-label">{section.title[lang]}</div>
             {section.items.map(item => {
@@ -229,11 +293,19 @@ export default function Sidebar() {
           </div>
         )}
         <div className="yv-sidebar__user">
-          <div className="yv-sidebar__avatar">{userInitial}</div>
-          <div className="yv-sidebar__user-info">
-            <div className="yv-sidebar__user-name">{userName}</div>
-            <div className="yv-sidebar__user-plan">{session?.user?.email || ''}</div>
-          </div>
+          {/* Perfil salió del menú (simplificación 14/07) — el bloque de usuario ES el acceso */}
+          <a
+            href="/profile"
+            onClick={() => setMobileOpen(false)}
+            title={t('Ver perfil', 'View profile')}
+            style={{ display: 'flex', alignItems: 'center', gap: 'inherit', flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
+          >
+            <div className="yv-sidebar__avatar">{userInitial}</div>
+            <div className="yv-sidebar__user-info">
+              <div className="yv-sidebar__user-name">{userName}</div>
+              <div className="yv-sidebar__user-plan">{session?.user?.email || ''}</div>
+            </div>
+          </a>
           <button
             className="yv-sidebar__signout"
             aria-label={t('Cerrar sesión', 'Sign out')}
