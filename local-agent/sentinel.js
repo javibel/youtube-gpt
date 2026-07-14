@@ -328,15 +328,45 @@ async function runSentinel() {
       state.consecutiveFailures = 0;
     }
 
-    // Check for slow responses (only when site is up, alert max once per hour)
-    const anySlow = results.some(r => r.slow);
-    if (anySlow) {
-      const minSinceSlowAlert = state.lastSlowAlertAt
-        ? (Date.now() - state.lastSlowAlertAt) / 60000
-        : 999;
-      if (minSinceSlowAlert >= 60) {
-        state.lastSlowAlertAt = Date.now();
-        await sendSlowAlert(results);
+    // Check for slow responses (only when site is up, alert max once per hour).
+    // CONFIRM antes de alertar: una sola lectura lenta suele ser un ARTEFACTO de
+    // medición, no lentitud real del sitio. Sentinel corre en el mismo proceso Node
+    // (single-thread) que el resto de crons; cuando un cron pesado (Puppeteer/browser,
+    // feature-monitor, envíos) satura el event loop, el `await fetch` tarda en
+    // resolverse y `elapsed` se infla a 10-16s aunque el sitio responda en ~200ms.
+    // Re-medimos cada endpoint lento tras una pausa (cuando el loop ya está libre);
+    // solo alertamos si SIGUE lento. Lentitud real persiste; el artefacto desaparece.
+    const slowResults = results.filter(r => r.slow);
+    if (slowResults.length) {
+      console.log(`[sentinel] ${slowResults.length} endpoint(s) lento(s) — confirmando antes de alertar...`);
+      const stillSlow = [];
+      for (const r of slowResults) {
+        const ep = HEALTH_ENDPOINTS.find(e => e.name === r.endpoint) || HEALTH_ENDPOINTS[0];
+        await new Promise(res => setTimeout(res, cfg.confirmDelayMs));
+        const recheck = await checkEndpoint(ep, cfg);
+        console.log(`[sentinel] Re-check ${r.endpoint}: ${recheck.elapsed}ms (antes ${r.elapsed}ms) ${recheck.slow ? '— SIGUE LENTO' : '— OK, era artefacto'}`);
+        if (r.endpoint === 'Landing') state.lastResponseTime = recheck.elapsed; // guardar la medición limpia
+        // Bug (14/07): esto solo actualizaba el estado en memoria (arriba), pero
+        // `results` — usado más abajo para findings/memoria/changelog del Manager —
+        // se quedaba con la lectura ORIGINAL (inflada por contención del event loop,
+        // p.ej. el execSync de Guardian a las 02:15). Resultado: nunca se enviaba
+        // alerta por email (correcto), pero SÍ quedaba registrado como "REGRESION:
+        // Landing slow" en agent-memory/reporte del Manager cada vez (falso positivo
+        // recurrente). Parcheamos la entrada en `results` con la medición confirmada.
+        const idx = results.findIndex(x => x.endpoint === r.endpoint);
+        if (idx >= 0) results[idx] = recheck;
+        if (recheck.slow) stillSlow.push(recheck);
+      }
+      if (stillSlow.length) {
+        const minSinceSlowAlert = state.lastSlowAlertAt
+          ? (Date.now() - state.lastSlowAlertAt) / 60000
+          : 999;
+        if (minSinceSlowAlert >= 60) {
+          state.lastSlowAlertAt = Date.now();
+          await sendSlowAlert(stillSlow);
+        }
+      } else {
+        console.log('[sentinel] Lentitud NO confirmada en re-check — contención de event loop, sin alerta.');
       }
     }
   }
