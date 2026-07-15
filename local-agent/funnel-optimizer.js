@@ -133,12 +133,15 @@ async function collectFunnelMetrics() {
   }));
 
   // 6. Feedback: average rating, count this week
+  // Solo cuentan las respuestas reales (submittedAt no null); las filas restantes
+  // son solicitudes de feedback enviadas por email que el usuario nunca respondió.
   const feedbackRes = await db.query(`
     SELECT
       ROUND(AVG(rating)::numeric, 2) AS avg_rating,
       COUNT(*) AS total_feedbacks,
-      COUNT(CASE WHEN "createdAt" >= NOW() - INTERVAL '7 days' THEN 1 END) AS feedbacks_this_week
+      COUNT(CASE WHEN "submittedAt" >= NOW() - INTERVAL '7 days' THEN 1 END) AS feedbacks_this_week
     FROM user_feedbacks
+    WHERE "submittedAt" IS NOT NULL
   `);
   metrics.feedback = {
     avgRating: feedbackRes[0]?.avg_rating ? parseFloat(feedbackRes[0].avg_rating) : null,
