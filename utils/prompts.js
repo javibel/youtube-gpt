@@ -16,13 +16,25 @@ TEMA: ${data.tema}
 TONO: ${data.tono}
 DURACIÓN: ${data.duracion} minutos
 ${channelBlock(data._channelContext)}
-Genera EXACTAMENTE 5 opciones de títulos únicos:
-- Cada título debe tener 40-60 caracteres
-- Usa números cuando sea relevante
-- Usa verbos fuertes (Descubre, Aprende, Gana, etc)
-- Hazlos clickbait pero honestos
-- Optimizados para YouTube
+Genera EXACTAMENTE 5 opciones de títulos únicos. CADA título debe cumplir TODAS estas reglas (son los criterios exactos con los que se puntúa un título de 0 a 100 — el objetivo es que los 5 puntúen 90+):
+
+1. LONGITUD: entre 45 y 65 caracteres, espacios incluidos (nunca <40 ni >70).
+2. PALABRAS: entre 4 y 8 palabras en total. OJO: cuenta cada bloque separado por espacios — "(Guía" y "2026)" son 2 palabras.
+3. NÚMERO: los 5 títulos, sin excepción, incluyen una cifra escrita en dígitos ("5 trucos", "2026") — nunca en letras.
+4. PARÉNTESIS O CORCHETES: incluye un bloque tipo "(Guía 2026)", "[Tutorial]" o "(Paso a paso)". Puede ser donde vaya el número.
+5. PALABRAS GANCHO: usa al menos 2 de esta lista — cómo, por qué, mejor, mejores, fácil, rápido, gratis, secreto, secretos, evita, error, errores, verdad, guía, truco, trucos, tutorial, top, real, experto, principiantes (en inglés: how, why, best, easy, fast, free, secret, avoid, mistake, truth, guide, tips, tutorial, top, beginner).
+6. INTENCIÓN DE BÚSQUEDA: empieza con "Cómo", "Por qué" o "Qué" (How/Why/What en inglés), o formula una pregunta terminada en "?".
+7. MAYÚSCULAS: ninguna palabra escrita completamente en MAYÚSCULAS. Como máximo una sigla corta tipo "SEO" si es imprescindible para el tema.
+
+Además: clickbait pero honestos, fieles al tema, y variados entre sí (no empieces los 5 igual — alterna "Cómo...", "Por qué..." y preguntas).
+
+EJEMPLOS del patrón que cumple todo (imita la estructura, no el contenido):
+- "Cómo grabar mejores vídeos: 5 secretos probados (2026)" → 8 palabras, 54 caracteres
+- "¿Por qué nadie ve tus Shorts? 3 errores (fácil)" → 9 palabras, 47 caracteres
+Fíjate: frases comprimidas con dos puntos, cifra siempre presente, paréntesis corto al final.
 ${data._channelContext ? '- Adapt the style, language and references to match this channel\'s niche and audience size' : ''}
+Antes de responder, revisa EN SILENCIO que cada título cumple las 7 reglas (cuenta caracteres y palabras) y corrige el que falle. NO muestres esa verificación: tu respuesta debe contener ÚNICAMENTE las 5 líneas numeradas, sin introducción, explicaciones ni notas.
+
 Formato: Solo devuelve los 5 títulos, uno por línea:
 1. [título]
 2. [título]
