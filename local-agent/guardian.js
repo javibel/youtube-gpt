@@ -451,24 +451,23 @@ Sé directo y conciso. Máximo 200 palabras.`,
 registerFixes('guardian', [
   {
     id: 'npm-audit-fix',
-    description: 'Ejecutar npm audit fix para vulnerabilidades con fix disponible',
+    description: 'Reportar vulnerabilidades npm con fix disponible (SIN auto-aplicar)',
     cooldownMs: 7 * 86400000, // weekly
     condition: (issues, metrics) => {
       const audit = metrics.checks?.npmAudit;
       return audit && (audit.critical > 0 || audit.high > 0) &&
         audit.details?.some(d => d.fixAvailable);
     },
+    // NO auto-aplicar. `npm audit fix --force` es destructivo en proyectos Next.js:
+    // al ver vulns transitivas de babel/webpack degrada `next` a una versión major
+    // antigua (p.ej. 16 → 9.3.3) para "resolver" el árbol, rompiendo el build.
+    // Incidente 2026-07-19/20: reescribió package.json a next@9.3.3 dos noches seguidas.
+    // Solo reportamos; la aplicación de fixes de dependencias se hace a mano, revisando
+    // que ningún cambio sea un downgrade de una dependencia directa crítica (next, react, prisma).
     apply: (config, issues, metrics) => {
-      try {
-        const output = execSync('npm audit fix --force 2>&1', {
-          cwd: WEB_DIR, encoding: 'utf-8', timeout: 120000,
-          stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
-        });
-        const fixed = (output.match(/fixed (\d+)/i) || [])[1] || '?';
-        return { changed: false, detail: `npm audit fix ran: ${fixed} packages fixed. Output: ${output.slice(0, 200)}` };
-      } catch (err) {
-        return { changed: false, detail: `npm audit fix failed: ${err.message.slice(0, 200)}` };
-      }
+      const audit = metrics.checks?.npmAudit;
+      const fixable = (audit?.details || []).filter(d => d.fixAvailable).map(d => d.name || d.module).slice(0, 10);
+      return { changed: false, detail: `Fix disponible para: ${fixable.join(', ') || '—'}. NO auto-aplicado (requiere revisión manual — ver comentario en guardian.js).` };
     },
   },
   {
