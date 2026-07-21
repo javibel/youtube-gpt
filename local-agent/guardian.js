@@ -226,6 +226,45 @@ function checkHttps() {
   return issues;
 }
 
+// Detecta REGRESIONES de dependencias directas críticas en package.json.
+// Motivo (incidente 2026-07): `npm audit fix --force` degradó next 16→9 y
+// @huggingface/transformers 4→3.8 varias noches, sin alerta explícita. Este
+// check emite una línea inequívoca en el reporte si una dep baja de su major
+// esperado. Al subir una dep a propósito, actualizar EXPECTED_MAJORS aquí.
+const EXPECTED_MAJORS = {
+  next: 16,
+  react: 19,
+  'react-dom': 19,
+  '@prisma/client': 5,
+  prisma: 5,
+  'next-auth': 5,
+};
+
+function checkDependencyRegressions() {
+  const issues = [];
+  try {
+    const pkgPath = path.join(WEB_DIR, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+    for (const [name, expectedMajor] of Object.entries(EXPECTED_MAJORS)) {
+      const declared = deps[name];
+      if (!declared) {
+        issues.push({ dep: name, severity: 'high', note: `${name} DESAPARECIÓ de package.json (esperado ^${expectedMajor}.x)` });
+        continue;
+      }
+      // Extrae el primer número de major del rango declarado (^16.2.6, ~5.8.0, 19.2.4, 5.0.0-beta.30…)
+      const m = String(declared).match(/(\d+)\./);
+      const major = m ? parseInt(m[1], 10) : null;
+      if (major !== null && major < expectedMajor) {
+        issues.push({ dep: name, severity: 'high', note: `REGRESIÓN DE DEPENDENCIA: ${name} degradado a ${declared} (esperado ^${expectedMajor}.x)` });
+      }
+    }
+  } catch (err) {
+    issues.push({ dep: 'package.json', severity: 'high', note: `No se pudo leer/parsear package.json: ${String(err.message).slice(0, 120)}` });
+  }
+  return issues;
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function runGuardian() {
@@ -263,6 +302,10 @@ async function runGuardian() {
   console.log('[guardian] Checking HTTPS...');
   results.checks.httpsIssues = checkHttps();
 
+  // 7. Regresiones de dependencias críticas
+  console.log('[guardian] Checking dependency regressions...');
+  results.checks.depRegressions = checkDependencyRegressions();
+
   // Count severities
   const countSev = (items, sevField = 'severity') => {
     if (!Array.isArray(items)) return;
@@ -281,6 +324,7 @@ async function runGuardian() {
   countSev(results.checks.securityHeaders);
   countSev(results.checks.dangerousPatterns);
   countSev(results.checks.exposedFiles);
+  countSev(results.checks.depRegressions);
 
   if (results.checks.typescript.errorCount > 0) {
     results.summary.medium += 1;
@@ -340,6 +384,16 @@ async function runGuardian() {
       category: 'typescript',
       severity: 'medium',
       description: `${results.checks.typescript.errorCount} errores TypeScript`,
+    });
+  }
+
+  // Regresiones de dependencias críticas
+  for (const d of results.checks.depRegressions) {
+    currentFindings.push({
+      id: mem.issueId('dep_regression', d.dep),
+      category: 'dep_regression',
+      severity: d.severity,
+      description: `⚠️ ${d.note}`,
     });
   }
 
