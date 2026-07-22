@@ -134,7 +134,7 @@ async function generateDailyIdeas(): Promise<number> {
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
+          max_tokens: 2000,
           messages: [{
             role: 'user',
             content: `You are a YouTube growth advisor. Generate 5 personalized video ideas for this creator.
