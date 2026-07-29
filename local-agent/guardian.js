@@ -89,11 +89,19 @@ function checkNpmAudit() {
     const vulns = data.vulnerabilities || {};
     const summary = { critical: 0, high: 0, moderate: 0, low: 0, total: 0, details: [] };
     for (const [name, info] of Object.entries(vulns)) {
+      // `npm audit` lista TAMBIÉN los paquetes PADRE que solo arrastran la vuln de un
+      // hijo: su `via` contiene strings (nombres de hijos) en vez de objetos advisory.
+      // Contarlos inflaba el recuento e inventaba findings fantasma — p.ej. `next`
+      // aparecía como "DoS Server Components" cuando ese advisory ya estaba corregido
+      // (next 16.2.11, 23/07/2026) y solo colgaban de él postcss/sharp. Guardian lo
+      // reabría cada noche como REGRESIÓN/ESCALADO. Solo contamos advisories REALES.
+      const advisories = (info.via || []).filter(x => typeof x === 'object' && x.title);
+      if (advisories.length === 0) continue;
       const sev = info.severity || 'low';
       summary[sev] = (summary[sev] || 0) + 1;
       summary.total++;
       if (sev === 'critical' || sev === 'high') {
-        summary.details.push({ package: name, severity: sev, title: info.via?.[0]?.title || '', fixAvailable: !!info.fixAvailable });
+        summary.details.push({ package: name, severity: sev, title: advisories[0].title || '', fixAvailable: !!info.fixAvailable });
       }
     }
     return summary;
