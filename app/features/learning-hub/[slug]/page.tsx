@@ -180,6 +180,33 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
           </div>
         )}
 
+        {/* Vídeo público del canal — visible para todos, sin muro de pago.
+            Distinto de `videoId` (unlisted de Pro), que solo pinta un CTA de suscripción. */}
+        {guide.publicVideoId && (
+          <div className="my-10">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="font-mono-jb text-[13px] tracking-wider uppercase px-3 py-1 border rounded-full"
+                style={{ color: 'var(--red)', borderColor: 'rgba(232,77,91,0.3)', background: 'rgba(232,77,91,0.08)' }}>
+                {lang === 'en' ? 'Free video' : 'Vídeo gratis'}
+              </span>
+              <span className="font-mono-jb text-[13px] text-zinc-500">
+                {lang === 'en' ? 'Watch this guide on video' : 'Esta guía, en vídeo'}
+              </span>
+            </div>
+            <div className="relative w-full overflow-hidden border border-white/15" style={{ aspectRatio: '16 / 9', background: '#0E0E10' }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src={`https://www.youtube-nocookie.com/embed/${guide.publicVideoId}`}
+                title={guide.title[lang]}
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
+
         {/* Pro video CTA (instead of actual video on public page) */}
         {guide.videoId && (
           <div className="my-10 border border-white/15 p-8 text-center relative overflow-hidden" style={{ background: '#0E0E10' }}>

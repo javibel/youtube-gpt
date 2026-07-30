@@ -18,7 +18,8 @@ export interface LearnGuide {
   tool?: string;               // internal link to the tool
   coverImage?: string;         // /learn/covers/*.webp
   readMin: number;
-  videoId?: string;            // YouTube unlisted ID (Pro only)
+  videoId?: string;            // YouTube unlisted ID (Pro only) — muestra CTA de pago, NO incrusta
+  publicVideoId?: string;      // YouTube PÚBLICO del canal — se incrusta y es visible para todos
   relatedSlugs: string[];
   steps: Record<Lang, string[]>;
 }
@@ -28,6 +29,9 @@ export const LEARN_GUIDES: LearnGuide[] = [
     slug: 'seo-basics',
     icon: '/icons/target.webp',
     coverImage: '/learn/covers/seo-basics.webp',
+    // Vídeo 1 del canal (público, 29/07/2026): "Aprende SEO de YouTube desde cero
+    // (analicé 1.814 vídeos)". Cubre exactamente los 5 factores de esta guía.
+    publicVideoId: 'YeOfcXog5hc',
     title: { es: 'SEO en YouTube: Guía completa', en: 'YouTube SEO: Complete Guide' },
     description: {
       es: 'Aprende a optimizar tus vídeos para que aparezcan en búsquedas y recomendaciones.',
