@@ -23,6 +23,7 @@ const { runFollowUp } = require('./outreach-followup');
 const { runDiscovery } = require('./outreach-discover');
 const { runOutreachSend } = require('./outreach-send');
 const { runAttribution } = require('./outreach-attribution');
+const { runStripeReconcile } = require('./stripe-reconcile');
 const { runFeatureMonitor } = require('./feature-monitor');
 const { runCleanup: runGmailCleanup } = require('./gmail-cleanup');
 const { runBlogGenerator } = require('./blog-generator');
@@ -117,6 +118,31 @@ runSentinel().catch(err => console.error('[sentinel] startup check:', err.messag
   if (!found) {
     console.log('[watchdog] No report this week — running catch-up audit on startup');
     await runWatchdog().catch(err => console.error('[watchdog] catch-up:', err.message));
+    await db.disconnect().catch(() => {});
+  }
+})();
+
+// Stripe Reconcile catch-up: mismo problema que el watchdog (PC apagado el domingo
+// 02:35 → cron saltado en silencio; y como la sección del Manager solo aparece si
+// existe el reporte, nadie se enteraría). Si no hay reporte en los últimos 7 días,
+// ejecutar al arrancar. La limpieza de reports borra >7 días, así que la ventana
+// de comprobación coincide con lo que puede existir en disco.
+(async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const reportsDir = path.join(__dirname, 'reports');
+  let found = false;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    if (fs.existsSync(path.join(reportsDir, `stripe-reconcile-${d.toISOString().slice(0, 10)}.json`))) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    console.log('[stripe-reconcile] No report in the last 7 days — running catch-up on startup');
+    await runStripeReconcile().catch(err => console.error('[stripe-reconcile] catch-up:', err.message));
     await db.disconnect().catch(() => {});
   }
 })();
@@ -280,6 +306,13 @@ cron.schedule('15 2 * * *', async () => {
 cron.schedule('30 2 * * 1', async () => {
   console.log('[cron] Scout agent — competitor analysis');
   await runScout().catch(err => console.error('[scout]', err.message));
+  await db.disconnect().catch(() => {});
+}, { timezone: 'Europe/Madrid' });
+
+// Stripe Reconcile (S7-Gap6) — solo lee y alerta, nunca corrige — every Sunday at 02:35
+cron.schedule('35 2 * * 0', async () => {
+  console.log('[cron] Stripe Reconcile — weekly BD vs Stripe consistency check');
+  await runStripeReconcile().catch(err => console.error('[stripe-reconcile]', err.message));
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
@@ -454,6 +487,7 @@ console.log('  Infra Optimizer: 02:45 daily (Europe/Madrid)');
 console.log('  SEO Optimizer: 02:50 daily (Europe/Madrid)');
 console.log('  Funnel Optimizer: 02:55 daily (Europe/Madrid)');
 console.log('  Social Optimizer: 03:00 daily (Europe/Madrid)');
+console.log('  Stripe Reconcile: 02:35 Sundays + catch-up on startup (Europe/Madrid)');
 console.log('  Manager: 03:15 daily (Europe/Madrid)');
 console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
 console.log('  Auto-Resolver: 09:17 daily (Europe/Madrid)');

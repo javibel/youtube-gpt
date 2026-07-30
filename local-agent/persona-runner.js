@@ -101,8 +101,22 @@ async function runOnePersonaBluesky(personaId) {
   const persona = personas.find(p => p.id === personaId);
   if (!persona || persona.disabled) return;
 
+  // Menciones graduadas por antigüedad de cuenta (fase de calentamiento). Por defecto 0;
+  // se activa por persona en social-overrides.json → blueskyMentionConfig cuando tiene
+  // credibilidad construida. generatePersonaComment fuerza el path probabilístico suave
+  // en Bluesky (nunca el forzado incondicional), así una mención activada sigue siendo
+  // baja frecuencia y natural — no patrón promocional.
+  let bskyMention = { enabled: false, rate: 0 };
+  try {
+    const ov = JSON.parse(fs.readFileSync(path.join(__dirname, 'social-overrides.json'), 'utf8'));
+    bskyMention = ov.blueskyMentionConfig?.[persona.id] || bskyMention;
+  } catch { /* sin config → menciones off */ }
+
   const commentGenerator = (authorName, postContent) =>
-    generatePersonaComment({ ...persona, mentionYtubviral: false, mentionRate: 0 }, 'bluesky', authorName, postContent);
+    generatePersonaComment(
+      { ...persona, mentionYtubviral: bskyMention.enabled === true, mentionRate: bskyMention.rate || 0 },
+      'bluesky', authorName, postContent
+    );
 
   try {
     console.log(`[persona-runner] ${persona.name} → Bluesky (ritmo)`);

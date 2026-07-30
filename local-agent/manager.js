@@ -282,6 +282,21 @@ function buildRawSummary(date) {
     });
   }
 
+  // Stripe Reconcile report (semanal, domingos — solo aparece ese día)
+  const reconcileReport = readReport('stripe-reconcile', date);
+  if (reconcileReport) {
+    const severity = reconcileReport.severity || 'ok';
+    const statusLabel = severity === 'critical' ? 'ALERTA' : severity === 'info' ? 'REVISAR' : 'OK';
+    const issueText = (reconcileReport.issues || []).map(i => `${i.email || i.customerId}: ${i.note}`).join(' | ');
+    sections.push({
+      agent: 'Stripe Reconcile (BD vs Stripe)',
+      status: statusLabel,
+      data: `Comprobadas: ${reconcileReport.checkedCount || 0}, Discrepancias: ${reconcileReport.issueCount || 0}`,
+      ai: issueText || 'BD y Stripe consistentes — sin discrepancias',
+      duration: 0,
+    });
+  }
+
   return sections;
 }
 

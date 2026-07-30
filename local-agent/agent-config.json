@@ -41,8 +41,8 @@
     "maxCharsTwitter": 300
   },
   "humanize": {
-    "skipSessionProbability": 0.1,
-    "skipPostProbability": 0.1,
+    "skipSessionProbability": 0.02,
+    "skipPostProbability": 0.08,
     "readingPauseMin": 5,
     "readingPauseMax": 15,
     "actionPauseMin": 3,
@@ -53,7 +53,7 @@
   },
   "persona-runner": {
     "model": "claude-opus-4-8",
-    "maxTweetsPerSession": 15
+    "maxTweetsPerSession": 16
   },
   "followup": {
     "model": "claude-opus-4-8",
@@ -128,7 +128,7 @@
       "job": "Editor de video freelance",
       "platforms": "Twitter, Bluesky",
       "mentionYtubviral": true,
-      "mentionRate": 0.42
+      "mentionRate": 0.45
     },
     "ferran": {
       "name": "Ferran Gómez",
@@ -137,17 +137,17 @@
       "job": "Consultor marketing digital",
       "platforms": "Twitter, Bluesky",
       "mentionYtubviral": true,
-      "mentionRate": 0.4
+      "mentionRate": 0.45
     }
   },
-  "_lastModified": "2026-06-20T16:27:08.641Z",
-  "_lastModifiedBy": "dashboard",
+  "_lastModified": "2026-07-29T00:55:32.712Z",
+  "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 23.956062000000003,
+    "amount": 23.029435224999983,
     "currency": "USD",
     "lastChecked": "2026-05-31T10:05:03.957Z",
-    "lastDeduction": "2026-06-20T17:03:18.046Z",
-    "totalSpentToday": 0.017705749999999992,
-    "spendDate": "2026-06-20"
+    "lastDeduction": "2026-07-30T17:00:40.922Z",
+    "totalSpentToday": 0.010222,
+    "spendDate": "2026-07-30"
   }
 }
