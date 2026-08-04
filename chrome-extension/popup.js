@@ -15,6 +15,10 @@ const btnLang   = document.getElementById('btn-lang');
 const ideasRestore     = document.getElementById('ideas-restore');
 const btnRestoreIdeas  = document.getElementById('btn-restore-ideas');
 const ideasRestoreDone = document.getElementById('ideas-restore-done');
+const videoBanner      = document.getElementById('video-banner');
+const videoBannerText  = document.getElementById('video-banner-text');
+const btnVideoBannerClose = document.getElementById('btn-video-banner-close');
+const VIDEO1_DISMISS_KEY = 'ytv_video1_hint_dismissed';
 
 let lang = 'es';
 
@@ -47,6 +51,10 @@ function applyLang() {
   document.getElementById('dashboard-link').textContent = t('Ir al dashboard →', 'Go to dashboard →');
   btnLogout.textContent = t('Cerrar sesión', 'Sign out');
   btnRestoreIdeas.textContent = t('💡 Mostrar ideas de hoy', "💡 Show today's ideas");
+  videoBannerText.textContent = t(
+    'Nuevo: los 5 factores del SEO de YouTube, en vídeo',
+    'New: the 5 factors of YouTube SEO, on video'
+  );
 }
 
 function sendMsg(msg) {
@@ -161,6 +169,18 @@ btnRestoreIdeas.addEventListener('click', async () => {
   ideasRestoreDone.classList.remove('hidden');
 });
 
+// Banner de promoción del vídeo 1 del canal — visible logueado o no (toda la
+// base instalada es audiencia válida), independiente del resto del flujo.
+async function checkVideoBanner() {
+  const store = await new Promise(resolve => chrome.storage.local.get(VIDEO1_DISMISS_KEY, resolve));
+  if (!store[VIDEO1_DISMISS_KEY]) videoBanner.classList.remove('hidden');
+}
+
+btnVideoBannerClose.addEventListener('click', async () => {
+  videoBanner.classList.add('hidden');
+  await new Promise(resolve => chrome.storage.local.set({ [VIDEO1_DISMISS_KEY]: true }, resolve));
+});
+
 // Init: load lang then check user
 (async () => {
   try {
@@ -170,6 +190,7 @@ btnRestoreIdeas.addEventListener('click', async () => {
     lang = navigator.language.startsWith('en') ? 'en' : 'es';
   }
   applyLang();
+  checkVideoBanner();
 
   try {
     const user = await sendMsg({ type: 'GET_USER' });

@@ -207,6 +207,49 @@ input::placeholder {
   font-weight: 600;
 }
 
+/* Video 1 banner */
+.video-banner {
+  margin: 12px 16px 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+}
+
+.video-banner-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #f1f1f1;
+  min-width: 0;
+}
+
+.video-banner-link:hover .video-banner-text { text-decoration: underline; }
+
+.video-banner-icon { flex-shrink: 0; font-size: 14px; }
+
+.video-banner-text {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.video-banner-close {
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.video-banner-close:hover { color: #ff6060; }
+
 /* Feature list */
 .feature-list {
   display: flex;
