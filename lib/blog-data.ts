@@ -1941,6 +1941,8 @@ const ART_ALGORITMO_2026_ES: BlockType[] = [
 
   { type: 'h3', t: '5. Optimiza título, miniatura y descripción como un sistema' },
   { type: 'p', t: 'El CTR depende del combo título + miniatura. La descripción alimenta el SEO. Los tres deben trabajar juntos. No pongas el mejor título del mundo con una miniatura genérica — y no escribas una descripción sin keywords relevantes.' },
+  { type: 'p', t: 'Grabé un vídeo repasando estos factores (título, descripción, tags, miniatura y retención) con una demo en vivo de cómo puntuar un vídeo real antes de publicarlo:' },
+  { type: 'video', videoId: 'YeOfcXog5hc' },
 
   { type: 'h3', t: '6. Genera engagement real' },
   { type: 'p', t: 'Haz preguntas genuinas al final del vídeo. Responde comentarios en la primera hora. Fija un comentario que invite al debate. Los shares son la señal más potente que puedes generar — haz contenido que la gente quiera enviar a un amigo.' },
@@ -2052,6 +2054,8 @@ const ART_ALGORITMO_2026_EN: BlockType[] = [
 
   { type: 'h3', t: '5. Optimize title, thumbnail, and description as a system' },
   { type: 'p', t: 'CTR depends on the title + thumbnail combo. The description feeds SEO. All three must work together. Don\'t put the best title in the world with a generic thumbnail — and don\'t write a description without relevant keywords.' },
+  { type: 'p', t: 'I recorded a video walking through these factors (title, description, tags, thumbnail, and retention) with a live demo of scoring a real video before publishing it:' },
+  { type: 'video', videoId: 'YeOfcXog5hc' },
 
   { type: 'h3', t: '6. Generate real engagement' },
   { type: 'p', t: 'Ask genuine questions at the end of your video. Reply to comments in the first hour. Pin a comment that invites debate. Shares are the most powerful signal you can generate — make content people want to send to a friend.' },

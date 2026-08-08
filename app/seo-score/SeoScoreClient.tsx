@@ -7,7 +7,7 @@ import DashboardShell from '@/components/DashboardShell';
 import ExitIntentPopup from '@/components/ExitIntentPopup';
 import ExtensionInstallBanner from '@/components/ExtensionInstallBanner';
 import PublicNav from '@/components/PublicNav';
-import { ImageIcon, LinkIcon } from '@/components/icons';
+import { ImageIcon, LinkIcon, VideoIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
 
@@ -500,6 +500,11 @@ export default function SeoScoreClient() {
           <p className="text-center mt-2 text-[13px] font-mono-jb">
             <a href="/embed" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2 inline-flex items-center gap-1.5">
               <LinkIcon size={13} /> {lang === 'en' ? 'Add this free SEO analyzer to your website →' : 'Añade este analizador SEO gratis a tu web →'}
+            </a>
+          </p>
+          <p className="text-center mt-2 text-[13px] font-mono-jb">
+            <a href="https://www.youtube.com/watch?v=YeOfcXog5hc&utm_source=ytubviral&utm_medium=seo_score&utm_campaign=video1" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-white transition-colors underline underline-offset-2 inline-flex items-center gap-1.5">
+              <VideoIcon size={13} /> {lang === 'en' ? 'Watch: the 5 factors this score checks, explained →' : 'Vídeo: los 5 factores que puntúa esta herramienta, explicados →'}
             </a>
           </p>
         </div>
