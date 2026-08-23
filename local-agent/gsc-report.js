@@ -67,9 +67,19 @@ async function main() {
   }
 
   // 2. Search analytics — last 28 days, by page
+  // GSC data has a ~2-3 day processing lag (documentado por Google). Usar
+  // endDate=hoy infla el hueco: los últimos días salen casi vacíos (aún sin
+  // procesar) mientras se pierden días antiguos con datos completos. Detectado
+  // 23/08/2026 comparando contra un CSV real exportado desde el panel (la
+  // API con endDate=hoy daba menos impresiones que el panel). Este offset es
+  // una APROXIMACIÓN, no una garantía de coincidencia exacta con el panel —
+  // el lag real de Google varía día a día. Para cifras que deban citarse con
+  // precisión (informes, decisiones), exportar el CSV real del panel en vez
+  // de fiarse solo de esta consulta.
   console.log('\n=== SEARCH PERFORMANCE (last 28 days, by page) ===');
-  const endDate = new Date().toISOString().split('T')[0];
-  const startDate = new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0];
+  const GSC_LAG_DAYS = 2;
+  const endDate = new Date(Date.now() - GSC_LAG_DAYS * 86400000).toISOString().split('T')[0];
+  const startDate = new Date(Date.now() - (28 + GSC_LAG_DAYS) * 86400000).toISOString().split('T')[0];
 
   try {
     const analytics = await gscFetch(token, '/searchAnalytics/query', {
