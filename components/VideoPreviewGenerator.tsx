@@ -59,7 +59,7 @@ type Layout = 'left' | 'right' | 'center';
 interface Slide {
   sectionTitle: string;
   subtitle: string;
-  emoji: string;
+  icon: string;
   gradient: [string, string];
   accentColor: string;
   transition: Transition;
@@ -89,97 +89,94 @@ const PALETTES: Array<[string, string, string]> = [
 const TRANSITIONS: Transition[] = ['fade', 'slideLeft', 'slideUp', 'zoom', 'wipeRight', 'pushRight', 'slideDown', 'curtain', 'zoomOut', 'blinds', 'dissolve'];
 const LAYOUTS: Layout[] = ['left', 'right', 'center'];
 
-// ─── Emoji detection ──────────────────────────────────────────────────────────
+// ─── Icon detection ─────────────────────────────────────────────────────────
+// Returns a key into /public/icons/{key}.webp (see drawIcon / preloadIcons below).
 
-const FALLBACK_EMOJIS = ['🎯', '✨', '💥', '🔥', '⭐', '💫', '🏆', '🌟', '🎪', '⚡', '🎭', '🌀', '🔮', '🎲', '🧩', '🦋'];
+const FALLBACK_ICONS = ['target', 'spark', 'lightning', 'crystal-ball', 'magic-wand', 'diamond', 'crown', 'flask', 'anchor', 'caption', 'split', 'description', 'chart-up', 'clipboard', 'globe', 'trophy'];
 
-function pickEmoji(title: string, text: string, idx = 0): string {
+function pickIcon(title: string, text: string, idx = 0): string {
   const s = (title + ' ' + text).toLowerCase();
 
   // Hooks / atención
-  if (/hook|gancho|atenci|captura|primer|opening|start/.test(s))  return '🎣';
+  if (/hook|gancho|atenci|captura|primer|opening|start/.test(s))  return 'hook';
   // Intro / presentación
-  if (/intro|bienvenid|hola|quién soy|welcome|who am i|presento|about me/.test(s)) return '👋';
+  if (/intro|bienvenid|hola|quién soy|welcome|who am i|presento|about me/.test(s)) return 'wave';
   // Consejos / tips
-  if (/\btip\b|consejo|truco|secreto|hack|pro tip|clave|advice/.test(s)) return '💡';
+  if (/\btip\b|consejo|truco|secreto|hack|pro tip|clave|advice/.test(s)) return 'bulb';
   // Errores / advertencias
-  if (/error|evita|fallo|mal |mistake|avoid|wrong|no hagas|don't|warning|cuidado/.test(s)) return '⚠️';
+  if (/error|evita|fallo|mal |mistake|avoid|wrong|no hagas|don't|warning|cuidado/.test(s)) return 'warning';
   // Problemas / bugs
-  if (/problema|bug|issue|falla|crash|roto|broken/.test(s))        return '🔧';
+  if (/problema|bug|issue|falla|crash|roto|broken/.test(s))        return 'wrench';
   // Éxito / resultados / crecer
-  if (/éxito|exito|result|funciona|crecer|logr|success|grow|achiev/.test(s)) return '🚀';
+  if (/éxito|exito|result|funciona|crecer|logr|success|grow|achiev/.test(s)) return 'rocket';
   // Viral / tendencia
-  if (/viral|trending|tenden|explod|boom|millón|million/.test(s))  return '📈';
+  if (/viral|trending|tenden|explod|boom|millón|million/.test(s))  return 'trend';
   // Dinero / monetización
-  if (/dinero|monetiz|ganar|ingreso|pago|sueldo|money|earn|revenue|income|dollar|euro/.test(s)) return '💰';
+  if (/dinero|monetiz|ganar|ingreso|pago|sueldo|money|earn|revenue|income|dollar|euro/.test(s)) return 'coin';
   // Patrocinios / brand deals
-  if (/patrocin|sponsor|brand deal|partner|colabor/.test(s))       return '🤝';
+  if (/patrocin|sponsor|brand deal|partner|colabor/.test(s))       return 'handshake';
   // Cámara / grabación
-  if (/cámara|camera|grab|record|shoot|filma/.test(s))             return '📷';
+  if (/cámara|camera|grab|record|shoot|filma/.test(s))             return 'camera';
   // Vídeo / contenido
-  if (/\bvideo\b|\bvídeo\b|content|contenido|film/.test(s))        return '🎬';
+  if (/\bvideo\b|\bvídeo\b|content|contenido|film/.test(s))        return 'clapperboard';
   // Edición / post-producción
-  if (/edic|edit|corte|cut|premiere|davinci|after effect/.test(s)) return '✂️';
+  if (/edic|edit|corte|cut|premiere|davinci|after effect/.test(s)) return 'scissors';
   // Miniatura / thumbnail
-  if (/miniatura|thumbnail|portada|cover|ctr/.test(s))             return '🖼️';
+  if (/miniatura|thumbnail|portada|cover|ctr/.test(s))             return 'thumbnail';
   // Título / headline
-  if (/título|title|headline|titular/.test(s))                     return '📝';
+  if (/título|title|headline|titular/.test(s))                     return 'title';
   // Descripción / SEO
-  if (/descripci|description|seo|keyword|palabr clave/.test(s))    return '🔑';
+  if (/descripci|description|seo|keyword|palabr clave/.test(s))    return 'description';
   // Suscriptores / audiencia / comunidad
-  if (/suscript|subscriber|audiencia|audience|comunidad|community|fans/.test(s)) return '👥';
+  if (/suscript|subscriber|audiencia|audience|comunidad|community|fans/.test(s)) return 'community';
   // Canal / plataforma
-  if (/canal|channel|youtube|plataforma|platform/.test(s))         return '📺';
+  if (/canal|channel|youtube|plataforma|platform/.test(s))         return 'yt-play';
   // Aprender / guía / tutorial
-  if (/aprend|learn|tutori|guía|guide|paso a paso|step by step/.test(s)) return '📚';
+  if (/aprend|learn|tutori|guía|guide|paso a paso|step by step/.test(s)) return 'graduation';
   // Estrategia / plan
-  if (/estrategia|strategy|plan|método|method|sistema|system/.test(s)) return '🗺️';
+  if (/estrategia|strategy|plan|método|method|sistema|system/.test(s)) return 'compass';
   // Call to action / interacción
-  if (/cta|call to action|suscrib|subscribe|comenta|comment|like|comparte|share/.test(s)) return '👆';
+  if (/cta|call to action|suscrib|subscribe|comenta|comment|like|comparte|share/.test(s)) return 'tap';
   // Estadísticas / datos / analytics
-  if (/estadístic|analytics|analítica|metric|dato|data|cifra|número|stat/.test(s)) return '📊';
+  if (/estadístic|analytics|analítica|metric|dato|data|cifra|número|stat/.test(s)) return 'bar-chart';
   // Algoritmo / recomendación
-  if (/algoritmo|algorithm|recomend|recommend|suggest|suggest/.test(s)) return '🤖';
+  if (/algoritmo|algorithm|recomend|recommend|suggest|suggest/.test(s)) return 'robot';
   // Tiempo / duración / velocidad
-  if (/tiempo|duración|rápido|fast|quick|veloc|second|minuto|minute/.test(s)) return '⏱️';
+  if (/tiempo|duración|rápido|fast|quick|veloc|second|minuto|minute/.test(s)) return 'clock-fast';
   // Herramientas / apps / software
-  if (/herramienta|tool|app|software|plugin|extensión|extension/.test(s)) return '🛠️';
+  if (/herramienta|tool|app|software|plugin|extensión|extension/.test(s)) return 'gears';
   // IA / inteligencia artificial
-  if (/ia\b|ai\b|inteligencia artificial|artificial intelligence|chatgpt|claude|gpt/.test(s)) return '🧠';
+  if (/ia\b|ai\b|inteligencia artificial|artificial intelligence|chatgpt|claude|gpt/.test(s)) return 'brain';
   // Historia / narrativa / storytelling
-  if (/historia|story|narrativa|narrative|anécdota|experiencia|experience/.test(s)) return '📖';
+  if (/historia|story|narrativa|narrative|anécdota|experiencia|experience/.test(s)) return 'storybook';
   // Pregunta / curiosidad
-  if (/pregunta|question|¿|ask|wonder|curiosid|curious|por qué|why/.test(s)) return '❓';
+  if (/pregunta|question|¿|ask|wonder|curiosid|curious|por qué|why/.test(s)) return 'question';
   // Siguiente / CTA de cierre
-  if (/siguiente|next step|ahora|now|conclu|final|summary|resumen|wrap/.test(s)) return '➡️';
+  if (/siguiente|next step|ahora|now|conclu|final|summary|resumen|wrap/.test(s)) return 'arrow-next';
   // Música / audio / sonido
-  if (/música|music|sound|audio|beat|canción|song|melodía/.test(s)) return '🎵';
+  if (/música|music|sound|audio|beat|canción|song|melodía/.test(s)) return 'music-note';
   // Viajes / lugares
-  if (/viaj|travel|trip|lugar|place|destino|destination|ciudad|city/.test(s)) return '✈️';
-  // Comida / recetas
-  if (/comid|food|receta|recipe|cocin|cook|restaurante|restaurant/.test(s)) return '🍕';
-  // Fitness / deporte / salud
-  if (/fitness|gym|ejercicio|exercise|sport|deporte|salud|health|entrena/.test(s)) return '💪';
+  if (/viaj|travel|trip|lugar|place|destino|destination|ciudad|city/.test(s)) return 'globe';
   // Motivación / mentalidad
-  if (/motivac|motivation|mindset|mentalidad|actitud|attitude/.test(s)) return '🔥';
+  if (/motivac|motivation|mindset|mentalidad|actitud|attitude/.test(s)) return 'flame';
   // Reto / competición
-  if (/reto|challenge|versus|vs |compet|torneo|tournament/.test(s)) return '🏅';
+  if (/reto|challenge|versus|vs |compet|torneo|tournament/.test(s)) return 'swords';
   // Humor / entretenimiento
-  if (/divertid|funny|humor|gracia|joke|entreteni|entertain/.test(s)) return '😂';
+  if (/divertid|funny|humor|gracia|joke|entreteni|entertain/.test(s)) return 'laugh';
   // Misterio / revelación / descubrimiento
-  if (/secret|misterio|mystery|reveal|descubr|discover|sorpresa|surprise/.test(s)) return '🔍';
+  if (/secret|misterio|mystery|reveal|descubr|discover|sorpresa|surprise/.test(s)) return 'magnifying-glass';
   // Tecnología / gadgets / setup
-  if (/tecnolog|tech|gadget|setup|equipo|gear|dispositivo|device/.test(s)) return '💻';
+  if (/tecnolog|tech|gadget|setup|equipo|gear|dispositivo|device/.test(s)) return 'laptop';
   // Redes sociales / social media
-  if (/instagram|tiktok|twitter|redes sociales|social media/.test(s)) return '📱';
+  if (/instagram|tiktok|twitter|redes sociales|social media/.test(s)) return 'phone';
   // Colaboración / collab
-  if (/colabo|collab|featuring|ft\.|con |with /.test(s))            return '🎤';
+  if (/colabo|collab|featuring|ft\.|con |with /.test(s))            return 'microphone';
   // Fans / comunidad activa
-  if (/fan|seguidor|follower|comments section/.test(s))              return '❤️';
+  if (/fan|seguidor|follower|comments section/.test(s))              return 'heart';
   // Final / conclusión / despedida
-  if (/adiós|bye|despedida|farewell|hasta pronto|see you/.test(s))  return '👊';
+  if (/adiós|bye|despedida|farewell|hasta pronto|see you/.test(s))  return 'fist-bump';
 
-  return FALLBACK_EMOJIS[idx % FALLBACK_EMOJIS.length];
+  return FALLBACK_ICONS[idx % FALLBACK_ICONS.length];
 }
 
 // ─── Markdown → Slides ────────────────────────────────────────────────────────
@@ -228,7 +225,7 @@ function parseScript(markdown: string): Slide[] {
       slides.push({
         sectionTitle: sectionTitle.replace(/[^\w\s]/g, '').trim().toUpperCase().slice(0, 20),
         subtitle: cleaned,
-        emoji: pickEmoji(sectionTitle, cleaned, idx),
+        icon: pickIcon(sectionTitle, cleaned, idx),
         gradient: [cA, cB],
         accentColor: accent,
         transition: transitionOrder[idx % transitionOrder.length],
@@ -267,7 +264,7 @@ function parseScript(markdown: string): Slide[] {
       slides.push({
         sectionTitle: sectionTitle || `Parte ${idx + 1}`,
         subtitle: subtitle.slice(0, 140),
-        emoji: pickEmoji(sectionTitle, subtitle, idx),
+        icon: pickIcon(sectionTitle, subtitle, idx),
         gradient: [cA, cB],
         accentColor: accent,
         transition: transitionOrder[idx % transitionOrder.length],
@@ -324,7 +321,7 @@ function parseScript(markdown: string): Slide[] {
       slides.push({
         sectionTitle,
         subtitle,
-        emoji: pickEmoji(sectionTitle, subtitle, idx),
+        icon: pickIcon(sectionTitle, subtitle, idx),
         gradient: [cA, cB],
         accentColor: accent,
         transition: transitionOrder[idx % transitionOrder.length],
@@ -360,6 +357,44 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number): s
   }
   if (cur) lines.push(cur);
   return lines;
+}
+
+// ─── Icon images (canvas can't render emoji reliably server/cross-platform;
+// slides draw WebP icons from /public/icons/ via drawImage instead) ──────────
+
+const iconImageCache = new Map<string, HTMLImageElement>();
+
+function getIconImage(name: string): HTMLImageElement {
+  let img = iconImageCache.get(name);
+  if (!img) {
+    img = new window.Image();
+    img.src = `/icons/${name}.webp`;
+    iconImageCache.set(name, img);
+  }
+  return img;
+}
+
+// Kick off loading for every icon a script will need, before recording starts —
+// drawIcon() silently no-ops on an unloaded image, so the very first exported
+// frame would otherwise be missing its icon.
+function preloadIcons(names: string[]): Promise<void> {
+  const unique = Array.from(new Set(names));
+  return Promise.all(unique.map(name => new Promise<void>(resolve => {
+    const img = getIconImage(name);
+    if (img.complete && img.naturalWidth > 0) { resolve(); return; }
+    img.onload = () => resolve();
+    img.onerror = () => resolve(); // never block export on a single bad icon
+  }))).then(() => undefined);
+}
+
+// Draws an icon centered at (cx, cy), scaled so its larger dimension equals targetSize.
+function drawIcon(ctx: CanvasRenderingContext2D, name: string, cx: number, cy: number, targetSize: number) {
+  const img = getIconImage(name);
+  if (!img.complete || img.naturalWidth === 0) return;
+  const scale = targetSize / Math.max(img.naturalWidth, img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
+  ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
 }
 
 // Draw a fully static slide onto ctx at (offsetX, offsetY) with given alpha
@@ -432,10 +467,8 @@ function drawSlide(
       glow.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
 
-      // Emoji
-      ctx.font = `${FONT_EMOJI_C}px serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(slide.emoji, W / 2, H * 0.28);
+      // Icon
+      drawIcon(ctx, slide.icon, W / 2, H * 0.28, FONT_EMOJI_C);
 
       // Section title pill
       const titleTxtC = slide.sectionTitle.toUpperCase().slice(0, 22);
@@ -479,12 +512,10 @@ function drawSlide(
       const textX   = emojiOnLeft ? panelW + W * 0.04 : W * 0.04;
       const textMaxW = textPanelW - W * 0.08;
 
-      // Emoji
-      ctx.font = `${FONT_EMOJI_L}px serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(slide.emoji, emojiCX, H * 0.48);
+      // Icon
+      drawIcon(ctx, slide.icon, emojiCX, H * 0.48, FONT_EMOJI_L);
 
-      // Section title bajo el emoji
+      // Section title bajo el icono
       ctx.fillStyle = slide.accentColor;
       ctx.font = `bold ${FONT_HEADER}px monospace`;
       ctx.textAlign = 'center';
@@ -544,10 +575,8 @@ function drawSlide(
     ctx.fillStyle = slide.accentColor; ctx.textBaseline = 'middle';
     ctx.fillText(titleTxt, W / 2, titleY);
 
-    // Emoji (centered in upper visual area)
-    ctx.font = `${FONT_EMOJI_C}px serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(slide.emoji, W / 2, H * 0.36);
+    // Icon (centered in upper visual area)
+    drawIcon(ctx, slide.icon, W / 2, H * 0.36, FONT_EMOJI_C);
 
     // Subtitle card (lower portion)
     const cardPad = 44;
@@ -932,6 +961,7 @@ export default function VideoPreviewGenerator({
       setErrorMsg(t('El script no tiene texto suficiente.', 'The script does not have enough text.'));
       return;
     }
+    await preloadIcons(slides.map(sl => sl.icon));
 
     setStatus('generating');
     setProgress(0);
