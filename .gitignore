@@ -48,3 +48,7 @@ ytubviral-extension.zip
 
 # Stray backup files (blog-generator etc.)
 *.bak
+
+# Campana de feedback (24/08/2026): contienen correos de usuarios reales.
+# El repo es PUBLICO -> nunca commitear.
+local-agent/feedback-campaign-*.json

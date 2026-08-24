@@ -31,6 +31,21 @@ async function getAccessToken() {
 
 // ── Classification ──
 
+// Direcciones de la campaña de feedback manual: sus respuestas se reenvían a
+// Javier y nunca reciben auto-respuesta (ver regla 0e en classifyEmail).
+// Se carga en arranque; si el fichero no existe, el set queda vacío y el
+// comportamiento del agente es exactamente el de siempre.
+const FEEDBACK_CAMPAIGN_EMAILS = (() => {
+  try {
+    const p = path.join(__dirname, 'feedback-campaign-guard.json');
+    if (!fs.existsSync(p)) return new Set();
+    const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return new Set((data.emails || []).map(e => String(e).toLowerCase().trim()));
+  } catch {
+    return new Set();
+  }
+})();
+
 // Senders/domains that should ALWAYS be forwarded to the owner (never auto-reply)
 const IMPORTANT_SENDERS = [
   // Google / Chrome Web Store
@@ -202,6 +217,20 @@ function classifyEmail(from, subject, snippet, headers = []) {
   //     important-keyword matching so their commercial wording can't route to the owner.
   if (BLACKLIST_SENDERS.some(s => fromLower.includes(s))) {
     return 'ignore';
+  }
+
+  // 0e. Campaña de feedback manual (24/08/2026): Javier escribió a mano a los
+  //     usuarios registrados pidiéndoles que le contaran por qué no vuelven.
+  //     Sus respuestas NUNCA deben recibir auto-respuesta de IA: el email decía
+  //     explícitamente "escribo a mano, no es automático", y contestarles con un
+  //     bot destruiría justo lo que se les pedía. Se clasifican como 'important'
+  //     → se reenvían a Javier y él las lee.
+  //     Borrar feedback-campaign-guard.json cuando la campaña termine.
+  if (FEEDBACK_CAMPAIGN_EMAILS.size > 0) {
+    const senderAddr = (fromLower.match(/<([^>]+)>/) || [, fromLower])[1].trim();
+    if (FEEDBACK_CAMPAIGN_EMAILS.has(senderAddr)) {
+      return 'important';
+    }
   }
 
   // 1. Check important senders FIRST (even if they match no-reply patterns)
