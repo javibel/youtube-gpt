@@ -35,6 +35,27 @@ if (Test-Path $vercelEnv) {
     Write-Host '  OK  vercel .env.local' -ForegroundColor Green
 }
 
+# design-handoff/ vive FUERA del repo git y el repo es publico (contiene info
+# sensible de negocio), asi que este ZIP es su UNICO respaldo.
+# Se guardan dos copias:
+#   1. En la carpeta con fecha -> entra en la rotacion normal de 30 dias
+#   2. design-handoff-latest.zip en la raiz -> NO se autoborra nunca, porque los
+#      .md (BRIEF, README, SITEMAP, DESIGN-TOKENS) estan escritos a mano y no se
+#      pueden regenerar desde el codigo. Sin esta copia, 30 dias sin ejecutar el
+#      backup bastarian para perderlos.
+$handoff = 'C:\Users\jimen\youtube-gpt\design-handoff'
+if (Test-Path $handoff) {
+    $zipDated = Join-Path $dest 'design-handoff.zip'
+    Compress-Archive -Path (Join-Path $handoff '*') -DestinationPath $zipDated -Force
+    Write-Host '  OK  design-handoff.zip' -ForegroundColor Green
+
+    $zipLatest = 'D:\ytubviral-backup\design-handoff-latest.zip'
+    Copy-Item -Path $zipDated -Destination $zipLatest -Force
+    Write-Host '  OK  design-handoff-latest.zip (permanente)' -ForegroundColor Green
+} else {
+    Write-Host '  --  design-handoff/' -ForegroundColor Yellow
+}
+
 $cutoff = (Get-Date).AddDays(-30)
 $backupRoot = 'D:\ytubviral-backup'
 Get-ChildItem -Path $backupRoot -Directory | Where-Object {
