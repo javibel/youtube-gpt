@@ -1,4 +1,6 @@
 import type { Lang } from '@/lib/server-lang';
+import PriceTag from '@/components/PriceTag';
+import { PRICES } from '@/lib/pricing';
 
 type Cell = string | boolean;
 type Row = { feature: { es: string; en: string }; free: Cell; pro: Cell; business: Cell };
@@ -40,34 +42,34 @@ export default function PricingComparisonTable({ lang }: { lang: Lang }) {
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
 
   return (
-    <section className="border-b border-white/10 bg-black">
+    <section style={{ background: 'var(--yv-bg-1)' }}>
       <div className="max-w-6xl mx-auto px-6 py-20">
-        <p className="text-center font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+        <p className="text-center font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>
           {t('COMPARATIVA COMPLETA', 'FULL COMPARISON')}
         </p>
         <h2 className="font-display font-bold text-3xl md:text-5xl text-center leading-[0.95] mb-12">
           {t('Todo lo que incluye cada plan', 'Everything each plan includes')}
         </h2>
 
-        <div className="overflow-x-auto border border-white/10">
-          <table className="w-full text-sm min-w-[640px]">
+        <div className="overflow-x-auto yv-glass">
+          <table className="yv-table yv-table--matrix md:min-w-[640px]">
             <thead>
-              <tr className="border-b border-white/10 bg-white/[0.03]">
-                <th className="text-left p-4 font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 font-normal">
+              <tr>
+                <th className="text-left">
                   {t('Característica', 'Feature')}
                 </th>
-                <th className="p-4 font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400 font-normal">Free<br /><span className="text-zinc-600">0€</span></th>
-                <th className="p-4 font-mono-jb text-[13px] tracking-wider uppercase font-bold" style={{ color: 'var(--red)' }}>Pro<br /><span className="text-zinc-400">9,99€/{t('mes', 'mo')}</span></th>
-                <th className="p-4 font-mono-jb text-[13px] tracking-wider uppercase font-normal" style={{ color: '#00E5FF' }}>Business<br /><span className="text-zinc-400">29,99€/{t('mes', 'mo')}</span></th>
+                <th>Free<br /><span className="text-zinc-600"><PriceTag amount={0} lang={lang} /></span></th>
+                <th style={{ color: 'var(--yv-brand-lift)' }}>Pro<br /><span className="text-zinc-400"><PriceTag amount={PRICES.pro.monthly.eur} lang={lang} />/{t('mes', 'mo')}</span></th>
+                <th style={{ color: '#00E5FF' }}>Business<br /><span className="text-zinc-400"><PriceTag amount={PRICES.business.monthly.eur} lang={lang} />/{t('mes', 'mo')}</span></th>
               </tr>
             </thead>
             <tbody>
               {ROWS.map((row, i) => (
-                <tr key={i} className={`border-b border-white/5 ${i % 2 === 1 ? 'bg-white/[0.015]' : ''}`}>
-                  <td className="p-4 text-zinc-300">{lang === 'en' ? row.feature.en : row.feature.es}</td>
-                  <td className="p-4 text-center"><CellContent value={row.free} lang={lang} /></td>
-                  <td className="p-4 text-center" style={{ background: 'rgba(232,77,91,0.04)' }}><CellContent value={row.pro} lang={lang} /></td>
-                  <td className="p-4 text-center"><CellContent value={row.business} lang={lang} /></td>
+                <tr key={i}>
+                  <td className="text-zinc-300">{lang === 'en' ? row.feature.en : row.feature.es}</td>
+                  <td className="text-center" data-label="Free"><CellContent value={row.free} lang={lang} /></td>
+                  <td className="text-center" data-label="Pro" style={{ background: 'var(--yv-brand-glass)' }}><CellContent value={row.pro} lang={lang} /></td>
+                  <td className="text-center" data-label="Business"><CellContent value={row.business} lang={lang} /></td>
                 </tr>
               ))}
             </tbody>

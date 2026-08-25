@@ -28,37 +28,38 @@ export default function LandingFAQ({ lang = 'es' }: { lang?: Lang }) {
   const items = FAQ_ITEMS[lang];
 
   return (
-    <section className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
+    <section style={{ background: 'var(--yv-bg-1)' }}>
       <div className="max-w-4xl mx-auto px-6 py-24">
         <div className="mb-12">
-          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>08 · FAQ</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>08 · FAQ</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
             {lang === 'en' ? <>Questions before<br />you hit the button.</> : <>Preguntas antes<br />de apretar el botón.</>}
           </h2>
         </div>
 
-        <div className="border-t border-white/10">
+        <div className="yv-glass overflow-hidden">
           {items.map((item, i) => (
-            <div key={i} className="border-b border-white/10">
+            <div key={i} style={{ boxShadow: i < items.length - 1 ? 'inset 0 -1px 0 rgba(255,255,255,.07)' : 'none' }}>
               <button
                 onClick={() => setOpen(open === i ? null : i)}
-                className="w-full text-left py-6 flex items-center gap-5 group"
+                className="w-full text-left py-6 px-6 flex items-center gap-5 group"
               >
                 <span className="font-mono-jb text-[13px] text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
-                <span className="font-display font-semibold text-lg md:text-xl flex-1 transition" style={{ color: open === i ? 'var(--red)' : '#f4f4f5' }}>
+                <span className="font-display font-semibold text-lg md:text-xl flex-1 transition" style={{ color: open === i ? 'var(--yv-brand-lift)' : '#f4f4f5' }}>
                   {item.q}
                 </span>
                 <span
-                  className="w-8 h-8 flex items-center justify-center border text-xl transition"
+                  className="w-8 h-8 flex items-center justify-center text-xl transition"
                   style={{
-                    borderColor: open === i ? 'var(--red)' : 'rgba(255,255,255,0.20)',
-                    background: open === i ? 'var(--red)' : 'transparent',
+                    borderRadius: 'var(--yv-radius-sm)',
+                    boxShadow: open === i ? 'none' : 'inset 0 1px 0 rgba(255,255,255,.14)',
+                    background: open === i ? 'var(--yv-brand)' : 'var(--yv-glass-chip)',
                     transform: open === i ? 'rotate(45deg)' : 'none',
                   }}
                 >+</span>
               </button>
               {open === i && (
-                <div className="pb-6 pl-10 pr-12 text-zinc-400 leading-relaxed max-w-3xl page-enter">
+                <div className="pb-6 pl-16 pr-12 text-zinc-400 leading-relaxed max-w-3xl page-enter">
                   {item.a}
                 </div>
               )}

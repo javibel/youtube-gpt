@@ -67,6 +67,17 @@ export default function StudyClient() {
       <PublicNav />
 
       <article className="max-w-3xl mx-auto px-6 py-12">
+        {/* Aviso: el vídeo publicado cita la muestra original (N=1.814), esta página se refresca */}
+        <div className="mb-8 px-4 py-3 rounded-lg font-mono-jb text-[12px]" style={{ background: 'var(--yv-surface)', border: '1px solid var(--yv-border)', color: 'var(--yv-text-3)' }}>
+          {t(
+            'Este estudio se refresca periódicamente — la muestra crece con cada actualización. El vídeo sobre este tema cita la edición original (N=1.814, 27/06/2026). ',
+            'This study refreshes periodically — the sample grows with each update. The video about this topic cites the original edition (N=1,814, 06/27/2026). '
+          )}
+          <a href="/youtube-title-study/2026-06" className="underline" style={{ color: 'var(--yv-brand)' }}>
+            {t('Ver esa versión exacta →', 'See that exact version →')}
+          </a>
+        </div>
+
         {/* Hero */}
         <header className="mb-10">
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand)' }}>

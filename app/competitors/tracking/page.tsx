@@ -376,7 +376,7 @@ export default function CompetitorTrackingPage() {
 
                   {/* Expanded outlier videos */}
                   {expandedOutliers === comp.channelId && outlierMap[comp.channelId]?.outliers.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                    <div className="mt-3 pt-3 space-y-2" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
                       <p className="font-mono-jb text-[13px] mb-2" style={{ color: 'var(--yv-text-4)' }}>
                         {t('Vídeos con 10x+ vistas sobre la mediana (90d)', 'Videos with 10x+ views above median (90d)')}
                       </p>

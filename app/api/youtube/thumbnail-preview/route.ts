@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
@@ -114,7 +115,7 @@ Output ONLY valid JSON:
         const data = await res.json();
         const text = data.content?.[0]?.text || '';
         try {
-          ctrAnalysis = JSON.parse(text);
+          ctrAnalysis = parseClaudeJson(text);
         } catch { /* skip */ }
       }
     } catch { /* skip analysis */ }

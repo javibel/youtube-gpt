@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { NextResponse } from 'next/server';
+import { PRICES, formatPrice, currencyForCountry, type Currency } from '@/lib/pricing';
 
 type CheckoutPlan = 'monthly' | 'yearly' | 'business_monthly' | 'business_yearly';
 
@@ -14,30 +15,43 @@ function getPriceId(plan: CheckoutPlan): string | null {
   }
 }
 
-function getPlanDescription(plan: CheckoutPlan, isEn: boolean): string {
+// Importe del plan en la moneda que se va a cobrar. Los dígitos son idénticos entre
+// EUR y USD (currency_options en Stripe), solo cambia el símbolo.
+function planAmount(plan: CheckoutPlan): number {
   switch (plan) {
-    case 'monthly': return isEn ? 'YTubViral.com — Pro Plan (200 gen/mo)' : 'YTubViral.com — Plan Pro (200 generaciones/mes)';
-    case 'yearly': return isEn ? 'YTubViral.com — Pro Annual Plan (200 gen/mo · €99.99/yr)' : 'YTubViral.com — Plan Pro Anual (200 generaciones/mes · 99,99€/año)';
-    case 'business_monthly': return isEn ? 'YTubViral.com — Business Plan (Unlimited · €29.99/mo)' : 'YTubViral.com — Plan Business (Ilimitado · 29,99€/mes)';
-    case 'business_yearly': return isEn ? 'YTubViral.com — Business Annual Plan (Unlimited · €299/yr)' : 'YTubViral.com — Plan Business Anual (Ilimitado · 299€/año)';
+    case 'monthly': return PRICES.pro.monthly.eur;
+    case 'yearly': return PRICES.pro.yearly.eur;
+    case 'business_monthly': return PRICES.business.monthly.eur;
+    case 'business_yearly': return PRICES.business.yearly.eur;
   }
 }
 
-function getSubmitMessage(plan: CheckoutPlan, isEn: boolean, trialEligible: boolean): string {
+function getPlanDescription(plan: CheckoutPlan, isEn: boolean, currency: Currency): string {
+  const p = formatPrice(planAmount(plan), currency, isEn ? 'en' : 'es');
+  switch (plan) {
+    case 'monthly': return isEn ? 'YTubViral.com — Pro Plan (200 gen/mo)' : 'YTubViral.com — Plan Pro (200 generaciones/mes)';
+    case 'yearly': return isEn ? `YTubViral.com — Pro Annual Plan (200 gen/mo · ${p}/yr)` : `YTubViral.com — Plan Pro Anual (200 generaciones/mes · ${p}/año)`;
+    case 'business_monthly': return isEn ? `YTubViral.com — Business Plan (Unlimited · ${p}/mo)` : `YTubViral.com — Plan Business (Ilimitado · ${p}/mes)`;
+    case 'business_yearly': return isEn ? `YTubViral.com — Business Annual Plan (Unlimited · ${p}/yr)` : `YTubViral.com — Plan Business Anual (Ilimitado · ${p}/año)`;
+  }
+}
+
+function getSubmitMessage(plan: CheckoutPlan, isEn: boolean, trialEligible: boolean, currency: Currency): string {
+  const p = formatPrice(planAmount(plan), currency, isEn ? 'en' : 'es');
   if (plan === 'business_monthly' || plan === 'business_yearly') {
     const yearly = plan === 'business_yearly';
     return yearly
-      ? (isEn ? 'Annual plan — €299/yr. Your Business access activates instantly. No surprise renewals.' : 'Plan anual — 299€/año. Tu acceso Business se activa al instante. Sin renovaciones sorpresa.')
+      ? (isEn ? `Annual plan — ${p}/yr. Your Business access activates instantly. No surprise renewals.` : `Plan anual — ${p}/año. Tu acceso Business se activa al instante. Sin renovaciones sorpresa.`)
       : (isEn ? 'Your YTubViral.com Business subscription activates instantly. Cancel anytime.' : 'Tu suscripción a YTubViral.com Business se activa al instante. Puedes cancelar en cualquier momento.');
   }
   const yearly = plan === 'yearly';
   if (trialEligible) {
     return yearly
-      ? (isEn ? '7 days free, then €99.99/yr. Cancel before day 7 at no cost.' : '7 días gratis, luego 99,99 €/año. Cancela antes del día 7 sin coste.')
-      : (isEn ? '7 days free, then €9.99/mo. Cancel before day 7 at no cost.' : '7 días gratis, luego 9,99 €/mes. Cancela antes del día 7 sin coste.');
+      ? (isEn ? `7 days free, then ${p}/yr. Cancel before day 7 at no cost.` : `7 días gratis, luego ${p}/año. Cancela antes del día 7 sin coste.`)
+      : (isEn ? `7 days free, then ${p}/mo. Cancel before day 7 at no cost.` : `7 días gratis, luego ${p}/mes. Cancela antes del día 7 sin coste.`);
   }
   return yearly
-    ? (isEn ? 'Annual plan — €99.99/yr. Your Pro access activates instantly. No surprise renewals.' : 'Plan anual — 99,99€/año. Tu acceso Pro se activa al instante. Sin renovaciones sorpresa.')
+    ? (isEn ? `Annual plan — ${p}/yr. Your Pro access activates instantly. No surprise renewals.` : `Plan anual — ${p}/año. Tu acceso Pro se activa al instante. Sin renovaciones sorpresa.`)
     : (isEn ? 'Your YTubViral.com Pro subscription activates instantly. Cancel anytime.' : 'Tu suscripción a YTubViral.com Pro se activa al instante. Puedes cancelar en cualquier momento.');
 }
 
@@ -54,6 +68,10 @@ export async function POST(request: Request) {
     const plan: CheckoutPlan = validPlans.includes(body.plan) ? body.plan : 'monthly';
     const lang: 'es' | 'en' = body.lang === 'en' ? 'en' : 'es';
     const isEn = lang === 'en';
+
+    // La moneda se decide SIEMPRE en servidor con la misma regla que /api/geo-currency,
+    // nunca desde el cliente: así lo que se cobra coincide con lo que se mostró en la web.
+    const currency = currencyForCountry(request.headers.get('x-vercel-ip-country'));
 
     const priceId = getPriceId(plan);
     if (!priceId) {
@@ -87,18 +105,21 @@ export async function POST(request: Request) {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
+      // Requiere currency_options en el Price (configurado 25/08/2026: USD con los
+      // mismos dígitos que EUR). Sin esto Stripe cobraría siempre en EUR.
+      currency,
       allow_promotion_codes: true,
       locale: lang === 'en' ? 'en' : 'es',
       success_url: 'https://ytubviral.com/stripe/success',
       cancel_url: 'https://ytubviral.com/dashboard',
       metadata: { userId: user.id },
       subscription_data: {
-        description: getPlanDescription(plan, isEn),
+        description: getPlanDescription(plan, isEn, currency),
         metadata: { userId: user.id, service: 'YTubViral.com', plan: tierPlan },
         ...(trialEligible ? { trial_period_days: 7 } : {}),
       },
       custom_text: {
-        submit: { message: getSubmitMessage(plan, isEn, trialEligible) },
+        submit: { message: getSubmitMessage(plan, isEn, trialEligible, currency) },
       },
     });
 

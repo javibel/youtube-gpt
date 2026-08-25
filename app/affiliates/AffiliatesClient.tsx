@@ -2,10 +2,18 @@
 
 import { useState } from 'react';
 import { useLang } from '@/components/LangProvider';
+import { useCurrency } from '@/components/CurrencyProvider';
+import { PRICES, formatPrice } from '@/lib/pricing';
 import PublicNav from '@/components/PublicNav';
 
 export default function AffiliatesClient() {
   const lang = useLang();
+  const currency = useCurrency();
+  const proPrice = formatPrice(PRICES.pro.monthly.eur, currency, lang);
+  // Ejemplo del 30% de comisión sobre 10 suscriptores Pro, derivado del precio
+  // para que no quede desincronizado si cambia (ni mezcle € con $).
+  const commissionMonthly = formatPrice(Math.round(PRICES.pro.monthly.eur * 10 * 0.3), currency, lang);
+  const commissionYear = formatPrice(Math.round(PRICES.pro.monthly.eur * 10 * 0.3 * 12), currency, lang);
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
 
   const [name, setName] = useState('');
@@ -91,8 +99,8 @@ export default function AffiliatesClient() {
           <p className="font-mono-jb text-[12px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-4)' }}>{t('Un ejemplo real, sin inflar', 'A real example, not inflated')}</p>
           <p className="font-mono-jb text-sm leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
             {t(
-              '10 personas de tu audiencia se hacen Pro (9,99€/mes) gracias a ti: son unos 30€/mes de comisión durante 12 meses (~360€ en total por esos 10). No prometemos más que eso — depende de tu audiencia y de si son un buen fit para la herramienta.',
-              '10 people from your audience become Pro (€9.99/mo) thanks to you: that\'s about €30/mo in commission for 12 months (~€360 total for those 10). We don\'t promise more than that — it depends on your audience and whether they\'re a good fit for the tool.'
+              `10 personas de tu audiencia se hacen Pro (${proPrice}/mes) gracias a ti: son unos ${commissionMonthly}/mes de comisión durante 12 meses (~${commissionYear} en total por esos 10). No prometemos más que eso — depende de tu audiencia y de si son un buen fit para la herramienta.`,
+              `10 people from your audience become Pro (${proPrice}/mo) thanks to you: that's about ${commissionMonthly}/mo in commission for 12 months (~${commissionYear} total for those 10). We don't promise more than that — it depends on your audience and whether they're a good fit for the tool.`
             )}
           </p>
         </section>

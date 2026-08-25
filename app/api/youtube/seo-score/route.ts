@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
@@ -417,7 +418,7 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
             }],
           });
           const text = (msg.content[0] as { type: string; text: string }).text;
-          const parsed = JSON.parse(text);
+          const parsed = parseClaudeJson<{ es?: string; en?: string }>(text);
           if (parsed.es && parsed.en) return parsed;
           return null;
         })(),
@@ -450,19 +451,19 @@ Reply in this exact JSON: {"rating":"good"|"needs_improvement","es":"evaluación
             }],
           });
           const text = (msg.content[0] as { type: string; text: string }).text;
-          return JSON.parse(text);
+          return parseClaudeJson<{ rating?: string; es?: string; en?: string }>(text);
         })() : Promise.resolve(null),
       ]);
 
-      if (aiTipResult.status === 'fulfilled' && aiTipResult.value) {
-        aiTip = aiTipResult.value;
+      if (aiTipResult.status === 'fulfilled' && aiTipResult.value?.es && aiTipResult.value?.en) {
+        aiTip = { es: aiTipResult.value.es, en: aiTipResult.value.en };
       }
 
-      if (thumbResult.status === 'fulfilled' && thumbResult.value) {
+      if (thumbResult.status === 'fulfilled' && thumbResult.value?.es && thumbResult.value?.en) {
         const tr = thumbResult.value;
         thumbnailAnalysis = {
           passed: tr.rating === 'good',
-          detail: { es: tr.es, en: tr.en },
+          detail: { es: tr.es ?? '', en: tr.en ?? '' },
         };
       }
 

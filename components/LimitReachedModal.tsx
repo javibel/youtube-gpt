@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { toast } from '@/components/Toaster';
 import { CrossIcon, LockIcon, BoltIcon, TargetIcon, ChatIcon, InfinityIcon, UsersIcon, TrophyIcon, RocketIcon, DiamondIcon } from '@/components/icons';
+import { useCurrency } from '@/components/CurrencyProvider';
+import { PRICES, formatPrice } from '@/lib/pricing';
 
 interface LimitReachedModalProps {
   onClose: () => void;
@@ -14,6 +16,13 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'business_monthly' | 'business_yearly'>('monthly');
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const currency = useCurrency();
+  const proMo = formatPrice(PRICES.pro.monthly.eur, currency, lang);
+  const proYr = formatPrice(PRICES.pro.yearly.eur, currency, lang);
+  const bizMo = formatPrice(PRICES.business.monthly.eur, currency, lang);
+  const bizYr = formatPrice(PRICES.business.yearly.eur, currency, lang);
+  const proMoEquiv = formatPrice(PRICES.pro.yearly.eur / 12, currency, lang);
+  const bizMoEquiv = formatPrice(PRICES.business.yearly.eur / 12, currency, lang);
 
   async function handleUpgrade() {
     setLoading(true);
@@ -42,12 +51,8 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
       style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
     >
       <div
-        className="relative rounded-2xl p-8 max-w-lg w-full"
-        style={{
-          background: 'rgba(10,10,25,0.97)',
-          border: '1px solid rgba(204,0,255,0.35)',
-          boxShadow: '0 0 60px rgba(204,0,255,0.15), 0 0 120px rgba(0,217,255,0.08)',
-        }}
+        className="yv-glass yv-glass--lift relative p-8 max-w-lg w-full"
+        style={{ borderRadius: 'var(--yv-radius-xl)' }}
       >
         {/* Botón cerrar */}
         <button
@@ -112,7 +117,7 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
               PRO
             </div>
             <p className="text-[13px] uppercase tracking-widest mb-2" style={{ color: isPro ? 'rgba(0,217,255,0.7)' : '#71717a' }}>Pro</p>
-            <p className="text-xl font-bold text-white mb-1">9,99 €</p>
+            <p className="text-xl font-bold text-white mb-1">{proMo}</p>
             <p className="text-[13px] text-gray-500 mb-3">{t('/mes · 200 gen', '/mo · 200 gen')}</p>
             <ul className="space-y-1 text-[13px]">
               <li className="text-gray-300 flex items-center gap-1.5"><BoltIcon size={12} className="shrink-0" /> {t('200 gen/mes', '200 gen/mo')}</li>
@@ -141,7 +146,7 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
               BIZ
             </div>
             <p className="text-[13px] uppercase tracking-widest mb-2" style={{ color: !isPro ? '#B388FF' : '#71717a' }}>Business</p>
-            <p className="text-xl font-bold text-white mb-1">29,99 €</p>
+            <p className="text-xl font-bold text-white mb-1">{bizMo}</p>
             <p className="text-[13px] text-gray-500 mb-3">{t('/mes · Ilimitado', '/mo · Unlimited')}</p>
             <ul className="space-y-1 text-[13px]">
               <li className="text-gray-300 flex items-center gap-1.5"><InfinityIcon size={12} className="shrink-0" /> {t('Ilimitado', 'Unlimited')}</li>
@@ -153,7 +158,7 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
 
         {/* Billing toggle */}
         <div className="flex justify-center mb-4">
-          <div className="flex items-center rounded-full border border-white/10 bg-black/40 text-[13px] tracking-wider uppercase overflow-hidden">
+          <div className="yv-chip flex items-center p-0 text-[13px] tracking-wider uppercase overflow-hidden">
             <button
               onClick={() => setSelectedPlan(isPro ? 'monthly' : 'business_monthly')}
               className="px-4 py-1.5 transition font-bold"
@@ -180,8 +185,8 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
 
         {/* Price summary */}
         <div className="text-center mb-4">
-          {selectedPlan === 'yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>{t('99,99€/año = 8,33€/mes', '99.99€/yr = 8.33€/mo')}</p>}
-          {selectedPlan === 'business_yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>{t('299€/año = 24,92€/mes', '299€/yr = 24.92€/mo')}</p>}
+          {selectedPlan === 'yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>{t(`${proYr}/año = ${proMoEquiv}/mes`, `${proYr}/yr = ${proMoEquiv}/mo`)}</p>}
+          {selectedPlan === 'business_yearly' && <p className="text-[13px]" style={{ color: '#7CFF00' }}>{t(`${bizYr}/año = ${bizMoEquiv}/mes`, `${bizYr}/yr = ${bizMoEquiv}/mo`)}</p>}
         </div>
 
         {/* CTA */}
@@ -204,12 +209,12 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
           ) : isPro ? (
             <span className="inline-flex items-center justify-center gap-2">
               <RocketIcon size={16} />
-              {t('Probar Pro gratis 7 días', 'Try Pro free for 7 days')} — {selectedPlan === 'yearly' ? t('99,99 €/año', '99.99 €/yr') : t('9,99 €/mes', '9.99 €/mo')}
+              {t('Probar Pro gratis 7 días', 'Try Pro free for 7 days')} — {selectedPlan === 'yearly' ? t(`${proYr}/año`, `${proYr}/yr`) : t(`${proMo}/mes`, `${proMo}/mo`)}
             </span>
           ) : (
             <span className="inline-flex items-center justify-center gap-2">
               <DiamondIcon size={16} />
-              {t('Actualizar a Business', 'Upgrade to Business')} — {selectedPlan === 'business_yearly' ? t('299 €/año', '299 €/yr') : t('29,99 €/mes', '29.99 €/mo')}
+              {t('Actualizar a Business', 'Upgrade to Business')} — {selectedPlan === 'business_yearly' ? t(`${bizYr}/año`, `${bizYr}/yr`) : t(`${bizMo}/mes`, `${bizMo}/mo`)}
             </span>
           )}
         </button>

@@ -27,7 +27,7 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
     <div className="space-y-5">
       {inputs.map((input) => (
         <div key={input} className="space-y-1.5">
-          <label className="block text-[13px] font-semibold uppercase tracking-widest text-gray-500">
+          <label className="yv-eyebrow block">
             {FIELD_LABELS[input] ?? input}
           </label>
 
@@ -35,7 +35,7 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
             <select
               value={formData.tono || 'viral'}
               onChange={(e) => onFormChange('tono', e.target.value)}
-              className="neon-select w-full rounded-xl px-4 py-2.5 text-sm"
+              className="yv-input text-sm"
             >
               <option value="viral">Viral / Clickbait</option>
               <option value="profesional">Profesional</option>
@@ -49,7 +49,7 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
             <select
               value={formData.plataforma || 'youtube'}
               onChange={(e) => onFormChange('plataforma', e.target.value)}
-              className="neon-select w-full rounded-xl px-4 py-2.5 text-sm"
+              className="yv-input text-sm"
             >
               <option value="youtube">YouTube</option>
               <option value="youtube-shorts">YouTube Shorts</option>
@@ -62,7 +62,7 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
             <select
               value={formData.estilo || 'viral'}
               onChange={(e) => onFormChange('estilo', e.target.value)}
-              className="neon-select w-full rounded-xl px-4 py-2.5 text-sm"
+              className="yv-input text-sm"
             >
               <option value="viral">Viral</option>
               <option value="cómico">Cómico</option>
@@ -79,7 +79,7 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
               max="240"
               value={formData.duracion || '10'}
               onChange={(e) => onFormChange('duracion', e.target.value)}
-              className="neon-input w-full rounded-xl px-4 py-2.5 text-sm"
+              className="yv-input text-sm"
               placeholder="10"
             />
           )}
@@ -91,7 +91,7 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
               max="20"
               value={formData.num_videos || '5'}
               onChange={(e) => onFormChange('num_videos', e.target.value)}
-              className="neon-input w-full rounded-xl px-4 py-2.5 text-sm"
+              className="yv-input text-sm"
               placeholder="5"
             />
           )}
@@ -100,7 +100,7 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
             <textarea
               value={formData[input] || ''}
               onChange={(e) => onFormChange(input, e.target.value)}
-              className="neon-input w-full rounded-xl px-4 py-2.5 text-sm resize-none"
+              className="yv-input text-sm resize-none"
               rows={input === 'tema' || input === 'nicho' ? 3 : 2}
               placeholder={FIELD_PLACEHOLDERS[input] ?? ''}
             />
@@ -111,11 +111,11 @@ export default function InputForm({ template, formData, onFormChange, onGenerate
       <button
         onClick={onGenerate}
         disabled={loading || !formData.tema}
-        className="btn-neon w-full flex items-center justify-center gap-2 font-semibold py-3 rounded-xl text-sm mt-2"
+        className="btn-offset w-full flex items-center justify-center gap-2 font-display text-sm mt-2 py-3"
       >
         {loading ? (
           <>
-            <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border border-current border-t-transparent rounded-full spin-r" />
             Generando...
           </>
         ) : (

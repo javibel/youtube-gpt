@@ -95,9 +95,9 @@ export default async function ChannelAnalyticsFeature() {
       <section className="max-w-4xl mx-auto px-6 py-16">
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-8 text-center">{t('YTubViral vs YouTube Studio', 'YTubViral vs YouTube Studio')}</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="yv-table">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr>
                 <th className="py-3 px-4 font-display font-bold">{t('Característica', 'Feature')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center" style={{ color: 'var(--red)' }}>YTubViral</th>
                 <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">YouTube Studio</th>
@@ -105,7 +105,7 @@ export default async function ChannelAnalyticsFeature() {
             </thead>
             <tbody className="text-zinc-400">
               {comparison.map(([feat, ytub, studio]) => (
-                <tr key={feat} className="border-b border-white/5">
+                <tr key={feat}>
                   <td className="py-2.5 px-4">{feat}</td>
                   <td className="py-2.5 px-4 text-center text-white font-medium"><ComparisonCell value={ytub} /></td>
                   <td className="py-2.5 px-4 text-center"><ComparisonCell value={studio} /></td>

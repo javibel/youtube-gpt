@@ -172,7 +172,7 @@ export default function AuditPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -180,7 +180,7 @@ export default function AuditPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">Channel Audit</h1>
           <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para auditar tu canal.', 'Sign in to audit your channel.')}</p>
@@ -296,7 +296,7 @@ export default function AuditPage() {
                     <button
                       key={cat.key}
                       onClick={() => setExpandedCat(isExpanded ? null : cat.key)}
-                      className="yv-card p-5 text-left transition hover:border-white/20"
+                      className="yv-card yv-glass--hover p-5 text-left transition"
                     >
                       <div className="flex items-center gap-3 mb-3">
                         <div className="relative">
@@ -326,7 +326,7 @@ export default function AuditPage() {
 
                       {/* Expanded checks */}
                       {isExpanded && (
-                        <div className="mt-3 pt-3 border-t border-white/8 space-y-2">
+                        <div className="mt-3 pt-3 space-y-2" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)' }}>
                           {cat.checks.map(check => (
                             <div key={check.key} className="flex items-center gap-2">
                               <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${check.passed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
@@ -358,8 +358,8 @@ export default function AuditPage() {
                     return (
                       <div
                         key={i}
-                        className="rounded-lg border p-4 flex flex-col sm:flex-row sm:items-center gap-3"
-                        style={{ background: colors.bg, borderColor: colors.border }}
+                        className="rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+                        style={{ background: colors.bg, boxShadow: `inset 0 1px 0 ${colors.border}` }}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -375,8 +375,7 @@ export default function AuditPage() {
                         </div>
                         <a
                           href={win.action.href}
-                          className="shrink-0 font-mono-jb text-[13px] tracking-wider px-4 py-2 rounded border border-white/15 text-white hover:border-white/30 transition text-center"
-                          style={{ background: 'rgba(255,255,255,0.05)' }}
+                          className="yv-chip shrink-0 font-mono-jb text-[13px] tracking-wider px-4 py-2 text-white text-center"
                         >
                           {win.action.label[lang]} &rarr;
                         </a>
@@ -400,7 +399,7 @@ export default function AuditPage() {
                 {/* Pattern insights */}
                 <div className="space-y-2 mb-6">
                   {data.patterns.patterns.map((p, i) => (
-                    <div key={i} className="flex items-start gap-3 rounded-lg border border-white/8 p-3" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                    <div key={i} className="flex items-start gap-3 rounded-lg p-3" style={{ background: 'var(--yv-glass-chip)' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9B2020" strokeWidth="2" className="shrink-0 mt-0.5"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                       <span className="font-mono-jb text-sm text-[color:var(--yv-text-2)]">{p[lang]}</span>
                     </div>

@@ -10,21 +10,21 @@ export default function OutputDisplay({ output, loading, onRegenerate, onCopy })
   }
 
   return (
-    <div className="neon-card rounded-2xl p-6 min-h-[420px] flex flex-col">
+    <div className="yv-glass p-6 min-h-[420px] flex flex-col">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-gray-500">Resultado</h3>
+        <h3 className="yv-eyebrow">Resultado</h3>
         {output && !loading && (
           <div className="flex gap-2">
             <button
               onClick={handleCopy}
-              className={`btn-neon text-[13px] px-4 py-1.5 rounded-lg font-medium ${copied ? 'opacity-70' : ''}`}
+              className={`yv-chip text-[13px] px-4 py-1.5 font-medium ${copied ? 'opacity-70' : ''}`}
             >
               {copied ? '✓ Copiado' : '⎘ Copiar'}
             </button>
             <button
               onClick={onRegenerate}
-              style={{ borderColor: 'rgba(204,0,255,0.5)', color: '#CC00FF', boxShadow: '0 0 8px rgba(204,0,255,0.15)' }}
-              className="text-[13px] px-4 py-1.5 rounded-lg font-medium border transition hover:bg-purple-900/20"
+              className="yv-chip text-[13px] px-4 py-1.5 font-medium"
+              style={{ color: 'var(--yv-brand-lift)' }}
             >
               ↺ Regenerar
             </button>
@@ -36,15 +36,15 @@ export default function OutputDisplay({ output, loading, onRegenerate, onCopy })
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
             <div
-              className="w-10 h-10 rounded-full border border-transparent animate-spin"
-              style={{ borderTopColor: 'var(--cyan)', boxShadow: '0 0 12px rgba(0,217,255,0.4)' }}
+              className="w-10 h-10 rounded-full border border-transparent spin-r"
+              style={{ borderTopColor: 'var(--yv-brand)' }}
             />
             <p className="text-gray-500 text-sm">Generando contenido...</p>
           </div>
         ) : output ? (
           <div
-            className="flex-1 rounded-xl p-5 overflow-y-auto max-h-[500px]"
-            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)' }}
+            className="flex-1 p-5 overflow-y-auto max-h-[500px]"
+            style={{ borderRadius: 'var(--yv-radius)', background: 'rgba(0,0,0,.34)', boxShadow: 'var(--yv-sunken)' }}
           >
             <pre className="text-gray-200 text-sm whitespace-pre-wrap font-sans leading-relaxed">
               {output}
@@ -53,8 +53,8 @@ export default function OutputDisplay({ output, loading, onRegenerate, onCopy })
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
-              style={{ background: 'rgba(0,217,255,0.06)', border: '1px solid rgba(0,217,255,0.15)', boxShadow: '0 0 20px rgba(0,217,255,0.08)' }}
+              className="yv-glass yv-glass--brand w-16 h-16 flex items-center justify-center text-3xl"
+              style={{ borderRadius: 'var(--yv-radius-lg)' }}
             >
               🚀
             </div>

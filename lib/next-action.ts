@@ -10,6 +10,7 @@ export interface NextAction {
   reason: { es: string; en: string };
   cta: { es: string; en: string };
   href: string;
+  score?: number;
 }
 
 interface Ctx {
@@ -114,6 +115,7 @@ const RULES: Rule[] = [
         reason: { es: `Tu último vídeo puntúa ${last.score}/100`, en: `Your last video scores ${last.score}/100` },
         cta: { es: 'Optimizarlo', en: 'Optimize it' },
         href: `/optimize?video=${last.videoId}`,
+        score: last.score,
       };
     },
   },

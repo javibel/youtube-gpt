@@ -68,11 +68,11 @@ export default function BlogContent({ lang }: { lang: Lang }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
       />
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
+      <nav className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(12,10,15,0.72)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-              <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+              <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
             </svg>
             <span className="font-display font-bold text-[17px] tracking-tight">
               YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
@@ -90,7 +90,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
       </nav>
 
       {/* Hero */}
-      <section className="border-b border-white/10 relative overflow-hidden">
+      <section className="relative overflow-hidden">
         <div className="absolute inset-0 grid-bg opacity-30" />
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 60% 0%, rgba(232,77,91,0.12), transparent 60%)' }} />
         <div className="relative max-w-7xl mx-auto px-6 py-20 md:py-28">
@@ -125,12 +125,12 @@ export default function BlogContent({ lang }: { lang: Lang }) {
       </section>
 
       {/* Featured post */}
-      {featured && <section className="border-b border-white/10">
+      {featured && <section >
         <div className="max-w-7xl mx-auto px-6 py-12">
           <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-6">
             {lang === 'en' ? 'Featured' : 'Destacado'}
           </p>
-          <Link href={`/blog/${featured.slug}`} className="group grid md:grid-cols-2 gap-0 border border-white/10 hover:border-white/20 transition-colors bg-black">
+          <Link href={`/blog/${featured.slug}`} className="yv-glass yv-glass--hover group grid md:grid-cols-2 gap-0 transition-colors">
             <div className="h-64 md:h-auto relative overflow-hidden">
               <BlogCover cat={featured.cat} index={0} image={featured.image} />
             </div>
@@ -148,7 +148,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
                 </h2>
                 <p className="text-zinc-400 text-[15px] leading-relaxed">{featured.excerpt[lang]}</p>
               </div>
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/10">
+              <div className="flex items-center justify-between mt-8 pt-6" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 flex items-center justify-center font-display font-bold text-[13px]"
                     style={{ background: 'var(--red)', color: '#000' }}>
@@ -169,7 +169,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
       </section>}
 
       {!featured && (
-        <section className="border-b border-white/10">
+        <section >
           <div className="max-w-7xl mx-auto px-6 py-16 text-center">
             <p className="text-zinc-500 font-mono-jb text-sm">
               {lang === 'en' ? 'No articles in this category yet.' : 'Aún no hay artículos en esta categoría.'}
@@ -191,7 +191,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
           <div className="grid sm:grid-cols-2 gap-6">
             {rest.map((post, i) => (
               <Link key={post.slug} href={`/blog/${post.slug}`}
-                className="group flex flex-col border border-white/10 bg-black hover:border-white/20 transition-colors">
+                className="yv-glass yv-glass--hover group flex flex-col transition-colors">
                 <div className="h-44 relative overflow-hidden">
                   <BlogCover cat={post.cat} index={i + 1} image={post.image} />
                 </div>
@@ -207,7 +207,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
                     {post.title[lang]}
                   </h3>
                   <p className="text-zinc-500 text-sm leading-relaxed line-clamp-3">{post.excerpt[lang]}</p>
-                  <div className="flex items-center justify-between mt-5 pt-4 border-t border-white/8">
+                  <div className="flex items-center justify-between mt-5 pt-4" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)' }}>
                     <span className="font-mono-jb text-[13px] text-zinc-600">{post.date[lang]}</span>
                     <span className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--red)' }}>
                       {lang === 'en' ? 'Read →' : 'Leer →'}
@@ -222,7 +222,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
         {/* Sidebar */}
         <aside className="space-y-6">
           {/* CTA */}
-          <div className="border border-white/10 p-6 bg-black relative overflow-hidden">
+          <div className="yv-glass p-6 relative overflow-hidden">
             <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.15), transparent 70%)' }} />
             <div className="relative">
               <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--red)' }}>
@@ -243,7 +243,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
           </div>
 
           {/* Popular */}
-          <div className="border border-white/10 p-6 bg-black">
+          <div className="yv-glass p-6">
             <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-4">
               {lang === 'en' ? 'Popular this week' : 'Popular esta semana'}
             </p>
@@ -260,7 +260,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
           </div>
 
           {/* Categories */}
-          <div className="border border-white/10 p-6 bg-black">
+          <div className="yv-glass p-6">
             <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-4">
               {lang === 'en' ? 'Categories' : 'Categorías'}
             </p>
@@ -268,7 +268,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
               {Object.entries(BLOG_CATEGORIES).map(([key, val]) => {
                 const count = BLOG_POSTS.filter((p) => p.cat === key).length;
                 return (
-                  <Link key={key} href={`/blog?cat=${key}`} className={`flex items-center justify-between py-2 border-b border-white/5 hover:bg-white/[0.03] transition ${selectedCat === key ? 'bg-white/[0.04]' : ''}`}>
+                  <Link key={key} href={`/blog?cat=${key}`} className={`flex items-center justify-between py-2 hover:bg-white/[0.03] transition ${selectedCat === key ? "bg-white/[0.04]" : ""}`}>
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: val.color }} />
                       <span className="text-sm text-zinc-300">{val.name[lang]}</span>
@@ -283,7 +283,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 bg-black mt-8">
+      <footer style={{ background: 'var(--yv-bg-0)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }} className="mt-8">
         <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
           <p className="text-zinc-500 font-mono-jb text-[13px]">
             © 2026 YTubViral · {lang === 'en' ? 'Made by creators, for creators.' : 'Hecho por creadores, para creadores.'}

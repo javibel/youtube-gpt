@@ -210,7 +210,7 @@ function ResearchPageInner() {
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <a href="/" className="flex items-center gap-1.5">
               <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-                <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+                <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
               </svg>
               <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
             </a>
@@ -399,7 +399,7 @@ function ResearchPageInner() {
               {questionsResult.questions.map((q, i) => {
                 const qComp = COMPETITION_CONFIG[q.competition];
                 return (
-                  <div key={i} className="yv-card p-4 flex items-start gap-4 hover:border-white/15 transition">
+                  <div key={i} className="yv-card yv-glass--hover p-4 flex items-start gap-4 transition">
                     {/* Competition badge */}
                     <div className="flex flex-col items-center gap-1 flex-shrink-0 w-16 pt-1">
                       <div
@@ -647,8 +647,8 @@ function ResearchPageInner() {
                     <button
                       key={i}
                       onClick={() => { setKeyword(kw); handleSearch(kw); }}
-                      className="font-mono-jb text-[13px] px-3 py-1.5 rounded-full border hover:border-white/30 hover:text-white transition"
-                      style={{ borderColor: 'var(--line)', color: 'var(--text-dim)', background: 'rgba(255,255,255,0.03)' }}
+                      className="yv-chip font-mono-jb text-[13px] px-3 py-1.5 hover:text-white transition"
+                      style={{ color: 'var(--yv-text-3)' }}
                     >
                       {kw}
                     </button>

@@ -217,7 +217,7 @@ export default function CalendarPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -411,10 +411,10 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={dateStr}
-                    className="min-h-[100px] rounded-lg p-1.5 border transition cursor-pointer hover:border-white/20 group"
+                    className="min-h-[100px] rounded-lg p-1.5 transition cursor-pointer group"
                     style={{
                       background: isToday ? 'rgba(155,32,32,0.08)' : 'rgba(255,255,255,0.02)',
-                      borderColor: isToday ? 'rgba(155,32,32,0.3)' : 'rgba(255,255,255,0.06)',
+                      boxShadow: isToday ? 'inset 0 1px 0 rgba(155,32,32,.4)' : 'inset 0 1px 0 rgba(255,255,255,.06)',
                     }}
                     onClick={() => openAdd(dateStr)}
                   >
@@ -451,8 +451,8 @@ export default function CalendarPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={() => setModal(null)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
-            className="relative w-full max-w-md mx-4 rounded-xl p-6"
-            style={{ background: 'var(--yv-bg-3)', border: '1px solid var(--yv-border)' }}
+            className="yv-glass yv-glass--lift relative w-full max-w-md mx-4 p-6"
+            style={{ borderRadius: 'var(--yv-radius-xl)' }}
             onClick={e => e.stopPropagation()}
           >
             <h2 className="font-display font-bold text-lg text-white mb-4">
@@ -468,8 +468,7 @@ export default function CalendarPage() {
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder={t('Ej: Tutorial de edición con DaVinci', 'Ex: DaVinci editing tutorial')}
-                  className="w-full rounded-lg border border-white/15 px-3 py-2 text-sm font-mono-jb text-white placeholder-zinc-600 focus:outline-none focus:border-white/30 transition"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}
+                  className="yv-input text-sm font-mono-jb text-white placeholder-zinc-600"
                   maxLength={200}
                   autoFocus
                 />
@@ -484,8 +483,7 @@ export default function CalendarPage() {
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   placeholder={t('Notas, ideas, guión...', 'Notes, ideas, script...')}
                   rows={3}
-                  className="w-full resize-none rounded-lg border border-white/15 px-3 py-2 text-sm font-mono-jb text-white placeholder-zinc-600 focus:outline-none focus:border-white/30 transition"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}
+                  className="yv-input resize-none text-sm font-mono-jb text-white placeholder-zinc-600"
                 />
               </div>
 
@@ -498,8 +496,7 @@ export default function CalendarPage() {
                     type="date"
                     value={form.date}
                     onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                    className="w-full rounded-lg border border-white/15 px-3 py-2 text-sm font-mono-jb text-white focus:outline-none focus:border-white/30 transition"
-                    style={{ background: 'rgba(255,255,255,0.04)' }}
+                    className="yv-input text-sm font-mono-jb text-white"
                   />
                 </div>
                 <div>
@@ -509,8 +506,7 @@ export default function CalendarPage() {
                   <select
                     value={form.status}
                     onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                    className="w-full rounded-lg border border-white/15 px-3 py-2 text-sm font-mono-jb text-white focus:outline-none focus:border-white/30 transition"
-                    style={{ background: 'rgba(255,255,255,0.04)' }}
+                    className="yv-input text-sm font-mono-jb text-white"
                   >
                     {Object.entries(STATUS_LABELS).map(([key, labels]) => (
                       <option key={key} value={key} style={{ background: '#1a1a1e', color: '#fff' }}>{labels[lang]}</option>
@@ -524,8 +520,8 @@ export default function CalendarPage() {
             {(form.status === 'idea' || form.status === 'draft') && form.title.trim() && (
               <a
                 href={`/generate?topic=${encodeURIComponent(form.title.trim())}`}
-                className="flex items-center justify-center gap-2 mt-4 py-2.5 rounded-lg border text-sm font-mono-jb transition hover:border-white/30"
-                style={{ borderColor: 'var(--yv-border)', color: 'var(--yv-text-2)', background: 'rgba(255,255,255,0.03)' }}
+                className="yv-chip flex items-center justify-center gap-2 mt-4 py-2.5 text-sm font-mono-jb"
+                style={{ color: 'var(--yv-text-2)' }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
                 {t('Generar contenido', 'Generate content')}

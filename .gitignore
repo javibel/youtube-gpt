@@ -52,3 +52,12 @@ ytubviral-extension.zip
 # Campana de feedback (24/08/2026): contienen correos de usuarios reales.
 # El repo es PUBLICO -> nunca commitear.
 local-agent/feedback-campaign-*.json
+
+# Notas y capturas de revision manual (25/08/2026). Son scratch local: incluyen
+# paginas guardadas del navegador con bundles de terceros y capturas del panel
+# con el email de admin a la vista. El repo es PUBLICO -> nunca commitear.
+Issues/
+
+# Design handoff para el equipo externo: se entrega en ZIP (respaldo en D:\),
+# nunca por git. Ver memoria project_design_handoff.
+Diseño humano y orgánico/

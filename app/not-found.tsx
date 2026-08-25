@@ -6,9 +6,9 @@ export default async function NotFound() {
   const isEn = lang === 'en';
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
       <div className="text-center max-w-md px-6">
-        <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+        <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>
           404
         </p>
         <h1 className="font-display font-bold text-3xl text-white mb-4">
@@ -23,7 +23,7 @@ export default async function NotFound() {
           {isEn ? 'Back to home' : 'Volver al inicio'}
         </Link>
 
-        <div className="mt-10 pt-8 border-t border-white/10">
+        <div className="mt-10 pt-8" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}>
           <p className="font-mono-jb text-[12px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-text-4, #71717a)' }}>
             {isEn ? 'Or try one of these' : 'O prueba una de estas'}
           </p>

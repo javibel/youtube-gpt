@@ -13,7 +13,7 @@ export default function TermsPage() {
         <div>
           <a href="/" className="inline-flex items-center gap-1 mb-10">
             <svg width="14" height="14" viewBox="7 7 18 18" fill="none">
-              <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+              <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
             </svg>
             <span className="font-display font-bold text-[14px] text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
           </a>
@@ -122,7 +122,7 @@ export default function TermsPage() {
             ),
           },
         ].map((s, i) => (
-          <section key={i} className="space-y-3 pb-8 border-b border-white/5 last:border-0">
+          <section key={i} className="space-y-3 pb-8 last:pb-0 [&:not(:last-child)]:shadow-[inset_0_-1px_0_rgba(255,255,255,.05)]">
             <h2 className="font-display font-bold text-lg text-white">{s.title}</h2>
             <p className="text-zinc-400 text-sm leading-relaxed whitespace-pre-line">{s.body}</p>
           </section>

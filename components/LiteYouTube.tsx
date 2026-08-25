@@ -32,7 +32,7 @@ export default function LiteYouTube({ videoId, title }: { videoId: string; title
         className="absolute inset-0 w-full h-full object-cover"
       />
       <span className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition" />
-      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-16 h-12 rounded-xl transition group-hover:scale-110" style={{ background: '#e84d5b' }}>
+      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-16 h-12 transition group-hover:scale-110" style={{ background: 'var(--yv-brand-fill)', borderRadius: 'var(--yv-radius)', boxShadow: '0 16px 40px -14px rgba(232,77,91,.85)' }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" aria-hidden><path d="M8 5v14l11-7z" /></svg>
       </span>
     </button>

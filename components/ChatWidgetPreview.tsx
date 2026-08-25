@@ -36,13 +36,13 @@ export default function ChatWidgetPreview() {
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
       {isOpen && (
         <div
-          className="w-80 flex flex-col rounded-2xl overflow-hidden shadow-2xl border border-white/10"
-          style={{ height: '420px', background: '#111' }}
+          className="yv-glass yv-glass--lift w-80 flex flex-col overflow-hidden"
+          style={{ height: '420px', borderRadius: 'var(--yv-radius-xl)' }}
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0"
-            style={{ background: '#1a1a1a' }}
+            className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+            style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}
           >
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
@@ -66,7 +66,7 @@ export default function ChatWidgetPreview() {
                 <div
                   className="max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed"
                   style={{
-                    background: msg.role === 'user' ? '#9B2020' : '#222',
+                    background: msg.role === 'user' ? 'var(--yv-brand-fill)' : 'var(--yv-glass-chip)',
                     color: '#fff',
                   }}
                 >
@@ -78,16 +78,15 @@ export default function ChatWidgetPreview() {
 
           {/* CTA */}
           <div
-            className="px-4 py-4 border-t border-white/10 flex-shrink-0"
-            style={{ background: '#1a1a1a' }}
+            className="px-4 py-4 flex-shrink-0"
+            style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}
           >
             <p className="text-[13px] text-white/50 text-center mb-3">
               {t('Crea una cuenta gratis para usar el asistente', 'Create a free account to use the assistant')}
             </p>
             <a
               href="/signup"
-              className="block w-full text-center text-[13px] font-semibold py-2.5 rounded-lg text-white transition-opacity hover:opacity-90"
-              style={{ background: '#9B2020' }}
+              className="btn-offset block w-full text-center text-[13px] py-2.5"
             >
               {t('Empezar gratis', 'Get started free')}
             </a>
@@ -98,8 +97,8 @@ export default function ChatWidgetPreview() {
       {/* Botón flotante */}
       <button
         onClick={() => setIsOpen(v => !v)}
-        className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-        style={{ background: '#9B2020' }}
+        className="w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+        style={{ background: 'var(--yv-brand-fill)', boxShadow: '0 16px 40px -14px rgba(232,77,91,.85), inset 0 1px 0 rgba(255,255,255,.45)' }}
         aria-label={isOpen ? t('Cerrar asistente', 'Close assistant') : t('Abrir asistente', 'Open assistant')}
       >
         {isOpen ? (

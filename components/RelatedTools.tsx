@@ -16,7 +16,7 @@ export default function RelatedTools({ slug, lang }: { slug: string; lang: Lang 
           <Link
             key={f.slug}
             href={`/features/${f.slug}`}
-            className="soft-card p-5 hover:border-white/20 transition group"
+            className="soft-card yv-glass--hover p-5 transition group"
           >
             <p className="font-display font-semibold text-white group-hover:text-red-400 transition mb-1">
               {lang === 'en' ? f.title.en : f.title.es}

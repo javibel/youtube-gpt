@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { prisma } from '@/lib/prisma';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -336,7 +337,7 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
           }],
         });
         const text = (msg.content[0] as { type: string; text: string }).text;
-        return JSON.parse(text);
+        return parseClaudeJson<{ es?: string; en?: string }>(text);
       })(),
       thumbUrl ? (async () => {
         const msg = await anthropic.messages.create({
@@ -362,26 +363,30 @@ Reply in this exact JSON: {"rating":"good"|"needs_improvement","es":"evaluación
           }],
         });
         const text = (msg.content[0] as { type: string; text: string }).text;
-        return JSON.parse(text);
+        return parseClaudeJson<{ rating?: string; es?: string; en?: string }>(text);
       })() : Promise.resolve(null),
     ]);
 
-    if (aiTipResult.status === 'fulfilled' && aiTipResult.value?.es && aiTipResult.value?.en) {
+    const aiTipEs = aiTipResult.status === 'fulfilled' ? aiTipResult.value?.es : undefined;
+    const aiTipEn = aiTipResult.status === 'fulfilled' ? aiTipResult.value?.en : undefined;
+    if (aiTipEs && aiTipEn) {
       checklist.push({
         key: 'ai_tip',
         label: { es: 'Consejo IA', en: 'AI Tip' },
         passed: true,
-        detail: aiTipResult.value,
+        detail: { es: aiTipEs, en: aiTipEn },
         weight: 0,
       });
     }
 
-    if (thumbResult.status === 'fulfilled' && thumbResult.value) {
+    const thumbEs = thumbResult.status === 'fulfilled' ? thumbResult.value?.es : undefined;
+    const thumbEn = thumbResult.status === 'fulfilled' ? thumbResult.value?.en : undefined;
+    if (thumbResult.status === 'fulfilled' && thumbResult.value && thumbEs && thumbEn) {
       checklist.push({
         key: 'thumbnail_quality',
         label: { es: 'Calidad del thumbnail (IA)', en: 'Thumbnail quality (AI)' },
         passed: thumbResult.value.rating === 'good',
-        detail: { es: thumbResult.value.es, en: thumbResult.value.en },
+        detail: { es: thumbEs, en: thumbEn },
         weight: 7,
       });
     }

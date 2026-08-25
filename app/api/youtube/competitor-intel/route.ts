@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -167,7 +168,7 @@ ${competitorTopics}${userTopics}`,
         const data = await res.json();
         const text = data.content?.[0]?.text || '';
         try {
-          const parsed = JSON.parse(text);
+          const parsed = parseClaudeJson(text);
           if (Array.isArray(parsed)) opportunities = parsed;
         } catch { /* */ }
       }

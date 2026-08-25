@@ -80,17 +80,17 @@ export default function PricingFAQ({ lang }: { lang: Lang }) {
   };
 
   return (
-    <section className="bg-black">
+    <section style={{ background: 'var(--yv-bg-0)' }}>
       <div className="max-w-3xl mx-auto px-6 py-20">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-        <p className="text-center font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>FAQ</p>
+        <p className="text-center font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>FAQ</p>
         <h2 className="font-display font-bold text-3xl md:text-5xl text-center leading-[0.95] mb-12">
           {t('Preguntas frecuentes', 'Frequently asked questions')}
         </h2>
 
         <div className="space-y-3">
           {FAQS.map((f, i) => (
-            <details key={i} className="group border border-white/10 bg-white/[0.02] open:bg-white/[0.04] transition-colors">
+            <details key={i} className="yv-glass group transition-colors">
               <summary className="flex items-center justify-between gap-4 p-5 cursor-pointer list-none text-white font-display font-bold text-base select-none [&::-webkit-details-marker]:hidden">
                 {lang === 'en' ? f.q.en : f.q.es}
                 <span className="shrink-0 font-mono-jb text-zinc-500 group-open:rotate-45 transition-transform" aria-hidden>+</span>

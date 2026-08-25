@@ -279,7 +279,7 @@ export default function OptimizePage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -287,7 +287,7 @@ export default function OptimizePage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Optimizar Vídeo', 'Optimize Video')}</h1>
           <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para optimizar tus vídeos.', 'Sign in to optimize your videos.')}</p>
@@ -344,7 +344,7 @@ export default function OptimizePage() {
                   <button
                     key={v.videoId}
                     onClick={() => selectVideo(v.videoId)}
-                    className="yv-card w-full flex items-center gap-4 p-4 hover:border-white/25 transition text-left"
+                    className="yv-card yv-glass--hover w-full flex items-center gap-4 p-4 transition text-left"
                   >
                     {v.thumbnail && (
                       <img src={v.thumbnail} alt="" className="w-32 h-18 rounded-lg object-cover flex-shrink-0" />
@@ -426,7 +426,7 @@ export default function OptimizePage() {
                     value={editTitle}
                     onChange={e => onTitleChange(e.target.value)}
                     maxLength={100}
-                    className="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-white font-display text-lg focus:outline-none focus:border-white/30 transition"
+                    className="yv-input text-white font-display text-lg"
                     placeholder={t('Título del vídeo...', 'Video title...')}
                   />
                   {/* Title checks inline */}
@@ -458,7 +458,7 @@ export default function OptimizePage() {
                     value={editDesc}
                     onChange={e => onDescChange(e.target.value)}
                     rows={10}
-                    className="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-[color:var(--yv-text-2)] font-mono-jb text-sm focus:outline-none focus:border-white/30 transition resize-y"
+                    className="yv-input text-[color:var(--yv-text-2)] font-mono-jb text-sm resize-y"
                     placeholder={t('Descripción del vídeo...', 'Video description...')}
                   />
                   <div className="flex flex-wrap gap-3 mt-3">
@@ -489,7 +489,7 @@ export default function OptimizePage() {
                     value={editTags}
                     onChange={e => onTagsChange(e.target.value)}
                     rows={3}
-                    className="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-[color:var(--yv-text-2)] font-mono-jb text-sm focus:outline-none focus:border-white/30 transition resize-y"
+                    className="yv-input text-[color:var(--yv-text-2)] font-mono-jb text-sm resize-y"
                     placeholder={t('tag1, tag2, tag3...', 'tag1, tag2, tag3...')}
                   />
                   <div className="flex flex-wrap gap-3 mt-3">
@@ -586,7 +586,7 @@ export default function OptimizePage() {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 pt-3 border-t border-white/10 flex justify-between font-mono-jb text-[13px]">
+                  <div className="mt-3 pt-3 flex justify-between font-mono-jb text-[13px]" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}>
                     <span style={{ color: 'var(--yv-text-2)' }}>{checks.filter(c => c.ok).length}/{checks.length} {t('pasados', 'passed')}</span>
                     <span style={{ color: scoreColor(score) }}>{score}/100</span>
                   </div>
@@ -600,7 +600,7 @@ export default function OptimizePage() {
                     </p>
                     <div className="space-y-3 max-h-80 overflow-y-auto">
                       {history.map(h => (
-                        <div key={h.id} className="p-3 rounded-lg border border-white/5" style={{ background: 'rgba(255,255,255,0.015)' }}>
+                        <div key={h.id} className="p-3 rounded-lg" style={{ background: 'var(--yv-glass-chip)' }}>
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-mono-jb text-[13px] uppercase tracking-wider" style={{ color: 'var(--yv-brand)' }}>
                               {h.field}

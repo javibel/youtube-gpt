@@ -112,9 +112,9 @@ export default async function RevenueEstimatorFeature() {
           {t('CPM = coste por 1.000 vistas monetizadas. Estas son medias reales entre nichos.', 'CPM = cost per 1,000 monetized views. These are real averages across niches.')}
         </p>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="yv-table">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr>
                 <th className="py-3 px-4 font-display font-bold">{t('País', 'Country')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center">{t('CPM medio', 'Avg CPM')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center">{t('Nichos alto CPM', 'High-CPM niches')}</th>
@@ -122,7 +122,7 @@ export default async function RevenueEstimatorFeature() {
             </thead>
             <tbody className="text-zinc-400">
               {cpmData.map(([country, cpm, niches]) => (
-                <tr key={country} className="border-b border-white/5">
+                <tr key={country}>
                   <td className="py-2.5 px-4 text-white">{country}</td>
                   <td className="py-2.5 px-4 text-center">{cpm}</td>
                   <td className="py-2.5 px-4 text-center text-xs">{niches}</td>

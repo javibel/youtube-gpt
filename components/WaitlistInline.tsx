@@ -36,7 +36,7 @@ export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang
   if (state === 'done') {
     return (
       <div className="mt-10 text-center">
-        <div className="inline-flex items-center gap-3 border border-green-500/30 bg-green-500/10 rounded-full px-6 py-3">
+        <div className="inline-flex items-center gap-3 bg-green-500/10 rounded-full px-6 py-3" style={{ boxShadow: 'inset 0 1px 0 rgba(34,197,94,.35)' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
           <span className="text-green-400 font-display font-bold">
             {lang === 'en' ? `You're #${position} on the list!` : `¡Eres el #${position} en la lista!`}
@@ -52,7 +52,7 @@ export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang
   if (state === 'already') {
     return (
       <div className="mt-10 text-center">
-        <div className="inline-flex items-center gap-3 border border-yellow-500/30 bg-yellow-500/10 rounded-full px-6 py-3">
+        <div className="inline-flex items-center gap-3 bg-yellow-500/10 rounded-full px-6 py-3" style={{ boxShadow: 'inset 0 1px 0 rgba(234,179,8,.35)' }}>
           <span className="text-yellow-400 font-display font-bold">
             {lang === 'en' ? 'You\'re already on the list!' : '¡Ya estás en la lista!'}
           </span>
@@ -69,7 +69,7 @@ export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang
         onChange={(e) => setEmail(e.target.value)}
         placeholder={lang === 'en' ? 'your@email.com' : 'tu@email.com'}
         required
-        className="flex-1 px-5 py-4 bg-white/5 border border-white/15 rounded-lg text-white placeholder:text-zinc-600 font-mono-jb text-[15px] focus:outline-none focus:border-[#e84d5b] transition"
+        className="yv-input flex-1 py-4 text-white placeholder:text-zinc-600 font-mono-jb text-[15px]"
       />
       <button
         type="submit"

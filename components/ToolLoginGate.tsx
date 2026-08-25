@@ -41,7 +41,7 @@ export default function ToolLoginGate({ eyebrow, title, highlight, description, 
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-              <circle cx="16" cy="16" r="8" fill="#ee4d5e" />
+              <circle cx="16" cy="16" r="8" fill="#e84d5b" />
             </svg>
             <span className="font-display font-bold text-[16px] tracking-tight">
               YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com

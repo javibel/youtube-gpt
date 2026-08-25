@@ -33,13 +33,13 @@ export default function ForgotPasswordPage() {
       <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
         <a href="/" className="flex items-center gap-1">
           <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-            <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+            <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
           </svg>
           <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
         </a>
         <button
           onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
-          className="flex items-center gap-1 font-mono-jb text-[13px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
+          className="yv-chip flex items-center gap-1 font-mono-jb text-[13px] tracking-wider px-2 py-1"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
           <span className="text-zinc-700 mx-0.5">|</span>

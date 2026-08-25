@@ -83,14 +83,14 @@ function FeedbackForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#080808' }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--yv-light)' }}>
       <div
-        className="w-full max-w-md rounded-2xl border border-white/10 p-8"
-        style={{ background: '#0d0d0d' }}
+        className="yv-glass yv-glass--lift w-full max-w-md p-8"
+        style={{ borderRadius: 'var(--yv-radius-xl)' }}
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <span className="text-2xl font-black" style={{ color: '#00D9FF' }}>YTubViral</span>
+          <span className="text-2xl font-black" style={{ color: 'var(--yv-brand)' }}>YTubViral</span>
         </div>
 
         {status === 'loading' && (
@@ -141,7 +141,7 @@ function FeedbackForm() {
               ))}
             </div>
             {(hovered || rating) > 0 && (
-              <p className="text-center text-sm mb-6" style={{ color: '#00D9FF' }}>
+              <p className="text-center text-sm mb-6" style={{ color: 'var(--yv-brand-lift)' }}>
                 {c.stars[(hovered || rating) - 1]}
               </p>
             )}
@@ -152,8 +152,7 @@ function FeedbackForm() {
               onChange={e => setComment(e.target.value)}
               placeholder={c.placeholder}
               rows={4}
-              className="w-full rounded-xl px-4 py-3 text-sm text-white/80 resize-none outline-none border border-white/10 focus:border-white/30 transition-colors"
-              style={{ background: '#050505' }}
+              className="yv-input text-sm text-white/80 resize-none"
             />
 
             {error && <p className="text-red-400 text-[13px] mt-2">{error}</p>}
@@ -162,7 +161,7 @@ function FeedbackForm() {
               onClick={handleSubmit}
               disabled={rating === 0 || submitting}
               className="w-full mt-4 py-3 rounded-xl text-sm font-bold transition-opacity disabled:opacity-40"
-              style={{ background: '#00D9FF', color: '#000' }}
+              style={{ background: 'var(--yv-brand-fill)', color: '#fff' }}
             >
               {submitting ? c.sending : c.submit}
             </button>
@@ -176,7 +175,7 @@ function FeedbackForm() {
 export default function FeedbackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080808' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)' }}>
         <p className="text-white/40 text-sm">Cargando...</p>
       </div>
     }>

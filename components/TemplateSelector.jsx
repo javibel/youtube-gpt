@@ -23,21 +23,15 @@ export default function TemplateSelector({ selected, onSelect, templates, isPro,
               if (isLocked) { onProRequired?.(); return; }
               onSelect(key);
             }}
-            className={`p-4 rounded-xl text-left transition-all relative ${
-              isSelected ? 'neon-card-active' : 'neon-card'
-            } ${isLocked ? 'opacity-60' : ''}`}
+            className={`yv-glass ${isSelected ? 'yv-glass--brand' : 'yv-glass--hover'} p-4 text-left transition-all relative ${isLocked ? 'opacity-60' : ''}`}
           >
             {/* Badge PRO */}
             {template.proOnly && (
               <span
-                className="absolute top-2 right-2 text-[13px] font-bold px-1.5 py-0.5 rounded-full"
+                className="yv-badge absolute top-2 right-2"
                 style={{
-                  background: isPro
-                    ? 'linear-gradient(90deg,#00D9FF,#CC00FF)'
-                    : 'rgba(255,255,255,0.08)',
-                  color: isPro ? '#000' : '#888',
-                  fontSize: '9px',
-                  letterSpacing: '0.05em',
+                  background: isPro ? 'var(--yv-brand-fill)' : 'var(--yv-glass-chip)',
+                  color: isPro ? '#fff' : 'var(--yv-text-4)',
                 }}
               >
                 {isPro ? 'PRO' : '🔒 PRO'}
@@ -45,7 +39,7 @@ export default function TemplateSelector({ selected, onSelect, templates, isPro,
             )}
 
             <div className="text-xl mb-2">{ICONS[key] ?? '📄'}</div>
-            <div className={`font-semibold text-sm ${isSelected ? 'text-cyan-glow' : isLocked ? 'text-gray-500' : 'text-gray-300'}`}>
+            <div className="font-display font-semibold text-sm" style={{ color: isSelected ? 'var(--yv-brand-lift)' : isLocked ? 'var(--yv-text-4)' : 'var(--yv-text-2)' }}>
               {template.name.replace(/^[^\s]+\s/, '')}
             </div>
             <div className="text-gray-600 text-[13px] mt-0.5 line-clamp-1">{template.description}</div>

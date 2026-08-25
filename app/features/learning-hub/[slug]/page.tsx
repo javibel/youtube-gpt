@@ -127,7 +127,7 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
         </p>
 
         {/* Cover image or gradient */}
-        <div className="mb-12 h-64 md:h-80 relative overflow-hidden border border-white/10">
+        <div className="yv-glass mb-12 h-64 md:h-80 relative overflow-hidden">
           {guide.coverImage ? (
             <Image src={guide.coverImage} alt={guide.title[lang]} fill className="object-cover" sizes="(max-width: 768px) 100vw, 768px" priority />
           ) : (
@@ -150,7 +150,7 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
             if (block.type === 'image') {
               return (
                 <figure key={i} className="my-8">
-                  <div className="relative w-full overflow-hidden border border-white/10" style={{ aspectRatio: '16/9' }}>
+                  <div className="yv-glass relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
                     <Image src={block.src} alt={block.alt} fill className="object-cover" sizes="(max-width: 768px) 100vw, 768px" />
                   </div>
                   {block.caption && (
@@ -169,8 +169,8 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
             <ol className="space-y-5 mb-10">
               {guide.steps[lang].map((step, i) => (
                 <li key={i} className="flex items-start gap-4">
-                  <span className="font-display font-bold text-lg mt-0.5 shrink-0 w-9 h-9 flex items-center justify-center border border-white/10"
-                    style={{ color: 'var(--red)', background: 'rgba(232,77,91,0.06)' }}>
+                  <span className="font-display font-bold text-lg mt-0.5 shrink-0 w-9 h-9 flex items-center justify-center"
+                    style={{ color: 'var(--yv-brand)', background: 'rgba(232,77,91,0.08)', boxShadow: 'inset 0 1px 0 rgba(232,77,91,.25)' }}>
                     {i + 1}
                   </span>
                   <span className="text-zinc-300 text-[17px] leading-relaxed pt-1">{step}</span>
@@ -185,15 +185,15 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
         {guide.publicVideoId && (
           <div className="my-10">
             <div className="flex items-center gap-3 mb-4">
-              <span className="font-mono-jb text-[13px] tracking-wider uppercase px-3 py-1 border rounded-full"
-                style={{ color: 'var(--red)', borderColor: 'rgba(232,77,91,0.3)', background: 'rgba(232,77,91,0.08)' }}>
+              <span className="yv-chip font-mono-jb text-[13px] tracking-wider uppercase px-3 py-1"
+                style={{ color: 'var(--yv-brand-lift)', background: 'rgba(232,77,91,0.12)' }}>
                 {lang === 'en' ? 'Free video' : 'Vídeo gratis'}
               </span>
               <span className="font-mono-jb text-[13px] text-zinc-500">
                 {lang === 'en' ? 'Watch this guide on video' : 'Esta guía, en vídeo'}
               </span>
             </div>
-            <div className="relative w-full overflow-hidden border border-white/15" style={{ aspectRatio: '16 / 9', background: '#0E0E10' }}>
+            <div className="yv-glass relative w-full overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
               <iframe
                 className="absolute inset-0 w-full h-full"
                 src={`https://www.youtube-nocookie.com/embed/${guide.publicVideoId}`}
@@ -209,10 +209,10 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
 
         {/* Pro video CTA (instead of actual video on public page) */}
         {guide.videoId && (
-          <div className="my-10 border border-white/15 p-8 text-center relative overflow-hidden" style={{ background: '#0E0E10' }}>
+          <div className="yv-glass my-10 p-8 text-center relative overflow-hidden">
             <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.12), transparent 70%)' }} />
             <div className="relative">
-              <div className="w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-full" style={{ background: 'rgba(232,77,91,0.15)', border: '1px solid rgba(232,77,91,0.3)' }}>
+              <div className="w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-full" style={{ background: 'rgba(232,77,91,0.15)', boxShadow: 'inset 0 0 0 1px rgba(232,77,91,.35)' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--red)' }}>
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
@@ -234,7 +234,7 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
 
         {/* Tool CTA */}
         {guide.tool && (
-          <div className="my-10 border border-white/15 p-8 text-center relative overflow-hidden" style={{ background: '#0E0E10' }}>
+          <div className="yv-glass my-10 p-8 text-center relative overflow-hidden">
             <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.12), transparent 70%)' }} />
             <div className="relative">
               <p className="font-display font-bold text-xl mb-2">
@@ -255,7 +255,7 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
 
       {/* Related guides */}
       {related.length > 0 && (
-        <section className="border-t border-white/10 mt-8">
+        <section className="mt-8" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}>
           <div className="max-w-7xl mx-auto px-6 py-12">
             <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-6">
               {lang === 'en' ? 'Related guides' : 'Guías relacionadas'}
@@ -270,7 +270,7 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
       )}
 
       {/* Final CTA */}
-      <section className="border-t border-white/10 bg-black">
+      <section style={{ background: 'var(--yv-bg-0)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
         <div className="max-w-4xl mx-auto px-6 py-20 text-center relative overflow-hidden">
           <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.18), transparent 70%)' }} />
           <div className="relative">
@@ -290,7 +290,7 @@ export default async function LearningHubGuidePage({ params }: { params: Promise
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-black">
+      <footer style={{ background: 'var(--yv-bg-0)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
         <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-zinc-500 font-mono-jb text-[13px]">
             © 2026 YTubViral · {lang === 'en' ? 'Made by creators, for creators.' : 'Hecho por creadores, para creadores.'}

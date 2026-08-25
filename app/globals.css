@@ -3,18 +3,6 @@
 @source "../components/**/*.{tsx,ts}";
 @source "../lib/**/*.{ts}";
 
-:root {
-  --cyan: #00D9FF;
-  --magenta: #CC00FF;
-  --bg-deep: #06060f;
-  --bg-card: rgba(10, 10, 25, 0.85);
-  --border-subtle: rgba(0, 217, 255, 0.12);
-  --border-active: rgba(0, 217, 255, 0.55);
-  --glow-cyan: 0 0 12px rgba(0, 217, 255, 0.3), 0 0 30px rgba(0, 217, 255, 0.08);
-  --glow-cyan-strong: 0 0 20px rgba(0, 217, 255, 0.5), 0 0 60px rgba(0, 217, 255, 0.12);
-  --glow-magenta: 0 0 12px rgba(204, 0, 255, 0.3), 0 0 30px rgba(204, 0, 255, 0.08);
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -22,568 +10,386 @@
   --font-mono: var(--font-geist-mono);
 }
 
-body {
-  background: var(--yv-bg-0);
-  color: var(--yv-text-2);
-  font-family: var(--yv-font-sans);
-  font-size: var(--yv-text-base);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-}
-
-/* Neon card */
-.neon-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  backdrop-filter: blur(12px);
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-.neon-card:hover {
-  border-color: rgba(0, 217, 255, 0.28);
-  box-shadow: var(--glow-cyan);
-}
-.neon-card-active {
-  background: rgba(0, 217, 255, 0.05);
-  border: 1px solid var(--border-active);
-  box-shadow: var(--glow-cyan);
-  backdrop-filter: blur(12px);
-}
-
-/* Neon button (outline) */
-.btn-neon {
-  background: transparent;
-  border: 1px solid var(--cyan);
-  color: var(--cyan);
-  box-shadow: 0 0 8px rgba(0, 217, 255, 0.15);
-  transition: all 0.2s;
-}
-.btn-neon:hover:not(:disabled) {
-  background: rgba(0, 217, 255, 0.08);
-  box-shadow: var(--glow-cyan-strong);
-}
-.btn-neon:disabled {
-  border-color: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.18);
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-/* Neon input / select */
-.neon-input, .neon-select {
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  color: #e2e8f0;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.neon-input:focus, .neon-select:focus {
-  outline: none;
-  border-color: rgba(0, 217, 255, 0.45);
-  box-shadow: 0 0 0 1px rgba(0, 217, 255, 0.15), 0 0 10px rgba(0, 217, 255, 0.08);
-}
-.neon-input::placeholder {
-  color: rgba(255, 255, 255, 0.18);
-}
-.neon-select { cursor: pointer; }
-.neon-select option { background: #0d0d1f; }
-
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, #00D9FF, #CC00FF);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Glow text */
-.text-cyan { color: var(--cyan); }
-.text-cyan-glow {
-  color: var(--cyan);
-  text-shadow: 0 0 16px rgba(0, 217, 255, 0.5);
-}
-
-/* Scrollbar (legacy — overridden by YV 2.0 at bottom) */
-
 /* ================================================================
-   NEW DESIGN SYSTEM — YouTube-native bold (Apr 2026)
+   SISTEMA «CRISTAL» — rediseño visual completo (24/08/2026)
+   Fuente: Diseño humano y orgánico/design_handoff_cristal/cristal-tokens.css
+   Un solo rojo (#e84d5b), un solo modo (oscuro), sin bordes — el canto
+   claro es luz (inset box-shadow), la profundidad es sombra larga.
    ================================================================ */
 
 :root {
-  --red: #e84d5b;
-  --red-deep: #c83848;
-  --red-soft: #f05c6a;
-  --ink: #0A0A0A;
-  --ink-2: #111112;
-  --ink-3: #18181B;
-  --line: rgba(255,255,255,0.08);
-  --line-2: rgba(255,255,255,0.14);
-  --text: #F5F5F5;
-  --text-dim: #A1A1AA;
-  --text-faint: #52525B;
-  --yellow: #FFE800;
+  /* ─── Superficie y luz ───────────────────────────────────── */
+  --yv-bg-0: #08070a;
+  --yv-bg-1: #0c0a0f;
+  --yv-bg-2: #120f14;
+  --yv-bg-3: #171319;
+  --yv-bg-4: #1d181f;
+  --yv-light: radial-gradient(100% 60% at 15% -5%, #230b11 0%, #0c0a0e 42%, #08070a 100%);
+  --yv-light-hero: radial-gradient(120% 70% at 20% -10%, #2a0d13 0%, #0d0a0e 45%, #08070a 100%);
 
-  /* ─── YV 2.0 Design Tokens (Linear/Resend/Raycast inspired) ─── */
+  /* ─── Marca (un solo rojo) ───────────────────────────────── */
+  --yv-brand: #e84d5b;
+  --yv-brand-lift: #ff6d7b;
+  --yv-brand-deep: #c8323f;
+  --yv-brand-fill: linear-gradient(165deg, #ff6d7b, #c8323f);
+  --yv-brand-glass: linear-gradient(150deg, rgba(232,77,91,.22), rgba(232,77,91,.05));
+  --yv-brand-soft: rgba(232, 77, 91, 0.14);
+  --yv-brand-border: rgba(232, 77, 91, 0.32);
+  --yv-brand-hover: var(--yv-brand-lift);
+  --yv-brand-pressed: var(--yv-brand-deep);
+  --yv-on-brand: #fff;
+  --yv-on-brand-dim: #f0d3d6;
 
-  /* Surfaces */
-  --yv-bg-0: #000000;
-  --yv-bg-1: #0a0a0a;
-  --yv-bg-2: #111111;
-  --yv-bg-3: #161616;
-  --yv-bg-4: #1c1c1c;
+  /* ─── Texto ──────────────────────────────────────────────── */
+  --yv-text-1: #fbf8fb;
+  --yv-text-2: #ded8e2;
+  --yv-text-3: #9c96a4;
+  --yv-text-4: #635e6a;
+  --yv-text-5: #3d3a42;
 
-  /* Borders */
-  --yv-border-subtle: rgba(255, 255, 255, 0.06);
-  --yv-border: rgba(255, 255, 255, 0.09);
-  --yv-border-strong: rgba(255, 255, 255, 0.14);
+  /* ─── Estados ────────────────────────────────────────────── */
+  --yv-ok: #7fe0a8;
+  --yv-warn: #e8d27c;
+  --yv-bad: #ff8b95;
+  --yv-success: var(--yv-ok);
+  --yv-success-soft: rgba(127,224,168,.14);
+  --yv-warning: var(--yv-warn);
+  --yv-warning-soft: rgba(232,210,124,.14);
+  --yv-info: #8fb3ff;
+  --yv-info-soft: rgba(143,179,255,.14);
 
-  /* Text */
-  --yv-text-1: #ffffff;
-  --yv-text-2: #d4d4d4;
-  --yv-text-3: #8b8b8b;
-  --yv-text-4: #5e5e5e;
-  --yv-text-5: #3d3d3d;
+  /* ─── Vidrio: sustituye a border + background de las cards ─
+     Nada en el sistema lleva `border`. El canto claro es un
+     inset box-shadow superior — así se comporta el vidrio real
+     bajo una luz cenital. */
+  --yv-glass: linear-gradient(155deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  --yv-glass-lift: linear-gradient(150deg, rgba(255,255,255,.13), rgba(255,255,255,.035));
+  --yv-glass-chip: rgba(255,255,255,.06);
+  --yv-edge: inset 0 1px 0 rgba(255,255,255,.2);
+  --yv-edge-strong: inset 0 1px 0 rgba(255,255,255,.36);
+  --yv-blur: blur(18px);
+  --yv-blur-deep: blur(24px);
 
-  /* Brand & accents */
-  --yv-brand: #ee4d5e;
-  --yv-brand-hover: #f25d6d;
-  --yv-brand-pressed: #d83f4f;
-  --yv-brand-soft: rgba(238, 77, 94, 0.12);
-  --yv-brand-border: rgba(238, 77, 94, 0.3);
+  /* Compat: nombres de borde antiguos → tono de vidrio, ya sin línea sólida */
+  --yv-border-subtle: rgba(255,255,255,.06);
+  --yv-border: rgba(255,255,255,.10);
+  --yv-border-strong: rgba(255,255,255,.16);
 
-  --yv-success: #22c55e;
-  --yv-success-soft: rgba(34, 197, 94, 0.12);
-  --yv-warning: #eab308;
-  --yv-warning-soft: rgba(234, 179, 8, 0.12);
-  --yv-info: #3b82f6;
-  --yv-info-soft: rgba(59, 130, 246, 0.12);
+  /* Profundidad */
+  --yv-depth-1: 0 22px 50px -26px rgba(0,0,0,.9);
+  --yv-depth-2: 0 40px 90px -30px rgba(0,0,0,.95);
+  --yv-depth-3: 0 56px 120px -40px rgba(0,0,0,.98);
+  --yv-depth-brand: 0 40px 80px -28px rgba(232,77,91,.5);
+  --yv-shadow-sm: var(--yv-depth-1);
+  --yv-shadow: var(--yv-depth-2);
+  --yv-shadow-lg: var(--yv-depth-3);
 
-  /* Typography */
-  /* Familias servidas por next/font (self-hosted) — ver app/layout.tsx (A2) */
-  --yv-font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --yv-font-display: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
-  --yv-font-mono: var(--font-mono-jb), "SF Mono", ui-monospace, Menlo, monospace;
+  /* Hundido — campos de formulario */
+  --yv-sunken: inset 0 2px 6px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.09);
+  --yv-sunken-focus: inset 0 2px 6px rgba(0,0,0,.6), inset 0 0 0 1.5px rgba(232,77,91,.55), 0 0 0 4px rgba(232,77,91,.13);
+  --yv-ring: 0 0 0 4px rgba(232,77,91,.13);
 
-  --yv-text-xs: 13px;
-  --yv-text-sm: 14px;
+  /* ─── Tipografía: dos familias, no tres ──────────────────── */
+  --yv-font-display: var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif;
+  --yv-font-sans: var(--font-archivo), 'Archivo', system-ui, sans-serif;
+  --yv-font-mono: var(--font-mono-jb), 'JetBrains Mono', ui-monospace, Menlo, monospace;
+
+  --yv-text-xs: 12.5px;
+  --yv-text-sm: 13.5px;
   --yv-text-base: 15px;
   --yv-text-md: 16px;
-  --yv-text-lg: 18px;
-  --yv-text-xl: 20px;
-  --yv-text-2xl: 28px;
-  --yv-text-3xl: 36px;
-  --yv-text-4xl: 48px;
+  --yv-text-lg: 17px;
+  --yv-text-xl: 21px;
+  --yv-text-2xl: 26px;
+  --yv-text-3xl: 38px;
+  --yv-text-4xl: 46px;
+  --yv-text-5xl: 74px;
 
-  /* Spacing */
+  --yv-tracking-display: -.04em;
+  --yv-tracking-hero: -.045em;
+  --yv-tracking-mono: .2em;
+
+  /* ─── Ritmo ──────────────────────────────────────────────── */
   --yv-space-1: 4px;
   --yv-space-2: 8px;
   --yv-space-3: 12px;
   --yv-space-4: 16px;
   --yv-space-5: 20px;
-  --yv-space-6: 24px;
+  --yv-space-6: 26px;
   --yv-space-8: 32px;
-  --yv-space-10: 40px;
-  --yv-space-12: 48px;
-  --yv-space-16: 64px;
+  --yv-space-10: 44px;
+  --yv-space-12: 60px;
+  --yv-space-16: 84px;
 
-  /* Radius */
-  --yv-radius-sm: 6px;
-  --yv-radius: 8px;
-  --yv-radius-md: 10px;
-  --yv-radius-lg: 12px;
-  --yv-radius-xl: 16px;
+  /* ─── Radios: suben, el vidrio grueso no tiene canto vivo ── */
+  --yv-radius-sm: 12px;
+  --yv-radius: 14px;
+  --yv-radius-md: 16px;
+  --yv-radius-lg: 22px;
+  --yv-radius-xl: 26px;
+  --yv-radius-pill: 999px;
 
-  /* Layout */
-  --yv-sidebar-w: 216px;
+  /* ─── Layout ─────────────────────────────────────────────── */
+  --yv-sidebar-w: 236px;
   --yv-content-max: 1440px;
   --yv-content-max-wide: 1680px;
   --yv-page-pad-x: 40px;
   --yv-page-pad-y: 32px;
 
-  /* Shadows */
-  --yv-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --yv-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --yv-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+  /* ─── Movimiento: peso, no velocidad ────────────────────── */
+  --yv-ease: cubic-bezier(.16, .84, .36, 1);
+  --yv-t-fast: 350ms;
+  --yv-t: 700ms;
+  --yv-transition: 350ms cubic-bezier(.16, .84, .36, 1);
 
-  /* Misc */
-  --yv-ring: 0 0 0 3px rgba(238, 77, 94, 0.25);
-  --yv-transition: 150ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* ─── Compat con nombres del sistema anterior (red/ink/text) ─
+     Todo el código que aún usa var(--red), var(--ink), var(--text)…
+     apunta ya a los tokens Cristal — se retira esta capa según se
+     migra cada archivo a las clases .yv-* nativas. */
+  --red: var(--yv-brand);
+  --red-deep: var(--yv-brand-deep);
+  --red-soft: var(--yv-brand-lift);
+  --ink: var(--yv-bg-0);
+  --ink-2: var(--yv-bg-1);
+  --ink-3: var(--yv-bg-2);
+  --line: rgba(255,255,255,.08);
+  --line-2: rgba(255,255,255,.14);
+  --text: var(--yv-text-1);
+  --text-dim: var(--yv-text-3);
+  --text-faint: var(--yv-text-4);
+  --yellow: #FFE800;
 }
 
-.font-display { font-family: var(--font-space-grotesk), sans-serif; letter-spacing: -0.02em; }
-.font-mono-jb { font-family: var(--font-mono-jb), monospace; }
-
-/* Grain film overlay */
-.grain::before {
-  content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: 999;
-  opacity: 0.035; mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+body {
+  background: var(--yv-bg-0);
+  color: var(--yv-text-2);
+  font-family: var(--yv-font-sans);
+  font-size: var(--yv-text-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Grid paper background */
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 56px 56px;
-}
+.font-display { font-family: var(--yv-font-display); letter-spacing: -0.02em; }
+.font-mono-jb { font-family: var(--yv-font-mono); }
 
-/* Offset shadow button */
-.btn-offset {
-  position: relative;
-  background: var(--red);
-  color: #fff;
-  font-weight: 700;
-  border: 1px solid rgba(0,0,0,0.4);
-  border-radius: 10px;
-  transition: transform .14s ease, box-shadow .14s ease;
-  box-shadow: 4px 4px 0 0 rgba(0,0,0,0.8), 0 10px 24px -8px rgba(232,77,91,0.45);
-  display: inline-flex; align-items: center; justify-content: center;
-  cursor: pointer;
-}
-.btn-offset:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 0 rgba(0,0,0,0.8), 0 14px 30px -8px rgba(232,77,91,0.55); }
-.btn-offset:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 0 0 0 0 rgba(0,0,0,0.8); }
-.btn-offset:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Grain / grid-paper de la era neón: retirados — el fondo ahora es --yv-light */
+.grain::before { display: none; }
+.grid-bg { background-image: none; }
 
-.btn-offset-ghost {
-  background: #0E0E10 !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.25) !important;
-  box-shadow: 4px 4px 0 0 var(--red), 0 10px 24px -8px rgba(0,0,0,0.6) !important;
-}
-.btn-offset-ghost:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 0 var(--red), 0 14px 30px -8px rgba(0,0,0,0.7) !important; }
-
-.btn-offset-white {
-  background: #fff !important; color: #000 !important; border: 1px solid rgba(0,0,0,0.2) !important;
-  box-shadow: 4px 4px 0 0 var(--red), 0 10px 24px -8px rgba(0,0,0,0.5) !important;
-}
-.btn-offset-white:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 0 var(--red), 0 14px 30px -8px rgba(0,0,0,0.6) !important; }
-
-/* Soft form field */
-.soft-field {
-  background: #0E0E10;
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 2px 6px rgba(0,0,0,0.35);
-  transition: border-color .18s, box-shadow .18s;
-  color: #F5F5F5;
-  outline: none;
-  padding: 12px 16px;
-  width: 100%;
-  font-size: 15px;
-}
-.soft-field:hover { border-color: rgba(255,255,255,0.18); }
-.soft-field:focus {
-  border-color: rgba(232,77,91,0.65);
-  box-shadow: 0 0 0 3px rgba(232,77,91,0.15), inset 0 1px 0 rgba(255,255,255,0.03), 0 4px 14px rgba(232,77,91,0.12);
-}
-.soft-field::placeholder { color: rgba(255,255,255,0.25); }
-.soft-field option { background: #111112; }
-
-/* Soft card */
-.soft-card {
-  background: #0E0E10;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 10px 30px -12px rgba(0,0,0,0.8);
-}
-
-/* Soft pill */
-.soft-pill {
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: #0E0E10;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-  transition: all .18s;
-  display: inline-flex; align-items: center; justify-content: center;
-  cursor: pointer;
-}
-.soft-pill:hover { border-color: rgba(255,255,255,0.25); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-
-/* Soft chip */
-.soft-chip {
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: #0E0E10;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  transition: all .18s;
-  cursor: pointer;
-}
-.soft-chip:hover { border-color: rgba(255,255,255,0.25); }
-.soft-chip-active { background: #fff; color: #000; border-color: #fff; box-shadow: 0 4px 12px -2px rgba(255,255,255,0.18); }
-
-/* Red tape badge */
-.red-tape {
-  background: var(--red); color: #fff; font-weight: 800;
-  font-family: var(--font-mono-jb), monospace;
-  padding: 2px 10px; display: inline-block;
-  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
-}
-
-/* Live dot */
-.live-dot {
-  display: inline-block;
-  width: 6px; height: 6px;
-  background: var(--red); border-radius: 50%;
-  box-shadow: 0 0 0 4px rgba(232,77,91,0.2);
-  flex-shrink: 0;
-}
-
-/* Red gradient underline highlight */
-.red-underline {
-  background-image: linear-gradient(180deg, transparent 62%, rgba(232,77,91,0.35) 62%, rgba(232,77,91,0.35) 92%, transparent 92%);
-  background-repeat: no-repeat;
-  display: inline;
-}
-
-/* Tabular number stat */
-.stat-num { font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
-
-/* Marquee animation */
-@keyframes marquee-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-.marquee-track { animation: marquee-scroll 40s linear infinite; display: flex; white-space: nowrap; }
-.marquee-track.slow { animation-duration: 60s; }
-
-/* Red pulse ring */
-@keyframes pulseRed {
-  0%,100% { box-shadow: 0 0 0 0 rgba(232,77,91,0.6); }
-  50% { box-shadow: 0 0 0 12px rgba(232,77,91,0); }
-}
-.pulse-red { animation: pulseRed 2s ease-out infinite; }
-
-/* Blink */
-@keyframes blink-anim { 50% { opacity: 0; } }
-.caret-blink { animation: blink-anim 1s step-end infinite; }
-.typing-cursor { display: inline-block; width: 2px; height: 1em; background: var(--red); vertical-align: -0.15em; margin-left: 2px; animation: blink-anim 1s step-end infinite; }
-
-/* Page enter */
-@keyframes fadeUpIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-.page-enter { animation: fadeUpIn .4s ease; }
-
-/* Screen glow */
-.screen-glow {
-  box-shadow:
-    0 0 0 1px rgba(232,77,91,0.4),
-    0 30px 80px -20px rgba(232,77,91,0.3),
-    0 60px 120px -30px rgba(0,0,0,0.9);
-}
-
-/* Spin */
-@keyframes spin-r { to { transform: rotate(360deg); } }
-.spin-r { animation: spin-r 1s linear infinite; }
-
-/* Scroll reveal */
-.reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
-.reveal.in { opacity: 1; transform: none; }
-
-/* Shimmer / shine effect */
-@keyframes shimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-.btn-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-.btn-shimmer::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
-  transform: translateX(-100%);
-  animation: shimmer 2.5s ease-in-out infinite;
-  pointer-events: none;
-}
-
-/* ================================================================
-   YV 2.0 Component Classes
-   ================================================================ */
-
-/* Scrollbar — updated to neutral */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.14); }
-
-/* ─── Typography utility ───────────────────────────────── */
-.yv-eyebrow {
-  font-family: var(--yv-font-mono);
-  font-size: var(--yv-text-xs);
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--yv-brand);
-}
-.yv-h1 {
-  font-size: var(--yv-text-2xl);
-  font-weight: 600;
-  color: var(--yv-text-1);
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-.yv-h2 {
-  font-size: var(--yv-text-xl);
-  font-weight: 600;
-  color: var(--yv-text-1);
-  letter-spacing: -0.01em;
-}
-.yv-h3 {
-  font-size: var(--yv-text-lg);
-  font-weight: 600;
-  color: var(--yv-text-1);
-}
+/* ─── Tipografía ─────────────────────────────────────────── */
+.yv-h1 { font-family: var(--yv-font-display); font-weight: 700; font-size: var(--yv-text-3xl); letter-spacing: var(--yv-tracking-display); line-height: 1.02; color: var(--yv-text-1); }
+.yv-h2 { font-family: var(--yv-font-display); font-weight: 700; font-size: var(--yv-text-xl); letter-spacing: -.02em; color: var(--yv-text-1); }
+.yv-h3 { font-family: var(--yv-font-display); font-weight: 700; font-size: var(--yv-text-lg); letter-spacing: -.01em; color: var(--yv-text-1); }
+.yv-eyebrow { font-family: var(--yv-font-mono); font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: var(--yv-text-4); }
+.yv-eyebrow--brand { color: var(--yv-brand); }
+.yv-num { font-family: var(--yv-font-display); font-weight: 800; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.yv-mono { font-family: var(--yv-font-mono); font-variant-numeric: tabular-nums; }
 .yv-muted { color: var(--yv-text-3); }
-.yv-mono  { font-family: var(--yv-font-mono); }
 
-/* ─── Page header ──────────────────────────────────────── */
+/* ─── Vidrio ─────────────────────────────────────────────── */
+.yv-glass {
+  border-radius: var(--yv-radius-lg);
+  background: var(--yv-glass);
+  box-shadow: var(--yv-depth-1), var(--yv-edge);
+  backdrop-filter: var(--yv-blur);
+  transition: transform var(--yv-t) var(--yv-ease), box-shadow var(--yv-t) var(--yv-ease);
+}
+.yv-glass--lift {
+  background: var(--yv-glass-lift);
+  box-shadow: var(--yv-depth-3), var(--yv-edge-strong);
+  backdrop-filter: var(--yv-blur-deep);
+}
+.yv-glass--brand {
+  background: var(--yv-brand-glass);
+  box-shadow: var(--yv-depth-brand), var(--yv-edge-strong);
+}
+.yv-glass--hover:hover { transform: translateY(-8px) scale(1.012); }
+
+/* ─── Botones ────────────────────────────────────────────── */
+.yv-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--yv-radius);
+  font-family: inherit; font-size: var(--yv-text-sm); font-weight: 500;
+  cursor: pointer;
+  transition: transform var(--yv-t-fast) var(--yv-ease), box-shadow var(--yv-t-fast) var(--yv-ease), background var(--yv-t-fast) var(--yv-ease), color var(--yv-t-fast) var(--yv-ease);
+  white-space: nowrap;
+}
+.yv-btn:hover { transform: translateY(-2px); }
+.yv-btn--primary {
+  color: var(--yv-on-brand); font-weight: 600;
+  background: var(--yv-brand-fill);
+  box-shadow: 0 16px 40px -14px rgba(232,77,91,.85), inset 0 1px 0 rgba(255,255,255,.45);
+}
+.yv-btn--primary:hover { background: var(--yv-brand-fill); }
+.yv-btn--ghost {
+  color: var(--yv-text-2);
+  background: var(--yv-glass-chip);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 12px 30px -16px rgba(0,0,0,.9);
+  backdrop-filter: var(--yv-blur);
+}
+.yv-btn--ghost:hover { color: var(--yv-text-1); background: rgba(255,255,255,.09); }
+.yv-btn--on-brand {
+  color: #3d1015; font-weight: 600;
+  background: linear-gradient(165deg, #fff, #ffdfe2);
+  box-shadow: 0 14px 30px -12px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.9);
+}
+.yv-btn--bare { background: transparent; color: var(--yv-text-3); box-shadow: none; }
+.yv-btn--bare:hover { color: var(--yv-text-1); background: rgba(255,255,255,.06); transform: none; }
+.yv-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+/* ─── Campos: hundidos, no con borde ─────────────────────── */
+.yv-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: var(--yv-radius);
+  background: rgba(0,0,0,.34);
+  box-shadow: var(--yv-sunken);
+  color: var(--yv-text-2);
+  font-family: inherit; font-size: var(--yv-text-base);
+  outline: none;
+  transition: box-shadow var(--yv-t-fast) var(--yv-ease);
+}
+.yv-input::placeholder { color: var(--yv-text-4); }
+.yv-input:focus { box-shadow: var(--yv-sunken-focus); }
+textarea.yv-input { height: auto; }
+select.yv-input { cursor: pointer; }
+.yv-input option { background: var(--yv-bg-1); }
+
+/* ─── Chips / pills ──────────────────────────────────────── */
+.yv-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 15px;
+  border: none;
+  border-radius: var(--yv-radius-pill);
+  background: var(--yv-glass-chip);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+  color: var(--yv-text-2);
+  font-family: inherit; font-size: var(--yv-text-sm);
+  cursor: pointer;
+  transition: transform var(--yv-t-fast) var(--yv-ease), background var(--yv-t-fast);
+}
+.yv-chip:hover { transform: translateY(-2px); background: rgba(255,255,255,.11); }
+.yv-chip--active {
+  color: #3d1015;
+  background: linear-gradient(165deg, #fff, #ffdfe2);
+  box-shadow: 0 8px 18px -8px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.9);
+}
+
+/* ─── Badges (compat con .yv-badge del sistema anterior) ─── */
+.yv-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 20px; padding: 0 9px;
+  font-size: 10.5px; font-weight: 500;
+  border-radius: var(--yv-radius-pill);
+  font-family: var(--yv-font-mono);
+  letter-spacing: .04em;
+}
+.yv-badge--brand   { background: var(--yv-brand-soft);   color: var(--yv-brand-lift); }
+.yv-badge--success { background: var(--yv-success-soft); color: var(--yv-ok); }
+.yv-badge--warning { background: var(--yv-warning-soft); color: var(--yv-warn); }
+.yv-badge--info    { background: var(--yv-info-soft);    color: var(--yv-info); }
+.yv-badge--neutral { background: var(--yv-glass-chip);   color: var(--yv-text-3); }
+
+/* ─── Tablas: sin rejilla, filas que se levantan ─────────── */
+.yv-table { width: 100%; border-collapse: collapse; }
+.yv-table th {
+  padding: 14px 26px;
+  text-align: left;
+  font-family: var(--yv-font-mono);
+  font-size: 9.5px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--yv-text-4);
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,.08);
+}
+.yv-table td {
+  padding: 15px 26px;
+  font-size: 14px;
+  color: var(--yv-text-2);
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,.06);
+  transition: background var(--yv-t-fast) var(--yv-ease), padding-left var(--yv-t-fast) var(--yv-ease);
+}
+.yv-table td.yv-num-cell { text-align: right; font-family: var(--yv-font-mono); font-variant-numeric: tabular-nums; }
+.yv-table tbody tr:hover td { background: rgba(232,77,91,.06); }
+.yv-table tbody tr:hover td:first-child { padding-left: 36px; }
+.yv-table tbody tr:last-child td { box-shadow: none; }
+
+/* ─── Banners de estado: capas de luz, no borde de color ─── */
+.yv-note {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--yv-radius);
+  font-size: var(--yv-text-sm); line-height: 1.5;
+}
+.yv-note::before {
+  content: ''; flex-shrink: 0;
+  width: 6px; height: 6px; margin-top: 6px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.yv-note--error { color: var(--yv-bad); background: linear-gradient(150deg, rgba(232,77,91,.2), rgba(232,77,91,.06)); box-shadow: var(--yv-edge), 0 14px 30px -18px rgba(232,77,91,.8); }
+.yv-note--ok    { color: var(--yv-ok);  background: linear-gradient(150deg, rgba(127,224,168,.16), rgba(127,224,168,.04)); box-shadow: var(--yv-edge), 0 14px 30px -18px rgba(127,224,168,.5); }
+
+/* ─── Page header (compat, restilizado sin borde) ────────── */
 .yv-page-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--yv-space-6);
-  /* Altura reservada para evitar layout shift mientras cargan datos (E1 #10) */
   min-height: 80px;
   padding-bottom: var(--yv-space-6);
-  border-bottom: 1px solid var(--yv-border-subtle);
   margin-bottom: var(--yv-space-8);
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,.07);
 }
 .yv-page-header__left { display: flex; flex-direction: column; gap: var(--yv-space-2); min-width: 0; }
-.yv-page-header__eyebrow { color: var(--yv-text-3); font-family: var(--yv-font-mono); font-size: var(--yv-text-xs); letter-spacing: 0.08em; text-transform: uppercase; }
-.yv-page-header__title { font-size: var(--yv-text-2xl); font-weight: 600; color: var(--yv-text-1); letter-spacing: -0.02em; }
+.yv-page-header__eyebrow { color: var(--yv-text-4); font-family: var(--yv-font-mono); font-size: 10px; letter-spacing: .24em; text-transform: uppercase; }
+.yv-page-header__title { font-family: var(--yv-font-display); font-size: var(--yv-text-2xl); font-weight: 700; color: var(--yv-text-1); letter-spacing: var(--yv-tracking-display); }
 .yv-page-header__desc { color: var(--yv-text-3); font-size: var(--yv-text-md); max-width: 720px; }
 .yv-page-header__actions { display: flex; gap: var(--yv-space-2); flex-shrink: 0; }
 
-/* ─── Card ─────────────────────────────────────────────── */
+/* ─── Card (compat .yv-card → alias de vidrio) ───────────── */
 .yv-card {
-  background: var(--yv-bg-2);
-  border: 1px solid var(--yv-border);
+  background: var(--yv-glass);
   border-radius: var(--yv-radius-lg);
+  box-shadow: var(--yv-depth-1), var(--yv-edge);
+  backdrop-filter: var(--yv-blur);
   padding: var(--yv-space-6);
 }
 .yv-card--flush { padding: 0; }
 .yv-card__header {
   padding: var(--yv-space-5) var(--yv-space-6);
-  border-bottom: 1px solid var(--yv-border-subtle);
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,.07);
   display: flex; align-items: center; justify-content: space-between; gap: var(--yv-space-4);
 }
-.yv-card__title { font-size: var(--yv-text-md); font-weight: 600; color: var(--yv-text-1); }
+.yv-card__title { font-family: var(--yv-font-display); font-size: var(--yv-text-md); font-weight: 700; color: var(--yv-text-1); }
 .yv-card__body { padding: var(--yv-space-5) var(--yv-space-6); }
 
-/* ─── Buttons ──────────────────────────────────────────── */
-.yv-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: var(--yv-text-sm); font-weight: 500;
-  height: 34px; padding: 0 14px;
-  border-radius: var(--yv-radius);
-  border: 1px solid transparent;
-  cursor: pointer; transition: all var(--yv-transition);
-  white-space: nowrap;
-  font-family: inherit;
-}
-.yv-btn--primary {
-  background: var(--yv-brand);
-  color: white;
-}
-.yv-btn--primary:hover { background: var(--yv-brand-hover); }
-.yv-btn--ghost {
-  background: var(--yv-bg-3);
-  color: var(--yv-text-2);
-  border-color: var(--yv-border);
-}
-.yv-btn--ghost:hover { background: var(--yv-bg-4); color: var(--yv-text-1); }
-.yv-btn--bare {
-  background: transparent;
-  color: var(--yv-text-3);
-}
-.yv-btn--bare:hover { color: var(--yv-text-1); background: var(--yv-bg-3); }
-
-/* ─── Badges ───────────────────────────────────────────── */
-.yv-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  height: 20px; padding: 0 8px;
-  font-size: 11px; font-weight: 500;
-  border-radius: 999px;
-  font-family: var(--yv-font-mono);
-  letter-spacing: 0.02em;
-}
-.yv-badge--brand   { background: var(--yv-brand-soft);   color: var(--yv-brand);   }
-.yv-badge--success { background: var(--yv-success-soft); color: var(--yv-success); }
-.yv-badge--warning { background: var(--yv-warning-soft); color: var(--yv-warning); }
-.yv-badge--info    { background: var(--yv-info-soft);    color: var(--yv-info);    }
-.yv-badge--neutral { background: var(--yv-bg-3);         color: var(--yv-text-3);  border: 1px solid var(--yv-border-subtle); }
-
-/* ─── Inputs ───────────────────────────────────────────── */
-.yv-input {
-  width: 100%;
-  height: 38px;
-  padding: 0 12px;
-  background: var(--yv-bg-1);
-  border: 1px solid var(--yv-border);
-  border-radius: var(--yv-radius);
-  color: var(--yv-text-1);
-  font-size: var(--yv-text-base);
-  font-family: inherit;
-  transition: border-color var(--yv-transition), box-shadow var(--yv-transition);
-  outline: none;
-}
-textarea.yv-input { height: auto; padding: 10px 12px; }
-.yv-input:focus { border-color: var(--yv-brand-border); box-shadow: var(--yv-ring); }
-.yv-input::placeholder { color: var(--yv-text-4); }
-
-/* ─── Tables ───────────────────────────────────────────── */
-.yv-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.yv-table th {
-  text-align: left;
-  font-size: var(--yv-text-xs);
-  font-weight: 500;
-  color: var(--yv-text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 10px var(--yv-space-6);
-  border-bottom: 1px solid var(--yv-border-subtle);
-  background: var(--yv-bg-1);
-}
-.yv-table td {
-  font-size: var(--yv-text-sm);
-  color: var(--yv-text-2);
-  padding: 14px var(--yv-space-6);
-  border-bottom: 1px solid var(--yv-border-subtle);
-}
-.yv-table tr:hover td { background: rgba(255, 255, 255, 0.015); }
-.yv-table tr:last-child td { border-bottom: none; }
-
-/* ─── Shell layout ─────────────────────────────────────── */
+/* ─── Shell y sidebar ────────────────────────────────────── */
 .yv-shell {
   display: grid;
   grid-template-columns: var(--yv-sidebar-w) 1fr;
   min-height: 100vh;
   width: 100%;
-  background: var(--yv-bg-0);
+  background: var(--yv-light);
   color: var(--yv-text-2);
 }
-
 .yv-page {
-  padding: var(--yv-page-pad-y) var(--yv-page-pad-x);
+  padding: var(--yv-page-pad-y) var(--yv-page-pad-x) 48px;
   width: 100%;
   max-width: var(--yv-content-max);
   margin: 0 auto;
-  overflow: hidden;
 }
 .yv-page--wide { max-width: var(--yv-content-max-wide); }
 .yv-page--full { max-width: none; }
 
-/* ─── Sidebar ─────────────────────────────────────────── */
 .yv-sidebar {
-  background: var(--yv-bg-1);
-  border-right: 1px solid var(--yv-border-subtle);
-  display: flex;
-  flex-direction: column;
-  padding: 16px 12px;
-  gap: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 18px 14px;
+  background: rgba(255,255,255,.035);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,.08), 4px 0 40px rgba(0,0,0,.5);
+  backdrop-filter: var(--yv-blur-deep);
   overflow-y: auto;
   width: var(--yv-sidebar-w);
 }
@@ -599,11 +405,10 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
   .yv-sidebar-mobile-toggle { display: none !important; }
 }
 
-/* Brand */
 .yv-sidebar__brand {
   display: flex; align-items: center; gap: 10px;
-  padding: 6px 8px 14px;
-  border-bottom: 1px solid var(--yv-border-subtle);
+  padding: 8px 10px 16px;
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,.07);
   margin-bottom: 8px;
 }
 .yv-sidebar__name {
@@ -613,51 +418,37 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
   letter-spacing: -0.02em;
 }
 
-/* Nav */
-.yv-sidebar__nav {
-  flex: 1;
-  overflow-y: auto;
-}
+.yv-sidebar__nav { flex: 1; overflow-y: auto; }
 .yv-sidebar__nav::-webkit-scrollbar { width: 3px; }
 .yv-sidebar__nav::-webkit-scrollbar-track { background: transparent; }
-.yv-sidebar__nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
+.yv-sidebar__nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
 
-.yv-sidebar__group {
-  display: flex; flex-direction: column;
-  gap: 1px;
-  padding-top: 12px;
-}
+.yv-sidebar__group { display: flex; flex-direction: column; gap: 1px; padding-top: 12px; }
 .yv-sidebar__group-label {
+  display: flex; align-items: center;
+  height: 30px; padding: 0 12px;
   font-family: var(--yv-font-mono);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
   color: var(--yv-text-4);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 4px 10px 8px;
+  background: none; border: none; cursor: pointer; width: 100%;
+  transition: color var(--yv-t-fast);
 }
+.yv-sidebar__group-label:hover { color: var(--yv-text-3); }
+
 .yv-sidebar__item {
-  display: flex; align-items: center; gap: 10px;
-  height: 36px; padding: 0 8px;
-  border-radius: 6px;
-  font-size: 15px;
-  font-weight: 450;
-  /* Contraste AA para texto pequeño: --yv-text-3 (#8b8b8b) daba ~2.8:1 sobre #0a0a0a */
-  color: #b0b0b0;
-  cursor: pointer;
-  transition: background 150ms cubic-bezier(0.2,0.7,0.3,1), color 150ms cubic-bezier(0.2,0.7,0.3,1);
+  display: flex; align-items: center; gap: 11px;
+  height: 38px; padding: 0 12px;
+  border-radius: var(--yv-radius-sm);
+  font-size: 14px;
+  color: var(--yv-text-3);
   text-decoration: none;
+  transition: background var(--yv-t-fast) var(--yv-ease), color var(--yv-t-fast) var(--yv-ease);
 }
-.yv-sidebar__item:hover {
-  background: var(--yv-bg-3);
-  color: var(--yv-text-1);
-}
+.yv-sidebar__item:hover { background: rgba(255,255,255,.06); color: var(--yv-text-1); }
 .yv-sidebar__item--active {
-  /* Distinto del hover: tinte de marca + barra izquierda (E1 #6) */
-  background: rgba(232, 77, 91, 0.10);
   color: var(--yv-text-1);
-  font-weight: 500;
-  box-shadow: inset 2px 0 0 var(--yv-brand), inset 0 0 0 1px rgba(232, 77, 91, 0.25);
+  background: linear-gradient(160deg, rgba(232,77,91,.3), rgba(232,77,91,.1));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.26), 0 8px 20px -10px rgba(232,77,91,.7);
 }
 .yv-sidebar__icon {
   width: 28px; height: 28px;
@@ -666,34 +457,33 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
   flex-shrink: 0;
 }
 .yv-sidebar__item:hover .yv-sidebar__icon { color: var(--yv-text-2); }
-.yv-sidebar__item--active .yv-sidebar__icon { color: var(--yv-brand); }
+.yv-sidebar__item--active .yv-sidebar__icon { color: var(--yv-brand-lift); }
 .yv-sidebar__badge {
   margin-left: auto;
   font-size: 10px; font-family: var(--yv-font-mono);
-  background: var(--yv-bg-4);
+  background: var(--yv-glass-chip);
   color: var(--yv-text-3);
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px 7px;
+  border-radius: var(--yv-radius-pill);
 }
 
-/* Footer */
 .yv-sidebar__footer {
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px solid var(--yv-border-subtle);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
 }
 .yv-sidebar__user {
   display: flex; align-items: center; gap: 10px;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--yv-radius-sm);
   cursor: default;
   transition: background 150ms;
 }
-.yv-sidebar__user:hover { background: var(--yv-bg-3); }
+.yv-sidebar__user:hover { background: rgba(255,255,255,.06); }
 .yv-sidebar__avatar {
   width: 26px; height: 26px;
   border-radius: 50%;
-  background: var(--yv-brand);
+  background: var(--yv-brand-fill);
   display: flex; align-items: center; justify-content: center;
   color: white; font-weight: 600; font-size: 12px;
   flex-shrink: 0;
@@ -705,8 +495,7 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
   background: transparent;
-  border: 1px solid var(--yv-border-subtle);
-  border-radius: 6px;
+  border-radius: var(--yv-radius-sm);
   color: var(--yv-text-4);
   cursor: pointer;
   transition: all 150ms;
@@ -714,26 +503,24 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
 }
 .yv-sidebar__signout:hover {
   background: var(--yv-brand-soft);
-  border-color: var(--yv-brand-border);
-  color: var(--yv-brand);
+  color: var(--yv-brand-lift);
 }
 
-/* Mobile toggle */
 .yv-sidebar-mobile-toggle {
   position: fixed;
   top: 12px; left: 12px;
   z-index: 60;
   display: flex; align-items: center; justify-content: center;
   width: 40px; height: 40px;
-  border-radius: 8px;
-  border: 1px solid var(--yv-border);
-  background: rgba(10,10,10,0.9);
+  border-radius: var(--yv-radius);
+  background: rgba(12,10,15,0.85);
+  box-shadow: var(--yv-edge), var(--yv-depth-1);
+  backdrop-filter: var(--yv-blur);
   cursor: pointer;
-  transition: border-color 150ms;
+  transition: transform var(--yv-t-fast) var(--yv-ease);
 }
-.yv-sidebar-mobile-toggle:hover { border-color: var(--yv-border-strong); }
+.yv-sidebar-mobile-toggle:hover { transform: translateY(-1px); }
 
-/* Mobile overlay */
 .yv-sidebar-overlay {
   position: fixed;
   inset: 0;
@@ -755,34 +542,229 @@ textarea.yv-input { height: auto; padding: 10px 12px; }
 }
 .yv-sidebar-close:hover { color: var(--yv-text-1); }
 
-/* Skip-to-content (E1 #5): invisible hasta que recibe foco por teclado */
 .yv-skip-link {
   position: absolute;
   left: -9999px;
   top: 8px;
   z-index: 200;
   padding: 10px 16px;
-  background: var(--yv-brand);
+  background: var(--yv-brand-fill);
   color: #fff;
-  border-radius: 8px;
+  border-radius: var(--yv-radius);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
 }
-.yv-skip-link:focus {
-  left: 8px;
+.yv-skip-link:focus { left: 8px; }
+
+/* ─── Movimiento ─────────────────────────────────────────── */
+@keyframes yv-drift { 0%, 100% { transform: translateY(0) rotate(-.4deg); } 50% { transform: translateY(-10px) rotate(.3deg); } }
+@keyframes yv-spin  { to { transform: rotate(360deg); } }
+.yv-float { animation: yv-drift 11s ease-in-out infinite; }
+.yv-spin  { animation: yv-spin .8s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
-@media (max-width: 768px) {
-  :root {
-    --yv-page-pad-x: 16px;
-    --yv-page-pad-y: 20px;
-  }
+/* ================================================================
+   Clases heredadas — alias directos a componentes Cristal
+   (tabla de equivalencias del handoff). Mismos nombres de clase en
+   JSX, nuevo aspecto: cero cambios de componente en las páginas que
+   aún no se han migrado a las clases .yv-* nativas.
+   ================================================================ */
+
+.soft-card { background: var(--yv-glass); border-radius: var(--yv-radius-lg); box-shadow: var(--yv-depth-1), var(--yv-edge); backdrop-filter: var(--yv-blur); border: none; }
+
+.soft-field {
+  background: rgba(0,0,0,.34);
+  border: none;
+  border-radius: var(--yv-radius);
+  box-shadow: var(--yv-sunken);
+  transition: box-shadow var(--yv-t-fast) var(--yv-ease);
+  color: var(--yv-text-2);
+  outline: none;
+  padding: 14px 16px;
+  width: 100%;
+  font-size: var(--yv-text-base);
+}
+.soft-field:hover { box-shadow: var(--yv-sunken); }
+.soft-field:focus { box-shadow: var(--yv-sunken-focus); }
+.soft-field::placeholder { color: var(--yv-text-4); }
+.soft-field option { background: var(--yv-bg-1); }
+
+.soft-pill, .soft-chip {
+  border-radius: var(--yv-radius-pill);
+  border: none;
+  background: var(--yv-glass-chip);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+  transition: transform var(--yv-t-fast) var(--yv-ease), background var(--yv-t-fast);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--yv-text-2);
+}
+.soft-pill:hover, .soft-chip:hover { transform: translateY(-2px); background: rgba(255,255,255,.11); }
+.soft-chip-active, .soft-pill.soft-chip-active {
+  color: #3d1015 !important;
+  background: linear-gradient(165deg, #fff, #ffdfe2) !important;
+  box-shadow: 0 8px 18px -8px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.9) !important;
+  transform: none;
+}
+
+.btn-offset {
+  position: relative;
+  background: var(--yv-brand-fill);
+  color: var(--yv-on-brand);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--yv-radius);
+  transition: transform var(--yv-t-fast) var(--yv-ease), box-shadow var(--yv-t-fast) var(--yv-ease);
+  box-shadow: 0 16px 40px -14px rgba(232,77,91,.85), inset 0 1px 0 rgba(255,255,255,.45);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.btn-offset:hover:not(:disabled) { transform: translateY(-2px); }
+.btn-offset:active:not(:disabled) { transform: translateY(0); }
+.btn-offset:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-offset-ghost {
+  background: var(--yv-glass-chip) !important; color: var(--yv-text-2) !important; border: none !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 12px 30px -16px rgba(0,0,0,.9) !important;
+  backdrop-filter: var(--yv-blur);
+  border-radius: var(--yv-radius);
+  transition: transform var(--yv-t-fast) var(--yv-ease), color var(--yv-t-fast) var(--yv-ease);
+}
+.btn-offset-ghost:hover:not(:disabled) { transform: translateY(-2px); color: var(--yv-text-1) !important; }
+
+.btn-offset-white {
+  background: linear-gradient(165deg, #fff, #ffdfe2) !important; color: #3d1015 !important; border: none !important;
+  box-shadow: 0 14px 30px -12px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.9) !important;
+  border-radius: var(--yv-radius);
+  transition: transform var(--yv-t-fast) var(--yv-ease);
+}
+.btn-offset-white:hover:not(:disabled) { transform: translateY(-2px); }
+
+.red-tape {
+  color: var(--yv-brand);
+  font-weight: 500;
+  font-family: var(--yv-font-mono);
+  padding: 0; display: inline-block; background: none;
+  font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--yv-brand); border-radius: 50%;
+  box-shadow: 0 0 8px var(--yv-brand-lift);
+  flex-shrink: 0;
+}
+
+.red-underline {
+  background-image: linear-gradient(180deg, transparent 62%, rgba(232,77,91,0.35) 62%, rgba(232,77,91,0.35) 92%, transparent 92%);
+  background-repeat: no-repeat;
+  display: inline;
+}
+
+.stat-num { font-family: var(--yv-font-display); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.05em; }
+
+/* ─── Animaciones que se mantienen ───────────────────────── */
+@keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-track { animation: marquee-scroll 40s linear infinite; display: flex; white-space: nowrap; }
+.marquee-track.slow { animation-duration: 60s; }
+
+@keyframes pulseRed {
+  0%,100% { box-shadow: 0 0 0 0 rgba(232,77,91,0.6); }
+  50% { box-shadow: 0 0 0 12px rgba(232,77,91,0); }
+}
+.pulse-red { animation: pulseRed 2s ease-out infinite; }
+
+@keyframes blink-anim { 50% { opacity: 0; } }
+.caret-blink { animation: blink-anim 1s step-end infinite; }
+.typing-cursor { display: inline-block; width: 2px; height: 1em; background: var(--yv-brand); vertical-align: -0.15em; margin-left: 2px; animation: blink-anim 1s step-end infinite; }
+
+@keyframes fadeUpIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.page-enter { animation: fadeUpIn .5s var(--yv-ease); }
+
+.screen-glow {
+  box-shadow:
+    0 0 0 1px rgba(232,77,91,0.35),
+    0 30px 80px -20px rgba(232,77,91,0.3),
+    0 60px 120px -30px rgba(0,0,0,0.9);
+}
+
+@keyframes spin-r { to { transform: rotate(360deg); } }
+.spin-r { animation: spin-r 1s linear infinite; }
+
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s var(--yv-ease), transform .6s var(--yv-ease); }
+.reveal.in { opacity: 1; transform: none; }
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.btn-shimmer { position: relative; overflow: hidden; }
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: shimmer 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* ─── Responsive ─────────────────────────────────────────── */
+@media (max-width: 900px) {
+  :root { --yv-page-pad-x: 20px; --yv-page-pad-y: 24px; --yv-text-3xl: 30px; --yv-text-5xl: 44px; }
   .yv-shell { grid-template-columns: 1fr; }
   .yv-sidebar--desktop { display: none !important; }
   .yv-page-header { flex-direction: column; align-items: flex-start; }
-  /* Tap target mínimo 44px en táctil (E1 #4) */
   .yv-sidebar__item { height: 44px; }
-  /* iOS Safari hace zoom automático al enfocar inputs con fuente <16px (E3) */
-  input, select, textarea { font-size: 16px !important; }
+  /* Las tablas pasan a tarjetas apiladas: en móvil el scroll horizontal
+     es lo peor parado del diseño actual. */
+  .yv-table thead { display: none; }
+  .yv-table tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 14px 0; box-shadow: inset 0 -1px 0 rgba(255,255,255,.06); }
+  .yv-table td { padding: 0; box-shadow: none; }
+  .yv-table td::before { content: attr(data-label) ' '; font-family: var(--yv-font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--yv-text-4); }
+
+  /* Tabla-matriz (comparativa de planes): 4 columnas no caben en el apilado
+     de 2 de arriba — el valor perdería a qué plan pertenece. Aquí la primera
+     celda pasa a ser el título de la fila y cada plan ocupa su propia línea
+     etiquetada. */
+  .yv-table--matrix tr { grid-template-columns: 1fr; gap: 2px; padding: 16px 0; }
+  .yv-table--matrix td:first-child {
+    font-family: var(--yv-font-display); font-weight: 700;
+    color: var(--yv-text-1); margin-bottom: 6px;
+  }
+  .yv-table--matrix td:not(:first-child) {
+    display: flex; align-items: center; justify-content: space-between;
+    text-align: left; padding: 3px 10px; border-radius: var(--yv-radius-sm);
+  }
+
+  input, select, textarea { font-size: 16px !important; } /* iOS no hace zoom al enfocar */
 }
+
+/* ================================================================
+   Red de seguridad sistémica — páginas aún no migradas a mano
+   ------------------------------------------------------------
+   El bloque 6 del rediseño Cristal migra el resto del sitio por
+   archivo (ver [[project_cristal_redesign]] en memoria). Mientras
+   eso avanza, estas reglas suavizan cualquier `border-white/NN` y
+   `bg-black` de Tailwind que quede sin tocar en JSX, para que
+   ninguna página del sitio muestre el borde blanco duro / negro
+   plano de la era anterior — sin reescribir estructura ni arriesgar
+   look por archivo sin poder verlo renderizado. Se retiran página a
+   página según se migran a `.yv-glass` de verdad.
+   ================================================================ */
+.border-white\/5, .border-white\/8   { border-color: rgba(255,255,255,.05) !important; }
+.border-white\/10, .border-white\/15 { border-color: rgba(255,255,255,.09) !important; }
+.border-white\/20, .border-white\/25 { border-color: rgba(255,255,255,.13) !important; }
+.border-white\/30                    { border-color: rgba(255,255,255,.17) !important; }
+.bg-black { background-color: var(--yv-bg-0) !important; }

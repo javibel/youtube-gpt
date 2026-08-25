@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import Anthropic from '@anthropic-ai/sdk';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -531,14 +532,14 @@ Keep each under 200 words. Use line breaks for readability. No markdown.`;
 
       const msg = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 500,
+        max_tokens: 1200,
         messages: [{ role: 'user', content: prompt }],
       });
 
       const text = (msg.content[0] as { type: string; text: string }).text.trim();
-      const parsed = JSON.parse(text);
+      const parsed = parseClaudeJson<{ es?: string; en?: string }>(text);
       if (parsed.es && parsed.en) {
-        aiSummary = parsed;
+        aiSummary = { es: parsed.es, en: parsed.en };
       }
     } catch {
       // AI summary is optional — don't fail the audit

@@ -61,9 +61,9 @@ const ALERT_ICONS: Record<string, (props: { size?: number }) => React.ReactEleme
   tech: MonitorIcon, gaming: GamepadIcon, education: WebpIcon('/icons/graduation.webp'),
   entertainment: WebpIcon('/icons/clapperboard.webp'), music: MusicNoteIcon, lifestyle: StarIcon,
   news: NewspaperIcon, sports: BallIcon, science: WebpIcon('/icons/flask.webp'), business: BagIcon,
-  food: UtensilsIcon, travel: PlaneIcon, general: WebpIcon('/icons/bar-chart.webp'),
+  food: UtensilsIcon, travel: PlaneIcon, general: WebpIcon('/icons/bell.webp'),
 };
-const DEFAULT_ALERT_ICON = WebpIcon('/icons/bar-chart.webp');
+const DEFAULT_ALERT_ICON = WebpIcon('/icons/bell.webp');
 
 const REGIONS = [
   { code: 'US', label: { es: '🇺🇸 EE.UU.', en: '🇺🇸 USA' }, lang: 'en' },
@@ -132,7 +132,7 @@ function PublicTrends({ lang }: { lang: Lang }) {
   }, [region]);
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
       <PublicNav />
       <ExitIntentPopup lang={lang} />
 
@@ -152,7 +152,7 @@ function PublicTrends({ lang }: { lang: Lang }) {
         <a
           href="/signup"
           className="flex items-center justify-between p-4 rounded-xl mb-6 transition hover:opacity-90"
-          style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}
+          style={{ background: 'var(--yv-brand-glass)', boxShadow: 'var(--yv-edge)' }}
         >
           <span className="font-mono-jb text-[13px] inline-flex items-center gap-1.5" style={{ color: 'var(--yv-text-3)' }}>
             <UnlockIcon size={13} /> {t('Regístrate gratis para filtrar por nicho, idioma y duración', 'Sign up free to filter by niche, language & duration')}
@@ -191,8 +191,7 @@ function PublicTrends({ lang }: { lang: Lang }) {
                 href={`https://youtube.com/watch?v=${item.videoId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-4 p-4 rounded-xl transition group"
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--yv-border)' }}
+                className="yv-glass flex items-center gap-4 p-4 transition group"
               >
                 <span className="font-mono-jb text-[13px] w-6 text-center flex-shrink-0" style={{ color: i < 3 ? '#e84d5b' : 'var(--yv-text-4)' }}>
                   {i + 1}
@@ -213,8 +212,8 @@ function PublicTrends({ lang }: { lang: Lang }) {
           </div>
         )}
 
-        <div className="mt-10 p-8 rounded-xl text-center" style={{ background: 'linear-gradient(135deg, rgba(232,77,91,0.06), rgba(0,229,255,0.04))', border: '1px solid rgba(232,77,91,0.2)' }}>
-          <p className="font-mono-jb text-[12px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+        <div className="yv-glass yv-glass--brand mt-10 p-8 text-center">
+          <p className="font-mono-jb text-[12px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>
             {t('VERSIÓN LIMITADA', 'LIMITED VERSION')}
           </p>
           <p className="font-display font-bold text-white text-xl mb-2">
@@ -343,7 +342,7 @@ export default function TrendsClient() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -365,10 +364,12 @@ export default function TrendsClient() {
             <div className="flex gap-0">
               <button
                 onClick={() => setTab('explore')}
-                className="px-5 py-3 font-mono-jb text-[13px] tracking-wider border-b-2 transition"
+                className="px-5 py-3 font-mono-jb text-[13px] tracking-wider transition"
                 style={{
+                  borderRadius: 'var(--yv-radius-sm) var(--yv-radius-sm) 0 0',
                   color: tab === 'explore' ? 'var(--yv-text-1)' : 'var(--yv-text-3)',
-                  borderColor: tab === 'explore' ? 'var(--yv-brand)' : 'transparent',
+                  background: tab === 'explore' ? 'var(--yv-brand-glass)' : 'transparent',
+                  boxShadow: tab === 'explore' ? 'inset 0 -2px 0 var(--yv-brand)' : 'none',
                 }}
               >
                 <span className="flex items-center gap-1.5">
@@ -378,10 +379,12 @@ export default function TrendsClient() {
               </button>
               <button
                 onClick={() => setTab('alerts')}
-                className="px-5 py-3 font-mono-jb text-[13px] tracking-wider border-b-2 transition"
+                className="px-5 py-3 font-mono-jb text-[13px] tracking-wider transition"
                 style={{
+                  borderRadius: 'var(--yv-radius-sm) var(--yv-radius-sm) 0 0',
                   color: tab === 'alerts' ? 'var(--yv-text-1)' : 'var(--yv-text-3)',
-                  borderColor: tab === 'alerts' ? 'var(--yv-brand)' : 'transparent',
+                  background: tab === 'alerts' ? 'var(--yv-brand-glass)' : 'transparent',
+                  boxShadow: tab === 'alerts' ? 'inset 0 -2px 0 var(--yv-brand)' : 'none',
                 }}
               >
                 <span className="flex items-center gap-1.5">
@@ -401,7 +404,7 @@ export default function TrendsClient() {
 
       {tab === 'explore' && (
         <div className="yv-page" style={{ paddingTop: 0 }}>
-          <div className="flex flex-wrap items-center gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
             <select
               value={region}
               onChange={e => {
@@ -410,8 +413,7 @@ export default function TrendsClient() {
                 const regionDef = REGIONS.find(r => r.code === newRegion);
                 if (regionDef) setLangFilter(regionDef.lang);
               }}
-              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
-              style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
+              className="yv-input font-mono-jb text-[13px] py-2"
             >
               {REGIONS.map(r => (
                 <option key={r.code} value={r.code} style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>
@@ -423,8 +425,7 @@ export default function TrendsClient() {
             <select
               value={category}
               onChange={e => setCategory(e.target.value)}
-              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
-              style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
+              className="yv-input font-mono-jb text-[13px] py-2"
             >
               <option value="" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>
                 {t('Todas las categorías', 'All categories')}
@@ -439,8 +440,7 @@ export default function TrendsClient() {
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as 'vph' | 'views' | 'engagement' | 'likes')}
-              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
-              style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
+              className="yv-input font-mono-jb text-[13px] py-2"
             >
               <option value="vph" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>{t('Views/hora', 'Views/hour')}</option>
               <option value="views" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>{t('Total views', 'Total views')}</option>
@@ -451,8 +451,7 @@ export default function TrendsClient() {
             <select
               value={durationFilter}
               onChange={e => setDurationFilter(e.target.value)}
-              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
-              style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
+              className="yv-input font-mono-jb text-[13px] py-2"
             >
               <option value="all" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>{t('Cualquier duración', 'Any duration')}</option>
               <option value="short" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>{t('Corto (< 4 min)', 'Short (< 4 min)')}</option>
@@ -463,8 +462,7 @@ export default function TrendsClient() {
             <select
               value={minLikes}
               onChange={e => setMinLikes(e.target.value)}
-              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
-              style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
+              className="yv-input font-mono-jb text-[13px] py-2"
             >
               <option value="0" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>{t('Sin mín. likes', 'No min likes')}</option>
               <option value="1000" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>1K+ likes</option>
@@ -475,8 +473,7 @@ export default function TrendsClient() {
             <select
               value={langFilter}
               onChange={e => setLangFilter(e.target.value)}
-              className="font-mono-jb text-[13px] rounded px-3 py-2 transition focus:outline-none"
-              style={{ border: '1px solid var(--yv-border)', background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}
+              className="yv-input font-mono-jb text-[13px] py-2"
             >
               <option value="all" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>{t('Todos los idiomas', 'All languages')}</option>
               <option value="es" style={{ background: 'var(--yv-bg-3)', color: 'var(--yv-text-1)' }}>{t('Español', 'Spanish')}</option>
@@ -492,8 +489,8 @@ export default function TrendsClient() {
             <button
               onClick={fetchExplorer}
               disabled={explorerLoading}
-              className="font-mono-jb text-[13px] tracking-wider hover:text-white transition rounded px-3 py-2 disabled:opacity-40"
-              style={{ color: 'var(--yv-text-3)', border: '1px solid var(--yv-border)' }}
+              className="yv-chip font-mono-jb text-[13px] tracking-wider px-3 py-2 disabled:opacity-40 w-full justify-center"
+              style={{ color: 'var(--yv-text-3)' }}
             >
               {explorerLoading ? (
                 <span className="flex items-center gap-1.5">
@@ -522,7 +519,7 @@ export default function TrendsClient() {
           {explorerLoading && !explorer && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-xl p-4 animate-pulse" style={{ background: 'var(--yv-bg-2)', border: '1px solid var(--yv-border-subtle)' }}>
+                <div key={i} className="yv-glass p-4 animate-pulse">
                   <div className="h-32 rounded-lg mb-3" style={{ background: 'rgba(255,255,255,0.04)' }} />
                   <div className="h-4 rounded w-3/4 mb-2" style={{ background: 'rgba(255,255,255,0.04)' }} />
                   <div className="h-3 rounded w-1/2" style={{ background: 'rgba(255,255,255,0.03)' }} />
@@ -536,8 +533,7 @@ export default function TrendsClient() {
               {sortedItems.map((item, idx) => (
                 <div
                   key={item.videoId}
-                  className="rounded-xl overflow-hidden transition group"
-                  style={{ background: 'var(--yv-bg-2)', border: '1px solid var(--yv-border-subtle)' }}
+                  className="yv-glass overflow-hidden transition group"
                 >
                   <div className="relative">
                     <a href={`https://www.youtube.com/watch?v=${item.videoId}`} target="_blank" rel="noopener noreferrer">
@@ -574,8 +570,8 @@ export default function TrendsClient() {
                     </div>
                     <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{timeAgo(item.publishedAt, lang)}</p>
                     <a href={`/generate?topic=${encodeURIComponent(item.title)}`}
-                      className="mt-3 flex items-center justify-center gap-1.5 w-full font-mono-jb text-[13px] tracking-wider px-3 py-2 rounded hover:text-white transition"
-                      style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--yv-text-2)', border: '1px solid var(--yv-border)' }}>
+                      className="yv-chip mt-3 flex items-center justify-center gap-1.5 w-full font-mono-jb text-[13px] tracking-wider px-3 py-2"
+                      style={{ color: 'var(--yv-text-2)' }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
                       {t('Crear vídeo sobre esto', 'Create video about this')}
                     </a>
@@ -599,7 +595,7 @@ export default function TrendsClient() {
         <div className="yv-page" style={{ paddingTop: 0 }}>
           {unread > 0 && (
             <div className="flex justify-end mb-2">
-              <button onClick={markAllRead} className="font-mono-jb text-[13px] hover:text-white transition rounded px-3 py-1.5" style={{ color: 'var(--yv-text-3)', border: '1px solid var(--yv-border)' }}>
+              <button onClick={markAllRead} className="yv-chip font-mono-jb text-[13px] px-3 py-1.5" style={{ color: 'var(--yv-text-3)' }}>
                 {t('Marcar todo leído', 'Mark all read')}
               </button>
             </div>
@@ -615,7 +611,7 @@ export default function TrendsClient() {
 
           {!alertsLoading && !alertsError && alerts.length === 0 && (
             <div className="text-center py-16">
-              <div className="mb-4 flex justify-center"><img src="/icons/bar-chart.webp" alt="" width={40} height={40} className="object-contain" /></div>
+              <div className="mb-4 flex justify-center"><img src="/icons/bell.webp" alt="" width={40} height={40} className="object-contain" /></div>
               <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>
                 {t('No hay alertas todavía. Las tendencias se generan diariamente.', 'No alerts yet. Trends are generated daily.')}
               </p>
@@ -629,11 +625,7 @@ export default function TrendsClient() {
             return (
               <div
                 key={alert.id}
-                className="rounded-lg border transition cursor-pointer"
-                style={{
-                  background: alert.read ? 'rgba(255,255,255,0.02)' : 'rgba(155,32,32,0.06)',
-                  borderColor: alert.read ? 'rgba(255,255,255,0.06)' : 'rgba(155,32,32,0.2)',
-                }}
+                className={`yv-glass transition cursor-pointer ${alert.read ? '' : 'yv-glass--brand'}`}
                 onClick={() => toggleExpand(alert.id)}
               >
                 <div className="flex items-start gap-3 p-4">

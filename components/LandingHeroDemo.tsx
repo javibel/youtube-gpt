@@ -50,13 +50,13 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
 
   return (
     <div className="mt-16 max-w-4xl mx-auto">
-      <div className="relative screen-glow rounded-xl overflow-hidden border border-white/10" style={{ background: '#0B0B0D' }}>
+      <div className="relative yv-glass yv-glass--lift overflow-hidden" style={{ borderRadius: 'var(--yv-radius-xl)' }}>
         {/* Fake window chrome */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-black">
+        <div className="flex items-center justify-between px-4 py-2.5" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
             <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-            <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--red)' }} />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--yv-brand)' }} />
           </div>
           <span className="font-mono-jb text-[13px] text-zinc-500 tracking-wider">{lang === 'en' ? 'LIVE DEMO · 8.2s' : 'DEMO EN VIVO · 8.2s'}</span>
           <span className="live-dot" />
@@ -73,7 +73,7 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
                 rows={2}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                className="w-full bg-black border border-white/10 text-white p-3 text-[15px] resize-none rounded-sm focus:outline-none focus:border-[var(--red)]/60 transition"
+                className="yv-input text-white text-[15px] resize-none"
                 placeholder={d.placeholder}
               />
             </div>
@@ -88,7 +88,7 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
                 <span
                   key={k}
                   className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-1"
-                  style={{ background: i === 0 ? 'var(--red)' : undefined, color: i === 0 ? '#fff' : '#71717a', border: i === 0 ? undefined : '1px solid rgba(255,255,255,0.12)' }}
+                  style={{ borderRadius: 'var(--yv-radius-sm)', background: i === 0 ? 'var(--yv-brand)' : 'var(--yv-glass-chip)', color: i === 0 ? '#fff' : '#71717a', boxShadow: i === 0 ? 'none' : 'inset 0 1px 0 rgba(255,255,255,.1)' }}
                 >
                   {k}
                 </span>
@@ -104,11 +104,11 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
           </div>
 
           {state !== 'idle' && (
-            <div className="mt-6 pt-6 border-t border-white/10 pl-8">
+            <div className="mt-6 pt-6 pl-8" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
               <div className="flex items-center justify-between mb-3">
                 <span className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500">{d.resultsLabel}</span>
                 {state === 'loading' && (
-                  <span className="font-mono-jb text-[13px] flex items-center gap-2" style={{ color: 'var(--red)' }}>
+                  <span className="font-mono-jb text-[13px] flex items-center gap-2" style={{ color: 'var(--yv-brand-lift)' }}>
                     <span className="w-3 h-3 border border-current border-t-transparent rounded-full spin-r" />
                     {lang === 'en' ? 'Processing' : 'Procesando'}
                   </span>
@@ -116,8 +116,8 @@ export default function LandingHeroDemo({ lang = 'es' }: { lang?: Lang }) {
               </div>
               <ul className="space-y-2">
                 {results.map((r, i) => (
-                  <li key={i} className="group flex items-start gap-3 p-3 border border-white/10 hover:border-[var(--red)] bg-black/40 transition cursor-pointer page-enter">
-                    <span className="font-mono-jb text-[13px] mt-0.5 shrink-0" style={{ color: 'var(--red)' }}>
+                  <li key={i} className="yv-glass yv-glass--hover group flex items-start gap-3 p-3 transition cursor-pointer page-enter">
+                    <span className="font-mono-jb text-[13px] mt-0.5 shrink-0" style={{ color: 'var(--yv-brand-lift)' }}>
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span className="text-[15px] leading-snug">{r}</span>

@@ -287,13 +287,13 @@ export default function Sidebar() {
                 </a>
               )}
             </div>
-            <div style={{ height: 4, borderRadius: 2, background: 'var(--yv-border, rgba(255,255,255,0.08))' }}>
+            <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,.08)' }}>
               <div style={{
                 height: '100%',
                 borderRadius: 2,
                 width: `${Math.min(100, (usage.used / usage.limit) * 100)}%`,
-                background: usage.used >= usage.limit ? '#ef4444' : usage.used >= usage.limit * 0.8 ? '#f59e0b' : 'var(--yv-brand)',
-                transition: 'width 0.3s ease',
+                background: usage.used >= usage.limit ? 'var(--yv-bad)' : usage.used >= usage.limit * 0.8 ? 'var(--yv-warn)' : 'var(--yv-brand)',
+                transition: 'width var(--yv-t-fast) var(--yv-ease)',
               }} />
             </div>
           </div>

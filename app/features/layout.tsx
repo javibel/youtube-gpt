@@ -7,11 +7,11 @@ export default async function FeaturesLayout({ children }: { children: React.Rea
 
   return (
     <>
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
+      <nav className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(12,10,15,0.72)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-              <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+              <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
             </svg>
             <span className="font-display font-bold text-[15px] tracking-tight text-white">
               YTubViral<span style={{ color: 'var(--red)' }}>.</span>com

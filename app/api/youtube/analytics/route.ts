@@ -3,8 +3,11 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 
 export const maxDuration = 60;
+
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 interface TrafficRow { insightTrafficSourceType: string; views: number; estimatedMinutesWatched: number }
 interface CountryRow { country: string; views: number; estimatedMinutesWatched: number }
@@ -34,7 +37,8 @@ function toRows<T>(data: { columnHeaders: { name: string }[]; rows?: unknown[][]
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const lang = new URL(request.url).searchParams.get('lang') === 'en' ? 'en' : 'es';
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -136,13 +140,69 @@ export async function GET() {
 
     // Parse daily
     const daily = toRows<DailyRow>(dailyRes);
+    const resolvedTopVideos = topVideos.map(v => ({ ...v, title: videoTitles[v.video] || v.video }));
+
+    // AI-written analysis of what the numbers mean
+    let aiInsight: { es: string; en: string } | null = null;
+    if (ANTHROPIC_API_KEY) {
+      try {
+        const topTraffic = traffic.slice(0, 3).map(tr => `${tr.insightTrafficSourceType}: ${tr.views} views`).join(', ');
+        const topCountriesStr = countries.slice(0, 3).map(c => `${c.country}: ${c.views} views`).join(', ');
+        const topVideosStr = resolvedTopVideos.slice(0, 3).map(v => `"${v.title}" (${v.views} views, ${v.subscribersGained} subs gained)`).join('\n');
+
+        const prompt = `You are a YouTube growth expert. Analyze this channel's last-28-days analytics and explain what stands out, in plain language a creator can act on. Reply in ${lang === 'en' ? 'English' : 'Spanish'}.
+
+Views: ${overview.views || 0} | Watch time: ${Math.round((overview.estimatedMinutesWatched || 0) / 60)}h | Avg view duration: ${overview.averageViewDuration || 0}s | Avg % viewed: ${overview.averageViewPercentage || 0}%
+Subscribers: +${overview.subscribersGained || 0} / -${overview.subscribersLost || 0} | Likes: ${overview.likes || 0} | Comments: ${overview.comments || 0}
+Top traffic sources: ${topTraffic || 'none'}
+Top countries: ${topCountriesStr || 'none'}
+Top videos:
+${topVideosStr || 'none'}
+
+Reply ONLY with valid JSON: {"es": "...", "en": "..."}
+2-3 short paragraphs, under 180 words. Call out the single most actionable pattern (a traffic source to lean into, a country to target, a video's approach to repeat). No markdown, no headers.`;
+
+        // Este insight es OPCIONAL y va detrás de 5 llamadas a YouTube dentro de un
+        // route con maxDuration=60. Sin un tope propio, un Anthropic lento agota el
+        // límite de la plataforma — y ese timeout no se puede capturar, así que se
+        // perdería TODO el payload de analytics, no solo el insight. De ahí el abort.
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), 15_000);
+        try {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'anthropic-beta': 'prompt-caching-2024-07-31',
+            },
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 1200,
+              messages: [{ role: 'user', content: prompt }],
+            }),
+            signal: ac.signal,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const text = data.content?.[0]?.text || '';
+            const parsed = parseClaudeJson<{ es?: string; en?: string }>(text);
+            if (parsed.es && parsed.en) aiInsight = { es: parsed.es, en: parsed.en };
+          }
+        } finally {
+          clearTimeout(timer);
+        }
+      } catch { /* AI insight is optional — don't fail the page */ }
+    }
 
     return NextResponse.json({
       overview,
       traffic,
       countries,
-      topVideos: topVideos.map(v => ({ ...v, title: videoTitles[v.video] || v.video })),
+      topVideos: resolvedTopVideos,
       daily,
+      aiInsight,
       channelName: yt.channelName || 'Channel',
       period: { start: startDate28, end: endDate },
     });

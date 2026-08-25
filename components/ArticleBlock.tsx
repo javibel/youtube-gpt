@@ -43,7 +43,7 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
   }
   if (block.type === 'callout-mid') {
     return (
-      <div className="my-10 border border-white/15 p-8 text-center relative overflow-hidden" style={{ background: '#0E0E10' }}>
+      <div className="yv-glass my-10 p-8 text-center relative overflow-hidden">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.12), transparent 70%)' }} />
         <div className="relative">
           <p className="font-display font-bold text-2xl mb-2">{block.t}</p>
@@ -57,7 +57,7 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
   }
   if (block.type === 'callout-gear') {
     return (
-      <div className="my-10 border border-white/15 p-8 relative overflow-hidden" style={{ background: '#0E0E10' }}>
+      <div className="yv-glass my-10 p-8 relative overflow-hidden">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(255,138,0,0.12), transparent 70%)' }} />
         <div className="relative flex flex-col md:flex-row items-center gap-6">
           <div style={{ color: '#FF8A00' }}><BagIcon size={40} /></div>
@@ -66,7 +66,7 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
             <p className="text-zinc-400 text-sm">{block.sub}</p>
           </div>
           <Link href="/gear" className="shrink-0 inline-flex items-center gap-2 px-6 py-3 font-display font-bold text-sm rounded-lg transition-all hover:scale-[1.02]"
-            style={{ background: 'rgba(255,138,0,0.15)', color: '#FF8A00', border: '1px solid rgba(255,138,0,0.3)' }}>
+            style={{ background: 'rgba(255,138,0,0.15)', color: '#FF8A00', boxShadow: 'inset 0 1px 0 rgba(255,138,0,.35)' }}>
             {block.cta} →
           </Link>
         </div>
@@ -83,7 +83,7 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             loading="lazy"
-            className="absolute inset-0 w-full h-full border border-white/10"
+            className="absolute inset-0 w-full h-full"
             style={{ borderRadius: 8 }}
           />
         </div>
@@ -92,7 +92,7 @@ export default function ArticleBlock({ block, lang }: { block: BlockType; lang: 
   }
   if (block.type === 'callout-final') {
     return (
-      <div className="mt-14 border border-white/15 p-10 text-center relative overflow-hidden" style={{ background: '#0E0E10' }}>
+      <div className="yv-glass yv-glass--brand mt-14 p-10 text-center relative overflow-hidden">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.18), transparent 70%)' }} />
         <div className="relative">
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>YTubViral</p>

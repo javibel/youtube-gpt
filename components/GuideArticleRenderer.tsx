@@ -23,7 +23,7 @@ export default function GuideArticleRenderer({ blocks, lang, showVideo, plan }: 
         if (block.type === 'image') {
           return (
             <figure key={i} className="my-8">
-              <div className="relative w-full overflow-hidden border border-white/10" style={{ aspectRatio: '16/9' }}>
+              <div className="yv-glass relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
                 <Image
                   src={block.src}
                   alt={block.alt}

@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 
 export const maxDuration = 60;
 
@@ -195,7 +196,7 @@ For collaboration suggestions, recommend 3 specific types of channels (not the t
           const data = await res.json();
           const text = data.content?.[0]?.text || '';
           try {
-            aiInsights = JSON.parse(text);
+            aiInsights = parseClaudeJson(text);
           } catch { /* */ }
         }
       } catch { /* */ }

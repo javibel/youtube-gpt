@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 
 export const maxDuration = 60;
 
@@ -203,13 +204,13 @@ ${context}`,
         const data = await res.json();
         const text = data.content?.[0]?.text || '';
         try {
-          const parsed = JSON.parse(text);
+          const parsed = parseClaudeJson<{ tips?: string[]; dropOffReasons?: typeof dropOffReasons }>(text);
           aiTips = Array.isArray(parsed.tips) ? parsed.tips : [];
           dropOffReasons = parsed.dropOffReasons || {};
         } catch {
           // Fallback: try parsing as plain array
           try {
-            const arr = JSON.parse(text);
+            const arr = parseClaudeJson<string[]>(text);
             if (Array.isArray(arr)) aiTips = arr;
           } catch { /* */ }
         }

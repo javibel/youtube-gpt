@@ -91,7 +91,7 @@ export default function PredictorPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -144,7 +144,7 @@ export default function PredictorPage() {
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder={t('Ej: 10 Trucos de Edición que Nadie te Enseña', 'Ex: 10 Editing Tricks Nobody Teaches You')}
-                className="w-full rounded-lg border border-white/15 px-4 py-3 text-sm font-mono-jb text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition"
+                className="yv-input text-sm font-mono-jb text-white placeholder-zinc-500"
                 style={{ background: 'rgba(255,255,255,0.04)' }}
                 maxLength={200}
               />
@@ -160,7 +160,7 @@ export default function PredictorPage() {
                 onChange={e => setDescription(e.target.value)}
                 placeholder={t('Primeras líneas de la descripción...', 'First lines of the description...')}
                 rows={3}
-                className="w-full resize-none rounded-lg border border-white/15 px-4 py-3 text-sm font-mono-jb text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition"
+                className="yv-input resize-none text-sm font-mono-jb text-white placeholder-zinc-500"
                 style={{ background: 'rgba(255,255,255,0.04)' }}
               />
             </div>
@@ -173,7 +173,7 @@ export default function PredictorPage() {
                 value={tags}
                 onChange={e => setTags(e.target.value)}
                 placeholder={t('edición, tutorial, davinci resolve, premiere', 'editing, tutorial, davinci resolve, premiere')}
-                className="w-full rounded-lg border border-white/15 px-4 py-3 text-sm font-mono-jb text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition"
+                className="yv-input text-sm font-mono-jb text-white placeholder-zinc-500"
                 style={{ background: 'rgba(255,255,255,0.04)' }}
               />
             </div>
@@ -319,7 +319,7 @@ export default function PredictorPage() {
 
             {/* Baseline reference */}
             <div className="text-center">
-              <span className="inline-flex items-center gap-2 font-mono-jb text-[13px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
+              <span className="yv-chip inline-flex items-center gap-2 font-mono-jb text-[13px] px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
                 {t(`Basado en tus últimos ${baseline.videoCount} vídeos · ${fmtNum(baseline.subscribers)} subs`, `Based on your last ${baseline.videoCount} videos · ${fmtNum(baseline.subscribers)} subs`)}
               </span>
             </div>

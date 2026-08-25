@@ -179,17 +179,17 @@ export default function SignupForm() {
   };
 
   return (
-    <div className="min-h-screen grain grid-bg flex items-center justify-center p-4" style={{ background: 'var(--ink)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--yv-light)' }}>
       <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
         <a href="/" className="flex items-center gap-1">
           <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-            <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+            <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
           </svg>
-          <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
+          <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
         </a>
         <button
           onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
-          className="flex items-center gap-1 font-mono-jb text-[13px] tracking-wider border border-white/15 rounded px-2 py-1 hover:border-white/30 transition"
+          className="yv-chip flex items-center gap-1 font-mono-jb text-[13px] tracking-wider px-2 py-1"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
           <span className="text-zinc-700 mx-0.5">|</span>
@@ -199,7 +199,7 @@ export default function SignupForm() {
 
       <div className="w-full max-w-md">
         <div className="mb-8">
-          <p className="font-mono-jb text-[13px] tracking-widest uppercase mb-3" style={{ color: 'var(--red)' }}>▸ {t('REGISTRO GRATIS', 'FREE SIGN UP')}</p>
+          <p className="font-mono-jb text-[13px] tracking-widest uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>▸ {t('REGISTRO GRATIS', 'FREE SIGN UP')}</p>
           <h1 className="font-display font-bold text-3xl tracking-tight text-white mb-2">{t('Empieza a crecer hoy', 'Start growing today')}</h1>
           <p className="text-zinc-400 text-sm">{t('10 generaciones al mes gratis. Sin tarjeta de crédito.', '10 free generations per month. No credit card required.')}</p>
         </div>
@@ -207,8 +207,7 @@ export default function SignupForm() {
         <div className="soft-card p-8">
           <button
             onClick={() => signIn('google', { callbackUrl: refCode ? `/dashboard?ref=${refCode}` : '/dashboard' })}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-medium text-white transition hover:brightness-110"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+            className="yv-btn yv-btn--ghost w-full py-3 px-4 text-sm font-medium text-white"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -276,7 +275,7 @@ export default function SignupForm() {
             {TURNSTILE_SITE_KEY && <div ref={turnstileRef} />}
 
             {error && (
-              <div className="rounded-xl px-4 py-3 text-sm inline-flex items-center gap-1.5" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
+              <div className="yv-note yv-note--error">
                 <WarningIcon size={14} /> {error}
               </div>
             )}

@@ -10,6 +10,8 @@ import LandingFAQ from '@/components/LandingFAQ';
 import ChatWidgetPreview from '@/components/ChatWidgetPreview';
 import PricingSection from '@/components/PricingSection';
 import RealTestimonials from '@/components/RealTestimonials';
+import { useCurrency } from '@/components/CurrencyProvider';
+import { PRICES, formatPrice } from '@/lib/pricing';
 
 type Lang = 'es' | 'en';
 
@@ -26,18 +28,18 @@ function TopNav({ lang }: { lang: Lang }) {
     : [['#how', 'Cómo funciona'], ['/tools', 'Herramientas'], ['#pricing', 'Precios'], ['/blog', 'Blog']];
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
+    <nav className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(12,10,15,0.72)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08), 0 24px 50px -30px rgba(0,0,0,.8)' }}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-1.5 group">
           <svg width="18" height="18" viewBox="7 7 18 18" fill="none">
-            <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+            <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
           </svg>
           <span className="font-display font-bold text-[17px] tracking-tight">
             YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
           </span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 font-mono-jb text-[13px] tracking-wider uppercase">
+        <div className="hidden md:flex items-center gap-1 rounded-full p-1 font-mono-jb text-[13px] tracking-wider uppercase" style={{ background: 'var(--yv-glass-chip)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.14)' }}>
           {nav.map(([href, label]) => (
             <a key={href} href={href} className="px-3 py-1.5 rounded-full transition text-zinc-400 hover:text-white hover:bg-white/10">
               {label}
@@ -60,15 +62,17 @@ function TopNav({ lang }: { lang: Lang }) {
 }
 
 function Hero({ lang }: { lang: Lang }) {
+  const currency = useCurrency();
+  const proPrice = formatPrice(PRICES.pro.monthly.eur, currency, lang);
   return (
-    <section className="relative overflow-hidden border-b border-white/10">
-      <div className="absolute inset-0 grid-bg" />
+    <section className="relative overflow-hidden">
+      <div className="absolute inset-0" style={{ background: 'var(--yv-light-hero)' }} />
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 0%,rgba(232,77,91,0.18),transparent 70%)' }} />
       <div className="absolute inset-x-0 top-[10%] font-display font-bold text-center select-none pointer-events-none opacity-[0.022] whitespace-nowrap leading-none" style={{ fontSize: 'clamp(80px,18vw,260px)' }}>VIRAL.VIRAL</div>
 
       <div className="relative max-w-7xl mx-auto px-6 pt-16 pb-20">
         <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-2 border border-white/15 rounded-full pl-1 pr-4 py-1 backdrop-blur" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="inline-flex items-center gap-2 rounded-full pl-1 pr-4 py-1 backdrop-blur" style={{ background: 'var(--yv-glass-chip)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.16)' }}>
             <span className="red-tape py-1">CLAUDE</span>
             <span className="font-mono-jb text-[13px] tracking-wider text-zinc-400 uppercase">
               {lang === 'en' ? 'Powered by Claude — Anthropic AI' : 'Impulsado por Claude — IA de Anthropic'}
@@ -108,8 +112,8 @@ function Hero({ lang }: { lang: Lang }) {
         </div>
         <p className="text-center text-zinc-500 text-[13px] font-mono-jb mt-5">
           {lang === 'en'
-            ? 'No signup · SEO Score & Trends free forever · Pro €9.99/mo (others charge up to $49)'
-            : 'Sin registro · SEO Score y Trends gratis para siempre · Pro 9,99€/mes (otras cobran hasta $49)'}
+            ? `No signup · SEO Score & Trends free forever · Pro ${proPrice}/mo (others charge up to $49)`
+            : `Sin registro · SEO Score y Trends gratis para siempre · Pro ${proPrice}/mes (otras cobran hasta $49)`}
         </p>
 
         <LandingHeroDemo lang={lang} />
@@ -119,29 +123,31 @@ function Hero({ lang }: { lang: Lang }) {
 }
 
 function StatsStrip({ lang }: { lang: Lang }) {
+  const currency = useCurrency();
+  const proPrice = formatPrice(PRICES.pro.monthly.eur, currency, lang);
   const items = lang === 'en'
     ? [
         { n: '0→100', l: 'SEO Score in 30 seconds', sub: 'Instant video diagnosis' },
-        { n: '€9.99', l: 'Pro plan / month', sub: 'Others charge up to $49/mo' },
+        { n: proPrice, l: 'Pro plan / month', sub: 'Others charge up to $49/mo' },
         { n: '100%', l: 'Free SEO Score', sub: 'No signup, no limits' },
         { n: 'AI', l: 'Personalized to your channel', sub: 'Connect YouTube · get tailored results' },
       ]
     : [
         { n: '0→100', l: 'SEO Score en 30 segundos', sub: 'Diagnóstico instantáneo' },
-        { n: '9,99€', l: 'Plan Pro / mes', sub: 'Otras cobran hasta $49/mes' },
+        { n: proPrice, l: 'Plan Pro / mes', sub: 'Otras cobran hasta $49/mes' },
         { n: '100%', l: 'SEO Score gratis', sub: 'Sin registro, sin límites' },
         { n: 'IA', l: 'Personalizada a tu canal', sub: 'Conecta YouTube · resultados a medida' },
       ];
 
   return (
-    <section className="border-b border-white/10 bg-black">
-      <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4">
+    <section className="py-6" style={{ background: 'var(--yv-bg-0)' }}>
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-3">
         {items.map((s, i) => (
-          <div key={i} className={`p-8 md:p-10 relative overflow-hidden ${i < 3 ? 'md:border-r' : ''} ${i < 2 ? 'border-r' : ''} ${i < 2 ? 'border-b md:border-b-0' : ''} border-white/10`}>
+          <div key={i} className="yv-glass p-8 md:p-10 relative overflow-hidden">
             <span className="absolute top-2 right-3 font-mono-jb text-[13px] text-zinc-700">0{i + 1}</span>
             <p className="font-display font-bold stat-num" style={{ fontSize: 'clamp(28px,4vw,48px)' }}>{s.n}</p>
             <p className="text-zinc-400 text-sm mt-2">{s.l}</p>
-            <p className="font-mono-jb text-[13px] mt-3 tracking-wider uppercase" style={{ color: 'var(--red)' }}>{s.sub}</p>
+            <p className="font-mono-jb text-[13px] mt-3 tracking-wider uppercase" style={{ color: 'var(--yv-brand-lift)' }}>{s.sub}</p>
           </div>
         ))}
       </div>
@@ -150,27 +156,29 @@ function StatsStrip({ lang }: { lang: Lang }) {
 }
 
 function WhyDifferent({ lang }: { lang: Lang }) {
+  const currency = useCurrency();
+  const proPrice = formatPrice(PRICES.pro.monthly.eur, currency, lang);
   const items = lang === 'en'
     ? [
         { icon: '/icons/target.webp', title: 'Honest diagnostics', desc: 'SEO Score tells you exactly what to fix — no vague advice.' },
         { icon: '/icons/brain.webp', title: 'AI that knows your channel', desc: 'Connect YouTube and every generation is tailored to your niche, audience, and recent performance.' },
-        { icon: '/icons/diamond.webp', title: '5× cheaper than the alternatives', desc: '€9.99/mo vs the usual $20–49/mo. Same core features. No enterprise upsell.' },
+        { icon: '/icons/diamond.webp', title: '5× cheaper than the alternatives', desc: `${proPrice}/mo vs the usual $20–49/mo. Same core features. No enterprise upsell.` },
       ]
     : [
         { icon: '/icons/target.webp', title: 'Diagnóstico honesto', desc: 'SEO Score te dice exactamente qué arreglar — sin consejos vagos.' },
         { icon: '/icons/brain.webp', title: 'IA que conoce tu canal', desc: 'Conecta YouTube y cada generación se adapta a tu nicho, audiencia y rendimiento.' },
-        { icon: '/icons/diamond.webp', title: '5× más barato que las alternativas', desc: '9,99€/mes frente a los $20–49/mes habituales. Mismas funciones core. Sin upsell enterprise.' },
+        { icon: '/icons/diamond.webp', title: '5× más barato que las alternativas', desc: `${proPrice}/mes frente a los $20–49/mes habituales. Mismas funciones core. Sin upsell enterprise.` },
       ];
 
   return (
-    <section className="py-16 border-b border-white/10 bg-black">
+    <section className="py-16" style={{ background: 'var(--yv-bg-0)' }}>
       <div className="max-w-5xl mx-auto px-6">
         <p className="text-center font-mono-jb text-[13px] tracking-[0.3em] text-zinc-500 uppercase mb-10">
           {lang === 'en' ? 'Why creators switch to YTubViral' : 'Por qué los creadores eligen YTubViral'}
         </p>
         <div className="grid md:grid-cols-3 gap-6">
           {items.map((item, i) => (
-            <div key={i} className="p-6 border border-white/10 bg-white/[0.02]">
+            <div key={i} className="yv-glass yv-glass--hover p-6">
               <img src={item.icon} alt="" width={48} height={48} className="object-contain" />
               <h3 className="font-display font-bold text-lg mt-3 mb-2">{item.title}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{item.desc}</p>
@@ -184,7 +192,7 @@ function WhyDifferent({ lang }: { lang: Lang }) {
 
 function DemoVideo({ lang }: { lang: Lang }) {
   return (
-    <section className="py-20 border-b border-white/10 bg-black">
+    <section className="py-20" style={{ background: 'var(--yv-bg-0)' }}>
       <div className="max-w-4xl mx-auto px-6">
         <h2 className="font-display font-bold text-3xl md:text-4xl text-center mb-4">
           {lang === 'en' ? 'See YTubViral in action' : 'Mira YTubViral en acción'}
@@ -194,7 +202,7 @@ function DemoVideo({ lang }: { lang: Lang }) {
             ? 'A quick tour of every tool — from SEO analysis to AI-powered scripts.'
             : 'Un recorrido rápido por todas las herramientas — del análisis SEO a los guiones con IA.'}
         </p>
-        <div className="relative w-full rounded-2xl overflow-hidden border border-white/10" style={{ paddingBottom: '56.25%' }}>
+        <div className="relative w-full overflow-hidden yv-glass yv-glass--lift" style={{ paddingBottom: '56.25%', borderRadius: 'var(--yv-radius-xl)' }}>
           {/* Facade: el player de YouTube (~1MB) solo carga al hacer clic (A2) */}
           <LiteYouTube videoId="sTvct-XXyGk" title="YTubViral Demo" />
         </div>
@@ -217,12 +225,11 @@ function HowItWorks({ lang }: { lang: Lang }) {
       ];
 
   return (
-    <section id="how" className="border-b border-white/10 relative">
-      <div className="absolute inset-0 grid-bg opacity-40" />
+    <section id="how" className="relative" style={{ background: 'var(--yv-bg-0)' }}>
       <div className="relative max-w-7xl mx-auto px-6 py-24">
         <div className="flex items-end justify-between flex-wrap gap-4 mb-14">
           <div>
-            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>03 · FLOW</p>
+            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>03 · FLOW</p>
             <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95] max-w-2xl">
               {lang === 'en' ? 'Three steps. Zero creative blocks.' : 'Tres pasos. Cero bloqueos creativos.'}
             </h2>
@@ -232,11 +239,11 @@ function HowItWorks({ lang }: { lang: Lang }) {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 relative">
-          <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-px" style={{ background: 'linear-gradient(90deg,transparent,var(--red),transparent)' }} />
+        <div className="grid grid-cols-1 md:grid-cols-3 relative gap-4">
+          <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-px" style={{ background: 'linear-gradient(90deg,transparent,var(--yv-brand),transparent)' }} />
           {steps.map((s, i) => (
             <div key={i} className="relative p-6 md:p-8">
-              <div className="relative z-10 w-24 h-24 flex items-center justify-center border border-white/15 bg-black mb-6" style={{ boxShadow: '4px 4px 0 0 var(--red)' }}>
+              <div className="yv-glass yv-glass--brand relative z-10 w-24 h-24 flex items-center justify-center mb-6">
                 <span className="font-display font-bold text-4xl">{s.n}</span>
               </div>
               <h3 className="font-display font-bold text-2xl mb-3">{s.t}</h3>
@@ -273,10 +280,10 @@ function ComparisonTable({ lang }: { lang: Lang }) {
       ];
 
   return (
-    <section className="border-b border-white/10" style={{ background: '#0B0B0D' }}>
+    <section style={{ background: 'var(--yv-bg-1)' }}>
       <div className="max-w-7xl mx-auto px-6 py-24">
         <div className="mb-12">
-          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>05 · VERSUS</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>05 · VERSUS</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
             {lang === 'en' ? 'Manual vs. YTubViral.' : 'El método manual vs. YTubViral.'}
           </h2>
@@ -287,29 +294,29 @@ function ComparisonTable({ lang }: { lang: Lang }) {
 
         {/* En móvil la tabla scrollea horizontal — con 3 columnas fijas reventaba el viewport (E3) */}
         <div className="overflow-x-auto">
-        <div className="grid border border-white/10 bg-black min-w-[560px]" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
-          <div className="p-5 border-r border-white/10" />
-          <div className="p-5 border-r border-white/10 text-center">
+        <div className="yv-glass grid min-w-[560px] overflow-hidden" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
+          <div className="p-5" />
+          <div className="p-5 text-center" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
             <p className="font-mono-jb text-[13px] tracking-wider text-zinc-500 uppercase mb-2">A</p>
             <p className="font-display font-bold text-lg">{lang === 'en' ? 'Manual method' : 'Método manual'}</p>
           </div>
-          <div className="p-5 text-center relative" style={{ background: 'rgba(232,77,91,0.05)' }}>
-            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--red)' }}>B</p>
+          <div className="p-5 text-center relative" style={{ background: 'var(--yv-brand-glass)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2" style={{ color: 'var(--yv-brand-lift)' }}>B</p>
             <p className="font-display font-bold text-lg">Con YTubViral</p>
             <span className="absolute -top-3 right-4 red-tape">WINNER</span>
           </div>
 
           {rows.map((row, i) => (
-            <div key={i} className="contents">
-              <div className="p-5 border-t border-r border-white/10 flex items-center gap-3">
+            <div key={i} className="contents group">
+              <div className="p-5 flex items-center gap-3 transition-[padding] duration-300" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.06)' }}>
                 <span className="font-mono-jb text-[13px] text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
                 <span className="text-zinc-300 text-sm">{row.label}</span>
               </div>
-              <div className="p-5 border-t border-r border-white/10 text-center">
+              <div className="p-5 text-center" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.06)' }}>
                 <span className="font-mono-jb text-sm text-zinc-500 line-through" style={{ textDecorationColor: 'rgba(232,77,91,0.6)' }}>{row.manual}</span>
               </div>
-              <div className="p-5 border-t border-white/10 text-center" style={{ background: 'rgba(232,77,91,0.05)' }}>
-                <span className="font-display font-bold" style={{ color: 'var(--red)' }}>{row.us}</span>
+              <div className="p-5 text-center" style={{ background: 'var(--yv-brand-glass)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.06)' }}>
+                <span className="font-display font-bold" style={{ color: 'var(--yv-brand-lift)' }}>{row.us}</span>
               </div>
             </div>
           ))}
@@ -328,9 +335,9 @@ function FreeToolsStrip({ lang }: { lang: Lang }) {
     { href: '/embed', icon: '/icons/globe.webp', label: 'Widget', desc: t('Para tu web', 'For your site') },
   ];
   return (
-    <section className="border-b border-white/10 bg-black">
+    <section style={{ background: 'var(--yv-bg-0)' }}>
       <div className="max-w-7xl mx-auto px-6 py-16 text-center">
-        <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: '#00FFA3' }}>
+        <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-ok)' }}>
           {t('GRATIS · SIN REGISTRO', 'FREE · NO SIGNUP')}
         </p>
         <h2 className="font-display font-bold text-2xl md:text-3xl mb-8">
@@ -338,9 +345,9 @@ function FreeToolsStrip({ lang }: { lang: Lang }) {
         </h2>
         <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {tools.map(tool => (
-            <Link key={tool.href} href={tool.href} className="group p-5 rounded-xl transition text-left" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <Link key={tool.href} href={tool.href} className="yv-glass yv-glass--hover group p-5 text-left block">
               <img src={tool.icon} alt="" width={48} height={48} className="object-contain" />
-              <p className="font-display font-bold text-sm text-white mt-2 group-hover:text-[#e84d5b] transition">{tool.label}</p>
+              <p className="font-display font-bold text-sm text-white mt-2 group-hover:text-[#ff6d7b] transition">{tool.label}</p>
               <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>{tool.desc}</p>
             </Link>
           ))}
@@ -348,8 +355,8 @@ function FreeToolsStrip({ lang }: { lang: Lang }) {
         <div className="mt-8">
           <Link
             href="/tools"
-            className="font-mono-jb text-[13px] font-bold inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg transition"
-            style={{ color: '#00FFA3', border: '1px solid rgba(0,255,163,0.3)', background: 'rgba(0,255,163,0.06)' }}
+            className="yv-chip font-mono-jb text-[13px] font-bold inline-flex items-center gap-1.5 px-5 py-2.5"
+            style={{ color: 'var(--yv-ok)' }}
           >
             {t('Ver las 9 herramientas gratis', 'See all 9 free tools')} →
           </Link>
@@ -361,6 +368,8 @@ function FreeToolsStrip({ lang }: { lang: Lang }) {
 
 function AlternativesSection({ lang }: { lang: Lang }) {
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const currency = useCurrency();
+  const proPrice = formatPrice(PRICES.pro.monthly.eur, currency, lang);
   // B2: comparativa sutil — sin nombrar competidores
   const rows = [
     { label: t('Motor de IA', 'AI engine'), them: t('GPT genérico', 'Generic GPT'), us: t('Claude — la IA que mejor escribe', 'Claude — the AI that writes best') },
@@ -368,16 +377,16 @@ function AlternativesSection({ lang }: { lang: Lang }) {
     { label: t('Explorador de tendencias', 'Trending explorer'), them: t('Bloqueado tras un plan de pago', 'Locked behind a paid plan'), us: t('Gratis · 12 países', 'Free · 12 countries') },
     { label: t('Detección de outliers (vídeos que rompen su media)', 'Outlier detection (videos breaking their average)'), them: t('Herramienta aparte de pago', 'A separate paid tool'), us: t('Incluida en la extensión', 'Built into the extension') },
     { label: t('Del descubrimiento a la subida', 'From discovery to upload'), them: t('Solo research — luego tú', 'Research only — then you\'re on your own'), us: t('Idea → IA → SEO → subida, en uno', 'Idea → AI → SEO → upload, in one') },
-    { label: t('Plan completo', 'Full plan'), them: '$20–49/mes', us: t('9,99 €/mes', '€9.99/mo') },
+    { label: t('Plan completo', 'Full plan'), them: '$20–49/mes', us: t(`${proPrice}/mes`, `${proPrice}/mo`) },
     { label: t('Español', 'Spanish'), them: t('Traducción parcial o solo inglés', 'Partial translation or English only'), us: t('Bilingüe ES/EN de serie', 'Native ES/EN bilingual') },
     { label: t('Garantía de devolución', 'Money-back guarantee'), them: '—', us: t('30 días', '30 days') },
   ];
 
   return (
-    <section className="border-b border-white/10 bg-black">
+    <section style={{ background: 'var(--yv-bg-0)' }}>
       <div className="max-w-7xl mx-auto px-6 py-24">
         <div className="mb-12">
-          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>{t('ALTERNATIVAS', 'ALTERNATIVES')}</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>{t('ALTERNATIVAS', 'ALTERNATIVES')}</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
             {t('Lo que otras herramientas cobran, aquí es gratis.', 'What other tools charge for, here is free.')}
           </h2>
@@ -388,25 +397,25 @@ function AlternativesSection({ lang }: { lang: Lang }) {
         </div>
 
         <div className="overflow-x-auto">
-        <div className="grid border border-white/10 bg-black min-w-[560px]" style={{ gridTemplateColumns: '1.3fr 1fr 1fr' }}>
-          <div className="p-5 border-r border-white/10" />
-          <div className="p-5 border-r border-white/10 text-center">
+        <div className="yv-glass grid min-w-[560px] overflow-hidden" style={{ gridTemplateColumns: '1.3fr 1fr 1fr' }}>
+          <div className="p-5" />
+          <div className="p-5 text-center" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
             <p className="font-display font-bold text-lg text-zinc-400">{t('Herramientas típicas', 'Typical tools')}</p>
           </div>
-          <div className="p-5 text-center relative" style={{ background: 'rgba(232,77,91,0.05)' }}>
+          <div className="p-5 text-center relative" style={{ background: 'var(--yv-brand-glass)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
             <p className="font-display font-bold text-lg">YTubViral</p>
           </div>
           {rows.map((row, i) => (
             <div key={i} className="contents">
-              <div className="p-5 border-t border-r border-white/10 flex items-center gap-3">
+              <div className="p-5 flex items-center gap-3" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.06)' }}>
                 <span className="font-mono-jb text-[13px] text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
                 <span className="text-zinc-300 text-sm">{row.label}</span>
               </div>
-              <div className="p-5 border-t border-r border-white/10 text-center">
+              <div className="p-5 text-center" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.06)' }}>
                 <span className="font-mono-jb text-sm text-zinc-500">{row.them}</span>
               </div>
-              <div className="p-5 border-t border-white/10 text-center" style={{ background: 'rgba(232,77,91,0.05)' }}>
-                <span className="font-display font-bold text-sm" style={{ color: 'var(--red)' }}>{row.us}</span>
+              <div className="p-5 text-center" style={{ background: 'var(--yv-brand-glass)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.06)' }}>
+                <span className="font-display font-bold text-sm" style={{ color: 'var(--yv-brand-lift)' }}>{row.us}</span>
               </div>
             </div>
           ))}
@@ -428,7 +437,7 @@ function AlternativesSection({ lang }: { lang: Lang }) {
 
 function FinalCTA({ lang }: { lang: Lang }) {
   return (
-    <section className="border-b border-white/10 bg-black relative overflow-hidden">
+    <section className="relative overflow-hidden" style={{ background: 'var(--yv-bg-0)' }}>
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%,rgba(232,77,91,0.25),transparent 70%)' }} />
       <div className="relative max-w-4xl mx-auto px-6 py-28 text-center">
         <h2 className="font-display font-bold leading-[0.9]" style={{ fontSize: 'clamp(40px,8vw,96px)' }}>
@@ -478,19 +487,19 @@ function Footer({ lang }: { lang: Lang }) {
   ];
 
   return (
-    <footer className="bg-black">
+    <footer style={{ background: 'var(--yv-bg-0)' }}>
       <div className="px-6 pt-16 overflow-hidden">
         <p
           className="font-display font-bold text-center tracking-tight leading-none select-none"
           style={{ fontSize: 'clamp(50px,16vw,220px)', background: 'linear-gradient(180deg,#1a1a1a 0%,#0a0a0a 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
         >
-          YTUBVIRAL<span style={{ color: 'var(--red)', WebkitTextFillColor: 'var(--red)' }}>.</span>
+          YTUBVIRAL<span style={{ color: 'var(--yv-brand)', WebkitTextFillColor: 'var(--yv-brand)' }}>.</span>
         </p>
       </div>
-      <div className="border-t border-white/10 px-6 py-12 mt-8">
+      <div className="px-6 py-12 mt-8" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-10 mb-10">
           <div>
-            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>
               {t('Creación', 'Creation')}
             </p>
             <ul className="space-y-2">
@@ -502,7 +511,7 @@ function Footer({ lang }: { lang: Lang }) {
             </ul>
           </div>
           <div>
-            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>
               {t('Análisis', 'Analysis')}
             </p>
             <ul className="space-y-2">
@@ -514,7 +523,7 @@ function Footer({ lang }: { lang: Lang }) {
             </ul>
           </div>
           <div>
-            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>
               {t('Recursos', 'Resources')}
             </p>
             <ul className="space-y-2">
@@ -528,7 +537,7 @@ function Footer({ lang }: { lang: Lang }) {
             </ul>
           </div>
           <div>
-            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--red)' }}>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>
               {t('Legal', 'Legal')}
             </p>
             <ul className="space-y-2">
@@ -539,7 +548,7 @@ function Footer({ lang }: { lang: Lang }) {
             </ul>
           </div>
         </div>
-        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
+        <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
           <p className="text-zinc-500 font-mono-jb text-[13px]">
             © 2026 YTubViral · {lang === 'en' ? 'Made by creators, for creators.' : 'Hecho por creadores, para creadores.'}
           </p>
@@ -556,7 +565,7 @@ export default function LandingContent({ jsonLd }: { jsonLd: object[] }) {
   const lang = useLang();
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-1)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Archivo, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 import { LangProvider } from "@/components/LangProvider";
+import { CurrencyProvider } from "@/components/CurrencyProvider";
 import DeferredChatWidget from "@/components/DeferredChatWidget";
 import PageViewTracker from "@/components/PageViewTracker";
 import UTMCapture from "@/components/UTMCapture";
@@ -17,8 +18,8 @@ const BASE_URL = "https://ytubviral.com";
 // Fuentes self-hosted via next/font (A2): elimina el CSS render-blocking de
 // fonts.googleapis.com y la transferencia de IP a Google (RGPD). next/font
 // añade size-adjust automático al fallback → menos CLS por font-swap.
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-inter", display: "swap" });
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-space-grotesk", display: "swap" });
+const archivo = Archivo({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-archivo", display: "swap" });
+const bricolage = Bricolage_Grotesque({ subsets: ["latin"], weight: ["500", "700", "800"], variable: "--font-bricolage", display: "swap" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-mono-jb", display: "swap" });
 
 export const metadata: Metadata = {
@@ -92,7 +93,7 @@ export default function RootLayout({
   const lang = 'es' as const;
 
   return (
-    <html lang={lang} className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
+    <html lang={lang} className={`${archivo.variable} ${bricolage.variable} ${jetbrainsMono.variable}`}>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -102,6 +103,7 @@ export default function RootLayout({
       <body>
         <LandingCapture />
         <LangProvider lang={lang as 'es' | 'en'}>
+        <CurrencyProvider>
           <SessionProviderWrapper>
             {/* Captura de atribución ANTES del contenido: sus cookies (ytv_utm,
                 ytv_aff) deben existir para cualquier lectura que dependa del
@@ -114,6 +116,7 @@ export default function RootLayout({
             <CookieConsent />
             <Toaster />
           </SessionProviderWrapper>
+        </CurrencyProvider>
         </LangProvider>
       </body>
     </html>

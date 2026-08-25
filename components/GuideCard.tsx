@@ -20,7 +20,7 @@ export default function GuideCard({ guide, lang, linkPrefix }: Props) {
   return (
     <Link
       href={`${linkPrefix}${guide.slug}`}
-      className="group block border border-white/10 p-6 bg-black hover:border-white/20 transition-colors"
+      className="yv-glass yv-glass--hover group block p-6 transition-colors"
     >
       <div className="flex items-start gap-4">
         <div className="w-[120px] h-[120px] relative shrink-0">

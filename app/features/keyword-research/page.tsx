@@ -140,9 +140,9 @@ export default async function KeywordResearchFeature() {
           {t('YTubViral vs otras herramientas de keywords', 'YTubViral vs other keyword tools')}
         </h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="yv-table">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr>
                 <th className="py-3 px-4 font-display font-bold">{t('Característica', 'Feature')}</th>
                 <th className="py-3 px-4 font-display font-bold text-center" style={{ color: 'var(--red)' }}>YTubViral</th>
                 <th className="py-3 px-4 font-display font-bold text-center text-zinc-500">{t('Alternativa A', 'Alternative A')}</th>
@@ -151,7 +151,7 @@ export default async function KeywordResearchFeature() {
             </thead>
             <tbody className="text-zinc-400">
               {comparison.map(([feat, ytub, vidiq, tube]) => (
-                <tr key={feat} className="border-b border-white/5">
+                <tr key={feat}>
                   <td className="py-2.5 px-4">{feat}</td>
                   <td className="py-2.5 px-4 text-center text-white font-medium"><ComparisonCell value={ytub} /></td>
                   <td className="py-2.5 px-4 text-center"><ComparisonCell value={vidiq} /></td>

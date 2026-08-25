@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { Lang } from '@/lib/server-lang';
 import { StarIcon } from '@/components/icons';
+import PriceTag from '@/components/PriceTag';
+import { PRICES } from '@/lib/pricing';
 
 export default function PricingSection({ lang }: { lang: Lang }) {
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -41,11 +43,11 @@ export default function PricingSection({ lang }: { lang: Lang }) {
   ];
 
   return (
-    <section id="pricing" className="border-b border-white/10 relative overflow-hidden">
+    <section id="pricing" className="relative overflow-hidden" style={{ background: 'var(--yv-bg-0)' }}>
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%,rgba(232,77,91,0.10),transparent 60%)' }} />
       <div className="relative max-w-6xl mx-auto px-6 py-24">
         <div className="text-center mb-14">
-          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>06 · PRICING</p>
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>06 · PRICING</p>
           <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95]">
             {t('Elige tu plan. Sin sorpresas.', 'Pick your plan. No surprises.')}
           </h2>
@@ -54,14 +56,14 @@ export default function PricingSection({ lang }: { lang: Lang }) {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-0 border border-white/10">
+        <div className="grid md:grid-cols-3 gap-3">
           {/* Free */}
-          <div className="p-8 bg-black border-b md:border-b-0 md:border-r border-white/10">
+          <div className="yv-glass p-8">
             <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-4">
               A · {t('Gratuito', 'Free')}
             </p>
             <div className="flex items-baseline gap-1 mb-2">
-              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>0€</span>
+              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}><PriceTag amount={0} lang={lang} /></span>
               <span className="text-zinc-500 font-mono-jb text-sm">/{t('mes', 'mo')}</span>
             </div>
             <p className="text-zinc-500 text-sm mb-8">{t('Para explorar y validar', 'To explore and validate')}</p>
@@ -78,20 +80,20 @@ export default function PricingSection({ lang }: { lang: Lang }) {
           </div>
 
           {/* Pro */}
-          <div className="p-8 relative" style={{ background: 'linear-gradient(180deg,rgba(232,77,91,0.08),rgba(232,77,91,0.02))' }}>
+          <div className="yv-glass yv-glass--brand p-8 relative">
             <div className="absolute -top-3 left-8 red-tape inline-flex items-center gap-1"><StarIcon size={12} /> {t('MÁS ELEGIDO', 'MOST POPULAR')}</div>
-            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--red)' }}>B · Pro</p>
+            <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>B · Pro</p>
             <div className="flex items-baseline gap-1 mb-1">
-              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>9,99€</span>
+              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}><PriceTag amount={PRICES.pro.monthly.eur} lang={lang} /></span>
               <span className="text-zinc-500 font-mono-jb text-sm">/{t('mes', 'mo')}</span>
             </div>
-            <div className="flex items-center gap-2 mb-6 mt-2 p-2.5 rounded-xl border border-white/10" style={{ background: 'rgba(124,255,0,0.06)', borderColor: 'rgba(124,255,0,0.2)' }}>
+            <div className="flex items-center gap-2 mb-6 mt-2 p-2.5" style={{ borderRadius: 'var(--yv-radius)', background: 'rgba(124,255,0,0.06)', boxShadow: 'inset 0 1px 0 rgba(124,255,0,.18)' }}>
               <div>
                 <p className="font-mono-jb text-[13px] tracking-wider uppercase inline-flex items-center gap-1" style={{ color: '#7CFF00' }}>
                   <StarIcon size={11} /> {t('ANUAL — AHORRA 17%', 'ANNUAL — SAVE 17%')}
                 </p>
                 <p className="font-display font-bold text-white text-base mt-0.5">
-                  99,99€<span className="text-zinc-400 font-mono-jb text-[13px] ml-1">/{t('año', 'yr')}</span>
+                  <PriceTag amount={PRICES.pro.yearly.eur} lang={lang} /><span className="text-zinc-400 font-mono-jb text-[13px] ml-1">/{t('año', 'yr')}</span>
                 </p>
               </div>
             </div>
@@ -112,19 +114,19 @@ export default function PricingSection({ lang }: { lang: Lang }) {
           </div>
 
           {/* Business */}
-          <div className="p-8 border-t md:border-t-0 md:border-l border-white/10 relative" style={{ background: 'linear-gradient(180deg,rgba(0,229,255,0.05),transparent)' }}>
+          <div className="yv-glass p-8 relative" style={{ background: 'linear-gradient(155deg,rgba(0,229,255,0.10),rgba(255,255,255,.02))' }}>
             <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: '#00E5FF' }}>C · Business</p>
             <div className="flex items-baseline gap-1 mb-1">
-              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}>29,99€</span>
+              <span className="font-display font-bold stat-num" style={{ fontSize: '48px' }}><PriceTag amount={PRICES.business.monthly.eur} lang={lang} /></span>
               <span className="text-zinc-500 font-mono-jb text-sm">/{t('mes', 'mo')}</span>
             </div>
-            <div className="flex items-center gap-2 mb-6 mt-2 p-2.5 rounded-xl border border-white/10" style={{ background: 'rgba(0,229,255,0.06)', borderColor: 'rgba(0,229,255,0.2)' }}>
+            <div className="flex items-center gap-2 mb-6 mt-2 p-2.5" style={{ borderRadius: 'var(--yv-radius)', background: 'rgba(0,229,255,0.06)', boxShadow: 'inset 0 1px 0 rgba(0,229,255,.2)' }}>
               <div>
                 <p className="font-mono-jb text-[13px] tracking-wider uppercase inline-flex items-center gap-1" style={{ color: '#00E5FF' }}>
                   <StarIcon size={11} /> {t('ANUAL — AHORRA 17%', 'ANNUAL — SAVE 17%')}
                 </p>
                 <p className="font-display font-bold text-white text-base mt-0.5">
-                  299€<span className="text-zinc-400 font-mono-jb text-[13px] ml-1">/{t('año', 'yr')}</span>
+                  <PriceTag amount={PRICES.business.yearly.eur} lang={lang} /><span className="text-zinc-400 font-mono-jb text-[13px] ml-1">/{t('año', 'yr')}</span>
                 </p>
               </div>
             </div>
@@ -136,7 +138,7 @@ export default function PricingSection({ lang }: { lang: Lang }) {
                 </li>
               ))}
             </ul>
-            <Link href="/signup" className="btn-offset w-full px-5 py-3 text-sm font-display block text-center" style={{ borderColor: 'rgba(0,229,255,0.5)' }}>
+            <Link href="/signup" className="btn-offset w-full px-5 py-3 text-sm font-display block text-center" style={{ background: 'linear-gradient(165deg,#4dd9ff,#0091b8)', boxShadow: '0 16px 40px -14px rgba(0,229,255,.6), inset 0 1px 0 rgba(255,255,255,.45)' }}>
               {t('Empezar con Business →', 'Get Business →')}
             </Link>
           </div>
@@ -147,13 +149,13 @@ export default function PricingSection({ lang }: { lang: Lang }) {
             '30-day guarantee · Cancel anytime · Transparent billing')}
         </p>
 
-        <div className="mt-8 max-w-xl mx-auto p-5 border border-white/10 bg-white/[0.02] text-center">
+        <div className="yv-glass mt-8 max-w-xl mx-auto p-5 text-center">
           <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-3">
             {t('COMPARADO CON LA COMPETENCIA', 'COMPARED TO THE COMPETITION')}
           </p>
           <div className="flex items-center justify-center gap-6 flex-wrap">
             <div>
-              <p className="font-display font-bold text-2xl" style={{ color: 'var(--red)' }}>€9.99<span className="text-zinc-500 text-sm font-normal">/{t('mes', 'mo')}</span></p>
+              <p className="font-display font-bold text-2xl" style={{ color: 'var(--yv-brand-lift)' }}><PriceTag amount={PRICES.pro.monthly.eur} lang={lang} /><span className="text-zinc-500 text-sm font-normal">/{t('mes', 'mo')}</span></p>
               <p className="text-zinc-400 text-sm mt-1">YTubViral Pro</p>
             </div>
             <span className="text-zinc-600 font-mono-jb text-sm">vs</span>

@@ -179,7 +179,7 @@ export default function AbTestPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -187,7 +187,7 @@ export default function AbTestPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="text-center">
           <h1 className="font-display font-bold text-3xl text-white mb-4">A/B Testing</h1>
           <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para usar A/B testing.', 'Sign in to use A/B testing.')}</p>
@@ -294,7 +294,7 @@ export default function AbTestPage() {
                           value={variantA}
                           onChange={e => setVariantA(e.target.value)}
                           maxLength={100}
-                          className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
+                          className="yv-input text-white text-sm font-mono-jb"
                           placeholder={t('Título variante A...', 'Variant A title...')}
                         />
                         <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantA.length}/100</p>
@@ -307,7 +307,7 @@ export default function AbTestPage() {
                           value={variantB}
                           onChange={e => setVariantB(e.target.value)}
                           maxLength={100}
-                          className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/5 text-white text-sm font-mono-jb focus:outline-none focus:border-white/30"
+                          className="yv-input text-white text-sm font-mono-jb"
                           placeholder={t('Título variante B...', 'Variant B title...')}
                         />
                         <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{variantB.length}/100</p>
@@ -453,7 +453,7 @@ function ActiveTestCard({
 
   return (
     <div className="yv-card yv-card--flush overflow-hidden">
-      <div className="flex items-center gap-4 p-5 border-b border-white/5">
+      <div className="flex items-center gap-4 p-5" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.05)' }}>
         {test.thumbnail && (
           <img src={test.thumbnail} alt="" className="w-28 h-16 rounded object-cover flex-shrink-0" />
         )}
@@ -491,7 +491,7 @@ function ActiveTestCard({
       </div>
 
       {/* Progress */}
-      <div className="p-5 border-t border-white/5">
+      <div className="p-5" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' }}>
         <div className="flex items-center justify-between mb-2">
           <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
             {isA ? t('Fase 1/2', 'Phase 1/2') : t('Fase 2/2', 'Phase 2/2')}

@@ -57,14 +57,14 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
   };
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
+      <nav className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(12,10,15,0.72)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-1.5">
-            <svg width="16" height="16" viewBox="7 7 18 18" fill="none"><circle cx="16" cy="16" r="8" fill="#ee4d5e"/></svg>
+            <svg width="16" height="16" viewBox="7 7 18 18" fill="none"><circle cx="16" cy="16" r="8" fill="#e84d5b"/></svg>
             <span className="font-display font-bold text-[17px] tracking-tight">
               YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
             </span>
@@ -81,7 +81,7 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
       </nav>
 
       {/* Header */}
-      <section className="border-b border-white/10 relative overflow-hidden">
+      <section className="relative overflow-hidden">
         <div className="absolute inset-0 grid-bg opacity-30" />
         <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at 40% 0%, ${cat.color}1A, transparent 60%)` }} />
         <div className="relative max-w-7xl mx-auto px-6 py-16 md:py-20">
@@ -120,8 +120,7 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
                 <Link
                   key={sub.key}
                   href={`/gear/${sub.key}`}
-                  className="group border border-white/10 hover:border-white/20 rounded-xl p-4 text-center transition-all"
-                  style={{ background: 'rgba(255,255,255,0.02)' }}
+                  className="yv-glass yv-glass--hover group p-4 text-center transition-all"
                 >
                   <span className="text-2xl block mb-2">{sub.icon}</span>
                   <span className="font-display font-bold text-sm text-white group-hover:text-zinc-100">
@@ -139,7 +138,7 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
 
       {/* Affiliate disclosure */}
       <div className="max-w-7xl mx-auto px-6 pt-6">
-        <p className="text-zinc-600 text-[13px] font-mono-jb border border-white/5 rounded-lg px-4 py-3" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <p className="yv-glass text-zinc-600 text-[13px] font-mono-jb px-4 py-3">
           {t(
             '* Esta página contiene enlaces de afiliados. Si compras a través de ellos, recibimos una pequeña comisión sin coste adicional para ti.',
             '* This page contains affiliate links. If you buy through them, we receive a small commission at no extra cost to you.'
@@ -158,13 +157,12 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
             return (
               <div
                 key={item.id}
-                className="group relative rounded-xl border border-white/10 hover:border-white/20 transition-all overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.02)' }}
+                className="yv-glass yv-glass--hover group relative transition-all overflow-hidden"
               >
                 {item.recommended && (
                   <div
                     className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-md font-mono-jb text-[13px] tracking-wider uppercase font-bold"
-                    style={{ background: 'rgba(232,77,91,0.15)', color: '#e84d5b', border: '1px solid rgba(232,77,91,0.3)' }}
+                    style={{ background: 'rgba(232,77,91,0.18)', color: '#ff6d7b', boxShadow: 'inset 0 1px 0 rgba(232,77,91,.4)' }}
                   >
                     {t('Recomendado', 'Recommended')}
                   </div>
@@ -216,7 +214,7 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
       </div>
 
       {/* CTA */}
-      <section className="border-t border-white/10">
+      <section>
         <div className="max-w-7xl mx-auto px-6 py-16 text-center">
           <h2 className="font-display font-bold text-2xl md:text-3xl text-white mb-4">
             {t('El equipo importa, pero el contenido importa más.', 'Gear matters, but content matters more.')}
@@ -234,7 +232,7 @@ export default async function GearCategoryPage({ params }: { params: Promise<{ c
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8">
+      <footer className="py-8" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
         <div className="max-w-7xl mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-zinc-600 font-mono-jb text-[13px]">
           <span>&copy; {new Date().getFullYear()} YTubViral.com</span>
           <div className="flex gap-4">

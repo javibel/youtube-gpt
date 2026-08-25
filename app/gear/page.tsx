@@ -37,14 +37,14 @@ export default async function GearPage() {
   };
 
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
+      <nav className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(12,10,15,0.72)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-1.5">
-            <svg width="16" height="16" viewBox="7 7 18 18" fill="none"><circle cx="16" cy="16" r="8" fill="#ee4d5e"/></svg>
+            <svg width="16" height="16" viewBox="7 7 18 18" fill="none"><circle cx="16" cy="16" r="8" fill="#e84d5b"/></svg>
             <span className="font-display font-bold text-[17px] tracking-tight">
               YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
             </span>
@@ -64,7 +64,7 @@ export default async function GearPage() {
       </nav>
 
       {/* Hero */}
-      <section className="border-b border-white/10 relative overflow-hidden">
+      <section className="relative overflow-hidden">
         <div className="absolute inset-0 grid-bg opacity-30" />
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 40% 0%, rgba(232,77,91,0.12), transparent 60%)' }} />
         <div className="relative max-w-7xl mx-auto px-6 py-20 md:py-28">
@@ -87,7 +87,7 @@ export default async function GearPage() {
 
       {/* Affiliate disclosure */}
       <div className="max-w-7xl mx-auto px-6 pt-8">
-        <p className="text-zinc-600 text-[13px] font-mono-jb border border-white/5 rounded-lg px-4 py-3" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <p className="yv-glass text-zinc-600 text-[13px] font-mono-jb px-4 py-3">
           {t(
             '* Esta página contiene enlaces de afiliados. Si compras a través de ellos, recibimos una pequeña comisión sin coste adicional para ti. Esto nos ayuda a mantener YTubViral gratuito.',
             '* This page contains affiliate links. If you buy through them, we receive a small commission at no extra cost to you. This helps us keep YTubViral free.'
@@ -110,8 +110,7 @@ export default async function GearPage() {
               <Link
                 key={cat.key}
                 href={`/gear/${cat.key}`}
-                className="group relative rounded-xl border border-white/10 hover:border-white/20 p-8 transition-all overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.02)' }}
+                className="yv-glass yv-glass--hover group relative p-8 transition-all overflow-hidden"
               >
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: `radial-gradient(ellipse at 50% 100%, ${cat.color}12, transparent 70%)` }} />
                 <div className="relative">
@@ -144,8 +143,7 @@ export default async function GearPage() {
               <Link
                 key={sub.key}
                 href={`/gear/${sub.key}`}
-                className="group rounded-xl border border-white/10 hover:border-white/20 p-5 text-center transition-all"
-                style={{ background: 'rgba(255,255,255,0.02)' }}
+                className="yv-glass yv-glass--hover group p-5 text-center transition-all"
               >
                 <span className="text-3xl block mb-3">{sub.icon}</span>
                 <span className="font-display font-bold text-sm text-white block">{sub.name[lang]}</span>
@@ -159,7 +157,7 @@ export default async function GearPage() {
       </div>
 
       {/* CTA */}
-      <section className="border-t border-white/10">
+      <section>
         <div className="max-w-7xl mx-auto px-6 py-20 text-center">
           <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-4" style={{ color: 'var(--red)' }}>
             {t('CREA CONTENIDO PROFESIONAL', 'CREATE PROFESSIONAL CONTENT')}
@@ -180,7 +178,7 @@ export default async function GearPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-8">
+      <footer className="py-8" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
         <div className="max-w-7xl mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-zinc-600 font-mono-jb text-[13px]">
           <span>&copy; {new Date().getFullYear()} YTubViral.com</span>
           <div className="flex gap-4">

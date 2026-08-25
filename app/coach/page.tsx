@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
+import { useCurrency } from '@/components/CurrencyProvider';
+import { PRICES, formatPrice } from '@/lib/pricing';
 import DashboardShell from '@/components/DashboardShell';
 import ToolLoginGate from '@/components/ToolLoginGate';
 
@@ -80,6 +82,8 @@ export default function CoachPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const lang = useLang();
+  const currency = useCurrency();
+  const proPrice = formatPrice(PRICES.pro.monthly.eur, currency, lang);
   const [mode, setMode] = useState<CoachMode>('analyze');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -147,7 +151,7 @@ export default function CoachPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -208,7 +212,7 @@ export default function CoachPage() {
               ))}
             </div>
             <a href="/pricing" className="btn-offset inline-flex px-8 py-3 text-sm font-display">
-              {t('Desbloquear con Pro — 9,99€/mes →', 'Unlock with Pro — €9.99/mo →')}
+              {t(`Desbloquear con Pro — ${proPrice}/mes →`, `Unlock with Pro — ${proPrice}/mo →`)}
             </a>
             <p className="text-zinc-600 text-[13px] font-mono-jb mt-4">
               {t('Garantía de 30 días · Cancela cuando quieras', '30-day guarantee · Cancel anytime')}
@@ -253,10 +257,10 @@ export default function CoachPage() {
               <button
                 key={m.key}
                 onClick={() => switchMode(m.key)}
-                className={`rounded-lg border px-4 py-3 text-left transition ${active ? 'border-opacity-50' : 'border-white/8 hover:border-white/20'}`}
+                className="rounded-lg px-4 py-3 text-left transition"
                 style={{
                   background: active ? `${color}12` : 'rgba(255,255,255,0.02)',
-                  borderColor: active ? `${color}40` : undefined,
+                  boxShadow: active ? `inset 0 1px 0 ${color}66` : 'inset 0 1px 0 rgba(255,255,255,.06)',
                 }}
               >
                 <div className="flex items-center gap-2 mb-1">

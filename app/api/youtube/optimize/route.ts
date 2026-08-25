@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { parseClaudeJson } from '@/lib/parse-claude-json';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
@@ -308,7 +309,7 @@ Give ONE next step to improve further. Be specific and actionable. Reply in JSON
         }],
       });
       const text = (msg.content[0] as { type: string; text: string }).text;
-      const parsed = JSON.parse(text);
+      const parsed = parseClaudeJson(text);
       if (parsed.es && parsed.en) aiSuggestion = parsed;
     } catch {
       // AI suggestion is optional

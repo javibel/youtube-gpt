@@ -19,6 +19,7 @@ interface AnalyticsData {
   countries: Country[];
   topVideos: TopVideo[];
   daily: DailyPoint[];
+  aiInsight: { es: string; en: string } | null;
   channelName: string;
   period: { start: string; end: string };
 }
@@ -72,7 +73,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (status !== 'authenticated') return;
     setLoading(true);
-    fetch('/api/youtube/analytics')
+    fetch(`/api/youtube/analytics?lang=${lang}`)
       .then(r => r.json())
       .then(res => {
         if (res.error) {
@@ -89,7 +90,7 @@ export default function AnalyticsPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -270,6 +271,18 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
+            {/* AI analysis */}
+            {data.aiInsight && (
+              <div className="yv-card p-5">
+                <h2 className="font-display font-bold text-lg mb-3 flex items-center gap-2" style={{ color: 'var(--yv-text-1)' }}>
+                  <span aria-hidden>✨</span> {t('Análisis de Claude', 'Claude analysis')}
+                </h2>
+                <p className="font-mono-jb text-[13px] leading-relaxed whitespace-pre-line" style={{ color: 'var(--yv-text-2)' }}>
+                  {data.aiInsight[lang]}
+                </p>
+              </div>
+            )}
+
             {/* Daily views chart */}
             {data.daily.length > 2 && (
               <div className="yv-card p-5">
@@ -347,20 +360,20 @@ export default function AnalyticsPage() {
                   {t('Vídeos principales (28 días)', 'Top videos (28 days)')}
                 </h2>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left">
+                  <table className="yv-table">
                     <thead>
-                      <tr className="font-mono-jb text-[13px] uppercase tracking-wider border-b border-white/8" style={{ color: 'var(--yv-text-3)' }}>
-                        <th className="pb-2 pr-4">{t('Vídeo', 'Video')}</th>
-                        <th className="pb-2 pr-4 text-right">{t('Vistas', 'Views')}</th>
-                        <th className="pb-2 pr-4 text-right">{t('Duración media', 'Avg duration')}</th>
-                        <th className="pb-2 pr-4 text-right">Likes</th>
-                        <th className="pb-2 text-right">{t('Subs +', 'Subs +')}</th>
+                      <tr>
+                        <th>{t('Vídeo', 'Video')}</th>
+                        <th className="yv-num-cell">{t('Vistas', 'Views')}</th>
+                        <th className="yv-num-cell">{t('Duración media', 'Avg duration')}</th>
+                        <th className="yv-num-cell">Likes</th>
+                        <th className="yv-num-cell">{t('Subs +', 'Subs +')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.topVideos.map((v, i) => (
-                        <tr key={i} className="border-b border-white/5 hover:bg-white/[0.02] transition">
-                          <td className="py-2.5 pr-4">
+                        <tr key={i}>
+                          <td>
                             <a
                               href={`https://www.youtube.com/watch?v=${v.video}`}
                               target="_blank"
@@ -372,10 +385,10 @@ export default function AnalyticsPage() {
                               {v.title}
                             </a>
                           </td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.views)}</td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{fmtDuration(v.averageViewDuration)}</td>
-                          <td className="py-2.5 pr-4 text-right font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.likes)}</td>
-                          <td className="py-2.5 text-right font-mono-jb text-[13px]" style={{ color: v.subscribersGained > 0 ? '#22c55e' : '#888' }}>
+                          <td className="yv-num-cell">{fmtNum(v.views)}</td>
+                          <td className="yv-num-cell">{fmtDuration(v.averageViewDuration)}</td>
+                          <td className="yv-num-cell">{fmtNum(v.likes)}</td>
+                          <td className="yv-num-cell" style={{ color: v.subscribersGained > 0 ? '#22c55e' : '#888' }}>
                             +{v.subscribersGained}
                           </td>
                         </tr>
@@ -388,7 +401,7 @@ export default function AnalyticsPage() {
 
             {/* Private data badge */}
             <div className="text-center py-4">
-              <span className="inline-flex items-center gap-2 font-mono-jb text-[13px] border border-white/8 rounded-full px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
+              <span className="yv-chip inline-flex items-center gap-2 font-mono-jb text-[13px] px-4 py-1.5" style={{ color: 'var(--yv-text-4)' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 {t('Datos privados — solo accesibles con tu autorización OAuth', 'Private data — only accessible with your OAuth authorization')}
               </span>

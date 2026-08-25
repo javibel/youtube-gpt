@@ -286,7 +286,8 @@ export default function GeneratePage() {
         <div className="mb-8">
           <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>01 · {t('¿Qué necesitas?', 'What do you need?')}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {([...Object.keys(TEMPLATES), 'video_preview'] as string[]).map((key) => {
+            {/* 'reply' is extension-only (needs a specific comment + video, not a free-text idea) — never show it here */}
+            {([...Object.keys(TEMPLATES).filter((k) => k !== 'reply'), 'video_preview'] as string[]).map((key) => {
               const tplMeta = TPL_META[key] ?? { icon: '/icons/description.webp', color: '#e84d5b', est: '~' };
               const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean } | undefined;
               const locked = (key === 'video_preview' || key === 'thumbnail') ? !isPro : (tpl?.proOnly && !isPro);
@@ -326,7 +327,8 @@ export default function GeneratePage() {
 
         {/* Main layout */}
         <div className="space-y-5">
-            {/* Topic */}
+            {/* Topic — not used by the thumbnail canvas editor, which has its own "Fondo" input below */}
+            {selectedTemplate !== 'thumbnail' && (
             <div className="yv-card p-6">
               <div className="flex items-center justify-between mb-3">
                 <label htmlFor="gen-tema" className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>02 · {t('Cuéntanos tu idea', 'Tell us your idea')}</label>
@@ -352,9 +354,10 @@ export default function GeneratePage() {
                 ))}
               </div>
             </div>
+            )}
 
-            {/* Secondary fields based on template */}
-            {(inputs.includes('tono') || inputs.includes('nicho') || inputs.includes('plataforma') || inputs.includes('duracion') || inputs.includes('estilo') || inputs.includes('num_videos') || inputs.includes('keywords') || inputs.includes('cta')) && (
+            {/* Secondary fields based on template — hidden for thumbnail (superseded by the canvas editor's own controls) */}
+            {selectedTemplate !== 'thumbnail' && (inputs.includes('tono') || inputs.includes('nicho') || inputs.includes('plataforma') || inputs.includes('duracion') || inputs.includes('estilo') || inputs.includes('num_videos') || inputs.includes('keywords') || inputs.includes('cta')) && (
               <div className="yv-card p-6">
                 <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>03 · {t('Ajustes', 'Settings')}</p>
                 <div className="space-y-5">
@@ -534,9 +537,9 @@ export default function GeneratePage() {
 
             {/* Error */}
             {error && (
-              <div className="rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-4 flex-wrap" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
+              <div className="yv-note yv-note--error flex items-center justify-between gap-4 flex-wrap">
                 <span className="inline-flex items-center gap-1.5"><WarningIcon size={14} /> {error}</span>
-                <button onClick={handleGenerate} disabled={loading} className="shrink-0 px-4 py-1.5 rounded-lg text-[13px] font-display font-bold text-white transition hover:opacity-90 disabled:opacity-40" style={{ background: 'rgba(232,77,91,0.8)' }}>
+                <button onClick={handleGenerate} disabled={loading} className="btn-offset shrink-0 px-4 py-1.5 text-[13px] font-display disabled:opacity-40">
                   {t('Reintentar', 'Retry')}
                 </button>
               </div>
@@ -545,7 +548,7 @@ export default function GeneratePage() {
             {/* Thumbnail image output */}
             {(selectedTemplate === 'thumbnail' && (loading || thumbnailUrl)) && (
               <div className="yv-card overflow-hidden page-enter">
-                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
+                <div className="flex items-center justify-between px-5 py-3" style={{ background: 'var(--yv-bg-1)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
                   <div className="flex items-center gap-3">
                     <span className="live-dot" />
                     <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
@@ -563,7 +566,7 @@ export default function GeneratePage() {
                   )}
                   {thumbnailUrl && (
                     <div className="space-y-4">
-                      <div className="rounded-lg overflow-hidden border border-white/10" style={{ maxWidth: 640 }}>
+                      <div className="yv-glass overflow-hidden" style={{ maxWidth: 640 }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={thumbnailUrl} alt="Generated thumbnail" className="w-full h-auto" style={{ aspectRatio: '16/9', objectFit: 'cover' }} />
                       </div>
@@ -577,7 +580,7 @@ export default function GeneratePage() {
                   )}
                 </div>
                 {thumbnailUrl && (
-                  <div className="flex items-center gap-2 px-5 pb-4 pt-2 border-t border-white/10 flex-wrap">
+                  <div className="flex items-center gap-2 px-5 pb-4 pt-2 flex-wrap" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
                     <a
                       href={thumbnailUrl}
                       download="thumbnail.png"
@@ -602,7 +605,7 @@ export default function GeneratePage() {
             {/* Text output (all templates except thumbnail) */}
             {(selectedTemplate !== 'thumbnail' && (loading || output)) && (
               <div className="yv-card overflow-hidden page-enter">
-                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10" style={{ background: 'var(--yv-bg-1)' }}>
+                <div className="flex items-center justify-between px-5 py-3" style={{ background: 'var(--yv-bg-1)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
                   <div className="flex items-center gap-3">
                     <span className="live-dot" />
                     <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
@@ -643,7 +646,7 @@ export default function GeneratePage() {
                   )}
                 </div>
                 {output && (
-                  <div className="flex items-center gap-2 px-5 pb-4 pt-2 border-t border-white/10 flex-wrap">
+                  <div className="flex items-center gap-2 px-5 pb-4 pt-2 flex-wrap" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
                     {truncated && (
                       <button
                         onClick={handleContinue}

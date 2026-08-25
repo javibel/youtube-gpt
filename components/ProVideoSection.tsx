@@ -15,7 +15,7 @@ export default function ProVideoSection({ videoId, plan, lang }: Props) {
   if (isPaid(plan)) {
     return (
       <div className="my-10">
-        <div className="relative w-full overflow-hidden border border-white/10" style={{ aspectRatio: '16/9' }}>
+        <div className="yv-glass relative w-full overflow-hidden" style={{ aspectRatio: '16/9' }}>
           <iframe
             src={`https://www.youtube.com/embed/${videoId}?rel=0`}
             title="Video tutorial"
@@ -31,7 +31,7 @@ export default function ProVideoSection({ videoId, plan, lang }: Props) {
 
   // Free users — blurred thumbnail + upgrade CTA
   return (
-    <div className="my-10 relative overflow-hidden border border-white/10">
+    <div className="yv-glass my-10 relative overflow-hidden">
       <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
         {/* Blurred thumbnail background */}
         <div
@@ -44,8 +44,8 @@ export default function ProVideoSection({ videoId, plan, lang }: Props) {
         />
         {/* Lock overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10">
-          <div className="w-16 h-16 flex items-center justify-center rounded-full" style={{ background: 'rgba(232,77,91,0.2)', border: '2px solid rgba(232,77,91,0.4)' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--red)' }}>
+          <div className="w-16 h-16 flex items-center justify-center rounded-full" style={{ background: 'rgba(232,77,91,0.2)', boxShadow: 'inset 0 0 0 2px rgba(232,77,91,.45)' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--yv-brand)' }}>
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>

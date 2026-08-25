@@ -97,7 +97,7 @@ function VideoCard({ video, lang, expanded, onToggle }: { video: VideoScore; lan
         <div className="flex items-center gap-3 flex-shrink-0">
           <div
             className="min-w-[4rem] px-3 h-14 rounded-xl flex flex-col items-center justify-center font-mono-jb"
-            style={{ background: scoreBg(video.score), border: `1px solid ${scoreColor(video.score)}33` }}
+            style={{ background: scoreBg(video.score), boxShadow: `inset 0 1px 0 ${scoreColor(video.score)}55` }}
           >
             <span className="text-lg font-bold" style={{ color: scoreColor(video.score) }}>{video.score}</span>
             <span className="text-[11px] whitespace-nowrap" style={{ color: scoreColor(video.score), opacity: 0.7 }}>{scoreLabel(video.score, lang)}</span>
@@ -121,9 +121,9 @@ function VideoCard({ video, lang, expanded, onToggle }: { video: VideoScore; lan
         });
 
         return (
-          <div className="border-t p-4 space-y-2" style={{ borderColor: 'var(--yv-border)' }}>
+          <div className="p-4 space-y-2" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
             {aiTip && (
-              <div className="mb-4 p-3 rounded-lg border border-purple-500/30" style={{ background: 'rgba(139,92,246,0.08)' }}>
+              <div className="mb-4 p-3" style={{ borderRadius: 'var(--yv-radius)', background: 'rgba(139,92,246,0.1)', boxShadow: 'inset 0 1px 0 rgba(167,139,250,.25)' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2">
                     <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
@@ -138,9 +138,10 @@ function VideoCard({ video, lang, expanded, onToggle }: { video: VideoScore; lan
               </div>
             )}
             {thumbAi && (
-              <div className="mb-4 p-3 rounded-lg border" style={{
-                borderColor: thumbAi.passed ? 'rgba(34,197,94,0.3)' : 'rgba(232,77,91,0.3)',
-                background: thumbAi.passed ? 'rgba(34,197,94,0.06)' : 'rgba(232,77,91,0.06)',
+              <div className="mb-4 p-3" style={{
+                borderRadius: 'var(--yv-radius)',
+                boxShadow: thumbAi.passed ? 'inset 0 1px 0 rgba(34,197,94,.3)' : 'inset 0 1px 0 rgba(232,77,91,.3)',
+                background: thumbAi.passed ? 'rgba(34,197,94,0.08)' : 'rgba(232,77,91,0.08)',
               }}>
                 <div className="flex items-center gap-2 mb-1">
                   <ImageIcon size={14} />
@@ -322,15 +323,7 @@ function SeoScoreContent() {
             value={urlInput}
             onChange={e => setUrlInput(e.target.value)}
             placeholder={t('Pega un enlace de YouTube...', 'Paste a YouTube link...')}
-            className="flex-1 px-4 py-3 rounded-xl text-sm font-mono-jb"
-            style={{
-              background: 'var(--yv-surface)',
-              border: '1px solid var(--yv-border)',
-              color: 'var(--yv-text)',
-              outline: 'none',
-            }}
-            onFocus={e => { e.target.style.borderColor = 'var(--yv-brand)'; }}
-            onBlur={e => { e.target.style.borderColor = 'var(--yv-border)'; }}
+            className="yv-input flex-1 text-sm font-mono-jb"
           />
           <button
             type="submit"
@@ -351,7 +344,7 @@ function SeoScoreContent() {
       </form>
 
       {urlError && (
-        <div className="mb-6 px-4 py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-mono-jb">
+        <div className="yv-note yv-note--error mb-6">
           {urlError}
         </div>
       )}
@@ -361,12 +354,7 @@ function SeoScoreContent() {
           <button
             onClick={handleChannelAnalyze}
             disabled={channelLoading}
-            className="px-6 py-2.5 text-sm font-mono-jb tracking-wider rounded-xl transition"
-            style={{
-              background: 'var(--yv-surface)',
-              border: '1px solid var(--yv-border)',
-              color: 'var(--yv-text-2)',
-            }}
+            className="yv-btn yv-btn--ghost text-sm font-mono-jb tracking-wider"
           >
             {channelLoading ? (
               <span className="flex items-center gap-2">
@@ -381,7 +369,7 @@ function SeoScoreContent() {
             <div className="flex items-center gap-3">
               <div
                 className="px-4 py-2 rounded-lg font-mono-jb text-sm font-bold"
-                style={{ background: scoreBg(avgScore), color: scoreColor(avgScore), border: `1px solid ${scoreColor(avgScore)}33` }}
+                style={{ background: scoreBg(avgScore), color: scoreColor(avgScore), boxShadow: `inset 0 1px 0 ${scoreColor(avgScore)}55` }}
               >
                 {t('Media', 'Average')}: {avgScore}/100
               </div>
@@ -394,14 +382,14 @@ function SeoScoreContent() {
       )}
 
       {channelError && (
-        <div className="mb-6 px-4 py-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-mono-jb">
+        <div className="yv-note yv-note--error">
           {channelError}
         </div>
       )}
 
       {!urlResult && (!isAuthed || (hasLoadedChannel && channelScores.length === 0)) && !urlLoading && !channelLoading && (
         <div className="text-center py-20">
-          <div className="mb-4"><img src="/icons/bar-chart.webp" alt="" width={56} height={56} className="inline-block object-contain" /></div>
+          <div className="mb-4"><img src="/icons/target.webp" alt="" width={56} height={56} className="inline-block object-contain" /></div>
           <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
             {t(
               'Pega el enlace de cualquier vídeo de YouTube para obtener su SEO Score gratis.',
@@ -437,8 +425,8 @@ function SeoScoreContent() {
                 window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
               }
             }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-mono-jb text-[13px] transition hover:brightness-110"
-            style={{ background: 'rgba(29,155,240,0.1)', border: '1px solid rgba(29,155,240,0.3)', color: '#1d9bf0' }}
+            className="flex items-center gap-2 px-5 py-2.5 font-mono-jb text-[13px] transition hover:brightness-110"
+            style={{ borderRadius: 'var(--yv-radius-sm)', background: 'rgba(29,155,240,0.12)', boxShadow: 'inset 0 1px 0 rgba(29,155,240,.3)', color: '#1d9bf0' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
             {t('Compartir mi score', 'Share my score')}
@@ -447,8 +435,8 @@ function SeoScoreContent() {
       )}
 
       {!isAuthed && urlResult && (
-        <div className="mt-10 p-8 rounded-xl text-center" style={{ background: 'linear-gradient(135deg, rgba(232,77,91,0.06), rgba(0,229,255,0.04))', border: '1px solid rgba(232,77,91,0.2)' }}>
-          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+        <div className="yv-glass yv-glass--brand mt-10 p-8 text-center">
+          <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>
             {t('SOLO HAS VISTO UNA DE NUESTRAS HERRAMIENTAS', "YOU'VE ONLY SEEN ONE OF OUR TOOLS")}
           </p>
           <p className="font-display font-bold text-white text-xl mb-2">
@@ -479,7 +467,7 @@ export default function SeoScoreClient() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -487,7 +475,7 @@ export default function SeoScoreClient() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      <div className="min-h-screen" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <PublicNav />
         <div className="max-w-4xl mx-auto px-6 py-10">
           <SeoScoreContent />

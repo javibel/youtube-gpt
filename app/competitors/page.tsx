@@ -125,12 +125,12 @@ export default function CompetitorsPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen grain" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-2)' }}>
-        <header className="border-b" style={{ borderColor: 'var(--line)', background: 'rgba(10,10,10,0.92)' }}>
+      <div className="min-h-screen" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-2)' }}>
+        <header style={{ background: 'rgba(12,10,15,0.85)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <a href="/" className="flex items-center gap-1.5">
               <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-                <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+                <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
               </svg>
               <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
             </a>
@@ -243,7 +243,7 @@ export default function CompetitorsPage() {
             <span className="font-mono-jb text-[13px] self-center" style={{ color: 'var(--yv-text-4)' }}>{t('Ejemplos:', 'Examples:')}</span>
             {EXAMPLE_URLS.map(u => (
               <button key={u} type="button" onClick={() => setUrl(u)}
-                className="font-mono-jb text-[13px] px-2 py-1 rounded border border-white/10 hover:text-white hover:border-white/20 transition" style={{ color: 'var(--yv-text-3)' }}>
+                className="yv-chip font-mono-jb text-[13px] px-2 py-1 hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                 {u.replace('https://www.youtube.com/', '')}
               </button>
             ))}
@@ -252,7 +252,7 @@ export default function CompetitorsPage() {
 
         {/* Error */}
         {error && (
-          <div className="yv-card p-4 text-sm font-mono-jb" style={{ color: 'var(--yv-brand)', borderColor: 'rgba(232,77,91,0.3)' }}>
+          <div className="yv-note yv-note--error font-mono-jb">
             {error}
           </div>
         )}
@@ -294,7 +294,7 @@ export default function CompetitorsPage() {
                   { label: t('Vídeos',         'Videos'),       value: fmtNum(result.channel.videoCount, lang),   color: '#FFE800' },
                   { label: t('Media vistas top', 'Avg top views'), value: fmtNum(result.avgViews, lang),          color: '#7CFF00' },
                 ].map((s, i) => (
-                  <div key={i} className="text-center p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }}>
+                  <div key={i} className="text-center p-3" style={{ borderRadius: 'var(--yv-radius)', background: 'var(--yv-glass-chip)' }}>
                     <p className="font-display font-black text-2xl" style={{ color: s.color }}>{s.value}</p>
                     <p className="font-mono-jb text-[13px] uppercase mt-0.5" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
                   </div>
@@ -352,11 +352,10 @@ export default function CompetitorsPage() {
                   <div className="flex flex-wrap gap-2">
                     {result.keywords.map((kw, i) => (
                       <button key={kw} onClick={() => router.push(`/research?q=${encodeURIComponent(kw)}`)}
-                        className="font-mono-jb text-[13px] px-2.5 py-1 rounded-full border transition hover:border-white/30 hover:text-white cursor-pointer"
+                        className="yv-chip font-mono-jb text-[13px] px-2.5 py-1 hover:text-white cursor-pointer"
                         style={{
-                          border: '1px solid rgba(0,255,163,0.2)',
                           color: i < 3 ? '#00FFA3' : '#6b7280',
-                          background: i < 3 ? 'rgba(0,255,163,0.06)' : 'transparent',
+                          background: i < 3 ? 'rgba(0,255,163,0.1)' : 'var(--yv-glass-chip)',
                         }}>
                         {kw}
                       </button>
@@ -384,11 +383,11 @@ export default function CompetitorsPage() {
                 <div className="flex items-center gap-1 font-mono-jb text-[13px]">
                   {(['7d', '30d', '90d', 'all'] as const).map(p => (
                     <button key={p} onClick={() => setOutlierPeriod(p)}
-                      className="px-2.5 py-1 rounded transition"
+                      className="px-2.5 py-1 transition"
                       style={{
+                        borderRadius: 'var(--yv-radius-sm)',
                         background: outlierPeriod === p ? 'rgba(255,107,0,0.15)' : 'transparent',
                         color: outlierPeriod === p ? '#FF6B00' : '#6b7280',
-                        border: outlierPeriod === p ? '1px solid rgba(255,107,0,0.3)' : '1px solid transparent',
                       }}>
                       {p === 'all' ? t('Todo', 'All') : p}
                     </button>
@@ -413,8 +412,8 @@ export default function CompetitorsPage() {
                   {outliers.outliers.map((v) => (
                     <a key={v.videoId} href={`https://www.youtube.com/watch?v=${v.videoId}`}
                       target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 rounded-lg group hover:bg-white/5 transition"
-                      style={{ border: '1px solid rgba(255,107,0,0.15)' }}>
+                      className="flex items-center gap-3 p-3 group hover:bg-white/5 transition"
+                      style={{ borderRadius: 'var(--yv-radius)', boxShadow: 'inset 0 1px 0 rgba(255,107,0,.2)' }}>
                       <div className="relative flex-shrink-0">
                         <img src={v.thumbnail} alt="" className="w-20 h-[45px] rounded object-cover" />
                         <span className="absolute -top-1.5 -right-1.5 font-mono-jb text-[13px] font-bold px-1.5 py-0.5 rounded-full"

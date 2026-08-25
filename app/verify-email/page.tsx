@@ -153,7 +153,7 @@ function VerifyEmailContent() {
       <div className="absolute top-6 left-6">
         <a href="/" className="flex items-center gap-1">
           <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-            <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+            <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
           </svg>
           <span className="font-display font-bold text-[15px] tracking-tight text-white">
             YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
@@ -202,7 +202,7 @@ function VerifyEmailContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('tu@email.com', 'your@email.com')}
                     required
-                    className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-zinc-600 text-sm focus:outline-none focus:border-white/25"
+                    className="yv-input text-white placeholder-zinc-600 text-sm"
                   />
                 </div>
               )}
@@ -220,14 +220,14 @@ function VerifyEmailContent() {
                     onChange={(e) => handleDigitChange(i, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(i, e)}
                     disabled={verifying}
-                    className="w-12 h-14 text-center text-xl font-bold rounded-xl border border-white/15 bg-white/5 text-white focus:outline-none focus:border-[var(--red)] transition disabled:opacity-50"
-                    style={{ caretColor: 'var(--red)' }}
+                    className="yv-input w-12 h-14 text-center text-xl font-bold text-white disabled:opacity-50"
+                    style={{ caretColor: 'var(--yv-brand)' }}
                   />
                 ))}
               </div>
 
               {error && (
-                <div className="rounded-xl px-4 py-3 text-sm mb-4" style={{ background: 'rgba(232,77,91,0.08)', border: '1px solid rgba(232,77,91,0.3)', color: '#f87171' }}>
+                <div className="yv-note yv-note--error mb-4">
                   {error}
                 </div>
               )}
@@ -256,7 +256,7 @@ function VerifyEmailContent() {
                 </p>
               )}
 
-              <div className="mt-6 pt-6 border-t border-white/5">
+              <div className="mt-6 pt-6" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' }}>
                 <a href="/login" className="text-zinc-500 text-[13px] hover:text-zinc-300 transition">
                   &#8592; {t('Volver al login', 'Back to login')}
                 </a>

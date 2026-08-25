@@ -5,6 +5,8 @@ import DashboardShell from '@/components/DashboardShell';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense, lazy, useCallback } from 'react';
 import { useLang } from '@/components/LangProvider';
+import { useCurrency } from '@/components/CurrencyProvider';
+import { PRICES, formatPrice } from '@/lib/pricing';
 import ReferralCard from '@/components/ReferralCard';
 import NextActionCard from '@/components/NextActionCard';
 import { AFFILIATES_DORMANT } from '@/lib/features';
@@ -80,6 +82,15 @@ export default function DashboardPage() {
   const [reviewSaved, setReviewSaved] = useState(false);
   const [existingReview, setExistingReview] = useState<{ rating: number; text: string; status: string } | null>(null);
   const lang = useLang();
+  const currency = useCurrency();
+  const proMoPrice = formatPrice(PRICES.pro.monthly.eur, currency, lang);
+  const proYrPrice = formatPrice(PRICES.pro.yearly.eur, currency, lang);
+  const proYrSavings = formatPrice(PRICES.pro.monthly.eur * 12 - PRICES.pro.yearly.eur, currency, lang);
+  const proYrMoEquiv = formatPrice(PRICES.pro.yearly.eur / 12, currency, lang);
+  const bizMoPrice = formatPrice(PRICES.business.monthly.eur, currency, lang);
+  const bizYrPrice = formatPrice(PRICES.business.yearly.eur, currency, lang);
+  const bizYrSavings = formatPrice(PRICES.business.monthly.eur * 12 - PRICES.business.yearly.eur, currency, lang);
+  const bizYrMoEquiv = formatPrice(PRICES.business.yearly.eur / 12, currency, lang);
   const [previewGen, setPreviewGen] = useState<{ id: string; output: string; title?: string } | null>(null);
   const [dailyTip, setDailyTip] = useState<{ es: string; en: string } | null>(null);
 
@@ -374,14 +385,14 @@ function handleCopy(id: string, out: string) {
       {/* Onboarding modal — 3 steps: Welcome → Genera tu primer título (inline) → Resultado/celebración */}
       {onboardingStep !== null && onboardingStep < 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
-          <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/10 p-8" style={{ background: '#111114' }}>
+          <div className="yv-glass yv-glass--lift mx-4 w-full max-w-lg p-8" style={{ borderRadius: 'var(--yv-radius-xl)' }}>
 
             {/* Step 0: Welcome */}
             {onboardingStep === 0 && (
               <div className="text-center">
                 <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
                   <svg width="18" height="18" viewBox="7 7 18 18" fill="none">
-                    <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+                    <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
                   </svg>
                 </div>
                 <h2 className="font-display font-bold text-2xl text-white mb-2">
@@ -450,8 +461,7 @@ function handleCopy(id: string, out: string) {
                     autoFocus
                     maxLength={200}
                     disabled={onboardingGenerating}
-                    className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-zinc-600 outline-none focus:border-white/30 disabled:opacity-50"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+                    className="yv-input text-sm text-white placeholder-zinc-600 disabled:opacity-50"
                   />
                   <button type="submit" disabled={onboardingTopic.trim().length < 3 || onboardingGenerating} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2 disabled:opacity-40">
                     {onboardingGenerating ? (
@@ -610,6 +620,9 @@ function handleCopy(id: string, out: string) {
             </a>
           </div>
         </header>
+
+        {/* Siguiente acción — banner ancho, arriba de todo; ver docs/siguiente-accion-especificacion-2026-07-09.md */}
+        <NextActionCard onAction={setNextActionId} />
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-8 min-w-0">
         <main className="space-y-8 min-w-0">
@@ -983,12 +996,12 @@ function handleCopy(id: string, out: string) {
                 <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>HISTORY</p>
                 <h2 className="font-display font-bold text-2xl">{t('Generaciones recientes', 'Recent generations')}</h2>
               </div>
-              <div className="flex items-center rounded-full border border-white/10 bg-black font-mono-jb text-[13px] tracking-wider uppercase overflow-x-auto max-w-full [scrollbar-width:none]">
+              <div className="yv-chip flex items-center p-0 font-mono-jb text-[13px] tracking-wider uppercase overflow-x-auto max-w-full [scrollbar-width:none]" style={{ cursor: 'default' }}>
                 {FILTERS.map(([k, label]) => (
                   <button key={k} onClick={() => setFilterType(k)}
                     className="px-3 py-2 transition shrink-0"
                     aria-pressed={filterType === k}
-                    style={{ background: filterType === k ? 'var(--yv-brand)' : 'transparent', color: filterType === k ? '#000' : '#a1a1aa' }}>
+                    style={{ borderRadius: 'var(--yv-radius-pill)', background: filterType === k ? 'var(--yv-brand)' : 'transparent', color: filterType === k ? '#000' : '#a1a1aa' }}>
                     {label}
                   </button>
                 ))}
@@ -1010,9 +1023,9 @@ function handleCopy(id: string, out: string) {
                   const isCopied = copiedId === gen.id;
                   const color = TPL_COLORS[gen.template] ?? 'var(--yv-brand)';
                   return (
-                    <div key={gen.id} className="hover:bg-white/[0.02] transition" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                    <div key={gen.id} className="hover:bg-white/[0.02] transition" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.05)' }}>
                       <button onClick={() => setExpandedId(isOpen ? null : gen.id)} aria-expanded={isOpen} aria-label={`${isOpen ? t('Contraer', 'Collapse') : t('Expandir', 'Expand')} ${tpl(gen.template)}`} className="w-full text-left p-5 flex items-start gap-4">
-                        <span className="w-20 h-20 rounded-lg flex items-center justify-center border border-white/10 bg-black shrink-0">
+                        <span className="w-20 h-20 flex items-center justify-center shrink-0" style={{ borderRadius: 'var(--yv-radius)', background: 'var(--yv-glass-chip)' }}>
                           <img src={TPL_ICONS[gen.template] ?? '/icons/description.webp'} alt="" width={72} height={72} />
                         </span>
                         <div className="flex-1 min-w-0">
@@ -1040,7 +1053,7 @@ function handleCopy(id: string, out: string) {
                         <div className="px-5 pb-5 page-enter">
                           {gen.template === 'thumbnail' && gen.output?.startsWith('http') ? (
                             <div className="ml-14 space-y-3">
-                              <div className="rounded-xl overflow-hidden border border-white/10" style={{ maxWidth: 480 }}>
+                              <div className="yv-glass overflow-hidden" style={{ maxWidth: 480 }}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={gen.output} alt="Thumbnail" className="w-full h-auto" style={{ aspectRatio: '16/9', objectFit: 'cover' }} />
                               </div>
@@ -1052,7 +1065,7 @@ function handleCopy(id: string, out: string) {
                               )}
                             </div>
                           ) : (
-                            <div className="ml-14 p-4 rounded-xl border border-white/10 bg-black font-mono-jb text-[13px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--yv-text-2)' }}>
+                            <div className="ml-14 yv-glass p-4 font-mono-jb text-[13px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--yv-text-2)' }}>
                               {gen.output}
                             </div>
                           )}
@@ -1347,7 +1360,7 @@ function handleCopy(id: string, out: string) {
                     <span className="red-tape text-[13px] w-fit">PRO</span>
                     <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{t('200 generaciones/mes', '200 generations/month')}</span>
                   </div>
-                  <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[13px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
+                  <div className="yv-chip flex items-center p-0 font-mono-jb text-[13px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
                     <button
                       onClick={() => setBillingPlan('monthly')}
                       className="px-3 py-1.5 transition"
@@ -1366,16 +1379,16 @@ function handleCopy(id: string, out: string) {
                   </div>
                   {billingPlan === 'monthly' && (
                     <div className="mb-2">
-                      <span className="font-display font-bold text-2xl">9,99€</span>
+                      <span className="font-display font-bold text-2xl">{proMoPrice}</span>
                       <span className="font-mono-jb text-[13px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('mes', 'mo')}</span>
                     </div>
                   )}
                   {billingPlan === 'yearly' && (
                     <div className="mb-2">
-                      <span className="font-display font-bold text-2xl">99,99€</span>
+                      <span className="font-display font-bold text-2xl">{proYrPrice}</span>
                       <span className="font-mono-jb text-[13px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('año', 'yr')}</span>
                       <p className="font-mono-jb text-[13px] mt-1" style={{ color: '#7CFF00' }}>
-                        {t('= 8,33€/mes · Ahorras 19,89€', '= €8.33/mo · Save €19.89')}
+                        {t(`= ${proYrMoEquiv}/mes · Ahorras ${proYrSavings}`, `= ${proYrMoEquiv}/mo · Save ${proYrSavings}`)}
                       </p>
                     </div>
                   )}
@@ -1387,12 +1400,12 @@ function handleCopy(id: string, out: string) {
                 </div>
 
                 {/* Business tier */}
-                <div className="mb-4 pt-4 border-t border-white/10">
+                <div className="mb-4 pt-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="rounded px-2 py-0.5 text-[13px] font-bold font-mono-jb tracking-wider uppercase" style={{ background: 'linear-gradient(90deg,#B388FF,#7C4DFF)', color: '#000' }}>BUSINESS</span>
                     <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{t('1000 generaciones/mes', '1000 generations/month')}</span>
                   </div>
-                  <div className="flex items-center rounded-full border border-white/10 bg-black/40 font-mono-jb text-[13px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
+                  <div className="yv-chip flex items-center p-0 font-mono-jb text-[13px] tracking-wider uppercase overflow-hidden mb-2 w-fit">
                     <button
                       onClick={() => setBillingPlan('business_monthly')}
                       className="px-3 py-1.5 transition"
@@ -1411,16 +1424,16 @@ function handleCopy(id: string, out: string) {
                   </div>
                   {billingPlan === 'business_monthly' && (
                     <div className="mb-2">
-                      <span className="font-display font-bold text-2xl">29,99€</span>
+                      <span className="font-display font-bold text-2xl">{bizMoPrice}</span>
                       <span className="font-mono-jb text-[13px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('mes', 'mo')}</span>
                     </div>
                   )}
                   {billingPlan === 'business_yearly' && (
                     <div className="mb-2">
-                      <span className="font-display font-bold text-2xl">299€</span>
+                      <span className="font-display font-bold text-2xl">{bizYrPrice}</span>
                       <span className="font-mono-jb text-[13px] ml-1" style={{ color: 'var(--yv-text-2)' }}>/{t('año', 'yr')}</span>
                       <p className="font-mono-jb text-[13px] mt-1" style={{ color: '#7CFF00' }}>
-                        {t('= 24,92€/mes · Ahorras 60,88€', '= €24.92/mo · Save €60.88')}
+                        {t(`= ${bizYrMoEquiv}/mes · Ahorras ${bizYrSavings}`, `= ${bizYrMoEquiv}/mo · Save ${bizYrSavings}`)}
                       </p>
                     </div>
                   )}
@@ -1430,7 +1443,7 @@ function handleCopy(id: string, out: string) {
                     </button>
                   )}
                 </div>
-                <div className="mt-3 pt-3 border-t border-white/10">
+                <div className="mt-3 pt-3">
                   <button onClick={handleSync} disabled={syncing}
                     className="w-full font-mono-jb text-[13px] tracking-wider uppercase hover:opacity-80 disabled:opacity-50 transition py-1" style={{ color: 'var(--yv-text-3)' }}>
                     {syncing ? t('Sincronizando...', 'Syncing...') : t('¿Ya pagaste? Sincronizar suscripción', 'Already paid? Sync subscription')}
@@ -1517,13 +1530,10 @@ function handleCopy(id: string, out: string) {
             )}
           </div>
 
-          {/* Siguiente acción — arriba de Ideas/Tip; ver docs/siguiente-accion-especificacion-2026-07-09.md */}
-          <NextActionCard onAction={setNextActionId} />
-
           {/* Daily Ideas (personalized for Pro) or generic Tip — suprimido si Siguiente
               acción ya está mostrando la idea del día (regla daily_idea), sería duplicado */}
           {nextActionId === 'daily_idea' ? null : dailyIdeas && dailyIdeas.length > 0 ? (
-            <div className="rounded-2xl border border-white/10 p-5" style={{ background: 'rgba(155,32,32,0.06)' }}>
+            <div className="yv-glass yv-glass--brand p-5" style={{ borderRadius: 'var(--yv-radius-lg)' }}>
               <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-brand)' }}>
                 {t('IDEAS PARA HOY', 'IDEAS FOR TODAY')}
               </p>
@@ -1541,7 +1551,7 @@ function handleCopy(id: string, out: string) {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-white/15 p-5" style={{ background: '#0C0C0E' }}>
+            <div className="yv-glass p-5" style={{ borderRadius: 'var(--yv-radius-lg)' }}>
               <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-2 inline-flex items-center gap-1.5" style={{ color: 'var(--yellow)' }}><StarIcon size={12} /> {t('TIP DEL DÍA', 'TIP OF THE DAY')}</p>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
                 {dailyTip ? t(dailyTip.es, dailyTip.en) : t(
@@ -1557,14 +1567,14 @@ function handleCopy(id: string, out: string) {
 
       {/* Toast */}
       {ytToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl font-mono-jb text-sm shadow-2xl inline-flex items-center gap-2"
-          style={{ background: ytToast.ok ? '#16a34a' : '#dc2626', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 font-mono-jb text-sm inline-flex items-center gap-2"
+          style={{ borderRadius: 'var(--yv-radius)', background: ytToast.ok ? '#16a34a' : '#dc2626', color: '#fff', boxShadow: 'var(--yv-edge), var(--yv-depth-2)' }}>
           {ytToast.ok ? <CheckIcon size={14} /> : <CrossIcon size={14} />} {ytToast.msg}
         </div>
       )}
 
       {/* Footer */}
-      <footer className="border-t border-white/5 px-6 py-6 mt-4">
+      <footer className="px-6 py-6 mt-4" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' }}>
         <div className="yv-page flex justify-center gap-6 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
           <a href="/terms" className="hover:opacity-80 transition">{t('Términos', 'Terms')}</a>
           <a href="/privacy" className="hover:opacity-80 transition">{t('Privacidad', 'Privacy')}</a>

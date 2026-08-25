@@ -117,13 +117,13 @@ export default function ChatWidget() {
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
       {isOpen && (
         <div
-          className="w-80 flex flex-col rounded-2xl overflow-hidden shadow-2xl border border-white/10"
-          style={{ height: '420px', background: '#111' }}
+          className="yv-glass yv-glass--lift w-80 flex flex-col overflow-hidden"
+          style={{ height: '420px', borderRadius: 'var(--yv-radius-xl)' }}
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0"
-            style={{ background: '#1a1a1a' }}
+            className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+            style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}
           >
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
@@ -155,7 +155,7 @@ export default function ChatWidget() {
                 <div
                   className="max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed"
                   style={{
-                    background: msg.role === 'user' ? '#9B2020' : '#222',
+                    background: msg.role === 'user' ? 'var(--yv-brand-fill)' : 'var(--yv-glass-chip)',
                     color: '#fff',
                   }}
                 >
@@ -167,7 +167,7 @@ export default function ChatWidget() {
               <div className="flex justify-start">
                 <div
                   className="rounded-xl px-3 py-2 text-[13px]"
-                  style={{ background: '#222', color: '#fff' }}
+                  style={{ background: 'var(--yv-glass-chip)', color: '#fff' }}
                 >
                   <span className="inline-flex gap-1">
                     <span className="animate-bounce" style={{ animationDelay: '0ms' }}>·</span>
@@ -183,8 +183,8 @@ export default function ChatWidget() {
           {/* Error */}
           {error && (
             <div
-              className="px-4 py-2 text-[13px] text-red-400 border-t border-white/10 flex-shrink-0"
-              style={{ background: '#1a1a1a' }}
+              className="px-4 py-2 text-[13px] text-red-400 flex-shrink-0"
+              style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}
             >
               {error}
             </div>
@@ -193,8 +193,8 @@ export default function ChatWidget() {
           {/* Remaining notice */}
           {remaining !== null && remaining <= 2 && remaining > 0 && (
             <div
-              className="px-4 py-1.5 text-[13px] text-yellow-400/80 border-t border-white/10 flex-shrink-0"
-              style={{ background: '#1a1a1a' }}
+              className="px-4 py-1.5 text-[13px] text-yellow-400/80 flex-shrink-0"
+              style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}
             >
               {remaining === 1
                 ? t(lang, '1 mensaje restante hoy.', '1 message remaining today.')
@@ -204,8 +204,8 @@ export default function ChatWidget() {
           )}
           {remaining === 0 && (
             <div
-              className="px-4 py-1.5 text-[13px] text-red-400/80 border-t border-white/10 flex-shrink-0"
-              style={{ background: '#1a1a1a' }}
+              className="px-4 py-1.5 text-[13px] text-red-400/80 flex-shrink-0"
+              style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}
             >
               {t(lang,
                 'Límite diario alcanzado. Vuelve mañana o actualiza a Pro.',
@@ -216,8 +216,8 @@ export default function ChatWidget() {
 
           {/* Input */}
           <div
-            className="flex items-center gap-2 px-3 py-3 border-t border-white/10 flex-shrink-0"
-            style={{ background: '#1a1a1a' }}
+            className="flex items-center gap-2 px-3 py-3 flex-shrink-0"
+            style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}
           >
             <input
               ref={inputRef}
@@ -231,13 +231,13 @@ export default function ChatWidget() {
               }
               maxLength={500}
               disabled={isDisabled}
-              className="flex-1 bg-white/5 rounded-lg px-3 py-2 text-[13px] text-white placeholder-white/30 border border-white/10 focus:outline-none focus:border-white/30 disabled:opacity-40 min-w-0"
+              className="yv-input flex-1 text-[13px] text-white placeholder-white/30 disabled:opacity-40 min-w-0"
             />
             <button
               onClick={sendMessage}
               disabled={isDisabled || !input.trim()}
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity disabled:opacity-30 flex-shrink-0"
-              style={{ background: '#9B2020' }}
+              style={{ background: 'var(--yv-brand-fill)' }}
               aria-label={t(lang, 'Enviar', 'Send')}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -253,7 +253,7 @@ export default function ChatWidget() {
       <button
         onClick={() => setIsOpen(v => !v)}
         className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-        style={{ background: '#9B2020' }}
+        style={{ background: 'var(--yv-brand-fill)' }}
         aria-label={isOpen
           ? t(lang, 'Cerrar asistente', 'Close assistant')
           : t(lang, 'Abrir asistente', 'Open assistant')

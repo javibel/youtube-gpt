@@ -24,11 +24,11 @@ export default function RealTestimonials({ lang }: { lang: Lang }) {
   const avgLabel = Number.isInteger(avg) ? String(avg) : avg.toFixed(1);
 
   return (
-    <section className="border-b border-white/10 bg-black">
+    <section style={{ background: 'var(--yv-bg-0)' }}>
       <div className="max-w-7xl mx-auto px-6 py-24">
         <div className="flex items-end justify-between flex-wrap gap-4 mb-12">
           <div>
-            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--red)' }}>
+            <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--yv-brand-lift)' }}>
               {t('USUARIOS REALES', 'REAL USERS')}
             </p>
             <h2 className="font-display font-bold text-4xl md:text-6xl leading-[0.95] max-w-2xl">
@@ -44,9 +44,9 @@ export default function RealTestimonials({ lang }: { lang: Lang }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border border-white/10">
-          {reviews.slice(0, 6).map((r, i) => (
-            <div key={r.id} className={`p-7 border-white/10 hover:bg-white/[0.02] transition border-b ${i % 3 !== 2 ? 'lg:border-r' : ''}`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {reviews.slice(0, 6).map((r) => (
+            <div key={r.id} className="yv-glass yv-glass--hover p-7 transition">
               <div className="flex gap-0.5 mb-4" aria-label={`${r.rating}/5`}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <svg key={s} width={13} height={13} viewBox="0 0 20 20" fill={s <= r.rating ? '#FFE800' : 'rgba(255,255,255,0.15)'}>
@@ -55,8 +55,8 @@ export default function RealTestimonials({ lang }: { lang: Lang }) {
                 ))}
               </div>
               <p className="text-zinc-200 text-[15px] leading-relaxed mb-5">&ldquo;{r.text}&rdquo;</p>
-              <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-                <div className="w-9 h-9 flex items-center justify-center font-display font-bold text-[13px] shrink-0 bg-white/10 text-white">
+              <div className="flex items-center gap-3 pt-4" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)' }}>
+                <div className="w-9 h-9 flex items-center justify-center font-display font-bold text-[13px] shrink-0 text-white" style={{ borderRadius: 'var(--yv-radius-sm)', background: 'var(--yv-glass-chip)' }}>
                   {(r.user.name || 'U').charAt(0).toUpperCase()}
                 </div>
                 <div>

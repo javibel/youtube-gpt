@@ -51,7 +51,7 @@ function RelatedCard({ post, lang, catColor, catLabel }: {
 }) {
   if (!post) return null;
   return (
-    <Link href={`/blog/${post.slug}`} className="group block border border-white/10 p-6 bg-black hover:border-white/20 transition-colors">
+    <Link href={`/blog/${post.slug}`} className="yv-glass yv-glass--hover group block p-6 transition-colors">
       <div className="flex items-center gap-2 mb-3">
         <span className="font-mono-jb text-[13px] tracking-wider uppercase px-2 py-0.5 border"
           style={{ color: catColor(post.cat), borderColor: catColor(post.cat) + '55', background: catColor(post.cat) + '11' }}>
@@ -129,11 +129,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(10,10,10,0.85)' }}>
+      <nav className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(12,10,15,0.72)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-              <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+              <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
             </svg>
             <span className="font-display font-bold text-[17px] tracking-tight">
               YTubViral<span style={{ color: 'var(--red)' }}>.</span>com
@@ -176,7 +176,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         </h1>
 
         {/* Author + date */}
-        <div className="flex items-center gap-4 pb-8 border-b border-white/10">
+        <div className="flex items-center gap-4 pb-8" style={{ boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
           <div className="w-10 h-10 flex items-center justify-center font-display font-bold text-sm shrink-0"
             style={{ background: 'var(--red)', color: '#000' }}>
             {post.author.avatar}
@@ -190,7 +190,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         </div>
 
         {/* Cover image area */}
-        <div className="mt-10 mb-12 h-64 md:h-80 relative overflow-hidden border border-white/10">
+        <div className="yv-glass mt-10 mb-12 h-64 md:h-80 relative overflow-hidden">
           {post.image ? (
             <Image src={post.image} alt={post.title[lang]} fill className="object-cover" sizes="(max-width: 768px) 100vw, 768px" priority />
           ) : (
@@ -240,7 +240,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             ))}
           </>
         ) : (
-          <div className="border border-white/10 p-10 text-center bg-black">
+          <div className="yv-glass p-10 text-center">
             <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--red)' }}>
               {lang === 'en' ? 'Coming soon' : 'Próximamente'}
             </p>
@@ -256,7 +256,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         )}
 
         {/* Author footer */}
-        <div className="mt-16 border border-white/10 p-6 bg-black flex items-center gap-5">
+        <div className="yv-glass mt-16 p-6 flex items-center gap-5">
           <div className="w-12 h-12 flex items-center justify-center font-display font-bold shrink-0"
             style={{ background: 'var(--red)', color: '#000', fontSize: '16px' }}>
             {post.author.avatar}
@@ -286,7 +286,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
       {/* ── Related articles ── */}
       {related.length > 0 && (
-        <section className="border-t border-white/10 mt-8">
+        <section className="mt-8" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}>
           <div className="max-w-7xl mx-auto px-6 py-12">
             <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-6">
               {lang === 'en' ? 'Related articles' : 'Artículos relacionados'}
@@ -301,7 +301,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       )}
 
       {/* ── Final CTA ── */}
-      <section className="border-t border-white/10 bg-black">
+      <section style={{ background: 'var(--yv-bg-0)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
         <div className="max-w-4xl mx-auto px-6 py-20 text-center relative overflow-hidden">
           <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(232,77,91,0.18), transparent 70%)' }} />
           <div className="relative">
@@ -321,7 +321,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-black">
+      <footer style={{ background: 'var(--yv-bg-0)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
         <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-zinc-500 font-mono-jb text-[13px]">
             © 2026 YTubViral · {lang === 'en' ? 'Made by creators, for creators.' : 'Hecho por creadores, para creadores.'}

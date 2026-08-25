@@ -2,6 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ExtensionDetector } from './ExtensionDetector';
 import { getServerLang } from '@/lib/server-lang';
+import manifest from '@/chrome-extension/manifest.json';
+
+// Read from the extension's own manifest so this badge can't go stale again
+// (was hardcoded and drifted to "v1.4" while the published version moved to 2.6.1).
+const EXTENSION_VERSION = manifest.version;
 
 export const metadata: Metadata = {
   title: 'Chrome Extension — SEO y IA en YouTube',
@@ -31,7 +36,7 @@ const COPY = {
   es: {
     login: 'Iniciar sesión',
     signup: 'Crear cuenta gratis',
-    badge: 'CHROME EXTENSION v1.4',
+    badge: `CHROME EXTENSION v${EXTENSION_VERSION}`,
     h1: 'YTubViral directamente',
     h1accent: ' en YouTube',
     sub: 'SEO score, detección de outliers, estadísticas de canal y títulos con IA — directamente en YouTube y YouTube Studio. Instálalo en segundos.',
@@ -58,7 +63,7 @@ const COPY = {
   en: {
     login: 'Log in',
     signup: 'Create free account',
-    badge: 'CHROME EXTENSION v1.4',
+    badge: `CHROME EXTENSION v${EXTENSION_VERSION}`,
     h1: 'YTubViral directly',
     h1accent: ' on YouTube',
     sub: 'SEO score, outlier detection, channel stats and AI titles — directly on YouTube and YouTube Studio. Install in seconds.',
@@ -105,7 +110,7 @@ export default async function ExtensionPage() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="7 7 18 18" fill="none">
-              <circle cx="16" cy="16" r="8" fill="#ee4d5e"/>
+              <circle cx="16" cy="16" r="8" fill="#e84d5b"/>
             </svg>
             <span className="font-display font-bold text-[16px] tracking-tight">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
           </Link>

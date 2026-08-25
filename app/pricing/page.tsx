@@ -24,7 +24,7 @@ export default function PricingPage() {
   const lang = getServerLang();
 
   return (
-    <main className="min-h-screen bg-black">
+    <main className="min-h-screen" style={{ background: 'var(--yv-bg-0)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -51,7 +51,7 @@ export default function PricingPage() {
       <PricingSection lang={lang} />
 
       {/* Trust badges */}
-      <div className="border-b border-white/10 bg-black">
+      <div style={{ background: 'var(--yv-bg-0)' }}>
         <div className="max-w-4xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
             { Icon: LockIcon, es: 'Pago seguro con Stripe', en: 'Secure payment via Stripe' },

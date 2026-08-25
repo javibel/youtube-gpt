@@ -44,8 +44,8 @@ export default function CookieConsent() {
     <div
       role="dialog"
       aria-label={t('Consentimiento de cookies', 'Cookie consent')}
-      className="fixed bottom-0 inset-x-0 z-[200] border-t border-white/15 backdrop-blur-md"
-      style={{ background: 'rgba(10,10,10,0.95)' }}
+      className="fixed bottom-0 inset-x-0 z-[200] backdrop-blur-md"
+      style={{ background: 'rgba(12,10,15,0.92)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.1), 0 -20px 50px -20px rgba(0,0,0,.7)' }}
     >
       <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <p className="text-zinc-300 text-sm leading-relaxed flex-1">
