@@ -613,7 +613,10 @@ export default function TrendsClient() {
             <div className="text-center py-16">
               <div className="mb-4 flex justify-center"><img src="/icons/bell.webp" alt="" width={40} height={40} className="object-contain" /></div>
               <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>
-                {t('No hay alertas todavía. Las tendencias se generan diariamente.', 'No alerts yet. Trends are generated daily.')}
+                {t(
+                  'Sin alertas por ahora. Revisamos las tendencias globales cada día y solo avisamos cuando algo encaja de verdad con tu contenido — no fuerza coincidencias falsas.',
+                  'No alerts right now. We check global trends daily and only notify you when something genuinely fits your content — no forced false matches.'
+                )}
               </p>
             </div>
           )}
