@@ -39,6 +39,14 @@ export default auth(function proxy(req: AuthRequest) {
     return NextResponse.redirect(new URL("/verify-email", req.nextUrl));
   }
 
+  // Admin signed in via Google: session is valid but gated behind TOTP until
+  // /verify-totp confirms the code (see auth.ts jwt callback).
+  const requiresTotp =
+    (req.auth.user as { requiresTotp?: boolean }).requiresTotp ?? false;
+  if (requiresTotp && path !== "/verify-totp") {
+    return NextResponse.redirect(new URL("/verify-totp", req.nextUrl));
+  }
+
   return NextResponse.next();
 } as Parameters<typeof auth>[0]);
 

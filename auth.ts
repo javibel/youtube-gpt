@@ -83,11 +83,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Google OAuth: create or link user in DB
       if (account?.provider === 'google' && user.email) {
         const normalizedEmail = user.email.toLowerCase().trim();
-        // A6: the admin logs in with credentials + TOTP only — Google would bypass that
-        // second factor entirely, so it's blocked outright for that one email.
-        if (ADMIN_EMAIL && normalizedEmail === ADMIN_EMAIL) {
-          return false;
-        }
         user.email = normalizedEmail;
         const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
         if (existing) {
@@ -146,10 +141,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user, trigger, account }) {
+    async jwt({ token, user, trigger, account, session }) {
       if (user) {
         token.id = user.id;
-        // Google users are always verified
+        // Google users are always email-verified
         if (account?.provider === 'google') {
           token.requiresVerification = false;
         } else {
@@ -157,7 +152,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Only explicitly null means "new unverified user" — undefined means legacy session
           token.requiresVerification = ev === null;
         }
-        token.isAdmin = !!ADMIN_EMAIL && user.email?.toLowerCase().trim() === ADMIN_EMAIL;
+        const normalizedEmail = user.email?.toLowerCase().trim();
+        token.isAdmin = !!ADMIN_EMAIL && normalizedEmail === ADMIN_EMAIL;
+        // A6 (restored 25/08 — Google is allowed again, but still gated behind TOTP):
+        // the admin's Google sign-in creates a valid session immediately, but proxy.ts
+        // blocks every protected route until /verify-totp confirms the 6-digit code.
+        // Credentials logins already checked TOTP inline in authorize(), so they never
+        // need this second gate.
+        token.requiresTotp =
+          account?.provider === 'google' && token.isAdmin && !!process.env.ADMIN_TOTP_SECRET;
       }
       // On session update(), re-check emailVerified from DB to unblock verified users
       if (trigger === 'update' && token.requiresVerification && token.id) {
@@ -169,6 +172,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.requiresVerification = false;
         }
       }
+      // The client only sends totpVerified after /api/auth/verify-totp accepted the
+      // code for THIS session's own cookie — it can't be forged from another session.
+      if (trigger === 'update' && token.requiresTotp && (session as { totpVerified?: boolean } | undefined)?.totpVerified) {
+        token.requiresTotp = false;
+      }
       return token;
     },
     session({ session, token }) {
@@ -178,6 +186,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (token.requiresVerification as boolean | undefined) ?? false;
       (session.user as { isAdmin?: boolean }).isAdmin =
         (token.isAdmin as boolean | undefined) ?? false;
+      (session.user as { requiresTotp?: boolean }).requiresTotp =
+        (token.requiresTotp as boolean | undefined) ?? false;
       return session;
     },
   },
