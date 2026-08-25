@@ -22,7 +22,7 @@ const TPL_META: Record<string, { icon: string; color: string; est: string }> = {
   caption:        { icon: '/icons/caption.webp', color: '#FF00AA', est: '10s' },
   thumbnail:      { icon: '/icons/thumbnail.webp', color: '#7CFF00', est: '15s' },
   niche_analysis: { icon: '/icons/magnifying-glass.webp', color: '#B388FF', est: '45s' },
-  next_video:     { icon: '/icons/magnifying-glass.webp', color: '#FF6B35', est: '30s' },
+  next_video:     { icon: '/icons/question.webp', color: '#FF6B35', est: '30s' },
   series:         { icon: '/icons/clapperboard.webp', color: '#FF8A00', est: '60s' },
   shorts_hook:    { icon: '/icons/lightning.webp', color: '#00FFA3', est: '6s' },
   video_preview:  { icon: '/icons/yt-play.webp', color: '#00D9FF', est: '~30s' },
@@ -285,7 +285,7 @@ export default function GeneratePage() {
         {/* Template picker */}
         <div className="mb-8">
           <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>01 · {t('¿Qué necesitas?', 'What do you need?')}</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {/* 'reply' is extension-only (needs a specific comment + video, not a free-text idea) — never show it here */}
             {([...Object.keys(TEMPLATES).filter((k) => k !== 'reply'), 'video_preview'] as string[]).map((key) => {
               const tplMeta = TPL_META[key] ?? { icon: '/icons/description.webp', color: '#e84d5b', est: '~' };

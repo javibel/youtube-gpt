@@ -26,10 +26,16 @@ export default function LiteYouTube({ videoId, title }: { videoId: string; title
       aria-label={`${title} — play`}
     >
       <img
-        src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+        src={`https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`}
         alt={title}
         loading="lazy"
         className="absolute inset-0 w-full h-full object-cover"
+        onError={(e) => {
+          // maxresdefault no existe para todos los vídeos (solo si el uploader/YouTube
+          // generó una versión 1280x720) — si falla, hqdefault siempre existe.
+          const img = e.currentTarget;
+          if (!img.src.includes('hqdefault')) img.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+        }}
       />
       <span className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition" />
       <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-16 h-12 transition group-hover:scale-110" style={{ background: 'var(--yv-brand-fill)', borderRadius: 'var(--yv-radius)', boxShadow: '0 16px 40px -14px rgba(232,77,91,.85)' }}>

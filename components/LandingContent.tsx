@@ -68,7 +68,7 @@ function Hero({ lang }: { lang: Lang }) {
     <section className="relative overflow-hidden">
       <div className="absolute inset-0" style={{ background: 'var(--yv-light-hero)' }} />
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 0%,rgba(232,77,91,0.18),transparent 70%)' }} />
-      <div className="absolute inset-x-0 top-[10%] font-display font-bold text-center select-none pointer-events-none opacity-[0.022] whitespace-nowrap leading-none" style={{ fontSize: 'clamp(80px,18vw,260px)' }}>VIRAL.VIRAL</div>
+      <div className="absolute inset-x-0 top-[10%] font-display font-bold text-center select-none pointer-events-none opacity-[0.022] whitespace-nowrap leading-none" style={{ fontSize: 'clamp(110px,28vw,400px)' }}>YTUBVIRAL</div>
 
       <div className="relative max-w-7xl mx-auto px-6 pt-16 pb-20">
         <div className="flex justify-center mb-6">
@@ -193,7 +193,7 @@ function WhyDifferent({ lang }: { lang: Lang }) {
 function DemoVideo({ lang }: { lang: Lang }) {
   return (
     <section className="py-20" style={{ background: 'var(--yv-bg-0)' }}>
-      <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-3xl mx-auto px-6">
         <h2 className="font-display font-bold text-3xl md:text-4xl text-center mb-4">
           {lang === 'en' ? 'See YTubViral in action' : 'Mira YTubViral en acción'}
         </h2>
