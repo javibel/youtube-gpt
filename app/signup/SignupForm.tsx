@@ -63,8 +63,6 @@ export default function SignupForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<'es'|'en'>('es');
-  const [signupReferrer] = useState(() => typeof document !== 'undefined' ? document.referrer || '' : '');
-  const [signupLandingPage] = useState(() => typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ytv_landing') || '' : '');
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetId = useRef<string | undefined>(undefined);
@@ -124,6 +122,23 @@ export default function SignupForm() {
         'At least 8 characters, with at least 1 letter and 1 number'
       ));
       return;
+    }
+
+    // Attribution is resolved HERE, not at mount: LandingCapture writes these from an
+    // effect, which runs after this component's render. Reading them during render lost
+    // the attribution for everyone who landed straight on /signup (the whole extension
+    // flow, which opens this page in a fresh tab).
+    let signupReferrer = '';
+    let signupLandingPage = '';
+    try {
+      signupLandingPage = sessionStorage.getItem('ytv_landing') || location.pathname + location.search;
+      signupReferrer = sessionStorage.getItem('ytv_referrer') || '';
+      if (!signupReferrer && document.referrer &&
+          new URL(document.referrer).hostname !== location.hostname) {
+        signupReferrer = document.referrer;
+      }
+    } catch {
+      // sessionStorage or URL parsing unavailable — attribution is best-effort, never blocks signup
     }
 
     // Read first-touch UTM attribution from cookie
