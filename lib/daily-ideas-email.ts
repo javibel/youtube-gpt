@@ -14,7 +14,11 @@ import { sendTransactionalEmail } from '@/lib/send-email';
 import { signUnsubscribe } from '@/lib/email-token';
 import { analyzeTitle, detectCreatorLang, type Lang } from '@/lib/title-score';
 
-const BASE = (process.env.NEXTAUTH_URL ?? 'https://ytubviral.com').trim().replace(/\/$/, '');
+// Hardcoded like lib/lifecycle-emails.ts, NOT read from NEXTAUTH_URL: an email is
+// always opened outside this process, so a localhost link is never useful. Deriving
+// it from the environment sent a real batch with every link — including unsubscribe —
+// pointing at http://localhost:3011 when the send was run from a dev machine.
+const BASE = 'https://ytubviral.com';
 
 export interface DailyIdea {
   title_es?: string;
@@ -128,6 +132,11 @@ export function buildDailyIdeasEmail(
 
 /** Sends today's briefing. Returns how many went out. */
 export async function sendDailyIdeasEmails(opts: { dryRun?: boolean; onlyUserIds?: string[] } = {}): Promise<number> {
+  // Last line of defence: never let a batch go out with dead links, whatever BASE
+  // ends up being.
+  if (!opts.dryRun && !/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}/i.test(BASE)) {
+    throw new Error(`[daily-ideas-email] Refusing to send: BASE is not a public URL (${BASE})`);
+  }
   const today = new Date().toISOString().slice(0, 10);
   const rows = await prisma.dailyIdea.findMany({
     where: { date: today, ...(opts.onlyUserIds ? { userId: { in: opts.onlyUserIds } } : {}) },
