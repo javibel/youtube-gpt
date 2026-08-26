@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getUserPlan, isPaid } from '@/lib/plans';
 
 // List last 3 previews for the current user (no video data)
 export async function GET() {
@@ -18,15 +17,13 @@ export async function GET() {
   return NextResponse.json({ previews });
 }
 
-// Save a new preview (binary FormData) — Pro only
+// Save a new preview (binary FormData). Abierto a free desde el 26/08 junto
+// con Video Tips (1/mes) — de lo contrario el unico Video Tips gratis se
+// generaba pero no se guardaba en la cuenta. Coste marginal: solo storage,
+// max 8MB, se conservan las ultimas 3 igual que Pro.
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
 
   let title: string, buffer: Buffer, mimeType: string;
   try {

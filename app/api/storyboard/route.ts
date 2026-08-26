@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { getUserPlan, isPaid } from '@/lib/plans';
+import { prisma } from '@/lib/prisma';
+import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
+
+// Free incluye Video Tips desde el 26/08 (gancho de retención — el 69% de lo
+// generado en free eran titulos, producto de un solo uso; ver
+// project_retention_analysis_2026_08_26.md). Decisión de Javier: 1/mes para
+// free, y esa generación CUENTA dentro de las 10 generaciones/mes normales
+// (no es un cupo aparte). Pro/Business solo estan limitados por su pool
+// general (generationsPerMonth), sin tope adicional aqui.
+const FREE_VIDEO_TIPS_PER_MONTH = 1;
+
+function getIp(request: Request): string | null {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return request.headers.get('x-real-ip');
+}
 
 const ES_PROMPT = (script: string) => `Convierte este script de YouTube en un storyboard visual de 8-12 escenas. Adapta la cantidad al tamaño del script: scripts cortos → 8 escenas, scripts largos → hasta 12.
 
@@ -38,10 +53,61 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Pro-only feature
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+  const userId = session.user.id;
+  const plan = await getUserPlan(userId);
+  const isPro = isPaid(plan);
+  const limit = getLimits(plan).generationsPerMonth;
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const usedThisMonth = await prisma.generation.count({
+    where: { userId, createdAt: { gte: startOfMonth } },
+  });
+
+  if (usedThisMonth >= limit) {
+    return NextResponse.json(
+      { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
+      { status: 429 }
+    );
+  }
+
+  // Tope adicional solo para free: 1 Video Tips/mes (comparte pool con las 10
+  // generaciones normales, pero ademas no puede "gastarlas todas" en esto).
+  if (!isPro) {
+    const videoTipsThisMonth = await prisma.generation.count({
+      where: { userId, template: 'video_preview', createdAt: { gte: startOfMonth } },
+    });
+    if (videoTipsThisMonth >= FREE_VIDEO_TIPS_PER_MONTH) {
+      return NextResponse.json(
+        { error: 'Ya usaste tu Video Tips gratis este mes', limitReached: true, videoTipsCapped: true },
+        { status: 429 }
+      );
+    }
+  }
+
+  // Rate limit por minuto: mismo patron atomico que /api/generate (anti-abuso)
+  const rlKey = `storyboard:${userId}`;
+  const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
+    INSERT INTO rate_limits (key, hits, window_start)
+    VALUES (${rlKey}, 1, NOW())
+    ON CONFLICT (key) DO UPDATE
+    SET
+      hits = CASE
+        WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
+        THEN 1
+        ELSE rate_limits.hits + 1
+      END,
+      window_start = CASE
+        WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
+        THEN NOW()
+        ELSE rate_limits.window_start
+      END
+    RETURNING hits
+  `;
+  if (Number(rlResult[0].hits) > 5) {
+    return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' }, { status: 429 });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
@@ -77,6 +143,23 @@ export async function POST(request: Request) {
     if (!res.ok) return NextResponse.json({ error: 'AI error' }, { status: 502 });
     const data = await res.json();
     const storyboard: string = data.content?.[0]?.text ?? '';
+
+    // Registrar la generacion — cuenta para el pool mensual (10 free / 200 pro)
+    // igual que cualquier otro template, y es lo que alimenta el tope de
+    // FREE_VIDEO_TIPS_PER_MONTH de arriba.
+    try {
+      await prisma.generation.create({
+        data: {
+          userId,
+          template: 'video_preview',
+          inputs: { script: script.slice(0, 4000) },
+          output: storyboard,
+          tokensUsed: data.usage?.output_tokens ?? 0,
+          ipAddress: getIp(request),
+        },
+      });
+    } catch { /* no bloquear la respuesta si falla el registro */ }
+
     return NextResponse.json({ storyboard });
   } catch {
     return NextResponse.json({ error: 'Connection error' }, { status: 500 });

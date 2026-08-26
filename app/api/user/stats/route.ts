@@ -51,11 +51,16 @@ export async function GET() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [totalGenerations, generationsThisMonth, subscription, allDates] =
+  const [totalGenerations, generationsThisMonth, videoTipsThisMonth, subscription, allDates] =
     await Promise.all([
       prisma.generation.count({ where: { userId: user.id } }),
       prisma.generation.count({
         where: { userId: user.id, createdAt: { gte: startOfMonth } },
+      }),
+      // Video Tips free (26/08): tope de 1/mes ademas del pool general — ver
+      // app/api/storyboard/route.ts (FREE_VIDEO_TIPS_PER_MONTH).
+      prisma.generation.count({
+        where: { userId: user.id, template: 'video_preview', createdAt: { gte: startOfMonth } },
       }),
       prisma.subscription.findUnique({
         where: { userId: user.id },
@@ -89,6 +94,7 @@ export async function GET() {
       isPro: isProUser,
       plan,
       streak,
+      videoTipsRemaining: isProUser ? null : Math.max(0, 1 - videoTipsThisMonth),
     },
     subscription: subscription ?? null,
   });

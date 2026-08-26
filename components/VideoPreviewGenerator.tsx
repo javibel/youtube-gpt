@@ -876,7 +876,8 @@ function applyGlitch(ctx: CanvasRenderingContext2D, snapshot: HTMLCanvasElement,
 
 // ─── Rate limit ───────────────────────────────────────────────────────────────
 
-const DAILY_LIMIT = 50; // PRO-only feature — generous limit
+const DAILY_LIMIT = 50; // limite local anti-spam del renderizado; el limite real de
+                         // negocio (10 free/mes, 1 Video Tips/mes) vive en /api/storyboard
 
 function checkRateLimit() {
   const today = new Date().toISOString().split('T')[0];
@@ -898,12 +899,14 @@ interface Props {
   lang: Lang;
   onClose: () => void;
   onSaved?: () => void;
+  onGenerated?: () => void;
+  onLimitReached?: (reason: 'video_tips_capped' | 'limit') => void;
 }
 
 const TRANSITION_DURATION = 0.55; // seconds
 
 export default function VideoPreviewGenerator({
-  scriptContent, generationId, scriptTitle = 'Script', lang, onClose, onSaved,
+  scriptContent, generationId, scriptTitle = 'Script', lang, onClose, onSaved, onGenerated, onLimitReached,
 }: Props) {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const offscRef    = useRef<HTMLCanvasElement | null>(null);
@@ -942,6 +945,9 @@ export default function VideoPreviewGenerator({
     }
 
     // ── Adapt script to storyboard format via AI ──────────────────────────
+    // Esto es lo que cuenta como "una generacion" (26/08 — free incluye
+    // 1/mes). Si el backend bloquea por limite, se para aqui: no seguimos
+    // con un fallback silencioso, o el tope de free/mes seria papel mojado.
     setStatus('adapting');
     let scriptForSlides = scriptContent;
     try {
@@ -950,10 +956,20 @@ export default function VideoPreviewGenerator({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ script: scriptContent, lang }),
       });
+      if (sbRes.status === 429 || sbRes.status === 403) {
+        const sbData = await sbRes.json().catch(() => ({} as { error?: string; videoTipsCapped?: boolean }));
+        setStatus('error');
+        setErrorMsg(sbData.error || t('Límite alcanzado.', 'Limit reached.'));
+        onLimitReached?.(sbData.videoTipsCapped ? 'video_tips_capped' : 'limit');
+        return;
+      }
       if (sbRes.ok) {
         const sbData = await sbRes.json();
         if (sbData.storyboard?.trim()) scriptForSlides = sbData.storyboard;
+        onGenerated?.();
       }
+      // Otros fallos (503/502/500/red) degradan a slides sin adaptar — no son
+      // limite de cuota, no tiene sentido bloquear al usuario por ellos.
     } catch { /* fall back to original script */ }
 
     const slides = parseScript(scriptForSlides);
@@ -1184,7 +1200,7 @@ export default function VideoPreviewGenerator({
           {/* Header */}
           <div>
             <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-1" style={{ color: '#00D9FF' }}>
-              VIDEO TIPS · PRO
+              VIDEO TIPS
             </p>
             <h2 className="font-display font-bold text-xl">{t('Storyboard animado', 'Animated storyboard')}</h2>
             <p className="font-mono-jb text-[13px] text-zinc-500 mt-1 truncate max-w-xs">"{scriptTitle}"</p>

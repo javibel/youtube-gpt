@@ -8,7 +8,7 @@ import { PRICES, formatPrice } from '@/lib/pricing';
 
 interface LimitReachedModalProps {
   onClose: () => void;
-  reason?: 'limit' | 'pro_feature';
+  reason?: 'limit' | 'pro_feature' | 'video_tips_limit';
   lang?: 'es' | 'en';
 }
 
@@ -73,11 +73,15 @@ export default function LimitReachedModal({ onClose, reason = 'limit', lang = 'e
           <h2 className="text-2xl font-bold text-white mb-2">
             {reason === 'pro_feature'
               ? t('Función exclusiva de pago', 'Paid feature')
+              : reason === 'video_tips_limit'
+              ? t('Ya usaste tu Video Tips gratis', "You've used your free Video Tips")
               : t('Has usado todas tus generaciones', "You've used all your generations")}
           </h2>
           <p className="text-gray-500 text-sm">
             {reason === 'pro_feature'
               ? <>{t('Actualiza tu plan para desbloquear esta función y todas las demás.', 'Upgrade your plan to unlock this feature and all others.')}</>
+              : reason === 'video_tips_limit'
+              ? <>{t('El plan gratuito incluye 1 Video Tips al mes.', 'The free plan includes 1 Video Tips per month.')} {t('Hazte Pro para generarlos sin límite.', 'Go Pro for unlimited Video Tips.')}</>
               : <>{t('Has alcanzado el límite de', "You've reached the limit of")} <span className="font-semibold" style={{ color: '#00D9FF' }}>{t('10 generaciones', '10 generations')}</span> {t('del plan gratuito este mes.', 'on the free plan this month.')}</>}
           </p>
         </div>

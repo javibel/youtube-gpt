@@ -69,9 +69,10 @@ export default function GeneratePage() {
   const [limit, setLimit] = useState<number>(10);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isPro, setIsPro] = useState<boolean>(false);
+  const [videoTipsRemaining, setVideoTipsRemaining] = useState<number | null>(null);
   const lang = useLang();
   const [showLimitModal, setShowLimitModal] = useState<boolean>(false);
-  const [modalReason, setModalReason] = useState<'limit' | 'pro_feature'>('limit');
+  const [modalReason, setModalReason] = useState<'limit' | 'pro_feature' | 'video_tips_limit'>('limit');
   const [copied, setCopied] = useState(false);
   const [showVideoPreview, setShowVideoPreview] = useState(false);
   const [videoPreviewId, setVideoPreviewId] = useState('');
@@ -110,6 +111,7 @@ export default function GeneratePage() {
           setLimit(data.stats.limit);
           setRemaining(data.stats.remaining);
           setIsPro(data.stats.isPro);
+          setVideoTipsRemaining(data.stats.videoTipsRemaining ?? null);
         }
       })
       .catch(() => toast(lang === 'en' ? 'Could not load your plan limits. Reload the page.' : 'No se pudieron cargar los límites de tu plan. Recarga la página.', 'error'));
@@ -131,7 +133,7 @@ export default function GeneratePage() {
   const inputs: string[] = (currentTpl as { inputs: string[] })?.inputs ?? [];
 
   const handleSelect = (key: string) => {
-    if ((key === 'video_preview' || key === 'thumbnail') && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
+    if (key === 'thumbnail' && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
     const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean };
     if (tpl?.proOnly && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
     setSelectedTemplate(key);
@@ -143,8 +145,13 @@ export default function GeneratePage() {
   };
 
   const handleGenerate = async () => {
-    // Video Preview is client-side — no API call needed
+    // Video Preview: el render es client-side, pero el storyboard IA cuenta como
+    // una generacion mas (26/08 — free incluye 1/mes, dentro del pool de 10).
     if (selectedTemplate === 'video_preview') {
+      if (usageCount >= limit) { setModalReason('limit'); setShowLimitModal(true); return; }
+      if (!isPro && videoTipsRemaining !== null && videoTipsRemaining <= 0) {
+        setModalReason('video_tips_limit'); setShowLimitModal(true); return;
+      }
       setPreviewScript(formData.tema);
       setPreviewTitle(formData.tema.slice(0, 60) || 'Video Tips');
       setVideoPreviewId(`vp-${Date.now()}`);
@@ -290,7 +297,7 @@ export default function GeneratePage() {
             {([...Object.keys(TEMPLATES).filter((k) => k !== 'reply'), 'video_preview'] as string[]).map((key) => {
               const tplMeta = TPL_META[key] ?? { icon: '/icons/description.webp', color: '#e84d5b', est: '~' };
               const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean } | undefined;
-              const locked = (key === 'video_preview' || key === 'thumbnail') ? !isPro : (tpl?.proOnly && !isPro);
+              const locked = key === 'thumbnail' ? !isPro : (tpl?.proOnly && !isPro);
               const active = selectedTemplate === key;
               const isVideoPreview = key === 'video_preview';
               return (
@@ -316,7 +323,9 @@ export default function GeneratePage() {
                     {TPL_NAMES[key]?.[lang] ?? key}
                   </p>
                   {isVideoPreview && (
-                    <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>Canvas · local</p>
+                    <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>
+                      {isPro ? 'Canvas · local' : t('1 gratis/mes', '1 free/mo')}
+                    </p>
                   )}
                   {active && <span className="absolute top-3 right-3 live-dot" />}
                 </button>
@@ -476,11 +485,7 @@ export default function GeneratePage() {
                   </>
                 )}
               </button>
-              {selectedTemplate === 'video_preview' ? (
-                <p className="font-mono-jb text-[13px] inline-flex items-center gap-1.5" style={{ color: 'var(--yv-text-3)' }}>
-                  <VideoIcon size={13} /> {t('Sin créditos · local', '0 credits · local')}
-                </p>
-              ) : isBusiness ? (
+              {isBusiness ? (
                 <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                   <span className="text-white font-semibold">∞</span> {t('Ilimitado', 'Unlimited')}
                 </p>
@@ -711,6 +716,16 @@ export default function GeneratePage() {
             lang={lang}
             onClose={() => setShowVideoPreview(false)}
             onSaved={() => setPreviewSaved(true)}
+            onGenerated={() => {
+              setUsageCount((prev) => prev + 1);
+              setRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
+              if (!isPro) setVideoTipsRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
+            }}
+            onLimitReached={(reason) => {
+              setShowVideoPreview(false);
+              setModalReason(reason === 'video_tips_capped' ? 'video_tips_limit' : 'limit');
+              setShowLimitModal(true);
+            }}
           />
         </Suspense>
       )}
