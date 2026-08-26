@@ -26,6 +26,7 @@ const { runAttribution } = require('./outreach-attribution');
 const { runStripeReconcile } = require('./stripe-reconcile');
 const { runFeatureMonitor } = require('./feature-monitor');
 const { runCleanup: runGmailCleanup } = require('./gmail-cleanup');
+const { runBriefingWatch } = require('./briefing-watch');
 const { runBlogGenerator } = require('./blog-generator');
 const { runBlogSyndicator } = require('./blog-syndicator');
 const { runQuoraCommenter } = require('./quora-commenter');
@@ -437,6 +438,13 @@ cron.schedule('17 9 * * *', async () => {
   await runAutoResolver().catch(err => console.error('[auto-resolver]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
+// Briefing Watch — 19:00 diario. ¿Vuelve alguien tras recibir las ideas diarias?
+// Solo escribe si hay noticia: alguien vuelve, o se cumple la semana sin nadie.
+cron.schedule('0 19 * * *', async () => {
+  console.log('[cron] Briefing Watch — ¿han vuelto los que reciben el briefing?');
+  await runBriefingWatch().catch(err => console.error('[briefing-watch]', err.message));
+}, { timezone: 'Europe/Madrid' });
+
 // Blog Generator — Monday & Thursday at 04:00 (2 articles/week)
 cron.schedule('0 4 * * 1,4', async () => {
   console.log('[cron] Blog Generator — auto-generating SEO article');
@@ -491,6 +499,7 @@ console.log('  Stripe Reconcile: 02:35 Sundays + catch-up on startup (Europe/Mad
 console.log('  Manager: 03:15 daily (Europe/Madrid)');
 console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
 console.log('  Auto-Resolver: 09:17 daily (Europe/Madrid)');
+console.log('  Briefing Watch: 19:00 daily — ¿vuelven los del briefing? (Europe/Madrid)');
 console.log('  Blog Generator: 04:00 Mon+Thu (Europe/Madrid)');
 console.log('  Blog Syndicator: 05:00 daily (Europe/Madrid)');
 console.log('  Quora Commenter: 13:00, 19:00 daily (Europe/Madrid)');
