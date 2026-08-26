@@ -98,6 +98,7 @@ export default function DashboardPage() {
   const [dbPreviews, setDbPreviews]         = useState<DbPreview[]>([]);
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
   const [playingPreview, setPlayingPreview] = useState<{ id: string; title: string; url: string } | null>(null);
+  const [previewError, setPreviewError] = useState<{ es: string; en: string } | null>(null);
 
   const loadDbPreviews = useCallback(async () => {
     try {
@@ -109,11 +110,24 @@ export default function DashboardPage() {
 
   const handleSelectPreview = useCallback(async (preview: DbPreview) => {
     setLoadingPreviewId(preview.id);
+    setPreviewError(null);
     try {
       const res = await fetch(`/api/video-previews/${preview.id}`);
+      // Sin este control, una respuesta de error se convertia igualmente en blob
+      // y el reproductor se abria en negro sin explicar nada.
+      if (!res.ok) {
+        setPreviewError({ es: `No se pudo cargar el vídeo (error ${res.status}).`, en: `Could not load the video (error ${res.status}).` });
+        return;
+      }
       const blob = await res.blob();
+      if (!blob.size || !blob.type.startsWith('video/')) {
+        setPreviewError({ es: 'El vídeo guardado está dañado.', en: 'The saved video is corrupted.' });
+        return;
+      }
       setPlayingPreview({ id: preview.id, title: preview.title, url: URL.createObjectURL(blob) });
-    } catch { /* non-critical */ } finally {
+    } catch {
+      setPreviewError({ es: 'Error de conexión al cargar el vídeo.', en: 'Connection error loading the video.' });
+    } finally {
       setLoadingPreviewId(null);
     }
   }, []);
@@ -127,6 +141,10 @@ export default function DashboardPage() {
     setLoadingPreviewId(p.id);
     try {
       const res = await fetch(`/api/video-previews/${p.id}`);
+      if (!res.ok) {
+        setPreviewError({ es: `No se pudo descargar el vídeo (error ${res.status}).`, en: `Could not download the video (error ${res.status}).` });
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -864,6 +882,10 @@ function handleCopy(id: string, out: string) {
                     <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-4)' }}>
                       {t('Últimas generaciones', 'Latest previews')}
                     </p>
+
+                    {previewError && (
+                      <p className="font-mono-jb text-[12px] mb-3" style={{ color: '#e84d5b' }}>{t(previewError.es, previewError.en)}</p>
+                    )}
 
                     {dbPreviews.length === 0 ? (
                       <div className="py-6">

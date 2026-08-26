@@ -49,6 +49,7 @@ function TvCanvasMirror({ canvasRef }: { canvasRef: RefObject<HTMLCanvasElement 
   );
 }
 import { savePreview } from '@/lib/videoPreviewDB';
+import { primeWebmDuration } from '@/lib/webm-duration';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1145,6 +1146,15 @@ export default function VideoPreviewGenerator({
   const handleScreenMouseMove = useCallback(() => { if (status === 'done') scheduleHide(); }, [status, scheduleHide]);
   const handleScreenMouseLeave = useCallback(() => { setShowControls(false); if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
 
+  // El WebM recien grabado no trae duracion en la cabecera: sin esto el clip se
+  // queda clavado en el ruido inicial. Ver lib/webm-duration.
+  useEffect(() => {
+    if (status !== 'done' || !videoUrl) return;
+    const v = videoRef.current;
+    if (!v) return;
+    return primeWebmDuration(v);
+  }, [status, videoUrl]);
+
   const togglePlay = useCallback(() => {
     const v = videoRef.current; if (!v) return;
     if (v.paused) { v.play(); setIsPlaying(true); } else { v.pause(); setIsPlaying(false); }
@@ -1153,7 +1163,8 @@ export default function VideoPreviewGenerator({
 
   const skipVideo = useCallback((delta: number) => {
     const v = videoRef.current; if (!v) return;
-    v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + delta));
+    const end = Number.isFinite(v.duration) ? v.duration : v.currentTime + delta;
+    v.currentTime = Math.max(0, Math.min(end, v.currentTime + delta));
     scheduleHide();
   }, [scheduleHide]);
 

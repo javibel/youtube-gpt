@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { primeWebmDuration } from '@/lib/webm-duration';
 
 type Lang = 'es' | 'en';
 
@@ -22,6 +23,13 @@ export default function PlaybackModal({ url, title, lang, onClose }: PlaybackMod
     return () => { if (hideTimer.current) clearTimeout(hideTimer.current); };
   }, []);
 
+  // Sin esto el clip se queda clavado en el primer segundo: ver lib/webm-duration.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    return primeWebmDuration(v);
+  }, [url]);
+
   const scheduleHide = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     setShowControls(true);
@@ -42,7 +50,8 @@ export default function PlaybackModal({ url, title, lang, onClose }: PlaybackMod
 
   const skipVideo = useCallback((delta: number) => {
     const v = videoRef.current; if (!v) return;
-    v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + delta));
+    const end = Number.isFinite(v.duration) ? v.duration : v.currentTime + delta;
+    v.currentTime = Math.max(0, Math.min(end, v.currentTime + delta));
     scheduleHide();
   }, [scheduleHide]);
 
