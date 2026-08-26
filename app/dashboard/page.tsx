@@ -19,6 +19,7 @@ const PlaybackModal = lazy(() => import('@/components/PlaybackModal'));
 const TPL_ICONS: Record<string, string> = {
   title: '/icons/title.webp', description: '/icons/description.webp', caption: '/icons/caption.webp', thumbnail: '/icons/thumbnail.webp',
   script: '/icons/script.webp', shorts_hook: '/icons/lightning.webp', series: '/icons/clapperboard.webp', niche_analysis: '/icons/magnifying-glass.webp',
+  video_preview: '/icons/yt-play.webp',
 };
 const TPL_LABELS: Record<string, { es: string; en: string }> = {
   title:         { es: 'Título',      en: 'Title' },
@@ -29,10 +30,12 @@ const TPL_LABELS: Record<string, { es: string; en: string }> = {
   shorts_hook:   { es: 'Hook',        en: 'Hook' },
   series:        { es: 'Serie',       en: 'Series' },
   niche_analysis:{ es: 'Nicho',       en: 'Niche' },
+  video_preview: { es: 'Video Tips',  en: 'Video Tips' },
 };
 const TPL_COLORS: Record<string, string> = {
   title: '#e84d5b', description: '#00E5FF', caption: '#FF00AA',
   thumbnail: '#7CFF00', script: '#FFE800', shorts_hook: '#00FFA3', series: '#FF8A00', niche_analysis: '#B388FF',
+  video_preview: '#00D9FF',
 };
 
 const QUICK_TPLS = [
