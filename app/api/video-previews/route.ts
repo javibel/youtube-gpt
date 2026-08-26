@@ -32,6 +32,11 @@ export async function POST(request: Request) {
     const file = form.get('video') as File | null;
     if (!title || !file) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     if (file.size > 8 * 1024 * 1024) return NextResponse.json({ error: 'File too large' }, { status: 413 });
+    // Grabacion vacia/rota (p.ej. la pestaña paso a segundo plano durante la
+    // grabacion real-time y el navegador dejo de componer el canvas — ver
+    // VideoPreviewGenerator.tsx). Mejor rechazar que guardar un video que
+    // luego no reproduce.
+    if (file.size < 2000) return NextResponse.json({ error: 'Empty or corrupt video' }, { status: 422 });
     buffer = Buffer.from(await file.arrayBuffer());
     mimeType = file.type || 'video/webm';
   } catch {

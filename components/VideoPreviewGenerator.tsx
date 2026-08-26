@@ -1014,6 +1014,23 @@ export default function VideoPreviewGenerator({
     recorder.onstop = async () => {
       stream.getTracks().forEach(tr => tr.stop());
       const blob = new Blob(chunks, { type: mimeType });
+
+      // captureStream() solo entrega frames del canvas COMPUESTO. Si la pestaña
+      // pasa a segundo plano durante los 30-90s que dura la grabación (el usuario
+      // cambia de pestaña, la minimiza...), el navegador puede dejar de componer
+      // y el MediaRecorder termina con pocos o cero frames — un archivo roto que
+      // antes se guardaba igualmente como si fuera bueno. 2KB es a proposito muy
+      // conservador (un video real de 1s a 80kbps ya pesa ~10KB) para no dar
+      // falsos positivos en grabaciones cortas legitimas.
+      if (blob.size < 2000) {
+        setStatus('error');
+        setErrorMsg(t(
+          'La grabación salió vacía — probablemente cambiaste de pestaña mientras se generaba. Mantén esta pestaña visible y vuelve a intentarlo.',
+          'The recording came out empty — you probably switched tabs while it was generating. Keep this tab visible and try again.'
+        ));
+        return;
+      }
+
       setVideoUrl(URL.createObjectURL(blob));
       setStatus('done'); setProgress(100);
 
@@ -1349,6 +1366,9 @@ export default function VideoPreviewGenerator({
                 <div className="h-full rounded-full transition-all duration-200"
                   style={{ width: `${progress}%`, background: 'linear-gradient(90deg,#00D9FF,#FF00FF)' }} />
               </div>
+              <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
+                {t('Se graba en tiempo real: no cambies de pestaña hasta que termine.', 'Recorded in real time: don’t switch tabs until it finishes.')}
+              </p>
             </div>
           )}
 
