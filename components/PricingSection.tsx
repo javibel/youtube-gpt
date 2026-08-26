@@ -14,6 +14,7 @@ export default function PricingSection({ lang }: { lang: Lang }) {
     t('10 generaciones al mes', '10 generations/month'),
     t('5 tipos de contenido', '5 content types'),
     t('Historial 30 días', '30-day history'),
+    t('1 competidor monitorizado', '1 tracked competitor'),
     t('Sin tarjeta de crédito', 'No credit card'),
   ];
   const proFeatures = [

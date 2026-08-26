@@ -13,7 +13,7 @@ const ROWS: Row[] = [
   { feature: { es: 'Trending Topics', en: 'Trending Topics' }, free: true, pro: true, business: '12 países · countries' },
   { feature: { es: 'AI Coach', en: 'AI Coach' }, free: false, pro: '50 msg/mes · mo', business: 'Ilimitado · Unlimited' },
   { feature: { es: 'Keyword Research + Outliers', en: 'Keyword Research + Outliers' }, free: false, pro: true, business: true },
-  { feature: { es: 'Competidores monitorizados', en: 'Tracked competitors' }, free: false, pro: '5', business: '20 + tracking' },
+  { feature: { es: 'Competidores monitorizados', en: 'Tracked competitors' }, free: '1', pro: '5', business: '20 + tracking' },
   { feature: { es: 'A/B tests simultáneos', en: 'Simultaneous A/B tests' }, free: false, pro: '3', business: '10' },
   { feature: { es: 'Estimador de ingresos', en: 'Revenue Estimator' }, free: false, pro: true, business: '+ Analytics' },
   { feature: { es: 'Calendario IA + Preview miniaturas', en: 'AI Calendar + Thumbnail Preview' }, free: false, pro: true, business: true },

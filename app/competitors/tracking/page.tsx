@@ -104,6 +104,7 @@ export default function CompetitorTrackingPage() {
   const [adding, setAdding] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState('');
+  const [errorUpgrade, setErrorUpgrade] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [outlierMap, setOutlierMap] = useState<Record<string, OutlierData>>({});
   const [expandedOutliers, setExpandedOutliers] = useState<string | null>(null);
@@ -158,6 +159,7 @@ export default function CompetitorTrackingPage() {
     if (!urlInput.trim()) return;
     setAdding(true);
     setError('');
+    setErrorUpgrade(false);
     try {
       const res = await fetch('/api/youtube/competitors', {
         method: 'POST',
@@ -166,6 +168,7 @@ export default function CompetitorTrackingPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.error === 'limit_reached') setErrorUpgrade(true);
         const msgs: Record<string, string> = {
           pro_required: t('Necesitas el plan Pro.', 'Pro plan required.'),
           limit_reached: t(`Has llegado al máximo de competidores de tu plan${data.max ? ` (${data.max})` : ''}.`, `You've reached your plan's competitor limit${data.max ? ` (${data.max})` : ''}.`),
@@ -264,7 +267,14 @@ export default function CompetitorTrackingPage() {
 
         {error && (
           <div className="mb-6 p-4 rounded-lg border border-red-500/30" style={{ background: 'rgba(232,77,91,0.08)' }}>
-            <p className="text-sm text-red-400 font-mono-jb">{error}</p>
+            <p className="text-sm text-red-400 font-mono-jb">
+              {error}{' '}
+              {errorUpgrade && (
+                <a href="/pricing" className="underline" style={{ color: 'var(--yv-brand)' }}>
+                  {t('Ampliar plan', 'Upgrade plan')}
+                </a>
+              )}
+            </p>
           </div>
         )}
 

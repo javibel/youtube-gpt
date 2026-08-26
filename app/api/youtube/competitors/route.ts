@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getUserPlan, getLimits, isPaid, isPaidStatus } from '@/lib/plans';
+import { getUserPlan, getLimits } from '@/lib/plans';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -11,14 +11,6 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const sub = await prisma.subscription.findUnique({
-    where: { userId: session.user.id },
-    select: { status: true },
-  });
-  if (!isPaidStatus(sub?.status)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
   const competitors = await prisma.trackedCompetitor.findMany({
@@ -86,18 +78,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  // Free incluye 1 competidor como gancho (decision Javier 26/08/2026):
+  // no hay puerta de pago, solo el limite por plan.
   const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
-
-  // Check limit based on plan
   const maxCompetitors = getLimits(plan).competitors;
   const count = await prisma.trackedCompetitor.count({
     where: { userId: session.user.id },
   });
   if (count >= maxCompetitors) {
-    return NextResponse.json({ error: 'limit_reached', max: maxCompetitors }, { status: 400 });
+    return NextResponse.json({ error: 'limit_reached', max: maxCompetitors, plan }, { status: 400 });
   }
 
   const body = await request.json();

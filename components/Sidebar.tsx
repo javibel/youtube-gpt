@@ -50,7 +50,7 @@ const MORE_SECTIONS: NavSection[] = [
     items: [
       { href: '/research', label: { es: 'Keywords', en: 'Keywords' }, iconName: 'search' },
       { href: '/competitors', label: { es: 'Competidores', en: 'Competitors' }, iconName: 'user2' },
-      { href: '/competitors/tracking', label: { es: 'Seguimiento', en: 'Tracking' }, iconName: 'users', badge: 'PRO' },
+      { href: '/competitors/tracking', label: { es: 'Seguimiento', en: 'Tracking' }, iconName: 'users' },
     ],
   },
   {
