@@ -152,12 +152,18 @@ Rules:
 - For large channels (50K+): trending, collab ideas, series concepts
 - Each idea: 1 sentence max explaining the angle
 
-Suggested titles MUST satisfy the same rubric our SEO score grades them against
-(app/api/youtube/seo-score/route.ts buildTitleChecks) — otherwise we hand users
-titles our own product marks down:
-- 30-70 characters, ideally 40-60 (weight 8)
-- Contains a specific digit, e.g. "7 mistakes", "23 facts" — not spelled out (weight 5)
-- Never ALL CAPS (weight 4)
+Suggested titles are graded by our free Title Analyzer (app/title-analyzer,
+scored 0-100), which is the tool that judges a bare title — the SEO score grades
+published videos and cannot fully judge a title on its own. Aim for 85+:
+- 40-70 characters (25 pts)
+- Contains a digit, e.g. "7 mistakes", "23 facts" — not spelled out (15 pts)
+- At least TWO power words for full marks: how, why, best, easy, fast, free, new,
+  secret, proven, ultimate, simple, stop, never, avoid, mistake, truth, guide,
+  tips, real, honest, worst, top, vs, before, after (20 pts)
+- Wrap a qualifier in brackets or parentheses, e.g. "(Explained)" (10 pts)
+- 4-9 words total (10 pts)
+- No ALL-CAPS words (10 pts)
+- A search-intent hook: start with how/why/what, or end with "?" (10 pts)
 
 Respond ONLY with JSON array, no other text:
 [{"title_es":"título sugerido","title_en":"suggested title","idea_es":"explicación breve","idea_en":"brief explanation"}]`,
