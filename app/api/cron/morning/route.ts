@@ -150,8 +150,14 @@ Rules:
 - For small channels (<1K subs): focus on searchable, niche topics
 - For medium channels (1K-50K): mix of search and trending topics
 - For large channels (50K+): trending, collab ideas, series concepts
-- Include a suggested title for each idea
 - Each idea: 1 sentence max explaining the angle
+
+Suggested titles MUST satisfy the same rubric our SEO score grades them against
+(app/api/youtube/seo-score/route.ts buildTitleChecks) — otherwise we hand users
+titles our own product marks down:
+- 30-70 characters, ideally 40-60 (weight 8)
+- Contains a specific digit, e.g. "7 mistakes", "23 facts" — not spelled out (weight 5)
+- Never ALL CAPS (weight 4)
 
 Respond ONLY with JSON array, no other text:
 [{"title_es":"título sugerido","title_en":"suggested title","idea_es":"explicación breve","idea_en":"brief explanation"}]`,
