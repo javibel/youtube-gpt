@@ -170,6 +170,12 @@ async function checkDashboard(browser) {
   const page = await browser.newPage();
   watchPage(page, 'dashboard', problems);
 
+  // Pre-aceptar el banner de cookies (fixed bottom-0, z-200) via su propia cookie.
+  // Sin esto el banner queda encima del formulario y se come el click del submit
+  // (Puppeteer clica por coordenadas: el elemento topmost en ese punto es el banner,
+  // no el boton), asi que el login nunca llega a enviarse.
+  await page.setCookie({ name: 'ytv_consent', value: 'accepted', domain: 'ytubviral.com', path: '/' });
+
   try {
     await page.goto(BASE + '/login', { waitUntil: 'networkidle2', timeout: NAV_TIMEOUT });
     await page.type('input[type="email"]', email);
