@@ -122,6 +122,9 @@ const RULES: Rule[] = [
   {
     id: 'track_competitors',
     check: async (ctx) => {
+      // El seguimiento es Pro: sin plan de pago el CTA acabaria en un paywall,
+      // asi que la sugerencia no se muestra.
+      if (!ctx.isPaid) return null;
       const yt = await prisma.youtubeToken.findUnique({ where: { userId: ctx.userId }, select: { channelId: true } });
       if (!yt?.channelId) return null;
       const count = await prisma.trackedCompetitor.count({ where: { userId: ctx.userId } });
@@ -131,7 +134,7 @@ const RULES: Rule[] = [
         title: { es: 'Añade tu primer competidor', en: 'Add your first competitor' },
         reason: { es: 'Aún no sigues a ningún canal para comparar tu rendimiento', en: "You're not tracking any channel to compare performance yet" },
         cta: { es: 'Añadir competidor', en: 'Add competitor' },
-        href: '/competitors',
+        href: '/competitors/tracking',
       };
     },
   },

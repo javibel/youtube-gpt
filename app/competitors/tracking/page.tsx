@@ -168,7 +168,7 @@ export default function CompetitorTrackingPage() {
       if (!res.ok) {
         const msgs: Record<string, string> = {
           pro_required: t('Necesitas el plan Pro.', 'Pro plan required.'),
-          limit_reached: t('Máximo 10 competidores.', 'Maximum 10 competitors.'),
+          limit_reached: t(`Has llegado al máximo de competidores de tu plan${data.max ? ` (${data.max})` : ''}.`, `You've reached your plan's competitor limit${data.max ? ` (${data.max})` : ''}.`),
           invalid_url: t('URL no válida. Usa youtube.com/@canal o youtube.com/channel/UCxxx', 'Invalid URL. Use youtube.com/@channel or youtube.com/channel/UCxxx'),
           channel_not_found: t('Canal no encontrado.', 'Channel not found.'),
           already_tracked: t('Ya estás siguiendo este canal.', 'Already tracking this channel.'),
@@ -231,8 +231,8 @@ export default function CompetitorTrackingPage() {
             </h1>
             <p className="yv-page-header__desc">
               {t(
-                'Sigue hasta 10 canales competidores. Monitorizamos suscriptores, vistas y vídeos cada 6 horas.',
-                'Track up to 10 competitor channels. We monitor subscribers, views and videos every 6 hours.'
+                'Sigue a tus canales competidores. Monitorizamos suscriptores, vistas y vídeos cada 6 horas.',
+                'Track your competitor channels. We monitor subscribers, views and videos every 6 hours.'
               )}
             </p>
           </div>

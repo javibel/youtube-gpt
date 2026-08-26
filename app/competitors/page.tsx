@@ -66,6 +66,11 @@ export default function CompetitorsPage() {
   const [outliers, setOutliers] = useState<OutlierResult | null>(null);
   const [outliersLoading, setOutliersLoading] = useState(false);
   const [outlierPeriod, setOutlierPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('all');
+  // Guardar el canal analizado como competidor seguido (cierra el bucle
+  // analisis -> seguimiento; antes /competitors/tracking no tenia ni un enlace).
+  const [trackState, setTrackState] = useState<'idle' | 'loading' | 'tracked'>('idle');
+  const [trackError, setTrackError] = useState('');
+  const [trackUpgrade, setTrackUpgrade] = useState(false);
 
   // Fetch outliers when we have a result or period changes
   useEffect(() => {
@@ -86,9 +91,60 @@ export default function CompetitorsPage() {
     return () => { cancelled = true; };
   }, [result?.channel?.id, outlierPeriod]);
 
+  // Marca el boton como "siguiendo" si el canal ya esta en la lista del usuario
+  useEffect(() => {
+    setTrackState('idle');
+    setTrackError('');
+    setTrackUpgrade(false);
+    if (!result?.channel?.id || status !== 'authenticated') return;
+    let cancelled = false;
+    fetch('/api/youtube/competitors')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (cancelled || !d?.competitors) return;
+        const id = result!.channel.id;
+        if (d.competitors.some((c: { channelId: string }) => c.channelId === id)) {
+          setTrackState('tracked');
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [result?.channel?.id, status]);
+
   // No redirect — show public landing if unauthenticated
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  async function trackChannel() {
+    if (!result?.channel?.id || trackState !== 'idle') return;
+    setTrackState('loading');
+    setTrackError('');
+    setTrackUpgrade(false);
+    try {
+      const res = await fetch('/api/youtube/competitors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: result.channel.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok || data.error === 'already_tracked') {
+        setTrackState('tracked');
+        return;
+      }
+      setTrackState('idle');
+      if (data.error === 'pro_required') {
+        setTrackUpgrade(true);
+        setTrackError(t('El seguimiento de competidores es del plan Pro.', 'Competitor tracking is a Pro plan feature.'));
+      } else if (data.error === 'limit_reached') {
+        setTrackError(t('Has llegado al maximo de competidores de tu plan.', "You've reached your plan's competitor limit."));
+      } else {
+        setTrackError(t('No se pudo guardar. Intentalo de nuevo.', 'Could not save. Please try again.'));
+      }
+    } catch {
+      setTrackState('idle');
+      setTrackError(t('Error de conexion.', 'Connection error.'));
+    }
+  }
 
   async function handleAnalyze(e: React.FormEvent) {
     e.preventDefault();
@@ -284,6 +340,42 @@ export default function CompetitorsPage() {
                     <p className="text-[13px] mt-1 font-mono-jb line-clamp-2" style={{ color: 'var(--yv-text-3)' }}>{result.channel.description}</p>
                   )}
                 </div>
+
+                {/* Guardar como competidor seguido */}
+                {status === 'authenticated' && (
+                  <div className="flex-shrink-0 flex flex-col items-end gap-1.5 max-w-[220px]">
+                    {trackState === 'tracked' ? (
+                      <a href="/competitors/tracking"
+                        className="yv-chip font-mono-jb text-[13px] px-3 py-2 flex items-center gap-2 whitespace-nowrap hover:text-white transition"
+                        style={{ color: 'var(--yv-text-2)' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3"><path d="M20 6 9 17l-5-5"/></svg>
+                        {t('Siguiendo — ver tracking', 'Tracking — view')}
+                      </a>
+                    ) : (
+                      <button type="button" onClick={trackChannel} disabled={trackState === 'loading'}
+                        className="btn-offset px-4 py-2 text-[13px] font-mono-jb tracking-wider disabled:opacity-50 flex items-center gap-2 whitespace-nowrap">
+                        {trackState === 'loading' ? (
+                          <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                          </svg>
+                        ) : (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                        )}
+                        {t('Seguir canal', 'Track channel')}
+                      </button>
+                    )}
+                    {trackError && (
+                      <p className="font-mono-jb text-[12px] text-right" style={{ color: 'var(--yv-text-3)' }}>
+                        {trackError}{' '}
+                        {trackUpgrade && (
+                          <a href="/pricing" className="underline" style={{ color: 'var(--yv-brand)' }}>
+                            {t('Ver planes', 'See plans')}
+                          </a>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Stats row */}

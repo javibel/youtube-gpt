@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     where: { userId: session.user.id },
   });
   if (count >= maxCompetitors) {
-    return NextResponse.json({ error: 'limit_reached' }, { status: 400 });
+    return NextResponse.json({ error: 'limit_reached', max: maxCompetitors }, { status: 400 });
   }
 
   const body = await request.json();
