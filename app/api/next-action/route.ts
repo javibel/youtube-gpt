@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getUserPlan } from '@/lib/plans';
-import { getNextAction } from '@/lib/next-action';
+import { getNextActions } from '@/lib/next-action';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -16,6 +16,10 @@ export async function GET(req: NextRequest) {
   const plan = await getUserPlan(session.user.id);
   const isPaid = plan !== 'free';
 
-  const action = await getNextAction(session.user.id, isPaid, skip);
-  return NextResponse.json({ action });
+  // Se devuelve la lista completa (para navegar) y `action`, la primera no
+  // descartada, que es lo que el cliente muestra por defecto.
+  const actions = await getNextActions(session.user.id, isPaid);
+  const skipSet = new Set(skip);
+  const action = actions.find(a => !skipSet.has(a.id)) ?? null;
+  return NextResponse.json({ action, actions });
 }

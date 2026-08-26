@@ -231,22 +231,25 @@ const RULES: Rule[] = [
   },
 ];
 
-export async function getNextAction(userId: string, isPaid: boolean, skipIds: string[]): Promise<NextAction | null> {
+// Evalúa TODAS las reglas y devuelve las que disparan, en orden de prioridad.
+// Antes había early-exit en la primera que acertaba, pero el widget necesita la
+// lista completa para poder navegar entre sugerencias: con una sola, descartarla
+// por error la perdía hasta el día siguiente (feedback Javier 26/08/2026).
+// Se evalúan en paralelo, así que la latencia es la de la regla más lenta, no la
+// suma. Solo score_recent_video toca la API de YouTube (playlistItems.list, 1
+// unidad) y ya se pagaba en la mayoría de cargas del dashboard.
+export async function getNextActions(userId: string, isPaid: boolean): Promise<NextAction[]> {
   const ctx: Ctx = { userId, isPaid };
-  const skip = new Set(skipIds);
-  for (const rule of RULES) {
-    // El skip se comprueba ANTES de ejecutar la regla — una regla descartada no
-    // debe costar nada (score_recent_video llama a la API de YouTube; evaluarla
-    // para tirar el resultado sería pagar cuota en cada carga del dashboard).
-    if (skip.has(rule.id)) continue;
-    let action: NextAction | null;
-    try {
-      action = await rule.check(ctx);
-    } catch (e) {
-      console.error(`[next-action] regla "${rule.id}" falló, se salta:`, (e as Error).message);
-      continue;
-    }
-    if (action) return action;
-  }
-  return null;
+  const results = await Promise.all(
+    RULES.map(async (rule) => {
+      try {
+        return await rule.check(ctx);
+      } catch (e) {
+        console.error(`[next-action] regla "${rule.id}" falló, se salta:`, (e as Error).message);
+        return null;
+      }
+    }),
+  );
+  return results.filter((a): a is NextAction => a !== null);
 }
+
