@@ -24,6 +24,7 @@ const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
 const { registerFixes, applyFixes } = require('./auto-fix');
 const { diagnose } = require('./doctor');
+const db = require('./db');
 
 const WEB_DIR = path.join(__dirname, '..', 'youtube-gpt');
 const REPORTS_DIR = path.join(__dirname, 'reports');
@@ -133,6 +134,46 @@ function checkSecurityHeaders() {
     issues.push({ header: 'ALL', status: 'ERROR', severity: 'high', note: 'Cannot read next.config.ts' });
   }
   return issues;
+}
+
+/**
+ * Violaciones de CSP reportadas por navegadores reales (tabla csp_violations,
+ * alimentada por /api/csp-report).
+ *
+ * Por que existe: hasta el 26/08/2026 la politica enforced no tenia report-uri, asi
+ * que los bloqueos de verdad no llegaban a ninguna parte. La falta de `media-src`
+ * dejo el reproductor de previews en negro casi dos meses sin que saltara nada: el
+ * servidor devolvia 200 y ningun agente miraba el navegador. Esto cierra ese hueco.
+ *
+ * Un bloqueo enforced = algo del producto esta roto para el usuario -> high.
+ * Uno report-only = la politica candidata rompera eso al promoverla -> low.
+ */
+async function checkCspViolations() {
+  try {
+    const rows = await db.query(
+      `SELECT id, directive, "blockedUri", "documentUri", "reportOnly", count, "firstSeen"
+       FROM csp_violations WHERE notified = false ORDER BY "lastSeen" DESC LIMIT 25`,
+    );
+    if (!rows.length) return [];
+
+    await db.query('UPDATE csp_violations SET notified = true WHERE id = ANY($1)', [rows.map(r => r.id)]);
+
+    return rows.map(r => ({
+      directive: r.directive,
+      blockedUri: r.blockedUri,
+      documentUri: r.documentUri,
+      occurrences: r.count,
+      since: r.firstSeen,
+      mode: r.reportOnly ? 'report-only' : 'ENFORCED (bloqueado de verdad)',
+      severity: r.reportOnly ? 'low' : 'high',
+      note: r.reportOnly
+        ? 'La politica candidata bloquearia esto al promoverla.'
+        : 'Un navegador real bloqueo este recurso: hay algo roto en produccion.',
+    }));
+  } catch (err) {
+    // Si la tabla no existe todavia o la BD no responde, no tumbamos el Guardian.
+    return [{ directive: 'ALL', severity: 'low', note: 'No se pudo leer csp_violations: ' + err.message }];
+  }
 }
 
 function checkDangerousPatterns() {
@@ -314,6 +355,10 @@ async function runGuardian() {
   console.log('[guardian] Checking dependency regressions...');
   results.checks.depRegressions = checkDependencyRegressions();
 
+  // 8. Violaciones de CSP vistas por navegadores reales
+  console.log('[guardian] Checking CSP violations...');
+  results.checks.cspViolations = await checkCspViolations();
+
   // Count severities
   const countSev = (items, sevField = 'severity') => {
     if (!Array.isArray(items)) return;
@@ -333,6 +378,7 @@ async function runGuardian() {
   countSev(results.checks.dangerousPatterns);
   countSev(results.checks.exposedFiles);
   countSev(results.checks.depRegressions);
+  countSev(results.checks.cspViolations);
 
   if (results.checks.typescript.errorCount > 0) {
     results.summary.medium += 1;

@@ -779,3 +779,24 @@ model AffiliateCommission {
   @@index([affiliateId, status])
   @@map("affiliate_commissions")
 }
+
+// Violaciones de CSP agrupadas. Hasta el 26/08/2026 la politica enforced no tenia
+// report-uri, asi que los bloqueos REALES no se registraban en ningun sitio — por
+// eso el bloqueo de media-src estuvo dos meses roto en silencio. El endpoint
+// /api/csp-report hace upsert aqui (unico por directiva+recurso) y el Guardian
+// avisa de lo que sea nuevo. El unique evita que un bucle de reportes crezca sin fin.
+model CspViolation {
+  id         String   @id @default(cuid())
+  directive  String
+  blockedUri String
+  documentUri String?
+  reportOnly Boolean  @default(false)
+  count      Int      @default(1)
+  firstSeen  DateTime @default(now())
+  lastSeen   DateTime @updatedAt
+  notified   Boolean  @default(false)
+
+  @@unique([directive, blockedUri, reportOnly])
+  @@index([notified, lastSeen])
+  @@map("csp_violations")
+}

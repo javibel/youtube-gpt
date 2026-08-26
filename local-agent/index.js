@@ -25,6 +25,7 @@ const { runOutreachSend } = require('./outreach-send');
 const { runAttribution } = require('./outreach-attribution');
 const { runStripeReconcile } = require('./stripe-reconcile');
 const { runFeatureMonitor } = require('./feature-monitor');
+const { runSmokeBrowser } = require('./smoke-browser');
 const { runCleanup: runGmailCleanup } = require('./gmail-cleanup');
 const { runBriefingWatch } = require('./briefing-watch');
 const { runBlogGenerator } = require('./blog-generator');
@@ -378,6 +379,16 @@ cron.schedule('0 7,19 * * *', async () => {
     await runFeatureMonitor().catch(err => console.error('[feature-monitor]', err.message));
     await db.disconnect().catch(() => {});
   });
+}, { timezone: 'Europe/Madrid' });
+
+// Smoke Browser — 2x/day, 20 min despues del Feature Monitor.
+// El Feature Monitor es fetch() puro y no ve nada de lo que pasa DENTRO del navegador:
+// la CSP que bloqueo los previews devolvia 200 en servidor durante dos meses. Esto
+// abre la web en Chrome de verdad y falla ante cualquier error de consola.
+// Solo envia email si encuentra algo; ~22s por pasada, sin coste de API.
+cron.schedule('20 7,19 * * *', async () => {
+  console.log('[cron] Smoke Browser — comprobando la web en un navegador real');
+  await runSmokeBrowser().catch(err => console.error('[smoke-browser]', err.message));
 }, { timezone: 'Europe/Madrid' });
 
 // Infra Optimizer — daily at 02:45
