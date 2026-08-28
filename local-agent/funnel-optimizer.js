@@ -50,11 +50,23 @@ async function collectFunnelMetrics() {
     newThisMonth: +usersRes[0]?.new_month || 0,
   };
 
-  // 2. Activation: % of users who created at least 1 generation
+  // Cualquier uso real del producto — web O extensión. Antes solo se miraba
+  // `generations`, que ignora la extensión (~50-74% de las altas), el chat, los
+  // SEO scores, los previews y las optimizaciones. Mismo criterio que briefing-watch.
+  const ACTIVITY = `
+    SELECT "userId", "createdAt" AS ts FROM generations
+    UNION ALL SELECT "userId", "createdAt" FROM chat_messages
+    UNION ALL SELECT "userId", "analyzedAt" FROM video_seo_scores
+    UNION ALL SELECT "userId", "createdAt" FROM video_previews
+    UNION ALL SELECT "userId", "createdAt" FROM optimize_history
+    UNION ALL SELECT "userId", "createdAt" FROM extension_events
+  `;
+
+  // 2. Activation: % of users who did ANYTHING real (web or extension)
   const activationAllRes = await db.query(`
     SELECT
       (SELECT COUNT(*) FROM users) AS total_users,
-      (SELECT COUNT(DISTINCT "userId") FROM generations) AS activated_users
+      (SELECT COUNT(DISTINCT "userId") FROM (${ACTIVITY}) act) AS activated_users
   `);
   const totalUsers = +activationAllRes[0]?.total_users || 0;
   const activatedUsers = +activationAllRes[0]?.activated_users || 0;
@@ -70,9 +82,9 @@ async function collectFunnelMetrics() {
   const cohortRes = await db.query(`
     SELECT
       COUNT(DISTINCT u.id) AS cohort_total,
-      COUNT(DISTINCT g."userId") AS cohort_activated
+      COUNT(DISTINCT a."userId") AS cohort_activated
     FROM users u
-    LEFT JOIN generations g ON g."userId" = u.id
+    LEFT JOIN (${ACTIVITY}) a ON a."userId" = u.id
     WHERE u."createdAt" >= NOW() - INTERVAL '14 days'
   `);
   const cohortTotal = +cohortRes[0]?.cohort_total || 0;
@@ -83,21 +95,31 @@ async function collectFunnelMetrics() {
     rate: cohortTotal > 0 ? Math.round(cohortActivated / cohortTotal * 1000) / 10 : 0,
   };
 
-  // 3. Retention: users active in last 7d vs previous 7d
+  // 3. Retention: users active (web or extension) in last 7d vs previous 7d
   const retentionRes = await db.query(`
     SELECT
-      (SELECT COUNT(DISTINCT "userId") FROM generations WHERE "createdAt" >= NOW() - INTERVAL '7 days') AS active_this_week,
-      (SELECT COUNT(DISTINCT "userId") FROM generations WHERE "createdAt" >= NOW() - INTERVAL '14 days' AND "createdAt" < NOW() - INTERVAL '7 days') AS active_prev_week
+      (SELECT COUNT(DISTINCT "userId") FROM (${ACTIVITY}) a WHERE a.ts >= NOW() - INTERVAL '7 days') AS active_this_week,
+      (SELECT COUNT(DISTINCT "userId") FROM (${ACTIVITY}) a WHERE a.ts >= NOW() - INTERVAL '14 days' AND a.ts < NOW() - INTERVAL '7 days') AS active_prev_week
   `);
   const activeThisWeek = +retentionRes[0]?.active_this_week || 0;
   const activePrevWeek = +retentionRes[0]?.active_prev_week || 0;
   const retentionChange = activePrevWeek > 0
     ? Math.round((activeThisWeek - activePrevWeek) / activePrevWeek * 1000) / 10
     : 0;
+
+  // Desglose por superficie (7d) — para ver si la extensión sostiene retención
+  // que la web no ve. Excluye daily_ideas a propósito (las genera el cron, no el usuario).
+  const surfaceRes = await db.query(`
+    SELECT
+      (SELECT COUNT(DISTINCT "userId") FROM generations WHERE "createdAt" >= NOW() - INTERVAL '7 days') AS web_7d,
+      (SELECT COUNT(DISTINCT "userId") FROM extension_events WHERE "createdAt" >= NOW() - INTERVAL '7 days') AS ext_7d
+  `);
   metrics.retention = {
     activeThisWeek,
     activePrevWeek,
     changePercent: retentionChange,
+    webActive7d: +surfaceRes[0]?.web_7d || 0,
+    extensionActive7d: +surfaceRes[0]?.ext_7d || 0,
   };
 
   // 4. Subscriptions: active paid, trials en curso (feature 06/07), new this week, churn (canceled this week)

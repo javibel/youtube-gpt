@@ -56,6 +56,7 @@ model User {
   dailyIdeas           DailyIdea[]
   trackedCompetitors   TrackedCompetitor[]
   extensionTokens      ExtensionToken[]
+  extensionEvents      ExtensionEvent[]
   calendarEntries      CalendarEntry[]
   trendAlerts          TrendAlert[]
   feedback        UserFeedback?
@@ -252,6 +253,21 @@ model ExtensionToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("extension_tokens")
+}
+
+// Un registro por petición autenticada de la extensión (vía getExtensionUser).
+// Señal de retención: permite contar "usó la extensión esta semana", cosa que
+// hasta ahora era invisible — las rutas de la extensión no escribían nada.
+model ExtensionEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // ruta relativa, p.ej. "seo-quick", "seo-live", "ab-test"
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("extension_events")
 }
 
 // Rolling viewCount snapshot per video, used by the extension scorecard to compute RECENT
