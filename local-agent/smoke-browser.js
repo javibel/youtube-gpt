@@ -204,20 +204,55 @@ async function checkDashboard(browser) {
       return true;
     });
 
+    if (!opened) {
+      problems.push({
+        severity: 'high', what: 'preview',
+        detail: 'No se encontro ningun preview que abrir en el dashboard: la comprobacion del '
+              + 'reproductor NO se ejecuto. Sin al menos un preview guardado en la cuenta de '
+              + 'smoke, esta pasada es ciega justo donde estuvo el bug.',
+      });
+    }
+
     if (opened) {
-      await new Promise(r => setTimeout(r, 4000));
-      // No basta con que no haya errores: el video tiene que haber decodificado.
-      const video = await page.evaluate(() => {
+      // Esperar POR CONDICION, no por reloj: lib/webm-duration resuelve la duracion
+      // con un seek asincrono y el tiempo que tarda depende del tamano del clip y de
+      // la red. Con una espera fija el test daba falsos positivos de "Infinity".
+      const video = await page.waitForFunction(() => {
         const v = document.querySelector('video');
         if (!v) return null;
-        return { readyState: v.readyState, videoWidth: v.videoWidth, error: v.error && v.error.code };
-      });
+        if (v.error) return { readyState: v.readyState, videoWidth: v.videoWidth, duration: v.duration, error: v.error.code };
+        // readyState >= 2 (HAVE_CURRENT_DATA) = hay un fotograma pintable de verdad.
+        // Con solo metadatos (1) la pantalla aun puede estar en negro, que es el sintoma.
+        if (v.videoWidth > 0 && Number.isFinite(v.duration) && v.readyState >= 2) {
+          return { readyState: v.readyState, videoWidth: v.videoWidth, duration: v.duration, error: null };
+        }
+        return false; // seguir esperando
+      }, { timeout: 15000, polling: 250 })
+        .then(h => h.jsonValue())
+        .catch(async () => {
+          // Se agoto el plazo: devolvemos el estado real para poder decir POR QUE fallo.
+          return page.evaluate(() => {
+            const v = document.querySelector('video');
+            if (!v) return null;
+            return { readyState: v.readyState, videoWidth: v.videoWidth, duration: v.duration, error: v.error && v.error.code };
+          });
+        });
       if (video === null) {
         problems.push({ severity: 'high', what: 'preview', detail: 'Se abrio el reproductor pero no hay elemento <video>' });
       } else if (video.error) {
         problems.push({ severity: 'critical', what: 'preview', detail: `El video fallo al cargar (code ${video.error})` });
       } else if (video.videoWidth === 0) {
         problems.push({ severity: 'critical', what: 'preview', detail: 'El video no decodifica: videoWidth=0 (pantalla en negro)' });
+      } else if (!Number.isFinite(video.duration)) {
+        // MediaRecorder no escribe la duracion en la cabecera; lib/webm-duration la
+        // recalcula. Si vuelve a salir Infinity, ese arreglo ha dejado de aplicarse
+        // y el clip se queda clavado en el primer fotograma.
+        problems.push({ severity: 'high', what: 'preview', detail: 'duration = Infinity: el clip no podra pasar del primer fotograma' });
+      } else {
+        problems.push({
+          severity: 'info', what: 'preview',
+          detail: `OK — ${video.videoWidth}px, ${video.duration.toFixed(1)}s, readyState ${video.readyState}`,
+        });
       }
     }
   } catch (err) {
