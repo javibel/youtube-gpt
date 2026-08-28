@@ -14,6 +14,17 @@ async function sendEmail(subject, body) {
   });
 }
 
+// Optimizadores diarios (SEO / Social / Funnel / Infra): sus hallazgos ya se
+// consolidan en el Reporte Ejecutivo del Manager (03:15). Sus emails individuales
+// eran ruido redundante — Javier los apagó el 2026-08-28. Para reactivarlos:
+// OPTIMIZER_STANDALONE_EMAILS=1 en .env.
+async function optimizerAlert(subject, body) {
+  if (process.env.OPTIMIZER_STANDALONE_EMAILS === '1') {
+    return sendEmail(subject, body);
+  }
+  console.log(`[optimizer-alert:silenciado] ${subject}`);
+}
+
 async function sendDailyReport() {
   const stats = await db.getDailyStats();
 
@@ -153,4 +164,4 @@ async function sendPersonaReport() {
   console.log('[reports] Persona report sent');
 }
 
-module.exports = { sendDailyReport, sendPersonaReport, sendEmail };
+module.exports = { sendDailyReport, sendPersonaReport, sendEmail, optimizerAlert };

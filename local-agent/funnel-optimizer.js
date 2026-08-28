@@ -22,7 +22,7 @@ const db = require('./db');
 const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
 const { registerFixes, applyFixes } = require('./auto-fix');
-const { sendEmail } = require('./reports');
+const { sendEmail, optimizerAlert } = require('./reports');
 const { sendViaResend } = require('./resend');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
@@ -320,7 +320,7 @@ async function executeActions(claudeResponse, metrics) {
             metrics.feedback.avgRating !== null ? `Feedback: ${metrics.feedback.avgRating}/5 (${metrics.feedback.totalFeedbacks} total)` : '',
           ].filter(Boolean).join('\n');
 
-          await sendEmail(subject, body);
+          await optimizerAlert(subject, body);
           executed.push({ type: 'alert', priority, detail: action.message });
           break;
         }

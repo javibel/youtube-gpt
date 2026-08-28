@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const { guardedCall } = require('./api-guard');
-const { sendEmail } = require('./reports');
+const { sendEmail, optimizerAlert } = require('./reports');
 const mem = require('./agent-memory');
 const { registerFixes, applyFixes, adjustConfigValue } = require('./auto-fix');
 
@@ -261,7 +261,7 @@ async function runSocialOptimizer() {
         analysis.recommendations.length > 0 ? `── RECOMENDACIONES ──\n${analysis.recommendations.map(r => `→ ${r}`).join('\n')}` : '',
       ].filter(Boolean).join('\n');
 
-      await sendEmail('[YTubViral] Social Optimizer — Reporte diario', emailBody);
+      await optimizerAlert('[YTubViral] Social Optimizer — Reporte diario', emailBody);
     }
 
     console.log(`[social-optimizer] Analysis complete: ${analysis.issues.length} issues found`);
@@ -508,7 +508,7 @@ Responde SOLO con el JSON, sin markdown, sin explicación adicional.`,
       }
 
       // Email notification
-      await sendEmail(
+      await optimizerAlert(
         '[YTubViral Social] Claude auto-fix aplicado',
         `Claude Opus ha analizado y corregido el sistema social.\n\nDIAGNÓSTICO: ${claudeResponse.diagnosis}\n\nCAMBIOS APLICADOS:\n${appliedChanges.join('\n')}\n\nRAZONAMIENTO: ${claudeResponse.reasoning}`
       ).catch(() => {});

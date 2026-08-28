@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const { guardedCall } = require('./api-guard');
-const { sendEmail } = require('./reports');
+const { sendEmail, optimizerAlert } = require('./reports');
 const mem = require('./agent-memory');
 const { registerFixes, applyFixes } = require('./auto-fix');
 
@@ -409,7 +409,7 @@ Responde SOLO con el JSON.`,
           applied.push(`Resubmitted ${resubmitted}/${validUrls.length} URLs for indexing`);
         } else if (action.type === 'alert' && action.message) {
           const priority = action.priority || 'medium';
-          await sendEmail(
+          await optimizerAlert(
             `[YTubViral SEO] ${priority.toUpperCase()}: ${(claudeResponse.diagnosis || '').slice(0, 60)}`,
             `DIAGNOSTICO SEO (Claude Opus):\n\n${claudeResponse.diagnosis}\n\n${action.message}\n\nRAZONAMIENTO: ${claudeResponse.reasoning}`
           ).catch(e => console.warn(`[seo-optimizer] Email failed: ${e.message}`));
@@ -594,7 +594,7 @@ async function runSeoOptimizer() {
       const subject = resolvedIssues.length > 0 && newIssues.length === 0
         ? '[YTubViral] SEO Optimizer — Issues resolved'
         : '[YTubViral] SEO Optimizer — New issues detected';
-      await sendEmail(subject, emailBody);
+      await optimizerAlert(subject, emailBody);
     } else if (issues.length > 0) {
       console.log(`[seo-optimizer] ${issues.length} known issues — no email (already reported)`);
     }

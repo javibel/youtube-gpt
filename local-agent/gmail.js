@@ -174,6 +174,42 @@ const IGNORE_SUBJECT_PATTERNS = [
   /and more$/i,        // BetaList "X, Y, Z, and more"
 ];
 
+// Remitentes que SÍ están en IMPORTANT_SENDERS (por badges / alertas de seguridad)
+// pero que además cuelan newsletters y digests sociales sin valor. Si el asunto
+// coincide con uno de estos patrones se ignora ANTES de reenviarlo al owner.
+// (2026-08-28 — Javier: adelgazar correo. Se seguían reenviando ~10/día de esto.)
+const NOISE_FROM_IMPORTANT_SENDERS = [
+  {
+    from: /instagram\.com/i,
+    subjects: [
+      /^explora a /i,
+      /descubre lo que han compartido/i,
+      /personas? más que sigues/i,
+      /y \d+ personas más/i,
+      /en tu feed$/i,
+      /nuevas cuentas para seguir/i,
+    ],
+  },
+  {
+    from: /producthunt\.com/i,
+    subjects: [
+      /hunted ["“]/i,
+      /hunted \d+ launch/i,
+      /started a thread/i,
+      /is trending/i,
+      /top \d+ products/i,
+    ],
+  },
+];
+
+// Coincidencia de palabra clave por palabra completa (no subcadena). Antes
+// `"collaborative workspace"` disparaba la keyword `collab` y reenviaba newsletters
+// de BetaList al owner. Ancla los extremos a un carácter no alfanumérico.
+function keywordMatches(kw, text) {
+  const escaped = kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, 'i').test(text);
+}
+
 // Check List-Unsubscribe header (strong signal it's a newsletter/marketing)
 function hasListUnsubscribe(headers) {
   return headers.some(h => h.name.toLowerCase() === 'list-unsubscribe');
@@ -233,13 +269,21 @@ function classifyEmail(from, subject, snippet, headers = []) {
     }
   }
 
+  // 0f. Digests / newsletters de remitentes que por lo demás sí importan
+  //     (Instagram, Product Hunt). Se filtran antes del check de sender importante.
+  for (const rule of NOISE_FROM_IMPORTANT_SENDERS) {
+    if (rule.from.test(fromLower) && rule.subjects.some(p => p.test(subjectLower))) {
+      return 'ignore';
+    }
+  }
+
   // 1. Check important senders FIRST (even if they match no-reply patterns)
   if (IMPORTANT_SENDERS.some(s => fromLower.includes(s))) {
     return 'important';
   }
 
-  // 2. Check important keywords
-  if (IMPORTANT_KEYWORDS.some(kw => combined.includes(kw.toLowerCase()))) {
+  // 2. Check important keywords (palabra completa, no subcadena)
+  if (IMPORTANT_KEYWORDS.some(kw => keywordMatches(kw, combined))) {
     return 'important';
   }
 

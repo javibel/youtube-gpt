@@ -163,12 +163,16 @@ cron.schedule('*/30 8-23 * * *', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
-// Daily report — 8:05 every day
-cron.schedule('5 8 * * *', async () => {
-  console.log('[cron] Sending daily report');
-  await reports.sendDailyReport().catch(err => console.error('[reports]', err.message));
-  await db.disconnect().catch(() => {});
-}, { timezone: 'Europe/Madrid' });
+// Daily report — DESACTIVADO 2026-08-28 (decisión Javier: adelgazar correo).
+// Con personas y Twitter de marca apagados solo reportaba "facebook: 1 publicación /
+// sin actividad". El Reporte Ejecutivo del Manager (03:15) ya lo cubre y con más
+// contexto. La función reports.sendDailyReport sigue disponible si se quiere invocar
+// a mano.
+// cron.schedule('5 8 * * *', async () => {
+//   console.log('[cron] Sending daily report');
+//   await reports.sendDailyReport().catch(err => console.error('[reports]', err.message));
+//   await db.disconnect().catch(() => {});
+// }, { timezone: 'Europe/Madrid' });
 
 // X Coach — 08:00 diario. Plan de X listo para que Javier ejecute a mano (@plata24155):
 // tweets para publicar + posts concretos para dar like/responder (con respuesta redactada).
@@ -496,7 +500,7 @@ console.log('  Personas (TODAS las plataformas): DISABLED 2026-07-08 — descone
 console.log('  Brand Twitter post (auto): DISABLED');
 console.log('  Brand X Coach (@YTubViral manual): 08:30 daily (Europe/Madrid)');
 console.log('  Gmail inbox: every 30min 8-23h (Europe/Madrid)');
-console.log('  Daily report: 08:05 (Europe/Madrid)');
+console.log('  Daily report: DISABLED 2026-08-28 (cubierto por el Reporte del Manager)');
 console.log('  Outreach discover: 07:30,09:30,11:30,14:30,17:30,20:30 (Europe/Madrid)');
 console.log('  Outreach send: 07:45,09:45,11:45,14:45,17:45,20:45 (Europe/Madrid)');
 console.log('  Outreach follow-up: 10:00,16:00 daily (Europe/Madrid)');

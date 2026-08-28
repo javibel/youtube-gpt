@@ -140,14 +140,14 @@
       "mentionRate": 0.45
     }
   },
-  "_lastModified": "2026-08-25T00:50:49.594Z",
+  "_lastModified": "2026-08-28T05:01:18.617Z",
   "_lastModifiedBy": "auto-fix",
   "_anthropicBalance": {
-    "amount": 23.007611974999968,
+    "amount": 22.854889474999958,
     "currency": "USD",
     "lastChecked": "2026-05-31T10:05:03.957Z",
-    "lastDeduction": "2026-08-25T11:01:14.829Z",
-    "totalSpentToday": 0.01124925,
-    "spendDate": "2026-08-25"
+    "lastDeduction": "2026-08-28T17:01:32.588Z",
+    "totalSpentToday": 0.006806749999999999,
+    "spendDate": "2026-08-28"
   }
 }

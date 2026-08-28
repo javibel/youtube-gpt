@@ -30,6 +30,14 @@ const HEALTH_ENDPOINTS = [
   { url: '/api/health', name: 'API Health', critical: false },
 ];
 
+// Adelgazar correo (2026-08-28, decisión Javier): un bajón corto genera 2 correos
+// (🚨 caída + ✅ recuperado) aunque dure 6 minutos. Ahora:
+//  - la 1ª alerta de caída se envía siempre (señal que sí importa)
+//  - el "✅ RECUPERADO" solo se envía si la caída duró ≥ 15 min
+//  - si sigue caído, se re-alerta cada 60 min (antes 30)
+const RECOVERY_ALERT_MIN_DOWNTIME_MS = 15 * 60 * 1000;
+const DOWN_REALERT_INTERVAL_MIN = 60;
+
 // ── Resend health check ──────────────────────────────────────────────────
 
 const RESEND_DOMAINS_API = 'https://api.resend.com/domains';
@@ -308,9 +316,9 @@ async function runSentinel() {
       const downErr = new Error(`Site DOWN: ${results.filter(r => !r.ok).map(r => `${r.endpoint}: ${r.error || r.status}`).join(', ')}`);
       await diagnose(downErr, { platform: 'system', action: 'health-check', account: 'sentinel' }).catch(() => {});
     } else {
-      // Already down — re-alert every 30 minutes
+      // Already down — re-alert every DOWN_REALERT_INTERVAL_MIN minutes
       const minSinceAlert = (Date.now() - state.lastAlertAt) / 60000;
-      if (minSinceAlert >= 30) {
+      if (minSinceAlert >= DOWN_REALERT_INTERVAL_MIN) {
         state.lastAlertAt = Date.now();
         await sendDownAlert(results);
       }
@@ -319,8 +327,13 @@ async function runSentinel() {
     if (state.isDown) {
       // Transition: DOWN → UP (recovered)
       const downtime = Date.now() - state.downSince;
-      console.log(`[sentinel] ✅ Site RECOVERED after ${Math.round(downtime / 60000)}min`);
-      await sendRecoveryAlert(downtime);
+      const downMin = Math.round(downtime / 60000);
+      console.log(`[sentinel] ✅ Site RECOVERED after ${downMin}min`);
+      if (downtime >= RECOVERY_ALERT_MIN_DOWNTIME_MS) {
+        await sendRecoveryAlert(downtime);
+      } else {
+        console.log(`[sentinel] Blip de ${downMin}min (< 15) — sin correo de recuperación`);
+      }
       state.isDown = false;
       state.downSince = null;
       state.consecutiveFailures = 0;
@@ -466,10 +479,14 @@ async function runSentinel() {
       const downtimeMin = Math.round(downtime / 60000);
       console.log(`[sentinel] 📧 Resend RECOVERED after ${downtimeMin}min`);
 
-      await sendAlertWithFallback(
-        `✅ RESEND RECUPERADO — Emails funcionando (caído ${downtimeMin}min)`,
-        `Resend se ha recuperado.\n\nTiempo de caída: ${downtimeMin} minutos\nEstado: ${resendResult.status}\nDNS OK: ${resendResult.dnsOk}\n\nSentinel — YTubViral Agent System`
-      );
+      if (downtime >= RECOVERY_ALERT_MIN_DOWNTIME_MS) {
+        await sendAlertWithFallback(
+          `✅ RESEND RECUPERADO — Emails funcionando (caído ${downtimeMin}min)`,
+          `Resend se ha recuperado.\n\nTiempo de caída: ${downtimeMin} minutos\nEstado: ${resendResult.status}\nDNS OK: ${resendResult.dnsOk}\n\nSentinel — YTubViral Agent System`
+        );
+      } else {
+        console.log(`[sentinel] 📧 Blip de Resend de ${downtimeMin}min (< 15) — sin correo de recuperación`);
+      }
 
       state.resendOk = true;
       state.resendDownSince = null;

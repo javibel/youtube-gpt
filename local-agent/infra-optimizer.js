@@ -7,7 +7,7 @@ const db = require('./db');
 const { guardedCall } = require('./api-guard');
 const mem = require('./agent-memory');
 const { registerFixes, applyFixes } = require('./auto-fix');
-const { sendEmail } = require('./reports');
+const { sendEmail, optimizerAlert } = require('./reports');
 
 const REPORTS_DIR = path.join(__dirname, 'reports');
 const LOGS_DIR = path.join(__dirname, 'logs');
@@ -401,7 +401,7 @@ registerFixes(AGENT_ID, [
             case 'alert': {
               const priority = action.priority || 'medium';
               const message = action.message || 'Infrastructure issue detected';
-              await sendEmail(
+              await optimizerAlert(
                 `[YTubViral Infra] ${priority.toUpperCase()}: ${message.slice(0, 80)}`,
                 `Prioridad: ${priority}\n\n${message}\n\nIssues detectados:\n${issues.join('\n')}`
               );
@@ -410,7 +410,7 @@ registerFixes(AGENT_ID, [
             }
             case 'adjust_schedule': {
               const proposal = action.proposal || action.message || JSON.stringify(action);
-              await sendEmail(
+              await optimizerAlert(
                 '[YTubViral Infra] Propuesta de cambio de horario cron',
                 `El optimizador de infraestructura propone un cambio de horario:\n\n${proposal}\n\nEsto es solo una propuesta — no se ha aplicado automáticamente.`
               );
