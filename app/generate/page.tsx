@@ -504,7 +504,7 @@ export default function GeneratePage() {
             {output && !loading && ytConnected === false && !connectNudgeDismissed && (
               <div className="yv-card p-5 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(124,255,0,0.25)' }}>
                 <p className="text-sm" style={{ color: 'var(--yv-text-2)' }}>
-                  {t('¿Ideas de vídeo para TU canal? Conéctalo (gratis) y mañana tienes ideas nuevas basadas en tus datos reales.', 'Want video ideas for YOUR channel? Connect it (free) and get fresh ideas tomorrow, based on your real data.')}
+                  {t('Conecta tu canal (gratis) y cada mañana recibes 5 ideas de vídeo calculadas con tus datos reales y las tendencias de tu nicho.', "Connect your channel (free) and get 5 video ideas every morning, calculated from your real data and your niche's trends.")}
                 </p>
                 <div className="flex items-center gap-3">
                   <button onClick={() => { window.location.href = '/api/youtube/auth'; }} className="btn-offset px-4 py-2 text-[13px] font-display">
