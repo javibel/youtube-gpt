@@ -5,8 +5,8 @@ const INTERNAL_EMAILS = new Set<string>([
   'javibel@yahoo.com',
   'jimeno_plata@yahoo.es',
   'ytbeviral@gmail.com',      // Gmail de la marca/soporte
-  'cwsdcrtest@gmail.com',     // QA
-  'cwsctsqa@gmail.com',       // QA
+  'cwsdcrtest@gmail.com',     // cuenta de test de la revisión Chrome Web Store (mayo 2026) — no es un usuario real
+  'cwsctsqa@gmail.com',       // idem — nombre "qwerty", email sin verificar, 0 uso
   'antibrg01@blogerspace.com',// correo temporal
   'gorgeous1@web-library.net',// correo temporal
 ]);
