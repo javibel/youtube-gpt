@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
   </table>
 </body></html>`;
 
-  sendTransactionalEmail({ to: normalizedEmail, subject, html })
+  await sendTransactionalEmail({ to: normalizedEmail, subject, html })
     .catch(err => console.error('Team invite email error:', err));
 
   return NextResponse.json({ invitation }, { status: 201 });

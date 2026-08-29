@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     ? `${code} — Verify your email - YTubViral`
     : `${code} — Verifica tu email - YTubViral`;
 
-  sendTransactionalEmail({
+  await sendTransactionalEmail({
     to: email,
     subject,
     html: verificationEmail(name, code, emailLang),

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
   const name = user.name ?? session.user.email;
   const subject = emailLang === 'en' ? 'Your password was changed - YTubViral' : 'Tu contraseña ha sido cambiada - YTubViral';
-  sendTransactionalEmail({
+  await sendTransactionalEmail({
     to: session.user.email,
     subject,
     html: passwordChangedEmail(name, emailLang),

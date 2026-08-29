@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   // Send welcome email (non-blocking)
   const firstName = user.name?.split(' ')[0] || '';
-  sendTransactionalEmail({
+  await sendTransactionalEmail({
     to: email,
     subject: firstName ? `${firstName}, check your video's SEO score` : 'Check your video\'s SEO score',
     html: `

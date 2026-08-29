@@ -248,11 +248,15 @@ export async function POST(req: NextRequest) {
       data: { email: normalizedEmail, token: verifyCode, expires: new Date(Date.now() + 15 * 60 * 1000) },
     });
 
-    // Send verification email with code (non-blocking)
+    // 29/08/2026: esto era "non-blocking" (sin await) y en serverless la instancia se
+    // congela al devolver la respuesta, asi que el envio podia no llegar a ejecutarse:
+    // cuenta creada y el usuario sin recibir NUNCA su codigo. Mismo fallo que se
+    // encontro en /api/track. El .catch se conserva: un fallo de email no debe
+    // reventar el alta, pero ahora al menos se intenta de verdad.
     const subject = emailLang === 'en'
       ? `${verifyCode} — Verify your email - YTubViral`
       : `${verifyCode} — Verifica tu email - YTubViral`;
-    sendTransactionalEmail({
+    await sendTransactionalEmail({
       to: normalizedEmail,
       subject,
       html: verificationEmail(name, verifyCode, emailLang),

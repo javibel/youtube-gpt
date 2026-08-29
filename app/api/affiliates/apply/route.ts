@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (ADMIN_EMAIL) {
-    sendTransactionalEmail({
+    await sendTransactionalEmail({
       to: ADMIN_EMAIL,
       subject: `Nueva solicitud de afiliado: ${affiliate.name}`,
       html: `<p>Nueva solicitud del programa de afiliados.</p>
