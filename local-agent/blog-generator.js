@@ -264,47 +264,88 @@ ${bodyEn.map(b => blockToTS(b)).join('\n')}
 
 // ── File manipulation ────────────────────────────────────────────────────────
 
+// Localiza el cierre que pertenece a una declaracion concreta: primero ancla la
+// declaracion a principio de linea y despues busca SU primer cierre a columna 0.
+//
+// El bug (06/07 y de nuevo el 27/08): se usaba lastIndexOf('];', idxDeARTICLE_BODIES),
+// asumiendo que el ultimo '];' antes de ARTICLE_BODIES era el de BLOG_POSTS. Es falso:
+// entre ambos estan TODOS los `const ART_*: BlockType[] = [ ... ];`, asi que devolvia el
+// cierre del ULTIMO articulo y el objeto de metadatos acababa dentro del array de bloques
+// de otro articulo. Rompia tsc y, la segunda vez, en silencio.
+function findDeclCloser(content, declRe, closerRe, what) {
+  const decl = declRe.exec(content);
+  if (!decl) throw new Error(`No se encuentra la declaracion de ${what} en blog-data.ts`);
+  const re = new RegExp(closerRe.source, 'gm');
+  re.lastIndex = decl.index + decl[0].length;
+  const close = re.exec(content);
+  if (!close) throw new Error(`No se encuentra el cierre de ${what} en blog-data.ts`);
+  return close.index;
+}
+
+// ¿El slug ya existe en ARTICLE_BODIES? Es la unica fuente de verdad sobre lo publicado:
+// el fichero de estado se ha desincronizado dos veces y no se puede confiar en el.
+function slugExistsInBlogData(slug) {
+  try {
+    const content = fs.readFileSync(BLOG_DATA_PATH, 'utf8');
+    return content.includes(`'${slug}': {`) || content.includes(`"${slug}": {`);
+  } catch {
+    return false;
+  }
+}
+
+// tsc --noEmit sobre la webapp. Devuelve las lineas de error (vacio = limpio).
+function runTscCheck() {
+  const projectDir = path.join(__dirname, '..', 'youtube-gpt');
+  try {
+    execSync('node node_modules/typescript/bin/tsc --noEmit', {
+      cwd: projectDir, timeout: 600000, stdio: 'pipe', windowsHide: true,
+    });
+    return [];
+  } catch (err) {
+    const out = ((err.stdout || '') + (err.stderr || '')).toString();
+    return out.split(/\r?\n/).filter(l => /error TS\d+/.test(l)).map(l => l.trim());
+  }
+}
+
 function appendToBlogData(tsCode) {
-  // Backup first
   const backup = BLOG_DATA_PATH + '.bak';
   fs.copyFileSync(BLOG_DATA_PATH, backup);
 
+  // Baseline ANTES de tocar nada: si el proyecto ya tenia errores de TypeScript
+  // ajenos, no queremos revertir por ellos. Solo importan los errores NUEVOS.
+  const baseline = new Set(runTscCheck());
+
   let content = fs.readFileSync(BLOG_DATA_PATH, 'utf8');
+  // blog-data.ts es CRLF: hay que respetar el EOL del fichero al insertar.
+  const EOL = content.includes('\r\n') ? '\r\n' : '\n';
+  const fix = (txt) => txt.replace(/\r?\n/g, EOL);
 
-  // NOTE (2026-07-02): insertion points are found with plain indexOf/lastIndexOf on
-  // stable markers, not regex. A previous version matched a literal "// ── Article
-  // bodies" comment that no longer exists in the file (removed in some past edit),
-  // AND used bare \n in regexes which breaks once the file has CRLF line endings.
-  // Both together made every insertion fail with "Cannot find BLOG_POSTS closing
-  // bracket". lastIndexOf is safe here even though "];" and "};" appear many times
-  // in the file (inline arrays/objects inside post entries) — we only ever take the
-  // LAST occurrence before a fixed marker, which is always that marker's own closer.
+  // 1. Entrada de metadatos, antes del cierre PROPIO de BLOG_POSTS.
+  const postsCloseIdx = findDeclCloser(content, /^export const BLOG_POSTS\b/m, /^\];/, 'BLOG_POSTS');
+  content = content.slice(0, postsCloseIdx) + fix(tsCode.postsEntry) + EOL + content.slice(postsCloseIdx);
 
-  const bodiesMarker = 'export const ARTICLE_BODIES';
-  const getPostMarker = 'export function getPost';
+  // 2. Los const ART_*, justo antes de ARTICLE_BODIES (se relocaliza: el paso 1 desplazo todo).
+  const bodiesDeclIdx = content.search(/^export const ARTICLE_BODIES\b/m);
+  if (bodiesDeclIdx === -1) throw new Error('No se encuentra ARTICLE_BODIES en blog-data.ts');
+  content = content.slice(0, bodiesDeclIdx) + fix(tsCode.constBlock) + EOL + EOL + content.slice(bodiesDeclIdx);
 
-  // 1. Insert new entry into BLOG_POSTS array, before its closing "];".
-  const bodiesIdx = content.indexOf(bodiesMarker);
-  if (bodiesIdx === -1) throw new Error('Cannot find ARTICLE_BODIES marker in blog-data.ts');
-  const postsCloseIdx = content.lastIndexOf('];', bodiesIdx);
-  if (postsCloseIdx === -1) throw new Error('Cannot find BLOG_POSTS closing bracket');
-  content = content.slice(0, postsCloseIdx) + tsCode.postsEntry + '\n' + content.slice(postsCloseIdx);
-
-  // 2. Insert const arrays BEFORE "export const ARTICLE_BODIES" (re-locate: step 1 shifted it)
-  const bodiesIdx2 = content.indexOf(bodiesMarker);
-  content = content.slice(0, bodiesIdx2) + tsCode.constBlock + '\n\n' + content.slice(bodiesIdx2);
-
-  // 3. Insert new entry into ARTICLE_BODIES record, before its closing "};".
-  const getPostIdx = content.indexOf(getPostMarker);
-  if (getPostIdx === -1) throw new Error('Cannot find getPost function marker');
-  const bodiesCloseIdx = content.lastIndexOf('};', getPostIdx);
-  if (bodiesCloseIdx === -1) throw new Error('Cannot find ARTICLE_BODIES closing brace');
-  content = content.slice(0, bodiesCloseIdx) + tsCode.bodiesEntry + '\n' + content.slice(bodiesCloseIdx);
+  // 3. Entrada del cuerpo, antes del cierre PROPIO de ARTICLE_BODIES.
+  const bodiesCloseIdx = findDeclCloser(content, /^export const ARTICLE_BODIES\b/m, /^\};/, 'ARTICLE_BODIES');
+  content = content.slice(0, bodiesCloseIdx) + fix(tsCode.bodiesEntry) + EOL + content.slice(bodiesCloseIdx);
 
   fs.writeFileSync(BLOG_DATA_PATH, content, 'utf8');
-  console.log(`[blog-generator] Appended article to blog-data.ts`);
 
-  // Remove backup if write succeeded
+  // Guarda: si la insercion rompio la compilacion, se revierte SOLA. Antes esto
+  // quedaba roto en el working tree hasta que alguien lo veia a mano.
+  const after = runTscCheck();
+  const nuevos = after.filter(l => !baseline.has(l));
+  if (nuevos.length > 0) {
+    fs.copyFileSync(backup, BLOG_DATA_PATH);
+    try { fs.unlinkSync(backup); } catch {}
+    throw new Error('La insercion rompio TypeScript, revertido. Errores nuevos:\n  ' + nuevos.slice(0, 8).join('\n  '));
+  }
+
+  console.log('[blog-generator] Appended article to blog-data.ts (tsc limpio)');
   try { fs.unlinkSync(backup); } catch {}
 }
 
@@ -331,10 +372,31 @@ function triggerIndexing() {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
+// La cola se ha desincronizado dos veces (julio y agosto) y las dos veces se
+// regeneraron articulos ya publicados. blog-data.ts es la verdad; el estado no.
+// Esto se auto-corrige en cada arranque, asi que el fallo ya no puede repetirse.
+function reconcileQueue(state) {
+  let arreglados = 0;
+  for (const kw of state.queue) {
+    if (kw.status === 'published') continue;
+    if (!slugExistsInBlogData(kw.slug)) continue;
+    kw.status = 'published';
+    kw.reconciledAt = new Date().toISOString();
+    if (!state.published.some(p => p.slug === kw.slug)) {
+      state.published.push({ slug: kw.slug, keyword: kw.keyword, publishedAt: new Date().toISOString(), reconciled: true });
+    }
+    arreglados++;
+    console.log(`[blog-generator] Reconciliado: "${kw.slug}" ya existe en blog-data.ts`);
+  }
+  if (arreglados > 0) saveState(state);
+  return arreglados;
+}
+
 async function runBlogGenerator() {
   console.log(`[blog-generator] Starting${DRY_RUN ? ' (DRY RUN)' : ''}...`);
 
   const state = loadState();
+  reconcileQueue(state);
   let count = 0;
   const slugs = [];
 
@@ -343,6 +405,15 @@ async function runBlogGenerator() {
     if (!kw) {
       console.log('[blog-generator] No pending keywords in queue');
       break;
+    }
+
+    // Ultima defensa antes de gastar llamadas a Claude: si el articulo ya existe,
+    // no se regenera pase lo que pase en el estado.
+    if (slugExistsInBlogData(kw.slug)) {
+      console.log(`[blog-generator] "${kw.slug}" ya existe en blog-data.ts — se marca publicado y se salta`);
+      kw.status = 'published';
+      saveState(state);
+      continue;
     }
 
     console.log(`[blog-generator] Generating article for: "${kw.keyword}" (slug: ${kw.slug})`);
@@ -430,4 +501,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runBlogGenerator };
+module.exports = { runBlogGenerator, reconcileQueue, slugExistsInBlogData, appendToBlogData, buildTypeScriptCode, runTscCheck };
