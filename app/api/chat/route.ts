@@ -281,27 +281,29 @@ export async function POST(request: Request) {
     const reply: string = data.content?.[0]?.text ?? '';
     const remaining = Math.max(0, dailyLimit - hitsToday);
 
-    // Save both messages to DB (non-blocking)
-    prisma.chatMessage.createMany({
-      data: [
-        { userId: user.id, role: 'user', content: message.trim().slice(0, MAX_MESSAGE_LENGTH) },
-        { userId: user.id, role: 'assistant', content: reply.slice(0, 2000) },
-      ],
-    }).then(() =>
-      // Trim old messages: keep last 50 per user
-      prisma.chatMessage.findMany({
+    // Mismo fallo que habia en /api/track: sin await, la instancia serverless se
+    // congela al devolver la respuesta y el historial se pierde sin dejar rastro.
+    try {
+      await prisma.chatMessage.createMany({
+        data: [
+          { userId: user.id, role: 'user', content: message.trim().slice(0, MAX_MESSAGE_LENGTH) },
+          { userId: user.id, role: 'assistant', content: reply.slice(0, 2000) },
+        ],
+      });
+
+      // Poda: conservar los ultimos 50 mensajes por usuario.
+      const old = await prisma.chatMessage.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: 'desc' },
         skip: 50,
         select: { id: true },
-      }).then(old => {
-        if (old.length > 0) {
-          prisma.chatMessage.deleteMany({
-            where: { id: { in: old.map(m => m.id) } },
-          }).catch(() => {});
-        }
-      })
-    ).catch(err => console.error('[chat] save error:', err));
+      });
+      if (old.length > 0) {
+        await prisma.chatMessage.deleteMany({ where: { id: { in: old.map(m => m.id) } } });
+      }
+    } catch (err) {
+      console.error('[chat] save error:', err);
+    }
 
     return NextResponse.json({ reply, remaining, isPro });
   } catch (err) {

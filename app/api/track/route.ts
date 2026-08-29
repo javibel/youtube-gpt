@@ -65,16 +65,25 @@ export async function POST(req: NextRequest) {
     const session = await auth().catch(() => null);
     const userId = session?.user?.id || undefined;
 
-    // Fire and forget — don't block the response
-    prisma.pageView.create({
-      data: {
-        path,
-        referrer: referrer || undefined,
-        userAgent,
-        country,
-        userId,
-      },
-    }).catch(() => {}); // silent fail
+    // 29/08/2026: esto era fire-and-forget ("no bloquear la respuesta") y dejo de
+    // funcionar. En serverless la instancia se congela en cuanto se devuelve la
+    // respuesta, asi que una promesa sin await puede no llegar a ejecutarse nunca.
+    // Sintoma: /api/track devolvia 200, el limitador (que SI hace await) escribia su
+    // fila, y la visita no se guardaba. ~20h sin registrar una sola visita mientras
+    // habia trafico real. Un INSERT tarda milisegundos: no hay nada que ahorrar aqui.
+    try {
+      await prisma.pageView.create({
+        data: {
+          path,
+          referrer: referrer || undefined,
+          userAgent,
+          country,
+          userId,
+        },
+      });
+    } catch {
+      // Una analitica nunca debe romper la navegacion del usuario.
+    }
 
     return NextResponse.json({ ok: true });
   } catch {
