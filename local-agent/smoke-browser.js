@@ -193,16 +193,18 @@ async function checkDashboard(browser) {
       return problems;
     }
 
-    await new Promise(r => setTimeout(r, 2000));
-
-    // Abrir un preview: es el camino exacto que estuvo roto dos meses.
-    const opened = await page.evaluate(() => {
+    // Esperar POR CONDICION a que el panel "Mis previews" termine de pintarse: el
+    // dashboard encadena varios fetch y con una espera fija de 2s se miraba antes de
+    // tiempo, y el agente reportaba "no hay ningun preview" cuando si lo habia.
+    const opened = await page.waitForFunction(() => {
       const items = Array.from(document.querySelectorAll('button'));
       const target = items.find(b => b.closest('[class*="rounded-xl"]') && b.className.includes('truncate'));
       if (!target) return false;
       target.click();
       return true;
-    });
+    }, { timeout: 20000, polling: 500 })
+      .then(() => true)
+      .catch(() => false);
 
     if (!opened) {
       problems.push({
