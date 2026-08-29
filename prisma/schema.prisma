@@ -688,11 +688,22 @@ model PageView {
   // reconstruir el journey por usuario (retención: ¿vuelven a la web aunque no
   // generen?). Sin FK a User para no borrar analytics al borrar la cuenta.
   userId    String?  @map("user_id")
+  // Identificador anonimo de navegador (cookie propia ytv_sid, 30d). Sin datos
+  // personales: solo sirve para contar visitantes unicos y saber quien sigue
+  // navegando ahora mismo. Antes solo habia userId, asi que el trafico anonimo
+  // era una masa indistinguible y no se podia medir nada por visitante.
+  sessionId String?  @map("session_id")
+  // Trafico propio: servidor de desarrollo, bots, headless (los smoke tests) y
+  // cuentas internas. Se marca al escribir y se excluye por defecto al consultar.
+  // Sin esto las cifras mezclaban las visitas de Javier con las de usuarios reales.
+  internal  Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([path, createdAt])
   @@index([createdAt])
   @@index([userId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([internal, createdAt])
   @@map("page_views")
 }
 

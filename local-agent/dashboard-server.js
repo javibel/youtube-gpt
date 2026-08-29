@@ -648,9 +648,12 @@ const server = http.createServer(async (req, res) => {
 
   // Site Analytics (proxy to ytubviral.com API)
   if (pathname === '/api/analytics' && req.method === 'GET') {
-    const days = url.searchParams.get('days') || '7';
+    // Reenviar todos los filtros (segment, path, includeInternal...), no solo days.
+    const qs = new URLSearchParams(url.searchParams);
+    if (!qs.get('days')) qs.set('days', '7');
+    qs.set('token', DASHBOARD_TOKEN);
     try {
-      const r = await fetch(`https://ytubviral.com/api/analytics?days=${days}&token=${DASHBOARD_TOKEN}`, {
+      const r = await fetch(`https://ytubviral.com/api/analytics?${qs}`, {
         signal: AbortSignal.timeout(15000),
       });
       if (!r.ok) return sendJSON(res, r.status, { error: `Analytics API: ${r.status}` });
@@ -658,6 +661,21 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, data);
     } catch (e) {
       return sendJSON(res, 500, { error: `Analytics fetch failed: ${e.message}` });
+    }
+  }
+
+  // Quien esta navegando ahora mismo (proxy a la web, que es quien tiene la BD)
+  if (pathname === '/api/analytics/online' && req.method === 'GET') {
+    const qs = new URLSearchParams(url.searchParams);
+    qs.set('token', DASHBOARD_TOKEN);
+    try {
+      const r = await fetch(`https://ytubviral.com/api/analytics/online?${qs}`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!r.ok) return sendJSON(res, r.status, { error: `Online API: ${r.status}` });
+      return sendJSON(res, 200, await r.json());
+    } catch (e) {
+      return sendJSON(res, 500, { error: `Online fetch failed: ${e.message}` });
     }
   }
 

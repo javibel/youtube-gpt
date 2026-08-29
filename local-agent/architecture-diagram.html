@@ -231,32 +231,63 @@
 
     <!-- ═══ ANALYTICS ═══ -->
     <div class="page" id="page-analytics">
-      <h3 style="margin-bottom:1rem">Site Analytics — ytubviral.com</h3>
-      <div style="margin-bottom:1rem;display:flex;gap:0.5rem">
-        <button class="btn-period active" data-days="7" onclick="loadAnalytics(7)">7 days</button>
-        <button class="btn-period" data-days="30" onclick="loadAnalytics(30)">30 days</button>
-        <button class="btn-period" data-days="90" onclick="loadAnalytics(90)">90 days</button>
+      <h3 style="margin-bottom:0.75rem">Site Analytics &mdash; ytubviral.com</h3>
+
+      <!-- Quien esta navegando ahora mismo. Se refresca solo cada 15s. -->
+      <div class="card" style="cursor:default;margin-bottom:1rem">
+        <div class="card-header" style="display:flex;align-items:center;gap:0.6rem">
+          <span id="online-dot" style="width:9px;height:9px;border-radius:50%;background:#3f3f46;display:inline-block"></span>
+          <h3 style="margin:0">Online ahora <span id="online-count" style="color:var(--muted);font-weight:400">&mdash;</span></h3>
+          <span style="margin-left:auto;font-size:0.72rem;color:var(--muted)">ultimos 5 min &middot; se refresca solo</span>
+        </div>
+        <div id="online-list" style="font-size:0.82rem;color:var(--muted)">Cargando...</div>
       </div>
+
+      <div style="margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+        <button class="btn-period active" data-days="7" onclick="loadAnalytics(7)">7 dias</button>
+        <button class="btn-period" data-days="30" onclick="loadAnalytics(30)">30 dias</button>
+        <button class="btn-period" data-days="90" onclick="loadAnalytics(90)">90 dias</button>
+      </div>
+
+      <!-- Filtros: antes esto no existia y todo iba al mismo saco -->
+      <div style="margin-bottom:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;font-size:0.8rem">
+        <label>Segmento
+          <select id="f-segment" onchange="reloadAnalytics()" style="margin-left:0.3rem;background:var(--bg);color:var(--text);border:1px solid var(--surface2);border-radius:5px;padding:3px 6px">
+            <option value="all">Todos</option>
+            <option value="anon">Solo anonimos</option>
+            <option value="users">Solo registrados</option>
+          </select>
+        </label>
+        <label>Ruta contiene
+          <input id="f-path" oninput="debouncedReload()" placeholder="/blog" style="margin-left:0.3rem;background:var(--bg);color:var(--text);border:1px solid var(--surface2);border-radius:5px;padding:3px 6px;width:110px">
+        </label>
+        <label title="Servidor de desarrollo, bots, smoke tests y cuentas propias">
+          <input type="checkbox" id="f-internal" onchange="reloadAnalytics()"> incluir trafico propio
+        </label>
+        <span id="analytics-excluded" style="color:var(--muted)"></span>
+      </div>
+
       <div class="stats-row" id="analyticsStats">
-        <div class="stat-card"><div class="label">Total Views</div><div class="value" id="analytics-total">--</div></div>
-        <div class="stat-card"><div class="label">Unique Pages</div><div class="value" id="analytics-pages">--</div></div>
-        <div class="stat-card"><div class="label">Avg/Day</div><div class="value" id="analytics-avg">--</div></div>
+        <div class="stat-card"><div class="label">Visitas</div><div class="value" id="analytics-total">--</div></div>
+        <div class="stat-card"><div class="label">Visitantes unicos</div><div class="value" id="analytics-visitors">--</div></div>
+        <div class="stat-card"><div class="label">Registrados</div><div class="value" id="analytics-users">--</div></div>
+        <div class="stat-card"><div class="label">Media/dia</div><div class="value" id="analytics-avg">--</div></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
         <div class="card" style="cursor:default">
-          <div class="card-header"><h3>Top Pages</h3></div>
+          <div class="card-header"><h3>Paginas mas vistas</h3></div>
           <div id="analytics-top-pages" style="font-size:0.82rem;color:var(--muted)">Loading...</div>
         </div>
         <div class="card" style="cursor:default">
-          <div class="card-header"><h3>Views by Day</h3></div>
+          <div class="card-header"><h3>Por dia</h3></div>
           <div id="analytics-by-day" style="font-size:0.82rem;color:var(--muted)">Loading...</div>
         </div>
         <div class="card" style="cursor:default">
-          <div class="card-header"><h3>Top Referrers</h3></div>
+          <div class="card-header"><h3>De donde vienen</h3></div>
           <div id="analytics-referrers" style="font-size:0.82rem;color:var(--muted)">Loading...</div>
         </div>
         <div class="card" style="cursor:default">
-          <div class="card-header"><h3>Countries</h3></div>
+          <div class="card-header"><h3>Paises</h3></div>
           <div id="analytics-countries" style="font-size:0.82rem;color:var(--muted)">Loading...</div>
         </div>
       </div>
@@ -1277,8 +1308,11 @@ function navigate(pageId) {
   if (pageId === 'reports') loadReports();
   // Load ecosystem data when entering ecosystem page
   if (pageId === 'ecosystem') { closeEcoDetail(); loadEcoData(); }
-  // Load analytics when entering analytics page
-  if (pageId === 'analytics') loadAnalytics(7);
+  // Load analytics when entering analytics page. El sondeo de "online ahora" solo
+  // corre mientras esa pagina esta visible: no tiene sentido consultar cada 15s
+  // desde otra seccion.
+  if (pageId === 'analytics') { loadAnalytics(7); startOnlinePolling(); }
+  else { clearInterval(onlineTimer); }
 }
 
 // ── Tabs ──
@@ -1447,53 +1481,113 @@ async function loadStatus() {
 }
 
 // ── Analytics ──
+let analyticsDays = 7;
+let reloadTimer = null;
+function reloadAnalytics() { loadAnalytics(analyticsDays); }
+function debouncedReload() { clearTimeout(reloadTimer); reloadTimer = setTimeout(reloadAnalytics, 400); }
+
+function analyticsQuery() {
+  const seg = document.getElementById('f-segment');
+  const pth = document.getElementById('f-path');
+  const int = document.getElementById('f-internal');
+  const qs = ['days=' + analyticsDays];
+  if (seg && seg.value !== 'all') qs.push('segment=' + seg.value);
+  if (pth && pth.value.trim()) qs.push('path=' + encodeURIComponent(pth.value.trim()));
+  if (int && int.checked) qs.push('includeInternal=1');
+  return qs.join('&');
+}
+
 async function loadAnalytics(days) {
-  // Update active button
-  document.querySelectorAll('.btn-period').forEach(b => b.classList.toggle('active', parseInt(b.dataset.days) === days));
+  analyticsDays = days || analyticsDays;
+  document.querySelectorAll('.btn-period').forEach(b => b.classList.toggle('active', parseInt(b.dataset.days) === analyticsDays));
 
   const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  setEl('analytics-total', '...');
-  setEl('analytics-pages', '...');
-  setEl('analytics-avg', '...');
+  ['analytics-total','analytics-visitors','analytics-users','analytics-avg'].forEach(i => setEl(i, '...'));
 
   try {
-    const res = await fetch(`${API}/api/analytics?days=${days}`);
-    if (!res.ok) throw new Error(`${res.status}`);
+    const res = await fetch(API + '/api/analytics?' + analyticsQuery());
+    if (!res.ok) throw new Error(res.status);
     const d = await res.json();
 
     setEl('analytics-total', d.totalViews.toLocaleString());
-    setEl('analytics-pages', d.uniquePages);
-    setEl('analytics-avg', d.viewsByDay.length ? Math.round(d.totalViews / d.viewsByDay.length) : 0);
+    // El historico anterior al 30/08 no tiene cookie de sesion: se avisa en vez
+    // de ensenar un 0 que pareceria que no vino nadie.
+    setEl('analytics-visitors', d.uniqueVisitors > 0 ? d.uniqueVisitors.toLocaleString() : (d.totalViews ? 'sin datos' : '0'));
+    setEl('analytics-users', d.loggedInUsers.toLocaleString());
+    setEl('analytics-avg', d.avgPerDay);
+    setEl('analytics-excluded', d.internalExcluded ? d.internalExcluded.toLocaleString() + ' visitas propias excluidas' : '');
 
-    // Top pages
-    const maxViews = d.viewsByPath[0]?.views || 1;
+    const maxViews = (d.viewsByPath[0] || {}).views || 1;
     document.getElementById('analytics-top-pages').innerHTML = d.viewsByPath.length
-      ? d.viewsByPath.map(p => `<div class="analytics-bar"><span class="label" title="${p.path}">${p.path}</span><div class="bar" style="width:${Math.max(p.views / maxViews * 100, 2)}%"></div><span class="count">${p.views}</span></div>`).join('')
-      : '<span style="color:var(--muted)">No data yet</span>';
+      ? d.viewsByPath.map(p => '<div class="analytics-bar"><span class="label" title="' + p.path + '">' + p.path + '</span><div class="bar" style="width:' + Math.max(p.views / maxViews * 100, 2) + '%"></div><span class="count">' + p.views + '</span></div>').join('')
+      : '<span style="color:var(--muted)">Sin datos</span>';
 
-    // Views by day
-    const maxDay = Math.max(...d.viewsByDay.map(v => v.views), 1);
+    const maxDay = Math.max.apply(null, d.viewsByDay.map(v => v.views).concat([1]));
     document.getElementById('analytics-by-day').innerHTML = d.viewsByDay.length
       ? d.viewsByDay.map(v => {
           const label = new Date(v.day).toLocaleDateString('es', { month: 'short', day: 'numeric' });
-          return `<div class="analytics-bar"><span class="label">${label}</span><div class="bar" style="width:${Math.max(v.views / maxDay * 100, 2)}%"></div><span class="count">${v.views}</span></div>`;
+          return '<div class="analytics-bar"><span class="label">' + label + '</span><div class="bar" style="width:' + Math.max(v.views / maxDay * 100, 2) + '%"></div><span class="count">' + v.views + '</span></div>';
         }).join('')
-      : '<span style="color:var(--muted)">No data yet</span>';
+      : '<span style="color:var(--muted)">Sin datos</span>';
 
-    // Referrers
     document.getElementById('analytics-referrers').innerHTML = d.topReferrers.length
-      ? d.topReferrers.map(r => `<div class="analytics-bar"><span class="label" title="${r.referrer}">${r.referrer || 'Direct'}</span><span class="count">${r.views}</span></div>`).join('')
-      : '<span style="color:var(--muted)">No referrers yet</span>';
+      ? d.topReferrers.map(r => '<div class="analytics-bar"><span class="label" title="' + r.source + '">' + r.source + '</span><span class="count">' + r.views + '</span></div>').join('')
+      : '<span style="color:var(--muted)">Sin datos</span>';
 
-    // Countries
     document.getElementById('analytics-countries').innerHTML = d.topCountries.length
-      ? d.topCountries.map(c => `<div class="analytics-bar"><span class="label">${c.country || 'Unknown'}</span><span class="count">${c.views}</span></div>`).join('')
-      : '<span style="color:var(--muted)">No country data yet</span>';
+      ? d.topCountries.map(c => '<div class="analytics-bar"><span class="label">' + (c.country || 'Desconocido') + '</span><span class="count">' + c.views + '</span></div>').join('')
+      : '<span style="color:var(--muted)">Sin datos</span>';
 
   } catch (e) {
     setEl('analytics-total', 'Error');
-    document.getElementById('analytics-top-pages').innerHTML = `<span style="color:var(--red)">Failed to load: ${e.message}</span>`;
+    document.getElementById('analytics-top-pages').innerHTML = '<span style="color:var(--red)">No se pudo cargar: ' + e.message + '</span>';
   }
+}
+
+// ── Online ahora ──
+let onlineTimer = null;
+function fmtAgo(sec) {
+  if (sec < 60) return 'hace ' + sec + 's';
+  if (sec < 3600) return 'hace ' + Math.round(sec / 60) + 'm';
+  return 'hace ' + Math.round(sec / 3600) + 'h';
+}
+
+async function loadOnline() {
+  const list = document.getElementById('online-list');
+  const dot = document.getElementById('online-dot');
+  const count = document.getElementById('online-count');
+  if (!list) return;
+  try {
+    const int = document.getElementById('f-internal');
+    const res = await fetch(API + '/api/analytics/online?minutes=5' + (int && int.checked ? '&includeInternal=1' : ''));
+    if (!res.ok) throw new Error(res.status);
+    const d = await res.json();
+
+    count.textContent = d.online + (d.online === 1 ? ' visitante' : ' visitantes');
+    dot.style.background = d.online > 0 ? '#22c55e' : '#3f3f46';
+    if (d.online > 0) dot.style.boxShadow = '0 0 8px #22c55e'; else dot.style.boxShadow = 'none';
+
+    list.innerHTML = d.visitors.length
+      ? d.visitors.map(v => {
+          const quien = v.user ? (v.user.name || v.user.email) : 'anonimo ' + v.id;
+          const pais = v.country ? ' &middot; ' + v.country : '';
+          const dur = v.sessionSeconds > 10 ? ' &middot; ' + fmtAgo(v.sessionSeconds).replace('hace ', '') + ' en el sitio' : '';
+          return '<div class="analytics-bar" style="justify-content:flex-start;gap:0.6rem">'
+               + '<span style="color:' + (v.user ? 'var(--accent)' : 'var(--muted)') + ';min-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + quien + '">' + quien + '</span>'
+               + '<span style="color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + v.path + '</span>'
+               + '<span style="color:var(--muted);font-size:0.75rem;white-space:nowrap">' + v.pageviews + ' pag' + pais + dur + ' &middot; ' + fmtAgo(v.secondsAgo) + '</span>'
+               + '</div>';
+        }).join('')
+      : '<span style="color:var(--muted)">Nadie navegando ahora mismo</span>';
+  } catch (e) {
+    list.innerHTML = '<span style="color:var(--red)">No se pudo cargar: ' + e.message + '</span>';
+  }
+}
+
+function startOnlinePolling() {
+  loadOnline();
+  clearInterval(onlineTimer);
+  onlineTimer = setInterval(loadOnline, 15000);
 }
 
 // ── Init ──
