@@ -13,6 +13,7 @@ import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { signUnsubscribe } from '@/lib/email-token';
 import { analyzeTitle, detectCreatorLang, type Lang } from '@/lib/title-score';
+import { isInternalAccount } from '@/lib/internal-accounts';
 
 // Hardcoded like lib/lifecycle-emails.ts, NOT read from NEXTAUTH_URL: an email is
 // always opened outside this process, so a localhost link is never useful. Deriving
@@ -147,6 +148,7 @@ export async function sendDailyIdeasEmails(opts: { dryRun?: boolean; onlyUserIds
   for (const row of rows) {
     const u = row.user;
     if (!u?.email || u.marketingOptOut) continue;
+    if (isInternalAccount(u.email)) continue; // cuentas internas/de prueba — no gastar envío
 
     const ideas = (Array.isArray(row.ideas) ? row.ideas : []) as unknown as DailyIdea[];
     if (!ideas.length) continue;

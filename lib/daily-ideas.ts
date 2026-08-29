@@ -6,6 +6,7 @@
  * rubric (lib/title-score.ts); keep the rules below in sync with it.
  */
 import { prisma } from '@/lib/prisma';
+import { isInternalAccount } from '@/lib/internal-accounts';
 
 function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
@@ -17,7 +18,7 @@ export async function generateDailyIdeas(): Promise<number> {
   // Find users with connected YouTube channel who don't have ideas for today.
   // Gratis desde 13/07 (decisión Javier) — ya no se filtra por plan de pago,
   // ver project_channel_connect_free.md.
-  const users = await prisma.youtubeToken.findMany({
+  const candidates = await prisma.youtubeToken.findMany({
     where: {
       channelId: { not: null },
       user: {
@@ -29,8 +30,13 @@ export async function generateDailyIdeas(): Promise<number> {
       channelName: true,
       subscribers: true,
       videoCount: true,
+      user: { select: { email: true } },
     },
   });
+
+  // Las cuentas internas/de prueba (Javier, QA, correo de marca) tienen canal
+  // conectado pero generarles ideas cada día es puro gasto de API sin retorno.
+  const users = candidates.filter(u => !isInternalAccount(u.user?.email));
 
   if (users.length === 0) return 0;
 
