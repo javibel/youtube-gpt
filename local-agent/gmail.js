@@ -200,6 +200,19 @@ const NOISE_FROM_IMPORTANT_SENDERS = [
       /top \d+ products/i,
     ],
   },
+  {
+    // Indie Hackers volcó 17 notificaciones de respuestas de junio a la vez el
+    // 29/08 y el agente las reenvió todas, truncadas y sin enlace al hilo. Las
+    // notificaciones de comentario no son accionables; la conversación vive en IH.
+    // El resto del correo de IH (cuenta, facturación) se sigue reenviando.
+    from: /indiehackers\.com/i,
+    subjects: [
+      /replied to you on indie hackers/i,
+      /mentioned you on indie hackers/i,
+      /new (reply|comment) on indie hackers/i,
+      /upvoted your/i,
+    ],
+  },
 ];
 
 // Coincidencia de palabra clave por palabra completa (no subcadena). Antes
