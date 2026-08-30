@@ -50,7 +50,11 @@ const SELECTORS = {
     titleField: '#title-textarea #textbox, ytcp-social-suggestion-input #textbox',
     descField: '#description-textarea #textbox, [aria-label*="description" i] #textbox',
     tagChips: 'ytcp-chip-bar ytcp-chip-bar-item, .tag-chip',
-    videoRows: 'ytcp-video-row, .video-row, [class*="video-row"]',
+    // NOT [class*="video-row"] — Polymer adds `style-scope ytcp-video-row` to every
+    // descendant of a row, so that pattern matched hundreds of inner cells, not the rows
+    // (it put the badge in the comments cell and left orphan spinners everywhere).
+    videoRows: 'ytcp-video-row, div.video-row',
+    videoRowTitle: 'a#video-title, #video-title-container a[href*="/video/"], a[href*="/video/"][href*="/edit"]',
     uploadDialog: 'ytcp-uploads-dialog',
   },
   // NOTE: no `shorts` selector set on purpose. The Shorts panels are mounted on
@@ -1564,18 +1568,15 @@ async function injectStudioVideoList() {
     if (document.querySelector('.ytv-studio-badge')) return;
 
     const videoIds = [];
-    const rowMap = new Map();
+    const titleMap = new Map();   // videoId -> the title link, to anchor the badge next to it
 
     rows.forEach(row => {
-      // Try to extract video ID from links inside the row
-      const link = row.querySelector('a[href*="/video/"]');
-      if (link) {
-        const m = link.href.match(/\/video\/([a-zA-Z0-9_-]{11})/);
-        if (m) {
-          videoIds.push(m[1]);
-          rowMap.set(m[1], row);
-        }
-      }
+      const link = row.querySelector(SELECTORS.studio.videoRowTitle) || row.querySelector('a[href*="/video/"]');
+      if (!link) return;
+      const m = link.href.match(/\/video\/([a-zA-Z0-9_-]{11})/);
+      if (!m || titleMap.has(m[1])) return;
+      videoIds.push(m[1]);
+      titleMap.set(m[1], link);
     });
 
     // v2.5.0 (A1 fix): these used to be fetched one-by-one with an `await` inside the loop —
@@ -1586,13 +1587,13 @@ async function injectStudioVideoList() {
     const badgeFor = new Map();
 
     toFetch.forEach(vid => {
-      const row = rowMap.get(vid);
-      if (!row) return;
+      const anchor = titleMap.get(vid);
+      if (!anchor) return;
       const badge = document.createElement('span');
       badge.className = 'ytv-studio-badge';
       badge.innerHTML = '<span class="ytv-spinner-sm"></span>';
-      const titleEl = row.querySelector('.video-title-text, h3, [class*="title"]');
-      if (titleEl) titleEl.parentElement.appendChild(badge); else row.appendChild(badge);
+      // Right after the title link so the badge sits next to the title, not in a far cell.
+      anchor.insertAdjacentElement('afterend', badge);
       badgeFor.set(vid, badge);
     });
 
@@ -1614,6 +1615,12 @@ async function injectStudioVideoList() {
         badge.innerHTML = '<span class="ytv-studio-score" style="border-color:#666;color:#666">?</span>';
       }
     }));
+
+    // Safety net: kill any badge still showing a spinner (a row we created a placeholder
+    // for but never resolved — e.g. a duplicate id, or a row that fell outside toFetch).
+    document.querySelectorAll('.ytv-studio-badge').forEach(b => {
+      if (b.querySelector('.ytv-spinner-sm')) b.remove();
+    });
   } catch (e) {
     console.log('[YTubViral] Studio video list:', e.message);
   }
