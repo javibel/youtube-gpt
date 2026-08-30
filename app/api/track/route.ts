@@ -141,6 +141,17 @@ export async function POST(req: NextRequest) {
       // Una analitica nunca debe romper la navegacion del usuario.
     }
 
+    // Las vistas ANTERIORES al login de esta misma sesion quedaron como anonimas,
+    // porque en ese momento aun no se sabia de quien eran (tipicamente /login y la
+    // pagina desde la que se llego). Al descubrir que la sesion es interna, se
+    // marcan tambien: si no, cada vez que Javier entra deja un par de visitas
+    // contadas como trafico real.
+    if (internal && !setCookie && sessionId) {
+      await prisma.pageView
+        .updateMany({ where: { sessionId, internal: false }, data: { internal: true } })
+        .catch(() => {});
+    }
+
     const res = NextResponse.json({ ok: true });
     if (setCookie) {
       res.cookies.set(SESSION_COOKIE, sessionId, {
