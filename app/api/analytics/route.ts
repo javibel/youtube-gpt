@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
   // cada visitante. Con agregados de 7 dias eso era invisible.
   let byHour: { hour: number; views: number; visitors: number }[] = [];
   let sessions: Record<string, unknown>[] = [];
+  let sessionlessViews = 0;
   if (singleDay) {
     const [h, ss] = await Promise.all([
       q(`SELECT EXTRACT(HOUR FROM created_at)::int AS hour,
@@ -107,7 +108,7 @@ export async function GET(req: NextRequest) {
                 (ARRAY_AGG(pv.path ORDER BY pv.created_at DESC))[1] AS exitPath,
                 MIN(u.email) AS email
            FROM page_views pv LEFT JOIN users u ON u.id = pv.user_id
-          WHERE ${WHERE}
+          WHERE ${WHERE} AND pv.session_id IS NOT NULL
           GROUP BY pv.session_id ORDER BY started DESC LIMIT 60`),
     ]);
     // Relleno de las 24 horas para que la grafica no se deforme con huecos.
@@ -116,6 +117,11 @@ export async function GET(req: NextRequest) {
       const r = map.get(i);
       return { hour: i, views: r ? n(r.views) : 0, visitors: r ? n(r.visitors) : 0 };
     });
+    // Las filas anteriores al 30/08 no tienen cookie de sesion. Sin el filtro de
+    // arriba se agrupaban TODAS en una unica "sesion" con id NULL, que aparecia
+    // como un visitante fantasma con 49 paginas. Se cuentan aparte y se explica.
+    const conSesion = ss.reduce((acc, r) => acc + n(r.hits), 0);
+    sessionlessViews = Math.max(0, n((totals[0] || {}).views) - conSesion);
     sessions = ss.map(r => ({
       id: String(r.session_id || '').slice(0, 8) || null,
       started: r.started,
@@ -135,6 +141,7 @@ export async function GET(req: NextRequest) {
     period: { days, since: since.toISOString(), date: singleDay, until: until?.toISOString() ?? null },
     byHour,
     sessions,
+    sessionlessViews,
     filters: { includeInternal, segment, path: pathFilter || null, country: country || null },
     totalViews: views,
     uniqueVisitors: n(t.visitors),

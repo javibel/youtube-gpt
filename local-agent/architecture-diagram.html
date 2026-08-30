@@ -1611,8 +1611,8 @@ function renderDayDetail(d) {
              + '<span style="color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + ruta + '">' + ruta + '</span>'
              + '<span style="color:var(--muted);font-size:0.75rem;white-space:nowrap">' + v.pageviews + ' pag &middot; ' + dur + (v.country ? ' &middot; ' + v.country : '') + '</span>'
              + '</div>';
-      }).join('')
-    : '<span style="color:var(--muted)">Sin sesiones identificadas (visitas anteriores a la cookie de sesion del 30/08)</span>';
+      }).join('') + (d.sessionlessViews ? '<div style="color:var(--muted);font-size:0.75rem;margin-top:0.4rem">+ ' + d.sessionlessViews + ' visitas sin sesion (anteriores al 30/08)</div>' : '')
+    : '<span style="color:var(--muted)">' + (d.sessionlessViews ? d.sessionlessViews + ' visitas de ese dia son anteriores a la cookie de sesion (30/08), asi que no se pueden agrupar por visitante. Los totales y las horas si son correctos.' : 'Sin sesiones ese dia.') + '</span>';
 }
 
 // ── Online ahora ──
