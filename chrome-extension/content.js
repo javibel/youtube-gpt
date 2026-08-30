@@ -465,18 +465,35 @@ async function renderShellChannelTab(body) {
 // ── "Ideas" tab ──────────────────────────────────────────────────
 async function renderShellIdeasTab(body) {
   body.innerHTML = renderLoading(t('Cargando ideas...', 'Loading ideas...'));
+
+  const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
+  if (!user) {
+    body.innerHTML = shellLoggedOutCta(
+      'Crea una cuenta gratis y conecta tu canal para recibir 5 ideas de vídeo cada mañana.',
+      'Create a free account and connect your channel to get 5 video ideas every morning.');
+    return; // don't cache — retry after sign-in
+  }
+
   let data;
   try {
     data = await sendMsg({ type: 'DAILY_IDEAS' });
   } catch {
     data = null;
   }
+
   if (!data || !data.ideas || !data.ideas.length) {
-    body.innerHTML = `<div class="ytv-shell-cta">
-      <p>${t('Conecta tu canal en YTubViral y cada mañana tendrás aquí 5 ideas de vídeo personalizadas.', 'Connect your channel on YTubViral and every morning you\'ll get 5 personalized video ideas here.')}</p>
-      <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=shellideas" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Conectar canal →', 'Connect channel →')}</a>
-    </div>`;
-    return; // don't cache — retry when the user connects a channel
+    // channelConnected === false → really needs to connect. Otherwise (connected,
+    // or unknown) today's batch just isn't generated yet — don't tell them to connect.
+    body.innerHTML = data && data.channelConnected === false
+      ? `<div class="ytv-shell-cta">
+          <p>${t('Conecta tu canal en YTubViral y cada mañana tendrás aquí 5 ideas de vídeo personalizadas.', 'Connect your channel on YTubViral and every morning you\'ll get 5 personalized video ideas here.')}</p>
+          <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=shellideas" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Conectar canal →', 'Connect channel →')}</a>
+        </div>`
+      : `<div class="ytv-shell-cta">
+          <p>${t('Tus ideas de hoy aún no están listas — se generan cada mañana (~06:00 UTC). Vuelve más tarde.', "Today's ideas aren't ready yet — they're generated every morning (~06:00 UTC). Check back later.")}</p>
+          <a href="https://ytubviral.com/generate?utm_source=extension&utm_medium=shellideas" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Ir al generador →', 'Open the generator →')}</a>
+        </div>`;
+    return; // don't cache — state may change (connect channel / batch generated later today)
   }
   shellRendered.ideas = true;
   const ideas = data.ideas.slice(0, 5);

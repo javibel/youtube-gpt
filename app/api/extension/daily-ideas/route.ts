@@ -15,8 +15,14 @@ export async function GET(request: Request) {
   });
 
   if (!idea) {
-    return NextResponse.json({ ideas: null });
+    // Distinguish "no channel connected" from "connected, today's batch not generated yet"
+    // so the extension shows the right message (was wrongly telling connected users to connect).
+    const yt = await prisma.youtubeToken.findUnique({
+      where: { userId: ext.user.id },
+      select: { channelId: true },
+    });
+    return NextResponse.json({ ideas: null, channelConnected: !!yt?.channelId });
   }
 
-  return NextResponse.json({ ideas: idea.ideas, date: idea.date });
+  return NextResponse.json({ ideas: idea.ideas, date: idea.date, channelConnected: true });
 }

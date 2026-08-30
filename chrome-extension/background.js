@@ -342,7 +342,9 @@ async function handleMessage(msg) {
       const cached = await new Promise(resolve => {
         chrome.storage.local.get(cacheKey, data => resolve(data[cacheKey]));
       });
-      if (cached) return cached;
+      // Only trust a cache that actually has ideas — a previously cached `{ideas:null}`
+      // (e.g. checked before the morning cron ran) must not stick for the rest of the day.
+      if (cached && Array.isArray(cached.ideas) && cached.ideas.length) return cached;
 
       let res, data;
       try {
@@ -353,6 +355,11 @@ async function handleMessage(msg) {
         return { ideas: null }; // panel de homepage: fallar en silencio, no molestar
       }
       if (!res.ok) return { ideas: null };
+
+      // Solo cachear cuando REALMENTE hay ideas — si hoy aún no están generadas
+      // (el cron corre ~06:00 UTC), cachear `{ideas:null}` dejaría al usuario sin
+      // ideas el resto del día aunque aparezcan más tarde.
+      if (!data || !Array.isArray(data.ideas) || !data.ideas.length) return data || { ideas: null };
 
       // Solo las claves de CACHÉ por fecha (ytv_ideas_YYYY-MM-DD), NO las de
       // preferencias que comparten prefijo: ytv_ideas_dismissed_<fecha>,
