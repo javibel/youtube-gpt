@@ -1550,10 +1550,15 @@
   padding: 12px !important;
   overflow-y: auto !important;
   flex: 1 !important;
-  display: flex !important;
+  display: block !important;
+}
+.ytv-shell-pane {
   flex-direction: column !important;
   gap: 10px !important;
 }
+/* one pane visible at a time — inline style toggles flex/none; this is the default */
+.ytv-shell-pane[data-pane="channel"],
+.ytv-shell-pane[data-pane="ideas"] { display: none; }
 .ytv-shell-body .ytv-panel,
 .ytv-shell-body .ytv-scorecard { margin-bottom: 0 !important; }
 

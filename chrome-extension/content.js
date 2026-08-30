@@ -179,7 +179,10 @@ const SHELL_TABS = [
 ];
 
 const shellState = { open: false, tab: 'page', mounted: false };
-const shellRendered = { page: null, channel: null, ideas: null };
+// Rendered-content cache so switching tabs doesn't wipe results. `page` holds the
+// URL key it was last rendered for (re-render only when the page changed);
+// `channel`/`ideas` are booleans (render once per shell lifetime).
+const shellRendered = { page: null, channel: false, ideas: false };
 
 function shellEls() {
   const root = document.getElementById('ytv-shell');
@@ -189,6 +192,7 @@ function shellEls() {
     body: root.querySelector('#ytv-shell-body'),
     foot: root.querySelector('#ytv-shell-foot'),
     tabs: root.querySelector('#ytv-shell-tabs'),
+    pane: (id) => root.querySelector(`.ytv-shell-pane[data-pane="${id}"]`),
   };
 }
 
@@ -208,7 +212,11 @@ function mountShell() {
         <button class="ytv-shell-btn" id="ytv-shell-close" aria-label="${t('Cerrar', 'Close')}">✕</button>
       </div>
       <div class="ytv-shell-tabs" id="ytv-shell-tabs"></div>
-      <div class="ytv-shell-body" id="ytv-shell-body"></div>
+      <div class="ytv-shell-body" id="ytv-shell-body">
+        <div class="ytv-shell-pane" data-pane="page"></div>
+        <div class="ytv-shell-pane" data-pane="channel"></div>
+        <div class="ytv-shell-pane" data-pane="ideas"></div>
+      </div>
       <div class="ytv-shell-foot" id="ytv-shell-foot"></div>
     </div>`;
   document.body.appendChild(root);
@@ -244,7 +252,7 @@ function openShell(tab) {
   chrome.storage.local.set({ ytv_shell_open: true });
   if (tab && SHELL_TABS.some((x) => x.id === tab)) shellState.tab = tab;
   highlightShellTab();
-  renderShellTab(true);
+  renderShellTab();
   refreshShellFoot();
 }
 
@@ -259,7 +267,7 @@ function setShellTab(id) {
   shellState.tab = id;
   chrome.storage.local.set({ ytv_shell_tab: id });
   highlightShellTab();
-  renderShellTab(true);
+  renderShellTab(); // lazy — a tab already rendered keeps its content (and results)
 }
 
 function highlightShellTab() {
@@ -268,18 +276,33 @@ function highlightShellTab() {
     b.classList.toggle('ytv-shell-tab-active', b.dataset.tab === shellState.tab));
 }
 
-// Called from onPageChange on SPA navigation.
+// Called from onPageChange on SPA navigation. Only the page tab is page-specific;
+// "Tu canal" / "Ideas" keep whatever they already rendered.
 function refreshShell() {
   if (!shellState.mounted) return;
-  shellRendered.page = null; // page-tab content is page-specific
-  if (shellState.open) { renderShellTab(false); refreshShellFoot(); }
+  if (shellState.open) { renderShellTab(); refreshShellFoot(); }
 }
 
-async function renderShellTab(force) {
+async function renderShellTab() {
   const els = shellEls(); if (!els || !shellState.open) return;
-  if (shellState.tab === 'page') return renderShellPageTab(els.body, force);
-  if (shellState.tab === 'channel') return renderShellChannelTab(els.body, force);
-  if (shellState.tab === 'ideas') return renderShellIdeasTab(els.body, force);
+
+  els.body.querySelectorAll('.ytv-shell-pane').forEach((p) => {
+    p.style.display = p.dataset.pane === shellState.tab ? 'flex' : 'none';
+  });
+  const pane = els.pane(shellState.tab);
+  if (!pane) return;
+
+  if (shellState.tab === 'page') {
+    const key = location.hostname + location.pathname + location.search;
+    if (shellRendered.page !== key) {
+      shellRendered.page = key;
+      renderShellPageTab(pane);
+    }
+  } else if (shellState.tab === 'channel') {
+    if (!shellRendered.channel) renderShellChannelTab(pane); // sets the flag on success
+  } else if (shellState.tab === 'ideas') {
+    if (!shellRendered.ideas) renderShellIdeasTab(pane);
+  }
 }
 
 function shellLoggedOutCta(reasonEs, reasonEn) {
@@ -298,11 +321,8 @@ async function refreshShellFoot() {
 }
 
 // ── "Esta página" tab ─────────────────────────────────────────────
-async function renderShellPageTab(body, force) {
-  const key = location.hostname + location.pathname + location.search;
-  if (!force && shellRendered.page === key) return;
-  shellRendered.page = key;
-
+// Re-render gating (page changed vs cached) is handled by renderShellTab().
+async function renderShellPageTab(body) {
   if (location.hostname === 'studio.youtube.com') {
     body.innerHTML = `<div class="ytv-shell-note">${t('El análisis SEO en vivo aparece junto al título del vídeo mientras lo editas.', 'Live SEO analysis appears next to the video title while you edit it.')}</div>`;
     return;
@@ -435,15 +455,15 @@ async function renderShellChannelTab(body) {
     body.innerHTML = renderError(e.message);
     return;
   }
-  shellRendered.channel = 'done';
   body.innerHTML = renderChannelStatsWidget(data);
+  shellRendered.channel = true; // cache only a successful render
   sendMsg({ type: 'DAILY_IDEAS' }).then((ideaData) => {
     if (ideaData?.ideas?.length) body.insertAdjacentHTML('beforeend', renderDailyIdeasMini(ideaData.ideas));
   }).catch(() => {});
 }
 
 // ── "Ideas" tab ──────────────────────────────────────────────────
-async function renderShellIdeasTab(body, force) {
+async function renderShellIdeasTab(body) {
   body.innerHTML = renderLoading(t('Cargando ideas...', 'Loading ideas...'));
   let data;
   try {
@@ -456,8 +476,9 @@ async function renderShellIdeasTab(body, force) {
       <p>${t('Conecta tu canal en YTubViral y cada mañana tendrás aquí 5 ideas de vídeo personalizadas.', 'Connect your channel on YTubViral and every morning you\'ll get 5 personalized video ideas here.')}</p>
       <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=shellideas" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Conectar canal →', 'Connect channel →')}</a>
     </div>`;
-    return;
+    return; // don't cache — retry when the user connects a channel
   }
+  shellRendered.ideas = true;
   const ideas = data.ideas.slice(0, 5);
   body.innerHTML = `<div class="ytv-ideas-body" style="max-height:none">${ideas.map((idea) => {
     const title = t(idea.title_es, idea.title_en) || '';
