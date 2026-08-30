@@ -332,6 +332,55 @@ async function runManager() {
   const today = new Date().toISOString().slice(0, 10);
   const sections = buildRawSummary(today);
 
+  // Trafico de la web. Va en el correo diario a proposito: el 28/08 /api/track
+  // estuvo ~20h sin registrar una sola visita y nadie se entero, porque no habia
+  // ningun sitio donde el numero pudiera caer a cero a la vista. Excluye trafico
+  // propio (dev, bots, cuentas internas).
+  console.log('[manager] Reading site traffic...');
+  try {
+    const token = process.env.DASHBOARD_TOKEN;
+    if (token) {
+      const get = async (days) => {
+        const r = await fetch(`https://ytubviral.com/api/analytics?days=${days}&token=${token}`, {
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!r.ok) throw new Error(`analytics ${r.status}`);
+        return r.json();
+      };
+      const [d1, d7] = await Promise.all([get(1), get(7)]);
+      const topPage = d1.viewsByPath[0];
+      const topSource = d1.topReferrers[0];
+      const media7 = d7.avgPerDay;
+
+      // Cero visitas en 24h con trafico habitual = o esta roto el tracking o se
+      // ha caido la web. En ambos casos hay que mirarlo.
+      const sospechoso = d1.totalViews === 0 && media7 > 0;
+      sections.push({
+        agent: 'Trafico web (visitas reales)',
+        status: sospechoso ? 'ATENCIÓN' : 'OK',
+        data: `24h: ${d1.totalViews} visitas`
+            + (d1.uniqueVisitors ? `, ${d1.uniqueVisitors} visitantes unicos` : '')
+            + `, ${d1.loggedInUsers} registrados`
+            + ` | media 7d: ${media7}/dia`
+            + (topPage ? ` | top: ${topPage.path} (${topPage.views})` : '')
+            + (topSource ? ` | origen: ${topSource.source}` : '')
+            + (d1.internalExcluded ? ` | ${d1.internalExcluded} propias excluidas` : ''),
+        ai: sospechoso
+          ? 'CERO visitas en 24h teniendo trafico habitual. Comprobar /api/track y que la web responde.'
+          : '',
+        duration: 0,
+      });
+    }
+  } catch (err) {
+    sections.push({
+      agent: 'Trafico web (visitas reales)',
+      status: 'ATENCIÓN',
+      data: `No se pudo leer: ${err.message}`,
+      ai: 'Si esto falla varios dias seguidos, las analiticas estan ciegas.',
+      duration: 0,
+    });
+  }
+
   // Anthropic API balance — read from agent-config.json (set via dashboard)
   console.log('[manager] Reading Anthropic API balance...');
   const anthropicBalance = getAnthropicBalance();
