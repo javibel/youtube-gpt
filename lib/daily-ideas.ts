@@ -36,7 +36,15 @@ export async function generateDailyIdeas(): Promise<number> {
 
   // Las cuentas internas/de prueba (Javier, QA, correo de marca) tienen canal
   // conectado pero generarles ideas cada día es puro gasto de API sin retorno.
-  const users = candidates.filter(u => !isInternalAccount(u.user?.email));
+  // EXCEPCIÓN: la cuenta de marca genera ideas igualmente para poder probar la
+  // pestaña "Ideas" de la extensión con datos reales. El email a esa cuenta sigue
+  // bloqueado en lib/daily-ideas-email.ts (isInternalAccount), así que esto solo
+  // escribe la fila de DailyIdea — sin envío, sin coste de Resend.
+  const IDEAS_GEN_ALLOWLIST = new Set(['ytbeviral@gmail.com']);
+  const users = candidates.filter(u => {
+    const email = (u.user?.email || '').trim().toLowerCase();
+    return IDEAS_GEN_ALLOWLIST.has(email) || !isInternalAccount(email);
+  });
 
   if (users.length === 0) return 0;
 
