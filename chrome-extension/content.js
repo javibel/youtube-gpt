@@ -54,7 +54,9 @@ const SELECTORS = {
     // descendant of a row, so that pattern matched hundreds of inner cells, not the rows
     // (it put the badge in the comments cell and left orphan spinners everywhere).
     videoRows: 'ytcp-video-row, div.video-row',
-    videoRowTitle: 'a#video-title, #video-title-container a[href*="/video/"], a[href*="/video/"][href*="/edit"]',
+    // The <a> that wraps the row's thumbnail — the badge is overlaid on it (a corner),
+    // like the velocity badges on regular YouTube. The title cell is too short to hold it.
+    videoRowThumb: 'a#thumbnail-anchor, a[href*="/video/"]',
     uploadDialog: 'ytcp-uploads-dialog',
   },
   // NOTE: no `shorts` selector set on purpose. The Shorts panels are mounted on
@@ -1568,15 +1570,15 @@ async function injectStudioVideoList() {
     if (document.querySelector('.ytv-studio-badge')) return;
 
     const videoIds = [];
-    const titleMap = new Map();   // videoId -> the title link, to anchor the badge next to it
+    const thumbMap = new Map();   // videoId -> the thumbnail <a>, to overlay the badge on
 
     rows.forEach(row => {
-      const link = row.querySelector(SELECTORS.studio.videoRowTitle) || row.querySelector('a[href*="/video/"]');
-      if (!link) return;
-      const m = link.href.match(/\/video\/([a-zA-Z0-9_-]{11})/);
-      if (!m || titleMap.has(m[1])) return;
+      const anchor = row.querySelector(SELECTORS.studio.videoRowThumb);
+      if (!anchor) return;
+      const m = anchor.href.match(/\/video\/([a-zA-Z0-9_-]{11})/);
+      if (!m || thumbMap.has(m[1])) return;
       videoIds.push(m[1]);
-      titleMap.set(m[1], link);
+      thumbMap.set(m[1], anchor);
     });
 
     // v2.5.0 (A1 fix): these used to be fetched one-by-one with an `await` inside the loop —
@@ -1587,13 +1589,13 @@ async function injectStudioVideoList() {
     const badgeFor = new Map();
 
     toFetch.forEach(vid => {
-      const anchor = titleMap.get(vid);
+      const anchor = thumbMap.get(vid);
       if (!anchor) return;
+      if (getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
       const badge = document.createElement('span');
       badge.className = 'ytv-studio-badge';
       badge.innerHTML = '<span class="ytv-spinner-sm"></span>';
-      // Right after the title link so the badge sits next to the title, not in a far cell.
-      anchor.insertAdjacentElement('afterend', badge);
+      anchor.appendChild(badge); // overlaid on the thumbnail (CSS positions it in a corner)
       badgeFor.set(vid, badge);
     });
 
@@ -1603,14 +1605,18 @@ async function injectStudioVideoList() {
       try {
         const data = await sendMsg({ type: 'SCORECARD', videoId: vid });
         const color = scoreColor(data.score);
-        const outlierHtml = data.outlierMultiplier > 0
-          ? `<span class="ytv-outlier-mini ${data.outlierMultiplier >= 5 ? 'ytv-outlier-green' : data.outlierMultiplier >= 2 ? 'ytv-outlier-yellow' : 'ytv-outlier-gray'}">×${data.outlierMultiplier}</span>`
+        const outlierHtml = data.outlierMultiplier >= 2
+          ? `<span class="ytv-outlier-mini ${data.outlierMultiplier >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}">×${data.outlierMultiplier}</span>`
           : '';
-        badge.innerHTML = `
-          <span class="ytv-studio-score" style="border-color: ${color}; color: ${color}">${data.score}</span>
-          ${outlierHtml}
-          <a href="https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio" target="_blank" class="ytv-studio-opt" title="${t('Optimizar', 'Optimize')}">⚡</a>
-        `;
+        // NOT an <a> — the badge lives inside Studio's own thumbnail <a>, and nested
+        // anchors are invalid (the browser splits the DOM). Open the page on click instead.
+        badge.innerHTML =
+          `<span class="ytv-studio-score" style="border-color:${color};color:${color}" role="button" tabindex="0" title="${t('SEO Score — abrir en YTubViral', 'SEO Score — open in YTubViral')}">${data.score}</span>`
+          + outlierHtml;
+        badge.querySelector('.ytv-studio-score').addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          window.open(`https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio`, '_blank');
+        });
       } catch {
         badge.innerHTML = '<span class="ytv-studio-score" style="border-color:#666;color:#666">?</span>';
       }

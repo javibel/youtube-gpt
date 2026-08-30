@@ -863,28 +863,36 @@
   margin-bottom: 10px !important;
 }
 
-/* Studio video list badges */
+/* Studio video list badges — overlaid on a corner of the row's thumbnail */
 .ytv-studio-badge {
+  position: absolute !important;
+  top: 4px !important;
+  left: 4px !important;
+  z-index: 20 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  margin-left: 8px !important;
-  vertical-align: middle !important;
+  gap: 3px !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
 }
 
 .ytv-studio-score {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 24px !important;
-  height: 24px !important;
+  width: 26px !important;
+  height: 26px !important;
   border-radius: 50% !important;
   border: 2px solid !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 800 !important;
   font-family: Roboto, Arial, sans-serif !important;
-  background: rgba(0,0,0,0.3) !important;
+  background: rgba(0,0,0,0.78) !important;
+  backdrop-filter: blur(2px) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
 }
+.ytv-studio-score[role="button"]:hover { filter: brightness(1.3) !important; }
 
 .ytv-studio-opt {
   display: inline-flex !important;
