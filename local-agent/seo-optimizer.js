@@ -553,6 +553,7 @@ async function runSeoOptimizer() {
         severity: i.includes('NOINDEX') || i.includes('CLICKS') ? 'high' : 'medium',
       }));
       mem.processFindings('seo-optimizer', findings);
+      mem.markRun('seo-optimizer');
     } catch (e) { /* memory not critical */ }
 
     // 7. Send summary email only if there are NEW issues or resolved issues

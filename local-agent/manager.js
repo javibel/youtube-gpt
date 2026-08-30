@@ -220,13 +220,20 @@ function buildRawSummary(date) {
   // Infra Optimizer report
   const infraReport = readReport('infra-optimizer', date);
   if (infraReport) {
-    const issueCount = infraReport.analysis?.issues?.length || 0;
-    const diskPct = infraReport.metrics?.disk?.usedPercent || 0;
+    // 30/08: ambas rutas estaban mal y llevaban meses dando "Issues: 0, Disco: 0%"
+    // mientras el reporte real traia 3 issues y el disco al 72%. Los issues estan
+    // en la raiz (`issues`), no bajo `analysis` (que solo tiene diagnosis/actions/
+    // reasoning), y el disco en `metrics.disk.data.usedPct`. Se dejan las rutas
+    // antiguas como respaldo por si algun reporte viejo las usara.
+    const infraIssues = infraReport.issues || infraReport.analysis?.issues || [];
+    const issueCount = infraIssues.length;
+    const diskPct = infraReport.metrics?.disk?.data?.usedPct
+      ?? infraReport.metrics?.disk?.usedPercent ?? 0;
     sections.push({
       agent: 'Infra Optimizer',
       status: issueCount > 2 ? 'ATENCIÓN' : issueCount > 0 ? 'REVISAR' : 'OK',
       data: `Issues: ${issueCount}, Disco: ${diskPct}%`,
-      ai: (infraReport.analysis?.issues || []).join(' | '),
+      ai: infraIssues.join(' | '),
       duration: 0,
     });
   }

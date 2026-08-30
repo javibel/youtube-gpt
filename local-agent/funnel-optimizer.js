@@ -485,6 +485,7 @@ async function runFunnelOptimizer() {
           : 'medium',
       }));
       mem.processFindings('funnel-optimizer', findings);
+      mem.markRun('funnel-optimizer');
     } catch (e) { /* memory not critical */ }
 
     console.log(`[funnel-optimizer] Analysis complete: ${issues.length} issues, report saved to ${reportFile}`);

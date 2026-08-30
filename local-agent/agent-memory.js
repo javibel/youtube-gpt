@@ -282,8 +282,29 @@ function closeIssueByKeyword(keyword) {
   return closed;
 }
 
+/**
+ * Registra que un agente ha corrido (runCount + lastRun).
+ *
+ * Existe porque los cuatro optimizadores guardaban sus hallazgos con
+ * processFindings()/saveMemory() pero NUNCA llamaban a recordRun(), asi que su
+ * runCount se quedaba en 0 para siempre. El meta-optimizer los daba por "nunca
+ * ejecutados" mientras corrian a diario y escribian su reporte: una alarma falsa
+ * que ademas tapaba las de verdad. Nunca lanza: no registrar una ejecucion no
+ * puede tumbar al agente.
+ */
+function markRun(agentId, durationMs = 0) {
+  try {
+    const memory = loadMemory(agentId);
+    recordRun(memory, durationMs || 0);
+    saveMemory(agentId, memory);
+  } catch (err) {
+    console.error(`[agent-memory] markRun(${agentId}) fallo: ${err.message}`);
+  }
+}
+
 module.exports = {
   loadMemory,
+  markRun,
   saveMemory,
   issueId,
   processFindings,

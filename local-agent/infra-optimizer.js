@@ -520,6 +520,7 @@ async function runInfraOptimizer() {
 
   // 6. Save report
   results.durationMs = Date.now() - startTime;
+  mem.markRun(AGENT_ID, results.durationMs);
   ensureDir(REPORTS_DIR);
   const reportFile = path.join(REPORTS_DIR, `${AGENT_ID}-${today()}.json`);
   fs.writeFileSync(reportFile, JSON.stringify(results, null, 2));

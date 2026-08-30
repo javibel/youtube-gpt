@@ -238,6 +238,7 @@ async function runSocialOptimizer() {
         severity: i.includes('0 ') ? 'high' : 'medium',
       }));
       mem.processFindings('social-optimizer', findings);
+      mem.markRun('social-optimizer');
     } catch (e) { /* memory not critical */ }
 
     // Send alert email if there are issues
