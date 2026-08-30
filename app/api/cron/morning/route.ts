@@ -10,7 +10,7 @@ import { buildInfographicUrl } from '@/lib/agent/infographic-generator';
 // Twitter API desactivada — publicación migrada a Puppeteer en local-agent (brand-twitter-post.js)
 // import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
 import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
-import { sendDailyReport } from '@/lib/agent/reports-agent';
+// import { sendDailyReport } from '@/lib/agent/reports-agent'; // reporte diario desactivado 2026-08-30 (redundante con el Manager)
 // sendOnboardingEmails DESACTIVADO 2026-07-01 (duplicaba lifecycle) — ver bloque "0." abajo.
 // import { sendOnboardingEmails } from '@/lib/agent/onboarding-email';
 import { sendVerificationReminders } from '@/lib/agent/verification-reminder';
@@ -191,10 +191,14 @@ export async function GET(request: Request) {
 
     await Promise.allSettled(socialPublishTasks);
 
-    // 6. Send daily report to owner
-    await sendDailyReport().catch(err =>
-      errors.push(`Daily report: ${err instanceof Error ? err.message : err}`)
-    );
+    // 6. Reporte diario al owner — DESACTIVADO 2026-08-30 (decisión Javier).
+    //    Era el segundo reporte diario redundante (el otro, local-agent/reports.js,
+    //    se apagó el 28/08). El Reporte Ejecutivo del Manager (03:15) ya cubre
+    //    posts sociales y gmail; las secciones de LinkedIn/YCML llevan meses en
+    //    "sin datos" (personas abandonadas). Código intacto en lib/agent/reports-agent.ts.
+    // await sendDailyReport().catch(err =>
+    //   errors.push(`Daily report: ${err instanceof Error ? err.message : err}`)
+    // );
 
     if (errors.length > 0) {
       await sendNotificationEmail(
