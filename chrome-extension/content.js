@@ -54,10 +54,10 @@ const SELECTORS = {
     // descendant of a row, so that pattern matched hundreds of inner cells, not the rows
     // (it put the badge in the comments cell and left orphan spinners everywhere).
     videoRows: 'ytcp-video-row, div.video-row',
-    // The row's title link (carries /video/{id}/edit) and the text column that holds
-    // title + description — the badge goes on its own line there (wide, mostly empty).
+    // The row's title link carries /video/{id}/edit. The badge is placed in the
+    // checkbox column (dead space, overflow:visible all the way up so nothing clips).
     videoRowTitle: 'a#video-title, a[href*="/video/"][href*="/edit"]',
-    videoRowMeta: 'div.right-section, #video-title-wrapper',
+    videoRowCheckCell: 'div.tablecell-selection, .cell-body.tablecell-selection',
     uploadDialog: 'ytcp-uploads-dialog',
   },
   // NOTE: no `shorts` selector set on purpose. The Shorts panels are mounted on
@@ -1571,17 +1571,17 @@ async function injectStudioVideoList() {
     if (document.querySelector('.ytv-studio-badge')) return;
 
     const videoIds = [];
-    const metaMap = new Map();   // videoId -> the text column (title + description), to append the badge row into
+    const cellMap = new Map();   // videoId -> the checkbox cell, to anchor the badge in
 
     rows.forEach(row => {
       const titleA = row.querySelector(SELECTORS.studio.videoRowTitle);
       if (!titleA) return;
       const m = titleA.href.match(/\/video\/([a-zA-Z0-9_-]{11})/);
-      if (!m || metaMap.has(m[1])) return;
-      const meta = titleA.closest(SELECTORS.studio.videoRowMeta) || row.querySelector(SELECTORS.studio.videoRowMeta);
-      if (!meta) return;
+      if (!m || cellMap.has(m[1])) return;
+      const cell = row.querySelector(SELECTORS.studio.videoRowCheckCell);
+      if (!cell) return;
       videoIds.push(m[1]);
-      metaMap.set(m[1], meta);
+      cellMap.set(m[1], cell);
     });
 
     // v2.5.0 (A1 fix): these used to be fetched one-by-one with an `await` inside the loop —
@@ -1592,12 +1592,12 @@ async function injectStudioVideoList() {
     const badgeFor = new Map();
 
     toFetch.forEach(vid => {
-      const meta = metaMap.get(vid);
-      if (!meta) return;
+      const cell = cellMap.get(vid);
+      if (!cell) return;
       const badge = document.createElement('div');
       badge.className = 'ytv-studio-badge';
       badge.innerHTML = `<span class="ytv-spinner-sm"></span>`;
-      meta.appendChild(badge); // own line under the title/description, left-aligned
+      cell.appendChild(badge); // absolute, under the checkbox (CSS); cell overflow is visible
       badgeFor.set(vid, badge);
     });
 
@@ -1611,11 +1611,14 @@ async function injectStudioVideoList() {
           ? `<span class="ytv-outlier-mini ${data.outlierMultiplier >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}">×${data.outlierMultiplier}</span>`
           : '';
         badge.innerHTML =
-          `<span class="ytv-studio-chip" style="border-color:${color};color:${color}">SEO ${data.score}</span>`
-          + outlierHtml
-          + `<a href="https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio" target="_blank" class="ytv-studio-chip-opt">⚡ ${t('Optimizar', 'Optimize')}</a>`;
+          `<span class="ytv-studio-score" style="border-color:${color};color:${color}" role="button" tabindex="0" title="${t('SEO Score — optimizar en YTubViral', 'SEO Score — optimize on YTubViral')}">${data.score}</span>`
+          + outlierHtml;
+        badge.querySelector('.ytv-studio-score').addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          window.open(`https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio`, '_blank');
+        });
       } catch {
-        badge.innerHTML = `<span class="ytv-studio-chip" style="border-color:#666;color:#888">SEO ?</span>`;
+        badge.innerHTML = `<span class="ytv-studio-score" style="border-color:#555;color:#777">?</span>`;
       }
     }));
 

@@ -863,37 +863,38 @@
   margin-bottom: 10px !important;
 }
 
-/* Studio video list badge — its own line under the title/description, left-aligned */
+/* Studio video list badge — in the checkbox column (dead space, nothing clips it),
+   below the checkbox. A compact score circle; click opens the optimize page. */
 .ytv-studio-badge {
+  position: absolute !important;
+  bottom: 6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
   display: flex !important;
+  flex-direction: column !important;
   align-items: center !important;
-  gap: 8px !important;
-  margin: 6px 0 2px !important;
+  gap: 2px !important;
+  margin: 0 !important;
   padding: 0 !important;
+  z-index: 5 !important;
 }
 
-.ytv-studio-chip {
+.ytv-studio-score {
   display: inline-flex !important;
   align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 50% !important;
+  border: 2px solid !important;
   font-size: 11px !important;
   font-weight: 800 !important;
   font-family: Roboto, Arial, sans-serif !important;
-  letter-spacing: 0.3px !important;
-  padding: 1px 8px !important;
-  border-radius: 11px !important;
-  border: 1.5px solid !important;
-  background: rgba(255,255,255,0.05) !important;
-  white-space: nowrap !important;
-}
-
-.ytv-studio-chip-opt {
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  color: #ff6060 !important;
+  background: #1a1a1a !important;
+  cursor: pointer !important;
   text-decoration: none !important;
-  white-space: nowrap !important;
 }
-.ytv-studio-chip-opt:hover { text-decoration: underline !important; color: #ff0000 !important; }
+.ytv-studio-score[role="button"]:hover { filter: brightness(1.3) !important; }
 
 .ytv-studio-opt {
   display: inline-flex !important;
