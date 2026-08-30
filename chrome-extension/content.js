@@ -54,9 +54,10 @@ const SELECTORS = {
     // descendant of a row, so that pattern matched hundreds of inner cells, not the rows
     // (it put the badge in the comments cell and left orphan spinners everywhere).
     videoRows: 'ytcp-video-row, div.video-row',
-    // The <a> that wraps the row's thumbnail — the badge is overlaid on it (a corner),
-    // like the velocity badges on regular YouTube. The title cell is too short to hold it.
-    videoRowThumb: 'a#thumbnail-anchor, a[href*="/video/"]',
+    // The row's title link (carries /video/{id}/edit) and the text column that holds
+    // title + description — the badge goes on its own line there (wide, mostly empty).
+    videoRowTitle: 'a#video-title, a[href*="/video/"][href*="/edit"]',
+    videoRowMeta: 'div.right-section, #video-title-wrapper',
     uploadDialog: 'ytcp-uploads-dialog',
   },
   // NOTE: no `shorts` selector set on purpose. The Shorts panels are mounted on
@@ -1570,15 +1571,17 @@ async function injectStudioVideoList() {
     if (document.querySelector('.ytv-studio-badge')) return;
 
     const videoIds = [];
-    const thumbMap = new Map();   // videoId -> the thumbnail <a>, to overlay the badge on
+    const metaMap = new Map();   // videoId -> the text column (title + description), to append the badge row into
 
     rows.forEach(row => {
-      const anchor = row.querySelector(SELECTORS.studio.videoRowThumb);
-      if (!anchor) return;
-      const m = anchor.href.match(/\/video\/([a-zA-Z0-9_-]{11})/);
-      if (!m || thumbMap.has(m[1])) return;
+      const titleA = row.querySelector(SELECTORS.studio.videoRowTitle);
+      if (!titleA) return;
+      const m = titleA.href.match(/\/video\/([a-zA-Z0-9_-]{11})/);
+      if (!m || metaMap.has(m[1])) return;
+      const meta = titleA.closest(SELECTORS.studio.videoRowMeta) || row.querySelector(SELECTORS.studio.videoRowMeta);
+      if (!meta) return;
       videoIds.push(m[1]);
-      thumbMap.set(m[1], anchor);
+      metaMap.set(m[1], meta);
     });
 
     // v2.5.0 (A1 fix): these used to be fetched one-by-one with an `await` inside the loop —
@@ -1589,13 +1592,12 @@ async function injectStudioVideoList() {
     const badgeFor = new Map();
 
     toFetch.forEach(vid => {
-      const anchor = thumbMap.get(vid);
-      if (!anchor) return;
-      if (getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
-      const badge = document.createElement('span');
+      const meta = metaMap.get(vid);
+      if (!meta) return;
+      const badge = document.createElement('div');
       badge.className = 'ytv-studio-badge';
-      badge.innerHTML = '<span class="ytv-spinner-sm"></span>';
-      anchor.appendChild(badge); // overlaid on the thumbnail (CSS positions it in a corner)
+      badge.innerHTML = `<span class="ytv-spinner-sm"></span>`;
+      meta.appendChild(badge); // own line under the title/description, left-aligned
       badgeFor.set(vid, badge);
     });
 
@@ -1608,17 +1610,12 @@ async function injectStudioVideoList() {
         const outlierHtml = data.outlierMultiplier >= 2
           ? `<span class="ytv-outlier-mini ${data.outlierMultiplier >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}">×${data.outlierMultiplier}</span>`
           : '';
-        // NOT an <a> — the badge lives inside Studio's own thumbnail <a>, and nested
-        // anchors are invalid (the browser splits the DOM). Open the page on click instead.
         badge.innerHTML =
-          `<span class="ytv-studio-score" style="border-color:${color};color:${color}" role="button" tabindex="0" title="${t('SEO Score — abrir en YTubViral', 'SEO Score — open in YTubViral')}">${data.score}</span>`
-          + outlierHtml;
-        badge.querySelector('.ytv-studio-score').addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          window.open(`https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio`, '_blank');
-        });
+          `<span class="ytv-studio-chip" style="border-color:${color};color:${color}">SEO ${data.score}</span>`
+          + outlierHtml
+          + `<a href="https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio" target="_blank" class="ytv-studio-chip-opt">⚡ ${t('Optimizar', 'Optimize')}</a>`;
       } catch {
-        badge.innerHTML = '<span class="ytv-studio-score" style="border-color:#666;color:#666">?</span>';
+        badge.innerHTML = `<span class="ytv-studio-chip" style="border-color:#666;color:#888">SEO ?</span>`;
       }
     }));
 
