@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getExtensionUser } from '@/lib/extension-auth';
+import { rateLimitRequest } from '@/lib/rate-limit-db';
 
 export async function POST(request: Request) {
+  // v2.7: open without login (VPH badges = ambient value at second 1, like vidIQ). This route
+  // only touches the public YouTube Data API — no user data. Anonymous callers are rate-limited
+  // by IP; authenticated callers pass through freely.
   const extUser = await getExtensionUser(request);
   if (!extUser) {
-    return NextResponse.json({ error: 'not_logged_in' }, { status: 401 });
+    const ok = await rateLimitRequest(request, 'ext-pub-batch', 300, 10);
+    if (!ok) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
   const body = await request.json().catch(() => ({}));

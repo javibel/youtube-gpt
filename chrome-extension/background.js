@@ -222,16 +222,21 @@ async function handleMessage(msg) {
     }
 
     case 'SCORECARD': {
+      // v2.7: works without login — the scorecard endpoint now serves public YouTube data to
+      // anonymous callers (rate-limited by IP). Send the token only if we have one.
       const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
       let res, data;
       try {
         ({ res, data } = await apiFetch(`${API_BASE}/api/extension/video-scorecard`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({ videoId: msg.videoId }),
         }));
       } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
+      if (res.status === 429) throw new Error('rate_limited');
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Scorecard error' : 'Error al cargar scorecard'));
       return data;
     }
@@ -267,16 +272,20 @@ async function handleMessage(msg) {
     }
 
     case 'VIDEO_BATCH': {
+      // v2.7: works without login (VPH badges = ambient value at second 1). Token is optional.
       const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
       let res, data;
       try {
         ({ res, data } = await apiFetch(`${API_BASE}/api/extension/video-batch`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({ videoIds: msg.videoIds }),
         }));
       } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
+      if (res.status === 429) throw new Error('rate_limited');
       if (!res.ok) throw new Error(data.error || 'Batch error');
       return data;
     }

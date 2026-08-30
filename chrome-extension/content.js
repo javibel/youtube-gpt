@@ -82,7 +82,7 @@ function fmtNum(n) {
 // siguiente navegación real (recarga o clic en un enlace), que es lo que
 // reportó Javier como "pulsé y no reapareció".
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type === 'YTV_RECHECK_IDEAS') injectDailyIdeasPanel();
+  if (msg?.type === 'YTV_RECHECK_IDEAS') { mountShell(); openShell('ideas'); }
 });
 
 function sendMsg(msg) {
@@ -160,16 +160,315 @@ function getSearchQuery() {
 }
 
 // ============================================================
-// Panel factory
+// Unified panel shell (v2.7)
+// ------------------------------------------------------------
+// One persistent launcher + tabbed panel, mounted once on document.body and
+// present on EVERY youtube.com / studio.youtube.com page. Replaces the old
+// per-surface panels (injectVideoPanel / injectSearchPanel / injectChannelPanel /
+// injectChannelStats / injectDailyIdeasPanel / injectLoggedOutPanel), each of
+// which had its own header and mount point and made the extension feel scattered.
+// The "Esta página" tab is refreshed on SPA navigation; "Tu canal" and "Ideas"
+// are the same everywhere. Studio's inline SEO panel stays where it is (next to
+// the title field, by design).
 // ============================================================
 
-function createPanel(id) {
-  const existing = document.getElementById(id);
-  if (existing) existing.remove();
-  const panel = document.createElement('div');
-  panel.id = id;
-  panel.className = 'ytv-panel';
-  return panel;
+const SHELL_TABS = [
+  { id: 'page', es: 'Esta página', en: 'This page' },
+  { id: 'channel', es: 'Tu canal', en: 'Your channel' },
+  { id: 'ideas', es: 'Ideas', en: 'Ideas' },
+];
+
+const shellState = { open: false, tab: 'page', mounted: false };
+const shellRendered = { page: null, channel: null, ideas: null };
+
+function shellEls() {
+  const root = document.getElementById('ytv-shell');
+  if (!root) return null;
+  return {
+    root,
+    body: root.querySelector('#ytv-shell-body'),
+    foot: root.querySelector('#ytv-shell-foot'),
+    tabs: root.querySelector('#ytv-shell-tabs'),
+  };
+}
+
+function mountShell() {
+  if (document.getElementById('ytv-shell')) return;
+  if (!document.body) return;
+  const root = document.createElement('div');
+  root.id = 'ytv-shell';
+  root.className = 'ytv-shell ytv-shell-collapsed';
+  root.innerHTML = `
+    <button class="ytv-shell-launcher" id="ytv-shell-launcher" title="YTubViral" aria-label="YTubViral">
+      <span class="ytv-shell-launcher-txt">YTubViral</span>
+    </button>
+    <div class="ytv-shell-panel" role="dialog" aria-label="YTubViral">
+      <div class="ytv-shell-head">
+        <span class="ytv-shell-logo">YTubViral</span>
+        <button class="ytv-shell-btn" id="ytv-shell-close" aria-label="${t('Cerrar', 'Close')}">✕</button>
+      </div>
+      <div class="ytv-shell-tabs" id="ytv-shell-tabs"></div>
+      <div class="ytv-shell-body" id="ytv-shell-body"></div>
+      <div class="ytv-shell-foot" id="ytv-shell-foot"></div>
+    </div>`;
+  document.body.appendChild(root);
+
+  const tabsEl = root.querySelector('#ytv-shell-tabs');
+  SHELL_TABS.forEach((tb) => {
+    const b = document.createElement('button');
+    b.className = 'ytv-shell-tab';
+    b.dataset.tab = tb.id;
+    b.textContent = t(tb.es, tb.en);
+    b.addEventListener('click', () => setShellTab(tb.id));
+    tabsEl.appendChild(b);
+  });
+  root.querySelector('#ytv-shell-launcher').addEventListener('click', toggleShell);
+  root.querySelector('#ytv-shell-close').addEventListener('click', closeShell);
+
+  shellState.mounted = true;
+
+  chrome.storage.local.get(['ytv_shell_open', 'ytv_shell_tab'], (s) => {
+    if (chrome.runtime.lastError || shellState.open) return; // already opened (e.g. by a message) — don't clobber
+    shellState.tab = SHELL_TABS.some((x) => x.id === s.ytv_shell_tab) ? s.ytv_shell_tab : 'page';
+    highlightShellTab();
+    if (s.ytv_shell_open) openShell();
+  });
+}
+
+function toggleShell() { shellState.open ? closeShell() : openShell(); }
+
+function openShell(tab) {
+  const els = shellEls(); if (!els) return;
+  shellState.open = true;
+  els.root.classList.remove('ytv-shell-collapsed');
+  chrome.storage.local.set({ ytv_shell_open: true });
+  if (tab && SHELL_TABS.some((x) => x.id === tab)) shellState.tab = tab;
+  highlightShellTab();
+  renderShellTab(true);
+  refreshShellFoot();
+}
+
+function closeShell() {
+  const els = shellEls(); if (!els) return;
+  shellState.open = false;
+  els.root.classList.add('ytv-shell-collapsed');
+  chrome.storage.local.set({ ytv_shell_open: false });
+}
+
+function setShellTab(id) {
+  shellState.tab = id;
+  chrome.storage.local.set({ ytv_shell_tab: id });
+  highlightShellTab();
+  renderShellTab(true);
+}
+
+function highlightShellTab() {
+  const els = shellEls(); if (!els) return;
+  els.tabs.querySelectorAll('.ytv-shell-tab').forEach((b) =>
+    b.classList.toggle('ytv-shell-tab-active', b.dataset.tab === shellState.tab));
+}
+
+// Called from onPageChange on SPA navigation.
+function refreshShell() {
+  if (!shellState.mounted) return;
+  shellRendered.page = null; // page-tab content is page-specific
+  if (shellState.open) { renderShellTab(false); refreshShellFoot(); }
+}
+
+async function renderShellTab(force) {
+  const els = shellEls(); if (!els || !shellState.open) return;
+  if (shellState.tab === 'page') return renderShellPageTab(els.body, force);
+  if (shellState.tab === 'channel') return renderShellChannelTab(els.body, force);
+  if (shellState.tab === 'ideas') return renderShellIdeasTab(els.body, force);
+}
+
+function shellLoggedOutCta(reasonEs, reasonEn) {
+  return `<div class="ytv-shell-cta">
+    <p>${reasonEs ? t(reasonEs, reasonEn) : t('Crea una cuenta gratis para desbloquear la IA, tu canal y el histórico.', 'Create a free account to unlock AI, your channel and history.')}</p>
+    <a href="https://ytubviral.com/signup?utm_source=extension&utm_medium=shell" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Crear cuenta gratis →', 'Create free account →')}</a>
+  </div>`;
+}
+
+async function refreshShellFoot() {
+  const els = shellEls(); if (!els) return;
+  const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
+  if (user) { els.foot.innerHTML = ''; els.foot.style.display = 'none'; return; }
+  els.foot.style.display = '';
+  els.foot.innerHTML = `<a href="https://ytubviral.com/signup?utm_source=extension&utm_medium=shellfoot" target="_blank">${t('Crear cuenta gratis — IA + tu canal + histórico', 'Create free account — AI + your channel + history')} →</a>`;
+}
+
+// ── "Esta página" tab ─────────────────────────────────────────────
+async function renderShellPageTab(body, force) {
+  const key = location.hostname + location.pathname + location.search;
+  if (!force && shellRendered.page === key) return;
+  shellRendered.page = key;
+
+  if (location.hostname === 'studio.youtube.com') {
+    body.innerHTML = `<div class="ytv-shell-note">${t('El análisis SEO en vivo aparece junto al título del vídeo mientras lo editas.', 'Live SEO analysis appears next to the video title while you edit it.')}</div>`;
+    return;
+  }
+
+  const type = getPageType();
+  if (type === 'video' || type === 'shorts') return renderShellScorecard(body);
+  if (type === 'search') {
+    const q = getSearchQuery();
+    if (!q) { body.innerHTML = `<div class="ytv-shell-note">${t('Escribe una búsqueda para ver el análisis de la keyword.', 'Type a search to see keyword analysis.')}</div>`; return; }
+    body.innerHTML = `<div class="ytv-section-label">${escapeHtml(q)}</div><div id="ytv-shell-kw"></div>`;
+    return runKeywords(body.querySelector('#ytv-shell-kw'), q);
+  }
+  if (type === 'channel') {
+    body.innerHTML = `<button class="ytv-btn ytv-btn-red ytv-btn-full" id="ytv-shell-analyze-ch">📊 ${t('Analizar este canal', 'Analyze this channel')}</button><div id="ytv-shell-ch"></div>`;
+    body.querySelector('#ytv-shell-analyze-ch').addEventListener('click', () => {
+      runCompetitor(body.querySelector('#ytv-shell-ch'), window.location.href);
+    });
+    return;
+  }
+  body.innerHTML = `<div class="ytv-shell-note">${t('Abre un vídeo, una búsqueda o un canal para ver el análisis aquí. Mientras, echa un vistazo a la pestaña Ideas.', 'Open a video, a search or a channel to see analysis here. Meanwhile, check the Ideas tab.')}</div>`;
+}
+
+async function renderShellScorecard(body) {
+  const isShorts = getPageType() === 'shorts';
+  const videoId = isShorts ? getShortsVideoId() : getVideoId();
+  if (!videoId) { body.innerHTML = `<div class="ytv-shell-note">${t('No se pudo leer el vídeo.', "Couldn't read this video.")}</div>`; return; }
+
+  body.innerHTML = renderLoading(t('Analizando vídeo...', 'Analyzing video...'));
+  let d;
+  try {
+    d = await sendMsg({ type: 'SCORECARD', videoId });
+  } catch (e) {
+    if (e.message === 'rate_limited') { body.innerHTML = renderError('rate_limited'); return; }
+    const { title } = getVideoInfo();
+    body.innerHTML = title
+      ? `<div style="padding:2px">${renderLoggedOutScore(title)}</div>` + shellLoggedOutCta(
+          'Inicia sesión para el SEO Score completo (0-100): keywords, tags, miniatura, retención y más.',
+          'Sign in for the full SEO Score (0-100): keywords, tags, thumbnail, retention and more.')
+      : renderError(e.message);
+    return;
+  }
+
+  const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
+  body.innerHTML = `
+    <div class="ytv-scorecard ytv-shell-scorecard">
+      <div class="ytv-sc-pill ytv-sc-pill-static"><div class="ytv-sc-pill-logo">YTV</div>${renderScorecard(d)}</div>
+      <div class="ytv-sc-detail" style="display:block">${renderScorecardExpanded(d)}</div>
+    </div>
+    ${user ? '' : shellLoggedOutCta()}
+  `;
+  wireShellScorecard(body, d, videoId, !!user);
+  if (user) maybeShowReviewPrompt(body);
+}
+
+// Extracted from the old injectVideoPanel pill-click handler — wires the expanded scorecard.
+function wireShellScorecard(root, scorecardData, videoId, loggedIn) {
+  const detail = root.querySelector('.ytv-sc-detail');
+  if (!detail) return;
+
+  detail.querySelectorAll('.ytv-tag[data-kw]').forEach((tag) => {
+    tag.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(tag.dataset.kw)}`, '_blank');
+    });
+  });
+
+  const copyTagsBtn = detail.querySelector('.ytv-copy-tags-btn');
+  if (copyTagsBtn && scorecardData?.tags?.length) {
+    copyTagsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(scorecardData.tags.join(', ')).then(() => {
+        copyTagsBtn.textContent = '✓ ' + t('Copiado', 'Copied');
+        setTimeout(() => { copyTagsBtn.innerHTML = `📋 ${t('Copiar todo', 'Copy all')}`; }, 2000);
+      });
+    });
+  }
+
+  const bestTimeArea = detail.querySelector('#ytv-sc-besttime-area');
+  if (bestTimeArea) {
+    sendMsg({ type: 'BEST_TIME' })
+      .then((res) => { bestTimeArea.innerHTML = renderBestTime(res?.data || null); })
+      .catch(() => { bestTimeArea.innerHTML = renderBestTime(null); });
+  }
+
+  const actionResults = detail.querySelector('#ytv-sc-action-results');
+  const btnComp = detail.querySelector('#ytv-sc-btn-competitor');
+  const btnTitles = detail.querySelector('#ytv-sc-btn-titles');
+  if (btnComp) {
+    btnComp.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const { channelUrl } = getVideoInfo();
+      await runCompetitor(actionResults, channelUrl || window.location.href);
+    });
+  }
+  if (btnTitles) {
+    btnTitles.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const { title } = getVideoInfo();
+      await runGenerate(actionResults, title);
+    });
+  }
+
+  const btnComments = detail.querySelector('#ytv-sc-btn-comments');
+  const commentsArea = detail.querySelector('#ytv-sc-comments-area');
+  if (btnComments && commentsArea) {
+    btnComments.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      btnComments.style.display = 'none';
+      await loadComments(commentsArea, videoId);
+    });
+  }
+}
+
+// ── "Tu canal" tab ───────────────────────────────────────────────
+async function renderShellChannelTab(body) {
+  body.innerHTML = renderLoading(t('Cargando stats...', 'Loading stats...'));
+  let data;
+  try {
+    data = await sendMsg({ type: 'CHANNEL_STATS' });
+  } catch (e) {
+    if (e.message === 'not_logged_in') { body.innerHTML = shellLoggedOutCta(); return; }
+    if (e.message === 'youtube_not_connected') {
+      body.innerHTML = `<div class="ytv-shell-cta">
+        <p>${t('Conecta tu canal de YouTube para ver aquí tus suscriptores, vistas y progreso de monetización.', 'Connect your YouTube channel to see your subscribers, views and monetization progress here.')}</p>
+        <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=shell" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Conectar canal →', 'Connect channel →')}</a>
+      </div>`;
+      return;
+    }
+    body.innerHTML = renderError(e.message);
+    return;
+  }
+  shellRendered.channel = 'done';
+  body.innerHTML = renderChannelStatsWidget(data);
+  sendMsg({ type: 'DAILY_IDEAS' }).then((ideaData) => {
+    if (ideaData?.ideas?.length) body.insertAdjacentHTML('beforeend', renderDailyIdeasMini(ideaData.ideas));
+  }).catch(() => {});
+}
+
+// ── "Ideas" tab ──────────────────────────────────────────────────
+async function renderShellIdeasTab(body, force) {
+  body.innerHTML = renderLoading(t('Cargando ideas...', 'Loading ideas...'));
+  let data;
+  try {
+    data = await sendMsg({ type: 'DAILY_IDEAS' });
+  } catch {
+    data = null;
+  }
+  if (!data || !data.ideas || !data.ideas.length) {
+    body.innerHTML = `<div class="ytv-shell-cta">
+      <p>${t('Conecta tu canal en YTubViral y cada mañana tendrás aquí 5 ideas de vídeo personalizadas.', 'Connect your channel on YTubViral and every morning you\'ll get 5 personalized video ideas here.')}</p>
+      <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=shellideas" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Conectar canal →', 'Connect channel →')}</a>
+    </div>`;
+    return;
+  }
+  const ideas = data.ideas.slice(0, 5);
+  body.innerHTML = `<div class="ytv-ideas-body" style="max-height:none">${ideas.map((idea) => {
+    const title = t(idea.title_es, idea.title_en) || '';
+    const desc = t(idea.idea_es, idea.idea_en) || '';
+    const topic = encodeURIComponent(title);
+    return `<div class="ytv-idea-item">
+      <p class="ytv-idea-title">${escapeHtml(title)}</p>
+      <p class="ytv-idea-desc">${escapeHtml(desc)}</p>
+      <a href="https://ytubviral.com/generate?topic=${topic}&utm_source=extension&utm_medium=ideas" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 // Genuine review collection (G2 ASO lever #1): after a user has loaded the scorecard a few times
@@ -663,298 +962,6 @@ async function loadComments(container, videoId) {
   }
 }
 
-// ============================================================
-// Page panels
-// ============================================================
-
-async function injectVideoPanel() {
-  try {
-    const videoId = getVideoId();
-    if (!videoId) return;
-
-    // Idempotencia para los reintentos de navegación (ver dispatchWithRetry): si
-    // el scorecard de ESTE vídeo ya está montado, no re-inyectar (evita re-fetch).
-    // Si YouTube lo borró al re-renderizar el sidebar, getElementById da null y se
-    // re-inyecta. Mismo patrón dataset.videoId que injectShortsPanel.
-    const existingPanel = document.getElementById('ytv-video-panel');
-    if (existingPanel && existingPanel.dataset.videoId === videoId) return;
-
-    const container = await waitForEl(SELECTORS.yt.videoSecondary, 8000);
-
-    // ── Scorecard pill (compact, auto-loads) ──────────────────
-    const panel = createPanel('ytv-video-panel');
-    panel.dataset.videoId = videoId;
-    panel.className = 'ytv-scorecard';
-    panel.innerHTML = `
-      <div class="ytv-sc-pill" id="ytv-sc-pill">
-        <div class="ytv-sc-pill-logo">YTV</div>
-        <div class="ytv-sc-pill-loading"><span class="ytv-spinner-sm"></span></div>
-      </div>
-      <div class="ytv-sc-detail" id="ytv-sc-detail" style="display:none"></div>
-    `;
-
-    const parent = container.closest('#secondary-inner') || container.closest('#secondary') || container.parentElement;
-    parent.insertBefore(panel, parent.firstChild);
-
-    const pill = panel.querySelector('#ytv-sc-pill');
-    const detail = panel.querySelector('#ytv-sc-detail');
-    let scorecardData = null;
-    let expanded = false;
-
-    // Auto-load scorecard data
-    try {
-      scorecardData = await sendMsg({ type: 'SCORECARD', videoId });
-      pill.innerHTML = `<div class="ytv-sc-pill-logo">YTV</div>` + renderScorecard(scorecardData);
-      maybeShowReviewPrompt(panel); // ask engaged users for a genuine CWS review (G2 ASO)
-    } catch (e) {
-      pill.innerHTML = `<div class="ytv-sc-pill-logo">YTV</div><div class="ytv-sc-pill-err">${escapeHtml(e.message === 'not_logged_in' ? t('Inicia sesión', 'Sign in') : e.message)}</div>`;
-      return;
-    }
-
-    // Click to expand/collapse
-    pill.addEventListener('click', () => {
-      expanded = !expanded;
-      if (expanded && scorecardData) {
-        detail.innerHTML = renderScorecardExpanded(scorecardData);
-        detail.style.display = 'block';
-        pill.classList.add('ytv-sc-pill-active');
-
-        // Wire up tag clicks
-        detail.querySelectorAll('.ytv-tag[data-kw]').forEach(tag => {
-          tag.addEventListener('click', (e) => {
-            e.stopPropagation();
-            window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(tag.dataset.kw)}`, '_blank');
-          });
-        });
-
-        // Copy All tags
-        const copyTagsBtn = detail.querySelector('.ytv-copy-tags-btn');
-        if (copyTagsBtn && scorecardData?.tags?.length) {
-          copyTagsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            navigator.clipboard.writeText(scorecardData.tags.join(', ')).then(() => {
-              copyTagsBtn.textContent = '✓ ' + t('Copiado', 'Copied');
-              setTimeout(() => { copyTagsBtn.innerHTML = `📋 ${t('Copiar todo', 'Copy all')}`; }, 2000);
-            });
-          });
-        }
-
-        // Load Best Time to Post
-        const bestTimeArea = detail.querySelector('#ytv-sc-besttime-area');
-        if (bestTimeArea) {
-          sendMsg({ type: 'BEST_TIME' })
-            .then(res => { bestTimeArea.innerHTML = renderBestTime(res?.data || null); })
-            .catch(() => { bestTimeArea.innerHTML = renderBestTime(null); });
-        }
-
-        // Wire up action buttons
-        const actionResults = detail.querySelector('#ytv-sc-action-results');
-        const btnComp = detail.querySelector('#ytv-sc-btn-competitor');
-        const btnTitles = detail.querySelector('#ytv-sc-btn-titles');
-
-        if (btnComp) {
-          btnComp.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { channelUrl } = getVideoInfo();
-            await runCompetitor(actionResults, channelUrl || window.location.href);
-          });
-        }
-        if (btnTitles) {
-          btnTitles.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { title } = getVideoInfo();
-            await runGenerate(actionResults, title);
-          });
-        }
-
-        // Comments button
-        const btnComments = detail.querySelector('#ytv-sc-btn-comments');
-        const commentsArea = detail.querySelector('#ytv-sc-comments-area');
-        if (btnComments && commentsArea) {
-          btnComments.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            btnComments.style.display = 'none';
-            await loadComments(commentsArea, videoId);
-          });
-        }
-      } else {
-        detail.style.display = 'none';
-        pill.classList.remove('ytv-sc-pill-active');
-      }
-    });
-  } catch (e) {
-    console.log('[YTubViral] Scorecard:', e.message);
-  }
-}
-
-// ── Shorts scorecard (v2.5.0 Tier 1 #1) ────────────────────────────
-// Shorts are the format our smallest-creator ICP uses most. We reuse the exact same SCORECARD
-// message/data and the same expanded-detail renderer as the watch page.
-//
-// Self-review fix (2026-07-04): the first version anchored the panel inside the reel's
-// #actions rail — a ~60px-wide vertical column where a 220px panel would break the feed
-// layout, and it depended on the least-stable selectors in the file. The panel is now
-// mounted on document.body with fixed positioning (right edge): the ONLY thing it needs
-// from the page is the videoId in the URL, so no Shorts-DOM selector can break it.
-
-async function injectShortsPanel() {
-  try {
-    const videoId = getShortsVideoId();
-    if (!videoId) return;
-
-    const prev = document.getElementById('ytv-shorts-panel');
-    if (prev) {
-      // Already mounted — if it's the same short (no swipe), keep it as is.
-      if (prev.dataset.videoId === videoId) return;
-      prev.remove();
-    }
-
-    const panel = document.createElement('div');
-    panel.id = 'ytv-shorts-panel';
-    panel.className = 'ytv-scorecard ytv-shorts-panel';
-    panel.dataset.videoId = videoId;
-    panel.innerHTML = `
-      <div class="ytv-sc-pill" id="ytv-shorts-pill" style="cursor:pointer">
-        <div class="ytv-sc-pill-logo">YTV</div>
-        <div class="ytv-sc-pill-loading"><span class="ytv-spinner-sm"></span></div>
-      </div>
-      <div class="ytv-sc-detail" id="ytv-shorts-detail" style="display:none"></div>
-    `;
-    document.body.appendChild(panel);
-
-    const pill = panel.querySelector('#ytv-shorts-pill');
-    const detail = panel.querySelector('#ytv-shorts-detail');
-    let data = null;
-    let expanded = false;
-
-    try {
-      data = await sendMsg({ type: 'SCORECARD', videoId });
-      // The user may have swiped to another short while the request was in flight — don't
-      // paint stale data over the new reel's panel lifecycle.
-      if (panel.dataset.videoId !== getShortsVideoId()) { panel.remove(); return; }
-      pill.innerHTML = `<div class="ytv-sc-pill-logo">YTV</div>` + renderScorecard(data);
-    } catch (e) {
-      pill.innerHTML = `<div class="ytv-sc-pill-logo">YTV</div><div class="ytv-sc-pill-err">${escapeHtml(e.message === 'not_logged_in' ? t('Inicia sesión', 'Sign in') : e.message)}</div>`;
-      return;
-    }
-
-    pill.addEventListener('click', () => {
-      expanded = !expanded;
-      if (expanded && data) {
-        detail.innerHTML = renderScorecardExpanded(data);
-        detail.style.display = 'block';
-        // Best Time + tag clicks reuse the same wiring as the watch-page panel
-        const bestTimeArea = detail.querySelector('#ytv-sc-besttime-area');
-        if (bestTimeArea) {
-          sendMsg({ type: 'BEST_TIME' })
-            .then(res => { bestTimeArea.innerHTML = renderBestTime(res?.data || null); })
-            .catch(() => { bestTimeArea.innerHTML = renderBestTime(null); });
-        }
-        detail.querySelectorAll('.ytv-tag[data-kw]').forEach(tag => {
-          tag.addEventListener('click', (e) => {
-            e.stopPropagation();
-            window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(tag.dataset.kw)}`, '_blank');
-          });
-        });
-
-        // Self-review fix (2026-07-04): the expanded view renders the same action buttons as
-        // the watch page, but the first version never wired them here — dead buttons.
-        // Comments and title generation work fine with just the videoId / document title.
-        // "Analyze channel" is HIDDEN on Shorts: there's no reliable channel-link selector in
-        // the Shorts DOM, and sending a /shorts/ URL to the competitor endpoint would fail.
-        const actionResults = detail.querySelector('#ytv-sc-action-results');
-        const btnComp = detail.querySelector('#ytv-sc-btn-competitor');
-        const btnTitles = detail.querySelector('#ytv-sc-btn-titles');
-        const btnComments = detail.querySelector('#ytv-sc-btn-comments');
-        const commentsArea = detail.querySelector('#ytv-sc-comments-area');
-        if (btnComp) btnComp.style.display = 'none';
-        if (btnTitles) {
-          btnTitles.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { title } = getVideoInfo(); // falls back to document.title on Shorts
-            await runGenerate(actionResults, title);
-          });
-        }
-        if (btnComments && commentsArea) {
-          btnComments.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            btnComments.style.display = 'none';
-            await loadComments(commentsArea, videoId);
-          });
-        }
-      } else {
-        detail.style.display = 'none';
-      }
-    });
-  } catch (e) {
-    console.log('[YTubViral] Shorts panel:', e.message);
-  }
-}
-
-async function injectSearchPanel() {
-  try {
-    const query = getSearchQuery();
-    if (!query) return;
-
-    // Idempotencia por query (los reintentos de una misma búsqueda no re-piden;
-    // una búsqueda distinta sí re-inyecta porque la query cambia).
-    const existingPanel = document.getElementById('ytv-search-panel');
-    if (existingPanel && existingPanel.dataset.query === query) return;
-
-    const container = await waitForEl(SELECTORS.yt.searchResults, 5000);
-    const panel = createPanel('ytv-search-panel');
-    panel.dataset.query = query;
-    panel.innerHTML = `
-      <div class="ytv-header">
-        <span class="ytv-logo">YTubViral</span>
-        <span class="ytv-badge">Keywords</span>
-        <span class="ytv-query-tag">${escapeHtml(query)}</span>
-      </div>
-      <div class="ytv-body">
-        <div id="ytv-search-results">${renderLoading(t('Analizando keyword...', 'Analyzing keyword...'))}</div>
-      </div>
-    `;
-
-    container.insertBefore(panel, container.firstChild);
-    await runKeywords(panel.querySelector('#ytv-search-results'), query);
-  } catch (e) {
-    console.log('[YTubViral] Search panel:', e.message);
-  }
-}
-
-async function injectChannelPanel() {
-  try {
-    // Idempotencia por ruta de canal (los reintentos de un mismo canal no
-    // re-inyectan; otro canal sí, porque cambia el pathname).
-    const existingPanel = document.getElementById('ytv-channel-panel');
-    if (existingPanel && existingPanel.dataset.path === location.pathname) return;
-
-    const container = await waitForEl(SELECTORS.yt.channelHeader, 5000);
-    const panel = createPanel('ytv-channel-panel');
-    panel.dataset.path = location.pathname;
-    panel.innerHTML = `
-      <div class="ytv-header">
-        <span class="ytv-logo">YTubViral</span>
-        <span class="ytv-badge">${t('Análisis', 'Analysis')}</span>
-      </div>
-      <div class="ytv-body">
-        <button class="ytv-btn ytv-btn-red ytv-btn-full" id="ytv-btn-analyze-ch">
-          📊 ${t('Analizar este canal', 'Analyze this channel')}
-        </button>
-        <div id="ytv-channel-results"></div>
-      </div>
-    `;
-
-    const parent = container.parentElement;
-    parent.insertBefore(panel, container.nextSibling);
-
-    panel.querySelector('#ytv-btn-analyze-ch').addEventListener('click', async () => {
-      await runCompetitor(panel.querySelector('#ytv-channel-results'), window.location.href);
-    });
-  } catch (e) {
-    console.log('[YTubViral] Channel panel:', e.message);
-  }
-}
 
 // ============================================================
 // E2: Channel Stats widget
@@ -1058,93 +1065,6 @@ function renderDailyIdeasMini(ideas) {
   `;
 }
 
-async function injectChannelStats() {
-  try {
-    // Idempotencia para los reintentos: son las stats del PROPIO canal, iguales
-    // en cualquier página; si ya está montado no re-inyectar, si YouTube lo borró
-    // se vuelve a montar (getElementById da null).
-    if (document.getElementById('ytv-channel-stats')) return;
-
-    // Only show on YouTube Studio or on regular YouTube (below scorecard)
-    const isStudio = location.hostname === 'studio.youtube.com';
-    let container;
-
-    if (isStudio) {
-      container = await waitForEl(SELECTORS.studio.navPanel, 5000);
-    } else {
-      // On regular YouTube, show in sidebar below scorecard
-      container = await waitForEl(SELECTORS.yt.videoSecondary, 5000);
-    }
-
-    const panel = createPanel('ytv-channel-stats');
-    panel.className = 'ytv-panel';
-    panel.innerHTML = `
-      <div class="ytv-header">
-        <span class="ytv-logo">YTubViral</span>
-        <span class="ytv-badge">${t('Tu Canal', 'Your Channel')}</span>
-      </div>
-      <div class="ytv-body">
-        ${renderLoading(t('Cargando stats...', 'Loading stats...'))}
-      </div>
-    `;
-
-    if (isStudio) {
-      container.appendChild(panel);
-    } else {
-      // Insert after scorecard if it exists, otherwise at top
-      const scorecard = document.getElementById('ytv-video-panel');
-      if (scorecard && scorecard.nextSibling) {
-        scorecard.parentElement.insertBefore(panel, scorecard.nextSibling);
-      } else {
-        const parent = container.closest('#secondary-inner') || container.closest('#secondary') || container;
-        parent.insertBefore(panel, parent.firstChild);
-      }
-    }
-
-    const bodyEl = panel.querySelector('.ytv-body');
-
-    try {
-      const data = await sendMsg({ type: 'CHANNEL_STATS' });
-      bodyEl.innerHTML = renderChannelStatsWidget(data);
-
-      // Ideas de hoy dentro de "Tu Canal" (feedback de Javier, 2026-07-12):
-      // no depende de estar en la home ni del popup — aparece en cualquier
-      // vídeo y en Studio, donde el widget de canal ya se muestra. Fire and
-      // forget: si no hay ideas hoy, simplemente no añade nada.
-      sendMsg({ type: 'DAILY_IDEAS' }).then((ideaData) => {
-        if (!ideaData?.ideas?.length) return;
-        bodyEl.insertAdjacentHTML('beforeend', renderDailyIdeasMini(ideaData.ideas));
-      }).catch(() => {});
-    } catch (e) {
-      if (e.message === 'youtube_not_connected') {
-        // v2.5.0 (A2 fix): this used to render on EVERY video for any logged-in user who
-        // hasn't connected their YouTube channel — a permanent error banner for exactly the
-        // segment we most need to retain. Now it shows once, is dismissible, and stays quiet
-        // afterwards (same pattern as maybeShowReviewPrompt).
-        const dismissed = await new Promise(resolve => {
-          chrome.storage.local.get('ytv_connect_hint_dismissed', d => resolve(!!d.ytv_connect_hint_dismissed));
-        });
-        if (dismissed) { panel.remove(); return; }
-        bodyEl.innerHTML = `
-          <div class="ytv-error" style="display:flex;align-items:center;gap:8px">
-            <span style="flex:1">${t('Conecta tu canal en ytubviral.com/dashboard para ver tus stats aquí.', 'Connect your channel at ytubviral.com/dashboard to see your stats here.')}</span>
-            <button class="ytv-connect-hint-x" title="${t('No volver a mostrar', "Don't show again")}" style="background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:13px">✕</button>
-          </div>`;
-        bodyEl.querySelector('.ytv-connect-hint-x').addEventListener('click', () => {
-          chrome.storage.local.set({ ytv_connect_hint_dismissed: true });
-          panel.remove();
-        });
-      } else if (e.message === 'not_logged_in') {
-        // Don't show widget if not logged in
-        panel.remove();
-      } else {
-        bodyEl.innerHTML = renderError(e.message);
-      }
-    }
-  } catch (e) {
-    console.log('[YTubViral] Channel stats:', e.message);
-  }
-}
 
 // ============================================================
 // YouTube Studio: SEO scores + Optimize buttons (v1.4.0)
@@ -1891,130 +1811,6 @@ function renderLoggedOutScore(title) {
   `;
 }
 
-// ============================================================
-// Panel "Qué grabar hoy" en la homepage (v2.6.0, Tier 2 #2)
-// ============================================================
-
-// Por defecto NO se muestra nada cuando el usuario no tiene ideas (Free o
-// sin canal) — spec: "por defecto nada". Poner a true activa la línea de
-// upsell semanal, dejarlo en false es la opción segura para el primer release.
-const SHOW_IDEAS_UPSELL = false;
-
-function storageGet(keys) {
-  return new Promise(resolve => chrome.storage.local.get(keys, resolve));
-}
-function storageSet(obj) {
-  return new Promise(resolve => chrome.storage.local.set(obj, resolve));
-}
-
-async function injectDailyIdeasPanel() {
-  // v1 solo la home raíz, no /feed/* (Suscripciones, etc.) — a diferencia de
-  // injectVelocityBadges() que sí corre en todo 'home', esto es más específico.
-  if (window.location.pathname !== '/') return;
-  if (document.getElementById('ytv-daily-ideas-panel')) return;
-
-  const today = new Date().toISOString().slice(0, 10);
-  const dismissKey = `ytv_ideas_dismissed_${today}`;
-  const store = await storageGet([dismissKey, 'ytv_ideas_collapsed', 'ytv_ideas_upsell_last']);
-  if (store[dismissKey]) return;
-
-  let data;
-  try {
-    data = await sendMsg({ type: 'DAILY_IDEAS' });
-  } catch {
-    return; // panel discreto: fallar en silencio
-  }
-
-  if (!data || !data.ideas) {
-    if (!SHOW_IDEAS_UPSELL) return;
-    const lastShown = store.ytv_ideas_upsell_last;
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    if (lastShown && new Date(lastShown).getTime() > weekAgo) return; // máx. 1 vez/semana
-    const panel = createPanel('ytv-daily-ideas-panel');
-    panel.className = 'ytv-panel ytv-shorts-panel ytv-ideas-upsell-line';
-    panel.innerHTML = `
-      <span>${t('Los usuarios Pro ven aquí 5 ideas para su canal cada mañana.', 'Pro users see 5 ideas for their channel here every morning.')}</span>
-      <a href="https://ytubviral.com/pricing?utm_source=extension&utm_medium=ideas" target="_blank">${t('Ver planes →', 'See plans →')}</a>
-      <button class="ytv-ideas-dismiss" aria-label="${t('Cerrar', 'Dismiss')}">✕</button>
-    `;
-    document.body.appendChild(panel);
-    panel.querySelector('.ytv-ideas-dismiss').addEventListener('click', () => panel.remove());
-    await storageSet({ ytv_ideas_upsell_last: new Date().toISOString() });
-    return;
-  }
-
-  const ideas = Array.isArray(data.ideas) ? data.ideas.slice(0, 5) : [];
-  if (!ideas.length) return;
-
-  const collapsed = !!store.ytv_ideas_collapsed;
-  const panel = createPanel('ytv-daily-ideas-panel');
-  panel.className = `ytv-panel ytv-shorts-panel ytv-ideas-panel${collapsed ? ' ytv-ideas-collapsed' : ''}`;
-  panel.innerHTML = `
-    <div class="ytv-ideas-header">
-      <span>💡 ${t('Qué grabar hoy', 'What to film today')}</span>
-      <div class="ytv-ideas-header-actions">
-        <button class="ytv-ideas-toggle" aria-label="${t('Colapsar', 'Collapse')}">${collapsed ? '▸' : '▾'}</button>
-        <button class="ytv-ideas-dismiss" aria-label="${t('Cerrar', 'Dismiss')}">✕</button>
-      </div>
-    </div>
-    <div class="ytv-ideas-body">
-      ${ideas.map(idea => {
-        const title = t(idea.title_es, idea.title_en) || '';
-        const desc = t(idea.idea_es, idea.idea_en) || '';
-        const topic = encodeURIComponent(title);
-        return `<div class="ytv-idea-item">
-          <p class="ytv-idea-title">${escapeHtml(title)}</p>
-          <p class="ytv-idea-desc">${escapeHtml(desc)}</p>
-          <a href="https://ytubviral.com/generate?topic=${topic}&utm_source=extension&utm_medium=ideas" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
-        </div>`;
-      }).join('')}
-    </div>
-  `;
-  document.body.appendChild(panel);
-
-  panel.querySelector('.ytv-ideas-dismiss').addEventListener('click', async () => {
-    panel.remove();
-    await storageSet({ [dismissKey]: true });
-  });
-  panel.querySelector('.ytv-ideas-toggle').addEventListener('click', async () => {
-    const nowCollapsed = !panel.classList.contains('ytv-ideas-collapsed');
-    panel.classList.toggle('ytv-ideas-collapsed', nowCollapsed);
-    panel.querySelector('.ytv-ideas-toggle').textContent = nowCollapsed ? '▸' : '▾';
-    await storageSet({ ytv_ideas_collapsed: nowCollapsed });
-  });
-}
-
-async function injectLoggedOutPanel() {
-  if (location.hostname === 'studio.youtube.com') return;
-  if (getPageType() !== 'video' && getPageType() !== 'shorts') return; // only the highest-intent pages, to avoid clutter
-  try {
-    // Self-review fix (2026-07-04): on Shorts this used to anchor into the ~60px #actions
-    // rail WITHOUT the .ytv-shorts-panel class — a width:100% panel squeezed into a narrow
-    // column. Shorts now uses the same body-mounted fixed positioning as injectShortsPanel;
-    // /watch keeps its sidebar mount.
-    const isShorts = getPageType() === 'shorts';
-    const container = isShorts ? document.body : await waitForEl(SELECTORS.yt.videoSecondary, 8000);
-    const { title } = getVideoInfo();
-    const check = title ? renderLoggedOutScore(title) : '';
-    const panel = createPanel('ytv-video-panel');
-    panel.className = isShorts ? 'ytv-scorecard ytv-shorts-panel' : 'ytv-scorecard';
-    panel.innerHTML = `
-      <div class="ytv-sc-pill" style="flex-direction:column;align-items:stretch;gap:8px;cursor:default">
-        <div style="display:flex;align-items:center;gap:8px"><span class="ytv-sc-pill-logo">YTV</span><strong>${t('Análisis SEO', 'SEO check')}</strong></div>
-        ${check}
-        <div style="font-size:12px;opacity:.85;line-height:1.4">${t('Inicia sesión para el SEO Score completo (0-100): keywords, tags, miniatura, retención y más.', 'Sign in for the full SEO Score (0-100): keywords, tags, thumbnail, retention and more.')}</div>
-        <a class="ytv-cta-link" href="https://ytubviral.com/signup?utm_source=extension&utm_medium=loggedout" target="_blank">${t('Crear cuenta gratis →', 'Create free account →')}</a>
-        <div style="font-size:11px;opacity:.6;line-height:1.4">${t('¿Ya tienes cuenta? Abre ytubviral.com y te conectamos solo.', "Already have an account? Open ytubviral.com and we'll connect automatically.")}</div>
-      </div>
-    `;
-    if (isShorts) {
-      document.body.appendChild(panel);
-    } else {
-      const parent = container.closest('#secondary-inner') || container.closest('#secondary') || container.parentElement;
-      parent.insertBefore(panel, parent.firstChild);
-    }
-  } catch { /* container not found — skip */ }
-}
 
 // ============================================================
 // Navigation (YouTube SPA)
@@ -2024,65 +1820,36 @@ let lastUrl = location.href;
 let navTimer = null;
 
 async function onPageChange() {
-  // Los paneles fijos (montados en document.body con position:fixed) NO se
-  // limpian solos al navegar — YouTube es una SPA, el body persiste entre
-  // páginas. Sin esto, el panel de ideas (solo de la home raíz) y el scorecard
-  // de Shorts se quedaban flotando en páginas donde no pertenecen tras
-  // visitarlos una vez. Se limpian al entrar en cualquier página que no sea la
-  // suya; injectDailyIdeasPanel/injectShortsPanel los vuelven a montar si toca.
-  const path = window.location.pathname;
-  if (path !== '/') document.getElementById('ytv-daily-ideas-panel')?.remove();
-  if (!path.startsWith('/shorts/')) document.getElementById('ytv-shorts-panel')?.remove();
+  // v2.7: one persistent shell on document.body — mounted once, refreshed on nav.
+  // No per-page panels to clean up, and no early return for logged-out users
+  // (the shell + thumbnail badges give value at second 1, like vidIQ).
+  mountShell();
+  refreshShell();
 
-  const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
-  if (!user) {
-    // Logged-out: don't go invisible (the old behaviour killed adoption — vidIQ shows value at
-    // second 1). Show a client-side SEO teaser + connect CTA on video and Shorts pages.
-    injectLoggedOutPanel();
-    return;
-  }
-
-  // YouTube Studio
+  // YouTube Studio — the inline SEO panel stays next to the metadata editor.
   if (location.hostname === 'studio.youtube.com') {
-    injectChannelStats();
     watchStudioUpload(); // detect the upload dialog (opens without a URL change)
     if (isStudioVideoEdit()) {
       injectStudioEditor();
     } else if (isStudioVideoList()) {
-      // Small delay to let Studio render video rows
       setTimeout(() => injectStudioVideoList(), 1500);
     }
     return;
   }
 
+  // Regular YouTube — thumbnail VPH badges (now work logged-out).
   const type = getPageType();
-  if (type === 'video') {
-    injectVideoPanel();
-    setTimeout(() => injectChannelStats(), 1500);
-    injectVelocityBadges(); // badges on suggested videos sidebar
+  if (type === 'video' || type === 'search' || type === 'channel' || type === 'home') {
+    injectVelocityBadges();
   }
-  else if (type === 'shorts') { injectShortsPanel(); }
-  else if (type === 'search') { injectSearchPanel(); injectVelocityBadges(); }
-  else if (type === 'channel') { injectChannelPanel(); injectVelocityBadges(); }
-  else if (type === 'home') { injectVelocityBadges(); injectDailyIdeasPanel(); }
 }
 
-// El bug de "a veces hay que refrescar para que aparezca el panel" era esto:
-// un ÚNICO intento de inyección por navegación. YouTube (SPA) a veces no ha
-// terminado de montar el contenedor cuando corremos, o re-renderiza el sidebar
-// JUSTO DESPUÉS de insertar el panel y lo borra — y como no había reintento, el
-// panel quedaba ausente hasta un refresco manual. Ahora reintentamos, pero SOLO
-// mientras el panel principal de la página siga ausente (evita re-fetch cuando
-// el primer intento ya funcionó). Los injectores son idempotentes por objetivo
-// (dataset videoId/query/path), así que reintentar es seguro.
+// SPA nav race: Studio's metadata editor mounts a moment after navigation, so the
+// Studio SEO panel still needs the retry. The shell mounts synchronously on
+// document.body, so nothing to retry for regular YouTube pages.
 function expectedPanelId() {
-  if (location.hostname === 'studio.youtube.com') return 'ytv-channel-stats'; // el panel siempre presente en Studio
-  const path = location.pathname;
-  if (path === '/watch') return 'ytv-video-panel';
-  if (path.startsWith('/shorts/')) return 'ytv-shorts-panel';
-  if (path === '/results') return 'ytv-search-panel';
-  if (/^\/(@|channel\/|c\/)/.test(path)) return 'ytv-channel-panel';
-  return null; // home/feed: badges/ideas, sin un panel único que vigilar
+  if (location.hostname === 'studio.youtube.com' && isStudioVideoEdit()) return 'ytv-studio-scorecard';
+  return null;
 }
 
 function dispatchWithRetry(attempt = 0) {

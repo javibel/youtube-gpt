@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getExtensionUser } from '@/lib/extension-auth';
+import { rateLimitRequest } from '@/lib/rate-limit-db';
 import { prisma } from '@/lib/prisma';
 
 // ── SEO checks (lightweight, no Claude) ────────────────────────────────
@@ -64,10 +65,14 @@ function checkVideo(snippet: { title: string; description: string; tags?: string
 // ── POST ────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
-  // Open to all logged-in users (Free + Pro) — no Claude cost
+  // v2.7: open without login. This route only reads the public YouTube Data API plus a
+  // per-video velocity snapshot (not user data); the SEO checks are heuristic, no Claude cost.
+  // The only user-derived field is `isPro`, used client-side to show/hide Pro buttons.
+  // Anonymous callers are rate-limited by IP; authenticated callers pass through freely.
   const extUser = await getExtensionUser(request);
   if (!extUser) {
-    return NextResponse.json({ error: 'not_logged_in' }, { status: 401 });
+    const ok = await rateLimitRequest(request, 'ext-pub-scorecard', 60, 10);
+    if (!ok) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -199,6 +204,6 @@ export async function POST(request: Request) {
     checks,
     channelAvgViews,
     outlierMultiplier,
-    isPro: extUser.isPro,
+    isPro: extUser?.isPro ?? false,
   });
 }
