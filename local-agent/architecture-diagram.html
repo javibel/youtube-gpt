@@ -303,7 +303,7 @@
         <div class="card-header"><h3 id="day-detail-title">Detalle del dia</h3></div>
         <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.4rem">Por hora (UTC)</div>
         <div id="day-hours" style="display:flex;align-items:flex-end;gap:2px;height:70px;margin-bottom:1rem"></div>
-        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.4rem">Visitantes de ese dia</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.4rem">Visitantes de ese dia (horas en UTC)</div>
         <div id="day-sessions" style="font-size:0.82rem;color:var(--muted)"></div>
       </div>
     </div>
@@ -1601,7 +1601,9 @@ function renderDayDetail(d) {
   const ss = d.sessions || [];
   document.getElementById('day-sessions').innerHTML = ss.length
     ? ss.map(v => {
-        const hora = new Date(v.started).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+        // UTC, igual que la grafica de horas: mezclar UTC arriba y hora local abajo
+        // hacia que la misma visita apareciera a dos horas distintas.
+        const hora = new Date(v.started).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
         const quien = v.email ? v.email : 'anonimo ' + (v.id || '');
         const ruta = v.entry === v.exit ? v.entry : v.entry + ' -> ' + v.exit;
         const dur = v.minutes > 0 ? v.minutes + ' min' : '<1 min';
