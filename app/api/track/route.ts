@@ -92,7 +92,22 @@ export async function POST(req: NextRequest) {
     // reconstruir journeys de retención. Nunca bloquea el tracking anónimo.
     const session = await auth().catch(() => null);
     const userId = session?.user?.id || undefined;
-    const internal = isInternalRequest(req, userAgent, session?.user?.email);
+
+    // El email tiene que salir SI o SI para poder excluir las cuentas propias
+    // (peticion de Javier 30/08: "filtrar mis visitas de cualquiera de mis
+    // cuentas"). NextAuth normalmente lo trae en la sesion, pero no esta
+    // garantizado por el callback, y si faltara las visitas de Javier volverian
+    // a contarse como trafico real sin que nadie lo notara. Una consulta
+    // indexada mas, y solo para usuarios logueados.
+    let email = session?.user?.email ?? null;
+    if (userId && !email) {
+      email = await prisma.user
+        .findUnique({ where: { id: userId }, select: { email: true } })
+        .then(u => u?.email ?? null)
+        .catch(() => null);
+    }
+
+    const internal = isInternalRequest(req, userAgent, email);
 
     // Identidad anonima de navegador: cookie propia, sin datos personales. Es lo
     // que permite contar visitantes unicos (y no solo paginas vistas) y saber
