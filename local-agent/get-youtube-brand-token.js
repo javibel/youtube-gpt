@@ -23,7 +23,13 @@
  * se usa ahi. Redeploy para que la web lo recoja.
  */
 
-require('dotenv').config();
+const path = require('path');
+// Ruta explicita al .env de este directorio: dotenv por defecto busca en el
+// cwd desde el que se lanza node, no en la carpeta del script. Sin esto,
+// ejecutar `node local-agent/get-youtube-brand-token.js` desde fuera de
+// local-agent/ (p.ej. desde youtube-gpt/) no encontraba las variables aunque
+// existieran con valor en local-agent/.env.
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const http = require('http');
 const { URL } = require('url');
 const { exec } = require('child_process');
