@@ -158,6 +158,8 @@ node -e "require('dotenv').config();const {runManager}=require('./manager');runM
 | Persona Monitor | Detecta silencio en personas (Bluesky) | Cada hora 08-23h |
 | ~~Persona Runner (Twitter/FB/Reddit)~~ | DISABLED 2026-06-25 | — |
 | ~~Followup personas~~ | DISABLED 2026-06-25 (Twitter abandonado) | — |
+| ~~X Coach / Brand X Coach~~ | ABANDONADO 2026-08-31 (Twitter, cuenta quemada) | — |
+| Brand Bluesky Coach | Plan diario de Bluesky de marca (posts propios + respuestas a creadores que piden ayuda) → email a Javier | 08:30 diario |
 | Gmail | Procesa inbox | Cada 30 min 08-23h |
 | Outreach Discovery | Encuentra YouTubers | 6x/día |
 | Outreach Send | Emails a creadores | 6x/día |
@@ -184,7 +186,7 @@ node -e "require('dotenv').config();const {runManager}=require('./manager');runM
 | Ana Reyes | Bluesky (ana5000.bsky.social) | Community manager freelance, Madrid, 29 años |
 | Mayra Vidal | Bluesky (mayra02.bsky.social) | Copywriter YouTube, Sevilla, 31 años |
 
-**Canales (actualizado 2026-07-08):** TODAS las personas DESCONECTADAS en TODAS las redes (`BLUESKY_AUTOMATION_ENABLED=false`) — decisión Javier: no seguían el espíritu de autenticidad de la marca. Twitter/Facebook/Reddit ya estaban off desde 2026-06-25; Bluesky se apagó el 2026-07-08 (dispatcher, informe diario y warm-up drip comentados en `index.js`; persona-monitor también deshabilitado). Reddit ABANDONADO permanente (cuentas baneadas/shadowbanned). Solo quedan activos: **FB + Instagram de marca vía API** (gestionado desde Vercel, no desde local-agent) y **Twitter de marca** que opera Javier a mano (X Coach genera el plan diario). Las 4 cuentas de personas Bluesky quedan inactivas sin borrar.
+**Canales (actualizado 2026-07-08):** TODAS las personas DESCONECTADAS en TODAS las redes (`BLUESKY_AUTOMATION_ENABLED=false`) — decisión Javier: no seguían el espíritu de autenticidad de la marca. Twitter/Facebook/Reddit ya estaban off desde 2026-06-25; Bluesky se apagó el 2026-07-08 (dispatcher, informe diario y warm-up drip comentados en `index.js`; persona-monitor también deshabilitado). Reddit ABANDONADO permanente (cuentas baneadas/shadowbanned). **Twitter/X ABANDONADO 2026-08-31** (cuenta quemada — X Coach personal y Brand X Coach apagados; `brand-x-coach.js` → `brand-bluesky-coach.js`). Solo quedan activos: **FB + Instagram de marca vía API** (gestionado desde Vercel, no desde local-agent) y **Bluesky de marca** que opera Javier a mano (Brand Bluesky Coach genera el plan diario 08:30: posts propios + respuestas a creadores que piden ayuda). Las 4 cuentas de personas Bluesky quedan inactivas sin borrar.
 **Nota histórica:** antes del apagado, la fase era calentamiento con ~7-12 acciones/día entre las 4 personas; el engagement era sano pero convertía casi 0 clics al sitio (ver [[project_user_attribution_gap]]).
 
 ## Archivos de configuración clave
