@@ -22,9 +22,12 @@ export async function POST(request: Request) {
     if (!session?.user?.id && !extAuth) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
     }
-    if (extAuth && !extAuth.isPro) {
-      return Response.json({ error: 'pro_required' }, { status: 403 });
-    }
+    // NOTE: no blanket Pro gate for the extension here. It existed from 2026-04-26 (af9112c)
+    // and made EVERY extension generation Pro-only, which (a) contradicted the Chrome Web
+    // Store listing ("Free users get 10 AI generations per month across the extension and the
+    // web app combined") and (b) left the per-plan limit logic below unreachable — dead code
+    // for the very users it was written for. Free users now go through the same monthly quota
+    // and proOnly checks as the web, so cost stays bounded by generationsPerMonth.
 
     const { template, inputs, lang } = await request.json();
 
@@ -80,8 +83,15 @@ export async function POST(request: Request) {
       });
       if (usedThisMonth >= limit) {
         if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
+        // `code` is for the extension: it renders a different card for "free quota spent"
+        // (upgrade prompt) vs "Pro quota spent" (no upsell — they already pay).
         return Response.json(
-          { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
+          {
+            error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado',
+            code: isPro ? 'quota_pro' : 'quota_free',
+            limit,
+            limitReached: true,
+          },
           { status: 429 }
         );
       }
@@ -89,7 +99,7 @@ export async function POST(request: Request) {
       if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
         await triggerConversionEmail(userId, 'c3');
         return Response.json(
-          { error: 'Este template es exclusivo del plan Pro', limitReached: true },
+          { error: 'Este template es exclusivo del plan Pro', code: 'pro_required', limitReached: true },
           { status: 403 }
         );
       }
@@ -117,6 +127,25 @@ export async function POST(request: Request) {
           { error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' },
           { status: 429 }
         );
+      }
+
+      // Same anti multi-account cap as the web branch. It was never needed while the
+      // blanket Pro gate above blocked every free extension call; now that free users
+      // get their monthly quota here, the extension needs the same IP ceiling or it
+      // becomes the cheap way around it.
+      if (!isPro) {
+        const ip = getIp(request);
+        if (ip) {
+          const ipUsageThisMonth = await prisma.generation.count({
+            where: { ipAddress: ip, createdAt: { gte: startOfMonth } },
+          });
+          if (ipUsageThisMonth >= IP_FREE_LIMIT) {
+            return Response.json(
+              { error: 'Límite del plan gratuito alcanzado', code: 'quota_free', limitReached: true },
+              { status: 429 }
+            );
+          }
+        }
       }
     } else if (session?.user?.email) {
       const user = await prisma.user.findUnique({

@@ -551,8 +551,19 @@ function renderError(msg) {
   if (msg === 'not_logged_in') {
     return `<div class="ytv-error">${t('Inicia sesión en el icono de la extensión para usar YTubViral.', 'Sign in via the extension icon to use YTubViral.')}</div>`;
   }
-  if (msg.includes('Pro') || msg.includes('pro_required')) {
-    return `<div class="ytv-error ytv-upsell">🔒 ${t('Función Pro', 'Pro feature')}<br><a href="https://ytubviral.com/profile?utm_source=extension&utm_medium=panel" target="_blank" class="ytv-cta-link">${t('Desbloquear por 9,99€/mes →', 'Unlock for €9.99/mo →')}</a></div>`;
+  if (msg === 'rate_limited') {
+    return `<div class="ytv-error">${t('Demasiadas consultas seguidas. Espera un momento.', 'Too many requests in a row. Hold on a moment.')}</div>`;
+  }
+  // Free monthly quota spent — THE conversion moment. Say what ran out and what they get.
+  if (msg === 'quota_free') {
+    return `<div class="ytv-error ytv-upsell">${t('Has gastado tus 10 generaciones gratis de este mes.', "You've used your 10 free generations this month.")}<br><a href="https://ytubviral.com/pricing?utm_source=extension&utm_medium=quota" target="_blank" class="ytv-cta-link">${t('200 al mes con Pro — 9,99€/mes →', '200 a month with Pro — €9.99/mo →')}</a></div>`;
+  }
+  // Pro quota spent — they already pay, never show them an upgrade CTA.
+  if (msg === 'quota_pro') {
+    return `<div class="ytv-error">${t('Has alcanzado las 200 generaciones de tu plan Pro este mes. Se renueva el día 1.', "You've hit your Pro plan's 200 generations this month. It resets on the 1st.")}</div>`;
+  }
+  if (msg === 'pro_required' || msg.includes('Pro')) {
+    return `<div class="ytv-error ytv-upsell">🔒 ${t('Función Pro', 'Pro feature')}<br><a href="https://ytubviral.com/pricing?utm_source=extension&utm_medium=panel" target="_blank" class="ytv-cta-link">${t('Desbloquear por 9,99€/mes →', 'Unlock for €9.99/mo →')}</a></div>`;
   }
   return `<div class="ytv-error">⚠ ${escapeHtml(msg)}</div>`;
 }
@@ -851,7 +862,7 @@ function renderScorecardExpanded(d) {
 
       <div class="ytv-sc-actions">
         <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-sc-btn-competitor">${t('🔍 Analizar canal', '🔍 Analyze channel')} <span class="ytv-pro-badge">PRO</span></button>
-        <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-sc-btn-titles">${t('✨ Generar títulos', '✨ Generate titles')} <span class="ytv-pro-badge">PRO</span></button>
+        <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-sc-btn-titles">${t('✨ Generar títulos', '✨ Generate titles')}</button>
         <a href="https://ytubviral.com/optimize?v=${d.videoId}&utm_source=extension&utm_medium=panel" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('⚡ Optimizar', '⚡ Optimize')}</a>
       </div>
       <div id="ytv-sc-action-results"></div>
@@ -954,14 +965,14 @@ async function loadComments(container, videoId) {
       </div>
     `).join('');
 
-    const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
-    const isPro = user?.isPro || false;
-
+    // The reply button used to be hidden for non-Pro users. Generation is no longer
+    // Pro-only — Free has a monthly quota, same as the web — so everyone gets the button
+    // and the server decides when the quota runs out.
     const questionsHtml = (data.questions || []).slice(0, 5).map(c => `
       <div class="ytv-comment-item ytv-comment-question">
         <div class="ytv-comment-author">${escapeHtml(c.author)} <span class="ytv-hint">❤️ ${c.likes}</span></div>
         <div class="ytv-comment-text">${escapeHtml(c.text).substring(0, 200)}${c.text.length > 200 ? '...' : ''}</div>
-        ${isPro ? `<button class="ytv-btn ytv-btn-sm ytv-btn-dark ytv-btn-reply" data-comment="${escapeHtml(c.text.substring(0, 300))}">${t('🤖 AI Reply', '🤖 AI Reply')}</button>` : ''}
+        <button class="ytv-btn ytv-btn-sm ytv-btn-dark ytv-btn-reply" data-comment="${escapeHtml(c.text.substring(0, 300))}">${t('🤖 Responder con IA', '🤖 AI Reply')}</button>
         <div class="ytv-reply-area"></div>
       </div>
     `).join('');
@@ -1233,9 +1244,12 @@ function renderAbTestOutcome(err, limit) {
   return renderError(code || t('Error al crear el test', 'Error creating the test'));
 }
 
-function wireGenTitlesButton(btn, aiResults, isPro, titleFieldSelector, videoId) {
+// No isPro parameter any more: generation is not Pro-gated (Free has a monthly quota, same as
+// the web) and the A/B button is decided by `videoId`, not by plan — its own Pro check happens
+// server-side and is rendered by renderAbTestOutcome. The server enforces the quota and returns
+// quota_free / quota_pro, which renderError turns into the right card.
+function wireGenTitlesButton(btn, aiResults, titleFieldSelector, videoId) {
   btn.addEventListener('click', async () => {
-    if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
     const title = getStudioTitle();
     if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
     aiResults.innerHTML = renderLoading(t('Generando títulos...', 'Generating titles...'));
@@ -1284,9 +1298,8 @@ function wireGenTitlesButton(btn, aiResults, isPro, titleFieldSelector, videoId)
   });
 }
 
-function wireGenTagsButton(btn, aiResults, isPro) {
+function wireGenTagsButton(btn, aiResults) {
   btn.addEventListener('click', async () => {
-    if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
     const title = getStudioTitle();
     if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
     aiResults.innerHTML = renderLoading(t('Buscando keywords...', 'Searching keywords...'));
@@ -1319,9 +1332,8 @@ function wireGenTagsButton(btn, aiResults, isPro) {
   });
 }
 
-function wireGenDescButton(btn, aiResults, isPro, descFieldSelector) {
+function wireGenDescButton(btn, aiResults, descFieldSelector) {
   btn.addEventListener('click', async () => {
-    if (!isPro) { aiResults.innerHTML = renderError(t('Plan Pro requerido', 'Pro plan required')); return; }
     const title = getStudioTitle();
     if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
     aiResults.innerHTML = renderLoading(t('Generando descripción...', 'Generating description...'));
@@ -1347,9 +1359,8 @@ async function injectStudioEditor() {
     const container = await waitForEl(SELECTORS.studio.metadataEditor, 8000);
     if (document.getElementById('ytv-studio-scorecard')) return;
 
-    const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
-    const isPro = user?.isPro || false;
-
+    // No GET_USER round-trip here any more: nothing in this panel depends on the plan
+    // (generation is quota-based, the A/B button is gated server-side).
     const panel = document.createElement('div');
     panel.id = 'ytv-studio-scorecard';
     panel.className = 'ytv-panel ytv-studio-panel';
@@ -1364,9 +1375,9 @@ async function injectStudioEditor() {
       <div id="ytv-studio-besttime"></div>
       <div class="ytv-studio-ai-section">
         <div class="ytv-studio-ai-buttons">
-          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-titles">✨ ${t('Generar títulos', 'Generate titles')} ${!isPro ? '<span class="ytv-pro-badge">PRO</span>' : ''}</button>
-          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-desc">📝 ${t('Generar descripción', 'Generate description')} ${!isPro ? '<span class="ytv-pro-badge">PRO</span>' : ''}</button>
-          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-tags">🏷️ ${t('Sugerir tags', 'Suggest tags')} ${!isPro ? '<span class="ytv-pro-badge">PRO</span>' : ''}</button>
+          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-titles">✨ ${t('Generar títulos', 'Generate titles')}</button>
+          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-desc">📝 ${t('Generar descripción', 'Generate description')}</button>
+          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-tags">🏷️ ${t('Sugerir tags', 'Suggest tags')}</button>
         </div>
         <div id="ytv-studio-ai-results"></div>
       </div>
@@ -1428,9 +1439,9 @@ async function injectStudioEditor() {
     const btnTags = panel.querySelector('#ytv-studio-gen-tags');
     btnTitles.addEventListener('ytv-field-applied', scheduleLiveUpdate);
     btnDesc.addEventListener('ytv-field-applied', scheduleLiveUpdate);
-    wireGenTitlesButton(btnTitles, aiResults, isPro, SELECTORS.studio.titleField, videoId);
-    wireGenDescButton(btnDesc, aiResults, isPro, SELECTORS.studio.descField);
-    wireGenTagsButton(btnTags, aiResults, isPro);
+    wireGenTitlesButton(btnTitles, aiResults, SELECTORS.studio.titleField, videoId);
+    wireGenDescButton(btnDesc, aiResults, SELECTORS.studio.descField);
+    wireGenTagsButton(btnTags, aiResults);
 
   } catch (e) {
     console.log('[YTubViral] Studio editor:', e.message);
@@ -1489,9 +1500,8 @@ async function injectStudioUploadPanel(dialog) {
     }
     if (!anchor || document.getElementById('ytv-studio-upload-scorecard')) return;
 
-    const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
-    const isPro = user?.isPro || false;
-
+    // No GET_USER round-trip here any more: nothing in this panel depends on the plan
+    // (generation is quota-based, the A/B button is gated server-side).
     const panel = document.createElement('div');
     panel.id = 'ytv-studio-upload-scorecard';
     panel.className = 'ytv-panel ytv-studio-panel';
@@ -1504,8 +1514,8 @@ async function injectStudioUploadPanel(dialog) {
       <div id="ytv-up-besttime"></div>
       <div class="ytv-studio-ai-section">
         <div class="ytv-studio-ai-buttons">
-          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-up-gen-titles">✨ ${t('Generar títulos', 'Generate titles')} ${!isPro ? '<span class="ytv-pro-badge">PRO</span>' : ''}</button>
-          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-up-gen-tags">🏷️ ${t('Sugerir tags', 'Suggest tags')} ${!isPro ? '<span class="ytv-pro-badge">PRO</span>' : ''}</button>
+          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-up-gen-titles">✨ ${t('Generar títulos', 'Generate titles')}</button>
+          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-up-gen-tags">🏷️ ${t('Sugerir tags', 'Suggest tags')}</button>
         </div>
         <div id="ytv-up-ai-results"></div>
       </div>
@@ -1548,8 +1558,8 @@ async function injectStudioUploadPanel(dialog) {
     const btnTitles = panel.querySelector('#ytv-up-gen-titles');
     const btnTags = panel.querySelector('#ytv-up-gen-tags');
     btnTitles.addEventListener('ytv-field-applied', scheduleLiveUpdate);
-    wireGenTitlesButton(btnTitles, aiResults, isPro, SELECTORS.studio.titleField);
-    wireGenTagsButton(btnTags, aiResults, isPro);
+    wireGenTitlesButton(btnTitles, aiResults, SELECTORS.studio.titleField);
+    wireGenTagsButton(btnTags, aiResults);
 
   } catch (e) {
     console.log('[YTubViral] Studio upload:', e.message);

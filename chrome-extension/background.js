@@ -185,8 +185,13 @@ async function handleMessage(msg) {
           }),
         }));
       } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (res.status === 403 && data.error === 'pro_required') throw new Error(lang === 'en' ? 'Pro plan required. Upgrade at ytubviral.com' : 'Plan Pro requerido. Actualiza en ytubviral.com');
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Content generation error' : 'Error al generar contenido'));
+      // Códigos crudos (quota_free / quota_pro / pro_required) para que content.js pinte
+      // una tarjeta distinta por caso: quota_free es el momento de conversión, quota_pro NO
+      // debe ofrecer "hazte Pro" a quien ya paga.
+      if (!res.ok) {
+        if (data.code) { const e = new Error(data.code); e.limit = data.limit; throw e; }
+        throw new Error(data.error || (lang === 'en' ? 'Content generation error' : 'Error al generar contenido'));
+      }
       return data;
     }
 
