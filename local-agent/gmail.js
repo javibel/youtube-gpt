@@ -198,7 +198,16 @@ const NOISE_FROM_IMPORTANT_SENDERS = [
       /started a thread/i,
       /is trending/i,
       /top \d+ products/i,
+      /a new launch from /i,
     ],
+  },
+  {
+    // workspace-noreply@google.com hace match con 'noreply@google.com' de
+    // IMPORTANT_SENDERS (que existe para GSC / alertas). En un Gmail normal esa
+    // dirección solo manda marketing de Workspace/Gemini. sc-noreply@google.com
+    // (Search Console, sí importa) va por otra regla y no se ve afectado.
+    from: /workspace-noreply@google\.com/i,
+    subjects: [/.*/],
   },
   {
     // Indie Hackers volcó 17 notificaciones de respuestas de junio a la vez el
