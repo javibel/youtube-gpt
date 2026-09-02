@@ -117,6 +117,7 @@ function collectPm2Processes() {
       status: p.pm2_env?.status,
       memoryMB: Math.round((p.monit?.memory || 0) / 1048576),
       restarts: p.pm2_env?.restart_time || 0,
+      unstableRestarts: p.pm2_env?.unstable_restarts || 0,
       uptime: p.pm2_env?.pm_uptime || 0,
     })),
   };
@@ -220,12 +221,15 @@ function detectIssues(metrics) {
       if (proc.memoryMB > 200) {
         issues.push(`INFRA_MEMORY: Process ${proc.name} using ${proc.memoryMB}MB — WARNING`);
       }
-      // Solo alertar si el proceso reinició HACE POCO (uptime corto = crash reciente).
-      // Un contador acumulado con uptime largo = proceso estable → NO es alarma real.
-      // Evita el falso positivo diario "X has 11 restart(s)" con días de uptime estable.
+      // Solo es alarma un CRASH LOOP real: PM2 marca unstable_restarts cuando el
+      // proceso muere antes de min_uptime y lo resetea a 0 al estabilizarse. Un
+      // `pm2 restart` manual (SIGINT) NUNCA lo incrementa. La condición anterior
+      // (`restarts > 0 && uptime < 6h`) saltaba cada vez que alguien reiniciaba a
+      // mano y el infra-optimizer corría en las siguientes 6h → WARNING diario
+      // falso durante las sesiones de mantenimiento (02/09).
       const hoursUp = proc.uptime ? (Date.now() - proc.uptime) / 3600000 : Infinity;
-      if (proc.restarts > 0 && hoursUp < 6) {
-        issues.push(`INFRA_RESTARTS: Process ${proc.name} reinició hace poco (${proc.restarts} total, uptime ${hoursUp.toFixed(1)}h) — WARNING`);
+      if (proc.unstableRestarts > 0) {
+        issues.push(`INFRA_RESTARTS: Process ${proc.name} en crash loop — ${proc.unstableRestarts} reinicios inestables (uptime ${hoursUp.toFixed(1)}h) — WARNING`);
       }
     }
   }
