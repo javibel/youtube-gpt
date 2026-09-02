@@ -1,9 +1,11 @@
-'use client';
-
-import { useSearchParams } from 'next/navigation';
+// Server Component A PROPÓSITO. Todo lo que hay aquí tiene que estar en el HTML
+// que recibe Googlebot: los 28 enlaces a artículos son el único camino de rastreo
+// del blog. El filtro por categoría vive en <BlogFilter>, que se hidrata aparte.
 import Link from 'next/link';
 import Image from 'next/image';
+import { Suspense } from 'react';
 import { BLOG_POSTS, BLOG_CATEGORIES, type Lang } from '@/lib/blog-data';
+import BlogFilter from './BlogFilter';
 
 const COVER_GRADIENTS: Record<string, string> = {
   youtube:   'linear-gradient(135deg, #FF0033 0%, #1a0005 100%)',
@@ -40,33 +42,18 @@ function BlogCover({ cat, index, image }: { cat: string; index: number; image?: 
 }
 
 export default function BlogContent({ lang }: { lang: Lang }) {
-  const searchParams = useSearchParams();
-  const selectedCat = searchParams.get('cat') ?? undefined;
-
-  const filtered = selectedCat
-    ? BLOG_POSTS.filter((p) => p.cat === selectedCat)
-    : BLOG_POSTS;
-  const featured = filtered[0];
-  const rest = filtered.slice(1);
+  // Sin filtrar: el servidor pinta SIEMPRE los 28 posts. <BlogFilter> oculta
+  // los que no casan con ?cat= tras hidratar.
+  const featured = BLOG_POSTS[0];
+  const rest = BLOG_POSTS.slice(1);
 
   const catLabel = (cat: string) => BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES]?.name[lang] ?? cat;
   const catColor = (cat: string) => BLOG_CATEGORIES[cat as keyof typeof BLOG_CATEGORIES]?.color ?? '#FF0033';
 
-  const blogJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Blog',
-    name: 'YTubViral Blog',
-    url: 'https://ytubviral.com/blog',
-    description: 'Artículos prácticos sobre el algoritmo de YouTube, títulos virales, scripts con IA, thumbnails y monetización.',
-    publisher: { '@type': 'Organization', name: 'YTubViral', url: 'https://ytubviral.com' },
-  };
-
   return (
-    <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
-      />
+    <div id="blog-root" className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
+      {/* El hook de searchParams sale del prerender; por eso va aislado y devuelve null. */}
+      <Suspense fallback={null}><BlogFilter /></Suspense>
       {/* Nav */}
       <nav className="sticky top-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(12,10,15,0.72)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -110,12 +97,12 @@ export default function BlogContent({ lang }: { lang: Lang }) {
 
           {/* Category pills */}
           <div className="flex flex-wrap gap-2 mt-8">
-            <Link href="/blog" className={`soft-chip px-4 py-1.5 font-mono-jb text-[13px] tracking-wider uppercase ${!selectedCat ? 'soft-chip-active' : 'text-zinc-400'}`}>
+            <Link href="/blog" data-chip="" className="soft-chip soft-chip-active px-4 py-1.5 font-mono-jb text-[13px] tracking-wider uppercase">
               {lang === 'en' ? 'All' : 'Todos'}
             </Link>
             {Object.entries(BLOG_CATEGORIES).map(([key, val]) => (
-              <Link key={key} href={`/blog?cat=${key}`}
-                className={`soft-chip px-4 py-1.5 font-mono-jb text-[13px] tracking-wider uppercase ${selectedCat === key ? 'soft-chip-active' : 'text-zinc-400'}`}
+              <Link key={key} href={`/blog?cat=${key}`} data-chip={key}
+                className="soft-chip px-4 py-1.5 font-mono-jb text-[13px] tracking-wider uppercase text-zinc-400"
                 style={{ borderColor: val.color + '33' }}>
                 {val.name[lang]}
               </Link>
@@ -125,7 +112,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
       </section>
 
       {/* Featured post */}
-      {featured && <section >
+      {featured && <section data-cat={featured.cat}>
         <div className="max-w-7xl mx-auto px-6 py-12">
           <p className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-6">
             {lang === 'en' ? 'Featured' : 'Destacado'}
@@ -168,8 +155,8 @@ export default function BlogContent({ lang }: { lang: Lang }) {
         </div>
       </section>}
 
-      {!featured && (
-        <section >
+      {/* Vacío: oculto en servidor (sin filtro siempre hay posts); lo muestra BlogFilter. */}
+      <section data-blog-empty hidden>
           <div className="max-w-7xl mx-auto px-6 py-16 text-center">
             <p className="text-zinc-500 font-mono-jb text-sm">
               {lang === 'en' ? 'No articles in this category yet.' : 'Aún no hay artículos en esta categoría.'}
@@ -178,8 +165,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
               {lang === 'en' ? '← All articles' : '← Todos los artículos'}
             </Link>
           </div>
-        </section>
-      )}
+      </section>
 
       {/* Post grid + sidebar */}
       <section className="max-w-7xl mx-auto px-6 py-12 grid lg:grid-cols-[1fr_300px] gap-12">
@@ -190,7 +176,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
           </p>
           <div className="grid sm:grid-cols-2 gap-6">
             {rest.map((post, i) => (
-              <Link key={post.slug} href={`/blog/${post.slug}`}
+              <Link key={post.slug} href={`/blog/${post.slug}`} data-cat={post.cat}
                 className="yv-glass yv-glass--hover group flex flex-col transition-colors">
                 <div className="h-44 relative overflow-hidden">
                   <BlogCover cat={post.cat} index={i + 1} image={post.image} />
@@ -268,7 +254,7 @@ export default function BlogContent({ lang }: { lang: Lang }) {
               {Object.entries(BLOG_CATEGORIES).map(([key, val]) => {
                 const count = BLOG_POSTS.filter((p) => p.cat === key).length;
                 return (
-                  <Link key={key} href={`/blog?cat=${key}`} className={`flex items-center justify-between py-2 hover:bg-white/[0.03] transition ${selectedCat === key ? "bg-white/[0.04]" : ""}`}>
+                  <Link key={key} href={`/blog?cat=${key}`} data-catlink={key} className="flex items-center justify-between py-2 hover:bg-white/[0.03] transition">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: val.color }} />
                       <span className="text-sm text-zinc-300">{val.name[lang]}</span>

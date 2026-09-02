@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import { getServerLang } from '@/lib/server-lang';
 import { BLOG_POSTS } from '@/lib/blog-data';
 import BlogContent from './BlogContent';
@@ -47,9 +46,9 @@ export default function BlogListPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }} />
-      <Suspense>
-        <BlogContent lang={lang} />
-      </Suspense>
+      {/* BlogContent es Server Component: se prerenderiza entero. El único trozo
+          que usa searchParams es <BlogFilter>, con su propio Suspense dentro. */}
+      <BlogContent lang={lang} />
     </>
   );
 }
