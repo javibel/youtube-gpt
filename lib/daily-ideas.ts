@@ -48,6 +48,10 @@ export async function generateDailyIdeas(): Promise<number> {
 
   if (users.length === 0) return 0;
 
+  // 02/09/2026: el prompt no decia en que año estamos, asi que el modelo caia en el
+  // de su entrenamiento: el 9% de los titulos generados desde el 25/08 decian "2025"
+  // y solo el 1% "2026". Un creador que recibe "Guia 2025" en septiembre de 2026
+  // descarta la herramienta de un vistazo. La fecha se inyecta ahora en el prompt.
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return 0;
 
@@ -80,6 +84,9 @@ export async function generateDailyIdeas(): Promise<number> {
           messages: [{
             role: 'user',
             content: `You are a YouTube growth advisor. Generate 5 personalized video ideas for this creator.
+
+Today is ${new Date().toISOString().slice(0, 10)} — the current year is ${new Date().getUTCFullYear()}.
+NEVER put a past year in a title. If a title needs a year, it must be ${new Date().getUTCFullYear()}.
 
 Channel: ${user.channelName || 'Unknown'}
 Subscribers: ${subs}
