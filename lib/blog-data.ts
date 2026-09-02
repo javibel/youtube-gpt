@@ -95,8 +95,8 @@ export const BLOG_POSTS: BlogPost[] = [
       en: '7 viral title frameworks YouTube rewards in 2026',
     },
     excerpt: {
-      es: 'Analizamos 12.480 vídeos con +500K views para destilar los patrones de titulación que el algoritmo prioriza en 2026. Los números específicos siguen ganando.',
-      en: 'We analyzed 12,480 videos with 500K+ views to distill the title patterns the algorithm prioritizes this year. Spoiler: specific numbers still win.',
+      es: 'Un repaso a los frameworks de titulación que el algoritmo prioriza en 2026 y a los que se están quedando atrás. Los números específicos siguen ganando.',
+      en: 'A run-through of the title frameworks the algorithm prioritizes in 2026 and the ones that are fading. Spoiler: specific numbers still win.',
     },
   },
   {
@@ -702,36 +702,36 @@ const ART_HERRAMIENTAS_IA: BlockType[] = [
     'Coaching personalizado con IA',
     'Daily ideas: sugerencias de temas diarias',
   ]},
-  { type: 'p', t: 'Precio: Desde $16.58/mes. Principalmente en inglés, con soporte parcial en español. Ideal para creadores que quieren datos analíticos detallados.' },
+  { type: 'p', t: 'Precio: de pago, con plan de entrada económico. Principalmente en inglés, con soporte parcial en español. Ideal para creadores que quieren datos analíticos detallados.' },
   { type: 'h3', t: '3. TubeBuddy — Optimización de Vídeos' },
   { type: 'p', t: 'TubeBuddy es una extensión de Chrome que se integra directamente con YouTube. Ayuda a optimizar títulos, descripciones y tags en tiempo real, con A/B testing de thumbnails y Keyword Explorer.' },
-  { type: 'p', t: 'Precio: Desde $4.50/mes — Ideal para creadores que quieren optimizar su canal de forma sistemática.' },
+  { type: 'p', t: 'Precio: de pago, con plan de entrada económico — Ideal para creadores que quieren optimizar su canal de forma sistemática.' },
   { type: 'h3', t: '4. Descript — Edición de Vídeo con IA' },
   { type: 'p', t: 'Descript revoluciona la edición de vídeo. Puedes editar tus vídeos editando el texto de la transcripción, como si fuera un documento de Word. Incluye eliminación automática de silencios y corrección de errores de voz.' },
-  { type: 'p', t: 'Precio: Gratis | Pro desde $24/mes — Ideal para creadores que quieren acelerar su proceso de edición.' },
+  { type: 'p', t: 'Precio: plan gratuito + planes de pago — Ideal para creadores que quieren acelerar su proceso de edición.' },
   { type: 'h3', t: '5. ElevenLabs — Voz en Off con IA' },
   { type: 'p', t: 'ElevenLabs genera voces en off increíblemente realistas en múltiples idiomas, incluyendo español. Perfecta para crear narraciones sin necesidad de grabar tu voz, con opción de clonar tu propia voz.' },
-  { type: 'p', t: 'Precio: Gratis (10K caracteres/mes) | Pro desde $5/mes — Ideal para creadores que quieren narración profesional.' },
+  { type: 'p', t: 'Precio: plan gratuito + planes de pago — Ideal para creadores que quieren narración profesional.' },
   { type: 'h3', t: '6. Canva — Diseño de Thumbnails' },
   { type: 'p', t: 'Canva es la herramienta más popular para diseñar thumbnails. Con sus plantillas de IA, puedes crear diseños profesionales en minutos. Incluye generación de imágenes con IA y plantillas específicas para YouTube.' },
-  { type: 'p', t: 'Precio: Gratis | Pro desde $12.99/mes — Ideal para creadores que quieren thumbnails atractivos sin ser diseñadores.' },
+  { type: 'p', t: 'Precio: plan gratuito + planes de pago — Ideal para creadores que quieren thumbnails atractivos sin ser diseñadores.' },
   { type: 'h3', t: '7. Opus Clip — Clips Virales Automáticos' },
   { type: 'p', t: 'Opus Clip analiza tus vídeos largos y genera automáticamente clips cortos optimizados para TikTok, Reels y YouTube Shorts, con subtítulos animados y puntuación de viralidad por clip.' },
-  { type: 'p', t: 'Precio: Gratis (60 min/mes) | Pro desde $9/mes — Ideal para creadores que quieren maximizar cada vídeo en múltiples plataformas.' },
+  { type: 'p', t: 'Precio: plan gratuito + planes de pago — Ideal para creadores que quieren maximizar cada vídeo en múltiples plataformas.' },
   { type: 'h3', t: '8. ChatGPT — Generación de Ideas' },
   { type: 'p', t: 'ChatGPT es el asistente de IA más versátil. Úsalo para generar ideas de contenido, estructurar vídeos, investigar temas y redactar respuestas a comentarios.' },
-  { type: 'p', t: 'Precio: Gratis | Plus desde $20/mes — Ideal para creadores que necesitan un asistente polivalente.' },
+  { type: 'p', t: 'Precio: plan gratuito + planes de pago — Ideal para creadores que necesitan un asistente polivalente.' },
   { type: 'h3', t: '9. Midjourney — Imágenes para Thumbnails' },
   { type: 'p', t: 'Midjourney genera imágenes espectaculares con IA, perfectas para crear elementos visuales únicos para tus thumbnails: imágenes fotorrealistas, arte digital original y conceptos visuales creativos.' },
-  { type: 'p', t: 'Precio: Desde $10/mes — Ideal para creadores que quieren thumbnails únicos y llamativos.' },
+  { type: 'p', t: 'Precio: de pago, con plan de entrada económico — Ideal para creadores que quieren thumbnails únicos y llamativos.' },
   { type: 'h3', t: '10. Riverside.fm — Grabación Profesional' },
   { type: 'p', t: 'Riverside.fm te permite grabar podcasts y entrevistas en calidad de estudio directamente desde el navegador, con grabación en 4K, separación de pistas de audio y transcripción automática.' },
-  { type: 'p', t: 'Precio: Gratis | Pro desde $15/mes — Ideal para creadores de podcasts y entrevistas.' },
+  { type: 'p', t: 'Precio: plan gratuito + planes de pago — Ideal para creadores de podcasts y entrevistas.' },
   { type: 'h2', t: 'Comparativa de Herramientas' },
   { type: 'list', items: [
     'YTubViral — Gratis | En español nativo | Contenido completo + analytics',
-    'vidIQ — $16.58/mes | Soporte parcial español | SEO, analytics y coaching IA',
-    'TubeBuddy — $4.50/mes | Soporte parcial español | Optimización del canal',
+    'vidIQ — Soporte parcial español | SEO, analytics y coaching IA',
+    'TubeBuddy — Soporte parcial español | Optimización del canal',
     'Descript — Gratis | Soporte parcial español | Edición de vídeo',
     'ElevenLabs — Gratis | Sí en español | Voz en off',
     'Canva — Gratis | Sí en español | Diseño de thumbnails',
@@ -756,12 +756,12 @@ const ART_TITULOS_VIRALES: BlockType[] = [
   { type: 'p', t: 'El título de tu vídeo es lo primero que ve el espectador. Es la diferencia entre 100 visualizaciones y 100.000. En esta guía te enseñamos exactamente cómo escribir títulos que disparen tu CTR y conquisten el algoritmo de YouTube.' },
   { type: 'h2', t: '¿Por Qué el Título es tan Importante en YouTube?' },
   { type: 'list', items: [
-    'CTR (Click Through Rate): Un buen título puede multiplicar por 5 tus clics',
+    'CTR (Click Through Rate): un buen título puede multiplicar tus clics respecto a uno genérico',
     'SEO: YouTube es el segundo buscador del mundo. Los títulos bien optimizados aparecen en Google',
     'Algoritmo: YouTube prioriza vídeos con alto CTR en sus recomendaciones',
     'Primera impresión: Tienes 2 segundos para convencer al espectador de que haga clic',
   ]},
-  { type: 'p', t: 'Según datos internos de YouTube, la diferencia entre un título mediocre y uno optimizado puede significar hasta un 300% más de visualizaciones con el mismo contenido.' },
+  { type: 'p', t: 'La diferencia entre un título mediocre y uno bien trabajado puede transformar el rendimiento de un vídeo con exactamente el mismo contenido: mismo material, muchísimas más visualizaciones solo por cómo se presenta.' },
   { type: 'h2', t: 'Las 7 Fórmulas de Títulos Virales que Funcionan Siempre' },
   { type: 'h3', t: 'Fórmula 1: El Número Específico' },
   { type: 'p', t: 'Los números generan curiosidad y credibilidad. Nuestro cerebro procesa los números más rápido que las palabras. Estructura: [Número] + [Resultado] + [Timeframe]' },
@@ -853,7 +853,7 @@ const ART_DESCRIPCIONES_SEO: BlockType[] = [
     'Conversión: Convierte espectadores en suscriptores, seguidores y clientes',
     'Contexto: Da información adicional que no cabe en el título',
   ]},
-  { type: 'p', t: 'Un estudio de Backlinko analizó más de un millón de vídeos de YouTube y descubrió que los vídeos con descripciones optimizadas tienen un 78% más de probabilidades de aparecer en la primera página de resultados.' },
+  { type: 'p', t: 'Los grandes análisis de ranking en YouTube coinciden en que la descripción ayuda al algoritmo a entender de qué trata el vídeo y a mostrarlo en búsqueda y sugeridos, aunque pesa menos que las señales de engagement (vistas, comentarios, retención). Aun así, una descripción vacía es una oportunidad perdida de contexto y de SEO.' },
   { type: 'h2', t: 'La Anatomía de una Descripción Perfecta' },
   { type: 'p', t: 'Una descripción optimizada tiene 5 partes bien definidas: Hook (primeras líneas, visibles sin expandir) → Desarrollo del contenido → Timestamps → Links y recursos → Keywords y hashtags.' },
   { type: 'h3', t: 'Parte 1: El Hook (Primeras 2-3 Líneas)' },
@@ -870,20 +870,20 @@ const ART_DESCRIPCIONES_SEO: BlockType[] = [
   { type: 'p', t: 'Al final añade keywords secundarias de forma natural y máximo 3 hashtags relevantes. Más de 3 hashtags puede penalizarte según las guías de YouTube.' },
   { type: 'h2', t: 'Las 10 Keywords más Buscadas en YouTube en Español' },
   { type: 'list', items: [
-    'cómo monetizar youtube — 4.1K búsquedas/mes',
-    'shorts de youtube — 3.8K búsquedas/mes',
-    'cómo crecer en youtube — 3.2K búsquedas/mes',
-    'cómo ganar suscriptores — 2.8K búsquedas/mes',
-    'herramientas para youtubers — 2.4K búsquedas/mes',
-    'algoritmo de youtube — 1.5K búsquedas/mes',
-    'títulos para youtube — 1.2K búsquedas/mes',
-    'seo para youtube — 1.8K búsquedas/mes',
-    'descripciones para youtube — 800 búsquedas/mes',
-    'herramientas ia youtubers — 600 búsquedas/mes',
+    'cómo monetizar youtube',
+    'shorts de youtube',
+    'cómo crecer en youtube',
+    'cómo ganar suscriptores',
+    'herramientas para youtubers',
+    'algoritmo de youtube',
+    'títulos para youtube',
+    'seo para youtube',
+    'descripciones para youtube',
+    'herramientas ia youtubers',
   ]},
   { type: 'h2', t: 'Errores Comunes en las Descripciones de YouTube' },
   { type: 'h3', t: 'Error 1: Dejar la Descripción Vacía' },
-  { type: 'p', t: 'El 40% de los YouTubers principiantes publican sin descripción. Es un error gravísimo para el SEO que deja dinero encima de la mesa desde el primer día.' },
+  { type: 'p', t: 'Muchísimos creadores principiantes publican sin descripción o con dos líneas genéricas. Es un error gravísimo para el SEO que deja dinero encima de la mesa desde el primer día.' },
   { type: 'h3', t: 'Error 2: Copiar y Pegar la Misma Descripción' },
   { type: 'p', t: 'Cada vídeo debe tener una descripción única. Las descripciones genéricas no posicionan y YouTube puede penalizarte por contenido duplicado.' },
   { type: 'h3', t: 'Error 3: No Incluir Keywords' },
@@ -917,7 +917,7 @@ const ART_DESCRIPCIONES_SEO_EN: BlockType[] = [
     'Conversion: Turn viewers into subscribers, followers, and customers',
     'Context: Provide additional information that doesn\'t fit in the title',
   ]},
-  { type: 'p', t: 'A Backlinko study analyzed over one million YouTube videos and found that videos with optimized descriptions are 78% more likely to appear on the first page of results.' },
+  { type: 'p', t: 'The large-scale YouTube ranking analyses agree that the description helps the algorithm understand what your video is about and surface it in search and suggested, even though it weighs less than engagement signals (views, comments, retention). Even so, an empty description is a missed opportunity for both context and SEO.' },
   { type: 'h2', t: 'The Anatomy of a Perfect Description' },
   { type: 'p', t: 'An optimized description has 5 well-defined parts: Hook (first lines, visible without expanding) → Content breakdown → Timestamps → Links and resources → Keywords and hashtags.' },
   { type: 'h3', t: 'Part 1: The Hook (First 2-3 Lines)' },
@@ -934,20 +934,20 @@ const ART_DESCRIPCIONES_SEO_EN: BlockType[] = [
   { type: 'p', t: 'At the end, add secondary keywords naturally and a maximum of 3 relevant hashtags. More than 3 hashtags can hurt you according to YouTube\'s guidelines.' },
   { type: 'h2', t: 'Top 10 Most Searched Keywords on YouTube in English' },
   { type: 'list', items: [
-    'how to monetize youtube — 33K searches/mo',
-    'youtube shorts — 27K searches/mo',
-    'how to grow on youtube — 18K searches/mo',
-    'how to get more subscribers — 14K searches/mo',
-    'best tools for youtubers — 9.9K searches/mo',
-    'youtube algorithm — 8.1K searches/mo',
-    'youtube title ideas — 6.6K searches/mo',
-    'youtube seo — 5.4K searches/mo',
-    'youtube description — 4.4K searches/mo',
-    'ai tools for youtube — 3.6K searches/mo',
+    'how to monetize youtube',
+    'youtube shorts',
+    'how to grow on youtube',
+    'how to get more subscribers',
+    'best tools for youtubers',
+    'youtube algorithm',
+    'youtube title ideas',
+    'youtube seo',
+    'youtube description',
+    'ai tools for youtube',
   ]},
   { type: 'h2', t: 'Common Mistakes in YouTube Descriptions' },
   { type: 'h3', t: 'Mistake 1: Leaving the Description Empty' },
-  { type: 'p', t: '40% of beginner YouTubers publish without a description. It\'s a massive SEO blunder that leaves money on the table from day one.' },
+  { type: 'p', t: 'A huge share of beginner YouTubers publish with no description at all, or two generic lines. It\'s a massive SEO blunder that leaves money on the table from day one.' },
   { type: 'h3', t: 'Mistake 2: Copy-Pasting the Same Description' },
   { type: 'p', t: 'Every video should have a unique description. Generic descriptions don\'t rank, and YouTube may penalize you for duplicate content.' },
   { type: 'h3', t: 'Mistake 3: Not Including Keywords' },
@@ -973,10 +973,10 @@ const ART_DESCRIPCIONES_SEO_EN: BlockType[] = [
 
 // Featured article from the prototype (kept as-is)
 const ART_7_FRAMEWORKS_ES: BlockType[] = [
-  { type: 'p', t: 'Analizamos 12.480 vídeos publicados entre julio y diciembre de 2025 que superaron las 500.000 visualizaciones. El objetivo: entender si los frameworks de titulación que funcionaban en 2024 siguen vigentes, o si el algoritmo ha movido la regla.' },
+  { type: 'p', t: 'Mirando los vídeos que mejor rinden en cada nicho, se ve enseguida qué frameworks de titulación siguen vigentes y cuáles se están quedando atrás. Este artículo es ese mapa.' },
   { type: 'p', t: 'La respuesta corta: cinco frameworks siguen funcionando, dos están muriendo, y han aparecido dos nuevos que casi nadie está usando todavía. Este artículo es un mapa concreto, con ejemplos reales y plantillas que puedes pasar por nuestro motor.' },
   { type: 'h2', t: '1. El framework numérico específico' },
-  { type: 'p', t: 'Sigue siendo el rey. Pero el truco está en la palabra "específico". "5 errores comunes" dejó de funcionar a finales de 2024. "23 errores" o "147 trucos" rinden un 36% más en CTR según nuestro dataset.' },
+  { type: 'p', t: 'Sigue siendo el rey. Pero el truco está en la palabra "específico". "5 errores comunes" dejó de funcionar a finales de 2024. "23 errores" o "147 trucos" rinden claramente mejor.' },
   { type: 'p', t: 'La razón es psicológica: un número redondo (5, 10, 100) suena editorial; uno extraño (7, 23, 147) suena a investigación real. El cerebro lo interpreta como una promesa concreta.' },
   { type: 'callout', t: '¿Cansado de escribir títulos a ciegas? Genera 8 variantes optimizadas en 6 segundos.' },
   { type: 'h2', t: '2. La promesa con tensión' },
@@ -997,17 +997,17 @@ const ART_7_FRAMEWORKS_ES: BlockType[] = [
   { type: 'p', t: 'NUEVO. Mencionar el día concreto en que algo cambió. "Empecé un canal en enero de 2024. El día 47 todo cambió." Convierte un caso de estudio en una historia con fecha.' },
   { type: 'h3', t: 'Lo que ya NO funciona' },
   { type: 'list', items: ['Títulos con TODO EN MAYÚSCULAS (penalizados desde el cambio del algoritmo de septiembre 2025)', 'Clickbait abierto: "No CREERÁS lo que pasó..." cae 60% en CTR', 'Frases con "OMG", "INSANE", "WTF" en el primer 50% del título', 'Frameworks de "hilos" copiados de Twitter — el formato ya no traduce'] },
-  { type: 'callout-mid', t: 'Otro dataset, misma conclusión', sub: 'En un análisis aparte de 1.814 títulos vía la API oficial de YouTube, los vídeos más vistos de cada nicho también usaban más números y estructura que la media.', cta: 'Ver ese estudio', href: '/youtube-title-study' },
+  { type: 'callout-mid', t: 'El mismo patrón, una y otra vez', sub: 'En un análisis aparte de 1.814 títulos vía la API oficial de YouTube, los vídeos más vistos de cada nicho también usaban más números y estructura que la media.', cta: 'Ver ese estudio', href: '/youtube-title-study' },
   { type: 'h2', t: 'Cómo aplicar esto' },
-  { type: 'p', t: 'Un consejo: nunca te quedes con el primer título. La diferencia entre un 6% y un 12% de CTR es exactamente el segundo, tercer o quinto intento. Generar variantes es barato; perder visualizaciones por un mal título es caro.' },
+  { type: 'p', t: 'Un consejo: nunca te quedes con el primer título. Doblar el CTR de un vídeo suele estar en el segundo, tercer o quinto intento de título, no en el primero. Generar variantes es barato; perder visualizaciones por un mal título es caro.' },
   { type: 'callout-final', t: 'Genera títulos virales con IA', sub: 'Plantillas optimizadas, score de viralidad y análisis de framework. En 6 segundos.', cta: 'Prueba gratis — Sin tarjeta' },
 ];
 
 const ART_7_FRAMEWORKS_EN: BlockType[] = [
-  { type: 'p', t: 'We analyzed 12,480 videos published between July and December 2025 that surpassed 500,000 views. The goal: to understand whether the title frameworks that worked in 2024 are still effective, or if the algorithm has moved the goalposts.' },
+  { type: 'p', t: 'Looking at the videos that perform best in each niche makes it clear which title frameworks still work and which are fading. This article is that map.' },
   { type: 'p', t: 'The short answer: five frameworks still work, two are dying, and two new ones have emerged that almost nobody is using yet. This article is a concrete roadmap with real examples and templates you can run through our engine.' },
   { type: 'h2', t: '1. The specific number framework' },
-  { type: 'p', t: 'Still the king. But the trick is in the word "specific." "5 common mistakes" stopped working in late 2024. "23 mistakes" or "147 tricks" deliver 36% higher CTR according to our dataset.' },
+  { type: 'p', t: 'Still the king. But the trick is in the word "specific." "5 common mistakes" stopped working in late 2024. "23 mistakes" or "147 tricks" clearly perform better.' },
   { type: 'p', t: 'The reason is psychological: a round number (5, 10, 100) sounds editorial; an odd one (7, 23, 147) sounds like real research. Your brain interprets it as a concrete promise.' },
   { type: 'callout', t: 'Tired of writing titles blindly? Generate 8 optimized variations in 6 seconds.' },
   { type: 'h2', t: '2. The promise with tension' },
@@ -1028,15 +1028,15 @@ const ART_7_FRAMEWORKS_EN: BlockType[] = [
   { type: 'p', t: 'NEW. Mention the specific day something changed. "I started a channel in January 2024. On day 47, everything changed." It turns a case study into a story with a date.' },
   { type: 'h3', t: 'What NO longer works' },
   { type: 'list', items: ['Titles in ALL CAPS (penalized since the September 2025 algorithm update)', 'Open clickbait: "You WON\'T BELIEVE what happened..." drops 60% in CTR', 'Phrases with "OMG", "INSANE", "WTF" in the first 50% of the title', 'Twitter-thread-style frameworks — the format no longer translates'] },
-  { type: 'callout-mid', t: 'A different dataset, same conclusion', sub: 'In a separate analysis of 1,814 titles via the official YouTube API, the most-viewed videos in each niche also used more numbers and structure than average.', cta: 'See that study', href: '/youtube-title-study' },
+  { type: 'callout-mid', t: 'The same pattern, over and over', sub: 'In a separate analysis of 1,814 titles via the official YouTube API, the most-viewed videos in each niche also used more numbers and structure than average.', cta: 'See that study', href: '/youtube-title-study' },
   { type: 'h2', t: 'How to apply this' },
-  { type: 'p', t: 'One piece of advice: never settle for your first title. The difference between a 6% and a 12% CTR is exactly the second, third, or fifth attempt. Generating variations is cheap; losing views to a bad title is expensive.' },
+  { type: 'p', t: 'One piece of advice: never settle for your first title. Doubling a video\'s CTR usually comes down to the second, third, or fifth title attempt, not the first. Generating variations is cheap; losing views to a bad title is expensive.' },
   { type: 'callout-final', t: 'Generate viral titles with AI', sub: 'Optimized templates, virality score, and framework analysis. In 6 seconds.', cta: 'Try free — No credit card' },
 ];
 
 const ART_CUANTO_GANA_YOUTUBER: BlockType[] = [
   { type: 'p', t: 'Voy a ser directo: si estás leyendo esto esperando que te diga que puedes hacerte rico subiendo vídeos a YouTube, este artículo te va a decepcionar. Pero si quieres saber de verdad cuánto gana un youtuber en España en 2026 — con números reales, no los de los vídeos de "gané 50.000€ en un mes" — entonces quédate.' },
-  { type: 'p', t: 'Llevo años trabajando con creadores de contenido y hay una cosa que me frustra profundamente: la cantidad de desinformación que circula sobre cuánto se gana en YouTube. Se habla de facturación bruta como si fuera beneficio neto. Se omiten los impuestos. Se ignora que el 90% de los canales abandonan antes de cobrar su primer cheque de 100€. Y sobre todo, nadie te cuenta lo que pasa entre el mes 1 y el mes 18.' },
+  { type: 'p', t: 'Llevo años trabajando con creadores de contenido y hay una cosa que me frustra profundamente: la cantidad de desinformación que circula sobre cuánto se gana en YouTube. Se habla de facturación bruta como si fuera beneficio neto. Se omiten los impuestos. Se ignora que la gran mayoría de los canales abandonan antes de cobrar su primer pago. Y sobre todo, nadie te cuenta lo que pasa entre el mes 1 y el mes 18.' },
 
   { type: 'h2', t: 'Lo primero: CPM y RPM no son lo mismo (y la diferencia importa mucho)' },
   { type: 'p', t: 'Cuando alguien dice "YouTube paga X por cada mil visitas", casi siempre está mezclando dos métricas que significan cosas muy distintas.' },
@@ -1105,7 +1105,7 @@ const ART_CUANTO_GANA_YOUTUBER: BlockType[] = [
   { type: 'p', t: 'Existe una etapa donde trabajas a tiempo completo con ingresos literalmente de cero. En España, alcanzar los requisitos de monetización — 1.000 suscriptores y 4.000 horas de visualización — requiere una media de 6 a 18 meses de actividad ininterrumpida. Durante ese tiempo, tú pagas todo: equipo, software, cuota de autónomos (si ya te has dado de alta) y tu propia vida. YouTube no te da nada.' },
   { type: 'p', t: 'Y lo peor no es eso. Lo peor es el estancamiento algorítmico.' },
   { type: 'p', t: 'Muchos canales captan suscriptores a través de un vídeo viral o de Shorts que nunca más interactúan con el contenido regular. Estos "suscriptores fantasma" dañan tu CTR y tu retención, enviando señales negativas al algoritmo. Es una espiral descendente: menos alcance → menos motivación → menos constancia → abandono.' },
-  { type: 'p', t: 'El 90% de los canales abandonan antes de cobrar su primer pago de 100€. No es una estadística inventada para dramatizar. Es la realidad del Valle de la Muerte.' },
+  { type: 'p', t: 'La gran mayoría de los canales abandonan antes de cobrar su primer pago. No es un cuento para dramatizar. Es la realidad del Valle de la Muerte.' },
 
   { type: 'h2', t: 'La bofetada fiscal: autónomos, IRPF y lo que Hacienda se lleva' },
   { type: 'p', t: 'Ser YouTuber en España no es solo una actividad creativa. Es una actividad empresarial sujeta a uno de los marcos fiscales más estrictos de la Unión Europea. Y la falta de planificación aquí es la principal causa de ruina de creadores emergentes.' },
@@ -1242,7 +1242,7 @@ const ART_CUANTO_GANA_YOUTUBER_EN: BlockType[] = [
   { type: 'p', t: 'There is a stage where you work full-time with literally zero income. In Spain, reaching the monetization requirements \u2014 1,000 subscribers and 4,000 watch hours \u2014 takes an average of 6 to 18 months of uninterrupted activity. During that time, you pay for everything: gear, software, the self-employment fee (if you have already registered), and your own life. YouTube gives you nothing.' },
   { type: 'p', t: 'And the worst part is not that. The worst part is algorithmic stagnation.' },
   { type: 'p', t: 'Many channels gain subscribers through a viral video or Shorts who never interact with regular content again. These "ghost subscribers" damage your CTR and retention, sending negative signals to the algorithm. It is a downward spiral: less reach \u2192 less motivation \u2192 less consistency \u2192 abandonment.' },
-  { type: 'p', t: 'Ninety percent of channels quit before cashing their first \u20ac100 payment. That is not a statistic invented for dramatic effect. It is the reality of the Valley of Death.' },
+  { type: 'p', t: 'The vast majority of channels quit before cashing their first payment. That is not a story invented for dramatic effect. It is the reality of the Valley of Death.' },
 
   { type: 'h2', t: 'The tax slap: self-employment fees, income tax, and what the government takes' },
   { type: 'p', t: 'Being a YouTuber in Spain is not just a creative pursuit. It is a business activity subject to one of the strictest tax frameworks in the European Union. And a lack of planning here is the number one cause of financial ruin for emerging creators.' },
@@ -1344,36 +1344,36 @@ const ART_HERRAMIENTAS_IA_EN: BlockType[] = [
     'Personalized AI coaching',
     'Daily ideas: daily topic suggestions',
   ]},
-  { type: 'p', t: 'Price: From $16.58/month. Ideal for creators who want detailed analytics data.' },
+  { type: 'p', t: 'Price: paid, with an affordable entry plan. Ideal for creators who want detailed analytics data.' },
   { type: 'h3', t: '3. TubeBuddy — Video Optimization' },
   { type: 'p', t: 'TubeBuddy is a Chrome extension that integrates directly with YouTube. It helps optimize titles, descriptions, and tags in real time, with A/B thumbnail testing and a Keyword Explorer.' },
-  { type: 'p', t: 'Price: From $4.50/month — Ideal for creators who want to systematically optimize their channel.' },
+  { type: 'p', t: 'Price: paid, with an affordable entry plan — Ideal for creators who want to systematically optimize their channel.' },
   { type: 'h3', t: '4. Descript — AI Video Editing' },
   { type: 'p', t: 'Descript revolutionizes video editing. You can edit your videos by editing the transcript text, as if it were a Word document. It includes automatic silence removal and voice error correction.' },
-  { type: 'p', t: 'Price: Free | Pro from $24/month — Ideal for creators who want to speed up their editing process.' },
+  { type: 'p', t: 'Price: free plan + paid tiers — Ideal for creators who want to speed up their editing process.' },
   { type: 'h3', t: '5. ElevenLabs — AI Voiceover' },
   { type: 'p', t: 'ElevenLabs generates incredibly realistic voiceovers in multiple languages. Perfect for creating narrations without recording your own voice, with an option to clone your voice.' },
-  { type: 'p', t: 'Price: Free (10K characters/month) | Pro from $5/month — Ideal for creators who want professional narration.' },
+  { type: 'p', t: 'Price: free plan + paid tiers — Ideal for creators who want professional narration.' },
   { type: 'h3', t: '6. Canva — Thumbnail Design' },
   { type: 'p', t: 'Canva is the most popular tool for designing thumbnails. With its AI-powered templates, you can create professional designs in minutes. It includes AI image generation and YouTube-specific templates.' },
-  { type: 'p', t: 'Price: Free | Pro from $12.99/month — Ideal for creators who want eye-catching thumbnails without being designers.' },
+  { type: 'p', t: 'Price: free plan + paid tiers — Ideal for creators who want eye-catching thumbnails without being designers.' },
   { type: 'h3', t: '7. Opus Clip — Automatic Viral Clips' },
   { type: 'p', t: 'Opus Clip analyzes your long-form videos and automatically generates short clips optimized for TikTok, Reels, and YouTube Shorts, with animated subtitles and a virality score per clip.' },
-  { type: 'p', t: 'Price: Free (60 min/month) | Pro from $9/month — Ideal for creators who want to maximize every video across multiple platforms.' },
+  { type: 'p', t: 'Price: free plan + paid tiers — Ideal for creators who want to maximize every video across multiple platforms.' },
   { type: 'h3', t: '8. ChatGPT — Idea Generation' },
   { type: 'p', t: 'ChatGPT is the most versatile AI assistant. Use it to brainstorm content ideas, outline videos, research topics, and draft replies to comments.' },
-  { type: 'p', t: 'Price: Free | Plus from $20/month — Ideal for creators who need an all-purpose assistant.' },
+  { type: 'p', t: 'Price: free plan + paid tiers — Ideal for creators who need an all-purpose assistant.' },
   { type: 'h3', t: '9. Midjourney — Images for Thumbnails' },
   { type: 'p', t: 'Midjourney generates stunning AI images, perfect for creating unique visual elements for your thumbnails: photorealistic images, original digital art, and creative visual concepts.' },
-  { type: 'p', t: 'Price: From $10/month — Ideal for creators who want unique, eye-catching thumbnails.' },
+  { type: 'p', t: 'Price: paid, with an affordable entry plan — Ideal for creators who want unique, eye-catching thumbnails.' },
   { type: 'h3', t: '10. Riverside.fm — Professional Recording' },
   { type: 'p', t: 'Riverside.fm lets you record podcasts and interviews in studio quality directly from your browser, with 4K recording, separate audio tracks, and automatic transcription.' },
-  { type: 'p', t: 'Price: Free | Pro from $15/month — Ideal for podcast and interview creators.' },
+  { type: 'p', t: 'Price: free plan + paid tiers — Ideal for podcast and interview creators.' },
   { type: 'h2', t: 'Tool Comparison' },
   { type: 'list', items: [
     'YTubViral — Free | Full content generation + analytics',
-    'vidIQ — $16.58/month | SEO, analytics, and AI coaching',
-    'TubeBuddy — $4.50/month | Channel optimization',
+    'vidIQ — SEO, analytics, and AI coaching',
+    'TubeBuddy — Channel optimization',
     'Descript — Free | Video editing',
     'ElevenLabs — Free | Voiceover',
     'Canva — Free | Thumbnail design',
@@ -1492,7 +1492,7 @@ const ART_KEYWORD_RESEARCH_ES: BlockType[] = [
   { type: 'p', t: 'El keyword research es la diferencia entre publicar y rezar, y publicar sabiendo que hay demanda. En esta guía te enseño el proceso completo, paso a paso, con herramientas gratuitas y ejemplos reales.' },
 
   { type: 'h2', t: 'Por qué el keyword research importa más de lo que crees' },
-  { type: 'p', t: 'YouTube es el segundo buscador más grande del mundo después de Google. Cada minuto se realizan más de 700.000 búsquedas en YouTube. Cuando alguien escribe "cómo editar vídeos gratis", YouTube tiene que decidir qué 10 vídeos mostrar primero. Si tu título, descripción y etiquetas no contienen esa keyword, no existes para esa búsqueda.' },
+  { type: 'p', t: 'YouTube es el segundo buscador más grande del mundo después de Google, con un volumen de búsquedas enorme cada día. Cuando alguien escribe "cómo editar vídeos gratis", YouTube tiene que decidir qué 10 vídeos mostrar primero. Si tu título, descripción y etiquetas no contienen esa keyword, no existes para esa búsqueda.' },
   { type: 'p', t: 'El tráfico de búsqueda es el más valioso porque tiene intención. Un viewer que busca "mejor cámara para YouTube 2026" quiere exactamente eso — si tu vídeo lo cubre, la retención será alta y YouTube te recompensará con más impresiones.' },
   { type: 'list', items: [
     'Los vídeos posicionados en búsqueda generan vistas pasivas durante meses o años',
@@ -1585,7 +1585,7 @@ const ART_KEYWORD_RESEARCH_EN: BlockType[] = [
   { type: 'p', t: 'Keyword research is the difference between publishing and praying, and publishing knowing there\'s demand. In this guide I\'ll show you the complete process, step by step, with free tools and real examples.' },
 
   { type: 'h2', t: 'Why keyword research matters more than you think' },
-  { type: 'p', t: 'YouTube is the second largest search engine in the world after Google. Over 700,000 searches happen on YouTube every minute. When someone types "how to edit videos free," YouTube has to decide which 10 videos to show first. If your title, description, and tags don\'t contain that keyword, you don\'t exist for that search.' },
+  { type: 'p', t: 'YouTube is the second largest search engine in the world after Google, with an enormous volume of searches every day. When someone types "how to edit videos free," YouTube has to decide which 10 videos to show first. If your title, description, and tags don\'t contain that keyword, you don\'t exist for that search.' },
   { type: 'p', t: 'Search traffic is the most valuable because it has intent. A viewer searching "best camera for YouTube 2026" wants exactly that — if your video covers it, retention will be high and YouTube will reward you with more impressions.' },
   { type: 'list', items: [
     'Search-ranked videos generate passive views for months or years',
@@ -1681,7 +1681,7 @@ const ART_AB_TESTING_ES: BlockType[] = [
 
   { type: 'h2', t: '¿Qué es A/B testing y por qué importa en YouTube?' },
   { type: 'p', t: 'Un A/B test compara dos versiones de algo para ver cuál funciona mejor. En YouTube, esto se aplica a los dos elementos que determinan si alguien hace clic en tu vídeo: el título y la miniatura.' },
-  { type: 'p', t: 'La diferencia entre un título bueno y un título excelente puede ser un 30-50% más de CTR. En un vídeo con 100.000 impresiones, eso significa 3.000-5.000 clics extra. Y más clics significa más watch time, lo que hace que YouTube te recomiende más. Es un efecto compuesto.' },
+  { type: 'p', t: 'La diferencia entre un título bueno y un título excelente puede suponer un salto grande de CTR. En un vídeo con 100.000 impresiones, unos pocos puntos de CTR son miles de clics extra. Y más clics significa más watch time, lo que hace que YouTube te recomiende más. Es un efecto compuesto.' },
   { type: 'list', items: [
     'Un 1% de mejora en CTR puede significar miles de clics extra al mes',
     'YouTube recompensa el CTR alto con más impresiones (efecto compuesto)',
@@ -1722,7 +1722,7 @@ const ART_AB_TESTING_ES: BlockType[] = [
     'Funciona con cualquier vídeo, incluidos Shorts y vídeos antiguos',
     'Optimiza por CTR (no watch time) — ideal para maximizar clics en búsqueda',
   ]},
-  { type: 'p', t: 'La diferencia de precio es notable: TubeBuddy solo ofrece A/B testing en su plan Legend a $49/mes. YTubViral lo incluye en Pro a €9,99/mes.' },
+  { type: 'p', t: 'La diferencia de precio es notable: en TubeBuddy el A/B testing está reservado a su plan de gama alta. YTubViral lo incluye en Pro a €9,99/mes.' },
 
   { type: 'callout-mid', t: 'Testea tus títulos con datos reales', sub: 'A/B testing de títulos con rotación automática y significancia estadística.', cta: 'Empezar A/B testing →', href: '/features/ab-testing' },
 
@@ -1769,7 +1769,7 @@ const ART_AB_TESTING_EN: BlockType[] = [
 
   { type: 'h2', t: 'What is A/B testing and why does it matter on YouTube?' },
   { type: 'p', t: 'An A/B test compares two versions of something to see which performs better. On YouTube, this applies to the two elements that determine whether someone clicks your video: the title and the thumbnail.' },
-  { type: 'p', t: 'The difference between a good title and a great title can be 30-50% more CTR. On a video with 100,000 impressions, that means 3,000-5,000 extra clicks. And more clicks means more watch time, which makes YouTube recommend you more. It\'s a compounding effect.' },
+  { type: 'p', t: 'The difference between a good title and a great title can be a large jump in CTR. On a video with 100,000 impressions, a few points of CTR is thousands of extra clicks. And more clicks means more watch time, which makes YouTube recommend you more. It\'s a compounding effect.' },
   { type: 'list', items: [
     'A 1% CTR improvement can mean thousands of extra clicks per month',
     'YouTube rewards high CTR with more impressions (compounding effect)',
@@ -1810,7 +1810,7 @@ const ART_AB_TESTING_EN: BlockType[] = [
     'Works with any video, including Shorts and old videos',
     'Optimizes for CTR (not watch time) — ideal for maximizing search clicks',
   ]},
-  { type: 'p', t: 'The price difference is notable: TubeBuddy only offers A/B testing in their Legend plan at $49/month. YTubViral includes it in Pro at €9.99/month.' },
+  { type: 'p', t: 'The price difference is notable: on TubeBuddy, A/B testing is reserved for its top-tier plan. YTubViral includes it in Pro at €9.99/month.' },
 
   { type: 'callout-mid', t: 'Test your titles with real data', sub: 'Title A/B testing with automatic rotation and statistical significance.', cta: 'Start A/B testing →', href: '/features/ab-testing' },
 
@@ -2086,7 +2086,7 @@ const ART_SUSCRIPTORES_ES: BlockType[] = [
 
   { type: 'h2', t: '1. El primer vídeo importa menos de lo que crees (pero los primeros 10 lo son todo)' },
   { type: 'p', t: 'El error más común de un canal nuevo es obsesionarse con que el primer vídeo sea perfecto. La realidad es que casi ningún primer vídeo se hace viral. Lo que sí importa es que publiques al menos 10 vídeos buenos en tu nicho antes de juzgar si "funciona" o no.' },
-  { type: 'p', t: 'YouTube necesita datos para entender de qué va tu canal. Con 1-3 vídeos no tiene suficiente información. Con 10+, el algoritmo empieza a entender quién es tu audiencia y puede empezar a recomendarte. Paddy Galloway, consultor de canales con millones de suscriptores, lo ha dicho públicamente: los primeros 10 vídeos son tu fase de calibración, no de resultados.' },
+  { type: 'p', t: 'YouTube necesita datos para entender de qué va tu canal. Con 1-3 vídeos no tiene suficiente información. Con 10+, el algoritmo empieza a entender quién es tu audiencia y puede empezar a recomendarte. Es una idea que repiten los estrategas de canales grandes: tus primeros vídeos son tu fase de calibración, no de resultados.' },
   { type: 'p', t: 'La clave: no publiques 10 vídeos rápido y malos. Publica 10 vídeos donde cada uno sea ligeramente mejor que el anterior. El crecimiento real viene de la mejora constante, no del volumen.' },
 
   { type: 'h2', t: '2. Optimiza título + miniatura antes de grabar' },
@@ -2094,7 +2094,7 @@ const ART_SUSCRIPTORES_ES: BlockType[] = [
   { type: 'p', t: '¿Por qué? Porque si no puedes crear un título atractivo y una miniatura que genere curiosidad, probablemente el tema no tiene suficiente tirón. Es mejor descubrir esto antes de invertir 8 horas en producción.' },
   { type: 'p', t: 'Las claves de un buen título en 2026: máximo 60 caracteres, incluye una promesa clara, genera curiosidad sin ser clickbait, y contiene tu keyword principal. Las herramientas de IA pueden ayudarte a generar variaciones y elegir la más potente.' },
 
-  { type: 'callout-mid', t: 'Genera títulos virales con IA', sub: 'YTubViral analiza millones de vídeos para sugerirte títulos con alto CTR para tu nicho.', cta: 'Probar gratis', href: '/features/ai-generator' },
+  { type: 'callout-mid', t: 'Genera títulos virales con IA', sub: 'YTubViral aplica los frameworks de titulación que mejor funcionan en YouTube para sugerirte títulos con alto CTR para tu nicho.', cta: 'Probar gratis', href: '/features/ai-generator' },
 
   { type: 'h2', t: '3. Engancha en los primeros 30 segundos (o pierde al espectador)' },
   { type: 'p', t: 'YouTube Analytics muestra que la mayor caída de retención ocurre en los primeros 30 segundos. Si pierdes al espectador ahí, no importa lo bueno que sea el resto del vídeo — nunca lo verá. Y un vídeo con mala retención inicial no consigue suscriptores porque nadie llega al final.' },
@@ -2193,7 +2193,7 @@ const ART_SUSCRIPTORES_EN: BlockType[] = [
 
   { type: 'h2', t: '1. Your First Video Matters Less Than You Think (but Your First 10 Are Everything)' },
   { type: 'p', t: 'The most common mistake for a new channel is obsessing over making the first video perfect. The reality is that almost no first video goes viral. What does matter is publishing at least 10 solid videos in your niche before judging whether it\'s "working" or not.' },
-  { type: 'p', t: 'YouTube needs data to understand what your channel is about. With 1-3 videos, it doesn\'t have enough information. With 10+, the algorithm starts to understand who your audience is and can begin recommending you. Paddy Galloway, consultant for channels with millions of subscribers, has said publicly: your first 10 videos are your calibration phase, not your results phase.' },
+  { type: 'p', t: 'YouTube needs data to understand what your channel is about. With 1-3 videos, it doesn\'t have enough information. With 10+, the algorithm starts to understand who your audience is and can begin recommending you. It\'s something strategists who work with large channels repeat: your first videos are your calibration phase, not your results phase.' },
   { type: 'p', t: 'The key: don\'t publish 10 videos quickly and badly. Publish 10 videos where each one is slightly better than the last. Real growth comes from constant improvement, not volume.' },
 
   { type: 'h2', t: '2. Optimize Title + Thumbnail Before Recording' },
@@ -2201,7 +2201,7 @@ const ART_SUSCRIPTORES_EN: BlockType[] = [
   { type: 'p', t: 'Why? Because if you can\'t create an attractive title and a curiosity-generating thumbnail, the topic probably doesn\'t have enough pull. It\'s better to discover this before investing 8 hours in production.' },
   { type: 'p', t: 'Keys to a good title in 2026: maximum 60 characters, include a clear promise, generate curiosity without being clickbait, and contain your main keyword. AI tools can help you generate variations and choose the most powerful one.' },
 
-  { type: 'callout-mid', t: 'Generate viral titles with AI', sub: 'YTubViral analyzes millions of videos to suggest high-CTR titles for your niche.', cta: 'Try free', href: '/features/ai-generator' },
+  { type: 'callout-mid', t: 'Generate viral titles with AI', sub: 'YTubViral applies the title frameworks that perform best on YouTube to suggest high-CTR titles for your niche.', cta: 'Try free', href: '/features/ai-generator' },
 
   { type: 'h2', t: '3. Hook Them in the First 30 Seconds (or Lose Them)' },
   { type: 'p', t: 'YouTube Analytics shows that the biggest retention drop happens in the first 30 seconds. If you lose the viewer there, it doesn\'t matter how good the rest of the video is — they\'ll never see it. And a video with poor initial retention doesn\'t get subscribers because nobody reaches the end.' },
@@ -2298,7 +2298,7 @@ const ART_COMPETENCIA_ES: BlockType[] = [
   { type: 'p', t: 'Analizar a tu competencia en YouTube no es copiar. Es entender el mercado. Saber qué busca tu audiencia, qué huecos existen, qué formatos generan engagement y cuándo es el mejor momento para publicar. Los canales que crecen más rápido en 2026 no adivinan — observan, analizan y ejecutan.' },
 
   { type: 'h2', t: 'Por Qué Deberías Analizar a tu Competencia (y Por Qué la Mayoría No lo Hace)' },
-  { type: 'p', t: 'El 90% de los creadores pequeños nunca analizan a su competencia de forma sistemática. Publican lo que se les ocurre, eligen títulos "a ojo" y se frustran cuando un vídeo no despega. Mientras tanto, los canales que crecen rápido hacen exactamente lo contrario: estudian qué funciona antes de crear.' },
+  { type: 'p', t: 'La gran mayoría de los creadores pequeños nunca analizan a su competencia de forma sistemática. Publican lo que se les ocurre, eligen títulos "a ojo" y se frustran cuando un vídeo no despega. Mientras tanto, los canales que crecen rápido hacen exactamente lo contrario: estudian qué funciona antes de crear.' },
   { type: 'p', t: 'Analizar a tu competencia te da tres ventajas concretas:' },
   { type: 'list', items: [
     'Descubres temas con demanda probada: si un vídeo de tu competidor tiene 500K views en un nicho pequeño, hay demanda real para ese tema.',
@@ -2338,8 +2338,8 @@ const ART_COMPETENCIA_ES: BlockType[] = [
   { type: 'h3', t: 'Social Blade (gratis)' },
   { type: 'p', t: 'Te da estimaciones de ingresos, crecimiento de suscriptores y views diarios. Útil para ver tendencias generales, pero los datos de ingresos son muy imprecisos y no te dice nada sobre keywords o contenido específico.' },
 
-  { type: 'h3', t: 'VidIQ / TubeBuddy (freemium, desde $7.50-$19/mes)' },
-  { type: 'p', t: 'Las herramientas más conocidas. Muestran tags de competidores, scores de SEO, y tendencias. El problema: las funciones realmente útiles están detrás de planes de pago caros, y muchos creadores pequeños no pueden justificar $19-49/mes.' },
+  { type: 'h3', t: 'VidIQ / TubeBuddy (freemium con planes de pago)' },
+  { type: 'p', t: 'Las herramientas más conocidas. Muestran tags de competidores, scores de SEO, y tendencias. El problema: las funciones realmente útiles están detrás de planes de pago, y muchos creadores pequeños no pueden justificar la suscripción mensual.' },
 
   { type: 'h3', t: 'YTubViral (gratis)' },
   { type: 'p', t: 'Disclaimer: somos nosotros, así que no somos objetivos. Pero la herramienta de Competitor Intelligence de YTubViral te permite pegar la URL de cualquier canal y ver: sus vídeos ordenados por VPH (no por views totales), sus tags y keywords, su frecuencia de publicación, y lo más útil — un análisis de IA que detecta oportunidades y temas que ese canal no está cubriendo. Todo gratis.' },
@@ -2389,7 +2389,7 @@ const ART_COMPETENCIA_EN: BlockType[] = [
   { type: 'p', t: 'Analyzing your YouTube competition isn\'t copying. It\'s understanding the market. Knowing what your audience searches for, what gaps exist, which formats drive engagement, and when\'s the best time to publish. The fastest-growing channels in 2026 don\'t guess — they observe, analyze, and execute.' },
 
   { type: 'h2', t: 'Why You Should Analyze Your Competition (and Why Most Don\'t)' },
-  { type: 'p', t: '90% of small creators never systematically analyze their competition. They publish whatever comes to mind, pick titles "by feel," and get frustrated when a video flops. Meanwhile, fast-growing channels do the exact opposite: they study what works before creating.' },
+  { type: 'p', t: 'The vast majority of small creators never systematically analyze their competition. They publish whatever comes to mind, pick titles "by feel," and get frustrated when a video flops. Meanwhile, fast-growing channels do the exact opposite: they study what works before creating.' },
   { type: 'p', t: 'Analyzing your competition gives you three concrete advantages:' },
   { type: 'list', items: [
     'You discover topics with proven demand: if a competitor\'s video has 500K views in a small niche, there\'s real demand for that topic.',
@@ -2429,8 +2429,8 @@ const ART_COMPETENCIA_EN: BlockType[] = [
   { type: 'h3', t: 'Social Blade (free)' },
   { type: 'p', t: 'Gives you income estimates, subscriber growth, and daily views. Useful for general trends, but income data is highly inaccurate and tells you nothing about specific keywords or content.' },
 
-  { type: 'h3', t: 'VidIQ / TubeBuddy (freemium, from $7.50-$19/mo)' },
-  { type: 'p', t: 'The most well-known tools. They show competitor tags, SEO scores, and trends. The problem: the truly useful features are behind expensive paid plans, and many small creators can\'t justify $19-49/month.' },
+  { type: 'h3', t: 'VidIQ / TubeBuddy (freemium with paid plans)' },
+  { type: 'p', t: 'The most well-known tools. They show competitor tags, SEO scores, and trends. The problem: the truly useful features are behind paid plans, and many small creators can\'t justify the monthly subscription.' },
 
   { type: 'h3', t: 'YTubViral (free)' },
   { type: 'p', t: 'Disclaimer: this is us, so we\'re not objective. But YTubViral\'s Competitor Intelligence tool lets you paste any channel\'s URL and see: their videos sorted by VPH (not total views), their tags and keywords, their publishing frequency, and most usefully — an AI analysis that detects opportunities and topics that channel isn\'t covering. All free.' },
@@ -2479,7 +2479,7 @@ const ART_COMPETENCIA_EN: BlockType[] = [
 
 const ART_THUMBNAILS_ES: BlockType[] = [
   { type: 'p', t: 'Tu miniatura es el anuncio de tu vídeo. Da igual lo bueno que sea tu contenido — si nadie hace clic, nadie lo ve. Y la diferencia entre un vídeo que despega y uno que muere en el limbo del algoritmo casi siempre está en la miniatura.' },
-  { type: 'p', t: 'Esto no es opinión. El 90% de los vídeos con mejor rendimiento en YouTube usan miniaturas personalizadas. En 2026, YouTube mide lo que llaman "Quality CTR" — ya no basta con que hagan clic; si la gente hace clic y se va en los primeros 30 segundos, el algoritmo te penaliza. Tu miniatura tiene que atraer al espectador correcto, no a cualquiera.' },
+  { type: 'p', t: 'Esto no es opinión. Casi todos los vídeos que rinden bien en YouTube usan miniatura personalizada, no un fotograma automático. En 2026, YouTube mide lo que llaman "Quality CTR" — ya no basta con que hagan clic; si la gente hace clic y se va en los primeros 30 segundos, el algoritmo te penaliza. Tu miniatura tiene que atraer al espectador correcto, no a cualquiera.' },
   { type: 'p', t: 'En esta guía te doy las reglas que funcionan de verdad, respaldadas por datos, para diseñar miniaturas que conviertan impresiones en views — y views en retención.' },
 
   { type: 'h2', t: 'Los Números: Qué CTR es Bueno en YouTube en 2026' },
@@ -2490,22 +2490,22 @@ const ART_THUMBNAILS_ES: BlockType[] = [
     '6-8%: bueno. Estás por encima de la mayoría de creadores de tu nicho.',
     '8-10%+: excelente. Tu combinación título + miniatura está resonando con la audiencia.',
   ]},
-  { type: 'p', t: 'Pero ojo: el CTR varía por nicho. Gaming tiene un CTR medio del 8.5% porque la audiencia consume contenido de forma compulsiva. Educación ronda el 4.5% porque la gente busca algo específico y es más selectiva. No te compares con un nicho que no es el tuyo.' },
+  { type: 'p', t: 'Pero ojo: el CTR varía mucho por nicho. En nichos de consumo compulsivo como gaming o entretenimiento, el CTR medio tiende a ser más alto; en nichos de búsqueda como educación o tutoriales, donde la gente ya sabe lo que quiere, suele ser más bajo. No te compares con un nicho que no es el tuyo.' },
   { type: 'p', t: 'Lo importante no es el número absoluto — es la tendencia. Si tu CTR sube de un vídeo a otro, tu diseño está mejorando. Si baja, algo no funciona.' },
 
   { type: 'h2', t: 'Las 7 Reglas de una Miniatura que Convierte' },
 
   { type: 'h3', t: '1. Cara con Emoción Exagerada' },
-  { type: 'p', t: 'Los datos son contundentes: las miniaturas con caras expresivas generan entre un 20% y un 42% más de clicks que las que no tienen rostros o usan expresiones neutras. El cerebro humano está programado para buscar caras — es instinto, no elección.' },
+  { type: 'p', t: 'Las miniaturas con caras expresivas tienden a generar bastantes más clics que las que no tienen rostros o usan expresiones neutras. El cerebro humano está programado para buscar caras — es instinto, no elección.' },
   { type: 'p', t: 'La clave es la exageración. Una cara sonriendo ligeramente no llama la atención en un feed con 50 miniaturas compitiendo. Una expresión de sorpresa genuina, frustración o emoción intensa sí lo hace. Si te da vergüenza hacerla, probablemente es lo suficientemente expresiva.' },
 
   { type: 'h3', t: '2. Máximo 3-4 Palabras de Texto' },
-  { type: 'p', t: 'El 63% de las visualizaciones de YouTube son en móvil. En una pantalla de 6 pulgadas, tu miniatura mide menos de 2 centímetros de alto. Si metes 7 palabras, nadie va a leer ninguna. Los datos muestran que el 73% de los vídeos con mejor rendimiento usan entre 2 y 3 palabras en la miniatura.' },
+  { type: 'p', t: 'La mayor parte de las visualizaciones de YouTube son en móvil. En una pantalla de 6 pulgadas, tu miniatura mide menos de 2 centímetros de alto. Si metes 7 palabras, nadie va a leer ninguna. Las miniaturas que mejor funcionan casi siempre usan dos o tres palabras como mucho.' },
   { type: 'p', t: 'Esas palabras no deben repetir el título — deben complementarlo. Si tu título dice "Cómo gané 10.000€ en YouTube", la miniatura puede decir "PROOF" o "sin monetización". Miniatura y título son un equipo, no un eco.' },
 
   { type: 'h3', t: '3. Contraste que Destaque en Cualquier Fondo' },
   { type: 'p', t: 'Tu miniatura compite contra un fondo blanco (modo claro) y un fondo negro (modo oscuro) de YouTube. Necesita funcionar en ambos. La regla más simple: sujeto brillante sobre fondo oscuro, o sujeto oscuro sobre fondo brillante.' },
-  { type: 'p', t: 'Los datos sugieren que el rojo genera un 23% más de CTR que el azul, probablemente porque activa una sensación de urgencia. Pero el color importa menos que el contraste — un amarillo vibrante sobre negro funciona mejor que un rojo apagado sobre marrón.' },
+  { type: 'p', t: 'Los colores cálidos y saturados como el rojo o el naranja suelen llamar más la atención que los fríos, probablemente porque activan una sensación de urgencia. Pero el color importa menos que el contraste — un amarillo vibrante sobre negro funciona mejor que un rojo apagado sobre marrón.' },
 
   { type: 'h3', t: '4. Un Solo Punto Focal' },
   { type: 'p', t: 'Los ojos del espectador tienen menos de un segundo para procesar tu miniatura. Si hay 5 elementos compitiendo por atención, no procesarán ninguno. Las mejores miniaturas tienen un punto focal claro: una cara, un objeto, un antes/después.' },
@@ -2552,7 +2552,7 @@ const ART_THUMBNAILS_ES: BlockType[] = [
 
   { type: 'h2', t: 'El A/B Testing Cambia Todo' },
   { type: 'p', t: 'En 2026, YouTube permite subir hasta 3 variaciones de miniatura por vídeo con su herramienta Test & Compare. YouTube las muestra a diferentes segmentos de audiencia y elige la ganadora basándose en tiempo de visualización, no solo en clics.' },
-  { type: 'p', t: 'Esto es un cambio radical. Antes tenías que adivinar qué miniatura funcionaba mejor. Ahora puedes probarlo con datos reales. Los creadores que hacen A/B testing consistentemente reportan mejoras de CTR del 15-30% en 3 meses.' },
+  { type: 'p', t: 'Esto es un cambio radical. Antes tenías que adivinar qué miniatura funcionaba mejor. Ahora puedes probarlo con datos reales. Los creadores que hacen A/B testing de forma sistemática suelen mejorar su CTR de forma apreciable en pocos meses.' },
   { type: 'p', t: 'El truco está en probar una variable a la vez. Si cambias el color de fondo, la expresión facial y el texto a la vez, no sabrás qué causó la mejora. Cambia una cosa, mide, y repite.' },
 
   { type: 'callout', t: 'El A/B testing no es solo para canales grandes. Un canal con 1.000 suscriptores que hace pruebas sistemáticas crecerá más rápido que uno con 50.000 que adivina.' },
@@ -2580,7 +2580,7 @@ const ART_THUMBNAILS_ES: BlockType[] = [
 
 const ART_THUMBNAILS_EN: BlockType[] = [
   { type: 'p', t: 'Your thumbnail is your video\'s ad. It doesn\'t matter how good your content is — if nobody clicks, nobody watches. And the difference between a video that takes off and one that dies in algorithmic limbo almost always comes down to the thumbnail.' },
-  { type: 'p', t: 'This isn\'t opinion. 90% of top-performing YouTube videos use custom thumbnails. In 2026, YouTube measures what they call "Quality CTR" — it\'s no longer enough to get clicks; if people click and leave within the first 30 seconds, the algorithm penalizes you. Your thumbnail needs to attract the right viewer, not just any viewer.' },
+  { type: 'p', t: 'This isn\'t opinion. Almost every video that performs well on YouTube uses a custom thumbnail rather than an auto-generated frame. In 2026, YouTube measures what they call "Quality CTR" — it\'s no longer enough to get clicks; if people click and leave within the first 30 seconds, the algorithm penalizes you. Your thumbnail needs to attract the right viewer, not just any viewer.' },
   { type: 'p', t: 'In this guide, I\'ll give you the rules that actually work, backed by data, for designing thumbnails that convert impressions into views — and views into retention.' },
 
   { type: 'h2', t: 'The Numbers: What\'s a Good CTR on YouTube in 2026' },
@@ -2591,22 +2591,22 @@ const ART_THUMBNAILS_EN: BlockType[] = [
     '6-8%: good. You\'re above most creators in your niche.',
     '8-10%+: excellent. Your title + thumbnail combo is resonating with your audience.',
   ]},
-  { type: 'p', t: 'But here\'s the thing: CTR varies by niche. Gaming averages 8.5% because the audience consumes content compulsively. Education hovers around 4.5% because viewers are searching for something specific and are more selective. Don\'t compare yourself to a niche that isn\'t yours.' },
+  { type: 'p', t: 'But here\'s the thing: CTR varies a lot by niche. In compulsive-consumption niches like gaming or entertainment the average CTR tends to run higher; in search-driven niches like education or tutorials, where viewers already know what they want, it tends to run lower. Don\'t compare yourself to a niche that isn\'t yours.' },
   { type: 'p', t: 'What matters isn\'t the absolute number — it\'s the trend. If your CTR goes up from one video to the next, your design is improving. If it drops, something isn\'t working.' },
 
   { type: 'h2', t: 'The 7 Rules of a High-Converting Thumbnail' },
 
   { type: 'h3', t: '1. Face with Exaggerated Emotion' },
-  { type: 'p', t: 'The data is conclusive: thumbnails with expressive faces generate 20% to 42% more clicks than those without faces or with neutral expressions. The human brain is wired to seek faces — it\'s instinct, not choice.' },
+  { type: 'p', t: 'Thumbnails with expressive faces tend to generate noticeably more clicks than those without faces or with neutral expressions. The human brain is wired to seek faces — it\'s instinct, not choice.' },
   { type: 'p', t: 'The key is exaggeration. A face with a slight smile won\'t grab attention in a feed with 50 thumbnails competing. Genuine surprise, frustration, or intense excitement does. If you feel embarrassed making the face, it\'s probably expressive enough.' },
 
   { type: 'h3', t: '2. Maximum 3-4 Words of Text' },
-  { type: 'p', t: '63% of YouTube views happen on mobile. On a 6-inch screen, your thumbnail is less than an inch tall. If you cram 7 words in there, nobody will read any of them. Data shows that 73% of top-performing videos use between 2 and 3 words on their thumbnail.' },
+  { type: 'p', t: 'Most YouTube views happen on mobile. On a 6-inch screen, your thumbnail is less than an inch tall. If you cram 7 words in there, nobody will read any of them. The thumbnails that perform best almost always use two or three words at most.' },
   { type: 'p', t: 'Those words shouldn\'t repeat the title — they should complement it. If your title says "How I Made $10,000 on YouTube," the thumbnail could say "PROOF" or "no monetization." Thumbnail and title are a team, not an echo.' },
 
   { type: 'h3', t: '3. Contrast That Pops on Any Background' },
   { type: 'p', t: 'Your thumbnail competes against YouTube\'s white background (light mode) and black background (dark mode). It needs to work on both. The simplest rule: bright subject on dark background, or dark subject on bright background.' },
-  { type: 'p', t: 'Data suggests red generates 23% more CTR than blue, likely because it triggers a sense of urgency. But color matters less than contrast — a vibrant yellow on black works better than a muted red on brown.' },
+  { type: 'p', t: 'Warm, saturated colors like red or orange tend to draw more attention than cool ones, likely because they trigger a sense of urgency. But color matters less than contrast — a vibrant yellow on black works better than a muted red on brown.' },
 
   { type: 'h3', t: '4. One Single Focal Point' },
   { type: 'p', t: 'The viewer\'s eyes have less than a second to process your thumbnail. If 5 elements are competing for attention, they\'ll process none of them. The best thumbnails have one clear focal point: a face, an object, a before/after.' },
@@ -2653,7 +2653,7 @@ const ART_THUMBNAILS_EN: BlockType[] = [
 
   { type: 'h2', t: 'A/B Testing Changes Everything' },
   { type: 'p', t: 'In 2026, YouTube lets you upload up to 3 thumbnail variations per video with their Test & Compare tool. YouTube shows them to different audience segments and picks the winner based on watch time, not just clicks.' },
-  { type: 'p', t: 'This is a game changer. Before, you had to guess which thumbnail worked best. Now you can test it with real data. Creators who consistently A/B test report CTR improvements of 15-30% within 3 months.' },
+  { type: 'p', t: 'This is a game changer. Before, you had to guess which thumbnail worked best. Now you can test it with real data. Creators who A/B test systematically usually see a meaningful CTR improvement within a few months.' },
   { type: 'p', t: 'The trick is to test one variable at a time. If you change the background color, the facial expression, and the text all at once, you won\'t know what caused the improvement. Change one thing, measure, and repeat.' },
 
   { type: 'callout', t: 'A/B testing isn\'t just for big channels. A channel with 1,000 subscribers that runs systematic tests will grow faster than one with 50,000 that guesses.' },
@@ -2713,7 +2713,7 @@ const ART_SCRIPTS_IA_ES: BlockType[] = [
   { type: 'h3', t: 'CTA + Cierre (últimos 30-60 segundos)' },
   { type: 'p', t: 'No termines de golpe. Resume la idea principal en una frase, haz tu CTA (suscríbete, comenta, mira el siguiente vídeo), y cierra con una frase que deje un buen sabor — algo memorable, no un "bueno, eso es todo".' },
 
-  { type: 'callout', t: 'Los vídeos con estructura clara (hook → problema → contenido → CTA) tienen un 34% más de retención media que los que improvisan. No es opinión — es dato de YouTube Analytics.' },
+  { type: 'callout', t: 'Los vídeos con estructura clara (hook → problema → contenido → CTA) retienen bastante mejor que los improvisados. La curva de retención de YouTube Analytics lo hace visible vídeo a vídeo: los que divagan al principio pierden audiencia justo ahí.' },
 
   { type: 'h2', t: 'El Método de 5 Fases para Scripts con IA' },
   { type: 'p', t: 'Ahora sí. Este es el proceso que funciona. Cada fase usa la IA de forma distinta — y en dos de ellas la IA no interviene para nada.' },
@@ -2820,7 +2820,7 @@ const ART_SCRIPTS_IA_EN: BlockType[] = [
   { type: 'h3', t: 'CTA + Close (last 30-60 seconds)' },
   { type: 'p', t: 'Don\'t end abruptly. Summarize the main idea in one sentence, do your CTA (subscribe, comment, watch the next video), and close with a memorable line — not a "well, that\'s all for today."' },
 
-  { type: 'callout', t: 'Videos with clear structure (hook → problem → content → CTA) have 34% higher average retention than improvised ones. That\'s not opinion — it\'s YouTube Analytics data.' },
+  { type: 'callout', t: 'Videos with clear structure (hook → problem → content → CTA) retain noticeably better than improvised ones. YouTube Analytics\' retention curve makes it visible video by video: the ones that ramble up front lose the audience right there.' },
 
   { type: 'h2', t: 'The 5-Phase Method for AI Scripts' },
   { type: 'p', t: 'Here we go. This is the process that works. Each phase uses AI differently — and in two of them, AI doesn\'t intervene at all.' },
@@ -3000,7 +3000,7 @@ const ART_MONETIZAR_ES: BlockType[] = [
 
   { type: 'h2', t: 'El Fenómeno del "Canal Boutique": Pocos Subs, Muchos Ingresos' },
   { type: 'p', t: 'Uno de los patrones más interesantes de 2026 es la proliferación de canales con menos de 20.000 suscriptores que generan ingresos superiores a los de canales con un millón de seguidores. Les llamamos "canales boutique" y su estrategia se basa en la especialización extrema.' },
-  { type: 'p', t: 'Ejemplo real: un canal dedicado exclusivamente a enseñar automatizaciones de IA para departamentos de recursos humanos. 8.000 suscriptores, RPM de anuncios de 12€ en España. Pero su verdadera monetización viene de consultoría (150€/hora), venta de plantillas (29€ cada una) y afiliación de software SaaS con comisiones recurrentes del 20-50% mensual. Con 5.000 visualizaciones al mes, factura más de 3.000€ mensuales.' },
+  { type: 'p', t: 'Ejemplo ilustrativo: imagina un canal dedicado exclusivamente a enseñar automatizaciones de IA para departamentos de recursos humanos. Con unos pocos miles de suscriptores y un RPM de anuncios alto por el nicho, su verdadera monetización vendría de consultoría, venta de plantillas y afiliación de software SaaS con comisiones recurrentes. Aun con pocas visualizaciones al mes, la facturación puede superar con creces lo que da el AdSense de un canal de entretenimiento diez veces más grande.' },
   { type: 'p', t: '¿La clave? El valor por espectador. Si cada persona que ve tu vídeo tiene un problema que pagaría por resolver, no necesitas millones de visitas. Necesitas las visitas correctas.' },
 
   { type: 'callout', t: 'No persigas más suscriptores — persigue suscriptores más valiosos. Un canal de nicho técnico con 5.000 subs puede facturar más que un canal de entretenimiento con 500.000.' },
@@ -3008,7 +3008,7 @@ const ART_MONETIZAR_ES: BlockType[] = [
   { type: 'h2', t: 'La Función "Hype": Impulso para Canales Emergentes en España' },
   { type: 'p', t: 'YouTube ha lanzado en España la función Hype, diseñada específicamente para canales de entre 500 y 500.000 suscriptores. Permite que tus fans "impulsen" un vídeo durante los 7 primeros días tras su publicación.' },
   { type: 'p', t: 'Los vídeos con más puntos de Hype entran en una tabla de clasificación nacional y reciben una exposición algorítmica adicional — la misma que normalmente está reservada para los canales grandes. Es una herramienta de marketing interna que puede acelerar significativamente tu camino hacia los umbrales de monetización.' },
-  { type: 'p', t: 'Todavía es pronto para tener datos definitivos sobre su impacto, pero los primeros indicadores muestran que los vídeos que entran en el ranking de Hype reciben entre un 30-50% más de impresiones que vídeos similares sin Hype. Si estás en España, actívalo y pide a tu comunidad que te impulse.' },
+  { type: 'p', t: 'Todavía es pronto para tener datos definitivos sobre su impacto, pero la idea es precisamente darle a un vídeo una exposición algorítmica extra durante sus primeros días. Si estás en España, actívalo y pide a tu comunidad que te impulse.' },
 
   { type: 'h2', t: 'Lo que Puede Salir Mal: Riesgos de la Monetización' },
   { type: 'p', t: 'Monetizar no es solo activar un botón y esperar. Hay riesgos reales que pueden cortarte los ingresos de un día para otro si no los tienes en cuenta.' },
@@ -3141,7 +3141,7 @@ const ART_MONETIZAR_EN: BlockType[] = [
 
   { type: 'h2', t: 'The "Boutique Channel" Phenomenon: Few Subs, Big Income' },
   { type: 'p', t: 'One of the most interesting patterns of 2026 is the rise of channels with fewer than 20,000 subscribers generating higher income than channels with a million followers. We call them "boutique channels" and their strategy is based on extreme specialization.' },
-  { type: 'p', t: 'Real example: a channel dedicated exclusively to teaching AI automations for HR departments. 8,000 subscribers, ad RPM of €12 in Spain. But their real monetization comes from consulting (€150/hour), template sales (€29 each), and SaaS affiliate programs with 20-50% recurring monthly commissions. With 5,000 monthly views, they invoice over €3,000/month.' },
+  { type: 'p', t: 'Illustrative example: picture a channel dedicated exclusively to teaching AI automations for HR departments. With a few thousand subscribers and a high ad RPM for the niche, its real monetization would come from consulting, template sales, and SaaS affiliate programs with recurring commissions. Even with modest monthly views, revenue can far exceed the AdSense of an entertainment channel ten times its size.' },
   { type: 'p', t: 'The key? Value per viewer. If every person watching your video has a problem they\'d pay to solve, you don\'t need millions of views. You need the right views.' },
 
   { type: 'callout', t: 'Don\'t chase more subscribers — chase more valuable subscribers. A technical niche channel with 5,000 subs can invoice more than an entertainment channel with 500,000.' },
@@ -3149,7 +3149,7 @@ const ART_MONETIZAR_EN: BlockType[] = [
   { type: 'h2', t: 'The "Hype" Feature: A Boost for Emerging Channels in Spain' },
   { type: 'p', t: 'YouTube has launched the Hype feature in Spain, designed specifically for channels between 500 and 500,000 subscribers. It lets your fans "boost" a video during the first 7 days after publication.' },
   { type: 'p', t: 'Videos with the most Hype points enter a national leaderboard and receive additional algorithmic exposure — the kind normally reserved for large channels. It\'s an internal marketing tool that can significantly accelerate your path to monetization thresholds.' },
-  { type: 'p', t: 'It\'s still early for definitive data on its impact, but initial indicators show that videos entering the Hype ranking receive 30-50% more impressions than similar videos without Hype. If you\'re in Spain, activate it and ask your community to boost you.' },
+  { type: 'p', t: 'It\'s still early for definitive data on its impact, but the whole point is to give a video extra algorithmic exposure during its first days. If you\'re in Spain, activate it and ask your community to boost you.' },
 
   { type: 'h2', t: 'What Can Go Wrong: Monetization Risks' },
   { type: 'p', t: 'Monetizing isn\'t just flipping a switch and waiting. There are real risks that can cut your income overnight if you don\'t account for them.' },
@@ -3201,7 +3201,7 @@ const ART_NEURODIVERGENCIA_ES: BlockType[] = [
   { type: 'h3', t: 'Intereses profundos y conocimiento especializado' },
   { type: 'p', t: 'Los intereses especiales (autismo) y la tendencia a obsesionarse con temas (TDAH) producen un conocimiento enciclopédico que los espectadores valoran enormemente. Si llevas 5 años fascinado por la astrofísica, los trenes, la historia militar o cualquier otro nicho, tienes más material en la cabeza del que podrías publicar en una vida. Ese conocimiento profundo es exactamente lo que el algoritmo premia: contenido original que no se puede encontrar en ningún otro canal.' },
 
-  { type: 'callout', t: 'Según un estudio publicado en el Journal of Creative Behavior (2023), las personas con TDAH obtienen puntuaciones significativamente más altas en pensamiento divergente — la capacidad de generar ideas originales y conexiones inesperadas. Exactamente lo que necesitas para destacar en YouTube.' },
+  { type: 'callout', t: 'Varias investigaciones en psicología asocian el TDAH con mayores puntuaciones en pensamiento divergente — la capacidad de generar ideas originales y conexiones inesperadas. Exactamente lo que necesitas para destacar en YouTube.' },
 
   { type: 'h2', t: 'El Problema del Burnout Creativo (y Cómo Evitarlo)' },
   { type: 'p', t: 'Vamos a hablar del elefante en la habitación. El burnout afecta a todos los creadores, pero si eres neurodivergente, el riesgo es significativamente mayor. ¿Por qué? Porque la mayoría de estrategias de consistencia están diseñadas para cerebros que funcionan de forma lineal y predecible. Si tu energía fluctúa, si tienes días brillantes y días donde no puedes ni abrir el editor, seguir el calendario de publicación de otro creador es una receta para el desastre.' },
@@ -3323,7 +3323,7 @@ const ART_NEURODIVERGENCIA_EN: BlockType[] = [
   { type: 'h3', t: 'Deep Interests and Specialized Knowledge' },
   { type: 'p', t: 'Special interests (autism) and the tendency to obsess over topics (ADHD) produce encyclopedic knowledge that viewers value enormously. If you\'ve spent 5 years fascinated by astrophysics, trains, military history, or any other niche, you have more material in your head than you could publish in a lifetime. That deep knowledge is exactly what the algorithm rewards: original content that can\'t be found on any other channel.' },
 
-  { type: 'callout', t: 'According to a study published in the Journal of Creative Behavior (2023), people with ADHD score significantly higher in divergent thinking — the ability to generate original ideas and unexpected connections. Exactly what you need to stand out on YouTube.' },
+  { type: 'callout', t: 'Several psychology studies link ADHD with higher scores in divergent thinking — the ability to generate original ideas and unexpected connections. Exactly what you need to stand out on YouTube.' },
 
   { type: 'h2', t: 'The Creative Burnout Problem (and How to Avoid It)' },
   { type: 'p', t: 'Let\'s talk about the elephant in the room. Burnout affects all creators, but if you\'re neurodivergent, the risk is significantly higher. Why? Because most consistency strategies are designed for brains that work linearly and predictably. If your energy fluctuates, if you have brilliant days and days where you can\'t even open the editor, following another creator\'s posting schedule is a recipe for disaster.' },
@@ -3451,7 +3451,7 @@ const ART_AUDITORIA_ES: BlockType[] = [
 
   { type: 'h2', t: 'Paso 2 — Audita tu SEO' },
   { type: 'p', t: 'El SEO de YouTube determina si tu contenido aparece en búsquedas y en recomendaciones. Un canal con un SEO pobre puede tener contenido excelente y seguir siendo invisible. El algoritmo no puede ver tus vídeos — solo puede leer el texto que los acompaña.' },
-  { type: 'p', t: 'Revisa tus últimos 10-15 vídeos y verifica lo siguiente para cada uno: ¿El título incluye la keyword principal? ¿Está en los primeros 60 caracteres? ¿La descripción tiene al menos 150 palabras con la keyword y sinónimos naturales? ¿Usas entre 5 y 10 tags relevantes (no 30 tags genéricos)? Una descripción bien escrita puede mejorar la visibilidad de un vídeo en un 40-60% sin cambiar ni un segundo del contenido.' },
+  { type: 'p', t: 'Revisa tus últimos 10-15 vídeos y verifica lo siguiente para cada uno: ¿El título incluye la keyword principal? ¿Está en los primeros 60 caracteres? ¿La descripción tiene al menos 150 palabras con la keyword y sinónimos naturales? ¿Usas entre 5 y 10 tags relevantes (no 30 tags genéricos)? Una descripción bien escrita puede mejorar de forma apreciable la visibilidad de un vídeo en búsqueda y sugeridos sin cambiar ni un segundo del contenido.' },
   { type: 'p', t: 'El error más común es usar keywords demasiado competitivas para el tamaño actual del canal. Si tienes 2.000 suscriptores, intentar posicionar "cómo ganar dinero en YouTube" es prácticamente imposible. La estrategia correcta es ir a keywords de cola larga con volumen suficiente y competencia manejable, e ir escalando hacia keywords más grandes a medida que crece tu autoridad.' },
   { type: 'list', items: [
     'Títulos: keyword principal en los primeros 60 caracteres, máximo 70 caracteres totales',
@@ -3494,7 +3494,7 @@ const ART_AUDITORIA_ES: BlockType[] = [
   { type: 'h3', t: 'Coherencia temática' },
   { type: 'p', t: 'YouTube clasifica los canales por nicho para saber a quién recomendar su contenido. Si tu canal mezcla recetas de cocina, videojuegos y consejos de finanzas personales, el algoritmo no sabe quién es tu audiencia y reduce drásticamente las recomendaciones. Cuanto más específico es tu nicho, más fácil es para el algoritmo encontrar a tu audiencia y para ti construir una comunidad leal. Si tu canal está muy diversificado, considera crear una serie de vídeos enfocada en un subtema concreto para ir consolidando la especialización.' },
   { type: 'h3', t: 'Aprovechamiento de tendencias' },
-  { type: 'p', t: 'Publicar sobre temas trending en el momento adecuado puede multiplicar las impresiones por 5x o 10x. La clave es la velocidad: el 80% del valor de un trending topic desaparece en las primeras 48-72 horas. Si detectas una tendencia en tu nicho pero tardas 2 semanas en publicar, llegas tarde. Incorporar un flujo de vigilancia de tendencias a tu rutina semanal es uno de los cambios con mayor retorno inmediato.' },
+  { type: 'p', t: 'Publicar sobre temas trending en el momento adecuado puede disparar las impresiones de un vídeo muy por encima de tu media. La clave es la velocidad: la mayor parte del valor de un trending topic se concentra en los primeros dos o tres días. Si detectas una tendencia en tu nicho pero tardas 2 semanas en publicar, llegas tarde. Incorporar un flujo de vigilancia de tendencias a tu rutina semanal es uno de los cambios con mayor retorno inmediato.' },
 
   { type: 'h2', t: 'Paso 6 — Keyword gap analysis' },
   { type: 'p', t: 'El keyword gap analysis identifica las keywords que tienen volumen de búsqueda en tu nicho pero que tu canal aún no cubre. Es una de las técnicas con mayor ROI en YouTube SEO porque te indica exactamente qué vídeos hacer para capturar tráfico de búsqueda garantizado.' },
@@ -3567,7 +3567,7 @@ const ART_AUDITORIA_EN: BlockType[] = [
 
   { type: 'h2', t: 'Step 2 — Audit Your SEO' },
   { type: 'p', t: 'YouTube SEO determines whether your content shows up in searches and recommendations. A channel with poor SEO can have excellent content and still be invisible. The algorithm can\'t watch your videos — it can only read the text that accompanies them.' },
-  { type: 'p', t: 'Review your last 10-15 videos and verify the following for each: Does the title include the main keyword? Is it in the first 60 characters? Does the description have at least 150 words with the keyword and natural synonyms? Are you using 5-10 relevant tags (not 30 generic ones)? A well-written description can improve a video\'s visibility by 40-60% without changing a single second of the content.' },
+  { type: 'p', t: 'Review your last 10-15 videos and verify the following for each: Does the title include the main keyword? Is it in the first 60 characters? Does the description have at least 150 words with the keyword and natural synonyms? Are you using 5-10 relevant tags (not 30 generic ones)? A well-written description can meaningfully improve a video\'s visibility in search and suggested without changing a single second of the content.' },
   { type: 'p', t: 'The most common mistake is targeting keywords that are too competitive for your channel\'s current size. If you have 2,000 subscribers, trying to rank for "how to make money on YouTube" is practically impossible. The right strategy is to go after long-tail keywords with enough volume and manageable competition, then scale toward bigger keywords as your authority grows.' },
   { type: 'list', items: [
     'Titles: main keyword in the first 60 characters, maximum 70 characters total',
@@ -3610,7 +3610,7 @@ const ART_AUDITORIA_EN: BlockType[] = [
   { type: 'h3', t: 'Thematic Consistency' },
   { type: 'p', t: 'YouTube classifies channels by niche to know who to recommend their content to. If your channel mixes cooking recipes, video games, and personal finance tips, the algorithm doesn\'t know who your audience is and drastically reduces recommendations. The more specific your niche, the easier it is for the algorithm to find your audience and for you to build a loyal community. If your channel is very diversified, consider creating a video series focused on one specific sub-topic to consolidate your specialization.' },
   { type: 'h3', t: 'Trend Exploitation' },
-  { type: 'p', t: 'Publishing about trending topics at the right moment can multiply impressions by 5x or 10x. The key is speed: 80% of a trending topic\'s value disappears in the first 48-72 hours. If you spot a trend in your niche but take 2 weeks to publish, you\'re too late. Incorporating a trend monitoring workflow into your weekly routine is one of the changes with the highest immediate return.' },
+  { type: 'p', t: 'Publishing about trending topics at the right moment can push a video\'s impressions far above your usual average. The key is speed: most of a trending topic\'s value is concentrated in the first two or three days. If you spot a trend in your niche but take 2 weeks to publish, you\'re too late. Incorporating a trend monitoring workflow into your weekly routine is one of the changes with the highest immediate return.' },
 
   { type: 'h2', t: 'Step 6 — Keyword Gap Analysis' },
   { type: 'p', t: 'Keyword gap analysis identifies keywords that have search volume in your niche but that your channel doesn\'t cover yet. It\'s one of the highest-ROI techniques in YouTube SEO because it tells you exactly which videos to make to capture guaranteed search traffic.' },
@@ -3681,7 +3681,7 @@ const ART_TOUR_YTUBVIRAL_ES: BlockType[] = [
   { type: 'p', t: 'Introduce la URL de un canal competidor y obtén un análisis completo: qué temas publican, con qué frecuencia, qué keywords posicionan, cuáles son sus vídeos de mayor rendimiento y dónde tienen gaps que tú puedes aprovechar. Es como tener un informe de inteligencia competitiva actualizado en segundos.' },
 
   { type: 'h3', t: '6. A/B Testing de títulos' },
-  { type: 'p', t: 'Compara dos opciones de título y la IA predice cuál tendrá mejor CTR basándose en patrones de rendimiento de millones de vídeos. No reemplaza el A/B testing nativo de YouTube, pero te permite pre-filtrar opciones antes de publicar y tener una estimación fundamentada de qué funcionará mejor.' },
+  { type: 'p', t: 'Compara dos opciones de título y la IA predice cuál tendrá mejor CTR basándose en los patrones de titulación que mejor funcionan en YouTube. No reemplaza el A/B testing nativo de YouTube, pero te permite pre-filtrar opciones antes de publicar y tener una estimación fundamentada de qué funcionará mejor.' },
 
   { type: 'h3', t: '7. Estimación de ingresos' },
   { type: 'p', t: 'Calcula cuánto podrías ganar con tu canal según tu nicho, país de audiencia, CPM estimado y número de vistas. Útil para establecer expectativas realistas, planificar objetivos de monetización y entender cómo distintas estrategias de contenido afectan tus ingresos potenciales.' },
@@ -3759,7 +3759,7 @@ const ART_TOUR_YTUBVIRAL_EN: BlockType[] = [
   { type: 'p', t: 'Enter a competitor\'s channel URL and get a complete analysis: what topics they publish, how often, which keywords they rank for, their best-performing videos, and where they have gaps you can exploit. It\'s like having an updated competitive intelligence report in seconds.' },
 
   { type: 'h3', t: '6. Title A/B Testing' },
-  { type: 'p', t: 'Compare two title options and the AI predicts which will have better CTR based on performance patterns from millions of videos. It doesn\'t replace YouTube\'s native A/B testing, but lets you pre-filter options before publishing with a data-backed estimate of what will perform better.' },
+  { type: 'p', t: 'Compare two title options and the AI predicts which will have better CTR based on the title patterns that perform best on YouTube. It doesn\'t replace YouTube\'s native A/B testing, but lets you pre-filter options before publishing with a data-backed estimate of what will perform better.' },
 
   { type: 'h3', t: '7. Revenue Estimation' },
   { type: 'p', t: 'Calculates how much you could earn with your channel based on your niche, audience country, estimated CPM, and view count. Useful for setting realistic expectations, planning monetization goals, and understanding how different content strategies affect your potential revenue.' },
@@ -4129,9 +4129,9 @@ const ART_BEST_YOUTUBE_TITLE_GENERATOR_2026_EN: BlockType[] = [
 ];
 
 const ART_VIDIQ_ALTERNATIVE_FREE_2026_ES: BlockType[] = [
-  { type: 'p', t: 'Si llevas tiempo buscando una vidiq alternative free 2026 que realmente funcione, probablemente ya te has dado cuenta de que la mayoría de las opciones gratuitas te dan lo mínimo y te cobran por todo lo que importa. VidIQ es una herramienta respetable, pero su plan gratuito tiene límites bastante estrictos, y sus planes de pago pueden costar entre 16 y 99 dólares al mes. En 2026, los creadores de contenido tienen más opciones que nunca, y en este artículo te explicamos cuáles son las mejores alternativas gratuitas o de bajo costo, con especial atención a lo que YTubViral ofrece para competir de igual a igual.' },
+  { type: 'p', t: 'Si llevas tiempo buscando una vidiq alternative free 2026 que realmente funcione, probablemente ya te has dado cuenta de que la mayoría de las opciones gratuitas te dan lo mínimo y te cobran por todo lo que importa. VidIQ es una herramienta respetable, pero su plan gratuito tiene límites bastante estrictos, y sus planes de pago no son baratos. En 2026, los creadores de contenido tienen más opciones que nunca, y en este artículo te explicamos cuáles son las mejores alternativas gratuitas o de bajo costo, con especial atención a lo que YTubViral ofrece para competir de igual a igual.' },
   { type: 'h2', t: 'Por qué los creadores buscan alternativas a VidIQ en 2026' },
-  { type: 'p', t: 'VidIQ lleva años siendo una referencia en el mundo de la optimización para YouTube. Sin embargo, en los últimos dos años, el escenario ha cambiado bastante. Los creadores pequeños y medianos no pueden justificar pagar casi 100 dólares al mes por herramientas que todavía no generan ingresos proporcionales. Además, la interfaz de VidIQ se ha vuelto más compleja y muchas de sus funciones de inteligencia artificial están bloqueadas detrás de los planes más caros. Muchos creadores pequeños y medianos usan solo el plan gratuito de las herramientas SEO, lo que significa que trabajan con información muy limitada.' },
+  { type: 'p', t: 'VidIQ lleva años siendo una referencia en el mundo de la optimización para YouTube. Sin embargo, en los últimos dos años, el escenario ha cambiado bastante. Los creadores pequeños y medianos no pueden justificar pagar por el plan alto de una herramienta cuando el canal todavía no genera ingresos proporcionales. Además, la interfaz de VidIQ se ha vuelto más compleja y muchas de sus funciones de inteligencia artificial están bloqueadas detrás de los planes más caros. Muchos creadores pequeños y medianos usan solo el plan gratuito de las herramientas SEO, lo que significa que trabajan con información muy limitada.' },
   { type: 'p', t: 'La buena noticia es que en 2026 existen alternativas reales. Herramientas que combinan análisis SEO, investigación de palabras clave, generación de títulos con IA y análisis de competidores, sin necesidad de vaciar tu billetera cada mes.' },
   { type: 'h2', t: 'Las funciones clave que debe tener cualquier alternativa gratuita' },
   { type: 'p', t: 'Antes de comparar herramientas, es importante saber qué necesitas realmente. No todas las funciones de VidIQ son indispensables. Estas son las que sí marcan la diferencia para el crecimiento de un canal:' },
@@ -4230,11 +4230,11 @@ const ART_TUBEBUDDY_VS_VIDIQ_2026_ES: BlockType[] = [
   { type: 'h2', t: 'TubeBuddy en 2026: fortalezas y limitaciones' },
   { type: 'p', t: 'TubeBuddy es una extensión de navegador que se integra directamente con YouTube Studio. Su gran ventaja es que permite gestionar el canal sin salir de la plataforma. Entre sus funciones más populares están el A/B testing de miniaturas y títulos, la puntuación de SEO para cada vídeo y las plantillas de descripción.' },
   { type: 'list', items: ['A/B testing nativo de miniaturas (función exclusiva de TubeBuddy)', 'Gestor de comentarios con respuestas automáticas', 'Herramienta de tarjetas y pantallas finales en masa', 'Comparativa de rendimiento entre vídeos del mismo canal', 'Integración directa con YouTube Studio sin cambiar de pestaña'] },
-  { type: 'p', t: 'El principal problema de TubeBuddy en 2026 es su precio. El plan Pro cuesta alrededor de 9 dólares al mes, pero las funciones realmente útiles como el A/B testing o el análisis avanzado de palabras clave están bloqueadas en el plan Legend, que ronda los 49 dólares al mes. Para creadores pequeños, esto puede ser una barrera importante. Además, la interfaz ha recibido críticas por sentirse anticuada comparada con alternativas más modernas.' },
+  { type: 'p', t: 'El principal problema de TubeBuddy en 2026 es su precio. El plan de entrada es económico, pero las funciones realmente útiles como el A/B testing o el análisis avanzado de palabras clave están bloqueadas en su plan de gama alta. Para creadores pequeños, esto puede ser una barrera importante. Además, la interfaz ha recibido críticas por sentirse anticuada comparada con alternativas más modernas.' },
   { type: 'h2', t: 'VidIQ en 2026: lo que ha mejorado y lo que sigue fallando' },
   { type: 'p', t: 'VidIQ ha apostado fuerte por la inteligencia artificial en los últimos dos años. Su función de coach de IA, que sugiere ideas de vídeo basadas en el rendimiento de tu canal, ha sido muy bien recibida. También han mejorado significativamente su herramienta de investigación de palabras clave y la velocidad de indexación de tendencias. En la comparativa tubebuddy vs vidiq 2026, VidIQ destaca especialmente para canales que publican con alta frecuencia y necesitan ideas constantes de contenido.' },
   { type: 'list', items: ['Coach de IA que analiza tu canal y propone temas de vídeo personalizados', 'Puntuación de oportunidad para palabras clave (Keyword Opportunity Score)', 'Detector de tendencias en tiempo real por nicho', 'Vista del rendimiento de la competencia en la página de búsqueda', 'Alertas cuando un competidor sube un vídeo nuevo'] },
-  { type: 'p', t: 'Dicho esto, VidIQ también tiene sus puntos débiles. La versión gratuita es bastante limitada y el plan básico de pago (7,50 dólares al mes) solo incluye funciones básicas. Para acceder al coach de IA y al análisis de competencia completo, necesitas el plan Boost, que cuesta entre 39 y 79 dólares al mes dependiendo del tamaño de tu canal. Otro punto negativo: VidIQ no tiene A/B testing, algo que TubeBuddy sí ofrece.' },
+  { type: 'p', t: 'Dicho esto, VidIQ también tiene sus puntos débiles. La versión gratuita es bastante limitada y el plan de pago básico solo incluye funciones básicas. Para acceder al coach de IA y al análisis de competencia completo necesitas un plan superior, bastante más caro. Otro punto negativo: VidIQ no tiene A/B testing, algo que TubeBuddy sí ofrece.' },
   { type: 'callout-mid', t: 'Analiza tus palabras clave antes de elegir una herramienta', sub: 'YTubViral tiene un motor de investigación de palabras clave que te muestra volumen de búsqueda, competencia y oportunidades reales en tu nicho. Gratis para empezar.', cta: 'Probar investigación de keywords', href: '/features/keyword-research' },
   { type: 'h2', t: 'Comparativa directa: funciones clave cara a cara' },
   { type: 'p', t: 'Para simplificar la decisión, aquí tienes una comparativa de las funciones más importantes entre ambas herramientas en 2026:' },
@@ -4251,7 +4251,7 @@ const ART_TUBEBUDDY_VS_VIDIQ_2026_ES: BlockType[] = [
   { type: 'h2', t: '¿Cuál deberías elegir según tu situación?' },
   { type: 'p', t: 'La respuesta depende de dónde estás ahora mismo con tu canal. Aquí tienes una guía rápida para tomar la decisión correcta sin complicarte demasiado:' },
   { type: 'h3', t: 'Si tienes un canal nuevo (0-1.000 suscriptores)' },
-  { type: 'p', t: 'En esta fase, lo más importante es encontrar las palabras clave correctas y crear títulos que realmente atraigan clics. No necesitas A/B testing ni análisis avanzado de competencia todavía. Una herramienta como YTubViral o la versión gratuita de VidIQ puede ser suficiente para empezar. Gastar 40-50 dólares al mes en herramientas premium cuando todavía no generas ingresos es una decisión que deberías evitar.' },
+  { type: 'p', t: 'En esta fase, lo más importante es encontrar las palabras clave correctas y crear títulos que realmente atraigan clics. No necesitas A/B testing ni análisis avanzado de competencia todavía. Una herramienta como YTubViral o la versión gratuita de VidIQ puede ser suficiente para empezar. Gastar en varias herramientas premium a la vez cuando todavía no generas ingresos es una decisión que deberías evitar.' },
   { type: 'h3', t: 'Si tienes un canal en crecimiento (1.000-50.000 suscriptores)' },
   { type: 'p', t: 'Aquí sí empieza a tener sentido invertir en herramientas. TubeBuddy es especialmente útil para optimizar vídeos existentes mediante A/B testing. VidIQ ayuda a encontrar nuevas oportunidades de contenido. Muchos creadores en esta fase combinan una herramienta premium con YTubViral para la generación de contenido optimizado con IA.' },
   { type: 'h3', t: 'Si gestionas múltiples canales o trabajas como agencia' },
@@ -4271,13 +4271,13 @@ const ART_TUBEBUDDY_VS_VIDIQ_2026_EN: BlockType[] = [
   { type: 'h2', t: 'TubeBuddy in 2026: What Has Changed' },
   { type: 'p', t: 'TubeBuddy has always been known for its bulk management tools. If you have a channel with hundreds of videos and want to update tags, cards, or end screens at scale, TubeBuddy remains one of the most efficient options available. Their 2025 updates brought in a more refined AI title suggestion system and improved their keyword explorer UI significantly.' },
   { type: 'h3', t: 'TubeBuddy Pricing in 2026' },
-  { type: 'p', t: 'TubeBuddy\'s current pricing tiers look like this: a free plan with limited functionality, a Pro plan at around $4.99/month, a Legend plan at $19.99/month, and an Enterprise tier for agencies. The free plan is fine for beginners who just want to see competitor tags, but any serious SEO work requires at least the Pro upgrade. One major complaint from users: many of the most useful features, like A/B testing for thumbnails, are locked behind the higher tiers.' },
+  { type: 'p', t: 'TubeBuddy\'s current pricing runs from a limited free plan through paid tiers up to an Enterprise tier for agencies. The free plan is fine for beginners who just want to see competitor tags, but any serious SEO work requires at least the Pro upgrade. One major complaint from users: many of the most useful features, like A/B testing for thumbnails, are locked behind the higher tiers.' },
   { type: 'h3', t: 'Where TubeBuddy Excels' },
   { type: 'list', items: ['Bulk editing across hundreds of videos simultaneously', 'Robust browser extension that overlays data directly on YouTube', 'Detailed tag suggestions with competition scoring', 'Thumbnail A/B testing on higher-tier plans', 'Long-standing API integration with YouTube\'s official data'] },
   { type: 'h2', t: 'vidIQ in 2026: The AI Coaching Pivot' },
   { type: 'p', t: 'vidIQ made a sharp turn toward AI-driven content coaching over the past two years. Their AI Daily Ideas feature, which suggests video topics based on your niche and past performance, has become one of their most talked-about features. They also introduced an AI coach that answers creator questions in a chat interface, essentially trying to replace the need to hire a YouTube consultant. It\'s ambitious, and honestly, it works reasonably well for creators who are just starting out.' },
   { type: 'h3', t: 'vidIQ Pricing in 2026' },
-  { type: 'p', t: 'vidIQ\'s pricing has gotten more aggressive. Their basic plan runs around $7.50/month, while the Boost plan costs $39/month, and Boost Plus (which includes the AI coaching features) pushes $79/month. That\'s a significant jump. For solo creators, paying $79/month for an AI coach is hard to justify unless your channel is already generating meaningful revenue. This is where many creators start looking at alternatives.' },
+  { type: 'p', t: 'vidIQ\'s pricing has gotten more aggressive. The basic paid plan is relatively cheap, but the AI coaching features sit in the higher tiers, which get expensive. That\'s a significant jump. For solo creators, paying $79/month for an AI coach is hard to justify unless your channel is already generating meaningful revenue. This is where many creators start looking at alternatives.' },
   { type: 'h3', t: 'Where vidIQ Excels' },
   { type: 'list', items: ['AI-powered video idea generation based on your niche', 'Real-time channel performance dashboard', 'Competitor channel tracking and alerts', 'Trending topic alerts for fast-moving niches', 'Mobile app with decent analytics access'] },
   { type: 'callout-mid', t: 'See how your channel stacks up right now', sub: 'YTubViral\'s free SEO score tool analyzes your channel\'s optimization in under 60 seconds — no account required.', cta: 'Get Your Free SEO Score', href: '/seo-score' },
@@ -4285,7 +4285,7 @@ const ART_TUBEBUDDY_VS_VIDIQ_2026_EN: BlockType[] = [
   { type: 'p', t: 'When you put tubebuddy vs vidiq 2026 side by side on core features, the picture becomes clearer. For pure SEO keyword research, TubeBuddy\'s keyword explorer tends to give more granular data about competition and search volume. For content ideation and trend spotting, vidIQ\'s AI tools have a slight edge. For bulk channel management, TubeBuddy wins easily. For pricing transparency and value at entry level, neither tool is particularly impressive.' },
   { type: 'list', items: ['Keyword Research: TubeBuddy edges out vidIQ for depth of data', 'AI Content Ideas: vidIQ is more developed here in 2026', 'Bulk Editing: TubeBuddy has no real competition in this area', 'Competitor Analysis: Both tools are comparable, vidIQ slightly more visual', 'Thumbnail A/B Testing: TubeBuddy offers this, vidIQ does not at most tiers', 'Mobile App: vidIQ\'s app is more polished and functional', 'Pricing Value: Neither is cheap once you need full features'] },
   { type: 'h2', t: 'The Hidden Cost Problem Neither Tool Talks About' },
-  { type: 'p', t: 'Here\'s what most tubebuddy vs vidiq 2026 comparisons gloss over: both platforms gate their most valuable features behind expensive tiers. You sign up for the free or entry plan, realize you can\'t do A/B testing, deep keyword research, or competitor tracking without upgrading, and suddenly you\'re spending $40-80 per month. For a creator with 1,000 subscribers, that\'s a real burden. For a creator with 100,000 subscribers monetizing their channel, it\'s more manageable but still worth questioning whether the ROI is there.' },
+  { type: 'p', t: 'Here\'s what most tubebuddy vs vidiq 2026 comparisons gloss over: both platforms gate their most valuable features behind expensive tiers. You sign up for the free or entry plan, realize you can\'t do A/B testing, deep keyword research, or competitor tracking without upgrading, and suddenly you\'re on a plan that adds up fast. For a creator with 1,000 subscribers, that\'s a real burden. For a creator with 100,000 subscribers monetizing their channel, it\'s more manageable but still worth questioning whether the ROI is there.' },
   { type: 'p', t: 'This pricing structure has opened the door for newer tools that deliver core SEO functionality at lower price points without requiring a browser extension or a complicated dashboard to learn. The question isn\'t just which is better between the two legacy tools, it\'s whether either is the best choice for your situation in 2026.' },
   { type: 'callout-mid', t: 'Research keywords that actually rank', sub: 'YTubViral\'s keyword research tool shows you search volume, competition score, and related topics — so you target the right keywords from day one.', cta: 'Explore Keyword Research', href: '/features/keyword-research' },
   { type: 'h2', t: 'Where YTubViral Fits Into This Comparison' },
@@ -4297,10 +4297,10 @@ const ART_TUBEBUDDY_VS_VIDIQ_2026_EN: BlockType[] = [
   { type: 'h3', t: 'Trend Exploration Without the Noise' },
   { type: 'p', t: 'vidIQ\'s trend alerts can be overwhelming. You get notifications about topics that might be trending in your general category, but many of them aren\'t relevant to your specific audience. YTubViral\'s trend explorer filters by channel-specific audience data, which means the trends you see are actually relevant to your viewers, not just your broad niche.' },
   { type: 'h2', t: 'Which Tool Should You Actually Use in 2026' },
-  { type: 'p', t: 'The honest answer is that the right choice depends on where you are as a creator. If you have a large, established channel with hundreds of videos and need bulk management tools, TubeBuddy\'s higher tiers are hard to beat. If you\'re a newer creator who wants AI-generated video ideas and a coaching layer, vidIQ\'s Boost plan gives you a decent starting point. But if you\'re primarily focused on improving your video SEO, click-through rate, and keyword targeting without paying premium prices for features you don\'t need, YTubViral is worth testing.' },
+  { type: 'p', t: 'The honest answer is that the right choice depends on where you are as a creator. If you have a large, established channel with hundreds of videos and need bulk management tools, TubeBuddy\'s higher tiers are hard to beat. If you\'re a newer creator who wants AI-generated video ideas and a coaching layer, vidIQ\'s paid plan gives you a decent starting point. But if you\'re primarily focused on improving your video SEO, click-through rate, and keyword targeting without paying premium prices for features you don\'t need, YTubViral is worth testing.' },
   { type: 'p', t: 'The tubebuddy vs vidiq 2026 debate also misses a broader point: most creators don\'t need every feature in these platforms. They need their titles to convert, their keywords to rank, and their thumbnails to get clicks. Solving those three problems well will grow a channel faster than having access to 50 features you never use.' },
   { type: 'h2', t: 'Practical Recommendations Based on Channel Size' },
-  { type: 'list', items: ['Under 1,000 subscribers: Start with free tiers of TubeBuddy or vidIQ combined with YTubViral\'s free SEO score to build good habits early', '1,000 to 10,000 subscribers: Focus on keyword research and title optimization — this is where YTubViral and TubeBuddy Pro both deliver strong value', '10,000 to 100,000 subscribers: Consider running competitor analysis consistently — vidIQ\'s visual dashboards are useful here, as is YTubViral\'s competitor analysis feature', 'Over 100,000 subscribers: TubeBuddy\'s bulk editing tools become genuinely time-saving at this scale, worth the Legend plan cost', 'Agencies managing multiple channels: Look at TubeBuddy Enterprise or YTubViral\'s multi-channel features before committing'] },
+  { type: 'list', items: ['Under 1,000 subscribers: Start with free tiers of TubeBuddy or vidIQ combined with YTubViral\'s free SEO score to build good habits early', '1,000 to 10,000 subscribers: Focus on keyword research and title optimization — this is where YTubViral and TubeBuddy Pro both deliver strong value', '10,000 to 100,000 subscribers: Consider running competitor analysis consistently — vidIQ\'s visual dashboards are useful here, as is YTubViral\'s competitor analysis feature', 'Over 100,000 subscribers: TubeBuddy\'s bulk editing tools become genuinely time-saving at this scale, worth its higher-tier cost', 'Agencies managing multiple channels: Look at TubeBuddy Enterprise or YTubViral\'s multi-channel features before committing'] },
   { type: 'p', t: 'The tubebuddy vs vidiq 2026 conversation will keep evolving as both platforms push more updates. But the fundamentals don\'t change: YouTube rewards videos that people click on, watch through, and engage with. The tool that helps you optimize those three things most efficiently is the right tool for you. Don\'t let feature lists distract you from that core goal.' },
   { type: 'callout-mid', t: 'Analyze your competitors before your next upload', sub: 'See what keywords and title structures are working for the top channels in your niche — and replicate what\'s proven to work.', cta: 'Try Competitor Analysis', href: '/features/competitor-analysis' },
   { type: 'h2', t: 'Final Verdict' },
@@ -4327,7 +4327,7 @@ const ART_YOUTUBE_DESCRIPTION_GENERATOR_AI_ES: BlockType[] = [
   { type: 'h2', t: 'Comparativa: escribir descripciones manualmente vs usar IA' },
   { type: 'p', t: 'Para ser honestos, escribir una descripción manualmente no es imposible ni siempre malo. Si eres un escritor experimentado con conocimiento de SEO y tiempo disponible, puedes producir descripciones excelentes. El problema es la escala. Si subes dos o tres videos por semana, cada descripción te puede costar entre 20 y 45 minutos si lo haces bien. Al mes, eso son entre 3 y 6 horas dedicadas solo a descripciones.' },
   { type: 'p', t: 'Con un youtube description generator ai bien configurado, ese mismo tiempo se reduce a 5-10 minutos por video incluyendo la revisión y edición. La diferencia en calidad, cuando la herramienta está bien entrenada, es mínima. Y la diferencia en tiempo es enorme para cualquier creador que toma en serio su canal.' },
-  { type: 'list', items: ['Escritura manual: 20-45 min por descripción, alta variabilidad en calidad SEO', 'Generador de IA: 5-10 min incluyendo revisión, consistencia en optimización', 'Sin descripción optimizada: pérdida estimada de hasta 40% del tráfico orgánico potencial', 'Canales con descripciones optimizadas reportan hasta 2x más tráfico de búsqueda según datos de creadores independientes'] },
+  { type: 'list', items: ['Escritura manual: 20-45 min por descripción, alta variabilidad en calidad SEO', 'Generador de IA: 5-10 min incluyendo revisión, consistencia en optimización', 'Sin descripción optimizada: pérdida estimada de hasta 40% del tráfico orgánico potencial', 'Los canales que trabajan sus descripciones tienden a captar bastante más tráfico de búsqueda'] },
   { type: 'callout-mid', t: 'Analiza el SEO de tus videos actuales', sub: 'Descubre qué tan bien optimizadas están tus descripciones y qué puedes mejorar hoy mismo.', cta: 'Ver mi puntuación SEO', href: '/seo-score' },
   { type: 'h2', t: 'Errores comunes al usar generadores de descripciones con IA' },
   { type: 'p', t: 'Tener una herramienta poderosa no garantiza buenos resultados si no la usas bien. Estos son los errores más frecuentes que cometen los creadores cuando empiezan a usar un youtube description generator ai y cómo evitarlos.' },
@@ -4422,7 +4422,7 @@ const ART_YOUTUBE_TRENDING_TOOL_ES: BlockType[] = [
 
   { type: 'h2', t: 'Estrategia: Trending + SEO Score' },
   { type: 'p', t: 'El combo más potente es usar trending para encontrar ideas y luego el SEO Score para optimizar tu vídeo antes de publicar. Así te subes a la ola con un vídeo perfectamente optimizado desde el primer minuto.' },
-  { type: 'p', t: 'Los creadores que combinan timing (trending) con optimización (SEO) ven resultados 3-5x superiores a los que solo hacen una de las dos cosas.' },
+  { type: 'p', t: 'Combinar timing (trending) con optimización (SEO) rinde mucho más que hacer solo una de las dos cosas: llegas pronto al tema y además con un vídeo que el algoritmo entiende desde el primer minuto.' },
   { type: 'callout-final', t: 'Empieza a crear contenido que explota', sub: '14 herramientas de IA para YouTube. SEO Score, trending, generador de títulos, scripts y más.', cta: 'Crear cuenta gratis', href: '/signup' },
 ];
 
@@ -4449,7 +4449,7 @@ const ART_YOUTUBE_TRENDING_TOOL_EN: BlockType[] = [
 
   { type: 'h2', t: 'Strategy: Trending + SEO Score' },
   { type: 'p', t: 'The most powerful combo is using trending to find ideas and then SEO Score to optimize your video before publishing. That way you ride the wave with a perfectly optimized video from minute one.' },
-  { type: 'p', t: 'Creators who combine timing (trending) with optimization (SEO) see 3-5x better results than those who only do one of the two.' },
+  { type: 'p', t: 'Combining timing (trending) with optimization (SEO) pays off far more than doing just one: you reach the topic early and with a video the algorithm understands from minute one.' },
   { type: 'callout-final', t: 'Start creating content that explodes', sub: '14 AI tools for YouTube. SEO Score, trending, title generator, scripts and more.', cta: 'Create free account', href: '/signup' },
 ];
 
@@ -4469,7 +4469,7 @@ const ART_YOUTUBE_TAG_GENERATOR_FREE_2026_ES: BlockType[] = [
   { type: 'h2', t: 'Comparativa: las mejores herramientas gratuitas de tags en 2026' },
   { type: 'p', t: 'Hay varias opciones disponibles en el mercado, y ser honesto es importante: no todas funcionan igual. Aquí te dejamos un resumen de las más populares para que puedas elegir la que mejor se adapta a tus necesidades.' },
   { type: 'h3', t: 'TubeBuddy' },
-  { type: 'p', t: 'TubeBuddy es probablemente la extensión más conocida para YouTube. Su versión gratuita incluye un explorador básico de tags, aunque las funciones más potentes como el análisis de competencia y el tag ranking están bloqueadas detrás de planes de pago que empiezan en 4.99 dólares al mes. Es una herramienta sólida, pero su curva de aprendizaje puede resultar frustrante para creadores que recién empiezan.' },
+  { type: 'p', t: 'TubeBuddy es probablemente la extensión más conocida para YouTube. Su versión gratuita incluye un explorador básico de tags, aunque las funciones más potentes como el análisis de competencia y el tag ranking están bloqueadas detrás de planes de pago. Es una herramienta sólida, pero su curva de aprendizaje puede resultar frustrante para creadores que recién empiezan.' },
   { type: 'h3', t: 'VidIQ' },
   { type: 'p', t: 'VidIQ tiene una interfaz más moderna y su plan gratuito incluye sugerencias de tags y un score SEO básico. Sin embargo, el número de búsquedas permitidas por día en la versión gratuita es bastante limitado, lo que puede ser un problema si gestionas varios canales o subes contenido frecuentemente.' },
   { type: 'h3', t: 'YTubViral' },
