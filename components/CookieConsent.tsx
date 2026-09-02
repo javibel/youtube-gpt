@@ -50,8 +50,8 @@ export default function CookieConsent() {
       <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <p className="text-zinc-300 text-sm leading-relaxed flex-1">
           {t(
-            'Usamos cookies propias para saber de qué campaña vienes (atribución). Sin cookies de terceros ni publicidad. Las de sesión e idioma son necesarias y no se desactivan.',
-            'We use first-party cookies to know which campaign you came from (attribution). No third-party or advertising cookies. Session and language cookies are necessary and always on.'
+            'Usamos cookies propias, y solo con tu consentimiento una de analítica de uso (Microsoft Clarity). Sin publicidad. Las de sesión e idioma son necesarias y no se desactivan.',
+            'We use first-party cookies, and only with your consent one for usage analytics (Microsoft Clarity). No advertising. Session and language cookies are necessary and always on.'
           )}{' '}
           <a href="/privacy" className="underline text-zinc-400 hover:text-white transition">
             {t('Más información', 'Learn more')}
