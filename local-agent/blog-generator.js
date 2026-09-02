@@ -365,6 +365,41 @@ function appendToBlogData(tsCode) {
   try { fs.unlinkSync(backup); } catch {}
 }
 
+// Commit + push de lib/blog-data.ts al repo de la webapp. SIN esto el articulo
+// se queda en disco y nunca llega a produccion (Vercel despliega desde git) —
+// era el motivo de que el blog llevara desde junio sin publicar nada de verdad.
+// Solo toca blog-data.ts; si algo falla, revierte ESE fichero y lanza.
+function commitAndPushBlogData(slug) {
+  const git = (args) => execSync(`git ${args}`, {
+    cwd: YT_PROJECT, timeout: 120000, stdio: 'pipe', windowsHide: true,
+  }).toString().trim();
+
+  const oldHead = git('rev-parse HEAD');
+  try {
+    git('add -- lib/blog-data.ts');
+    // Nada que commitear (p.ej. el append no cambio bytes) => no es un error.
+    const staged = git('diff --cached --name-only');
+    if (!staged.includes('lib/blog-data.ts')) {
+      throw new Error('blog-data.ts no quedo staged tras el append');
+    }
+    // -- lib/blog-data.ts: commitea SOLO ese fichero, aunque el working tree
+    // tuviera otras cosas a medio (drift de local-agent, sesion de dev, etc).
+    git(`commit -m ${JSON.stringify(`blog(auto): nuevo articulo ${slug}`)} -- lib/blog-data.ts`);
+    git('push');
+    console.log(`[blog-generator] blog-data.ts commiteado y pusheado (${slug})`);
+  } catch (err) {
+    try {
+      git(`reset --soft ${oldHead}`);
+      git(`checkout ${oldHead} -- lib/blog-data.ts`);
+      git('reset -- lib/blog-data.ts');
+    } catch (rb) {
+      console.error('[blog-generator] rollback de git FALLO:', rb.message);
+    }
+    const detail = ((err.stdout || '') + (err.stderr || '') || err.message).toString().split(/\r?\n/).slice(0, 6).join(' | ');
+    throw new Error(`commit/push de blog-data.ts fallo, revertido: ${detail}`);
+  }
+}
+
 function addToGscIndex(slug) {
   let content = fs.readFileSync(GSC_INDEX_PATH, 'utf8');
   const newUrl = `    'https://ytubviral.com/blog/${slug}',`;
@@ -477,6 +512,10 @@ async function runBlogGenerator() {
       } else {
         // Append to blog-data.ts
         appendToBlogData(tsCode);
+
+        // Commit + push ANTES de notificar a Google: sin esto el articulo nunca
+        // llega a produccion y triggerIndexing() le pediria a Google un 404.
+        commitAndPushBlogData(kw.slug);
 
         // Add to GSC index and trigger
         addToGscIndex(kw.slug);
