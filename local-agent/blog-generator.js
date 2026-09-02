@@ -7,8 +7,17 @@ const { execSync } = require('child_process');
 const { guardedCall } = require('./api-guard');
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const STATE_PATH = path.join(__dirname, 'reports', 'blog-generator-state.json');
-const BLOG_DATA_PATH = path.join(__dirname, '..', 'youtube-gpt', 'lib', 'blog-data.ts');
+// Overridable por env para poder probar la insercion (appendToBlogData) sin tocar el
+// state ni el blog-data.ts reales. Idea tomada de un intento de arreglo anterior que
+// vivia en un worktree de este mismo repo (rama claude/nifty-golick-266653, commit
+// 8ab9010) y nunca se habia mergeado a main.
+const STATE_PATH = process.env.BLOG_STATE_PATH
+  ? path.resolve(process.env.BLOG_STATE_PATH)
+  : path.join(__dirname, 'reports', 'blog-generator-state.json');
+const YT_PROJECT = process.env.BLOG_DATA_PROJECT
+  ? path.resolve(process.env.BLOG_DATA_PROJECT)
+  : path.join(__dirname, '..', 'youtube-gpt');
+const BLOG_DATA_PATH = path.join(YT_PROJECT, 'lib', 'blog-data.ts');
 const GSC_INDEX_PATH = path.join(__dirname, 'gsc-index-urls.js');
 const MAX_ARTICLES_PER_RUN = 1;
 
@@ -98,6 +107,14 @@ async function generateArticleBody(keyword, slug, cat, lang) {
   const langLabel = lang === 'es' ? 'Spanish' : 'English';
   const system = `You are an expert SEO content writer for a YouTube tools blog. You write detailed, practical articles optimized for search engines.
 
+TRUTHFULNESS RULES — these override everything else. Every article is published under the byline of the real CEO, Javier Jimeno. Violating these is a serious brand and legal problem:
+- NEVER invent statistics, percentages, multipliers ("3x faster", "35% more CTR", "up to 300%"), or numeric study findings. If you don't have a real, verifiable source for a number, don't use a number — make the point qualitatively ("a strong title can significantly lift CTR").
+- NEVER attribute a claim to a named source (Backlinko, Briggsby, Social Blade, "YouTube's own data", "a study of 100,000 videos") unless you are certain that exact source published that exact finding. When unsure, drop the attribution and the number together.
+- NEVER claim YTubViral has run studies, "internal data", "internal tests", "channels we analyzed", or A/B test results. YTubViral has NOT published any such research. Do not imply it has.
+- NEVER invent named case studies ("a channel called 'Finanzas Para Todos' went from 12,000 to 87,000 subscribers"). Illustrative examples are fine ONLY if clearly hypothetical ("imagine a finance channel that...").
+- Do NOT state specific competitor prices or plan names as fact (they change and are often wrong). Say "paid plans" / "higher tiers" instead.
+Well-known, uncontroversial facts stated without a fake citation are fine ("YouTube is the second-largest search engine").
+
 ${BLOCKTYPE_DEFINITION}
 
 ${EXAMPLE_BLOCKS}
@@ -113,7 +130,7 @@ Slug: ${slug}
 Requirements:
 - SEO-optimized: use the target keyword naturally 3-5 times throughout
 - Include 5-8 h2 sections with practical, actionable content
-- Include specific data, statistics, or examples where possible
+- Use concrete, practical examples — but follow the TRUTHFULNESS RULES: no invented statistics, no fake source attributions, no claims of YTubViral research, no fabricated case studies
 - Include 2-3 callout-mid CTAs linking to relevant YTubViral features
 - End with 1 callout-final CTA
 - Write in a conversational but professional tone
@@ -295,10 +312,9 @@ function slugExistsInBlogData(slug) {
 
 // tsc --noEmit sobre la webapp. Devuelve las lineas de error (vacio = limpio).
 function runTscCheck() {
-  const projectDir = path.join(__dirname, '..', 'youtube-gpt');
   try {
     execSync('node node_modules/typescript/bin/tsc --noEmit', {
-      cwd: projectDir, timeout: 600000, stdio: 'pipe', windowsHide: true,
+      cwd: YT_PROJECT, timeout: 600000, stdio: 'pipe', windowsHide: true,
     });
     return [];
   } catch (err) {
