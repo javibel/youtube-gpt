@@ -485,6 +485,19 @@ function Footer({ lang }: { lang: Lang }) {
     { href: '/features/trend-explorer', label: t('Tendencias', 'Trends') },
     { href: '/features/learning-hub', label: t('Aprendizaje', 'Learning') },
   ];
+  // Herramientas gratis SIN login. Enlazadas directas desde aquí a propósito:
+  // son las únicas páginas con demanda de búsqueda real (GSC 02/09: engagement-rate
+  // 139 impr/28d, title-analyzer 45) y antes estaban a dos saltos de la home,
+  // detrás de /tools. Google está devolviendo páginas profundas a "unknown",
+  // así que la profundidad de enlace interno importa.
+  const freeTools = [
+    { href: '/seo-score', label: 'SEO Score' },
+    { href: '/title-analyzer', label: t('Analizador de títulos', 'Title Analyzer') },
+    { href: '/engagement-rate-calculator', label: t('Calculadora de engagement', 'Engagement Calculator') },
+    { href: '/ctr-calculator', label: t('Calculadora de CTR', 'CTR Calculator') },
+    { href: '/youtube-money-calculator', label: t('Calculadora de ingresos', 'Money Calculator') },
+    { href: '/youtube-title-ideas', label: t('Ideas de títulos', 'Title Ideas') },
+  ];
 
   return (
     <footer style={{ background: 'var(--yv-bg-0)' }}>
@@ -497,7 +510,7 @@ function Footer({ lang }: { lang: Lang }) {
         </p>
       </div>
       <div className="px-6 py-12 mt-8" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-10 mb-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-10 mb-10">
           <div>
             <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>
               {t('Creación', 'Creation')}
@@ -524,10 +537,22 @@ function Footer({ lang }: { lang: Lang }) {
           </div>
           <div>
             <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>
+              {t('Gratis, sin cuenta', 'Free, no account')}
+            </p>
+            <ul className="space-y-2">
+              {freeTools.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{l.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--yv-brand-lift)' }}>
               {t('Recursos', 'Resources')}
             </p>
             <ul className="space-y-2">
-              <li><Link href="/tools" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Herramientas gratis', 'Free Tools')}</Link></li>
+              <li><Link href="/tools" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Todas las herramientas', 'All tools')}</Link></li>
               <li><Link href="/trends" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Trending', 'Trending')}</Link></li>
               <li><Link href="/blog" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">Blog</Link></li>
               <li><Link href="/youtube-title-study" className="text-zinc-500 text-sm hover:text-white transition inline-block py-1.5">{t('Estudio de títulos', 'Title Study')}</Link></li>
