@@ -6,6 +6,7 @@ import { LangProvider } from "@/components/LangProvider";
 import { CurrencyProvider } from "@/components/CurrencyProvider";
 import DeferredChatWidget from "@/components/DeferredChatWidget";
 import PageViewTracker from "@/components/PageViewTracker";
+import ClarityAnalytics from "@/components/ClarityAnalytics";
 import UTMCapture from "@/components/UTMCapture";
 import AffiliateCapture from "@/components/AffiliateCapture";
 import LandingCapture from "@/components/LandingCapture";
@@ -109,6 +110,7 @@ export default function RootLayout({
                 ytv_aff) deben existir para cualquier lectura que dependa del
                 orden de montaje, no solo para las que ya leen en submit. */}
             <PageViewTracker />
+            <ClarityAnalytics />
             <Suspense fallback={null}><UTMCapture /></Suspense>
             <Suspense fallback={null}><AffiliateCapture /></Suspense>
             {children}

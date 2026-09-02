@@ -50,6 +50,8 @@ const CSP_REQUIRED = [
   { directive: 'script-src',  needs: 'https://js.stripe.com', why: 'checkout de Stripe' },
   { directive: 'frame-src',   needs: 'https://www.youtube.com', why: 'videos incrustados de YouTube' },
   { directive: 'font-src',    needs: 'https://fonts.gstatic.com', why: 'Google Fonts' },
+  { directive: 'script-src',  needs: 'https://www.clarity.ms', why: 'grabacion de sesiones (Clarity)' },
+  { directive: 'connect-src', needs: 'https://*.clarity.ms', why: 'subida de sesiones a Clarity' },
 ];
 
 // Paginas publicas que ve practicamente todo el trafico.
