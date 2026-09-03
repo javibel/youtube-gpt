@@ -81,7 +81,7 @@ async function alreadyPublishedToday(platform: string): Promise<boolean> {
 export async function publishToFacebook(
   content: string,
   opts: { skipDuplicateCheck?: boolean } = {}
-): Promise<{ success: boolean; postId?: string; blocked?: boolean; error?: string }> {
+): Promise<{ success: boolean; postId?: string; blocked?: boolean; skipped?: boolean; error?: string }> {
   const pageId = process.env.META_PAGE_ID;
   const token = process.env.META_PAGE_ACCESS_TOKEN;
 
@@ -90,7 +90,7 @@ export async function publishToFacebook(
   }
 
   if (!opts.skipDuplicateCheck && await alreadyPublishedToday('facebook')) {
-    return { success: false, error: 'Already published to Facebook today — skipping to avoid duplicate' };
+    return { success: false, skipped: true, error: 'Already published to Facebook today — skipping to avoid duplicate' };
   }
 
   try {
@@ -145,7 +145,7 @@ export async function publishToFacebook(
 export async function publishToFacebookWithImage(
   content: string,
   imageUrl: string
-): Promise<{ success: boolean; postId?: string; blocked?: boolean; error?: string }> {
+): Promise<{ success: boolean; postId?: string; blocked?: boolean; skipped?: boolean; error?: string }> {
   const pageId = process.env.META_PAGE_ID;
   const token = process.env.META_PAGE_ACCESS_TOKEN;
 
@@ -154,7 +154,7 @@ export async function publishToFacebookWithImage(
   }
 
   if (await alreadyPublishedToday('facebook')) {
-    return { success: false, error: 'Already published to Facebook today — skipping to avoid duplicate' };
+    return { success: false, skipped: true, error: 'Already published to Facebook today — skipping to avoid duplicate' };
   }
 
   try {
@@ -254,7 +254,7 @@ export async function retryPendingFacebookPost(): Promise<{ success: boolean; po
 export async function publishToInstagram(
   content: string,
   imageUrl?: string
-): Promise<{ success: boolean; postId?: string; error?: string }> {
+): Promise<{ success: boolean; postId?: string; skipped?: boolean; error?: string }> {
   const igId = process.env.INSTAGRAM_ACCOUNT_ID;
   const token = process.env.INSTAGRAM_ACCESS_TOKEN;
 
@@ -263,7 +263,7 @@ export async function publishToInstagram(
   }
 
   if (await alreadyPublishedToday('instagram')) {
-    return { success: false, error: 'Already published to Instagram today — skipping to avoid duplicate' };
+    return { success: false, skipped: true, error: 'Already published to Instagram today — skipping to avoid duplicate' };
   }
 
   try {

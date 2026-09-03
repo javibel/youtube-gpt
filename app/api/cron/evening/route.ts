@@ -67,7 +67,10 @@ export async function GET(request: Request) {
       const igImageUrl = (await getOrCreateDailyBrandImage(ig)) ?? buildInfographicUrl(ig);
       const igResult = await publishToInstagram(ig, igImageUrl);
       results.instagram = igResult;
-      if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
+      // skipped = ya se publicó hoy (dedup normal, no un error). El post de IG lo
+      // hace el cron matutino; por la tarde este dedup saltaba a diario y mandaba
+      // un "[YTubViral Agent] Errores en cron vespertino" falso (silenciado 03/09).
+      if (!igResult.success && !igResult.skipped) errors.push(`Instagram: ${igResult.error}`);
     }
 
     // Process A/B tests (switch variants, complete tests)

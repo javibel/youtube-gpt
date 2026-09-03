@@ -170,7 +170,7 @@ export async function GET(request: Request) {
     if (fb && fbImageUrl) {
       const fbResult = await publishToFacebookWithImage(fb, fbImageUrl);
       results.facebook = fbResult;
-      if (!fbResult.success) errors.push(`Facebook: ${fbResult.error}`);
+      if (!fbResult.success && !fbResult.skipped) errors.push(`Facebook: ${fbResult.error}`);
     }
 
     // 3b. Publish Instagram + Twitter in parallel (both independent)
@@ -180,7 +180,7 @@ export async function GET(request: Request) {
       socialPublishTasks.push((async () => {
         const igResult = await publishToInstagram(ig, igImageUrl ?? undefined);
         results.instagram = igResult;
-        if (!igResult.success) errors.push(`Instagram: ${igResult.error}`);
+        if (!igResult.success && !igResult.skipped) errors.push(`Instagram: ${igResult.error}`);
       })());
     }
 
