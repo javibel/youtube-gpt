@@ -403,6 +403,7 @@ function commitAndPushBlogData(slug) {
 function addToGscIndex(slug) {
   let content = fs.readFileSync(GSC_INDEX_PATH, 'utf8');
   const newUrl = `    'https://ytubviral.com/blog/${slug}',`;
+  if (content.includes(`/blog/${slug}'`)) return;  // ya está — no duplicar
   // Insert after the last blog URL
   const lastBlogUrl = content.lastIndexOf("'https://ytubviral.com/blog/");
   if (lastBlogUrl === -1) return;
