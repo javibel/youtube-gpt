@@ -31,6 +31,23 @@ import { hasTrackingConsent } from '@/components/CookieConsent';
 
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID;
 
+type ClarityFn = ((...args: unknown[]) => void) & { q?: unknown[] };
+
+function getClarity(): ClarityFn | null {
+  if (typeof window === 'undefined') return null;
+  const fn = (window as unknown as { clarity?: unknown }).clarity;
+  return typeof fn === 'function' ? (fn as ClarityFn) : null;
+}
+
+// API de consentimiento v2 de Clarity. Desde el 31/10/2025 Microsoft EXIGE recibir
+// una señal de consentimiento para las visitas del EEE, Reino Unido y Suiza; sin ella
+// Clarity funciona en "no-consent mode" y asigna un id nuevo por página, de modo que
+// no hay sesión continua que revisar (que es justo para lo que se puso).
+// No hacemos publicidad, así que ad_Storage va siempre en "denied".
+function signalConsent(analytics: 'granted' | 'denied') {
+  getClarity()?.('consentv2', { ad_Storage: 'denied', analytics_Storage: analytics });
+}
+
 function loadClarity(id: string) {
   if (typeof window === 'undefined') return;
   // Ya cargado (p. ej. el usuario aceptó y luego navegó)
@@ -41,21 +58,31 @@ function loadClarity(id: string) {
     ((w.clarity as { q?: unknown[] }).q = (w.clarity as { q?: unknown[] }).q || []).push(args);
   };
 
+  // La señal se encola en w.clarity.q y se procesa cuando el tag termina de cargar,
+  // así que puede emitirse antes de que el script esté listo.
+  signalConsent('granted');
+
   const script = document.createElement('script');
   script.async = true;
   script.src = `https://www.clarity.ms/tag/${id}`;
   document.head.appendChild(script);
 }
 
-// Retirada del consentimiento (art. 7.3 RGPD). No basta con no volver a cargar el
-// script: si Clarity ya está en memoria sigue grabando hasta que se recargue. Se
-// llama a la API `stop` (documentada, pero envuelta por si cambia) y se recarga solo
-// cuando de verdad estaba cargado. CookieConsent ya ha borrado _clck/_clsk antes de
-// emitir el evento, así que tras la recarga no se reanuda la sesión anterior.
-function stopClarity() {
-  const w = window as unknown as { clarity?: (...args: unknown[]) => void };
-  if (typeof w.clarity !== 'function') return; // nunca llegó a cargar: nada que parar
-  try { w.clarity('stop'); } catch { /* API opcional, la recarga es la garantía */ }
+// Retirada del consentimiento (art. 7.3 RGPD). No basta con dejar de cargar el script:
+// si Clarity ya está en memoria sigue grabando hasta que se recargue.
+//   1. consentv2 denied → Clarity pasa a modo sin consentimiento.
+//   2. consent(false)   → borra sus cookies y termina la sesión en curso (documentado
+//                         en clarity-consent-api-v2, "Erase cookies").
+//   3. recarga          → garantiza que no queda nada en memoria. Al volver,
+//                         hasTrackingConsent() es false y el tag ya no se carga.
+// Solo se recarga si Clarity estaba cargado: rechazar en el banner inicial no recarga.
+function revokeClarity() {
+  const clarity = getClarity();
+  if (!clarity) return; // nunca llegó a cargar: nada que revocar
+  try {
+    signalConsent('denied');
+    clarity('consent', false);
+  } catch { /* la recarga + el borrado de cookies son la garantía de respaldo */ }
   window.location.reload();
 }
 
@@ -73,7 +100,7 @@ export default function ClarityAnalytics() {
     const onConsent = (e: Event) => {
       const decision = (e as CustomEvent).detail;
       if (decision === 'accepted') loadClarity(CLARITY_ID);
-      else if (decision === 'rejected') stopClarity();
+      else if (decision === 'rejected') revokeClarity();
     };
     window.addEventListener('ytv-consent', onConsent);
     return () => window.removeEventListener('ytv-consent', onConsent);
