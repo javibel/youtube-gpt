@@ -28,12 +28,18 @@ export default function PricingPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
+          // SoftwareApplication (no Product): YTubViral es software, no un producto
+          // físico. `Product` + `offers` hace que Search Console exija campos de
+          // comercio (hasMerchantReturnPolicy, shippingDetails) y lo marque como
+          // error en "Fragmentos de productos" (detectado 31/08). El resto del
+          // sitio ya usa SoftwareApplication.
           __html: JSON.stringify({
             '@context': 'https://schema.org',
-            '@type': 'Product',
+            '@type': 'SoftwareApplication',
             name: 'YTubViral',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
             description: 'AI-powered YouTube tools: SEO scoring, keyword research, competitor analysis, title generation, and more.',
-            brand: { '@type': 'Brand', name: 'YTubViral' },
             url: 'https://ytubviral.com/pricing',
             offers: [
               { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: 'https://ytubviral.com/signup' },
