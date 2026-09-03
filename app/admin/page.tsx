@@ -182,7 +182,11 @@ export default function AdminPage() {
   return (
     <DashboardShell>
 
-      <div className="yv-page yv-page--wide space-y-8">
+      {/* data-clarity-mask: el panel pinta emails y nombres de TODOS los usuarios.
+          El consentimiento de cookies que da el admin no cubre subir a Microsoft los
+          datos personales de terceros, así que este árbol nunca se graba, sea cual sea
+          el modo de enmascarado del panel de Clarity (el atributo lo sobreescribe). */}
+      <div className="yv-page yv-page--wide space-y-8" data-clarity-mask="true">
 
         {/* Header + exports */}
         <div className="yv-page-header">

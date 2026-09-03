@@ -308,7 +308,10 @@ export default function Sidebar() {
             style={{ display: 'flex', alignItems: 'center', gap: 'inherit', flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
           >
             <div className="yv-sidebar__avatar">{userInitial}</div>
-            <div className="yv-sidebar__user-info">
+            {/* data-clarity-mask: nombre y email salen en TODAS las páginas autenticadas.
+                Sin esto, cada grabación de sesión identifica al usuario aunque el resto
+                del contenido esté enmascarado. */}
+            <div className="yv-sidebar__user-info" data-clarity-mask="true">
               <div className="yv-sidebar__user-name">{userName}</div>
               <div className="yv-sidebar__user-plan">{session?.user?.email || ''}</div>
             </div>

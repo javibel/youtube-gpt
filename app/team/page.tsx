@@ -202,7 +202,9 @@ export default function TeamPage() {
   return (
     <DashboardShell>
 
-      <div className="yv-page">
+      {/* data-clarity-mask: lista emails de los miembros del equipo — datos de terceros
+          que no han consentido esta grabación. Ver app/admin/page.tsx. */}
+      <div className="yv-page" data-clarity-mask="true">
 
         {/* Page title */}
         <div className="yv-page-header">
