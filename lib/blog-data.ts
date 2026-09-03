@@ -79,8 +79,8 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'SEO Descriptions for YouTube: The Definitive Guide 2026',
     },
     excerpt: {
-      es: 'La descripción es el elemento más infravalorado del SEO en YouTube. Los vídeos con descripciones optimizadas tienen un 78% más de probabilidades de aparecer en primera página.',
-      en: 'Your video description is the most underrated YouTube SEO element. Videos with optimized descriptions are 78% more likely to appear on the first page. Here is everything you need to know.',
+      es: 'La descripción es el elemento más infravalorado del SEO en YouTube. Trabajarla bien mejora tus opciones de aparecer en búsqueda y sugeridos.',
+      en: 'Your video description is the most underrated YouTube SEO element. Getting it right improves your chances of showing up in search and suggested. Here is everything you need to know.',
     },
   },
   {
@@ -143,8 +143,8 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'YouTube Keyword Research Step by Step: The Definitive Guide 2026',
     },
     excerpt: {
-      es: 'Aprende a encontrar keywords con alto volumen y baja competencia para tus vídeos. Método completo con herramientas gratuitas y los errores que cometen el 90% de creadores.',
-      en: 'Learn how to find high-volume, low-competition keywords for your videos. Complete method with free tools, real examples, and the mistakes 90% of creators make.',
+      es: 'Aprende a encontrar keywords con alto volumen y baja competencia para tus vídeos. Método completo con herramientas gratuitas y los errores más comunes.',
+      en: 'Learn how to find high-volume, low-competition keywords for your videos. Complete method with free tools, real examples, and the most common mistakes.',
     },
   },
   {
@@ -223,8 +223,8 @@ export const BLOG_POSTS: BlogPost[] = [
       en: 'How to Design YouTube Thumbnails That Get Clicks (2026 Guide)',
     },
     excerpt: {
-      es: 'El 90% de los vídeos top de YouTube usan miniaturas personalizadas. Las reglas de diseño que separan un CTR del 2% de uno del 10%, con datos reales y checklist.',
-      en: '90% of top-performing YouTube videos use custom thumbnails. We break down the design rules that separate a 2% CTR from a 10% one, with real data, mistakes to avoid, and a checklist for every thumbnail.',
+      es: 'La gran mayoría de los vídeos top de YouTube usan miniatura personalizada. Las reglas de diseño que separan un CTR bajo de uno alto, con ejemplos y checklist.',
+      en: 'Almost every top-performing YouTube video uses a custom thumbnail. We break down the design rules that separate a low CTR from a high one, with examples, mistakes to avoid, and a checklist for every thumbnail.',
     },
   },
   {
