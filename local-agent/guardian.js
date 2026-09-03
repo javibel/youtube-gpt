@@ -451,6 +451,23 @@ async function runGuardian() {
     });
   }
 
+  // Violaciones de CSP vistas por navegadores reales.
+  // Antes solo se sumaban a results.summary (→ el Reporte Ejecutivo mostraba
+  // "High: 1" y "empeorando") pero NUNCA entraban en currentFindings, así que la
+  // memoria decía "0 issues abiertos" y el análisis de la IA no las mencionaba.
+  // Y como checkCspViolations() marca notified=true al leerlas, al día siguiente
+  // el "high" desaparecía sin evento de "resuelto". Ahora se rastrean igual que
+  // el resto: mismo id estable por directiva+recurso, sube/baja de forma coherente.
+  for (const c of (results.checks.cspViolations || [])) {
+    if (!c.directive || !c.blockedUri) continue; // fila de error de lectura, no un hallazgo
+    currentFindings.push({
+      id: mem.issueId('csp_violation', `${c.directive}::${c.blockedUri}`),
+      category: 'csp_violation',
+      severity: c.severity,
+      description: `CSP ${c.mode}: ${c.directive} bloqueó ${c.blockedUri} en ${c.documentUri || 'la web'}`,
+    });
+  }
+
   // Process against memory
   const { newIssues, recurringIssues, resolvedIssues, escalatedIssues } = mem.processFindings(memory, currentFindings);
 
