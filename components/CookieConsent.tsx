@@ -20,9 +20,31 @@ export function consentDecided(): boolean {
   return document.cookie.split('; ').some((c) => c.startsWith('ytv_consent='));
 }
 
+// Cookies que SOLO existen si hubo consentimiento. Al retirarlo hay que borrarlas:
+// el art. 7.3 del RGPD exige que retirar el consentimiento sea tan fácil como darlo
+// y que el tratamiento CESE — no basta con dejar de poner cookies nuevas. Antes del
+// 03/09/2026 rechazar desde el pie no borraba nada: _clck/_clsk de Clarity seguían
+// hasta un año y la grabación continuaba hasta recargar.
+// _clck / _clsk las pone Clarity en nuestro propio dominio, así que sí podemos borrarlas.
+const CONSENT_GATED_COOKIES = ['ytv_utm', 'ytv_ref', 'ytv_aff', '_clck', '_clsk'];
+
+function deleteCookie(name: string) {
+  const base = `${name}=;path=/;max-age=0;samesite=lax`;
+  document.cookie = base;
+  // Clarity las escribe en el dominio raíz; sin el atributo Domain no se borran.
+  const host = window.location.hostname.replace(/^www\./, '');
+  document.cookie = `${base};domain=.${host}`;
+}
+
+export function purgeConsentGatedCookies() {
+  if (typeof document === 'undefined') return;
+  CONSENT_GATED_COOKIES.forEach(deleteCookie);
+}
+
 function setConsent(value: 'accepted' | 'rejected') {
   const days = value === 'accepted' ? 365 : 180;
   document.cookie = `ytv_consent=${value};path=/;max-age=${days * 86400};samesite=lax`;
+  if (value === 'rejected') purgeConsentGatedCookies();
   window.dispatchEvent(new CustomEvent('ytv-consent', { detail: value }));
 }
 

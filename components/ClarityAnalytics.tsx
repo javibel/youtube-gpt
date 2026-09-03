@@ -47,20 +47,33 @@ function loadClarity(id: string) {
   document.head.appendChild(script);
 }
 
+// Retirada del consentimiento (art. 7.3 RGPD). No basta con no volver a cargar el
+// script: si Clarity ya está en memoria sigue grabando hasta que se recargue. Se
+// llama a la API `stop` (documentada, pero envuelta por si cambia) y se recarga solo
+// cuando de verdad estaba cargado. CookieConsent ya ha borrado _clck/_clsk antes de
+// emitir el evento, así que tras la recarga no se reanuda la sesión anterior.
+function stopClarity() {
+  const w = window as unknown as { clarity?: (...args: unknown[]) => void };
+  if (typeof w.clarity !== 'function') return; // nunca llegó a cargar: nada que parar
+  try { w.clarity('stop'); } catch { /* API opcional, la recarga es la garantía */ }
+  window.location.reload();
+}
+
 export default function ClarityAnalytics() {
   useEffect(() => {
     if (!CLARITY_ID) return;
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1') return;
 
-    if (hasTrackingConsent()) {
-      loadClarity(CLARITY_ID);
-      return;
-    }
+    if (hasTrackingConsent()) loadClarity(CLARITY_ID);
 
-    // Aún no ha decidido: esperar a que acepte, sin recargar la página.
+    // El listener se registra SIEMPRE, no solo cuando falta decidir. Antes se hacía
+    // `return` tras cargar, así que quien llegaba con el consentimiento ya dado no
+    // tenía a nadie escuchando y rechazar desde el pie no paraba nada.
     const onConsent = (e: Event) => {
-      if ((e as CustomEvent).detail === 'accepted') loadClarity(CLARITY_ID);
+      const decision = (e as CustomEvent).detail;
+      if (decision === 'accepted') loadClarity(CLARITY_ID);
+      else if (decision === 'rejected') stopClarity();
     };
     window.addEventListener('ytv-consent', onConsent);
     return () => window.removeEventListener('ytv-consent', onConsent);
