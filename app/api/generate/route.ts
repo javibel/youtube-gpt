@@ -31,13 +31,24 @@ export async function POST(request: Request) {
 
     const { template, inputs, lang } = await request.json();
 
-    // Require topic/tema — prevents empty generations that waste API credits
-    const tema = inputs?.tema;
-    if (!tema || (typeof tema === 'string' && tema.trim().length < 3)) {
+    const templateData = TEMPLATES[template as keyof typeof TEMPLATES];
+    if (!templateData) {
+      return Response.json({ error: 'Template no válido' }, { status: 400 });
+    }
+
+    // Require real content — prevents empty generations that waste API credits. This used to
+    // hardcode `inputs.tema` for every template, which meant any template without a `tema`
+    // input (reply, added 2026-05-28; channel_insight) failed this check on every single call —
+    // AI Reply to comments has been silently 400ing since it shipped. Now it checks whichever
+    // of the template's own declared inputs actually carries the content.
+    const templateInputs = (templateData.inputs || []) as string[];
+    const contentKey = templateInputs.includes('tema') ? 'tema' : templateInputs[0];
+    const contentValue = contentKey ? inputs?.[contentKey] : undefined;
+    if (!contentValue || (typeof contentValue === 'string' && contentValue.trim().length < 3)) {
       return Response.json(
         { error: lang === 'en'
-          ? 'Please describe your video topic (at least 3 characters)'
-          : 'Describe el tema de tu vídeo (mínimo 3 caracteres)' },
+          ? 'Please provide more detail (at least 3 characters)'
+          : 'Danos un poco más de detalle (mínimo 3 caracteres)' },
         { status: 400 }
       );
     }
@@ -60,10 +71,6 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
 
-    const templateData = TEMPLATES[template as keyof typeof TEMPLATES];
-    if (!templateData) {
-      return Response.json({ error: 'Template no válido' }, { status: 400 });
-    }
     let userId: string | null = null;
     let isPro = false;
 

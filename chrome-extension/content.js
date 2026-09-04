@@ -568,8 +568,53 @@ function renderError(msg) {
   return `<div class="ytv-error">⚠ ${escapeHtml(msg)}</div>`;
 }
 
+// ── Title patterns (P4 of the vidIQ teardown, 2026-09) ──────────────────────────
+// Cheap, client-side aggregate over the channel's own top-video titles — no extra request.
+function computeTitlePatterns(titles) {
+  if (!titles || !titles.length) return null;
+  const n = titles.length;
+  const pct = (count) => Math.round((count / n) * 100);
+  return {
+    avgLen: Math.round(titles.reduce((s, tt) => s + tt.length, 0) / n),
+    pctNumber: pct(titles.filter(tt => /\d/.test(tt)).length),
+    pctHook: pct(titles.filter(tt => /\?|^\s*(cómo|como|qué|por qué|how|why|what)\b/i.test(tt)).length),
+    pctBrackets: pct(titles.filter(tt => /[[(].+[\])]/.test(tt)).length),
+  };
+}
+
+function renderTitlePatterns(topVideos) {
+  const titles = (topVideos || []).map(v => v.title).filter(Boolean);
+  const p = computeTitlePatterns(titles);
+  if (!p) return '';
+  return `
+    <div class="ytv-section-label">${t('Patrones de título (sus vídeos top)', "Title patterns (their top videos)")}</div>
+    <div class="ytv-grid4">
+      <div class="ytv-stat"><b>${p.avgLen}</b><span>${t('Long. media', 'Avg length')}</span></div>
+      <div class="ytv-stat"><b>${p.pctNumber}%</b><span>${t('Con número', 'With number')}</span></div>
+      <div class="ytv-stat"><b>${p.pctHook}%</b><span>${t('Gancho/pregunta', 'Hook/question')}</span></div>
+      <div class="ytv-stat"><b>${p.pctBrackets}%</b><span>${t('Paréntesis', 'Brackets')}</span></div>
+    </div>
+  `;
+}
+
+function renderTopVideos(topVideos) {
+  if (!topVideos || !topVideos.length) return '';
+  const rows = topVideos.slice(0, 6).map(v => {
+    const ageDays = v.publishedAt ? Math.max(0, Math.floor((Date.now() - new Date(v.publishedAt).getTime()) / 86_400_000)) : 0;
+    return `
+      <a class="ytv-topvid-row" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId)}" target="_blank">
+        ${v.thumbnail ? `<img class="ytv-topvid-thumb" src="${escapeHtml(v.thumbnail)}" alt="">` : '<div class="ytv-topvid-thumb"></div>'}
+        <div class="ytv-topvid-meta">
+          <div class="ytv-topvid-title">${escapeHtml(v.title)}</div>
+          <div class="ytv-topvid-stats">${fmtNum(v.views)} ${t('vistas', 'views')} · ${fmtAge(ageDays, ageDays * 24)}</div>
+        </div>
+      </a>`;
+  }).join('');
+  return `<div class="ytv-section-label">${t('Top vídeos por vistas', 'Top videos by views')}</div><div class="ytv-topvids">${rows}</div>`;
+}
+
 function renderCompetitor(data) {
-  const { channel, keywords, avgViews, uploadFrequency } = data;
+  const { channel, keywords, avgViews, uploadFrequency, topVideos } = data;
   const kwTags = (keywords || []).slice(0, 10).map(k =>
     `<span class="ytv-tag" data-kw="${escapeHtml(k)}">${escapeHtml(k)}</span>`
   ).join('');
@@ -588,7 +633,11 @@ function renderCompetitor(data) {
       <div class="ytv-stat"><b>${channel.videoCount}</b><span>${t('Vídeos', 'Videos')}</span></div>
       <div class="ytv-stat"><b>${escapeHtml(uploadFrequency)}</b><span>${t('Frecuencia', 'Frequency')}</span></div>
     </div>
+    ${renderTopVideos(topVideos)}
+    ${renderTitlePatterns(topVideos)}
     ${kwTags ? `<div class="ytv-section-label">${t('Keywords del canal', 'Channel keywords')} <span class="ytv-hint">(${t('clic para buscar', 'click to search')})</span></div><div class="ytv-tags">${kwTags}</div>` : ''}
+    <button class="ytv-btn ytv-btn-dark ytv-btn-full ytv-btn-sm" id="ytv-ch-insight-btn">🕵️ ${t('¿Por qué funciona? (IA)', 'Why does this work? (AI)')}</button>
+    <div id="ytv-ch-insight-result"></div>
     <a class="ytv-cta-link" href="https://ytubviral.com/competitors?utm_source=extension&utm_medium=panel" target="_blank">${t('Ver análisis completo en YTubViral →', 'View full analysis on YTubViral →')}</a>
   `;
 }
@@ -889,6 +938,35 @@ async function runCompetitor(resultsEl, url) {
         window.open(`https://www.youtube.com/results?search_query=${q}`, '_blank');
       });
     });
+
+    // "Por qué funciona" (P4) — Claude reasons over the topVideos/keywords the endpoint above
+    // already computed for free; this is the one call that actually costs anything, so it's
+    // opt-in (button) rather than automatic, and it spends the user's normal generation quota.
+    const insightBtn = resultsEl.querySelector('#ytv-ch-insight-btn');
+    const insightResult = resultsEl.querySelector('#ytv-ch-insight-result');
+    if (insightBtn && insightResult) {
+      insightBtn.addEventListener('click', async () => {
+        insightResult.innerHTML = renderLoading(t('Analizando patrón...', 'Analyzing pattern...'));
+        try {
+          const topTitles = (data.topVideos || []).slice(0, 5).map(v => `- ${v.title}`).join('\n');
+          if (!topTitles) { insightResult.innerHTML = renderError(t('Sin vídeos suficientes para analizar', 'Not enough videos to analyze')); return; }
+          const gen = await sendMsg({
+            type: 'GENERATE',
+            template: 'channel_insight',
+            inputs: {
+              channelName: data.channel.name,
+              topTitles,
+              keywords: (data.keywords || []).slice(0, 8).join(', '),
+            },
+          });
+          const text = gen.content || gen.text || gen.result || '';
+          const html = escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+          insightResult.innerHTML = `<div class="ytv-ch-insight">${html}</div>`;
+        } catch (e) {
+          insightResult.innerHTML = renderError(e.message);
+        }
+      });
+    }
   } catch (e) {
     resultsEl.innerHTML = renderError(e.message);
   }
@@ -1715,6 +1793,7 @@ async function processBadgeBatch(videoIds) {
       });
     }
     containers.forEach(thumb => {
+      wireThumbHoverCard(thumb, id); // wired once even if the badge itself was already there
       if (thumb.querySelector('.ytv-thumb-badge')) return;
       thumb.style.position = 'relative';
       const badge = document.createElement('div');
@@ -1722,6 +1801,67 @@ async function processBadgeBatch(videoIds) {
       thumb.appendChild(badge.firstElementChild);
     });
   });
+}
+
+// ── Hover stats card (P3 of the vidIQ teardown, 2026-09) ────────────────────────────
+// Reuses the exact data VIDEO_BATCH already fetched for the VPH badge — hovering a thumbnail
+// never fires a request of its own. `position:fixed` + appended to body (not to the thumbnail)
+// so nothing in YouTube's own DOM can clip it, same lesson learned the hard way in Studio.
+
+let hoverCardTimer = null;
+let hoverCardEl = null;
+
+function hideHoverCard() {
+  if (hoverCardTimer) { clearTimeout(hoverCardTimer); hoverCardTimer = null; }
+  if (hoverCardEl) { hoverCardEl.remove(); hoverCardEl = null; }
+}
+
+function renderHoverCard(d) {
+  const engColor = d.engagement >= 5 ? '#22c55e' : d.engagement >= 2 ? '#eab308' : '#ef4444';
+  const vphStr = d.vph >= 1000 ? fmtNum(Math.round(d.vph)) : d.vph.toFixed(1);
+  return `
+    <div class="ytv-hover-title">${escapeHtml(d.title || '')}</div>
+    <div class="ytv-hover-grid">
+      <div><b>${fmtNum(d.views)}</b><span>${t('Vistas', 'Views')}</span></div>
+      <div><b>${fmtNum(d.likes || 0)}</b><span>Likes</span></div>
+      <div><b>${fmtNum(d.comments || 0)}</b><span>${t('Coment.', 'Comments')}</span></div>
+      <div><b style="color:${engColor}">${d.engagement || 0}%</b><span>Eng</span></div>
+      <div><b>${d.subscribers != null ? fmtNum(d.subscribers) : '—'}</b><span>${t('Subs canal', 'Ch. subs')}</span></div>
+      <div><b>${fmtAge(d.ageDays, d.ageHours || d.ageDays * 24)}</b><span>${t('Edad', 'Age')}</span></div>
+    </div>
+    <div class="ytv-hover-vph">⚡ ${vphStr} VPH${d.channelTitle ? ' · ' + escapeHtml(d.channelTitle) : ''}</div>
+  `;
+}
+
+function showHoverCard(thumb, d) {
+  hideHoverCard();
+  const rect = thumb.getBoundingClientRect();
+  const card = document.createElement('div');
+  card.className = 'ytv-hover-card';
+  card.innerHTML = renderHoverCard(d);
+  document.body.appendChild(card);
+  // Measure after appending, then flip above/left if it would run off-screen.
+  const cw = card.offsetWidth, ch = card.offsetHeight;
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (top + ch > window.innerHeight) top = Math.max(4, rect.top - ch - 6);
+  if (left + cw > window.innerWidth) left = Math.max(4, window.innerWidth - cw - 4);
+  card.style.top = `${top}px`;
+  card.style.left = `${left}px`;
+  hoverCardEl = card;
+}
+
+function wireThumbHoverCard(thumb, videoId) {
+  if (thumb.dataset.ytvHoverWired) return;
+  thumb.dataset.ytvHoverWired = '1';
+  thumb.addEventListener('mouseenter', () => {
+    if (hoverCardTimer) clearTimeout(hoverCardTimer);
+    hoverCardTimer = setTimeout(() => {
+      const d = vphCache.get(videoId); // re-read: may have been enriched since this listener was wired
+      if (d) showHoverCard(thumb, d);
+    }, 250); // short delay so a fast scroll-by doesn't spam cards
+  });
+  thumb.addEventListener('mouseleave', hideHoverCard);
 }
 
 function injectVelocityBadges() {
@@ -1886,6 +2026,7 @@ async function onPageChange() {
   // (the shell + thumbnail badges give value at second 1, like vidIQ).
   mountShell();
   refreshShell();
+  hideHoverCard(); // a hover card from the previous page would otherwise float over the new one
 
   // YouTube Studio — the inline SEO panel stays next to the metadata editor.
   if (location.hostname === 'studio.youtube.com') {

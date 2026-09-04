@@ -171,6 +171,66 @@
   color: #aaa !important;
 }
 
+/* ── Top videos (P4 — channel audit) ──────────────────────────── */
+
+.ytv-topvids {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  margin-top: 2px !important;
+}
+
+.ytv-topvid-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  background: #1c1c1e !important;
+  border-radius: 8px !important;
+  padding: 6px !important;
+  transition: background 0.15s !important;
+}
+.ytv-topvid-row:hover { background: #262628 !important; }
+
+.ytv-topvid-thumb {
+  width: 56px !important;
+  height: 32px !important;
+  border-radius: 4px !important;
+  object-fit: cover !important;
+  background: #333 !important;
+  flex-shrink: 0 !important;
+}
+
+.ytv-topvid-meta { min-width: 0 !important; }
+
+.ytv-topvid-title {
+  font-size: 12px !important;
+  color: #eee !important;
+  line-height: 1.3 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+.ytv-topvid-stats {
+  font-size: 10px !important;
+  color: #888 !important;
+  margin-top: 2px !important;
+}
+
+.ytv-ch-insight {
+  background: #141e1a !important;
+  border: 1px solid #1e3a2e !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  font-size: 12px !important;
+  color: #d1fae5 !important;
+  line-height: 1.55 !important;
+}
+.ytv-ch-insight strong { color: #4ade80 !important; }
+
 /* Stats grid */
 .ytv-grid4 {
   display: grid !important;
@@ -1188,6 +1248,68 @@
 .ytv-thumb-hot {
   background: rgba(220, 38, 38, 0.85) !important;
   color: #fff !important;
+}
+
+/* ── Hover stats card (P3) ───────────────────────────────────── */
+
+.ytv-hover-card {
+  position: fixed !important;
+  z-index: 2001 !important;
+  width: 210px !important;
+  background: #141416 !important;
+  border: 1px solid #2e2e2e !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55) !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  color: #f1f1f1 !important;
+  pointer-events: none !important;
+}
+
+.ytv-hover-title {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  margin-bottom: 8px !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.ytv-hover-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1fr !important;
+  gap: 6px !important;
+  margin-bottom: 8px !important;
+}
+
+.ytv-hover-grid > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  background: #1e1e20 !important;
+  border-radius: 6px !important;
+  padding: 5px 2px !important;
+}
+
+.ytv-hover-grid b { font-size: 12px !important; font-weight: 800 !important; color: #fff !important; }
+.ytv-hover-grid span {
+  font-size: 8px !important;
+  color: #888 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  margin-top: 1px !important;
+}
+
+.ytv-hover-vph {
+  font-size: 10px !important;
+  color: #aaa !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-top: 6px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 /* ── Quick Wins ──────────────────────────────────────────────── */

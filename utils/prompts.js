@@ -261,5 +261,31 @@ VIEWER COMMENT: "${data.comment}"
 Write a short, friendly reply (1-2 sentences max). Be appreciative, natural, and encourage further engagement. Don't be overly formal or use excessive emojis. Match the language of the comment (Spanish or English).
 
 Reply only with the text of your response, nothing else.`
+  },
+
+  // Extension: channel audit (P4 of the vidIQ teardown, 2026-08-30). Pro-only — same tier as
+  // the competitor-analysis endpoint that feeds it (app/api/youtube/competitor/route.ts), which
+  // already computes topTitles/keywords from the YouTube Data API at no Claude cost. This
+  // template is the one place Claude actually reasons over that data instead of just listing it.
+  channel_insight: {
+    name: '🕵️ Por qué funciona (canal)',
+    description: 'Explica el patrón detrás de los vídeos más vistos de un canal',
+    proOnly: true,
+    inputs: ['channelName', 'topTitles', 'keywords'],
+    prompt: (data) => `Eres un estratega de contenido de YouTube. Te doy los títulos de los vídeos con más vistas de un canal y sus palabras clave recurrentes. Tu trabajo es explicar el patrón, no repetir los datos.
+
+CANAL: ${data.channelName}
+
+TÍTULOS CON MÁS VISTAS:
+${data.topTitles}
+
+PALABRAS CLAVE RECURRENTES: ${data.keywords}
+${channelBlock(data._channelContext)}
+Responde con exactamente 3 líneas, cada una empezando por su etiqueta en negrita:
+**Patrón:** qué tienen en común estos títulos (formato, longitud, ganchos) — 1 frase.
+**Por qué funciona:** la razón más probable de que este contenido gane vistas — 1-2 frases.
+**Prueba esto:** una idea de vídeo concreta inspirada en ese patrón, adaptable a otro canal del mismo nicho — 1 frase.
+
+Máximo 100 palabras en total. No repitas los títulos literalmente ni añadas nada fuera de esas 3 líneas.`
   }
 };
