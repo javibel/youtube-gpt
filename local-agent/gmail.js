@@ -474,13 +474,13 @@ async function processInbox() {
   }
 
   const messages = await listUnreadMessages(token);
+  const processedEmails = []; // Track for daily report
+
   if (messages.length === 0) {
     console.log('[gmail] No unread messages');
-    return;
-  }
+  } else {
 
   console.log(`[gmail] Processing ${messages.length} unread messages`);
-  const processedEmails = []; // Track for daily report
 
   for (const { id: messageId } of messages) {
     try {
@@ -563,16 +563,24 @@ async function processInbox() {
     }
   }
 
-  // Save daily report for Manager to pick up
-  if (processedEmails.length > 0) {
-    const today = new Date().toISOString().slice(0, 10);
-    const reportFile = path.join(REPORTS_DIR, `gmail-${today}.json`);
-    let existing = [];
-    try { existing = JSON.parse(fs.readFileSync(reportFile, 'utf-8')); } catch {}
-    const merged = [...existing, ...processedEmails];
-    if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR, { recursive: true });
-    fs.writeFileSync(reportFile, JSON.stringify(merged, null, 2));
-  }
+  } // end of "messages.length > 0" branch
+
+  // Save daily report for Manager to pick up. Se escribe SIEMPRE que el cron
+  // llega hasta aquí (auth OK), aunque no haya nada que reenviar/responder —
+  // antes solo escribía con processedEmails.length > 0, así que en un día
+  // tranquilo (todo ruido filtrado por classifyEmail, cada vez más frecuente
+  // desde que se afinaron los filtros) el fichero nunca se tocaba y el
+  // infra-optimizer marcaba "gmail agent missing" en falso (04/09/2026) pese
+  // a que el cron corrió sus 30+ pasadas sin problema. Si el fallo real es de
+  // auth (token OAuth roto), la función ya ha retornado antes de llegar aquí
+  // y el reporte SÍ falta — esa alarma sigue siendo válida.
+  const today = new Date().toISOString().slice(0, 10);
+  const reportFile = path.join(REPORTS_DIR, `gmail-${today}.json`);
+  let existing = [];
+  try { existing = JSON.parse(fs.readFileSync(reportFile, 'utf-8')); } catch {}
+  const merged = [...existing, ...processedEmails];
+  if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR, { recursive: true });
+  fs.writeFileSync(reportFile, JSON.stringify(merged, null, 2));
 
   console.log('[gmail] Inbox processing complete');
 }
