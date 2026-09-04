@@ -1,6 +1,7 @@
 'use client';
 
 import { useLang } from '@/components/LangProvider';
+import LangToggle from '@/components/LangToggle';
 
 export default function PublicNav() {
   const lang = useLang();
@@ -27,6 +28,13 @@ export default function PublicNav() {
         </div>
       </div>
       <div className="flex items-center gap-3">
+        {/* 04/09: sin esto, un visitante que aterriza directo en una free tool
+            (SEO Score, título gratis, etc.) sin pasar por la landing NO TENÍA
+            forma de cambiar de idioma — la web servía castellano por defecto
+            a todo el mundo (sin geo/Accept-Language) y aquí no había toggle.
+            Detectado con Clarity: usuarios de Indonesia/Pakistán/EE.UU. usando
+            el generador de títulos gratuito en castellano, sin escape hatch. */}
+        <LangToggle />
         <a href="/login" className="font-mono-jb text-[13px] px-3 py-1.5 transition" style={{ color: 'var(--yv-text-2)' }}>
           {t('Entrar', 'Sign in')}
         </a>
