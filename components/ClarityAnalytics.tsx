@@ -76,6 +76,14 @@ function loadClarity(id: string) {
 //   3. recarga          → garantiza que no queda nada en memoria. Al volver,
 //                         hasTrackingConsent() es false y el tag ya no se carga.
 // Solo se recarga si Clarity estaba cargado: rechazar en el banner inicial no recarga.
+//
+// La recarga se aplaza un instante a propósito: `location.reload()` inmediato mata la
+// página antes de que las llamadas de arriba lleguen a salir, así que la señal de
+// retirada se perdía a veces. El cumplimiento no dependía de ello (las cookies las
+// borra CookieConsent y el tag ya no vuelve a cargarse), pero sin la señal Microsoft
+// no se entera de que hay que dejar de vincular la sesión en su lado.
+const REVOKE_FLUSH_MS = 250;
+
 function revokeClarity() {
   const clarity = getClarity();
   if (!clarity) return; // nunca llegó a cargar: nada que revocar
@@ -83,7 +91,7 @@ function revokeClarity() {
     signalConsent('denied');
     clarity('consent', false);
   } catch { /* la recarga + el borrado de cookies son la garantía de respaldo */ }
-  window.location.reload();
+  window.setTimeout(() => window.location.reload(), REVOKE_FLUSH_MS);
 }
 
 export default function ClarityAnalytics() {
