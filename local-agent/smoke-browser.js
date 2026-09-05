@@ -50,7 +50,12 @@ const CSP_REQUIRED = [
   { directive: 'script-src',  needs: 'https://js.stripe.com', why: 'checkout de Stripe' },
   { directive: 'frame-src',   needs: 'https://www.youtube.com', why: 'videos incrustados de YouTube' },
   { directive: 'font-src',    needs: 'https://fonts.gstatic.com', why: 'Google Fonts' },
-  { directive: 'script-src',  needs: 'https://www.clarity.ms', why: 'grabacion de sesiones (Clarity)' },
+  // 02/09: el contrato pedia www.clarity.ms, que SIEMPRE esta presente porque es el
+  // dominio del loader inicial. Lo que hace falta de verdad es el comodin: el loader
+  // pide el script real desde scripts.clarity.ms (otro subdominio), y con solo
+  // www.clarity.ms en la lista el navegador lo bloqueaba en silencio — window.clarity
+  // existia (el stub) pero no grababa nada. Este contrato no lo habria cazado.
+  { directive: 'script-src',  needs: 'https://*.clarity.ms', why: 'grabacion de sesiones (Clarity) — el loader carga desde un subdominio distinto (scripts.clarity.ms)' },
   { directive: 'connect-src', needs: 'https://*.clarity.ms', why: 'subida de sesiones a Clarity' },
 ];
 
