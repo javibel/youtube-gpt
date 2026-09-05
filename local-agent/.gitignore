@@ -28,6 +28,9 @@ debug/
 outreach-monitor-state.json
 outreach-community-posts.json
 outreach-tracker.json
+# Campanas de feedback manual: contienen emails reales de usuarios. Mismo motivo
+# que ya se aplico en el repo publico de la webapp (linea propia en su .gitignore).
+feedback-campaign-*.json
 
 # Lock files (regenerable)
 package-lock.json
