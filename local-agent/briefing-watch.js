@@ -14,12 +14,29 @@
 'use strict';
 
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const db = require('./db');
 const { sendViaResend } = require('./resend');
 
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'ytbeviral@gmail.com';
 const INICIO = '2026-08-26'; // primer envío
 const DIAS_VEREDICTO = 7;
+
+// El veredicto "nadie ha vuelto" cierra la tesis: es una respuesta, no una
+// alerta recurrente. `dias >= DIAS_VEREDICTO` es verdad para siempre a partir
+// del día 7, así que sin este guard el email salía CADA día a las 19:00 (visto
+// días 8 y 10). Se manda una sola vez; si luego alguien vuelve, esa rama
+// (hayNoticia) sí avisa siempre.
+const STATE_FILE = path.join(__dirname, 'briefing-watch-state.json');
+function loadState() {
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; }
+}
+function saveState(s) {
+  try { fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2)); } catch (e) {
+    console.error('[briefing-watch] no se pudo guardar el estado:', e.message);
+  }
+}
 
 async function runBriefingWatch() {
   const rows = await db.query(`
@@ -57,8 +74,11 @@ async function runBriefingWatch() {
   const dias = Math.floor((Date.now() - new Date(INICIO).getTime()) / 86400000);
   console.log(`[briefing-watch] día ${dias} — ${volvieron.length}/${externos.length} externos han vuelto`);
 
+  const state = loadState();
   const hayNoticia = volvieron.length > 0;
-  const toca_veredicto = dias >= DIAS_VEREDICTO;
+  // El veredicto negativo se manda una sola vez (la primera vez que se cruza el
+  // umbral). A partir de ahí, "sigue sin volver nadie" no es noticia nueva.
+  const toca_veredicto = dias >= DIAS_VEREDICTO && !state.veredictoEnviado;
   if (!hayNoticia && !toca_veredicto) return { volvieron: 0, avisado: false };
 
   const linea = r => `  ${r.email} — ${r.briefings} briefing(s) recibidos | ${r.acciones_desde} acciones desde el ${INICIO}${r.que_hizo ? ` (${r.que_hizo})` : ''} | última actividad: ${r.ultima ? new Date(r.ultima).toISOString().slice(0, 10) : 'nunca'}`;
@@ -73,6 +93,7 @@ async function runBriefingWatch() {
 
   await sendViaResend({ to: OWNER_EMAIL, subject, body, from: 'agent' });
   console.log(`[briefing-watch] Aviso enviado: ${subject}`);
+  if (!hayNoticia) saveState({ ...state, veredictoEnviado: true, veredictoEnviadoEl: new Date().toISOString().slice(0, 10) });
   return { volvieron: volvieron.length, avisado: true };
 }
 
