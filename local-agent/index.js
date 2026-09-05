@@ -432,6 +432,25 @@ cron.schedule('15 3 * * *', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
+// Manager catch-up — 03:25 (10 min después). El 05/09/2026 el tick de las
+// 03:15 no se disparó sin motivo aparente: no hubo reinicio del proceso ni
+// caída de máquina (Guardian/Infra/SEO/Funnel/Social Optimizer corrieron
+// justo a su hora ese mismo tramo, y Sentinel no tuvo huecos cada 5min) —
+// un fallo puntual de node-cron en ese tick concreto. Auto-Resolver (09:17)
+// depende del reporte de Manager, así que si a las 03:25 no existe el
+// fichero de hoy, se relanza.
+cron.schedule('25 3 * * *', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const reportFile = path.join(__dirname, 'reports', `manager-${todayStr}.json`);
+  if (!fs.existsSync(reportFile)) {
+    console.log('[manager] Catch-up: no hay reporte de hoy a las 03:25 (el cron de las 03:15 no se disparó) — relanzando');
+    await runManager().catch(err => console.error('[manager] catch-up:', err.message));
+    await db.disconnect().catch(() => {});
+  }
+}, { timezone: 'Europe/Madrid' });
+
 // Meta-Optimizer — weekly Sunday at 03:30 (after Manager)
 cron.schedule('30 3 * * 0', async () => {
   console.log('[cron] Meta-Optimizer — weekly self-improvement analysis');
@@ -512,7 +531,7 @@ console.log('  SEO Optimizer: 02:50 daily (Europe/Madrid)');
 console.log('  Funnel Optimizer: 02:55 daily (Europe/Madrid)');
 console.log('  Social Optimizer: 03:00 daily (Europe/Madrid)');
 console.log('  Stripe Reconcile: 02:35 Sundays + catch-up on startup (Europe/Madrid)');
-console.log('  Manager: 03:15 daily (Europe/Madrid)');
+console.log('  Manager: 03:15 daily + catch-up 03:25 si falta el reporte (Europe/Madrid)');
 console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
 console.log('  Auto-Resolver: 09:17 daily (Europe/Madrid)');
 console.log('  Briefing Watch: 19:00 daily — ¿vuelven los del briefing? (Europe/Madrid)');
