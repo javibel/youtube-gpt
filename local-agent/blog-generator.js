@@ -72,6 +72,16 @@ const INITIAL_KEYWORDS = [
   { keyword: 'youtube analytics tools free 2026', slug: 'youtube-analytics-tools-free-2026', cat: 'ai', priority: 3 },
   { keyword: 'how to get more views on youtube 2026', slug: 'how-to-get-more-views-youtube-2026', cat: 'youtube', priority: 3 },
   { keyword: 'youtube thumbnail tips beginners', slug: 'youtube-thumbnail-tips-beginners-guide', cat: 'tutorials', priority: 3 },
+  // Añadidos 04/09/2026 — cola se quedó vacía tras publicar el 10º articulo (03/09).
+  // El cron es Lun+Jue 04:00; sin esto el de Lunes 07/09 no habría publicado nada.
+  { keyword: 'youtube engagement rate calculator', slug: 'youtube-engagement-rate-calculator-free', cat: 'tutorials', priority: 1 },
+  { keyword: 'youtube money calculator views to dollars', slug: 'youtube-money-calculator-views-dollars', cat: 'tutorials', priority: 1 },
+  { keyword: 'youtube shorts ideas generator ai', slug: 'youtube-shorts-ideas-generator-ai', cat: 'ai', priority: 2 },
+  { keyword: 'best time to post on youtube 2026', slug: 'best-time-post-youtube-2026', cat: 'youtube', priority: 2 },
+  { keyword: 'youtube channel name generator free', slug: 'youtube-channel-name-generator-free', cat: 'ai', priority: 2 },
+  { keyword: 'morningfame alternative free 2026', slug: 'morningfame-alternative-free-2026', cat: 'marketing', priority: 3 },
+  { keyword: 'youtube hashtag generator free', slug: 'youtube-hashtag-generator-free', cat: 'tutorials', priority: 3 },
+  { keyword: 'how to grow youtube channel 0 subscribers 2026', slug: 'how-to-grow-youtube-0-subscribers-2026', cat: 'youtube', priority: 3 },
 ];
 
 // ── State management ─────────────────────────────────────────────────────────
