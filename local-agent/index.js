@@ -3,7 +3,8 @@
 require('dotenv').config();
 const cron = require('node-cron');
 const db = require('./db');
-const twitter = require('./twitter');
+// Twitter/X abandonado 2026-08-31 (cuenta quemada). twitter.js / brand-twitter-post.js
+// se conservan en disco pero ya no se orquestan desde aquí.
 const { closeBrowser, closeAllBrowsers } = require('./browser');
 const reports = require('./reports');
 const personaRunner = require('./persona-runner');
@@ -36,8 +37,7 @@ const { runYoutubeCommenter } = require('./youtube-commenter');
 const { runDmarcMonitor } = require('./dmarc-monitor');
 const { runAutoResolver } = require('./auto-resolver');
 const { runPersonaMonitor } = require('./persona-monitor');
-const { run: runBrandTwitterPost } = require('./brand-twitter-post');
-const { run: runBrandXCoach } = require('./brand-x-coach');
+const { run: runBrandBlueskyCoach } = require('./brand-bluesky-coach');
 const { enqueue: bq } = require('./browser-queue');
 
 console.log('[agent] YTubViral local agent starting...');
@@ -151,10 +151,11 @@ runSentinel().catch(err => console.error('[sentinel] startup check:', err.messag
 
 // ── Schedules ─────────────────────────────────────────────────────────────────
 
-// Twitter/X brand engagement — DISABLED (user manages brand Twitter manually)
-// Personas handle Twitter engagement via persona-runner.js
-// const twitterHour1 = 13 + Math.floor(Math.random() * 2);
-// const twitterMin1 = Math.floor(Math.random() * 60);
+// Twitter/X — ABANDONADO 2026-08-31 (decisión Javier: cuenta quemada).
+// Ya no se generan ni envían correos sobre publicaciones en Twitter:
+//   - X Coach personal (@plata24155, 08:00) → apagado, ver más abajo.
+//   - Brand X Coach (@YTubViral) → sustituido por Brand Bluesky Coach (solo Bluesky).
+//   - Brand Twitter post automático → ya estaba desactivado.
 
 // Gmail inbox — every 30 min (8-23h)
 cron.schedule('*/30 8-23 * * *', async () => {
@@ -174,24 +175,24 @@ cron.schedule('*/30 8-23 * * *', async () => {
 //   await db.disconnect().catch(() => {});
 // }, { timezone: 'Europe/Madrid' });
 
-// X Coach — 08:00 diario. Plan de X listo para que Javier ejecute a mano (@plata24155):
-// tweets para publicar + posts concretos para dar like/responder (con respuesta redactada).
-// Búsqueda en X SOLO LECTURA — no automatiza la cuenta de Javier.
-cron.schedule('0 8 * * *', async () => {
-  console.log('[cron] X Coach — generando plan diario de X');
-  await bq('x-coach', async () => {
-    const { run: runXCoach } = require('./x-coach');
-    await runXCoach().catch(err => console.error('[x-coach]', err.message));
-    await db.disconnect().catch(() => {});
-  });
-}, { timezone: 'Europe/Madrid' });
+// X Coach personal (@plata24155) — APAGADO 2026-08-31 (Twitter abandonado).
+// x-coach.js se conserva en disco por si se retoma.
+// cron.schedule('0 8 * * *', async () => {
+//   console.log('[cron] X Coach — generando plan diario de X');
+//   await bq('x-coach', async () => {
+//     const { run: runXCoach } = require('./x-coach');
+//     await runXCoach().catch(err => console.error('[x-coach]', err.message));
+//     await db.disconnect().catch(() => {});
+//   });
+// }, { timezone: 'Europe/Madrid' });
 
-// Brand X Coach — 08:30 diario. Plan de X para @YTubViral (cuenta brand).
-// Javier opera a mano: tweets de marca + engagement con voz de equipo.
+// Brand Bluesky Coach — 08:30 diario. Plan de Bluesky para la cuenta de marca
+// (ytubviral.com). Javier opera a mano: posts propios + respuestas a creadores
+// que piden ayuda. (Antes era el Brand X Coach; X quedó abandonado el 31/08.)
 cron.schedule('30 8 * * *', async () => {
-  console.log('[cron] Brand X Coach — generando plan diario @YTubViral');
-  await bq('brand-x-coach', async () => {
-    await runBrandXCoach().catch(err => console.error('[brand-x-coach]', err.message));
+  console.log('[cron] Brand Bluesky Coach — generando plan diario de Bluesky de marca');
+  await bq('brand-bluesky-coach', async () => {
+    await runBrandBlueskyCoach().catch(err => console.error('[brand-bluesky-coach]', err.message));
     await db.disconnect().catch(() => {});
   });
 }, { timezone: 'Europe/Madrid' });
@@ -497,8 +498,8 @@ cron.schedule('0 6 * * *', async () => {
 console.log('[agent] Schedules registered. Running...');
 console.log('  🛡️ Sentinel: every 5min 24/7 (PRIORITY 1)');
 console.log('  Personas (TODAS las plataformas): DISABLED 2026-07-08 — desconexión total, solo cuentas personales + brand');
-console.log('  Brand Twitter post (auto): DISABLED');
-console.log('  Brand X Coach (@YTubViral manual): 08:30 daily (Europe/Madrid)');
+console.log('  Twitter/X: ABANDONADO 2026-08-31 (cuenta quemada — X Coach y Brand X Coach apagados)');
+console.log('  Brand Bluesky Coach (ytubviral.com manual): 08:30 daily (Europe/Madrid)');
 console.log('  Gmail inbox: every 30min 8-23h (Europe/Madrid)');
 console.log('  Daily report: DISABLED 2026-08-28 (cubierto por el Reporte del Manager)');
 console.log('  Outreach discover: 07:30,09:30,11:30,14:30,17:30,20:30 (Europe/Madrid)');
