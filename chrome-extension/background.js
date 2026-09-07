@@ -336,6 +336,51 @@ async function handleMessage(msg) {
       return data;
     }
 
+    case 'IDEAS_BADGE': {
+      // P6 — daily loop. A dot on the toolbar icon when there are fresh ideas today the
+      // user hasn't opened yet. No "alarms" permission: content.js pokes this when it sees
+      // ideas while the user browses YouTube (which extension users do daily).
+      const today = new Date().toISOString().slice(0, 10);
+      const seen = await new Promise(r => chrome.storage.local.get(`ytv_ideas_seen_${today}`, d => r(d[`ytv_ideas_seen_${today}`])));
+      if (!seen) {
+        chrome.action.setBadgeText({ text: '•' });
+        chrome.action.setBadgeBackgroundColor({ color: '#ff0000' });
+      }
+      return { ok: true };
+    }
+
+    case 'CLEAR_IDEAS_BADGE': {
+      const today = new Date().toISOString().slice(0, 10);
+      chrome.action.setBadgeText({ text: '' });
+      await chrome.storage.local.set({ [`ytv_ideas_seen_${today}`]: true });
+      return { ok: true };
+    }
+
+    case 'COACH': {
+      // P5 — AI Coach chat. Raw error codes (pro_required / throttled) so content.js
+      // paints the right card. `pageContext` = what the user is looking at on YouTube.
+      const token = await getToken();
+      if (!token) throw new Error('not_logged_in');
+      let res, data;
+      try {
+        ({ res, data } = await apiFetch(`${API_BASE}/api/coach`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            message: msg.message,
+            context: msg.context || [],
+            pageContext: msg.pageContext || '',
+            mode: msg.mode || 'analyze',
+            lang: msg.lang || lang,
+          }),
+        }));
+      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
+      if (res.status === 403 && data.error === 'pro_required') throw new Error('pro_required');
+      if (res.status === 429) throw new Error('throttled');
+      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Coach error' : 'Error del Coach'));
+      return data;
+    }
+
     case 'DAILY_IDEAS': {
       const token = await getToken();
       if (!token) return { ideas: null };

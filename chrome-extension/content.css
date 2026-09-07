@@ -1665,15 +1665,18 @@
 }
 .ytv-shell-tab {
   flex: 1 !important;
-  padding: 7px 4px !important;
+  min-width: 0 !important;
+  padding: 7px 2px !important;
   background: transparent !important;
   border: none !important;
   border-bottom: 2px solid transparent !important;
   color: #9ca3af !important;
   cursor: pointer !important;
-  font-size: 11px !important;
+  font-size: 10.5px !important;
   font-weight: 600 !important;
   white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 .ytv-shell-tab:hover { color: #e5e7eb !important; }
 .ytv-shell-tab-active { color: #fff !important; border-bottom-color: #ff0000 !important; }
@@ -1690,7 +1693,8 @@
 }
 /* one pane visible at a time — inline style toggles flex/none; this is the default */
 .ytv-shell-pane[data-pane="channel"],
-.ytv-shell-pane[data-pane="ideas"] { display: none; }
+.ytv-shell-pane[data-pane="ideas"],
+.ytv-shell-pane[data-pane="coach"] { display: none; }
 .ytv-shell-body .ytv-panel,
 .ytv-shell-body .ytv-scorecard { margin-bottom: 0 !important; }
 
@@ -1731,3 +1735,77 @@
 .ytv-shell-scorecard .ytv-sc-pill-static:hover { border-color: #2e2e2e !important; background: #141416 !important; }
 .ytv-shell-scorecard .ytv-sc-expand-icon { display: none !important; }
 .ytv-shell-scorecard .ytv-sc-detail { border-color: #2e2e2e !important; }
+
+/* ── Coach chat (P5) ─────────────────────────────────────────── */
+
+.ytv-coach {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 320px !important;
+  gap: 8px !important;
+}
+
+.ytv-coach-msgs {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding-right: 2px !important;
+}
+
+.ytv-coach-hint {
+  font-size: 12px !important;
+  color: #9ca3af !important;
+  line-height: 1.5 !important;
+  padding: 8px 2px !important;
+}
+
+.ytv-coach-msg {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+  max-width: 88% !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+}
+
+.ytv-coach-user {
+  align-self: flex-end !important;
+  background: #ff0000 !important;
+  color: #fff !important;
+  border-bottom-right-radius: 3px !important;
+}
+
+.ytv-coach-ai {
+  align-self: flex-start !important;
+  background: #1e1e20 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #2e2e2e !important;
+  border-bottom-left-radius: 3px !important;
+}
+
+.ytv-coach-typing { opacity: 0.6 !important; font-style: italic !important; }
+
+.ytv-coach-input {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: flex-end !important;
+}
+
+.ytv-coach-input textarea {
+  flex: 1 !important;
+  resize: none !important;
+  background: #141416 !important;
+  border: 1px solid #2e2e2e !important;
+  border-radius: 8px !important;
+  color: #f1f1f1 !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 12px !important;
+  padding: 8px 10px !important;
+  line-height: 1.4 !important;
+}
+.ytv-coach-input textarea:focus { outline: none !important; border-color: #555 !important; }
+.ytv-coach-input button { flex-shrink: 0 !important; }

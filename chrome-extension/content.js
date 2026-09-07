@@ -183,13 +183,16 @@ const SHELL_TABS = [
   { id: 'page', es: 'Esta página', en: 'This page' },
   { id: 'channel', es: 'Tu canal', en: 'Your channel' },
   { id: 'ideas', es: 'Ideas', en: 'Ideas' },
+  { id: 'coach', es: 'Coach', en: 'Coach' },
 ];
 
 const shellState = { open: false, tab: 'page', mounted: false };
 // Rendered-content cache so switching tabs doesn't wipe results. `page` holds the
 // URL key it was last rendered for (re-render only when the page changed);
-// `channel`/`ideas` are booleans (render once per shell lifetime).
-const shellRendered = { page: null, channel: false, ideas: false };
+// `channel`/`ideas`/`coach` are booleans (render once per shell lifetime — the
+// Coach keeps its whole conversation for the session).
+const shellRendered = { page: null, channel: false, ideas: false, coach: false };
+const coachHistory = []; // {role:'user'|'assistant', content} — persists across nav within the session
 
 function shellEls() {
   const root = document.getElementById('ytv-shell');
@@ -223,6 +226,7 @@ function mountShell() {
         <div class="ytv-shell-pane" data-pane="page"></div>
         <div class="ytv-shell-pane" data-pane="channel"></div>
         <div class="ytv-shell-pane" data-pane="ideas"></div>
+        <div class="ytv-shell-pane" data-pane="coach"></div>
       </div>
       <div class="ytv-shell-foot" id="ytv-shell-foot"></div>
     </div>`;
@@ -309,6 +313,8 @@ async function renderShellTab() {
     if (!shellRendered.channel) renderShellChannelTab(pane); // sets the flag on success
   } else if (shellState.tab === 'ideas') {
     if (!shellRendered.ideas) renderShellIdeasTab(pane);
+  } else if (shellState.tab === 'coach') {
+    if (!shellRendered.coach) renderShellCoachTab(pane);
   }
 }
 
@@ -503,6 +509,7 @@ async function renderShellIdeasTab(body) {
     return; // don't cache — state may change (connect channel / batch generated later today)
   }
   shellRendered.ideas = true;
+  sendMsg({ type: 'CLEAR_IDEAS_BADGE' }).catch(() => {}); // they're looking at the ideas now
   const ideas = data.ideas.slice(0, 5);
   body.innerHTML = `<div class="ytv-ideas-body" style="max-height:none">${ideas.map((idea) => {
     const title = t(idea.title_es, idea.title_en) || '';
@@ -514,6 +521,106 @@ async function renderShellIdeasTab(body) {
       <a href="https://ytubviral.com/generate?topic=${topic}&utm_source=extension&utm_medium=ideas" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
     </div>`;
   }).join('')}</div>`;
+}
+
+// ── "Coach" tab (P5 of the vidIQ teardown, 2026-09) ─────────────────────────────
+// A Claude chat that knows what you're looking at — vidIQ's is generic GPT with only
+// your own channel. Pro-only (same as the web Coach). Conversation lives in coachHistory
+// for the whole session; the page context is read fresh on every send.
+
+function coachPageContext() {
+  if (location.hostname === 'studio.youtube.com') return t('El creador está en YouTube Studio.', 'The creator is in YouTube Studio.');
+  const type = getPageType();
+  if (type === 'video' || type === 'shorts') {
+    const { title, channelName } = getVideoInfo();
+    return `${t('Vídeo', 'Video')}: "${title}"${channelName ? ` — ${t('canal', 'channel')} ${channelName}` : ''}`;
+  }
+  if (type === 'search') return `${t('Búsqueda en YouTube', 'YouTube search')}: "${getSearchQuery()}"`;
+  if (type === 'channel') return `${t('Página de canal', 'Channel page')}: ${location.href}`;
+  return '';
+}
+
+function coachBubble(role, text) {
+  const cls = role === 'user' ? 'ytv-coach-msg ytv-coach-user' : 'ytv-coach-msg ytv-coach-ai';
+  return `<div class="${cls}">${escapeHtml(text).replace(/\n/g, '<br>')}</div>`;
+}
+
+function renderCoachThread(msgsEl) {
+  msgsEl.innerHTML = coachHistory.length
+    ? coachHistory.map((m) => coachBubble(m.role, m.content)).join('')
+    : `<div class="ytv-coach-hint">${t('Pregúntame sobre este vídeo, tu canal o tu estrategia. Sé concreto.', 'Ask me about this video, your channel or your strategy. Be specific.')}</div>`;
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+async function renderShellCoachTab(body) {
+  const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
+  if (!user) {
+    body.innerHTML = shellLoggedOutCta(
+      'Inicia sesión con una cuenta Pro para chatear con el Coach de IA.',
+      'Sign in with a Pro account to chat with the AI Coach.');
+    return;
+  }
+  if (!user.isPro) {
+    body.innerHTML = `<div class="ytv-shell-cta">
+      <p>${t('El Coach de IA es una función Pro — un Claude que conoce el vídeo que estás viendo y tu canal, no un chat genérico.', 'The AI Coach is a Pro feature — a Claude that knows the video you\'re watching and your channel, not a generic chat.')}</p>
+      <a href="https://ytubviral.com/pricing?utm_source=extension&utm_medium=coach" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Ver Pro — 9,99€/mes →', 'See Pro — €9.99/mo →')}</a>
+    </div>`;
+    return;
+  }
+
+  shellRendered.coach = true;
+  body.innerHTML = `
+    <div class="ytv-coach">
+      <div class="ytv-coach-msgs" id="ytv-coach-msgs"></div>
+      <div class="ytv-coach-input">
+        <textarea id="ytv-coach-text" rows="2" placeholder="${t('Escribe tu pregunta...', 'Type your question...')}"></textarea>
+        <button class="ytv-btn ytv-btn-red ytv-btn-sm" id="ytv-coach-send">${t('Enviar', 'Send')}</button>
+      </div>
+    </div>`;
+
+  const msgsEl = body.querySelector('#ytv-coach-msgs');
+  const textEl = body.querySelector('#ytv-coach-text');
+  const sendBtn = body.querySelector('#ytv-coach-send');
+  renderCoachThread(msgsEl);
+
+  async function send() {
+    const q = textEl.value.trim();
+    if (!q) return;
+    textEl.value = '';
+    coachHistory.push({ role: 'user', content: q });
+    renderCoachThread(msgsEl);
+    sendBtn.disabled = true; textEl.disabled = true;
+    const typing = document.createElement('div');
+    typing.className = 'ytv-coach-msg ytv-coach-ai ytv-coach-typing';
+    typing.textContent = t('Pensando…', 'Thinking…');
+    msgsEl.appendChild(typing);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    try {
+      const res = await sendMsg({
+        type: 'COACH',
+        message: q,
+        context: coachHistory.slice(-10, -1), // history before this message
+        pageContext: coachPageContext(),
+      });
+      coachHistory.push({ role: 'assistant', content: res.reply || t('Sin respuesta.', 'No reply.') });
+    } catch (e) {
+      const msg = e.message === 'throttled'
+        ? t('Vas muy rápido — espera unos segundos.', 'Too fast — wait a few seconds.')
+        : e.message === 'pro_required'
+          ? t('El Coach es Pro.', 'The Coach is Pro.')
+          : e.message;
+      coachHistory.push({ role: 'assistant', content: '⚠ ' + msg });
+    }
+    typing.remove();
+    renderCoachThread(msgsEl);
+    sendBtn.disabled = false; textEl.disabled = false;
+    textEl.focus();
+  }
+
+  sendBtn.addEventListener('click', send);
+  textEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
 }
 
 // Genuine review collection (G2 ASO lever #1): after a user has loaded the scorecard a few times
@@ -2020,6 +2127,16 @@ function renderLoggedOutScore(title) {
 let lastUrl = location.href;
 let navTimer = null;
 
+let ideasBadgeChecked = false;
+async function maybePokeIdeasBadge() {
+  if (ideasBadgeChecked) return;
+  ideasBadgeChecked = true;
+  try {
+    const d = await sendMsg({ type: 'DAILY_IDEAS' }); // cached per-day in background — cheap
+    if (Array.isArray(d?.ideas) && d.ideas.length) sendMsg({ type: 'IDEAS_BADGE' }).catch(() => {});
+  } catch { /* not logged in / no ideas — nothing to badge */ }
+}
+
 async function onPageChange() {
   // v2.7: one persistent shell on document.body — mounted once, refreshed on nav.
   // No per-page panels to clean up, and no early return for logged-out users
@@ -2027,6 +2144,7 @@ async function onPageChange() {
   mountShell();
   refreshShell();
   hideHoverCard(); // a hover card from the previous page would otherwise float over the new one
+  maybePokeIdeasBadge(); // P6 — dot on the toolbar icon if there are fresh ideas today
 
   // YouTube Studio — the inline SEO panel stays next to the metadata editor.
   if (location.hostname === 'studio.youtube.com') {

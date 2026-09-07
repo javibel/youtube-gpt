@@ -12,9 +12,8 @@ const userName  = document.getElementById('user-name');
 const userPlan  = document.getElementById('user-plan');
 const userInit  = document.getElementById('user-initials');
 const btnLang   = document.getElementById('btn-lang');
-const ideasRestore     = document.getElementById('ideas-restore');
-const btnRestoreIdeas  = document.getElementById('btn-restore-ideas');
-const ideasRestoreDone = document.getElementById('ideas-restore-done');
+const popMomentum = document.getElementById('pop-momentum');
+const popIdeas    = document.getElementById('pop-ideas');
 const videoBanner      = document.getElementById('video-banner');
 const videoBannerText  = document.getElementById('video-banner-text');
 const btnVideoBannerClose = document.getElementById('btn-video-banner-close');
@@ -23,6 +22,15 @@ const VIDEO1_DISMISS_KEY = 'ytv_video1_hint_dismissed';
 let lang = 'es';
 
 function t(es, en) { return lang === 'en' ? en : es; }
+
+function fmtNum(n) {
+  n = Number(n) || 0;
+  const s = n < 0 ? '-' : '+';
+  const a = Math.abs(n);
+  if (a >= 1_000_000) return s + (a / 1_000_000).toFixed(1) + 'M';
+  if (a >= 1_000) return s + Math.round(a / 1_000) + 'K';
+  return s + a;
+}
 
 function applyLang() {
   btnLang.textContent = lang.toUpperCase();
@@ -42,15 +50,8 @@ function applyLang() {
     '¿No tienes cuenta? Regístrate gratis →',
     "Don't have an account? Sign up free →"
   );
-  document.getElementById('feature-list').innerHTML = `
-    <div class="feature-item">✅ ${t('SEO Score en vídeos', 'SEO Score on videos')}</div>
-    <div class="feature-item">✅ ${t('Análisis de canales en YouTube', 'Channel analysis on YouTube')}</div>
-    <div class="feature-item">✅ ${t('Keywords en resultados de búsqueda', 'Keywords in search results')}</div>
-    <div class="feature-item">✅ ${t('Generación de títulos con IA', 'AI title generation')}</div>
-  `;
   document.getElementById('dashboard-link').textContent = t('Ir al dashboard →', 'Go to dashboard →');
   btnLogout.textContent = t('Cerrar sesión', 'Sign out');
-  btnRestoreIdeas.textContent = t('💡 Mostrar ideas de hoy', "💡 Show today's ideas");
   videoBannerText.textContent = t(
     'Nuevo: los 5 factores del SEO de YouTube, en vídeo',
     'New: the 5 factors of YouTube SEO, on video'
@@ -67,11 +68,6 @@ function sendMsg(msg) {
   });
 }
 
-// C4 (code review 2026-07-03): app/api/extension/login/route.ts devuelve sus
-// mensajes de error solo en español (server-side) — rompía el contrato
-// bilingüe que respeta el resto de la extensión si el usuario tenía lang=en.
-// No se toca el backend (esos strings son deliberados y compartidos con
-// otros flujos de auth); se traducen aquí los códigos conocidos.
 const LOGIN_ERROR_MAP = {
   'Demasiados intentos. Espera unos minutos.': () => t('Demasiados intentos. Espera unos minutos.', 'Too many attempts. Wait a few minutes.'),
   'Email y contraseña requeridos': () => t('Email y contraseña requeridos', 'Email and password required'),
@@ -83,17 +79,11 @@ const LOGIN_ERROR_MAP = {
 function loginErrorMessage(raw) {
   if (!raw) return t('Error al iniciar sesión', 'Login failed');
   const known = LOGIN_ERROR_MAP[raw];
-  return known ? known() : raw; // código ya bilingüe (viene de background.js) — usar tal cual
+  return known ? known() : raw;
 }
 
-function showError(msg) {
-  loginErr.textContent = msg;
-  loginErr.classList.remove('hidden');
-}
-
-function hideError() {
-  loginErr.classList.add('hidden');
-}
+function showError(msg) { loginErr.textContent = msg; loginErr.classList.remove('hidden'); }
+function hideError() { loginErr.classList.add('hidden'); }
 
 function showUserView(user) {
   viewLogin.classList.add('hidden');
@@ -110,67 +100,61 @@ function showUserView(user) {
     userPlan.textContent = t('Plan Gratuito', 'Free Plan');
     userPlan.classList.remove('pro');
   }
+
+  loadDashboard();
 }
 
 function showLoginView() {
   viewUser.classList.add('hidden');
   viewLogin.classList.remove('hidden');
   hideError();
-  ideasRestore.classList.add('hidden');
-  ideasRestoreDone.classList.add('hidden');
-  btnRestoreIdeas.classList.remove('hidden');
 }
 
-// Un usuario que cierra el panel "Qué grabar hoy" por accidente en la
-// homepage de YouTube no debería tener que abrir las DevTools de la
-// extensión para recuperarlo — este botón hace lo mismo (borrar la marca
-// de "descartado" de hoy) desde una superficie que cualquiera conoce: el
-// propio icono de la extensión.
-async function checkIdeasRestore() {
-  ideasRestore.classList.add('hidden');
-  ideasRestoreDone.classList.add('hidden');
-  try {
-    const data = await sendMsg({ type: 'DAILY_IDEAS' });
-    if (!data?.ideas) return; // sin ideas hoy — nada que restaurar
+// P6 — the popup as a command center, not just a login screen. Two live blocks for a
+// logged-in user: this week's channel momentum and today's ideas.
+async function loadDashboard() {
+  popMomentum.classList.add('hidden');
+  popIdeas.classList.add('hidden');
 
-    const today = new Date().toISOString().slice(0, 10);
-    const dismissKey = `ytv_ideas_dismissed_${today}`;
-    const store = await new Promise(resolve => chrome.storage.local.get(dismissKey, resolve));
-    if (store[dismissKey]) ideasRestore.classList.remove('hidden');
-  } catch {
-    // sin conexión o sin ideas — no mostrar el botón, no es un error visible
-  }
-}
-
-btnRestoreIdeas.addEventListener('click', async () => {
-  const today = new Date().toISOString().slice(0, 10);
-  await new Promise(resolve => chrome.storage.local.remove(`ytv_ideas_dismissed_${today}`, resolve));
-
-  // Empujar la pestaña activa a refrescar el panel YA, si es una pestaña de
-  // YouTube — sin esto, borrar la marca en storage no hacía nada visible en
-  // una pestaña ya abierta hasta la siguiente navegación real (recarga o
-  // clic en un enlace). No requiere el permiso "tabs": tabs.query() no
-  // necesita permisos especiales para leer solo el id, y tabs.sendMessage()
-  // a un content script tampoco. Si la pestaña activa no es YouTube, el
-  // mensaje simplemente no tiene quien lo escuche — se ignora en silencio.
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const tabId = tabs?.[0]?.id;
-    if (tabId == null) return;
-    chrome.tabs.sendMessage(tabId, { type: 'YTV_RECHECK_IDEAS' }, () => {
-      void chrome.runtime.lastError; // sin listener en esa pestaña = esperado, no es un error
-    });
+  sendMsg({ type: 'CHANNEL_STATS' }).then((d) => {
+    const g = d?.growth;
+    if (!g) return;
+    popMomentum.innerHTML = `
+      <div class="pop-block-title">${t('Tu semana', 'Your week')}</div>
+      <div class="pop-momentum-row">
+        <span>${fmtNum(g.subs7d)} subs</span>
+        <span>${fmtNum(g.views7d)} ${t('vistas', 'views')}</span>
+        <span class="pop-dim">7${t('d', 'd')}</span>
+      </div>`;
+    popMomentum.classList.remove('hidden');
+  }).catch((e) => {
+    if (e.message === 'youtube_not_connected') {
+      popMomentum.innerHTML = `<div class="pop-block-title">${t('Tu canal', 'Your channel')}</div>
+        <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=popupdash" target="_blank" class="pop-link">${t('Conéctalo para ver tu progreso →', 'Connect it to see your progress →')}</a>`;
+      popMomentum.classList.remove('hidden');
+    }
   });
 
-  btnRestoreIdeas.classList.add('hidden');
-  ideasRestoreDone.textContent = t(
-    '✓ Listo. Si tenías YouTube abierto ya debería verse — si no, aparecerá al abrirlo.',
-    "✓ Done. If YouTube was already open it should show up now — otherwise, next time you open it."
-  );
-  ideasRestoreDone.classList.remove('hidden');
-});
+  sendMsg({ type: 'DAILY_IDEAS' }).then((d) => {
+    const n = Array.isArray(d?.ideas) ? d.ideas.length : 0;
+    if (!n) return;
+    popIdeas.innerHTML = `
+      <div class="pop-block-title">💡 ${t(`${n} ideas para hoy`, `${n} ideas for today`)}</div>
+      <button class="btn btn-outline btn-sm" id="pop-ideas-open">${t('Verlas en YouTube', 'Open them on YouTube')}</button>`;
+    popIdeas.classList.remove('hidden');
+    document.getElementById('pop-ideas-open').addEventListener('click', () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs?.[0]?.id;
+        if (tabId != null) {
+          chrome.tabs.sendMessage(tabId, { type: 'YTV_RECHECK_IDEAS' }, () => { void chrome.runtime.lastError; });
+        }
+        window.close();
+      });
+    });
+    sendMsg({ type: 'CLEAR_IDEAS_BADGE' }).catch(() => {});
+  }).catch(() => {});
+}
 
-// Banner de promoción del vídeo 1 del canal — visible logueado o no (toda la
-// base instalada es audiencia válida), independiente del resto del flujo.
 async function checkVideoBanner() {
   const store = await new Promise(resolve => chrome.storage.local.get(VIDEO1_DISMISS_KEY, resolve));
   if (!store[VIDEO1_DISMISS_KEY]) videoBanner.classList.remove('hidden');
@@ -181,7 +165,7 @@ btnVideoBannerClose.addEventListener('click', async () => {
   await new Promise(resolve => chrome.storage.local.set({ [VIDEO1_DISMISS_KEY]: true }, resolve));
 });
 
-// Init: load lang then check user
+// Init
 (async () => {
   try {
     const res = await sendMsg({ type: 'GET_LANG' });
@@ -194,41 +178,35 @@ btnVideoBannerClose.addEventListener('click', async () => {
 
   try {
     const user = await sendMsg({ type: 'GET_USER' });
-    if (user) { showUserView(user); checkIdeasRestore(); }
+    if (user) showUserView(user);
     else showLoginView();
   } catch {
     showLoginView();
   }
 })();
 
-// Language toggle
 btnLang.addEventListener('click', async () => {
   lang = lang === 'es' ? 'en' : 'es';
   applyLang();
   await sendMsg({ type: 'SET_LANG', lang }).catch(() => {});
-  // Re-apply user view if logged in
   try {
     const user = await sendMsg({ type: 'GET_USER' });
-    if (user) { showUserView(user); checkIdeasRestore(); }
+    if (user) showUserView(user);
   } catch {}
 });
 
-// Login form submit
 loginForm.addEventListener('submit', async e => {
   e.preventDefault();
   hideError();
-
   const email = inpEmail.value.trim();
   const password = inpPass.value;
   if (!email || !password) return;
 
   btnLogin.disabled = true;
   btnLogin.textContent = t('Iniciando sesión...', 'Signing in...');
-
   try {
     const user = await sendMsg({ type: 'LOGIN', email, password });
     showUserView(user);
-    checkIdeasRestore();
   } catch (err) {
     showError(loginErrorMessage(err.message));
   } finally {
@@ -237,7 +215,6 @@ loginForm.addEventListener('submit', async e => {
   }
 });
 
-// Logout
 btnLogout.addEventListener('click', async () => {
   await sendMsg({ type: 'LOGOUT' }).catch(() => {});
   showLoginView();

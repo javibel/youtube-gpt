@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
+import { getExtensionUser } from '@/lib/extension-auth';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 
 export const maxDuration = 60;
@@ -10,20 +11,23 @@ export const maxDuration = 60;
 const MAX_CONTEXT = 10;
 
 export async function POST(request: Request) {
+  // Web uses the NextAuth session; the Chrome extension (P5 — Coach tab) sends a Bearer token.
   const session = await auth();
-  if (!session?.user?.id) {
+  const extUser = !session?.user?.id ? await getExtensionUser(request) : null;
+  const userId = session?.user?.id || extUser?.user.id || null;
+  if (!userId) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
+  const isProUser = extUser ? extUser.isPro : isPaid(await getUserPlan(userId));
+  if (!isProUser) {
     // C3: tocó el paywall del Coach — email explicativo (idempotente, DRY_RUN por defecto)
-    await triggerConversionEmail(session.user.id, 'c3');
+    await triggerConversionEmail(userId, 'c3');
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
   const body = await request.json();
-  const { message, context, mode, lang: clientLang } = body;
+  const { message, context, mode, lang: clientLang, pageContext } = body;
   const lang = clientLang === 'en' ? 'en' : 'es';
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return NextResponse.json({ error: 'message required' }, { status: 400 });
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
   const coachMode = (['create', 'analyze', 'optimize', 'research'] as const).includes(mode) ? mode : 'analyze';
 
   // Rate limit: 1 message per 5 seconds
-  const throttleKey = `coach_throttle:${session.user.id}`;
+  const throttleKey = `coach_throttle:${userId}`;
   const throttleResult = await prisma.$queryRaw<{ hits: number }[]>`
     INSERT INTO rate_limits (key, hits, window_start)
     VALUES (${throttleKey}, 1, NOW())
@@ -47,7 +51,7 @@ export async function POST(request: Request) {
   }
 
   // Build channel context (shared with AI Generator)
-  const ctx = await getChannelContext(session.user.id);
+  const ctx = await getChannelContext(userId);
   const channelContext = ctx?.summary || 'No YouTube channel connected.';
 
   const MODE_PROMPTS: Record<string, string> = {
@@ -113,7 +117,14 @@ YOUR ROLE:
 APPROACH: Be thorough and strategic. Think long-term positioning, not just individual videos. Reference competitors when available.`,
   };
 
-  const systemPrompt = `${MODE_PROMPTS[coachMode]}
+  // P5: the extension passes what the creator is looking at right now (a video, a channel,
+  // a search). This is what makes the extension Coach worth more than a generic chat — it
+  // reasons about the thing on screen, not just the user's own channel.
+  const pageBlock = typeof pageContext === 'string' && pageContext.trim()
+    ? `\n\nWHAT THE CREATOR IS LOOKING AT ON YOUTUBE RIGHT NOW:\n${pageContext.trim().slice(0, 600)}\nIf their question is about this, focus on it. Otherwise use it only as background.`
+    : '';
+
+  const systemPrompt = `${MODE_PROMPTS[coachMode]}${pageBlock}
 
 YTUBVIRAL PLATFORM TOOLS (recommend these when relevant):
 - Trending Explorer: discover trending videos by country, category, language, duration, and likes. Pro feature.
