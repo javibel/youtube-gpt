@@ -224,6 +224,25 @@ const NOISE_FROM_IMPORTANT_SENDERS = [
   },
 ];
 
+// Respuestas hostiles/abusivas a nuestro outreach. NUNCA deben recibir
+// auto-respuesta de IA — el 06/09/2026 un "Fuck you hacker bitch go fuck your
+// mama" recibió una contestación educada de atención al cliente, que ni ayuda
+// ni queda bien y puede alimentar un ida y vuelta. Se reenvían al owner (útil
+// para depurar la lista de outreach) pero el bot no contesta.
+const ABUSE_PATTERNS = [
+  /\bfuck (you|off|u|ya|yourself)\b/i,
+  /\bgo fuck\b/i,
+  /\bfuck(ing)?\s+(hacker|scammer|spammer|bot|idiot|loser)\b/i,
+  /\b(piece of shit|shut the fuck up|stfu)\b/i,
+  /\bkill y(ourself|our ?self)\b/i,
+  /\bkys\b/i,
+  /\b(asshole|dickhead|motherfucker|cunt)\b/i,
+  /\byou('re| are) (a )?(scammer|fraud|thief|criminal)\b/i,
+];
+function looksAbusive(text) {
+  return ABUSE_PATTERNS.some(p => p.test(text || ''));
+}
+
 // Coincidencia de palabra clave por palabra completa (no subcadena). Antes
 // `"collaborative workspace"` disparaba la keyword `collab` y reenviaba newsletters
 // de BetaList al owner. Ancla los extremos a un carácter no alfanumérico.
@@ -297,6 +316,11 @@ function classifyEmail(from, subject, snippet, headers = []) {
     if (rule.from.test(fromLower) && rule.subjects.some(p => p.test(subjectLower))) {
       return 'ignore';
     }
+  }
+
+  // 0g. Respuestas abusivas → reenviar al owner, nunca auto-responder.
+  if (looksAbusive(combined)) {
+    return 'important';
   }
 
   // 1. Check important senders FIRST (even if they match no-reply patterns)
