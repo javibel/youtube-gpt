@@ -475,8 +475,11 @@ async function runFunnelOptimizer() {
     const reportFile = path.join(REPORTS_DIR, `funnel-optimizer-${today}.json`);
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
 
-    // 5. Update agent memory
+    // 5. Update agent memory. processFindings() espera el OBJETO memory, no el
+    //    agentId — el string lanzaba TypeError, lo tragaba el catch y se saltaba
+    //    el markRun: runCount a 0 para siempre (ver seo-optimizer, mismo bug).
     try {
+      const memory = mem.loadMemory('funnel-optimizer');
       const findings = issues.map(i => ({
         id: mem.issueId(i.slice(0, 50)),
         description: i,
@@ -484,9 +487,10 @@ async function runFunnelOptimizer() {
           : i.includes('FUNNEL_CHURN') ? 'medium'
           : 'medium',
       }));
-      mem.processFindings('funnel-optimizer', findings);
-      mem.markRun('funnel-optimizer');
-    } catch (e) { /* memory not critical */ }
+      mem.processFindings(memory, findings);
+      mem.recordRun(memory, 0);
+      mem.saveMemory('funnel-optimizer', memory);
+    } catch (e) { console.error('[funnel-optimizer] memoria no actualizada:', e.message); }
 
     console.log(`[funnel-optimizer] Analysis complete: ${issues.length} issues, report saved to ${reportFile}`);
     return report;

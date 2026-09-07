@@ -230,16 +230,20 @@ async function runSocialOptimizer() {
     const reportFile = path.join(REPORTS_DIR, `social-optimizer-${today}.json`);
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
 
-    // Update agent memory
+    // Update agent memory. processFindings() espera el OBJETO memory, no el
+    // agentId — el string lanzaba TypeError, lo tragaba el catch y se saltaba el
+    // markRun: runCount a 0 para siempre (ver seo-optimizer, mismo bug).
     try {
+      const memory = mem.loadMemory('social-optimizer');
       const findings = analysis.issues.map(i => ({
         id: mem.issueId(i.slice(0, 50)),
         description: i,
         severity: i.includes('0 ') ? 'high' : 'medium',
       }));
-      mem.processFindings('social-optimizer', findings);
-      mem.markRun('social-optimizer');
-    } catch (e) { /* memory not critical */ }
+      mem.processFindings(memory, findings);
+      mem.recordRun(memory, 0);
+      mem.saveMemory('social-optimizer', memory);
+    } catch (e) { console.error('[social-optimizer] memoria no actualizada:', e.message); }
 
     // Send alert email if there are issues
     if (analysis.issues.length > 0) {

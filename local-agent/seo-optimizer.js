@@ -545,16 +545,21 @@ async function runSeoOptimizer() {
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
     console.log(`[seo-optimizer] Report saved: ${reportFile}`);
 
-    // 6. Update agent memory
+    // 6. Update agent memory. processFindings() espera el OBJETO memory, no el
+    //    agentId — pasarle el string lanzaba TypeError, lo tragaba el catch y de
+    //    paso se saltaba el markRun de la línea siguiente: runCount se quedaba en
+    //    0 para siempre y el meta-optimizer lo daba por "nunca ejecutado" (07/09).
     try {
+      const memory = mem.loadMemory('seo-optimizer');
       const findings = issues.map(i => ({
         id: mem.issueId(i.slice(0, 50)),
         description: i,
         severity: i.includes('NOINDEX') || i.includes('CLICKS') ? 'high' : 'medium',
       }));
-      mem.processFindings('seo-optimizer', findings);
-      mem.markRun('seo-optimizer');
-    } catch (e) { /* memory not critical */ }
+      mem.processFindings(memory, findings);
+      mem.recordRun(memory, 0);
+      mem.saveMemory('seo-optimizer', memory);
+    } catch (e) { console.error('[seo-optimizer] memoria no actualizada:', e.message); }
 
     // 7. Send summary email only if there are NEW issues or resolved issues
     const shouldEmail = newIssues.length > 0 || resolvedIssues.length > 0;
