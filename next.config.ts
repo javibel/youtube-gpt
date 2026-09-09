@@ -19,7 +19,14 @@ const nextConfig: NextConfig = {
     // Drops 'unsafe-eval' and blob: from script-src (kept 'wasm-unsafe-eval' for onnxruntime/imgly)
     // and http: from img-src; adds form-action/manifest-src. Report-only in dev too is noisy
     // (React Refresh needs eval) so it's production-only.
-    const cspReportOnly = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://*.clarity.ms https://js.stripe.com https://vercel.live https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' blob: https://*.clarity.ms https://c.bing.com https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com https://*.huggingface.co https://huggingface.co https://*.hf.space wss:; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com; form-action 'self' https://checkout.stripe.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; report-uri /api/csp-report";
+    //
+    // style-src incluye https://www.gstatic.com (2026-09-09): la traducción integrada de
+    // Chrome inyecta su hoja de estilos desde ahí (www.gstatic.com/_/translate_http/.../el_main_css)
+    // en cualquier página que el usuario traduzca. Sin esto, un visitante internacional con
+    // auto-traducción ve el texto sin estilos. Solo se añade a style-src: los reportes CSP
+    // reales solo registran la hoja de estilos bloqueada, no scripts ni conexiones (el motor
+    // de traducción corre en el proceso del navegador, fuera de la CSP de la página).
+    const cspReportOnly = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://*.clarity.ms https://js.stripe.com https://vercel.live https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' blob: https://*.clarity.ms https://c.bing.com https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com https://*.huggingface.co https://huggingface.co https://*.hf.space wss:; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com; form-action 'self' https://checkout.stripe.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; report-uri /api/csp-report";
 
     return [
       // Security headers — all routes
@@ -31,7 +38,7 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://*.clarity.ms https://js.stripe.com https://vercel.live https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' blob: https://*.clarity.ms https://c.bing.com https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com https://*.huggingface.co https://huggingface.co https://*.hf.space wss:; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; report-uri /api/csp-report" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://*.clarity.ms https://js.stripe.com https://vercel.live https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' blob: https://*.clarity.ms https://c.bing.com https://api.stripe.com https://*.vercel.live https://*.anthropic.com https://staticimgly.com https://*.staticimgly.com https://*.huggingface.co https://huggingface.co https://*.hf.space wss:; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://js.stripe.com https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; report-uri /api/csp-report" },
           ...(process.env.NODE_ENV === 'production'
             ? [{ key: 'Content-Security-Policy-Report-Only', value: cspReportOnly }]
             : []),
@@ -86,7 +93,7 @@ const nextConfig: NextConfig = {
         source: '/embed/:path*',
         headers: [
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self'; frame-ancestors *" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://www.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self'; frame-ancestors *" },
         ],
       },
       // API routes — never cache by default
