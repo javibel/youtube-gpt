@@ -140,6 +140,66 @@ Output ONLY the answer text, nothing else.`;
   return text.trim();
 }
 
+// ── Precheck: is this question actually answerable right now? ──────────────
+//
+// Antes se generaba la respuesta con Claude SIEMPRE y solo se descubría que la
+// pregunta no era respondible al intentar publicarla (gastando tokens en vano).
+// El 04-05/09/2026 se diagnosticó en vivo por qué "Cannot find Answer button"
+// llevaba 10 días seguidos sin publicar nada: dos causas distintas, ambas
+// detectables ANTES de llamar a Claude.
+//   1) La pregunta ya la respondió YtubViral hace tiempo (mayo) y no estaba en
+//      este log — Quora no muestra "Answer" para tu propia pregunta ya
+//      respondida, muestra tu respuesta con un control de editar sin texto
+//      "Edit" reconocible, pero SÍ hay un enlace a /profile/YtubViral en la
+//      página (confirmado con sondas en vivo contra 3 casos reales).
+//   2) Quora muestra un aviso "Sign Up" en vez de la UI de respuesta, con la
+//      sesión igualmente logueada (verifyQuoraSession pasa) — un estado
+//      degradado/anónimo que Quora sirve para según qué peticiones (no es un
+//      modal de login, así que el check de loginWall existente no lo detecta).
+//      No se ha podido confirmar la causa exacta (posible fricción anti-bot);
+//      se trata como transitorio: no se cuenta como "ya respondida" — se
+//      reintentará en una corrida futura.
+async function precheckQuestionPage(page, questionUrl) {
+  const ok = await safeGoto(page, questionUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  if (!ok) return { status: 'nav-failed' };
+
+  await new Promise(r => setTimeout(r, 4000));
+
+  const info = await page.evaluate(() => {
+    const candidates = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+    let hasAnswerBtn = false;
+    for (const el of candidates) {
+      const raw = (el.textContent || '').trim();
+      if (!raw || raw.length > 40) continue;
+      const t = raw.toLowerCase();
+      if (/answers\b/.test(t) && !/^answer\b/.test(t)) continue;
+      if (/view|see all|read all|more comments|show more/.test(t)) continue;
+      // El nav de la izquierda de Quora tiene un <a> "Answer" cuyo href resuelve
+      // a quora.com/answer (el feed de peticiones), NO a un editor. El href es
+      // ABSOLUTO ("https://www.quora.com/answer") así que hay que resolverlo, no
+      // hacer regex sobre el atributo. El botón real es un <button> "Answer·<N>".
+      if (el.href) {
+        try {
+          const u = new URL(el.href, location.href);
+          if (u.hostname.endsWith('quora.com') && u.pathname.replace(/\/+$/, '') === '/answer') continue;
+        } catch {}
+      }
+      const isAnswer =
+        t === 'answer' ||
+        /^answer\b/.test(t) ||
+        /^(write|add)\s+answer/.test(t) ||
+        /^responder\b/.test(t);
+      if (isAnswer) { hasAnswerBtn = true; break; }
+    }
+    const alreadyAnsweredByUs = Array.from(document.querySelectorAll('a[href*="/profile/"]'))
+      .some(a => /ytubviral/i.test(a.getAttribute('href') || ''));
+    const hasSignUpNudge = candidates.some(el => (el.textContent || '').trim() === 'Sign Up');
+    return { hasAnswerBtn, alreadyAnsweredByUs, hasSignUpNudge };
+  });
+
+  return { status: 'ok', ...info };
+}
+
 // ── Post answer on Quora ────────────────────────────────────────────────────
 
 async function postQuoraAnswer(page, questionUrl, answerText) {
@@ -160,6 +220,15 @@ async function postQuoraAnswer(page, questionUrl, answerText) {
       const t = raw.toLowerCase();
       if (/answers\b/.test(t) && !/^answer\b/.test(t)) continue; // "View Answers" etc.
       if (/view|see all|read all|more comments|show more/.test(t)) continue;
+      // Nav de la izquierda: <a> "Answer" con href absoluto a quora.com/answer
+      // (feed de peticiones, no editor). Hay que resolver el href. El botón real
+      // es <button> "Answer·<N>".
+      if (el.href) {
+        try {
+          const u = new URL(el.href, location.href);
+          if (u.hostname.endsWith('quora.com') && u.pathname.replace(/\/+$/, '') === '/answer') continue;
+        } catch {}
+      }
       const isAnswer =
         t === 'answer' ||
         /^answer\b/.test(t) ||            // "Answer", "Answer (5)", "Answer·5", "Answer Question"
@@ -379,7 +448,60 @@ async function runQuoraCommenter() {
     console.log(`[quora-commenter] Found ${unique.length} unanswered questions`);
 
     let count = 0;
-    for (const question of unique.slice(0, MAX_ANSWERS_PER_RUN)) {
+    let prechecked = 0;
+    let skippedAlreadyAnswered = 0;
+    let skippedSignedOut = 0;
+    // Tope de prechecks por corrida: cada uno navega (y postQuoraAnswer vuelve a
+    // navegar), así que sin tope, un run donde nada es respondible acababa
+    // navegando 15-20 páginas y machacando el browser (ProtocolError /
+    // detached frame, visto el 07/09). 10 es de sobra para encontrar 3.
+    const MAX_PRECHECKS_PER_RUN = 10;
+    for (const question of unique) {
+      if (count >= MAX_ANSWERS_PER_RUN) break;
+      if (prechecked >= MAX_PRECHECKS_PER_RUN) {
+        console.log(`[quora-commenter] Tope de ${MAX_PRECHECKS_PER_RUN} prechecks alcanzado, cortando`);
+        break;
+      }
+      prechecked++;
+
+      // Precheck ANTES de gastar tokens de Claude: ¿de verdad se puede responder?
+      // (ver comentario en precheckQuestionPage sobre los dos motivos de fallo
+      // diagnosticados el 04-05/09 tras 10 días seguidos con 0 respuestas publicadas)
+      const check = await precheckQuestionPage(page, question.url);
+
+      if (check.status !== 'ok') {
+        console.log(`[quora-commenter] Precheck falló para "${question.title.slice(0, 50)}" (${check.status}), saltando`);
+        continue;
+      }
+
+      if (check.alreadyAnsweredByUs) {
+        console.log(`[quora-commenter] Ya respondida por YtubViral (no estaba en el log): "${question.title.slice(0, 50)}" — registrando para no reintentar`);
+        log.answers.push({
+          url: question.url,
+          title: question.title,
+          answeredAt: new Date().toISOString(),
+          mentionedYtubviral: null,
+          length: null,
+          source: 'detectada-ya-respondida-precheck',
+        });
+        skippedAlreadyAnswered++;
+        continue;
+      }
+
+      if (!check.hasAnswerBtn) {
+        if (check.hasSignUpNudge) {
+          // Sesión logueada (verifyQuoraSession pasó) pero Quora sirve un estado
+          // degradado para esta pregunta concreta (nudge "Sign Up" sin modal de
+          // login). Transitorio — no se registra como respondida, se reintentará
+          // en una corrida futura.
+          console.log(`[quora-commenter] Quora muestra estado no-autenticado para "${question.title.slice(0, 50)}" (Sign Up nudge) — transitorio, saltando sin marcar`);
+          skippedSignedOut++;
+        } else {
+          console.log(`[quora-commenter] No se encontró botón Answer para "${question.title.slice(0, 50)}" y no es caso conocido — saltando`);
+        }
+        continue;
+      }
+
       // ~60% chance to mention ytubviral
       const mentionYtubviral = Math.random() < 0.6;
 
@@ -393,21 +515,23 @@ async function runQuoraCommenter() {
         }
 
         if (DRY_RUN) {
+          // No se publica de verdad — no registrar en el log (antes se registraba
+          // igual, así que un --dry-run contaminaba el dedup con respuestas falsas).
           console.log(`[quora-commenter] DRY RUN — would post (${answer.length} chars, mention: ${mentionYtubviral}):`);
           console.log(`  ${answer.slice(0, 150)}...`);
         } else {
           await postQuoraAnswer(page, question.url, answer);
           console.log(`[quora-commenter] Posted answer (${answer.length} chars)`);
-        }
 
-        log.answers.push({
-          url: question.url,
-          title: question.title,
-          answeredAt: new Date().toISOString(),
-          mentionedYtubviral: mentionYtubviral,
-          length: answer.length,
-        });
-        log.totalAnswers++;
+          log.answers.push({
+            url: question.url,
+            title: question.title,
+            answeredAt: new Date().toISOString(),
+            mentionedYtubviral: mentionYtubviral,
+            length: answer.length,
+          });
+          log.totalAnswers++;
+        }
         count++;
 
         // Delay between answers
@@ -426,7 +550,7 @@ async function runQuoraCommenter() {
     }
 
     saveLog(log);
-    console.log(`[quora-commenter] Done. ${count} answer(s) ${DRY_RUN ? 'validated' : 'posted'}.`);
+    console.log(`[quora-commenter] Done. ${count} answer(s) ${DRY_RUN ? 'validated' : 'posted'}${skippedAlreadyAnswered || skippedSignedOut ? ` (saltadas: ${skippedAlreadyAnswered} ya respondidas, ${skippedSignedOut} sesión degradada)` : ''}.`);
   } finally {
     try { await closeBrowserForProfile(PROFILE); } catch {}
   }

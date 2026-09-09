@@ -6,6 +6,8 @@ import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 
+export const maxDuration = 60; // generación con Claude puede pasar de 15s en plantillas largas
+
 const IP_FREE_LIMIT = 30; // máximo por IP/mes para usuarios free (anti multi-cuenta)
 
 function getIp(request: Request): string | null {

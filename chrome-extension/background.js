@@ -14,9 +14,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 // spinning forever — and never throws on a non-JSON response (a Vercel/Cloudflare error
 // page: 502, bot challenge — used to surface as a raw "Unexpected token '<'" to the user).
 async function apiFetch(url, opts = {}) {
+  const { timeoutMs, ...fetchOpts } = opts;
   let res;
   try {
-    res = await fetch(url, { ...opts, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    res = await fetch(url, { ...fetchOpts, signal: AbortSignal.timeout(timeoutMs || FETCH_TIMEOUT_MS) });
   } catch (err) {
     if (err.name === 'TimeoutError' || err.name === 'AbortError') throw new Error('timeout');
     throw new Error('network_error');
@@ -177,6 +178,8 @@ async function handleMessage(msg) {
       try {
         ({ res, data } = await apiFetch(`${API_BASE}/api/generate`, {
           method: 'POST',
+          // Also a Claude call — long templates (scripts, channel_insight) can exceed 15s.
+          timeoutMs: 55000,
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({
             template: msg.template,
@@ -365,6 +368,10 @@ async function handleMessage(msg) {
       try {
         ({ res, data } = await apiFetch(`${API_BASE}/api/coach`, {
           method: 'POST',
+          // The Coach calls Claude for a full (non-streamed) reply — routinely 15-40s.
+          // The default 15s abort was firing before the answer came back ("tardó demasiado").
+          // Server route caps at maxDuration=60, so wait just under that.
+          timeoutMs: 55000,
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({
             message: msg.message,
