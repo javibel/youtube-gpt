@@ -149,23 +149,44 @@ runSentinel().catch(err => console.error('[sentinel] startup check:', err.messag
   }
 })();
 
-// Manager catch-up on startup: el 09/09 el PC estuvo apagado/suspendido de ~02:30
-// a 16:53 (Guardian corrió a las 02:15, nada después). El cron de las 03:15 y su
-// catch-up de las 03:25 no sirven de nada si el proceso está muerto a esa hora.
-// Si al arrancar ya pasan de las 04:00 y no hay reporte de hoy, generarlo ahora.
-// Auto-Resolver (09:17) depende de este reporte.
+// Catch-up del pipeline nocturno al arrancar: el 09/09 el PC estuvo apagado de
+// ~02:30 a 16:53 (Guardian corrió a las 02:15, nada después). El cron del Manager
+// (03:15) y su catch-up (03:25) no sirven de nada si el proceso está muerto a esa
+// hora. Si al arrancar ya pasan de las 04:00 y no hay reporte del Manager de hoy,
+// re-lanzamos la cadena entera: attribution → los 4 optimizadores (cada uno solo
+// si falta su reporte de hoy) → Manager. Auto-Resolver (09:17) depende del reporte.
 (async () => {
   const fs = require('fs');
   const path = require('path');
   const now = new Date();
   if (now.getHours() < 4) return; // aún dentro de la ventana normal del cron
   const todayStr = now.toISOString().slice(0, 10);
-  const reportFile = path.join(__dirname, 'reports', `manager-${todayStr}.json`);
-  if (!fs.existsSync(reportFile)) {
-    console.log('[manager] No hay reporte de hoy al arrancar (>04:00) — el proceso estuvo caído a las 03:15. Catch-up.');
-    await runManager().catch(err => console.error('[manager] catch-up startup:', err.message));
-    await db.disconnect().catch(() => {});
+  const reportsDir = path.join(__dirname, 'reports');
+  const hasReport = agent => fs.existsSync(path.join(reportsDir, `${agent}-${todayStr}.json`));
+
+  if (hasReport('manager')) return; // el cron de las 03:15 sí corrió
+
+  console.log('[startup-catchup] Falta el reporte del Manager de hoy (proceso caído a las 03:15) — re-lanzando el pipeline nocturno');
+
+  // Attribution primero (el Funnel Optimizer lee sus stats). No escribe reporte
+  // propio, es idempotente y barato — se ejecuta siempre.
+  await runAttribution().catch(err => console.error('[outreach-attribution] catch-up:', err.message));
+
+  const optimizers = [
+    ['infra-optimizer', runInfraOptimizer],
+    ['seo-optimizer', runSeoOptimizer],
+    ['funnel-optimizer', runFunnelOptimizer],
+    ['social-optimizer', runSocialOptimizer],
+  ];
+  for (const [name, run] of optimizers) {
+    if (hasReport(name)) continue;
+    console.log(`[startup-catchup] ${name} — sin reporte de hoy, ejecutando`);
+    await run().catch(err => console.error(`[${name}] catch-up:`, err.message));
   }
+
+  console.log('[startup-catchup] Generando el Reporte Ejecutivo del Manager');
+  await runManager().catch(err => console.error('[manager] catch-up startup:', err.message));
+  await db.disconnect().catch(() => {});
 })();
 
 // ── Schedules ─────────────────────────────────────────────────────────────────
@@ -550,7 +571,7 @@ console.log('  SEO Optimizer: 02:50 daily (Europe/Madrid)');
 console.log('  Funnel Optimizer: 02:55 daily (Europe/Madrid)');
 console.log('  Social Optimizer: 03:00 daily (Europe/Madrid)');
 console.log('  Stripe Reconcile: 02:35 Sundays + catch-up on startup (Europe/Madrid)');
-console.log('  Manager: 03:15 daily + catch-up 03:25 + catch-up al arrancar si falta (Europe/Madrid)');
+console.log('  Manager: 03:15 daily + catch-up 03:25 + catch-up al arrancar (re-lanza pipeline nocturno si falta) (Europe/Madrid)');
 console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
 console.log('  Auto-Resolver: 09:17 daily (Europe/Madrid)');
 console.log('  Briefing Watch: 19:00 daily — ¿vuelven los del briefing? (Europe/Madrid)');
