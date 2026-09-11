@@ -46,6 +46,10 @@ next-env.d.ts
 # Chrome extension build artifact (regenerate with chrome-extension/pack.js)
 ytubviral-extension.zip
 
+# Duplicado suelto y desactualizado del zip anterior (nombre sin guion, no lo
+# genera ningún script) — se dejó de trackear el 2026-09-12, ver memoria.
+ytubviralextension.zip
+
 # Stray backup files (blog-generator etc.)
 *.bak
 

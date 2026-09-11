@@ -4,7 +4,7 @@ require('dotenv').config();
 const cron = require('node-cron');
 const db = require('./db');
 // Twitter/X abandonado 2026-08-31 (cuenta quemada). twitter.js / brand-twitter-post.js
-// se conservan en disco pero ya no se orquestan desde aquí.
+// eliminados el 2026-09-11 (limpieza de repo) — recuperables del historial de git si se retoma.
 const { closeBrowser, closeAllBrowsers } = require('./browser');
 const reports = require('./reports');
 const personaRunner = require('./persona-runner');
@@ -217,7 +217,7 @@ cron.schedule('*/30 8-23 * * *', async () => {
 // }, { timezone: 'Europe/Madrid' });
 
 // X Coach personal (@plata24155) — APAGADO 2026-08-31 (Twitter abandonado).
-// x-coach.js se conserva en disco por si se retoma.
+// x-coach.js eliminado el 2026-09-11 (limpieza de repo) — recuperable del historial de git si se retoma.
 // cron.schedule('0 8 * * *', async () => {
 //   console.log('[cron] X Coach — generando plan diario de X');
 //   await bq('x-coach', async () => {
