@@ -17,7 +17,16 @@
  * cadencia solo generaría ruido. Sin llamadas a Claude: es agregación SQL
  * pura, coste cero.
  *
- * Output: reports/retention-YYYY-MM-DD.json + reports/retention-history.json (serie temporal)
+ * Incluye también la serie histórica altas-vs-actividad (pedida por Javier
+ * 11/09/2026 tras el análisis ad-hoc — ver project_retention_wall.md): cada
+ * semana recalcula las 19+ semanas completas desde cero (barato, ~90
+ * usuarios) y guarda correlación (Pearson, altas vs usuarios activos
+ * distintos) + tendencia (últimas 4 semanas vs las 4 previas) para poder
+ * responder "¿se está acelerando el crecimiento?" sin repetir el análisis
+ * manual cada vez.
+ *
+ * Output: reports/retention-YYYY-MM-DD.json + reports/retention-snapshots.json (serie del muro)
+ *         + reports/growth-series-snapshots.json (última serie altas-vs-actividad completa)
  */
 
 const fs = require('fs');
@@ -29,6 +38,7 @@ const REPORTS_DIR = path.join(__dirname, 'reports');
 // reports/*.json >7 días salvo los que tengan "snapshots" en el nombre (mismo
 // patrón que scout-snapshots.json) — sin eso, el historial se borraría solo cada semana.
 const HISTORY_FILE = path.join(REPORTS_DIR, 'retention-snapshots.json');
+const GROWTH_FILE = path.join(REPORTS_DIR, 'growth-series-snapshots.json');
 
 // Mismo criterio que lib/internal-accounts.ts en la webapp (Javier, 13/06/2026).
 // Mantener sincronizado a mano si esa lista cambia — no hay import cross-repo.
@@ -59,6 +69,126 @@ function saveHistory(history) {
   ensureDir(REPORTS_DIR);
   // Nos quedamos con ~1 año de semanas — no hace falta más para ver tendencia.
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history.slice(-52), null, 2));
+}
+
+// ── Serie semanal altas-vs-actividad (para detectar aceleración) ───────────
+
+function pearson(xs, ys) {
+  const n = xs.length;
+  if (n < 3) return null;
+  const mx = xs.reduce((a, b) => a + b, 0) / n;
+  const my = ys.reduce((a, b) => a + b, 0) / n;
+  let num = 0, dx = 0, dy = 0;
+  for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); dx += (xs[i] - mx) ** 2; dy += (ys[i] - my) ** 2; }
+  const denom = Math.sqrt(dx * dy);
+  return denom === 0 ? null : num / denom;
+}
+
+function weekStart(d) {
+  const dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = dt.getUTCDay(); // 0 = domingo
+  const diff = (day === 0 ? -6 : 1) - day; // lunes de esa semana
+  dt.setUTCDate(dt.getUTCDate() + diff);
+  return dt.toISOString().slice(0, 10);
+}
+
+// avg de las últimas `n` semanas vs las `n` anteriores a esas — la última
+// semana (en curso, parcial) se excluye siempre para no comparar una semana
+// a medias contra semanas completas.
+function trendDelta(values, n = 4) {
+  const complete = values.slice(0, -1); // sin la semana en curso
+  if (complete.length < n * 2) return null;
+  const last = complete.slice(-n);
+  const prior = complete.slice(-n * 2, -n);
+  const avgLast = last.reduce((a, b) => a + b, 0) / n;
+  const avgPrior = prior.reduce((a, b) => a + b, 0) / n;
+  const pct = avgPrior === 0 ? (avgLast > 0 ? 100 : 0) : Math.round(100 * (avgLast - avgPrior) / avgPrior);
+  return { avgLast: +avgLast.toFixed(1), avgPrior: +avgPrior.toFixed(1), pct };
+}
+
+async function computeGrowthSeries() {
+  const users = await db.query(`SELECT id, email, "createdAt", "emailVerified" IS NOT NULL AS verified FROM users`);
+  const realUsers = users.filter(u => !INTERNAL_EMAILS.has((u.email || '').trim().toLowerCase()));
+  const realIds = new Set(realUsers.map(u => u.id));
+
+  const activityRows = await db.query(`
+    SELECT "userId", "createdAt" AS ts FROM generations
+    UNION ALL SELECT "userId", "analyzedAt" FROM video_seo_scores
+    UNION ALL SELECT "userId", "createdAt" FROM daily_ideas
+    UNION ALL SELECT "userId", "createdAt" FROM video_previews
+    UNION ALL SELECT "userId", "createdAt" FROM chat_messages
+    UNION ALL SELECT "userId", "createdAt" FROM optimize_history
+    UNION ALL SELECT "userId", "createdAt" FROM extension_events
+  `);
+  const realActivity = activityRows.filter(a => realIds.has(a.userId));
+
+  if (!realUsers.length) return null;
+
+  const minWeek = weekStart(new Date(Math.min(...realUsers.map(u => new Date(u.createdAt)))));
+  const maxWeek = weekStart(new Date());
+  const weeks = {};
+  for (let cur = new Date(`${minWeek}T00:00:00Z`), end = new Date(`${maxWeek}T00:00:00Z`); cur <= end; cur.setUTCDate(cur.getUTCDate() + 7)) {
+    weeks[cur.toISOString().slice(0, 10)] = { signups: 0, verifiedSignups: 0, actions: 0, activeUsers: new Set() };
+  }
+  realUsers.forEach(u => {
+    const w = weekStart(new Date(u.createdAt));
+    weeks[w].signups++;
+    if (u.verified) weeks[w].verifiedSignups++;
+  });
+  realActivity.forEach(a => {
+    const w = weekStart(new Date(a.ts));
+    if (weeks[w]) { weeks[w].actions++; weeks[w].activeUsers.add(a.userId); }
+  });
+
+  const series = Object.keys(weeks).sort().map(w => ({
+    week: w,
+    signups: weeks[w].signups,
+    verifiedSignups: weeks[w].verifiedSignups,
+    actions: weeks[w].actions,
+    activeUsers: weeks[w].activeUsers.size,
+  }));
+
+  // Altas VERIFICADAS, no brutas: una ráfaga de bots (ver semana 24/08, 6 altas
+  // pero solo 2 verificadas) infla "signups" sin ser registro real y falsea
+  // tanto la correlación como la tendencia. verifiedSignups es la serie limpia.
+  const signups = series.map(s => s.verifiedSignups);
+  const rawSignups = series.map(s => s.signups);
+  const actions = series.map(s => s.actions);
+  const active = series.map(s => s.activeUsers);
+  const last8 = series.slice(-8);
+
+  const correlations = {
+    signupsVsActiveUsers: pearson(signups, active) !== null ? +pearson(signups, active).toFixed(2) : null,
+    signupsVsActiveUsersLast8: pearson(last8.map(s => s.verifiedSignups), last8.map(s => s.activeUsers)) !== null
+      ? +pearson(last8.map(s => s.verifiedSignups), last8.map(s => s.activeUsers)).toFixed(2) : null,
+    signupsVsActions: pearson(signups, actions) !== null ? +pearson(signups, actions).toFixed(2) : null,
+    rawSignupsVsActiveUsers: pearson(rawSignups, active) !== null ? +pearson(rawSignups, active).toFixed(2) : null,
+  };
+
+  const trend = {
+    signups: trendDelta(signups),
+    activeUsers: trendDelta(active),
+  };
+
+  // Aceleración "compuesta" = suben altas Y activos a la vez, no solo uno de los dos.
+  let accelerationLabel = 'sin datos suficientes';
+  if (trend.signups && trend.activeUsers) {
+    const signupsUp = trend.signups.pct >= 15;
+    const activeUp = trend.activeUsers.pct >= 15;
+    if (signupsUp && activeUp) accelerationLabel = 'crecimiento compuesto (altas Y activos aceleran juntos)';
+    else if (activeUp && !signupsUp) accelerationLabel = 'solo activos aceleran — altas planas (base existente enganchándose más, no entra gente nueva más rápido)';
+    else if (signupsUp && !activeUp) accelerationLabel = 'solo altas aceleran — activos planos (entra gente pero no se engancha todavía)';
+    else accelerationLabel = 'sin aceleración en ninguna de las dos';
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    weeks: series.length,
+    series,
+    correlations,
+    trend,
+    accelerationLabel,
+  };
 }
 
 async function runRetentionWatch() {
@@ -144,6 +274,18 @@ async function runRetentionWatch() {
     }
   }
 
+  // Serie histórica altas-vs-actividad + correlación/aceleración (pedido 11/09/2026).
+  let growthSeries = null;
+  try {
+    growthSeries = await computeGrowthSeries();
+    if (growthSeries) {
+      note += ` Crecimiento: ${growthSeries.accelerationLabel} (r=${growthSeries.correlations.signupsVsActiveUsers ?? '-'}).`;
+      if (growthSeries.accelerationLabel.startsWith('crecimiento compuesto') && status === 'OK') status = 'MEJORA';
+    }
+  } catch (e) {
+    console.error('[retention-watch] growth series failed:', e.message);
+  }
+
   const report = {
     date: todayStr,
     activeTodayCount: activeToday.length,
@@ -154,6 +296,7 @@ async function runRetentionWatch() {
     veteransCount: veterans.length,
     veterans: veterans.map(u => ({ email: u.email, ageDays: u.ageDays, daysSinceLast: u.daysSinceLast, totalActions: Number(u.total_actions) })),
     ageBucketRetention,
+    growthSeries,
     status,
     note,
     durationMs: Date.now() - start,
@@ -163,9 +306,10 @@ async function runRetentionWatch() {
   fs.writeFileSync(path.join(REPORTS_DIR, `retention-${todayStr}.json`), JSON.stringify(report, null, 2));
   history.push({ date: todayStr, retentionWallDays, active7dCount: active7d.length, activeTodayCount: activeToday.length, avgAgeActive7d });
   saveHistory(history);
+  if (growthSeries) fs.writeFileSync(GROWTH_FILE, JSON.stringify(growthSeries, null, 2));
 
   console.log(`[retention-watch] ${note}`);
   return report;
 }
 
-module.exports = { runRetentionWatch };
+module.exports = { runRetentionWatch, computeGrowthSeries };
