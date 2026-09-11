@@ -706,6 +706,35 @@
   flex-wrap: wrap !important;
 }
 
+/* ── P7: pestañas internas de la vista expandida ─────────────────── */
+.ytv-sc-tabs {
+  display: flex !important;
+  gap: 4px !important;
+  border-bottom: 1px solid #262626 !important;
+  margin-bottom: 2px !important;
+}
+.ytv-sc-tab {
+  flex: 1 !important;
+  padding: 6px 2px !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  color: #9ca3af !important;
+  cursor: pointer !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  white-space: nowrap !important;
+}
+.ytv-sc-tab:hover { color: #e5e7eb !important; }
+.ytv-sc-tab-active { color: #fff !important; border-bottom-color: #ff0000 !important; }
+.ytv-sc-tabpanel {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
 /* ===== CHANNEL STATS WIDGET (E2) ===== */
 
 .ytv-cs-header {
@@ -1095,6 +1124,85 @@
   color: #d1d5db !important;
   line-height: 1.4 !important;
 }
+
+/* ── P7: SERP preview (Studio editor) ────────────────────────────── */
+.ytv-serp {
+  padding: 0 14px 10px !important;
+}
+.ytv-serp-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #777 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.4px !important;
+  margin-bottom: 6px !important;
+}
+.ytv-serp-row {
+  display: flex !important;
+  gap: 8px !important;
+  background: #141416 !important;
+  border: 1px solid #262626 !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+}
+.ytv-serp-thumb {
+  width: 100px !important;
+  height: 56px !important;
+  border-radius: 5px !important;
+  object-fit: cover !important;
+  flex-shrink: 0 !important;
+  background: #222 !important;
+}
+.ytv-serp-meta {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 3px !important;
+}
+.ytv-serp-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #f1f1f1 !important;
+  line-height: 1.3 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+.ytv-serp-sub {
+  font-size: 11px !important;
+  color: #999 !important;
+}
+
+/* ── P7: formulario A/B inline en Studio (botón siempre visible) ──── */
+.ytv-studio-ab-inline {
+  margin-top: 8px !important;
+  padding: 10px !important;
+  background: #141416 !important;
+  border: 1px solid #262626 !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+.ytv-studio-ab-a {
+  font-size: 12px !important;
+  color: #9ca3af !important;
+  padding: 6px 8px !important;
+  background: rgba(255,255,255,0.04) !important;
+  border-radius: 5px !important;
+}
+.ytv-studio-ab-input {
+  background: #1a1a1a !important;
+  border: 1px solid #333 !important;
+  border-radius: 6px !important;
+  color: #f1f1f1 !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 12px !important;
+  padding: 7px 9px !important;
+}
+.ytv-studio-ab-input:focus { outline: none !important; border-color: #555 !important; }
 
 .ytv-studio-desc-preview {
   background: rgba(255,255,255,0.04) !important;

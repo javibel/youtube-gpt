@@ -396,6 +396,15 @@ function wireShellScorecard(root, scorecardData, videoId, loggedIn) {
   const detail = root.querySelector('.ytv-sc-detail');
   if (!detail) return;
 
+  // P7 — pestañas internas de la vista expandida (Resumen/Tags y hora/Comentarios).
+  detail.querySelectorAll('.ytv-sc-tab').forEach((tabBtn) => {
+    tabBtn.addEventListener('click', () => {
+      const target = tabBtn.dataset.sctab;
+      detail.querySelectorAll('.ytv-sc-tab').forEach((b) => b.classList.toggle('ytv-sc-tab-active', b === tabBtn));
+      detail.querySelectorAll('.ytv-sc-tabpanel').forEach((p) => { p.style.display = p.dataset.scpanel === target ? 'flex' : 'none'; });
+    });
+  });
+
   detail.querySelectorAll('.ytv-tag[data-kw]').forEach((tag) => {
     tag.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -987,31 +996,42 @@ function renderScorecardExpanded(d) {
     `<span class="ytv-tag" data-kw="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`
   ).join('');
 
+  // P7 — la vista expandida era un muro de secciones apiladas (score, quick wins, tags,
+  // mejor hora, comentarios, todo visible a la vez → scroll interminable). 3 pestañas
+  // internas agrupan por intención: "Resumen" (lo que hay que arreglar ya), "Tags y hora"
+  // (metadata de apoyo), "Comentarios" (bajo demanda, como antes — no cambia su coste).
   return `
     <div class="ytv-sc-expanded">
       ${statsHtml}
 
-      <div class="ytv-sc-section">
-        <div class="ytv-sc-section-title">SEO Score <span style="color:${color};font-weight:800">${d.score}/100</span></div>
-        <div class="ytv-sc-checks-grid">${checksHtml}</div>
+      <div class="ytv-sc-tabs">
+        <button class="ytv-sc-tab ytv-sc-tab-active" data-sctab="resumen">${t('Resumen', 'Overview')}</button>
+        <button class="ytv-sc-tab" data-sctab="tags">${t('Tags y hora', 'Tags & time')}</button>
+        <button class="ytv-sc-tab" data-sctab="comments">${t('Comentarios', 'Comments')}</button>
       </div>
 
-      ${renderQuickWins(d.checks)}
-
-      ${d.tags?.length ? `
+      <div class="ytv-sc-tabpanel" data-scpanel="resumen">
         <div class="ytv-sc-section">
-          <div class="ytv-sc-section-title">Tags <span class="ytv-hint">(${d.tags.length})</span> <button class="ytv-btn ytv-btn-sm ytv-btn-dark ytv-copy-tags-btn" style="margin-left:auto">📋 ${t('Copiar todo', 'Copy all')}</button></div>
-          <div class="ytv-tags">${tagsHtml}</div>
+          <div class="ytv-sc-section-title">SEO Score <span style="color:${color};font-weight:800">${d.score}/100</span></div>
+          <div class="ytv-sc-checks-grid">${checksHtml}</div>
         </div>
-      ` : ''}
-
-      <div class="ytv-sc-section">
-        <div class="ytv-sc-section-title">${t('Mejor hora de publicar', 'Best Time to Post')}</div>
-        <div id="ytv-sc-besttime-area">${renderLoading(t('Cargando...', 'Loading...'))}</div>
+        ${renderQuickWins(d.checks)}
       </div>
 
-      <div class="ytv-sc-section">
-        <div class="ytv-sc-section-title">${t('Comentarios', 'Comments')}</div>
+      <div class="ytv-sc-tabpanel" data-scpanel="tags" style="display:none">
+        ${d.tags?.length ? `
+          <div class="ytv-sc-section">
+            <div class="ytv-sc-section-title">Tags <span class="ytv-hint">(${d.tags.length})</span> <button class="ytv-btn ytv-btn-sm ytv-btn-dark ytv-copy-tags-btn" style="margin-left:auto">📋 ${t('Copiar todo', 'Copy all')}</button></div>
+            <div class="ytv-tags">${tagsHtml}</div>
+          </div>
+        ` : `<div class="ytv-hint" style="padding:4px 0">${t('Sin tags.', 'No tags.')}</div>`}
+        <div class="ytv-sc-section">
+          <div class="ytv-sc-section-title">${t('Mejor hora de publicar', 'Best Time to Post')}</div>
+          <div id="ytv-sc-besttime-area">${renderLoading(t('Cargando...', 'Loading...'))}</div>
+        </div>
+      </div>
+
+      <div class="ytv-sc-tabpanel" data-scpanel="comments" style="display:none">
         <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-sc-btn-comments">${t('💬 Cargar análisis', '💬 Load analysis')}</button>
         <div id="ytv-sc-comments-area"></div>
       </div>
@@ -1377,6 +1397,27 @@ function renderStudioChecks(checks) {
   }).join('');
 }
 
+// P7 — SERP preview: cómo se vería este vídeo en un resultado de búsqueda de YouTube,
+// actualizado mientras se escribe. vidIQ lo tiene en Studio; nosotros lo montamos con datos
+// que YA tenemos (el SCORECARD inicial) + la miniatura pública del vídeo — sin petición extra.
+// Solo en el editor de vídeos publicados (no en el diálogo de subida: la miniatura del CDN
+// de i.ytimg.com no existe todavía para un vídeo sin publicar).
+function renderSerpPreview(videoId, title, channelTitle, views, ageDays) {
+  const thumbUrl = `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/mqdefault.jpg`;
+  return `
+    <div class="ytv-serp">
+      <div class="ytv-serp-label">${t('Así se verá en la búsqueda', "How it'll look in search")}</div>
+      <div class="ytv-serp-row">
+        <img class="ytv-serp-thumb" src="${thumbUrl}" alt="" onerror="this.style.visibility='hidden'">
+        <div class="ytv-serp-meta">
+          <div class="ytv-serp-title" id="ytv-serp-title">${escapeHtml(title)}</div>
+          <div class="ytv-serp-sub">${escapeHtml(channelTitle || '')}${channelTitle ? ' · ' : ''}${fmtNum(views)} ${t('vistas', 'views')} · ${fmtAge(ageDays, ageDays * 24)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderStudioScore(score, checks, titleLen) {
   const color = scoreColor(score);
   const titleLenColor = titleLen >= 30 && titleLen <= 70 ? '#22c55e' : titleLen > 70 ? '#ef4444' : '#eab308';
@@ -1557,32 +1598,77 @@ async function injectStudioEditor() {
       <div class="ytv-body">
         ${renderLoading(t('Analizando SEO...', 'Analyzing SEO...'))}
       </div>
+      <div id="ytv-studio-serp"></div>
       <div id="ytv-studio-besttime"></div>
       <div class="ytv-studio-ai-section">
         <div class="ytv-studio-ai-buttons">
           <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-titles">✨ ${t('Generar títulos', 'Generate titles')}</button>
           <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-desc">📝 ${t('Generar descripción', 'Generate description')}</button>
           <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-tags">🏷️ ${t('Sugerir tags', 'Suggest tags')}</button>
+          <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-gen-thumb">🎨 ${t('Generar miniatura', 'Generate thumbnail')}</button>
         </div>
         <div id="ytv-studio-ai-results"></div>
       </div>
       <div class="ytv-sc-actions" style="margin-top:8px">
+        <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-studio-ab-btn">🆚 ${t('Crear test A/B', 'Create A/B test')}</button>
         <a href="https://ytubviral.com/optimize?v=${videoId}&utm_source=extension&utm_medium=studio" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">⚡ ${t('Optimizar en YTubViral', 'Optimize on YTubViral')}</a>
       </div>
+      <div id="ytv-studio-ab-form"></div>
     `;
 
     container.parentElement.insertBefore(panel, container);
 
     const bodyEl = panel.querySelector('.ytv-body');
     const aiResults = panel.querySelector('#ytv-studio-ai-results');
+    const serpEl = panel.querySelector('#ytv-studio-serp');
 
     // ─ Initial score from SCORECARD (YouTube API data) ─
     try {
       const data = await sendMsg({ type: 'SCORECARD', videoId });
       bodyEl.innerHTML = renderStudioScore(data.score, data.checks, (data.title || '').length);
+      // P7 — SERP preview seeded with the same call, no extra request.
+      serpEl.innerHTML = renderSerpPreview(videoId, getStudioTitle() || data.title, data.channelTitle, data.views, data.ageDays);
     } catch (e) {
       bodyEl.innerHTML = renderError(e.message);
     }
+
+    // ─ P7: botón "🆚 Crear test A/B" siempre visible — antes el A/B solo aparecía
+    // pegado a una sugerencia de título tras pulsar "Generar títulos" (fácil de no ver
+    // nunca). Ahora es una acción propia: variante A = título actual, variante B = la
+    // que escriba el creador. Mismo mensaje AB_CREATE y mismas tarjetas de error/éxito.
+    const abBtn = panel.querySelector('#ytv-studio-ab-btn');
+    const abFormEl = panel.querySelector('#ytv-studio-ab-form');
+    abBtn.addEventListener('click', () => {
+      if (abFormEl.innerHTML) { abFormEl.innerHTML = ''; return; }
+      const currentTitle = getStudioTitle();
+      abFormEl.innerHTML = `
+        <div class="ytv-studio-ab-inline">
+          <div class="ytv-hint">${t('Variante A (título actual)', 'Variant A (current title)')}</div>
+          <div class="ytv-studio-ab-a">${escapeHtml(currentTitle || '')}</div>
+          <input type="text" id="ytv-studio-ab-b" class="ytv-studio-ab-input" maxlength="100" placeholder="${t('Escribe la variante B...', 'Type variant B...')}">
+          <button class="ytv-btn ytv-btn-sm ytv-btn-red" id="ytv-studio-ab-submit">${t('Crear test', 'Create test')}</button>
+          <div id="ytv-studio-ab-result"></div>
+        </div>
+      `;
+      const submitBtn = abFormEl.querySelector('#ytv-studio-ab-submit');
+      const bInput = abFormEl.querySelector('#ytv-studio-ab-b');
+      const resultEl = abFormEl.querySelector('#ytv-studio-ab-result');
+      bInput.focus();
+      submitBtn.addEventListener('click', async () => {
+        const variantB = bInput.value.trim();
+        const variantA = getStudioTitle(); // fresco, no cacheado
+        if (!variantB || variantB.length < 5) { resultEl.innerHTML = renderError(t('Escribe una variante B (mín. 5 caracteres)', 'Type a variant B (min. 5 chars)')); return; }
+        submitBtn.disabled = true;
+        resultEl.innerHTML = renderLoading(t('Creando test...', 'Creating test...'));
+        try {
+          await sendMsg({ type: 'AB_CREATE', videoId, variantA, variantB });
+          resultEl.innerHTML = `<div class="ytv-ab-success">✓ ${t('Test creado. ', 'Test created. ')}<a href="https://ytubviral.com/ab-test?utm_source=extension&utm_medium=abtest" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
+        } catch (e) {
+          resultEl.innerHTML = renderAbTestOutcome(e, e.limit);
+          submitBtn.disabled = false;
+        }
+      });
+    });
 
     // ─ Best Time hint (v2.5.0 Tier 1 #3) — non-blocking, appears once resolved ─
     renderBestTimeHint().then(html => {
@@ -1592,6 +1678,10 @@ async function injectStudioEditor() {
     // ─ Live SEO: observe title/description edits ─
     let liveTimer = null;
     function scheduleLiveUpdate() {
+      // SERP title: instantáneo, sin red (solo texto que ya tenemos en el DOM) — no
+      // hace falta esperar el debounce de 1.5s que sí protege la llamada a SEO_LIVE.
+      const serpTitleEl = panel.querySelector('#ytv-serp-title');
+      if (serpTitleEl) { const liveTitle = getStudioTitle(); if (liveTitle) serpTitleEl.textContent = liveTitle; }
       if (liveTimer) clearTimeout(liveTimer);
       liveTimer = setTimeout(async () => {
         const title = getStudioTitle();
@@ -1617,6 +1707,17 @@ async function injectStudioEditor() {
     };
     observeField(SELECTORS.studio.titleField);
     observeField(SELECTORS.studio.descField);
+
+    // ─ P7: deep-link al generador de miniaturas (Ideogram) con el título ya rellenado.
+    // No genera nada dentro de la extensión — el tool completo (estilos, competidores,
+    // CTR analyzer) vive en la web; esto solo evita que el creador tenga que retitular
+    // a mano al llegar allí.
+    const btnThumb = panel.querySelector('#ytv-studio-gen-thumb');
+    btnThumb.addEventListener('click', () => {
+      const tema = getStudioTitle() || '';
+      const url = `https://ytubviral.com/generate?template=thumbnail&topic=${encodeURIComponent(tema)}&utm_source=extension&utm_medium=studio`;
+      window.open(url, '_blank');
+    });
 
     // ─ AI Buttons (shared wiring — B1) ─
     const btnTitles = panel.querySelector('#ytv-studio-gen-titles');

@@ -65,6 +65,7 @@ async function main() {
     'https://ytubviral.com/blog/best-youtube-title-generator-2026',
     'https://ytubviral.com/blog/youtube-seo-checker-free-tool',
     'https://ytubviral.com/blog/youtube-engagement-rate-calculator-free',
+    'https://ytubviral.com/blog/youtube-money-calculator-views-dollars',
     'https://ytubviral.com/features/keyword-research',
     'https://ytubviral.com/features/seo-score',
     'https://ytubviral.com/features/competitor-analysis',
