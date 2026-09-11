@@ -485,7 +485,12 @@ async function runManager() {
       const { text } = await guardedCall(
         `FECHA DE HOY: ${todayStr} (úsala, no inventes otra).\n\nINCIDENCIAS REALES HOY (única fuente válida para "acciones urgentes"):\n${incidentsBlock}\n\nReportes por agente:\n\n${sectionTexts}\n\nMEMORIA DEL SISTEMA (historial):${memoryBlock || '\nSin historial previo.'}`,
         {
-          maxTokens: 600,
+          // 600 se quedaba corto casi todos los días: la sección 4 "Recomendación
+          // del día" salía cortada a mitad de frase (visto 04/09, 06/09, 07/09,
+          // 11/09...). Verificado en aislado con los datos reales del 11/09: a
+          // 1000 usa 713 tokens y termina la frase limpia. El consumo diario del
+          // Manager (~2000 tokens/día de 200000) no se resiente.
+          maxTokens: 1000,
           agentId: 'manager',
           system: `Eres el Manager de un equipo de agentes de IA para YTubViral (SaaS para YouTubers).
 
