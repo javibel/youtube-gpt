@@ -734,6 +734,14 @@
   flex-direction: column !important;
   gap: 12px !important;
 }
+/* Dos clases > una en especificidad, así que esto gana siempre al display:flex
+   de arriba — un display:none inline no podía (ambos !important, pero el inline
+   sin !important pierde contra cualquier regla !important de la hoja). Bug real
+   09/09: sin esto, Resumen/Tags y hora/Comentarios se veían las tres a la vez y
+   pulsar una pestaña no cambiaba nada visible. */
+.ytv-sc-tabpanel.ytv-sc-tabpanel-hidden {
+  display: none !important;
+}
 
 /* ===== CHANNEL STATS WIDGET (E2) ===== */
 

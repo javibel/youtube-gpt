@@ -401,7 +401,7 @@ function wireShellScorecard(root, scorecardData, videoId, loggedIn) {
     tabBtn.addEventListener('click', () => {
       const target = tabBtn.dataset.sctab;
       detail.querySelectorAll('.ytv-sc-tab').forEach((b) => b.classList.toggle('ytv-sc-tab-active', b === tabBtn));
-      detail.querySelectorAll('.ytv-sc-tabpanel').forEach((p) => { p.style.display = p.dataset.scpanel === target ? 'flex' : 'none'; });
+      detail.querySelectorAll('.ytv-sc-tabpanel').forEach((p) => { p.classList.toggle('ytv-sc-tabpanel-hidden', p.dataset.scpanel !== target); });
     });
   });
 
@@ -1018,7 +1018,7 @@ function renderScorecardExpanded(d) {
         ${renderQuickWins(d.checks)}
       </div>
 
-      <div class="ytv-sc-tabpanel" data-scpanel="tags" style="display:none">
+      <div class="ytv-sc-tabpanel ytv-sc-tabpanel-hidden" data-scpanel="tags">
         ${d.tags?.length ? `
           <div class="ytv-sc-section">
             <div class="ytv-sc-section-title">Tags <span class="ytv-hint">(${d.tags.length})</span> <button class="ytv-btn ytv-btn-sm ytv-btn-dark ytv-copy-tags-btn" style="margin-left:auto">📋 ${t('Copiar todo', 'Copy all')}</button></div>
@@ -1031,7 +1031,7 @@ function renderScorecardExpanded(d) {
         </div>
       </div>
 
-      <div class="ytv-sc-tabpanel" data-scpanel="comments" style="display:none">
+      <div class="ytv-sc-tabpanel ytv-sc-tabpanel-hidden" data-scpanel="comments">
         <button class="ytv-btn ytv-btn-dark ytv-btn-sm" id="ytv-sc-btn-comments">${t('💬 Cargar análisis', '💬 Load analysis')}</button>
         <div id="ytv-sc-comments-area"></div>
       </div>
