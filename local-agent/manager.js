@@ -119,6 +119,35 @@ function buildRawSummary(date) {
     }
   }
 
+  // Retention Watch (antigüedad de usuarios activos — puede ser del lunes anterior)
+  const retention = readReport('retention', date);
+  if (retention) {
+    sections.push({
+      agent: 'Retention Watch (Antigüedad usuarios)',
+      status: retention.status,
+      data: `Muro: ${retention.retentionWallDays ?? '-'}d | Activos 7d: ${retention.active7dCount} | Veteranos (>30d): ${retention.veteransCount}`,
+      ai: retention.note || '',
+      duration: retention.durationMs,
+    });
+  } else {
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const prevDate = d.toISOString().slice(0, 10);
+      const prevRetention = readReport('retention', prevDate);
+      if (prevRetention) {
+        sections.push({
+          agent: 'Retention Watch (Antigüedad usuarios)',
+          status: 'ÚLTIMO REPORTE',
+          data: `Último check: ${prevDate} — Muro: ${prevRetention.retentionWallDays ?? '-'}d, Activos 7d: ${prevRetention.active7dCount}`,
+          ai: prevRetention.note || '',
+          duration: prevRetention.durationMs,
+        });
+        break;
+      }
+    }
+  }
+
   // Gmail — emails procesados hoy
   const gmailReport = readReport('gmail', date);
   if (gmailReport && Array.isArray(gmailReport) && gmailReport.length > 0) {

@@ -13,6 +13,7 @@ const followup = require('./followup');
 const { runGuardian } = require('./guardian');
 const { runScout } = require('./scout');
 const { runWatchdog } = require('./watchdog');
+const { runRetentionWatch } = require('./retention-watch');
 const { runManager } = require('./manager');
 const { runSentinel } = require('./sentinel');
 const { runSocialOptimizer } = require('./social-optimizer');
@@ -363,6 +364,13 @@ cron.schedule('35 2 * * 0', async () => {
   await db.disconnect().catch(() => {});
 }, { timezone: 'Europe/Madrid' });
 
+// Retention Watch (antigüedad de usuarios aún activos, "muro de retención") — every Monday at 02:38
+cron.schedule('38 2 * * 1', async () => {
+  console.log('[cron] Retention Watch — user tenure / retention wall');
+  await runRetentionWatch().catch(err => console.error('[retention-watch]', err.message));
+  await db.disconnect().catch(() => {});
+}, { timezone: 'Europe/Madrid' });
+
 // Watchdog (legal compliance) — every Monday at 02:45
 cron.schedule('45 2 * * 1', async () => {
   console.log('[cron] Watchdog agent — legal compliance audit');
@@ -571,6 +579,7 @@ console.log('  SEO Optimizer: 02:50 daily (Europe/Madrid)');
 console.log('  Funnel Optimizer: 02:55 daily (Europe/Madrid)');
 console.log('  Social Optimizer: 03:00 daily (Europe/Madrid)');
 console.log('  Stripe Reconcile: 02:35 Sundays + catch-up on startup (Europe/Madrid)');
+console.log('  Retention Watch: 02:38 Mondays — antigüedad de usuarios activos (Europe/Madrid)');
 console.log('  Manager: 03:15 daily + catch-up 03:25 + catch-up al arrancar (re-lanza pipeline nocturno si falta) (Europe/Madrid)');
 console.log('  Meta-Optimizer: 03:30 Sundays (Europe/Madrid)');
 console.log('  Auto-Resolver: 09:17 daily (Europe/Madrid)');
