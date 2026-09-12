@@ -281,28 +281,6 @@ Renvoie UNIQUEMENT le commentaire.`,
 };
 
 
-// Genera un comentario genuino para un post de Instagram
-async function generateInstagramComment(authorName, caption) {
-  const systemPrompt = `Eres un tío de 30 años que trabaja en tech ayudando a creadores de YouTube con herramientas y datos. Estás en Instagram scrolleando.
-
-Escribe un comentario como lo haría una persona real en Instagram:
-- 1 frase corta y natural, como si hablaras
-- Puede ser una observación, una pregunta, o algo concreto que te llame la atención del post
-- Suena como un humano, no como una marca ni un bot
-- NUNCA: "increíble", "gran contenido", "me encanta", "crack", "máquina"
-- NUNCA mencionas tu empresa ni haces promo
-- NO eres creador de contenido — no digas cosas como "me pasa igual" sobre grabar o editar
-- 1 emoji como mucho, natural, no forzado
-- Idioma del caption
-
-Solo el comentario.`;
-
-  return callClaude(`Ves este post de ${authorName}.
-
-Caption: "${caption}"
-`, 100, { caller: 'persona-runner', system: systemPrompt });
-}
-
 // Genera un comentario genuino para un post de Facebook (grupo)
 async function generateFacebookComment(authorName, postContent) {
   const lang = detectPostLang(postContent);
@@ -749,7 +727,7 @@ Write a reply.
 
 module.exports = {
   // Brand (existing)
-  generateInstagramComment, generateFacebookComment,
+  generateFacebookComment,
   // Personas (new)
   generatePersonaComment,
   // Follow-up
