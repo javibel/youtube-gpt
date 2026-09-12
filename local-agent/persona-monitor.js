@@ -112,19 +112,12 @@ async function retryPersona(persona, platform) {
 
   try {
     // Import at runtime to avoid circular deps
-    const twitter = require('./twitter');
     const { enqueue } = require('./browser-queue');
 
+    // Ya no queda ningún canal con reintento automatizado: el único era Twitter
+    // (abandonado 2026-08-31, twitter.js eliminado en la limpieza del 2026-09-11).
     await new Promise((resolve, reject) => {
       enqueue(`persona-retry-${persona.id}-${platform}`, async () => {
-        if (platform === 'twitter') {
-          await twitter.engageWithTweets({
-            accountId: persona.id,
-            profileDir: path.join(__dirname, persona.profileDir || `chrome-profiles/${persona.id}`),
-            cookieFile: path.join(__dirname, persona.platforms.twitter.cookieFile),
-            persona,
-          });
-        }
         resolve();
       }).catch(reject);
     });

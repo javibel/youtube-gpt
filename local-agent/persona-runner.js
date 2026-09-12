@@ -5,7 +5,6 @@ const path = require('path');
 const { closeBrowserForProfile } = require('./browser');
 const { generatePersonaComment } = require('./claude');
 
-const twitter = require('./twitter');
 const facebook = require('./facebook');
 const { diagnose } = require('./doctor');
 
