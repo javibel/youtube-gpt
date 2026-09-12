@@ -27,6 +27,15 @@ Emails: Resend via `resend.js`. Gmail API via `gmail.js`.
 **Output:** `reports/feature-monitor-{fecha}.json`
 **Nota:** Los 401 en endpoints autenticados son normales — el monitor no tiene sesión activa.
 
+### Smoke Browser (`smoke-browser.js`)
+**Qué hace:** Abre la web en un navegador real (Puppeteer) y comprueba que carga y responde
+como un visitante, no solo que el endpoint devuelve 200.
+**Frecuencia:** 07:20 y 19:20, justo después del Feature Monitor.
+
+### Stripe Reconcile (`stripe-reconcile.js`)
+**Qué hace:** Contrasta las suscripciones de la BD con las de Stripe y reporta divergencias.
+**Frecuencia:** Domingos 02:35.
+
 ### Guardian (`guardian.js`)
 **Qué hace:** Auditoría de seguridad del código — dependencias, endpoints expuestos, secretos en logs.
 **Acciones automáticas:** Email con hallazgos, ningún cambio de código automático.
@@ -53,35 +62,43 @@ Emails: Resend via `resend.js`. Gmail API via `gmail.js`.
 
 ## Prioridad 2 — Marketing
 
-### Persona Runner (`persona-runner.js`)
-**Qué hace:** Ejecuta sesiones sociales para cada persona en Twitter y Reddit — lee posts del feed, genera comentarios con Claude, los publica.
-**Personas activas:** Alex, Ferran, Ana, Mayra (Twitter + Reddit). Brand (Reddit solo, responde no inicia).
-**Estado:** Cuentas nuevas (semanas), en fase de calentamiento. Objetivo actual: ganar credibilidad antes que conversión.
-**Menciones YTubViral:** Controladas por `social-overrides.json`. Tasas actuales: Alex 0.40, Ferran 0.50.
-**UTM tracking:** Los links a ytubviral.com se etiquetan automáticamente con `utm_source={platform}&utm_campaign={persona_id}`.
-**Si una sesión falla:** `node login-persona.js <id> <platform>` para restaurar.
-**Output:** `twitter_actions` y `reddit_actions` en BD.
+> **Estado de redes sociales (desde 2026-07-08):** las 4 personas (Alex, Ferran, Ana,
+> Mayra) están DESCONECTADAS en todas las plataformas. Reddit y Twitter/X están abandonados
+> de forma permanente (cuentas baneadas y quemada, respectivamente). Lo único vivo es la
+> cuenta de marca: Bluesky, que Javier opera **a mano** con el plan que le manda el Brand
+> Bluesky Coach, más FB/Instagram de marca vía API (gestionados desde Vercel, no desde aquí).
 
-**Comportamientos actuales:**
-- Comenta en posts relevantes de YouTube (SEO, growth, edición)
-- Follow-up cuando alguien responde a un comentario
-- Menciona ytubviral.com cuando el contexto lo justifica
+### Brand Bluesky Coach (`brand-bluesky-coach.js`) — ÚNICO agente social activo
+**Qué hace:** Cada mañana genera el plan de Bluesky de la cuenta de marca y se lo manda por
+email a Javier: posts propios + respuestas a creadores que piden ayuda. No publica nada por
+su cuenta — Javier copia/pega a mano.
+**Frecuencia:** 08:30 diario.
+**Dedup:** `brand-bsky-coach-seen.json`.
+**Historia:** antes era `brand-x-coach.js` y cubría X; se renombró al abandonar Twitter el 31/08.
 
-**Comportamientos pendientes de implementar:**
-- Publicar posts propios / hilos originales
-- Interacción cruzada entre personas (una persona comenta el post de otra)
-- Responder DMs (Reddit tiene CAPTCHA en cuentas nuevas — revisar cuando tengan karma)
-- Contenido audiovisual (imágenes, clips) — requiere generación de assets
+### Persona Runner (`persona-runner.js`) — DESACTIVADO
+**Qué hacía:** sesiones sociales por persona — leer feed, generar comentario con Claude, publicar.
+**Estado:** todos sus crons están comentados en `index.js`. Twitter/Facebook/Reddit desde
+2026-06-25; Bluesky (dispatcher horario, informe diario e hilo de warm-up) desde 2026-07-08.
+Motivo: decisión de Javier — no encajaban con el espíritu de autenticidad de la marca.
+**El módulo sigue cargándose** desde `index.js` porque expone helpers (`loadPersonas`), pero
+no ejecuta nada de forma automática.
+**Menciones:** las tasas viven en `social-overrides.json` y el Social Optimizer las sigue
+tocando; no consultar cifras aquí, que se quedan viejas.
+**Si se retoma:** `node login-persona.js <id> <platform>` para restaurar sesión.
 
-### Persona Monitor (`persona-monitor.js`)
-**Qué hace:** Comprueba cada hora si las personas han actuado recientemente. Si detecta silencio, hace auto-retry. Si falla, email de alerta.
-**Umbrales:** Twitter >14h de silencio = alerta. Reddit >26h. Facebook >48h.
-**Auto-retry:** Máximo 2 intentos/persona/día.
-**Output:** `reports/persona-health-{fecha}.json`
+### Persona Monitor (`persona-monitor.js`) — DESACTIVADO
+**Qué hacía:** comprobar cada hora si las personas habían actuado; si detectaba silencio,
+auto-retry y email de alerta.
+**Estado:** cron comentado el 2026-07-08 (sin personas activas no hay nada que monitorizar).
+**Umbrales (en código):** twitter >14h, bluesky >26h, facebook >48h, resto 24h.
+**Nota:** el auto-retry ya no hace nada — su único canal implementado era Twitter, y
+`twitter.js` se eliminó en la limpieza del 2026-09-11.
 
-### Followup (`followup.js`)
-**Qué hace:** Detecta respuestas a comentarios de las personas y genera replies naturales.
-**Frecuencia:** 2x/día (mañana y tarde).
+### Followup (`followup.js`) — DESACTIVADO
+**Qué hacía:** detectar respuestas a comentarios de las personas y generar replies.
+**Estado:** el módulo se importa en `index.js` pero ya no tiene cron. No confundir con
+`outreach-followup.js`, que sí está activo (ver Outreach Follow-up).
 
 ### Gmail (`gmail.js`)
 **Qué hace:** Procesa el inbox — clasifica emails (cliente, plataforma, spam), extrae datos relevantes.
@@ -100,15 +117,18 @@ Emails: Resend via `resend.js`. Gmail API via `gmail.js`.
 ### Outreach Follow-up (`outreach-followup.js`)
 **Qué hace:** Re-contacta a quienes no respondieron en X días.
 
-### Outreach Community (`outreach-post.js`)
-**Qué hace:** Publica posts en subreddits relevantes desde las cuentas de persona.
-
-### Outreach Reddit Targeted (`outreach-reddit-targeted.js`)
-**Qué hace:** Busca posts de ayuda/feedback en subreddits de YouTube y deja comentarios útiles.
-**Subreddits:** r/NewTubers, r/youtubers, r/youtube, r/VideoEditing, r/SEO.
+### Outreach Attribution (`outreach-attribution.js`)
+**Qué hace:** Cruza los contactos de outreach con los registros nuevos para saber qué altas
+vienen de la campaña.
+**Frecuencia:** 02:50 diario.
 
 ### Outreach Monitor (`outreach-monitor.js`)
-**Qué hace:** Detecta respuestas a los posts/comentarios de outreach.
+**Qué hace:** Detecta respuestas a los emails de outreach.
+**Frecuencia:** 5x/día (09, 12, 15, 18, 21).
+
+> **Reddit eliminado:** `outreach-post.js` (posts en subreddits) y `outreach-reddit-targeted.js`
+> (comentarios en posts de ayuda) ya no existen — Reddit quedó abandonado de forma permanente
+> por cuentas baneadas/shadowbanned. No reimplementar sin hablarlo con Javier.
 
 ### Blog Generator (`blog-generator.js`)
 **Qué hace:** Genera artículos SEO en español e inglés usando Claude. Publica automáticamente en el blog.
@@ -116,12 +136,14 @@ Emails: Resend via `resend.js`. Gmail API via `gmail.js`.
 **Output:** `reports/blog-generator-state.json`
 
 ### Blog Syndicator (`blog-syndicator.js`)
-**Qué hace:** Re-publica artículos del blog en plataformas externas (Blogger, Tumblr).
-**Estado:** Activo pero sin sindicaciones confirmadas — en período de prueba.
+**Qué hace:** Re-publica artículos del blog en Blogger y Tumblr, con canonical al original.
+**Frecuencia:** 05:00 diario.
+**Credenciales:** Blogger reutiliza el OAuth de Google (`BLOGGER_*`); Tumblr usa OAuth 1.0a
+(`TUMBLR_*`). Para regenerar los tokens de Tumblr: `node tumblr-setup.js`.
 
 ### Quora Commenter (`quora-commenter.js`)
 **Qué hace:** Responde preguntas sobre YouTube en Quora con respuestas útiles.
-**Estado:** Activo — en período de prueba.
+**Frecuencia:** 13:00 y 19:00.
 
 ---
 
@@ -148,6 +170,17 @@ Emails: Resend via `resend.js`. Gmail API via `gmail.js`.
 ### Infra Optimizer (`infra-optimizer.js`)
 **Qué hace:** Mide respuesta, conexiones BD, uso de disco, errores de log, salud de PM2.
 **Acciones automáticas:** Limpia reportes viejos, rota logs, puede reiniciar servicios PM2.
+
+### Retention Watch (`retention-watch.js`)
+**Qué hace:** Mide el muro de retención (antigüedad de los usuarios) y la correlación entre
+altas nuevas y usuarios activos, semana a semana.
+**Frecuencia:** Lunes 02:38.
+
+### Briefing Watch (`briefing-watch.js`)
+**Qué hace:** Comprueba si los usuarios que reciben el briefing de ideas diarias vuelven a la
+web. Es la medida de si el briefing sirve para retener o no.
+**Nota:** el veredicto negativo se manda una sola vez (guard en `briefing-watch-state.json`);
+la rama de buenas noticias sí avisa siempre.
 
 ### Scout (`scout.js`)
 **Qué hace:** Analiza competidores (VidIQ, TubeBuddy, ViewStats, OutlierKit) — cambios en pricing, features, home.

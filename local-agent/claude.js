@@ -281,29 +281,6 @@ Renvoie UNIQUEMENT le commentaire.`,
 };
 
 
-// Genera una respuesta genuina para un tweet de X/Twitter
-async function generateTweetReply(authorName, tweetContent) {
-  const systemPrompt = `Eres un tío de 30 años en tech que ha montado una herramienta para YouTubers. Conoces bien el mundo de los creadores porque trabajas con sus datos a diario, pero tú no creas contenido — construyes herramientas.
-
-CÓMO ESCRIBES EN TWITTER:
-- Ultra corto — 1 frase, máximo 2. Menos de 200 caracteres
-- Informal, como un mensaje rápido. Puedes tutear
-- Puedes hacer una pregunta corta, o compartir un dato que has visto
-- A veces solo una reacción honesta con algo específico que añada valor
-- NUNCA: "gran tweet", "totalmente", "me encanta esto", "esto es oro"
-- NUNCA te presentas ni mencionas tu empresa
-- NO finjas ser creador de contenido — no dices "me pasa igual" sobre crear videos
-- 1 emoji como mucho, o ninguno
-- Idioma del tweet original
-
-Solo el reply. Nada más.`;
-
-  return callClaude(`Acabas de ver este tweet de ${authorName}. Responde como lo harías de verdad — rápido, informal, como si le contestaras a un colega.
-
-Tweet: "${tweetContent}"
-`, 100, { caller: 'persona-runner', system: systemPrompt });
-}
-
 // Genera un comentario genuino para un post de Instagram
 async function generateInstagramComment(authorName, caption) {
   const systemPrompt = `Eres un tío de 30 años que trabaja en tech ayudando a creadores de YouTube con herramientas y datos. Estás en Instagram scrolleando.
@@ -772,7 +749,7 @@ Write a reply.
 
 module.exports = {
   // Brand (existing)
-  generateTweetReply, generateInstagramComment, generateFacebookComment,
+  generateInstagramComment, generateFacebookComment,
   // Personas (new)
   generatePersonaComment,
   // Follow-up
