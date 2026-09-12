@@ -81,8 +81,10 @@ su cuenta — Javier copia/pega a mano.
 **Estado:** todos sus crons están comentados en `index.js`. Twitter/Facebook/Reddit desde
 2026-06-25; Bluesky (dispatcher horario, informe diario e hilo de warm-up) desde 2026-07-08.
 Motivo: decisión de Javier — no encajaban con el espíritu de autenticidad de la marca.
-**El módulo sigue cargándose** desde `index.js` porque expone helpers (`loadPersonas`), pero
-no ejecuta nada de forma automática.
+**`index.js` lo sigue importando** (línea 10), pero es un import huérfano: sus tres usos
+(`loadPersonas`, `runOnePersonaBluesky`, `getAndClearErrors`) están dentro de los bloques
+comentados. Se deja para que esos crons vuelvan a funcionar si se reactivan. Lo mismo aplica
+a `followup` (línea 12).
 **Menciones:** las tasas viven en `social-overrides.json` y el Social Optimizer las sigue
 tocando; no consultar cifras aquí, que se quedan viejas.
 **Si se retoma:** `node login-persona.js <id> <platform>` para restaurar sesión.
@@ -179,6 +181,7 @@ altas nuevas y usuarios activos, semana a semana.
 ### Briefing Watch (`briefing-watch.js`)
 **Qué hace:** Comprueba si los usuarios que reciben el briefing de ideas diarias vuelven a la
 web. Es la medida de si el briefing sirve para retener o no.
+**Frecuencia:** 19:00 diario.
 **Nota:** el veredicto negativo se manda una sola vez (guard en `briefing-watch-state.json`);
 la rama de buenas noticias sí avisa siempre.
 
