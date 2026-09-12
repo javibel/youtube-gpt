@@ -45,6 +45,17 @@ function stripMarkdown(text: string): string {
     .replace(/#{1,6}\s/g, '');
 }
 
+// Instagram rejects captions over 2200 chars with a 400 (code 36004) — visto en
+// producción el 06/09 y el 11/09, sin límite hasta ahora. Corta por espacio para
+// no partir una palabra a mitad.
+const IG_CAPTION_LIMIT = 2200;
+function clampCaption(text: string, limit = IG_CAPTION_LIMIT): string {
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit - 1);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > limit * 0.8 ? cut.slice(0, lastSpace) : cut) + '…';
+}
+
 // Day of week → image category folder (0=Sun, 1=Mon, ...)
 const DAY_CATEGORY: Record<number, string> = {
   0: 'inspiracion',
@@ -267,7 +278,7 @@ export async function publishToInstagram(
   }
 
   try {
-    const caption = stripMarkdown(content);
+    const caption = clampCaption(stripMarkdown(content));
 
     const primaryImageUrl = imageUrl ?? getSocialImageUrl();
 
