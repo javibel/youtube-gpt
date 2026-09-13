@@ -19,6 +19,16 @@ interface VideoItem {
   likes: number;
 }
 
+interface TrendingItem {
+  videoId: string;
+  title: string;
+  channelName: string;
+  thumbnail: string;
+  views: number;
+  ageHours: number;
+  vph: number;
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   const extAuth = !session?.user ? await getExtensionUser(request) : null;
@@ -108,6 +118,52 @@ export async function POST(request: Request) {
       }));
     }
 
+    // P8 (vidIQ teardown) — "trending ahora" para esta keyword: vidIQ muestra los 10
+    // vídeos que están ganando vistas AHORA para un término, no los más vistos de toda la
+    // vida (eso ya es `topVideos` arriba). Aproximación barata sin snapshots históricos:
+    // de los 15 más recientes, calcular vistas/hora desde su publicación y quedarnos con
+    // los que más rápido suben. Falla en silencio — es un extra sobre el resultado
+    // principal, no debe tumbar la respuesta si la API tropieza.
+    let trendingNow: TrendingItem[] = [];
+    try {
+      const recentRes = await fetch(
+        `${YT_BASE}/search?part=snippet&q=${encodeURIComponent(keyword)}&type=video&maxResults=15&order=date&key=${YT_API_KEY}`
+      );
+      const recentData = await recentRes.json();
+      const recentIds = (recentData.items || [])
+        .map((item: { id: { videoId: string } }) => item.id.videoId)
+        .join(',');
+      if (recentRes.ok && recentIds) {
+        const recentStatsRes = await fetch(
+          `${YT_BASE}/videos?part=statistics,snippet&id=${recentIds}&key=${YT_API_KEY}`
+        );
+        const recentStatsData = await recentStatsRes.json();
+        trendingNow = (recentStatsData.items || [])
+          .map((v: {
+            id: string;
+            snippet: { title: string; channelTitle: string; thumbnails: { medium: { url: string } }; publishedAt: string };
+            statistics: { viewCount?: string };
+          }) => {
+            const views = parseInt(v.statistics?.viewCount || '0', 10);
+            const ageHours = Math.max(1, (Date.now() - new Date(v.snippet?.publishedAt || Date.now()).getTime()) / 3_600_000);
+            return {
+              videoId: v.id,
+              title: v.snippet?.title || '',
+              channelName: v.snippet?.channelTitle || '',
+              thumbnail: v.snippet?.thumbnails?.medium?.url || '',
+              views,
+              ageHours: Math.round(ageHours),
+              vph: Math.round((views / ageHours) * 10) / 10,
+            };
+          })
+          .filter((v: TrendingItem) => v.ageHours <= 24 * 30) // últimos 30 días — "ahora", no un reupload viejo
+          .sort((a: TrendingItem, b: TrendingItem) => b.vph - a.vph)
+          .slice(0, 6);
+      }
+    } catch {
+      // no-fatal — el resto de la respuesta (competencia, relacionadas) sigue siendo válido
+    }
+
     // 3. Competition score based on avg views of top 5
     const avgViews =
       topVideos.length > 0
@@ -182,6 +238,7 @@ export async function POST(request: Request) {
       opportunityScore,
       avgViews: Math.round(avgViews),
       topVideos,
+      trendingNow,
       relatedKeywords,
       volumeEstimate,
     };

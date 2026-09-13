@@ -713,20 +713,28 @@ function renderTitlePatterns(topVideos) {
   `;
 }
 
-function renderTopVideos(topVideos) {
+// P8 — "outliers browser" de canal: el mismo listado de top vídeos que ya pintábamos
+// (P4) gana un badge ×N cuando un vídeo destaca sobre la media de esta misma muestra
+// (avgViews, que el endpoint de competidores ya calculaba y nunca llegaba al cliente).
+// Cero peticiones nuevas — es la versión barata del "explorador de outliers" del plan.
+function renderTopVideos(topVideos, avgViews) {
   if (!topVideos || !topVideos.length) return '';
   const rows = topVideos.slice(0, 6).map(v => {
     const ageDays = v.publishedAt ? Math.max(0, Math.floor((Date.now() - new Date(v.publishedAt).getTime()) / 86_400_000)) : 0;
+    const mult = avgViews > 0 ? Math.round((v.views / avgViews) * 10) / 10 : 0;
+    const outlierHtml = mult >= 2
+      ? ` <span class="ytv-outlier-mini ${mult >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}">×${mult}</span>`
+      : '';
     return `
       <a class="ytv-topvid-row" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId)}" target="_blank">
         ${v.thumbnail ? `<img class="ytv-topvid-thumb" src="${escapeHtml(v.thumbnail)}" alt="">` : '<div class="ytv-topvid-thumb"></div>'}
         <div class="ytv-topvid-meta">
           <div class="ytv-topvid-title">${escapeHtml(v.title)}</div>
-          <div class="ytv-topvid-stats">${fmtNum(v.views)} ${t('vistas', 'views')} · ${fmtAge(ageDays, ageDays * 24)}</div>
+          <div class="ytv-topvid-stats">${fmtNum(v.views)} ${t('vistas', 'views')} · ${fmtAge(ageDays, ageDays * 24)}${outlierHtml}</div>
         </div>
       </a>`;
   }).join('');
-  return `<div class="ytv-section-label">${t('Top vídeos por vistas', 'Top videos by views')}</div><div class="ytv-topvids">${rows}</div>`;
+  return `<div class="ytv-section-label">${t('Top vídeos por vistas', 'Top videos by views')} <span class="ytv-hint">(${t('outliers marcados', 'outliers flagged')})</span></div><div class="ytv-topvids">${rows}</div>`;
 }
 
 function renderCompetitor(data) {
@@ -749,13 +757,29 @@ function renderCompetitor(data) {
       <div class="ytv-stat"><b>${channel.videoCount}</b><span>${t('Vídeos', 'Videos')}</span></div>
       <div class="ytv-stat"><b>${escapeHtml(uploadFrequency)}</b><span>${t('Frecuencia', 'Frequency')}</span></div>
     </div>
-    ${renderTopVideos(topVideos)}
+    ${renderTopVideos(topVideos, avgViews)}
     ${renderTitlePatterns(topVideos)}
     ${kwTags ? `<div class="ytv-section-label">${t('Keywords del canal', 'Channel keywords')} <span class="ytv-hint">(${t('clic para buscar', 'click to search')})</span></div><div class="ytv-tags">${kwTags}</div>` : ''}
     <button class="ytv-btn ytv-btn-dark ytv-btn-full ytv-btn-sm" id="ytv-ch-insight-btn">🕵️ ${t('¿Por qué funciona? (IA)', 'Why does this work? (AI)')}</button>
     <div id="ytv-ch-insight-result"></div>
     <a class="ytv-cta-link" href="https://ytubviral.com/competitors?utm_source=extension&utm_medium=panel" target="_blank">${t('Ver análisis completo en YTubViral →', 'View full analysis on YTubViral →')}</a>
   `;
+}
+
+// P8 (vidIQ teardown) — "vídeos calientes ahora" para esta keyword: la señal de dato en
+// vivo que más se nota de vidIQ en una búsqueda. Reutiliza las clases .ytv-topvid-* de P4
+// (mismo look, sin CSS nuevo). El backend ya filtra a los últimos 30 días y ordena por VPH.
+function renderTrendingNow(items) {
+  if (!items || !items.length) return '';
+  const rows = items.map(v => `
+    <a class="ytv-topvid-row" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId)}" target="_blank">
+      ${v.thumbnail ? `<img class="ytv-topvid-thumb" src="${escapeHtml(v.thumbnail)}" alt="">` : '<div class="ytv-topvid-thumb"></div>'}
+      <div class="ytv-topvid-meta">
+        <div class="ytv-topvid-title">${escapeHtml(v.title)}</div>
+        <div class="ytv-topvid-stats">🔥 ${v.vph} VPH · ${fmtNum(v.views)} ${t('vistas', 'views')} · ${escapeHtml(v.channelName || '')}</div>
+      </div>
+    </a>`).join('');
+  return `<div class="ytv-section-label">${t('Vídeos calientes ahora', 'Trending right now')}</div><div class="ytv-topvids">${rows}</div>`;
 }
 
 function renderKeywords(data) {
@@ -773,6 +797,7 @@ function renderKeywords(data) {
       <div class="ytv-stat"><b>${fmtNum(data.totalResults)}</b><span>${t('Resultados', 'Results')}</span></div>
       <div class="ytv-stat"><b>${fmtNum(data.avgViews)}</b><span>${t('Vistas prom.', 'Avg views')}</span></div>
     </div>
+    ${renderTrendingNow(data.trendingNow)}
     ${related ? `<div class="ytv-section-label">${t('Búsquedas relacionadas', 'Related searches')}</div><div class="ytv-tags">${related}</div>` : ''}
     <a class="ytv-cta-link" href="https://ytubviral.com/research?utm_source=extension&utm_medium=panel" target="_blank">${t('Explorar más keywords →', 'Explore more keywords →')}</a>
   `;

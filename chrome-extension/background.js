@@ -162,6 +162,10 @@ async function handleMessage(msg) {
       try {
         ({ res, data } = await apiFetch(`${API_BASE}/api/research/keywords`, {
           method: 'POST',
+          // P8 añadió una segunda ronda de llamadas a la API de YouTube (trending ahora) —
+          // el caché de 24h absorbe la mayoría de las peticiones, pero la primera para una
+          // keyword nueva puede pasar de los 15s por defecto.
+          timeoutMs: 30000,
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ keyword: msg.keyword }),
         }));
