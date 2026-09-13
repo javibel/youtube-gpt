@@ -722,8 +722,10 @@ function renderTopVideos(topVideos, avgViews) {
   const rows = topVideos.slice(0, 6).map(v => {
     const ageDays = v.publishedAt ? Math.max(0, Math.floor((Date.now() - new Date(v.publishedAt).getTime()) / 86_400_000)) : 0;
     const mult = avgViews > 0 ? Math.round((v.views / avgViews) * 10) / 10 : 0;
+    // Texto explícito ("× media"), no solo "×N" — reportado como confuso con VPH
+    // (13/09): en esta fila hay espacio de sobra, a diferencia del badge de Studio.
     const outlierHtml = mult >= 2
-      ? ` <span class="ytv-outlier-mini ${mult >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}">×${mult}</span>`
+      ? ` <span class="ytv-outlier-mini ${mult >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}" title="${escapeHtml(outlierTooltip(mult))}">${mult}× ${t('media', 'avg')}</span>`
       : '';
     return `
       <a class="ytv-topvid-row" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId)}" target="_blank">
@@ -851,6 +853,15 @@ function outlierToPercentile(mult) {
   return 'Top 20%';
 }
 
+// El badge "×N" (outlier) y el "N VPH" (vídeos calientes ahora) son dos métricas
+// distintas que conviven en la extensión — sin etiqueta, un badge bien pequeño y
+// aislado se puede confundir con vistas/hora. Javier lo reportó así en la página de
+// canal (09/13): el tooltip deja el significado explícito en los 3 sitios donde el
+// badge aparece solo, sin la palabra "outlier" ni el pie de "Top X%" al lado.
+function outlierTooltip(mult) {
+  return t(`${mult}× las vistas medias de este grupo — no son vistas por hora`, `${mult}x this group's average views — not views per hour`);
+}
+
 // ── Quick Wins — actionable tips from failed SEO checks ────────────
 
 function renderQuickWins(checks) {
@@ -942,7 +953,7 @@ function renderScorecard(d) {
   const vphStr = d.vph >= 1000 ? fmtNum(Math.round(d.vph)) : d.vph.toFixed(1);
 
   const outlierBadge = d.outlierMultiplier > 0
-    ? `<span class="ytv-outlier-badge ${d.outlierMultiplier >= 5 ? 'ytv-outlier-green' : d.outlierMultiplier >= 2 ? 'ytv-outlier-yellow' : 'ytv-outlier-gray'}">×${d.outlierMultiplier}</span>`
+    ? `<span class="ytv-outlier-badge ${d.outlierMultiplier >= 5 ? 'ytv-outlier-green' : d.outlierMultiplier >= 2 ? 'ytv-outlier-yellow' : 'ytv-outlier-gray'}" title="${escapeHtml(outlierTooltip(d.outlierMultiplier))}">×${d.outlierMultiplier}</span>`
     : '';
 
   return `
@@ -1929,7 +1940,7 @@ async function injectStudioVideoList() {
         const data = await sendMsg({ type: 'SCORECARD', videoId: vid });
         const color = scoreColor(data.score);
         const outlierHtml = data.outlierMultiplier >= 2
-          ? `<span class="ytv-outlier-mini ${data.outlierMultiplier >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}">×${data.outlierMultiplier}</span>`
+          ? `<span class="ytv-outlier-mini ${data.outlierMultiplier >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}" title="${escapeHtml(outlierTooltip(data.outlierMultiplier))}">×${data.outlierMultiplier}</span>`
           : '';
         badge.innerHTML =
           `<span class="ytv-studio-score" style="border-color:${color};color:${color}" role="button" tabindex="0" title="${t('SEO Score — optimizar en YTubViral', 'SEO Score — optimize on YTubViral')}">${data.score}</span>`
