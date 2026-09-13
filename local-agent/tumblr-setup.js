@@ -8,9 +8,15 @@
 const http = require('http');
 const { URL } = require('url');
 const { OAuth } = require('oauth');
+require('dotenv').config();
 
-const CONSUMER_KEY = 'alcvkKkSrZppaYQL2ek2JVoGp4SzfkXyIlv2iLC3sdaZ6arS0p';
-const CONSUMER_SECRET = 'nxnT610ttHnZbeYnxegphqF8xg9nNJHy2uEC81BWIMcIoPYb6w';
+// Nunca hardcodear: este fichero se publica en el repo público javibel/youtube-gpt.
+const CONSUMER_KEY = (process.env.TUMBLR_CONSUMER_KEY || '').trim();
+const CONSUMER_SECRET = (process.env.TUMBLR_CONSUMER_SECRET || '').trim();
+if (!CONSUMER_KEY || !CONSUMER_SECRET) {
+  console.error('Faltan TUMBLR_CONSUMER_KEY / TUMBLR_CONSUMER_SECRET en .env');
+  process.exit(1);
+}
 const PORT = 3847;
 const CALLBACK_URL = `http://localhost:${PORT}`;
 
@@ -65,9 +71,7 @@ async function setup() {
   });
 
   console.log('\n✓ Tumblr access token obtained!\n');
-  console.log('Add these to your .env file:\n');
-  console.log(`TUMBLR_CONSUMER_KEY=${CONSUMER_KEY}`);
-  console.log(`TUMBLR_CONSUMER_SECRET=${CONSUMER_SECRET}`);
+  console.log('Add these to your .env file (consumer key/secret are already there):\n');
   console.log(`TUMBLR_ACCESS_TOKEN=${accessToken}`);
   console.log(`TUMBLR_ACCESS_TOKEN_SECRET=${accessTokenSecret}`);
   console.log(`TUMBLR_BLOG_NAME=ytubviralblog`);
