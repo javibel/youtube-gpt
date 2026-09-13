@@ -130,57 +130,70 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'channel_not_found' }, { status: 404 });
     }
 
-    // Channel info
+    // Channel info (+ contentDetails para la playlist de subidas, ver abajo)
     const channelRes = await fetch(
-      `${YT_BASE}/channels?part=snippet,statistics&id=${channelId}&key=${YT_API_KEY}`
+      `${YT_BASE}/channels?part=snippet,statistics,contentDetails&id=${channelId}&key=${YT_API_KEY}`
     );
     const channelData = await channelRes.json();
     const ch = channelData.items?.[0];
     if (!ch) return NextResponse.json({ error: 'channel_not_found' }, { status: 404 });
 
-    // Top 10 videos by view count
-    const searchRes = await fetch(
-      `${YT_BASE}/search?part=snippet&channelId=${channelId}&order=viewCount&type=video&maxResults=10&key=${YT_API_KEY}`
-    );
-    const searchData = await searchRes.json();
-    const videoIds = (searchData.items || [])
-      .map((v: { id: { videoId: string } }) => v.id.videoId)
-      .filter(Boolean)
-      .join(',');
+    // 13/09/2026 — antes esto usaba `search.list?channelId=...&order=viewCount` (y otro
+    // igual con order=date para la frecuencia). Javier reportó "Media vistas: 0" y
+    // "Datos insuficientes" en un canal real de 998 vídeos — comprobado a mano contra la
+    // API: `search.list` con `channelId` devuelve 0 resultados para ese canal en concreto
+    // (el índice de búsqueda de YouTube no cubre todos los canales de forma fiable, es una
+    // limitación conocida de esa API, no un bug nuestro). `playlistItems.list` sobre la
+    // playlist de subidas del canal SÍ funciona siempre y cuesta 1 unidad de cuota en vez
+    // de las 100 de `search.list` — más fiable y ~100x más barato.
+    const uploadsPlaylistId = ch.contentDetails?.relatedPlaylists?.uploads as string | undefined;
 
     let topVideos: {
       videoId: string; title: string; thumbnail: string;
       publishedAt: string; views: number; likes: number;
     }[] = [];
+    let recentDates: string[] = [];
+    let recentTitles: string[] = [];
 
-    if (videoIds) {
-      const statsRes = await fetch(
-        `${YT_BASE}/videos?part=statistics,snippet&id=${videoIds}&key=${YT_API_KEY}`
+    if (uploadsPlaylistId) {
+      const playlistRes = await fetch(
+        `${YT_BASE}/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50&key=${YT_API_KEY}`
       );
-      const statsData = await statsRes.json();
-      topVideos = (statsData.items || []).map((v: {
-        id: string;
-        snippet: { title: string; thumbnails: { medium: { url: string } }; publishedAt: string };
-        statistics: { viewCount?: string; likeCount?: string };
-      }) => ({
-        videoId: v.id,
-        title: v.snippet?.title || '',
-        thumbnail: v.snippet?.thumbnails?.medium?.url || '',
-        publishedAt: v.snippet?.publishedAt || '',
-        views: parseInt(v.statistics?.viewCount || '0', 10),
-        likes: parseInt(v.statistics?.likeCount || '0', 10),
-      }));
-      topVideos.sort((a, b) => b.views - a.views);
-    }
+      const playlistData = await playlistRes.json();
+      const playlistItems: { snippet: { title: string; publishedAt: string; resourceId: { videoId: string } } }[] = playlistData.items || [];
 
-    // Recent 20 videos for upload frequency
-    const recentRes = await fetch(
-      `${YT_BASE}/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=20&key=${YT_API_KEY}`
-    );
-    const recentData = await recentRes.json();
-    const recentItems: { snippet: { publishedAt: string; title: string } }[] = recentData.items || [];
-    const recentDates: string[] = recentItems.map(v => v.snippet?.publishedAt).filter(Boolean);
-    const recentTitles: string[] = recentItems.map(v => v.snippet?.title).filter(Boolean);
+      // La playlist de subidas ya viene en orden cronológico descendente — los primeros
+      // 20 SON los más recientes, sin necesidad de una llamada aparte para frecuencia.
+      const recentSlice = playlistItems.slice(0, 20);
+      recentDates = recentSlice.map(v => v.snippet?.publishedAt).filter(Boolean);
+      recentTitles = recentSlice.map(v => v.snippet?.title).filter(Boolean);
+
+      const videoIds = playlistItems
+        .map(v => v.snippet?.resourceId?.videoId)
+        .filter(Boolean)
+        .join(',');
+
+      if (videoIds) {
+        const statsRes = await fetch(
+          `${YT_BASE}/videos?part=statistics,snippet&id=${videoIds}&key=${YT_API_KEY}`
+        );
+        const statsData = await statsRes.json();
+        topVideos = (statsData.items || []).map((v: {
+          id: string;
+          snippet: { title: string; thumbnails: { medium: { url: string } }; publishedAt: string };
+          statistics: { viewCount?: string; likeCount?: string };
+        }) => ({
+          videoId: v.id,
+          title: v.snippet?.title || '',
+          thumbnail: v.snippet?.thumbnails?.medium?.url || '',
+          publishedAt: v.snippet?.publishedAt || '',
+          views: parseInt(v.statistics?.viewCount || '0', 10),
+          likes: parseInt(v.statistics?.likeCount || '0', 10),
+        }));
+        topVideos.sort((a, b) => b.views - a.views);
+        topVideos = topVideos.slice(0, 10);
+      }
+    }
 
     const uploadFrequency = calcUploadFrequency(recentDates, lang as 'es' | 'en');
     // Use all recent titles + top video titles for broader keyword coverage
