@@ -53,9 +53,11 @@ ytubviralextension.zip
 # Stray backup files (blog-generator etc.)
 *.bak
 
-# Campana de feedback (24/08/2026): contienen correos de usuarios reales.
-# El repo es PUBLICO -> nunca commitear.
-local-agent/feedback-campaign-*.json
+# local-agent/ es un junction a C:\Users\jimen\youtube-gpt\local-agent, que tiene su
+# propio repo privado (javibel/ytubviral-agent). Se dejó de versionar aquí el 2026-09-13:
+# el mismo código se publicaba en este repo PUBLICO (y con él una clave de Tumblr).
+# OJO: nunca `git rm -r local-agent` sin --cached — borraría el agente real vía el junction.
+/local-agent/
 
 # Notas y capturas de revision manual (25/08/2026). Son scratch local: incluyen
 # paginas guardadas del navegador con bundles de terceros y capturas del panel
