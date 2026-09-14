@@ -11,6 +11,7 @@
     "migration:test:reference": "node scripts/migration/parser.test.cjs",
     "migration:test": "node scripts/migration/isolation.test.cjs && node scripts/migration/payments.test.cjs",
     "migration:test:database": "node scripts/migration/database.test.cjs",
+    "migration:test:routes": "node scripts/migration/generate-route.test.cjs && node scripts/migration/payment-routes.test.cjs",
     "predev": "node scripts/migration/check.cjs --startup",
     "prestart": "node scripts/migration/check.cjs --startup",
     "prebuild": "node scripts/migration/check.cjs --startup"

@@ -24,6 +24,9 @@ export async function POST(request: Request) {
     if (!session?.user?.id && !extAuth) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
     }
+    if (!extAuth && !session?.user?.email) {
+      return Response.json({ error: 'No autorizado' }, { status: 401 });
+    }
     // NOTE: no blanket Pro gate for the extension here. It existed from 2026-04-26 (af9112c)
     // and made EVERY extension generation Pro-only, which (a) contradicted the Chrome Web
     // Store listing ("Free users get 10 AI generations per month across the extension and the
@@ -161,6 +164,10 @@ export async function POST(request: Request) {
         where: { email: session.user.email },
         select: { id: true },
       });
+      // A stale or inconsistent session must not fall through without accounting.
+      if (!user || user.id !== session.user.id) {
+        return Response.json({ error: 'No autorizado' }, { status: 401 });
+      }
       if (user) {
         userId = user.id;
 
