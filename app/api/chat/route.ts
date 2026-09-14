@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -155,7 +156,7 @@ export async function POST(request: Request) {
     const dailyLimit = getLimits(plan).chatMessagesPerDay;
 
     const body = await request.json();
-    const { message, context, lang: clientLang } = body;
+    const { message, lang: clientLang } = body;
     const en = clientLang === 'en';
 
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -241,43 +242,21 @@ export async function POST(request: Request) {
       content: m.content.slice(0, MAX_MESSAGE_LENGTH),
     }));
 
-    const messages = [
+    const messages: { role: 'user' | 'assistant'; content: string }[] = [
       ...contextMessages,
       { role: 'user', content: message.trim() },
     ];
 
-    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-    if (!apiKey) {
+    let task;
+    try {
+      task = await getMessagesTask({
+        taskType: 'support.chat', userId: user.id, language: en ? 'en' : 'es',
+        instructionsVersion: 'support-chat-v1', requiredCapabilities: ['prompt_cache'],
+      });
+    } catch {
       return NextResponse.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'prompt-caching-2024-07-31',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: MAX_TOKENS,
-        system: [
-          { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-        ],
-        messages,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      return NextResponse.json(
-        { error: err.error?.message || 'Error del servicio de IA' },
-        { status: 500 }
-      );
-    }
-
-    const data = await response.json();
+    const data = await task.create({ max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT, messages });
     const reply: string = data.content?.[0]?.text ?? '';
     const remaining = Math.max(0, dailyLimit - hitsToday);
 
@@ -290,7 +269,12 @@ export async function POST(request: Request) {
           { userId: user.id, role: 'assistant', content: reply.slice(0, 2000) },
         ],
       });
+    } catch (err) {
+      console.error('[chat] save error:', err);
+      return NextResponse.json({ error: 'Conversation history could not be saved' }, { status: 503 });
+    }
 
+    try {
       // Poda: conservar los ultimos 50 mensajes por usuario.
       const old = await prisma.chatMessage.findMany({
         where: { userId: user.id },
@@ -302,7 +286,7 @@ export async function POST(request: Request) {
         await prisma.chatMessage.deleteMany({ where: { id: { in: old.map(m => m.id) } } });
       }
     } catch (err) {
-      console.error('[chat] save error:', err);
+      console.error('[chat] optional pruning error:', err);
     }
 
     return NextResponse.json({ reply, remaining, isPro });

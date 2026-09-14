@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { put } from '@vercel/blob';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 export const maxDuration = 60;
 
@@ -58,9 +59,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
     const ideogramKey  = (process.env.IDEOGRAM_API_KEY || process.env.ideogram)?.trim();
-    if (!anthropicKey || !ideogramKey) {
+    if (!ideogramKey) {
+      return Response.json({ error: 'Servicio no disponible' }, { status: 503 });
+    }
+    let task;
+    try {
+      task = await getMessagesTask({ taskType: 'thumbnail.background-prompt', userId: user.id, language: 'en', instructionsVersion: 'background-prompt-v1' });
+    } catch {
       return Response.json({ error: 'Servicio no disponible' }, { status: 503 });
     }
 
@@ -88,16 +94,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Claude generates Ideogram prompt
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+    // Generate a complete prompt before invoking the image provider.
+    const promptResult = await task.create({
         max_tokens: 400,
         messages: [{
           role: 'user',
@@ -114,14 +112,8 @@ Rules:
 
 Respond with ONLY the image generation prompt in English.`,
         }],
-      }),
     });
-
-    if (!claudeRes.ok) {
-      return Response.json({ error: isEn ? 'Error generating prompt' : 'Error generando prompt' }, { status: 500 });
-    }
-    const claudeData  = await claudeRes.json();
-    const imagePrompt = claudeData.content[0].text.trim();
+    const imagePrompt = promptResult.content[0].text.trim();
 
     // Ideogram v3 TURBO
     const ideogramForm = new FormData();

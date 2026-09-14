@@ -1,15 +1,18 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {load}=require('./route-harness.cjs');
+const {taskFixture}=require('./task-fixture.cjs');
 function harness(options={}) {
  const requests=[],saved=[],reads=[],deleted=[];let queries=0;
+ const runtime=taskFixture({taskType:'support.chat',controlUnavailable:options.noKey,respond:async payload=>{requests.push({body:runtime.calls.at(-1),payload});if(options.transportError)throw Error('Synthetic transport failure');if(options.providerStatus)throw {status:options.providerStatus};return options.reply??{content:[{type:'text',text:'Synthetic reply'}],stop_reason:'end_turn',usage:{output_tokens:4}};}});
  const prisma={user:{findUnique:async()=>options.missingUser?null:{id:'synthetic'}},
   $queryRaw:async()=>[{hits:++queries===1?(options.throttle??1):(options.daily??1)}],
-  chatMessage:{findMany:async query=>{reads.push(query);return structuredClone(query.skip?options.old??[]:options.history??[]);},createMany:async({data})=>{if(options.saveError)throw Error('Synthetic save failure');saved.push(...data);return {count:data.length};},deleteMany:async query=>{deleted.push(query);return {count:0};}}};
+  chatMessage:{findMany:async query=>{reads.push(query);if(query.skip&&options.pruneError)throw Error('Synthetic cleanup failure');return structuredClone(query.skip?options.old??[]:options.history??[]);},createMany:async({data})=>{if(options.saveError)throw Error('Synthetic save failure');saved.push(...data);return {count:data.length};},deleteMany:async query=>{deleted.push(query);return {count:0};}}};
  const route=load('app/api/chat/route.ts',{
+  '@/lib/ai/task-runtime':runtime,
   'next/server':{NextResponse:Response},'@/auth':{auth:async()=>Object.hasOwn(options,'session')?options.session:{user:{email:'synthetic@example.invalid'}}},'@/lib/prisma':{prisma},
   '@/lib/plans':{getUserPlan:async()=>options.plan??'free',getLimits:()=>({chatMessagesPerDay:options.limit??5}),isPaid:plan=>plan!=='free'},
- },{process:{env:options.noKey?{}:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}},fetch:async(url,init)=>{requests.push({url,body:JSON.parse(init.body)});if(options.transportError)throw Error('Synthetic transport failure');return Response.json(options.reply??{content:[{type:'text',text:'Synthetic reply'}],stop_reason:'end_turn',usage:{output_tokens:4}},{status:options.providerStatus??200});}});
+ });
  async function run(body={message:'Synthetic question',lang:'es'},method='POST') {const r=method==='GET'?await route.GET():await route.POST(new Request('https://example.invalid/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
  return {run,requests,saved,reads,deleted};
 }
@@ -25,7 +28,7 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
   ['long message rejected',{}, {message:'x'.repeat(501)},400],
   ['throttle enforced',{throttle:2},undefined,429],
   ['daily quota enforced',{daily:6},undefined,429],
-  ['missing key unavailable',{noKey:true},undefined,503],
+  ['missing task control unavailable',{noKey:true},undefined,503],
  ])await test(name,async()=>{const h=harness(options);assert.equal((await h.run(body)).status,status);assert.equal(h.requests.length,0);assert.equal(h.saved.length,0);});
  await test('English validation message',async()=>{assert.equal((await harness().run({message:'',lang:'en'})).body.error,'Message required');});
  await test('response and history contract',async()=>{const h=harness();assert.deepEqual(await h.run(),{status:200,body:{reply:'Synthetic reply',remaining:4,isPro:false}});assert.equal(h.saved.length,2);assert.equal(h.saved[0].userId,'synthetic');assert.equal(h.saved[1].role,'assistant');});
@@ -38,8 +41,10 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  await test('pruning only uses IDs selected for current user',async()=>{const h=harness({old:[{id:'synthetic-old'}]});await h.run();assert.equal(h.reads[1].where.userId,'synthetic');assert.equal(h.reads[1].skip,50);assert.equal(h.deleted[0].where.id.in[0],'synthetic-old');});
  await test('GET rejects anonymous history access',async()=>{assert.equal((await harness({session:null}).run(undefined,'GET')).status,401);});
  await test('GET history scoped to account and ordered',async()=>{const h=harness({history:[{role:'user',content:'Synthetic'}]});const r=await h.run(undefined,'GET');assert.equal(r.body.messages.length,1);assert.equal(h.reads[0].where.userId,'synthetic');assert.equal(h.reads[0].orderBy.createdAt,'asc');assert.equal(h.reads[0].take,50);});
- await test('empty provider content returned as successful reply',async()=>{const h=harness({reply:{content:[],stop_reason:'end_turn'}});const r=await h.run();assert.equal(r.status,200);assert.equal(r.body.reply,'');assert.equal(h.saved.length,2);},true);
- await test('truncation loses explicit status',async()=>{const h=harness({reply:{content:[{text:'Partial'}],stop_reason:'max_tokens'}});const r=await h.run();assert.equal(r.status,200);assert.equal(r.body.truncated,undefined);},true);
- await test('persistence failure still reports success',async()=>{const h=harness({saveError:true});assert.equal((await h.run()).status,200);assert.equal(h.saved.length,0);},true);
- console.log(JSON.stringify({scope:'actual chat route; synthetic authentication, database and transport; known defects are not acceptance',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
+ await test('empty response is not persisted as conversation',async()=>{const h=harness({reply:{content:[],stop_reason:'end_turn'}});assert.equal((await h.run()).status,500);assert.equal(h.saved.length,0);});
+ await test('truncated response is not persisted as complete conversation',async()=>{const h=harness({reply:{content:[{type:'text',text:'Partial'}],stop_reason:'max_tokens'}});assert.equal((await h.run()).status,500);assert.equal(h.saved.length,0);});
+ await test('system prefix caching preserved through adapter',async()=>{const h=harness();await h.run();assert.deepEqual(h.requests[0].payload.system[0].cache_control,{type:'ephemeral'});assert.match(h.requests[0].payload.system[0].text,/YTubViral support assistant/);});
+ await test('persistence failure does not report success or repeat provider call',async()=>{const h=harness({saveError:true});assert.equal((await h.run()).status,503);assert.equal(h.saved.length,0);assert.equal(h.requests.length,1);});
+ await test('optional cleanup failure preserves successfully saved conversation',async()=>{const h=harness({pruneError:true});assert.equal((await h.run()).status,200);assert.equal(h.saved.length,2);assert.equal(h.requests.length,1);});
+ console.log(JSON.stringify({scope:'migrated chat route and cache intent through common runner; synthetic storage and transport; persistence defect remains separately tracked',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
 })();

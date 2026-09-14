@@ -4,10 +4,11 @@ import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { parseClaudeJson } from '@/lib/parse-claude-json';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 export const maxDuration = 60;
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
+
 
 interface TrafficRow { insightTrafficSourceType: string; views: number; estimatedMinutesWatched: number }
 interface CountryRow { country: string; views: number; estimatedMinutesWatched: number }
@@ -123,7 +124,7 @@ export async function GET(request: Request) {
 
     // Parse top videos — resolve video titles
     const topVideos = toRows<VideoRow>(topVideosRes);
-    let videoTitles: Record<string, string> = {};
+    const videoTitles: Record<string, string> = {};
     if (topVideos.length > 0) {
       const ids = topVideos.map(v => v.video).join(',');
       try {
@@ -146,7 +147,7 @@ export async function GET(request: Request) {
 
     // AI-written analysis of what the numbers mean
     let aiInsight: { es: string; en: string } | null = null;
-    if (ANTHROPIC_API_KEY) {
+    {
       try {
         const topTraffic = traffic.slice(0, 3).map(tr => `${tr.insightTrafficSourceType}: ${tr.views} views`).join(', ');
         const topCountriesStr = countries.slice(0, 3).map(c => `${c.country}: ${c.views} views`).join(', ');
@@ -171,27 +172,18 @@ Reply ONLY with valid JSON: {"es": "...", "en": "..."}
         const ac = new AbortController();
         const timer = setTimeout(() => ac.abort(), 15_000);
         try {
-          const res = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': ANTHROPIC_API_KEY,
-              'anthropic-version': '2023-06-01',
-              'anthropic-beta': 'prompt-caching-2024-07-31',
-            },
-            body: JSON.stringify({
-              model: 'claude-haiku-4-5-20251001',
-              max_tokens: 1200,
-              messages: [{ role: 'user', content: prompt }],
-            }),
-            signal: ac.signal,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const text = data.content?.[0]?.text || '';
-            const parsed = parseClaudeJson<{ es?: string; en?: string }>(text);
-            if (parsed.es && parsed.en) aiInsight = { es: parsed.es, en: parsed.en };
-          }
+          const task = await getMessagesTask({
+            taskType: 'youtube.analytics-insight', userId: session.user.id,
+            language: lang, instructionsVersion: 'analytics-insight-v1',
+            outputSchema: { type: 'object', properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } }, required: ['es', 'en'], additionalProperties: false },
+          }, { signal: ac.signal });
+          const data = await task.create({
+            max_tokens: 1200,
+            messages: [{ role: 'user', content: prompt }],
+          }, { signal: ac.signal });
+          const text = data.content[0]?.text || '';
+          const parsed = parseClaudeJson<{ es?: string; en?: string }>(text);
+          if (parsed.es && parsed.en) aiInsight = { es: parsed.es, en: parsed.en };
         } finally {
           clearTimeout(timer);
         }

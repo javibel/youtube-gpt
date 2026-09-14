@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { TEMPLATES } from '@/utils/prompts';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -69,11 +70,6 @@ export async function POST(request: Request) {
           );
         }
       }
-    }
-
-    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-    if (!apiKey) {
-      return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
 
     let userId: string | null = null;
@@ -273,7 +269,7 @@ export async function POST(request: Request) {
       : '';
     const prompt = basePrompt + langInstruction;
 
-    const messages: { role: string; content: string }[] = isContinuation
+    const messages: { role: 'user' | 'assistant'; content: string }[] = isContinuation
       ? [
           { role: 'user', content: prompt },
           { role: 'assistant', content: previousContent! },
@@ -283,33 +279,20 @@ export async function POST(request: Request) {
         ]
       : [{ role: 'user', content: prompt }];
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'prompt-caching-2024-07-31',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: maxTokens,
-        messages,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      return Response.json(
-        { error: error.error?.message || 'Error desconocido' },
-        { status: response.status }
-      );
+    if (!userId) return Response.json({ error: 'No autorizado' }, { status: 401 });
+    let task;
+    try {
+      task = await getMessagesTask({
+        taskType: 'content.generate', userId, language: lang === 'en' ? 'en' : 'es',
+        instructionsVersion: 'generation-templates-v1', incompletePolicy: 'expose-text',
+      });
+    } catch {
+      return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
-
-    const data = await response.json();
+    const data = await task.create({ max_tokens: maxTokens, messages });
     const content = data.content[0].text;
     const tokensUsed = data.usage?.output_tokens ?? 0;
-    const truncated = data.stop_reason === 'max_tokens';
+    const truncated = data.incomplete === true;
 
     // Guardar generación con IP
     if (userId) {
@@ -322,6 +305,7 @@ export async function POST(request: Request) {
     return Response.json({ content, truncated });
   } catch (error) {
     console.error('API Error:', error);
-    return Response.json({ error: 'Error al procesar la solicitud' }, { status: 500 });
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : null;
+    return Response.json({ error: 'Error al procesar la solicitud' }, { status: code === 'rate_limit' || code === 'quota' ? 429 : 500 });
   }
 }

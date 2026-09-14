@@ -1,16 +1,18 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {load}=require('./route-harness.cjs');
+const {taskFixture}=require('./task-fixture.cjs');
 function harness(options={}){
  const requests=[],uploads=[];
+ const runtime=taskFixture({taskType:'thumbnail.background-prompt',controlUnavailable:options.noAiKey,respond:async()=>{requests.push({url:'fixture-provider',body:JSON.stringify(runtime.calls.at(-1))});if(options.aiError)throw Error('Synthetic transport failure');if(options.aiStatus)throw {status:options.aiStatus};return {content:[{type:'text',text:options.prompt??' Synthetic image prompt '}],stop_reason:options.stopReason??'end_turn'};}});
  const route=load('app/api/thumbnail-background/route.ts',{
   '@/auth':{auth:async()=>options.anonymous?null:{user:{email:'synthetic@example.invalid'}}},
+  '@/lib/ai/task-runtime':runtime,
   '@/lib/prisma':{prisma:{user:{findUnique:async()=>options.noUser?null:{id:'synthetic'}},$queryRaw:async()=>[{hits:options.hits??1}]}},
   '@/lib/plans':{getUserPlan:async()=>options.free?'free':'pro',isPaid:plan=>plan!=='free'},
   '@vercel/blob':{put:async(name,data,settings)=>{if(options.uploadError)throw Error('Synthetic upload failure');uploads.push({name,size:data.length,settings});return {url:'https://example.invalid/stored.jpg'};}},
  },{Buffer,FormData,process:{env:{...(options.noAiKey?{}:{ANTHROPIC_API_KEY:'synthetic-ai'}),...(options.noImageKey?{}:{IDEOGRAM_API_KEY:'synthetic-image'})}},fetch:async(url,init)=>{
   requests.push({url,body:init?.body});
-  if(url==='https://api.anthropic.com/v1/messages'){if(options.aiError)throw Error('Synthetic transport failure');return Response.json({content:[{text:options.prompt??' Synthetic image prompt '}],stop_reason:options.stopReason??'end_turn'},{status:options.aiStatus??200});}
   if(url==='https://api.ideogram.ai/v1/ideogram-v3/generate')return Response.json({data:options.noImage?[]:[{url:'https://example.invalid/image.jpg'}]},{status:options.imageStatus??200});
   assert.equal(url,'https://example.invalid/image.jpg');return new Response('synthetic image bytes',{status:options.downloadStatus??200});
  }});
@@ -35,7 +37,7 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  await test('upload branch needs no AI keys',async()=>{const h=harness({noAiKey:true,noImageKey:true});const r=await h.run({source:'upload',backgroundFile:new Blob(['synthetic'],{type:'image/png'})});assert.equal(r.status,200);assert.equal(r.body.prompt,null);assert.equal(h.requests.length,0);assert.equal(h.uploads[0].settings.contentType,'image/png');});
  await test('empty upload rejected',async()=>{const h=harness();assert.equal((await h.run({source:'upload',backgroundFile:new Blob([],{type:'image/png'})})).status,400);assert.equal(h.uploads.length,0);});
  await test('Spanish validation retained',async()=>{const r=await harness().run({tema:'a',lang:'es'});assert.match(r.body.error,/mín/);});
- await test('truncated prompt still invokes image provider',async()=>{const h=harness({stopReason:'max_tokens'});assert.equal((await h.run()).status,200);assert.equal(h.requests.length,3);},true);
- await test('empty prompt still invokes image provider',async()=>{const h=harness({prompt:''});assert.equal((await h.run()).status,200);assert.equal(h.requests.length,3);},true);
+ await test('truncated prompt blocks image provider',async()=>{const h=harness({stopReason:'max_tokens'});assert.equal((await h.run()).status,500);assert.equal(h.requests.length,1);assert.equal(h.uploads.length,0);});
+ await test('empty prompt blocks image provider',async()=>{const h=harness({prompt:''});assert.equal((await h.run()).status,500);assert.equal(h.requests.length,1);assert.equal(h.uploads.length,0);});
  console.log(JSON.stringify({scope:'actual background route; FormData requests, synthetic image bytes and explicit provider/storage fixtures; no images generated or uploaded',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
 })();

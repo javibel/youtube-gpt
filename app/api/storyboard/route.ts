@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 // Free incluye Video Tips desde el 26/08 (gancho de retención — el 69% de lo
 // generado en free eran titulos, producto de un solo uso; ver
@@ -110,9 +111,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' }, { status: 429 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
-
   let script: string, lang: string;
   try {
     const body = await request.json();
@@ -128,24 +126,20 @@ export async function POST(request: Request) {
 
   if (!script.trim()) return NextResponse.json({ error: 'Empty script' }, { status: 400 });
 
+  let task;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'prompt-caching-2024-07-31',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: lang === 'en' ? EN_PROMPT(script) : ES_PROMPT(script) }],
-      }),
+    task = await getMessagesTask({
+      taskType: 'content.storyboard', userId, language: lang === 'en' ? 'en' : 'es',
+      instructionsVersion: 'storyboard-v1',
     });
-
-    if (!res.ok) return NextResponse.json({ error: 'AI error' }, { status: 502 });
-    const data = await res.json();
+  } catch {
+    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+  }
+  try {
+    const data = await task.create({
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: lang === 'en' ? EN_PROMPT(script) : ES_PROMPT(script) }],
+    });
     const storyboard: string = data.content?.[0]?.text ?? '';
 
     // Registrar la generacion — cuenta para el pool mensual (10 free / 200 pro)
@@ -162,10 +156,13 @@ export async function POST(request: Request) {
           ipAddress: getIp(request),
         },
       });
-    } catch { /* no bloquear la respuesta si falla el registro */ }
+    } catch {
+      return NextResponse.json({ error: 'Generation history could not be saved' }, { status: 503 });
+    }
 
     return NextResponse.json({ storyboard });
-  } catch {
-    return NextResponse.json({ error: 'Connection error' }, { status: 500 });
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : 'uncertain';
+    return NextResponse.json({ error: 'AI generation unavailable' }, { status: code === 'uncertain' ? 500 : 502 });
   }
 }
