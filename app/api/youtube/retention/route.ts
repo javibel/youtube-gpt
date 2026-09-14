@@ -205,8 +205,12 @@ ${context}`,
         const text = data.content?.[0]?.text || '';
         try {
           const parsed = parseClaudeJson<{ tips?: string[]; dropOffReasons?: typeof dropOffReasons }>(text);
-          aiTips = Array.isArray(parsed.tips) ? parsed.tips : [];
-          dropOffReasons = parsed.dropOffReasons || {};
+          if (Array.isArray(parsed)) {
+            aiTips = parsed;
+          } else {
+            aiTips = Array.isArray(parsed.tips) ? parsed.tips : [];
+            dropOffReasons = parsed.dropOffReasons || {};
+          }
         } catch {
           // Fallback: try parsing as plain array
           try {

@@ -212,6 +212,10 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  if (!body || typeof body !== 'object' || Array.isArray(body)
+    || ['url', 'videoId'].some(key => body[key] != null && typeof body[key] !== 'string')) {
+    return NextResponse.json({ error: 'invalid_url' }, { status: 400 });
+  }
   const url = (body.url as string) || (body.videoId as string) || '';
 
   if (!url) {

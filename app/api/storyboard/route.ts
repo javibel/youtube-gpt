@@ -116,6 +116,10 @@ export async function POST(request: Request) {
   let script: string, lang: string;
   try {
     const body = await request.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || (body.script != null && typeof body.script !== 'string')) {
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    }
     script = body.script ?? '';
     lang = body.lang ?? 'es';
   } catch {

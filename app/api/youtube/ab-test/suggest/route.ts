@@ -16,8 +16,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
-  const { title, lang = 'es' } = await req.json();
-  if (!title) {
+  const body = await req.json().catch(() => null);
+  const { title, lang = 'es' } = body ?? {};
+  if (typeof title !== 'string' || !title.trim()) {
     return NextResponse.json({ error: 'Title required' }, { status: 400 });
   }
 
