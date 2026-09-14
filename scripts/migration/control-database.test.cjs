@@ -67,7 +67,29 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   const id=await budget('runner'),input=req('runner');input.idempotencyKey=prefix+'_runner_operation';
   const make=()=>createTaskRunner({store:createControlStore(database('executor'),runtime),registry:runtime});
   const first=await make().run(input,{runId:prefix+'_runner',budgetId:id});const second=await make().run(input,{runId:prefix+'_runner_replay',budgetId:id});
-  assert.equal(first.result.status,'completed');assert.equal(first.accounting.state,'settled');assert.equal(second.kind,'existing-run');assert.equal(second.runId,first.result.runId);assert.equal(calls,1);assert.equal(Number((await stats(id)).settled_micros),7);assert.equal(Number((await stats(id)).reserved_micros),0);
+  assert.equal(first.result.status,'completed');assert.equal(first.accounting.state,'settled');assert.equal(second.kind,'result');assert.deepEqual(second.result,first.result);assert.equal(second.accounting.replay,true);assert.equal(calls,1);assert.equal(Number((await stats(id)).settled_micros),7);assert.equal(Number((await stats(id)).reserved_micros),0);
+ });
+
+ await test('executor cannot overwrite or delete persisted output',async()=>{for(const sql of ['UPDATE ytv_ai_test_v1.results SET payload=payload WHERE false','DELETE FROM ytv_ai_test_v1.results WHERE false'])await assert.rejects(database('executor').transaction(tx=>tx.query(sql)),e=>e.code==='42501');});
+ await test('unknown-cost output survives restart and stays reserved with principal isolation',async()=>{
+  let calls=0;const runtime=createRegistry();runtime.register({providerId:'fixture-beta',adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async()=>{calls++;return {status:'completed',text:'Synthetic durable private output'};}});
+  const id=await budget('unknown-output'),input=req('unknown-output');input.idempotencyKey=prefix+'_unknown_output';const make=()=>createTaskRunner({store:createControlStore(database('executor'),runtime),registry:runtime});
+  const context={runId:prefix+'_unknown_output',budgetId:id,principalId:'synthetic-owner-a'};
+  const first=await make().run(input,context);const second=await make().run({...input,requestId:prefix+'_new_request_id'},{...context,runId:prefix+'_unused_replay_id'});
+  assert.deepEqual(second.result,first.result);assert.equal(second.accounting.state,'uncertain');assert.equal(second.accounting.replay,true);assert.equal(Number((await stats(id)).reserved_micros),60);assert.equal(calls,1);
+  await assert.rejects(make().run(input,{...context,principalId:'synthetic-owner-b'}),e=>e.code==='invalid_format');assert.equal(calls,1);
+  await assert.rejects(createControlStore(database('executor'),runtime).reconcile(first.result.runId,{status:first.result.status,usage:first.result.usage,result:{...first.result,text:'Changed output'}}),e=>e.code==='uncertain');
+  const saved=(await pool.query('SELECT payload FROM ytv_ai_test_v1.results WHERE run_id=$1',[first.result.runId])).rows[0].payload;assert.equal(saved.text,first.result.text);
+ });
+ await test('lost reconciliation acknowledgement recovers committed output without dispatch',async()=>{
+  let calls=0;const runtime=createRegistry();runtime.register({providerId:'fixture-beta',adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async()=>{calls++;return {status:'completed',text:'Synthetic acknowledged later',usage:{costMicros:4,currency:'EUR',priceVersion:'test-v1'}};}});
+  const id=await budget('lost-ack'),input=req('lost-ack'),context={runId:prefix+'_lost_ack',budgetId:id,principalId:'synthetic-owner'};let transactions=0;const db=database('executor');const interrupted={role:'executor',transaction:async fn=>{const result=await db.transaction(fn);if(++transactions===2)throw Error('Synthetic lost commit acknowledgement');return result;}};
+  await assert.rejects(createTaskRunner({store:createControlStore(interrupted,runtime),registry:runtime}).run(input,context),e=>e.code==='uncertain');
+  const recovered=await createTaskRunner({store:createControlStore(database('executor'),runtime),registry:runtime}).run(input,context);assert.equal(recovered.result.text,'Synthetic acknowledged later');assert.equal(recovered.accounting.replay,true);assert.equal(calls,1);assert.equal(Number((await stats(id)).settled_micros),4);
+ });
+ await test('incomplete output is recovered with its original status',async()=>{
+  let calls=0;const runtime=createRegistry();runtime.register({providerId:'fixture-beta',adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async()=>{calls++;return {status:'incomplete',text:'Synthetic unfinished'};}});
+  const context={runId:prefix+'_incomplete_output',budgetId:await budget('incomplete-output')},input=req('incomplete-output');const run=()=>createTaskRunner({store:createControlStore(database('executor'),runtime),registry:runtime}).run(input,context);const first=await run(),second=await run();assert.deepEqual(second.result,first.result);assert.equal(second.result.status,'incomplete');assert.equal(calls,1);
  });
  await test('coding-only model supports durable admission and scoped result',async()=>{
   const codingRegistry=createRegistry();let calls=0;

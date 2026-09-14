@@ -45,18 +45,23 @@ function createControlStore(database,registry){
    });
   },
   async active(){return database.transaction(async tx=>(await tx.query('SELECT r.payload FROM ytv_ai_test_v1.active_revision a JOIN ytv_ai_test_v1.revisions r ON r.revision=a.revision WHERE a.singleton=true'))[0]?.payload??null);},
-  async admit(rawRequest,{runId,budgetId,agentId,executor='ai'}={}){
+  async admit(rawRequest,{runId,budgetId,agentId,principalId,executor='ai'}={}){
    requireRole('executor');if(!['ai','coding'].includes(executor))fail('configuration','Unknown executor');
    const request=executor==='coding'?require('./coding.cjs').validateCodingRequest(rawRequest):validateRequest(rawRequest);
    if(typeof runId!=='string'||!runId||typeof budgetId!=='string'||!budgetId)fail('invalid_format','Run and budget identity required');
+   if(principalId!==undefined&&(typeof principalId!=='string'||!principalId.trim()))fail('permissions','Invalid principal scope');
    const {requestId,...operation}=request;
-   const fingerprint=createHash('sha256').update(stable({operation,budgetId,agentId:agentId??null,executor})).digest('hex');
+   const fingerprint=createHash('sha256').update(stable({operation,budgetId,agentId:agentId??null,principalId:principalId??null,executor})).digest('hex');
    return database.transaction(async tx=>{
     await headLock(tx);
     const matches=await tx.query('SELECT run_id,request_fingerprint,snapshot,status FROM ytv_ai_test_v1.runs WHERE request_id=$1 OR (task_type=$2 AND idempotency_key=$3)',[requestId,request.taskType,request.idempotencyKey??null]);
     if(matches.length>1)fail('invalid_format','Request and idempotency identities name different executions');
     const existing=matches[0];
-    if(existing){if(existing.request_fingerprint!==fingerprint)fail('invalid_format','Idempotency identity reused for different input');return {runId:existing.run_id,snapshot:immutable(existing.snapshot),status:existing.status,replay:true};}
+    if(existing){
+     if(existing.request_fingerprint!==fingerprint)fail('invalid_format','Idempotency identity reused for different input or principal');
+     const saved=(await tx.query('SELECT o.payload,r.state FROM ytv_ai_test_v1.results o JOIN ytv_ai_test_v1.reservations r ON r.run_id=o.run_id WHERE o.run_id=$1',[existing.run_id]))[0];
+     return {runId:existing.run_id,snapshot:immutable(existing.snapshot),status:existing.status,replay:true,...(saved?{result:immutable(saved.payload),accounting:{state:saved.state,replay:true}}:{})};
+    }
     const cfg=(await tx.query('SELECT r.payload FROM ytv_ai_test_v1.active_revision a JOIN ytv_ai_test_v1.revisions r ON r.revision=a.revision WHERE a.singleton=true'))[0]?.payload;
     if(!cfg)fail('configuration','No active configuration');
     const snapshot=registry.resolve(cfg,request,{agentId,executor});
@@ -69,7 +74,7 @@ function createControlStore(database,registry){
     return {runId,snapshot,status:'running',replay:false};
    });
   },
-  async reconcile(runId,{status,usage}={}){
+  async reconcile(runId,{status,usage,result}={}){
    requireRole('executor');
    if(!['completed','incomplete','refused','failed','cancelled','uncertain'].includes(status))fail('invalid_format','Invalid terminal status');
    const cost=usage?.costMicros??null;
@@ -77,6 +82,14 @@ function createControlStore(database,registry){
    return database.transaction(async tx=>{
     const reservation=(await tx.query('SELECT * FROM ytv_ai_test_v1.reservations WHERE run_id=$1 FOR UPDATE',[runId]))[0];
     if(!reservation)fail('configuration','Unknown reservation');
+    if(result!==undefined){
+     const run=(await tx.query('SELECT request_id,snapshot FROM ytv_ai_test_v1.runs WHERE run_id=$1',[runId]))[0];
+     if(!result||result.runId!==runId||result.requestId!==run.request_id||result.contractVersion!=='1.0'||!['completed','incomplete','refused','failed','cancelled'].includes(result.status)||result.status!==status&&!(status==='uncertain'&&result.error?.code==='uncertain')||stable(result.usage)!==stable(usage))fail('invalid_format','Result does not match reconciliation');
+     for(const key of ['providerId','model','adapterVersion','configRevision'])if(result[key]!==run.snapshot[key])fail('invalid_format','Result does not match pinned configuration');
+     const prior=(await tx.query('SELECT payload FROM ytv_ai_test_v1.results WHERE run_id=$1',[runId]))[0];
+     if(prior&&stable(prior.payload)!==stable(result))fail('uncertain','Stored output is immutable');
+     if(!prior)await tx.query('INSERT INTO ytv_ai_test_v1.results(run_id,payload) VALUES($1,$2::jsonb)',[runId,JSON.stringify(result)]);
+    }
     const budget=(await tx.query('SELECT currency FROM ytv_ai_test_v1.budgets WHERE budget_id=$1',[reservation.budget_id]))[0];
     if(cost!==null&&usage.currency!==budget.currency)fail('invalid_format','Cost currency differs from reserved currency');
     if(reservation.state==='settled'){

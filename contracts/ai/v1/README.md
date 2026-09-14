@@ -37,3 +37,5 @@ The simulated adapter does not execute commands or edit files. Physical path val
 ## Status
 
 This is the phase-1 foundation. Business-route adapters, durable dispatch/recovery integration, queued-job handling and real provider comparisons remain separate work. No Anthropic/OpenAI/Codex/Claude operation, deployment or production activation is performed by these tests.
+
+Durable output recovery (2026-09-15): the identified local test schema now stores immutable canonical results in the same transaction as reconciliation. Validated admission replays return a saved result, including incomplete/refused status and unknown cost, without provider execution. Runs interrupted before output persistence remain unresolved and cannot be silently retried. A hashed authenticated principal scope participates in the operation fingerprint; sharing a budget does not permit cross-principal replay. The execution role cannot update/delete saved results. This is still the isolated test schema, not a production migration. Most HTTP/business callers have not yet supplied stable retry identities; output recovery requires the same request/idempotency identity.

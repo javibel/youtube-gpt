@@ -8,12 +8,12 @@
     "coding.cjs": "bbef0e57502b5dd5b59f9cb08f8c2167eee0682bfe98da2c4e2883f1dab7e8f1",
     "coding.d.cts": "b9e06e02bc7effb98483b10a4c05cfc1ee0b5260071cd6154ae9438458135978",
     "coding.test.cjs": "4ba666fcaad6d22b60298a13f4c13ef8cbaf0c36b8bb453b7057a6ca165d3d4d",
-    "control-store.cjs": "107c351809897349808b8be201650096881c80e60ea361ecd7b1049ce61197ef",
-    "control-store.d.cts": "85052fcc52efb449726477fdcb0e4dd5c50ae2b212eaa441ef81be7a2468f72e",
-    "control-test.sql": "e113107c28905096823eeecaabfd47bfbe37df1d1bd14199f65c34e9e5fabb11",
-    "task-runner.cjs": "07351aeed0ca19f18c25ad79c3b3c7f8608d91c117a3d05439c983289079cb5d",
-    "task-runner.d.cts": "1503237dc160b7e92ff542ceab9c9e6d0069e896d8fdb68dbc0f9460af8de682",
-    "task-runner.test.cjs": "0af0d5fffa606edbb350922a6cdf2b3eb549e0af90d78806851e69aa60e8e2fa",
+    "control-store.cjs": "e42fe388eef6a43f6ac373cad9d612c5f4009873fa9980d17854bbe79a174fb8",
+    "control-store.d.cts": "bf040bbf860f97e783530cc1a3d137c9be38b0853a59db3114b202506a4d3ac5",
+    "control-test.sql": "66204b00da815236d36a288a874daa417d356ac3ff908fbb65c382001f1c2488",
+    "task-runner.cjs": "398c5495219a1f6783795c5f90b2fd213ab31544bfb569e1905b301ecfa15eba",
+    "task-runner.d.cts": "dc2bf695617615a6024e72180d6e8503003fa35e178e32870b4ceb0285787474",
+    "task-runner.test.cjs": "a2814bce59fee56aecc7888225b2d6b1aaeb35b61229dd9dd8d6d30d737cd6fd",
     "build-schemas.cjs": "1d9e47a4822a7c0c2244ca3ecec09a7a8b9a32b5227e3abd3347f3f14a0487d5",
     "request.schema.json": "147097bb33032bf43397b5c0ba35427fda9839fd017b60d3fe79e249313766c5",
     "result.schema.json": "cf01081b47db6ee2ef05af47a0c546e78c2d6321209205e2cc7d596433dee014",
@@ -21,6 +21,6 @@
     "coding-request.schema.json": "e12025f69bb11afeed9b072db2b10e8ba5433493562089e591217ddd11ba6702",
     "coding-result.schema.json": "1d177e6e51cd5cb0dbd9c4da237e98e66a788b16edef5b28eaa0a61f467d2d8e",
     "output-schema.schema.json": "6c0cf62a0a766658969582e564aea96527082ab34d555dab9b66bea4aaa9d4b6",
-    "README.md": "356a15b7a6146e5947e5ecd4cfdb964761f339bb9f29346510479f4f8c28d746"
+    "README.md": "a70f9506d716095259f34b248ae67d1768fbd6eab1840e3ea07006f9a01da830"
   }
 }

@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS ytv_ai_test_v1.reservations (
  state text NOT NULL CHECK(state IN ('reserved','settled','uncertain')),
  actual_micros bigint CHECK(actual_micros>=0)
 );
+CREATE TABLE IF NOT EXISTS ytv_ai_test_v1.results (
+ run_id text PRIMARY KEY REFERENCES ytv_ai_test_v1.runs(run_id) ON DELETE CASCADE,
+ payload jsonb NOT NULL CHECK(jsonb_typeof(payload)='object' AND payload->>'runId'=run_id),
+ created_at timestamptz NOT NULL DEFAULT now()
+);
 DO $$ BEGIN
  IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='ytv_ai_test_reader') THEN CREATE ROLE ytv_ai_test_reader NOLOGIN; END IF;
  IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname='ytv_ai_test_activator') THEN CREATE ROLE ytv_ai_test_activator NOLOGIN; END IF;
@@ -53,6 +58,8 @@ GRANT SELECT ON ytv_ai_test_v1.revisions TO ytv_ai_test_executor;
 -- executors do not need permission to update the active configuration.
 GRANT SELECT ON ytv_ai_test_v1.active_revision TO ytv_ai_test_executor;
 GRANT SELECT,INSERT ON ytv_ai_test_v1.runs,ytv_ai_test_v1.reservations TO ytv_ai_test_executor;
+GRANT SELECT,INSERT ON ytv_ai_test_v1.results TO ytv_ai_test_executor;
+REVOKE UPDATE,DELETE ON ytv_ai_test_v1.results FROM ytv_ai_test_executor;
 REVOKE UPDATE ON ytv_ai_test_v1.runs,ytv_ai_test_v1.reservations FROM ytv_ai_test_executor;
 GRANT UPDATE(status,usage,finished_at) ON ytv_ai_test_v1.runs TO ytv_ai_test_executor;
 GRANT UPDATE(state,actual_micros) ON ytv_ai_test_v1.reservations TO ytv_ai_test_executor;
