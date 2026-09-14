@@ -1,0 +1,25 @@
+'use strict';
+const {ContractError,validateRequest,validateResult}=require('./core.cjs');
+function createTaskRunner({store,registry,executor='ai',clock=Date.now}){
+ if(!store||typeof store.admit!=='function'||typeof store.reconcile!=='function'||!registry||typeof registry.runPinned!=='function'||!['ai','coding'].includes(executor))throw new ContractError('configuration','Durable store and registry are required');
+ return Object.freeze({async run(rawRequest,{runId,budgetId,agentId,signal}={}){
+  const started=clock();
+  const validated=executor==='coding'?require('./coding.cjs').validateCodingRequest(rawRequest):validateRequest(rawRequest);
+  const request=executor==='coding'?Object.fromEntries(Object.entries(validated).filter(([key])=>key!=='outputSchema')):validated;
+  const admission=await store.admit(request,{runId,budgetId,agentId,executor});
+  if(admission.replay)return {kind:'existing-run',runId:admission.runId,status:admission.status,snapshot:admission.snapshot};
+  let result;
+  const remaining=request.budget.deadlineMs-Math.max(0,clock()-started);
+  if(remaining<=0){
+   result=validateResult({status:'failed',error:{code:'deadline',message:'Deadline elapsed during admission'},usage:{costMicros:0,currency:request.budget.currency,priceVersion:'not-dispatched-v1',estimated:false}},validated,admission.snapshot,admission.runId);
+  }else{
+   try{result=await registry.runPinned(admission.snapshot,{...request,budget:{...request.budget,deadlineMs:remaining}},{runId:admission.runId,signal});}
+   catch(error){result=validateResult({status:'failed',error:{code:error instanceof ContractError?error.code:'uncertain',message:'Execution could not be normalized'}},validated,admission.snapshot,admission.runId);}
+  }
+  let accounting;
+  try{accounting=await store.reconcile(admission.runId,{status:result.error?.code==='uncertain'?'uncertain':result.status,usage:result.usage});}
+  catch{throw new ContractError('uncertain','Execution reconciliation unavailable; do not retry the provider');}
+  return {kind:'result',result,accounting};
+ }});
+}
+module.exports={createTaskRunner};

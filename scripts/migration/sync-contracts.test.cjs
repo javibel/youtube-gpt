@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {FILES,manifestFor,verify}=require('./sync-contracts.cjs');
+const contents=Object.fromEntries(FILES.map(name=>[name,'Synthetic '+name+'\n']));
+const manifest=manifestFor(contents);
+verify(contents,manifest);
+verify(Object.fromEntries(Object.entries(contents).map(([name,value])=>[name,value.replace(/\n/g,'\r\n')])),manifest);
+assert.throws(()=>verify({...contents,'core.cjs':'changed'},manifest),/content differs/);
+const missing={...contents};delete missing['core.cjs'];assert.throws(()=>verify(missing,manifest),/Missing/);
+assert.throws(()=>verify({...contents,'private-agent.json':'must not copy'},manifest),/unexpected/);
+assert.throws(()=>verify(contents,{...manifest,contractVersion:'2.0'}),/Invalid/);
+console.log('PASS: manifest equality, line-ending normalization, tampering, missing files, private extras and version mismatch');

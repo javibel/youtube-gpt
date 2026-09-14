@@ -1,0 +1,28 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {createRegistry,ContractError}=require('./core.cjs');
+const {createTaskRunner}=require('./task-runner.cjs');
+const request=()=>({requestId:'req',taskType:'summary',contractVersion:'1.0',inputVersion:'1.0',language:'es',instructions:'Synthetic instructions',instructionsVersion:'v1',messages:[{role:'user',content:[{type:'text',text:'Synthetic input'}]}],requiredCapabilities:['text'],toolPolicy:{allowed:[],maxCalls:0},budget:{currency:'EUR',maxCostMicros:100, maxOutputTokens:20,deadlineMs:1000}});
+function rig({admit,reconcile,execute,clock}={}){
+ const events=[];const registry=createRegistry();
+ registry.register({providerId:'fixture',adapterVersion:'v1',enabled:true,credentialRef:'test:fixture',models:{model:{verified:true,executors:['ai'],capabilities:['text']}},execute:async context=>{events.push('execute');return execute?execute(context):{status:'completed',text:'Synthetic',usage:{costMicros:10,currency:'EUR',priceVersion:'test-v1'}};}});
+ const cfg={contractVersion:'1.0',revision:'revision-1',fallback:'none',activeProfile:'default',profiles:{default:{summary:{providerId:'fixture',model:'model'}}},exceptions:[]};
+ const snapshot=registry.resolve(cfg,request());let outcome;
+ const store={admit:async(req,context)=>{events.push('admit');return admit?admit(req,context,snapshot):{runId:context.runId,snapshot,status:'running',replay:false};},reconcile:async(id,result)=>{events.push('reconcile');outcome=result;return reconcile?reconcile(id,result):{state:result.usage.costMicros===null?'uncertain':'settled'};}};
+ return {runner:createTaskRunner({store,registry,clock}),registry,snapshot,events,get outcome(){return outcome;}};
+}
+const context={runId:'run',budgetId:'budget'};const results=[];
+async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.message});}}
+(async()=>{
+ await test('admission precedes provider and reconciliation follows',async()=>{const r=rig();const out=await r.runner.run(request(),context);assert.deepEqual(r.events,['admit','execute','reconcile']);assert.equal(out.result.configRevision,'revision-1');assert.equal(r.outcome.usage.costMicros,10);});
+ await test('rejected admission never dispatches',async()=>{const r=rig({admit:()=>{throw new ContractError('quota','Synthetic refusal');}});await assert.rejects(()=>r.runner.run(request(),context),e=>e.code==='quota');assert.deepEqual(r.events,['admit']);});
+ await test('replay returns existing identity without provider or accounting',async()=>{const r=rig({admit:(_q,_c,snapshot)=>({runId:'old-run',status:'running',snapshot,replay:true})});const out=await r.runner.run(request(),context);assert.equal(out.kind,'existing-run');assert.equal(out.runId,'old-run');assert.deepEqual(r.events,['admit']);});
+ await test('admission consumes deadline and no dispatch costs zero',async()=>{let now=0;const r=rig({clock:()=>now,admit:(_q,_c,snapshot)=>{now=2000;return {runId:'run',snapshot,replay:false};}});const out=await r.runner.run(request(),context);assert.equal(out.result.error.code,'deadline');assert.equal(out.result.usage.costMicros,0);assert.deepEqual(r.events,['admit','reconcile']);});
+ await test('remaining deadline reaches adapter without changing caller input',async()=>{let now=0;const req=request();const before=structuredClone(req);const r=rig({clock:()=>now,admit:(_q,_c,snapshot)=>{now=200;return {runId:'run',snapshot,replay:false};},execute:({request})=>{assert.equal(request.budget.deadlineMs,800);return {status:'completed',text:'Synthetic'};}});await r.runner.run(req,context);assert.deepEqual(req,before);});
+ await test('pinned adapter change rejected before dispatch',async()=>{const r=rig();await assert.rejects(()=>r.registry.runPinned({...r.snapshot,adapterVersion:'missing'},request(),context),e=>e.code==='capability');assert.deepEqual(r.events,[]);});
+ await test('unknown adapter failure retains accounting uncertainty with no retry',async()=>{const r=rig({execute:()=>{throw Error('private synthetic detail');}});const out=await r.runner.run(request(),context);assert.equal(out.result.error.code,'uncertain');assert.equal(r.outcome.status,'uncertain');assert.equal(out.accounting.state,'uncertain');assert.deepEqual(r.events,['admit','execute','reconcile']);assert.doesNotMatch(JSON.stringify(out),/private synthetic detail/);});
+ await test('invalid provider result cannot release unknown spend',async()=>{const r=rig({execute:()=>({status:'completed',text:''})});const out=await r.runner.run(request(),context);assert.equal(out.result.error.code,'invalid_format');assert.equal(out.accounting.state,'uncertain');assert.equal(r.outcome.usage.costMicros,null);});
+ await test('reconciliation failure never retries execution',async()=>{const r=rig({reconcile:()=>{throw Error('Synthetic unavailable database');}});await assert.rejects(()=>r.runner.run(request(),context),e=>e.code==='uncertain'&&!e.retryable);assert.deepEqual(r.events,['admit','execute','reconcile']);});
+ await test('invalid input rejected before admission',async()=>{const r=rig();await assert.rejects(()=>r.runner.run({...request(),providerId:'injected'},context));assert.deepEqual(r.events,[]);});
+ console.log(JSON.stringify({scope:'durable task runner with injected store and simulated provider',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
+})();

@@ -1,0 +1,39 @@
+# Portable contracts 1.0 — local preparation
+
+This package contains no provider SDK, secret material or business integrations. `core.cjs` supplies an extensible registry and AI request/result validation. `coding.cjs` defines the separate coding executor. Only simulated adapters are registered by the tests; existing application routes do not import this package yet.
+
+## Configuration and snapshots
+
+Resolution uses an authorized task exception, then an authorized agent exception, then the active profile's explicit task assignment. Ambiguous exceptions, disabled providers, missing models, unsupported executors/capabilities and hidden fallback are rejected. The caller must obtain exception authorization and the agent identity from trusted control configuration, never from model output or user-supplied documents.
+
+Each call receives a frozen request and configuration snapshot. Deadline expiry aborts the adapter signal, preserves unknown consumption, and never retries automatically. Cancellation before dispatch prevents adapter invocation. A provider adapter must actually honor the signal; the core cannot stop a remote operation that ignores cancellation.
+
+Results preserve incomplete/refused/cancelled states, provenance, source references and separate input/output/cache/tool usage. Unknown metrics remain null. Errors expose safe category messages. Unexpected adapter rejection is uncertain and non-retryable. Error policy metadata is not an automatic retry loop.
+
+## Structured output
+
+Six Draft 7 schemas describe interchange structure. The runtime additionally checks cross-field capabilities, permissions, usage currency and tariff provenance. The task output schema subset supports object/array/scalar types, explicit properties, required fields, boolean additionalProperties, item schemas, scalar enums and basic bounds. Unsupported keywords are rejected rather than silently ignored. This is deliberately not a general-purpose implementation of every JSON Schema keyword.
+
+Regenerate the schema files with `node contracts/ai/v1/build-schemas.cjs`, then refresh the synchronization manifest. The TypeScript declarations accompany the CommonJS modules. Core tests are executable using Node without provider dependencies.
+
+## Durable control in the test database
+
+`control-store.cjs` accepts a trusted, role-bound transaction adapter; it never creates a connection. `control-test.sql` is an additive isolated test schema, not a production migration. The database test validates the exact synthetic database and physical data directory before applying it.
+
+Reader, activator and executor roles are NOLOGIN test roles. Configuration revisions and execution snapshots cannot be rewritten by their runtime roles. Activation checks the expected previous revision. Activation and admission share a transaction advisory lock. Admission reads the active revision, records its snapshot and reserves budget in the same transaction. Repeated operation identities reuse the existing run; changed input is rejected.
+
+The application caller must generate globally scoped request/idempotency identities and bind budget groups and runtime roles to authenticated business context. These must never be accepted unchecked from model output. No public control endpoint is implemented here.
+
+Unknown cost retains the reservation. Known cost releases the unused portion once. An overrun blocks further admissions for that budget; unblocking requires an explicit reconciliation procedure, not an automatic retry. There is no claim that a post-call ledger can prevent a provider exceeding a request limit: real adapters must perform conservative preflight estimates and enforce provider limits before dispatch.
+
+## Coding boundary
+
+`task-runner.cjs` composes durable admission, execution of the pinned adapter and reconciliation. Admission time counts against the deadline. Existing operations return a run reference without dispatching again; the caller retrieves business output from its own history. If reconciliation fails after dispatch, the error is uncertain and never triggers another provider call. Raw registry methods are conformance primitives and do not reserve budgets themselves.
+
+Coding jobs name a registered repository, base revision, explicit relative file scope, permission flags and exact command argument vectors. Deployments, communications and direct operational commands are disabled during local preparation. Results outside the allowed file/command scope are rejected. Partial work can preserve a portable checkpoint without becoming a completed actionable result.
+
+The simulated adapter does not execute commands or edit files. Physical path validation, writer leases, actual CLI permissions, command auditing and trusted command receipts belong to the real coding integration. A declared test receipt does not by itself prove a command ran.
+
+## Status
+
+This is the phase-1 foundation. Business-route adapters, durable dispatch/recovery integration, queued-job handling and real provider comparisons remain separate work. No Anthropic/OpenAI/Codex/Claude operation, deployment or production activation is performed by these tests.
