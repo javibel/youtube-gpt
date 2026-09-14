@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const userId = session.user.id;
   let task;
   try {
-    task = await getMessagesTask({ taskType: 'calendar.suggestions', userId, language: lang, instructionsVersion: 'calendar-suggestions-v1',
+    task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, taskType: 'calendar.suggestions', userId, language: lang, instructionsVersion: 'calendar-suggestions-v1',
       outputSchema: { type: 'array', items: { type: 'object', properties: { title: { type: 'string', minLength: 1 }, date: { type: 'string' }, reason: { type: 'string' }, description: { type: 'string' } }, required: ['title'], additionalProperties: true } },
     });
   } catch { return NextResponse.json({ error: 'ai_not_configured' }, { status: 500 }); }

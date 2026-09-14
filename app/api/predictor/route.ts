@@ -155,7 +155,7 @@ Be realistic. Base predictions on actual channel metrics, not optimistic guesses
   try {
     let task;
     try {
-      task = await getMessagesTask({ taskType: 'youtube.performance-prediction', userId: session.user.id,
+      task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, taskType: 'youtube.performance-prediction', userId: session.user.id,
         language: userLang, instructionsVersion: 'performance-prediction-v1',
         outputSchema: {
           type: 'object', additionalProperties: false,

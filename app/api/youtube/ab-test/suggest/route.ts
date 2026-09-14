@@ -20,6 +20,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Title required' }, { status: 400 });
   }
 
+  const operationKey = req.headers.get('idempotency-key') ?? undefined;
+  if (operationKey !== undefined && !/^[-A-Za-z0-9._:]{1,128}$/.test(operationKey)) {
+    return NextResponse.json({ error: 'Invalid operation key' }, { status: 400 });
+  }
+
   const isEn = lang === 'en';
   const prompt = isEn
     ? `You are a YouTube SEO expert. Given this video title, generate exactly 2 alternative title variants optimized for higher CTR. Keep the same language and topic but use different hooks, power words, or structures.
@@ -51,7 +56,7 @@ Responde SOLO con un objeto JSON: {"variantA": "...", "variantB": "..."}`;
 
   try {
     const task = await getMessagesTask({
-      taskType: 'youtube.ab-title-suggestions', userId: session.user.id,
+      taskType: 'youtube.ab-title-suggestions', userId: session.user.id, operationKey,
       language: isEn ? 'en' : 'es', instructionsVersion: 'ab-titles-v1',
       outputSchema: { type: 'object', properties: { variantA: { type: 'string' }, variantB: { type: 'string' } }, additionalProperties: false },
     });

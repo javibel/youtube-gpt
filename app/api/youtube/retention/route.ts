@@ -182,7 +182,7 @@ export async function POST(request: Request) {
     try {
       const reasonsSchema: OutputSchema = { type: 'array', items: { type: 'object', required: ['timestamp', 'reason'], additionalProperties: false,
         properties: { timestamp: { type: 'string' }, reason: { type: 'string' } } } };
-      const task = await getMessagesTask({ taskType: 'youtube.retention-insights', userId: session.user.id,
+      const task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, taskType: 'youtube.retention-insights', userId: session.user.id,
         language: userLang, instructionsVersion: 'retention-insights-v1', outputSchema: {
           type: 'object', additionalProperties: false, required: ['tips'], properties: {
             tips: { type: 'array', items: { type: 'string' } },

@@ -139,7 +139,7 @@ export async function GET(request: Request) {
       : '\n\nUser has no connected YouTube channel yet.';
 
     try {
-      const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.competitor-opportunities', language: lang, instructionsVersion: 'competitor-opportunities-v1',
+      const task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, userId: session.user.id, taskType: 'youtube.competitor-opportunities', language: lang, instructionsVersion: 'competitor-opportunities-v1',
         outputSchema: { type: 'array', maxItems: 5, items: { type: 'object', additionalProperties: false, required: ['topic', 'coveredBy', 'totalViews', 'suggestion'], properties: {
           topic: { type: 'string', minLength: 1 }, coveredBy: { type: 'array', items: { type: 'string' } }, totalViews: { type: 'number', minimum: 0 }, suggestion: { type: 'string', minLength: 1 },
         } } },

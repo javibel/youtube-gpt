@@ -80,7 +80,7 @@ export async function POST(request: Request) {
         `"${c.title}" by ${c.channelName} (${c.views} views)`
       ).join('\n');
 
-      const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.thumbnail-preview', language: lang === 'en' ? 'en' : 'es', instructionsVersion: 'thumbnail-preview-v1',
+      const task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, userId: session.user.id, taskType: 'youtube.thumbnail-preview', language: lang === 'en' ? 'en' : 'es', instructionsVersion: 'thumbnail-preview-v1',
         outputSchema: { type: 'object', additionalProperties: false, required: ['score', 'breakdown', 'summary'], properties: {
           score: { type: 'number', minimum: 0, maximum: 100 }, summary: { type: 'string', minLength: 1 },
           breakdown: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['category', 'score', 'tip'], properties: {

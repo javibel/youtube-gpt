@@ -109,8 +109,11 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   const budgetId=await budget('actual-route');const runtime=load('lib/ai/task-runtime.ts');
   runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'youtube.ab-title-suggestions':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:200,deadlineMs:3000}}},authorize:async({userId,taskType})=>userId==='synthetic'&&taskType==='youtube.ab-title-suggestions'?{budgetId}:null}));
   const route=load('app/api/youtube/ab-test/suggest/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:'synthetic'}})},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true},'@/lib/ai/task-runtime':runtime});
-  const result=await route.POST(new Request('https://example.invalid/api/youtube/ab-test/suggest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:'Synthetic original',lang:'es'})}));
-  assert.equal(result.status,200);assert.deepEqual(await result.json(),{variantA:'Synthetic A',variantB:'Synthetic B'});assert.equal(calls,1);
+  const invoke=(title='Synthetic original',key='synthetic-retry')=>route.POST(new Request('https://example.invalid/api/youtube/ab-test/suggest',{method:'POST',headers:{'content-type':'application/json','idempotency-key':key},body:JSON.stringify({title,lang:'es'})}));
+  const result=await invoke();assert.equal(result.status,200);assert.deepEqual(await result.json(),{variantA:'Synthetic A',variantB:'Synthetic B'});
+  const replay=await invoke();assert.equal(replay.status,200);assert.deepEqual(await replay.json(),{variantA:'Synthetic A',variantB:'Synthetic B'});assert.equal(calls,1);
+  assert.equal((await invoke('Changed synthetic input')).status,503);assert.equal(calls,1);
+  assert.equal((await invoke('Synthetic original','invalid key with spaces')).status,400);assert.equal(calls,1);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
  });
 })().catch(error=>{results.push({name:'setup or orchestration',status:'FAIL',error:error.message});}).finally(async()=>{

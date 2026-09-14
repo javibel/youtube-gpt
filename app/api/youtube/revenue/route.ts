@@ -207,7 +207,7 @@ export async function GET(request: Request) {
       const avgWatchMin = totalViews28 > 0 ? (totalWatchTime28 / totalViews28).toFixed(1) : '0';
 
       try {
-        const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.revenue-insights', language: lang, instructionsVersion: 'revenue-insights-v1',
+        const task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, userId: session.user.id, taskType: 'youtube.revenue-insights', language: lang, instructionsVersion: 'revenue-insights-v1',
           outputSchema: {"type":"object","additionalProperties":false,"required":["optimizationPotential","missedRevenue","tips","cpmStrategy"],"properties":{"optimizationPotential":{"type":"string"},"missedRevenue":{"type":"string"},"tips":{"type":"array","items":{"type":"string"}},"cpmStrategy":{"type":"string"}}},
         });
         const data = await task.create({ max_tokens: 600, messages: [{ role: 'user', content: `Analyze this YouTube channel's revenue data and suggest optimization. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON:

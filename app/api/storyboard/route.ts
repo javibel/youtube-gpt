@@ -128,7 +128,7 @@ export async function POST(request: Request) {
 
   let task;
   try {
-    task = await getMessagesTask({
+    task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined,
       taskType: 'content.storyboard', userId, language: lang === 'en' ? 'en' : 'es',
       instructionsVersion: 'storyboard-v1',
     });

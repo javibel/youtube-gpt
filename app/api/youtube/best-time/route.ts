@@ -42,7 +42,7 @@ export async function GET() {
 
 // ── POST: run full analysis ────────────────────────────────────────────────
 
-export async function POST() {
+export async function POST(request?: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -187,7 +187,7 @@ export async function POST() {
 
     let aiTip: { es: string; en: string } | null = null;
     try {
-      const task = await getMessagesTask({
+      const task = await getMessagesTask({ operationKey: request?.headers.get('idempotency-key') ?? undefined,
         taskType: 'youtube.best-time-tip', userId: session.user.id,
         language: 'es,en', instructionsVersion: 'best-time-tip-v1',
         outputSchema: { type: 'object', properties: { es: { type: 'string' }, en: { type: 'string' } }, required: ['es', 'en'], additionalProperties: false },

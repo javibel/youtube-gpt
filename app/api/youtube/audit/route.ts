@@ -393,7 +393,7 @@ function analyzePatterns(videos: VideoData[]): PatternAnalysis {
 
 // ── GET handler ────────────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(request?: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -530,7 +530,7 @@ Quick wins count: ${quickWins.length}
 Reply ONLY with valid JSON: {"es": "...", "en": "..."}
 Keep each under 200 words. Use line breaks for readability. No markdown.`;
 
-      const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.audit-summary', language: 'es', instructionsVersion: 'audit-summary-v1',
+      const task = await getMessagesTask({ operationKey: request?.headers.get('idempotency-key') ?? undefined, userId: session.user.id, taskType: 'youtube.audit-summary', language: 'es', instructionsVersion: 'audit-summary-v1',
         outputSchema: { type: 'object', required: ['es', 'en'], additionalProperties: false,
           properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
       });

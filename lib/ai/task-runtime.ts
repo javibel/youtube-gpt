@@ -8,6 +8,7 @@ export type TaskIdentity = ({ userId: string; serviceId?: never } | { serviceId:
   taskType: string;
   language: string;
   instructionsVersion: string;
+  operationKey?: string;
   outputSchema?: OutputSchema;
   requiredCapabilities?: string[];
   incompletePolicy?: 'reject' | 'expose-text';

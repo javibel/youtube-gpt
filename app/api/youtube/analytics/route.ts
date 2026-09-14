@@ -172,7 +172,7 @@ Reply ONLY with valid JSON: {"es": "...", "en": "..."}
         const ac = new AbortController();
         const timer = setTimeout(() => ac.abort(), 15_000);
         try {
-          const task = await getMessagesTask({
+          const task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined,
             taskType: 'youtube.analytics-insight', userId: session.user.id,
             language: lang, instructionsVersion: 'analytics-insight-v1',
             outputSchema: { type: 'object', properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } }, required: ['es', 'en'], additionalProperties: false },

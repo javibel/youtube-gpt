@@ -162,7 +162,7 @@ export async function GET(request: Request) {
       }
 
       try {
-        const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.subscribers-insights', language: lang, instructionsVersion: 'subscribers-insights-v1',
+        const task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, userId: session.user.id, taskType: 'youtube.subscribers-insights', language: lang, instructionsVersion: 'subscribers-insights-v1',
           outputSchema: {"type":"object","additionalProperties":false,"required":["audienceProfile","interests","collaborationSuggestions","growthTips"],"properties":{"audienceProfile":{"type":"string"},"interests":{"type":"array","items":{"type":"string"}},"collaborationSuggestions":{"type":"array","items":{"type":"object","required":["channel","reason"],"additionalProperties":false,"properties":{"channel":{"type":"string"},"reason":{"type":"string"}}}},"growthTips":{"type":"array","items":{"type":"string"}}}},
         });
         const data = await task.create({ max_tokens: 700, messages: [{ role: 'user', content: `Analyze this YouTube channel's audience data and provide insights. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON:
