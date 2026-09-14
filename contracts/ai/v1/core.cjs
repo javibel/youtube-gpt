@@ -91,16 +91,16 @@ function validateResult(result,request,snapshot,runId){
   return freeze({requestId:request.requestId,runId,contractVersion:CONTRACT_VERSION,providerId:snapshot.providerId,model:snapshot.model,adapterVersion:snapshot.adapterVersion,configRevision:snapshot.configRevision,instructionsVersion:request.instructionsVersion,status:result.status,text:result.text??null,data:result.status==='completed'?clone(result.data??null):null,sources:clone(sources),usage,error});
 }
 async function executeBounded(execute,context,parentSignal){
-  const controller=new AbortController();let timer;let onCancel;
-  const cancelled={status:'cancelled',error:{code:'cancelled',message:'Cancelled'}};
-  if(parentSignal?.aborted)return cancelled;
+  const controller=new AbortController();let timer;let onCancel;let dispatched=false;
+  const cancelled=()=>({status:'cancelled',error:{code:'cancelled',message:'Cancelled'},...(!dispatched?{usage:{costMicros:0,currency:context.request.budget.currency,priceVersion:'not-dispatched-v1',estimated:false}}:{})});
+  if(parentSignal?.aborted)return cancelled();
   const interruption=new Promise(resolve=>{
     timer=setTimeout(()=>{controller.abort();resolve({status:'failed',error:{code:'deadline',message:'Deadline reached'}});},context.request.budget.deadlineMs);
-    onCancel=()=>{controller.abort();resolve(cancelled);};
+    onCancel=()=>{controller.abort();resolve(cancelled());};
     parentSignal?.addEventListener('abort',onCancel,{once:true});
   });
   try {
-    const execution=Promise.resolve().then(()=>controller.signal.aborted ? cancelled : execute({...context,signal:controller.signal})).catch(()=>({status:'failed',error:{code:'uncertain',message:'Adapter outcome is unknown'}}));
+    const execution=Promise.resolve().then(()=>{if(controller.signal.aborted)return cancelled();dispatched=true;return execute({...context,signal:controller.signal});}).catch(()=>({status:'failed',error:{code:'uncertain',message:'Adapter outcome is unknown'}}));
     return await Promise.race([execution,interruption]);
   } finally {clearTimeout(timer);parentSignal?.removeEventListener('abort',onCancel);}
 }
@@ -111,9 +111,10 @@ function createRegistry(){
       only(definition,['providerId','adapterVersion','enabled','credentialRef','models','execute'],'provider');
       if(!text(definition.providerId)||!text(definition.adapterVersion)||typeof definition.enabled!=='boolean'||! /^(test|env|vault):[A-Za-z0-9._-]+$/.test(definition.credentialRef)||!record(definition.models)||typeof definition.execute!=='function')fail('configuration','Invalid provider registration');
       if(providers.has(definition.providerId))fail('configuration','Provider is already registered');
-      for(const model of Object.values(definition.models)){
+      if(Object.keys(definition.models).length===0)fail('configuration','Provider requires model entries');
+      for(const [modelId,model] of Object.entries(definition.models)){
         only(model,['executors','capabilities','verified'],'model');
-        if(!Array.isArray(model.executors)||model.executors.some(x=>!['ai','coding'].includes(x))||!Array.isArray(model.capabilities)||model.capabilities.some(x=>!text(x))||model.verified!==true)fail('configuration','Models require verified capabilities and executors');
+        if(!text(modelId)||!Array.isArray(model.executors)||model.executors.length===0||model.executors.some(x=>!['ai','coding'].includes(x))||!Array.isArray(model.capabilities)||model.capabilities.some(x=>!text(x))||model.verified!==true)fail('configuration','Models require verified capabilities and executors');
       }
       const {execute,...metadata}=definition;providers.set(definition.providerId,{metadata:freeze(clone(metadata)),execute});
     },
@@ -121,6 +122,11 @@ function createRegistry(){
       if(!['ai','coding'].includes(executor))fail('configuration','Unknown executor');
       only(config,['contractVersion','revision','fallback','profiles','activeProfile','exceptions'],'configuration');
       if(config?.contractVersion!==CONTRACT_VERSION||!text(config.revision)||config.fallback!=='none'||!record(config.profiles)||!text(config.activeProfile))fail('configuration','Invalid configuration or hidden fallback');
+      if(!Object.hasOwn(config.profiles,config.activeProfile))fail('configuration','Active profile is missing');
+      for(const [profileId,tasks]of Object.entries(config.profiles)){
+        if(!text(profileId)||!record(tasks)||Object.keys(tasks).length===0)fail('configuration','Profile assignments required');
+        for(const [taskId,selection]of Object.entries(tasks)){only(selection,['providerId','model'],'profile selection');if(!text(taskId)||!text(selection.providerId)||!text(selection.model))fail('configuration','Explicit task, provider and model required');}
+      }
       if(!Array.isArray(config.exceptions))fail('configuration','Explicit exceptions list required');
       for(const ex of config.exceptions){only(ex,['scope','id','selection','authorizedBy','reason'],'exception');only(ex.selection,['providerId','model'],'exception selection');if(!['task','agent'].includes(ex.scope)||!text(ex.id)||!text(ex.authorizedBy)||!text(ex.reason)||!text(ex.selection.providerId)||!text(ex.selection.model))fail('configuration','Every exception requires authorization provenance');}
       const matches=config.exceptions.filter(ex=>ex.scope==='task'?ex.id===request.taskType:ex.scope==='agent'&&ex.id===agentId);

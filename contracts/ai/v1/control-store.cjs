@@ -17,15 +17,22 @@ function createControlStore(database,registry){
    for(const [profile,tasks]of Object.entries(config.profiles)){
     if(!tasks||typeof tasks!=='object'||Object.keys(tasks).length===0)fail('configuration','Profiles cannot be empty');
     for(const taskType of Object.keys(tasks)){
-     try{registry.resolve({...config,activeProfile:profile},{taskType,requiredCapabilities:[]});}
-     catch(error){if(error.code!=='capability')throw error;registry.resolve({...config,activeProfile:profile},{taskType,requiredCapabilities:[]},{executor:'coding'});}
+     try{registry.resolve({...config,exceptions:[],activeProfile:profile},{taskType,requiredCapabilities:[]});}
+     catch(error){if(error.code!=='capability')throw error;registry.resolve({...config,exceptions:[],activeProfile:profile},{taskType,requiredCapabilities:[]},{executor:'coding'});}
     }
+   }
+   if(!Array.isArray(config.exceptions))fail('configuration','Explicit exceptions required');
+   for(const exception of config.exceptions){
+    if(!exception||!['task','agent'].includes(exception.scope))fail('configuration','Unknown exception scope');
+    const candidate={...config,exceptions:[{...exception,scope:'task'}]};
+    try{registry.resolve(candidate,{taskType:exception.id,requiredCapabilities:[]});}
+    catch(error){if(error.code!=='capability')throw error;registry.resolve(candidate,{taskType:exception.id,requiredCapabilities:[]},{executor:'coding'});}
    }
    const payload=JSON.stringify(config);
    return database.transaction(async tx=>{await tx.query('INSERT INTO ytv_ai_test_v1.revisions(revision,contract_version,payload,actor) VALUES($1,$2,$3::jsonb,$4)',[config.revision,config.contractVersion,payload,actor]);return {revision:config.revision};});
   },
   async activate(revision,{expectedRevision=null,actor,reason}={}){
-   requireRole('activator');if(!actor||!reason)fail('permissions','Actor and reason required');
+   requireRole('activator');if(typeof actor!=='string'||!actor.trim()||typeof reason!=='string'||!reason.trim())fail('permissions','Actor and reason required');
    return database.transaction(async tx=>{
     await headLock(tx);
     const candidate=(await tx.query('SELECT revision FROM ytv_ai_test_v1.revisions WHERE revision=$1',[revision]))[0];
