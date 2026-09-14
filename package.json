@@ -9,6 +9,7 @@
     "lint": "eslint",
     "migration:check": "node scripts/migration/check.cjs",
     "migration:test": "node scripts/migration/isolation.test.cjs && node scripts/migration/payments.test.cjs",
+    "migration:test:database": "node scripts/migration/database.test.cjs",
     "predev": "node scripts/migration/check.cjs --startup",
     "prestart": "node scripts/migration/check.cjs --startup",
     "prebuild": "node scripts/migration/check.cjs --startup"
