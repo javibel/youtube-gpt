@@ -14,10 +14,12 @@ Only leading text system messages, user/assistant text history, URL images and e
 
 Preflight is a trusted local conservative quote function, not an additional remote provider call. It must include all billable input, output, cache and tool bounds. The future real transport must honor cancellation and pass request options to the SDK. Pricing is separately injected; unknown or invalid pricing evidence keeps cost unknown. This adapter does not itself create budget reservations: use the durable task runner.
 
-The AB title-suggestion route now consumes the common runtime. Its 26 tests execute the actual route, contract runner, compatibility facade and protocol adapter with simulated storage and transport. Its four recorded defects are now controlled failures. Other business routes still await migration.
+All 32 inventoried web references now consume the common runtime (23 routes and 4 libraries). Dedicated suites exercise actual callables and the contract chain with synthetic storage and transport. They do not establish live quality, production activation or exhaustive effect recovery.
 
 `task-runtime.ts` is installed once by trusted server bootstrap. No bootstrap is enabled yet: an unconfigured runtime returns a controlled 503 through the migrated route, never a hidden direct-SDK fallback. Completing the guarded local bootstrap is required before enabling application startup. Live credentials, verified account models, real tariff versions and bounded live comparisons remain pending. Synthetic tests are not production activation approval.
 
 Update: seven routes now use this boundary (generate, chat, storyboard, background prompt, Analytics, AB suggestions, best-time tips). Explicit partial text is permitted only for the generation continuation flow, remains canonically incomplete and never exposes partial structured data. Prompt-cache intent uses an explicit system breakpoint; a cache hit is not guaranteed. Reference: https://platform.claude.com/docs/en/build-with-claude/prompt-caching .
 
 Twelve routes now use this boundary: additionally Coach, bulk generation, calendar suggestions, performance prediction and retention insights. Retention requires the requested typed object; unexpected legacy arrays keep metrics but yield no AI tips. History display treats ambiguous legacy zero as unknown; ledger linkage is pending.
+
+Current service grants: public-seo, brand-agent and morning-cron must be explicitly allowed per task and authorized to a budget. Business search declarations use `{name: "web_search", maxCalls: N}`; the facade retains legacy compatibility but rejects mixed declarations and any allowance exceeding trusted policy.

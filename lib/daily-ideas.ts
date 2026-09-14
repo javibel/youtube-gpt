@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 /**
  * Generates the personalized daily video ideas for creators with a connected channel.
  *
@@ -52,8 +53,6 @@ export async function generateDailyIdeas(): Promise<number> {
   // de su entrenamiento: el 9% de los titulos generados desde el 25/08 decian "2025"
   // y solo el 1% "2026". Un creador que recibe "Guia 2025" en septiembre de 2026
   // descarta la herramienta de un vistazo. La fecha se inyecta ahora en el prompt.
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return 0;
 
   let generated = 0;
 
@@ -71,19 +70,13 @@ export async function generateDailyIdeas(): Promise<number> {
       const subs = user.subscribers ? parseInt(user.subscribers, 10) : 0;
       const vids = user.videoCount ? parseInt(user.videoCount, 10) : 0;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 2000,
-          messages: [{
-            role: 'user',
-            content: `You are a YouTube growth advisor. Generate 5 personalized video ideas for this creator.
+      const task = await getMessagesTask({ userId: user.userId, taskType: 'creator.daily-ideas', language: 'es', instructionsVersion: 'daily-ideas-v1',
+        outputSchema: { type: 'array', minItems: 1, maxItems: 5, items: { type: 'object', additionalProperties: false,
+          required: ['title_es', 'title_en', 'idea_es', 'idea_en'], properties: {
+            title_es: { type: 'string', minLength: 1 }, title_en: { type: 'string', minLength: 1 }, idea_es: { type: 'string', minLength: 1 }, idea_en: { type: 'string', minLength: 1 },
+          } } },
+      });
+      const result = await task.create({ max_tokens: 2000, messages: [{ role: 'user', content: `You are a YouTube growth advisor. Generate 5 personalized video ideas for this creator.
 
 Today is ${new Date().toISOString().slice(0, 10)} — the current year is ${new Date().getUTCFullYear()}.
 NEVER put a past year in a title. If a title needs a year, it must be ${new Date().getUTCFullYear()}.
@@ -115,33 +108,8 @@ published videos and cannot fully judge a title on its own. Aim for 85+:
 - A search-intent hook: start with how/why/what, or end with "?" (10 pts)
 
 Respond ONLY with JSON array, no other text:
-[{"title_es":"título sugerido","title_en":"suggested title","idea_es":"explicación breve","idea_en":"brief explanation"}]`,
-          }],
-        }),
-      });
-
-      if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        console.error(`[daily-ideas] Anthropic API error for user ${user.userId}: ${res.status} ${errBody.slice(0, 300)}`);
-        continue;
-      }
-      const aiData = await res.json();
-      const raw: string = (aiData.content?.[0]?.text ?? '')
-        .trim()
-        .replace(/^```(?:json)?\s*/i, '')
-        .replace(/\s*```$/, '')
-        .trim();
-      let ideas: unknown;
-      try {
-        ideas = JSON.parse(raw);
-      } catch (parseErr) {
-        console.error(`[daily-ideas] JSON parse failed for user ${user.userId}: ${parseErr instanceof Error ? parseErr.message : parseErr} — raw: ${raw.slice(0, 300)}`);
-        continue;
-      }
-      if (!Array.isArray(ideas) || ideas.length === 0) {
-        console.error(`[daily-ideas] Empty/non-array ideas for user ${user.userId} — raw: ${raw.slice(0, 300)}`);
-        continue;
-      }
+[{"title_es":"título sugerido","title_en":"suggested title","idea_es":"explicación breve","idea_en":"brief explanation"}]` }] });
+      const ideas = JSON.parse(result.content[0].text);
 
       await prisma.dailyIdea.create({
         data: {

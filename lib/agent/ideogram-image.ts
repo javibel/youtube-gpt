@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 /**
  * Ideogram v3 TURBO image generator for social media posts.
  *
@@ -12,7 +13,6 @@ import { buildInfographicUrl } from './infographic-generator';
 import { prisma } from '@/lib/prisma';
 
 const IDEOGRAM_KEY = (process.env.IDEOGRAM_API_KEY || process.env.ideogram)?.trim();
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 // Rotating visual styles for daily variety
 const IMAGE_STYLES = [
@@ -29,28 +29,10 @@ const IMAGE_STYLES = [
  * Generate an image prompt from post content using Claude.
  */
 async function generateImagePrompt(postContent: string): Promise<string | null> {
-  if (!ANTHROPIC_KEY) return null;
+  const task = await getMessagesTask({ serviceId: 'brand-agent', taskType: 'brand.image-prompt', language: 'en', instructionsVersion: 'brand-image-prompt-v1' });
+  const result = await task.create({ max_tokens: 100, messages: [{ role: 'user', content: `Given this social media post about YouTube:\n"${postContent.slice(0, 300)}"\n\nWrite a concise image generation prompt (max 200 chars) for a 1:1 social media visual.\nThe image should be eye-catching and related to the post's topic.\n\nRULES:\n- NO text, NO words, NO letters, NO numbers in the image\n- Focus on a strong visual scene/metaphor related to the topic\n- Modern, premium, editorial photography or 3D render style\n- Dramatic lighting, rich colors, professional composition\n- Think: what image would make someone stop scrolling?\n\nReturn ONLY the image prompt, nothing else.` }] });
+  return result.content[0].text.trim();
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 100,
-      messages: [{
-        role: 'user',
-        content: `Given this social media post about YouTube:\n"${postContent.slice(0, 300)}"\n\nWrite a concise image generation prompt (max 200 chars) for a 1:1 social media visual.\nThe image should be eye-catching and related to the post's topic.\n\nRULES:\n- NO text, NO words, NO letters, NO numbers in the image\n- Focus on a strong visual scene/metaphor related to the topic\n- Modern, premium, editorial photography or 3D render style\n- Dramatic lighting, rich colors, professional composition\n- Think: what image would make someone stop scrolling?\n\nReturn ONLY the image prompt, nothing else.`,
-      }],
-    }),
-  });
-
-  if (!res.ok) return null;
-  const data = await res.json();
-  return (data.content?.[0]?.text ?? '').trim() || null;
 }
 
 /**

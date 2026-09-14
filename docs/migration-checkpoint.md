@@ -48,3 +48,6 @@ Public/private SEO text and vision, revenue, audience and competitor insights no
 
 ## 2026-09-15 — Twenty-one web routes
 Audit, thumbnail preview, optimization and thumbnail generation now use the common runtime. Protected full build, reference/access suites and targeted lint pass. Image upload failure cannot return a temporary uncomposed image as success. All writes, media operations and providers in route tests are synthetic; actual image rendering has not been visually verified.
+
+## 2026-09-15 — Web inventory centralized
+All 32 web inventory references across 23 routes and 4 libraries use the common boundary. Protected full build, reference/adapters suites and 33 SQL tests pass. The new static regression guard checks 299 business files. Library suite: 23; scheduled content/image suite: 29; compatibility: 22. No live communication, publication, provider call or general startup. Agent migration, durable outputs/history and later phases remain pending.

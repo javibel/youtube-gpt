@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
 import {
@@ -36,23 +37,10 @@ async function generateAndSaveDailyTip(): Promise<{ skipped: boolean }> {
   const existing = await prisma.dailyTip.findUnique({ where: { date } });
   if (existing) return { skipped: true };
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'prompt-caching-2024-07-31',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
-      messages: [{
-        role: 'user',
-        content: `Genera un tip práctico y específico para YouTubers sobre cómo mejorar su canal (títulos, thumbnails, SEO, retención, monetización, algoritmo, etc.).
+  const task = await getMessagesTask({ serviceId: 'morning-cron', taskType: 'site.daily-tip', language: 'es', instructionsVersion: 'daily-tip-v1',
+    outputSchema: { type: 'object', required: ['es', 'en'], additionalProperties: false, properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
+  });
+  const result = await task.create({ max_tokens: 300, messages: [{ role: 'user', content: `Genera un tip práctico y específico para YouTubers sobre cómo mejorar su canal (títulos, thumbnails, SEO, retención, monetización, algoritmo, etc.).
 
 El tip debe:
 - Ser concreto y accionable, no genérico
@@ -61,20 +49,8 @@ El tip debe:
 - Variar el tema respecto a tips comunes (sé creativo)
 
 Responde SOLO con JSON en este formato exacto, sin texto adicional:
-{"es": "tip en español aquí", "en": "tip in english here"}`,
-      }],
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Claude API error ${res.status}`);
-  const aiData = await res.json();
-  const raw: string = (aiData.content?.[0]?.text ?? '')
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '')
-    .trim();
-  const parsed = JSON.parse(raw);
-  const { es, en } = parsed as { es: string; en: string };
+{"es": "tip en español aquí", "en": "tip in english here"}` }] });
+  const { es, en } = JSON.parse(result.content[0].text) as { es: string; en: string };
 
   await prisma.dailyTip.upsert({
     where: { date },

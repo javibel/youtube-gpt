@@ -2,12 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { PAID_STATUSES } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 export const maxDuration = 60;
 
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!.trim();
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 
 interface TrendingVideo {
   title: string;
@@ -40,9 +39,11 @@ async function getRecentVideoTitles(channelId: string): Promise<string[]> {
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('Authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+
+  if (!YOUTUBE_API_KEY) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
 
   // Get all Pro users with connected YouTube channels
   const users = await prisma.user.findMany({
@@ -116,35 +117,11 @@ export async function GET(request: Request) {
         `${i + 1}. "${v.title}" by ${v.channelTitle} (${parseInt(v.viewCount).toLocaleString()} views)`
       ).join('\n');
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'prompt-caching-2024-07-31',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          system: [{ type: 'text', text: `You analyze YouTube trends for a creator. Judge relevance ONLY against their actual recent content below — never against the channel name alone or generic "could leverage this for reach" reasoning. If nothing in the trending list is genuinely close to their real topics, output an empty JSON array [] instead of forcing unrelated picks (K-pop, movie trailers, Minecraft, etc. are NOT relevant just because they're popular). Identify at most 2-3 trends that a person who makes THIS creator's content would actually want to know about. For each trend, output a JSON array of objects with: title (short catchy alert title), description (1-2 sentences explaining the trend and why it's relevant to their specific content), category (one word like tech/gaming/education/entertainment/music/lifestyle/news), relevance (0-100 how relevant to this creator), videos (array of {title, views, channelName} for the 1-2 most relevant trending videos). Output ONLY valid JSON array, no markdown.`, cache_control: { type: 'ephemeral' } }],
-          messages: [{ role: 'user', content: `Channel: "${channelName}"\nTheir recent videos:\n${recentTitles.length ? recentTitles.map(t => `- ${t}`).join('\n') : '(no recent videos found — be conservative, prefer an empty array over guessing)'}\n\nTrending videos:\n${trendingList}` }],
-        }),
+      const task = await getMessagesTask({ userId: user.id, taskType: 'creator.trend-alerts', language: 'auto', instructionsVersion: 'trend-alerts-v1', requiredCapabilities: ['prompt_cache'],
+        outputSchema: {"type":"array","maxItems":3,"items":{"type":"object","required":["title","description","category","relevance","videos"],"additionalProperties":false,"properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1},"category":{"type":"string"},"relevance":{"type":"number","minimum":0,"maximum":100},"videos":{"type":"array","maxItems":3,"items":{"type":"object","required":["title","views","channelName"],"additionalProperties":false,"properties":{"title":{"type":"string"},"views":{"type":"number","minimum":0},"channelName":{"type":"string"}}}}}}},
       });
-
-      if (!res.ok) { console.error('[cron/trends] anthropic not ok', res.status, await res.text()); continue; }
-
-      const data = await res.json();
-      const text = data.content?.[0]?.text || '';
-
-      let alerts: { title: string; description: string; category: string; relevance: number; videos: { title: string; views: string; channelName: string }[] }[];
-      try {
-        alerts = parseClaudeJson(text);
-        if (!Array.isArray(alerts)) { console.error('[cron/trends] not array', text.slice(0,200)); continue; }
-      } catch (e) {
-        console.error('[cron/trends] parse failed', (e as Error).message, text.slice(0, 200));
-        continue;
-      }
+      const result = await task.create({ max_tokens: 600, system: `You analyze YouTube trends for a creator. Judge relevance ONLY against their actual recent content below — never against the channel name alone or generic "could leverage this for reach" reasoning. If nothing in the trending list is genuinely close to their real topics, output an empty JSON array [] instead of forcing unrelated picks (K-pop, movie trailers, Minecraft, etc. are NOT relevant just because they're popular). Identify at most 2-3 trends that a person who makes THIS creator's content would actually want to know about. For each trend, output a JSON array of objects with: title (short catchy alert title), description (1-2 sentences explaining the trend and why it's relevant to their specific content), category (one word like tech/gaming/education/entertainment/music/lifestyle/news), relevance (0-100 how relevant to this creator), videos (array of {title, views, channelName} for the 1-2 most relevant trending videos). Output ONLY valid JSON array, no markdown.`, messages: [{ role: 'user', content: `Channel: "${channelName}"\nTheir recent videos:\n${recentTitles.length ? recentTitles.map(t => `- ${t}`).join('\n') : '(no recent videos found — be conservative, prefer an empty array over guessing)'}\n\nTrending videos:\n${trendingList}` }] });
+      const alerts = JSON.parse(result.content[0].text) as { title: string; description: string; category: string; relevance: number; videos: { title: string; views: number; channelName: string }[] }[];
 
       // Save alerts
       for (const alert of alerts.slice(0, 3)) {
@@ -154,8 +131,8 @@ export async function GET(request: Request) {
             title: String(alert.title).slice(0, 200),
             description: String(alert.description).slice(0, 500),
             category: String(alert.category || 'general').slice(0, 50),
-            relevance: Math.min(100, Math.max(0, Number(alert.relevance) || 50)),
-            trendData: { videos: (alert.videos || []).slice(0, 3) } as unknown as Prisma.InputJsonValue,
+            relevance: alert.relevance,
+            trendData: { videos: alert.videos.map(video => ({ ...video, views: String(video.views) })) } as unknown as Prisma.InputJsonValue,
           },
         });
       }

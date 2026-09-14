@@ -1,10 +1,9 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { prisma } from '@/lib/prisma';
 
 export type Platform = 'facebook' | 'instagram' | 'tiktok' | 'twitter';
 export type PostType = 'morning' | 'evening';
 
-const API_KEY = () => process.env.ANTHROPIC_API_KEY?.trim() ?? '';
-const MODEL = 'claude-sonnet-4-6';
 
 // ── Memoria narrativa ─────────────────────────────────────────────────────────
 
@@ -51,39 +50,22 @@ ${postsContext}
  * tool so the model can ground a post in real, current news (no fabrication).
  * All returned text blocks are concatenated.
  */
-async function callClaude(
+async function runContentTask(
+  taskType: string,
   prompt: string,
   maxTokens = 600,
   systemPrompt?: string,
   useWebSearch = false,
 ): Promise<string> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY(),
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'prompt-caching-2024-07-31',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: maxTokens,
-      ...(systemPrompt ? {
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-      } : {}),
-      ...(useWebSearch ? {
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
-      } : {}),
-      messages: [{ role: 'user', content: prompt }],
-    }),
+  const task = await getMessagesTask({ serviceId: 'brand-agent', taskType, language: taskType.endsWith('reply') ? 'auto' : 'es', instructionsVersion: taskType + '-v1',
+    ...(systemPrompt ? { requiredCapabilities: ['prompt_cache'] } : {}),
   });
-  if (!res.ok) throw new Error(`Claude API error: ${res.status}`);
-  const data = await res.json();
-  // Concatenate every text block (web search responses interleave tool blocks)
-  const text = Array.isArray(data.content)
-    ? data.content.filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('\n').trim()
-    : (data.content?.[0]?.text ?? '');
-  return text;
+  const result = await task.create({ max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }],
+    ...(systemPrompt ? { system: systemPrompt } : {}),
+    ...(useWebSearch ? { tools: [{ name: 'web_search' as const, maxCalls: 3 }] } : {}),
+  });
+  return result.content[0].text;
+
 }
 
 // ── Voz del autor + reglas de autenticidad ─────────────────────────────────────
@@ -260,7 +242,7 @@ export async function generateSocialPost(
 
   const systemPrompt = context ? `${VOZ}\n\n${context}` : VOZ;
   const tokens = platform === 'twitter' ? 1500 : 1200;
-  return callClaude(prompt, tokens, systemPrompt, pillar.useWebSearch === true);
+  return runContentTask('brand.social-post', prompt, tokens, systemPrompt, pillar.useWebSearch === true);
 }
 
 export async function generateYoutubeReply(
@@ -283,7 +265,7 @@ Reglas:
 
 Devuelve SOLO el texto de la respuesta.
 `.trim();
-  return callClaude(prompt, 150);
+  return runContentTask('brand.youtube-reply', prompt, 150);
 }
 
 export async function generateGmailReply(
@@ -311,5 +293,5 @@ Reglas:
 
 Devuelve SOLO el cuerpo del email de respuesta.
 `.trim();
-  return callClaude(prompt, 400);
+  return runContentTask('brand.gmail-reply', prompt, 400);
 }

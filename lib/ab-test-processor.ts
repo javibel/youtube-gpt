@@ -1,14 +1,14 @@
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
-import Anthropic from '@anthropic-ai/sdk';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 async function fetchVideoData(token: string, videoId: string) {
   const res = await fetch(
     `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
+  if (!res.ok) return null;
   const data = await res.json();
   return data.items?.[0] ?? null;
 }
@@ -110,7 +110,10 @@ export async function processAbTests(): Promise<{ switched: number; completed: n
 
       // Set winning title
       const winningTitle = winner === 'A' ? test.variantA : test.variantB;
-      await updateTitle(token, test.videoId, winningTitle, video.snippet.categoryId);
+      if (!await updateTitle(token, test.videoId, winningTitle, video.snippet.categoryId)) {
+        errors.push(`A/B test ${test.id}: failed to apply winning title`);
+        continue;
+      }
 
       // AI insight
       let aiInsight: { es: string; en: string } | null = null;
@@ -123,14 +126,15 @@ Winner: Variant ${winner}
 
 Give a brief insight (1-2 sentences) about why the winning title likely performed better and what the creator can learn. Respond as JSON: {"es":"...","en":"..."}`;
 
-        const msg = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
+        const task = await getMessagesTask({ userId: test.userId, taskType: 'youtube.ab-result-insight', language: 'es', instructionsVersion: 'ab-result-insight-v1',
+          outputSchema: { type: 'object', required: ['es', 'en'], additionalProperties: false, properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
+        });
+        const msg = await task.create({
           max_tokens: 200,
           messages: [{ role: 'user', content: prompt }],
         });
         const text = msg.content[0].type === 'text' ? msg.content[0].text : '';
-        const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
-        aiInsight = JSON.parse(cleaned);
+        aiInsight = JSON.parse(text);
       } catch {
         // Non-critical
       }

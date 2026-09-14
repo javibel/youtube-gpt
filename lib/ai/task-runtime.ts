@@ -2,7 +2,7 @@ import type { OutputSchema } from '@/contracts/ai/v1/core.cjs';
 
 export type MessageContent = string | ({ type: 'text'; text: string } | { type: 'image'; source: { type: 'url'; url: string } })[];
 export interface MessagesTask {
-  create(parameters: { messages: { role: 'user' | 'assistant'; content: MessageContent }[]; max_tokens: number; system?: string }, options?: { signal?: AbortSignal }): Promise<{ content: { type: 'text'; text: string }[]; incomplete?: boolean; usage?: { output_tokens?: number | null; input_tokens?: number | null } }>;
+  create(parameters: { messages: { role: 'user' | 'assistant'; content: MessageContent }[]; max_tokens: number; system?: string; tools?: { name: 'web_search'; maxCalls: number }[] }, options?: { signal?: AbortSignal }): Promise<{ content: { type: 'text'; text: string }[]; incomplete?: boolean; usage?: { output_tokens?: number | null; input_tokens?: number | null } }>;
 }
 export type TaskIdentity = ({ userId: string; serviceId?: never } | { serviceId: string; userId?: never }) & {
   taskType: string;
