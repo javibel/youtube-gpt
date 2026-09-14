@@ -3,7 +3,8 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
+import type { OutputSchema } from '@/contracts/ai/v1/core.cjs';
 
 export const maxDuration = 60;
 
@@ -31,6 +32,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  if (!body || typeof body !== 'object' || Array.isArray(body) || (body.videoId != null && typeof body.videoId !== 'string')) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  }
   const videoId = body.videoId as string | undefined;
   const userLang = body.lang === 'en' ? 'en' : 'es';
 
@@ -57,7 +61,7 @@ export async function POST(request: Request) {
   }
 
   // Fetch video details
-  let videoDetails: Record<string, { title: string; views: number; duration: number }> = {};
+  const videoDetails: Record<string, { title: string; views: number; duration: number }> = {};
   try {
     const vidsRes = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}`,
@@ -164,61 +168,38 @@ export async function POST(request: Request) {
   }
 
   // Generate AI tips
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   let aiTips: string[] = [];
   let dropOffReasons: Record<string, { timestamp: string; reason: string }[]> = {};
 
-  if (apiKey && videoRetentions.length > 0) {
+  if (videoRetentions.length > 0) {
     const context = videoRetentions.map(v => {
       const drops = v.dropOffPoints.map(d =>
         `drop ${d.drop}% at ${Math.floor(d.time / 60)}:${(d.time % 60).toString().padStart(2, '0')} (${d.retentionBefore}%→${d.retentionAfter}%)`
       ).join(', ');
-      return `"${v.title}" — hook score ${v.hookScore}%, avg retention ${v.avgRetention}%, ${v.views} views, duration ${Math.floor(v.duration / 60)}min, ${drops || 'no major drops'}`;
+      return `[${v.videoId}] "${v.title}" — hook score ${v.hookScore}%, avg retention ${v.avgRetention}%, ${v.views} views, duration ${Math.floor(v.duration / 60)}min, ${drops || 'no major drops'}`;
     }).join('\n');
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'prompt-caching-2024-07-31',
+      const reasonsSchema: OutputSchema = { type: 'array', items: { type: 'object', required: ['timestamp', 'reason'], additionalProperties: false,
+        properties: { timestamp: { type: 'string' }, reason: { type: 'string' } } } };
+      const task = await getMessagesTask({ taskType: 'youtube.retention-insights', userId: session.user.id,
+        language: userLang, instructionsVersion: 'retention-insights-v1', outputSchema: {
+          type: 'object', additionalProperties: false, required: ['tips'], properties: {
+            tips: { type: 'array', items: { type: 'string' } },
+            dropOffReasons: { type: 'object', additionalProperties: false,
+              properties: Object.fromEntries(videoRetentions.map(v => [v.videoId, reasonsSchema])) },
+          },
         },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 800,
-          messages: [{
-            role: 'user',
-            content: `Analyze these YouTube video retention data. Reply in ${userLang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON with this structure:
+      });
+      const data = await task.create({ max_tokens: 800, messages: [{ role: 'user', content: `Analyze these YouTube video retention data. Reply in ${userLang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON with this structure:
 {"tips":["tip1","tip2","tip3"],"dropOffReasons":{"VIDEO_ID":[{"timestamp":"M:SS","reason":"short explanation"}]}}
 
 For each video's drop-off points, explain the likely reason (intro too long, topic change, dead air, CTA placement, pacing issue, etc). Give 3-4 actionable tips based on patterns across all videos. Focus on the hook score (first 30s) and biggest drops.
 
-${context}`,
-          }],
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.content?.[0]?.text || '';
-        try {
-          const parsed = parseClaudeJson<{ tips?: string[]; dropOffReasons?: typeof dropOffReasons }>(text);
-          if (Array.isArray(parsed)) {
-            aiTips = parsed;
-          } else {
-            aiTips = Array.isArray(parsed.tips) ? parsed.tips : [];
-            dropOffReasons = parsed.dropOffReasons || {};
-          }
-        } catch {
-          // Fallback: try parsing as plain array
-          try {
-            const arr = parseClaudeJson<string[]>(text);
-            if (Array.isArray(arr)) aiTips = arr;
-          } catch { /* */ }
-        }
-      }
+${context}` }] });
+      const parsed = JSON.parse(data.content[0].text);
+      aiTips = parsed.tips;
+      dropOffReasons = parsed.dropOffReasons ?? {};
     } catch { /* */ }
   }
 

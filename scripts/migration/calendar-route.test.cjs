@@ -1,22 +1,23 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {load}=require('./route-harness.cjs');
+const {taskFixture}=require('./task-fixture.cjs');
 const epoch=Date.parse('2026-09-14T08:00:00Z');
 class FixedDate extends Date {constructor(...args){super(...(args.length?args:[epoch]));}static now(){return epoch;}}
 const suggestion={title:'Synthetic idea',date:'2026-09-15',hour:14,reason:'Synthetic reason',description:'Synthetic outline'};
 function harness(options={}) {
  const requests=[],reads=[];
+ const runtime=taskFixture({taskType:'calendar.suggestions',controlUnavailable:options.noKey,respond:async()=>{requests.push({url:'fixture-provider',body:runtime.calls.at(-1)});if(options.transportError)throw Error('Synthetic failure');if(options.providerStatus)throw {status:options.providerStatus};return {content:[{type:'text',text:options.text??JSON.stringify(options.suggestions??[suggestion])}],stop_reason:options.stopReason??'end_turn'};}});
  const read=(name,value)=>async query=>{reads.push({name,query});return value;};
  const route=load('app/api/calendar/suggest/route.ts',{
+  '@/lib/ai/task-runtime':runtime,
   'next/server':{NextResponse:Response},'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic'}}},
   '@/lib/plans':{getUserPlan:async()=>options.free?'free':'pro',isPaid:plan=>plan!=='free'},
   '@/lib/prisma':{prisma:{bestTimeAnalysis:{findUnique:read('times',options.times??null)},trendAlert:{findMany:read('trends',options.trends??[])},trackedCompetitor:{findMany:read('competitors',options.competitors??[])},calendarEntry:{findMany:read('calendar',options.entries??[])},youtubeToken:{findUnique:read('youtube',options.channel??null)}}},
  },{Date:FixedDate,Error,process:{env:{...(options.noKey?{}:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}),...(options.youtube?{YOUTUBE_API_KEY:'synthetic-youtube'}:{})}},fetch:async(url,init)=>{
   requests.push({url,body:init?.body?JSON.parse(init.body):null});
   if(new URL(url).hostname==='www.googleapis.com')return Response.json({items:[{snippet:{title:'Synthetic recent upload',channelTitle:'Synthetic competitor'}}]},{status:options.youtubeStatus??200});
-  assert.equal(url,'https://api.anthropic.com/v1/messages');
-  if(options.transportError)throw Error('Synthetic failure');
-  return Response.json({content:[{text:options.text??JSON.stringify(options.suggestions??[suggestion])}],stop_reason:options.stopReason??'end_turn'},{status:options.providerStatus??200});
+  throw Error('Unexpected external request');
  }});
  async function run(body={lang:'es'}){const r=await route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
  return {run,requests,reads};
@@ -24,7 +25,7 @@ function harness(options={}) {
 const results=[];
 async function test(name,fn,known=false){try{await fn();results.push({name,status:known?'KNOWN_DEFECT_REPRODUCED':'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.message});}}
 (async()=>{
- for(const [name,options,status] of [['anonymous blocked',{anonymous:true},401],['free account blocked',{free:true},403],['missing key blocked',{noKey:true},500]])await test(name,async()=>{const h=harness(options);assert.equal((await h.run()).status,status);assert.equal(h.requests.length,0);assert.equal(h.reads.length,0);});
+ for(const [name,options,status] of [['anonymous blocked',{anonymous:true},401],['free account blocked',{free:true},403],['missing task control blocked',{noKey:true},500]])await test(name,async()=>{const h=harness(options);assert.equal((await h.run()).status,status);assert.equal(h.requests.length,0);assert.equal(h.reads.length,0);});
  await test('successful response shape',async()=>assert.deepEqual(await harness().run(),{status:200,body:{suggestions:[suggestion]}}));
  await test('all database reads scoped to authenticated user',async()=>{const h=harness();await h.run();assert.equal(h.reads.length,5);for(const read of h.reads)assert.equal(read.query.where.userId,'synthetic');});
  await test('Spanish default',async()=>{const h=harness();await h.run();assert.match(h.requests[0].body.messages[0].content,/Reply in Spanish/);});
@@ -43,6 +44,7 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  for(const date of ['2026-02-31','2020-01-01','2026-09-29','not-a-date'])await test('date outside allowed period replaced: '+date,async()=>{assert.equal((await harness({suggestions:[{...suggestion,date}]}).run()).body.suggestions[0].date,'2026-09-15');});
  await test('last allowed day retained',async()=>{assert.equal((await harness({suggestions:[{...suggestion,date:'2026-09-28'}]}).run()).body.suggestions[0].date,'2026-09-28');});
  await test('missing hour defaults to noon',async()=>{assert.equal((await harness({suggestions:[{...suggestion,hour:undefined}]}).run()).body.suggestions[0].hour,12);});
- await test('truncated output accepted without explicit status',async()=>{assert.equal((await harness({stopReason:'max_tokens'}).run()).status,200);},true);
- console.log(JSON.stringify({scope:'actual calendar suggestion route with fixed date and synthetic data/network; no calendar writes',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
+ await test('truncated proposals are not returned as completed',async()=>{assert.equal((await harness({stopReason:'max_tokens'}).run()).status,500);});
+ await test('proposal without a title is rejected',async()=>assert.equal((await harness({suggestions:[{}]}).run()).status,500));
+ console.log(JSON.stringify({scope:'migrated calendar suggestion route and legacy date/hour sanitizer; synthetic runtime and external data; no calendar writes',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
 })();

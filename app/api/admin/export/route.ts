@@ -1,3 +1,4 @@
+import { historyOutputTokens } from "@/lib/ai/history-usage";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guards";
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
       id: g.id,
       user_email: g.user.email,
       template: g.template,
-      tokens_used: g.tokensUsed,
+      tokens_used: historyOutputTokens(g.tokensUsed),
       created_at: g.createdAt.toISOString(),
     })));
     filename = `ytubviral_generations_${new Date().toISOString().split('T')[0]}.csv`;

@@ -1,3 +1,4 @@
+import { historyOutputTokens } from "@/lib/ai/history-usage";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guards";
@@ -152,7 +153,7 @@ export async function GET() {
       id: g.id,
       template: g.template,
       createdAt: g.createdAt,
-      tokensUsed: g.tokensUsed,
+      tokensUsed: historyOutputTokens(g.tokensUsed),
       userEmail: g.user.email,
     })),
   });

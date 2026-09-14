@@ -60,7 +60,7 @@ type Stats = {
   subscription: { status: string; plan?: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
 };
 
-type Generation = { id: string; template: string; createdAt: string; tokensUsed: number; output: string; inputs: Record<string, string> };
+type Generation = { id: string; template: string; createdAt: string; tokensUsed: number | null; output: string; inputs: Record<string, string> };
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -1063,7 +1063,7 @@ function handleCopy(id: string, out: string) {
                               {new Date(gen.createdAt).toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </span>
                             <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>·</span>
-                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{gen.tokensUsed} tokens</span>
+                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{gen.tokensUsed == null ? (lang === 'en' ? 'Usage unavailable' : 'Consumo no disponible') : `${gen.tokensUsed} tokens`}</span>
                           </div>
                           {gen.inputs?.tema && <p className="font-display font-semibold mt-0.5 truncate">{gen.inputs.tema}</p>}
                           {gen.template === 'thumbnail' ? (

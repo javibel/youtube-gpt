@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { TEMPLATES } from '@/utils/prompts';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -25,7 +26,10 @@ export async function POST(request: Request) {
     const limits = getLimits(plan);
     const maxTopics = limits.bulkMaxTopics;
 
-    const { template, topics, options = {}, lang = 'es' } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return Response.json({ error: 'Invalid body' }, { status: 400 });
+    const { template, topics, options = {}, lang = 'es' } = body;
+    if (!options || typeof options !== 'object' || Array.isArray(options) || Object.values(options).some(value => typeof value === 'string' && value.length > 500)) return Response.json({ error: 'Invalid options' }, { status: 400 });
 
     // Validate template
     const templateData = TEMPLATES[template as keyof typeof TEMPLATES];
@@ -68,10 +72,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-    if (!apiKey) {
-      return Response.json({ error: 'Service unavailable' }, { status: 503 });
-    }
+    const identity = { taskType: 'content.bulk-generate', userId: session.user.id, language: lang === 'en' ? 'en' : 'es', instructionsVersion: 'bulk-templates-v1' };
+    let firstTask: Awaited<ReturnType<typeof getMessagesTask>> | null;
+    try { firstTask = await getMessagesTask(identity); }
+    catch { return Response.json({ error: 'Service unavailable' }, { status: 503 }); }
 
     const ip = getIp(request);
     const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis']);
@@ -85,30 +89,12 @@ export async function POST(request: Request) {
 
     for (const topic of cleanTopics) {
       try {
-        const inputs = { tema: topic, ...options };
+        const inputs = { ...options, tema: topic };
         const prompt = templateData.prompt(inputs) + langInstruction;
 
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-beta': 'prompt-caching-2024-07-31',
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
-            max_tokens: maxTokens,
-            messages: [{ role: 'user', content: prompt }],
-          }),
-        });
-
-        if (!res.ok) {
-          results.push({ topic, content: '', error: `API error ${res.status}` });
-          continue;
-        }
-
-        const data = await res.json();
+        const task = firstTask ?? await getMessagesTask(identity);
+        firstTask = null;
+        const data = await task.create({ max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] });
         const content = data.content[0].text;
         const tokensUsed = data.usage?.output_tokens ?? 0;
 
@@ -117,7 +103,7 @@ export async function POST(request: Request) {
           data: {
             userId: session.user.id,
             template,
-            inputs: { tema: topic, ...options, _bulk: true },
+            inputs: { ...options, tema: topic, _bulk: true },
             output: content,
             tokensUsed,
             ipAddress: ip,
@@ -129,7 +115,7 @@ export async function POST(request: Request) {
         results.push({
           topic,
           content: '',
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: err && typeof err === 'object' && 'code' in err && err.code === 'rate_limit' ? 'API error 429' : 'Generation failed',
         });
       }
     }

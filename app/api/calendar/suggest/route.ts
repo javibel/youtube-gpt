@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -5,7 +6,6 @@ import { getUserPlan, isPaid } from '@/lib/plans';
 
 export const maxDuration = 60;
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 
 const DAY_NAMES_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -21,14 +21,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
-  if (!ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ai_not_configured' }, { status: 500 });
-  }
-
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) ?? {};
   const lang = body.lang === 'en' ? 'en' : 'es';
 
   const userId = session.user.id;
+  let task;
+  try {
+    task = await getMessagesTask({ taskType: 'calendar.suggestions', userId, language: lang, instructionsVersion: 'calendar-suggestions-v1',
+      outputSchema: { type: 'array', items: { type: 'object', properties: { title: { type: 'string', minLength: 1 }, date: { type: 'string' }, reason: { type: 'string' }, description: { type: 'string' } }, required: ['title'], additionalProperties: true } },
+    });
+  } catch { return NextResponse.json({ error: 'ai_not_configured' }, { status: 500 }); }
 
   // Gather data in parallel
   const [bestTime, trendAlerts, competitors, existingEntries, ytToken] = await Promise.all([
@@ -69,7 +71,6 @@ export async function POST(request: Request) {
   let competitorUploads = 'No competitor data.';
   if (competitors.length > 0 && YT_API_KEY) {
     try {
-      const channelIds = competitors.map(c => c.channelId).join(',');
       const res = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${competitors[0].channelId}&type=video&order=date&maxResults=5&publishedAfter=${new Date(Date.now() - 7 * 86400000).toISOString()}&key=${YT_API_KEY}`
       );
@@ -110,16 +111,7 @@ export async function POST(request: Request) {
   });
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'prompt-caching-2024-07-31',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+    const data = await task.create({
         max_tokens: 1000,
         messages: [{
           role: 'user',
@@ -151,15 +143,8 @@ ${competitorUploads}
 Already scheduled:
 ${existingInfo}`,
         }],
-      }),
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `AI API ${res.status}`);
-    }
-
-    const data = await res.json();
     const text = data.content?.[0]?.text || '';
 
     let suggestions: { title: string; date: string; hour: number; reason: string; description: string }[];
@@ -186,7 +171,7 @@ ${existingInfo}`,
 
     return NextResponse.json({ suggestions });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'AI error';
+    const msg = e && typeof e === 'object' && 'code' in e && e.code === 'invalid_format' ? 'ai_parse_error' : 'AI error';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

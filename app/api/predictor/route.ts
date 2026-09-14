@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -123,12 +124,6 @@ export async function POST(request: Request) {
     videoCount: videos.length,
   };
 
-  // Call Claude for prediction
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) {
-    return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
-  }
-
   const userLang = body.lang === 'en' ? 'en' : 'es';
 
   const prompt = `You are a YouTube analytics predictor. Based on the creator's channel data and the proposed video details, predict its performance.
@@ -158,36 +153,32 @@ Output ONLY a valid JSON object with these fields:
 Be realistic. Base predictions on actual channel metrics, not optimistic guesses.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'prompt-caching-2024-07-31',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    if (!res.ok) {
-      return NextResponse.json({ error: 'AI service error' }, { status: 500 });
-    }
-
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '';
-
-    let prediction;
+    let task;
     try {
-      prediction = JSON.parse(text);
+      task = await getMessagesTask({ taskType: 'youtube.performance-prediction', userId: session.user.id,
+        language: userLang, instructionsVersion: 'performance-prediction-v1',
+        outputSchema: {
+          type: 'object', additionalProperties: false,
+          required: ['estimatedViews','estimatedEngagement','titleScore','seoScore','viralPotential','strengths','weaknesses','suggestion'],
+          properties: {
+            estimatedViews: { type: 'object', additionalProperties: false, required: ['low','mid','high'], properties: {
+              low: { type: 'number', minimum: 0 }, mid: { type: 'number', minimum: 0 }, high: { type: 'number', minimum: 0 },
+            } },
+            estimatedEngagement: { type: 'number', minimum: 0 },
+            titleScore: { type: 'number', minimum: 0, maximum: 100 }, seoScore: { type: 'number', minimum: 0, maximum: 100 },
+            viralPotential: { type: 'string', enum: ['low','medium','high'] },
+            strengths: { type: 'array', items: { type: 'string' } }, weaknesses: { type: 'array', items: { type: 'string' } },
+            suggestion: { type: 'string', minLength: 1 },
+          },
+        },
+      });
     } catch {
-      // Try to extract JSON from text
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) prediction = JSON.parse(match[0]);
-      else return NextResponse.json({ error: 'prediction_failed' }, { status: 500 });
+      return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
+    }
+    const data = await task.create({ max_tokens: 600, messages: [{ role: 'user', content: prompt }] });
+    const prediction = JSON.parse(data.content[0].text);
+    if (prediction.estimatedViews.low > prediction.estimatedViews.mid || prediction.estimatedViews.mid > prediction.estimatedViews.high) {
+      return NextResponse.json({ error: 'prediction_failed' }, { status: 500 });
     }
 
     return NextResponse.json({

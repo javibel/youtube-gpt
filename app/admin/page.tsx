@@ -20,7 +20,7 @@ type AdminData = {
   templateBreakdown: { template: string; count: number }[];
   daily: { date: string; count: number }[];
   recentUsers: { id: string; email: string; name: string | null; createdAt: string; isPro: boolean; plan: string; generationCount: number }[];
-  recentGenerations: { id: string; template: string; createdAt: string; tokensUsed: number; userEmail: string }[];
+  recentGenerations: { id: string; template: string; createdAt: string; tokensUsed: number | null; userEmail: string }[];
 };
 type FeedbackItem = {
   id: string; token: string; lang: string; rating: number | null; comment: string | null;
@@ -342,7 +342,7 @@ export default function AdminPage() {
                   <div className="min-w-0">
                     <p className="text-sm truncate" style={{ color: 'var(--text)' }}>{g.userEmail}</p>
                     <p className="text-[13px] font-mono-jb mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                      {TEMPLATE_LABELS[g.template] ?? g.template} · {g.tokensUsed} tokens
+                      {TEMPLATE_LABELS[g.template] ?? g.template} · {g.tokensUsed == null ? 'Consumo no disponible' : `${g.tokensUsed} tokens`}
                     </p>
                   </div>
                   <span className="text-[13px] font-mono-jb ml-4 shrink-0" style={{ color: 'var(--text-faint)' }}>

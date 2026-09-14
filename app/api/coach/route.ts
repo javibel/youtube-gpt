@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -26,7 +27,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   const { message, context, mode, lang: clientLang, pageContext } = body;
   const lang = clientLang === 'en' ? 'en' : 'es';
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -146,44 +148,28 @@ RULES:
 - If asked about something you don't have data for, say so honestly
 - Never invent metrics or data you don't have`;
 
-  const contextMessages = Array.isArray(context)
-    ? context.slice(-MAX_CONTEXT).map((m: { role: string; content: string }) => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: String(m.content).slice(0, 2000),
-      }))
-    : [];
-
-  const messages = [...contextMessages, { role: 'user', content: message.trim().slice(0, 2000) }];
-
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) {
+  const history = Array.isArray(context) ? context.slice(-MAX_CONTEXT) : [];
+  if (history.some(m => !m || !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string')
+    || history[0]?.role === 'assistant') {
+    return NextResponse.json({ error: 'Invalid conversation history' }, { status: 400 });
+  }
+  const contextMessages = history.map((m: { role: 'user' | 'assistant'; content: string }) => ({
+    role: m.role, content: m.content.slice(0, 2000),
+  }));
+  const messages: { role: 'user' | 'assistant'; content: string }[] = [...contextMessages, { role: 'user', content: message.trim().slice(0, 2000) }];
+  let task;
+  try {
+    task = await getMessagesTask({
+      taskType: 'channel.coach', userId, language: lang, instructionsVersion: 'coach-modes-v1',
+      requiredCapabilities: ['prompt_cache'],
+    });
+  } catch {
     return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
   }
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'prompt-caching-2024-07-31',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: [
-        { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
-      ],
-      messages,
-    }),
-  });
-
-  if (!res.ok) {
+  try {
+    const data = await task.create({ max_tokens: 4096, system: systemPrompt, messages });
+    return NextResponse.json({ reply: data.content[0].text });
+  } catch {
     return NextResponse.json({ error: 'AI service error' }, { status: 500 });
   }
-
-  const data = await res.json();
-  const reply: string = data.content?.[0]?.text ?? '';
-
-  return NextResponse.json({ reply });
 }

@@ -56,4 +56,17 @@ GRANT SELECT,INSERT ON ytv_ai_test_v1.runs,ytv_ai_test_v1.reservations TO ytv_ai
 REVOKE UPDATE ON ytv_ai_test_v1.runs,ytv_ai_test_v1.reservations FROM ytv_ai_test_executor;
 GRANT UPDATE(status,usage,finished_at) ON ytv_ai_test_v1.runs TO ytv_ai_test_executor;
 GRANT UPDATE(state,actual_micros) ON ytv_ai_test_v1.reservations TO ytv_ai_test_executor;
-GRANT SELECT,UPDATE ON ytv_ai_test_v1.budgets TO ytv_ai_test_executor;
+REVOKE UPDATE ON ytv_ai_test_v1.budgets FROM ytv_ai_test_executor;
+GRANT SELECT ON ytv_ai_test_v1.budgets TO ytv_ai_test_executor;
+GRANT UPDATE(reserved_micros,settled_micros,blocked) ON ytv_ai_test_v1.budgets TO ytv_ai_test_executor;
+CREATE OR REPLACE FUNCTION ytv_ai_test_v1.prevent_executor_unblock() RETURNS trigger
+LANGUAGE plpgsql SET search_path=pg_catalog AS $$
+BEGIN
+ IF OLD.blocked AND NOT NEW.blocked AND NOT pg_catalog.pg_has_role(current_user,'ytv_ai_test_activator','USAGE') THEN
+  RAISE EXCEPTION 'Executor cannot clear a budget hold' USING ERRCODE='42501';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE OR REPLACE TRIGGER ytv_ai_test_budget_hold
+BEFORE UPDATE OF blocked ON ytv_ai_test_v1.budgets
+FOR EACH ROW EXECUTE FUNCTION ytv_ai_test_v1.prevent_executor_unblock();
