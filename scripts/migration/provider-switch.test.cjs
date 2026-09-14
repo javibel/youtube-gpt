@@ -1,0 +1,19 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {createRegistry}=require('../../contracts/ai/v1/core.cjs');
+const {createTaskRunner}=require('../../contracts/ai/v1/task-runner.cjs');
+const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');
+const {createOpenAIAdapter}=require('../../lib/ai/adapters/openai.cjs');
+const request=()=>({requestId:'synthetic-request',taskType:'summary',contractVersion:'1.0',inputVersion:'1.0',language:'es',instructions:'Synthetic instructions',instructionsVersion:'synthetic-v1',messages:[{role:'user',content:[{type:'text',text:'Synthetic input'}]}],requiredCapabilities:['text'],toolPolicy:{allowed:[],maxCalls:0},budget:{currency:'EUR',maxCostMicros:100,maxOutputTokens:40,deadlineMs:1000}});
+const config=(providerId,revision)=>({contractVersion:'1.0',revision,fallback:'none',activeProfile:'selected',profiles:{selected:{summary:{providerId,model:'synthetic-model'}}},exceptions:[]});
+function setup(){let active=config('openai','revision-one'),release,started;const calls=[],settled=[];let hold=false,fail=false;const ready=new Promise(r=>started=r);const registry=createRegistry();const options={models:{'synthetic-model':{verified:true,executors:['ai'],capabilities:['text','json','vision','web_search','prompt_cache']}},credentialRef:'test:synthetic',preflight:async()=>({upperBoundMicros:90,currency:'EUR',priceVersion:'synthetic-v1'})};for(const [id,create] of [['openai',createOpenAIAdapter],['anthropic',createAnthropicAdapter]])registry.register(create({...options,transport:{create:async payload=>{calls.push({id,payload});if(hold){started();await new Promise(r=>release=r);}if(fail)throw Error('Synthetic transport failure');const text='Synthetic response';return id==='openai'?{status:'completed',output:[{type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text,annotations:[]}]}],usage:{input_tokens:15,input_tokens_details:{cached_tokens:3,cache_write_tokens:2},output_tokens:5}}:{stop_reason:'end_turn',content:[{type:'text',text}],usage:{input_tokens:10,cache_read_input_tokens:3,cache_creation_input_tokens:2,output_tokens:5,server_tool_use:{web_search_requests:0}}};}}}));
+const runner=createTaskRunner({registry,store:{admit:async(req,{runId})=>({runId,snapshot:registry.resolve(active,req),status:'running',replay:false}),reconcile:async(runId,result)=>{settled.push(result);return {state:'uncertain'};}}});return {calls,settled,ready,setActive:v=>active=v,setHold:v=>hold=v,setFail:v=>fail=v,release:()=>release(),run:(id,req=request())=>runner.run(req,{runId:id,budgetId:'synthetic-budget'})};}
+(async()=>{
+ const h=setup();h.setHold(true);const running=h.run('old-run');await h.ready;h.setActive(config('anthropic','revision-two'));h.setHold(false);h.release();const first=(await running).result;assert.equal(first.providerId,'openai');assert.equal(first.configRevision,'revision-one');
+ const second=(await h.run('new-run')).result;assert.equal(second.providerId,'anthropic');assert.equal(second.configRevision,'revision-two');assert.equal(first.text,second.text);assert.deepEqual(first.usage,second.usage);
+ h.setActive(config('openai','revision-three'));assert.equal((await h.run('rollback')).result.providerId,'openai');
+ h.setFail(true);const previous=h.calls.length;assert.equal((await h.run('failure')).result.status,'failed');assert.equal(h.calls.length,previous+1);assert.equal(h.calls.at(-1).id,'openai');
+ h.setFail(false);const req=request();req.requiredCapabilities.push('unimplemented');const count=h.calls.length;await assert.rejects(h.run('unsupported',req));assert.equal(h.calls.length,count);
+ assert.equal(h.settled.length,4);
+ console.log('PASS: 6 common runner checks for actual adapters: pinned in-flight configuration, switch, normalized result/usage, rollback, no fallback and capability rejection');
+})().catch(e=>{console.error(e);process.exitCode=1;});

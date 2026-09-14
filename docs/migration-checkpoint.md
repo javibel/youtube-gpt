@@ -51,3 +51,6 @@ Audit, thumbnail preview, optimization and thumbnail generation now use the comm
 
 ## 2026-09-15 — Web inventory centralized
 All 32 web inventory references across 23 routes and 4 libraries use the common boundary. Protected full build, reference/adapters suites and 33 SQL tests pass. The new static regression guard checks 299 business files. Library suite: 23; scheduled content/image suite: 29; compatibility: 22. No live communication, publication, provider call or general startup. Agent migration, durable outputs/history and later phases remain pending.
+
+## 2026-09-15 — OpenAI Responses adapter
+The second real protocol adapter is implemented with injected synthetic transport, verified fixture catalog and bounded quote. 41 adapter checks plus 6 shared-runner configuration switch tests pass. Ordinary input/cache read/cache write buckets match the Anthropic adapter without double counting. No real account model, API transport, pricing or quality claim is made. Official Responses/structured-output/cache documentation was opened. No live SDK/bootstrap is installed; general startup remains disabled. Next: durable output recovery and remaining agent caller/integration coverage.

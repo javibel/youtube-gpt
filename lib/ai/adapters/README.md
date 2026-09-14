@@ -23,3 +23,14 @@ Update: seven routes now use this boundary (generate, chat, storyboard, backgrou
 Twelve routes now use this boundary: additionally Coach, bulk generation, calendar suggestions, performance prediction and retention insights. Retention requires the requested typed object; unexpected legacy arrays keep metrics but yield no AI tips. History display treats ambiguous legacy zero as unknown; ledger linkage is pending.
 
 Current service grants: public-seo, brand-agent and morning-cron must be explicitly allowed per task and authorized to a budget. Business search declarations use `{name: "web_search", maxCalls: N}`; the facade retains legacy compatibility but rejects mixed declarations and any allowance exceeding trusted policy.
+
+OpenAI Responses adapter (2026-09-15): `openai.cjs` also uses injected transport/catalog/pricing only; no SDK or credential is installed or read. It disables storage, streaming, background execution and automatic retries. Leading instructions, text history, HTTPS image references and bounded built-in web search map to the common contract. JSON follows the same explicit instruction-plus-local-validation strategy as the Anthropic adapter; native strict Structured Outputs are not claimed. Prompt cache intent preserves a leading reusable prefix with provider implicit caching; neither a hit nor a particular cache lifetime is guaranteed.
+
+Input usage buckets are non-overlapping: ordinary/uncached input, cache read and cache write. Responses total input is reduced by its reported cache read/write counters; absent or inconsistent counters keep ordinary input unknown. Output includes the provider's reported output total (including reasoning). A caller must not add OpenAI's raw total to the cache buckets. Pricing must conservatively cover all input/output/cache/tool costs and is not inferred from model names.
+
+Official sources opened on 2026-09-15:
+- https://developers.openai.com/api/reference/typescript/resources/responses/methods/create
+- https://developers.openai.com/api/docs/guides/structured-outputs
+- https://developers.openai.com/api/docs/guides/prompt-caching
+
+41 OpenAI protocol tests and 6 common-runner switch tests pass with synthetic data. Both adapters preserve pinned execution configuration across switches and rollbacks and never silently fall back. Account model availability, actual SDK transport, live quality/cost and application bootstrap remain pending.
