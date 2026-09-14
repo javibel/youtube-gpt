@@ -1,16 +1,17 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {load}=require('./route-harness.cjs');
+const {taskFixture}=require('./task-fixture.cjs');
 const epoch=Date.parse('2026-09-14T12:00:00Z');
 class FixedDate extends Date{constructor(...args){super(...(args.length?args:[epoch]));}static now(){return epoch;}}
 const video=(date,views='100')=>({snippet:{publishedAt:date},statistics:{viewCount:views}});
 const sample=[video('2026-09-07T10:00:00Z','1000'),video('2026-09-07T18:00:00Z','300'),video('2026-09-06T12:00:00Z','100')];
 function harness(options={}){
- const calls=[],requests=[],saved=[],reads=[];
- const respond=async body=>{calls.push(body);if(options.aiError)throw Error('Synthetic AI failure');return {content:[{type:'text',text:options.text??'{"es":"Consejo sintético","en":"Synthetic tip"}'}],stop_reason:options.stopReason??'end_turn'};};
- const sdk=class{constructor(){this.messages={create:respond};}};
+ const requests=[],saved=[],reads=[];
+ const runtime=taskFixture({taskType:'youtube.best-time-tip',controlUnavailable:options.controlUnavailable,respond:async()=>{if(options.aiError)throw Error('Synthetic AI failure');return {content:[{type:'text',text:options.text??'{"es":"Consejo sintético","en":"Synthetic tip"}'}],stop_reason:options.stopReason??'end_turn'};}});
+ const calls=runtime.calls;
  const route=load('app/api/youtube/best-time/route.ts',{
-  'next/server':{NextResponse:Response},'@anthropic-ai/sdk':sdk,'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic'}}},
+  'next/server':{NextResponse:Response},'@/lib/ai/task-runtime':runtime,'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic'}}},
   '@/lib/plans':{getUserPlan:async()=>options.free?'free':'pro',isPaid:plan=>plan!=='free'},'@/lib/youtube-auth':{getAccessToken:async()=>options.noToken?null:'synthetic-token'},
   '@/lib/prisma':{prisma:{bestTimeAnalysis:{findUnique:async query=>{reads.push(query);return options.cached??null;},upsert:async query=>{if(options.saveError)throw Error('Synthetic storage failure');saved.push(query);return query.create;}}}},
  },{Date:FixedDate,Error,process:{env:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}},fetch:async(url,init)=>{
@@ -42,7 +43,8 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  await test('AI failure preserves deterministic matrix',async()=>{const r=await harness({aiError:true}).run();assert.equal(r.status,200);assert.equal(r.body.data.aiTip,null);});
  await test('fenced bilingual tip parsed',async()=>{assert.equal((await harness({text:'```json\n{"es":"Sintético","en":"Synthetic"}\n```'}).run()).body.data.aiTip.en,'Synthetic');});
  await test('storage error is not reported as saved',async()=>{assert.equal((await harness({saveError:true}).run()).status,500);});
- await test('wrong JSON type accepted as tip',async()=>{assert.equal((await harness({text:'7'}).run()).body.data.aiTip,7);},true);
- await test('truncated tip accepted',async()=>{assert.equal((await harness({stopReason:'max_tokens'}).run()).body.data.aiTip.en,'Synthetic tip');},true);
- console.log(JSON.stringify({scope:'actual best-time route, UTC matrix and persistence contract; synthetic YouTube/SDK and clock',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
+ await test('wrong JSON type discarded without losing matrix',async()=>{const out=await harness({text:'7'}).run();assert.equal(out.body.data.aiTip,null);assert.equal(out.body.data.heatmap.length,7);});
+ await test('truncated tip discarded',async()=>{assert.equal((await harness({stopReason:'max_tokens'}).run()).body.data.aiTip,null);});
+ await test('unavailable AI control preserves non-AI analysis',async()=>{const out=await harness({controlUnavailable:true}).run();assert.equal(out.status,200);assert.equal(out.body.data.aiTip,null);assert.equal(out.body.data.videoCount,3);});
+ console.log(JSON.stringify({scope:'migrated best-time route through real contract runner and adapter; synthetic YouTube, store, transport and clock',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
 })();

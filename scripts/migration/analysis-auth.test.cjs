@@ -18,6 +18,7 @@ const results=[];
     'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>session},
     '@/lib/prisma':{prisma:forbidden},'@/lib/plans':{getUserPlan:forbidden,getLimits:forbidden,isPaid:forbidden},
     '@/lib/youtube-auth':{getAccessToken:forbidden},'@/lib/parse-claude-json':{parseClaudeJson:forbidden},
+    '@/lib/ai/task-runtime':{getMessagesTask:forbidden},
     'sharp':forbidden,'@vercel/blob':{put:forbidden},'@anthropic-ai/sdk':class {constructor(){this.messages=forbidden;}},
    },{process:{env:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}},fetch:forbidden});
    assert.equal(typeof route[method],'function');

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import Anthropic from '@anthropic-ai/sdk';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -51,22 +49,31 @@ Reglas:
 
 Responde SOLO con un objeto JSON: {"variantA": "...", "variantB": "..."}`;
 
-  const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 200,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const text = msg.content[0].type === 'text' ? msg.content[0].text : '';
-  const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
-
   try {
+    const task = await getMessagesTask({
+      taskType: 'youtube.ab-title-suggestions', userId: session.user.id,
+      language: isEn ? 'en' : 'es', instructionsVersion: 'ab-titles-v1',
+      outputSchema: { type: 'object', properties: { variantA: { type: 'string' }, variantB: { type: 'string' } }, additionalProperties: false },
+    });
+    const msg = await task.create({
+      max_tokens: 200,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = msg.content[0]?.type === 'text' ? msg.content[0].text : '';
+    const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
+
     const parsed = JSON.parse(cleaned);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)
+      || (parsed.variantA !== undefined && typeof parsed.variantA !== 'string')
+      || (parsed.variantB !== undefined && typeof parsed.variantB !== 'string')) {
+      return NextResponse.json({ error: 'AI response parse error' }, { status: 500 });
+    }
     return NextResponse.json({
       variantA: parsed.variantA || title,
       variantB: parsed.variantB || title,
     });
   } catch {
-    return NextResponse.json({ error: 'AI response parse error' }, { status: 500 });
+    return NextResponse.json({ error: 'AI suggestions temporarily unavailable' }, { status: 503 });
   }
 }

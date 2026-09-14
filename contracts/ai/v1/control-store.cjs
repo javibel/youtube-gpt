@@ -74,13 +74,15 @@ function createControlStore(database,registry){
     if(cost!==null&&usage.currency!==budget.currency)fail('invalid_format','Cost currency differs from reserved currency');
     if(reservation.state==='settled'){
      if(Number(reservation.actual_micros)!==cost)fail('uncertain','Conflicting repeated reconciliation');
+     const prior=(await tx.query('SELECT status,usage FROM ytv_ai_test_v1.runs WHERE run_id=$1',[runId]))[0];
+     if(prior.status!==status||prior.usage?.currency!==usage.currency||prior.usage?.priceVersion!==usage.priceVersion)fail('uncertain','Repeated reconciliation changes outcome or price provenance');
      return {state:'settled',replay:true};
     }
     const amount=Number(reservation.amount_micros);
     if(cost===null||cost>amount||status==='uncertain'){
      if(cost!==null&&cost>amount)await tx.query('UPDATE ytv_ai_test_v1.budgets SET blocked=true WHERE budget_id=$1',[reservation.budget_id]);
      await tx.query("UPDATE ytv_ai_test_v1.reservations SET state='uncertain' WHERE run_id=$1",[runId]);
-     await tx.query("UPDATE ytv_ai_test_v1.runs SET status='uncertain',usage=$2::jsonb WHERE run_id=$1",[runId,JSON.stringify(usage??null)]);
+     await tx.query("UPDATE ytv_ai_test_v1.runs SET status=$2,usage=$3::jsonb,finished_at=CASE WHEN $2='uncertain' THEN NULL ELSE now() END WHERE run_id=$1",[runId,status,JSON.stringify(usage??null)]);
      return {state:'uncertain',retainedMicros:amount};
     }
     await tx.query('UPDATE ytv_ai_test_v1.budgets SET reserved_micros=reserved_micros-$2,settled_micros=settled_micros+$3 WHERE budget_id=$1',[reservation.budget_id,amount,cost]);

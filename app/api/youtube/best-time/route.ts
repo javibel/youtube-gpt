@@ -4,9 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { type Prisma } from '@prisma/client';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import Anthropic from '@anthropic-ai/sdk';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 export const maxDuration = 60;
 
@@ -189,8 +187,12 @@ export async function POST() {
 
     let aiTip: { es: string; en: string } | null = null;
     try {
-      const aiRes = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+      const task = await getMessagesTask({
+        taskType: 'youtube.best-time-tip', userId: session.user.id,
+        language: 'es,en', instructionsVersion: 'best-time-tip-v1',
+        outputSchema: { type: 'object', properties: { es: { type: 'string' }, en: { type: 'string' } }, required: ['es', 'en'], additionalProperties: false },
+      });
+      const aiRes = await task.create({
         max_tokens: 200,
         messages: [{
           role: 'user',

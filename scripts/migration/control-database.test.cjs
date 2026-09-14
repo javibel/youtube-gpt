@@ -49,9 +49,11 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
  await test('replay cannot change budget or authenticated agent context',async()=>{for(const context of [{budgetId:b0},{budgetId:b2,agentId:'different-agent'}])await assert.rejects(store('executor').admit(duplicate,{runId:prefix+'_context',...context}),error=>error.code==='invalid_format');});
  await test('empty or missing active profile rejected before publication',async()=>{for(const profiles of [{},{another:{summary:{providerId:'fixture-alpha',model:'test-model'}}}])await assert.rejects(store('activator').publish({...cfg('bad'),profiles},{actor:'test-admin'}),error=>error.code==='configuration');});
  await test('unknown cost retains reservation',async()=>{assert.equal((await store('executor').reconcile(duplicateRun,{status:'completed',usage:{costMicros:null}})).state,'uncertain');assert.equal(Number((await stats(b2)).reserved_micros),60);});
+ await test('unknown accounting cost preserves completed task status',async()=>{const row=(await pool.query('SELECT status,finished_at FROM ytv_ai_test_v1.runs WHERE run_id=$1',[duplicateRun])).rows[0];assert.equal(row.status,'completed');assert.ok(row.finished_at);});
  await test('currency mismatch is rejected before settlement',async()=>assert.rejects(store('executor').reconcile(duplicateRun,{status:'completed',usage:{costMicros:10,currency:'USD',priceVersion:'test-v1'}}),error=>error.code==='invalid_format'));
  await test('known cost releases unused reserve exactly once',async()=>{const settlement={status:'completed',usage:{costMicros:10,currency:'EUR',priceVersion:'test-v1'}};await store('executor').reconcile(duplicateRun,settlement);assert.equal((await store('executor').reconcile(duplicateRun,settlement)).replay,true);const row=await stats(b2);assert.equal(Number(row.reserved_micros),0);assert.equal(Number(row.settled_micros),10);});
  await test('conflicting reconciliation is not silently applied',async()=>assert.rejects(store('executor').reconcile(duplicateRun,{status:'completed',usage:{costMicros:20,currency:'EUR',priceVersion:'test-v1'}}),error=>error.code==='uncertain'));
+ await test('same cost cannot rewrite status or price provenance',async()=>{for(const outcome of [{status:'failed',usage:{costMicros:10,currency:'EUR',priceVersion:'test-v1'}},{status:'completed',usage:{costMicros:10,currency:'EUR',priceVersion:'changed-tariff'}}])await assert.rejects(store('executor').reconcile(duplicateRun,outcome),error=>error.code==='uncertain');});
  const b3=await budget('overrun',500);const over=await store('executor').admit(req('overrun'),{runId:prefix+'_overrun_run',budgetId:b3});
  await test('observed overrun freezes new admissions',async()=>{await store('executor').reconcile(over.runId,{status:'completed',usage:{costMicros:70,currency:'EUR',priceVersion:'test-v1'}});assert.equal((await stats(b3)).blocked,true);await assert.rejects(store('executor').admit(req('after-overrun'),{runId:prefix+'_after_overrun',budgetId:b3}),error=>error.code==='quota');});
  await test('stored run omits prompt and instructions',async()=>{const row=(await pool.query('SELECT * FROM ytv_ai_test_v1.runs WHERE run_id=$1',[old.runId])).rows[0];assert.equal(JSON.stringify(row).includes('Synthetic input'),false);assert.equal(JSON.stringify(row).includes('Synthetic instructions'),false);});
@@ -71,6 +73,19 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   const out=await createTaskRunner({store:cstore('executor'),registry:codingRegistry,executor:'coding'}).run(input,{runId:prefix+'_coding',budgetId:await budget('coding')});
   assert.equal(out.result.status,'completed');assert.equal((await pool.query('SELECT snapshot FROM ytv_ai_test_v1.runs WHERE run_id=$1',[out.result.runId])).rows[0].snapshot.executor,'coding');assert.equal(calls,1);
  });
+ await test('actual AB route uses installed server factory and PostgreSQL ledger',async()=>{
+  const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');
+  const actualRegistry=createRegistry();let calls=0;
+  actualRegistry.register(createAnthropicAdapter({models:{'test-model':{verified:true,executors:['ai'],capabilities:['text','json']}},credentialRef:'test:fixture',preflight:async()=>({upperBoundMicros:60,currency:'EUR',priceVersion:'test-v1'}),priceUsage:async()=>({costMicros:7,currency:'EUR',priceVersion:'test-v1',estimated:true}),transport:{create:async()=>{calls++;return {content:[{type:'text',text:'{"variantA":"Synthetic A","variantB":"Synthetic B"}'}],stop_reason:'end_turn',usage:{input_tokens:10,output_tokens:5}};}}}));
+  const actualStore=role=>createControlStore(database(role),actualRegistry);const config=cfg('web-route','anthropic');config.profiles.default={'youtube.ab-title-suggestions':{providerId:'anthropic',model:'test-model'}};
+  await actualStore('activator').publish(config,{actor:'test-admin'});await actualStore('activator').activate(config.revision,{expectedRevision:cfg('coding').revision,actor:'test-admin',reason:'synthetic HTTP integration'});
+  const budgetId=await budget('actual-route');const runtime=load('lib/ai/task-runtime.ts');
+  runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'youtube.ab-title-suggestions':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:200,deadlineMs:3000}}},authorize:async({userId,taskType})=>userId==='synthetic'&&taskType==='youtube.ab-title-suggestions'?{budgetId}:null}));
+  const route=load('app/api/youtube/ab-test/suggest/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:'synthetic'}})},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true},'@/lib/ai/task-runtime':runtime});
+  const result=await route.POST(new Request('https://example.invalid/api/youtube/ab-test/suggest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:'Synthetic original',lang:'es'})}));
+  assert.equal(result.status,200);assert.deepEqual(await result.json(),{variantA:'Synthetic A',variantB:'Synthetic B'});assert.equal(calls,1);
+  assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+ });
 })().catch(error=>{results.push({name:'setup or orchestration',status:'FAIL',error:error.message});}).finally(async()=>{
  try{if(migrated){
   const cleanup=await pool.connect();
@@ -78,8 +93,9 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
    await cleanup.query('BEGIN');
    if(originalHead)await cleanup.query('UPDATE ytv_ai_test_v1.active_revision SET revision=$1 WHERE left(revision,length($2))=$2',[originalHead,prefix]);
    else await cleanup.query('DELETE FROM ytv_ai_test_v1.active_revision WHERE left(revision,length($1))=$1',[prefix]);
+   const ownedRuns=(await cleanup.query('SELECT run_id FROM ytv_ai_test_v1.reservations WHERE left(budget_id,length($1))=$1',[prefix])).rows.map(row=>row.run_id);
    await cleanup.query('DELETE FROM ytv_ai_test_v1.reservations WHERE left(budget_id,length($1))=$1',[prefix]);
-   await cleanup.query('DELETE FROM ytv_ai_test_v1.runs WHERE left(run_id,length($1))=$1',[prefix]);
+   await cleanup.query('DELETE FROM ytv_ai_test_v1.runs WHERE run_id=ANY($1::text[]) OR left(run_id,length($2))=$2',[ownedRuns,prefix]);
    await cleanup.query('DELETE FROM ytv_ai_test_v1.switch_events WHERE left(revision,length($1))=$1',[prefix]);
    await cleanup.query('DELETE FROM ytv_ai_test_v1.revisions WHERE left(revision,length($1))=$1',[prefix]);
    await cleanup.query('DELETE FROM ytv_ai_test_v1.budgets WHERE left(budget_id,length($1))=$1',[prefix]);
