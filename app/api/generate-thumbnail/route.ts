@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
@@ -21,6 +22,9 @@ export async function POST(request: Request) {
     }
 
     const form = await request.formData();
+    if (['tema', 'estilo', 'lang', 'facePosition', 'thumbnailText', 'faceScale'].some(key => form.has(key) && typeof form.get(key) !== 'string') || typeof form.get('facePhoto') === 'string') {
+      return Response.json({ error: 'invalid_input' }, { status: 400 });
+    }
     const tema = (form.get('tema') as string)?.trim();
     const estilo = (form.get('estilo') as string)?.trim() || 'viral';
     const lang = (form.get('lang') as string) || 'en';
@@ -107,10 +111,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
     const ideogramKey = (process.env.IDEOGRAM_API_KEY || process.env.ideogram)?.trim();
 
-    if (!anthropicKey || !ideogramKey) {
+    if (!ideogramKey) {
       return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
 
@@ -168,31 +171,14 @@ Rules:
 
 Respond with ONLY the image generation prompt, nothing else. Write in English.`;
 
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
-        messages: [{ role: 'user', content: claudePrompt }],
-      }),
-    });
-
-    if (!claudeRes.ok) {
-      const err = await claudeRes.json();
-      console.error('[generate-thumbnail] Claude error:', err);
-      return Response.json(
-        { error: isEn ? 'Error generating image prompt' : 'Error generando prompt de imagen' },
-        { status: 500 }
-      );
+    let task;
+    try {
+      task = await getMessagesTask({ userId: user.id, taskType: 'thumbnail.image-prompt', language: 'en', instructionsVersion: 'thumbnail-image-prompt-v1' });
+    } catch {
+      return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
-
-    const claudeData = await claudeRes.json();
-    const imagePrompt = claudeData.content[0].text.trim();
+    const promptResult = await task.create({ max_tokens: 400, messages: [{ role: 'user', content: claudePrompt }] });
+    const imagePrompt = promptResult.content[0].text.trim();
 
     // Step 2: Call Ideogram v3 TURBO
     const ideogramForm = new FormData();
@@ -270,6 +256,7 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
       permanentUrl = blob.url;
     } catch (blobErr) {
       console.error('[generate-thumbnail] Blob upload failed:', blobErr instanceof Error ? blobErr.message : blobErr);
+      return Response.json({ error: isEn ? 'Error saving thumbnail image' : 'Error guardando la miniatura' }, { status: 500 });
     }
 
     // Save generation
@@ -280,7 +267,7 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
         template: 'thumbnail',
         inputs: { tema, estilo, imagePrompt, hasFace, facePosition, faceScalePct, customText },
         output: permanentUrl,
-        tokensUsed: claudeData.usage?.output_tokens ?? 0,
+        tokensUsed: promptResult.usage?.output_tokens ?? 0,
         ipAddress: ip,
       },
     });

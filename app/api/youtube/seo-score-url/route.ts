@@ -327,7 +327,7 @@ export async function POST(request: Request) {
         const task = await getMessagesTask({ serviceId: 'public-seo', taskType: 'public.seo-tip', language: 'es', instructionsVersion: 'public.seo-tip-v1',
           outputSchema: { type: 'object', required: ['es', 'en'], properties: {
             es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 },
-            
+
           }, additionalProperties: true },
         });
         const msg = await task.create({

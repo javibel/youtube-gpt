@@ -2,11 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
-import Anthropic from '@anthropic-ai/sdk';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 export const maxDuration = 60;
 
@@ -452,6 +450,7 @@ export async function GET() {
     const daily = toRows<{ day: string; views: number; subscribersGained: number; subscribersLost: number }>(dailyRes);
 
     // Parse videos search
+    if (!videosSearchRes.ok) return NextResponse.json({ error: 'youtube_api_error' }, { status: 500 });
     const searchData = await videosSearchRes.json();
     const videoIds = (searchData.items || []).map((i: { id: { videoId: string } }) => i.id.videoId);
 
@@ -464,6 +463,7 @@ export async function GET() {
       `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
+    if (!statsRes.ok) return NextResponse.json({ error: 'youtube_api_error' }, { status: 500 });
     const statsData = await statsRes.json();
 
     const videos: VideoData[] = (statsData.items || []).map((v: {
@@ -530,14 +530,17 @@ Quick wins count: ${quickWins.length}
 Reply ONLY with valid JSON: {"es": "...", "en": "..."}
 Keep each under 200 words. Use line breaks for readability. No markdown.`;
 
-      const msg = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+      const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.audit-summary', language: 'es', instructionsVersion: 'audit-summary-v1',
+        outputSchema: { type: 'object', required: ['es', 'en'], additionalProperties: false,
+          properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
+      });
+      const msg = await task.create({
         max_tokens: 1200,
         messages: [{ role: 'user', content: prompt }],
       });
 
       const text = (msg.content[0] as { type: string; text: string }).text.trim();
-      const parsed = parseClaudeJson<{ es?: string; en?: string }>(text);
+      const parsed = JSON.parse(text) as { es: string; en: string };
       if (parsed.es && parsed.en) {
         aiSummary = { es: parsed.es, en: parsed.en };
       }

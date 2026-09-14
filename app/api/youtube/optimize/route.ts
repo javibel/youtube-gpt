@@ -3,10 +3,8 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
-import Anthropic from '@anthropic-ai/sdk';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 // ── Scoring helpers (shared with seo-score but lightweight inline for optimize) ──
 
@@ -179,6 +177,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  if (!body || typeof body !== 'object' || Array.isArray(body) || ['title', 'description'].some(key => body[key] != null && typeof body[key] !== 'string') || (body.tags != null && (!Array.isArray(body.tags) || body.tags.some((tag: unknown) => typeof tag !== 'string')))) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  }
   const title = (body.title as string) || '';
   const description = (body.description as string) || '';
   const tags = (body.tags as string[]) || [];
@@ -206,6 +207,13 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  if (!body || typeof body !== 'object' || Array.isArray(body) || ['videoId', 'title', 'description'].some(key => typeof body[key] !== 'string')
+    || !Array.isArray(body.tags) || body.tags.some((tag: unknown) => typeof tag !== 'string')
+    || (body.categoryId != null && typeof body.categoryId !== 'string')
+    || !body.original || typeof body.original.title !== 'string' || typeof body.original.description !== 'string'
+    || !Array.isArray(body.original.tags) || body.original.tags.some((tag: unknown) => typeof tag !== 'string')) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  }
   const { videoId, title, description, tags, categoryId, original } = body as {
     videoId: string;
     title: string;
@@ -295,8 +303,10 @@ export async function PUT(request: Request) {
     // Generate AI suggestion for further improvement
     let aiSuggestion: { es: string; en: string } | null = null;
     try {
-      const msg = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+      const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.optimization-tip', language: 'es', instructionsVersion: 'optimization-tip-v1',
+        outputSchema: { type: 'object', additionalProperties: false, required: ['es', 'en'], properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
+      });
+      const msg = await task.create({
         max_tokens: 200,
         messages: [{
           role: 'user',
@@ -309,7 +319,7 @@ Give ONE next step to improve further. Be specific and actionable. Reply in JSON
         }],
       });
       const text = (msg.content[0] as { type: string; text: string }).text;
-      const parsed = parseClaudeJson(text);
+      const parsed = JSON.parse(text) as { es: string; en: string };
       if (parsed.es && parsed.en) aiSuggestion = parsed;
     } catch {
       // AI suggestion is optional

@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 interface CompetitorThumb {
   videoId: string;
@@ -30,7 +29,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'no_api_key' }, { status: 503 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.keyword !== 'string' || (body.thumbnailUrl != null && typeof body.thumbnailUrl !== 'string')) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  }
   const { keyword, thumbnailUrl, lang = 'es' } = body;
 
   if (!keyword?.trim()) {
@@ -72,52 +74,30 @@ export async function POST(request: Request) {
     summary: string;
   } | null = null;
 
-  if (thumbnailUrl && ANTHROPIC_API_KEY) {
+  if (thumbnailUrl) {
     try {
       const competitorContext = competitors.slice(0, 5).map(c =>
         `"${c.title}" by ${c.channelName} (${c.views} views)`
       ).join('\n');
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'prompt-caching-2024-07-31',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: { type: 'url', url: thumbnailUrl },
-              },
-              {
-                type: 'text',
-                text: `Analyze this YouTube thumbnail for CTR potential. The keyword is "${keyword}". Reply in ${lang === 'en' ? 'English' : 'Spanish'}.
+      const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.thumbnail-preview', language: lang === 'en' ? 'en' : 'es', instructionsVersion: 'thumbnail-preview-v1',
+        outputSchema: { type: 'object', additionalProperties: false, required: ['score', 'breakdown', 'summary'], properties: {
+          score: { type: 'number', minimum: 0, maximum: 100 }, summary: { type: 'string', minLength: 1 },
+          breakdown: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['category', 'score', 'tip'], properties: {
+            category: { type: 'string' }, score: { type: 'number', minimum: 0, maximum: 100 }, tip: { type: 'string' },
+          } } },
+        } },
+      });
+      const data = await task.create({ max_tokens: 600, messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'url', url: thumbnailUrl } }, { type: 'text', text: `Analyze this YouTube thumbnail for CTR potential. The keyword is "${keyword}". Reply in ${lang === 'en' ? 'English' : 'Spanish'}.
 
 Top competing videos for this keyword:
 ${competitorContext}
 
 Output ONLY valid JSON:
-{"score":0-100,"breakdown":[{"category":"Contrast & Colors","score":0-100,"tip":"..."},{"category":"Text Readability","score":0-100,"tip":"..."},{"category":"Faces & Emotion","score":0-100,"tip":"..."},{"category":"Curiosity Gap","score":0-100,"tip":"..."},{"category":"Brand Consistency","score":0-100,"tip":"..."}],"summary":"2 sentence overall assessment vs competitors"}`,
-              },
-            ],
-          }],
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.content?.[0]?.text || '';
-        try {
-          ctrAnalysis = parseClaudeJson(text);
-        } catch { /* skip */ }
-      }
+{"score":0-100,"breakdown":[{"category":"Contrast & Colors","score":0-100,"tip":"..."},{"category":"Text Readability","score":0-100,"tip":"..."},{"category":"Faces & Emotion","score":0-100,"tip":"..."},{"category":"Curiosity Gap","score":0-100,"tip":"..."},{"category":"Brand Consistency","score":0-100,"tip":"..."}],"summary":"2 sentence overall assessment vs competitors"}` },
+      ] }] });
+      ctrAnalysis = JSON.parse(data.content[0].text);
     } catch { /* skip analysis */ }
   }
 

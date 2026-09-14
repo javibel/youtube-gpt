@@ -45,3 +45,6 @@ Coach, bulk, calendar, predictor and retention now join the common runtime. Full
 
 ## 2026-09-15 — Seventeen web routes
 Public/private SEO text and vision, revenue, audience and competitor insights now use the common runtime. Seventeen-route protected build passes. Service principals require explicit policy allowlist and budget authorization; namespace separation and identity cloning are tested. Public quota store failures and invalid receipts stop external work. Live bootstrap and evaluation remain pending.
+
+## 2026-09-15 — Twenty-one web routes
+Audit, thumbnail preview, optimization and thumbnail generation now use the common runtime. Protected full build, reference/access suites and targeted lint pass. Image upload failure cannot return a temporary uncomposed image as success. All writes, media operations and providers in route tests are synthetic; actual image rendering has not been visually verified.
