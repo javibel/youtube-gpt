@@ -126,16 +126,18 @@ export async function GET(request: Request) {
     let videoTitles: Record<string, string> = {};
     if (topVideos.length > 0) {
       const ids = topVideos.map(v => v.video).join(',');
-      const vidsRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ids}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (vidsRes.ok) {
-        const vidsData = await vidsRes.json();
-        for (const item of (vidsData.items || [])) {
-          videoTitles[item.id] = item.snippet?.title || item.id;
+      try {
+        const vidsRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ids}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (vidsRes.ok) {
+          const vidsData = await vidsRes.json();
+          for (const item of (vidsData.items || [])) {
+            videoTitles[item.id] = item.snippet?.title || item.id;
+          }
         }
-      }
+      } catch { /* Titles are optional; preserve analytics and use video IDs. */ }
     }
 
     // Parse daily

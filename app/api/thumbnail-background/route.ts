@@ -151,6 +151,9 @@ Respond with ONLY the image generation prompt in English.`,
 
     // Download and re-host on Vercel Blob for CORS-safe canvas access
     const bgRes    = await fetch(imageUrl);
+    if (!bgRes.ok) {
+      return Response.json({ error: isEn ? 'Error downloading image' : 'Error descargando imagen' }, { status: 500 });
+    }
     const bgBuffer = Buffer.from(await bgRes.arrayBuffer());
     const filename = `thumbnails/bg/${user.id}/${Date.now()}.jpg`;
     const blob     = await put(filename, bgBuffer, { access: 'public', contentType: 'image/jpeg' });
