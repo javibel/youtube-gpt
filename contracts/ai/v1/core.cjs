@@ -91,18 +91,24 @@ function validateResult(result,request,snapshot,runId){
   return freeze({requestId:request.requestId,runId,contractVersion:CONTRACT_VERSION,providerId:snapshot.providerId,model:snapshot.model,adapterVersion:snapshot.adapterVersion,configRevision:snapshot.configRevision,instructionsVersion:request.instructionsVersion,status:result.status,text:result.text??null,data:result.status==='completed'?clone(result.data??null):null,sources:clone(sources),usage,error});
 }
 async function executeBounded(execute,context,parentSignal){
-  const controller=new AbortController();let timer;let onCancel;let dispatched=false;
+  const controller=new AbortController();let timer;let onCancel;let dispatched=false;let stopTimer;
   const cancelled=()=>({status:'cancelled',error:{code:'cancelled',message:'Cancelled'},...(!dispatched?{usage:{costMicros:0,currency:context.request.budget.currency,priceVersion:'not-dispatched-v1',estimated:false}}:{})});
   if(parentSignal?.aborted)return cancelled();
   const interruption=new Promise(resolve=>{
-    timer=setTimeout(()=>{controller.abort();resolve({status:'failed',error:{code:'deadline',message:'Deadline reached'}});},context.request.budget.deadlineMs);
-    onCancel=()=>{controller.abort();resolve(cancelled());};
+    timer=setTimeout(()=>{controller.abort(new ContractError('deadline','Deadline reached'));resolve({status:'failed',error:{code:'deadline',message:'Deadline reached'}});},context.request.budget.deadlineMs);
+    onCancel=()=>{controller.abort(new ContractError('cancelled','Cancelled'));resolve(cancelled());};
     parentSignal?.addEventListener('abort',onCancel,{once:true});
   });
   try {
     const execution=Promise.resolve().then(()=>{if(controller.signal.aborted)return cancelled();dispatched=true;return execute({...context,signal:controller.signal});}).catch(()=>({status:'failed',error:{code:'uncertain',message:'Adapter outcome is unknown'}}));
-    return await Promise.race([execution,interruption]);
-  } finally {clearTimeout(timer);parentSignal?.removeEventListener('abort',onCancel);}
+    const first=await Promise.race([execution.then(result=>({kind:'result',result})),interruption.then(result=>({kind:'interrupted',result}))]);
+    if(first.kind==='result'||context.snapshot.executor!=='coding'||!dispatched)return first.result;
+    // Coding must give its supervisor time to stop and return a checkpoint
+    // before reconciliation. This grace does not authorize more task work.
+    const stopped=await Promise.race([execution,new Promise(resolve=>{stopTimer=setTimeout(()=>resolve({status:'failed',error:{code:'uncertain',message:'Coding termination remains unconfirmed'}}),21000);})]);
+    if(stopped.status==='failed')return stopped;
+    return {...stopped,status:first.result.error.code==='deadline'?'incomplete':'cancelled',error:first.result.error,data:null};
+  } finally {clearTimeout(timer);clearTimeout(stopTimer);parentSignal?.removeEventListener('abort',onCancel);}
 }
 function createRegistry(){
   const providers=new Map();
