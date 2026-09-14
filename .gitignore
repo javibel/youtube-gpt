@@ -67,3 +67,7 @@ Issues/
 # Design handoff para el equipo externo: se entrega en ZIP (respaldo en D:\),
 # nunca por git. Ver memoria project_design_handoff.
 Diseño humano y orgánico/
+
+# Isolated migration harness artifacts
+scripts/migration/fixture-*/
+scripts/migration/test-result.json

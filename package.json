@@ -4,9 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migration:check": "node scripts/migration/check.cjs",
+    "migration:test": "node scripts/migration/isolation.test.cjs",
+    "predev": "node scripts/migration/check.cjs --startup",
+    "prestart": "node scripts/migration/check.cjs --startup",
+    "prebuild": "node scripts/migration/check.cjs --startup"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
