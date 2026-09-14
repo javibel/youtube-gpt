@@ -1,3 +1,4 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -7,7 +8,6 @@ import { getUserPlan, isPaid } from '@/lib/plans';
 export const maxDuration = 60;
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 // Average CPM by country (USD) — conservative estimates
 const COUNTRY_CPM: Record<string, number> = {
@@ -133,7 +133,7 @@ export async function GET(request: Request) {
       const videoRows = vData.rows || [];
 
       // Fetch titles
-      let titleMap: Record<string, { title: string; thumbnail: string }> = {};
+      const titleMap: Record<string, { title: string; thumbnail: string }> = {};
       if (videoIds.length > 0 && YT_API_KEY) {
         try {
           const detRes = await fetch(
@@ -202,25 +202,15 @@ export async function GET(request: Request) {
       cpmStrategy: string;
     } | null = null;
 
-    if (ANTHROPIC_API_KEY) {
+    {
       const topCountries = countries.slice(0, 5).map(c => `${c.country}: ${c.views} views, $${c.cpm} CPM`).join(', ');
       const avgWatchMin = totalViews28 > 0 ? (totalWatchTime28 / totalViews28).toFixed(1) : '0';
 
       try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01',
-            'anthropic-beta': 'prompt-caching-2024-07-31',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 600,
-            messages: [{
-              role: 'user',
-              content: `Analyze this YouTube channel's revenue data and suggest optimization. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON:
+        const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.revenue-insights', language: lang, instructionsVersion: 'revenue-insights-v1',
+          outputSchema: {"type":"object","additionalProperties":false,"required":["optimizationPotential","missedRevenue","tips","cpmStrategy"],"properties":{"optimizationPotential":{"type":"string"},"missedRevenue":{"type":"string"},"tips":{"type":"array","items":{"type":"string"}},"cpmStrategy":{"type":"string"}}},
+        });
+        const data = await task.create({ max_tokens: 600, messages: [{ role: 'user', content: `Analyze this YouTube channel's revenue data and suggest optimization. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON:
 {"optimizationPotential":"1-2 sentences about how much more they could earn","missedRevenue":"estimated monthly $ they're leaving on the table","tips":["tip1","tip2","tip3"],"cpmStrategy":"1-2 sentences about how to attract higher-CPM audiences"}
 
 Channel: "${yt.channelName || 'Unknown'}"
@@ -230,18 +220,8 @@ Weighted CPM: $${weightedCPM.toFixed(2)}
 Top countries: ${topCountries}
 ${hasRealRevenue ? `Real revenue (28d): $${realRevenue28.toFixed(2)}` : 'Not monetized or no revenue data'}
 Monthly projection: $${monthlyProjection.toFixed(2)}
-Top video views: ${videos.slice(0, 3).map(v => `"${v.title}" (${v.views})`).join(', ')}`,
-            }],
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const text = data.content?.[0]?.text || '';
-          try {
-            aiInsights = JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim());
-          } catch { /* */ }
-        }
+Top video views: ${videos.slice(0, 3).map(v => `"${v.title}" (${v.views})`).join(', ')}` }] });
+        aiInsights = JSON.parse(data.content[0].text);
       } catch { /* */ }
     }
 

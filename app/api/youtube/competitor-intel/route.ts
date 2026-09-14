@@ -2,11 +2,10 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 export const maxDuration = 60;
 
@@ -117,7 +116,7 @@ export async function GET(request: Request) {
   // Missed opportunities via AI
   let opportunities: MissedOpportunity[] = [];
 
-  if (ANTHROPIC_API_KEY && trending.length >= 3) {
+  if (trending.length >= 3) {
     // Get user's recent video titles for comparison
     const yt = await prisma.youtubeToken.findUnique({ where: { userId: session.user.id } });
     let userTitles: string[] = [];
@@ -140,38 +139,19 @@ export async function GET(request: Request) {
       : '\n\nUser has no connected YouTube channel yet.';
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'prompt-caching-2024-07-31',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          messages: [{
-            role: 'user',
-            content: `Analyze competitor videos and find missed opportunities. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON array:
+      const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.competitor-opportunities', language: lang, instructionsVersion: 'competitor-opportunities-v1',
+        outputSchema: { type: 'array', maxItems: 5, items: { type: 'object', additionalProperties: false, required: ['topic', 'coveredBy', 'totalViews', 'suggestion'], properties: {
+          topic: { type: 'string', minLength: 1 }, coveredBy: { type: 'array', items: { type: 'string' } }, totalViews: { type: 'number', minimum: 0 }, suggestion: { type: 'string', minLength: 1 },
+        } } },
+      });
+      const data = await task.create({ max_tokens: 600, messages: [{ role: 'user', content: `Analyze competitor videos and find missed opportunities. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON array:
 [{"topic":"topic name","coveredBy":["channel1"],"totalViews":123456,"suggestion":"actionable suggestion"}]
 
 Find 3-5 topic areas/themes that competitors cover but the user doesn't. Focus on high-performing topics (high VPH). Be specific about the topic, not generic.
 
 Competitor trending videos:
-${competitorTopics}${userTopics}`,
-          }],
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.content?.[0]?.text || '';
-        try {
-          const parsed = parseClaudeJson(text);
-          if (Array.isArray(parsed)) opportunities = parsed;
-        } catch { /* */ }
-      }
+${competitorTopics}${userTopics}` }] });
+      opportunities = JSON.parse(data.content[0].text);
     } catch { /* */ }
   }
 

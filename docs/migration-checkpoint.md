@@ -42,3 +42,6 @@ Current seven-route checkpoint: generate, chat, storyboard, background prompts, 
 
 ## 2026-09-15 — Twelve web routes
 Coach, bulk, calendar, predictor and retention now join the common runtime. Full protected build and route suites pass. SQL control has 33 passing cases, including budget ceiling/currency restrictions and overrun hold protection. Legacy history readers map ambiguous zero to null; exact ledger linkage is still pending. Seven history access/format tests pass. No live calls, deployment or general startup.
+
+## 2026-09-15 — Seventeen web routes
+Public/private SEO text and vision, revenue, audience and competitor insights now use the common runtime. Seventeen-route protected build passes. Service principals require explicit policy allowlist and budget authorization; namespace separation and identity cloning are tested. Public quota store failures and invalid receipts stop external work. Live bootstrap and evaluation remain pending.

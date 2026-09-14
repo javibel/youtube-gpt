@@ -1,14 +1,13 @@
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
 
 export const maxDuration = 60;
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim();
 
 interface DemoRow { [key: string]: string | number }
 
@@ -141,14 +140,14 @@ export async function GET(request: Request) {
       growthTips: string[];
     } | null = null;
 
-    if (ANTHROPIC_API_KEY) {
+    {
       const topCountries = countries.slice(0, 5).map(c => `${c.country}: ${c.views} views`).join(', ');
       const topAge = ageGroups.sort((a, b) => b.percentage - a.percentage).slice(0, 3).map(a => `${a.group}: ${a.percentage.toFixed(1)}%`).join(', ');
       const genderStr = genderSplit.map(g => `${g.gender}: ${g.percentage.toFixed(1)}%`).join(', ');
       const compStr = competitors.map(c => `${c.channelName} (${c.subscribers} subs)`).join(', ');
 
       // Get user's channel info
-      let channelTitle = yt.channelName || 'the channel';
+      const channelTitle = yt.channelName || 'the channel';
       let recentTitles: string[] = [];
       if (YT_API_KEY) {
         try {
@@ -163,20 +162,10 @@ export async function GET(request: Request) {
       }
 
       try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01',
-            'anthropic-beta': 'prompt-caching-2024-07-31',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 700,
-            messages: [{
-              role: 'user',
-              content: `Analyze this YouTube channel's audience data and provide insights. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON:
+        const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.subscribers-insights', language: lang, instructionsVersion: 'subscribers-insights-v1',
+          outputSchema: {"type":"object","additionalProperties":false,"required":["audienceProfile","interests","collaborationSuggestions","growthTips"],"properties":{"audienceProfile":{"type":"string"},"interests":{"type":"array","items":{"type":"string"}},"collaborationSuggestions":{"type":"array","items":{"type":"object","required":["channel","reason"],"additionalProperties":false,"properties":{"channel":{"type":"string"},"reason":{"type":"string"}}}},"growthTips":{"type":"array","items":{"type":"string"}}}},
+        });
+        const data = await task.create({ max_tokens: 700, messages: [{ role: 'user', content: `Analyze this YouTube channel's audience data and provide insights. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON:
 {"audienceProfile":"2-3 sentence audience persona","interests":["interest1","interest2","interest3","interest4","interest5"],"collaborationSuggestions":[{"channel":"channel name or type","reason":"why collaborate"}],"growthTips":["tip1","tip2","tip3"]}
 
 Channel: "${channelTitle}"
@@ -187,18 +176,8 @@ Top countries: ${topCountries}
 Tracked competitors: ${compStr || 'none'}
 Sub sources: ${subsSources.slice(0, 5).map(s => `${s.source}: ${s.subsGained}`).join(', ')}
 
-For collaboration suggestions, recommend 3 specific types of channels (not the tracked competitors) that would have audience overlap. For interests, infer from demographics + content what the audience cares about.`,
-            }],
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const text = data.content?.[0]?.text || '';
-          try {
-            aiInsights = parseClaudeJson(text);
-          } catch { /* */ }
-        }
+For collaboration suggestions, recommend 3 specific types of channels (not the tracked competitors) that would have audience overlap. For interests, infer from demographics + content what the audience cares about.` }] });
+        aiInsights = JSON.parse(data.content[0].text);
       } catch { /* */ }
     }
 

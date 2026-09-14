@@ -3,10 +3,8 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
-import Anthropic from '@anthropic-ai/sdk';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 interface CheckItem {
   key: string;
@@ -310,6 +308,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const userId = session.user.id;
+
   // Pro check
   const plan = await getUserPlan(session.user.id);
   if (!isPaid(plan)) {
@@ -322,6 +322,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  if (!body || typeof body !== 'object' || Array.isArray(body) || (body.videoId != null && typeof body.videoId !== 'string')) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  }
   const requestedVideoId = body.videoId as string | undefined;
 
   try {
@@ -351,6 +354,7 @@ export async function POST(request: Request) {
       `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status&id=${videoIds.join(',')}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
+    if (!videosRes.ok) return NextResponse.json({ error: 'youtube_api_error' }, { status: 500 });
     const videosData = await videosRes.json();
 
     const results: {
@@ -399,8 +403,13 @@ export async function POST(request: Request) {
           const engRate = viewCount > 0 ? (((likeCount + commentCount) / viewCount) * 100).toFixed(1) : '0';
           const failedChecks = checklist.filter(c => !c.passed && c.weight > 0).map(c => c.key).join(', ');
 
-          const msg = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
+          const task = await getMessagesTask({ userId, taskType: 'youtube.seo-tip', language: 'es', instructionsVersion: 'youtube.seo-tip-v1',
+            outputSchema: { type: 'object', additionalProperties: false, required: ['es', 'en'], properties: {
+              es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 },
+              
+            } },
+          });
+          const msg = await task.create({
             max_tokens: 200,
             messages: [{
               role: 'user',
@@ -418,15 +427,20 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
             }],
           });
           const text = (msg.content[0] as { type: string; text: string }).text;
-          const parsed = parseClaudeJson<{ es?: string; en?: string }>(text);
+          const parsed = JSON.parse(text) as { es: string; en: string };
           if (parsed.es && parsed.en) return parsed;
           return null;
         })(),
 
         // 2. Thumbnail analysis with Claude Vision
         thumbUrl ? (async () => {
-          const msg = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
+          const task = await getMessagesTask({ userId, taskType: 'youtube.thumbnail-review', language: 'es', instructionsVersion: 'youtube.thumbnail-review-v1',
+            outputSchema: { type: 'object', additionalProperties: false, required: ['es', 'en', 'rating'], properties: {
+              es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 },
+              rating: { type: 'string', enum: ['good', 'needs_improvement'] },
+            } },
+          });
+          const msg = await task.create({
             max_tokens: 250,
             messages: [{
               role: 'user',
@@ -451,7 +465,7 @@ Reply in this exact JSON: {"rating":"good"|"needs_improvement","es":"evaluación
             }],
           });
           const text = (msg.content[0] as { type: string; text: string }).text;
-          return parseClaudeJson<{ rating?: string; es?: string; en?: string }>(text);
+          return JSON.parse(text) as { rating: string; es: string; en: string };
         })() : Promise.resolve(null),
       ]);
 

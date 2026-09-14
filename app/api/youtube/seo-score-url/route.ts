@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { prisma } from '@/lib/prisma';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 interface CheckItem {
   key: string;
@@ -204,11 +202,15 @@ export async function POST(request: Request) {
         hits = CASE WHEN rate_limits.window_start < NOW() - INTERVAL '10 minutes' THEN 1 ELSE rate_limits.hits + 1 END,
         window_start = CASE WHEN rate_limits.window_start < NOW() - INTERVAL '10 minutes' THEN NOW() ELSE rate_limits.window_start END
       RETURNING hits`;
-    if (Number(rl[0]?.hits ?? 0) > 20) {
+    const hits = Number(rl[0]?.hits);
+    if (!Number.isSafeInteger(hits) || hits < 1) {
+      return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
+    }
+    if (hits > 20) {
       return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
     }
   } catch {
-    // If the rate-limit store is unavailable, fail open (don't block legit users on infra hiccup)
+    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -322,8 +324,13 @@ export async function POST(request: Request) {
 
     const [aiTipResult, thumbResult] = await Promise.allSettled([
       (async () => {
-        const msg = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
+        const task = await getMessagesTask({ serviceId: 'public-seo', taskType: 'public.seo-tip', language: 'es', instructionsVersion: 'public.seo-tip-v1',
+          outputSchema: { type: 'object', required: ['es', 'en'], properties: {
+            es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 },
+            
+          }, additionalProperties: true },
+        });
+        const msg = await task.create({
           max_tokens: 200,
           messages: [{
             role: 'user',
@@ -341,11 +348,16 @@ Reply in this exact JSON format: {"es":"tip en español","en":"tip in english"}`
           }],
         });
         const text = (msg.content[0] as { type: string; text: string }).text;
-        return parseClaudeJson<{ es?: string; en?: string }>(text);
+        return JSON.parse(text) as { es: string; en: string };
       })(),
       thumbUrl ? (async () => {
-        const msg = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
+        const task = await getMessagesTask({ serviceId: 'public-seo', taskType: 'public.thumbnail-review', language: 'es', instructionsVersion: 'public.thumbnail-review-v1',
+          outputSchema: { type: 'object', required: ['es', 'en', 'rating'], properties: {
+            es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 },
+            rating: { type: 'string', enum: ['good', 'needs_improvement'] },
+          }, additionalProperties: false },
+        });
+        const msg = await task.create({
           max_tokens: 250,
           messages: [{
             role: 'user',
@@ -367,7 +379,7 @@ Reply in this exact JSON: {"rating":"good"|"needs_improvement","es":"evaluación
           }],
         });
         const text = (msg.content[0] as { type: string; text: string }).text;
-        return parseClaudeJson<{ rating?: string; es?: string; en?: string }>(text);
+        return JSON.parse(text) as { rating: string; es: string; en: string };
       })() : Promise.resolve(null),
     ]);
 
