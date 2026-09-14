@@ -30,9 +30,13 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const title = (body.title as string || '').trim();
-  const description = (body.description as string || '').trim();
-  const tags = (body.tags as string || '').trim();
+  if (!body || typeof body !== 'object' || Array.isArray(body)
+    || ['title', 'description', 'tags'].some(key => body[key] != null && typeof body[key] !== 'string')) {
+    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  }
+  const title = (body.title || '').trim();
+  const description = (body.description || '').trim();
+  const tags = (body.tags || '').trim();
 
   if (!title) {
     return NextResponse.json({ error: 'title required' }, { status: 400 });

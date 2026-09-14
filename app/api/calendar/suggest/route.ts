@@ -174,8 +174,12 @@ ${existingInfo}`,
     // Validate and sanitize
     suggestions = (Array.isArray(suggestions) ? suggestions : []).slice(0, 5).map(s => ({
       title: String(s.title || '').slice(0, 200),
-      date: /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : next14[0],
-      hour: Math.max(0, Math.min(23, Math.round(Number(s.hour) || 12))),
+      date: next14.includes(s.date) ? s.date : next14[0],
+      hour: Math.max(0, Math.min(23, Math.round(
+        s.hour !== null && s.hour !== undefined && String(s.hour).trim() !== '' && Number.isFinite(Number(s.hour))
+          ? Number(s.hour)
+          : 12,
+      ))),
       reason: String(s.reason || '').slice(0, 300),
       description: String(s.description || '').slice(0, 500),
     }));

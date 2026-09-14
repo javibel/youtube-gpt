@@ -10,7 +10,7 @@
     "migration:check": "node scripts/migration/check.cjs",
     "migration:compile": "node scripts/migration/compile-only.cjs",
     "migration:build": "node scripts/migration/build-local.cjs",
-    "migration:test:reference": "node scripts/migration/parser.test.cjs && node scripts/migration/bulk-route.test.cjs && node scripts/migration/chat-route.test.cjs && node scripts/migration/coach-route.test.cjs",
+    "migration:test:reference": "node scripts/migration/parser.test.cjs && node scripts/migration/bulk-route.test.cjs && node scripts/migration/chat-route.test.cjs && node scripts/migration/coach-route.test.cjs && node scripts/migration/calendar-route.test.cjs && node scripts/migration/predictor-route.test.cjs",
     "migration:test": "node scripts/migration/isolation.test.cjs && node scripts/migration/payments.test.cjs",
     "migration:test:database": "node scripts/migration/database.test.cjs",
     "migration:test:routes": "node scripts/migration/generate-route.test.cjs && node scripts/migration/payment-routes.test.cjs",
