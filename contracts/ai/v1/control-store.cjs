@@ -45,6 +45,7 @@ function createControlStore(database,registry){
    });
   },
   async active(){return database.transaction(async tx=>(await tx.query('SELECT r.payload FROM ytv_ai_test_v1.active_revision a JOIN ytv_ai_test_v1.revisions r ON r.revision=a.revision WHERE a.singleton=true'))[0]?.payload??null);},
+  async revision(revision){if(typeof revision!=='string'||!revision.trim())fail('invalid_format','Revision identity required');return database.transaction(async tx=>(await tx.query('SELECT payload FROM ytv_ai_test_v1.revisions WHERE revision=$1',[revision]))[0]?.payload??null);},
   async admit(rawRequest,{runId,budgetId,agentId,principalId,executor='ai'}={}){
    requireRole('executor');if(!['ai','coding'].includes(executor))fail('configuration','Unknown executor');
    const request=executor==='coding'?require('./coding.cjs').validateCodingRequest(rawRequest):validateRequest(rawRequest);

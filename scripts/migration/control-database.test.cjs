@@ -115,6 +115,15 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   assert.equal((await invoke('Changed synthetic input')).status,503);assert.equal(calls,1);
   assert.equal((await invoke('Synthetic original','invalid key with spaces')).status,400);assert.equal(calls,1);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+  await test('operator service activates and rolls back through role-bound PostgreSQL',async()=>{
+   const {createConfigurationService}=require('../../lib/ai/configuration-service.cjs');
+   const operator=createConfigurationService({registry:actualRegistry,reader:actualStore('reader'),activator:actualStore('activator'),taskCatalog:{'youtube.ab-title-suggestions':{executor:'ai',capabilities:['text','json'],runtimeIds:['web','agent']}},getActor:async()=> 'synthetic-operator',getRuntimes:async()=>['web','agent'].map(id=>({id,contractVersions:['1.0'],adapters:{anthropic:'messages-v1'}})),checkCredential:async({credentialRef})=>credentialRef==='test:fixture'});
+   const next={...config,revision:prefix+'_operator_candidate'};const preview=await operator.preview(next,{reason:'Synthetic operator activation'});assert.equal((await actualStore('reader').active()).revision,config.revision);await operator.activate(preview.previewId);assert.equal((await actualStore('reader').active()).revision,next.revision);
+   assert.equal((await invoke()).status,200);assert.equal(calls,1);
+   await operator.activate((await operator.previewRollback(config.revision,{reason:'Synthetic operator rollback'})).previewId);assert.equal((await actualStore('reader').active()).revision,config.revision);
+   const events=(await pool.query('SELECT actor,reason FROM ytv_ai_test_v1.switch_events WHERE revision=$1',[next.revision])).rows;assert.equal(events[0].actor,'synthetic-operator');assert.equal(events[0].reason,'Synthetic operator activation');
+  });
+
  });
 })().catch(error=>{results.push({name:'setup or orchestration',status:'FAIL',error:error.message});}).finally(async()=>{
  try{if(migrated){

@@ -9,6 +9,7 @@ export interface ControlStore {
   publish(configuration: Configuration, actor: { actor: string }): Promise<{ revision: string }>;
   activate(revision: string, context: { expectedRevision?: string | null; actor: string; reason: string }): Promise<{ previousRevision: string | null; revision: string }>;
   active(): Promise<Configuration | null>;
+  revision(revision: string): Promise<Configuration | null>;
   admit(request: AiRequest | CodingRequest, context: { runId: string; budgetId: string; agentId?: string; principalId?: string; executor?: 'ai' | 'coding' }): Promise<Admission>;
   reconcile(runId: string, outcome: { status: Status | 'uncertain'; usage?: Partial<Usage>; result?: Readonly<Result> }): Promise<{ state: 'settled' | 'uncertain'; replay?: boolean; retainedMicros?: number }>;
 }
