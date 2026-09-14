@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "migration:check": "node scripts/migration/check.cjs",
+    "migration:test:reference": "node scripts/migration/parser.test.cjs",
     "migration:test": "node scripts/migration/isolation.test.cjs && node scripts/migration/payments.test.cjs",
     "migration:test:database": "node scripts/migration/database.test.cjs",
     "predev": "node scripts/migration/check.cjs --startup",
