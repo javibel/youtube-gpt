@@ -16,7 +16,7 @@ Module._load = function(name, ...args) {
   return originalLoad.call(this, name, ...args);
 };
 global.fetch = () => { externalAttempts++; throw Error('Network forbidden'); };
-const runtime = require('../../lib/migration-payments.cjs');
+const runtime = require('./payment-fixtures.cjs');
 // Execute the actual TS entry in memory, without Next startup or generated files.
 const entryPath = path.join(repo, 'lib/stripe.ts');
 const compiled = ts.transpileModule(fs.readFileSync(entryPath, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;

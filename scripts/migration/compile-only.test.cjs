@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {plan}=require('./compile-only.cjs');
+const task=plan({PATH:'synthetic-path',UNRELATED:'discard-me'});
+assert.deepEqual(task.argv,['build','--experimental-build-mode','compile']);
+assert.equal(task.env.PATH,'synthetic-path');
+assert.equal(task.env.UNRELATED,undefined);
+assert.equal(task.env.DATABASE_URL,undefined);
+assert.equal(task.env.NEXT_TELEMETRY_DISABLED,'1');
+assert.equal(task.env.YTV_MIGRATION_COMPILE,'1');
+assert.throws(()=>plan({},['--experimental-build-mode','generate']),/ISOLATION_BLOCKED/);
+assert.throws(()=>plan({ANTHROPIC_API_KEY:'synthetic'}),/ISOLATION_BLOCKED/);
+assert.throws(()=>plan({NODE_OPTIONS:'synthetic'}),/ISOLATION_BLOCKED/);
+console.log('Compile-only plan verified: fixed mode, no credentials, no argument overrides');

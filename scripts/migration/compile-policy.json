@@ -1,0 +1,8 @@
+{
+  "nextVersion": "16.3.3",
+  "files": {
+    "instrumentation.ts": "d1f9e8e67bfd52add585b308f2bba974e694c8a60c026af3c2b017127b9b2dcb",
+    "postcss.config.mjs": "7b299d3d3b16699ddda397c0b2373b3af4f25f8fc9ccc9b3d9e64ef083bc1c21",
+    "next.config.ts": "baff1dcc04662a843d9f94233a53e66cfb751d9de2527146c9311ebe463e9569"
+  }
+}

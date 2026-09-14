@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  // The isolated compile check uses threads; normal app startup stays guarded.
+  ...(process.env.YTV_MIGRATION_COMPILE === '1'
+    ? { experimental: { workerThreads: true, useTypeScriptCli: false } }
+    : {}),
   async redirects() {
     return [
       // www → non-www permanent redirect (SEO canonical)

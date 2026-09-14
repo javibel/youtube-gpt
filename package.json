@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "migration:check": "node scripts/migration/check.cjs",
+    "migration:compile": "node scripts/migration/compile-only.cjs",
+    "migration:build": "node scripts/migration/build-local.cjs",
     "migration:test:reference": "node scripts/migration/parser.test.cjs",
     "migration:test": "node scripts/migration/isolation.test.cjs && node scripts/migration/payments.test.cjs",
     "migration:test:database": "node scripts/migration/database.test.cjs",
