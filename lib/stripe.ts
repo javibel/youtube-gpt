@@ -1,8 +1,8 @@
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
+import { stripe as offlineStripe } from './migration-payments.cjs';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-});
+// Temporary migration-only implementation; unsupported operations fail closed.
+export const stripe = offlineStripe as unknown as Stripe;
 
 /**
  * Fechas de periodo de una suscripción de Stripe con los edge cases cubiertos:
