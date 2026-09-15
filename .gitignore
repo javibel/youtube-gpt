@@ -71,3 +71,4 @@ Diseño humano y orgánico/
 # Isolated migration harness artifacts
 scripts/migration/fixture-*/
 scripts/migration/test-result.json
+/.migration-tmp/

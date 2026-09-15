@@ -23,7 +23,9 @@
     "migration:test:boundary": "node scripts/migration/provider-boundary.test.cjs",
     "migration:test:configuration": "node scripts/migration/configuration-service.test.cjs && node scripts/migration/configuration-route.test.cjs",
     "migration:verify": "pwsh -NoProfile -File scripts/migration/verify-local.ps1",
-    "migration:verify:local": "pwsh -NoProfile -File scripts/migration/verify-local.ps1 -WithDatabase"
+    "migration:verify:local": "pwsh -NoProfile -File scripts/migration/verify-local.ps1 -WithDatabase",
+    "migration:test:startup": "node scripts/migration/runtime-file-policy.test.cjs && node scripts/migration/runtime-file-guard.test.cjs && node scripts/migration/runtime-network-policy.test.cjs && node scripts/migration/runtime-http-policy.test.cjs && node scripts/migration/start-local.test.cjs && node scripts/migration/runtime-bundles.test.cjs",
+    "migration:start:fixture": "node scripts/migration/start-local.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",

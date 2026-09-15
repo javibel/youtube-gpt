@@ -6,11 +6,15 @@
  * Dashboard (or pulled via CLI) carry invisible `\n` characters that
  * silently break OAuth flows, API keys, URLs, etc.
  */
-export function register() {
+export async function register() {
   for (const key of Object.keys(process.env)) {
     const val = process.env[key];
     if (val && val !== val.trim()) {
       process.env[key] = val.trim();
     }
+  }
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.YTV_MIGRATION_WEB_TEST === '1') {
+    const { installLocalFixture } = await import('./lib/migration/local-fixture-runtime');
+    await installLocalFixture();
   }
 }

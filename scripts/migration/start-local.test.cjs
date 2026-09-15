@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {plan}=require('./start-local.cjs');
+const {connectLocalFixture}=require('../../lib/migration/local-fixture.cjs');
+(async()=>{
+ const task=plan({PATH:process.env.PATH,UNRELATED:'discard'});
+ assert.equal(task.host,'127.0.0.1');assert.equal(task.port,4300);
+ assert.equal(task.env.UNRELATED,undefined);assert.equal(task.env.YTV_MIGRATION_WEB_TEST,'1');
+ assert.equal(task.env.AUTH_URL,'http://127.0.0.1:4300');
+ assert.equal(task.env.ADMIN_EMAIL,'migration-admin@example.invalid');
+ for(const key of ['OPENAI_API_KEY','DATABASE_URL','NODE_OPTIONS','AUTH_SECRET'])assert.throws(()=>plan({[key]:'unexpected'}),/ISOLATION_BLOCKED/);
+ assert.throws(()=>plan({},['--port','3000']),/ISOLATION_BLOCKED/);
+ await assert.rejects(()=>connectLocalFixture(),/guarded fixture runtime required/);
+ console.log('PASS: 12 local startup checks; fixed origin, synthetic identity, inherited secrets and mode overrides rejected');
+})().catch(error=>{console.error(error);process.exitCode=1;});

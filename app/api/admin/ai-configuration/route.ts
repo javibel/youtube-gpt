@@ -35,7 +35,10 @@ async function readCommand(request: Request): Promise<Record<string, unknown>> {
 export async function POST(request: Request) {
   const gate = await requireAdmin();
   if (!gate.ok) return gate.response;
-  if (request.headers.get('origin') !== new URL(request.url).origin || request.headers.get('sec-fetch-site') === 'cross-site') {
+  const expected = new URL(request.url);
+  // NextURL canonicalizes 127.0.0.1 to localhost; retain the actual loopback Host.
+  if (expected.hostname === 'localhost' && request.headers.get('host') === `127.0.0.1${expected.port ? ':' + expected.port : ''}`) expected.hostname = '127.0.0.1';
+  if (request.headers.get('origin') !== expected.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
     return json({ error: 'Origen no autorizado' }, 403);
   }
   if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') return invalid();

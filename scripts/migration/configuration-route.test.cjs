@@ -1,13 +1,15 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {load}=require('./route-harness.cjs');
-function harness({denied=false,missing=false,code}={}){
+function harness({denied=false,missing=false,code,url='https://synthetic.invalid/api/admin/ai-configuration'}={}){
  const calls=[];const service=Object.fromEntries(['current','validate','preview','previewRollback','activate'].map(method=>[method,async(...args)=>{calls.push({method,args});if(code)throw {code,message:'synthetic private detail'};return {synthetic:true};}]));
  const route=load('app/api/admin/ai-configuration/route.ts',{'@/lib/auth-guards':{requireAdmin:async()=>denied?{ok:false,response:Response.json({error:'Denied'},{status:403})}:{ok:true,email:'synthetic@example.invalid'}},'@/lib/ai/configuration-runtime':{getConfigurationService:()=>missing?undefined:service}},{TextDecoder});
- return {calls,read:()=>route.GET(),invoke:(body,headers={})=>route.POST(new Request('https://synthetic.invalid/api/admin/ai-configuration',{method:'POST',headers:{origin:'https://synthetic.invalid','content-type':'application/json',...headers},body:typeof body==='string'?body:JSON.stringify(body)}))};
+ return {calls,read:()=>route.GET(),invoke:(body,headers={})=>route.POST(new Request(url,{method:'POST',headers:{origin:'https://synthetic.invalid','content-type':'application/json',...headers},body:typeof body==='string'?body:JSON.stringify(body)}))};
 }
 let count=0;async function test(fn){await fn();count++;}
 (async()=>{
+ for(const [headers,status] of [[{origin:'http://127.0.0.1:4300',host:'127.0.0.1:4300'},200],[{origin:'http://127.0.0.1:3000',host:'127.0.0.1:4300'},403],[{origin:'http://127.0.0.1:4300'},403],[{origin:'https://other.invalid',host:'other.invalid'},403],[{origin:'http://127.0.0.1:4300',host:'127.0.0.1:4300','sec-fetch-site':'cross-site'},403]])await test(async()=>{const h=harness({url:'http://localhost:4300/api/admin/ai-configuration'});assert.equal((await h.invoke({action:'activate',previewId:'synthetic'},headers)).status,status);});
+ await test(async()=>{const h=harness();assert.equal((await h.invoke({action:'activate',previewId:'synthetic'},{origin:'http://127.0.0.1:4300',host:'127.0.0.1:4300'})).status,403);});
  for(const [body,method]of [[{action:'validate',configuration:{}},'validate'],[{action:'preview',configuration:{},reason:'Synthetic review'},'preview'],[{action:'rollback',revision:'synthetic',reason:'Synthetic rollback'},'previewRollback'],[{action:'activate',previewId:'synthetic'},'activate']])await test(async()=>{const h=harness(),r=await h.invoke(body);assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(h.calls[0].method,method);});
  for(const body of [{action:'activate',previewId:'synthetic',actor:'forged'},{action:'activate'},{action:'rollback',revision:'synthetic'},{action:'preview',configuration:[],reason:'Synthetic'},{action:'preview',configuration:{},reason:''},{action:'constructor'},'null','not json','x'.repeat(65537)])await test(async()=>{const h=harness();assert.equal((await h.invoke(body)).status,400);assert.equal(h.calls.length,0);});
  for(const headers of [{origin:'https://other.invalid'},{origin:'null'},{'sec-fetch-site':'cross-site'}])await test(async()=>{const h=harness();assert.equal((await h.invoke({action:'activate',previewId:'synthetic'},headers)).status,403);assert.equal(h.calls.length,0);});
