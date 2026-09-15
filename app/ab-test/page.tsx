@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createRetryOperation } from '@/lib/ai/retry-operation.cjs';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
@@ -70,6 +71,8 @@ export default function AbTestPage() {
   const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState('');
   const [loadingVideos, setLoadingVideos] = useState(true);
+  const suggestionOperation = useRef<ReturnType<typeof createRetryOperation> | null>(null);
+  if (!suggestionOperation.current) suggestionOperation.current = createRetryOperation(() => crypto.randomUUID());
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
 
@@ -100,15 +103,21 @@ export default function AbTestPage() {
   const activeVideoIds = new Set(activeTests.map(t => t.videoId));
 
   async function suggestTitles() {
-    if (!selectedVideo) return;
+    if (!selectedVideo || suggesting) return;
     setSuggesting(true);
+    setError('');
     try {
-      const res = await fetch('/api/youtube/ab-test/suggest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: selectedVideo.title, lang }),
+      const data = await suggestionOperation.current!({ title: selectedVideo.title, lang }, async (body, operationKey) => {
+        const res = await fetch('/api/youtube/ab-test/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey },
+          body,
+        });
+        if (!res.ok) throw new Error('Suggestions unavailable');
+        const result = await res.json();
+        if (typeof result.variantA !== 'string' || typeof result.variantB !== 'string') throw new Error('Invalid suggestions');
+        return result as { variantA: string; variantB: string };
       });
-      const data = await res.json();
       if (data.variantA) setVariantA(data.variantA);
       if (data.variantB) setVariantB(data.variantB);
     } catch {
