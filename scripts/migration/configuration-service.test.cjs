@@ -25,5 +25,6 @@ let count=0;async function test(fn){await fn();count++;}
  await test(async()=>{const h=harness(),p=await h.service.preview(configuration(),{reason:'Synthetic'});h.state.lostAck=true;await assert.rejects(h.service.activate(p.previewId));const retry=await h.service.activate(p.previewId);assert.equal(retry.alreadyActive,true);assert.equal(h.state.events.filter(e=>e.type==='activate').length,1);});
  await test(async()=>{const h=harness();h.state.runtimes=[null];await assert.rejects(h.service.validate(configuration()),e=>e.code==='configuration');});
  await test(async()=>{const h=harness(),p=await h.service.preview(configuration(),{reason:'Synthetic'});h.state.validationDelay=101;await assert.rejects(h.service.activate(p.previewId),e=>e.code==='permissions');assert.equal(h.state.events.length,0);});
+ await test(async()=>{const h=harness();h.state.current=configuration();const current=await h.service.current();current.activeProfile='changed';assert.equal(h.state.current.activeProfile,'alpha');h.state.allowed=false;await assert.rejects(h.service.current(),e=>e.code==='permissions');});
  console.log('PASS: '+count+' operator configuration checks; complete catalogs, both runtimes, fresh credentials, actor-bound previews, immutable revisions, rollback and lost acknowledgements; no provider dispatch');
 })().catch(e=>{console.error(e);process.exitCode=1;});

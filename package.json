@@ -19,9 +19,9 @@
     "prebuild": "node scripts/migration/check.cjs --startup",
     "migration:test:contracts": "node contracts/ai/v1/core.test.cjs && node contracts/ai/v1/coding.test.cjs && node contracts/ai/v1/task-runner.test.cjs && node scripts/migration/sync-contracts.test.cjs && node scripts/migration/sync-contracts.cjs --check && node scripts/migration/coding-cancellation.test.cjs",
     "migration:test:control": "node scripts/migration/control-database.test.cjs",
-    "migration:test:adapters": "node scripts/migration/anthropic-adapter.test.cjs && node scripts/migration/compatibility.test.cjs && node scripts/migration/task-runtime.test.cjs && node scripts/migration/task-factory.test.cjs && node scripts/migration/openai-adapter.test.cjs && node scripts/migration/provider-switch.test.cjs && node scripts/migration/third-provider.test.cjs",
+    "migration:test:adapters": "node scripts/migration/anthropic-adapter.test.cjs && node scripts/migration/compatibility.test.cjs && node scripts/migration/task-runtime.test.cjs && node scripts/migration/task-factory.test.cjs && node scripts/migration/openai-adapter.test.cjs && node scripts/migration/provider-switch.test.cjs && node scripts/migration/third-provider.test.cjs && node scripts/migration/composite-provider.test.cjs",
     "migration:test:boundary": "node scripts/migration/provider-boundary.test.cjs",
-    "migration:test:configuration": "node scripts/migration/configuration-service.test.cjs"
+    "migration:test:configuration": "node scripts/migration/configuration-service.test.cjs && node scripts/migration/configuration-route.test.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",

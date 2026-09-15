@@ -1,0 +1,21 @@
+import type { Registry, Configuration } from '../../contracts/ai/v1/core.cjs';
+import type { ControlStore } from '../../contracts/ai/v1/control-store.cjs';
+export interface ConfigurationDependencies {
+  registry: Registry;
+  reader: Pick<ControlStore, 'active' | 'revision'>;
+  activator: Pick<ControlStore, 'publish' | 'activate'>;
+  taskCatalog: Record<string, { executor: 'ai' | 'coding'; capabilities: string[]; runtimeIds: string[]; agentIds?: string[] }>;
+  getActor: (action: string) => Promise<string | null>;
+  getRuntimes: () => Promise<{ id: string; contractVersions: string[]; adapters: Record<string, string> }[]>;
+  checkCredential: (context: { runtimeId: string; credentialRef: string; providerId: string }) => Promise<boolean>;
+  clock?: () => number;
+  previewTtlMs?: number;
+}
+export interface ConfigurationService {
+  current(): Promise<Configuration | null>;
+  validate(configuration: unknown): Promise<unknown>;
+  preview(configuration: unknown, context: { reason: string }): Promise<unknown>;
+  previewRollback(revision: string, context: { reason: string }): Promise<unknown>;
+  activate(previewId: string): Promise<unknown>;
+}
+export declare function createConfigurationService(dependencies: ConfigurationDependencies): Readonly<ConfigurationService>;
