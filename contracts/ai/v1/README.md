@@ -39,3 +39,22 @@ The simulated adapter does not execute commands or edit files. Physical path val
 This is the phase-1 foundation. Business-route adapters, durable dispatch/recovery integration, queued-job handling and real provider comparisons remain separate work. No Anthropic/OpenAI/Codex/Claude operation, deployment or production activation is performed by these tests.
 
 Durable output recovery (2026-09-15): the identified local test schema now stores immutable canonical results in the same transaction as reconciliation. Validated admission replays return a saved result, including incomplete/refused status and unknown cost, without provider execution. Runs interrupted before output persistence remain unresolved and cannot be silently retried. A hashed authenticated principal scope participates in the operation fingerprint; sharing a budget does not permit cross-principal replay. The execution role cannot update/delete saved results. This is still the isolated test schema, not a production migration. Most HTTP/business callers have not yet supplied stable retry identities; output recovery requires the same request/idempotency identity.
+# One-shot dispatch claims
+
+`claimDispatch(originalRequest, context)` is an executor-only opt-in boundary
+before external dispatch. It rechecks the original admission fingerprint,
+request identity, principal/budget context, active reservation, unblocked budget
+and remaining deadline. The context includes a SHA-256 of the trusted dispatch
+binding, not prompts or credentials. The digest and timestamp are stored once
+on the existing run; no parallel reservation or approval table is introduced.
+
+Concurrent claims serialize with reconciliation. A fresh store instance, changed
+digest or lost commit acknowledgement cannot authorize a second claim. The SQL
+trigger rejects clearing/replacing the recorded marker. Unknown dispatch must
+be reconciled, never retried automatically. A claim reserves the right to send;
+it is not evidence that a provider actually received the request. Failure after
+claiming can conservatively leave a consumed claim without any provider call.
+
+The returned snapshot and remaining deadline must be checked by the trusted
+transport before credential access. Existing callers do not automatically opt
+into this method. Tests use only the identified synthetic PostgreSQL schema.

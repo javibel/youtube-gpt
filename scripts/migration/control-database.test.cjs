@@ -41,6 +41,38 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
  await store('activator').activate(cfg('r1').revision,{expectedRevision:cfg('r0').revision,actor:'test-admin',reason:'synthetic switch'});
  await test('old and new executions retain distinct revision snapshots',async()=>{const next=await store('executor').admit(req('new'),{runId:prefix+'_new_run',budgetId:b0});assert.equal(old.snapshot.providerId,'fixture-alpha');assert.equal(next.snapshot.providerId,'fixture-beta');assert.equal((await pool.query('SELECT revision FROM ytv_ai_test_v1.runs WHERE run_id=$1',[old.runId])).rows[0].revision,cfg('r0').revision);});
  await test('stale activation rejected',async()=>assert.rejects(store('activator').activate(cfg('r2').revision,{expectedRevision:cfg('r0').revision,actor:'test-admin',reason:'stale'}),error=>error.code==='configuration'));
+ await test('dispatch claim is durable and single-use under concurrent stores',async()=>{
+  const request=req('dispatch');request.budget.deadlineMs=10000;const budgetId=await budget('dispatch'),runId=prefix+'_dispatch';
+  await store('executor').admit(request,{runId,budgetId,principalId:'synthetic-principal'});
+  const context={runId,budgetId,principalId:'synthetic-principal',dispatchDigest:'a'.repeat(64)};
+  await assert.rejects(store('reader').claimDispatch(request,context),e=>e.code==='permissions');
+  await assert.rejects(store('executor').claimDispatch(request,{...context,principalId:'different'}),e=>e.code==='permissions');
+  const outcomes=await Promise.allSettled([1,2].map(()=>store('executor').claimDispatch(request,context)));
+  assert.equal(outcomes.filter(x=>x.status==='fulfilled').length,1);assert.equal(outcomes.find(x=>x.status==='rejected').reason.code,'uncertain');
+  const receipt=outcomes.find(x=>x.status==='fulfilled').value;assert.equal(receipt.snapshot.providerId,'fixture-beta');assert.ok(receipt.remainingDeadlineMs>0&&receipt.remainingDeadlineMs<=10000);
+  await assert.rejects(store('executor').claimDispatch(request,{...context,dispatchDigest:'b'.repeat(64)}),e=>e.code==='uncertain');
+  await assert.rejects(database('executor').transaction(tx=>tx.query('UPDATE ytv_ai_test_v1.runs SET dispatch_digest=NULL,dispatched_at=NULL WHERE run_id=$1',[runId])),e=>e.code==='42501');
+  assert.equal(Number((await stats(budgetId)).reserved_micros),60);
+ });
+ await test('uncertain reconciliation and expired runs cannot claim dispatch',async()=>{
+  for(const scenario of ['uncertain','expired','blocked']){
+   const request=req('dispatch_'+scenario),budgetId=await budget('dispatch_'+scenario),runId=prefix+'_dispatch_'+scenario;
+   await store('executor').admit(request,{runId,budgetId});
+   if(scenario==='uncertain')await store('executor').reconcile(runId,{status:'uncertain'});
+   if(scenario==='expired')await pool.query("UPDATE ytv_ai_test_v1.runs SET created_at=clock_timestamp()-interval '1 day' WHERE run_id=$1",[runId]);
+   if(scenario==='blocked')await pool.query('UPDATE ytv_ai_test_v1.budgets SET blocked=true WHERE budget_id=$1',[budgetId]);
+   await assert.rejects(store('executor').claimDispatch(request,{runId,budgetId,dispatchDigest:'c'.repeat(64)}));
+   assert.equal((await pool.query('SELECT dispatch_digest FROM ytv_ai_test_v1.runs WHERE run_id=$1',[runId])).rows[0].dispatch_digest,null);
+  }
+ });
+ await test('lost acknowledgement after committed dispatch never grants a retry',async()=>{
+  const request=req('dispatch_lost');request.budget.deadlineMs=10000;const budgetId=await budget('dispatch_lost'),runId=prefix+'_dispatch_lost';
+  await store('executor').admit(request,{runId,budgetId});const underlying=database('executor');
+  const lost=createControlStore({role:'executor',async transaction(fn){await underlying.transaction(fn);throw Error('Synthetic lost acknowledgement');}},registry);
+  const context={runId,budgetId,dispatchDigest:'d'.repeat(64)};
+  await assert.rejects(lost.claimDispatch(request,context),/lost acknowledgement/);
+  await assert.rejects(store('executor').claimDispatch(request,context),e=>e.code==='uncertain');
+ });
  const b1=await budget('concurrent');
  await test('concurrent admissions cannot over-reserve',async()=>{const outcomes=await Promise.allSettled([1,2].map(i=>store('executor').admit(req('concurrent'+i),{runId:prefix+'_concurrent'+i,budgetId:b1})));assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);assert.equal(Number((await stats(b1)).reserved_micros),60);});
  const b2=await budget('idempotency');const duplicate=req('duplicate');duplicate.idempotencyKey=prefix+'_operation';let duplicateRun;

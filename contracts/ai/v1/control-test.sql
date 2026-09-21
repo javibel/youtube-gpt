@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS ytv_ai_test_v1.reservations (
  state text NOT NULL CHECK(state IN ('reserved','settled','uncertain')),
  actual_micros bigint CHECK(actual_micros>=0)
 );
+ALTER TABLE ytv_ai_test_v1.runs ADD COLUMN IF NOT EXISTS dispatch_digest text CHECK(dispatch_digest ~ '^[a-f0-9]{64}$');
+ALTER TABLE ytv_ai_test_v1.runs ADD COLUMN IF NOT EXISTS dispatched_at timestamptz;
 CREATE TABLE IF NOT EXISTS ytv_ai_test_v1.results (
  run_id text PRIMARY KEY REFERENCES ytv_ai_test_v1.runs(run_id) ON DELETE CASCADE,
  payload jsonb NOT NULL CHECK(jsonb_typeof(payload)='object' AND payload->>'runId'=run_id),
@@ -61,7 +63,21 @@ GRANT SELECT,INSERT ON ytv_ai_test_v1.runs,ytv_ai_test_v1.reservations TO ytv_ai
 GRANT SELECT,INSERT ON ytv_ai_test_v1.results TO ytv_ai_test_executor;
 REVOKE UPDATE,DELETE ON ytv_ai_test_v1.results FROM ytv_ai_test_executor;
 REVOKE UPDATE ON ytv_ai_test_v1.runs,ytv_ai_test_v1.reservations FROM ytv_ai_test_executor;
-GRANT UPDATE(status,usage,finished_at) ON ytv_ai_test_v1.runs TO ytv_ai_test_executor;
+GRANT UPDATE(status,usage,finished_at,dispatch_digest,dispatched_at) ON ytv_ai_test_v1.runs TO ytv_ai_test_executor;
+CREATE OR REPLACE FUNCTION ytv_ai_test_v1.prevent_dispatch_rewrite() RETURNS trigger
+LANGUAGE plpgsql SET search_path=pg_catalog AS $$
+BEGIN
+ IF OLD.dispatch_digest IS NOT NULL AND (NEW.dispatch_digest IS DISTINCT FROM OLD.dispatch_digest OR NEW.dispatched_at IS DISTINCT FROM OLD.dispatched_at) THEN
+  RAISE EXCEPTION 'Dispatch receipt cannot be replaced or cleared' USING ERRCODE='42501';
+ END IF;
+ IF (NEW.dispatch_digest IS NULL) <> (NEW.dispatched_at IS NULL) THEN
+  RAISE EXCEPTION 'Dispatch receipt requires both fields' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE OR REPLACE TRIGGER ytv_ai_test_dispatch_once
+BEFORE UPDATE OF dispatch_digest,dispatched_at ON ytv_ai_test_v1.runs
+FOR EACH ROW EXECUTE FUNCTION ytv_ai_test_v1.prevent_dispatch_rewrite();
 GRANT UPDATE(state,actual_micros) ON ytv_ai_test_v1.reservations TO ytv_ai_test_executor;
 REVOKE UPDATE ON ytv_ai_test_v1.budgets FROM ytv_ai_test_executor;
 GRANT SELECT ON ytv_ai_test_v1.budgets TO ytv_ai_test_executor;

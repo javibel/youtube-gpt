@@ -11,6 +11,7 @@ export interface ControlStore {
   active(): Promise<Configuration | null>;
   revision(revision: string): Promise<Configuration | null>;
   admit(request: AiRequest | CodingRequest, context: { runId: string; budgetId: string; agentId?: string; principalId?: string; executor?: 'ai' | 'coding' }): Promise<Admission>;
+  claimDispatch(request: AiRequest | CodingRequest, context: { runId: string; budgetId: string; agentId?: string; principalId?: string; executor?: 'ai' | 'coding'; dispatchDigest: string }): Promise<{ runId: string; snapshot: Readonly<Snapshot>; dispatchDigest: string; remainingDeadlineMs: number }>;
   reconcile(runId: string, outcome: { status: Status | 'uncertain'; usage?: Partial<Usage>; result?: Readonly<Result> }): Promise<{ state: 'settled' | 'uncertain'; replay?: boolean; retainedMicros?: number }>;
 }
 export declare function createControlStore(database: RoleBoundDatabase, registry: Registry): Readonly<ControlStore>;

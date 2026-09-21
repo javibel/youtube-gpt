@@ -75,6 +75,27 @@ function createControlStore(database,registry){
     return {runId,snapshot,status:'running',replay:false};
    });
   },
+  async claimDispatch(rawRequest,{runId,budgetId,agentId,principalId,executor='ai',dispatchDigest}={}){
+   requireRole('executor');
+   if(!['ai','coding'].includes(executor)||typeof dispatchDigest!=='string'||!/^[a-f0-9]{64}$/.test(dispatchDigest)||typeof runId!=='string'||!runId||typeof budgetId!=='string'||!budgetId)fail('invalid_format','Pinned dispatch identity required');
+   const request=executor==='coding'?require('./coding.cjs').validateCodingRequest(rawRequest):validateRequest(rawRequest);
+   const {requestId,...operation}=request;
+   const fingerprint=createHash('sha256').update(stable({operation,budgetId,agentId:agentId??null,principalId:principalId??null,executor})).digest('hex');
+   return database.transaction(async tx=>{
+    // Same lock order as reconciliation; no new reservation or approval ledger.
+    const reservation=(await tx.query('SELECT * FROM ytv_ai_test_v1.reservations WHERE run_id=$1 FOR UPDATE',[runId]))[0];
+    if(!reservation||reservation.budget_id!==budgetId||reservation.state!=='reserved')fail('permissions','Active reservation required');
+    const run=(await tx.query("SELECT *,floor(extract(epoch FROM (created_at + ($2 * interval '1 millisecond') - clock_timestamp())) * 1000)::double precision AS remaining_ms FROM ytv_ai_test_v1.runs WHERE run_id=$1 FOR UPDATE",[runId,request.budget.deadlineMs]))[0];
+    if(!run||run.request_id!==requestId||run.request_fingerprint!==fingerprint||run.status!=='running')fail('permissions','Dispatch differs from admitted execution');
+    if(run.dispatch_digest!==null)fail('uncertain','Dispatch already claimed; reconcile instead of retrying');
+    if(run.remaining_ms<=0)fail('deadline','Admitted execution deadline elapsed');
+    const budget=(await tx.query('SELECT blocked FROM ytv_ai_test_v1.budgets WHERE budget_id=$1 FOR UPDATE',[budgetId]))[0];
+    if(!budget||budget.blocked)fail('quota','Budget group is blocked');
+    const claimed=(await tx.query("UPDATE ytv_ai_test_v1.runs SET dispatch_digest=$2,dispatched_at=clock_timestamp() WHERE run_id=$1 RETURNING floor(extract(epoch FROM (created_at + ($3 * interval '1 millisecond') - clock_timestamp())) * 1000)::double precision AS remaining_ms",[runId,dispatchDigest,request.budget.deadlineMs]))[0];
+    if(!claimed||claimed.remaining_ms<=0)fail('deadline','Deadline elapsed while claiming dispatch');
+    return {runId,snapshot:immutable(run.snapshot),dispatchDigest,remainingDeadlineMs:claimed.remaining_ms};
+   });
+  },
   async reconcile(runId,{status,usage,result}={}){
    requireRole('executor');
    if(!['completed','incomplete','refused','failed','cancelled','uncertain'].includes(status))fail('invalid_format','Invalid terminal status');
