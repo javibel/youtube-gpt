@@ -117,7 +117,7 @@ function createControlStore(database,registry){
     if(reservation.state==='settled'){
      if(Number(reservation.actual_micros)!==cost)fail('uncertain','Conflicting repeated reconciliation');
      const prior=(await tx.query('SELECT status,usage FROM ytv_ai_test_v1.runs WHERE run_id=$1',[runId]))[0];
-     if(prior.status!==status||prior.usage?.currency!==usage.currency||prior.usage?.priceVersion!==usage.priceVersion)fail('uncertain','Repeated reconciliation changes outcome or price provenance');
+     if(prior.status!==status||stable(prior.usage)!==stable(usage))fail('uncertain','Repeated reconciliation changes outcome or usage evidence');
      return {state:'settled',replay:true};
     }
     const amount=Number(reservation.amount_micros);
