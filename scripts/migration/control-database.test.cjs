@@ -104,6 +104,46 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   assert.equal(first.result.status,'completed');assert.equal(first.accounting.state,'settled');assert.equal(second.kind,'result');assert.deepEqual(second.result,first.result);assert.equal(second.accounting.replay,true);assert.equal(calls,1);assert.equal(Number((await stats(id)).settled_micros),7);assert.equal(Number((await stats(id)).reserved_micros),0);
  });
 
+ await test('round trip switches new work while in-flight snapshots and completed replay survive',async()=>{
+  const runtime=createRegistry(),calls=[];let release,signalStarted;
+  const gate=new Promise(resolve=>{release=resolve;}),started=new Promise(resolve=>{signalStarted=resolve;});
+  const inputs=['held','beta','returned'].map(name=>({...req('round-trip-'+name),budget:{...req('round-trip').budget,deadlineMs:10000}}));
+  for(const providerId of ['fixture-alpha','fixture-beta'])runtime.register({providerId,adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async({request})=>{
+   calls.push({requestId:request.requestId,providerId});
+   if(request.requestId===inputs[0].requestId){signalStarted();await gate;}
+   return {status:'completed',text:'Synthetic '+providerId,usage:{costMicros:7,currency:'EUR',priceVersion:'test-v1'}};
+  }});
+  const id=await budget('round-trip',500),control=store('activator'),previous=await store('reader').active();
+  const a=cfg('round_trip_a'),b=cfg('round_trip_b','fixture-beta');
+  await control.publish(a,{actor:'synthetic-operator'});await control.publish(b,{actor:'synthetic-operator'});
+  const make=()=>createTaskRunner({store:createControlStore(database('executor'),runtime),registry:runtime});
+  const contexts=inputs.map((_,i)=>({runId:prefix+'_round_trip_'+i,budgetId:id,principalId:'synthetic-owner'}));
+  let pending,timer;
+  try{
+   await control.activate(a.revision,{expectedRevision:previous.revision,actor:'synthetic-operator',reason:'Synthetic round trip setup'});
+   pending=make().run(inputs[0],contexts[0]);pending.catch(()=>{});
+   await Promise.race([started,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Synthetic task did not start')),2000);})]);clearTimeout(timer);
+   await control.activate(b.revision,{expectedRevision:a.revision,actor:'synthetic-operator',reason:'Synthetic switch A to B'});
+   const second=await make().run(inputs[1],contexts[1]);
+   await control.activate(a.revision,{expectedRevision:b.revision,actor:'synthetic-operator',reason:'Synthetic rollback B to A'});
+   const third=await make().run(inputs[2],contexts[2]);release();const first=await pending;
+   const outputs=[first,second,third];
+   assert.deepEqual(outputs.map(o=>o.result.providerId),['fixture-alpha','fixture-beta','fixture-alpha']);
+   assert.deepEqual(outputs.map(o=>o.result.configRevision),[a.revision,b.revision,a.revision]);
+   for(let i=0;i<inputs.length;i++){
+    assert.equal(outputs[i].result.status,'completed');
+    const recovered=await make().run(inputs[i],{...contexts[i],runId:contexts[i].runId+'_replay'});
+    assert.deepEqual(recovered.result,outputs[i].result);assert.equal(recovered.accounting.replay,true);
+   }
+   assert.equal(calls.length,3);assert.equal(calls.filter(c=>c.requestId===inputs[0].requestId).length,1);
+   const balances=await stats(id);assert.equal(Number(balances.reserved_micros),0);assert.equal(Number(balances.settled_micros),21);
+  }finally{
+   clearTimeout(timer);release();if(pending)await pending.catch(()=>{});
+   const current=await store('reader').active();
+   if(current.revision!==previous.revision)await control.activate(previous.revision,{expectedRevision:current.revision,actor:'synthetic-operator',reason:'Restore synthetic fixture selection'});
+  }
+ });
+
  await test('executor cannot overwrite or delete persisted output',async()=>{for(const sql of ['UPDATE ytv_ai_test_v1.results SET payload=payload WHERE false','DELETE FROM ytv_ai_test_v1.results WHERE false'])await assert.rejects(database('executor').transaction(tx=>tx.query(sql)),e=>e.code==='42501');});
  await test('unknown-cost output survives restart and stays reserved with principal isolation',async()=>{
   let calls=0;const runtime=createRegistry();runtime.register({providerId:'fixture-beta',adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async()=>{calls++;return {status:'completed',text:'Synthetic durable private output'};}});
