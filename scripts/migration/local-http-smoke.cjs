@@ -15,6 +15,9 @@ async function request(route,options={}){
  const login=await request('/api/auth/callback/credentials',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded','X-Auth-Return-Redirect':'1'},body:new URLSearchParams({email:fixture.email,password:fixture.password,csrfToken,callbackUrl:origin+'/dashboard'})});
  assert.equal(login.status,200);assert.ok(!new URL((await login.json()).url).searchParams.has('error'));
  const session=await(await request('/api/auth/session')).json();assert.equal(session.user.email,fixture.email);
+ const checkout=await request('/api/stripe/checkout',{method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({plan:'monthly',lang:'es'})});
+ assert.equal(checkout.status,500);assert.match((await checkout.json()).error,/Price ID not configured/);
  const current=await(await request('/api/admin/ai-configuration')).json();const profile=current.configuration.activeProfile;
  assert.ok(['Prueba OpenAI','Prueba Anthropic'].includes(profile));assert.equal(current.configuration.profiles[profile][fixture.taskType].model,'synthetic-only');
  const key='http-smoke-'+randomUUID(),body=JSON.stringify({title:'Prueba sintética de títulos locales',lang:'es'}),options={method:'POST',headers:{'content-type':'application/json','idempotency-key':key},body};
@@ -22,5 +25,5 @@ async function request(route,options={}){
  assert.match(result.variantA,/^\[Simulación /);assert.ok(result.variantA.includes(profile.replace('Prueba ','')));
  const replay=await request('/api/youtube/ab-test/suggest',options);assert.equal(replay.status,200);assert.deepEqual(await replay.json(),result);
  const conflict=await request('/api/youtube/ab-test/suggest',{...options,body:JSON.stringify({title:'Entrada distinta con la misma identidad',lang:'es'})});assert.equal(conflict.status,503);
- console.log(JSON.stringify({status:'PASS',profile,checks:['normal fixture authentication','configured synthetic provider','immutable replay','conflicting operation rejected'],result}));
+ console.log(JSON.stringify({status:'PASS',profile,checks:['normal fixture authentication','checkout blocked before payment without a synthetic price','configured synthetic provider','immutable replay','conflicting operation rejected'],result}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

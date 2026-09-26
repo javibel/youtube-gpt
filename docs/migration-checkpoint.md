@@ -78,3 +78,6 @@ smoke passed synthetic login, configured provider lookup, immutable replay,
 and rejection of changed input under the same operation identity. The server
 was stopped and the listener was confirmed closed. This does not cover
 payments, other browser flows, live providers, or full product acceptance.
+The same HTTP smoke now also confirms checkout fails before any payment call
+when the guarded fixture has no synthetic price ID. Five checks pass; the
+temporary listener is again closed. A successful checkout remains untested.
