@@ -87,3 +87,8 @@ fixtures, and a synthetic price. It returns only an `example.invalid` URL and
 records zero network or external module attempts. The nine-suite offline web
 verification passes. This is route/facade integration, not a live charge or
 browser checkout acceptance.
+The same composition test now exercises the cancellation route: a synthetic
+active subscription is marked for period-end cancellation only after matching
+the exact simulated provider responses. An unconfigured customer returns an
+error and causes no additional local subscription write. The nine offline
+web suites pass; no real subscription was changed.

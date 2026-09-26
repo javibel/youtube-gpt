@@ -15,10 +15,12 @@ function compile(relative){
 }
 const pricing=compile('lib/pricing.ts');
 const user={id:'synthetic',email:'synthetic@example.invalid',name:'Synthetic',subscription:null};
+const subscriptionWrites=[];
 const mocks={'@/auth':{auth:async()=>({user:{email:user.email}})},
- '@/lib/prisma':{prisma:{user:{findUnique:async()=>user}}},
+ '@/lib/prisma':{prisma:{user:{findUnique:async()=>user},subscription:{update:async args=>{subscriptionWrites.push(args);return args.data;}}}},
  '@/lib/stripe':{stripe:runtime.stripe},
  '@/lib/pricing':pricing,
+ '@/lib/plans':{isPaidStatus:status=>['active','trialing'].includes(status)},
  'next/server':{NextResponse:Response}};
 const originalLoad=Module._load,originalFetch=global.fetch,oldPrice=process.env.STRIPE_PRO_PRICE_ID;
 let externalAttempts=0;
@@ -41,15 +43,26 @@ global.fetch=()=>{externalAttempts++;throw Error('Network forbidden');};
    metadata:{userId:user.id},subscription_data:{description:'YTubViral.com — Plan Pro (200 generaciones/mes)',
     metadata:{userId:user.id,service:'YTubViral.com',plan:'pro'},trial_period_days:7},
    custom_text:{submit:{message:'7 días gratis, luego 9,99€/mes. Cancela antes del día 7 sin coste.'}}
-  }],result:{url:'https://example.invalid/checkout'}}
+  }],result:{url:'https://example.invalid/checkout'}},
+  {operation:'subscriptions.list',args:[{customer:'cus_synthetic',status:'all',limit:10}],result:{data:[{id:'sub_synthetic',status:'active',cancel_at_period_end:false}]}},
+  {operation:'subscriptions.update',args:['sub_synthetic',{cancel_at_period_end:true}],result:{id:'sub_synthetic',cancel_at_period_end:true}}
  ]});
  process.env.STRIPE_PRO_PRICE_ID='price_synthetic_monthly';
  const response=await POST(new Request('https://example.invalid/api/stripe/checkout',{
   method:'POST',headers:{'content-type':'application/json','x-vercel-ip-country':'ES'},
   body:JSON.stringify({plan:'monthly',lang:'es'})}));
  assert.equal(response.status,200);assert.deepEqual(await response.json(),{url:'https://example.invalid/checkout'});
+ user.subscription={stripeCustomerId:'cus_synthetic'};
+ const {POST:cancel}=compile('app/api/stripe/cancel/route.ts');
+ const cancelled=await cancel();
+ assert.equal(cancelled.status,200);assert.deepEqual(await cancelled.json(),{ok:true});
+ assert.deepEqual(subscriptionWrites,[{where:{userId:user.id},data:{cancelAtPeriodEnd:true}}]);
+ user.subscription={stripeCustomerId:'cus_unconfigured'};
+ const unconfigured=await cancel();
+ assert.equal(unconfigured.status,500);
+ assert.equal(subscriptionWrites.length,1);
  assert.equal(externalAttempts,0);
- console.log('PASS: actual checkout route and payment facade compose with exact synthetic fixtures; no external effect');
+ console.log('PASS: actual checkout and cancellation routes compose with exact synthetic payment fixtures; no external effect');
 }finally{
  runtime.reset();Module._load=originalLoad;global.fetch=originalFetch;
  if(oldPrice===undefined)delete process.env.STRIPE_PRO_PRICE_ID;else process.env.STRIPE_PRO_PRICE_ID=oldPrice;
