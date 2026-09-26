@@ -60,3 +60,11 @@ The second real protocol adapter is implemented with injected synthetic transpor
 
 ## 2026-09-15 — HTTP operation identities
 Twelve read-oriented routes forward an optional Idempotency-Key to the trusted factory. Valid keys are scoped by principal and task and separated from random identities. Factory has 15 passing cases. The actual AB route + PostgreSQL integration proves repeated identical input returns the saved variants with one dispatch and settlement; changed input with the same key is rejected. Full protected build and existing route reference suites pass. Frontend key generation, recovery when derived external input changes, and idempotent business writes/media/publications remain pending; this does not make whole business workflows replay-safe.
+
+## 2026-09-27 — Synthetic payment redirects
+
+The offline payment facade now accepts checkout and billing-portal redirect
+fixtures only as HTTPS URLs on `example.invalid`, without embedded credentials
+or a custom port. Fourteen payment checks and the full offline web migration
+suite pass. This guards fixture behavior only; no Stripe operation or live
+browser flow was exercised.

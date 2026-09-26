@@ -35,6 +35,17 @@ function configure(paymentFixtures=[]) { runtime.configureOffline({config, conte
   await test('payment arguments must match exactly', () => { configure([{operation:'customers.create',args:[{email:'synthetic@example.invalid'}],result:{id:'synthetic'}}]); return assert.rejects(stripe.customers.create({email:'other@example.invalid'}), /no explicit fixture/); });
   await test('explicit checkout returns only synthetic redirect', async () => { configure([{operation:'checkout.sessions.create',args:[{}],result:{id:'synthetic',url:'https://example.invalid/checkout'}}]); assert.equal((await stripe.checkout.sessions.create({})).url,'https://example.invalid/checkout'); });
   await test('checkout cannot redirect to real Stripe', () => { configure([{operation:'checkout.sessions.create',args:[{}],result:{url:'https://checkout.stripe.com/test'}}]); return assert.rejects(stripe.checkout.sessions.create({}), /example.invalid/); });
+  await test('checkout rejects non-HTTPS synthetic redirects', async () => { for (const url of ['http://example.invalid/checkout','ftp://example.invalid/checkout','not a URL']) {
+    configure([{operation:'checkout.sessions.create',args:[{}],result:{url}}]);
+    await assert.rejects(stripe.checkout.sessions.create({}), /ISOLATION_BLOCKED/);
+  }});
+  await test('checkout rejects redirect credentials and ports', async () => { for (const url of ['https://user@example.invalid/checkout','https://example.invalid:444/checkout']) {
+    configure([{operation:'checkout.sessions.create',args:[{}],result:{url}}]);
+    await assert.rejects(stripe.checkout.sessions.create({}), /ISOLATION_BLOCKED/);
+  }});
+  await test('billing portal rejects unsafe synthetic redirect', async () => { configure([{operation:'billingPortal.sessions.create',args:[{customer:'synthetic',return_url:'https://example.invalid/profile'}],result:{url:'http://example.invalid/portal'}}]);
+    await assert.rejects(stripe.billingPortal.sessions.create({customer:'synthetic',return_url:'https://example.invalid/profile'}),/ISOLATION_BLOCKED/);
+  });
   await test('actual billing portal helper uses fixture', async () => { configure([{operation:'billingPortal.sessions.create',args:[{customer:'synthetic',return_url:'https://example.invalid/profile'}],result:{url:'https://example.invalid/portal'}}]); assert.equal(await createBillingPortalUrl('synthetic','https://example.invalid/profile'),'https://example.invalid/portal'); });
   await test('returned data cannot mutate fixtures', async () => { configure([{operation:'customers.retrieve',args:['synthetic'],result:{id:'synthetic'}}]); (await stripe.customers.retrieve('synthetic')).id='changed'; assert.equal((await stripe.customers.retrieve('synthetic')).id,'synthetic'); });
   await test('invalid reconfiguration clears previous context', async () => { configure(); assert.throws(() => runtime.configureOffline({config:{...config,mode:'production'},context}), /ISOLATION_BLOCKED/); await assert.rejects(stripe.customers.list({}), /not been configured/); });
