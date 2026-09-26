@@ -73,3 +73,8 @@ PostgreSQL fixture was offline. After confirming the portable cluster's data
 directory and loopback binding, it was started without installing a service.
 The rerun passed all 12 suites, including synthetic database contracts and
 the protected build. No operational database or Vercel deployment was used.
+The guarded fixture server was then started only on 127.0.0.1:4300. The HTTP
+smoke passed synthetic login, configured provider lookup, immutable replay,
+and rejection of changed input under the same operation identity. The server
+was stopped and the listener was confirmed closed. This does not cover
+payments, other browser flows, live providers, or full product acceptance.
