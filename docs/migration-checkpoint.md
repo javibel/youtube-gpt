@@ -81,3 +81,9 @@ payments, other browser flows, live providers, or full product acceptance.
 The same HTTP smoke now also confirms checkout fails before any payment call
 when the guarded fixture has no synthetic price ID. Five checks pass; the
 temporary listener is again closed. A successful checkout remains untested.
+An additional offline composition test executes the actual checkout route
+with the migration payment facade, exact synthetic customer and session
+fixtures, and a synthetic price. It returns only an `example.invalid` URL and
+records zero network or external module attempts. The nine-suite offline web
+verification passes. This is route/facade integration, not a live charge or
+browser checkout acceptance.
