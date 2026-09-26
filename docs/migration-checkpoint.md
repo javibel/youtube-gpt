@@ -68,3 +68,8 @@ fixtures only as HTTPS URLs on `example.invalid`, without embedded credentials
 or a custom port. Fourteen payment checks and the full offline web migration
 suite pass. This guards fixture behavior only; no Stripe operation or live
 browser flow was exercised.
+The expanded local verification initially stopped because the designated
+PostgreSQL fixture was offline. After confirming the portable cluster's data
+directory and loopback binding, it was started without installing a service.
+The rerun passed all 12 suites, including synthetic database contracts and
+the protected build. No operational database or Vercel deployment was used.
