@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {plan,paymentFixtures}=require('./start-local.cjs');
-const {connectLocalFixture}=require('../../lib/migration/local-fixture.cjs');
+const {connectLocalFixture,cancellationFixture}=require('../../lib/migration/local-fixture.cjs');
 (async()=>{
  const task=plan({PATH:process.env.PATH,UNRELATED:'discard'});
  assert.equal(task.host,'127.0.0.1');assert.equal(task.port,4300);
@@ -9,8 +9,10 @@ const {connectLocalFixture}=require('../../lib/migration/local-fixture.cjs');
  assert.equal(task.env.AUTH_URL,'http://127.0.0.1:4300');
  assert.equal(task.env.ADMIN_EMAIL,'migration-admin@example.invalid');
  assert.equal(task.env.STRIPE_PRO_PRICE_ID,'price_synthetic_monthly');
- assert.deepEqual(paymentFixtures().map(item=>item.operation),['customers.create','checkout.sessions.create']);
+ assert.deepEqual(paymentFixtures().map(item=>item.operation),['customers.create','checkout.sessions.create','subscriptions.list','subscriptions.update']);
  assert.equal(paymentFixtures()[1].result.url,'https://example.invalid/checkout');
+ assert.equal(paymentFixtures()[2].args[0].customer,cancellationFixture.customerId);
+ assert.deepEqual(paymentFixtures()[3].args[1],{cancel_at_period_end:true});
  for(const key of ['OPENAI_API_KEY','DATABASE_URL','NODE_OPTIONS','AUTH_SECRET'])assert.throws(()=>plan({[key]:'unexpected'}),/ISOLATION_BLOCKED/);
  assert.throws(()=>plan({},['--port','3000']),/ISOLATION_BLOCKED/);
  await assert.rejects(()=>connectLocalFixture(),/guarded fixture runtime required/);

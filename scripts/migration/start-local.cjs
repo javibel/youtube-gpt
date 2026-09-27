@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path');
 const {plan:compilePlan}=require('./compile-only.cjs');
-const {fixture}=require('../../lib/migration/local-fixture.cjs');
+const {fixture,cancellationFixture}=require('../../lib/migration/local-fixture.cjs');
 function plan(environment=process.env,args=[]){
  const base=compilePlan(environment,args);
  if(!fs.existsSync(path.join(base.cwd,'.next/BUILD_ID')))throw Error('ISOLATION_BLOCKED: protected local build required');
@@ -19,7 +19,9 @@ function paymentFixtures(){
    metadata:{userId},subscription_data:{description:'YTubViral.com — Plan Pro (200 generaciones/mes)',
     metadata:{userId,service:'YTubViral.com',plan:'pro'},trial_period_days:7},
    custom_text:{submit:{message:'7 días gratis, luego 9,99€/mes. Cancela antes del día 7 sin coste.'}}
-  }],result:{url:'https://example.invalid/checkout'}}
+  }],result:{url:'https://example.invalid/checkout'}},
+  {operation:'subscriptions.list',args:[{customer:cancellationFixture.customerId,status:'all',limit:10}],result:{data:[{id:'sub_synthetic_cancel',status:'active',cancel_at_period_end:false}]}},
+  {operation:'subscriptions.update',args:['sub_synthetic_cancel',{cancel_at_period_end:true}],result:{id:'sub_synthetic_cancel',cancel_at_period_end:true}}
  ];
 }
 async function main(){

@@ -1,7 +1,7 @@
 'use strict';
 // Explicit HTTP contract check against the guarded synthetic server, never production.
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
-const {fixture}=require('../../lib/migration/local-fixture.cjs');
+const {fixture,cancellationFixture}=require('../../lib/migration/local-fixture.cjs');
 const origin='http://127.0.0.1:4300',cookies=new Map();
 async function request(route,options={}){
  const url=new URL(route,origin);assert.equal(url.origin,origin);
@@ -28,5 +28,12 @@ async function request(route,options={}){
  assert.match(result.variantA,/^\[Simulación /);assert.ok(result.variantA.includes(profile.replace('Prueba ','')));
  const replay=await request('/api/youtube/ab-test/suggest',options);assert.equal(replay.status,200);assert.deepEqual(await replay.json(),result);
  const conflict=await request('/api/youtube/ab-test/suggest',{...options,body:JSON.stringify({title:'Entrada distinta con la misma identidad',lang:'es'})});assert.equal(conflict.status,503);
- console.log(JSON.stringify({status:'PASS',profile,checks:['normal fixture authentication','checkout returns a synthetic non-routable URL','cancellation blocked without a provider customer','configured synthetic provider','immutable replay','conflicting operation rejected'],result}));
+ const cancelCsrf=await request('/api/auth/csrf');assert.equal(cancelCsrf.status,200);const {csrfToken:cancelToken}=await cancelCsrf.json();
+ const cancelLogin=await request('/api/auth/callback/credentials',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded','X-Auth-Return-Redirect':'1'},body:new URLSearchParams({email:cancellationFixture.email,password:cancellationFixture.password,csrfToken:cancelToken,callbackUrl:origin+'/dashboard'})});
+ assert.equal(cancelLogin.status,200);assert.ok(!new URL((await cancelLogin.json()).url).searchParams.has('error'));
+ assert.equal((await(await request('/api/auth/session')).json()).user.email,cancellationFixture.email);
+ const before=await(await request('/api/user/stats')).json();assert.equal(before.subscription.cancelAtPeriodEnd,false);
+ const scheduled=await request('/api/stripe/cancel',{method:'POST'});assert.equal(scheduled.status,200);assert.deepEqual(await scheduled.json(),{ok:true});
+ const after=await(await request('/api/user/stats')).json();assert.equal(after.subscription.cancelAtPeriodEnd,true);
+ console.log(JSON.stringify({status:'PASS',profile,checks:['normal fixture authentication','checkout returns a synthetic non-routable URL','cancellation blocked without a provider customer','configured synthetic provider','immutable replay','conflicting operation rejected','cancellation HTTP writes only the synthetic subscription'],result}));
 })().catch(error=>{console.error(error);process.exitCode=1;});
