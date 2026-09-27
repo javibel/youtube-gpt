@@ -13,7 +13,7 @@ if ($WithDatabase) { $suites += @('migration:test:database','migration:test:cont
 $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
 $gitCommit = (& git -C $repo rev-parse --verify HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $gitCommit -notmatch '^[a-f0-9]{40}$') { throw 'Cannot identify local verification commit' }
-$trackedChanges = @(& git -C $repo status --porcelain --untracked-files=no)
+$worktreeChanges = @(& git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local verification worktree' }
 $allowedEnvironment = @('PATH','SystemRoot','ComSpec','PATHEXT','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA')
 foreach ($key in @([Environment]::GetEnvironmentVariables().Keys)) {
@@ -56,8 +56,8 @@ try {
     }
     Write-Output "FAIL $activeSuite"
 } finally { Pop-Location }
-$trackedChangesAfter = @(& git -C $repo status --porcelain --untracked-files=no)
+$worktreeChangesAfter = @(& git -C $repo status --porcelain --untracked-files=normal)
 if ($LASTEXITCODE -ne 0) { $unexpectedFailure = $true }
 $complete = $results.Count -eq $suites.Count -and -not $unexpectedFailure -and -not ($results | Where-Object { $_.status -ne 'PASS' })
-@{ repository=$kind; scope=$(if ($WithDatabase) { 'Synthetic suites, designated PostgreSQL and protected build' } else { 'Synthetic offline suites' }); timestamp=(Get-Date).ToUniversalTime().ToString('o'); commit=$gitCommit; trackedChanges=($trackedChanges.Count -gt 0 -or $trackedChangesAfter.Count -gt 0); complete=$complete; results=$results } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $outputs "verificacion-integral-$kind.json")
+@{ repository=$kind; scope=$(if ($WithDatabase) { 'Synthetic suites, designated PostgreSQL and protected build' } else { 'Synthetic offline suites' }); timestamp=(Get-Date).ToUniversalTime().ToString('o'); commit=$gitCommit; worktreeChanges=($worktreeChanges.Count -gt 0 -or $worktreeChangesAfter.Count -gt 0); complete=$complete; results=$results } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $outputs "verificacion-integral-$kind.json")
 if (-not $complete) { exit 1 }
