@@ -237,7 +237,11 @@ export async function POST(request: Request) {
       take: MAX_CONTEXT_MESSAGES,
       select: { role: true, content: true },
     });
-    const contextMessages = recentMessages.reverse().map(m => ({
+    const orderedMessages = recentMessages.reverse();
+    const firstUser = orderedMessages.findIndex(m => m.role === 'user');
+    // A legacy or partially retained history can begin with an assistant turn.
+    // Both provider protocols require the portable conversation to start with user input.
+    const contextMessages = (firstUser < 0 ? [] : orderedMessages.slice(firstUser)).map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.content.slice(0, MAX_MESSAGE_LENGTH),
     }));
