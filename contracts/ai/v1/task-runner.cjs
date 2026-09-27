@@ -27,11 +27,12 @@ function createTaskRunner({store,registry,executor='ai',clock=Date.now}){
  },async runClaimed(rawRequest,{runId,budgetId,agentId,principalId,dispatchDigest,signal}={}){
   if(typeof store.claimDispatch!=='function')throw new ContractError('configuration','One-shot dispatch store required');
   if(signal?.aborted)throw new ContractError('cancelled','Cancelled before dispatch claim');
+  const started=clock();
   const validated=executor==='coding'?require('./coding.cjs').validateCodingRequest(rawRequest):validateRequest(rawRequest);
   const request=executor==='coding'?Object.fromEntries(Object.entries(validated).filter(([key])=>key!=='outputSchema')):validated;
   const claimed=await store.claimDispatch(request,{runId,budgetId,agentId,principalId,executor,dispatchDigest});
-  const remaining=claimed.remainingDeadlineMs;
-  if(!Number.isFinite(remaining)||remaining<=0)throw new ContractError('uncertain','Claimed dispatch has no valid deadline; reconcile before retrying');
+  if(!Number.isFinite(claimed.remainingDeadlineMs)||claimed.remainingDeadlineMs<=0)throw new ContractError('uncertain','Claimed dispatch has no valid deadline; reconcile before retrying');
+  const remaining=claimed.remainingDeadlineMs-Math.max(0,clock()-started);
   return executeAdmitted(validated,request,claimed,remaining,signal);
  }});
 }

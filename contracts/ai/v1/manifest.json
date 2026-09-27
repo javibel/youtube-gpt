@@ -11,9 +11,9 @@
     "control-store.cjs": "a01bcbf5fc35e435bfda968b96e0235957b47879bfba6f5e0ca9f0433cbd7486",
     "control-store.d.cts": "076bc527dd1a7fe054e9de5eadd392ea575e886ca66a148a539a983b8efd66ad",
     "control-test.sql": "3463448a969fef88c9416956236b77e126f54929fb2132de3f08c56780fd6647",
-    "task-runner.cjs": "504c148299fd2b2c19de261aae77506301e2b59f14db47fe61461cda830a49f5",
+    "task-runner.cjs": "062ea5905f84509584d4a27f673d4550cfb1a64b80f7d3e92255fcbd6f8dcc2d",
     "task-runner.d.cts": "4a2ca1e6364614cc7eee55bfcbce943724dadaa2ce2b1a4163db5f481ee2a88d",
-    "task-runner.test.cjs": "9a7d6ed28eca234ff655be43a82b004b367d03d44a0a80ca2e995ed075310740",
+    "task-runner.test.cjs": "718c51ce7057bcc3e0299bad5c9666913708708946b311027ec1b632eba66e02",
     "build-schemas.cjs": "1d9e47a4822a7c0c2244ca3ecec09a7a8b9a32b5227e3abd3347f3f14a0487d5",
     "request.schema.json": "147097bb33032bf43397b5c0ba35427fda9839fd017b60d3fe79e249313766c5",
     "result.schema.json": "cf01081b47db6ee2ef05af47a0c546e78c2d6321209205e2cc7d596433dee014",
@@ -21,6 +21,6 @@
     "coding-request.schema.json": "e12025f69bb11afeed9b072db2b10e8ba5433493562089e591217ddd11ba6702",
     "coding-result.schema.json": "1d177e6e51cd5cb0dbd9c4da237e98e66a788b16edef5b28eaa0a61f467d2d8e",
     "output-schema.schema.json": "6c0cf62a0a766658969582e564aea96527082ab34d555dab9b66bea4aaa9d4b6",
-    "README.md": "e32fd2544f06f0c4955f4105823659d5d55f364ecd38dd8a8330d5acdf095e1d"
+    "README.md": "4061062faf4c261e7967d3209082b9890e2b1ea2db60feba5c20b6bbc8ad5758"
   }
 }

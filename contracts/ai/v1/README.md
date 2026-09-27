@@ -61,5 +61,7 @@ and remaining deadline, then runs that snapshot and reconciles the result.
 It never creates a new admission. A failed or ambiguous claim cannot reach the
 adapter, and a completed retry uses the normal `run` replay path to read the
 stored result. The caller must supply a trusted dispatch digest bound to its
-queue item; queued business callers have not yet adopted this path. Tests use
+deferred execution. A waiting task that has **not** been admitted still uses
+normal `run` at start, so it selects the profile active then. The runner also
+subtracts claim acknowledgement time from the remaining deadline. Tests use
 only the identified synthetic PostgreSQL schema.
