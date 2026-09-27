@@ -39,6 +39,15 @@ export async function POST() {
   }
 
   if (sub.cancel_at_period_end) {
+    // The provider may have accepted an earlier request while our DB write failed.
+    // Reconcile that confirmed provider state without issuing another cancellation.
+    if (!user.subscription.cancelAtPeriodEnd) {
+      await prisma.subscription.update({
+        where: { userId: user.id },
+        data: { cancelAtPeriodEnd: true },
+      });
+      return NextResponse.json({ ok: true });
+    }
     return NextResponse.json({ error: 'La suscripción ya está programada para cancelarse' }, { status: 400 });
   }
 
