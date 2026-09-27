@@ -126,13 +126,13 @@ export async function GET() {
   });
   if (!user) return NextResponse.json({ messages: [] });
 
-  const messages = await prisma.chatMessage.findMany({
+  const recentMessages = await prisma.chatMessage.findMany({
     where: { userId: user.id },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
     take: 50,
     select: { role: true, content: true, createdAt: true },
   });
-  return NextResponse.json({ messages });
+  return NextResponse.json({ messages: recentMessages.reverse() });
 }
 
 export async function POST(request: Request) {
