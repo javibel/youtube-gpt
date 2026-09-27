@@ -97,3 +97,7 @@ changed before or during its run, including non-ignored untracked files. An
 unexpected suite-command error produces a failed JSON receipt alongside the
 log. A temporary invalid-command injection
 confirmed this behavior and was restored; the normal offline suites pass.
+The guarded HTTP smoke now has six checks. Authenticated cancellation with the
+synthetic fixture account returns 400 before any payment facade operation
+because it has no provider customer ID. The temporary loopback server was
+stopped and port 4300 was confirmed closed. This is not a real cancellation.
