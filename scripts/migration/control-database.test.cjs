@@ -180,6 +180,21 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   }
  });
 
+ await test('late claim acknowledgement settles without sending to the provider',async()=>{
+  let calls=0,now=0;const runtime=createRegistry();
+  for(const providerId of ['fixture-alpha','fixture-beta'])runtime.register({providerId,adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async()=>{calls++;return {status:'completed',text:'Unexpected synthetic call'};}});
+  const executor=createControlStore(database('executor'),runtime),id=await budget('late-claim'),input=req('late-claim');input.budget.deadlineMs=10000;
+  const context={runId:prefix+'_late_claim',budgetId:id,principalId:'synthetic-owner',dispatchDigest:'f'.repeat(64)};
+  await executor.admit(input,context);
+  const delayed={...executor,async claimDispatch(...args){const claim=await executor.claimDispatch(...args);now+=20000;return claim;}};
+  const result=await createTaskRunner({store:delayed,registry:runtime,clock:()=>now}).runClaimed(input,context);
+  assert.equal(result.result.status,'failed');assert.equal(result.result.error.code,'deadline');assert.equal(result.result.usage.costMicros,0);
+  assert.equal(result.accounting.state,'settled');assert.equal(calls,0);
+  const row=await stats(id);assert.equal(Number(row.reserved_micros),0);assert.equal(Number(row.settled_micros),0);
+  const replay=await createTaskRunner({store:executor,registry:runtime}).run(input,{...context,runId:context.runId+'_replay'});
+  assert.deepEqual(replay.result,result.result);assert.equal(replay.accounting.replay,true);assert.equal(calls,0);
+ });
+
  await test('executor cannot overwrite or delete persisted output',async()=>{for(const sql of ['UPDATE ytv_ai_test_v1.results SET payload=payload WHERE false','DELETE FROM ytv_ai_test_v1.results WHERE false'])await assert.rejects(database('executor').transaction(tx=>tx.query(sql)),e=>e.code==='42501');});
  await test('unknown-cost output survives restart and stays reserved with principal isolation',async()=>{
   let calls=0;const runtime=createRegistry();runtime.register({providerId:'fixture-beta',adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async()=>{calls++;return {status:'completed',text:'Synthetic durable private output'};}});
