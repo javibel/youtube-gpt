@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS ytv_ai_test_v1.reservations (
 );
 ALTER TABLE ytv_ai_test_v1.runs ADD COLUMN IF NOT EXISTS dispatch_digest text CHECK(dispatch_digest ~ '^[a-f0-9]{64}$');
 ALTER TABLE ytv_ai_test_v1.runs ADD COLUMN IF NOT EXISTS dispatched_at timestamptz;
+ALTER TABLE ytv_ai_test_v1.runs ADD COLUMN IF NOT EXISTS agent_id text;
 CREATE TABLE IF NOT EXISTS ytv_ai_test_v1.results (
  run_id text PRIMARY KEY REFERENCES ytv_ai_test_v1.runs(run_id) ON DELETE CASCADE,
  payload jsonb NOT NULL CHECK(jsonb_typeof(payload)='object' AND payload->>'runId'=run_id),

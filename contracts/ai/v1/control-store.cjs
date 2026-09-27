@@ -46,11 +46,34 @@ function createControlStore(database,registry){
   },
   async active(){return database.transaction(async tx=>(await tx.query('SELECT r.payload FROM ytv_ai_test_v1.active_revision a JOIN ytv_ai_test_v1.revisions r ON r.revision=a.revision WHERE a.singleton=true'))[0]?.payload??null);},
   async revision(revision){if(typeof revision!=='string'||!revision.trim())fail('invalid_format','Revision identity required');return database.transaction(async tx=>(await tx.query('SELECT payload FROM ytv_ai_test_v1.revisions WHERE revision=$1',[revision]))[0]?.payload??null);},
+  async metrics({from,to}={}){
+   requireRole('reader');
+   const start=new Date(from),end=new Date(to);
+   if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||start>=end)fail('invalid_format','Valid metrics interval required');
+   return database.transaction(async tx=>{
+    const rows=await tx.query(`SELECT r.snapshot->>'providerId' AS provider_id,r.revision,r.task_type,r.agent_id,
+      count(*)::int AS run_count,
+      count(*) FILTER (WHERE r.status='completed')::int AS completed_count,
+      count(*) FILTER (WHERE r.status IN ('failed','refused','cancelled','incomplete'))::int AS noncompleted_count,
+      count(*) FILTER (WHERE q.state<>'settled')::int AS unsettled_count,
+      coalesce(sum(q.actual_micros),0)::text AS known_cost_micros,
+      coalesce(sum(q.amount_micros) FILTER (WHERE q.state<>'settled'),0)::text AS retained_micros,
+      percentile_cont(0.95) WITHIN GROUP (ORDER BY extract(epoch FROM (r.finished_at-r.created_at))*1000) FILTER (WHERE r.finished_at IS NOT NULL) AS latency_p95_ms
+     FROM ytv_ai_test_v1.runs r JOIN ytv_ai_test_v1.reservations q ON q.run_id=r.run_id
+     WHERE r.created_at >= $1 AND r.created_at < $2
+     GROUP BY r.snapshot->>'providerId',r.revision,r.task_type,r.agent_id
+     ORDER BY r.revision,r.task_type,r.agent_id,r.snapshot->>'providerId'`,[start.toISOString(),end.toISOString()]);
+    return rows.map(row=>Object.freeze({providerId:row.provider_id,revision:row.revision,taskType:row.task_type,agentId:row.agent_id,
+     runs:row.run_count,completed:row.completed_count,noncompleted:row.noncompleted_count,unsettled:row.unsettled_count,
+     knownCostMicros:row.known_cost_micros,retainedMicros:row.retained_micros,latencyP95Ms:row.latency_p95_ms===null?null:Number(row.latency_p95_ms)}));
+   });
+  },
   async admit(rawRequest,{runId,budgetId,agentId,principalId,executor='ai'}={}){
    requireRole('executor');if(!['ai','coding'].includes(executor))fail('configuration','Unknown executor');
    const request=executor==='coding'?require('./coding.cjs').validateCodingRequest(rawRequest):validateRequest(rawRequest);
    if(typeof runId!=='string'||!runId||typeof budgetId!=='string'||!budgetId)fail('invalid_format','Run and budget identity required');
    if(principalId!==undefined&&(typeof principalId!=='string'||!principalId.trim()))fail('permissions','Invalid principal scope');
+   if(agentId!==undefined&&(typeof agentId!=='string'||!agentId.trim()))fail('invalid_format','Invalid agent identity');
    const {requestId,...operation}=request;
    const fingerprint=createHash('sha256').update(stable({operation,budgetId,agentId:agentId??null,principalId:principalId??null,executor})).digest('hex');
    return database.transaction(async tx=>{
@@ -70,7 +93,7 @@ function createControlStore(database,registry){
     if(!budget||budget.currency!==request.budget.currency)fail('configuration','Budget group or currency mismatch');
     const reserved=await tx.query('UPDATE ytv_ai_test_v1.budgets SET reserved_micros=reserved_micros+$2 WHERE budget_id=$1 AND NOT blocked AND reserved_micros+settled_micros+$2<=limit_micros RETURNING budget_id',[budgetId,request.budget.maxCostMicros]);
     if(reserved.length!==1)fail('quota','Insufficient unreserved budget');
-    await tx.query("INSERT INTO ytv_ai_test_v1.runs(run_id,request_id,task_type,idempotency_key,request_fingerprint,revision,snapshot,status) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,'running')",[runId,requestId,request.taskType,request.idempotencyKey??null,fingerprint,cfg.revision,JSON.stringify(snapshot)]);
+    await tx.query("INSERT INTO ytv_ai_test_v1.runs(run_id,request_id,task_type,idempotency_key,request_fingerprint,revision,snapshot,agent_id,status) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,'running')",[runId,requestId,request.taskType,request.idempotencyKey??null,fingerprint,cfg.revision,JSON.stringify(snapshot),agentId??null]);
     await tx.query("INSERT INTO ytv_ai_test_v1.reservations(run_id,budget_id,amount_micros,state) VALUES($1,$2,$3,'reserved')",[runId,budgetId,request.budget.maxCostMicros]);
     return {runId,snapshot,status:'running',replay:false};
    });

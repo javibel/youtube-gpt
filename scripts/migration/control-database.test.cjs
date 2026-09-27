@@ -40,6 +40,21 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
  const b0=await budget('snapshot',500);const old=await store('executor').admit(req('old'),{runId:prefix+'_old_run',budgetId:b0});
  await store('activator').activate(cfg('r1').revision,{expectedRevision:cfg('r0').revision,actor:'test-admin',reason:'synthetic switch'});
  await test('old and new executions retain distinct revision snapshots',async()=>{const next=await store('executor').admit(req('new'),{runId:prefix+'_new_run',budgetId:b0});assert.equal(old.snapshot.providerId,'fixture-alpha');assert.equal(next.snapshot.providerId,'fixture-beta');assert.equal((await pool.query('SELECT revision FROM ytv_ai_test_v1.runs WHERE run_id=$1',[old.runId])).rows[0].revision,cfg('r0').revision);});
+ await test('reader metrics group pinned provider, revision, function and agent without exposing payloads',async()=>{
+  const from=new Date(Date.now()-60000).toISOString(),to=new Date(Date.now()+60000).toISOString();
+  const budgetId=await budget('metrics',200),agentId=prefix+'_agent';
+  const first=await store('executor').admit(req('metrics_done'),{runId:prefix+'_metrics_done',budgetId,agentId});
+  await store('executor').reconcile(first.runId,{status:'completed',usage:{costMicros:7,currency:'EUR',priceVersion:'fixture-1'}});
+  const second=await store('executor').admit(req('metrics_uncertain'),{runId:prefix+'_metrics_uncertain',budgetId,agentId});
+  await store('executor').reconcile(second.runId,{status:'uncertain'});
+  const groups=await store('reader').metrics({from,to});
+  const group=groups.find(item=>item.agentId===agentId);
+  assert.deepEqual(group,{providerId:'fixture-beta',revision:cfg('r1').revision,taskType:'summary',agentId,runs:2,completed:1,noncompleted:0,unsettled:1,knownCostMicros:'7',retainedMicros:'60',latencyP95Ms:group.latencyP95Ms});
+  assert.ok(group.latencyP95Ms>=0);
+  assert.equal(JSON.stringify(group).includes('Synthetic input'),false);
+  await assert.rejects(store('executor').metrics({from,to}),error=>error.code==='permissions');
+  await assert.rejects(store('reader').metrics({from:to,to:from}),error=>error.code==='invalid_format');
+ });
  await test('stale activation rejected',async()=>assert.rejects(store('activator').activate(cfg('r2').revision,{expectedRevision:cfg('r0').revision,actor:'test-admin',reason:'stale'}),error=>error.code==='configuration'));
  await test('dispatch claim is durable and single-use under concurrent stores',async()=>{
   const request=req('dispatch');request.budget.deadlineMs=10000;const budgetId=await budget('dispatch'),runId=prefix+'_dispatch';

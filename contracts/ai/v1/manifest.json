@@ -8,9 +8,9 @@
     "coding.cjs": "bbef0e57502b5dd5b59f9cb08f8c2167eee0682bfe98da2c4e2883f1dab7e8f1",
     "coding.d.cts": "b9e06e02bc7effb98483b10a4c05cfc1ee0b5260071cd6154ae9438458135978",
     "coding.test.cjs": "4ba666fcaad6d22b60298a13f4c13ef8cbaf0c36b8bb453b7057a6ca165d3d4d",
-    "control-store.cjs": "a01bcbf5fc35e435bfda968b96e0235957b47879bfba6f5e0ca9f0433cbd7486",
-    "control-store.d.cts": "076bc527dd1a7fe054e9de5eadd392ea575e886ca66a148a539a983b8efd66ad",
-    "control-test.sql": "3463448a969fef88c9416956236b77e126f54929fb2132de3f08c56780fd6647",
+    "control-store.cjs": "08c1ea949691a3114eaa60a582bbc3158d6c005b60a2721285aea1a20b042d6a",
+    "control-store.d.cts": "2fd5709f7551c6d0bda4fd166aeacb83059e4f6d4eed5e6377a003a0693582a3",
+    "control-test.sql": "87fc0398b4ffd3bd9253177b5a3e3f8b05a76233b298afd1cd09937e50186d5f",
     "task-runner.cjs": "062ea5905f84509584d4a27f673d4550cfb1a64b80f7d3e92255fcbd6f8dcc2d",
     "task-runner.d.cts": "4a2ca1e6364614cc7eee55bfcbce943724dadaa2ce2b1a4163db5f481ee2a88d",
     "task-runner.test.cjs": "718c51ce7057bcc3e0299bad5c9666913708708946b311027ec1b632eba66e02",
@@ -21,6 +21,6 @@
     "coding-request.schema.json": "e12025f69bb11afeed9b072db2b10e8ba5433493562089e591217ddd11ba6702",
     "coding-result.schema.json": "1d177e6e51cd5cb0dbd9c4da237e98e66a788b16edef5b28eaa0a61f467d2d8e",
     "output-schema.schema.json": "6c0cf62a0a766658969582e564aea96527082ab34d555dab9b66bea4aaa9d4b6",
-    "README.md": "4061062faf4c261e7967d3209082b9890e2b1ea2db60feba5c20b6bbc8ad5758"
+    "README.md": "8ecf1e2f9341241917750f514863904a5c2dd0752e5d50876d5d3bad99cd301a"
   }
 }
