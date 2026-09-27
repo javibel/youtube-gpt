@@ -92,3 +92,7 @@ active subscription is marked for period-end cancellation only after matching
 the exact simulated provider responses. An unconfigured customer returns an
 error and causes no additional local subscription write. The nine offline
 web suites pass; no real subscription was changed.
+The local verifier now records the exact Git commit and whether tracked files
+changed before or during its run. An unexpected suite-command error produces a
+failed JSON receipt alongside the log. A temporary invalid-command injection
+confirmed this behavior and was restored; the normal offline suites pass.

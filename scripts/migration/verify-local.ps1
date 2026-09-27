@@ -11,6 +11,10 @@ $suites = @('migration:check','migration:test','migration:test:contracts','migra
 $suites += if ($kind -eq 'web') { @('migration:test:routes','migration:test:startup') } else { 'migration:test:coding-workers' }
 if ($WithDatabase) { $suites += @('migration:test:database','migration:test:control','migration:build') }
 $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+$gitCommit = (& git -C $repo rev-parse --verify HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $gitCommit -notmatch '^[a-f0-9]{40}$') { throw 'Cannot identify local verification commit' }
+$trackedChanges = @(& git -C $repo status --porcelain --untracked-files=no)
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect local verification worktree' }
 $allowedEnvironment = @('PATH','SystemRoot','ComSpec','PATHEXT','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA')
 foreach ($key in @([Environment]::GetEnvironmentVariables().Keys)) {
     if ($key -notin $allowedEnvironment) { [Environment]::SetEnvironmentVariable($key, $null, 'Process') }
@@ -21,9 +25,12 @@ $outputs = [IO.Path]::GetFullPath((Join-Path $repo '../../outputs'))
 $logFile = Join-Path $outputs "verificacion-integral-$kind.log"
 Set-Content -LiteralPath $logFile -Value ''
 $results = @()
+$unexpectedFailure = $false
+$activeSuite = $null
 Push-Location -LiteralPath $repo
 try {
     foreach ($suite in $suites) {
+        $activeSuite = $suite
         $command = $scripts.PSObject.Properties[$suite].Value
         if (-not $command) { throw "Missing verification suite: $suite" }
         $started = Get-Date
@@ -41,7 +48,16 @@ try {
         Write-Output "$status $suite"
         if ($failed) { break }
     }
+} catch {
+    $unexpectedFailure = $true
+    Add-Content -LiteralPath $logFile -Value "$activeSuite :: unexpected verifier error: $($_.Exception.Message)"
+    if ($activeSuite -and -not ($results | Where-Object { $_.suite -eq $activeSuite })) {
+        $results += @{ suite=$activeSuite; status='FAIL'; elapsedMs=0 }
+    }
+    Write-Output "FAIL $activeSuite"
 } finally { Pop-Location }
-$complete = $results.Count -eq $suites.Count -and -not ($results | Where-Object { $_.status -ne 'PASS' })
-@{ repository=$kind; scope=$(if ($WithDatabase) { 'Synthetic suites, designated PostgreSQL and protected build' } else { 'Synthetic offline suites' }); timestamp=(Get-Date).ToUniversalTime().ToString('o'); complete=$complete; results=$results } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $outputs "verificacion-integral-$kind.json")
+$trackedChangesAfter = @(& git -C $repo status --porcelain --untracked-files=no)
+if ($LASTEXITCODE -ne 0) { $unexpectedFailure = $true }
+$complete = $results.Count -eq $suites.Count -and -not $unexpectedFailure -and -not ($results | Where-Object { $_.status -ne 'PASS' })
+@{ repository=$kind; scope=$(if ($WithDatabase) { 'Synthetic suites, designated PostgreSQL and protected build' } else { 'Synthetic offline suites' }); timestamp=(Get-Date).ToUniversalTime().ToString('o'); commit=$gitCommit; trackedChanges=($trackedChanges.Count -gt 0 -or $trackedChangesAfter.Count -gt 0); complete=$complete; results=$results } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $outputs "verificacion-integral-$kind.json")
 if (-not $complete) { exit 1 }
