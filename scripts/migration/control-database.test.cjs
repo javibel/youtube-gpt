@@ -147,6 +147,39 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   }
  });
 
+ await test('queued dispatch keeps its admitted provider after switch and cannot dispatch twice',async()=>{
+  const runtime=createRegistry(),calls=[];
+  for(const providerId of ['fixture-alpha','fixture-beta'])runtime.register({providerId,adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async({request})=>{
+   calls.push({requestId:request.requestId,providerId});
+   return {status:'completed',text:'Synthetic '+providerId,usage:{costMicros:5,currency:'EUR',priceVersion:'test-v1'}};
+  }});
+  const control=store('activator'),previous=await store('reader').active();
+  const a=cfg('queued_a'),b=cfg('queued_b','fixture-beta');
+  await control.publish(a,{actor:'synthetic-operator'});await control.publish(b,{actor:'synthetic-operator'});
+  const id=await budget('queued-switch',200),input=req('queued-switch');input.budget.deadlineMs=10000;
+  const context={runId:prefix+'_queued_switch',budgetId:id,principalId:'synthetic-owner',dispatchDigest:'e'.repeat(64)};
+  const make=()=>createTaskRunner({store:createControlStore(database('executor'),runtime),registry:runtime});
+  try{
+   await control.activate(a.revision,{expectedRevision:previous.revision,actor:'synthetic-operator',reason:'Synthetic queue setup'});
+   const admitted=await store('executor').admit(input,context);
+   assert.equal(admitted.snapshot.providerId,'fixture-alpha');assert.deepEqual(calls,[]);
+   await control.activate(b.revision,{expectedRevision:a.revision,actor:'synthetic-operator',reason:'Synthetic switch before queued dispatch'});
+   const result=await make().runClaimed(input,context);
+   assert.equal(result.result.providerId,'fixture-alpha');assert.equal(result.result.configRevision,a.revision);
+   assert.equal(result.accounting.state,'settled');assert.deepEqual(calls,[{requestId:input.requestId,providerId:'fixture-alpha'}]);
+   await assert.rejects(make().runClaimed(input,context));
+   const replay=await make().run(input,{...context,runId:context.runId+'_replay'});
+   assert.deepEqual(replay.result,result.result);assert.equal(replay.accounting.replay,true);assert.equal(calls.length,1);
+   const fresh=req('queued-switch-fresh');fresh.budget.deadlineMs=10000;
+   const newer=await make().run(fresh,{runId:prefix+'_queued_switch_fresh',budgetId:id,principalId:'synthetic-owner'});
+   assert.equal(newer.result.providerId,'fixture-beta');assert.equal(newer.result.configRevision,b.revision);
+   assert.equal(Number((await stats(id)).settled_micros),10);
+  }finally{
+   const current=await store('reader').active();
+   if(current.revision!==previous.revision)await control.activate(previous.revision,{expectedRevision:current.revision,actor:'synthetic-operator',reason:'Restore synthetic fixture selection'});
+  }
+ });
+
  await test('executor cannot overwrite or delete persisted output',async()=>{for(const sql of ['UPDATE ytv_ai_test_v1.results SET payload=payload WHERE false','DELETE FROM ytv_ai_test_v1.results WHERE false'])await assert.rejects(database('executor').transaction(tx=>tx.query(sql)),e=>e.code==='42501');});
  await test('unknown-cost output survives restart and stays reserved with principal isolation',async()=>{
   let calls=0;const runtime=createRegistry();runtime.register({providerId:'fixture-beta',adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async()=>{calls++;return {status:'completed',text:'Synthetic durable private output'};}});

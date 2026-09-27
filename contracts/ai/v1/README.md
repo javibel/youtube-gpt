@@ -55,6 +55,11 @@ be reconciled, never retried automatically. A claim reserves the right to send;
 it is not evidence that a provider actually received the request. Failure after
 claiming can conservatively leave a consumed claim without any provider call.
 
-The returned snapshot and remaining deadline must be checked by the trusted
-transport before credential access. Existing callers do not automatically opt
-into this method. Tests use only the identified synthetic PostgreSQL schema.
+`task-runner.runClaimed` is the opt-in execution path for a request admitted
+before it was queued. It uses `claimDispatch` to recover the pinned snapshot
+and remaining deadline, then runs that snapshot and reconciles the result.
+It never creates a new admission. A failed or ambiguous claim cannot reach the
+adapter, and a completed retry uses the normal `run` replay path to read the
+stored result. The caller must supply a trusted dispatch digest bound to its
+queue item; queued business callers have not yet adopted this path. Tests use
+only the identified synthetic PostgreSQL schema.
