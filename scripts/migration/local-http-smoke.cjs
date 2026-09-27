@@ -15,9 +15,9 @@ async function request(route,options={}){
  const login=await request('/api/auth/callback/credentials',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded','X-Auth-Return-Redirect':'1'},body:new URLSearchParams({email:fixture.email,password:fixture.password,csrfToken,callbackUrl:origin+'/dashboard'})});
  assert.equal(login.status,200);assert.ok(!new URL((await login.json()).url).searchParams.has('error'));
  const session=await(await request('/api/auth/session')).json();assert.equal(session.user.email,fixture.email);
- const checkout=await request('/api/stripe/checkout',{method:'POST',headers:{'content-type':'application/json'},
+ const checkout=await request('/api/stripe/checkout',{method:'POST',headers:{'content-type':'application/json','x-vercel-ip-country':'ES'},
   body:JSON.stringify({plan:'monthly',lang:'es'})});
- assert.equal(checkout.status,500);assert.match((await checkout.json()).error,/Price ID not configured/);
+ assert.equal(checkout.status,200);assert.deepEqual(await checkout.json(),{url:'https://example.invalid/checkout'});
  const cancellation=await request('/api/stripe/cancel',{method:'POST'});
  assert.equal(cancellation.status,400);
  assert.match((await cancellation.json()).error,/No tienes una suscripción activa/);
@@ -28,5 +28,5 @@ async function request(route,options={}){
  assert.match(result.variantA,/^\[Simulación /);assert.ok(result.variantA.includes(profile.replace('Prueba ','')));
  const replay=await request('/api/youtube/ab-test/suggest',options);assert.equal(replay.status,200);assert.deepEqual(await replay.json(),result);
  const conflict=await request('/api/youtube/ab-test/suggest',{...options,body:JSON.stringify({title:'Entrada distinta con la misma identidad',lang:'es'})});assert.equal(conflict.status,503);
- console.log(JSON.stringify({status:'PASS',profile,checks:['normal fixture authentication','checkout blocked before payment without a synthetic price','cancellation blocked without a provider customer','configured synthetic provider','immutable replay','conflicting operation rejected'],result}));
+ console.log(JSON.stringify({status:'PASS',profile,checks:['normal fixture authentication','checkout returns a synthetic non-routable URL','cancellation blocked without a provider customer','configured synthetic provider','immutable replay','conflicting operation rejected'],result}));
 })().catch(error=>{console.error(error);process.exitCode=1;});
