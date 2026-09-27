@@ -5,7 +5,7 @@ export interface RoleBoundDatabase {
   transaction<T>(work: (transaction: Transaction) => Promise<T>): Promise<T>;
 }
 export interface Admission { runId: string; snapshot: Readonly<Snapshot>; status: Status | 'running' | 'uncertain'; replay: boolean; result?: Readonly<Result>; accounting?: { state: 'settled' | 'uncertain'; replay: boolean } }
-export interface MetricGroup { providerId: string; revision: string; taskType: string; agentId: string | null; runs: number; completed: number; noncompleted: number; unsettled: number; knownCostMicros: string; retainedMicros: string; latencyP95Ms: number | null }
+export interface MetricGroup { providerId: string; revision: string; taskType: string; agentId: string | null; runs: number; completed: number; noncompleted: number; unsettled: number; knownCostMicros: string; retainedMicros: string; latencySamples: number; latencyP95Ms: number | null }
 export interface ControlStore {
   publish(configuration: Configuration, actor: { actor: string }): Promise<{ revision: string }>;
   activate(revision: string, context: { expectedRevision?: string | null; actor: string; reason: string }): Promise<{ previousRevision: string | null; revision: string }>;

@@ -49,8 +49,12 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   await store('executor').reconcile(second.runId,{status:'uncertain'});
   const groups=await store('reader').metrics({from,to});
   const group=groups.find(item=>item.agentId===agentId);
-  assert.deepEqual(group,{providerId:'fixture-beta',revision:cfg('r1').revision,taskType:'summary',agentId,runs:2,completed:1,noncompleted:0,unsettled:1,knownCostMicros:'7',retainedMicros:'60',latencyP95Ms:group.latencyP95Ms});
+  assert.deepEqual(group,{providerId:'fixture-beta',revision:cfg('r1').revision,taskType:'summary',agentId,runs:2,completed:1,noncompleted:0,unsettled:1,knownCostMicros:'7',retainedMicros:'60',latencySamples:1,latencyP95Ms:group.latencyP95Ms});
   assert.ok(group.latencyP95Ms>=0);
+  const prior=groups.find(item=>item.revision===cfg('r0').revision&&item.agentId===null);
+  assert.equal(prior.providerId,'fixture-alpha');
+  assert.equal(prior.latencySamples,0);
+  assert.equal(prior.latencyP95Ms,null);
   assert.equal(JSON.stringify(group).includes('Synthetic input'),false);
   await assert.rejects(store('executor').metrics({from,to}),error=>error.code==='permissions');
   await assert.rejects(store('reader').metrics({from:to,to:from}),error=>error.code==='invalid_format');
