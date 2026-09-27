@@ -52,9 +52,12 @@ export async function POST() {
   }
 
   // Cancelar al final del periodo (no inmediatamente)
-  await stripe.subscriptions.update(sub.id, {
+  const updated = await stripe.subscriptions.update(sub.id, {
     cancel_at_period_end: true,
   });
+  if (!updated || updated.id !== sub.id || updated.cancel_at_period_end !== true) {
+    return NextResponse.json({ error: 'Confirmación de cancelación incompleta' }, { status: 502 });
+  }
 
   await prisma.subscription.update({
     where: { userId: user.id },
