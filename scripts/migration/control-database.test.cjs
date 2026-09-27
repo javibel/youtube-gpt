@@ -73,6 +73,23 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   await assert.rejects(lost.claimDispatch(request,context),/lost acknowledgement/);
   await assert.rejects(store('executor').claimDispatch(request,context),e=>e.code==='uncertain');
  });
+ await test('control outage before admission cannot dispatch or reserve',async()=>{
+  const input=req('control-offline'),budgetId=await budget('control-offline'),runId=prefix+'_control_offline';
+  const offline=createControlStore({role:'executor',async transaction(){throw Error('Synthetic control unavailable');}},registry);
+  await assert.rejects(createTaskRunner({store:offline,registry}).run(input,{runId,budgetId}),/control unavailable/);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM ytv_ai_test_v1.runs WHERE run_id=$1',[runId])).rows[0].n,0);
+  assert.equal(Number((await stats(budgetId)).reserved_micros),0);
+ });
+ await test('lost admission acknowledgement leaves one held run without provider retry',async()=>{
+  const input=req('admission-lost'),budgetId=await budget('admission-lost'),runId=prefix+'_admission_lost';
+  const underlying=database('executor');
+  const lost=createControlStore({role:'executor',async transaction(fn){await underlying.transaction(fn);throw Error('Synthetic admission acknowledgement lost');}},registry);
+  await assert.rejects(createTaskRunner({store:lost,registry}).run(input,{runId,budgetId}),/acknowledgement lost/);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM ytv_ai_test_v1.runs WHERE run_id=$1',[runId])).rows[0].n,1);
+  const retry=await createTaskRunner({store:store('executor'),registry}).run(input,{runId:runId+'_retry',budgetId});
+  assert.equal(retry.kind,'existing-run');assert.equal(retry.runId,runId);
+  assert.equal(Number((await stats(budgetId)).reserved_micros),60);
+ });
  const b1=await budget('concurrent');
  await test('concurrent admissions cannot over-reserve',async()=>{const outcomes=await Promise.allSettled([1,2].map(i=>store('executor').admit(req('concurrent'+i),{runId:prefix+'_concurrent'+i,budgetId:b1})));assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);assert.equal(Number((await stats(b1)).reserved_micros),60);});
  const b2=await budget('idempotency');const duplicate=req('duplicate');duplicate.idempotencyKey=prefix+'_operation';let duplicateRun;
