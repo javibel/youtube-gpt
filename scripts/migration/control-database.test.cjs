@@ -211,6 +211,25 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   const replay=await createTaskRunner({store:executor,registry:runtime}).run(input,{...context,runId:context.runId+'_replay'});
   assert.deepEqual(replay.result,result.result);assert.equal(replay.accounting.replay,true);assert.equal(calls,0);
  });
+ await test('late provider response cannot replace a persisted deadline outcome',async()=>{
+  let calls=0,release,signalStarted;const started=new Promise(resolve=>{signalStarted=resolve;});
+  const late=new Promise(resolve=>{release=resolve;});const runtime=createRegistry();
+  runtime.register({providerId:'fixture-beta',adapterVersion:'test-1',enabled:true,credentialRef:'test:fixture',models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},execute:async()=>{calls++;signalStarted();return late;}});
+  const executor=createControlStore(database('executor'),runtime),budgetId=await budget('late-provider'),input=req('late-provider');input.budget.deadlineMs=150;
+  const context={runId:prefix+'_late_provider',budgetId,principalId:'synthetic-owner'};
+  let timer;
+  try{
+   const pending=createTaskRunner({store:executor,registry:runtime}).run(input,context);
+   await Promise.race([started,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Synthetic provider did not start')),1000);})]);clearTimeout(timer);
+   const timedOut=await pending;assert.equal(timedOut.result.status,'failed');assert.equal(timedOut.result.error.code,'deadline');
+   assert.equal(timedOut.result.usage.costMicros,null);assert.equal(timedOut.accounting.state,'uncertain');
+   release({status:'completed',text:'Synthetic late success',usage:{costMicros:5,currency:'EUR',priceVersion:'test-v1'}});
+   await new Promise(resolve=>setImmediate(resolve));
+   const replay=await createTaskRunner({store:executor,registry:runtime}).run(input,{...context,runId:context.runId+'_replay'});
+   assert.deepEqual(replay.result,timedOut.result);assert.equal(replay.accounting.replay,true);assert.equal(calls,1);
+   const row=await stats(budgetId);assert.equal(Number(row.reserved_micros),60);assert.equal(Number(row.settled_micros),0);
+  }finally{clearTimeout(timer);release({status:'completed',text:'Synthetic late cleanup'});}
+ });
 
  await test('executor cannot overwrite or delete persisted output',async()=>{for(const sql of ['UPDATE ytv_ai_test_v1.results SET payload=payload WHERE false','DELETE FROM ytv_ai_test_v1.results WHERE false'])await assert.rejects(database('executor').transaction(tx=>tx.query(sql)),e=>e.code==='42501');});
  await test('unknown-cost output survives restart and stays reserved with principal isolation',async()=>{
