@@ -30,6 +30,21 @@ const results=[];
   const history=await (await chat.GET()).json();
   assert.equal(history.messages.length,50);assert.equal(history.messages[0].content,'Synthetic message 1');assert.equal(history.messages.at(-1).content,'Synthetic message 50');
   assert.equal(history.messages.some(message=>message.content==='Synthetic message 0'),false);results.push('real PostgreSQL chat route retains latest fifty in chronological order');
+  const conversationEmail='conversation-'+randomUUID()+'@example.invalid';
+  const conversationUser=await prisma.user.create({data:{email:conversationEmail,name:'Synthetic conversation'}});
+  try {
+   const captures=[];
+   const chatPrisma={user:prisma.user,chatMessage:prisma.chatMessage,$queryRaw:async()=>[{hits:1}]};
+   const conversation=load('app/api/chat/route.ts',{'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async payload=>{captures.push(structuredClone(payload.messages));return {content:[{text:'Synthetic answer '+captures.length}]};}})},'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{email:conversationEmail}})},'@/lib/prisma':{prisma:chatPrisma},'@/lib/plans':{getUserPlan:async()=>('free'),getLimits:()=>({chatMessagesPerDay:5}),isPaid:()=>false}});
+   const post=async message=>conversation.POST(new Request('https://example.invalid/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,lang:'es'})}));
+   assert.equal((await post('Primera pregunta')).status,200);
+   assert.equal((await post('Segunda pregunta')).status,200);
+   assert.deepEqual(captures[0].map(x=>[x.role,x.content]),[['user','Primera pregunta']]);
+   assert.deepEqual(captures[1].map(x=>[x.role,x.content]),[['user','Primera pregunta'],['assistant','Synthetic answer 1'],['user','Segunda pregunta']]);
+   const saved=await (await conversation.GET()).json();
+   assert.deepEqual(saved.messages.map(x=>x.content),['Primera pregunta','Synthetic answer 1','Segunda pregunta','Synthetic answer 2']);
+   results.push('two-turn chat route persists and reloads conversation with simulated model');
+  } finally {await prisma.user.delete({where:{id:conversationUser.id}});}
   const token='synthetic-'+randomUUID();
   await prisma.session.create({data:{userId:user.id,sessionToken:token,expires:new Date('2030-01-01')}});
   await prisma.user.delete({where:{id:user.id}});

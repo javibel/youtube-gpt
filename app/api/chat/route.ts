@@ -128,7 +128,7 @@ export async function GET() {
 
   const recentMessages = await prisma.chatMessage.findMany({
     where: { userId: user.id },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: 50,
     select: { role: true, content: true, createdAt: true },
   });
@@ -233,7 +233,7 @@ export async function POST(request: Request) {
     // Load recent messages from DB for context
     const recentMessages = await prisma.chatMessage.findMany({
       where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: MAX_CONTEXT_MESSAGES,
       select: { role: true, content: true },
     });
@@ -282,7 +282,7 @@ export async function POST(request: Request) {
       // Poda: conservar los ultimos 50 mensajes por usuario.
       const old = await prisma.chatMessage.findMany({
         where: { userId: user.id },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: 50,
         select: { id: true },
       });
