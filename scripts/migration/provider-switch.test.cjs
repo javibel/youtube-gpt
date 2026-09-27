@@ -12,8 +12,16 @@ const runner=createTaskRunner({registry,store:{admit:async(req,{runId})=>({runId
  const h=setup();h.setHold(true);const running=h.run('old-run');await h.ready;h.setActive(config('anthropic','revision-two'));h.setHold(false);h.release();const first=(await running).result;assert.equal(first.providerId,'openai');assert.equal(first.configRevision,'revision-one');
  const second=(await h.run('new-run')).result;assert.equal(second.providerId,'anthropic');assert.equal(second.configRevision,'revision-two');assert.equal(first.text,second.text);assert.deepEqual(first.usage,second.usage);
  h.setActive(config('openai','revision-three'));assert.equal((await h.run('rollback')).result.providerId,'openai');
+ const conversation=request();conversation.messages=[{role:'user',content:[{type:'text',text:'Pregunta inicial'}]},{role:'assistant',content:[{type:'text',text:'Respuesta previa'}]},{role:'user',content:[{type:'text',text:'Pregunta siguiente'}]}];
+ conversation.requestId='session-openai';await h.run('session-openai',conversation);const openaiCall=h.calls.at(-1);assert.equal(openaiCall.id,'openai');
+ h.setActive(config('anthropic','revision-four'));conversation.requestId='session-anthropic';await h.run('session-anthropic',conversation);const anthropicCall=h.calls.at(-1);assert.equal(anthropicCall.id,'anthropic');
+ const transcript=payload=>payload.map(message=>[message.role,message.content.map(part=>part.text).join('')]);
+ const expected=[['user','Pregunta inicial'],['assistant','Respuesta previa'],['user','Pregunta siguiente']];
+ assert.deepEqual(transcript(openaiCall.payload.input),expected);assert.deepEqual(transcript(anthropicCall.payload.messages),expected);
+ assert.equal(openaiCall.payload.store,false);assert.equal(openaiCall.payload.previous_response_id,undefined);
+ h.setActive(config('openai','revision-five'));
  h.setFail(true);const previous=h.calls.length;assert.equal((await h.run('failure')).result.status,'failed');assert.equal(h.calls.length,previous+1);assert.equal(h.calls.at(-1).id,'openai');
  h.setFail(false);const req=request();req.requiredCapabilities.push('unimplemented');const count=h.calls.length;await assert.rejects(h.run('unsupported',req));assert.equal(h.calls.length,count);
- assert.equal(h.settled.length,4);
- console.log('PASS: 6 common runner checks for actual adapters: pinned in-flight configuration, switch, normalized result/usage, rollback, no fallback and capability rejection');
+ assert.equal(h.settled.length,6);
+ console.log('PASS: 8 common runner checks for actual adapters: pinned in-flight configuration, switch, portable conversation context, normalized result/usage, rollback, no fallback and capability rejection');
 })().catch(e=>{console.error(e);process.exitCode=1;});
