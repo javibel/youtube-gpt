@@ -24,10 +24,17 @@ const results=[];
  try {
   assert.equal((await prisma.user.findUnique({where:{id:user.id}})).lang,'es');results.push('user create/read/defaults');
   await assert.rejects(prisma.user.create({data:{email}}),error=>error.code==='P2002');results.push('unique email constraint');
+  await prisma.chatMessage.createMany({data:Array.from({length:51},(_,i)=>({userId:user.id,role:i%2?'assistant':'user',content:'Synthetic message '+i,createdAt:new Date(Date.UTC(2026,8,1,0,i))}))});
+  const {load}=require('./route-harness.cjs');
+  const chat=load('app/api/chat/route.ts',{'@/lib/ai/task-runtime':{getMessagesTask:async()=>{throw Error('GET must not execute a model');}},'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{email}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>{throw Error('GET must not load a plan');}}});
+  const history=await (await chat.GET()).json();
+  assert.equal(history.messages.length,50);assert.equal(history.messages[0].content,'Synthetic message 1');assert.equal(history.messages.at(-1).content,'Synthetic message 50');
+  assert.equal(history.messages.some(message=>message.content==='Synthetic message 0'),false);results.push('real PostgreSQL chat route retains latest fifty in chronological order');
   const token='synthetic-'+randomUUID();
   await prisma.session.create({data:{userId:user.id,sessionToken:token,expires:new Date('2030-01-01')}});
   await prisma.user.delete({where:{id:user.id}});
   assert.equal(await prisma.session.count({where:{sessionToken:token}}),0);results.push('session cascade');
+  assert.equal(await prisma.chatMessage.count({where:{userId:user.id}}),0);results.push('chat cascade');
   await assert.rejects(prisma.$transaction(async tx=>{await tx.user.create({data:{email}});throw Error('synthetic rollback');}),/synthetic rollback/);
   assert.equal(await prisma.user.count({where:{email}}),0);results.push('transaction rollback');
  } finally { await prisma.user.deleteMany({where:{id:user.id,email}}); }
