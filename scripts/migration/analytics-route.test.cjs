@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const {load}=require('./route-harness.cjs');
 const {taskFixture}=require('./task-fixture.cjs');
-const parser=load('lib/parse-claude-json.ts');
+const parser=load('lib/parse-fenced-json.ts');
 const epoch=Date.parse('2026-09-14T12:00:00Z');
 class FixedDate extends Date{constructor(...args){super(...(args.length?args:[epoch]));}static now(){return epoch;}}
 function harness(options={}){
@@ -18,7 +18,7 @@ function harness(options={}){
   'next/server':{NextResponse:Response},'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic'}}},
   '@/lib/plans':{getUserPlan:async()=>options.free?'free':'pro',isPaid:plan=>plan!=='free'},
   '@/lib/prisma':{prisma:{youtubeToken:{findUnique:async()=>options.noChannel?null:{channelId:'synthetic-channel',channelName:'Synthetic channel'}}}},
-  '@/lib/youtube-auth':{getAccessToken:async()=>options.noToken?null:'synthetic-token'},'@/lib/parse-claude-json':parser,'@/lib/ai/task-runtime':runtime,
+  '@/lib/youtube-auth':{getAccessToken:async()=>options.noToken?null:'synthetic-token'},'@/lib/parse-fenced-json':parser,'@/lib/ai/task-runtime':runtime,
  },{Date:FixedDate,URLSearchParams,AbortController,Error,process:{env:options.noKey?{}:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}},
  setTimeout:(callback,ms)=>{timers.push({callback,ms});return timers.length;},clearTimeout:id=>cleared.push(id),
  fetch:async(url,init)=>{
@@ -53,7 +53,7 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  await test('AI transport failure clears timer',async()=>{const h=harness({aiError:true});assert.equal((await h.run()).status,200);assert.deepEqual(h.cleared,[1]);});
  await test('malformed JSON ignored',async()=>{assert.equal((await harness({text:'not JSON'}).run()).body.aiInsight,null);});
  await test('both languages required in insight',async()=>{assert.equal((await harness({text:'{"en":"Synthetic"}'}).run()).body.aiInsight,null);});
- for(const [lang,word]of [['es','Spanish'],['en','English']])await test(word+' instruction preserved',async()=>{const h=harness();await h.run(lang);assert.match(h.requests.find(r=>r.body).body.messages[0].content,new RegExp('Reply in '+word));});
+ for(const lang of ['es','en'])await test('bilingual instruction preserved for '+lang,async()=>{const h=harness();await h.run(lang);assert.match(h.requests.find(r=>r.body).body.messages[0].content,/Provide both Spanish and English versions/);});
  await test('non-string insight discarded',async()=>{assert.equal((await harness({text:'{"es":7,"en":8}'}).run()).body.aiInsight,null);});
  await test('truncated insight discarded',async()=>{assert.equal((await harness({stopReason:'max_tokens'}).run()).body.aiInsight,null);});
  await test('optional title transport failure preserves analytics payload',async()=>{const r=await harness({titleTransportError:true}).run();assert.equal(r.status,200);assert.equal(r.body.overview.views,900);assert.equal(r.body.topVideos[0].title,'synthetic-video');});

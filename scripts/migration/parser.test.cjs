@@ -5,7 +5,7 @@ const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const ts=require('typescript');
 const entry={exports:{}};
-vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../../lib/parse-claude-json.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:entry.exports,module:entry});
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../../lib/parse-fenced-json.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:entry.exports,module:entry});
 const cases=[
  ['Spanish object','{"titulo":"Análisis sintético"}',true],['English object','{"title":"Synthetic analysis"}',true],
  ['nested data','{"a":{"b":[1,true,null]}}',true],['empty object','{}',true],['array','[1,2]',true],
@@ -17,5 +17,5 @@ const cases=[
  ['unquoted key','{a:1}',false],['comment','{"a":1/*x*/}',false],['two objects','{}{}',false],
  ['prose before JSON','Synthetic reply: {}',false],['non JSON value','undefined',false],
 ];
-for(const [name,input,valid] of cases){if(valid)assert.doesNotThrow(()=>entry.exports.parseClaudeJson(input),name);else assert.throws(()=>entry.exports.parseClaudeJson(input),undefined,name);}
+for(const [name,input,valid] of cases){if(valid)assert.doesNotThrow(()=>entry.exports.parseFencedJson(input),name);else assert.throws(()=>entry.exports.parseFencedJson(input),undefined,name);}
 console.log(JSON.stringify({scope:'syntax parsing only; this helper does not enforce output schemas',passed:cases.length},null,2));

@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
-import { parseClaudeJson } from '@/lib/parse-claude-json';
+import { parseFencedJson } from '@/lib/parse-fenced-json';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 
 export const maxDuration = 60;
@@ -153,7 +153,7 @@ export async function GET(request: Request) {
         const topCountriesStr = countries.slice(0, 3).map(c => `${c.country}: ${c.views} views`).join(', ');
         const topVideosStr = resolvedTopVideos.slice(0, 3).map(v => `"${v.title}" (${v.views} views, ${v.subscribersGained} subs gained)`).join('\n');
 
-        const prompt = `You are a YouTube growth expert. Analyze this channel's last-28-days analytics and explain what stands out, in plain language a creator can act on. Reply in ${lang === 'en' ? 'English' : 'Spanish'}.
+        const prompt = `You are a YouTube growth expert. Analyze this channel's last-28-days analytics and explain what stands out, in plain language a creator can act on. Provide both Spanish and English versions.
 
 Views: ${overview.views || 0} | Watch time: ${Math.round((overview.estimatedMinutesWatched || 0) / 60)}h | Avg view duration: ${overview.averageViewDuration || 0}s | Avg % viewed: ${overview.averageViewPercentage || 0}%
 Subscribers: +${overview.subscribersGained || 0} / -${overview.subscribersLost || 0} | Likes: ${overview.likes || 0} | Comments: ${overview.comments || 0}
@@ -166,7 +166,7 @@ Reply ONLY with valid JSON: {"es": "...", "en": "..."}
 2-3 short paragraphs, under 180 words. Call out the single most actionable pattern (a traffic source to lean into, a country to target, a video's approach to repeat). No markdown, no headers.`;
 
         // Este insight es OPCIONAL y va detrás de 5 llamadas a YouTube dentro de un
-        // route con maxDuration=60. Sin un tope propio, un Anthropic lento agota el
+        // route con maxDuration=60. Sin un tope propio, un proveedor lento agota el
         // límite de la plataforma — y ese timeout no se puede capturar, así que se
         // perdería TODO el payload de analytics, no solo el insight. De ahí el abort.
         const ac = new AbortController();
@@ -182,7 +182,7 @@ Reply ONLY with valid JSON: {"es": "...", "en": "..."}
             messages: [{ role: 'user', content: prompt }],
           }, { signal: ac.signal });
           const text = data.content[0]?.text || '';
-          const parsed = parseClaudeJson<{ es?: string; en?: string }>(text);
+          const parsed = parseFencedJson<{ es?: string; en?: string }>(text);
           if (parsed.es && parsed.en) aiInsight = { es: parsed.es, en: parsed.en };
         } finally {
           clearTimeout(timer);
