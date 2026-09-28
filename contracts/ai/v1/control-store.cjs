@@ -51,7 +51,7 @@ function createControlStore(database,registry){
    const start=new Date(from),end=new Date(to);
    if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||start>=end)fail('invalid_format','Valid metrics interval required');
    return database.transaction(async tx=>{
-    const rows=await tx.query(`SELECT r.snapshot->>'providerId' AS provider_id,r.revision,r.task_type,r.agent_id,
+    const rows=await tx.query(`SELECT r.snapshot->>'providerId' AS provider_id,r.revision,r.task_type,r.agent_id,b.currency,
       count(*)::int AS run_count,
       count(*) FILTER (WHERE r.status='completed')::int AS completed_count,
       count(*) FILTER (WHERE r.status IN ('failed','refused','cancelled','incomplete'))::int AS noncompleted_count,
@@ -61,10 +61,11 @@ function createControlStore(database,registry){
       count(*) FILTER (WHERE r.finished_at IS NOT NULL)::int AS latency_samples,
       percentile_cont(0.95) WITHIN GROUP (ORDER BY extract(epoch FROM (r.finished_at-r.created_at))*1000) FILTER (WHERE r.finished_at IS NOT NULL) AS latency_p95_ms
      FROM ytv_ai_test_v1.runs r JOIN ytv_ai_test_v1.reservations q ON q.run_id=r.run_id
+     JOIN ytv_ai_test_v1.budgets b ON b.budget_id=q.budget_id
      WHERE r.created_at >= $1 AND r.created_at < $2
-     GROUP BY r.snapshot->>'providerId',r.revision,r.task_type,r.agent_id
-     ORDER BY r.revision,r.task_type,r.agent_id,r.snapshot->>'providerId'`,[start.toISOString(),end.toISOString()]);
-    return rows.map(row=>Object.freeze({providerId:row.provider_id,revision:row.revision,taskType:row.task_type,agentId:row.agent_id,
+     GROUP BY r.snapshot->>'providerId',r.revision,r.task_type,r.agent_id,b.currency
+     ORDER BY r.revision,r.task_type,r.agent_id,r.snapshot->>'providerId',b.currency`,[start.toISOString(),end.toISOString()]);
+    return rows.map(row=>Object.freeze({providerId:row.provider_id,revision:row.revision,taskType:row.task_type,agentId:row.agent_id,currency:row.currency,
      runs:row.run_count,completed:row.completed_count,noncompleted:row.noncompleted_count,unsettled:row.unsettled_count,
      knownCostMicros:row.known_cost_micros,retainedMicros:row.retained_micros,latencySamples:row.latency_samples,latencyP95Ms:row.latency_p95_ms===null?null:Number(row.latency_p95_ms)}));
    });

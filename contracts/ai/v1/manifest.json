@@ -8,8 +8,8 @@
     "coding.cjs": "bbef0e57502b5dd5b59f9cb08f8c2167eee0682bfe98da2c4e2883f1dab7e8f1",
     "coding.d.cts": "b9e06e02bc7effb98483b10a4c05cfc1ee0b5260071cd6154ae9438458135978",
     "coding.test.cjs": "4ba666fcaad6d22b60298a13f4c13ef8cbaf0c36b8bb453b7057a6ca165d3d4d",
-    "control-store.cjs": "6a4500f8dcf2339a4e4e062dcb539b7e3a668cbe42b7347d34a211c969a0daa2",
-    "control-store.d.cts": "580c905b619d624bef697b226f4c9c80684a30f3deca44cb3204807a9e246aa5",
+    "control-store.cjs": "a7689d13ff5436b79b876e90529fd76cf62e4eac380d9b2e3a4e6e5d8854818f",
+    "control-store.d.cts": "9f8ff3d0e18e5fe4c6d4151c68c470c10375446e85aaab88f9a5bd798360d566",
     "control-test.sql": "87fc0398b4ffd3bd9253177b5a3e3f8b05a76233b298afd1cd09937e50186d5f",
     "task-runner.cjs": "062ea5905f84509584d4a27f673d4550cfb1a64b80f7d3e92255fcbd6f8dcc2d",
     "task-runner.d.cts": "4a2ca1e6364614cc7eee55bfcbce943724dadaa2ce2b1a4163db5f481ee2a88d",
@@ -21,6 +21,6 @@
     "coding-request.schema.json": "e12025f69bb11afeed9b072db2b10e8ba5433493562089e591217ddd11ba6702",
     "coding-result.schema.json": "1d177e6e51cd5cb0dbd9c4da237e98e66a788b16edef5b28eaa0a61f467d2d8e",
     "output-schema.schema.json": "6c0cf62a0a766658969582e564aea96527082ab34d555dab9b66bea4aaa9d4b6",
-    "README.md": "36a36138b3121c68a033cfea313a59eac9d7e707ab8ec16c1fb25c71e698dc34"
+    "README.md": "3408defdd9ea8ad3b1fe7aae79793de5253b3e81cf767c102acd1c383eedc927"
   }
 }
