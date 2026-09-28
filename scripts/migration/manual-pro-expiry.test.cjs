@@ -25,7 +25,7 @@ async function run(){
  assert.equal((await post({email:'synthetic@example.invalid',plan:'pro',durationDays:60})).status,409);
  assert.equal(writes.length,0);
  subscription=null;
- for(const durationDays of [0,366,1.2,'60'])assert.equal((await post({email:'synthetic@example.invalid',durationDays})).status,400);
+ for(const durationDays of [undefined,0,366,1.2,'60'])assert.equal((await post({email:'synthetic@example.invalid',durationDays})).status,400);
  assert.equal(writes.length,0);
  const before=Date.now();
  const response=await post({email:'synthetic@example.invalid',plan:'pro',durationDays:60});

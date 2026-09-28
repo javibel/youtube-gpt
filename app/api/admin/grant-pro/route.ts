@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   if (!validPlans.includes(plan)) {
     return NextResponse.json({ error: 'Plan inválido. Usa: free, pro, business' }, { status: 400 });
   }
-  if (durationDays !== undefined && (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365)) {
+  if (plan !== 'free' && (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365)) {
     return NextResponse.json({ error: 'durationDays debe ser un entero entre 1 y 365' }, { status: 400 });
   }
 
@@ -42,8 +42,7 @@ export async function POST(req: NextRequest) {
 
   const now = new Date();
   const periodEnd = new Date(now);
-  if (durationDays !== undefined) periodEnd.setUTCDate(periodEnd.getUTCDate() + durationDays);
-  else periodEnd.setUTCFullYear(periodEnd.getUTCFullYear() + 10);
+  periodEnd.setUTCDate(periodEnd.getUTCDate() + durationDays);
 
   await prisma.subscription.upsert({
     where: { userId: user.id },

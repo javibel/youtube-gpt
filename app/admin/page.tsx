@@ -74,6 +74,7 @@ export default function AdminPage() {
   const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [grantEmail, setGrantEmail] = useState('');
   const [grantPlan, setGrantPlan] = useState<'pro' | 'business' | 'free'>('pro');
+  const [grantDays, setGrantDays] = useState(60);
   const [granting, setGranting] = useState(false);
   const [grantMsg, setGrantMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [feedbackEmail, setFeedbackEmail] = useState('');
@@ -127,11 +128,11 @@ export default function AdminPage() {
   async function handleGrantPlan(e: React.FormEvent) {
     e.preventDefault(); setGranting(true); setGrantMsg(null);
     try {
-      const res = await fetch('/api/admin/grant-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: grantEmail, plan: grantPlan }) });
+      const res = await fetch('/api/admin/grant-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: grantEmail, plan: grantPlan, ...(grantPlan === 'free' ? {} : { durationDays: grantDays }) }) });
       const d = await res.json();
       if (d.ok) {
         const labels: Record<string, string> = { free: 'Free', pro: 'Pro', business: 'Business' };
-        setGrantMsg({ ok: true, text: `${labels[d.plan]} activado para ${grantEmail}.` });
+        setGrantMsg({ ok: true, text: `${labels[d.plan]} activado para ${grantEmail}${d.currentPeriodEnd ? ` hasta ${new Date(d.currentPeriodEnd).toLocaleDateString('es-ES')}` : ''}.` });
         setGrantEmail('');
         fetch('/api/admin/stats').then(r => r.json()).then(d => { if (!d.error) setData(d); });
       }
@@ -474,6 +475,10 @@ export default function AdminPage() {
                   );
                 })}
               </div>
+              {grantPlan !== 'free' && <label className="block text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>
+                Duración en días (1–365)
+                <input type="number" required min={1} max={365} step={1} value={grantDays} onChange={e => setGrantDays(Number(e.target.value))} className="soft-field mt-1" />
+              </label>}
               <button type="submit" disabled={granting} className="btn-offset w-full py-2.5 text-sm rounded-xl">
                 {granting ? 'Aplicando...' : grantPlan === 'free' ? 'Quitar plan pagado' : `Activar ${grantPlan === 'pro' ? 'Pro ★' : 'Business ◆'}`}
               </button>
