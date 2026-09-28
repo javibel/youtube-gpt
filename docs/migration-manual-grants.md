@@ -1,0 +1,3 @@
+# Manual Pro grants: expiry gap
+
+The current independent web copy has two manual grant paths: `scripts/grant-pro.js` creates a 365-day `active` subscription and `/api/admin/grant-pro` creates a ten-year `active` subscription. `getUserPlan` and several extension/API readers use the status alone, without checking `currentPeriodEnd`. Therefore a two-month complimentary trial cannot be represented reliably just by changing that date. Do not activate the proposed Tugelbay trial until a bounded grant and expiry-aware entitlement have passed local verification. Preserve Stripe-managed entitlements separately.
