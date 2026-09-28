@@ -47,6 +47,10 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   await store('executor').reconcile(first.runId,{status:'completed',usage:{costMicros:7,currency:'EUR',priceVersion:'fixture-1'}});
   const second=await store('executor').admit(req('metrics_uncertain'),{runId:prefix+'_metrics_uncertain',budgetId,agentId});
   await store('executor').reconcile(second.runId,{status:'uncertain'});
+  const overrunBudgetId=await budget('metrics_overrun',60);
+  const overrun=await store('executor').admit(req('metrics_overrun'),{runId:prefix+'_metrics_overrun',budgetId:overrunBudgetId,agentId});
+  await store('executor').reconcile(overrun.runId,{status:'completed',usage:{costMicros:70,currency:'EUR',priceVersion:'fixture-1'}});
+  assert.equal((await stats(overrunBudgetId)).blocked,true);
   const usdBudgetId=prefix+'_metrics_usd';
   await pool.query('INSERT INTO ytv_ai_test_v1.budgets(budget_id,currency,limit_micros) VALUES($1,$2,$3)',[usdBudgetId,'USD',100]);
   const usdRequest=req('metrics_usd');usdRequest.budget.currency='USD';
@@ -54,10 +58,10 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   await store('executor').reconcile(usdRun.runId,{status:'completed',usage:{costMicros:11,currency:'USD',priceVersion:'fixture-1'}});
   const groups=await store('reader').metrics({from,to});
   const group=groups.find(item=>item.agentId===agentId&&item.currency==='EUR');
-  assert.deepEqual(group,{providerId:'fixture-beta',revision:cfg('r1').revision,taskType:'summary',agentId,currency:'EUR',runs:2,completed:1,noncompleted:0,unsettled:1,knownCostMicros:'7',retainedMicros:'60',latencySamples:1,latencyP95Ms:group.latencyP95Ms});
+  assert.deepEqual(group,{providerId:'fixture-beta',revision:cfg('r1').revision,taskType:'summary',agentId,currency:'EUR',runs:3,completed:2,noncompleted:0,unsettled:2,knownCostMicros:'7',retainedMicros:'120',reportedUnsettledCostMicros:'70',heldWithoutCostCount:1,latencySamples:2,latencyP95Ms:group.latencyP95Ms});
   assert.ok(group.latencyP95Ms>=0);
   const usdGroup=groups.find(item=>item.agentId===agentId&&item.currency==='USD');
-  assert.equal(usdGroup.runs,1);assert.equal(usdGroup.knownCostMicros,'11');assert.equal(usdGroup.retainedMicros,'0');
+  assert.equal(usdGroup.runs,1);assert.equal(usdGroup.knownCostMicros,'11');assert.equal(usdGroup.retainedMicros,'0');assert.equal(usdGroup.reportedUnsettledCostMicros,'0');assert.equal(usdGroup.heldWithoutCostCount,0);
   const prior=groups.find(item=>item.revision===cfg('r0').revision&&item.agentId===null);
   assert.equal(prior.providerId,'fixture-alpha');
   assert.equal(prior.latencySamples,0);

@@ -58,6 +58,8 @@ function createControlStore(database,registry){
       count(*) FILTER (WHERE q.state<>'settled')::int AS unsettled_count,
       coalesce(sum(q.actual_micros),0)::text AS known_cost_micros,
       coalesce(sum(q.amount_micros) FILTER (WHERE q.state<>'settled'),0)::text AS retained_micros,
+      coalesce(sum(CASE WHEN q.state='uncertain' AND jsonb_typeof(r.usage->'costMicros')='number' THEN (r.usage->>'costMicros')::numeric ELSE 0 END),0)::text AS reported_unsettled_cost_micros,
+      count(*) FILTER (WHERE q.state<>'settled' AND jsonb_typeof(r.usage->'costMicros') IS DISTINCT FROM 'number')::int AS held_without_cost_count,
       count(*) FILTER (WHERE r.finished_at IS NOT NULL)::int AS latency_samples,
       percentile_cont(0.95) WITHIN GROUP (ORDER BY extract(epoch FROM (r.finished_at-r.created_at))*1000) FILTER (WHERE r.finished_at IS NOT NULL) AS latency_p95_ms
      FROM ytv_ai_test_v1.runs r JOIN ytv_ai_test_v1.reservations q ON q.run_id=r.run_id
@@ -67,7 +69,8 @@ function createControlStore(database,registry){
      ORDER BY r.revision,r.task_type,r.agent_id,r.snapshot->>'providerId',b.currency`,[start.toISOString(),end.toISOString()]);
     return rows.map(row=>Object.freeze({providerId:row.provider_id,revision:row.revision,taskType:row.task_type,agentId:row.agent_id,currency:row.currency,
      runs:row.run_count,completed:row.completed_count,noncompleted:row.noncompleted_count,unsettled:row.unsettled_count,
-     knownCostMicros:row.known_cost_micros,retainedMicros:row.retained_micros,latencySamples:row.latency_samples,latencyP95Ms:row.latency_p95_ms===null?null:Number(row.latency_p95_ms)}));
+     knownCostMicros:row.known_cost_micros,retainedMicros:row.retained_micros,reportedUnsettledCostMicros:row.reported_unsettled_cost_micros,
+     heldWithoutCostCount:row.held_without_cost_count,latencySamples:row.latency_samples,latencyP95Ms:row.latency_p95_ms===null?null:Number(row.latency_p95_ms)}));
    });
   },
   async admit(rawRequest,{runId,budgetId,agentId,principalId,executor='ai'}={}){
