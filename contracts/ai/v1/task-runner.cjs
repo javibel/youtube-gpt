@@ -20,8 +20,9 @@ function createTaskRunner({store,registry,executor='ai',clock=Date.now}){
   const validated=executor==='coding'?require('./coding.cjs').validateCodingRequest(rawRequest):validateRequest(rawRequest);
   const request=executor==='coding'?Object.fromEntries(Object.entries(validated).filter(([key])=>key!=='outputSchema')):validated;
   const admission=await store.admit(request,{runId,budgetId,agentId,principalId,executor});
-  if(admission.replay&&admission.result)return {kind:'result',result:admission.result,accounting:admission.accounting};
-  if(admission.replay)return {kind:'existing-run',runId:admission.runId,status:admission.status,snapshot:admission.snapshot};
+  if(admission?.replay&&admission.result)return {kind:'result',result:admission.result,accounting:admission.accounting};
+  if(admission?.replay)return {kind:'existing-run',runId:admission.runId,status:admission.status,snapshot:admission.snapshot};
+  if(admission?.runId!==runId||!admission.snapshot||typeof admission.snapshot!=='object')throw new ContractError('uncertain','Fresh admission receipt does not match the requested execution; reconcile before retrying');
   const remaining=request.budget.deadlineMs-Math.max(0,clock()-started);
   return executeAdmitted(validated,request,admission,remaining,signal);
  },async runClaimed(rawRequest,{runId,budgetId,agentId,principalId,dispatchDigest,signal}={}){

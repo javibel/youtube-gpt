@@ -31,6 +31,7 @@ Unknown cost retains the reservation. Known cost releases the unused portion onc
 ## Coding boundary
 
 `task-runner.cjs` composes durable admission, execution of the pinned adapter and reconciliation. Admission time counts against the deadline. Existing operations return a run reference without dispatching again; the caller retrieves business output from its own history. If reconciliation fails after dispatch, the error is uncertain and never triggers another provider call. Raw registry methods are conformance primitives and do not reserve budgets themselves.
+For a fresh admission, the runner checks that its receipt names the requested run and includes a snapshot before dispatch. An inconsistent receipt remains uncertain and cannot authorize an adapter call.
 
 Coding jobs name a registered repository, base revision, explicit relative file scope, permission flags and exact command argument vectors. Deployments, communications and direct operational commands are disabled during local preparation. Results outside the allowed file/command scope are rejected. Partial work can preserve a portable checkpoint without becoming a completed actionable result.
 
