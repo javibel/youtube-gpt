@@ -31,6 +31,7 @@ function createTaskRunner({store,registry,executor='ai',clock=Date.now}){
   const validated=executor==='coding'?require('./coding.cjs').validateCodingRequest(rawRequest):validateRequest(rawRequest);
   const request=executor==='coding'?Object.fromEntries(Object.entries(validated).filter(([key])=>key!=='outputSchema')):validated;
   const claimed=await store.claimDispatch(request,{runId,budgetId,agentId,principalId,executor,dispatchDigest});
+  if(claimed?.runId!==runId||claimed.dispatchDigest!==dispatchDigest||!claimed.snapshot||typeof claimed.snapshot!=='object')throw new ContractError('uncertain','Dispatch claim receipt does not match the requested execution; reconcile before retrying');
   if(!Number.isFinite(claimed.remainingDeadlineMs)||claimed.remainingDeadlineMs<=0)throw new ContractError('uncertain','Claimed dispatch has no valid deadline; reconcile before retrying');
   const remaining=claimed.remainingDeadlineMs-Math.max(0,clock()-started);
   return executeAdmitted(validated,request,claimed,remaining,signal);

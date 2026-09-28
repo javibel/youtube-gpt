@@ -65,5 +65,6 @@ adapter, and a completed retry uses the normal `run` replay path to read the
 stored result. The caller must supply a trusted dispatch digest bound to its
 deferred execution. A waiting task that has **not** been admitted still uses
 normal `run` at start, so it selects the profile active then. The runner also
-subtracts claim acknowledgement time from the remaining deadline. Tests use
+checks that the claim receipt names the requested run and dispatch digest,
+and subtracts claim acknowledgement time from the remaining deadline. Tests use
 only the identified synthetic PostgreSQL schema.
