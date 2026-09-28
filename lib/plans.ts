@@ -50,12 +50,22 @@ export function isPaidStatus(status: string | null | undefined): boolean {
   return !!status && (PAID_STATUSES as readonly string[]).includes(status);
 }
 
+export function hasPaidAccess(subscription: {
+  status: string;
+  stripeCustomerId?: string | null;
+  currentPeriodEnd?: Date | null;
+} | null | undefined, now = new Date()): boolean {
+  if (!subscription || !isPaidStatus(subscription.status)) return false;
+  if (subscription.stripeCustomerId !== 'manual_admin') return true;
+  return !!subscription.currentPeriodEnd && subscription.currentPeriodEnd > now;
+}
+
 export async function getUserPlan(userId: string): Promise<PlanType> {
   const sub = await prisma.subscription.findUnique({
     where: { userId },
-    select: { status: true, plan: true },
+    select: { status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true },
   });
-  if (!sub || !isPaidStatus(sub.status)) return 'free';
+  if (!sub || !hasPaidAccess(sub)) return 'free';
   return (sub.plan === 'business' ? 'business' : 'pro') as PlanType;
 }
 

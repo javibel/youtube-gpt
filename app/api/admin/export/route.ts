@@ -2,7 +2,7 @@ import { historyOutputTokens } from "@/lib/ai/history-usage";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guards";
-import { isPaidStatus } from "@/lib/plans";
+import { hasPaidAccess } from "@/lib/plans";
 
 function toCSV(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return '';
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
         email: true,
         name: true,
         createdAt: true,
-        subscription: { select: { status: true, cancelAtPeriodEnd: true, currentPeriodEnd: true } },
+        subscription: { select: { status: true, cancelAtPeriodEnd: true, currentPeriodEnd: true, stripeCustomerId: true } },
         _count: { select: { generations: true } },
       },
     });
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       id: u.id,
       email: u.email,
       name: u.name ?? '',
-      plan: u.subscription?.status === 'trialing' ? 'Trial' : isPaidStatus(u.subscription?.status) ? 'Pro' : 'Free',
+      plan: hasPaidAccess(u.subscription) ? (u.subscription?.status === 'trialing' ? 'Trial' : 'Pro') : 'Free',
       cancel_at_period_end: u.subscription?.cancelAtPeriodEnd ?? false,
       subscription_ends: u.subscription?.currentPeriodEnd?.toISOString() ?? '',
       total_generations: u._count.generations,

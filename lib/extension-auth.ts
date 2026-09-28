@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { isPaidStatus } from './plans';
+import { hasPaidAccess } from './plans';
 
 export interface ExtensionUser {
   user: {
@@ -25,7 +25,7 @@ export async function getExtensionUser(request: Request): Promise<ExtensionUser 
           id: true,
           email: true,
           name: true,
-          subscription: { select: { status: true } },
+          subscription: { select: { status: true, stripeCustomerId: true, currentPeriodEnd: true } },
         },
       },
     },
@@ -37,7 +37,7 @@ export async function getExtensionUser(request: Request): Promise<ExtensionUser 
 
   return {
     user: { id: ext.user.id, email: ext.user.email, name: ext.user.name },
-    isPro: isPaidStatus(ext.user.subscription?.status),
+    isPro: hasPaidAccess(ext.user.subscription),
   };
 }
 

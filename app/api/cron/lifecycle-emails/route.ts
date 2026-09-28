@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail } from '@/lib/send-email';
 import { SEQUENCES } from '@/lib/lifecycle-emails';
 import { isInternalAccount } from '@/lib/internal-accounts';
-import { isPaidStatus } from '@/lib/plans';
+import { hasPaidAccess } from '@/lib/plans';
 
 export const maxDuration = 60;
 
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     where: { emailVerified: { not: null }, marketingOptOut: false },
     select: {
       id: true, email: true, name: true, lang: true, createdAt: true, updatedAt: true,
-      subscription: { select: { status: true } },
+      subscription: { select: { status: true, stripeCustomerId: true, currentPeriodEnd: true } },
       _count: { select: { generations: true } },
     },
   });
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     const lang = (u.lang === 'en' ? 'en' : 'es') as Lang;
     const name = u.name?.split(' ')[0] || (lang === 'en' ? 'there' : 'crack');
     const ageDays = (now - u.createdAt.getTime()) / DAY;
-    const isPaid = isPaidStatus(u.subscription?.status);
+    const isPaid = hasPaidAccess(u.subscription);
     const genCount = u._count.generations;
     const lastGenAt = lastGen.get(u.id) ?? 0;
     const inactiveDays = lastGenAt ? (now - lastGenAt) / DAY : ageDays;

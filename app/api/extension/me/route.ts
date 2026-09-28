@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { isPaidStatus } from '@/lib/plans';
+import { hasPaidAccess } from '@/lib/plans';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
 
     const subscription = await prisma.subscription.findUnique({
       where: { userId: extToken.user.id },
-      select: { status: true },
+      select: { status: true, stripeCustomerId: true, currentPeriodEnd: true },
     });
 
-    const isPro = isPaidStatus(subscription?.status);
+    const isPro = hasPaidAccess(subscription);
 
     return NextResponse.json({
       name: extToken.user.name,

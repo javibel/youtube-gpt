@@ -2,7 +2,7 @@ import { historyOutputTokens } from "@/lib/ai/history-usage";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guards";
-import { isPaidStatus } from "@/lib/plans";
+import { hasPaidAccess } from "@/lib/plans";
 
 export async function GET() {
   const gate = await requireAdmin();
@@ -34,7 +34,7 @@ export async function GET() {
     // Suscripciones Pro activas (con priceId para calcular MRR correctamente)
     prisma.subscription.findMany({
       where: { status: "active" },
-      select: { stripePriceId: true },
+      select: { status: true, stripeCustomerId: true, stripePriceId: true, currentPeriodEnd: true },
     }),
 
     // Nuevos usuarios este mes
@@ -65,7 +65,7 @@ export async function GET() {
         email: true,
         name: true,
         createdAt: true,
-        subscription: { select: { status: true } },
+        subscription: { select: { status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true } },
         _count: { select: { generations: true } },
       },
     }),
@@ -112,8 +112,9 @@ export async function GET() {
   }
 
   const yearlyPriceId = process.env.STRIPE_PRO_YEARLY_PRICE_ID;
-  const proUsers = proSubscriptions.length;
-  const mrr = proSubscriptions.reduce((sum, s) => {
+  const activeProSubscriptions = proSubscriptions.filter((s) => hasPaidAccess(s));
+  const proUsers = activeProSubscriptions.length;
+  const mrr = activeProSubscriptions.filter((s) => s.stripeCustomerId !== 'manual_admin').reduce((sum, s) => {
     const isYearly = yearlyPriceId && s.stripePriceId === yearlyPriceId;
     return sum + (isYearly ? 99.99 / 12 : 9.99);
   }, 0);
@@ -145,8 +146,8 @@ export async function GET() {
       email: u.email,
       name: u.name,
       createdAt: u.createdAt,
-      isPro: isPaidStatus(u.subscription?.status),
-      plan: u.subscription?.status === 'trialing' ? 'trial' : isPaidStatus(u.subscription?.status) ? ((u.subscription as { plan?: string })?.plan || 'pro') : 'free',
+      isPro: hasPaidAccess(u.subscription),
+      plan: hasPaidAccess(u.subscription) ? (u.subscription?.status === 'trialing' ? 'trial' : u.subscription?.plan || 'pro') : 'free',
       generationCount: u._count.generations,
     })),
     recentGenerations: recentGenerations.map((g) => ({

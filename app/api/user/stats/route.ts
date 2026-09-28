@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getLimits, isPaid, isPaidStatus, type PlanType } from "@/lib/plans";
+import { getLimits, hasPaidAccess, isPaid, type PlanType } from "@/lib/plans";
 
 function calcStreak(dates: Date[]): number {
   if (!dates.length) return 0;
@@ -64,7 +64,7 @@ export async function GET() {
       }),
       prisma.subscription.findUnique({
         where: { userId: user.id },
-        select: { status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodEnd: true },
+        select: { status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodEnd: true, stripeCustomerId: true },
       }),
       prisma.generation.findMany({
         where: {
@@ -76,7 +76,7 @@ export async function GET() {
       }),
     ]);
 
-  const plan: PlanType = isPaidStatus(subscription?.status)
+  const plan: PlanType = hasPaidAccess(subscription)
     ? (subscription!.plan === 'business' ? 'business' : 'pro')
     : 'free';
   const isProUser = isPaid(plan);

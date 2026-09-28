@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
-import { isPaidStatus } from '@/lib/plans';
+import { hasPaidAccess } from '@/lib/plans';
 
 // Session-based extension token mint. Lets the extension connect WITHOUT a password — works for
 // Google/OAuth users (who have no password and were locked out of the email+password login).
@@ -38,9 +38,9 @@ export async function GET() {
 
     const subscription = await prisma.subscription.findUnique({
       where: { userId: user.id },
-      select: { status: true },
+      select: { status: true, stripeCustomerId: true, currentPeriodEnd: true },
     });
-    const isPro = isPaidStatus(subscription?.status);
+    const isPro = hasPaidAccess(subscription);
 
     return NextResponse.json({ token, name: user.name, email: user.email, isPro });
   } catch (err) {
