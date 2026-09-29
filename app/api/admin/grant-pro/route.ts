@@ -25,17 +25,18 @@ export async function POST(req: NextRequest) {
   }
 
   const existing = await prisma.subscription.findUnique({ where: { userId: user.id } });
-  if (existing?.stripeCustomerId && existing.stripeCustomerId !== 'manual_admin') {
-    return NextResponse.json({ error: 'No se puede modificar una suscripción gestionada por Stripe' }, { status: 409 });
+  if (existing && existing.stripeCustomerId !== 'manual_admin') {
+    return NextResponse.json({ error: 'Suscripción existente sin concesión manual verificada; requiere revisión' }, { status: 409 });
   }
 
   if (plan === 'free') {
     // Remove subscription or set to canceled
     if (existing) {
-      await prisma.subscription.update({
-        where: { userId: user.id },
+      const changed = await prisma.subscription.updateMany({
+        where: { userId: user.id, stripeCustomerId: 'manual_admin' },
         data: { status: 'canceled', cancelAtPeriodEnd: true },
       });
+      if (changed.count !== 1) return NextResponse.json({ error: 'La suscripción cambió; vuelve a revisarla' }, { status: 409 });
     }
     return NextResponse.json({ ok: true, plan: 'free' });
   }
@@ -44,28 +45,18 @@ export async function POST(req: NextRequest) {
   const periodEnd = new Date(now);
   periodEnd.setUTCDate(periodEnd.getUTCDate() + durationDays);
 
-  await prisma.subscription.upsert({
-    where: { userId: user.id },
-    create: {
-      userId: user.id,
-      stripeCustomerId: 'manual_admin',
-      stripePriceId: 'manual_admin',
-      status: 'active',
-      plan,
-      cancelAtPeriodEnd: true,
-      currentPeriodStart: now,
-      currentPeriodEnd: periodEnd,
-    },
-    update: {
-      stripeCustomerId: 'manual_admin',
-      stripePriceId: 'manual_admin',
-      status: 'active',
-      plan,
-      cancelAtPeriodEnd: true,
-      currentPeriodStart: now,
-      currentPeriodEnd: periodEnd,
-    },
-  });
+  const data = { stripeCustomerId: 'manual_admin', stripePriceId: 'manual_admin', status: 'active', plan, cancelAtPeriodEnd: true, currentPeriodStart: now, currentPeriodEnd: periodEnd };
+  if (existing) {
+    const changed = await prisma.subscription.updateMany({ where: { userId: user.id, stripeCustomerId: 'manual_admin' }, data });
+    if (changed.count !== 1) return NextResponse.json({ error: 'La suscripción cambió; vuelve a revisarla' }, { status: 409 });
+  } else {
+    try {
+      await prisma.subscription.create({ data: { userId: user.id, ...data } });
+    } catch (error) {
+      if ((error as { code?: string }).code === 'P2002') return NextResponse.json({ error: 'La suscripción cambió; vuelve a revisarla' }, { status: 409 });
+      throw error;
+    }
+  }
 
   return NextResponse.json({ ok: true, plan, currentPeriodEnd: periodEnd.toISOString() });
 }

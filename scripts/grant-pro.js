@@ -37,17 +37,19 @@ const prisma = new PrismaClient();
   console.log(`Plan actual: ${cur ? cur.plan + '/' + cur.status : 'free (sin subscription)'}`);
 
   if (check) { await prisma.$disconnect(); return; }
-  if (cur?.stripeCustomerId && cur.stripeCustomerId !== 'manual_admin') {
-    throw new Error('Suscripción gestionada por Stripe; no se modifica desde grant-pro.js');
+  if (cur && cur.stripeCustomerId !== 'manual_admin') {
+    throw new Error('Suscripción existente sin concesión manual verificada; requiere revisión');
   }
 
   const now = new Date();
   const end = new Date(now.getTime() + 365 * 86400000);
-  await prisma.subscription.upsert({
-    where: { userId: user.id },
-    update: { plan, status: 'active', stripeCustomerId: 'manual_admin', stripePriceId: 'manual_admin', currentPeriodStart: now, currentPeriodEnd: end, cancelAtPeriodEnd: true },
-    create: { userId: user.id, plan, status: 'active', stripeCustomerId: 'manual_admin', stripePriceId: 'manual_admin', currentPeriodStart: now, currentPeriodEnd: end, cancelAtPeriodEnd: true },
-  });
+  const data = { plan, status: 'active', stripeCustomerId: 'manual_admin', stripePriceId: 'manual_admin', currentPeriodStart: now, currentPeriodEnd: end, cancelAtPeriodEnd: true };
+  if (cur) {
+    const changed = await prisma.subscription.updateMany({ where: { userId: user.id, stripeCustomerId: 'manual_admin' }, data });
+    if (changed.count !== 1) throw new Error('La suscripción cambió; revisar antes de conceder');
+  } else {
+    await prisma.subscription.create({ data: { userId: user.id, ...data } });
+  }
   console.log(`✅ Concedido ${plan.toUpperCase()} (activo hasta ${end.toISOString().slice(0, 10)}) a ${user.email}`);
   await prisma.$disconnect();
 })().catch(e => { console.error('ERR', e.message); process.exit(1); });
