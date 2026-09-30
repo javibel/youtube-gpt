@@ -317,6 +317,9 @@
                   "additionalProperties": false
                 }
               },
+              "answer": {
+                "type": "string"
+              },
               "validations": {
                 "type": "array",
                 "items": {

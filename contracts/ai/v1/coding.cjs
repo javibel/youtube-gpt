@@ -8,8 +8,9 @@ const checkpointSchema=object({objective:string,progress:string,changes:strings,
 const outputSchema=object({
  changes:{type:'array',items:object({path:string,kind:{type:'string',enum:['create','modify','delete']},patch:string})},
  commands:{type:'array',items:object({argv:{type:'array',items:string,minItems:1},exitCode:{type:'integer'}})},
+ answer:string,
  validations:{type:'array',items:object({name:string,passed:{type:'boolean'}})},pending:strings,
-});
+},['changes','commands','validations','pending']);
 function freeze(value){if(value&&typeof value==='object'){Object.freeze(value);for(const child of Object.values(value))freeze(child);}return value;}
 const relative=value=>typeof value==='string'&&value.length>0&&!/[\\:*?\u0000]/.test(value)&&!value.startsWith('/')&&!value.split('/').some(part=>!part||part==='.'||part==='..')&&!value.startsWith('.git/')&&value!=='.git'&&!/(^|\/)\.env(?:\.|$)/.test(value);
 function validateCodingRequest(request){

@@ -69,3 +69,5 @@ normal `run` at start, so it selects the profile active then. The runner also
 checks that the claim receipt names the requested run and dispatch digest,
 and subtracts claim acknowledgement time from the remaining deadline. Tests use
 only the identified synthetic PostgreSQL schema.
+
+Coding results may include an optional string `answer` for explanations and diagnoses. Existing receipts without it remain valid. It does not assert tests, edits or execution; those remain in their separate structured fields.
