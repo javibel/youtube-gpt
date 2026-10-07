@@ -5,9 +5,9 @@ const source=fs.readFileSync(path.join(__dirname,'../../components/VideoPreviewG
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText;
 const story='0s-6s: HOOK | A creator opens a notebook\n6s-12s: IDEA | A creator draws a simple outline';
 const success=()=>({ok:true,status:200,json:async()=>({storyboard:story})});
-function harness(){
+function harness(options={}){
  const cells=[],effects=[],requests=[],recorders=[],uploads=[],localSaves=[],callbacks=[],images=[],frames=new Map(),timers=new Map(),storage=new Map();let index=0,dirty=false,identity=0,clockId=0,tracksStopped=0;
- const state={user:'fixture-one',auth:'authenticated',scriptContent:'Synthetic original script',generationId:'synthetic-generation',scriptTitle:'Synthetic title',lang:'es',send:async()=>success(),iconsReady:true,supported:true,save:async()=>{},upload:async()=>({ok:true,status:200,json:async()=>({id:'synthetic-preview'})})};
+ const state={user:'fixture-one',auth:'authenticated',scriptContent:'Synthetic original script',generationId:'synthetic-generation',scriptTitle:'Synthetic title',lang:'es',send:async()=>success(),iconsReady:true,supported:true,save:async()=>{},upload:async()=>({ok:true,status:200,json:async()=>({id:'synthetic-preview'})}),...options};
  let signalIcons;const iconsStarted=new Promise(resolve=>{signalIcons=resolve;});
  const changed=(a,b)=>!a||a.length!==b.length||a.some((value,i)=>!Object.is(value,b[i]));
  const hooks={
@@ -34,7 +34,7 @@ function harness(){
  });
  function nodes(tree){if(Array.isArray(tree))return tree.flatMap(nodes);if(!tree||typeof tree!=='object')return [];return [tree,...nodes(tree.props?.children)];}
  const text=value=>Array.isArray(value)?value.map(text).join(' '):value&&typeof value==='object'?text(value.props?.children):String(value??'');
- function render(){let tree;for(let n=0;n<10;n++){index=0;dirty=false;tree=entry.exports.default({...state,onClose:()=>callbacks.push('close'),onGenerated:()=>callbacks.push('generated'),onSaved:()=>callbacks.push('saved'),onLimitReached:reason=>callbacks.push(reason)});for(const node of nodes(tree))if(node.type==='canvas'&&node.props.ref)node.props.ref.current=canvas;while(effects.length)effects.shift()();if(!dirty)return tree;}throw Error('Render did not settle');}
+ function render(){let tree;for(let n=0;n<10;n++){index=0;dirty=false;const {onClose,onGenerated,onSaved,onLimitReached}=state;tree=entry.exports.default({...state,onClose:()=>{callbacks.push('close');onClose?.();},onGenerated:()=>{callbacks.push('generated');onGenerated?.();},onSaved:()=>{callbacks.push('saved');onSaved?.();},onLimitReached:reason=>{callbacks.push(reason);onLimitReached?.(reason);}});for(const node of nodes(tree))if(node.type==='canvas'&&node.props.ref)node.props.ref.current=canvas;while(effects.length)effects.shift()();if(!dirty)return tree;}throw Error('Render did not settle');}
  const handler=()=>nodes(render()).find(n=>n.type==='button'&&/Generar storyboard|Generate storyboard|Reintentar storyboard|Retry storyboard/.test(text(n))).props.onClick;
  return {state,requests,recorders,uploads,localSaves,callbacks,frames,timers,render,handler,click:()=>handler()(),alert:()=>nodes(render()).find(n=>n.props?.role==='alert'),text:()=>text(render()),
   daily:()=>Number(storage.get('ytv_vp_'+new Date().toISOString().split('T')[0])??0),setDaily:n=>storage.set('ytv_vp_'+new Date().toISOString().split('T')[0],String(n)),

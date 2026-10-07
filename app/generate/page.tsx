@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,8 @@ import { TEMPLATES } from '@/utils/prompts';
 import { useGenericGeneration } from '@/lib/use-generic-generation';
 import { useDashboardStats } from '@/lib/use-dashboard-stats';
 import { useGeneratorChannelStatus } from '@/lib/use-generator-channel-status';
+import { useGeneratorScreenScope, useGeneratorScreenState } from '@/lib/use-generator-screen-scope';
+import { useGeneratorMediaLaunch } from '@/lib/use-generator-media-launch';
 import { useLang } from '@/components/LangProvider';
 import { toast } from '@/components/Toaster';
 import { LockIcon, VideoIcon, WarningIcon, BoltIcon, CheckIcon } from '@/components/icons';
@@ -56,36 +58,18 @@ export default function GeneratePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('title');
-  const [formData, setFormData] = useState<Record<string, string>>({ tema: '', tono: 'viral', duracion: '10', plataforma: 'youtube', estilo: 'viral', num_videos: '5', nicho: '', keywords: '', cta: '' });
-  const [imageLoading, setLoading] = useState<boolean>(false);
-  const [imageSlowHint, setSlowHint] = useState<boolean>(false);
-  const [reviewNudge, setReviewNudge] = useState<boolean>(false);
-  const [connectNudgeDismissed, setConnectNudgeDismissed] = useState<boolean>(false);
-  const [imageError, setError] = useState<string>('');
   const lang = useLang();
+  const screen = useGeneratorScreenScope(session?.user?.id,session?.user?.email,status,lang);
+  const [selectedTemplate, setSelectedTemplate] = useGeneratorScreenState(screen,'title');
+  const [formData, setFormData] = useGeneratorScreenState<Record<string, string>>(screen,{ tema: '', tono: 'viral', duracion: '10', plataforma: 'youtube', estilo: 'viral', num_videos: '5', nicho: '', keywords: '', cta: '' });
+  const [reviewNudge, setReviewNudge] = useGeneratorScreenState(screen,false);
+  const [connectNudgeDismissed, setConnectNudgeDismissed] = useGeneratorScreenState(screen,false);
   const accountStats = useDashboardStats(session?.user?.id,session?.user?.email,status);
   const channelStatus = useGeneratorChannelStatus(session?.user?.id,session?.user?.email,status);
   const planStats = accountStats.data?.stats;
   const isPro = planStats?.isPro === true;
   const videoTipsRemaining = planStats?.videoTipsRemaining;
   const ytConnected = channelStatus.connected;
-  const [showLimitModal, setShowLimitModal] = useState<boolean>(false);
-  const [modalReason, setModalReason] = useState<'limit' | 'pro_feature' | 'video_tips_limit'>('limit');
-  const [showVideoPreview, setShowVideoPreview] = useState(false);
-  const [videoPreviewId, setVideoPreviewId] = useState('');
-  const [previewScript, setPreviewScript] = useState('');
-  const [previewTitle, setPreviewTitle] = useState('');
-  const [previewSaved, setPreviewSaved] = useState(false);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
-  const [thumbnailPrompt, setThumbnailPrompt] = useState<string>('');
-  const [facePhoto, setFacePhoto] = useState<File | null>(null);
-  const [facePhotoPreview, setFacePhotoPreview] = useState<string>('');
-  const [facePosition, setFacePosition] = useState<'left' | 'right'>('right');
-  const [thumbnailText, setThumbnailText] = useState('');
-  const [removingBg, setRemovingBg] = useState(false);
-  const [bgRemovalFailed, setBgRemovalFailed] = useState(false);
-  const [faceScale, setFaceScale] = useState<number>(80);
 
   const textGeneration = useGenericGeneration(session?.user?.id, session?.user?.email, status,
     selectedTemplate, formData, lang, () => {
@@ -98,12 +82,14 @@ export default function GeneratePage() {
       } catch {}
     });
   const {output,truncated,continuing,copied} = textGeneration;
-  const loading = selectedTemplate === 'thumbnail' ? imageLoading : textGeneration.loading;
-  const slowHint = selectedTemplate === 'thumbnail' ? imageSlowHint : textGeneration.slow;
+  const media = useGeneratorMediaLaunch(screen,selectedTemplate,formData,output,
+    () => { void accountStats.refreshStats(); });
+  const loading = textGeneration.loading;
+  const slowHint = textGeneration.slow;
   const textError = textGeneration.error ? (lang === 'en'
     ? ({unconfirmed:'The result is unconfirmed. Retry the same request or check your history.',timeout:'The response took too long. The server may still have completed it; retry the same request.',limit:'Your plan limit was reached. Retry to check an already saved result, or review your plan.',conflict:'This request conflicts with its saved result. Check your history before starting another generation.',length:'This text exceeds the 32,000-character continuation limit. Your full result is preserved; you can copy it or check your history.'})[textGeneration.error]
     : ({unconfirmed:'El resultado no está confirmado. Reintenta la misma solicitud o consulta tu historial.',timeout:'La respuesta tardó demasiado. El servidor puede haberla completado; reintenta la misma solicitud.',limit:'Se alcanzó el límite del plan. Reintenta para recuperar un resultado ya guardado o revisa tu plan.',conflict:'La solicitud no coincide con su resultado guardado. Consulta tu historial antes de generar de nuevo.',length:'Este texto supera el límite de 32.000 caracteres para continuar. Tu resultado completo se conserva; puedes copiarlo o consultar tu historial.'})[textGeneration.error]) : '';
-  const error = selectedTemplate === 'thumbnail' ? imageError : textError;
+  const error = textError;
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -116,13 +102,13 @@ export default function GeneratePage() {
     const template = params.get('template');
     if (topic) setFormData(prev => ({ ...prev, tema: topic }));
     if (template) setSelectedTemplate(template);
-  }, []);
+  }, [screen.scope]);
 
   // Gancho de retención (13/07): conectar canal es gratis desde ahora — ver
   // project_channel_connect_free.md. Se ofrece tras el primer resultado.
   useEffect(() => {
     try { if (localStorage.getItem('ytv_connect_nudge_off') === '1') setConnectNudgeDismissed(true); } catch {}
-  }, []);
+  }, [screen.scope]);
 
   const currentTpl = TEMPLATES[selectedTemplate as keyof typeof TEMPLATES];
   const meta = TPL_META[selectedTemplate] ?? { icon: '/icons/description.webp', color: '#e84d5b', est: '~' };
@@ -130,18 +116,17 @@ export default function GeneratePage() {
   const inputs: string[] = (currentTpl as { inputs: string[] })?.inputs ?? [];
 
   const handleSelect = (key: string) => {
+    if (!media.current()) return;
     if ((key === 'thumbnail' || (TEMPLATES[key as keyof typeof TEMPLATES] as {proOnly?:boolean})?.proOnly)
       && (!planStats || accountStats.statsError)) {void accountStats.retryStats();return;}
-    if (key === 'thumbnail' && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
+    if (key === 'thumbnail' && !isPro) { media.showLimit('pro_feature'); return; }
     const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean };
-    if (tpl?.proOnly && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
+    if (tpl?.proOnly && !isPro) { media.showLimit('pro_feature'); return; }
     setSelectedTemplate(key);
-    setError('');
-    setThumbnailUrl('');
-    setThumbnailPrompt('');
   };
 
   const handleGenerate = async () => {
+    if (!media.current()) return;
     if (selectedTemplate !== 'thumbnail' && selectedTemplate !== 'video_preview') {
       // The server checks quota after replay; a retry must not be blocked by a stale local count.
       await textGeneration.generate();
@@ -151,60 +136,14 @@ export default function GeneratePage() {
     // una generacion mas (26/08 — free incluye 1/mes, dentro del pool de 10).
     if (selectedTemplate === 'video_preview') {
       if (!planStats || accountStats.statsError) {void accountStats.retryStats();return;}
-      if (planStats.generationsThisMonth >= planStats.limit) { setModalReason('limit'); setShowLimitModal(true); return; }
+      if (planStats.generationsThisMonth >= planStats.limit) { media.showLimit('limit'); return; }
       if (!isPro && videoTipsRemaining === 0) {
-        setModalReason('video_tips_limit'); setShowLimitModal(true); return;
+        media.showLimit('video_tips_limit'); return;
       }
-      setPreviewScript(formData.tema);
-      setPreviewTitle(formData.tema.slice(0, 60) || 'Video Tips');
-      setVideoPreviewId(`vp-${Date.now()}`);
-      setPreviewSaved(false);
-      setShowVideoPreview(true);
+      media.openPreview(formData.tema,formData.tema.slice(0,60) || 'Video Tips');
       return;
     }
-    if (!planStats || accountStats.statsError) {void accountStats.retryStats();return;}
-    if (planStats.generationsThisMonth >= planStats.limit) { setModalReason('limit'); setShowLimitModal(true); return; }
-    setLoading(true);
-    setError('');
-    setThumbnailUrl('');
-    setThumbnailPrompt('');
-    // Aviso "está tardando" a los 15s (E1 #3) — el timeout duro vive en claudeAPI.js (90s)
-    setSlowHint(false);
-    const slowTimer = setTimeout(() => setSlowHint(true), 15_000);
-
-    // Thumbnail uses a separate image generation endpoint
-    if (selectedTemplate === 'thumbnail') {
-      try {
-        const body = new FormData();
-        body.append('tema', formData.tema);
-        body.append('estilo', formData.estilo || 'viral');
-        body.append('lang', lang);
-        body.append('facePosition', facePosition);
-        if (thumbnailText.trim()) body.append('thumbnailText', thumbnailText.trim());
-        if (facePhoto) body.append('facePhoto', facePhoto);
-        body.append('faceScale', String(faceScale));
-        const res = await fetch('/api/generate-thumbnail', {
-          method: 'POST',
-          body,
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          if (data.limitReached) { setShowLimitModal(true); return; }
-          throw new Error(data.error || 'Error generating thumbnail');
-        }
-        setThumbnailUrl(data.imageUrl);
-        setThumbnailPrompt(data.prompt);
-        void accountStats.refreshStats();
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Error desconocido');
-      } finally {
-        clearTimeout(slowTimer);
-        setSlowHint(false);
-        setLoading(false);
-      }
-      return;
-    }
-
+    // The visible canvas editor owns thumbnail generation and saving.
   };
 
   const handleContinue = textGeneration.continueGeneration;
@@ -220,6 +159,7 @@ export default function GeneratePage() {
       </div>
     );
   }
+  if (!screen.current()) return null;
 
   const isBusiness = planStats?.plan === 'business';
   const remainingDisplay = planStats?.remaining;
@@ -229,7 +169,7 @@ export default function GeneratePage() {
   return (
     <DashboardShell>
 
-      {showLimitModal && <LimitReachedModal onClose={() => setShowLimitModal(false)} reason={modalReason} lang={lang} />}
+      {media.limit && <LimitReachedModal {...media.limit} lang={lang} />}
 
       <div className="yv-page">
         <header className="yv-page-header">
@@ -425,7 +365,7 @@ export default function GeneratePage() {
             {/* Thumbnail: canvas editor */}
             {selectedTemplate === 'thumbnail' && (
               <Suspense fallback={<div className="yv-card p-8 text-center text-sm" style={{ color: 'var(--yv-text-4)' }}>{t('Cargando editor…', 'Loading editor…')}</div>}>
-                <ThumbnailEditor lang={lang} isPro={isPro} />
+                <ThumbnailEditor key={screen.scope.key} lang={lang} isPro={isPro} />
               </Suspense>
             )}
 
@@ -481,11 +421,11 @@ export default function GeneratePage() {
                   {t('Conecta tu canal (gratis) y cada mañana recibes 5 ideas de vídeo calculadas con tus datos reales y las tendencias de tu nicho.', "Connect your channel (free) and get 5 video ideas every morning, calculated from your real data and your niche's trends.")}
                 </p>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => { window.location.href = '/api/youtube/auth'; }} className="btn-offset px-4 py-2 text-[13px] font-display">
+                  <button onClick={() => { if (screen.current()) window.location.href = '/api/youtube/auth'; }} className="btn-offset px-4 py-2 text-[13px] font-display">
                     {t('Conectar canal →', 'Connect channel →')}
                   </button>
                   <button
-                    onClick={() => { setConnectNudgeDismissed(true); try { localStorage.setItem('ytv_connect_nudge_off', '1'); } catch {} }}
+                    onClick={() => { if (!screen.current()) return; setConnectNudgeDismissed(true); try { localStorage.setItem('ytv_connect_nudge_off', '1'); } catch {} }}
                     className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition"
                   >
                     {t('Ahora no', 'Not now')}
@@ -505,7 +445,7 @@ export default function GeneratePage() {
                     {t('Dejar reseña', 'Leave a review')}
                   </a>
                   <button
-                    onClick={() => { setReviewNudge(false); try { localStorage.setItem('ytv_review_nudge_off', '1'); } catch {} }}
+                    onClick={() => { if (!screen.current()) return; setReviewNudge(false); try { localStorage.setItem('ytv_review_nudge_off', '1'); } catch {} }}
                     className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition"
                   >
                     {t('Ahora no', 'Not now')}
@@ -518,67 +458,10 @@ export default function GeneratePage() {
             {error && (
               <div role="alert" className="yv-note yv-note--error flex items-center justify-between gap-4 flex-wrap">
                 <span className="inline-flex items-center gap-1.5"><WarningIcon size={14} /> {error}</span>
-                {(selectedTemplate === 'thumbnail' || textGeneration.retry) && <button onClick={selectedTemplate === 'thumbnail' ? handleGenerate : textGeneration.retryGeneration} disabled={loading || continuing} className="btn-offset shrink-0 px-4 py-1.5 text-[13px] font-display disabled:opacity-40">
+                {textGeneration.retry && <button onClick={textGeneration.retryGeneration} disabled={loading || continuing} className="btn-offset shrink-0 px-4 py-1.5 text-[13px] font-display disabled:opacity-40">
                   {t('Reintentar', 'Retry')}
                 </button>}
                 <a href="/dashboard" className="underline">{t('Consultar historial', 'Check history')}</a>
-              </div>
-            )}
-
-            {/* Thumbnail image output */}
-            {(selectedTemplate === 'thumbnail' && (loading || thumbnailUrl)) && (
-              <div className="yv-card overflow-hidden page-enter">
-                <div className="flex items-center justify-between px-5 py-3" style={{ background: 'var(--yv-bg-1)', boxShadow: 'inset 0 -1px 0 rgba(255,255,255,.08)' }}>
-                  <div className="flex items-center gap-3">
-                    <span className="live-dot" />
-                    <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-2)' }}>
-                      {loading ? t('Generando miniatura...', 'Generating thumbnail...') : t('Tu miniatura', 'Your thumbnail')}
-                    </p>
-                  </div>
-                </div>
-                <div className="p-5">
-                  {loading && (
-                    <div className="space-y-2 font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-                      <p><span style={{ color: '#7CFF00' }}>▸</span> {t('Analizando tema y estilo...', 'Analysing topic and style...')}</p>
-                      <p><span style={{ color: '#7CFF00' }}>▸</span> {t('Diseñando composición visual...', 'Designing visual composition...')}</p>
-                      <p style={{ color: 'var(--yv-text-2)' }}><span style={{ color: '#7CFF00' }}>▸</span> {t('Generando imagen con IA', 'Generating image with AI')}<span className="typing-cursor" /></p>
-                    </div>
-                  )}
-                  {thumbnailUrl && (
-                    <div className="space-y-4">
-                      <div className="yv-glass overflow-hidden" style={{ maxWidth: 640 }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={thumbnailUrl} alt="Generated thumbnail" className="w-full h-auto" style={{ aspectRatio: '16/9', objectFit: 'cover' }} />
-                      </div>
-                      {thumbnailPrompt && (
-                        <details className="text-[13px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
-                          <summary className="cursor-pointer hover:text-white transition">{t('Ver prompt utilizado', 'View prompt used')}</summary>
-                          <p className="mt-2 p-3 rounded-lg" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-3)' }}>{thumbnailPrompt}</p>
-                        </details>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {thumbnailUrl && (
-                  <div className="flex items-center gap-2 px-5 pb-4 pt-2 flex-wrap" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
-                    <a
-                      href={thumbnailUrl}
-                      download="thumbnail.png"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-offset px-4 py-2 text-[13px] font-display"
-                      style={{ borderColor: '#7CFF00', color: '#7CFF00' }}
-                    >
-                      {t('Descargar imagen', 'Download image')}
-                    </a>
-                    <button onClick={handleGenerate} className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display">
-                      {t('Generar otra', 'Generate another')}
-                    </button>
-                    <a href="/dashboard" className="ml-auto font-mono-jb text-[13px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
-                      {t('Ver en panel', 'View in dashboard')} →
-                    </a>
-                  </div>
-                )}
               </div>
             )}
 
@@ -655,11 +538,11 @@ export default function GeneratePage() {
                     {selectedTemplate === 'script' && isPro && (
                       <button
                         onClick={() => {
-                          setPreviewScript(output);
-                          setPreviewTitle(formData.tema.slice(0, 60) || 'Script Preview');
-                          setVideoPreviewId(`vp-${Date.now()}`);
-                          setPreviewSaved(false);
-                          setShowVideoPreview(true);
+                          if (!media.current()) return;
+                          if (!planStats || accountStats.statsError) {void accountStats.retryStats();return;}
+                          if (planStats.generationsThisMonth >= planStats.limit) {media.showLimit('limit');return;}
+                          if (!isPro) {media.showLimit('pro_feature');return;}
+                          media.openPreview(output,formData.tema.slice(0,60) || 'Script Preview');
                         }}
                         className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display inline-flex items-center gap-1.5"
                         style={{ borderColor: '#00D9FF', color: '#00D9FF' }}
@@ -667,7 +550,7 @@ export default function GeneratePage() {
                         <VideoIcon size={14} /> {t('Generar Preview', 'Generate Preview')}
                       </button>
                     )}
-                    {previewSaved && (
+                    {media.saved && (
                       <span className="text-[13px] font-mono-jb inline-flex items-center gap-1.5" style={{ color: '#7CFF00' }}>
                         <CheckIcon size={13} /> {t('Preview guardada', 'Preview saved')}
                       </span>
@@ -682,23 +565,12 @@ export default function GeneratePage() {
         </div>
       </div>
       {/* Video Preview Modal */}
-      {showVideoPreview && (
+      {media.preview && (
         <Suspense fallback={null}>
           <VideoPreviewGenerator
-            scriptContent={previewScript}
-            generationId={videoPreviewId}
-            scriptTitle={previewTitle}
+            key={media.preview.generationId}
+            {...media.preview}
             lang={lang}
-            onClose={() => setShowVideoPreview(false)}
-            onSaved={() => setPreviewSaved(true)}
-            onGenerated={() => {
-              void accountStats.refreshStats();
-            }}
-            onLimitReached={(reason) => {
-              setShowVideoPreview(false);
-              setModalReason(reason === 'video_tips_capped' ? 'video_tips_limit' : 'limit');
-              setShowLimitModal(true);
-            }}
           />
         </Suspense>
       )}

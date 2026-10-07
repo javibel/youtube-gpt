@@ -10,6 +10,10 @@ module.exports=async function(prisma,results){
  const h=page({user:owner.id,email:owner.email,read:send});
  try {
   await h.ready();assert.match(h.text(),/Te quedan\s+10/);assert.doesNotMatch(h.text(),/No se pudo comprobar/);results.push('original generator page and shared statistics/channel hooks read authenticated own free plan and absent connection from original routes/PostgreSQL');
+  h.button('Video Tips')();await h.button('Crear Vídeo Tips')();const preview=h.preview().props;
+  await prisma.generation.create({data:{userId:owner.id,template:'video_preview',inputs:{script:'Synthetic topic'},output:'Synthetic confirmed storyboard',tokensUsed:0}});
+  preview.onGenerated();await h.ready();assert.match(h.text(),/Te quedan\s+9/);preview.onClose();await h.button('Crear Vídeo Tips')();assert.equal(h.preview(),undefined);assert.equal(h.limit().props.reason,'video_tips_limit');assert.equal(await prisma.generation.count({where:{userId:users[1].id}}),0);results.push('original generator media launch refreshes real stored synthetic video quota and blocks second free preview without model or another account mutation');
+  await prisma.generation.deleteMany({where:{userId:owner.id,template:'video_preview'}});
   await prisma.youtubeToken.create({data:{userId:owner.id,accessToken:'synthetic-local-only',refreshToken:null,expiresAt:new Date(Date.now()+86400000),channelId:'UC_synthetic_'+owner.id,channelName:'Synthetic',subscribers:'1',totalViews:'2',videoCount:'1'}});
   await prisma.subscription.create({data:{userId:owner.id,plan:'business',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}});
   // Reset only component lifetime, never runtime authority or fixtures' declared freshness.
