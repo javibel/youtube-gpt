@@ -2,6 +2,31 @@
 
 Independent shallow repository reconstructed from the current committed snapshot. No operational files, uncommitted changes, shared object stores or historical commits were copied. All work is local.
 
+## 2026-10-07 — Storyboard client retries
+
+VideoPreviewGenerator sends an operation identity and keeps it after failed HTTP,
+lost responses or invalid adaptation data. Every adaptation failure is explicit;
+none silently starts a raw-script recording. Monthly limits trigger the existing
+quota callback; minute throttling does not masquerade as a monthly quota failure.
+The adaptation response must be bounded text that produces slides before the
+interaction completes. Duplicate clicks start one request and one recording.
+
+Successful adaptation is reused for recording retries and Regenerate within the
+same modal interaction. Each local recording attempt still consumes its existing
+daily render allowance. Account/authentication, script, generation, title or
+language changes invalidate the interaction, stop its recording and ignore late
+results. Closing/unmounting also prevents late callbacks or a new upload.
+Identity and adapted text are memory-only; closing/reloading starts a new interaction.
+
+The actual component's deterministic hook/HTTP/MediaRecorder/storage harness has
+33 scenarios. The PostgreSQL control test composes that component with the actual
+API, factory, mock provider adapter, ledger and generation table: a history-write
+failure and lost successful response recover one inference/settlement/history row,
+then an empty recording retries locally without another adaptation request.
+This does not test a real browser codec, operational authentication or video upload.
+The existing video-upload path is not made idempotent by this change; its save
+acknowledgement and failure behavior remain a separate local pending deliverable.
+
 ## 2026-10-07 — Storyboard history replay
 
 An authenticated Storyboard operation with an Idempotency-Key now saves one

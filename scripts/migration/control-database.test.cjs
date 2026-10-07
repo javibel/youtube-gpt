@@ -361,7 +361,7 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   changedContext=true;assert.equal((await invoke(JSON.stringify(input),keys[0])).status,500);assert.equal(calls,1);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
  });
- await test('Storyboard lost response recovers one inference, settlement and real history row after free quota is consumed',async()=>{
+ await test('Storyboard actual client lost response recovers one inference, settlement and real history row after free quota is consumed',async()=>{
   const {PrismaClient}=require('@prisma/client');const prisma=new PrismaClient({datasources:{db:{url:config.databaseUrl}}});
   const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');
   const actualRegistry=createRegistry();let calls=0,identity,failSave=true;
@@ -376,14 +376,19 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
    runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'content.storyboard':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:1024,deadlineMs:3000}}},authorize:async({userId,taskType})=>users.some(u=>u.id===userId)&&taskType==='content.storyboard'?{budgetId}:null}));
    const db={generation:{findUnique:args=>prisma.generation.findUnique(args),count:args=>prisma.generation.count(args),create:args=>{if(failSave){failSave=false;throw Error('Synthetic failure before history commit');}return prisma.generation.create(args);}},$queryRaw:prisma.$queryRaw.bind(prisma)};
    const route=load('app/api/storyboard/route.ts',{'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:identity}})},'@/lib/plans':{getUserPlan:async()=>'free',isPaid:()=>false,getLimits:()=>({generationsPerMonth:10})},'@/lib/prisma':{prisma:db},'@/lib/ai/task-runtime':runtime});
-   const key=prefix+'_storyboard_operation',input={script:'Synthetic complete script',lang:'es'};
+   const browser=require('./storyboard-client-retry.test.cjs').harness();browser.state.user=identity;
+   const input={script:browser.state.scriptContent,lang:browser.state.lang};let lost=true;
+   browser.state.send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:init.headers,body:init.body}));if(response.ok&&lost){lost=false;throw Error('Synthetic lost response after real history commit');}return response;};
+   await browser.click();assert.ok(browser.alert());assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),0);assert.equal(browser.daily(),0);assert.deepEqual(browser.callbacks,[]);
+   await browser.click();assert.ok(browser.alert());assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(browser.recorders.length,0);assert.deepEqual(browser.callbacks,[]);
+   const key=browser.requests[0].headers['Idempotency-Key'];assert.equal(browser.requests[1].headers['Idempotency-Key'],key);
    const invoke=(body=input,operation=key)=>route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':operation},body:JSON.stringify(body)}));
-   assert.equal((await invoke()).status,503);assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),0);
-   const committed=await invoke();assert.equal(committed.status,200);const first=await committed.json();assert.deepEqual(first,{storyboard:story});assert.equal(calls,1);
    const saved=await prisma.generation.findFirst({where:{userId:identity}});assert.equal(saved.template,'video_preview');assert.equal(saved.tokensUsed,5);assert.equal(saved.inputs.script,input.script);assert.match(saved.inputs.retryInputDigest,/^[a-f0-9]{64}$/);
    // Simulate losing that successful HTTP response, then exceeding the throttle.
    await prisma.$executeRaw`UPDATE rate_limits SET hits=99 WHERE key=${'storyboard:'+identity}`;
-   const replay=await invoke();assert.equal(replay.status,200);assert.deepEqual(await replay.json(),first);assert.equal(calls,1);
+   await browser.click();assert.equal(browser.alert(),undefined);assert.equal(browser.requests[2].headers['Idempotency-Key'],key);assert.equal(calls,1);assert.equal(browser.recorders.length,1);assert.equal(browser.daily(),1);assert.deepEqual(browser.callbacks,['generated']);
+   // Retrying an empty local recording reuses the successful adaptation.
+   await browser.finish(10);assert.ok(browser.alert());await browser.click();assert.equal(browser.requests.length,3);assert.equal(browser.recorders.length,2);assert.equal(browser.daily(),2);assert.equal(calls,1);assert.deepEqual(browser.callbacks,['generated']);browser.unmount();
    assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal((await prisma.$queryRaw`SELECT hits FROM rate_limits WHERE key=${'storyboard:'+identity}`)[0].hits,99);
    assert.equal((await invoke({...input,script:'Changed script'})).status,409);assert.equal((await invoke({...input,lang:'en'})).status,409);assert.equal(calls,1);
    assert.equal((await invoke(input,key+'_new')).status,429);assert.equal(calls,1);

@@ -1,6 +1,12 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect, RefObject } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo, RefObject } from 'react';
+import { useSession } from 'next-auth/react';
+import { createRetryOperation } from '@/lib/ai/retry-operation.cjs';
+
+class StoryboardRequestError extends Error {
+  constructor(message: string, readonly limitReason?: 'video_tips_capped' | 'limit') { super(message); }
+}
 
 // ─── TvCanvasMirror ───────────────────────────────────────────────────────────
 // Mirrors a source canvas into a display canvas that fits inside the TV screen.
@@ -908,6 +914,13 @@ const TRANSITION_DURATION = 0.55; // seconds
 export default function VideoPreviewGenerator({
   scriptContent, generationId, scriptTitle = 'Script', lang, onClose, onSaved, onGenerated, onLimitReached,
 }: Props) {
+  const { data: session, status: sessionStatus } = useSession();
+  const interaction = useMemo(() => ({
+    run: createRetryOperation(() => crypto.randomUUID()), storyboard: null as string | null,
+    busy: false, active: true, cancel: null as (() => void) | null, videoUrl: null as string | null,
+  }), [session?.user?.id, sessionStatus, scriptContent, generationId, scriptTitle, lang]);
+  const activeInteraction = useRef<typeof interaction | null>(interaction);
+  activeInteraction.current = interaction;
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const offscRef    = useRef<HTMLCanvasElement | null>(null);
   const rafRef      = useRef<number>(0);
@@ -924,229 +937,280 @@ export default function VideoPreviewGenerator({
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
+  useEffect(() => {
+    interaction.active = true;
+    activeInteraction.current = interaction;
+    setStatus('idle'); setVideoUrl(null); setProgress(0); setErrorMsg('');
+    return () => {
+      interaction.active = false;
+      interaction.cancel?.();
+      if (interaction.videoUrl) URL.revokeObjectURL(interaction.videoUrl);
+      interaction.videoUrl = null;
+      if (activeInteraction.current === interaction) activeInteraction.current = null;
+    };
+  }, [interaction]);
+
   const generate = useCallback(async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const { allowed } = checkRateLimit();
-    if (!allowed) {
-      setStatus('error');
-      setErrorMsg(t(`Límite de ${DAILY_LIMIT} videos/día alcanzado.`, `Daily limit of ${DAILY_LIMIT} videos reached.`));
+    const current = () => activeInteraction.current === interaction && interaction.active;
+    if (!current() || interaction.busy) return;
+    if (sessionStatus !== 'authenticated' || !session?.user?.id) {
+      setStatus('error'); setErrorMsg(t('Inicia sesión para generar el storyboard.', 'Sign in to generate the storyboard.'));
       return;
     }
-
-    const supportsCapture = typeof (canvas as HTMLCanvasElement & { captureStream?: () => MediaStream }).captureStream === 'function';
-    if (!window.MediaRecorder || !supportsCapture) {
-      setStatus('error');
-      setErrorMsg(t('Tu navegador no soporta grabación. Usa Chrome o Edge.', 'Use Chrome or Edge for recording.'));
-      return;
-    }
-
-    // ── Adapt script to storyboard format via AI ──────────────────────────
-    // Esto es lo que cuenta como "una generacion" (26/08 — free incluye
-    // 1/mes). Si el backend bloquea por limite, se para aqui: no seguimos
-    // con un fallback silencioso, o el tope de free/mes seria papel mojado.
-    setStatus('adapting');
-    let scriptForSlides = scriptContent;
+    interaction.busy = true;
+    let recordingStarted = false;
     try {
-      const sbRes = await fetch('/api/storyboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: scriptContent, lang }),
-      });
-      if (sbRes.status === 429 || sbRes.status === 403) {
-        const sbData = await sbRes.json().catch(() => ({} as { error?: string; videoTipsCapped?: boolean }));
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const { allowed } = checkRateLimit();
+      if (!allowed) {
         setStatus('error');
-        setErrorMsg(sbData.error || t('Límite alcanzado.', 'Limit reached.'));
-        onLimitReached?.(sbData.videoTipsCapped ? 'video_tips_capped' : 'limit');
+        setErrorMsg(t(`Límite de ${DAILY_LIMIT} videos/día alcanzado.`, `Daily limit of ${DAILY_LIMIT} videos reached.`));
         return;
       }
-      if (sbRes.ok) {
-        const sbData = await sbRes.json();
-        if (sbData.storyboard?.trim()) scriptForSlides = sbData.storyboard;
+
+      const supportsCapture = typeof (canvas as HTMLCanvasElement & { captureStream?: () => MediaStream }).captureStream === 'function';
+      if (!window.MediaRecorder || !supportsCapture) {
+        setStatus('error');
+        setErrorMsg(t('Tu navegador no soporta grabación. Usa Chrome o Edge.', 'Use Chrome or Edge for recording.'));
+        return;
+      }
+
+      // Keep failed adaptation's identity. A successful adaptation is reused
+      // for local recording retries and Regenerate in this modal interaction.
+      setStatus('adapting');
+      setErrorMsg('');
+      if (interaction.storyboard === null) {
+        const storyboard = await interaction.run({ script: scriptContent, lang }, async (body, key) => {
+          const response = await fetch('/api/storyboard', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body,
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            if (response.status === 429 && data?.limitReached === true) {
+              const capped = data.videoTipsCapped === true;
+              throw new StoryboardRequestError(capped
+                ? t('Ya usaste tu Video Tips gratis este mes.', 'You already used your free Video Tips this month.')
+                : t('Límite mensual alcanzado.', 'Monthly limit reached.'), capped ? 'video_tips_capped' : 'limit');
+            }
+            throw new StoryboardRequestError(response.status === 429
+              ? t('Demasiadas solicitudes. Espera un momento y reintenta.', 'Too many requests. Wait a moment and retry.')
+              : t('No se pudo adaptar el storyboard. Reintenta.', 'Could not adapt the storyboard. Retry.'));
+          }
+          if (typeof data?.storyboard !== 'string' || !data.storyboard.trim()
+            || data.storyboard.length > 65536 || parseScript(data.storyboard).length === 0) {
+            throw new StoryboardRequestError(t('La respuesta del storyboard no es válida. Reintenta.', 'The storyboard response is invalid. Retry.'));
+          }
+          return data.storyboard;
+        });
+        if (!current()) return;
+        interaction.storyboard = storyboard;
         onGenerated?.();
       }
-      // Otros fallos (503/502/500/red) degradan a slides sin adaptar — no son
-      // limite de cuota, no tiene sentido bloquear al usuario por ellos.
-    } catch { /* fall back to original script */ }
-
-    const slides = parseScript(scriptForSlides);
-    if (slides.length === 0) {
-      setStatus('error');
-      setErrorMsg(t('El script no tiene texto suficiente.', 'The script does not have enough text.'));
-      return;
-    }
-    await preloadIcons(slides.map(sl => sl.icon));
-
-    setStatus('generating');
-    setProgress(0);
-    bumpRateLimit();
-
-    const W = CANVAS_W, H = CANVAS_H;
-    // Offscreen canvas for previous slide
-    const offscreen = document.createElement('canvas');
-    offscreen.width = W; offscreen.height = H;
-    offscRef.current = offscreen;
-    const offCtx = offscreen.getContext('2d')!;
-
-    // Snapshot canvas for glitch effect
-    const snapCanvas = document.createElement('canvas');
-    snapCanvas.width = W; snapCanvas.height = H;
-    const snapCtx = snapCanvas.getContext('2d')!;
-
-    // Retro timing constants
-    const STATIC_DUR = 0.85; // seconds of TV static noise at start/end
-    const SFADE      = 0.30; // seconds of fade between static and first/last slide
-    const slideOffset = STATIC_DUR + SFADE;
-
-    const slideDur = slides.reduce((s, sl) => s + sl.duration, 0) + slides.length * TRANSITION_DURATION;
-    const totalDur = slideOffset + slideDur + SFADE + STATIC_DUR;
-
-    const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(15);
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 80_000 });
-    recorderRef.current = recorder;
-    const chunks: Blob[] = [];
-
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-    recorder.onstop = async () => {
-      stream.getTracks().forEach(tr => tr.stop());
-      const blob = new Blob(chunks, { type: mimeType });
-
-      // captureStream() solo entrega frames del canvas COMPUESTO. Si la pestaña
-      // pasa a segundo plano durante los 30-90s que dura la grabación (el usuario
-      // cambia de pestaña, la minimiza...), el navegador puede dejar de componer
-      // y el MediaRecorder termina con pocos o cero frames — un archivo roto que
-      // antes se guardaba igualmente como si fuera bueno. 2KB es a proposito muy
-      // conservador (un video real de 1s a 80kbps ya pesa ~10KB) para no dar
-      // falsos positivos en grabaciones cortas legitimas.
-      if (blob.size < 2000) {
+      const slides = parseScript(interaction.storyboard);
+      if (slides.length === 0) {
         setStatus('error');
-        setErrorMsg(t(
-          'La grabación salió vacía — probablemente cambiaste de pestaña mientras se generaba. Mantén esta pestaña visible y vuelve a intentarlo.',
-          'The recording came out empty — you probably switched tabs while it was generating. Keep this tab visible and try again.'
-        ));
+        setErrorMsg(t('El script no tiene texto suficiente.', 'The script does not have enough text.'));
         return;
       }
+      await preloadIcons(slides.map(sl => sl.icon));
+      if (!current()) return;
 
-      setVideoUrl(URL.createObjectURL(blob));
-      setStatus('done'); setProgress(100);
+      setStatus('generating');
+      setProgress(0);
+      bumpRateLimit();
 
-      // Save to IndexedDB (local, for immediate re-access)
-      try {
-        await savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() });
-      } catch { /* non-critical */ }
+      const W = CANVAS_W, H = CANVAS_H;
+      // Offscreen canvas for previous slide
+      const offscreen = document.createElement('canvas');
+      offscreen.width = W; offscreen.height = H;
+      offscRef.current = offscreen;
+      const offCtx = offscreen.getContext('2d')!;
 
-      // Save to DB — binary FormData (no base64 overhead)
-      try {
-        const form = new FormData();
-        form.append('video', blob, 'preview.webm');
-        form.append('title', scriptTitle);
-        const saveRes = await fetch('/api/video-previews', { method: 'POST', body: form });
-        if (!saveRes.ok) {
-          const errText = await saveRes.text().catch(() => '');
-          console.error('[VideoPreview] save failed', saveRes.status, errText);
-        }
-      } catch (err) { console.error('[VideoPreview] save error', err); }
+      // Snapshot canvas for glitch effect
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = W; snapCanvas.height = H;
+      const snapCtx = snapCanvas.getContext('2d')!;
 
-      onSaved?.();
-    };
+      // Retro timing constants
+      const STATIC_DUR = 0.85; // seconds of TV static noise at start/end
+      const SFADE      = 0.30; // seconds of fade between static and first/last slide
+      const slideOffset = STATIC_DUR + SFADE;
 
-    recorder.start(200);
-    const startTime = performance.now();
+      const slideDur = slides.reduce((s, sl) => s + sl.duration, 0) + slides.length * TRANSITION_DURATION;
+      const totalDur = slideOffset + slideDur + SFADE + STATIC_DUR;
 
-    // Build timeline: for each slide, a transition period then a display period
-    const timeline: Array<{ slide: Slide; startT: number; transEnd: number; slideEnd: number }> = [];
-    let cursor = 0;
-    for (const slide of slides) {
-      const transEnd  = cursor + TRANSITION_DURATION;
-      const slideEnd  = transEnd + slide.duration;
-      timeline.push({ slide, startT: cursor, transEnd, slideEnd });
-      cursor = slideEnd;
-    }
-
-    // Draw first slide onto offscreen initially (blank)
-    offCtx.fillStyle = '#000'; offCtx.fillRect(0, 0, W, H);
-
-    let lastGlitch = -999;
-
-    const animate = () => {
-      const elapsed   = (performance.now() - startTime) / 1000;
-      const slideTime = Math.max(0, elapsed - slideOffset);
-
-      if (elapsed >= totalDur + 0.3) {
+      const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(15);
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 80_000 });
+      recorderRef.current = recorder;
+      const chunks: Blob[] = [];
+      let animationFrame = 0;
+      let safetyTimer: ReturnType<typeof setTimeout> | undefined;
+      interaction.cancel = () => {
+        cancelAnimationFrame(animationFrame);
+        if (safetyTimer !== undefined) clearTimeout(safetyTimer);
         if (recorder.state === 'recording') recorder.stop();
-        return;
+        else stream.getTracks().forEach(tr => tr.stop());
+      };
+
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(tr => tr.stop());
+        if (safetyTimer !== undefined) clearTimeout(safetyTimer);
+        cancelAnimationFrame(animationFrame);
+        if (!current()) return;
+        try {
+          const blob = new Blob(chunks, { type: mimeType });
+
+          // captureStream() solo entrega frames del canvas COMPUESTO. Si la pestaña
+          // pasa a segundo plano durante los 30-90s que dura la grabación (el usuario
+          // cambia de pestaña, la minimiza...), el navegador puede dejar de componer
+          // y el MediaRecorder termina con pocos o cero frames — un archivo roto que
+          // antes se guardaba igualmente como si fuera bueno. 2KB es a proposito muy
+          // conservador (un video real de 1s a 80kbps ya pesa ~10KB) para no dar
+          // falsos positivos en grabaciones cortas legitimas.
+          if (blob.size < 2000) {
+            setStatus('error');
+            setErrorMsg(t(
+              'La grabación salió vacía — probablemente cambiaste de pestaña mientras se generaba. Mantén esta pestaña visible y vuelve a intentarlo.',
+              'The recording came out empty — you probably switched tabs while it was generating. Keep this tab visible and try again.'
+            ));
+            return;
+          }
+
+          interaction.videoUrl = URL.createObjectURL(blob);
+          setVideoUrl(interaction.videoUrl);
+          setStatus('done'); setProgress(100);
+
+          // Save to IndexedDB (local, for immediate re-access)
+          try {
+            await savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() });
+          } catch { /* non-critical */ }
+          if (!current()) return;
+
+          // Save to DB — binary FormData (no base64 overhead)
+          try {
+            const form = new FormData();
+            form.append('video', blob, 'preview.webm');
+            form.append('title', scriptTitle);
+            const saveRes = await fetch('/api/video-previews', { method: 'POST', body: form });
+            if (!saveRes.ok) {
+              const errText = await saveRes.text().catch(() => '');
+              console.error('[VideoPreview] save failed', saveRes.status, errText);
+            }
+          } catch (err) { console.error('[VideoPreview] save error', err); }
+
+          if (!current()) return;
+          onSaved?.();
+        } finally { interaction.busy = false; }
+      };
+
+      recorder.start(200);
+      recordingStarted = true;
+      const startTime = performance.now();
+
+      // Build timeline: for each slide, a transition period then a display period
+      const timeline: Array<{ slide: Slide; startT: number; transEnd: number; slideEnd: number }> = [];
+      let cursor = 0;
+      for (const slide of slides) {
+        const transEnd  = cursor + TRANSITION_DURATION;
+        const slideEnd  = transEnd + slide.duration;
+        timeline.push({ slide, startT: cursor, transEnd, slideEnd });
+        cursor = slideEnd;
       }
 
-      setProgress(Math.min(95, Math.round((elapsed / totalDur) * 100)));
+      // Draw first slide onto offscreen initially (blank)
+      offCtx.fillStyle = '#000'; offCtx.fillRect(0, 0, W, H);
 
-      if (elapsed < STATIC_DUR) {
-        // ── Intro: TV static noise ──
-        drawStaticNoise(ctx, W, H);
+      let lastGlitch = -999;
 
-      } else if (elapsed < STATIC_DUR + SFADE) {
-        // ── Fade-in: noise dissolves into first slide ──
-        const fadeT = (elapsed - STATIC_DUR) / SFADE;
-        if (timeline.length > 0) {
-          drawSlide(ctx, timeline[0].slide, W, H, 1);
-          applyVintageOverlay(ctx, W, H);
+      const animate = () => {
+        if (!current()) { interaction.cancel?.(); return; }
+        const elapsed   = (performance.now() - startTime) / 1000;
+        const slideTime = Math.max(0, elapsed - slideOffset);
+
+        if (elapsed >= totalDur + 0.3) {
+          if (recorder.state === 'recording') recorder.stop();
+          return;
         }
-        drawStaticNoise(ctx, W, H, 1 - fadeT);
 
-      } else if (slideTime >= slideDur && slideTime < slideDur + SFADE) {
-        // ── Fade-out: last slide dissolves into noise ──
-        const fadeT = (slideTime - slideDur) / SFADE;
-        if (timeline.length > 0) {
-          drawSlide(ctx, timeline[timeline.length - 1].slide, W, H, 1);
-          applyVintageOverlay(ctx, W, H);
-        }
-        drawStaticNoise(ctx, W, H, fadeT);
+        setProgress(Math.min(95, Math.round((elapsed / totalDur) * 100)));
 
-      } else if (slideTime >= slideDur + SFADE) {
-        // ── Outro: TV static noise ──
-        drawStaticNoise(ctx, W, H);
+        if (elapsed < STATIC_DUR) {
+          // ── Intro: TV static noise ──
+          drawStaticNoise(ctx, W, H);
 
-      } else {
-        // ── Normal slide rendering ──
-        const seg = timeline.find(s => slideTime >= s.startT && slideTime < s.slideEnd);
+        } else if (elapsed < STATIC_DUR + SFADE) {
+          // ── Fade-in: noise dissolves into first slide ──
+          const fadeT = (elapsed - STATIC_DUR) / SFADE;
+          if (timeline.length > 0) {
+            drawSlide(ctx, timeline[0].slide, W, H, 1);
+            applyVintageOverlay(ctx, W, H);
+          }
+          drawStaticNoise(ctx, W, H, 1 - fadeT);
 
-        if (!seg) {
-          ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-        } else if (slideTime < seg.transEnd && seg.slide.index > 0) {
-          // Transition phase (skip for first slide — it appears from static intro)
-          const tp = (slideTime - seg.startT) / TRANSITION_DURATION;
-          renderTransition(ctx, offscRef.current, seg.slide, W, H, Math.min(1, tp));
+        } else if (slideTime >= slideDur && slideTime < slideDur + SFADE) {
+          // ── Fade-out: last slide dissolves into noise ──
+          const fadeT = (slideTime - slideDur) / SFADE;
+          if (timeline.length > 0) {
+            drawSlide(ctx, timeline[timeline.length - 1].slide, W, H, 1);
+            applyVintageOverlay(ctx, W, H);
+          }
+          drawStaticNoise(ctx, W, H, fadeT);
+
+        } else if (slideTime >= slideDur + SFADE) {
+          // ── Outro: TV static noise ──
+          drawStaticNoise(ctx, W, H);
+
         } else {
-          // Static display phase — draw slide and refresh offscreen
-          drawSlide(ctx, seg.slide, W, H);
-          offCtx.clearRect(0, 0, W, H);
-          offCtx.drawImage(canvas, 0, 0);
+          // ── Normal slide rendering ──
+          const seg = timeline.find(s => slideTime >= s.startT && slideTime < s.slideEnd);
+
+          if (!seg) {
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+          } else if (slideTime < seg.transEnd && seg.slide.index > 0) {
+            // Transition phase (skip for first slide — it appears from static intro)
+            const tp = (slideTime - seg.startT) / TRANSITION_DURATION;
+            renderTransition(ctx, offscRef.current, seg.slide, W, H, Math.min(1, tp));
+          } else {
+            // Static display phase — draw slide and refresh offscreen
+            drawSlide(ctx, seg.slide, W, H);
+            offCtx.clearRect(0, 0, W, H);
+            offCtx.drawImage(canvas, 0, 0);
+          }
+
+          // Vintage overlay on every slide frame
+          applyVintageOverlay(ctx, W, H);
+
+          // Random glitch (~2.2% per frame, min 0.4s between glitches)
+          if (Math.random() < 0.022 && elapsed - lastGlitch > 0.4) {
+            snapCtx.drawImage(canvas, 0, 0);
+            applyGlitch(ctx, snapCanvas, W, H);
+            lastGlitch = elapsed;
+          }
         }
 
-        // Vintage overlay on every slide frame
-        applyVintageOverlay(ctx, W, H);
+        animationFrame = rafRef.current = requestAnimationFrame(animate);
+      };
 
-        // Random glitch (~2.2% per frame, min 0.4s between glitches)
-        if (Math.random() < 0.022 && elapsed - lastGlitch > 0.4) {
-          snapCtx.drawImage(canvas, 0, 0);
-          applyGlitch(ctx, snapCanvas, W, H);
-          lastGlitch = elapsed;
-        }
-      }
-
-      rafRef.current = requestAnimationFrame(animate);
-    };
-
-    rafRef.current = requestAnimationFrame(animate);
-    setTimeout(() => {
-      cancelAnimationFrame(rafRef.current);
-      if (recorder.state === 'recording') recorder.stop();
-    }, (totalDur + 5) * 1000);
-
-  }, [scriptContent, generationId, scriptTitle, lang]);
+      animationFrame = rafRef.current = requestAnimationFrame(animate);
+      safetyTimer = setTimeout(() => {
+        cancelAnimationFrame(animationFrame);
+        if (recorder.state === 'recording') recorder.stop();
+      }, (totalDur + 5) * 1000);
+    } catch (error) {
+      if (!current()) return;
+      setStatus('error');
+      setErrorMsg(error instanceof StoryboardRequestError ? error.message
+        : t('No se pudo generar el storyboard. Reintenta.', 'Could not generate the storyboard. Retry.'));
+      if (error instanceof StoryboardRequestError && error.limitReason) onLimitReached?.(error.limitReason);
+      interaction.cancel?.();
+    } finally { if (!recordingStarted) interaction.busy = false; }
+  }, [interaction, sessionStatus, session?.user?.id, scriptContent, generationId, scriptTitle, lang, onGenerated, onSaved, onLimitReached]);
 
   const handleDownload = () => {
     if (!videoUrl) return;
@@ -1157,13 +1221,15 @@ export default function VideoPreviewGenerator({
   };
 
   const handleClose = () => {
-    cancelAnimationFrame(rafRef.current);
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+    interaction.active = false;
+    interaction.cancel?.();
     onClose();
   };
 
   const reset = () => {
+    if (interaction.busy) return;
     if (videoUrl) URL.revokeObjectURL(videoUrl);
+    interaction.videoUrl = null;
     setStatus('idle'); setVideoUrl(null); setProgress(0); setErrorMsg('');
   };
 
@@ -1373,7 +1439,7 @@ export default function VideoPreviewGenerator({
           )}
 
           {status === 'error' && (
-            <p className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>{errorMsg}</p>
+            <p role="alert" className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>{errorMsg}</p>
           )}
 
           {status === 'idle' && (
@@ -1407,8 +1473,8 @@ export default function VideoPreviewGenerator({
               </>
             )}
             {status === 'error' && (
-              <button onClick={() => setStatus('idle')} className="btn-offset btn-offset-white flex-1 py-3 text-[13px] font-display">
-                {t('Intentar de nuevo', 'Try again')}
+              <button onClick={generate} className="btn-offset btn-offset-white flex-1 py-3 text-[13px] font-display">
+                {t('Reintentar storyboard', 'Retry storyboard')}
               </button>
             )}
           </div>

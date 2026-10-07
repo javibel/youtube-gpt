@@ -1,0 +1,70 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
+const {createRetryOperation}=require('../../lib/ai/retry-operation.cjs');
+const source=fs.readFileSync(path.join(__dirname,'../../components/VideoPreviewGenerator.tsx'),'utf8');
+const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+const story='0s-6s: HOOK | A creator opens a notebook\n6s-12s: IDEA | A creator draws a simple outline';
+const success=()=>({ok:true,status:200,json:async()=>({storyboard:story})});
+function harness(){
+ const cells=[],effects=[],requests=[],recorders=[],uploads=[],localSaves=[],callbacks=[],images=[],frames=new Map(),timers=new Map(),storage=new Map();let index=0,dirty=false,identity=0,clockId=0,tracksStopped=0;
+ const state={user:'fixture-one',auth:'authenticated',scriptContent:'Synthetic original script',generationId:'synthetic-generation',scriptTitle:'Synthetic title',lang:'es',send:async()=>success(),iconsReady:true,supported:true,save:async()=>{}};
+ let signalIcons;const iconsStarted=new Promise(resolve=>{signalIcons=resolve;});
+ const changed=(a,b)=>!a||a.length!==b.length||a.some((value,i)=>!Object.is(value,b[i]));
+ const hooks={
+  useState(initial){const i=index++;if(!cells[i])cells[i]={value:typeof initial==='function'?initial():initial};return [cells[i].value,value=>{const next=typeof value==='function'?value(cells[i].value):value;if(!Object.is(next,cells[i].value)){cells[i].value=next;dirty=true;}}];},
+  useRef(value){return cells[index++]??={current:value};},
+  useMemo(make,deps){const i=index++;if(!cells[i]||changed(cells[i].deps,deps))cells[i]={value:make(),deps};return cells[i].value;},
+  useCallback(fn,deps){return hooks.useMemo(()=>fn,deps);},
+  useEffect(fn,deps){const i=index++;if(!cells[i]||changed(cells[i].deps,deps)){const old=cells[i];cells[i]={deps,fn};effects.push(()=>{old?.cleanup?.();cells[i].cleanup=fn();});}},
+ };
+ const jsx=(type,props)=>({type,props});const entry={exports:{}};
+ const mocks={react:hooks,'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'},'next-auth/react':{useSession:()=>({data:state.user?{user:{id:state.user}}:null,status:state.auth})},'@/lib/ai/retry-operation.cjs':{createRetryOperation},'@/lib/videoPreviewDB':{savePreview:async value=>{localSaves.push(value);await state.save(value);}},'@/lib/webm-duration':{primeWebmDuration:()=>undefined}};
+ const context={fillRect(){}};
+ const canvas={getContext:()=>context,captureStream:()=>({getTracks:()=>[{stop(){tracksStopped++;}}]})};
+ class Recorder{static isTypeSupported(){return true;}constructor(stream){this.stream=stream;this.state='inactive';recorders.push(this);}start(){this.state='recording';}stop(){this.state='inactive';return this.onstop?.();}}
+ class Image{constructor(){this.complete=state.iconsReady;this.naturalWidth=state.iconsReady?64:0;images.push(this);signalIcons();}}
+ vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(name){assert.ok(Object.hasOwn(mocks,name),name);return mocks[name];},
+  crypto:{randomUUID:()=>`storyboard-fixture-${++identity}`},Date,Blob,FormData,URL:{createObjectURL:()=>`blob:synthetic-${identity}`,revokeObjectURL(){}},
+  window:{get MediaRecorder(){return state.supported?Recorder:undefined;},Image},MediaRecorder:Recorder,
+  document:{createElement:tag=>{assert.equal(tag,'canvas');return {getContext:()=>context};}},performance:{now:()=>0},
+  localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
+  requestAnimationFrame:fn=>{const id=++clockId;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),
+  setTimeout:fn=>{const id=++clockId;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
+  fetch:async(url,init)=>{if(url==='/api/video-previews'){uploads.push(init);return {ok:true};}assert.equal(url,'/api/storyboard');assert.equal(init.method,'POST');requests.push({...init,owner:state.user});return state.send(init);},console:{error(){},warn(){},log(){}},
+ });
+ function nodes(tree){if(Array.isArray(tree))return tree.flatMap(nodes);if(!tree||typeof tree!=='object')return [];return [tree,...nodes(tree.props?.children)];}
+ const text=value=>Array.isArray(value)?value.map(text).join(' '):value&&typeof value==='object'?text(value.props?.children):String(value??'');
+ function render(){let tree;for(let n=0;n<10;n++){index=0;dirty=false;tree=entry.exports.default({...state,onClose:()=>callbacks.push('close'),onGenerated:()=>callbacks.push('generated'),onSaved:()=>callbacks.push('saved'),onLimitReached:reason=>callbacks.push(reason)});for(const node of nodes(tree))if(node.type==='canvas'&&node.props.ref)node.props.ref.current=canvas;while(effects.length)effects.shift()();if(!dirty)return tree;}throw Error('Render did not settle');}
+ const handler=()=>nodes(render()).find(n=>n.type==='button'&&/Generar storyboard|Generate storyboard|Reintentar storyboard|Retry storyboard/.test(text(n))).props.onClick;
+ return {state,requests,recorders,uploads,localSaves,callbacks,frames,timers,render,handler,click:()=>handler()(),alert:()=>nodes(render()).find(n=>n.props?.role==='alert'),text:()=>text(render()),
+  daily:()=>Number(storage.get('ytv_vp_'+new Date().toISOString().split('T')[0])??0),setDaily:n=>storage.set('ytv_vp_'+new Date().toISOString().split('T')[0],String(n)),
+  finish:async(size=2500)=>{const r=recorders.at(-1);r.ondataavailable({data:new Blob(['x'.repeat(size)])});await r.stop();render();},
+  reset:()=>nodes(render()).find(n=>n.type==='button'&&/Regenerar|Regenerate/.test(text(n))).props.onClick(),
+  close:()=>nodes(render()).find(n=>n.type==='button'&&/Cerrar|Close/.test(text(n))).props.onClick(),
+  unmount:()=>cells.forEach(c=>c?.cleanup?.()),strictEffects:()=>{render();for(const cell of cells)if(cell.fn){cell.cleanup?.();cell.cleanup=cell.fn();}},
+  iconsStarted:()=>iconsStarted,loadIcons:()=>images.forEach(img=>{img.complete=true;img.naturalWidth=64;img.onload?.();}),stopped:()=>tracksStopped,
+ };
+}
+const key=request=>request.headers['Idempotency-Key'],results=[];
+async function test(name,fn){await fn();results.push({name,status:'PASS'});}
+if(require.main===module)(async()=>{
+ await test('lost response keeps identity; only recovered adaptation starts a render and quota callback',async()=>{const h=harness();h.state.send=async()=>{throw Error('Private transport failure');};await h.click();assert.ok(h.alert());assert.match(h.text(),/Reintentar storyboard/);assert.doesNotMatch(h.text(),/Private/);assert.equal(h.daily(),0);assert.equal(h.recorders.length,0);assert.deepEqual(h.callbacks,[]);h.state.send=async()=>success();await h.click();assert.equal(key(h.requests[0]),key(h.requests[1]));assert.equal(h.requests[0].body,h.requests[1].body);assert.deepEqual(JSON.parse(h.requests[1].body),{script:'Synthetic original script',lang:'es'});assert.equal(h.recorders.length,1);assert.equal(h.daily(),1);assert.deepEqual(h.callbacks,['generated']);await h.finish();assert.equal(h.uploads.length,1);assert.equal(h.localSaves.length,1);assert.deepEqual(h.callbacks,['generated','saved']);assert.equal(h.frames.size,0);assert.equal(h.timers.size,0);});
+ for(const status of [401,403,409,429,500,502,503])await test('HTTP '+status+' exposes a bounded retry without rendering raw script',async()=>{const h=harness();h.state.send=async()=>({ok:false,status,json:async()=>({error:'Private server data'})});await h.click();assert.ok(h.alert());assert.doesNotMatch(h.text(),/Private server data/);assert.equal(h.recorders.length,0);assert.equal(h.daily(),0);assert.deepEqual(h.callbacks,[]);h.state.send=async()=>success();await h.click();assert.equal(key(h.requests[0]),key(h.requests[1]));h.unmount();});
+ for(const [name,data] of [['missing',{}],['empty',{storyboard:''}],['not text',{storyboard:42}],['unparseable',{storyboard:'> hidden\n##'}],['oversized',{storyboard:'x'.repeat(65537)}]])await test('invalid '+name+' response retains identity and never reports generation',async()=>{const h=harness();h.state.send=async()=>({ok:true,status:200,json:async()=>data});await h.click();assert.ok(h.alert());assert.equal(h.daily(),0);assert.equal(h.recorders.length,0);assert.deepEqual(h.callbacks,[]);h.state.send=async()=>success();await h.click();assert.equal(key(h.requests[0]),key(h.requests[1]));h.unmount();});
+ await test('invalid JSON retains retry identity',async()=>{const h=harness();h.state.send=async()=>({ok:true,json:async()=>{throw Error('Private JSON data');}});await h.click();assert.ok(h.alert());h.state.send=async()=>success();await h.click();assert.equal(key(h.requests[0]),key(h.requests[1]));h.unmount();});
+ for(const capped of [false,true])await test('monthly quota signals only the expected limit '+capped,async()=>{const h=harness();h.state.send=async()=>({ok:false,status:429,json:async()=>({limitReached:true,videoTipsCapped:capped,error:'Private'})});await h.click();assert.deepEqual(h.callbacks,[capped?'video_tips_capped':'limit']);assert.equal(h.daily(),0);assert.equal(h.recorders.length,0);assert.ok(h.alert());assert.doesNotMatch(h.text(),/Private/);});
+ await test('rapid duplicate clicks create one request, one recorder and one quota effect',async()=>{const h=harness();let release;h.state.send=()=>new Promise(resolve=>{release=resolve;});const action=h.handler(),first=action(),second=action();await Promise.resolve();assert.equal(h.requests.length,1);release(success());await Promise.all([first,second]);assert.equal(h.recorders.length,1);assert.equal(h.daily(),1);assert.deepEqual(h.callbacks,['generated']);h.unmount();});
+ for(const [field,value] of [['user','fixture-two'],['lang','en'],['scriptContent','Changed script'],['generationId','another-generation'],['scriptTitle','Changed title'],['auth','unauthenticated']])await test(field+' change ignores late adaptation before render or callbacks',async()=>{const h=harness();let release;h.state.send=()=>new Promise(resolve=>{release=resolve;});const first=h.click();await Promise.resolve();h.state[field]=value;h.render();release(success());await first;assert.equal(h.recorders.length,0);assert.equal(h.daily(),0);assert.deepEqual(h.callbacks,[]);if(field!=='auth'){h.state.send=async()=>success();await h.click();assert.notEqual(key(h.requests[0]),key(h.requests[1]));h.unmount();}});
+ await test('close during adaptation suppresses late generation',async()=>{const h=harness();let release;h.state.send=()=>new Promise(resolve=>{release=resolve;});const first=h.click();await Promise.resolve();h.close();release(success());await first;assert.deepEqual(h.callbacks,['close']);assert.equal(h.recorders.length,0);assert.equal(h.daily(),0);});
+ await test('close during icon preload prevents recorder and local quota effect',async()=>{const h=harness();h.state.iconsReady=false;const first=h.click();await h.iconsStarted();h.close();h.loadIcons();await first;assert.equal(h.recorders.length,0);assert.equal(h.daily(),0);assert.deepEqual(h.callbacks,['generated','close']);});
+ await test('account change during recording stops tracks and never saves old account video',async()=>{const h=harness();await h.click();h.state.user='fixture-two';h.render();assert.equal(h.recorders[0].state,'inactive');assert.ok(h.stopped()>0);assert.equal(h.uploads.length,0);assert.equal(h.localSaves.length,0);assert.deepEqual(h.callbacks,['generated']);});
+ await test('account change while saving local video prevents remote save and saved callback',async()=>{const h=harness();let release;h.state.save=()=>new Promise(resolve=>{release=resolve;});await h.click();const finished=h.finish();await Promise.resolve();h.state.user='fixture-two';h.render();release();await finished;assert.equal(h.localSaves.length,1);assert.equal(h.uploads.length,0);assert.deepEqual(h.callbacks,['generated']);});
+ await test('empty recording retry reuses successful adaptation; local render quota remains per attempt',async()=>{const h=harness();await h.click();await h.finish(10);assert.ok(h.alert());await h.click();assert.equal(h.requests.length,1);assert.equal(h.recorders.length,2);assert.equal(h.daily(),2);assert.deepEqual(h.callbacks,['generated']);await h.finish();assert.equal(h.uploads.length,1);assert.deepEqual(h.callbacks,['generated','saved']);});
+ await test('Regenerate reuses adaptation without consuming another AI interaction',async()=>{const h=harness();await h.click();await h.finish();h.reset();await h.click();assert.equal(h.requests.length,1);assert.equal(h.daily(),2);assert.equal(h.recorders.length,2);assert.deepEqual(h.callbacks,['generated','saved']);await h.finish();assert.equal(h.uploads.length,2);assert.deepEqual(h.callbacks,['generated','saved','saved']);});
+ await test('local daily limit blocks before HTTP and recording',async()=>{const h=harness();h.setDaily(50);await h.click();assert.ok(h.alert());assert.equal(h.requests.length,0);assert.equal(h.recorders.length,0);assert.equal(h.daily(),50);});
+ await test('unsupported recording blocks before HTTP',async()=>{const h=harness();h.state.supported=false;await h.click();assert.ok(h.alert());assert.equal(h.requests.length,0);assert.equal(h.daily(),0);});
+ await test('anonymous caller blocks before HTTP',async()=>{const h=harness();h.state.user=null;h.state.auth='unauthenticated';await h.click();assert.ok(h.alert());assert.equal(h.requests.length,0);});
+ await test('Strict Mode setup-cleanup-setup preserves active interaction',async()=>{const h=harness();h.strictEffects();await h.click();assert.equal(h.recorders.length,1);assert.deepEqual(h.callbacks,['generated']);h.unmount();});
+ console.log(JSON.stringify({scope:'actual VideoPreviewGenerator with synthetic hooks, HTTP, MediaRecorder and storage; no browser codec or operational upload acceptance',results},null,2));
+})().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports={harness};
