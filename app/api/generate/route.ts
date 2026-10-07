@@ -6,6 +6,7 @@ import { getExtensionUser } from '@/lib/extension-auth';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
+import { createHash } from 'node:crypto';
 
 export const maxDuration = 60; // generación con Claude puede pasar de 15s en plantillas largas
 
@@ -35,10 +36,25 @@ export async function POST(request: Request) {
     // for the very users it was written for. Free users now go through the same monthly quota
     // and proOnly checks as the web, so cost stays bounded by generationsPerMonth.
 
-    const { template, inputs, lang } = await request.json();
+    const operationKey = request.headers.get('idempotency-key');
+    if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) {
+      return Response.json({ error: 'Invalid operation key' }, { status: 400 });
+    }
+    let body;
+    try { body = await request.json(); }
+    catch { return Response.json({ error: 'Invalid body' }, { status: 400 }); }
+    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.template !== 'string'
+      || !body.inputs || typeof body.inputs !== 'object' || Array.isArray(body.inputs)
+      || Object.values(body.inputs).some(value => typeof value !== 'string')
+      || (body.lang != null && typeof body.lang !== 'string')) {
+      return Response.json({ error: 'Invalid body' }, { status: 400 });
+    }
+    const template: string = body.template;
+    const inputs: Record<string,string> = { ...body.inputs };
+    const lang = body.lang === 'en' ? 'en' : 'es';
 
     const templateData = TEMPLATES[template as keyof typeof TEMPLATES];
-    if (!templateData) {
+    if (!Object.hasOwn(TEMPLATES, template) || !templateData) {
       return Response.json({ error: 'Template no válido' }, { status: 400 });
     }
 
@@ -72,7 +88,38 @@ export async function POST(request: Request) {
       }
     }
 
-    let userId: string | null = null;
+    // Authenticate the owner before reading any retained generation. A history ID
+    // is a business replay key, never authority to recover a lost coordinator.
+    const authenticatedUser = extAuth ? extAuth.user : await prisma.user.findUnique({
+      where: { email: session!.user!.email! }, select: { id: true },
+    });
+    if (!authenticatedUser || typeof authenticatedUser.id !== 'string' || !authenticatedUser.id
+      || (!extAuth && authenticatedUser.id !== session!.user!.id)) {
+      return Response.json({ error: 'No autorizado' }, { status: 401 });
+    }
+    let userId: string | null = authenticatedUser.id;
+    const generationId = operationKey === null ? null : 'generate_' + createHash('sha256')
+      .update(JSON.stringify([userId,operationKey])).digest('hex');
+    const inputDigest = createHash('sha256').update(JSON.stringify([template,
+      Object.keys(inputs).sort().map(key => [key,inputs[key]]),lang])).digest('hex');
+    async function savedResponse() {
+      if (!generationId) return null;
+      const saved = await prisma.generation.findUnique({ where: { id: generationId } });
+      if (!saved) return null;
+      const stored = saved.inputs;
+      const meta = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored._migrationRetry : null;
+      if (saved.userId !== authenticatedUser!.id || saved.template !== template || !meta
+        || typeof meta !== 'object' || Array.isArray(meta) || meta.inputDigest !== inputDigest) {
+        return Response.json({ error: 'Operation input changed' }, { status: 409 });
+      }
+      if (typeof meta.content !== 'string' || !meta.content.trim() || typeof meta.truncated !== 'boolean'
+        || saved.output !== (inputs._previousContent || '') + meta.content) {
+        return Response.json({ error: 'Saved generation unavailable' }, { status: 503 });
+      }
+      return Response.json({ content: meta.content, truncated: meta.truncated });
+    }
+    try { const saved = await savedResponse(); if (saved) return saved; }
+    catch { return Response.json({ error: 'Generation history unavailable' }, { status: 503 }); }
     let isPro = false;
 
     if (extAuth) {
@@ -156,10 +203,7 @@ export async function POST(request: Request) {
         }
       }
     } else if (session?.user?.email) {
-      const user = await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { id: true },
-      });
+      const user = authenticatedUser;
       // A stale or inconsistent session must not fall through without accounting.
       if (!user || user.id !== session.user.id) {
         return Response.json({ error: 'No autorizado' }, { status: 401 });
@@ -283,6 +327,7 @@ export async function POST(request: Request) {
     let task;
     try {
       task = await getMessagesTask({
+        operationKey: operationKey ?? undefined,
         taskType: 'content.generate', userId, language: lang === 'en' ? 'en' : 'es',
         instructionsVersion: 'generation-templates-v1', incompletePolicy: 'expose-text',
       });
@@ -290,16 +335,29 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
     const data = await task.create({ max_tokens: maxTokens, messages });
-    const content = data.content[0].text;
+    const content = data.content?.[0]?.text;
     const tokensUsed = data.usage?.output_tokens ?? 0;
     const truncated = data.incomplete === true;
+    if (typeof content !== 'string' || !content.trim() || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
+      return Response.json({ error: 'Generation result unavailable' }, { status: 502 });
+    }
 
     // Guardar generación con IP
     if (userId) {
       const ip = getIp(request);
-      await prisma.generation.create({
-        data: { userId, template, inputs, output: isContinuation ? previousContent + content : content, tokensUsed, ipAddress: ip },
-      });
+      try {
+        await prisma.generation.create({
+          data: { ...(generationId ? { id: generationId } : {}), userId, template,
+            inputs: { ...inputs, ...(generationId ? { _migrationRetry: { inputDigest,content,truncated } } : {}) },
+            output: isContinuation ? previousContent + content : content, tokensUsed, ipAddress: ip },
+        });
+      } catch {
+        if (generationId) {
+          try { const saved = await savedResponse(); if (saved) return saved; }
+          catch { /* Persisted state is uncertain; do not invent success or a new operation. */ }
+        }
+        return Response.json({ error: 'Generation history could not be saved' }, { status: 503 });
+      }
     }
 
     return Response.json({ content, truncated });
