@@ -2,6 +2,20 @@
 
 Independent shallow repository reconstructed from the current committed snapshot. No operational files, uncommitted changes, shared object stores or historical commits were copied. All work is local.
 
+## 2026-10-07 — Predictor request retries
+
+Predictor now sends the existing operation identity and retains it after a lost
+response, HTTP failure or malformed result. It validates prediction and baseline
+fields before finishing the interaction. Rapid duplicate clicks share one request;
+changed form inputs get a different identity on the next attempt. Late responses
+for changed inputs, accounts or languages are ignored. Known plan/channel/video
+errors retain their user messages; other failures show a bounded retry message.
+The identity is browser memory only. The actual API and synthetic PostgreSQL ledger
+test cover one model dispatch and one settlement after response loss; changed user
+input or derived video context fails closed without another model dispatch.
+YouTube data acquisition still precedes server replay and is synthetic in tests.
+Operational authentication, real providers and acceptance remain pending.
+
 ## 2026-10-07 — Calendar suggestion retries
 
 The calendar client now sends the existing operation identity and retains it after

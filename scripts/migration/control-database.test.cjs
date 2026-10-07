@@ -338,6 +338,29 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   assert.equal(conflict.status,500);assert.equal(calls,1);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
  });
+ await test('Predictor lost-response retry recovers one result and settlement; changed input or video context never redispatches',async()=>{
+  const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');const {createRetryOperation}=require('../../lib/ai/retry-operation.cjs');
+  const actualRegistry=createRegistry();let calls=0,changedContext=false;
+  const prediction={estimatedViews:{low:50,mid:100,high:200},estimatedEngagement:4,titleScore:70,seoScore:65,viralPotential:'medium',strengths:['Synthetic strength'],weaknesses:['Synthetic weakness'],suggestion:'Synthetic advice'};
+  actualRegistry.register(createAnthropicAdapter({models:{'test-model':{verified:true,executors:['ai'],capabilities:['text','json']}},credentialRef:'test:fixture',preflight:async()=>({upperBoundMicros:60,currency:'EUR',priceVersion:'test-v1'}),priceUsage:async()=>({costMicros:7,currency:'EUR',priceVersion:'test-v1',estimated:true}),transport:{create:async()=>{calls++;return {content:[{type:'text',text:JSON.stringify(prediction)}],stop_reason:'end_turn',usage:{input_tokens:10,output_tokens:5}};}}}));
+  const actualStore=role=>createControlStore(database(role),actualRegistry),config=cfg('predictor-client','anthropic');config.profiles.default={'youtube.performance-prediction':{providerId:'anthropic',model:'test-model'}};
+  const previous=(await actualStore('reader').active()).revision;
+  await actualStore('activator').publish(config,{actor:'test-admin'});await actualStore('activator').activate(config.revision,{expectedRevision:previous,actor:'test-admin',reason:'synthetic Predictor retry'});
+  const budgetId=await budget('predictor-client'),runtime=load('lib/ai/task-runtime.ts');
+  runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'youtube.performance-prediction':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:900,deadlineMs:3000}}},authorize:async({userId,taskType})=>userId==='synthetic'&&taskType==='youtube.performance-prediction'?{budgetId}:null}));
+  const route=load('app/api/predictor/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:'synthetic'}})},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true},'@/lib/ai/task-runtime':runtime,'@/lib/youtube-auth':{getAccessToken:async()=>'synthetic-not-a-token'},'@/lib/prisma':{prisma:{youtubeToken:{findUnique:async()=>({channelId:'synthetic-channel',subscribers:1000})}}}},
+   {fetch:async(url,init)=>{assert.equal(init.headers.Authorization,'Bearer synthetic-not-a-token');const address=new URL(url);assert.equal(address.hostname,'www.googleapis.com');
+    if(address.pathname==='/youtube/v3/search')return Response.json({items:[0,1,2].map(i=>({id:{videoId:'synthetic-'+i}}))});
+    assert.equal(address.pathname,'/youtube/v3/videos');return Response.json({items:[0,1,2].map(i=>({snippet:{title:'Synthetic video '+i,publishedAt:'2026-09-20T12:00:00.000Z',tags:['synthetic'],description:'Synthetic description',thumbnails:{high:{}}},statistics:{viewCount:String(100+i*100+(changedContext?100:0)),likeCount:'10',commentCount:'2'},contentDetails:{duration:'PT5M'}}))});}});
+  const keys=[],run=createRetryOperation(()=>prefix+'_predictor_retry');let lost=true,first;
+  const invoke=(body,key)=>route.POST(new Request('https://example.invalid/api/predictor',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':key},body}));
+  const send=async(body,key)=>{keys.push(key);const response=await invoke(body,key);assert.equal(response.status,200);const output=await response.json();if(lost){first=output;lost=false;throw Error('Synthetic lost Predictor response after settlement');}return output;};
+  const input={title:'Synthetic title',description:'Synthetic description',tags:'synthetic',lang:'es'};
+  await assert.rejects(run(input,send),/lost Predictor response after settlement/);const recovered=await run(input,send);assert.deepEqual(recovered,first);assert.deepEqual(recovered.prediction,prediction);assert.equal(keys[0],keys[1]);assert.equal(calls,1);
+  assert.equal((await invoke(JSON.stringify({...input,title:'Changed title'}),keys[0])).status,500);assert.equal(calls,1);
+  changedContext=true;assert.equal((await invoke(JSON.stringify(input),keys[0])).status,500);assert.equal(calls,1);
+  assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+ });
 })().catch(error=>{results.push({name:'setup or orchestration',status:'FAIL',error:error.message});}).finally(async()=>{
  try{if(migrated){
   const cleanup=await pool.connect();

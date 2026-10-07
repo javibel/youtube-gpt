@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createRetryOperation } from '@/lib/ai/retry-operation.cjs';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
@@ -28,6 +29,22 @@ interface Baseline {
   videoCount: number;
   subscribers: number;
 }
+
+function validPredictionResponse(value: unknown): value is { prediction: Prediction; baseline: Baseline } {
+  if (!value || typeof value !== 'object') return false;
+  const { prediction: p, baseline: b } = value as { prediction?: Prediction; baseline?: Baseline };
+  const nonnegative = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
+  const strings = (items: unknown) => Array.isArray(items) && items.every(item => typeof item === 'string');
+  return !!p && !!b && !!p.estimatedViews &&
+    [p.estimatedViews.low, p.estimatedViews.mid, p.estimatedViews.high, p.estimatedEngagement,
+      p.titleScore, p.seoScore, b.avgViews, b.medianViews, b.avgEngagement, b.topVideoViews, b.subscribers].every(nonnegative) &&
+    p.estimatedViews.low <= p.estimatedViews.mid && p.estimatedViews.mid <= p.estimatedViews.high &&
+    p.titleScore <= 100 && p.seoScore <= 100 && ['low', 'medium', 'high'].includes(p.viralPotential) &&
+    strings(p.strengths) && strings(p.weaknesses) && typeof p.suggestion === 'string' && !!p.suggestion.trim() &&
+    typeof b.topVideoTitle === 'string' && Number.isSafeInteger(b.videoCount) && b.videoCount >= 3;
+}
+
+class PredictionRequestError extends Error {}
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
@@ -58,34 +75,56 @@ export default function PredictorPage() {
   const [error, setError] = useState('');
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [baseline, setBaseline] = useState<Baseline | null>(null);
+  const predictionOperation = useMemo(() => createRetryOperation(() => crypto.randomUUID()), [session?.user?.id, lang]);
+  const currentPredictionOperation = useRef(predictionOperation);
+  currentPredictionOperation.current = predictionOperation;
+  const input = { title: title.trim(), description: description.trim(), tags: tags.trim(), lang };
+  const currentInput = useRef(JSON.stringify(input));
+  currentInput.current = JSON.stringify(input);
+  useEffect(() => {
+    setPrediction(null); setBaseline(null); setError(''); setLoading(false);
+  }, [predictionOperation]);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   async function predict() {
-    if (!title.trim() || loading) return;
+    if (status !== 'authenticated' || !title.trim() || loading) return;
+    const operation = predictionOperation, submittedInput = JSON.stringify(input);
+    const stillCurrent = () => currentPredictionOperation.current === operation && currentInput.current === submittedInput;
     setLoading(true);
     setError('');
     setPrediction(null);
+    setBaseline(null);
     try {
-      const res = await fetch('/api/predictor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), description: description.trim(), tags: tags.trim(), lang }),
+      const result = await operation(input, async (body, operationKey) => {
+        const res = await fetch('/api/predictor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey },
+          body,
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          let message = t('No se pudo recuperar la predicción. Puedes volver a intentarlo.', 'The prediction could not be retrieved. You can try again.');
+          if (json?.error === 'pro_required') message = t('Plan Pro requerido.', 'Pro plan required.');
+          else if (json?.error === 'youtube_not_connected') message = t('Conecta tu canal de YouTube primero.', 'Connect your YouTube channel first.');
+          else if (json?.error === 'not_enough_videos' && Number.isSafeInteger(json.videoCount) && json.videoCount >= 0)
+            message = t(`Necesitas al menos 3 vídeos (tienes ${json.videoCount}).`, `Need at least 3 videos (you have ${json.videoCount}).`);
+          throw new PredictionRequestError(message);
+        }
+        if (!validPredictionResponse(json)) throw new Error('Invalid prediction response');
+        return json;
       });
-      const json = await res.json();
-      if (!res.ok) {
-        if (json.error === 'pro_required') setError(t('Plan Pro requerido.', 'Pro plan required.'));
-        else if (json.error === 'youtube_not_connected') setError(t('Conecta tu canal de YouTube primero.', 'Connect your YouTube channel first.'));
-        else if (json.error === 'not_enough_videos') setError(t(`Necesitas al menos 3 vídeos (tienes ${json.videoCount}).`, `Need at least 3 videos (you have ${json.videoCount}).`));
-        else setError(json.error || 'Error');
-        return;
+      if (stillCurrent()) {
+        setPrediction(result.prediction);
+        setBaseline(result.baseline);
       }
-      setPrediction(json.prediction);
-      setBaseline(json.baseline);
-    } catch {
-      setError(t('Error de conexión', 'Connection error'));
+    } catch (e) {
+      if (stillCurrent()) setError(e instanceof PredictionRequestError ? e.message : t(
+        'No se pudo recuperar la predicción. Puedes volver a intentarlo.',
+        'The prediction could not be retrieved. You can try again.',
+      ));
     } finally {
-      setLoading(false);
+      if (currentPredictionOperation.current === operation) setLoading(false);
     }
   }
 
@@ -198,7 +237,12 @@ export default function PredictorPage() {
           </div>
 
           {error && (
-            <p className="text-red-400 font-mono-jb text-[13px] mt-3 text-center">{error}</p>
+            <div role="alert" className="text-red-400 font-mono-jb text-[13px] mt-3 text-center">
+              <p>{error}</p>
+              <button onClick={predict} disabled={loading || !title.trim()} className="mt-2 underline disabled:opacity-50">
+                {t('Reintentar predicción', 'Retry prediction')}
+              </button>
+            </div>
           )}
         </div>
 
