@@ -4,6 +4,11 @@ export class RemovalUnconfirmed extends Error {}
 export const MAX_REMOVAL_BYTES = 10 * 1024 * 1024;
 export const isRemovalAvailable = () => !!process.env.REMOVE_BG_API_KEY?.trim();
 
+function cancelLocalBody(body: ReadableStream<Uint8Array> | null, reader?: ReadableStreamDefaultReader<Uint8Array>) {
+  try { if(reader)void reader.cancel().catch(() => {});else void body?.cancel().catch(() => {}); }
+  catch { /* A failed local cancellation never proves server/provider completion. */ }
+}
+
 export async function removeBackgroundImage(file: File, requestSignal: AbortSignal): Promise<Uint8Array<ArrayBuffer>> {
   const key = process.env.REMOVE_BG_API_KEY?.trim();
   if (!key) throw new RemovalUnavailable();
@@ -49,7 +54,6 @@ export async function removeBackgroundImage(file: File, requestSignal: AbortSign
   finally {
     clearTimeout(deadline);requestSignal.removeEventListener('abort',stop);controller.abort();
     // Best effort local cancellation; never wait forever on an uncooperative stream.
-    try { if(reader)void reader.cancel().catch(() => {});else void responseBody?.cancel().catch(() => {}); }
-    catch { /* A failed local cancellation never proves server/provider completion. */ }
+    cancelLocalBody(responseBody,reader);
   }
 }
