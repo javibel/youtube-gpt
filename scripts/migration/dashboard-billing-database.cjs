@@ -1,0 +1,35 @@
+'use strict';
+const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
+const {load}=require('./route-harness.cjs'),{harness}=require('./dashboard-billing.test.cjs');
+const facade=require('../../lib/migration-payments.cjs');
+const fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),ts=require('typescript');
+function compile(file,mocks={}){
+ const location=path.resolve(__dirname,'../..',file),entry=new Module(location,module);
+ entry.filename=location;entry.require=name=>{if(Object.hasOwn(mocks,name))return mocks[name];throw Error('Unexpected billing dependency: '+name);};
+ const source=ts.transpileModule(fs.readFileSync(location,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
+ entry._compile("const process={env:{STRIPE_PRO_PRICE_ID:'price_synthetic_monthly'}};\n"+source,location);return entry.exports;
+}
+const stripeModule=compile('lib/stripe.ts',{'./migration-payments.cjs':facade}),pricing=load('lib/pricing.ts');
+module.exports=async function(prisma,results){
+ const users=await Promise.all([1,2].map(i=>prisma.user.create({data:{email:'billing-'+randomUUID()+'@example.invalid',name:'Synthetic billing '+i}})));
+ let user=users[0];const h=harness();h.state.user=user.id;h.state.email=user.email;const observed=[];
+ h.state.refresh=async()=>{observed.push(await prisma.subscription.findUnique({where:{userId:h.state.user}}));};
+ const routeFor=(name,db=prisma)=>compile('app/api/stripe/'+name+'/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>user?{user:{email:user.email}}:null},'@/lib/prisma':{prisma:db},'@/lib/stripe':stripeModule,'@/lib/pricing':pricing,'@/lib/plans':{isPaidStatus:v=>['active','trialing'].includes(v)}});
+ const routes={checkout:routeFor('checkout'),cancel:routeFor('cancel'),sync:routeFor('sync')};
+ const send=r=>routes[r.url.split('/').at(-1)].POST(new Request('https://example.invalid'+r.url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(r.body||{})}));
+ const sub=(cancel=false)=>({id:'sub_synthetic',status:'active',cancel_at_period_end:cancel,items:{data:[{price:{id:'price_synthetic_monthly'}}]},current_period_start:Math.floor(Date.now()/1000)-100,current_period_end:Math.floor(Date.now()/1000)+86400});
+ const list=(id,cancel=false)=>({operation:'subscriptions.list',args:[{customer:id,status:'all',limit:10}],result:{data:[sub(cancel)]}});
+ try {
+  await prisma.subscription.createMany({data:users.map((u,i)=>({userId:u.id,stripeCustomerId:'cus_synthetic_'+i,status:'active',cancelAtPeriodEnd:false}))});
+  facade.installFixtures([list('cus_synthetic_0'),{operation:'subscriptions.update',args:['sub_synthetic',{cancel_at_period_end:true}],result:{id:'sub_synthetic',cancel_at_period_end:true}}]);
+  h.state.send=async r=>{await send(r);throw Error('Synthetic lost acknowledgement');};await h.view().handleCancel();assert.equal(h.view().cancelConfirmed,false);assert.equal(h.view().billingError,'cancel');assert.equal(h.state.refreshes,0);assert.equal((await prisma.subscription.findUnique({where:{userId:user.id}})).cancelAtPeriodEnd,true);assert.equal((await prisma.subscription.findUnique({where:{userId:users[1].id}})).cancelAtPeriodEnd,false);
+  facade.installFixtures([list('cus_synthetic_0',true)]);h.state.send=send;await h.view().handleCancel();assert.equal(h.view().cancelConfirmed,true);assert.equal(h.state.refreshes,1);assert.equal(observed.at(-1).cancelAtPeriodEnd,true);const repeat=await routes.cancel.POST();assert.equal(repeat.status,200);assert.equal((await repeat.json()).cancelAtPeriodEnd,true);results.push('actual billing hook, cancellation route and payment facade recover lost commit acknowledgement using confirmed provider state without second mutation; other account unchanged');
+  await prisma.subscription.update({where:{userId:user.id},data:{cancelAtPeriodEnd:false}});let writes=0;
+  const broken=routeFor('cancel',{user:prisma.user,subscription:{update:async()=>{writes++;throw Error('private failed write');}}});facade.installFixtures([list('cus_synthetic_0'),{operation:'subscriptions.update',args:['sub_synthetic',{cancel_at_period_end:true}],result:{id:'sub_synthetic',cancel_at_period_end:true}}]);assert.equal((await broken.POST()).status,503);assert.equal(writes,1);assert.equal((await prisma.subscription.findUnique({where:{userId:user.id}})).cancelAtPeriodEnd,false);facade.installFixtures([list('cus_synthetic_0',true)]);assert.equal((await routes.cancel.POST()).status,200);assert.equal((await prisma.subscription.findUnique({where:{userId:user.id}})).cancelAtPeriodEnd,true);results.push('original cancel bounds post-provider storage failure503; confirmed period-end provider state reconciles real row without another payment mutation');
+  facade.installFixtures([{operation:'customers.list',args:[{email:user.email,limit:5}],result:{data:[{id:'cus_synthetic_0'}]}},list('cus_synthetic_0')]);h.state.send=send;await h.view().handleSync();assert.equal(h.view().syncResult,'synced');assert.equal(observed.at(-1).stripePriceId,'price_synthetic_monthly');assert.equal(observed.at(-1).cancelAtPeriodEnd,false);assert.equal((await prisma.subscription.findUnique({where:{userId:users[1].id}})).stripePriceId,null);results.push('actual sync route/facade upsert authenticated subscription before valid acknowledgement and hook refresh; another account cannot be activated');
+  facade.installFixtures([{operation:'customers.list',args:[{email:user.email,limit:5}],result:{data:[]}}]);const before=h.state.refreshes;await h.view().handleSync();assert.equal(h.view().syncResult,'none');assert.equal(h.state.refreshes,before);assert.equal((await prisma.subscription.findUnique({where:{userId:user.id}})).status,'active');results.push('confirmed absence of provider customer is distinct from failure and does not invent a free plan or overwrite subscription');
+  for(const name of ['checkout','cancel','sync']){const broken=routeFor(name,{user:{findUnique:async()=>{throw Error('private database credential');}}});const response=await broken.POST(new Request('https://example.invalid',{method:'POST',body:'{}'}));assert.equal(response.status,503);assert.doesNotMatch(JSON.stringify(await response.json()),/private|credential/);}results.push('all three original billing routes bound storage failure503 without leaking private diagnostic or producing acknowledgements');
+  user=null;for(const name of ['checkout','cancel','sync']){const denied=routeFor(name,new Proxy({}, {get(){throw Error('anonymous storage');}}));assert.equal((await denied.POST(new Request('https://example.invalid',{method:'POST',body:'{}'}))).status,401);}results.push('anonymous billing actions are denied before storage or payment facade access');
+ }catch(error){console.error(error.stack);throw error;}
+ finally{h.unmount();facade.reset();await prisma.user.deleteMany({where:{id:{in:users.map(v=>v.id)}}});}
+};

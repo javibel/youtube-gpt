@@ -127,10 +127,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No se pudo crear la sesión de pago' }, { status: 500 });
     }
 
-    return NextResponse.json({ url: checkoutSession.url });
-  } catch (err) {
-    console.error('Stripe checkout error:', err);
-    const message = err instanceof Error ? err.message : 'Error al crear la sesión de pago';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ userId: user.id, email: user.email, mode: 'simulated', url: checkoutSession.url });
+  } catch {
+    return NextResponse.json({ error: 'Checkout unavailable' }, { status: 503 });
   }
 }

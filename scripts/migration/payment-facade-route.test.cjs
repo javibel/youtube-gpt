@@ -51,11 +51,11 @@ global.fetch=()=>{externalAttempts++;throw Error('Network forbidden');};
  const response=await POST(new Request('https://example.invalid/api/stripe/checkout',{
   method:'POST',headers:{'content-type':'application/json','x-vercel-ip-country':'ES'},
   body:JSON.stringify({plan:'monthly',lang:'es'})}));
- assert.equal(response.status,200);assert.deepEqual(await response.json(),{url:'https://example.invalid/checkout'});
+ assert.equal(response.status,200);assert.deepEqual(await response.json(),{userId:user.id,email:user.email,mode:'simulated',url:'https://example.invalid/checkout'});
  user.subscription={stripeCustomerId:'cus_synthetic'};
  const {POST:cancel}=compile('app/api/stripe/cancel/route.ts');
  const cancelled=await cancel();
- assert.equal(cancelled.status,200);assert.deepEqual(await cancelled.json(),{ok:true});
+ assert.equal(cancelled.status,200);assert.deepEqual(await cancelled.json(),{ok:true,userId:user.id,email:user.email,cancelAtPeriodEnd:true});
  assert.deepEqual(subscriptionWrites,[{where:{userId:user.id},data:{cancelAtPeriodEnd:true}}]);
  delete process.env.STRIPE_PRO_PRICE_ID;
  runtime.configureOffline({config,context,paymentFixtures:[
@@ -63,7 +63,7 @@ global.fetch=()=>{externalAttempts++;throw Error('Network forbidden');};
  ]});
  user.subscription={stripeCustomerId:'cus_synthetic',cancelAtPeriodEnd:false};
  const reconciled=await cancel();
- assert.equal(reconciled.status,200);assert.deepEqual(await reconciled.json(),{ok:true});
+ assert.equal(reconciled.status,200);assert.deepEqual(await reconciled.json(),{ok:true,userId:user.id,email:user.email,cancelAtPeriodEnd:true});
  assert.equal(subscriptionWrites.length,2);
  user.subscription={stripeCustomerId:'cus_unconfigured'};
  const unconfigured=await cancel();

@@ -16,11 +16,14 @@ export async function POST() {
   }
 
   try {
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+    const response = (data: object) => NextResponse.json({ userId: user.id, email: user.email, ...data });
     // Find customer in Stripe by email
     const customers = await stripe.customers.list({ email: session.user.email, limit: 5 });
 
     if (!customers.data.length) {
-      return NextResponse.json({ synced: false, message: 'No se encontró cliente en Stripe.' });
+      return response({ synced: false });
     }
 
     // Check all customers for an active (or trialing) subscription
@@ -35,9 +38,6 @@ export async function POST() {
 
       if (sub) {
         const item = sub.items.data[0];
-
-        const user = await prisma.user.findUnique({ where: { email: session.user.email! } });
-        if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
 
         const period = subscriptionPeriod(sub);
         await prisma.subscription.upsert({
@@ -61,13 +61,12 @@ export async function POST() {
           },
         });
 
-        return NextResponse.json({ synced: true, status: sub.status });
+        return response({ synced: true, status: sub.status });
       }
     }
 
-    return NextResponse.json({ synced: false, message: 'No hay suscripción activa en Stripe.' });
-  } catch (err) {
-    console.error('Stripe sync error:', err);
-    return NextResponse.json({ error: 'Error al sincronizar con Stripe' }, { status: 500 });
+    return response({ synced: false });
+  } catch {
+    return NextResponse.json({ error: 'Sync unavailable' }, { status: 503 });
   }
 }
