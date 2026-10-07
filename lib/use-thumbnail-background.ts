@@ -34,6 +34,8 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
     const controller = new AbortController();scope.controller = controller;let timedOut = false;
     let stop:(error:Error)=>void=()=>{};
     const interrupted=new Promise<never>((_,reject)=>{stop=reject;});
+    // A synchronous discard/unmount may abandon the flight before its microtask attaches the race.
+    void interrupted.catch(()=>{});
     const abort=()=>stop(Error('Unconfirmed'));controller.signal.addEventListener('abort',abort,{once:true});
     const deadline = setTimeout(() => {timedOut = true;controller.abort();},90_000);scope.deadline = deadline;
     const flight = Promise.resolve().then(async () => {
