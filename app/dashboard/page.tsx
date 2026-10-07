@@ -10,6 +10,7 @@ import { PRICES, formatPrice } from '@/lib/pricing';
 import ReferralCard from '@/components/ReferralCard';
 import NextActionCard from '@/components/NextActionCard';
 import { useDashboardStats } from '@/lib/use-dashboard-stats';
+import { useDashboardOnboarding } from '@/lib/use-dashboard-onboarding';
 import { useGenerationHistory } from '@/lib/use-generation-history';
 import { useVideoPreviewHistory } from '@/lib/use-video-preview-history';
 import { AFFILIATES_DORMANT } from '@/lib/features';
@@ -103,13 +104,10 @@ export default function DashboardPage() {
   type VideoIdea = { title_es: string; title_en: string; idea_es: string; idea_en: string };
   const [dailyIdeas, setDailyIdeas] = useState<VideoIdea[] | null>(null);
   const [nextActionId, setNextActionId] = useState<string | null>(null);
-  const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
-  const [onboardingName, setOnboardingName] = useState('');
-  const [onboardingTopic, setOnboardingTopic] = useState('');
-  const [onboardingGenerating, setOnboardingGenerating] = useState(false);
-  const [onboardingResult, setOnboardingResult] = useState<string | null>(null);
-  const [onboardingError, setOnboardingError] = useState('');
-  const [onboardingCopied, setOnboardingCopied] = useState(false);
+  const { onboardingStep, onboardingName, onboardingTopic, onboardingResult, onboardingGenerating,
+    onboardingCopied, onboardingBusy, onboardingError, generationError, advanceOnboarding,
+    retryOnboarding, runOnboardingGenerate, setOnboardingTopic, copyOnboarding,
+  } = useDashboardOnboarding(session?.user?.id, session?.user?.email, status, lang, refreshStats, refreshHistory);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -123,10 +121,6 @@ export default function DashboardPage() {
       fetch('/api/reviews').then((r) => r.json()).then((d) => {
         if (d.review) { setExistingReview(d.review); setReviewRating(d.review.rating); setReviewText(d.review.text); }
       });
-      fetch('/api/onboarding').then(r => r.json()).then(d => {
-        setOnboardingStep(d.step ?? 0);
-        setOnboardingName(d.name || '');
-      }).catch(() => {});
       fetch('/api/youtube/channel').then((r) => r.json()).then((d) => {
         if (d.connected) {
           setYtConnected(true);
@@ -243,46 +237,9 @@ function handleCopy(id: string, out: string) {
     } finally { setCancelling(false); }
   }
 
-  async function advanceOnboarding(step: number) {
-    setOnboardingStep(step);
-    await fetch('/api/onboarding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step }),
-    }).catch(() => {});
-  }
-
-  // Genera el primer título DENTRO del onboarding — el "momento mágico" sin salir del modal.
-  // Acepta un tema explícito (botón "probar con un ejemplo") o usa el del input (formulario).
-  async function runOnboardingGenerate(rawTopic: string) {
-    const topic = rawTopic.trim();
-    if (topic.length < 3) return;
-    setOnboardingTopic(topic);
-    setOnboardingGenerating(true);
-    setOnboardingError('');
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template: 'title', inputs: { tema: topic }, lang }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Generation failed' : 'Error al generar'));
-      setOnboardingResult(data.content);
-      await advanceOnboarding(2);
-      // Refresca stats para que el contador del panel refleje la generación recién hecha
-      void refreshStats();
-      void refreshHistory();
-    } catch (err) {
-      setOnboardingError(err instanceof Error ? err.message : (lang === 'en' ? 'Generation failed' : 'Error al generar'));
-    } finally {
-      setOnboardingGenerating(false);
-    }
-  }
-
   function handleOnboardingGenerate(e: React.FormEvent) {
     e.preventDefault();
-    runOnboardingGenerate(onboardingTopic);
+    void runOnboardingGenerate(onboardingTopic);
   }
 
   if (status === 'loading' || loading) {
@@ -331,13 +288,36 @@ function handleCopy(id: string, out: string) {
   return (
     <DashboardShell>
 
+      {onboardingError && onboardingStep === null && (
+        <div role="alert" className="yv-card p-4">
+          <p>{t('No se pudo cargar tu bienvenida.', 'Could not load your welcome steps.')}</p>
+          <button onClick={retryOnboarding} disabled={onboardingBusy}>{t('Reintentar bienvenida', 'Retry welcome')}</button>
+        </div>
+      )}
       {/* Onboarding modal — 3 steps: Welcome → Genera tu primer título (inline) → Resultado/celebración */}
       {onboardingStep !== null && onboardingStep < 4 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
           <div className="yv-glass yv-glass--lift mx-4 w-full max-w-lg p-8" style={{ borderRadius: 'var(--yv-radius-xl)' }}>
 
+            {onboardingBusy && !onboardingGenerating && <p role="status">{t('Guardando o cargando…', 'Saving or loading…')}</p>}
+            {onboardingError && (
+              <div role="alert" className="mb-4">
+                <p>{onboardingResult
+                  ? t('No se confirmó el paso. Tus títulos se conservan; reintenta guardar.', 'Step not confirmed. Your titles are kept; retry saving.')
+                  : t('No se pudo guardar el paso. Reintenta para continuar.', 'Could not save your step. Retry to continue.')}</p>
+                <button onClick={retryOnboarding} disabled={onboardingBusy}>{t('Reintentar guardar paso', 'Retry saving step')}</button>
+              </div>
+            )}
+            {generationError && (
+              <div role="alert" className="mb-4">
+                <p>{t('No se confirmó la generación. Revisa el historial antes de generar otra vez.', 'Generation was not confirmed. Check history before generating again.')}</p>
+                <button onClick={() => advanceOnboarding(4)} disabled={onboardingBusy || onboardingError}>
+                  {t('Cerrar bienvenida y ver mi historial', 'Close welcome and see my history')}
+                </button>
+              </div>
+            )}
             {/* Step 0: Welcome */}
-            {onboardingStep === 0 && (
+            {onboardingStep === 0 && !onboardingResult && (
               <div className="text-center">
                 <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
                   <svg width="18" height="18" viewBox="7 7 18 18" fill="none">
@@ -375,14 +355,14 @@ function handleCopy(id: string, out: string) {
                   ))}
                 </div>
 
-                <button onClick={() => advanceOnboarding(1)} className="btn-offset px-10 py-3 text-sm font-display">
+                <button disabled={onboardingBusy || onboardingError} onClick={() => advanceOnboarding(1)} className="btn-offset px-10 py-3 text-sm font-display">
                   {t('Empezar', 'Get started')}
                 </button>
               </div>
             )}
 
             {/* Step 1: Genera tu primer título DENTRO del modal — el momento mágico, <30s desde registro */}
-            {onboardingStep === 1 && (
+            {onboardingStep === 1 && !onboardingResult && (
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(155,32,32,0.15)' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
@@ -409,10 +389,10 @@ function handleCopy(id: string, out: string) {
                     placeholder={t('Ej: cómo edité este vídeo en 1 hora', 'E.g. how I edited this video in 1 hour')}
                     autoFocus
                     maxLength={200}
-                    disabled={onboardingGenerating}
+                    disabled={onboardingBusy || onboardingError}
                     className="yv-input text-sm text-white placeholder-zinc-600 disabled:opacity-50"
                   />
-                  <button type="submit" disabled={onboardingTopic.trim().length < 3 || onboardingGenerating} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2 disabled:opacity-40">
+                  <button type="submit" disabled={onboardingTopic.trim().length < 3 || onboardingBusy || onboardingError} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2 disabled:opacity-40">
                     {onboardingGenerating ? (
                       <>
                         <span className="w-4 h-4 rounded-full border-2 border-transparent spin-r" style={{ borderTopColor: 'currentColor' }} />
@@ -426,12 +406,9 @@ function handleCopy(id: string, out: string) {
                     )}
                   </button>
                 </form>
-                {onboardingError && (
-                  <p className="text-[13px] mt-3" style={{ color: '#ff6b6b' }}>{onboardingError}</p>
-                )}
                 <button
                   onClick={() => runOnboardingGenerate(t('cómo empecé mi canal de YouTube desde cero', 'how I started my YouTube channel from scratch'))}
-                  disabled={onboardingGenerating}
+                  disabled={onboardingBusy || onboardingError}
                   className="text-zinc-500 text-[13px] font-mono-jb hover:text-zinc-300 transition py-2 mt-1 disabled:opacity-40 underline decoration-dotted underline-offset-4"
                 >
                   {t('No sé qué poner — probar con un ejemplo', 'Not sure? Try an example')}
@@ -440,7 +417,7 @@ function handleCopy(id: string, out: string) {
             )}
 
             {/* Step 2: Resultado — celebración del momento mágico. Step 3: conectar canal (gratis) */}
-            {onboardingStep >= 2 && onboardingStep < 4 && (
+            {(onboardingStep >= 2 || onboardingResult) && onboardingStep < 4 && (
               <div className="text-center">
                 {!onboardingResult ? (
                   /* Usuario que retoma el onboarding a medias (sin resultado en memoria) */
@@ -458,16 +435,16 @@ function handleCopy(id: string, out: string) {
                       )}
                     </p>
                     <div className="flex flex-col gap-2">
-                      <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                      <button disabled={onboardingBusy || onboardingError} onClick={async () => { if (await advanceOnboarding(4)) router.push('/generate'); }} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
                         {t('Ir al generador', 'Go to generator')}
                       </button>
-                      <button onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
+                      <button disabled={onboardingBusy || onboardingError} onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
                         {t('Ir a mi panel', 'Go to my dashboard')}
                       </button>
                     </div>
                   </>
-                ) : onboardingStep === 2 ? (
+                ) : onboardingStep <= 2 ? (
                   <>
                     <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124,255,0,0.12)' }}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7CFF00" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
@@ -490,23 +467,18 @@ function handleCopy(id: string, out: string) {
                       {onboardingResult}
                     </div>
                     <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(onboardingResult).then(() => {
-                          setOnboardingCopied(true);
-                          setTimeout(() => setOnboardingCopied(false), 2000);
-                        }).catch(() => {});
-                      }}
+                      onClick={copyOnboarding}
                       className="text-zinc-400 text-[13px] font-mono-jb hover:text-white transition py-1 mb-4 inline-flex items-center gap-1.5"
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                       {onboardingCopied ? t('¡Copiado!', 'Copied!') : t('Copiar', 'Copy')}
                     </button>
                     <div className="flex flex-col gap-2">
-                      <button onClick={() => advanceOnboarding(ytConnected ? 4 : 3)} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
+                      <button disabled={onboardingBusy || onboardingError} onClick={() => advanceOnboarding(ytConnected ? 4 : 3)} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2">
                         {t('Continuar', 'Continue')}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                       </button>
-                      <button onClick={async () => { await advanceOnboarding(4); router.push('/generate'); }} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
+                      <button disabled={onboardingBusy || onboardingError} onClick={async () => { if (await advanceOnboarding(4)) router.push('/generate'); }} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
                         {t('Saltar, seguir generando', 'Skip, keep generating')}
                       </button>
                     </div>
@@ -532,12 +504,13 @@ function handleCopy(id: string, out: string) {
                     </p>
                     <div className="flex flex-col gap-2">
                       <button
-                        onClick={async () => { await advanceOnboarding(4); window.location.href = '/api/youtube/auth'; }}
+                        disabled={onboardingBusy || onboardingError}
+                        onClick={async () => { if (await advanceOnboarding(4)) window.location.href = '/api/youtube/auth'; }}
                         className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2"
                       >
                         {t('Conectar mi canal →', 'Connect my channel →')}
                       </button>
-                      <button onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
+                      <button disabled={onboardingBusy || onboardingError} onClick={() => advanceOnboarding(4)} className="text-zinc-600 text-[13px] font-mono-jb hover:text-zinc-400 transition py-2">
                         {t('Ahora no, ir a mi panel', 'Not now, go to my dashboard')}
                       </button>
                     </div>
