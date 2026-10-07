@@ -1010,7 +1010,11 @@ export default function VideoPreviewGenerator({
         interaction.storyboard = storyboard;
         onGenerated?.();
       }
-      const slides = parseScript(interaction.storyboard);
+      const scriptForSlides = interaction.storyboard;
+      if (typeof scriptForSlides !== 'string') {
+        throw new StoryboardRequestError(t('La respuesta del storyboard no es válida. Reintenta.', 'The storyboard response is invalid. Retry.'));
+      }
+      const slides = parseScript(scriptForSlides);
       if (slides.length === 0) {
         setStatus('error');
         setErrorMsg(t('El script no tiene texto suficiente.', 'The script does not have enough text.'));
