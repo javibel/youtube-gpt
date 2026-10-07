@@ -316,6 +316,28 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   });
 
  });
+ await test('calendar lost-response retry recovers one result and one settlement; changed context never redispatches',async()=>{
+  const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');const {createRetryOperation}=require('../../lib/ai/retry-operation.cjs');
+  const actualRegistry=createRegistry();let calls=0,changedContext=false;
+  const suggestion={title:'Synthetic calendar topic',date:'2026-10-08',hour:0,reason:'Synthetic',description:'Synthetic outline'};
+  actualRegistry.register(createAnthropicAdapter({models:{'test-model':{verified:true,executors:['ai'],capabilities:['text','json']}},credentialRef:'test:fixture',preflight:async()=>({upperBoundMicros:60,currency:'EUR',priceVersion:'test-v1'}),priceUsage:async()=>({costMicros:7,currency:'EUR',priceVersion:'test-v1',estimated:true}),transport:{create:async()=>{calls++;return {content:[{type:'text',text:JSON.stringify([suggestion])}],stop_reason:'end_turn',usage:{input_tokens:10,output_tokens:5}};}}}));
+  const actualStore=role=>createControlStore(database(role),actualRegistry),config=cfg('calendar-client','anthropic');config.profiles.default={'calendar.suggestions':{providerId:'anthropic',model:'test-model'}};
+  const previous=(await actualStore('reader').active()).revision;
+  await actualStore('activator').publish(config,{actor:'test-admin'});await actualStore('activator').activate(config.revision,{expectedRevision:previous,actor:'test-admin',reason:'synthetic calendar retry'});
+  const budgetId=await budget('calendar-client'),runtime=load('lib/ai/task-runtime.ts');
+  runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'calendar.suggestions':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:1200,deadlineMs:3000}}},authorize:async({userId,taskType})=>userId==='synthetic'&&taskType==='calendar.suggestions'?{budgetId}:null}));
+  const FixedDate=class extends Date {constructor(...args){super(...(args.length?args:['2026-10-07T12:00:00.000Z']));}static now(){return Date.parse('2026-10-07T12:00:00.000Z');}};
+  const route=load('app/api/calendar/suggest/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:'synthetic'}})},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true},'@/lib/ai/task-runtime':runtime,
+   '@/lib/prisma':{prisma:{bestTimeAnalysis:{findUnique:async()=>null},trendAlert:{findMany:async()=>[]},trackedCompetitor:{findMany:async()=>[]},calendarEntry:{findMany:async()=>changedContext?[{date:'2026-10-08',title:'Changed synthetic context',status:'idea'}]:[]},youtubeToken:{findUnique:async()=>null}}}}, {Date:FixedDate});
+  const keys=[],run=createRetryOperation(()=>prefix+'_calendar_retry');let lost=true;
+  const send=async(body,key)=>{keys.push(key);const response=await route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':key},body}));
+   assert.equal(response.status,200);const output=await response.json();if(lost){lost=false;throw Error('Synthetic lost response after settlement');}return output;};
+  await assert.rejects(run({lang:'es'},send),/lost response after settlement/);const recovered=await run({lang:'es'},send);
+  assert.deepEqual(recovered,{suggestions:[suggestion]});assert.equal(keys[0],keys[1]);assert.equal(calls,1);
+  changedContext=true;const conflict=await route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':keys[0]},body:'{"lang":"es"}'}));
+  assert.equal(conflict.status,500);assert.equal(calls,1);
+  assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+ });
 })().catch(error=>{results.push({name:'setup or orchestration',status:'FAIL',error:error.message});}).finally(async()=>{
  try{if(migrated){
   const cleanup=await pool.connect();

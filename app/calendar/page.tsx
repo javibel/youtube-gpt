@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createRetryOperation } from '@/lib/ai/retry-operation.cjs';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
@@ -75,6 +76,15 @@ export default function CalendarPage() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null);
+  const [suggestError, setSuggestError] = useState('');
+  const suggestionOperation = useMemo(() => createRetryOperation(() => crypto.randomUUID()), [session?.user?.id, lang]);
+  const currentSuggestionOperation = useRef(suggestionOperation);
+  currentSuggestionOperation.current = suggestionOperation;
+  useEffect(() => {
+    setSuggestions([]);
+    setSuggestError('');
+    setSuggestLoading(false);
+  }, [suggestionOperation]);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
@@ -154,24 +164,39 @@ export default function CalendarPage() {
   }
 
   async function fetchSuggestions() {
+    if (status !== 'authenticated' || suggestLoading) return;
+    const operation = suggestionOperation;
     setSuggestLoading(true);
     setShowSuggestions(true);
+    setSuggestError('');
+    setSuggestions([]);
     try {
-      const res = await fetch('/api/calendar/suggest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lang }),
+      const result = await operation({ lang }, async (body, operationKey) => {
+        const res = await fetch('/api/calendar/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey },
+          body,
+        });
+        if (!res.ok) throw new Error('Suggestions unavailable');
+        const json = await res.json();
+        if (!Array.isArray(json.suggestions) || json.suggestions.length > 5 || json.suggestions.some((item: unknown) => {
+          if (!item || typeof item !== 'object') return true;
+          const s = item as Record<string, unknown>;
+          return typeof s.title !== 'string' || !s.title.trim() || typeof s.date !== 'string' ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(s.date) || !Number.isInteger(s.hour) ||
+            (s.hour as number) < 0 || (s.hour as number) > 23 ||
+            typeof s.reason !== 'string' || typeof s.description !== 'string';
+        })) throw new Error('Invalid suggestions');
+        return json.suggestions as typeof suggestions;
       });
-      const json = await res.json();
-      if (res.ok && json.suggestions) {
-        setSuggestions(json.suggestions);
-      } else {
-        setSuggestions([]);
-      }
+      if (currentSuggestionOperation.current === operation) setSuggestions(result);
     } catch {
-      setSuggestions([]);
+      if (currentSuggestionOperation.current === operation) setSuggestError(t(
+        'No se pudieron recuperar las sugerencias. Puedes volver a intentarlo.',
+        'Suggestions could not be retrieved. You can try again.',
+      ));
     } finally {
-      setSuggestLoading(false);
+      if (currentSuggestionOperation.current === operation) setSuggestLoading(false);
     }
   }
 
@@ -312,6 +337,12 @@ export default function CalendarPage() {
               </button>
             </div>
 
+            {suggestError && <div role="alert" className="mb-4 text-sm text-red-400">
+              <p>{suggestError}</p>
+              <button onClick={fetchSuggestions} disabled={suggestLoading} className="mt-2 underline disabled:opacity-50">
+                {t('Reintentar sugerencias', 'Retry suggestions')}
+              </button>
+            </div>}
             {suggestLoading && (
               <div className="flex items-center gap-3 py-6 justify-center">
                 <div className="w-4 h-4 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
@@ -319,7 +350,7 @@ export default function CalendarPage() {
               </div>
             )}
 
-            {!suggestLoading && suggestions.length === 0 && (
+            {!suggestLoading && !suggestError && suggestions.length === 0 && (
               <p className="font-mono-jb text-sm py-4 text-center" style={{ color: 'var(--yv-text-4)' }}>
                 {t('No hay sugerencias disponibles. Asegúrate de tener Best Time analizado y canal conectado.', 'No suggestions available. Make sure you have Best Time analyzed and channel connected.')}
               </p>

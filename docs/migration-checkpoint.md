@@ -2,6 +2,19 @@
 
 Independent shallow repository reconstructed from the current committed snapshot. No operational files, uncommitted changes, shared object stores or historical commits were copied. All work is local.
 
+## 2026-10-07 — Calendar suggestion retries
+
+The calendar client now sends the existing operation identity and retains it after
+an HTTP failure, lost response or malformed result. Rapid duplicate clicks share
+one request; a successful interaction starts a new identity next time. Failures
+show a retry action instead of a misleading empty-results message. Changing the
+account or language discards the previous interaction and ignores its late result.
+Identity is held in browser memory only and does not survive a page reload.
+The PostgreSQL control test covers the actual calendar route after a lost response:
+unchanged context recovers one result with one synthetic dispatch and settlement;
+changed derived context fails closed without dispatch. Calendar-entry writes,
+operational authentication, real providers and acceptance remain outside this change.
+
 The migration config is ../migration-config.json relative to this repository. Test runtime directories are ../migration-runtime. PostgreSQL 17.11 now runs on the designated loopback endpoint; its data-directory identity was verified before test writes.
 
 npm run migration:check validates the map. npm run migration:test runs offline fixtures. Normal npm startup/build/dashboard are blocked until legacy effects have tested simulation adapters. This is an entry-point guard, not an OS sandbox; do not invoke legacy scripts directly or disable npm lifecycle scripts to bypass it.
