@@ -45,6 +45,15 @@ const results=[];
    assert.deepEqual(saved.messages.map(x=>x.content),['Primera pregunta','Synthetic answer 1','Segunda pregunta','Synthetic answer 2']);
    results.push('two-turn chat route persists and reloads conversation with simulated model');
   } finally {await prisma.user.delete({where:{id:conversationUser.id}});}
+  const storyboardUser=await prisma.user.create({data:{email:'storyboard-race-'+randomUUID()+'@example.invalid',name:'Synthetic Storyboard race'}});
+  try {
+   const {load}=require('./route-harness.cjs');let arrived=0,release;const barrier=new Promise(resolve=>{release=resolve;});
+   const story='0s-6s: HOOK | A creator opens a notebook';
+   const route=load('app/api/storyboard/route.ts',{'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:storyboardUser.id}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true,getLimits:()=>({generationsPerMonth:200})},'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async()=>{if(++arrived===2)release();await barrier;return {content:[{text:story}],usage:{output_tokens:5}};}})}});
+   const invoke=()=>route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':'synthetic-race'},body:JSON.stringify({script:'Synthetic race',lang:'es'})}));
+   const replies=await Promise.all([invoke(),invoke()]);assert.deepEqual(replies.map(r=>r.status),[200,200]);for(const reply of replies)assert.deepEqual(await reply.json(),{storyboard:story});
+   assert.equal(await prisma.generation.count({where:{userId:storyboardUser.id}}),1);results.push('concurrent Storyboard history insert uses real unique constraint and recovers committed row');
+  } finally {await prisma.$executeRaw`DELETE FROM rate_limits WHERE key=${'storyboard:'+storyboardUser.id}`;await prisma.user.delete({where:{id:storyboardUser.id}});}
   const token='synthetic-'+randomUUID();
   await prisma.session.create({data:{userId:user.id,sessionToken:token,expires:new Date('2030-01-01')}});
   await prisma.user.delete({where:{id:user.id}});

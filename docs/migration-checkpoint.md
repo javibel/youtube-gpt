@@ -2,6 +2,30 @@
 
 Independent shallow repository reconstructed from the current committed snapshot. No operational files, uncommitted changes, shared object stores or historical commits were copied. All work is local.
 
+## 2026-10-07 — Storyboard history replay
+
+An authenticated Storyboard operation with an Idempotency-Key now saves one
+generation under a user-scoped deterministic primary key. The stored digest
+binds the full script and normalized language, including input beyond the
+4,000-character prompt limit. Replaying a committed result precedes quota and
+minute-throttle checks, so a free user's one monthly Video Tips slot does not
+block recovery after a lost HTTP response. Conflicting input returns 409;
+storage uncertainty returns a bounded error. Concurrent inserts recover the
+committed row without overwriting it. Requests without a key retain their
+existing behavior. No schema change or operational recovery permission is added.
+
+Offline route tests cover exhausted quotas, throttling, changed input, invalid
+keys, storage failure and late insert acknowledgement. A real designated
+PostgreSQL test exercises competing inserts; a second test composes the actual
+route, task factory, adapter with mock transport, ledger and generation table
+to check one inference/settlement/history effect after lost responses and a
+failed initial history write. Authentication and output remain synthetic.
+
+The browser caller still needs retry identity and explicit failure handling.
+This does not make quotas atomic across distinct operations, guarantee recovery
+after deletion of history, or complete operational acceptance. Stored history
+is a business replay result, never evidence of original coordinator ownership.
+
 ## 2026-10-07 — Predictor request retries
 
 Predictor now sends the existing operation identity and retains it after a lost

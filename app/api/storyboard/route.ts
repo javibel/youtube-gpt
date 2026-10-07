@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
+import { createHash } from 'node:crypto';
 
 // Free incluye Video Tips desde el 26/08 (gancho de retención — el 69% de lo
 // generado en free eran titulos, producto de un solo uso; ver
@@ -55,6 +56,53 @@ export async function POST(request: Request) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = session.user.id;
+  const operationKey = request.headers.get('idempotency-key');
+  if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) {
+    return NextResponse.json({ error: 'Invalid operation key' }, { status: 400 });
+  }
+  let script: string, lang: string;
+  try {
+    const body = await request.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || (body.script != null && typeof body.script !== 'string')
+      || (body.lang != null && typeof body.lang !== 'string')) {
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    }
+    script = body.script ?? '';
+    lang = body.lang === 'en' ? 'en' : 'es';
+  } catch {
+    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  }
+  if (!script.trim()) return NextResponse.json({ error: 'Empty script' }, { status: 400 });
+
+  // The task ledger deduplicates inference, but history also consumes quota.
+  // Use the existing primary key for one history effect per user/operation;
+  // this is a business replay lookup, never coordinator recovery authority.
+  const generationId = operationKey === null ? null : 'storyboard_' + createHash('sha256')
+    .update(JSON.stringify([userId, operationKey])).digest('hex');
+  const inputDigest = createHash('sha256').update(JSON.stringify([script, lang])).digest('hex');
+  async function savedResponse() {
+    if (!generationId) return null;
+    const saved = await prisma.generation.findUnique({ where: { id: generationId } });
+    if (!saved) return null;
+    const inputs = saved.inputs;
+    if (saved.userId !== userId || saved.template !== 'video_preview'
+      || !inputs || typeof inputs !== 'object' || Array.isArray(inputs)
+      || inputs.retryInputDigest !== inputDigest) {
+      return NextResponse.json({ error: 'Operation input changed' }, { status: 409 });
+    }
+    if (!saved.output.trim()) {
+      return NextResponse.json({ error: 'Saved generation unavailable' }, { status: 503 });
+    }
+    return NextResponse.json({ storyboard: saved.output });
+  }
+  try {
+    const saved = await savedResponse();
+    if (saved) return saved;
+  } catch {
+    return NextResponse.json({ error: 'Generation history unavailable' }, { status: 503 });
+  }
+
   const plan = await getUserPlan(userId);
   const isPro = isPaid(plan);
   const limit = getLimits(plan).generationsPerMonth;
@@ -111,24 +159,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' }, { status: 429 });
   }
 
-  let script: string, lang: string;
-  try {
-    const body = await request.json();
-    if (!body || typeof body !== 'object' || Array.isArray(body)
-      || (body.script != null && typeof body.script !== 'string')) {
-      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-    }
-    script = body.script ?? '';
-    lang = body.lang ?? 'es';
-  } catch {
-    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-  }
-
-  if (!script.trim()) return NextResponse.json({ error: 'Empty script' }, { status: 400 });
-
   let task;
   try {
-    task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined,
+    task = await getMessagesTask({ operationKey: operationKey ?? undefined,
       taskType: 'content.storyboard', userId, language: lang === 'en' ? 'en' : 'es',
       instructionsVersion: 'storyboard-v1',
     });
@@ -148,15 +181,24 @@ export async function POST(request: Request) {
     try {
       await prisma.generation.create({
         data: {
+          ...(generationId ? { id: generationId } : {}),
           userId,
           template: 'video_preview',
-          inputs: { script: script.slice(0, 4000) },
+          inputs: { script: script.slice(0, 4000), ...(generationId ? { retryInputDigest: inputDigest } : {}) },
           output: storyboard,
           tokensUsed: data.usage?.output_tokens ?? 0,
           ipAddress: getIp(request),
         },
       });
     } catch {
+      // A concurrent retry, or an acknowledged-late insert, may have saved it.
+      // Read the committed row; never overwrite an existing operation's input.
+      if (generationId) {
+        try {
+          const saved = await savedResponse();
+          if (saved) return saved;
+        } catch { /* Preserve uncertain persistence as a retryable failure. */ }
+      }
       return NextResponse.json({ error: 'Generation history could not be saved' }, { status: 503 });
     }
 
