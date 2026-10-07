@@ -12,10 +12,11 @@ export async function GET() {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const response = (data: object) => NextResponse.json({ userId: session.user.id, ...data });
+  const userId = session.user.id;
+  const response = (data: object) => NextResponse.json({ userId, ...data });
   try {
     const idea = await prisma.dailyIdea.findUnique({
-      where: { userId_date: { userId: session.user.id, date: todayUTC() } },
+      where: { userId_date: { userId, date: todayUTC() } },
     });
 
     if (!idea) {

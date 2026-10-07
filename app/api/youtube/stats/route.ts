@@ -8,14 +8,15 @@ export async function GET() {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const response = (data: object) => NextResponse.json({ userId: session.user.id, ...data });
+  const userId = session.user.id;
+  const response = (data: object) => NextResponse.json({ userId, ...data });
   try {
     // Get snapshots from last 90 days, ordered ascending
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
     const snapshots = await prisma.channelSnapshot.findMany({
       where: {
-        userId: session.user.id,
+        userId,
         recordedAt: { gte: ninetyDaysAgo },
       },
       orderBy: { recordedAt: 'asc' },
