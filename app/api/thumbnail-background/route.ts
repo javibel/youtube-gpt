@@ -1,105 +1,62 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
+import { rateLimitDb } from '@/lib/rate-limit-db';
 import { put } from '@vercel/blob';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
+import { backgroundImageAvailable, generateBackgroundImage } from '@/lib/image/background-image-provider';
 
 export const maxDuration = 60;
 
+// Bounded local storage wait; late put completion is not recovered or declared cancelled.
+async function storeBackground(path:string,bytes:Uint8Array,contentType:string,signal:AbortSignal) {
+  if(signal.aborted)throw Error('Unconfirmed');
+  let rejectWait:(error:Error)=>void=()=>{};
+  const interrupted=new Promise<never>((_,reject)=>{rejectWait=reject;});
+  const stop=()=>rejectWait(Error('Unconfirmed'));
+  signal.addEventListener('abort',stop,{once:true});const timer=setTimeout(stop,15_000);
+  try{
+    const result=await Promise.race([put(path,Buffer.from(bytes),{access:'public',contentType}),interrupted]);
+    if(signal.aborted || typeof result?.url!=='string' || result.url.length>4096)throw Error('Unconfirmed');
+    const url=new URL(result.url);if(url.protocol!=='https:' || url.username || url.password || url.hash)throw Error('Unconfirmed');
+    return result.url;
+  }finally{clearTimeout(timer);signal.removeEventListener('abort',stop);}
+}
+
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return Response.json({ error: 'No autorizado' }, { status: 401 });
+    const session=await auth();
+    if(!session?.user?.id || !session.user.email)return Response.json({error:'No autorizado'},{status:401});
+    const user=await prisma.user.findUnique({where:{email:session.user.email},select:{id:true}});
+    if(!user)return Response.json({error:'Usuario no encontrado'},{status:404});
+    if(user.id!==session.user.id)return Response.json({error:'No autorizado'},{status:401});
+    let form:FormData;
+    try{form=await request.formData();}catch{return Response.json({error:'invalid_input'},{status:400});}
+    if(['source','lang','tema','estilo'].some(name=>form.has(name)&&typeof form.get(name)!=='string'))return Response.json({error:'invalid_input'},{status:400});
+    const source=form.get('source')||'ai',lang=form.get('lang')||'en',isEn=lang==='en';
+    if(!['ai','upload'].includes(source as string)||!['es','en'].includes(lang as string))return Response.json({error:'invalid_input'},{status:400});
+    const tema=((form.get('tema') as string)||'').trim(),estilo=((form.get('estilo') as string)||'viral').trim();
+    const file=form.get('backgroundFile');
+    if(source==='upload'){
+      if(!file||typeof file==='string'||!file.size||!['image/png','image/jpeg','image/webp'].includes(file.type))return Response.json({error:'invalid_input'},{status:400});
+      if(file.size>15*1024*1024)return Response.json({error:isEn?'File must be under 15 MB':'Máx 15 MB'},{status:400});
+    }else if(tema.length<3||tema.length>500||!['viral','cinematic','minimal','bold'].includes(estilo)){
+      return Response.json({error:isEn?'Describe your video topic (3–500 chars)':'Describe el tema (mín 3, máx 500 caracteres)'},{status:400});
     }
-
-    const form = await request.formData();
-    const source = (form.get('source') as string) || 'ai';
-    const lang   = (form.get('lang')   as string) || 'en';
-    const isEn   = lang === 'en';
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
-    if (!user) return Response.json({ error: 'Usuario no encontrado' }, { status: 404 });
-
-    const plan = await getUserPlan(user.id);
-    if (!isPaid(plan)) {
-      return Response.json(
-        { error: isEn ? 'Pro plan required' : 'Se requiere plan Pro', limitReached: true },
-        { status: 403 },
-      );
+    if(!isPaid(await getUserPlan(user.id)))return Response.json({error:isEn?'Pro plan required':'Se requiere plan Pro',limitReached:true},{status:403});
+    if(request.signal.aborted)throw Error('Unconfirmed');
+    if(source==='upload'&&file&&typeof file!=='string'){
+      if(!await rateLimitDb('upload-thumb-bg:'+user.id,20,1,true))return Response.json({error:'Solicitud no admitida'},{status:429});
+      const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+      const backgroundUrl=await storeBackground('thumbnails/bg/'+user.id+'/'+Date.now()+'.'+ext,new Uint8Array(await file.arrayBuffer()),file.type,request.signal);
+      return Response.json({backgroundUrl,prompt:null},{headers:{'Cache-Control':'no-store'}});
     }
-
-    /* ── User-uploaded background ── */
-    if (source === 'upload') {
-      const bgFile = form.get('backgroundFile') as File | null;
-      if (!bgFile || bgFile.size === 0) {
-        return Response.json({ error: isEn ? 'No file provided' : 'Sin archivo' }, { status: 400 });
-      }
-      if (bgFile.size > 15 * 1024 * 1024) {
-        return Response.json({ error: isEn ? 'File must be under 15 MB' : 'Máx 15 MB' }, { status: 400 });
-      }
-      const ext      = bgFile.type.includes('png') ? 'png' : bgFile.type.includes('webp') ? 'webp' : 'jpg';
-      const buffer   = Buffer.from(await bgFile.arrayBuffer());
-      const filename = `thumbnails/bg/${user.id}/${Date.now()}.${ext}`;
-      const blob     = await put(filename, buffer, { access: 'public', contentType: bgFile.type });
-      return Response.json({ backgroundUrl: blob.url, prompt: null });
-    }
-
-    /* ── AI generation ── */
-    const tema   = (form.get('tema')   as string)?.trim();
-    const estilo = (form.get('estilo') as string)?.trim() || 'viral';
-
-    if (!tema || tema.length < 3) {
-      return Response.json(
-        { error: isEn ? 'Describe your video topic (min 3 chars)' : 'Describe el tema (mín 3 caracteres)' },
-        { status: 400 },
-      );
-    }
-
-    const ideogramKey  = (process.env.IDEOGRAM_API_KEY || process.env.ideogram)?.trim();
-    if (!ideogramKey) {
-      return Response.json({ error: 'Servicio no disponible' }, { status: 503 });
-    }
+    if(!backgroundImageAvailable())return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});
     let task;
-    try {
-      task = await getMessagesTask({ taskType: 'thumbnail.background-prompt', userId: user.id, language: 'en', instructionsVersion: 'background-prompt-v1' });
-    } catch {
-      return Response.json({ error: 'Servicio no disponible' }, { status: 503 });
-    }
-
-    // Rate limit: max 5 background generations per minute
-    const rlKey = `gen-thumb-bg:${user.id}`;
-    const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
-      INSERT INTO rate_limits (key, hits, window_start)
-      VALUES (${rlKey}, 1, NOW())
-      ON CONFLICT (key) DO UPDATE
-      SET
-        hits = CASE
-          WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute' THEN 1
-          ELSE rate_limits.hits + 1
-        END,
-        window_start = CASE
-          WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute' THEN NOW()
-          ELSE rate_limits.window_start
-        END
-      RETURNING hits
-    `;
-    if (Number(rlResult[0].hits) > 5) {
-      return Response.json(
-        { error: isEn ? 'Too many requests — wait a moment' : 'Demasiadas solicitudes — espera un momento' },
-        { status: 429 },
-      );
-    }
-
-    // Generate a complete prompt before invoking the image provider.
-    const promptResult = await task.create({
-        max_tokens: 400,
-        messages: [{
-          role: 'user',
-          content: `Generate an Ideogram v3 image prompt for a YouTube thumbnail background.
+    try{task=await getMessagesTask({taskType:'thumbnail.background-prompt',userId:user.id,language:'en',instructionsVersion:'background-prompt-v1'});}
+    catch{return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});}
+    if(!await rateLimitDb('gen-thumb-bg:'+user.id,5,1,true))return Response.json({error:isEn?'Too many requests — wait a moment':'Demasiadas solicitudes — espera un momento'},{status:429});
+    const promptResult=await task.create({max_tokens:400,messages:[{role:'user',content:`Generate an Ideogram v3 image prompt for a YouTube thumbnail background.
 VIDEO TOPIC: ${tema}
 VISUAL STYLE: ${estilo}
 
@@ -110,49 +67,13 @@ Rules:
 - 16:9 ratio, 1312×736 px
 - Professional cinematic look, dramatic lighting
 
-Respond with ONLY the image generation prompt in English.`,
-        }],
-    });
-    const imagePrompt = promptResult.content[0].text.trim();
-
-    // Ideogram v3 TURBO
-    const ideogramForm = new FormData();
-    ideogramForm.append('prompt', imagePrompt);
-    ideogramForm.append('resolution', '1312x736');
-    ideogramForm.append('rendering_speed', 'TURBO');
-    ideogramForm.append('magic_prompt', 'ON');
-    ideogramForm.append('style_type', 'REALISTIC');
-
-    const ideogramRes  = await fetch('https://api.ideogram.ai/v1/ideogram-v3/generate', {
-      method: 'POST',
-      headers: { 'Api-Key': ideogramKey },
-      body: ideogramForm,
-    });
-
-    if (!ideogramRes.ok) {
-      const body = await ideogramRes.text();
-      console.error('[thumbnail-background] Ideogram error:', ideogramRes.status, body.slice(0, 300));
-      return Response.json({ error: isEn ? 'Error generating image' : 'Error generando imagen' }, { status: 500 });
-    }
-
-    const ideogramData = await ideogramRes.json();
-    const imageUrl     = ideogramData.data?.[0]?.url;
-    if (!imageUrl) {
-      return Response.json({ error: isEn ? 'No image generated' : 'No se generó imagen' }, { status: 500 });
-    }
-
-    // Download and re-host on Vercel Blob for CORS-safe canvas access
-    const bgRes    = await fetch(imageUrl);
-    if (!bgRes.ok) {
-      return Response.json({ error: isEn ? 'Error downloading image' : 'Error descargando imagen' }, { status: 500 });
-    }
-    const bgBuffer = Buffer.from(await bgRes.arrayBuffer());
-    const filename = `thumbnails/bg/${user.id}/${Date.now()}.jpg`;
-    const blob     = await put(filename, bgBuffer, { access: 'public', contentType: 'image/jpeg' });
-
-    return Response.json({ backgroundUrl: blob.url, prompt: imagePrompt });
-  } catch (error) {
-    console.error('[thumbnail-background] Error:', error);
-    return Response.json({ error: 'Error al procesar la solicitud' }, { status: 500 });
+Respond with ONLY the image generation prompt in English.`}]});
+    const imagePrompt=promptResult.content?.[0]?.text?.trim();
+    if(typeof imagePrompt!=='string'||!imagePrompt||imagePrompt.length>4000||promptResult.incomplete===true||request.signal.aborted)throw Error('Unconfirmed');
+    const image=await generateBackgroundImage(imagePrompt,request.signal);
+    const backgroundUrl=await storeBackground('thumbnails/bg/'+user.id+'/'+Date.now()+'.'+image.extension,image.bytes,image.contentType,request.signal);
+    return Response.json({backgroundUrl,prompt:imagePrompt},{headers:{'Cache-Control':'no-store'}});
+  }catch{
+    return Response.json({error:'Fondo sin confirmar. Repetir puede consumir de nuevo.',code:'image_result_unconfirmed',retryMayConsume:true},{status:503});
   }
 }

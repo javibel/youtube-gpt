@@ -4,7 +4,7 @@ module.exports=async function(prisma,results){
  const user=await prisma.user.create({data:{email:'background-editor-'+randomUUID()+'@example.invalid',name:'Synthetic background editor'}});
  const uploads=[],plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),auth={auth:async()=>({user:{id:user.id,email:user.email}})};
  const put=async(name,bytes,settings)=>{uploads.push({name,bytes:Buffer.from(bytes),settings});return{url:'https://example.invalid/'+name};};
- const background=load('app/api/thumbnail-background/route.ts',{'@/auth':auth,'@/lib/prisma':{prisma},'@/lib/plans':plans,'@vercel/blob':{put},'@/lib/ai/task-runtime':{getMessagesTask:async()=>{throw Error('Upload must not invoke a model');}}},{Buffer,FormData,process:{env:{}},fetch:async()=>{throw Error('Upload must not contact image provider');}});
+ const background=load('app/api/thumbnail-background/route.ts',{'@/auth':auth,'@/lib/prisma':{prisma},'@/lib/plans':plans,'@vercel/blob':{put},'@/lib/image/background-image-provider':load('lib/image/background-image-provider.ts'),'@/lib/rate-limit-db':load('lib/rate-limit-db.ts',{'@/lib/prisma':{prisma}}),'@/lib/ai/task-runtime':{getMessagesTask:async()=>{throw Error('Upload must not invoke a model');}}},{Buffer,FormData,setTimeout,clearTimeout,process:{env:{}},fetch:async()=>{throw Error('Upload must not contact image provider');}});
  const save=load('app/api/thumbnail-save/route.ts',{'@/auth':auth,'@/lib/prisma':{prisma},'@/lib/plans':plans,'@vercel/blob':{put},'node:crypto':require('node:crypto')},{Buffer,URL});
  let h;
  try{
@@ -17,6 +17,6 @@ module.exports=async function(prisma,results){
   await h.button('Volver a intentar fondo')();h.render();assert.equal(uploads.length,2);assert.ok(uploads[0].bytes.equals(uploads[1].bytes));assert.equal(uploads[0].settings.contentType,'image/png');assert.equal(h.state.backgroundRequests.length,2);
   h.state.send=init=>save.POST(new Request('https://example.invalid/api/thumbnail-save',init));await h.button('Guardar miniatura')();assert.equal(await prisma.generation.count({where:{userId:user.id,template:'thumbnail'}}),1);assert.equal(uploads.length,3);assert.equal(h.state.confirmed.length,1);
   results.push('original background editor/hook/upload API/plans/PostgreSQL preserve exact file after lost upload acknowledgement and warn before explicit non-idempotent reupload (two synthetic Blob writes, zero models); subsequent immutable save records once');
- }finally{h?.unmount();await prisma.user.delete({where:{id:user.id}});}
+ }finally{h?.unmount();await prisma.$executeRawUnsafe('DELETE FROM rate_limits WHERE key=$1','upload-thumb-bg:'+user.id);await prisma.user.delete({where:{id:user.id}});}
 };
 

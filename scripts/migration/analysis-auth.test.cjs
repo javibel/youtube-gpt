@@ -19,6 +19,8 @@ const results=[];
     '@/lib/prisma':{prisma:forbidden},'@/lib/plans':{getUserPlan:forbidden,getLimits:forbidden,isPaid:forbidden},
     '@/lib/youtube-auth':{getAccessToken:forbidden},'@/lib/parse-fenced-json':{parseFencedJson:forbidden},
     '@/lib/ai/task-runtime':{getMessagesTask:forbidden},
+    '@/lib/rate-limit-db':{rateLimitDb:forbidden},
+    '@/lib/image/background-image-provider':{backgroundImageAvailable:forbidden,generateBackgroundImage:forbidden},
     'sharp':forbidden,'@vercel/blob':{put:forbidden},'@anthropic-ai/sdk':class {constructor(){this.messages=forbidden;}},
    },{process:{env:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}},fetch:forbidden});
    assert.equal(typeof route[method],'function');
