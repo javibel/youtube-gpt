@@ -21,6 +21,7 @@ const results=[];
  results.push('isolated database identity');
  await require('./thumbnail-save-database.cjs')(prisma,results);
  await require('./thumbnail-background-database.cjs')(prisma,results);
+ await require('./remove-background-database.cjs')(prisma,results);
  await require('./generator-account-database.cjs')(prisma,results);
  await require('./dashboard-billing-database.cjs')(prisma,results);
  await require('./video-preview-database.cjs')(prisma,results);

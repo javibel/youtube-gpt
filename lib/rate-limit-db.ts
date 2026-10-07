@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma';
  * windowMinutes is always a hardcoded integer from our own code (never user input), so it's safe
  * to interpolate into the INTERVAL literal; the key is parameterized.
  */
-export async function rateLimitDb(key: string, limit: number, windowMinutes: number): Promise<boolean> {
+export async function rateLimitDb(key: string, limit: number, windowMinutes: number, failClosed = false): Promise<boolean> {
   const w = Math.max(1, Math.floor(windowMinutes));
   try {
     const rows = await prisma.$queryRawUnsafe<{ hits: number }[]>(
@@ -20,9 +20,11 @@ export async function rateLimitDb(key: string, limit: number, windowMinutes: num
        RETURNING hits`,
       key,
     );
-    return Number(rows[0]?.hits ?? 0) <= limit;
+    const hits = Number(rows[0]?.hits ?? 0);
+    if (failClosed && (!Number.isSafeInteger(hits) || hits < 1)) return false;
+    return hits <= limit;
   } catch {
-    return true; // fail open
+    return !failClosed; // Legacy callers retain fail-open; billed image transport opts out.
   }
 }
 
