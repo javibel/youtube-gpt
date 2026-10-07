@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useThumbnailSave } from '@/lib/use-thumbnail-save';
 import { useThumbnailPhoto } from '@/lib/use-thumbnail-photo';
+import { useThumbnailBackground } from '@/lib/use-thumbnail-background';
 import type Konva from 'konva';
 import { THUMB_W, THUMB_H, type TextItem } from '@/lib/thumbnail-types';
 import { SparkleIcon, UploadIcon, ScissorsIcon, CheckIcon, SaveIcon, DownloadIcon } from '@/components/icons';
@@ -291,45 +292,17 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   }, []);
 
   // ─── Background ──────────────────────────────────────────────────────────
-  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
-  const [bgTopic,       setBgTopic]       = useState('');
-  const [bgStyle,       setBgStyle]       = useState('viral');
-  const [bgLoading,     setBgLoading]     = useState(false);
-  const [bgError,       setBgError]       = useState('');
-
-  const generateBackground = async () => {
-    if (!bgTopic.trim()) return;
-    setBgLoading(true); setBgError('');
-    try {
-      const body = new FormData();
-      body.append('source', 'ai'); body.append('tema', bgTopic.trim());
-      body.append('estilo', bgStyle); body.append('lang', lang);
-      const res  = await fetch('/api/thumbnail-background', { method: 'POST', body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error');
-      setBackgroundUrl(data.backgroundUrl);
-    } catch (err) {
-      setBgError(err instanceof Error ? err.message : 'Error');
-    } finally {
-      setBgLoading(false);
-    }
-  };
-
-  const uploadBackground = async (file: File) => {
-    setBgLoading(true); setBgError('');
-    try {
-      const body = new FormData();
-      body.append('source', 'upload'); body.append('backgroundFile', file); body.append('lang', lang);
-      const res  = await fetch('/api/thumbnail-background', { method: 'POST', body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error');
-      setBackgroundUrl(data.backgroundUrl);
-    } catch (err) {
-      setBgError(err instanceof Error ? err.message : 'Error');
-    } finally {
-      setBgLoading(false);
-    }
-  };
+  const background = useThumbnailBackground(session?.user?.id,session?.user?.email,sessionStatus,lang,isPro);
+  const {backgroundUrl,topic:bgTopic,style:bgStyle,busy:bgLoading} = background;
+  const setBgTopic = background.setTopic,setBgStyle = background.setStyle;
+  const generateBackground = background.pending ? background.retry : background.generate;
+  const uploadBackground = background.upload;
+  const bgError = background.error ? ({
+    input: tr('Tema entre 3 y 500 caracteres; archivo PNG, JPEG o WebP de hasta 15 MB.','Topic between 3 and 500 characters; PNG, JPEG or WebP file up to 15 MB.'),
+    unconfirmed: tr('Fondo sin confirmar. Se conserva el anterior; repetir puede generar otro consumo o subida.','Background unconfirmed. The previous one is retained; repeating may consume or upload again.'),
+    timeout: tr('Respuesta demasiado lenta. El servidor podría haber completado el fondo; repetir puede consumir de nuevo.','Response took too long. The server may have completed the background; repeating may consume again.'),
+    limit: tr('Límite del plan. El fondo anterior se conserva.','Plan limit. The previous background is retained.'),
+  })[background.error] : '';
 
   // ─── Photo ───────────────────────────────────────────────────────────────
   const photoState = useThumbnailPhoto(session?.user?.id,session?.user?.email,sessionStatus,lang,isPro);
@@ -356,16 +329,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
         confirmed = await photoState.crop(target.src,blob,() => cropCurrent.current === target);
         if(confirmed && photoState.current())setSelectedId('photo');
       } else {
-        setBgLoading(true);setBgError('');
-        try {
-          const body = new FormData();body.append('source','upload');body.append('backgroundFile',new File([blob],'bg-cropped.png',{type:'image/png'}));body.append('lang',lang);
-          const res = await fetch('/api/thumbnail-background',{method:'POST',body}),data = await res.json();
-          if(!photoState.current() || cropCurrent.current !== target)return;
-          if(!res.ok || typeof data?.backgroundUrl !== 'string')throw Error('Unconfirmed crop');
-          const url = new URL(data.backgroundUrl);if(url.protocol !== 'https:' || url.username || url.password || url.hash)throw Error('Invalid crop URL');
-          setBackgroundUrl(data.backgroundUrl);confirmed = true;
-        } catch {if(photoState.current() && cropCurrent.current === target)setBgError(tr('Recorte sin confirmar. El fondo anterior se conserva.','Crop unconfirmed. The previous background is retained.'));}
-        finally {if(photoState.current() && cropCurrent.current === target)setBgLoading(false);}
+        confirmed = await background.crop(target.src,blob,() => cropCurrent.current === target);
       }
     } finally {
       if(cropFlight.current === target)cropFlight.current = null;
@@ -468,16 +432,17 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
             {STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
           <button
-            onClick={generateBackground} disabled={bgLoading || !bgTopic.trim()}
+            onClick={generateBackground} disabled={bgLoading || (!background.pending && !bgTopic.trim())}
             className="btn-offset px-5 py-2.5 text-[13px] font-bold disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {bgLoading
               ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r inline-block" />
-              : <span className="inline-flex items-center gap-1.5"><SparkleIcon size={13} /> {tr('Generar con IA', 'Generate with AI')}</span>}
+              : <span className="inline-flex items-center gap-1.5"><SparkleIcon size={13} /> {background.pending ? tr('Volver a intentar fondo','Try background again') : tr('Generar con IA', 'Generate with AI')}</span>}
           </button>
           <label className="soft-chip px-4 py-2.5 text-[13px] cursor-pointer hover:text-white transition whitespace-nowrap inline-flex items-center gap-1.5">
             <UploadIcon size={13} /> {tr('Subir fondo', 'Upload BG')}
             <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+              disabled={bgLoading || background.pending}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadBackground(f); e.target.value = ''; }} />
           </label>
           {backgroundUrl && (
@@ -489,7 +454,13 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
             </button>
           )}
         </div>
-        {bgError && <p className="text-[12px] mt-2" style={{ color: '#f5a623' }}>{bgError}</p>}
+        {bgError && <p role="alert" className="text-[12px] mt-2" style={{ color: '#f5a623' }}>{bgError}</p>}
+        {background.pending && <div className="text-[12px] mt-2" role="status">
+          <p>{tr('Otro intento repite la solicitud original y podría consumir de nuevo. Descartarla solo abandona el intento local; no cancela el servidor.','Another attempt repeats the original request and may consume again. Discarding only abandons the local attempt; it does not cancel the server.')}</p>
+          {background.pendingStale && <p>{tr('Los cambios del tema o estilo no se incluyen en este intento.','Topic or style edits are not included in this attempt.')}</p>}
+          <button onClick={() => { background.discard();if(cropTarget?.type === 'bg'){cropCurrent.current = null;setCropTarget(null);} }} className="soft-chip px-3 py-1.5 mt-1">{tr('Descartar intento de fondo','Discard background attempt')}</button>
+        </div>}
+        {background.resultStale && <p className="text-[12px] mt-2">{tr('El fondo mostrado corresponde al tema o estilo anterior.','The displayed background belongs to the earlier topic or style.')}</p>}
         <p className="text-[11px] mt-2.5" style={{ color: 'var(--yv-text-4)' }}>
           {tr('YouTube recomienda 1920×1080 px (16:9). Mínimo: 1280×720. Menos de 2 MB.',
               'YouTube recommends 1920×1080 px (16:9). Minimum: 1280×720. Under 2 MB.')}
@@ -525,7 +496,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
           </div>
 
           {/* CropUI overlay — same dimensions as canvas, no layout shift */}
-          {cropTarget && (cropTarget.type === 'bg' || cropTarget.src === photoOrigSrc) && (
+          {cropTarget && (cropTarget.type === 'bg' ? cropTarget.src === backgroundUrl : cropTarget.src === photoOrigSrc) && (
             <CropUI
               src={cropTarget.src}
               label={cropTarget.type === 'photo'
@@ -534,7 +505,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               cW={containerWidth}
               cH={containerHeight}
               onConfirm={handleCropConfirm}
-              onCancel={() => { cropCurrent.current = null;setCropTarget(null); }}
+              onCancel={() => { if(cropTarget.type === 'bg')background.cancelCrop();cropCurrent.current = null;setCropTarget(null); }}
             />
           )}
         </div>
