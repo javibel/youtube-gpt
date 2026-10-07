@@ -4,394 +4,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useThumbnailSave } from '@/lib/use-thumbnail-save';
+import { useThumbnailPhoto } from '@/lib/use-thumbnail-photo';
 import type Konva from 'konva';
-import { THUMB_W, THUMB_H, type PhotoItem, type TextItem } from '@/lib/thumbnail-types';
+import { THUMB_W, THUMB_H, type TextItem } from '@/lib/thumbnail-types';
 import { SparkleIcon, UploadIcon, ScissorsIcon, CheckIcon, SaveIcon, DownloadIcon } from '@/components/icons';
-
-/** Server-side background removal via /api/remove-bg (RMBG-2.0 → BiRefNet full). */
-async function removeBgServer(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
-  onStatus?.('Eliminando fondo…');
-  const form = new FormData();
-  form.append('file', source, 'photo.jpg');
-  const res = await fetch('/api/remove-bg', { method: 'POST', body: form });
-  if (!res.ok) {
-    const err = await res.text().catch(() => String(res.status));
-    throw new Error(`remove-bg server: ${err.slice(0, 120)}`);
-  }
-  return res.blob();
-}
-
-/** Fallback: IS-Net fp16 via @imgly/background-removal (runs in browser). */
-// Calls the briaai/BRIA-RMBG-1.4 HuggingFace Space Gradio API directly from the browser.
-// The Space runs RMBG-1.4 server-side on HF hardware — same model the user confirmed works.
-// Called from the browser (not Vercel), so HF IP restrictions don't apply.
-const HF_SPACE = 'https://not-lain-background-removal.hf.space';
-
-async function removeBgBiRefNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
-  onStatus?.('Eliminando fondo…');
-
-  // 1. Upload image to the Space
-  const form = new FormData();
-  form.append('files', source, 'photo.png');
-  const uploadRes = await fetch(`${HF_SPACE}/gradio_api/upload`, { method: 'POST', body: form });
-  if (!uploadRes.ok) throw new Error(`HF upload ${uploadRes.status}`);
-  const [filePath]: string[] = await uploadRes.json();
-
-  // 2. Start processing
-  const callRes = await fetch(`${HF_SPACE}/gradio_api/call/image`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: [{ path: filePath, orig_name: 'photo.png', mime_type: source.type || 'image/png' }] }),
-  });
-  if (!callRes.ok) throw new Error(`HF call ${callRes.status}`);
-  const { event_id } = await callRes.json();
-
-  // 3. Poll SSE stream for result (max 50s)
-  const pollRes = await fetch(`${HF_SPACE}/gradio_api/call/image/${event_id}`);
-  const text = await pollRes.text();
-  if (text.includes('event: error')) throw new Error('HF Space processing error');
-  const dataLine = text.split('\n').find(l => l.startsWith('data:'));
-  if (!dataLine) throw new Error('No data in HF response');
-  const results = JSON.parse(dataLine.slice(5));
-  const resultUrl: string = results[0][0]?.url;
-  if (!resultUrl) throw new Error('No result URL from HF Space');
-
-  // 4. Download result PNG
-  const imgRes = await fetch(resultUrl);
-  if (!imgRes.ok) throw new Error(`HF result download ${imgRes.status}`);
-  return imgRes.blob();
-}
-
-async function removeBgISNet(source: File | Blob, onStatus?: (msg: string) => void): Promise<Blob> {
-  onStatus?.('Cargando modelo IS-Net…');
-  const { removeBackground } = await import('@imgly/background-removal');
-  onStatus?.('Procesando…');
-  return removeBackground(source as File, { model: 'isnet_fp16', output: { format: 'image/png' } });
-}
-
-// ─── Image processing helpers ─────────────────────────────────────────────────
-
-/**
- * BFS flood-fill from border pixels that match `bgColor` (±tolerance).
- * Replaces detected background with pure green so IS-Net sees maximum contrast.
- * Starting from the border avoids false-positives inside the subject.
- */
-async function colorKeyPreprocess(source: Blob | File, bgColor: string, tolerance = 55): Promise<Blob> {
-  const MAX = 1800;
-  const bmp = await createImageBitmap(source as Blob);
-  const scale = Math.min(1, MAX / Math.max(bmp.width, bmp.height));
-  const W = Math.round(bmp.width * scale);
-  const H = Math.round(bmp.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(bmp, 0, 0, W, H);
-  bmp.close?.();
-
-  const id = ctx.getImageData(0, 0, W, H);
-  const d  = id.data;
-
-  const tr = parseInt(bgColor.slice(1, 3), 16);
-  const tg = parseInt(bgColor.slice(3, 5), 16);
-  const tb = parseInt(bgColor.slice(5, 7), 16);
-  const T2 = tolerance * tolerance;
-
-  const matches = (i: number) => {
-    const dr = d[i] - tr, dg = d[i + 1] - tg, db = d[i + 2] - tb;
-    return dr * dr + dg * dg + db * db < T2;
-  };
-
-  const visited = new Uint8Array(W * H);
-  const stack: number[] = [];
-
-  // Seed from all four borders
-  for (let x = 0; x < W; x++) {
-    const t = x, b = (H - 1) * W + x;
-    if (matches(t * 4) && !visited[t]) { visited[t] = 1; stack.push(t); }
-    if (matches(b * 4) && !visited[b]) { visited[b] = 1; stack.push(b); }
-  }
-  for (let y = 1; y < H - 1; y++) {
-    const l = y * W, r = y * W + W - 1;
-    if (matches(l * 4) && !visited[l]) { visited[l] = 1; stack.push(l); }
-    if (matches(r * 4) && !visited[r]) { visited[r] = 1; stack.push(r); }
-  }
-
-  // DFS flood-fill
-  while (stack.length > 0) {
-    const idx = stack.pop()!;
-    const x = idx % W, y = Math.floor(idx / W);
-    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-      const nx = x + dx, ny = y + dy;
-      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
-      const ni = ny * W + nx;
-      if (visited[ni] || !matches(ni * 4)) continue;
-      visited[ni] = 1;
-      stack.push(ni);
-    }
-  }
-
-  // Replace background with pure green (#00ff00) → IS-Net sees max contrast
-  for (let i = 0; i < W * H; i++) {
-    if (!visited[i]) continue;
-    d[i * 4]     = 0;
-    d[i * 4 + 1] = 255;
-    d[i * 4 + 2] = 0;
-  }
-
-  ctx.putImageData(id, 0, 0);
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
-}
-
-/** 5×5 Gaussian kernel convolution (σ≈1). Returns blurred pixel data. */
-function gaussBlur5(src: Uint8ClampedArray, W: number, H: number): Uint8ClampedArray {
-  const K = [1,4,6,4,1, 4,16,24,16,4, 6,24,36,24,6, 4,16,24,16,4, 1,4,6,4,1];
-  const out = new Uint8ClampedArray(src.length);
-  const S = W * 4;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      let r = 0, g = 0, b = 0, tw = 0;
-      for (let ky = -2; ky <= 2; ky++) {
-        const sy = Math.max(0, Math.min(H - 1, y + ky)) * S;
-        for (let kx = -2; kx <= 2; kx++) {
-          const sx = Math.max(0, Math.min(W - 1, x + kx)) * 4;
-          const k  = K[(ky + 2) * 5 + (kx + 2)];
-          r += src[sy + sx]     * k;
-          g += src[sy + sx + 1] * k;
-          b += src[sy + sx + 2] * k;
-          tw += k;
-        }
-      }
-      const i = y * S + x * 4;
-      out[i]   = Math.round(r / tw);
-      out[i+1] = Math.round(g / tw);
-      out[i+2] = Math.round(b / tw);
-      out[i+3] = src[i+3];
-    }
-  }
-  return out;
-}
-
-/**
- * 5×5 Gaussian unsharp mask (strength 1.5): out = src×2.5 − blurred×1.5.
- * Much more effective than 3×3 — lifts boundary contrast across a wider radius.
- */
-async function edgeEnhanceForRemoval(source: Blob | File): Promise<Blob> {
-  const MAX = 1800;
-  const bmp = await createImageBitmap(source as Blob);
-  const scale = Math.min(1, MAX / Math.max(bmp.width, bmp.height));
-  const W = Math.round(bmp.width * scale);
-  const H = Math.round(bmp.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(bmp, 0, 0, W, H);
-  bmp.close?.();
-  const id  = ctx.getImageData(0, 0, W, H);
-  const src = id.data;
-  const blurred = gaussBlur5(src, W, H);
-  const out = new Uint8ClampedArray(src.length);
-  for (let i = 0; i < src.length; i += 4) {
-    out[i]   = Math.max(0, Math.min(255, Math.round(src[i]   * 2.5 - blurred[i]   * 1.5)));
-    out[i+1] = Math.max(0, Math.min(255, Math.round(src[i+1] * 2.5 - blurred[i+1] * 1.5)));
-    out[i+2] = Math.max(0, Math.min(255, Math.round(src[i+2] * 2.5 - blurred[i+2] * 1.5)));
-    out[i+3] = src[i+3];
-  }
-  ctx.putImageData(new ImageData(out, W, H), 0, 0);
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
-}
-
-/**
- * Transfer IS-Net's alpha onto the ORIGINAL photo so final colours are untouched.
- */
-async function applyAlphaMaskToOriginal(origFile: File, maskedBlob: Blob): Promise<Blob> {
-  const [origBmp, maskedBmp] = await Promise.all([
-    createImageBitmap(origFile as Blob),
-    createImageBitmap(maskedBlob),
-  ]);
-  const W = maskedBmp.width, H = maskedBmp.height;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(origBmp, 0, 0, W, H);
-  origBmp.close?.();
-  const origData = ctx.getImageData(0, 0, W, H);
-  ctx.clearRect(0, 0, W, H);
-  ctx.drawImage(maskedBmp, 0, 0);
-  maskedBmp.close?.();
-  const maskData = ctx.getImageData(0, 0, W, H);
-  const out = new Uint8ClampedArray(origData.data.length);
-  for (let i = 0; i < out.length; i += 4) {
-    out[i]   = origData.data[i];
-    out[i+1] = origData.data[i+1];
-    out[i+2] = origData.data[i+2];
-    out[i+3] = maskData.data[i+3];
-  }
-  ctx.putImageData(new ImageData(out, W, H), 0, 0);
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
-}
-
-/** 3×3 mean alpha smoothing on boundary pixels (alpha 8-247). */
-async function smoothBgMaskEdges(blob: Blob): Promise<Blob> {
-  const bmp = await createImageBitmap(blob);
-  const { width: W, height: H } = bmp;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(bmp, 0, 0);
-  bmp.close?.();
-  const id = ctx.getImageData(0, 0, W, H);
-  const src = id.data;
-  const out = new Uint8ClampedArray(src.length);
-  out.set(src);
-  const STRIDE = W * 4;
-  for (let y = 1; y < H - 1; y++) {
-    for (let x = 1; x < W - 1; x++) {
-      const i = y * STRIDE + x * 4;
-      const a = src[i + 3];
-      if (a < 8 || a > 247) continue;
-      const avg =
-        src[(y-1)*STRIDE+(x-1)*4+3] + src[(y-1)*STRIDE+x*4+3] + src[(y-1)*STRIDE+(x+1)*4+3] +
-        src[ y   *STRIDE+(x-1)*4+3] + a                         + src[ y   *STRIDE+(x+1)*4+3] +
-        src[(y+1)*STRIDE+(x-1)*4+3] + src[(y+1)*STRIDE+x*4+3] + src[(y+1)*STRIDE+(x+1)*4+3];
-      out[i + 3] = Math.round(avg / 9);
-    }
-  }
-  ctx.putImageData(new ImageData(out, W, H), 0, 0);
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
-}
-
-/**
- * Fill interior transparent holes: BFS from border transparent pixels marks
- * "real background". Any transparent pixel not reachable from the border is
- * an interior hole (e.g. inside hair or clothing) — set alpha to 255.
- */
-async function fillAlphaHoles(blob: Blob): Promise<Blob> {
-  const bmp = await createImageBitmap(blob);
-  const { width: W, height: H } = bmp;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(bmp, 0, 0);
-  bmp.close?.();
-  const id  = ctx.getImageData(0, 0, W, H);
-  const pix = id.data;
-
-  const alpha = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) alpha[i] = pix[i * 4 + 3];
-
-  const visited = new Uint8Array(W * H);
-  const queue: number[] = [];
-
-  const seed = (idx: number) => {
-    if (!visited[idx] && alpha[idx] < 128) { visited[idx] = 1; queue.push(idx); }
-  };
-  for (let x = 0; x < W; x++) { seed(x); seed((H - 1) * W + x); }
-  for (let y = 1; y < H - 1; y++) { seed(y * W); seed(y * W + W - 1); }
-
-  let qi = 0;
-  while (qi < queue.length) {
-    const idx = queue[qi++];
-    const x = idx % W, y = (idx / W) | 0;
-    if (y > 0)     seed(idx - W);
-    if (y < H - 1) seed(idx + W);
-    if (x > 0)     seed(idx - 1);
-    if (x < W - 1) seed(idx + 1);
-  }
-
-  for (let i = 0; i < W * H; i++) {
-    if (!visited[i] && alpha[i] < 128) pix[i * 4 + 3] = 255;
-  }
-
-  ctx.putImageData(id, 0, 0);
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
-}
-
-/**
- * Shrink alpha mask by `radius` pixels (separable min-filter: H then V).
- * Used after dilateAlpha to form a morphological close that fills concave
- * gaps (arm/body junction) without changing the outer silhouette.
- */
-async function erodeAlpha(blob: Blob, radius = 3): Promise<Blob> {
-  const bmp = await createImageBitmap(blob);
-  const { width: W, height: H } = bmp;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(bmp, 0, 0);
-  bmp.close?.();
-  const id  = ctx.getImageData(0, 0, W, H);
-  const pix = id.data;
-
-  const alpha = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) alpha[i] = pix[i * 4 + 3];
-
-  // Horizontal min pass
-  const hPass = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      let min = 255;
-      const x0 = Math.max(0, x - radius), x1 = Math.min(W - 1, x + radius);
-      for (let nx = x0; nx <= x1; nx++) { const v = alpha[y * W + nx]; if (v < min) min = v; }
-      hPass[y * W + x] = min;
-    }
-  }
-
-  // Vertical min pass
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      let min = 255;
-      const y0 = Math.max(0, y - radius), y1 = Math.min(H - 1, y + radius);
-      for (let ny = y0; ny <= y1; ny++) { const v = hPass[ny * W + x]; if (v < min) min = v; }
-      pix[(y * W + x) * 4 + 3] = min;
-    }
-  }
-
-  ctx.putImageData(id, 0, 0);
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
-}
-
-/**
- * Expand the alpha mask by `radius` pixels (separable max-filter: H then V).
- * Recovers edges that IS-Net eroded without touching RGB values.
- */
-async function dilateAlpha(blob: Blob, radius = 3): Promise<Blob> {
-  const bmp = await createImageBitmap(blob);
-  const { width: W, height: H } = bmp;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(bmp, 0, 0);
-  bmp.close?.();
-  const id  = ctx.getImageData(0, 0, W, H);
-  const pix = id.data;
-
-  const alpha = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) alpha[i] = pix[i * 4 + 3];
-
-  // Horizontal pass
-  const hPass = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      let max = 0;
-      const x0 = Math.max(0, x - radius), x1 = Math.min(W - 1, x + radius);
-      for (let nx = x0; nx <= x1; nx++) { const v = alpha[y * W + nx]; if (v > max) max = v; }
-      hPass[y * W + x] = max;
-    }
-  }
-
-  // Vertical pass
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      let max = 0;
-      const y0 = Math.max(0, y - radius), y1 = Math.min(H - 1, y + radius);
-      for (let ny = y0; ny <= y1; ny++) { const v = hPass[ny * W + x]; if (v > max) max = v; }
-      pix[(y * W + x) * 4 + 3] = max;
-    }
-  }
-
-  ctx.putImageData(id, 0, 0);
-  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(), 'image/png'));
-}
 
 // ─── Crop UI ─────────────────────────────────────────────────────────────────
 
@@ -635,16 +251,6 @@ const STYLES = [
   { label:'Bold & Bright', value:'bold' },
 ];
 
-// Common background colours users shoot against (NOT chroma key — the real background)
-const BG_COLORS = [
-  { label:'Blanco',   value:'#ffffff' },
-  { label:'Gris',     value:'#aaaaaa' },
-  { label:'Beige',    value:'#f0e8d8' },
-  { label:'Azul',     value:'#4a6fa5' },
-  { label:'Verde',    value:'#2d7a2d' },
-  { label:'Negro',    value:'#1a1a1a' },
-];
-
 let _textCounter = 0;
 
 interface Props {
@@ -726,115 +332,45 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   };
 
   // ─── Photo ───────────────────────────────────────────────────────────────
-  const [photo,         setPhoto]         = useState<PhotoItem | null>(null);
-  const [photoOrigFile, setPhotoOrigFile] = useState<File | null>(null);
-  const [photoOrigSrc,  setPhotoOrigSrc]  = useState<string | null>(null);
-  const [bgRemoved,     setBgRemoved]     = useState(false);
-  const [removingBg,    setRemovingBg]    = useState(false);
-  const [bgStatus,      setBgStatus]      = useState('');
-  const [bgKeyColor,    setBgKeyColor]    = useState('#ffffff'); // user's actual background colour
-  const [selectedId,    setSelectedId]    = useState<string | null>(null);
-
-  // Crop
-  const [cropTarget, setCropTarget] = useState<{ src: string; type: 'photo' | 'bg' } | null>(null);
-
-  const placePhoto = async (src: string, file?: File) => {
-    const img = new window.Image();
-    img.src = src;
-    await new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); });
-    const natW = img.naturalWidth  || 400;
-    const natH = img.naturalHeight || 600;
-    const defH = Math.round(THUMB_H * 0.85);
-    const defW = Math.round(defH * (natW / natH));
-    setPhoto(prev => prev ? { ...prev, src } : { src, x: 0, y: THUMB_H - defH, width: defW, height: defH, opacity: 1 });
-    if (file) { setPhotoOrigFile(file); setPhotoOrigSrc(src); setBgRemoved(false); }
-    setSelectedId('photo');
-  };
-
-  const handlePhotoUpload = async (file: File) => {
-    const src = URL.createObjectURL(file);
-    await placePhoto(src, file);
-  };
-
-  const handleRemoveBg = async () => {
-    if (!photoOrigFile) return;
-    setRemovingBg(true);
-    let masked: Blob | null = null;
-    try {
-      masked = await removeBgServer(photoOrigFile, msg => setBgStatus(msg));
-    } catch (serverErr) {
-      console.error('[remove-bg] server failed, falling back to IS-Net:', serverErr);
-      setBgStatus('Usando modelo alternativo…');
-      try {
-        masked = await removeBgISNet(photoOrigFile, msg => setBgStatus(msg));
-      } catch (isNetErr) {
-        console.error('[ISNet] fallback also failed:', isNetErr);
-        const msg = String(serverErr instanceof Error ? serverErr.message : serverErr).slice(0, 80);
-        setBgStatus(`Error: ${msg}`);
-        setTimeout(() => setBgStatus(''), 6000);
-        setRemovingBg(false);
-        return;
-      }
-    }
-    try {
-      setPhoto(p => p ? { ...p, src: URL.createObjectURL(masked!) } : p);
-      setBgRemoved(true);
-    } catch (postErr) {
-      console.error('[BgRemoval] failed:', postErr);
-      setBgStatus('Error al aplicar resultado');
-      setTimeout(() => setBgStatus(''), 4000);
-    } finally {
-      setRemovingBg(false);
-      setBgStatus('');
-    }
-  };
-
-  const handleRestoreOriginal = () => {
-    if (!photoOrigSrc) return;
-    setPhoto(p => p ? { ...p, src: photoOrigSrc } : p);
-    setBgRemoved(false);
-  };
-
-  // Crop confirm
+  const photoState = useThumbnailPhoto(session?.user?.id,session?.user?.email,sessionStatus,lang,isPro);
+  const {photo,originalSrc:photoOrigSrc,removed:bgRemoved,busy:removingBg} = photoState;
+  const bgStatus = removingBg ? tr('Procesando…','Processing…') : '';
+  const photoError = photoState.error ? ({
+    invalid: tr('Usa PNG, JPEG o WebP, sin superar 10 MB.','Use PNG, JPEG or WebP, up to 10 MB.'),
+    decode: tr('No se pudo leer la foto. La anterior se conserva; prueba otro archivo.','Could not read the photo. The previous one is retained; try another file.'),
+    unconfirmed: tr('El resultado de eliminar el fondo no está confirmado. Otro intento podría consumir de nuevo; la foto original se conserva.','Background removal is unconfirmed. Another attempt may consume again; the original photo is retained.'),
+  })[photoState.error] : '';
+  const [selectedId,setSelectedId] = useState<string | null>(null);
+  const [cropTarget,setCropTarget] = useState<{src:string;type:'photo'|'bg'} | null>(null);
+  const cropCurrent = useRef(cropTarget);cropCurrent.current = cropTarget;
+  const cropFlight = useRef<object | null>(null);
+  const handlePhotoUpload = async (file: File) => {if(await photoState.upload(file) && photoState.current())setSelectedId('photo');};
+  const handleRemoveBg = photoState.removeBackground;
+  const handleRestoreOriginal = photoState.restore;
   const handleCropConfirm = async (blob: Blob) => {
-    if (!cropTarget) return;
-    if (cropTarget.type === 'photo') {
-      const src  = URL.createObjectURL(blob);
-      const file = new File([blob], 'cropped.png', { type: 'image/png' });
-      setPhotoOrigFile(file);
-      setPhotoOrigSrc(src);
-      setBgRemoved(false);
-
-      // Measure cropped image natural dimensions to preserve aspect ratio on canvas
-      const img = new window.Image();
-      img.src = src;
-      await new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); });
-      const natW = img.naturalWidth  || 400;
-      const natH = img.naturalHeight || 600;
-      const ar   = natW / natH;
-
-      setPhoto(prev => {
-        if (!prev) {
-          const defH = Math.round(THUMB_H * 0.85);
-          return { src, x: 0, y: THUMB_H - defH, width: Math.round(defH * ar), height: defH, opacity: 1 };
-        }
-        // Keep current height, recalculate width from new AR — no deformation
-        return { ...prev, src, width: Math.round(prev.height * ar) };
-      });
-      setSelectedId('photo');
-    } else {
-      setBgLoading(true);
-      try {
-        const file = new File([blob], 'bg-cropped.png', { type: 'image/png' });
-        const body = new FormData();
-        body.append('source', 'upload'); body.append('backgroundFile', file); body.append('lang', lang);
-        const res  = await fetch('/api/thumbnail-background', { method: 'POST', body });
-        const data = await res.json();
-        if (res.ok) setBackgroundUrl(data.backgroundUrl);
-      } catch {}
-      finally { setBgLoading(false); }
+    const target = cropTarget;
+    if(!target || cropCurrent.current !== target || !photoState.current() || cropFlight.current === target)return;
+    cropFlight.current = target;let confirmed = false;
+    try {
+      if(target.type === 'photo') {
+        confirmed = await photoState.crop(target.src,blob,() => cropCurrent.current === target);
+        if(confirmed && photoState.current())setSelectedId('photo');
+      } else {
+        setBgLoading(true);setBgError('');
+        try {
+          const body = new FormData();body.append('source','upload');body.append('backgroundFile',new File([blob],'bg-cropped.png',{type:'image/png'}));body.append('lang',lang);
+          const res = await fetch('/api/thumbnail-background',{method:'POST',body}),data = await res.json();
+          if(!photoState.current() || cropCurrent.current !== target)return;
+          if(!res.ok || typeof data?.backgroundUrl !== 'string')throw Error('Unconfirmed crop');
+          const url = new URL(data.backgroundUrl);if(url.protocol !== 'https:' || url.username || url.password || url.hash)throw Error('Invalid crop URL');
+          setBackgroundUrl(data.backgroundUrl);confirmed = true;
+        } catch {if(photoState.current() && cropCurrent.current === target)setBgError(tr('Recorte sin confirmar. El fondo anterior se conserva.','Crop unconfirmed. The previous background is retained.'));}
+        finally {if(photoState.current() && cropCurrent.current === target)setBgLoading(false);}
+      }
+    } finally {
+      if(cropFlight.current === target)cropFlight.current = null;
+      if(confirmed && photoState.current() && cropCurrent.current === target){cropCurrent.current = null;setCropTarget(null);}
     }
-    setCropTarget(null);
   };
 
   // ─── Texts ───────────────────────────────────────────────────────────────
@@ -893,6 +429,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   const handleSave = save.pending ? save.retrySave : save.save;
 
   // ─── Gate ─────────────────────────────────────────────────────────────────
+  if(!photoState.current())return <p>{tr('Inicia sesión para editar miniaturas.','Sign in to edit thumbnails.')}</p>;
   if (!isPro) {
     return (
       <div className="yv-card p-8 text-center">
@@ -981,14 +518,14 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               texts={texts}
               selectedId={selectedId}
               onSelect={setSelectedId}
-              onUpdatePhoto={u => setPhoto(prev => prev ? { ...prev, ...u } : prev)}
+              onUpdatePhoto={photoState.updatePhoto}
               onUpdateText={updateText}
               stageRef={stageRef}
             />
           </div>
 
           {/* CropUI overlay — same dimensions as canvas, no layout shift */}
-          {cropTarget && (
+          {cropTarget && (cropTarget.type === 'bg' || cropTarget.src === photoOrigSrc) && (
             <CropUI
               src={cropTarget.src}
               label={cropTarget.type === 'photo'
@@ -997,7 +534,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               cW={containerWidth}
               cH={containerHeight}
               onConfirm={handleCropConfirm}
-              onCancel={() => setCropTarget(null)}
+              onCancel={() => { cropCurrent.current = null;setCropTarget(null); }}
             />
           )}
         </div>
@@ -1014,6 +551,8 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               {tr('Alta resolución. Fondo uniforme da mejor resultado.',
                   'High resolution. Solid background gives best results.')}
             </p>
+
+            {photoError && <p role="alert" className="text-[12px] mb-2" style={{color:'#f5a623'}}>{photoError}</p>}
 
             {/* Upload */}
             <label className="block cursor-pointer">
@@ -1038,54 +577,10 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                   </button>
                 )}
 
-                {/* Background colour picker (for BFS colour key) */}
-                <div className="mt-3">
-                  <p className="text-[10px] font-mono-jb mb-1.5 leading-tight" style={{ color: 'var(--yv-text-4)' }}>
-                    {tr('Color de tu fondo real', 'Your background colour')}
-                  </p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {BG_COLORS.map(c => (
-                      <button
-                        key={c.value}
-                        onClick={() => setBgKeyColor(c.value)}
-                        title={c.label}
-                        style={{
-                          width: 22, height: 22, borderRadius: 4,
-                          background: c.value,
-                          border: bgKeyColor === c.value
-                            ? '2px solid #7CFF00'
-                            : `2px solid ${c.value === '#ffffff' || c.value === '#f0e8d8' ? 'rgba(255,255,255,0.2)' : 'transparent'}`,
-                          boxShadow: bgKeyColor === c.value ? '0 0 0 1px #7CFF00' : 'none',
-                          cursor: 'pointer', flexShrink: 0,
-                        }}
-                      />
-                    ))}
-                    {/* Custom colour */}
-                    <label style={{ position:'relative', cursor:'pointer', flexShrink:0, width:22, height:22 }}>
-                      <div style={{
-                        width:22, height:22, borderRadius:4,
-                        background: BG_COLORS.some(c => c.value === bgKeyColor) ? 'transparent' : bgKeyColor,
-                        border: !BG_COLORS.some(c => c.value === bgKeyColor) ? '2px solid #7CFF00' : '2px solid rgba(255,255,255,0.15)',
-                        boxShadow: !BG_COLORS.some(c => c.value === bgKeyColor) ? '0 0 0 1px #7CFF00' : 'none',
-                        display:'flex', alignItems:'center', justifyContent:'center',
-                        fontSize:13, color:'rgba(255,255,255,0.5)',
-                      }}>
-                        {BG_COLORS.some(c => c.value === bgKeyColor) ? '+' : ''}
-                      </div>
-                      <input type="color" value={bgKeyColor} onChange={e => setBgKeyColor(e.target.value)}
-                        style={{ position:'absolute', inset:0, opacity:0, cursor:'pointer', width:'100%', height:'100%' }} />
-                    </label>
-                  </div>
-                  <p className="text-[9px] mt-1 leading-tight" style={{ color:'var(--yv-text-4)' }}>
-                    {tr('La IA reemplazará ese color antes de detectar al sujeto.',
-                        'The AI will replace that colour before detecting the subject.')}
-                  </p>
-                </div>
-
                 {/* Remove / restore */}
                 <div className="mt-2.5">
                   {!bgRemoved ? (
-                    <button onClick={handleRemoveBg} disabled={removingBg}
+                    <button onClick={photoState.error === 'unconfirmed' ? photoState.retryRemoval : handleRemoveBg} disabled={removingBg}
                       className="soft-chip w-full py-1.5 text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {removingBg
@@ -1093,7 +588,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                             <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full spin-r" />
                             <span className="truncate max-w-[130px]">{bgStatus || tr('Procesando…', 'Processing…')}</span>
                           </span>
-                        : tr('Eliminar fondo', 'Remove BG')}
+                        : photoState.error === 'unconfirmed' ? tr('Volver a intentar eliminación','Try removal again') : tr('Eliminar fondo', 'Remove BG')}
                     </button>
                   ) : (
                     <button onClick={handleRestoreOriginal}
@@ -1111,7 +606,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                     <span className="text-[11px] font-mono-jb" style={{ color:'var(--yv-text-2)' }}>{Math.round(photo.opacity * 100)}%</span>
                   </div>
                   <input type="range" min={0} max={1} step={0.05} value={photo.opacity}
-                    onChange={e => setPhoto(p => p ? { ...p, opacity: Number(e.target.value) } : p)}
+                    onChange={e => photoState.updatePhoto({opacity:Number(e.target.value)})}
                     className="w-full accent-[#7CFF00]" />
                 </div>
 
@@ -1119,7 +614,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                   className="mt-2 text-[11px] w-full text-center hover:text-white transition"
                   style={{ color:'var(--yv-text-4)' }}
                   onClick={() => {
-                    setPhoto(null); setPhotoOrigFile(null); setPhotoOrigSrc(null); setBgRemoved(false);
+                    photoState.clear();cropCurrent.current = null;setCropTarget(null);
                     if (selectedId === 'photo') setSelectedId(null);
                   }}
                 >
