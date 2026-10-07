@@ -23,6 +23,7 @@ const results=[];
  await require('./thumbnail-background-database.cjs')(prisma,results);
  await require('./remove-background-database.cjs')(prisma,results);
  await require('./background-image-database.cjs')(prisma,results);
+  await require('./legacy-thumbnail-database.cjs')(prisma,results);
  await require('./generator-account-database.cjs')(prisma,results);
  await require('./dashboard-billing-database.cjs')(prisma,results);
  await require('./video-preview-database.cjs')(prisma,results);

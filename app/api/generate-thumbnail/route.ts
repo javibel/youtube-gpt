@@ -3,11 +3,24 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { put } from '@vercel/blob';
+import { rateLimitDb } from '@/lib/rate-limit-db';
+import { backgroundImageAvailable, generateBackgroundImage } from '@/lib/image/background-image-provider';
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const sharp: any = require('sharp');
 
 export const maxDuration = 60;
 
+// A local deadline does not cancel late storage/history writes or authorize recovery.
+async function bounded<T>(work:()=>Promise<T>, signal:AbortSignal):Promise<T> {
+  if(signal.aborted)throw Error('Unconfirmed');
+  let rejectWait:(error:Error)=>void=()=>{};
+  const interrupted=new Promise<never>((_,reject)=>{rejectWait=reject;});
+  const stop=()=>rejectWait(Error('Unconfirmed'));
+  signal.addEventListener('abort',stop,{once:true});const timer=setTimeout(stop,15_000);
+  try {const value=await Promise.race([work(),interrupted]);if(signal.aborted)throw Error('Unconfirmed');return value;}
+  finally {clearTimeout(timer);signal.removeEventListener('abort',stop);}
+}
+const decode=(bytes:Buffer)=>sharp(bytes,{limitInputPixels:40_000_000});
 function getIp(request: Request): string | null {
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) return forwarded.split(',')[0].trim();
@@ -17,11 +30,12 @@ function getIp(request: Request): string | null {
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user?.id || !session.user.email) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const form = await request.formData();
+    let form:FormData;
+    try {form=await request.formData();}catch{return Response.json({error:'invalid_input'},{status:400});}
     if (['tema', 'estilo', 'lang', 'facePosition', 'thumbnailText', 'faceScale'].some(key => form.has(key) && typeof form.get(key) !== 'string') || typeof form.get('facePhoto') === 'string') {
       return Response.json({ error: 'invalid_input' }, { status: 400 });
     }
@@ -30,12 +44,14 @@ export async function POST(request: Request) {
     const lang = (form.get('lang') as string) || 'en';
     const facePosition = (form.get('facePosition') as string) || 'right';
     const facePhotoFile = form.get('facePhoto') as File | null;
-    const customText = ((form.get('thumbnailText') as string) || '').trim().slice(0, 60);
-    const faceScaleRaw = parseInt((form.get('faceScale') as string) || '80', 10);
-    const faceScalePct = Math.max(40, Math.min(100, isNaN(faceScaleRaw) ? 80 : faceScaleRaw));
+    const customText = ((form.get('thumbnailText') as string) || '').trim();
+    const scale=(form.get('faceScale') as string)||'80';
+    const faceScalePct=Number(scale);
+    if(!['en','es'].includes(lang)||!['viral','cinematic','minimal','bold'].includes(estilo)||!['left','right'].includes(facePosition)||customText.length>60||!/^\d+$/.test(scale)||!Number.isInteger(faceScalePct)||faceScalePct<40||faceScalePct>100)return Response.json({error:'invalid_input'},{status:400});
+    if(facePhotoFile&&(!facePhotoFile.size||facePhotoFile.size>5*1024*1024||!['image/png','image/jpeg','image/webp'].includes(facePhotoFile.type)))return Response.json({error:'invalid_input'},{status:400});
     const isEn = lang === 'en';
 
-    if (!tema || tema.length < 3) {
+    if (!tema || tema.length < 3 || tema.length > 500) {
       return Response.json(
         { error: isEn
           ? 'Please describe your video topic (at least 3 characters)'
@@ -53,6 +69,7 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
+    if(user.id!==session.user.id)return Response.json({error:'No autorizado'},{status:401});
     const plan = await getUserPlan(user.id);
     const isPro = isPaid(plan);
 
@@ -83,51 +100,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Rate limit: max 3 thumbnail generations per minute
-    const rlKey = `gen-thumb:${user.id}`;
-    const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
-      INSERT INTO rate_limits (key, hits, window_start)
-      VALUES (${rlKey}, 1, NOW())
-      ON CONFLICT (key) DO UPDATE
-      SET
-        hits = CASE
-          WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
-          THEN 1
-          ELSE rate_limits.hits + 1
-        END,
-        window_start = CASE
-          WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
-          THEN NOW()
-          ELSE rate_limits.window_start
-        END
-      RETURNING hits
-    `;
-    if (Number(rlResult[0].hits) > 3) {
-      return Response.json(
-        { error: isEn
-          ? 'Too many requests. Wait a moment before trying again.'
-          : 'Demasiadas solicitudes. Espera un momento antes de continuar.' },
-        { status: 429 }
-      );
+    if(!backgroundImageAvailable())return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});
+    let facePhotoBuffer:Buffer|null=null;
+    if(facePhotoFile){
+      try{
+        facePhotoBuffer=Buffer.from(await bounded(()=>facePhotoFile.arrayBuffer(),request.signal));
+        const meta=await bounded(()=>decode(facePhotoBuffer!).metadata(),request.signal);
+        if(!meta.width||!meta.height||meta.width>16384||meta.height>16384||meta.width*meta.height>40_000_000||!['png','jpeg','webp'].includes(meta.format))throw Error('Invalid photo');
+      }catch{return Response.json({error:'invalid_photo'},{status:400});}
     }
-
-    const ideogramKey = (process.env.IDEOGRAM_API_KEY || process.env.ideogram)?.trim();
-
-    if (!ideogramKey) {
-      return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
-    }
-
-    // Validate face photo if provided
-    let facePhotoBuffer: Buffer | null = null;
-    if (facePhotoFile && facePhotoFile.size > 0) {
-      if (facePhotoFile.size > 5 * 1024 * 1024) {
-        return Response.json(
-          { error: isEn ? 'Photo must be under 5MB' : 'La foto no puede superar 5MB' },
-          { status: 400 }
-        );
-      }
-      facePhotoBuffer = Buffer.from(await facePhotoFile.arrayBuffer());
-    }
+    if(request.signal.aborted)throw Error('Unconfirmed');
+    if(!await rateLimitDb('gen-thumb:'+user.id,3,1,true))return Response.json({error:'Solicitud no admitida'},{status:429});
 
     const hasFace = !!facePhotoBuffer;
     const faceOnLeft = facePosition === 'left';
@@ -177,91 +160,34 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
     } catch {
       return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
+    if(request.signal.aborted)throw Error('Unconfirmed');
     const promptResult = await task.create({ max_tokens: 400, messages: [{ role: 'user', content: claudePrompt }] });
-    const imagePrompt = promptResult.content[0].text.trim();
-
-    // Step 2: Call Ideogram v3 TURBO
-    const ideogramForm = new FormData();
-    ideogramForm.append('prompt', imagePrompt);
-    ideogramForm.append('resolution', '1312x736');
-    ideogramForm.append('rendering_speed', 'TURBO');
-    ideogramForm.append('magic_prompt', 'ON');
-    ideogramForm.append('style_type', 'REALISTIC');
-
-    const ideogramRes = await fetch('https://api.ideogram.ai/v1/ideogram-v3/generate', {
-      method: 'POST',
-      headers: { 'Api-Key': ideogramKey },
-      body: ideogramForm,
-    });
-
-    const ideogramBody = await ideogramRes.text();
-    if (!ideogramRes.ok) {
-      console.error('[generate-thumbnail] Ideogram error:', ideogramRes.status, ideogramBody.slice(0, 500));
-      return Response.json(
-        { error: isEn ? 'Error generating thumbnail image' : 'Error generando imagen de miniatura' },
-        { status: 500 }
-      );
-    }
-
-    let ideogramData;
-    try {
-      ideogramData = JSON.parse(ideogramBody);
-    } catch {
-      console.error('[generate-thumbnail] Ideogram non-JSON response:', ideogramBody.slice(0, 500));
-      return Response.json(
-        { error: isEn ? 'Error generating thumbnail image' : 'Error generando imagen de miniatura' },
-        { status: 500 }
-      );
-    }
-
-    const imageUrl = ideogramData.data?.[0]?.url;
-
-    if (!imageUrl) {
-      console.error('[generate-thumbnail] No image URL in response:', ideogramData);
-      return Response.json(
-        { error: isEn ? 'No image was generated' : 'No se generó ninguna imagen' },
-        { status: 500 }
-      );
-    }
-
-    // Step 3: Download background and optionally composite with face photo
-    const bgRes = await fetch(imageUrl);
-    if (!bgRes.ok) {
-      return Response.json(
-        { error: isEn ? 'Error downloading generated image' : 'Error descargando imagen generada' },
-        { status: 500 }
-      );
-    }
-    let finalBuffer: Buffer = Buffer.from(await bgRes.arrayBuffer());
+    const imagePrompt=promptResult.content?.[0]?.text?.trim();
+    if(typeof imagePrompt!=='string'||!imagePrompt||imagePrompt.length>4000||promptResult.incomplete===true||request.signal.aborted)throw Error('Unconfirmed');
+    const image=await generateBackgroundImage(imagePrompt,request.signal);
+    // Always normalize to PNG; raw JPEG/WebP must not be labelled or stored as PNG.
+    let finalBuffer:Buffer=Buffer.from(await bounded(()=>decode(Buffer.from(image.bytes)).resize(1312,736,{fit:'cover'}).png().toBuffer(),request.signal));
 
     if (facePhotoBuffer) {
-      finalBuffer = Buffer.from(await compositeFaceOnBackground(finalBuffer, facePhotoBuffer, faceOnLeft, faceScalePct));
+      finalBuffer = Buffer.from(await bounded(()=>compositeFaceOnBackground(finalBuffer, facePhotoBuffer!, faceOnLeft, faceScalePct),request.signal));
     }
 
     // User-supplied text: render as a bold overlay ON TOP of everything (above the
     // face too), on the opposite side from the face so it never gets covered and
     // never covers the person. Ideogram is told NOT to draw text in this case.
     if (customText) {
-      finalBuffer = Buffer.from(await overlayText(finalBuffer, customText, faceOnLeft, hasFace));
+      finalBuffer = Buffer.from(await bounded(()=>overlayText(finalBuffer, customText, faceOnLeft, hasFace),request.signal));
     }
 
-    // Step 4: Upload to Vercel Blob
-    let permanentUrl = imageUrl;
-    try {
-      const filename = `thumbnails/${user.id}/${Date.now()}.png`;
-      const blob = await put(filename, finalBuffer, {
-        access: 'public',
-        contentType: 'image/png',
-      });
-      permanentUrl = blob.url;
-    } catch (blobErr) {
-      console.error('[generate-thumbnail] Blob upload failed:', blobErr instanceof Error ? blobErr.message : blobErr);
-      return Response.json({ error: isEn ? 'Error saving thumbnail image' : 'Error guardando la miniatura' }, { status: 500 });
-    }
+    if(!finalBuffer.length||finalBuffer.length>15*1024*1024||!finalBuffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Unconfirmed');
+    const blob=await bounded(()=>put('thumbnails/'+user.id+'/'+Date.now()+'.png',finalBuffer,{access:'public',contentType:'image/png'}),request.signal);
+    if(typeof blob?.url!=='string'||blob.url.length>4096)throw Error('Unconfirmed');
+    const stored=new URL(blob.url);if(stored.protocol!=='https:'||stored.username||stored.password||stored.hash)throw Error('Unconfirmed');
+    const permanentUrl=blob.url;
 
     // Save generation
     const ip = getIp(request);
-    await prisma.generation.create({
+    await bounded(()=>prisma.generation.create({
       data: {
         userId: user.id,
         template: 'thumbnail',
@@ -270,15 +196,14 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
         tokensUsed: promptResult.usage?.output_tokens ?? 0,
         ipAddress: ip,
       },
-    });
+    }),request.signal);
 
     return Response.json({
       imageUrl: permanentUrl,
       prompt: imagePrompt,
-    });
-  } catch (error) {
-    console.error('[generate-thumbnail] Error:', error);
-    return Response.json({ error: 'Error al procesar la solicitud' }, { status: 500 });
+    },{headers:{'Cache-Control':'no-store'}});
+  } catch {
+    return Response.json({error:'Miniatura sin confirmar. Repetir puede consumir de nuevo.',code:'image_result_unconfirmed',retryMayConsume:true},{status:503});
   }
 }
 
@@ -298,18 +223,18 @@ async function compositeFaceOnBackground(
   const BG_H = 736;
 
   // Ensure background is exactly 1312x736
-  const bg = sharp(bgBuffer).resize(BG_W, BG_H, { fit: 'cover' });
+  const bg = decode(bgBuffer).resize(BG_W, BG_H, { fit: 'cover' });
 
   // Trim the transparent padding around the bg-removed cutout so the person is
   // tight in its bounding box (otherwise it floats in the middle of the reserved
   // zone). Only trim when the image has an alpha channel (bg-removed PNG); a raw
   // uploaded photo (fallback path) is an opaque rectangle and must NOT be trimmed.
   let faceSrc = faceBuffer;
-  const srcMeta = await sharp(faceBuffer).metadata();
+  const srcMeta = await decode(faceBuffer).metadata();
   if (srcMeta.hasAlpha) {
     try {
-      const trimmed = await sharp(faceBuffer).trim({ threshold: 2 }).png().toBuffer();
-      const tMeta = await sharp(trimmed).metadata();
+      const trimmed = await decode(faceBuffer).trim({ threshold: 2 }).png().toBuffer();
+      const tMeta = await decode(trimmed).metadata();
       if ((tMeta.width || 0) > 10 && (tMeta.height || 0) > 10) faceSrc = trimmed;
     } catch {
       /* trim failed — keep original */
@@ -321,14 +246,14 @@ async function compositeFaceOnBackground(
   // alpha mask outward, threshold to a new binary boundary, then re-feather.
   if (srcMeta.hasAlpha) {
     try {
-      const alphaChannel = await sharp(faceSrc).extractChannel('alpha').png().toBuffer();
-      const dilatedAlpha = await sharp(alphaChannel)
+      const alphaChannel = await decode(faceSrc).extractChannel('alpha').png().toBuffer();
+      const dilatedAlpha = await decode(alphaChannel)
         .blur(5)        // expand signal ~5 px outward
         .threshold(8)   // any value ≥ 8 → 255 (recovered boundary)
         .blur(1)        // slight re-feather for smooth edge
         .png()
         .toBuffer();
-      const rgbOnly = await sharp(faceSrc).removeAlpha().png().toBuffer();
+      const rgbOnly = await decode(faceSrc).removeAlpha().png().toBuffer();
       const dilatedFace = await sharp(rgbOnly).joinChannel(dilatedAlpha).png().toBuffer();
       if (dilatedFace.length > 100) faceSrc = dilatedFace;
     } catch {
@@ -341,13 +266,13 @@ async function compositeFaceOnBackground(
   // encroached regardless of how tall the person is.
   const maxFaceW = Math.round(BG_W * 0.42);
   const maxFaceH = Math.round(BG_H * (faceScalePct / 100));
-  const resizedFace = await sharp(faceSrc)
+  const resizedFace = await decode(faceSrc)
     .resize(maxFaceW, maxFaceH, { fit: 'inside', withoutEnlargement: true })
     .ensureAlpha()
     .png()
     .toBuffer();
 
-  const faceMeta = await sharp(resizedFace).metadata();
+  const faceMeta = await decode(resizedFace).metadata();
   const faceW = faceMeta.width || maxFaceW;
   const faceH = faceMeta.height || maxFaceH;
 
@@ -359,7 +284,7 @@ async function compositeFaceOnBackground(
 
   // Create shadow layer (slightly offset, blurred)
   const shadowOffset = 4;
-  const shadowBuffer = await sharp(resizedFace)
+  const shadowBuffer = await decode(resizedFace)
     .modulate({ brightness: 0 }) // make fully black
     .blur(12)
     .ensureAlpha(0.35) // semi-transparent
@@ -490,7 +415,7 @@ async function overlayText(
   const W = 1312;
   const H = 736;
   const svg = Buffer.from(buildTextSvg(text, faceOnLeft, hasFace));
-  return sharp(bgBuffer)
+  return decode(bgBuffer)
     .resize(W, H, { fit: 'cover' })
     .composite([{ input: svg, blend: 'over' as const }])
     .png({ quality: 90 })
