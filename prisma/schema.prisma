@@ -44,6 +44,7 @@ model User {
 
   accounts        Account[]
   sessions        Session[]
+  backgroundUploads BackgroundUpload[]
   generations     Generation[]
   emailLogs       EmailLog[]
   subscription    Subscription?
@@ -826,4 +827,16 @@ model CspViolation {
   @@unique([directive, blockedUri, reportOnly])
   @@index([notified, lastSeen])
   @@map("csp_violations")
+}
+
+// Business receipt for exact uploaded bytes while retained; no model/recovery authority.
+model BackgroundUpload {
+  id String @id
+  userId String
+  digest String
+  output String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt], map: "background_uploads_userid_createdat_idx")
+  @@map("background_uploads")
 }

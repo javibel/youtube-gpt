@@ -1,3 +1,4 @@
+import { uploadBackgroundReceipt } from '@/lib/image/background-upload';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
@@ -43,6 +44,10 @@ export async function POST(request: Request) {
     }else if(tema.length<3||tema.length>500||!['viral','cinematic','minimal','bold'].includes(estilo)){
       return Response.json({error:isEn?'Describe your video topic (3–500 chars)':'Describe el tema (mín 3, máx 500 caracteres)'},{status:400});
     }
+    const key=request.headers.get('Idempotency-Key');
+    if(key!==null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))return Response.json({error:'Clave inválida'},{status:400});
+    if(key!==null && source==='ai')return Response.json({error:'Clave de subida no válida para IA'},{status:400});
+    if(key!==null && source==='upload' && file && typeof file!=='string')return await uploadBackgroundReceipt(user.id,key,file,lang as string,request.signal);
     if(!isPaid(await getUserPlan(user.id)))return Response.json({error:isEn?'Pro plan required':'Se requiere plan Pro',limitReached:true},{status:403});
     if(request.signal.aborted)throw Error('Unconfirmed');
     if(source==='upload'&&file&&typeof file!=='string'){
