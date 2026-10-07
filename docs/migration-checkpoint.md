@@ -191,3 +191,15 @@ not provide permanent deduplication after deletion or reload. Synthetic tests
 exercise the actual component/API with designated PostgreSQL, concurrent saves,
 lost acknowledgements and pruning rollback. They do not validate browser codecs,
 operational authentication, production storage or real model acceptance.
+
+The Dashboard's saved-video history uses an account-scoped controller. A failed
+or malformed list is shown with Retry video list, including free accounts; it
+does not masquerade as empty history. Refresh failures retain confirmed rows.
+Binary open/download validate responses before creating owned object URLs;
+URLs are released on replacement, close or account/unmount transitions. Late
+responses cannot repopulate another account or reopen a closed player. Delete
+keeps a row until 204 or 404 confirms absence and refreshes the list; a lost
+acknowledgement can be retried. Confirmed new saves supersede older reads.
+Synthetic hook/HTTP tests and the actual list/binary/delete routes with designated
+PostgreSQL exercise these behaviors. This does not establish real browser codec,
+operational authentication or production-cache acceptance.

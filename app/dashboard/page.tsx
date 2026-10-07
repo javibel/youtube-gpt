@@ -9,6 +9,7 @@ import { useCurrency } from '@/components/CurrencyProvider';
 import { PRICES, formatPrice } from '@/lib/pricing';
 import ReferralCard from '@/components/ReferralCard';
 import NextActionCard from '@/components/NextActionCard';
+import { useVideoPreviewHistory } from '@/lib/use-video-preview-history';
 import { AFFILIATES_DORMANT } from '@/lib/features';
 import { toast } from '@/components/Toaster';
 import { CheckIcon, CrossIcon, VideoIcon, StarIcon } from '@/components/icons';
@@ -97,74 +98,10 @@ export default function DashboardPage() {
   const [previewGen, setPreviewGen] = useState<{ id: string; output: string; title?: string } | null>(null);
   const [dailyTip, setDailyTip] = useState<{ es: string; en: string } | null>(null);
 
-  type DbPreview = { id: string; title: string; mimeType: string; size: number; createdAt: string };
-  const [dbPreviews, setDbPreviews]         = useState<DbPreview[]>([]);
-  const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
-  const [playingPreview, setPlayingPreview] = useState<{ id: string; title: string; url: string } | null>(null);
-  const [previewError, setPreviewError] = useState<{ es: string; en: string } | null>(null);
-
-  const loadDbPreviews = useCallback(async () => {
-    try {
-      const res = await fetch('/api/video-previews');
-      const data = await res.json();
-      if (data.previews) setDbPreviews(data.previews);
-    } catch { /* non-critical */ }
-  }, []);
-
-  const handleSelectPreview = useCallback(async (preview: DbPreview) => {
-    setLoadingPreviewId(preview.id);
-    setPreviewError(null);
-    try {
-      const res = await fetch(`/api/video-previews/${preview.id}`);
-      // Sin este control, una respuesta de error se convertia igualmente en blob
-      // y el reproductor se abria en negro sin explicar nada.
-      if (!res.ok) {
-        setPreviewError({ es: `No se pudo cargar el vídeo (error ${res.status}).`, en: `Could not load the video (error ${res.status}).` });
-        return;
-      }
-      const blob = await res.blob();
-      if (!blob.size || !blob.type.startsWith('video/')) {
-        setPreviewError({ es: 'El vídeo guardado está dañado.', en: 'The saved video is corrupted.' });
-        return;
-      }
-      setPlayingPreview({ id: preview.id, title: preview.title, url: URL.createObjectURL(blob) });
-    } catch {
-      setPreviewError({ es: 'Error de conexión al cargar el vídeo.', en: 'Connection error loading the video.' });
-    } finally {
-      setLoadingPreviewId(null);
-    }
-  }, []);
-
-  const handleDeletePreview = useCallback(async (id: string) => {
-    await fetch(`/api/video-previews/${id}`, { method: 'DELETE' });
-    setDbPreviews((prev) => prev.filter((p) => p.id !== id));
-  }, []);
-
-  const handleDownloadPreview = useCallback(async (p: DbPreview) => {
-    setLoadingPreviewId(p.id);
-    try {
-      const res = await fetch(`/api/video-previews/${p.id}`);
-      if (!res.ok) {
-        setPreviewError({ es: `No se pudo descargar el vídeo (error ${res.status}).`, en: `Could not download the video (error ${res.status}).` });
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${p.title}.webm`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch { /* non-critical */ } finally {
-      setLoadingPreviewId(null);
-    }
-  }, []);
-
-  const closePlayingPreview = useCallback(() => {
-    if (playingPreview?.url) URL.revokeObjectURL(playingPreview.url);
-    setPlayingPreview(null);
-  }, [playingPreview]);
-
+  const { dbPreviews, previewsLoaded, previewListLoading, previewListError, loadingPreviewId,
+    playingPreview, previewError, loadDbPreviews, refreshDbPreviews,
+    handleSelectPreview, handleDeletePreview, handleDownloadPreview, closePlayingPreview,
+  } = useVideoPreviewHistory(session?.user?.id, status);
   type YtChannel = { id: string; name: string; thumbnail: string; subscribers: number; totalViews: number; videoCount: number };
   type YtVideo  = { videoId: string; title: string; thumbnail: string; publishedAt: string; views: number };
   const [ytChannel, setYtChannel]       = useState<YtChannel | null>(null);
@@ -202,7 +139,7 @@ export default function DashboardPage() {
       fetch('/api/user/generations?page=1').then((r) => r.json()).then((d) => {
         if (d.generations) { setHistoryGens(d.generations); setHistoryHasMore(d.hasMore); }
       }).catch(() => toast(lang === 'en' ? 'Could not load your history.' : 'No se pudo cargar tu historial.', 'error'));
-      loadDbPreviews();
+
       fetch('/api/reviews').then((r) => r.json()).then((d) => {
         if (d.review) { setExistingReview(d.review); setReviewRating(d.review.rating); setReviewText(d.review.text); }
       });
@@ -865,7 +802,7 @@ function handleCopy(id: string, out: string) {
           {!AFFILIATES_DORMANT && <ReferralCard lang={lang} />}
 
           {/* My Previews — TV3 decorative + title list */}
-          {(isPro || dbPreviews.length > 0) && (
+          {(isPro || dbPreviews.length > 0 || previewListLoading || previewListError) && (
             <div>
               <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: '#00D9FF' }}>VIDEO TIPS</p>
               <h2 className="font-display font-bold text-2xl mb-4">{t('Mis previews', 'My previews')}</h2>
@@ -885,12 +822,29 @@ function handleCopy(id: string, out: string) {
                     <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-4)' }}>
                       {t('Últimas generaciones', 'Latest previews')}
                     </p>
-
-                    {previewError && (
-                      <p className="font-mono-jb text-[12px] mb-3" style={{ color: '#e84d5b' }}>{t(previewError.es, previewError.en)}</p>
+                    {!previewListError && (
+                      <button onClick={loadDbPreviews} disabled={previewListLoading} className="font-mono-jb text-[12px] mb-3 disabled:opacity-50" style={{ color: '#00D9FF' }}>
+                        {t('Actualizar lista', 'Refresh list')}
+                      </button>
                     )}
 
-                    {dbPreviews.length === 0 ? (
+                    {previewError && (
+                      <p role="alert" className="font-mono-jb text-[12px] mb-3" style={{ color: '#e84d5b' }}>{t(previewError.es, previewError.en)}</p>
+                    )}
+
+                    {previewListLoading && <p role="status" className="font-mono-jb text-[12px] mb-3">{t('Cargando vídeos guardados…', 'Loading saved videos…')}</p>}
+                    {previewListError && (
+                      <div className="mb-3">
+                        <p role="alert" className="font-mono-jb text-[12px] mb-2" style={{ color: '#e84d5b' }}>
+                          {t('No se pudo actualizar tu lista de vídeos. Puedes reintentarlo.', 'Your video list could not be refreshed. You can retry.')}
+                        </p>
+                        <button onClick={loadDbPreviews} disabled={previewListLoading} className="btn-offset btn-offset-white py-2 px-3 text-[12px]">
+                          {t('Reintentar lista de vídeos', 'Retry video list')}
+                        </button>
+                      </div>
+                    )}
+
+                    {dbPreviews.length === 0 && previewsLoaded && !previewListLoading && !previewListError ? (
                       <div className="py-6">
                         <p className="font-mono-jb text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-4)' }}>
                           {t(
@@ -917,7 +871,7 @@ function handleCopy(id: string, out: string) {
                             </span>
                             <button
                               onClick={() => handleSelectPreview(p)}
-                              disabled={loadingPreviewId === p.id}
+                              disabled={loadingPreviewId !== null}
                               className="flex-1 text-left font-mono-jb text-[13px] truncate hover:text-white transition disabled:opacity-60"
                               style={{ color: 'var(--yv-text-2)' }}
                             >
@@ -929,7 +883,7 @@ function handleCopy(id: string, out: string) {
                             {/* Download */}
                             <button
                               onClick={() => handleDownloadPreview(p)}
-                              disabled={loadingPreviewId === p.id}
+                              disabled={loadingPreviewId !== null}
                               title={t('Descargar', 'Download')}
                               aria-label={t('Descargar preview', 'Download preview')}
                               className="flex-shrink-0 p-2.5 -m-1 opacity-40 hover:opacity-100 transition disabled:opacity-20"
@@ -942,7 +896,7 @@ function handleCopy(id: string, out: string) {
                             {/* Delete */}
                             <button
                               onClick={() => handleDeletePreview(p.id)}
-                              disabled={loadingPreviewId === p.id}
+                              disabled={loadingPreviewId !== null}
                               title={t('Eliminar', 'Delete')}
                               aria-label={t('Eliminar preview', 'Delete preview')}
                               className="flex-shrink-0 p-2.5 -m-1 opacity-40 hover:opacity-100 transition disabled:opacity-20 hover:text-red-400"
@@ -1616,7 +1570,7 @@ function handleCopy(id: string, out: string) {
             scriptTitle={previewGen.title ?? 'Script'}
             lang={lang}
             onClose={() => setPreviewGen(null)}
-            onSaved={() => loadDbPreviews()}
+            onSaved={refreshDbPreviews}
           />
         </Suspense>
       )}

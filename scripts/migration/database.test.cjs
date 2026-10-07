@@ -20,6 +20,7 @@ const results=[];
  assert.equal(path.resolve(identity.directory).toLowerCase(),path.resolve(checked.paths.database).toLowerCase());
  results.push('isolated database identity');
  await require('./video-preview-database.cjs')(prisma,results);
+ await require('./video-preview-history-database.cjs')(prisma,results);
  const email='contract-'+randomUUID()+'@example.invalid';
  const user=await prisma.user.create({data:{email,name:'Synthetic contract test'}});
  try {
