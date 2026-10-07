@@ -39,63 +39,67 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, email: true, name: true, createdAt: true },
-  });
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, email: true, name: true, createdAt: true },
+    });
 
-  if (!user) {
-    return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalGenerations, generationsThisMonth, videoTipsThisMonth, subscription, allDates] =
+      await Promise.all([
+        prisma.generation.count({ where: { userId: user.id } }),
+        prisma.generation.count({
+          where: { userId: user.id, createdAt: { gte: startOfMonth } },
+        }),
+        // Video Tips free (26/08): tope de 1/mes ademas del pool general — ver
+        // app/api/storyboard/route.ts (FREE_VIDEO_TIPS_PER_MONTH).
+        prisma.generation.count({
+          where: { userId: user.id, template: 'video_preview', createdAt: { gte: startOfMonth } },
+        }),
+        prisma.subscription.findUnique({
+          where: { userId: user.id },
+          select: { status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodEnd: true, stripeCustomerId: true },
+        }),
+        prisma.generation.findMany({
+          where: {
+            userId: user.id,
+            createdAt: { gte: new Date(Date.now() - 60 * 24 * 3600 * 1000) },
+          },
+          select: { createdAt: true },
+          orderBy: { createdAt: "desc" },
+        }),
+      ]);
+
+    const plan: PlanType = hasPaidAccess(subscription)
+      ? (subscription!.plan === 'business' ? 'business' : 'pro')
+      : 'free';
+    const isProUser = isPaid(plan);
+    const limits = getLimits(plan);
+    const limit = limits.generationsPerMonth;
+    const streak = calcStreak(allDates.map((g) => g.createdAt));
+
+    return NextResponse.json({
+      user: { email: user.email, name: user.name, createdAt: user.createdAt },
+      stats: {
+        totalGenerations,
+        generationsThisMonth,
+        limit,
+        remaining: Math.max(0, limit - generationsThisMonth),
+        isPro: isProUser,
+        plan,
+        streak,
+        videoTipsRemaining: isProUser ? null : Math.max(0, 1 - videoTipsThisMonth),
+      },
+      subscription: subscription ?? null,
+    });
+  } catch {
+    return NextResponse.json({ error: "Estadísticas no disponibles" }, { status: 503 });
   }
-
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const [totalGenerations, generationsThisMonth, videoTipsThisMonth, subscription, allDates] =
-    await Promise.all([
-      prisma.generation.count({ where: { userId: user.id } }),
-      prisma.generation.count({
-        where: { userId: user.id, createdAt: { gte: startOfMonth } },
-      }),
-      // Video Tips free (26/08): tope de 1/mes ademas del pool general — ver
-      // app/api/storyboard/route.ts (FREE_VIDEO_TIPS_PER_MONTH).
-      prisma.generation.count({
-        where: { userId: user.id, template: 'video_preview', createdAt: { gte: startOfMonth } },
-      }),
-      prisma.subscription.findUnique({
-        where: { userId: user.id },
-        select: { status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodEnd: true, stripeCustomerId: true },
-      }),
-      prisma.generation.findMany({
-        where: {
-          userId: user.id,
-          createdAt: { gte: new Date(Date.now() - 60 * 24 * 3600 * 1000) },
-        },
-        select: { createdAt: true },
-        orderBy: { createdAt: "desc" },
-      }),
-    ]);
-
-  const plan: PlanType = hasPaidAccess(subscription)
-    ? (subscription!.plan === 'business' ? 'business' : 'pro')
-    : 'free';
-  const isProUser = isPaid(plan);
-  const limits = getLimits(plan);
-  const limit = limits.generationsPerMonth;
-  const streak = calcStreak(allDates.map((g) => g.createdAt));
-
-  return NextResponse.json({
-    user: { email: user.email, name: user.name, createdAt: user.createdAt },
-    stats: {
-      totalGenerations,
-      generationsThisMonth,
-      limit,
-      remaining: Math.max(0, limit - generationsThisMonth),
-      isPro: isProUser,
-      plan,
-      streak,
-      videoTipsRemaining: isProUser ? null : Math.max(0, 1 - videoTipsThisMonth),
-    },
-    subscription: subscription ?? null,
-  });
 }

@@ -9,6 +9,7 @@ import { useCurrency } from '@/components/CurrencyProvider';
 import { PRICES, formatPrice } from '@/lib/pricing';
 import ReferralCard from '@/components/ReferralCard';
 import NextActionCard from '@/components/NextActionCard';
+import { useDashboardStats } from '@/lib/use-dashboard-stats';
 import { useGenerationHistory } from '@/lib/use-generation-history';
 import { useVideoPreviewHistory } from '@/lib/use-video-preview-history';
 import { AFFILIATES_DORMANT } from '@/lib/features';
@@ -48,26 +49,11 @@ const QUICK_TPLS = [
   { k: 'thumbnail',   icon: '/icons/thumbnail.webp', color: '#7CFF00', est: '5s' },
 ];
 
-type Stats = {
-  user: { email: string; name: string | null; createdAt: string };
-  stats: {
-    totalGenerations: number;
-    generationsThisMonth: number;
-    limit: number;
-    remaining: number;
-    isPro: boolean;
-    plan: 'free' | 'pro' | 'business';
-    streak: number;
-  };
-  subscription: { status: string; plan?: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
-};
-
-
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [data, setData] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, statsRefreshing, statsError, refreshStats, retryStats } =
+    useDashboardStats(session?.user?.id, session?.user?.email, status);
   const [upgrading, setUpgrading] = useState(false);
   const [billingPlan, setBillingPlan] = useState<'monthly'|'yearly'|'business_monthly'|'business_yearly'>('monthly');
   const [cancelling, setCancelling] = useState(false);
@@ -131,9 +117,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      fetch('/api/user/stats').then((r) => r.json()).then(setData)
-        .catch(() => toast(lang === 'en' ? 'Could not load your dashboard. Check your connection and reload.' : 'No se pudo cargar el dashboard. Revisa tu conexión y recarga.', 'error'))
-        .finally(() => setLoading(false));
       fetch('/api/daily-tip').then((r) => r.json()).then((d) => { if (d.es) setDailyTip(d); }).catch(() => {});
 
 
@@ -255,7 +238,7 @@ function handleCopy(id: string, out: string) {
     setCancelling(true);
     try {
       const res = await fetch('/api/stripe/cancel', { method: 'POST' });
-      if (res.ok) { setData((prev) => prev ? { ...prev, subscription: prev.subscription ? { ...prev.subscription, cancelAtPeriodEnd: true } : null } : null); }
+      if (res.ok) { await refreshStats(); }
       else { const { error } = await res.json(); toast(error ?? t('Error al cancelar', 'Cancellation error'), 'error'); }
     } finally { setCancelling(false); }
   }
@@ -288,7 +271,7 @@ function handleCopy(id: string, out: string) {
       setOnboardingResult(data.content);
       await advanceOnboarding(2);
       // Refresca stats para que el contador del panel refleje la generación recién hecha
-      fetch('/api/user/stats').then((r) => r.json()).then(setData).catch(() => {});
+      void refreshStats();
       void refreshHistory();
     } catch (err) {
       setOnboardingError(err instanceof Error ? err.message : (lang === 'en' ? 'Generation failed' : 'Error al generar'));
@@ -311,6 +294,19 @@ function handleCopy(id: string, out: string) {
   }
 
   if (!session) return null;
+
+  if (!data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-bg-0)' }}>
+        <div className="yv-card p-8 max-w-md">
+          <p role="alert" className="mb-4">{lang === 'en' ? 'Could not load your statistics and plan.' : 'No se pudieron cargar tus estadísticas y plan.'}</p>
+          <button onClick={retryStats} disabled={statsRefreshing} className="btn-offset px-5 py-2.5 disabled:opacity-50">
+            {lang === 'en' ? 'Retry dashboard' : 'Reintentar dashboard'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const stats = data?.stats;
   const isPro = stats?.isPro ?? false;
@@ -579,6 +575,14 @@ function handleCopy(id: string, out: string) {
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-8 min-w-0">
         <main className="space-y-8 min-w-0">
+
+          {statsRefreshing && <p role="status">{t('Actualizando estadísticas…', 'Refreshing statistics…')}</p>}
+          {statsError && (
+            <div className="yv-card p-4">
+              <p role="alert" className="mb-3">{t('No se pudieron actualizar tus estadísticas y plan. Se muestra la última lectura confirmada, que puede estar desactualizada.', 'Could not refresh your statistics and plan. The last confirmed reading is shown and may be outdated.')}</p>
+              <button onClick={retryStats} disabled={statsRefreshing} className="btn-offset px-4 py-2 disabled:opacity-50">{t('Reintentar estadísticas', 'Retry statistics')}</button>
+            </div>
+          )}
 
           {/* Stat cards — or welcome card if brand new user */}
           {historyLoaded && historyGens.length === 0 && !historyLoading && !historyError ? (

@@ -216,3 +216,8 @@ filter describes loaded rows, not the full library. Synthetic tests include the
 original route and designated PostgreSQL. Offset pages are not a fixed snapshot
 under concurrent inserts/deletes; Refresh is available to obtain a newer view.
 Operational authentication, browser behavior and real model quality are pending.
+
+
+## Dashboard statistics reads
+
+Statistics and plan reads now validate HTTP/JSON, account email, counters and subscription shape before rendering. Initial failure shows a retry screen instead of free-plan/zero defaults; failed refresh retains a labelled last confirmed reading. Account/auth changes hide prior statistics before effects run, stale reads are discarded, retries coalesce, and post-onboarding or cancellation refresh callbacks remain scoped to their original account. Successful cancellation triggers an actual statistics read rather than an optimistic subscription update. The original statistics API bounds storage failures to503. These are local reading guarantees; onboarding, billing and YouTube action callbacks and operational authentication/payment acceptance remain separate pending work.
