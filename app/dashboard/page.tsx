@@ -99,6 +99,7 @@ export default function DashboardPage() {
   const { onboardingStep, onboardingName, onboardingTopic, onboardingResult, onboardingGenerating,
     onboardingCopied, onboardingBusy, onboardingError, generationError, advanceOnboarding,
     retryOnboarding, runOnboardingGenerate, setOnboardingTopic, copyOnboarding,
+    generationTimedOut,onboardingGenerationPending,onboardingTruncated,
   } = useDashboardOnboarding(session?.user?.id, session?.user?.email, status, lang, refreshStats, refreshHistory);
 
   const { billingBusy, upgrading, cancelling, syncing, billingError, cancelConfirmed, syncResult,
@@ -214,7 +215,12 @@ function handleCopy(id: string, out: string) {
             )}
             {generationError && (
               <div role="alert" className="mb-4">
-                <p>{t('No se confirmó la generación. Revisa el historial antes de generar otra vez.', 'Generation was not confirmed. Check history before generating again.')}</p>
+                <p>{generationTimedOut
+                  ? t('La respuesta tardó demasiado; el servidor puede haber completado la generación. Reintenta la misma solicitud o consulta el historial.', 'The response took too long; the server may have completed the generation. Retry the same request or check history.')
+                  : t('No se confirmó la generación. Reintenta la misma solicitud o consulta el historial.', 'Generation was not confirmed. Retry the same request or check history.')}</p>
+                {onboardingGenerationPending && <button onClick={() => runOnboardingGenerate(onboardingTopic)} disabled={onboardingBusy || onboardingError}>
+                  {t('Reintentar mis títulos', 'Retry my titles')}
+                </button>}
                 <button onClick={() => advanceOnboarding(4)} disabled={onboardingBusy || onboardingError}>
                   {t('Cerrar bienvenida y ver mi historial', 'Close welcome and see my history')}
                 </button>
@@ -293,7 +299,7 @@ function handleCopy(id: string, out: string) {
                     placeholder={t('Ej: cómo edité este vídeo en 1 hora', 'E.g. how I edited this video in 1 hour')}
                     autoFocus
                     maxLength={200}
-                    disabled={onboardingBusy || onboardingError}
+                    disabled={onboardingBusy || onboardingError || onboardingGenerationPending}
                     className="yv-input text-sm text-white placeholder-zinc-600 disabled:opacity-50"
                   />
                   <button type="submit" disabled={onboardingTopic.trim().length < 3 || onboardingBusy || onboardingError} className="btn-offset px-8 py-3 text-sm font-display inline-flex items-center justify-center gap-2 disabled:opacity-40">
@@ -305,14 +311,14 @@ function handleCopy(id: string, out: string) {
                     ) : (
                       <>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                        {t('Generar mis títulos →', 'Generate my titles →')}
+                        {onboardingGenerationPending ? t('Reintentar mis títulos →', 'Retry my titles →') : t('Generar mis títulos →', 'Generate my titles →')}
                       </>
                     )}
                   </button>
                 </form>
                 <button
                   onClick={() => runOnboardingGenerate(t('cómo empecé mi canal de YouTube desde cero', 'how I started my YouTube channel from scratch'))}
-                  disabled={onboardingBusy || onboardingError}
+                  disabled={onboardingBusy || onboardingError || onboardingGenerationPending}
                   className="text-zinc-500 text-[13px] font-mono-jb hover:text-zinc-300 transition py-2 mt-1 disabled:opacity-40 underline decoration-dotted underline-offset-4"
                 >
                   {t('No sé qué poner — probar con un ejemplo', 'Not sure? Try an example')}
@@ -369,6 +375,7 @@ function handleCopy(id: string, out: string) {
                     </p>
                     <div className="text-left text-sm text-zinc-200 whitespace-pre-wrap rounded-xl p-4 mb-3 max-h-56 overflow-y-auto" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
                       {onboardingResult}
+                      {onboardingTruncated && <span className="block mt-3 text-sm">{t('Resultado parcial: se alcanzó el límite de longitud.', 'Partial result: the length limit was reached.')}</span>}
                     </div>
                     <button
                       onClick={copyOnboarding}

@@ -34,6 +34,31 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
    assert.equal(client.requests[0].body,client.requests[1].body);assert.equal(client.requests[0].headers['Idempotency-Key'],client.requests[1].headers['Idempotency-Key']);assert.equal(client.state.confirmed.length,1);
    await client.view().retryGeneration();assert.equal(client.requests.length,2);assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(Number((await stats(budgetId)).settled_micros),7);
   } finally {client.unmount();}
+  // Original onboarding hook -> generation and onboarding routes -> real rows.
+  // Recover lost generation and step acknowledgements independently at exhausted quota.
+  const welcome=require('./dashboard-onboarding.test.cjs').harness();welcome.state.user=identity;welcome.state.email=users[0].email;welcome.state.key=key;
+  await prisma.user.update({where:{id:identity},data:{onboardingStep:1}});
+  const onboarding=load('app/api/onboarding/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:identity}})},'@/lib/prisma':{prisma}});
+  let loseGeneration=true,loseStep=true;
+  welcome.state.send=async r=>{
+   if(r.url==='/api/generate'){
+    const response=await route.POST(new Request('https://example.invalid/api/generate',{method:'POST',headers:r.headers,body:r.rawBody,signal:r.signal}));assert.equal(response.status,200);
+    if(loseGeneration){loseGeneration=false;throw Error('Synthetic lost onboarding generation acknowledgement');}return response;
+   }
+   if(r.method==='GET')return onboarding.GET();
+   const response=await onboarding.POST(new Request('https://example.invalid/api/onboarding',{method:'POST',headers:r.headers,body:r.rawBody}));
+   if(loseStep){loseStep=false;throw Error('Synthetic lost onboarding step acknowledgement');}return response;
+  };
+  try {
+   await welcome.ready();const old=welcome.view();await old.runOnboardingGenerate(input.inputs.tema);
+   assert.equal(welcome.view().generationError,true);assert.equal(welcome.view().onboardingStep,1);assert.equal(welcome.view().onboardingResult,null);
+   await welcome.view().runOnboardingGenerate('Ignored replacement topic');assert.equal(welcome.view().onboardingResult,text);assert.equal(welcome.view().onboardingTruncated,true);assert.equal(welcome.view().onboardingStep,1);assert.equal(welcome.view().onboardingError,true);
+   assert.equal((await prisma.user.findUnique({where:{id:identity}})).onboardingStep,2);
+   const generations=welcome.requests.filter(r=>r.url==='/api/generate');assert.equal(generations.length,2);assert.equal(generations[0].rawBody,generations[1].rawBody);assert.equal(generations[0].headers['Idempotency-Key'],generations[1].headers['Idempotency-Key']);
+   assert.equal(await welcome.view().retryOnboarding(),true);assert.equal(welcome.view().onboardingStep,2);await old.runOnboardingGenerate(input.inputs.tema);assert.equal(welcome.requests.filter(r=>r.url==='/api/generate').length,2);
+   assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(Number((await stats(budgetId)).settled_micros),7);assert.equal((await prisma.$queryRaw`SELECT hits FROM rate_limits WHERE key=${'generate:'+identity}`)[0].hits,99);
+   assert.equal((await prisma.user.findUnique({where:{id:users[1].id}})).onboardingStep,0);
+  } finally {welcome.unmount();}
   identity=users[1].id;extension=true;context=null;assert.equal((await invoke()).status,200);assert.equal(calls,2);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(await prisma.generation.count({where:{userId:users[0].id}}),1);assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),14);
  } finally {
   for(const user of users){await prisma.$executeRaw`DELETE FROM rate_limits WHERE key=${'generate:'+user.id}`;await prisma.user.delete({where:{id:user.id}});}
