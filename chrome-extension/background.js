@@ -19,21 +19,45 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true; // keep channel open for async response
 });
 
-// Shared fetch wrapper (v2.5.0): adds a timeout — a hung request used to leave the panel
-// spinning forever — and never throws on a non-JSON response (a Vercel/Cloudflare error
-// page: 502, bot challenge — used to surface as a raw "Unexpected token '<'" to the user).
+// Bound the entire local wait and decoded response bytes, including ignored transport aborts.
+// A local abort never proves server cancellation, rollback or zero usage.
 async function apiFetch(url, opts = {}) {
-  const { timeoutMs, ...fetchOpts } = opts;
-  let res;
-  try {
-    res = await fetch(url, { ...fetchOpts, signal: AbortSignal.timeout(timeoutMs || FETCH_TIMEOUT_MS) });
-  } catch (err) {
-    if (err.name === 'TimeoutError' || err.name === 'AbortError') throw new Error('timeout');
-    throw new Error('network_error');
-  }
-  let data = {};
-  try { data = await res.json(); } catch { /* non-JSON response — keep data = {} */ }
-  return { res, data };
+  const {timeoutMs=FETCH_TIMEOUT_MS,maxResponseBytes=1024*1024,signal:callerSignal,...fetchOpts}=opts;
+  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>60000||!Number.isSafeInteger(maxResponseBytes)||maxResponseBytes<1||maxResponseBytes>1024*1024)throw Error('response_invalid');
+  const target=new URL(url);if(target.origin!==API_BASE||!target.pathname.startsWith('/api/'))throw Error('response_invalid');
+  if(callerSignal?.aborted)throw Error('timeout');
+  const controller=new AbortController();let stopped=false,reader=null,responseBody=null,rejectWait;
+  const interrupted=new Promise((_,reject)=>{rejectWait=reject;});
+  const stop=()=>{stopped=true;controller.abort();rejectWait(Error('timeout'));};
+  callerSignal?.addEventListener('abort',stop,{once:true});
+  const timer=setTimeout(stop,timeoutMs);
+  const cancel=()=>{try{if(reader)void reader.cancel().catch(()=>{});else void responseBody?.cancel().catch(()=>{});}catch{}};
+  try{
+    const work=(async()=>{
+      let res;
+      try{res=await fetch(url,{...fetchOpts,redirect:'error',signal:controller.signal});}
+      catch{throw Error(stopped?'timeout':'network_error');}
+      if(stopped){try{void res.body?.cancel().catch(()=>{});}catch{}throw Error('timeout');}
+      responseBody=res.body;
+      const length=res.headers.get('content-length');
+      if(length!==null&&(!/^\d+$/.test(length)||Number(length)>maxResponseBytes))throw Error('response_invalid');
+      const mime=(res.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
+      if(!/^application\/(?:[a-z0-9.+-]*\+)?json$/.test(mime)||!res.body){
+        try{void res.body?.cancel().catch(()=>{});}catch{}
+        return {res,data:{}};
+      }
+      reader=res.body.getReader();const decoder=new TextDecoder('utf-8',{fatal:true});let bytes=0,text='';
+      for(;;){
+        const part=await reader.read();if(stopped)throw Error('timeout');if(part.done)break;
+        bytes+=part.value.byteLength;if(bytes>maxResponseBytes)throw Error('response_invalid');
+        try{text+=decoder.decode(part.value,{stream:true});}catch{throw Error('response_invalid');}
+      }
+      let data={};
+      try{data=JSON.parse(text+decoder.decode());}catch{/* Preserve the existing non-JSON error response behavior. */}
+      return {res,data};
+    })();
+    return await Promise.race([work,interrupted]);
+  }finally{stopped=true;clearTimeout(timer);callerSignal?.removeEventListener('abort',stop);controller.abort();cancel();}
 }
 
 async function getToken() {
@@ -52,6 +76,7 @@ async function getLang() {
 // copy every handler already used for its own domain errors, so renderError() in
 // content.js doesn't need to know about them specially.
 function connErrorMessage(err, lang, fallback) {
+  if(err.message==='response_invalid')return lang==='en'?'Server response could not be confirmed.':'No se pudo confirmar la respuesta del servidor.';
   if (err.message === 'timeout') return lang === 'en' ? 'Request timed out. Try again.' : 'La petición tardó demasiado. Inténtalo de nuevo.';
   if (err.message === 'network_error') return lang === 'en' ? 'Connection error. Check your internet.' : 'Error de conexión. Comprueba tu internet.';
   return fallback;
@@ -204,10 +229,10 @@ async function handleMessage(msg) {
         if(delivered)context.attempts.delete(delivered[0]);else throw Error('generation_pending_limit');
       }
       const attempt=known||{identity,flight:null};context.attempts.set(msg.operationKey,attempt);
-      let timer;const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('generation_unconfirmed')),55000);});
+      const waitController=new AbortController();let timer;const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('generation_unconfirmed')),55000);});
       const work=(async()=>{
         let res,data;
-        try{({res,data}=await apiFetch(API_BASE+'/api/generate',{method:'POST',timeoutMs:55000,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'Idempotency-Key':msg.operationKey},body}));}
+        try{({res,data}=await apiFetch(API_BASE+'/api/generate',{method:'POST',timeoutMs:55000,maxResponseBytes:256*1024,signal:waitController.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'Idempotency-Key':msg.operationKey},body}));}
         catch{throw Error('generation_unconfirmed');}
         const currentToken=await getToken();
         if(generationContext!==context||currentToken!==token)throw Error('generation_context_changed');
@@ -218,7 +243,7 @@ async function handleMessage(msg) {
         if(!data||typeof data.content!=='string'||!data.content.trim()||data.content.length>64000||typeof data.truncated!=='boolean')throw Error('generation_unconfirmed');
         attempt.complete=true;return data;
       })();
-      attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);attempt.flight=null;});
+      attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);waitController.abort();attempt.flight=null;});
       return attempt.flight;
     }
 

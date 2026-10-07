@@ -5,8 +5,9 @@ function worker(options={}){
  const state={token:options.token===undefined?'synthetic-token':options.token,lang:'es',calls:[],timers:new Set(),storageListener:null};
  const setTimer=(fn,ms)=>{const timer={fn,ms};state.timers.add(timer);return timer;},clearTimer=timer=>state.timers.delete(timer);
  const chrome={runtime:{onMessage:{addListener:fn=>{state.listener=fn;}}},storage:{onChanged:{addListener:fn=>{state.storageListener=fn;}},local:{get:(key,fn)=>fn({ytv_token:state.token,ytv_lang:state.lang}),set:async()=>{},remove:async()=>{}}}};
- const context=vm.createContext({chrome,crypto:{randomUUID},AbortSignal:{timeout:()=>new AbortController().signal},setTimeout:setTimer,clearTimeout:clearTimer,fetch:async(url,init)=>{state.calls.push({url,init});return options.fetch?options.fetch(url,init):Response.json({content:'Synthetic answer',truncated:false});}});
+ const context=vm.createContext({chrome,URL,TextDecoder,AbortController,crypto:{randomUUID},AbortSignal:{timeout:()=>new AbortController().signal},setTimeout:setTimer,clearTimeout:clearTimer,fetch:async(url,init)=>{state.calls.push({url,init});return options.fetch?options.fetch(url,init):Response.json({content:'Synthetic answer',truncated:false});}});
  vm.runInContext(fs.readFileSync(path.join(root,'chrome-extension/background.js'),'utf8'),context);
+ state.api=(url,opts)=>context.apiFetch(url,opts);
  state.message=msg=>new Promise(resolve=>state.listener(msg,{},resolve));
  state.switchToken=token=>{state.token=token;state.storageListener({ytv_token:{newValue:token}},'local');};
  return state;
