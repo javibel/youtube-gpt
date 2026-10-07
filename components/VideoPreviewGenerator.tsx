@@ -918,6 +918,7 @@ export default function VideoPreviewGenerator({
   const interaction = useMemo(() => ({
     run: createRetryOperation(() => crypto.randomUUID()), storyboard: null as string | null,
     busy: false, active: true, cancel: null as (() => void) | null, videoUrl: null as string | null,
+    upload: null as { blob: Blob; key: string; saved: boolean; flight: Promise<void> | null } | null,
   }), [session?.user?.id, sessionStatus, scriptContent, generationId, scriptTitle, lang]);
   const activeInteraction = useRef<typeof interaction | null>(interaction);
   activeInteraction.current = interaction;
@@ -932,6 +933,7 @@ export default function VideoPreviewGenerator({
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
   const [showControls, setShowControls] = useState(false);
   const [isPlaying, setIsPlaying]       = useState(true);
 
@@ -940,7 +942,7 @@ export default function VideoPreviewGenerator({
   useEffect(() => {
     interaction.active = true;
     activeInteraction.current = interaction;
-    setStatus('idle'); setVideoUrl(null); setProgress(0); setErrorMsg('');
+    setStatus('idle'); setVideoUrl(null); setProgress(0); setErrorMsg(''); setSaveStatus('idle');
     return () => {
       interaction.active = false;
       interaction.cancel?.();
@@ -949,6 +951,35 @@ export default function VideoPreviewGenerator({
       if (activeInteraction.current === interaction) activeInteraction.current = null;
     };
   }, [interaction]);
+
+  const saveToAccount = useCallback(async () => {
+    const current = () => activeInteraction.current === interaction && interaction.active;
+    const upload = interaction.upload;
+    if (!current() || !upload || upload.saved) return;
+    if (upload.flight) return upload.flight;
+    setSaveStatus('saving');
+    upload.flight = (async () => {
+      try {
+        const form = new FormData();
+        form.append('video', upload.blob, 'preview.webm');
+        form.append('title', scriptTitle);
+        const response = await fetch('/api/video-previews', {
+          method: 'POST', headers: { 'Idempotency-Key': upload.key }, body: form,
+        });
+        if (!response.ok) throw new Error('Preview save failed');
+        const data = await response.json();
+        if (typeof data?.id !== 'string' || !data.id.trim() || data.id.length > 256) throw new Error('Invalid preview acknowledgement');
+      } catch {
+        if (current()) setSaveStatus('error');
+        return;
+      }
+      if (!current()) return;
+      upload.saved = true;
+      setSaveStatus('saved');
+      onSaved?.();
+    })();
+    try { await upload.flight; } finally { upload.flight = null; }
+  }, [interaction, scriptTitle, onSaved]);
 
   const generate = useCallback(async () => {
     const current = () => activeInteraction.current === interaction && interaction.active;
@@ -1089,6 +1120,7 @@ export default function VideoPreviewGenerator({
           interaction.videoUrl = URL.createObjectURL(blob);
           setVideoUrl(interaction.videoUrl);
           setStatus('done'); setProgress(100);
+          interaction.upload = { blob, key: crypto.randomUUID(), saved: false, flight: null };
 
           // Save to IndexedDB (local, for immediate re-access)
           try {
@@ -1096,20 +1128,8 @@ export default function VideoPreviewGenerator({
           } catch { /* non-critical */ }
           if (!current()) return;
 
-          // Save to DB — binary FormData (no base64 overhead)
-          try {
-            const form = new FormData();
-            form.append('video', blob, 'preview.webm');
-            form.append('title', scriptTitle);
-            const saveRes = await fetch('/api/video-previews', { method: 'POST', body: form });
-            if (!saveRes.ok) {
-              const errText = await saveRes.text().catch(() => '');
-              console.error('[VideoPreview] save failed', saveRes.status, errText);
-            }
-          } catch (err) { console.error('[VideoPreview] save error', err); }
-
-          if (!current()) return;
-          onSaved?.();
+          // A rendered/downloadable video is distinct from a confirmed account save.
+          await saveToAccount();
         } finally { interaction.busy = false; }
       };
 
@@ -1214,7 +1234,7 @@ export default function VideoPreviewGenerator({
       if (error instanceof StoryboardRequestError && error.limitReason) onLimitReached?.(error.limitReason);
       interaction.cancel?.();
     } finally { if (!recordingStarted) interaction.busy = false; }
-  }, [interaction, sessionStatus, session?.user?.id, scriptContent, generationId, scriptTitle, lang, onGenerated, onSaved, onLimitReached]);
+  }, [interaction, sessionStatus, session?.user?.id, scriptContent, generationId, scriptTitle, lang, onGenerated, saveToAccount, onLimitReached]);
 
   const handleDownload = () => {
     if (!videoUrl) return;
@@ -1231,10 +1251,11 @@ export default function VideoPreviewGenerator({
   };
 
   const reset = () => {
-    if (interaction.busy) return;
+    if (interaction.busy || interaction.upload?.flight) return;
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     interaction.videoUrl = null;
-    setStatus('idle'); setVideoUrl(null); setProgress(0); setErrorMsg('');
+    interaction.upload = null;
+    setStatus('idle'); setVideoUrl(null); setProgress(0); setErrorMsg(''); setSaveStatus('idle');
   };
 
   const { remaining } = checkRateLimit();
@@ -1446,6 +1467,17 @@ export default function VideoPreviewGenerator({
             <p role="alert" className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>{errorMsg}</p>
           )}
 
+          {status === 'done' && saveStatus === 'error' && (
+            <p role="alert" className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>
+              {t('Vídeo listo para descargar. No se pudo confirmar el guardado en tu cuenta.', 'Video ready to download. Saving to your account could not be confirmed.')}
+            </p>
+          )}
+          {status === 'done' && (saveStatus === 'saving' || saveStatus === 'saved') && (
+            <p role="status" className="font-mono-jb text-[13px]">
+              {saveStatus === 'saving' ? t('Guardando en tu cuenta…', 'Saving to your account…') : t('Guardado en tu cuenta.', 'Saved to your account.')}
+            </p>
+          )}
+
           {status === 'idle' && (
             <p className="font-mono-jb text-[13px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
               {t(`${remaining} generaciones restantes hoy`, `${remaining} remaining today`)}
@@ -1471,7 +1503,12 @@ export default function VideoPreviewGenerator({
                   style={{ background: '#00D9FF', borderColor: '#00D9FF', color: '#000' }}>
                   ⬇️ {t('Descargar', 'Download')}
                 </button>
-                <button onClick={reset} className="btn-offset btn-offset-white py-3 px-4 text-[13px] font-display">
+                {saveStatus === 'error' && (
+                  <button onClick={saveToAccount} className="btn-offset btn-offset-white py-3 px-4 text-[13px] font-display">
+                    {t('Reintentar guardado', 'Retry saving')}
+                  </button>
+                )}
+                <button onClick={reset} disabled={saveStatus === 'saving'} className="btn-offset btn-offset-white py-3 px-4 text-[13px] font-display">
                   ↺ {t('Regenerar', 'Regenerate')}
                 </button>
               </>

@@ -7,7 +7,7 @@ const story='0s-6s: HOOK | A creator opens a notebook\n6s-12s: IDEA | A creator 
 const success=()=>({ok:true,status:200,json:async()=>({storyboard:story})});
 function harness(){
  const cells=[],effects=[],requests=[],recorders=[],uploads=[],localSaves=[],callbacks=[],images=[],frames=new Map(),timers=new Map(),storage=new Map();let index=0,dirty=false,identity=0,clockId=0,tracksStopped=0;
- const state={user:'fixture-one',auth:'authenticated',scriptContent:'Synthetic original script',generationId:'synthetic-generation',scriptTitle:'Synthetic title',lang:'es',send:async()=>success(),iconsReady:true,supported:true,save:async()=>{}};
+ const state={user:'fixture-one',auth:'authenticated',scriptContent:'Synthetic original script',generationId:'synthetic-generation',scriptTitle:'Synthetic title',lang:'es',send:async()=>success(),iconsReady:true,supported:true,save:async()=>{},upload:async()=>({ok:true,status:200,json:async()=>({id:'synthetic-preview'})})};
  let signalIcons;const iconsStarted=new Promise(resolve=>{signalIcons=resolve;});
  const changed=(a,b)=>!a||a.length!==b.length||a.some((value,i)=>!Object.is(value,b[i]));
  const hooks={
@@ -30,7 +30,7 @@ function harness(){
   localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
   requestAnimationFrame:fn=>{const id=++clockId;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id),
   setTimeout:fn=>{const id=++clockId;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
-  fetch:async(url,init)=>{if(url==='/api/video-previews'){uploads.push(init);return {ok:true};}assert.equal(url,'/api/storyboard');assert.equal(init.method,'POST');requests.push({...init,owner:state.user});return state.send(init);},console:{error(){},warn(){},log(){}},
+  fetch:async(url,init)=>{if(url==='/api/video-previews'){uploads.push(init);return state.upload(init);}assert.equal(url,'/api/storyboard');assert.equal(init.method,'POST');requests.push({...init,owner:state.user});return state.send(init);},console:{error(){},warn(){},log(){}},
  });
  function nodes(tree){if(Array.isArray(tree))return tree.flatMap(nodes);if(!tree||typeof tree!=='object')return [];return [tree,...nodes(tree.props?.children)];}
  const text=value=>Array.isArray(value)?value.map(text).join(' '):value&&typeof value==='object'?text(value.props?.children):String(value??'');
@@ -40,6 +40,8 @@ function harness(){
   daily:()=>Number(storage.get('ytv_vp_'+new Date().toISOString().split('T')[0])??0),setDaily:n=>storage.set('ytv_vp_'+new Date().toISOString().split('T')[0],String(n)),
   finish:async(size=2500)=>{const r=recorders.at(-1);r.ondataavailable({data:new Blob(['x'.repeat(size)])});await r.stop();render();},
   reset:()=>nodes(render()).find(n=>n.type==='button'&&/Regenerar|Regenerate/.test(text(n))).props.onClick(),
+  saveHandler:()=>nodes(render()).find(n=>n.type==='button'&&/Reintentar guardado|Retry saving/.test(text(n))).props.onClick,
+  retrySave:()=>nodes(render()).find(n=>n.type==='button'&&/Reintentar guardado|Retry saving/.test(text(n))).props.onClick(),
   close:()=>nodes(render()).find(n=>n.type==='button'&&/Cerrar|Close/.test(text(n))).props.onClick(),
   unmount:()=>cells.forEach(c=>c?.cleanup?.()),strictEffects:()=>{render();for(const cell of cells)if(cell.fn){cell.cleanup?.();cell.cleanup=cell.fn();}},
   iconsStarted:()=>iconsStarted,loadIcons:()=>images.forEach(img=>{img.complete=true;img.naturalWidth=64;img.onload?.();}),stopped:()=>tracksStopped,

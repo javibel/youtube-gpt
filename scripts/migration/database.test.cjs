@@ -19,6 +19,7 @@ const results=[];
  assert.equal(identity.db,'ytubviral_migration_test');
  assert.equal(path.resolve(identity.directory).toLowerCase(),path.resolve(checked.paths.database).toLowerCase());
  results.push('isolated database identity');
+ await require('./video-preview-database.cjs')(prisma,results);
  const email='contract-'+randomUUID()+'@example.invalid';
  const user=await prisma.user.create({data:{email,name:'Synthetic contract test'}});
  try {

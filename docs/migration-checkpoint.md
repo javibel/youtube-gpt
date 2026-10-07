@@ -177,3 +177,17 @@ The guarded HTTP smoke now has six checks. Authenticated cancellation with the
 synthetic fixture account returns 400 before any payment facade operation
 because it has no provider customer ID. The temporary loopback server was
 stopped and port 4300 was confirmed closed. This is not a real cancellation.
+
+The Video Tips screen now distinguishes a downloadable recording from an
+acknowledged account save. Failed or malformed upload acknowledgements expose
+Retry saving; the same binary Blob and retry key are reused without another AI
+request, recording or daily render allowance. Account/input changes and closing
+discard late UI acknowledgements. IndexedDB caching is a separate best effort.
+The upload API authenticates the account, compares exact bytes/title/MIME on
+retry and atomically creates/prunes previews under a PostgreSQL account-row
+lock. Existing callers without a key remain supported. Replay is bounded by
+retention of the last three previews and browser interaction memory; it does
+not provide permanent deduplication after deletion or reload. Synthetic tests
+exercise the actual component/API with designated PostgreSQL, concurrent saves,
+lost acknowledgements and pruning rollback. They do not validate browser codecs,
+operational authentication, production storage or real model acceptance.
