@@ -2,6 +2,15 @@
 
 const API_BASE = 'https://ytubviral.com';
 const FETCH_TIMEOUT_MS = 15000;
+// Context binds retry keys to the current token; no token is exposed to content scripts.
+let generationContext=null;
+function syncGenerationContext(token){
+  if(!generationContext||generationContext.token!==token)generationContext={id:crypto.randomUUID(),token,attempts:new Map()};
+  return generationContext;
+}
+chrome.storage.onChanged.addListener((changes,area)=>{
+  if(area==='local'&&Object.hasOwn(changes,'ytv_token'))generationContext=null;
+});
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   handleMessage(msg)
@@ -175,31 +184,42 @@ async function handleMessage(msg) {
       return data;
     }
 
+    case 'GENERATION_CONTEXT': {
+      const token=await getToken();if(!token)throw Error('not_logged_in');
+      const context=syncGenerationContext(token);return {context:context.id};
+    }
     case 'GENERATE': {
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/generate`, {
-          method: 'POST',
-          // Also a Claude call — long templates (scripts, channel_insight) can exceed 15s.
-          timeoutMs: 55000,
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            template: msg.template,
-            inputs: msg.inputs,
-            lang: msg.lang || lang,
-          }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      // Códigos crudos (quota_free / quota_pro / pro_required) para que content.js pinte
-      // una tarjeta distinta por caso: quota_free es el momento de conversión, quota_pro NO
-      // debe ofrecer "hazte Pro" a quien ya paga.
-      if (!res.ok) {
-        if (data.code) { const e = new Error(data.code); e.limit = data.limit; throw e; }
-        throw new Error(data.error || (lang === 'en' ? 'Content generation error' : 'Error al generar contenido'));
+      const token=await getToken();if(!token)throw Error('not_logged_in');
+      const context=syncGenerationContext(token);
+      if(msg.generationContext!==context.id)throw Error('generation_context_changed');
+      if(typeof msg.operationKey!=='string'||!/^ext-[a-f0-9-]{36}$/.test(msg.operationKey))throw Error('generation_input_changed');
+      if(typeof msg.template!=='string'||!msg.inputs||typeof msg.inputs!=='object'||Array.isArray(msg.inputs)||Object.values(msg.inputs).some(v=>typeof v!=='string')||!['en','es'].includes(msg.lang))throw Error('generation_input_changed');
+      const body=JSON.stringify({template:msg.template,inputs:msg.inputs,lang:msg.lang});
+      const identity=JSON.stringify([msg.template,Object.keys(msg.inputs).sort().map(k=>[k,msg.inputs[k]]),msg.lang]);
+      const known=context.attempts.get(msg.operationKey);
+      if(known&&known.identity!==identity)throw Error('generation_input_changed');
+      if(known?.flight)return known.flight;
+      if(!known&&context.attempts.size>=64){
+        const delivered=[...context.attempts].find(([,value])=>value.complete&&!value.flight);
+        if(delivered)context.attempts.delete(delivered[0]);else throw Error('generation_pending_limit');
       }
-      return data;
+      const attempt=known||{identity,flight:null};context.attempts.set(msg.operationKey,attempt);
+      let timer;const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('generation_unconfirmed')),55000);});
+      const work=(async()=>{
+        let res,data;
+        try{({res,data}=await apiFetch(API_BASE+'/api/generate',{method:'POST',timeoutMs:55000,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'Idempotency-Key':msg.operationKey},body}));}
+        catch{throw Error('generation_unconfirmed');}
+        const currentToken=await getToken();
+        if(generationContext!==context||currentToken!==token)throw Error('generation_context_changed');
+        if(!res.ok){
+          if(data.code){const error=Error(data.code);error.limit=data.limit;throw error;}
+          throw Error('generation_unconfirmed');
+        }
+        if(!data||typeof data.content!=='string'||!data.content.trim()||data.content.length>64000||typeof data.truncated!=='boolean')throw Error('generation_unconfirmed');
+        attempt.complete=true;return data;
+      })();
+      attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);attempt.flight=null;});
+      return attempt.flight;
     }
 
     case 'SEO_QUICK': {

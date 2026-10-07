@@ -92,7 +92,7 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === 'YTV_RECHECK_IDEAS') { mountShell(); openShell('ideas'); }
 });
 
-function sendMsg(msg) {
+function sendRawMsg(msg) {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(msg, response => {
       if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
@@ -105,6 +105,47 @@ function sendMsg(msg) {
     });
   });
 }
+
+// Business retry keys live only in this page; never authentication or recovery authority.
+const generationAttempts=new Map();
+function sendMsg(msg){return msg.type==='GENERATE'?sendGeneration(msg):sendRawMsg(msg);}
+function sendGeneration(msg){
+  if(typeof msg.template!=='string'||!msg.inputs||typeof msg.inputs!=='object'||Array.isArray(msg.inputs)||Object.values(msg.inputs).some(v=>typeof v!=='string'))return Promise.reject(Error('generation_input_changed'));
+  const snapshot={template:msg.template,inputs:{...msg.inputs},lang:msg.lang||_lang};
+  const identity=JSON.stringify([snapshot.template,Object.keys(snapshot.inputs).sort().map(k=>[k,snapshot.inputs[k]]),snapshot.lang]);
+  let slot=generationAttempts.get(snapshot.template);
+  if(slot&&slot.identity!==identity)return Promise.reject(Error('generation_input_changed'));
+  if(!slot){
+    if(generationAttempts.size>=16)return Promise.reject(Error('generation_pending_limit'));
+    slot={identity,snapshot,key:'ext-'+crypto.randomUUID(),context:null,flight:null};generationAttempts.set(snapshot.template,slot);
+  }
+  if(slot.flight)return slot.flight;
+  const current=slot;let timer;
+  const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('generation_unconfirmed')),65000);});
+  const work=(async()=>{
+    const context=await sendRawMsg({type:'GENERATION_CONTEXT'});
+    if(!context||typeof context.context!=='string'||!context.context)throw Error('generation_context_changed');
+    if(generationAttempts.get(snapshot.template)!==current)throw Error('generation_discarded');
+    if(current.context!==null&&current.context!==context.context)throw Error('generation_context_changed');
+    current.context=context.context;
+    const result=await sendRawMsg({type:'GENERATE',...current.snapshot,operationKey:current.key,generationContext:current.context});
+    const after=await sendRawMsg({type:'GENERATION_CONTEXT'});
+    if(after?.context!==current.context)throw Error('generation_context_changed');
+    return result;
+  })();
+  current.flight=Promise.race([work,deadline]).then(result=>{
+    if(generationAttempts.get(snapshot.template)!==current)throw Error('generation_discarded');
+    if(!result||typeof result.content!=='string'||!result.content.trim()||typeof result.truncated!=='boolean')throw Error('generation_unconfirmed');
+    generationAttempts.delete(snapshot.template);return result;
+  }).finally(()=>{clearTimeout(timer);current.flight=null;});
+  return current.flight;
+}
+document.addEventListener('click',event=>{
+  const button=event.target.closest?.('[data-ytv-discard-generation]');
+  if(!button)return;
+  generationAttempts.clear();
+  button.closest('.ytv-error').textContent=t('Intento descartado. Una nueva generación puede consumir de nuevo.','Attempt discarded. A new generation may consume again.');
+});
 
 function waitForEl(selector, timeout = 6000) {
   return new Promise((resolve, reject) => {
@@ -664,6 +705,9 @@ function renderLoading(text) {
 }
 
 function renderError(msg) {
+  if(['generation_unconfirmed','generation_input_changed','generation_context_changed','generation_pending_limit','generation_discarded'].includes(msg)){
+    return '<div class="ytv-error">'+t('Resultado sin confirmar. Vuelve a pulsar el mismo botón con la entrada original. Si cambió la cuenta o se reinició la extensión, descarta el intento antes de empezar otro.','Result unconfirmed. Press the same button with the original input. If the account changed or the extension restarted, discard this attempt before starting another.')+'<br><button class="ytv-btn ytv-btn-sm" data-ytv-discard-generation>'+t('Descartar intento (puede haber consumo previo)','Discard attempt (earlier usage may apply)')+'</button></div>';
+  }
   if (msg === 'not_logged_in') {
     return `<div class="ytv-error">${t('Inicia sesión en el icono de la extensión para usar YTubViral.', 'Sign in via the extension icon to use YTubViral.')}</div>`;
   }
