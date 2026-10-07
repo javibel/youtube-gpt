@@ -4,8 +4,8 @@ const {load}=require('./route-harness.cjs'),{createTaskFactory}=require('../../l
 module.exports=async function({config,prefix,createRegistry,createControlStore,createTaskRunner,database,cfg,budget,stats}){
  const {PrismaClient}=require('@prisma/client');const prisma=new PrismaClient({datasources:{db:{url:config.databaseUrl}}});
  const registry=createRegistry();let calls=0,identity,extension=false,failSave=true,parallel=false,arrived=0,release,quotaLimit=10;
- const barrier=new Promise(r=>release=r),text='Synthetic partial output';
- registry.register(createAnthropicAdapter({models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},credentialRef:'test:fixture',preflight:async()=>({upperBoundMicros:60,currency:'EUR',priceVersion:'test-v1'}),priceUsage:async()=>({costMicros:7,currency:'EUR',priceVersion:'test-v1',estimated:true}),transport:{create:async()=>{calls++;return {content:[{type:'text',text}],stop_reason:'max_tokens',usage:{input_tokens:10,output_tokens:5}};}}}));
+ const barrier=new Promise(r=>release=r),messages=[];let text='Synthetic partial output';
+ registry.register(createAnthropicAdapter({models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},credentialRef:'test:fixture',preflight:async()=>({upperBoundMicros:60,currency:'EUR',priceVersion:'test-v1'}),priceUsage:async()=>({costMicros:7,currency:'EUR',priceVersion:'test-v1',estimated:true}),transport:{create:async body=>{calls++;messages.push(body.messages);return {content:[{type:'text',text}],stop_reason:'max_tokens',usage:{input_tokens:10,output_tokens:5}};}}}));
  const store=role=>createControlStore(database(role),registry),selection=cfg('generic-generate-retry','anthropic');selection.profiles.default={'content.generate':{providerId:'anthropic',model:'test-model'}};
  const previous=(await store('reader').active()).revision,users=[];
  try {
@@ -60,6 +60,19 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
    assert.equal((await prisma.user.findUnique({where:{id:users[1].id}})).onboardingStep,0);
   } finally {welcome.unmount();}
   identity=users[1].id;extension=true;context=null;assert.equal((await invoke()).status,200);assert.equal(calls,2);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(await prisma.generation.count({where:{userId:users[0].id}}),1);assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),14);
+  // Long continuation through the original hook, API, runtime and real rows.
+  identity=users[0].id;extension=false;quotaLimit=10;
+  await prisma.$executeRaw`UPDATE rate_limits SET hits=0 WHERE key=${'generate:'+identity}`;
+  const long=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang});
+  const base='x'.repeat(31990),delta='y'.repeat(20);let loseContinuation=true;
+  long.state.send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/generate',init));assert.equal(response.status,200);if(JSON.parse(init.body).inputs._previousContent&&loseContinuation){loseContinuation=false;quotaLimit=3;throw Error('Synthetic long continuation HTTP ack lost after saved history');}return response;};
+  try {
+   text=base;await long.view().generate();assert.equal(long.view().output,base);
+   text=delta;await long.view().continueGeneration();assert.equal(long.view().output,base);assert.equal(long.view().error,'unconfirmed');assert.equal(calls,4);assert.equal(messages.at(-1)[1].content[0].text,base);
+   const continuation=long.requests[1];await long.view().retryGeneration();assert.equal(long.requests[2].body,continuation.body);assert.equal(long.requests[2].headers['Idempotency-Key'],continuation.headers['Idempotency-Key']);assert.equal(long.view().output,base+delta);assert.equal(long.state.confirmed.length,2);assert.equal(calls,4);
+   const row=await prisma.generation.findFirst({where:{userId:identity,output:base+delta}});assert.ok(row);assert.equal(row.inputs._previousContent,base);assert.equal(row.inputs._migrationRetry.content,delta);
+   await long.view().continueGeneration();assert.equal(long.view().error,'length');assert.equal(long.requests.length,3);assert.equal(long.view().output,base+delta);assert.equal(await prisma.generation.count({where:{userId:identity}}),3);assert.equal(await prisma.generation.count({where:{userId:users[1].id}}),1);assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),28);
+  } finally {long.unmount();}
  } finally {
   for(const user of users){await prisma.$executeRaw`DELETE FROM rate_limits WHERE key=${'generate:'+user.id}`;await prisma.user.delete({where:{id:user.id}});}
   if((await store('reader').active()).revision!==previous)await store('activator').activate(previous,{expectedRevision:selection.revision,actor:'test-admin',reason:'Restore prior synthetic selection'});await prisma.$disconnect();

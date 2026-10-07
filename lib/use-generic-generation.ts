@@ -29,8 +29,8 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
     if (scope.flight) return scope.flight;
     if (!scope.pending) {
       if (retryOnly || (action === 'continue' && (!scope.output || !scope.truncated))) return Promise.resolve();
-      // The API still limits every input, including continuation, to 500 characters.
-      if (action === 'continue' && scope.output.length > 500) {update({error:'length',retry:false});return Promise.resolve();}
+      // Match the API's retained-context ceiling; do not crop the confirmed base.
+      if (action === 'continue' && scope.output.length > 32_000) {update({error:'length',retry:false});return Promise.resolve();}
       try {
         const key = crypto.randomUUID();
         const fields = JSON.parse(inputBody);

@@ -75,13 +75,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validar longitud de inputs (previene prompts gigantes y costes desorbitados)
+    // Keep ordinary form fields bounded; retained assistant context has its own
+    // explicit ceiling. Preserve it whole rather than silently trimming history.
     const MAX_INPUT_LENGTH = 500;
+    const MAX_CONTINUATION_LENGTH = 32_000;
     if (inputs && typeof inputs === 'object') {
       for (const [key, value] of Object.entries(inputs)) {
-        if (typeof value === 'string' && value.length > MAX_INPUT_LENGTH) {
+        const limit = key === '_previousContent' ? MAX_CONTINUATION_LENGTH : MAX_INPUT_LENGTH;
+        if (typeof value === 'string' && value.length > limit) {
           return Response.json(
-            { error: `El campo "${key}" es demasiado largo (máx ${MAX_INPUT_LENGTH} caracteres)` },
+            { error: `El campo "${key}" es demasiado largo (máx ${limit} caracteres)` },
             { status: 400 }
           );
         }
