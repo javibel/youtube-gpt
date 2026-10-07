@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import LimitReachedModal from '@/components/LimitReachedModal';
 import { TEMPLATES } from '@/utils/prompts';
 import { useGenericGeneration } from '@/lib/use-generic-generation';
+import { useDashboardStats } from '@/lib/use-dashboard-stats';
+import { useGeneratorChannelStatus } from '@/lib/use-generator-channel-status';
 import { useLang } from '@/components/LangProvider';
 import { toast } from '@/components/Toaster';
 import { LockIcon, VideoIcon, WarningIcon, BoltIcon, CheckIcon } from '@/components/icons';
@@ -59,15 +61,15 @@ export default function GeneratePage() {
   const [imageLoading, setLoading] = useState<boolean>(false);
   const [imageSlowHint, setSlowHint] = useState<boolean>(false);
   const [reviewNudge, setReviewNudge] = useState<boolean>(false);
-  const [ytConnected, setYtConnected] = useState<boolean | null>(null);
   const [connectNudgeDismissed, setConnectNudgeDismissed] = useState<boolean>(false);
   const [imageError, setError] = useState<string>('');
-  const [usageCount, setUsageCount] = useState<number>(0);
-  const [limit, setLimit] = useState<number>(10);
-  const [remaining, setRemaining] = useState<number | null>(null);
-  const [isPro, setIsPro] = useState<boolean>(false);
-  const [videoTipsRemaining, setVideoTipsRemaining] = useState<number | null>(null);
   const lang = useLang();
+  const accountStats = useDashboardStats(session?.user?.id,session?.user?.email,status);
+  const channelStatus = useGeneratorChannelStatus(session?.user?.id,session?.user?.email,status);
+  const planStats = accountStats.data?.stats;
+  const isPro = planStats?.isPro === true;
+  const videoTipsRemaining = planStats?.videoTipsRemaining;
+  const ytConnected = channelStatus.connected;
   const [showLimitModal, setShowLimitModal] = useState<boolean>(false);
   const [modalReason, setModalReason] = useState<'limit' | 'pro_feature' | 'video_tips_limit'>('limit');
   const [showVideoPreview, setShowVideoPreview] = useState(false);
@@ -88,8 +90,7 @@ export default function GeneratePage() {
   const textGeneration = useGenericGeneration(session?.user?.id, session?.user?.email, status,
     selectedTemplate, formData, lang, () => {
       // Confirmed continuations also create a history entry and consume a generation.
-      setUsageCount(prev => prev + 1);
-      setRemaining(prev => prev !== null ? Math.max(0,prev-1) : null);
+      void accountStats.refreshStats();
       try {
         const n=parseInt(localStorage.getItem('ytv_gen_ok') || '0',10)+1;
         localStorage.setItem('ytv_gen_ok',String(n));
@@ -117,28 +118,9 @@ export default function GeneratePage() {
     if (template) setSelectedTemplate(template);
   }, []);
 
-  useEffect(() => {
-    fetch('/api/user/stats')
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.stats) {
-          setUsageCount(data.stats.generationsThisMonth);
-          setLimit(data.stats.limit);
-          setRemaining(data.stats.remaining);
-          setIsPro(data.stats.isPro);
-          setVideoTipsRemaining(data.stats.videoTipsRemaining ?? null);
-        }
-      })
-      .catch(() => toast(lang === 'en' ? 'Could not load your plan limits. Reload the page.' : 'No se pudieron cargar los límites de tu plan. Recarga la página.', 'error'));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Gancho de retención (13/07): conectar canal es gratis desde ahora — ver
   // project_channel_connect_free.md. Se ofrece tras el primer resultado.
   useEffect(() => {
-    fetch('/api/youtube/channel').then(r => r.ok ? r.json() : null).then(d => {
-      setYtConnected(!!d?.connected);
-    }).catch(() => setYtConnected(false));
     try { if (localStorage.getItem('ytv_connect_nudge_off') === '1') setConnectNudgeDismissed(true); } catch {}
   }, []);
 
@@ -148,6 +130,8 @@ export default function GeneratePage() {
   const inputs: string[] = (currentTpl as { inputs: string[] })?.inputs ?? [];
 
   const handleSelect = (key: string) => {
+    if ((key === 'thumbnail' || (TEMPLATES[key as keyof typeof TEMPLATES] as {proOnly?:boolean})?.proOnly)
+      && (!planStats || accountStats.statsError)) {void accountStats.retryStats();return;}
     if (key === 'thumbnail' && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
     const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean };
     if (tpl?.proOnly && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
@@ -166,8 +150,9 @@ export default function GeneratePage() {
     // Video Preview: el render es client-side, pero el storyboard IA cuenta como
     // una generacion mas (26/08 — free incluye 1/mes, dentro del pool de 10).
     if (selectedTemplate === 'video_preview') {
-      if (usageCount >= limit) { setModalReason('limit'); setShowLimitModal(true); return; }
-      if (!isPro && videoTipsRemaining !== null && videoTipsRemaining <= 0) {
+      if (!planStats || accountStats.statsError) {void accountStats.retryStats();return;}
+      if (planStats.generationsThisMonth >= planStats.limit) { setModalReason('limit'); setShowLimitModal(true); return; }
+      if (!isPro && videoTipsRemaining === 0) {
         setModalReason('video_tips_limit'); setShowLimitModal(true); return;
       }
       setPreviewScript(formData.tema);
@@ -177,7 +162,8 @@ export default function GeneratePage() {
       setShowVideoPreview(true);
       return;
     }
-    if (usageCount >= limit) { setModalReason('limit'); setShowLimitModal(true); return; }
+    if (!planStats || accountStats.statsError) {void accountStats.retryStats();return;}
+    if (planStats.generationsThisMonth >= planStats.limit) { setModalReason('limit'); setShowLimitModal(true); return; }
     setLoading(true);
     setError('');
     setThumbnailUrl('');
@@ -208,8 +194,7 @@ export default function GeneratePage() {
         }
         setThumbnailUrl(data.imageUrl);
         setThumbnailPrompt(data.prompt);
-        setUsageCount((prev) => prev + 1);
-        setRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
+        void accountStats.refreshStats();
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
@@ -236,8 +221,8 @@ export default function GeneratePage() {
     );
   }
 
-  const isBusiness = limit >= 999999;
-  const remainingDisplay = remaining ?? Math.max(0, limit - usageCount);
+  const isBusiness = planStats?.plan === 'business';
+  const remainingDisplay = planStats?.remaining;
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
@@ -259,12 +244,24 @@ export default function GeneratePage() {
           </div>
           <div className="yv-page-header__actions">
             <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-              {isBusiness
+              {!planStats ? (accountStats.statsError ? t('Plan sin confirmar', 'Plan unconfirmed') : t('Comprobando plan…', 'Checking plan…')) : isBusiness
                 ? <><span className="text-white font-semibold">∞</span> {t('Ilimitado', 'Unlimited')}</>
                 : <>{t('Te quedan', 'You have')} <span className="text-white font-semibold">{remainingDisplay}</span> {t('créditos', 'credits')}</>}
             </p>
           </div>
         </header>
+
+        {accountStats.statsError && <div role="alert" className="yv-card p-4 mb-4">
+          <p>{planStats ? t('No se pudo actualizar el plan. Los últimos datos confirmados pueden estar desactualizados.', 'Could not refresh your plan. Last confirmed data may be outdated.') : t('No se pudo comprobar tu plan. No hay límites confirmados.', 'Could not check your plan. Limits are unconfirmed.')}</p>
+          <button onClick={accountStats.retryStats} disabled={accountStats.statsRefreshing}>{t('Reintentar plan', 'Retry plan')}</button>
+        </div>}
+        {!accountStats.statsError && accountStats.statsRefreshing && planStats && <p role="status">{t('Actualizando plan…', 'Refreshing plan…')}</p>}
+        {channelStatus.error && <div role="alert" className="yv-card p-4 mb-4">
+          <p>{ytConnected === null ? t('No se pudo comprobar la conexión del canal.', 'Could not check channel connection.') : t('No se pudo actualizar la conexión. Se conserva el último estado confirmado.', 'Could not refresh connection. Last confirmed status is retained.')}</p>
+          <button onClick={channelStatus.retryChannel} disabled={channelStatus.loading}>{t('Reintentar canal', 'Retry channel')}</button>
+        </div>}
+        {channelStatus.loading && ytConnected === null && <p role="status">{t('Comprobando canal…', 'Checking channel…')}</p>}
+        {channelStatus.cached && ytConnected === true && <p>{t('Conexión según el último estado guardado del canal.', 'Connection reflects the last stored channel status.')}</p>}
 
         {/* Template picker */}
         <div className="mb-8">
@@ -274,7 +271,7 @@ export default function GeneratePage() {
             {([...Object.keys(TEMPLATES).filter((k) => k !== 'reply'), 'video_preview'] as string[]).map((key) => {
               const tplMeta = TPL_META[key] ?? { icon: '/icons/description.webp', color: '#e84d5b', est: '~' };
               const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean } | undefined;
-              const locked = key === 'thumbnail' ? !isPro : (tpl?.proOnly && !isPro);
+              const locked = !!planStats && (key === 'thumbnail' ? !isPro : (tpl?.proOnly && !isPro));
               const active = selectedTemplate === key;
               const isVideoPreview = key === 'video_preview';
               return (
@@ -462,7 +459,7 @@ export default function GeneratePage() {
                   </>
                 )}
               </button>
-              {isBusiness ? (
+              {!planStats ? <p>{accountStats.statsError ? t('Plan sin confirmar', 'Plan unconfirmed') : t('Comprobando plan…', 'Checking plan…')}</p> : isBusiness ? (
                 <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
                   <span className="text-white font-semibold">∞</span> {t('Ilimitado', 'Unlimited')}
                 </p>
@@ -478,7 +475,7 @@ export default function GeneratePage() {
             </div>
 
             {/* Gancho de retención: conectar canal (gratis) — prioridad sobre el nudge de reseña */}
-            {output && !loading && ytConnected === false && !connectNudgeDismissed && (
+            {output && !loading && ytConnected === false && !channelStatus.error && !connectNudgeDismissed && (
               <div className="yv-card p-5 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(124,255,0,0.25)' }}>
                 <p className="text-sm" style={{ color: 'var(--yv-text-2)' }}>
                   {t('Conecta tu canal (gratis) y cada mañana recibes 5 ideas de vídeo calculadas con tus datos reales y las tendencias de tu nicho.', "Connect your channel (free) and get 5 video ideas every morning, calculated from your real data and your niche's trends.")}
@@ -498,7 +495,7 @@ export default function GeneratePage() {
             )}
 
             {/* Invitación a reseña real tras 3 generaciones (B5) */}
-            {reviewNudge && output && !loading && !(ytConnected === false && !connectNudgeDismissed) && (
+            {reviewNudge && output && !loading && !(ytConnected === false && !channelStatus.error && !connectNudgeDismissed) && (
               <div className="yv-card p-5 flex items-center justify-between gap-4 flex-wrap" style={{ borderColor: 'rgba(255,232,0,0.25)' }}>
                 <p className="text-sm" style={{ color: 'var(--yv-text-2)' }}>
                   {t('¿Te está sirviendo YTubViral? Una reseña honesta (buena o mala) nos ayuda más que nada.', 'Is YTubViral helping you? An honest review (good or bad) helps us more than anything.')}
@@ -695,9 +692,7 @@ export default function GeneratePage() {
             onClose={() => setShowVideoPreview(false)}
             onSaved={() => setPreviewSaved(true)}
             onGenerated={() => {
-              setUsageCount((prev) => prev + 1);
-              setRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
-              if (!isPro) setVideoTipsRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
+              void accountStats.refreshStats();
             }}
             onLimitReached={(reason) => {
               setShowVideoPreview(false);

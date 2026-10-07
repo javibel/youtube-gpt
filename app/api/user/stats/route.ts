@@ -35,7 +35,7 @@ function calcStreak(dates: Date[]): number {
 export async function GET() {
   const session = await auth();
 
-  if (!session?.user?.email) {
+  if (!session?.user?.id || !session.user.email) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
@@ -47,6 +47,9 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+    if (user.id !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
     const now = new Date();
@@ -86,7 +89,7 @@ export async function GET() {
     const streak = calcStreak(allDates.map((g) => g.createdAt));
 
     return NextResponse.json({
-      user: { email: user.email, name: user.name, createdAt: user.createdAt },
+      user: { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt },
       stats: {
         totalGenerations,
         generationsThisMonth,

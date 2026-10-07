@@ -4,10 +4,12 @@ const {load}=require('./route-harness.cjs'),{harness}=require('./dashboard-stats
 module.exports=async function(prisma,results){
  const users=await Promise.all([1,2].map(i=>prisma.user.create({data:{email:'dashboard-stats-'+randomUUID()+'@example.invalid',name:'Synthetic statistics '+i}})));
  let email=users[0].email;const h=harness(),plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
- const routeFor=db=>load('app/api/user/stats/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>email?{user:{email}}:null},'@/lib/prisma':{prisma:db},'@/lib/plans':plans});
+ const routeFor=(db,sessionId)=>load('app/api/user/stats/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>email?{user:{id:sessionId===undefined?(users.find(u=>u.email===email)?.id??'absent-fixture'):sessionId,email}}:null},'@/lib/prisma':{prisma:db},'@/lib/plans':plans});
  const route=routeFor(prisma);
  try {
   const now=new Date(),older=new Date(Date.now()-90*86400000);
+  const mismatch=routeFor(prisma,users[1].id);assert.equal((await mismatch.GET()).status,401);results.push('statistics route rejects email/ID session disagreement before generation or subscription reads');
+  const missingId=routeFor(new Proxy({}, {get(){throw Error('Anonymous storage access');}}),null);assert.equal((await missingId.GET()).status,401);results.push('statistics route requires both session ID and email before PostgreSQL access');
   await prisma.generation.createMany({data:[{userId:users[0].id,template:'title',inputs:{},output:'Synthetic current',createdAt:now},{userId:users[0].id,template:'video_preview',inputs:{},output:'Synthetic tip',createdAt:now},{userId:users[0].id,template:'title',inputs:{},output:'Synthetic older',createdAt:older},{userId:users[1].id,template:'title',inputs:{},output:'Other synthetic',createdAt:now}].map(row=>({...row,tokensUsed:0}))});
   h.state.user=users[0].id;h.state.email=email;h.state.send=()=>route.GET();await h.ready();const first=h.view().data;
   assert.equal(first.user.email,email);assert.equal(first.stats.totalGenerations,3);assert.equal(first.stats.generationsThisMonth,2);assert.equal(first.stats.remaining,8);assert.equal(first.stats.plan,'free');assert.equal((await (await route.GET()).json()).stats.videoTipsRemaining,0);results.push('actual statistics hook/original route/PostgreSQL distinguishes own total/monthly counts and free video-tip allowance');

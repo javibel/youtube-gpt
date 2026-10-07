@@ -19,6 +19,7 @@ const results=[];
  assert.equal(identity.db,'ytubviral_migration_test');
  assert.equal(path.resolve(identity.directory).toLowerCase(),path.resolve(checked.paths.database).toLowerCase());
  results.push('isolated database identity');
+ await require('./generator-account-database.cjs')(prisma,results);
  await require('./dashboard-billing-database.cjs')(prisma,results);
  await require('./video-preview-database.cjs')(prisma,results);
  await require('./video-preview-history-database.cjs')(prisma,results);
