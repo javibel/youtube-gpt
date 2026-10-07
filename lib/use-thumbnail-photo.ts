@@ -75,12 +75,13 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     if(scope.flight)return scope.flight;
     const original = snapshot();
     if(!original.originalFile || original.removed || (original.error === 'unconfirmed' && !explicitRetry))return Promise.resolve(false);
+    const originalFile = original.originalFile;
     const op = begin(),controller = new AbortController();scope.controller = controller;let timedOut = false;
     const deadline = setTimeout(() => {timedOut = true;controller.abort();},45_000);scope.deadline = deadline;
     const flight = Promise.resolve().then(async () => {
       try {
         if(!live(op))return false;
-        const body = new FormData();body.append('file',original.originalFile,'photo.png');
+        const body = new FormData();body.append('file',originalFile,'photo.png');
         const response = await fetch('/api/remove-bg',{method:'POST',body,signal:controller.signal});
         if(!live(op))return false;
         if(timedOut || !response.ok)throw Error('Removal unconfirmed');
