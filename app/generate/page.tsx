@@ -6,7 +6,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useRouter } from 'next/navigation';
 import LimitReachedModal from '@/components/LimitReachedModal';
 import { TEMPLATES } from '@/utils/prompts';
-import { callClaudeAPI, continueGeneration } from '@/utils/claudeAPI';
+import { useGenericGeneration } from '@/lib/use-generic-generation';
 import { useLang } from '@/components/LangProvider';
 import { toast } from '@/components/Toaster';
 import { LockIcon, VideoIcon, WarningIcon, BoltIcon, CheckIcon } from '@/components/icons';
@@ -56,15 +56,12 @@ export default function GeneratePage() {
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>('title');
   const [formData, setFormData] = useState<Record<string, string>>({ tema: '', tono: 'viral', duracion: '10', plataforma: 'youtube', estilo: 'viral', num_videos: '5', nicho: '', keywords: '', cta: '' });
-  const [output, setOutput] = useState<string>('');
-  const [truncated, setTruncated] = useState<boolean>(false);
-  const [continuing, setContinuing] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [slowHint, setSlowHint] = useState<boolean>(false);
+  const [imageLoading, setLoading] = useState<boolean>(false);
+  const [imageSlowHint, setSlowHint] = useState<boolean>(false);
   const [reviewNudge, setReviewNudge] = useState<boolean>(false);
   const [ytConnected, setYtConnected] = useState<boolean | null>(null);
   const [connectNudgeDismissed, setConnectNudgeDismissed] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
+  const [imageError, setError] = useState<string>('');
   const [usageCount, setUsageCount] = useState<number>(0);
   const [limit, setLimit] = useState<number>(10);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -73,7 +70,6 @@ export default function GeneratePage() {
   const lang = useLang();
   const [showLimitModal, setShowLimitModal] = useState<boolean>(false);
   const [modalReason, setModalReason] = useState<'limit' | 'pro_feature' | 'video_tips_limit'>('limit');
-  const [copied, setCopied] = useState(false);
   const [showVideoPreview, setShowVideoPreview] = useState(false);
   const [videoPreviewId, setVideoPreviewId] = useState('');
   const [previewScript, setPreviewScript] = useState('');
@@ -88,6 +84,25 @@ export default function GeneratePage() {
   const [removingBg, setRemovingBg] = useState(false);
   const [bgRemovalFailed, setBgRemovalFailed] = useState(false);
   const [faceScale, setFaceScale] = useState<number>(80);
+
+  const textGeneration = useGenericGeneration(session?.user?.id, session?.user?.email, status,
+    selectedTemplate, formData, lang, () => {
+      // Confirmed continuations also create a history entry and consume a generation.
+      setUsageCount(prev => prev + 1);
+      setRemaining(prev => prev !== null ? Math.max(0,prev-1) : null);
+      try {
+        const n=parseInt(localStorage.getItem('ytv_gen_ok') || '0',10)+1;
+        localStorage.setItem('ytv_gen_ok',String(n));
+        if (n >= 3 && !localStorage.getItem('ytv_review_nudge_off')) setReviewNudge(true);
+      } catch {}
+    });
+  const {output,truncated,continuing,copied} = textGeneration;
+  const loading = selectedTemplate === 'thumbnail' ? imageLoading : textGeneration.loading;
+  const slowHint = selectedTemplate === 'thumbnail' ? imageSlowHint : textGeneration.slow;
+  const textError = textGeneration.error ? (lang === 'en'
+    ? ({unconfirmed:'The result is unconfirmed. Retry the same request or check your history.',timeout:'The response took too long. The server may still have completed it; retry the same request.',limit:'Your plan limit was reached. Retry to check an already saved result, or review your plan.',conflict:'This request conflicts with its saved result. Check your history before starting another generation.',length:'Continuing text longer than 500 characters is currently unavailable. Your confirmed result is preserved.'})[textGeneration.error]
+    : ({unconfirmed:'El resultado no está confirmado. Reintenta la misma solicitud o consulta tu historial.',timeout:'La respuesta tardó demasiado. El servidor puede haberla completado; reintenta la misma solicitud.',limit:'Se alcanzó el límite del plan. Reintenta para recuperar un resultado ya guardado o revisa tu plan.',conflict:'La solicitud no coincide con su resultado guardado. Consulta tu historial antes de generar de nuevo.',length:'Continuar textos de más de 500 caracteres aún no está disponible. Tu resultado confirmado se conserva.'})[textGeneration.error]) : '';
+  const error = selectedTemplate === 'thumbnail' ? imageError : textError;
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -137,14 +152,17 @@ export default function GeneratePage() {
     const tpl = TEMPLATES[key as keyof typeof TEMPLATES] as { proOnly?: boolean };
     if (tpl?.proOnly && !isPro) { setModalReason('pro_feature'); setShowLimitModal(true); return; }
     setSelectedTemplate(key);
-    setOutput('');
     setError('');
-    setTruncated(false);
     setThumbnailUrl('');
     setThumbnailPrompt('');
   };
 
   const handleGenerate = async () => {
+    if (selectedTemplate !== 'thumbnail' && selectedTemplate !== 'video_preview') {
+      // The server checks quota after replay; a retry must not be blocked by a stale local count.
+      await textGeneration.generate();
+      return;
+    }
     // Video Preview: el render es client-side, pero el storyboard IA cuenta como
     // una generacion mas (26/08 — free incluye 1/mes, dentro del pool de 10).
     if (selectedTemplate === 'video_preview') {
@@ -162,8 +180,6 @@ export default function GeneratePage() {
     if (usageCount >= limit) { setModalReason('limit'); setShowLimitModal(true); return; }
     setLoading(true);
     setError('');
-    setOutput('');
-    setTruncated(false);
     setThumbnailUrl('');
     setThumbnailPrompt('');
     // Aviso "está tardando" a los 15s (E1 #3) — el timeout duro vive en claudeAPI.js (90s)
@@ -204,50 +220,11 @@ export default function GeneratePage() {
       return;
     }
 
-    try {
-      const result = await callClaudeAPI(selectedTemplate, formData, lang);
-      setOutput(result.content);
-      setTruncated(result.truncated);
-      setUsageCount((prev) => prev + 1);
-      setRemaining((prev) => prev !== null ? Math.max(0, prev - 1) : null);
-      // Recogida de reseñas reales (B5): tras 3 generaciones exitosas, invitación única
-      try {
-        const n = parseInt(localStorage.getItem('ytv_gen_ok') || '0', 10) + 1;
-        localStorage.setItem('ytv_gen_ok', String(n));
-        if (n >= 3 && !localStorage.getItem('ytv_review_nudge_off')) setReviewNudge(true);
-      } catch {}
-    } catch (err: unknown) {
-      if (err instanceof Error && (err as Error & { limitReached?: boolean }).limitReached) {
-        setShowLimitModal(true);
-      } else {
-        setError(err instanceof Error ? err.message : 'Error desconocido');
-      }
-    } finally {
-      clearTimeout(slowTimer);
-      setSlowHint(false);
-      setLoading(false);
-    }
   };
 
-  const handleContinue = async () => {
-    setContinuing(true);
-    setError('');
-    try {
-      const result = await continueGeneration(selectedTemplate, formData, output, lang);
-      setOutput((prev) => prev + result.content);
-      setTruncated(result.truncated);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-    } finally {
-      setContinuing(false);
-    }
-  };
+  const handleContinue = textGeneration.continueGeneration;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  const handleCopy = textGeneration.copyOutput;
 
   const set = (field: string, value: string) => setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -459,7 +436,7 @@ export default function GeneratePage() {
             <div className={`flex items-center gap-4 flex-wrap${selectedTemplate === 'thumbnail' ? ' hidden' : ''}`}>
               <button
                 onClick={handleGenerate}
-                disabled={loading || !formData.tema.trim()}
+                disabled={loading || continuing || !formData.tema.trim()}
                 className="btn-offset px-8 py-4 font-display font-bold text-[15px] gap-3 disabled:cursor-not-allowed disabled:opacity-40"
                 style={selectedTemplate === 'video_preview' ? { background: '#00D9FF', borderColor: '#00D9FF', color: '#000' } : {}}
               >
@@ -481,7 +458,7 @@ export default function GeneratePage() {
                 ) : (
                   <>
                     <svg width={16} height={16} viewBox="0 0 24 24" fill="white"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
-                    {t('Generar ahora', 'Generate now')}
+                    {textGeneration.retry ? t('Reintentar solicitud', 'Retry request') : t('Generar ahora', 'Generate now')}
                   </>
                 )}
               </button>
@@ -542,11 +519,12 @@ export default function GeneratePage() {
 
             {/* Error */}
             {error && (
-              <div className="yv-note yv-note--error flex items-center justify-between gap-4 flex-wrap">
+              <div role="alert" className="yv-note yv-note--error flex items-center justify-between gap-4 flex-wrap">
                 <span className="inline-flex items-center gap-1.5"><WarningIcon size={14} /> {error}</span>
-                <button onClick={handleGenerate} disabled={loading} className="btn-offset shrink-0 px-4 py-1.5 text-[13px] font-display disabled:opacity-40">
+                {(selectedTemplate === 'thumbnail' || textGeneration.retry) && <button onClick={selectedTemplate === 'thumbnail' ? handleGenerate : textGeneration.retryGeneration} disabled={loading || continuing} className="btn-offset shrink-0 px-4 py-1.5 text-[13px] font-display disabled:opacity-40">
                   {t('Reintentar', 'Retry')}
-                </button>
+                </button>}
+                <a href="/dashboard" className="underline">{t('Consultar historial', 'Check history')}</a>
               </div>
             )}
 
@@ -655,7 +633,7 @@ export default function GeneratePage() {
                     {truncated && (
                       <button
                         onClick={handleContinue}
-                        disabled={continuing}
+                        disabled={continuing || loading}
                         className="btn-offset px-4 py-2 text-[13px] font-display"
                         style={{ borderColor: 'var(--yv-brand)', color: 'var(--yv-brand)' }}
                       >
@@ -664,8 +642,8 @@ export default function GeneratePage() {
                           : t('▸ Continuar generando', '▸ Continue generating')}
                       </button>
                     )}
-                    <button onClick={handleGenerate} className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display">
-                      ⟳ {t('Regenerar', 'Regenerate')}
+                    <button onClick={handleGenerate} disabled={loading || continuing} className="btn-offset btn-offset-ghost px-4 py-2 text-[13px] font-display">
+                      ⟳ {textGeneration.retry ? t('Reintentar solicitud', 'Retry request') : t('Regenerar', 'Regenerate')}
                     </button>
                     {PIPELINE_NEXT[selectedTemplate] && (
                       <button

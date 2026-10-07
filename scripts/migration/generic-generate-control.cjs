@@ -23,6 +23,17 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
   quotaLimit=1;context='Changed channel context';await prisma.$executeRaw`UPDATE rate_limits SET hits=99 WHERE key=${'generate:'+identity}`;
   const recovered=await invoke();assert.equal(recovered.status,200);assert.deepEqual(await recovered.json(),{content:text,truncated:true});assert.equal(calls,1);assert.equal((await prisma.$queryRaw`SELECT hits FROM rate_limits WHERE key=${'generate:'+identity}`)[0].hits,99);
   for(const body of [{...input,inputs:{tema:'Changed input'}},{...input,template:'description'},{...input,lang:'en'},{...input,inputs:{...input.inputs,_previousContent:'Earlier'}}])assert.equal((await invoke(body)).status,409);assert.equal(calls,1);assert.equal((await invoke(input,key+'_new')).status,429);assert.equal(calls,1);
+  // Original client hook -> original route -> real retained history/control ledger.
+  // Lose the successful HTTP acknowledgement at an already exhausted quota; retry the same operation.
+  const {harness}=require('./generic-generation-client.test.cjs');
+  const client=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,key});let loseAck=true;
+  client.state.send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/generate',init));assert.equal(response.status,200);if(loseAck){loseAck=false;throw Error('Synthetic lost HTTP acknowledgement');}return response;};
+  try {
+   await client.view().generate();assert.equal(client.view().error,'unconfirmed');assert.equal(client.state.confirmed.length,0);
+   await client.view().retryGeneration();assert.equal(client.view().output,text);assert.equal(client.view().truncated,true);
+   assert.equal(client.requests[0].body,client.requests[1].body);assert.equal(client.requests[0].headers['Idempotency-Key'],client.requests[1].headers['Idempotency-Key']);assert.equal(client.state.confirmed.length,1);
+   await client.view().retryGeneration();assert.equal(client.requests.length,2);assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+  } finally {client.unmount();}
   identity=users[1].id;extension=true;context=null;assert.equal((await invoke()).status,200);assert.equal(calls,2);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(await prisma.generation.count({where:{userId:users[0].id}}),1);assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),14);
  } finally {
   for(const user of users){await prisma.$executeRaw`DELETE FROM rate_limits WHERE key=${'generate:'+user.id}`;await prisma.user.delete({where:{id:user.id}});}
