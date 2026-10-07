@@ -12,13 +12,16 @@ export async function GET() {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const idea = await prisma.dailyIdea.findUnique({
-    where: { userId_date: { userId: session.user.id, date: todayUTC() } },
-  });
+  const response = (data: object) => NextResponse.json({ userId: session.user.id, ...data });
+  try {
+    const idea = await prisma.dailyIdea.findUnique({
+      where: { userId_date: { userId: session.user.id, date: todayUTC() } },
+    });
 
-  if (!idea) {
-    return NextResponse.json({ ideas: null });
-  }
+    if (!idea) {
+      return response({ ideas: null });
+    }
 
-  return NextResponse.json({ ideas: idea.ideas, date: idea.date });
+    return response({ ideas: idea.ideas, date: idea.date });
+  } catch { return NextResponse.json({ error: 'Data unavailable' }, { status: 503 }); }
 }

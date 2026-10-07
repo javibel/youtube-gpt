@@ -24,6 +24,7 @@ const results=[];
  await require('./generation-history-database.cjs')(prisma,results);
  await require('./dashboard-stats-database.cjs')(prisma,results);
  await require('./dashboard-onboarding-database.cjs')(prisma,results);
+ await require('./youtube-connection-database.cjs')(prisma,results);
  const email='contract-'+randomUUID()+'@example.invalid';
  const user=await prisma.user.create({data:{email,name:'Synthetic contract test'}});
  try {

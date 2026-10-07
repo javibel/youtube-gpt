@@ -11,6 +11,7 @@ import ReferralCard from '@/components/ReferralCard';
 import NextActionCard from '@/components/NextActionCard';
 import { useDashboardStats } from '@/lib/use-dashboard-stats';
 import { useDashboardOnboarding } from '@/lib/use-dashboard-onboarding';
+import { useYoutubeConnection } from '@/lib/use-youtube-connection';
 import { useGenerationHistory } from '@/lib/use-generation-history';
 import { useVideoPreviewHistory } from '@/lib/use-video-preview-history';
 import { AFFILIATES_DORMANT } from '@/lib/features';
@@ -88,21 +89,11 @@ export default function DashboardPage() {
     playingPreview, previewError, loadDbPreviews, refreshDbPreviews,
     handleSelectPreview, handleDeletePreview, handleDownloadPreview, closePlayingPreview,
   } = useVideoPreviewHistory(session?.user?.id, status);
-  type YtChannel = { id: string; name: string; thumbnail: string; subscribers: number; totalViews: number; videoCount: number };
-  type YtVideo  = { videoId: string; title: string; thumbnail: string; publishedAt: string; views: number };
-  const [ytChannel, setYtChannel]       = useState<YtChannel | null>(null);
-  const [ytVideos, setYtVideos]         = useState<YtVideo[]>([]);
-  const [ytConnected, setYtConnected]   = useState<boolean | null>(null); // null = loading
-  const [ytExpired, setYtExpired]       = useState(false);
-  const [ytConnecting, setYtConnecting] = useState(false);
-  const [ytDisconnecting, setYtDisconnecting] = useState(false);
-  const [ytToast, setYtToast]           = useState<{ msg: string; ok: boolean } | null>(null);
-  type GrowthData = { subs7d: number; subs30d: number; views7d: number; views30d: number; videos7d: number; videos30d: number };
-  type StatsPoint = { subscribers: number; totalViews: number; recordedAt: string };
-  const [ytGrowth, setYtGrowth] = useState<GrowthData | null>(null);
-  const [ytSparkline, setYtSparkline] = useState<StatsPoint[]>([]);
-  type VideoIdea = { title_es: string; title_en: string; idea_es: string; idea_en: string };
-  const [dailyIdeas, setDailyIdeas] = useState<VideoIdea[] | null>(null);
+  const { ytChannel, ytVideos, ytConnected, ytExpired, ytConnecting, ytDisconnecting,
+    ytGrowth, ytSparkline, dailyIdeas, ytLoading, ytError, ytCached, ytDisconnectError,
+    ytStatsError, ytIdeasError, ytDetailsLoading, ytNotice, retryYoutube, retryYoutubeDetails,
+    handleYtConnect, handleYtDisconnect,
+  } = useYoutubeConnection(session?.user?.id, session?.user?.email, status);
   const [nextActionId, setNextActionId] = useState<string | null>(null);
   const { onboardingStep, onboardingName, onboardingTopic, onboardingResult, onboardingGenerating,
     onboardingCopied, onboardingBusy, onboardingError, generationError, advanceOnboarding,
@@ -121,64 +112,14 @@ export default function DashboardPage() {
       fetch('/api/reviews').then((r) => r.json()).then((d) => {
         if (d.review) { setExistingReview(d.review); setReviewRating(d.review.rating); setReviewText(d.review.text); }
       });
-      fetch('/api/youtube/channel').then((r) => r.json()).then((d) => {
-        if (d.connected) {
-          setYtConnected(true);
-          setYtExpired(false);
-          setYtChannel(d.channel);
-          setYtVideos(d.videos || []);
-          // Fetch growth stats + daily ideas
-          fetch('/api/youtube/stats').then(r => r.json()).then(s => {
-            if (s.data) {
-              setYtGrowth(s.data.growth);
-              setYtSparkline(s.data.points);
-            }
-          }).catch(() => {});
-          fetch('/api/daily-ideas').then(r => r.json()).then(d => {
-            if (d.ideas) setDailyIdeas(d.ideas);
-          }).catch(() => {});
-        } else {
-          setYtConnected(false);
-          setYtExpired(!!d.expired);
-        }
-      }).catch(() => setYtConnected(false));
+
     }
   }, [status]);
-
-  // Handle ?yt= param after OAuth redirect
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const yt = params.get('yt');
-    if (yt === 'connected') {
-      setYtToast({ msg: lang === 'en' ? 'YouTube channel connected!' : 'Canal de YouTube conectado', ok: true });
-      setTimeout(() => setYtToast(null), 4000);
-      window.history.replaceState({}, '', '/dashboard');
-    } else if (yt === 'error') {
-      setYtToast({ msg: lang === 'en' ? 'Could not connect YouTube' : 'No se pudo conectar YouTube', ok: false });
-      setTimeout(() => setYtToast(null), 4000);
-      window.history.replaceState({}, '', '/dashboard');
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function fmtNum(n: number): string {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
     if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K';
     return n.toString();
-  }
-
-  function handleYtConnect() {
-    setYtConnecting(true);
-    window.location.href = '/api/youtube/auth';
-  }
-
-  async function handleYtDisconnect() {
-    setYtDisconnecting(true);
-    await fetch('/api/youtube/disconnect', { method: 'POST' });
-    setYtConnected(false);
-    setYtChannel(null);
-    setYtVideos([]);
-    setYtDisconnecting(false);
   }
 
   async function handleUpgrade(plan: 'monthly' | 'yearly' | 'business_monthly' | 'business_yearly' = billingPlan) {
@@ -1160,9 +1101,24 @@ function handleCopy(id: string, out: string) {
               {t('CANAL DE YOUTUBE', 'YOUTUBE CHANNEL')}
             </p>
 
+            {ytError && <div role="alert" className="mb-3">
+              <p>{ytConnected === null ? t('No se pudo comprobar tu canal.', 'Could not check your channel.') : t('No se pudo actualizar. Se muestran los últimos datos confirmados.', 'Could not refresh. Showing the last confirmed data.')}</p>
+              <button onClick={retryYoutube} disabled={ytLoading || ytDisconnecting}>{t('Reintentar canal', 'Retry channel')}</button>
+            </div>}
+            {ytLoading && ytConnected !== null && <p role="status">{t('Actualizando canal…', 'Refreshing channel…')}</p>}
+            {ytCached && ytConnected && <p className="text-xs mb-3">{t('Datos guardados del canal.', 'Saved channel data.')}</p>}
+            {(ytStatsError || ytIdeasError) && <div role="alert" className="mb-3">
+              <p>{t('No se pudieron actualizar el crecimiento o las ideas. Los datos anteriores pueden estar desactualizados.', 'Could not refresh growth or ideas. Previous data may be outdated.')}</p>
+              <button onClick={retryYoutubeDetails} disabled={ytDetailsLoading || ytLoading || ytDisconnecting}>{t('Reintentar crecimiento e ideas', 'Retry growth and ideas')}</button>
+            </div>}
+            {ytDisconnectError && <div role="alert" className="mb-3">
+              <p>{t('No se confirmó la desconexión. Reintenta para comprobarla.', 'Disconnect was not confirmed. Retry to confirm it.')}</p>
+              <button onClick={handleYtDisconnect} disabled={ytDisconnecting}>{t('Reintentar desconexión', 'Retry disconnect')}</button>
+            </div>}
+            {ytConnected !== null && !ytError && <button onClick={retryYoutube} disabled={ytLoading || ytDisconnecting} className="text-xs mb-3">{t('Actualizar canal', 'Refresh channel')}</button>}
             {/* Conectar canal es gratis desde 13/07 — ver project_channel_connect_free.md.
                 Ya no depende de isPro: cualquier usuario conectado ve su widget. */}
-            {ytConnected === null && (
+            {ytConnected === null && !ytError && (
               <div className="h-16 flex items-center justify-center">
                 <svg className="animate-spin w-5 h-5" style={{ color: 'var(--yv-text-4)' }} viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12"/>
@@ -1518,10 +1474,10 @@ function handleCopy(id: string, out: string) {
       </div>
 
       {/* Toast */}
-      {ytToast && (
+      {ytNotice && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 font-mono-jb text-sm inline-flex items-center gap-2"
-          style={{ borderRadius: 'var(--yv-radius)', background: ytToast.ok ? '#16a34a' : '#dc2626', color: '#fff', boxShadow: 'var(--yv-edge), var(--yv-depth-2)' }}>
-          {ytToast.ok ? <CheckIcon size={14} /> : <CrossIcon size={14} />} {ytToast.msg}
+          style={{ borderRadius: 'var(--yv-radius)', background: ytNotice === 'checking' ? '#334155' : '#dc2626', color: '#fff', boxShadow: 'var(--yv-edge), var(--yv-depth-2)' }}>
+          {ytNotice === 'checking' ? t('Comprobando conexión del canal…', 'Checking channel connection…') : t('No se pudo conectar YouTube.', 'Could not connect YouTube.')}
         </div>
       )}
 

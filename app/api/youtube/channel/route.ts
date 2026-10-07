@@ -63,17 +63,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  try { return await readChannel(request, session.user.id); }
+  catch { return NextResponse.json({ error: 'Channel unavailable' }, { status: 503 }); }
+}
+
+async function readChannel(request: Request, userId: string) {
+  const response = (data: object, init?: ResponseInit) => NextResponse.json({ userId, ...data }, init);
   const { searchParams } = new URL(request.url);
   const forceFresh = searchParams.get('fresh') === '1';
 
-  const yt = await prisma.youtubeToken.findUnique({ where: { userId: session.user.id } });
+  const yt = await prisma.youtubeToken.findUnique({ where: { userId } });
   if (!yt) {
-    return NextResponse.json({ connected: false });
+    return response({ connected: false });
   }
 
   // Token was permanently revoked (both accessToken AND refreshToken cleared)
   if (!yt.accessToken && !yt.refreshToken) {
-    return NextResponse.json({ connected: false, expired: true });
+    return response({ connected: false, expired: true });
   }
 
   // Return cached data if stats are fresh (< 1 hour old) — unless fresh=1
@@ -83,7 +89,7 @@ export async function GET(request: Request) {
     if (yt.expiresAt < new Date(Date.now() + 120_000) && yt.refreshToken) {
       refreshAccessToken({ refreshToken: yt.refreshToken, userId: yt.userId }).catch(() => {});
     }
-    return NextResponse.json({
+    return response({
       connected: true,
       cached: true,
       channel: {
@@ -107,13 +113,13 @@ export async function GET(request: Request) {
         // Google revoked the token — mark as expired but keep the record so user can reconnect
         // (deleting it would lose channel info and make the reconnect prompt less clear)
         await prisma.youtubeToken.update({
-          where: { userId: session.user.id },
+          where: { userId },
           data: { accessToken: '', expiresAt: new Date(0) },
         });
-        return NextResponse.json({ connected: false, expired: true });
+        return response({ connected: false, expired: true });
       }
       // Transient error (network, Google API down) — return cached data so UI stays connected
-      return NextResponse.json({
+      return response({
         connected: true,
         cached: true,
         channel: {
@@ -179,7 +185,7 @@ export async function GET(request: Request) {
     // Update cached stats
     if (channel) {
       await prisma.youtubeToken.update({
-        where: { userId: session.user.id },
+        where: { userId },
         data: {
           channelName: channel.snippet?.title,
           channelThumb: channel.snippet?.thumbnails?.default?.url,
@@ -190,7 +196,7 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json({
+    return response({
       connected: true,
       channel: {
         id: channel?.id,
@@ -204,6 +210,6 @@ export async function GET(request: Request) {
     });
   } catch (err) {
     console.error('[youtube/channel]', err);
-    return NextResponse.json({ error: 'Failed to fetch channel data' }, { status: 500 });
+    return response({ error: 'Failed to fetch channel data' }, { status: 500 });
   }
 }

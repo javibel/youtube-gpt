@@ -8,6 +8,8 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  await prisma.youtubeToken.deleteMany({ where: { userId: session.user.id } });
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.youtubeToken.deleteMany({ where: { userId: session.user.id } });
+    return NextResponse.json({ ok: true, userId: session.user.id });
+  } catch { return NextResponse.json({ error: 'Disconnect unavailable' }, { status: 503 }); }
 }
