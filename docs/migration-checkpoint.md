@@ -203,3 +203,16 @@ acknowledgement can be retried. Confirmed new saves supersede older reads.
 Synthetic hook/HTTP tests and the actual list/binary/delete routes with designated
 PostgreSQL exercise these behaviors. This does not establish real browser codec,
 operational authentication or production-cache acceptance.
+
+Generation history in Dashboard now has account/email/auth-scoped paging,
+explicit loading/errors and retry of the failed page. Refresh replaces the first
+page and resets the cursor; failed loads preserve confirmed rows and do not
+advance it. Duplicate clicks coalesce and overlapping offset rows are deduplicated.
+The server rejects malformed/excessive page values before storage, returns a
+bounded storage error and orders equal dates by id. Legacy unknown usage remains
+null; non-string input metadata is omitted only from UI labels, not stored content.
+Initial failure does not present first-generation or empty-filter guidance. The
+filter describes loaded rows, not the full library. Synthetic tests include the
+original route and designated PostgreSQL. Offset pages are not a fixed snapshot
+under concurrent inserts/deletes; Refresh is available to obtain a newer view.
+Operational authentication, browser behavior and real model quality are pending.

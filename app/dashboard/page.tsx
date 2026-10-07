@@ -9,6 +9,7 @@ import { useCurrency } from '@/components/CurrencyProvider';
 import { PRICES, formatPrice } from '@/lib/pricing';
 import ReferralCard from '@/components/ReferralCard';
 import NextActionCard from '@/components/NextActionCard';
+import { useGenerationHistory } from '@/lib/use-generation-history';
 import { useVideoPreviewHistory } from '@/lib/use-video-preview-history';
 import { AFFILIATES_DORMANT } from '@/lib/features';
 import { toast } from '@/components/Toaster';
@@ -61,7 +62,6 @@ type Stats = {
   subscription: { status: string; plan?: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
 };
 
-type Generation = { id: string; template: string; createdAt: string; tokensUsed: number | null; output: string; inputs: Record<string, string> };
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -76,10 +76,9 @@ export default function DashboardPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState('all');
-  const [historyGens, setHistoryGens] = useState<Generation[]>([]);
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyHasMore, setHistoryHasMore] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const { historyGens, historyLoaded, historyHasMore, historyLoading, historyError,
+    refreshHistory, loadMoreHistory, retryHistory,
+  } = useGenerationHistory(session?.user?.id, session?.user?.email, status);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -136,9 +135,7 @@ export default function DashboardPage() {
         .catch(() => toast(lang === 'en' ? 'Could not load your dashboard. Check your connection and reload.' : 'No se pudo cargar el dashboard. Revisa tu conexión y recarga.', 'error'))
         .finally(() => setLoading(false));
       fetch('/api/daily-tip').then((r) => r.json()).then((d) => { if (d.es) setDailyTip(d); }).catch(() => {});
-      fetch('/api/user/generations?page=1').then((r) => r.json()).then((d) => {
-        if (d.generations) { setHistoryGens(d.generations); setHistoryHasMore(d.hasMore); }
-      }).catch(() => toast(lang === 'en' ? 'Could not load your history.' : 'No se pudo cargar tu historial.', 'error'));
+
 
       fetch('/api/reviews').then((r) => r.json()).then((d) => {
         if (d.review) { setExistingReview(d.review); setReviewRating(d.review.rating); setReviewText(d.review.text); }
@@ -292,9 +289,7 @@ function handleCopy(id: string, out: string) {
       await advanceOnboarding(2);
       // Refresca stats para que el contador del panel refleje la generación recién hecha
       fetch('/api/user/stats').then((r) => r.json()).then(setData).catch(() => {});
-      fetch('/api/user/generations?page=1').then((r) => r.json()).then((d) => {
-        if (d.generations) { setHistoryGens(d.generations); setHistoryHasMore(d.hasMore); }
-      }).catch(() => {});
+      void refreshHistory();
     } catch (err) {
       setOnboardingError(err instanceof Error ? err.message : (lang === 'en' ? 'Generation failed' : 'Error al generar'));
     } finally {
@@ -586,7 +581,7 @@ function handleCopy(id: string, out: string) {
         <main className="space-y-8 min-w-0">
 
           {/* Stat cards — or welcome card if brand new user */}
-          {(stats?.totalGenerations ?? 0) === 0 ? (
+          {historyLoaded && historyGens.length === 0 && !historyLoading && !historyError ? (
             <a href="/generate" className="yv-card p-8 block group hover:border-[var(--yv-brand)] transition-colors">
               <div className="flex items-center gap-6">
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(232,77,91,0.12)', border: '1px solid rgba(232,77,91,0.3)' }}>
@@ -917,7 +912,7 @@ function handleCopy(id: string, out: string) {
           )}
 
           {/* History — or quick-start cards for new users */}
-          {(stats?.totalGenerations ?? 0) === 0 ? (
+          {historyLoaded && historyGens.length === 0 && !historyLoading && !historyError ? (
             <div>
               <div className="mb-4">
                 <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>
@@ -974,6 +969,9 @@ function handleCopy(id: string, out: string) {
               <div>
                 <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--yv-brand)' }}>HISTORY</p>
                 <h2 className="font-display font-bold text-2xl">{t('Generaciones recientes', 'Recent generations')}</h2>
+                <button onClick={refreshHistory} disabled={historyLoading} className="font-mono-jb text-[12px] mt-2 disabled:opacity-50" style={{ color: 'var(--yv-brand)' }}>
+                  {t('Actualizar historial', 'Refresh history')}
+                </button>
               </div>
               <div className="yv-chip flex items-center p-0 font-mono-jb text-[13px] tracking-wider uppercase overflow-x-auto max-w-full [scrollbar-width:none]" style={{ cursor: 'default' }}>
                 {FILTERS.map(([k, label]) => (
@@ -987,16 +985,28 @@ function handleCopy(id: string, out: string) {
               </div>
             </div>
 
+            {historyLoading && <p role="status" className="font-mono-jb text-[12px] mb-3">{t('Cargando historial…', 'Loading history…')}</p>}
+            {historyError && (
+              <div className="mb-3">
+                <p role="alert" className="font-mono-jb text-[12px] mb-2" style={{ color: '#e84d5b' }}>
+                  {historyError === 'more' ? t('No se pudo cargar la siguiente página. Tus resultados anteriores siguen disponibles.', 'The next page could not be loaded. Previous results are still available.')
+                    : t('No se pudo actualizar tu historial.', 'Your history could not be refreshed.')}
+                </p>
+                <button onClick={retryHistory} disabled={historyLoading} className="btn-offset btn-offset-white py-2 px-3 text-[12px]">
+                  {historyError === 'more' ? t('Reintentar página', 'Retry page') : t('Reintentar historial', 'Retry history')}
+                </button>
+              </div>
+            )}
             <div className="yv-card overflow-hidden" style={{ borderRadius: '14px' }}>
-              {!filtered.length ? (
+              {!filtered.length ? (historyLoaded && !historyLoading && !historyError ? (
                 <div className="text-center py-12">
-                  <p className="text-sm mb-3" style={{ color: 'var(--yv-text-4)' }}>{t('Aún no hay generaciones de este tipo', 'No generations of this type yet')}</p>
+                  <p className="text-sm mb-3" style={{ color: 'var(--yv-text-4)' }}>{t('No hay resultados de este tipo entre las generaciones cargadas.', 'No results of this type among the loaded generations.')}</p>
                   <a href="/generate" className="btn-offset px-5 py-2.5 text-sm font-display gap-2">
                     <svg width={13} height={13} viewBox="0 0 24 24" fill="white"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
                     {t('Empezar a generar', 'Start generating')}
                   </a>
                 </div>
-              ) : (
+              ) : null) : (
                 filtered.map((gen) => {
                   const isOpen = expandedId === gen.id;
                   const isCopied = copiedId === gen.id;
@@ -1081,24 +1091,10 @@ function handleCopy(id: string, out: string) {
               )}
             </div>
 
-            {historyHasMore && (
+            {historyHasMore && !historyError && (
               <div className="mt-4 text-center">
                 <button
-                  onClick={async () => {
-                    setHistoryLoading(true);
-                    const nextPage = historyPage + 1;
-                    try {
-                      const res = await fetch(`/api/user/generations?page=${nextPage}`);
-                      const d = await res.json();
-                      if (d.generations) {
-                        setHistoryGens((prev) => [...prev, ...d.generations]);
-                        setHistoryPage(nextPage);
-                        setHistoryHasMore(d.hasMore);
-                      }
-                    } finally {
-                      setHistoryLoading(false);
-                    }
-                  }}
+                  onClick={loadMoreHistory}
                   disabled={historyLoading}
                   className="soft-pill px-5 py-2.5 text-sm font-mono-jb tracking-wider uppercase hover:text-white disabled:opacity-50" style={{ color: 'var(--yv-text-2)' }}>
                   {historyLoading ? t('Cargando...', 'Loading...') : t('Cargar más', 'Load more')}
