@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useSession } from 'next-auth/react';
+import { useThumbnailSave } from '@/lib/use-thumbnail-save';
 import type Konva from 'konva';
 import { THUMB_W, THUMB_H, type PhotoItem, type TextItem } from '@/lib/thumbnail-types';
 import { SparkleIcon, UploadIcon, ScissorsIcon, CheckIcon, SaveIcon, DownloadIcon } from '@/components/icons';
@@ -654,6 +656,7 @@ interface Props {
 // ─── Main editor ──────────────────────────────────────────────────────────────
 
 export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
+  const { data: session, status: sessionStatus } = useSession();
   const tr = useCallback((es: string, en: string) => lang === 'en' ? en : es, [lang]);
 
   // Container sizing
@@ -862,40 +865,32 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   const selectedText = texts.find(t => t.id === selectedId) ?? null;
 
   // ─── Save / Export ────────────────────────────────────────────────────────
-  const [saving,   setSaving]   = useState(false);
-  const [savedUrl, setSavedUrl] = useState<string | null>(null);
-  const [saveErr,  setSaveErr]  = useState('');
-
   const getDataURL = () => {
     const stage = stageRef.current;
     if (!stage) return null;
     return stage.toDataURL({ mimeType: 'image/png', pixelRatio: 1 / (containerWidth / THUMB_W) });
   };
+  const save = useThumbnailSave(session?.user?.id,session?.user?.email,sessionStatus,lang,isPro,
+    JSON.stringify([backgroundUrl,bgTopic,photo,texts]), () => {
+      const dataUrl = getDataURL();
+      return dataUrl ? {dataUrl,meta:{topic:bgTopic,hasPhoto:!!photo,textCount:texts.length}} : null;
+    },onSaved);
+  const {busy:saving,savedUrl} = save;
+  const saveErr = save.error ? ({
+    unconfirmed: tr('Guardado sin confirmar. Reintenta la misma captura o consulta tu historial.', 'Save unconfirmed. Retry the same snapshot or check your history.'),
+    timeout: tr('La respuesta tardó demasiado. La captura podría haberse guardado; reintenta para comprobarla.', 'The response took too long. The snapshot may have been saved; retry to check it.'),
+    conflict: tr('La captura no coincide con el guardado. Consulta tu historial antes de guardar otra.', 'The snapshot conflicts with its saved image. Check your history before saving another.'),
+    limit: tr('Límite del plan alcanzado. Puedes reintentar para recuperar una captura ya guardada.', 'Plan limit reached. You can retry to recover an already saved snapshot.'),
+    capture: tr('No se pudo capturar el PNG. Comprueba la imagen y el tema (máx. 500 caracteres).', 'Could not capture the PNG. Check the image and topic (max. 500 characters).'),
+  })[save.error] : '';
 
   const handleDownload = () => {
+    if (!save.current()) return;
     const url = getDataURL(); if (!url) return;
     const a = document.createElement('a'); a.href = url; a.download = 'thumbnail.png'; a.click();
   };
 
-  const handleSave = async () => {
-    const url = getDataURL(); if (!url) return;
-    setSaving(true); setSaveErr('');
-    try {
-      const blob = await (await fetch(url)).blob();
-      const file = new File([blob], 'thumbnail.png', { type: 'image/png' });
-      const body = new FormData();
-      body.append('image', file);
-      body.append('meta', JSON.stringify({ topic: bgTopic, hasPhoto: !!photo, textCount: texts.length }));
-      const res  = await fetch('/api/thumbnail-save', { method: 'POST', body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error');
-      setSavedUrl(data.imageUrl); onSaved?.(data.imageUrl);
-    } catch (err) {
-      setSaveErr(err instanceof Error ? err.message : 'Error');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const handleSave = save.pending ? save.retrySave : save.save;
 
   // ─── Gate ─────────────────────────────────────────────────────────────────
   if (!isPro) {
@@ -905,6 +900,11 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
         <p className="text-[14px] mb-4" style={{ color: 'var(--yv-text-3)' }}>
           {tr('Disponible en planes Pro y Business', 'Available on Pro and Business plans')}
         </p>
+        {save.pending && <div role="alert">
+          <p>{saveErr || tr('Hay una captura pendiente de confirmar.', 'A snapshot is awaiting confirmation.')}</p>
+          <button onClick={save.retrySave} disabled={saving}>{tr('Reintentar guardado', 'Retry saving')}</button>
+          <a href="/dashboard">{tr('Consultar historial', 'Check history')}</a>
+        </div>}
         <a href="/pricing" className="btn-offset px-6 py-2.5 text-[14px] font-bold">{tr('Ver planes', 'See plans')}</a>
       </div>
     );
@@ -1213,18 +1213,19 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               <a href={savedUrl} target="_blank" rel="noopener noreferrer"
                 className="text-[12px] text-center py-1.5 rounded inline-flex items-center justify-center gap-1.5"
                 style={{ color:'#7CFF00', background:'rgba(124,255,0,0.08)', display:'flex' }}>
-                <CheckIcon size={12} /> {tr('Guardado — abrir imagen', 'Saved — open image')}
+                <CheckIcon size={12} /> {save.savedStale ? tr('Captura anterior guardada — abrir imagen', 'Earlier snapshot saved — open image') : tr('Guardado — abrir imagen', 'Saved — open image')}
               </a>
             )}
-            {saveErr && <p className="text-[12px]" style={{ color:'#f5a623' }}>{saveErr}</p>}
-            <button onClick={handleSave} disabled={saving || !backgroundUrl}
+            {saveErr && <div role="alert" className="text-[12px]" style={{ color:'#f5a623' }}><p>{saveErr}</p><a href="/dashboard">{tr('Consultar historial', 'Check history')}</a></div>}
+            {save.pendingStale && <p>{tr('El reintento guarda la captura original. Los cambios posteriores aún no están guardados.', 'Retry saves the original snapshot. Later edits are not saved yet.')}</p>}
+            <button onClick={handleSave} disabled={saving || (!save.pending && !backgroundUrl)}
               className="btn-offset w-full py-3 text-[14px] font-bold disabled:opacity-40 disabled:cursor-not-allowed">
               {saving
                 ? <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r" />
                     {tr('Guardando…', 'Saving…')}
                   </span>
-                : <span className="inline-flex items-center justify-center gap-1.5"><SaveIcon size={14} /> {tr('Guardar miniatura', 'Save thumbnail')}</span>}
+                : <span className="inline-flex items-center justify-center gap-1.5"><SaveIcon size={14} /> {save.pending ? tr('Reintentar guardado', 'Retry saving') : tr('Guardar miniatura', 'Save thumbnail')}</span>}
             </button>
             <button onClick={handleDownload} disabled={!backgroundUrl}
               className="soft-chip w-full py-2.5 text-[13px] text-center disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5">

@@ -365,7 +365,7 @@ export default function GeneratePage() {
             {/* Thumbnail: canvas editor */}
             {selectedTemplate === 'thumbnail' && (
               <Suspense fallback={<div className="yv-card p-8 text-center text-sm" style={{ color: 'var(--yv-text-4)' }}>{t('Cargando editor…', 'Loading editor…')}</div>}>
-                <ThumbnailEditor key={screen.scope.key} lang={lang} isPro={isPro} />
+                <ThumbnailEditor key={screen.scope.key} lang={lang} isPro={isPro} onSaved={() => { if (screen.current()) void accountStats.refreshStats(); }} />
               </Suspense>
             )}
 
