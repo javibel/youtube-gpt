@@ -5,8 +5,7 @@ import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { put } from '@vercel/blob';
 import { rateLimitDb } from '@/lib/rate-limit-db';
 import { backgroundImageAvailable, generateBackgroundImage } from '@/lib/image/background-image-provider';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const sharp: any = require('sharp');
+import sharp from 'sharp';
 
 export const maxDuration = 60;
 
@@ -106,7 +105,7 @@ export async function POST(request: Request) {
       try{
         facePhotoBuffer=Buffer.from(await bounded(()=>facePhotoFile.arrayBuffer(),request.signal));
         const meta=await bounded(()=>decode(facePhotoBuffer!).metadata(),request.signal);
-        if(!meta.width||!meta.height||meta.width>16384||meta.height>16384||meta.width*meta.height>40_000_000||!['png','jpeg','webp'].includes(meta.format))throw Error('Invalid photo');
+        if(!meta.width||!meta.height||meta.width>16384||meta.height>16384||meta.width*meta.height>40_000_000||!meta.format||!['png','jpeg','webp'].includes(meta.format))throw Error('Invalid photo');
       }catch{return Response.json({error:'invalid_photo'},{status:400});}
     }
     if(request.signal.aborted)throw Error('Unconfirmed');
@@ -254,7 +253,7 @@ async function compositeFaceOnBackground(
         .png()
         .toBuffer();
       const rgbOnly = await decode(faceSrc).removeAlpha().png().toBuffer();
-      const dilatedFace = await sharp(rgbOnly).joinChannel(dilatedAlpha).png().toBuffer();
+      const dilatedFace = await decode(rgbOnly).joinChannel(dilatedAlpha).png().toBuffer();
       if (dilatedFace.length > 100) faceSrc = dilatedFace;
     } catch {
       /* dilation failed — keep original */
