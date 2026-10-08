@@ -40,8 +40,20 @@ try {
             $arguments = $part -split ' '
             if ($arguments[0] -ne 'node' -or $arguments.Count -lt 2 -or ($arguments | Where-Object { $_ -notmatch '^[-A-Za-z0-9_./]+$' }) -or ($arguments[1] -split '/') -contains '..' -or [IO.Path]::IsPathRooted($arguments[1])) { throw 'Expected an explicit local Node verification entry' }
             Add-Content -LiteralPath $logFile -Value "$suite :: $part"
+            $outputOffset = [IO.File]::ReadAllText($logFile).Length
             & $nodeExe @($arguments[1..($arguments.Count - 1)]) *>> $logFile
             if ($LASTEXITCODE -ne 0) { $failed = $true; break }
+            if ($arguments[1] -eq 'scripts/migration/database.test.cjs') {
+                # Exit zero alone cannot prove a Promise-based contract finished.
+                $databaseOutput = [IO.File]::ReadAllText($logFile).Substring($outputOffset).Trim()
+                try {
+                    $databaseReport = $databaseOutput | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+                    if ($databaseReport.status -ne 'PASS' -or $databaseReport.results -isnot [array] -or $databaseReport.results.Count -eq 0) { throw 'Missing successful database terminal report' }
+                } catch {
+                    Add-Content -LiteralPath $logFile -Value 'FAIL: database exit without a valid terminal report'
+                    $failed = $true; break
+                }
+            }
         }
         $status = if ($failed) { 'FAIL' } else { 'PASS' }
         $results += @{ suite=$suite; status=$status; elapsedMs=[int]((Get-Date)-$started).TotalMilliseconds }

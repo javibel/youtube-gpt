@@ -474,3 +474,16 @@ not grant execution, reconciliation or coordinator recovery authority. Existing
 saved business responses still replay before quota/throttle. Unconfirmed legacy
 v1 runtime results are not promoted to the new keyed input envelope. Known output
 usage and complete text remain required; partial or unknown results retain quota.
+### Storyboard PostgreSQL terminal completion correction
+
+The original 244415a verifier exited zero, but its database entry emitted no
+terminal JSON report. That suite is not accepted: its older concurrent Storyboard
+fixture waited for two `create` calls, while keyed admission correctly permits
+only one. An unresolved Promise let Node exit without finishing the contract.
+The corrected fixture waits for one original simulated settled result and one
+read-only retrieval, then asserts two successful responses, one model call, one
+history row and one completed reservation using actual PostgreSQL. A 60-second
+completion watchdog makes unfinished contracts fail. The local verifier also
+requires a successful nonempty database terminal report before accepting that
+suite. Earlier exit-zero receipts remain historical, with this limitation.
+These are local synthetic checks; they do not grant operational recovery authority.

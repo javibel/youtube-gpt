@@ -14,6 +14,9 @@ assert.equal(hash(path.join(repo,'prisma/schema.prisma')),hash(path.join(repo,'n
 const {PrismaClient}=require('@prisma/client');
 const prisma=new PrismaClient({datasources:{db:{url:config.databaseUrl}}});
 const results=[];
+// A pending Promise alone does not keep Node alive. Fail rather than let an
+// unfinished database contract exit zero without its terminal report.
+const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts did not produce a terminal report within 60 seconds');process.exit(1);},60_000);
 (async()=>{try{
  const identity=(await prisma.$queryRawUnsafe("SELECT current_database() AS db,current_setting('data_directory') AS directory"))[0];
  assert.equal(identity.db,'ytubviral_migration_test');
@@ -77,12 +80,17 @@ const results=[];
   } finally {await prisma.user.delete({where:{id:conversationUser.id}});}
   const storyboardUser=await prisma.user.create({data:{email:'storyboard-race-'+randomUUID()+'@example.invalid',name:'Synthetic Storyboard race'}});
   try {
-   const {load}=require('./route-harness.cjs');let arrived=0,release;const barrier=new Promise(resolve=>{release=resolve;});
+   const {load}=require('./route-harness.cjs');let creates=0,reads=0,settled,release,announce;
+   const barrier=new Promise(resolve=>{release=resolve;}),started=new Promise(resolve=>{announce=resolve;});
    const story='0s-6s: HOOK | A creator opens a notebook';
-   const route=load('app/api/storyboard/route.ts',{'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(prisma),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:storyboardUser.id}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true,getLimits:()=>({generationsPerMonth:200})},'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async()=>{if(++arrived===2)release();await barrier;return {content:[{text:story}],usage:{output_tokens:5}};}})}});
+   const task={create:async()=>{creates++;settled={content:[{text:story}],usage:{output_tokens:5}};announce();await barrier;return settled;},retrieve:async()=>{reads++;assert.ok(settled);release();return settled;}};
+   const route=load('app/api/storyboard/route.ts',{'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(prisma),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:storyboardUser.id}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true,getLimits:()=>({generationsPerMonth:200})},'@/lib/ai/task-runtime':{getMessagesTask:async()=>task}});
    const invoke=()=>route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':'synthetic-race'},body:JSON.stringify({script:'Synthetic race',lang:'es'})}));
-   const replies=await Promise.all([invoke(),invoke()]);assert.deepEqual(replies.map(r=>r.status),[200,200]);for(const reply of replies)assert.deepEqual(await reply.json(),{storyboard:story});
-   assert.equal(await prisma.generation.count({where:{userId:storyboardUser.id}}),1);results.push('concurrent Storyboard history insert uses real unique constraint and recovers committed row');
+   const original=invoke();await started;const replies=await Promise.all([original,invoke()]);assert.deepEqual(replies.map(r=>r.status),[200,200]);for(const reply of replies)assert.deepEqual(await reply.json(),{storyboard:story});
+   assert.equal(creates,1);assert.equal(reads,1);
+   assert.equal(await prisma.generation.count({where:{userId:storyboardUser.id}}),1);
+   assert.equal(await prisma.textGenerationAttempt.count({where:{userId:storyboardUser.id,state:'complete'}}),1);
+   results.push('concurrent Storyboard history insert uses real unique constraint and recovers committed row');
   } finally {await prisma.$executeRaw`DELETE FROM rate_limits WHERE key=${'storyboard:'+storyboardUser.id}`;await prisma.user.delete({where:{id:storyboardUser.id}});}
   const token='synthetic-'+randomUUID();
   await prisma.session.create({data:{userId:user.id,sessionToken:token,expires:new Date('2030-01-01')}});
@@ -93,4 +101,4 @@ const results=[];
   assert.equal(await prisma.user.count({where:{email}}),0);results.push('transaction rollback');
  } finally { await prisma.user.deleteMany({where:{id:user.id,email}}); }
  console.log(JSON.stringify({status:'PASS',scope:'explicit isolated PostgreSQL data contracts',results},null,2));
-}finally{await prisma.$disconnect();}})().catch(error=>{console.error(error);process.exitCode=1;});
+}finally{await prisma.$disconnect();clearTimeout(completionWatchdog);}})().catch(error=>{console.error(error);process.exitCode=1;});
