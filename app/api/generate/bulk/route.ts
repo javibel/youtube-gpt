@@ -3,6 +3,7 @@ import { TEMPLATES } from '@/utils/prompts';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
+import { readGenerationQuota } from '@/lib/generation-quota';
 
 function getIp(request: Request): string | null {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -55,11 +56,11 @@ export async function POST(request: Request) {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const usedThisMonth = await prisma.generation.count({
-      where: { userId: session.user.id, createdAt: { gte: startOfMonth } },
-    });
+    let usedThisMonth: number;
+    try { usedThisMonth = await readGenerationQuota(session.user.id, startOfMonth); }
+    catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
 
-    const remaining = limits.generationsPerMonth - usedThisMonth;
+    const remaining = Math.max(0, limits.generationsPerMonth - usedThisMonth);
     if (remaining < cleanTopics.length) {
       return Response.json(
         {
@@ -88,6 +89,18 @@ export async function POST(request: Request) {
     const results: { topic: string; content: string; error?: string }[] = [];
 
     for (const topic of cleanTopics) {
+      // Other operations can occupy capacity between items. This is a snapshot,
+      // not a reservation: do not infer fresh model authority from its result.
+      try {
+        const occupied = await readGenerationQuota(session.user.id, startOfMonth);
+        if (occupied >= limits.generationsPerMonth) {
+          results.push({ topic, content: '', error: 'Not enough credits' });
+          continue;
+        }
+      } catch {
+        results.push({ topic, content: '', error: 'Generation quota unavailable' });
+        continue;
+      }
       try {
         const inputs = { ...options, tema: topic };
         const prompt = templateData.prompt(inputs) + langInstruction;

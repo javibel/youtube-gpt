@@ -385,3 +385,6 @@ authentic reconciliation, operational approval and real providers remain open.
 
 
 Quota statistics: authenticated user stats now retain completed history separately from admitted legacy image reservations and return quotaOccupied/remaining from the same locked snapshot. The shared hook rejects absent/corrupt breakdowns; generator displays pending credits and uses available quota for new Video Tips. Text replay remains server-controlled. Dashboard/history completed counters retain their meaning. This snapshot creates no text reservation or pending reclaim authority; global admission and background-to-save policy remain open.
+
+
+Bulk quota: the other Generation writer now reads the same occupied history plus image reservations before the whole batch and each topic. Insufficient whole-batch capacity returns429; read failure503. Capacity lost or unconfirmed between topics produces explicit per-item errors without another model, preserving earlier confirmed items. This is a snapshot only: text/bulk still do not reserve capacity before effects, concurrent writes can race, pending receipts never authorize reclaim. Existing Pro gate, batch sizes, sequential task policies and missing-usage placeholder remain unchanged.
