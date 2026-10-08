@@ -40,5 +40,6 @@ async function test(name,fn){await fn();results.push({name,status:'PASS'});}
  });
  await test('local cache failure does not hide a confirmed account save',async()=>{const h=harness();h.state.save=async()=>{throw Error('cache unavailable');};await h.click();await h.finish();assert.deepEqual(h.callbacks,['generated','saved']);assert.match(h.text(),/Guardado en tu cuenta/);h.unmount();});
  await test('Regenerate has a new upload identity while reusing adaptation',async()=>{const h=harness();await h.click();await h.finish();h.reset();await h.click();await h.finish();assert.notEqual(key(h.uploads[0]),key(h.uploads[1]));assert.equal(h.requests.length,1);assert.equal(h.daily(),2);h.unmount();});
+ await test('consumer callback failure does not invalidate a confirmed server save',async()=>{const h=harness({onSaved:()=>{throw Error('consumer callback');}});await h.click();await assert.rejects(h.finish(),/consumer callback/);assert.match(h.text(),/Guardado en tu cuenta/);assert.equal(h.alert(),undefined);assert.equal(h.timers.size,0);h.unmount();});
  console.log(JSON.stringify({scope:'actual component with synthetic recorder and upload acknowledgements; no browser codec acceptance',results},null,2));
 })().catch(error=>{console.error(error);process.exitCode=1;});

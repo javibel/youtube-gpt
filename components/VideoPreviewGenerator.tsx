@@ -1058,7 +1058,6 @@ export default function VideoPreviewGenerator({
         if (typeof data?.id !== 'string' || !data.id.trim() || data.id.length > 256) throw new Error('Invalid preview acknowledgement');
         upload.saved = true;
         setSaveStatus('saved');
-        onSaved?.();
       } catch {
         if (current()) setSaveStatus('error');
       } finally {
@@ -1066,6 +1065,7 @@ export default function VideoPreviewGenerator({
         controller.signal.removeEventListener('abort', interrupt);
         if (upload.cancel === cancel) upload.cancel = null;
       }
+      if (upload.saved && current()) onSaved?.();
     })();
     try { await upload.flight; } finally { upload.flight = null; }
   }, [interaction, scriptTitle, onSaved]);

@@ -66,6 +66,11 @@ export async function POST(request: Request) {
     ? reply({ id: saved.id })
     : reply({ error: 'Retry input changed' }, { status: 409 });
   try {
+    // A local retry selector is not permission to recreate a missing/pruned video.
+    if (retainedOnly) {
+      const saved = await prisma.videoPreview.findUnique({ where: { id: id! } });
+      return saved ? replay(saved) : reply({ error: 'Original preview unavailable' }, { status: 503 });
+    }
     return await prisma.$transaction(async tx => {
       // Serialize saves and retention for this account, including legacy callers.
       const owner = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE id=${userId} FOR UPDATE`;
