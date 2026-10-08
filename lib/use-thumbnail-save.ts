@@ -22,6 +22,7 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
   const run = (retryOnly = false) => {
     if (!current()) return Promise.resolve();
     if (scope.flight) return scope.flight;
+    const readOnly = !!scope.operation;
     if (!scope.operation) {
       if (retryOnly || !latest.current.isPro) return Promise.resolve();
       try {
@@ -55,7 +56,8 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
       try {
         if (!current()) return;
         const body = new FormData();body.append('image',op.file);body.append('meta',op.meta);
-        const response = await Promise.race([fetch('/api/thumbnail-save',{method:'POST',headers:{'Idempotency-Key':op.key},body,signal:controller.signal}),interrupted]);
+        const response = await Promise.race([fetch('/api/thumbnail-save',{method:'POST',headers:{'Idempotency-Key':op.key,
+          ...(readOnly ? {'X-Save-Recovery':'retained-only-v1'} : {})},body,signal:controller.signal}),interrupted]);
         const data = await Promise.race([response.json(),interrupted]);
         if (!current()) return;
         if (timedOut) throw Error('Timed out');
@@ -78,7 +80,11 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
     return () => { scope.active=false;scope.controller?.abort();if(scope.deadline)clearTimeout(scope.deadline); };
   }, [scope]);
   const view = store.scope===scope && current() ? store : initial();
+  const discardSave = () => {
+    if (!current() || scope.flight) return;
+    scope.operation = null; update({pending:false,error:null});
+  };
   return { ...view, savedStale: !!view.savedUrl && view.savedContext !== context,
     pendingStale: !!scope.operation && scope.operation.context !== context,
-    save: () => run(), retrySave: () => run(true), current };
+    save: () => run(), retrySave: () => run(true), discardSave, current };
 }

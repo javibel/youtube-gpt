@@ -17,6 +17,10 @@ export async function POST(request: Request) {
   const userId = session.user.id;
   const key = request.headers.get('Idempotency-Key');
   if (key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key)) return Response.json({ error: 'Clave inválida' }, { status: 400 });
+  const recovery = request.headers.get('X-Save-Recovery');
+  if (recovery !== null && (recovery !== 'retained-only-v1' || key === null)) {
+    return Response.json({ error: 'Consulta inválida' }, { status: 400 });
+  }
   // Receipt identity is account scoped, never an operational recovery credential.
   // A keyless request is a fresh save, never a recovery identity. Its unique ID
   // retains the committed charge without sharing a timestamp-based Blob path.
@@ -67,6 +71,9 @@ export async function POST(request: Request) {
         // No PNG, metadata or output URL is retained in this deletion guard.
         if (receipt) return Response.json({ error: 'El guardado ya no está disponible' }, { status: 409 });
       }
+      // A retry only consults the original committed capture. Missing history
+      // cannot turn an input/key into permission for another Blob or charge.
+      if (recovery !== null) return Response.json({ error: 'Guardado no retenido', code: 'save_not_retained' }, { status: 409 });
       // An exact committed replay precedes plan/quota checks and does not upload again.
       let backgroundId: string | undefined;
       if (meta.backgroundOperationKey !== undefined) {

@@ -406,6 +406,8 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
         {save.pending && <div role="alert">
           <p>{saveErr || tr('Hay una captura pendiente de confirmar.', 'A snapshot is awaiting confirmation.')}</p>
           <button onClick={save.retrySave} disabled={saving}>{tr('Reintentar guardado', 'Retry saving')}</button>
+          <p>{tr('Reintentar solo consulta el guardado original. Descartar no cancela el servidor; guardar otra captura puede consumir de nuevo.', 'Retry only checks the original save. Discarding does not cancel the server; saving another snapshot may consume again.')}</p>
+          <button onClick={save.discardSave} disabled={saving}>{tr('Descartar intento de guardado', 'Discard save attempt')}</button>
           <a href="/dashboard">{tr('Consultar historial', 'Check history')}</a>
         </div>}
         {background.pending && <div role="alert">
@@ -700,7 +702,11 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               </a>
             )}
             {saveErr && <div role="alert" className="text-[12px]" style={{ color:'#f5a623' }}><p>{saveErr}</p><a href="/dashboard">{tr('Consultar historial', 'Check history')}</a></div>}
-            {save.pendingStale && <p>{tr('El reintento guarda la captura original. Los cambios posteriores aún no están guardados.', 'Retry saves the original snapshot. Later edits are not saved yet.')}</p>}
+            {save.pendingStale && <p>{tr('El reintento consulta la captura original. Los cambios posteriores aún no están guardados.', 'Retry checks the original snapshot. Later edits are not saved yet.')}</p>}
+            {save.pending && <div role="alert">
+              <p>{tr('Reintentar solo consulta el guardado original. Descartar no cancela el servidor; guardar otra captura puede consumir de nuevo.', 'Retry only checks the original save. Discarding does not cancel the server; saving another snapshot may consume again.')}</p>
+              <button onClick={save.discardSave} disabled={saving}>{tr('Descartar intento de guardado', 'Discard save attempt')}</button>
+            </div>}
             <button onClick={handleSave} disabled={saving || (!save.pending && !backgroundUrl)}
               className="btn-offset w-full py-3 text-[14px] font-bold disabled:opacity-40 disabled:cursor-not-allowed">
               {saving
