@@ -12,7 +12,7 @@ const valid = (file: Blob) => ['image/png','image/jpeg','image/webp'].includes(f
 export function useThumbnailPhoto(userId: string | undefined, email: string | null | undefined,
   status: string, lang: string, isPro: boolean) {
   const scope = useMemo(() => ({ active: true, operation: null as object | null,
-    flight: null as Promise<boolean> | null, controller: null as AbortController | null,
+    removal:null as {key:string;file:File;src:string}|null, flight: null as Promise<boolean> | null, controller: null as AbortController | null,
     deadline: null as ReturnType<typeof setTimeout> | null, cancelImage: null as (() => void) | null, urls: new Set<string>() }), [userId,email,status,lang]);
   const active = useRef(scope);active.current = scope;
   const paid = useRef(isPro);paid.current = isPro;
@@ -26,11 +26,11 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
   };
   const snapshot = () => state.current.scope === scope ? state.current : {scope,...empty()};
   const cancel = () => {
-    scope.operation = null;scope.cancelImage?.();scope.cancelImage = null;
+    scope.operation = null;scope.removal = null;scope.cancelImage?.();scope.cancelImage = null;
     scope.controller?.abort();scope.controller = null;if(scope.deadline)clearTimeout(scope.deadline);scope.deadline = null;
   };
   const begin = () => { cancel();const op = {};scope.operation = op;update({busy:true,error:null});return op; };
-  const live = (op: object) => current() && paid.current && scope.operation === op;
+  const live = (op: object) => current() && (paid.current || !!scope.removal) && scope.operation === op;
   const release = (url: string) => { if(scope.urls.delete(url))URL.revokeObjectURL(url); };
   const measure = (src: string, op: object) => new Promise<{width:number;height:number}>((resolve,reject) => {
     const img = new Image();let done = false;
@@ -72,27 +72,29 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     return upload(new File([blob],'cropped.png',{type:blob.type}),eligible);
   };
   const remove = (explicitRetry = false) => {
-    if(!current() || !paid.current)return Promise.resolve(false);
+    if(!current() || (!paid.current && !scope.removal))return Promise.resolve(false);
     if(scope.flight)return scope.flight;
     const original = snapshot();
     if(!original.originalFile || original.removed || (original.error === 'unconfirmed' && !explicitRetry))return Promise.resolve(false);
-    const originalFile = original.originalFile;
-    const op = begin(),controller = new AbortController();scope.controller = controller;let timedOut = false;
+    const attempt=scope.removal??{key:'remove-'+crypto.randomUUID(),file:original.originalFile,src:original.originalSrc!};
+    const originalFile = attempt.file;
+    const op = begin();scope.removal=attempt;const controller = new AbortController();scope.controller = controller;let timedOut = false;
     const deadline = setTimeout(() => {timedOut = true;controller.abort();},45_000);scope.deadline = deadline;
     const flight = Promise.resolve().then(async () => {
       try {
         if(!live(op))return false;
-        const blob = await fetchRemovalPhoto(originalFile,controller.signal);
+        const blob = await fetchRemovalPhoto(originalFile,controller.signal,{key:attempt.key,userId:userId!});
         if(!live(op))return false;
         if(timedOut || blob.type !== 'image/png' || !valid(blob))throw Error('Removal unconfirmed');
-        return await place(new File([blob],'removed.png',{type:'image/png'}),op,false);
+        const applied=await place(new File([blob],'removed.png',{type:'image/png'}),op,false);
+        if(applied && scope.removal===attempt)scope.removal=null;return applied;
       } catch {if(live(op))update({error:'unconfirmed'});return false;}
       finally {clearTimeout(deadline);if(scope.deadline === deadline)scope.deadline = null;if(scope.controller === controller)scope.controller = null;if(current() && scope.operation === op)update({busy:false});}
     });
     scope.flight = flight;void flight.finally(() => {if(scope.flight === flight)scope.flight = null;});return flight;
   };
   const restore = () => {
-    if(!current() || !paid.current)return;
+    if(!current() || (!paid.current && !scope.removal))return;
     cancel();scope.flight = null;const original = snapshot();
     if(original.photo && original.originalSrc)update({photo:{...original.photo,src:original.originalSrc},removed:false,busy:false,error:null});
   };
@@ -114,6 +116,6 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     for(const url of [...scope.urls])if(!retained.has(url) && !scope.cancelImage)release(url);
   },[scope,store]);
   return {...view,current,upload,crop,removeBackground:() => remove(),retryRemoval:() => remove(true),
-    restore,clear,updatePhoto};
+    restore,clear,updatePhoto,pendingRemoval:!!scope.removal};
 }
 

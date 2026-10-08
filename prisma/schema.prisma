@@ -45,6 +45,7 @@ model User {
   accounts        Account[]
   sessions        Session[]
   backgroundImageAttempts BackgroundImageAttempt[]
+  removalAttempts RemovalAttempt[]
   backgroundUploads BackgroundUpload[]
   generations     Generation[]
   emailLogs       EmailLog[]
@@ -854,4 +855,17 @@ model BackgroundImageAttempt {
  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
  @@index([userId, createdAt], map: "background_image_attempts_userid_createdat_idx")
  @@map("background_image_attempts")
+}
+
+// Exact own bounded PNG receipt, separate from monthly Generation accounting.
+model RemovalAttempt {
+ id String @id
+ userId String
+ digest String
+ state String @default("pending")
+ output Bytes?
+ createdAt DateTime @default(now())
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ @@index([userId, createdAt], map: "removal_attempts_userid_createdat_idx")
+ @@map("removal_attempts")
 }

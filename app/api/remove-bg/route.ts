@@ -1,3 +1,4 @@
+import { keyedRemoval } from '@/lib/image/removal-attempt';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -22,6 +23,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({error:'Archivo no válido'},{status:400});
     }
     if (file.size > MAX_REMOVAL_BYTES) return NextResponse.json({error:'Imagen demasiado grande (máx 10MB)'},{status:413});
+    const key=req.headers.get('Idempotency-Key');
+    if(key!==null&&!/^[-A-Za-z0-9._:]{1,128}$/.test(key))return NextResponse.json({error:'Clave inválida'},{status:400});
+    if(key!==null)return await keyedRemoval(user.id,key,file,req.signal,async()=>{
+      if(!isPaid(await getUserPlan(user.id)))return NextResponse.json({error:'pro_required'},{status:403});
+      if(!isRemovalAvailable())return NextResponse.json({code:'image_service_unavailable'},{status:503});
+      return ()=>removeBackgroundImage(file,req.signal);
+    });
     const plan = await getUserPlan(user.id);
     if (!isPaid(plan)) return NextResponse.json({error:'pro_required'},{status:403});
     if (!isRemovalAvailable()) throw new RemovalUnavailable();

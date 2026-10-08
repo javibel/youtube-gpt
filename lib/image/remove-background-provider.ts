@@ -40,13 +40,7 @@ export async function removeBackgroundImage(file: File, requestSignal: AbortSign
       }
       if(declared !== null && Number(declared) !== size)throw new RemovalUnconfirmed();
       const png = new Uint8Array(size);let offset = 0;for(const chunk of chunks){png.set(chunk,offset);offset += chunk.byteLength;}
-      // Framing/dimensions only. Full PNG decoding and quality remain acceptance work.
-      const signature = [137,80,78,71,13,10,26,10];
-      if(size < 33 || signature.some((byte,index) => png[index] !== byte))throw new RemovalUnconfirmed();
-      const data = new DataView(png.buffer,png.byteOffset,png.byteLength);
-      if(data.getUint32(8) !== 13 || String.fromCharCode(...png.slice(12,16)) !== 'IHDR')throw new RemovalUnconfirmed();
-      const width = data.getUint32(16),height = data.getUint32(20);
-      if(!width || !height || width > 16384 || height > 16384 || width * height > 40_000_000)throw new RemovalUnconfirmed();
+      assertRemovalPng(png);
       return png;
     })();
     return await Promise.race([work,interruption]);
@@ -56,4 +50,17 @@ export async function removeBackgroundImage(file: File, requestSignal: AbortSign
     // Best effort local cancellation; never wait forever on an uncooperative stream.
     cancelLocalBody(responseBody,reader);
   }
+}
+
+// Framing only; real codec quality still requires acceptance.
+export function assertRemovalPng(png:Uint8Array) {
+ if(png.byteLength>MAX_REMOVAL_BYTES)throw new RemovalUnconfirmed();
+ // Framing/dimensions only. Full PNG decoding and quality remain acceptance work.
+ const signature = [137,80,78,71,13,10,26,10];
+ if(png.byteLength < 33 || signature.some((byte,index) => png[index] !== byte))throw new RemovalUnconfirmed();
+ const data = new DataView(png.buffer,png.byteOffset,png.byteLength);
+ if(data.getUint32(8) !== 13 || String.fromCharCode(...png.slice(12,16)) !== 'IHDR')throw new RemovalUnconfirmed();
+ const width = data.getUint32(16),height = data.getUint32(20);
+ if(!width || !height || width > 16384 || height > 16384 || width * height > 40_000_000)throw new RemovalUnconfirmed();
+
 }

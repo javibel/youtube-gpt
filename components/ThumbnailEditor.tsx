@@ -312,7 +312,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   const photoError = photoState.error ? ({
     invalid: tr('Usa PNG, JPEG o WebP, sin superar 10 MB.','Use PNG, JPEG or WebP, up to 10 MB.'),
     decode: tr('No se pudo leer la foto. La anterior se conserva; prueba otro archivo.','Could not read the photo. The previous one is retained; try another file.'),
-    unconfirmed: tr('El resultado de eliminar el fondo no está confirmado. Otro intento podría consumir de nuevo; la foto original se conserva.','Background removal is unconfirmed. Another attempt may consume again; the original photo is retained.'),
+    unconfirmed: tr('El resultado de eliminar el fondo no está confirmado. Reintenta para consultar este mismo intento. Descartarlo e iniciar otro podría consumir de nuevo; la foto original se conserva.','Background removal is unconfirmed. Retry to check this same attempt. Discarding it and starting another may consume again; the original photo is retained.'),
   })[photoState.error] : '';
   const [selectedId,setSelectedId] = useState<string | null>(null);
   const [cropTarget,setCropTarget] = useState<{src:string;type:'photo'|'bg'} | null>(null);
@@ -411,6 +411,11 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
           <p>{tr('El fondo anterior está pendiente de confirmar. Reintenta la misma captura.','The previous background is awaiting confirmation. Retry the same snapshot.')}</p>
           <button onClick={background.retry} disabled={bgLoading}>{tr('Volver a intentar fondo','Try background again')}</button>
           <button onClick={background.discard}>{tr('Descartar intento de fondo','Discard background attempt')}</button>
+        </div>}
+        {photoState.pendingRemoval && <div role="alert">
+          <p>{photoError || tr('La eliminación anterior está pendiente de confirmar. Consulta el mismo intento.','The previous removal is awaiting confirmation. Check the same attempt.')}</p>
+          <button onClick={photoState.retryRemoval} disabled={removingBg}>{tr('Volver a intentar eliminación','Try removal again')}</button>
+          <button onClick={handleRestoreOriginal}>{tr('Descartar intento de eliminación','Discard removal attempt')}</button>
         </div>}
         <a href="/pricing" className="btn-offset px-6 py-2.5 text-[14px] font-bold">{tr('Ver planes', 'See plans')}</a>
       </div>
@@ -575,6 +580,8 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                     </button>
                   )}
                 </div>
+
+                {photoState.pendingRemoval && !removingBg && <button onClick={handleRestoreOriginal} className="soft-chip w-full py-1.5 text-[11px] mt-2">{tr('Descartar intento de eliminación','Discard removal attempt')}</button>}
 
                 {/* Opacity */}
                 <div className="mt-3">

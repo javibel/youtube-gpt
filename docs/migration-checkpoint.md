@@ -344,3 +344,8 @@ Keyed visible AI backgrounds now commit a pending business attempt before any pr
 ## Browser removal response boundary — local only
 
 The original photo removal hook now reads the original fixed API response as a stream with a 10 MiB decoded byte cap, strict PNG MIME, no redirects and no browser cache. Its existing 45 second local deadline interrupts fetch or body reads even when they ignore abort; superseded operations and late bodies are discarded/cancelled locally. Header length is checked for identity encoding, while compressed wire length does not replace the decoded byte cap. Browser image measurement/decoding remains required before applying a photo. This does not reserve quota, add removal idempotency, recover provider authority or prove external cancellation/billing/codec acceptance.
+
+
+## Keyed removal admission — local only
+
+Visible removal retains a random key and exact original file per account. Additive removal_attempts records pending before the original live provider closure, then bounded PNG bytes only in a completed own receipt. Pending has no reclaim, reset, TTL or recovery authority. Committed replay precedes plan/configuration/rate checks; lost admission ack may leave pending without any provider call. Browser verifies binary owner/key/id headers before decoding, can reconcile after Pro expiry, and requires explicit discard before another operation. Receipt pixels exist only in synthetic fixtures; operational schema/data retention, real auth/codec/provider, monthly reservation/shared quota and historical keyless API remain pending. No input image is stored and no Generation row or monthly charge is introduced. No external spending is authorized.
