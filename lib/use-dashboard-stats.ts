@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export type DashboardStats = {
   user: { id: string; email: string; name: string | null; createdAt: string };
-  stats: { totalGenerations: number; generationsThisMonth: number; limit: number; remaining: number;
+  stats: { totalGenerations: number; generationsThisMonth: number; generationsReserved: number; quotaOccupied: number; limit: number; remaining: number;
     isPro: boolean; plan: 'free'|'pro'|'business'; streak: number; videoTipsRemaining: number|null };
   subscription: { status: string; plan?: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
 };
@@ -16,16 +16,18 @@ function decode(value: unknown, userId: string, email: string): DashboardStats {
   if (!body?.user || body.user.id !== userId || body.user.email !== email || !(body.user.name === null || typeof body.user.name === 'string')
     || !date(body.user.createdAt) || !body.stats || !Object.hasOwn(body, 'subscription')) throw Error('Invalid statistics');
   const s = body.stats;
-  if (![s.totalGenerations, s.generationsThisMonth, s.limit, s.remaining, s.streak].every(count) || s.limit === 0
+  if (![s.totalGenerations, s.generationsThisMonth, s.generationsReserved, s.quotaOccupied, s.limit, s.remaining, s.streak].every(count) || s.limit === 0
     || !['free','pro','business'].includes(s.plan) || typeof s.isPro !== 'boolean' || s.isPro !== (s.plan !== 'free')
-    || s.remaining !== Math.max(0, s.limit - s.generationsThisMonth)
+    || s.quotaOccupied !== s.generationsThisMonth + s.generationsReserved
+    || s.remaining !== Math.max(0, s.limit - s.quotaOccupied)
     || (s.isPro ? s.videoTipsRemaining !== null : !count(s.videoTipsRemaining) || s.videoTipsRemaining > 1)) throw Error('Invalid statistics');
   const sub = body.subscription;
   if (sub !== null && (!sub || typeof sub.status !== 'string' || !sub.status
     || !(sub.plan === undefined || typeof sub.plan === 'string') || typeof sub.cancelAtPeriodEnd !== 'boolean'
     || !(sub.currentPeriodEnd === null || date(sub.currentPeriodEnd)))) throw Error('Invalid subscription');
   return { user: { id: body.user.id, email: body.user.email, name: body.user.name, createdAt: body.user.createdAt },
-    stats: { totalGenerations: s.totalGenerations, generationsThisMonth: s.generationsThisMonth, limit: s.limit,
+    stats: { totalGenerations: s.totalGenerations, generationsThisMonth: s.generationsThisMonth,
+      generationsReserved: s.generationsReserved, quotaOccupied: s.quotaOccupied, limit: s.limit,
       remaining: s.remaining, isPro: s.isPro, plan: s.plan, streak: s.streak, videoTipsRemaining: s.videoTipsRemaining },
     subscription: sub ? { status: sub.status, plan: sub.plan, cancelAtPeriodEnd: sub.cancelAtPeriodEnd, currentPeriodEnd: sub.currentPeriodEnd } : null };
 }

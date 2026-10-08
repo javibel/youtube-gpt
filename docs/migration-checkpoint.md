@@ -382,3 +382,6 @@ is never automatically released. Other Generation writers require shared admissi
 still needs a policy relating pending attempts to a final save. Retention,
 authentic reconciliation, operational approval and real providers remain open.
 
+
+
+Quota statistics: authenticated user stats now retain completed history separately from admitted legacy image reservations and return quotaOccupied/remaining from the same locked snapshot. The shared hook rejects absent/corrupt breakdowns; generator displays pending credits and uses available quota for new Video Tips. Text replay remains server-controlled. Dashboard/history completed counters retain their meaning. This snapshot creates no text reservation or pending reclaim authority; global admission and background-to-save policy remain open.

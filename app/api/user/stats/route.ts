@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getLimits, hasPaidAccess, isPaid, type PlanType } from "@/lib/plans";
+import { readGenerationQuotaSnapshot } from '@/lib/generation-quota';
 
 function calcStreak(dates: Date[]): number {
   if (!dates.length) return 0;
@@ -55,12 +56,10 @@ export async function GET() {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [totalGenerations, generationsThisMonth, videoTipsThisMonth, subscription, allDates] =
+    const [totalGenerations, quota, videoTipsThisMonth, subscription, allDates] =
       await Promise.all([
         prisma.generation.count({ where: { userId: user.id } }),
-        prisma.generation.count({
-          where: { userId: user.id, createdAt: { gte: startOfMonth } },
-        }),
+        readGenerationQuotaSnapshot(user.id, startOfMonth),
         // Video Tips free (26/08): tope de 1/mes ademas del pool general — ver
         // app/api/storyboard/route.ts (FREE_VIDEO_TIPS_PER_MONTH).
         prisma.generation.count({
@@ -92,16 +91,18 @@ export async function GET() {
       user: { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt },
       stats: {
         totalGenerations,
-        generationsThisMonth,
+        generationsThisMonth: quota.recorded,
+        generationsReserved: quota.reserved,
+        quotaOccupied: quota.total,
         limit,
-        remaining: Math.max(0, limit - generationsThisMonth),
+        remaining: Math.max(0, limit - quota.total),
         isPro: isProUser,
         plan,
         streak,
         videoTipsRemaining: isProUser ? null : Math.max(0, 1 - videoTipsThisMonth),
       },
       subscription: subscription ?? null,
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: "Estadísticas no disponibles" }, { status: 503 });
   }

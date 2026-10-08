@@ -136,7 +136,7 @@ export default function GeneratePage() {
     // una generacion mas (26/08 — free incluye 1/mes, dentro del pool de 10).
     if (selectedTemplate === 'video_preview') {
       if (!planStats || accountStats.statsError) {void accountStats.retryStats();return;}
-      if (planStats.generationsThisMonth >= planStats.limit) { media.showLimit('limit'); return; }
+      if (planStats.remaining === 0) { media.showLimit('limit'); return; }
       if (!isPro && videoTipsRemaining === 0) {
         media.showLimit('video_tips_limit'); return;
       }
@@ -190,6 +190,10 @@ export default function GeneratePage() {
             </p>
           </div>
         </header>
+
+        {!!planStats?.generationsReserved && <p role="status" className="mb-4">
+          {planStats.generationsReserved} {t('créditos reservados para imágenes pendientes. Ya están descontados del cupo disponible.', 'credits reserved for pending images. They are already deducted from available quota.')}
+        </p>}
 
         {accountStats.statsError && <div role="alert" className="yv-card p-4 mb-4">
           <p>{planStats ? t('No se pudo actualizar el plan. Los últimos datos confirmados pueden estar desactualizados.', 'Could not refresh your plan. Last confirmed data may be outdated.') : t('No se pudo comprobar tu plan. No hay límites confirmados.', 'Could not check your plan. Limits are unconfirmed.')}</p>
@@ -540,7 +544,7 @@ export default function GeneratePage() {
                         onClick={() => {
                           if (!media.current()) return;
                           if (!planStats || accountStats.statsError) {void accountStats.retryStats();return;}
-                          if (planStats.generationsThisMonth >= planStats.limit) {media.showLimit('limit');return;}
+                          if (planStats.remaining === 0) {media.showLimit('limit');return;}
                           if (!isPro) {media.showLimit('pro_feature');return;}
                           media.openPreview(output,formData.tema.slice(0,60) || 'Script Preview');
                         }}

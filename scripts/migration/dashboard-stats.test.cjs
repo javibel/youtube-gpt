@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
 const compiled=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../../lib/use-dashboard-stats.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
-const stats=(email='fixture-one@example.invalid',total=3)=>({user:{id:'fixture-one',email,name:'Synthetic',createdAt:'2026-10-07T14:00:00Z'},stats:{totalGenerations:total,generationsThisMonth:total,limit:10,remaining:Math.max(0,10-total),isPro:false,plan:'free',streak:1,videoTipsRemaining:1},subscription:null});
+const stats=(email='fixture-one@example.invalid',total=3)=>({user:{id:'fixture-one',email,name:'Synthetic',createdAt:'2026-10-07T14:00:00Z'},stats:{totalGenerations:total,generationsThisMonth:total,generationsReserved:0,quotaOccupied:total,limit:10,remaining:Math.max(0,10-total),isPro:false,plan:'free',streak:1,videoTipsRemaining:1},subscription:null});
 const reply=(data,status=200)=>({ok:status>=200&&status<300,status,json:async()=>data});
 function harness(){
  const cells=[],effects=[],requests=[];let index=0,dirty=false;
@@ -30,6 +30,9 @@ if(require.main===module)(async()=>{
  await test('wrong or absent owner ID rejects statistics even with matching email',async()=>{for(const id of ['another',undefined]){const h=harness(),d=stats();d.user.id=id;h.state.send=async()=>reply(d);await h.ready();assert.equal(h.view().data,null);assert.equal(h.view().statsError,true);h.unmount();}});
  await test('video tips require a bounded free count and explicit unlimited paid null',async()=>{for(const value of [undefined,null,-1,2,1.5,'1']){const h=harness(),d=stats();d.stats.videoTipsRemaining=value;h.state.send=async()=>reply(d);await h.ready();assert.equal(h.view().data,null);assert.equal(h.view().statsError,true);h.unmount();}const h=harness(),d=stats();d.stats={...d.stats,isPro:true,plan:'pro',videoTipsRemaining:1};h.state.send=async()=>reply(d);await h.ready();assert.equal(h.view().statsError,true);h.unmount();});
  await test('authenticated missing owner ID never reads statistics',async()=>{const h=harness();h.state.user=undefined;await h.ready();assert.equal(h.requests.length,0);assert.equal(h.view().statsError,true);h.unmount();});
+
+ for(const change of [s=>{delete s.generationsReserved;},s=>{s.generationsReserved=-1;},s=>{s.generationsReserved=1;},s=>{s.quotaOccupied=Number.MAX_SAFE_INTEGER+1;},s=>{s.generationsReserved=1;s.quotaOccupied=4;}])await test('corrupt or missing reservation breakdown never presents available credits',async()=>{const h=harness(),d=stats();change(d.stats);h.state.send=async()=>reply(d);await h.ready();assert.equal(h.view().data,null);assert.equal(h.view().statsError,true);h.unmount();});
+ await test('reserved capacity reduces availability without inventing completed history and retained snapshot is labelled on failed refresh',async()=>{const h=harness(),d=stats();d.stats.generationsReserved=7;d.stats.quotaOccupied=10;d.stats.remaining=0;h.state.send=async()=>reply(d);await h.ready();assert.equal(h.view().data.stats.totalGenerations,3);assert.equal(h.view().data.stats.generationsReserved,7);assert.equal(h.view().data.stats.remaining,0);h.state.send=async()=>reply({},503);await h.view().refreshStats();assert.equal(h.view().data.stats.generationsReserved,7);assert.equal(h.view().statsError,true);h.unmount();});
  console.log(JSON.stringify({scope:'actual Dashboard statistics hook; synthetic HTTP/hooks only, no operational authentication or billing acceptance',results},null,2));
 })().catch(error=>{console.error(error);process.exitCode=1;});
 module.exports={harness,stats,reply};

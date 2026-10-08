@@ -4,7 +4,7 @@ const {page}=require('./generic-generation-page.test.cjs');
 module.exports=async function(prisma,results){
  const users=await Promise.all([1,2].map(i=>prisma.user.create({data:{email:'generator-account-'+randomUUID()+'@example.invalid',name:'Synthetic generator '+i}})));
  let owner=users[0];const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),session=()=>({user:{id:owner.id,email:owner.email}});
- const stats=load('app/api/user/stats/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>session()},'@/lib/prisma':{prisma},'@/lib/plans':plans});
+ const stats=load('app/api/user/stats/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>session()},'@/lib/prisma':{prisma},'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'@/lib/plans':plans});
  const channel=load('app/api/youtube/channel/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>session()},'@/lib/prisma':{prisma}});
  const send=url=>url==='/api/user/stats'?stats.GET():channel.GET(new Request('https://example.invalid/api/youtube/channel'));
  const h=page({user:owner.id,email:owner.email,read:send});
