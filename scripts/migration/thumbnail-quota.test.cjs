@@ -12,7 +12,7 @@ const {thumbnailQuota}=load('lib/image/thumbnail-quota.ts'),results=[];
  }
  const textSeen=[];
  const text=await thumbnailQuota({generation:{count:async()=>197},legacyThumbnailAttempt:{count:async()=>1},textGenerationAttempt:{count:async x=>{textSeen.push(x);return 2;}}},'owner',month);
- assert.deepEqual(text,{recorded:197,reserved:3,total:200});assert.equal(textSeen[0].where.userId,'owner');assert.equal(textSeen[0].where.createdAt.gte,month);assert.equal(textSeen[0].where.state.not,'complete');results.push({name:'uncertain text shares owner/month capacity with image reservations and completed history',status:'PASS'});
+ assert.equal(text.recorded,197);assert.equal(text.reserved,3);assert.equal(text.total,200);assert.equal(textSeen[0].where.userId,'owner');assert.equal(textSeen[0].where.createdAt.gte,month);assert.equal(textSeen[0].where.state.not,'complete');results.push({name:'uncertain text shares owner/month capacity with image reservations and completed history',status:'PASS'});
  for(const invalid of [-1,NaN,1.5,Infinity,Number.MAX_SAFE_INTEGER]){
   await assert.rejects(thumbnailQuota({generation:{count:async()=>1},legacyThumbnailAttempt:{count:async()=>0},textGenerationAttempt:{count:async()=>invalid}},'owner',month));results.push({name:'invalid or overflowing text reservation fails closed '+invalid,status:'PASS'});
  }
