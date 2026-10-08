@@ -20,13 +20,14 @@ export async function POST(request: Request) {
     if (!session?.user?.id) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = session.user.id;
     const operationKey = request.headers.get('idempotency-key');
     if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) {
       return Response.json({ error: 'Invalid operation key' }, { status: 400 });
     }
 
     // Pro-only feature
-    const plan = await getUserPlan(session.user.id);
+    const plan = await getUserPlan(userId);
     if (!isPaid(plan)) {
       return Response.json({ error: 'pro_required' }, { status: 403 });
     }
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
 
     const wholeBatchPreflight = async (): Promise<Response | null> => {
     let usedThisMonth: number;
-    try { usedThisMonth = await readGenerationQuota(session.user.id, startOfMonth); }
+    try { usedThisMonth = await readGenerationQuota(userId, startOfMonth); }
     catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
 
     const remaining = Math.max(0, limits.generationsPerMonth - usedThisMonth);
@@ -91,19 +92,19 @@ export async function POST(request: Request) {
     const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
     const inputDigest = hash([template, cleanTopics, Object.keys(options).sort().map(k => [k, options[k]]), lang]);
     const itemKeys = cleanTopics.map((_topic: string, index: number) => operationKey === null ? null
-      : 'bulk.' + hash([session.user.id, operationKey, index]));
-    const itemIds = itemKeys.map((key: string | null) => key === null ? null : 'generate_' + hash([session.user.id, key]));
+      : 'bulk.' + hash([userId, operationKey, index]));
+    const itemIds = itemKeys.map((key: string | null) => key === null ? null : 'generate_' + hash([userId, key]));
     let freshBatch = true;
     if (operationKey === null) {
       const denied = await wholeBatchPreflight(); if (denied) return denied;
     } else {
-      const batch = await admitBulkRequest(session.user.id, 'bulk_' + hash([session.user.id, operationKey]),
+      const batch = await admitBulkRequest(userId, 'bulk_' + hash([userId, operationKey]),
         inputDigest, itemIds as string[], request.signal, wholeBatchPreflight);
       if (batch instanceof Response) return batch;
       freshBatch = batch.fresh;
     }
 
-    const identity = { taskType: 'content.bulk-generate', userId: session.user.id, language: lang === 'en' ? 'en' : 'es', instructionsVersion: 'bulk-templates-v1' };
+    const identity = { taskType: 'content.bulk-generate', userId: userId, language: lang === 'en' ? 'en' : 'es', instructionsVersion: 'bulk-templates-v1' };
     const ip = getIp(request);
     const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis']);
     const maxTokens = LONG_TEMPLATES.has(template) ? 8192 : 2048;
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
           if (saved) {
             const inputs = saved.inputs;
             const meta = inputs && typeof inputs === 'object' && !Array.isArray(inputs) ? inputs._migrationBulk : null;
-            if (saved.userId !== session.user.id || saved.template !== template || !meta || typeof meta !== 'object'
+            if (saved.userId !== userId || saved.template !== template || !meta || typeof meta !== 'object'
               || Array.isArray(meta) || meta.inputDigest !== inputDigest || meta.index !== index) {
               return Response.json({ error: 'Operation input changed' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
             }
@@ -138,7 +139,7 @@ export async function POST(request: Request) {
       // Other operations can occupy capacity between items. This is a snapshot,
       // not a reservation: do not infer fresh model authority from its result.
       const itemPreflight = async (): Promise<Response | null> => { try {
-        const occupied = await readGenerationQuota(session.user.id, startOfMonth);
+        const occupied = await readGenerationQuota(userId, startOfMonth);
         if (occupied >= limits.generationsPerMonth) {
           return Response.json({ error: 'Not enough credits', limitReached: true }, { status: 429 });
         }
@@ -181,9 +182,9 @@ export async function POST(request: Request) {
           ? 'API error 429' : 'Generation failed', retryMayConsume: operationKey === null }, { status: 502 });
       }
       };
-      const confirmed = !itemId ? await unkeyedTextGeneration(session.user.id, request.signal, execute)
-        : freshBatch ? await keyedTextGeneration(session.user.id, itemId, request.signal, itemPreflight, execute, () => execute(true))
-        : await retrieveKeyedTextGeneration(session.user.id, itemId, request.signal, () => execute(true));
+      const confirmed = !itemId ? await unkeyedTextGeneration(userId, request.signal, execute)
+        : freshBatch ? await keyedTextGeneration(userId, itemId, request.signal, itemPreflight, execute, () => execute(true))
+        : await retrieveKeyedTextGeneration(userId, itemId, request.signal, () => execute(true));
       const item = await confirmed.json();
       if (confirmed.ok && typeof item.content === 'string' && item.truncated === false) {
         results.push({ topic, content: item.content });
