@@ -86,4 +86,4 @@ const results=[];
   assert.equal(await prisma.user.count({where:{email}}),0);results.push('transaction rollback');
  } finally { await prisma.user.deleteMany({where:{id:user.id,email}}); }
  console.log(JSON.stringify({status:'PASS',scope:'explicit isolated PostgreSQL data contracts',results},null,2));
-}finally{await prisma.$disconnect();}})().catch(error=>{console.error(error.message);process.exitCode=1;});
+}finally{await prisma.$disconnect();}})().catch(error=>{console.error(error);process.exitCode=1;});
