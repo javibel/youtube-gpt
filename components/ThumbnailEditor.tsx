@@ -301,6 +301,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     input: tr('Tema entre 3 y 500 caracteres; archivo PNG, JPEG o WebP de hasta 15 MB.','Topic between 3 and 500 characters; PNG, JPEG or WebP file up to 15 MB.'),
     unconfirmed: tr('Fondo sin confirmar. Se conserva el anterior; repetir puede generar otro consumo o subida.','Background unconfirmed. The previous one is retained; repeating may consume or upload again.'),
     timeout: tr('Respuesta demasiado lenta. El servidor podría haber completado el fondo; repetir puede consumir de nuevo.','Response took too long. The server may have completed the background; repeating may consume again.'),
+    pending: tr('Generación pendiente de confirmar. Este intento no ejecutará otro modelo.','Generation is awaiting confirmation. This attempt will not run another model.'),
     limit: tr('Límite del plan. El fondo anterior se conserva.','Plan limit. The previous background is retained.'),
   })[background.error] : '';
 
@@ -406,8 +407,8 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
           <button onClick={save.retrySave} disabled={saving}>{tr('Reintentar guardado', 'Retry saving')}</button>
           <a href="/dashboard">{tr('Consultar historial', 'Check history')}</a>
         </div>}
-        {background.pending && background.pendingKind!=='ai' && <div role="alert">
-          <p>{tr('La subida anterior está pendiente de confirmar. Reintenta la misma captura.','The previous upload is awaiting confirmation. Retry the same snapshot.')}</p>
+        {background.pending && <div role="alert">
+          <p>{tr('El fondo anterior está pendiente de confirmar. Reintenta la misma captura.','The previous background is awaiting confirmation. Retry the same snapshot.')}</p>
           <button onClick={background.retry} disabled={bgLoading}>{tr('Volver a intentar fondo','Try background again')}</button>
           <button onClick={background.discard}>{tr('Descartar intento de fondo','Discard background attempt')}</button>
         </div>}
@@ -461,7 +462,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
         </div>
         {bgError && <p role="alert" className="text-[12px] mt-2" style={{ color: '#f5a623' }}>{bgError}</p>}
         {background.pending && <div className="text-[12px] mt-2" role="status">
-          <p>{background.pendingKind!=='ai' ? tr('El reintento conserva la misma captura y recupera la subida si quedó confirmada. Puede volver a subir los mismos bytes si no hay recibo; descartarla no cancela el servidor.','Retry retains the same snapshot and recovers a confirmed upload. It may upload the same bytes again without a receipt; discarding does not cancel the server.') : tr('Otro intento repite la solicitud original y podría consumir de nuevo. Descartarla solo abandona el intento local; no cancela el servidor.','Another attempt repeats the original request and may consume again. Discarding only abandons the local attempt; it does not cancel the server.')}</p>
+          <p>{background.pendingKind!=='ai' ? tr('El reintento conserva la misma captura y recupera la subida si quedó confirmada. Puede volver a subir los mismos bytes si no hay recibo; descartarla no cancela el servidor.','Retry retains the same snapshot and recovers a confirmed upload. It may upload the same bytes again without a receipt; discarding does not cancel the server.') : tr('Se conserva el intento original. Si sigue pendiente, no se generará otro automáticamente. Descartarlo permite una solicitud nueva y podría consumir de nuevo; no cancela el servidor.','The original attempt is retained. If it remains pending, another image is not generated automatically. Discarding allows a new request and may consume again; it does not cancel the server.')}</p>
           {background.pendingStale && <p>{tr('Los cambios del tema o estilo no se incluyen en este intento.','Topic or style edits are not included in this attempt.')}</p>}
           <button onClick={() => { background.discard();if(cropTarget?.type === 'bg'){cropCurrent.current = null;setCropTarget(null);} }} className="soft-chip px-3 py-1.5 mt-1">{tr('Descartar intento de fondo','Discard background attempt')}</button>
         </div>}

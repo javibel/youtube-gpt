@@ -24,6 +24,7 @@ const results=[];
  await require('./background-upload-database.cjs')(prisma,results);
  await require('./remove-background-database.cjs')(prisma,results);
  await require('./background-image-database.cjs')(prisma,results);
+ await require('./background-image-attempt-database.cjs')(prisma,results);
   await require('./legacy-thumbnail-database.cjs')(prisma,results);
  await require('./extension-generation-database.cjs')(prisma,results);
  await require('./generator-account-database.cjs')(prisma,results);

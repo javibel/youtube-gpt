@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 type Operation = { key?:string;kind:'ai'|'upload'|'crop';topic:string;style:string;lang:string;file?:File;
   originalUrl?:string;eligible:() => boolean;context:string };
 const empty = () => ({ backgroundUrl:null as string|null,topic:'',style:'viral',busy:false,pending:false,
-  resultContext:'',error:null as 'input'|'unconfirmed'|'timeout'|'limit'|null });
+  resultContext:'',error:null as 'input'|'unconfirmed'|'timeout'|'limit'|'pending'|null });
 const styles = ['viral','cinematic','minimal','bold'];
 export function useThumbnailBackground(userId:string|undefined,email:string|null|undefined,status:string,lang:string,isPro:boolean) {
   const scope = useMemo(() => ({active:true,operation:null as Operation|null,flight:null as Promise<boolean>|null,
@@ -50,10 +50,10 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
         })(),interrupted]);
         if(!live(op))return false;
         if(timedOut)throw Error('Timed out');
-        if(!response.ok){update({error:data?.limitReached === true && [403,429].includes(response.status) ? 'limit' : 'unconfirmed'});return false;}
+        if(!response.ok){update({error:response.status===409 && data?.code==='image_attempt_pending' && data.operationPending===true && data.userId===userId && data.operationKey===op.key && typeof data.id==='string' && /^background_ai_[a-f0-9]{64}$/.test(data.id) ? 'pending' : data?.limitReached === true && [403,429].includes(response.status) ? 'limit' : 'unconfirmed'});return false;}
         if(typeof data?.backgroundUrl !== 'string' || !data.backgroundUrl || data.backgroundUrl.length > 4096)throw Error('Invalid image acknowledgement');
         const url = new URL(data.backgroundUrl);if(url.protocol !== 'https:' || url.username || url.password || url.hash)throw Error('Invalid image URL');
-        if(op.key && (data.userId!==userId || data.operationKey!==op.key || typeof data.id!=='string' || !/^background_[a-f0-9]{64}$/.test(data.id) || data.prompt!==null))throw Error('Invalid upload receipt');
+        if(op.key && (data.userId!==userId || data.operationKey!==op.key || typeof data.id!=='string' || !(op.kind==='ai' ? /^background_ai_[a-f0-9]{64}$/ : /^background_[a-f0-9]{64}$/).test(data.id) || (op.kind==='ai' ? typeof data.prompt!=='string' || !data.prompt.trim() || data.prompt.length>4000 : data.prompt!==null)))throw Error('Invalid upload receipt');
         // Cancellation/plan changes discard local application, never imply backend rollback.
         if((!paid.current && !op.key) || !op.eligible()){scope.operation = null;update({pending:false});return false;}
         scope.operation = null;update({backgroundUrl:data.backgroundUrl,resultContext:op.context,pending:false,error:null});return true;
@@ -70,7 +70,7 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
     if(scope.operation)return Promise.resolve(false);
     const {topic,style} = snapshot(),trimmed = topic.trim();
     if(trimmed.length < 3 || trimmed.length > 500 || !styles.includes(style)){update({error:'input'});return Promise.resolve(false);}
-    return run({kind:'ai',topic:trimmed,style,lang,eligible:() => true,context:context()});
+    return run({key:'bg-ai-'+crypto.randomUUID(),kind:'ai',topic:trimmed,style,lang,eligible:() => true,context:context()});
   };
   const upload = (file:File,originalUrl?:string,eligible:() => boolean = () => true) => {
     if(!current() || !paid.current)return Promise.resolve(false);

@@ -1,3 +1,4 @@
+import { keyedBackgroundImage } from '@/lib/image/background-image-attempt';
 import { uploadBackgroundReceipt } from '@/lib/image/background-upload';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -46,21 +47,9 @@ export async function POST(request: Request) {
     }
     const key=request.headers.get('Idempotency-Key');
     if(key!==null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))return Response.json({error:'Clave inválida'},{status:400});
-    if(key!==null && source==='ai')return Response.json({error:'Clave de subida no válida para IA'},{status:400});
+
     if(key!==null && source==='upload' && file && typeof file!=='string')return await uploadBackgroundReceipt(user.id,key,file,lang as string,request.signal);
-    if(!isPaid(await getUserPlan(user.id)))return Response.json({error:isEn?'Pro plan required':'Se requiere plan Pro',limitReached:true},{status:403});
-    if(request.signal.aborted)throw Error('Unconfirmed');
-    if(source==='upload'&&file&&typeof file!=='string'){
-      if(!await rateLimitDb('upload-thumb-bg:'+user.id,20,1,true))return Response.json({error:'Solicitud no admitida'},{status:429});
-      const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
-      const backgroundUrl=await storeBackground('thumbnails/bg/'+user.id+'/'+Date.now()+'.'+ext,new Uint8Array(await file.arrayBuffer()),file.type,request.signal);
-      return Response.json({backgroundUrl,prompt:null},{headers:{'Cache-Control':'no-store'}});
-    }
-    if(!backgroundImageAvailable())return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});
-    let task;
-    try{task=await getMessagesTask({taskType:'thumbnail.background-prompt',userId:user.id,language:'en',instructionsVersion:'background-prompt-v1'});}
-    catch{return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});}
-    if(!await rateLimitDb('gen-thumb-bg:'+user.id,5,1,true))return Response.json({error:isEn?'Too many requests — wait a moment':'Demasiadas solicitudes — espera un momento'},{status:429});
+    const generate=async (task:Awaited<ReturnType<typeof getMessagesTask>>)=>{
     const promptResult=await task.create({max_tokens:400,messages:[{role:'user',content:`Generate an Ideogram v3 image prompt for a YouTube thumbnail background.
 VIDEO TOPIC: ${tema}
 VISUAL STYLE: ${estilo}
@@ -77,7 +66,30 @@ Respond with ONLY the image generation prompt in English.`}]});
     if(typeof imagePrompt!=='string'||!imagePrompt||imagePrompt.length>4000||promptResult.incomplete===true||request.signal.aborted)throw Error('Unconfirmed');
     const image=await generateBackgroundImage(imagePrompt,request.signal);
     const backgroundUrl=await storeBackground('thumbnails/bg/'+user.id+'/'+Date.now()+'.'+image.extension,image.bytes,image.contentType,request.signal);
-    return Response.json({backgroundUrl,prompt:imagePrompt},{headers:{'Cache-Control':'no-store'}});
+    return {backgroundUrl,prompt:imagePrompt};
+    };
+    if(key!==null && source==='ai')return await keyedBackgroundImage(user.id,key,{topic:tema,style:estilo,lang:lang as string},request.signal,async()=>{
+      if(!isPaid(await getUserPlan(user.id)))return Response.json({error:isEn?'Pro plan required':'Se requiere plan Pro',limitReached:true},{status:403});
+      if(request.signal.aborted)throw Error('Unconfirmed');
+      if(!backgroundImageAvailable())return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});
+      let task;try{task=await getMessagesTask({taskType:'thumbnail.background-prompt',userId:user.id,language:'en',instructionsVersion:'background-prompt-v1'});}catch{return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});}
+      return ()=>generate(task);
+    });
+    if(!isPaid(await getUserPlan(user.id)))return Response.json({error:isEn?'Pro plan required':'Se requiere plan Pro',limitReached:true},{status:403});
+    if(request.signal.aborted)throw Error('Unconfirmed');
+    if(source==='upload'&&file&&typeof file!=='string'){
+      if(!await rateLimitDb('upload-thumb-bg:'+user.id,20,1,true))return Response.json({error:'Solicitud no admitida'},{status:429});
+      const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+      const backgroundUrl=await storeBackground('thumbnails/bg/'+user.id+'/'+Date.now()+'.'+ext,new Uint8Array(await file.arrayBuffer()),file.type,request.signal);
+      return Response.json({backgroundUrl,prompt:null},{headers:{'Cache-Control':'no-store'}});
+    }
+    if(!backgroundImageAvailable())return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});
+    let task;
+    try{task=await getMessagesTask({taskType:'thumbnail.background-prompt',userId:user.id,language:'en',instructionsVersion:'background-prompt-v1'});}
+    catch{return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});}
+    if(!await rateLimitDb('gen-thumb-bg:'+user.id,5,1,true))return Response.json({error:isEn?'Too many requests — wait a moment':'Demasiadas solicitudes — espera un momento'},{status:429});
+    const result=await generate(task);
+    return Response.json(result,{headers:{'Cache-Control':'no-store'}});
   }catch{
     return Response.json({error:'Fondo sin confirmar. Repetir puede consumir de nuevo.',code:'image_result_unconfirmed',retryMayConsume:true},{status:503});
   }

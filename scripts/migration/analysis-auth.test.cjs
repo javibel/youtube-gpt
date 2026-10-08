@@ -15,7 +15,7 @@ const results=[];
   const forbidden=new Proxy(function(){effects.push('unexpected dependency call');throw Error('Unexpected effect before authentication');},{get:()=>forbidden});
   try{
    const route=load(file,{
-    'next/server':{NextRequest:Request,NextResponse:Response},'@/lib/image/background-upload':{uploadBackgroundReceipt:()=>{throw Error('Unexpected keyed upload');}},'@/auth':{auth:async()=>session},
+    'next/server':{NextRequest:Request,NextResponse:Response},'@/lib/image/background-upload':{uploadBackgroundReceipt:()=>{throw Error('Unexpected keyed upload');}},'@/lib/image/background-image-attempt':{keyedBackgroundImage:()=>{throw Error('Unexpected keyed image');}},'@/auth':{auth:async()=>session},
     '@/lib/prisma':{prisma:forbidden},'@/lib/plans':{getUserPlan:forbidden,getLimits:forbidden,isPaid:forbidden},
     '@/lib/youtube-auth':{getAccessToken:forbidden},'@/lib/parse-fenced-json':{parseFencedJson:forbidden},
     '@/lib/ai/task-runtime':{getMessagesTask:forbidden},
