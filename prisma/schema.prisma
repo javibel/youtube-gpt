@@ -50,6 +50,7 @@ model User {
   textGenerationAttempts TextGenerationAttempt[]
   bulkGenerationRequests BulkGenerationRequest[]
   backgroundUploads BackgroundUpload[]
+  thumbnailSaveReceipts ThumbnailSaveReceipt[]
   generations     Generation[]
   emailLogs       EmailLog[]
   subscription    Subscription?
@@ -844,6 +845,17 @@ model BackgroundUpload {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt], map: "background_uploads_userid_createdat_idx")
   @@map("background_uploads")
+}
+
+// Deletion guard committed with the original history row. It cannot restore deleted output.
+model ThumbnailSaveReceipt {
+ id String @id
+ userId String
+ digest String
+ createdAt DateTime @default(now())
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ @@index([userId, createdAt], map: "thumbnail_save_receipts_userid_createdat_idx")
+ @@map("thumbnail_save_receipts")
 }
 
 // Admission uncertainty is retained. A stored row/key never authorizes reclaim or another model call.

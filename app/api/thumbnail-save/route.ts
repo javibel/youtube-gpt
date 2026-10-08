@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   const userId = session.user.id;
   const key = request.headers.get('Idempotency-Key');
   if (key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key)) return Response.json({ error: 'Clave inválida' }, { status: 400 });
-  // Receipt identity while history is retained; never an operational recovery credential.
+  // Receipt identity is account scoped, never an operational recovery credential.
   const id = key === null ? undefined : 'thumbnail_' + createHash('sha256').update(JSON.stringify([userId,key])).digest('hex');
   let buffer: Buffer, meta: { topic: string; hasPhoto: boolean; textCount: number };
   try {
@@ -51,7 +51,17 @@ export async function POST(request: Request) {
     return await prisma.$transaction(async tx => {
       const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE id=${userId} FOR UPDATE`;
       if (locked.length !== 1) throw Error('Owner unavailable');
-      if (id) { const saved = await tx.generation.findUnique({ where: { id } }); if (saved) return replay(saved); }
+      if (id) {
+        const receipt = await tx.thumbnailSaveReceipt.findUnique({ where: { id } });
+        if (receipt && (receipt.userId !== userId || receipt.digest !== digest)) {
+          return Response.json({ error: 'La captura no coincide con el guardado' }, { status: 409 });
+        }
+        const saved = await tx.generation.findUnique({ where: { id } });
+        if (saved) return replay(saved);
+        // A committed key with deleted history cannot authorize another write.
+        // No PNG, metadata or output URL is retained in this deletion guard.
+        if (receipt) return Response.json({ error: 'El guardado ya no está disponible' }, { status: 409 });
+      }
       // An exact committed replay precedes plan/quota checks and does not upload again.
       const plan = await getUserPlan(userId);
       if (!isPaid(plan)) return Response.json({ error: 'Plan Pro requerido', limitReached: true }, { status: 403 });
@@ -69,6 +79,7 @@ export async function POST(request: Request) {
       const saved = await tx.generation.create({ data: { ...(id ? { id } : {}), userId,
         template: 'thumbnail', inputs: { ...meta, editor: 'canvas-v2', _editorSave: { version: 1,digest } },
         output: blob.url,tokensUsed: 0,ipAddress: ip } });
+      if (id) await tx.thumbnailSaveReceipt.create({ data: { id,userId,digest } });
       return Response.json({ id: saved.id,userId,imageUrl: saved.output,operationKey: key });
     }, { maxWait: 10_000, timeout: 30_000 });
   } catch {
