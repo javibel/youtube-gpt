@@ -37,6 +37,7 @@ const results=[];
  await require('./generic-usage-database.cjs')(prisma,results);
  await require('./storyboard-usage-database.cjs')(prisma,results);
  await require('./bulk-input-database.cjs')(prisma,results);
+ await require('./bulk-admission-database.cjs')(prisma,results);
  await require('./extension-generation-database.cjs')(prisma,results);
  await require('./generator-account-database.cjs')(prisma,results);
  await require('./dashboard-billing-database.cjs')(prisma,results);

@@ -1,9 +1,9 @@
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { TEMPLATES } from '@/utils/prompts';
 import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { readGenerationQuota } from '@/lib/generation-quota';
+import { unkeyedTextGeneration } from '@/lib/text-generation-attempt';
 
 function getIp(request: Request): string | null {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -79,10 +79,6 @@ export async function POST(request: Request) {
     }
 
     const identity = { taskType: 'content.bulk-generate', userId: session.user.id, language: lang === 'en' ? 'en' : 'es', instructionsVersion: 'bulk-templates-v1' };
-    let firstTask: Awaited<ReturnType<typeof getMessagesTask>> | null;
-    try { firstTask = await getMessagesTask(identity); }
-    catch { return Response.json({ error: 'Service unavailable' }, { status: 503 }); }
-
     const ip = getIp(request);
     const LONG_TEMPLATES = new Set(['script', 'series', 'niche_analysis']);
     const maxTokens = LONG_TEMPLATES.has(template) ? 8192 : 2048;
@@ -91,7 +87,7 @@ export async function POST(request: Request) {
       : '';
 
     // Process topics sequentially to avoid API rate limits
-    const results: { topic: string; content: string; error?: string }[] = [];
+    const results: { topic: string; content: string; error?: string; retryMayConsume?: true }[] = [];
 
     for (const topic of cleanTopics) {
       // Other operations can occupy capacity between items. This is a snapshot,
@@ -106,42 +102,43 @@ export async function POST(request: Request) {
         results.push({ topic, content: '', error: 'Generation quota unavailable' });
         continue;
       }
-      try {
+      const confirmed = await unkeyedTextGeneration(session.user.id, request.signal, async () => {
+       try {
         const inputs = { ...options, tema: topic };
         const prompt = templateData.prompt(inputs) + langInstruction;
 
-        const task = firstTask ?? await getMessagesTask(identity);
-        firstTask = null;
-        const data = await task.create({ max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] });
+        let task;
+        try { task = await getMessagesTask(identity); }
+        catch { return Response.json({ error: 'Service unavailable', retryMayConsume: true }, { status: 503 }); }
+        const data = await task.create({ max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }, { signal: request.signal });
         const content = data?.content?.[0]?.text;
         const tokensUsed = data?.usage?.output_tokens;
         // Unknown usage is not zero usage. Keep the item unconfirmed rather
         // than recording a fabricated token count or incomplete output.
         if (data?.incomplete === true || typeof content !== 'string' || !content.trim()
           || typeof tokensUsed !== 'number' || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
-          results.push({ topic, content: '', error: 'Generation result unavailable' });
-          continue;
+          return Response.json({ error: 'Generation result unavailable', retryMayConsume: true }, { status: 502 });
         }
 
-        // Save generation
-        await prisma.generation.create({
-          data: {
-            userId: session.user.id,
-            template,
-            inputs: { ...options, tema: topic, _bulk: true },
-            output: content,
-            tokensUsed,
-            ipAddress: ip,
-          },
-        });
-
-        results.push({ topic, content });
+        // Only this acknowledged fresh admission can execute this closure.
+        // The helper commits history and its completed slot atomically.
+        return { content, truncated: false, history: { template,
+          inputs: { ...options, tema: topic, _bulk: true }, output: content,
+          tokensUsed, ipAddress: ip } };
       } catch (err) {
-        results.push({
-          topic,
-          content: '',
-          error: err && typeof err === 'object' && 'code' in err && err.code === 'rate_limit' ? 'API error 429' : 'Generation failed',
-        });
+        return Response.json({ error: err && typeof err === 'object' && 'code' in err && err.code === 'rate_limit'
+          ? 'API error 429' : 'Generation failed', retryMayConsume: true }, { status: 502 });
+      }
+      });
+      const item = await confirmed.json();
+      if (confirmed.ok && typeof item.content === 'string' && item.truncated === false) {
+        results.push({ topic, content: item.content });
+      } else if (results.length === 0 && confirmed.status === 503 && item.error === 'Service unavailable') {
+        return Response.json({ error: 'Service unavailable', retryMayConsume: true }, { status: 503 });
+      } else {
+        const error = item.limitReached === true ? 'Not enough credits'
+          : ['Generation result unavailable', 'API error 429', 'Service unavailable'].includes(item.error) ? item.error : 'Generation failed';
+        results.push({ topic, content: '', error, ...(item.retryMayConsume === true ? { retryMayConsume: true as const } : {}) });
       }
     }
 

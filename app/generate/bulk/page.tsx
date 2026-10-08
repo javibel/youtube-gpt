@@ -11,6 +11,7 @@ interface Result {
   topic: string;
   content: string;
   error?: string;
+  retryMayConsume?: boolean;
 }
 
 const TEMPLATES: Record<string, { label: Record<Lang, string>; icon: string; options: string[] }> = {
@@ -90,7 +91,11 @@ export default function BulkGeneratePage() {
         if (data.error === 'pro_required') {
           setError(t('Necesitas el plan Pro.', 'You need the Pro plan.'));
         } else {
-          setError(data.error || t('Error al generar', 'Generation error'));
+          const message = data.error || t('Error al generar', 'Generation error');
+          setError(data.retryMayConsume === true ? message + ' ' + t(
+            'Resultado sin confirmar. Generar de nuevo puede consumir otro crédito.',
+            'Result unconfirmed. Generating again may consume another credit.',
+          ) : message);
         }
         return;
       }
@@ -405,7 +410,15 @@ export default function BulkGeneratePage() {
                   </div>
                   <div className="yv-card__body">
                     {r.error ? (
-                      <p className="text-sm text-red-400 font-mono-jb">Error: {r.error}</p>
+                      <div>
+                        <p className="text-sm text-red-400 font-mono-jb">Error: {r.error}</p>
+                        {r.retryMayConsume === true && (
+                          <p className="text-sm mt-2" style={{ color: 'var(--yv-text-2)' }}>
+                            {t('Resultado sin confirmar. Generar de nuevo puede consumir otro crédito.',
+                              'Result unconfirmed. Generating again may consume another credit.')}
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <pre className="text-sm whitespace-pre-wrap font-mono-jb leading-relaxed max-h-64 overflow-y-auto" style={{ color: 'var(--yv-text-2)' }}>
                         {r.content}
