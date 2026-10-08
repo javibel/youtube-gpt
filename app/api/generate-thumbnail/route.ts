@@ -3,10 +3,9 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { put } from '@vercel/blob';
-import { rateLimitDb } from '@/lib/rate-limit-db';
 import { backgroundImageAvailable, generateBackgroundImage } from '@/lib/image/background-image-provider';
 import sharp from 'sharp';
-import { keyedLegacyThumbnail, type ThumbnailResult } from '@/lib/image/legacy-thumbnail-attempt';
+import { keyedLegacyThumbnail, unkeyedLegacyThumbnail, type ThumbnailResult } from '@/lib/image/legacy-thumbnail-attempt';
 
 export const maxDuration = 60;
 
@@ -113,7 +112,6 @@ export async function POST(request: Request) {
       }catch{return Response.json({error:'invalid_photo'},{status:400});}
     }
     if(request.signal.aborted)throw Error('Unconfirmed');
-    if(!key&&!await rateLimitDb('gen-thumb:'+user.id,3,1,true))return Response.json({error:'Solicitud no admitida'},{status:429});
 
     const hasFace = !!facePhotoBuffer;
     const faceOnLeft = facePosition === 'left';
@@ -193,10 +191,7 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
     };
     };
     if(key)return await keyedLegacyThumbnail(user.id,key,[tema,estilo,lang,facePosition,faceScalePct,customText],facePhotoBuffer?{type:facePhotoFile!.type,bytes:facePhotoBuffer}:null,request.signal,prepare);
-    const generate=await prepare();if(generate instanceof Response)return generate;
-    const result=await generate();
-    await bounded(()=>prisma.generation.create({data:{userId:user.id,template:'thumbnail',inputs:result.inputs,output:result.imageUrl,tokensUsed:result.tokensUsed,ipAddress:result.ipAddress}}),request.signal);
-    return Response.json({imageUrl:result.imageUrl,prompt:result.prompt},{headers:{'Cache-Control':'no-store'}});
+    return await unkeyedLegacyThumbnail(user.id,[tema,estilo,lang,facePosition,faceScalePct,customText],facePhotoBuffer?{type:facePhotoFile!.type,bytes:facePhotoBuffer}:null,request.signal,prepare);
   } catch {
     return Response.json({error:'Miniatura sin confirmar. Repetir puede consumir de nuevo.',code:'image_result_unconfirmed',retryMayConsume:true},{status:503});
   }

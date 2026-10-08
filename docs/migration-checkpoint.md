@@ -365,8 +365,11 @@ reclaim or reconstructs execution authority.
 
 Existing limits and editor charging are preserved: background generation, upload
 and photo removal receipts add no Generation; the final save records once.
-This covers keyed legacy admission versus final save only. Keyless legacy and
-other Generation writers still require shared admission; background generation
+This covers keyed and keyless legacy admission versus final save. No-key calls
+receive a fresh server nonce and reserve before effects; another HTTP call without
+a key remains a distinct operation, including after a lost acknowledgement.
+Historical success fields and uncertainty503 remain compatible. Pending capacity
+is never automatically released. Other Generation writers require shared admission; background generation
 still needs a policy relating pending attempts to a final save. Retention,
 authentic reconciliation, operational approval and real providers remain open.
 

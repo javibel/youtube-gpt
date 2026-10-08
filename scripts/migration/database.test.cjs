@@ -29,6 +29,7 @@ const results=[];
  await require('./legacy-thumbnail-database.cjs')(prisma,results);
  await require('./legacy-thumbnail-attempt-database.cjs')(prisma,results);
  await require('./thumbnail-quota-database.cjs')(prisma,results);
+ await require('./unkeyed-thumbnail-database.cjs')(prisma,results);
  await require('./extension-generation-database.cjs')(prisma,results);
  await require('./generator-account-database.cjs')(prisma,results);
  await require('./dashboard-billing-database.cjs')(prisma,results);

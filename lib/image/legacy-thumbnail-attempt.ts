@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { rateLimitDb } from '@/lib/rate-limit-db';
@@ -10,6 +10,23 @@ type Saved={id:string;userId:string;digest:string;state:string;output:string|nul
 function valid(value:{output:unknown;prompt:unknown}) {
  if(typeof value.output!=='string'||!value.output||value.output.length>4096||typeof value.prompt!=='string'||!value.prompt.trim()||value.prompt.length>4000)return false;
  try{const u=new URL(value.output);return u.protocol==='https:'&&!u.username&&!u.password&&!u.hash;}catch{return false;}
+}
+
+// A caller without a key starts a distinct operation. The server's fresh nonce
+// reserves capacity through the same admission; it is never derived from input,
+// clock or a retained receipt and never authorizes reclaim of another invocation.
+export async function unkeyedLegacyThumbnail(userId:string,fields:readonly unknown[],photo:{type:string;bytes:Uint8Array}|null,signal:AbortSignal,prepare:()=>Promise<Response|(()=>Promise<ThumbnailResult>)>) {
+ const response=await keyedLegacyThumbnail(userId,randomUUID(),fields,photo,signal,prepare);
+ if(response.status===200){
+  const result=await response.json();
+  // Preserve the historical success shape; keyless HTTP retries remain distinct.
+  return Response.json({imageUrl:result.imageUrl,prompt:result.prompt},{headers:{'Cache-Control':'no-store'}});
+ }
+ if(response.status===409||response.status===503){
+  const result=await response.json();
+  return Response.json({...result,error:'Miniatura sin confirmar. Repetir sin clave puede consumir de nuevo.',code:'image_result_unconfirmed',retryMayConsume:true},{status:503,headers:{'Cache-Control':'no-store'}});
+ }
+ return response;
 }
 // A pending business receipt never permits reclaim. Only the live invocation
 // receiving fresh admission can run its original closure; no reset or lease.
