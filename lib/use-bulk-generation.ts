@@ -42,13 +42,21 @@ export function useBulkGeneration(userId: string | undefined, email: string | nu
     update({ loading: true, pendingCount: positions.length, recoverable: true, error: null, results: scope.results });
     const controller = new AbortController(); scope.controller = controller;
     let timedOut = false;
+    let rejectWait: (error: Error) => void = () => {};
+    const interrupted = new Promise<never>((_, reject) => { rejectWait = reject; });
+    // Cleanup may abort before the first microtask has started its race.
+    void interrupted.catch(() => {});
+    const stopWait = () => rejectWait(Error('Unconfirmed response'));
+    controller.signal.addEventListener('abort', stopWait, { once: true });
+    // Bound both fetch and body parsing even if the transport ignores abort.
+    // Ending this browser wait does not establish cancellation at the server.
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, 90_000);
     const flight = Promise.resolve().then(async () => {
       try {
         if (!current()) return;
-        const response = await fetch('/api/generate/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': attempt.key },
-          body: attempt.rawBody, signal: controller.signal });
-        const data = await response.json();
+        const response = await Promise.race([fetch('/api/generate/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': attempt.key },
+          body: attempt.rawBody, signal: controller.signal }), interrupted]);
+        const data = await Promise.race([response.json(), interrupted]);
         if (!current()) return;
         if (timedOut) throw Error('Unconfirmed response');
         if (!response.ok) {
@@ -84,6 +92,7 @@ export function useBulkGeneration(userId: string | undefined, email: string | nu
         if (current()) update({ error: 'unconfirmed' });
       } finally {
         clearTimeout(timer);
+        controller.signal.removeEventListener('abort', stopWait);
         if (scope.controller === controller) scope.controller = null;
         if (scope.flight === flight) scope.flight = null;
         update({ loading: false, pendingCount: 0 });

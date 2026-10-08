@@ -515,3 +515,15 @@ integral checks must be tied to the committed sources before declaring this
 web block verified. Agent 23cea5f original executor 69898 separately failed
 with EPERM while archiving its admission ownership; it remains retained and
 requires diagnosis without reset, fabricated authority or automatic relaunch.
+
+## Bounded bulk response waits
+
+The original hook now bounds fetch and body parsing separately by the same
+90-second browser wait. AbortSignal alone did not release loading when a
+transport ignored cancellation; this failure was reproduced before the fix.
+Timeout ends the local wait, retains the request identity and confirmed rows,
+and makes explicit recovery available again. Late transport output cannot
+overwrite a later confirmed recovery. Account change/unmount ends the old wait
+without dispatch in the new account, including cleanup before fetch starts.
+This does not establish server cancellation, zero consumption, a completed
+result or durable browser continuity; no automatic retry is performed.
