@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
-import { getUserPlan, getLimits } from '@/lib/plans';
+import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { thumbnailQuota } from '@/lib/image/thumbnail-quota';
 import type { Prisma } from '@prisma/client';
 
@@ -12,7 +12,18 @@ export type TextGenerationResult = { content: string; truncated: boolean; histor
 // admission permits this live closure to run. No lookup/reset/TTL can reclaim it.
 export async function unkeyedTextGeneration(userId: string, signal: AbortSignal,
   execute: () => Promise<Response | TextGenerationResult>) {
-  const id = 'text_generation_' + randomUUID();
+  return runTextGeneration(userId, 'text_generation_' + randomUUID(), signal, execute, false);
+}
+
+// The prefix classifies freshly admitted Storyboard quota; it never grants
+// recovery authority. Every call creates a new random operation.
+export async function unkeyedStoryboardGeneration(userId: string, signal: AbortSignal,
+  execute: () => Promise<Response | TextGenerationResult>) {
+  return runTextGeneration(userId, 'storyboard_generation_' + randomUUID(), signal, execute, true);
+}
+
+async function runTextGeneration(userId: string, id: string, signal: AbortSignal,
+  execute: () => Promise<Response | TextGenerationResult>, storyboard: boolean) {
   const uncertain = (status = 503) => Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
     retryMayConsume: true }, { status, headers: { 'Cache-Control': 'no-store' } });
   let result: TextGenerationResult | null = null;
@@ -26,8 +37,17 @@ export async function unkeyedTextGeneration(userId: string, signal: AbortSignal,
       const month = new Date(); month.setDate(1); month.setHours(0, 0, 0, 0);
       const quota = await thumbnailQuota(tx, userId, month);
       if (quota.total >= getLimits(plan).generationsPerMonth) return null;
+      if (storyboard && !isPaid(plan)) {
+        const recorded = await tx.generation.count({ where: { userId, template: 'video_preview', createdAt: { gte: month } } });
+        const pending = await tx.textGenerationAttempt.count({ where: { userId, createdAt: { gte: month },
+          state: { not: 'complete' }, id: { startsWith: 'storyboard_generation_' } } });
+        if (![recorded, pending, recorded + pending].every(n => Number.isSafeInteger(n) && n >= 0)) throw Error('Video Tips quota unavailable');
+        if (recorded + pending >= 1) return Response.json({ error: 'Ya usaste tu Video Tips gratis este mes',
+          limitReached: true, videoTipsCapped: true }, { status: 429 });
+      }
       return tx.textGenerationAttempt.create({ data: { id, userId, state: 'pending' } });
     }, { maxWait: 10_000, timeout: 15_000 });
+    if (admission instanceof Response) return admission;
     if (!admission) return Response.json({ error: 'Límite del plan alcanzado', limitReached: true }, { status: 429 });
     if (admission.id !== id || admission.userId !== userId || admission.state !== 'pending'
       || !Number.isFinite(admission.createdAt?.getTime())) return uncertain();
@@ -37,6 +57,7 @@ export async function unkeyedTextGeneration(userId: string, signal: AbortSignal,
     if (produced instanceof Response) return produced; // Retain uncertainty; never infer release authority.
     result = produced;
     if (typeof result.content !== 'string' || !result.content.trim() || typeof result.truncated !== 'boolean'
+      || (storyboard && (result.history.template !== 'video_preview' || result.truncated))
       || typeof result.history.output !== 'string' || !result.history.output.trim()
       || !Number.isSafeInteger(result.history.tokensUsed) || result.history.tokensUsed < 0) return uncertain();
     if (signal.aborted) return uncertain();

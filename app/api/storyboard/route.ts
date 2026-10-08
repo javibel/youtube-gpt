@@ -5,6 +5,7 @@ import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { createHash } from 'node:crypto';
 import { readGenerationQuota } from '@/lib/generation-quota';
+import { unkeyedStoryboardGeneration, type TextGenerationResult } from '@/lib/text-generation-attempt';
 
 // Free incluye Video Tips desde el 26/08 (gancho de retención — el 69% de lo
 // generado en free eran titulos, producto de un solo uso; ver
@@ -160,58 +161,67 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' }, { status: 429 });
   }
 
-  let task;
-  try {
-    task = await getMessagesTask({ operationKey: operationKey ?? undefined,
-      taskType: 'content.storyboard', userId, language: lang === 'en' ? 'en' : 'es',
-      instructionsVersion: 'storyboard-v1',
-    });
-  } catch {
-    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
-  }
-  try {
-    const data = await task.create({
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: lang === 'en' ? EN_PROMPT(script) : ES_PROMPT(script) }],
-    });
-    const storyboard: string = data.content?.[0]?.text ?? '';
-    const tokensUsed = data.usage?.output_tokens;
-    // Unknown usage is not a measured zero. Validate before quota/history effects.
-    if (typeof storyboard !== 'string' || !storyboard.trim() || data.incomplete === true
-      || typeof tokensUsed !== 'number' || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
-      return NextResponse.json({ error: 'Storyboard result unavailable' }, { status: 502 });
-    }
-
-    // Registrar la generacion — cuenta para el pool mensual (10 free / 200 pro)
-    // igual que cualquier otro template, y es lo que alimenta el tope de
-    // FREE_VIDEO_TIPS_PER_MONTH de arriba.
+  const execute = async (): Promise<Response | TextGenerationResult> => {
+    let task;
     try {
-      await prisma.generation.create({
-        data: {
-          ...(generationId ? { id: generationId } : {}),
-          userId,
-          template: 'video_preview',
-          inputs: { script: script.slice(0, 4000), ...(generationId ? { retryInputDigest: inputDigest } : {}) },
-          output: storyboard,
-          tokensUsed,
-          ipAddress: getIp(request),
-        },
+      task = await getMessagesTask({ operationKey: operationKey ?? undefined,
+        taskType: 'content.storyboard', userId, language: lang === 'en' ? 'en' : 'es',
+        instructionsVersion: 'storyboard-v1',
       });
     } catch {
-      // A concurrent retry, or an acknowledged-late insert, may have saved it.
-      // Read the committed row; never overwrite an existing operation's input.
-      if (generationId) {
-        try {
-          const saved = await savedResponse();
-          if (saved) return saved;
-        } catch { /* Preserve uncertain persistence as a retryable failure. */ }
-      }
-      return NextResponse.json({ error: 'Generation history could not be saved' }, { status: 503 });
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
     }
+    try {
+      const data = await task.create({
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: lang === 'en' ? EN_PROMPT(script) : ES_PROMPT(script) }],
+      });
+      const storyboard: string = data.content?.[0]?.text ?? '';
+      const tokensUsed = data.usage?.output_tokens;
+      // Unknown usage is not a measured zero. Validate before quota/history effects.
+      if (typeof storyboard !== 'string' || !storyboard.trim() || data.incomplete === true
+        || typeof tokensUsed !== 'number' || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
+        return NextResponse.json({ error: 'Storyboard result unavailable' }, { status: 502 });
+      }
+      const history = { template: 'video_preview',
+        inputs: { script: script.slice(0, 4000), ...(generationId ? { retryInputDigest: inputDigest } : {}) },
+        output: storyboard, tokensUsed, ipAddress: getIp(request) };
+      if (operationKey === null) return { content: storyboard, truncated: false, history };
 
-    return NextResponse.json({ storyboard });
-  } catch (error) {
-    const code = error && typeof error === 'object' && 'code' in error ? error.code : 'uncertain';
-    return NextResponse.json({ error: 'AI generation unavailable' }, { status: code === 'uncertain' ? 500 : 502 });
+      // Registrar la generacion — cuenta para el pool mensual (10 free / 200 pro)
+      // igual que cualquier otro template, y es lo que alimenta el tope de
+      // FREE_VIDEO_TIPS_PER_MONTH de arriba.
+      try {
+        await prisma.generation.create({
+          data: {
+            ...(generationId ? { id: generationId } : {}),
+            userId,
+            ...history,
+          },
+        });
+      } catch {
+        // A concurrent retry, or an acknowledged-late insert, may have saved it.
+        // Read the committed row; never overwrite an existing operation's input.
+        if (generationId) {
+          try {
+            const saved = await savedResponse();
+            if (saved) return saved;
+          } catch { /* Preserve uncertain persistence as a retryable failure. */ }
+        }
+        return NextResponse.json({ error: 'Generation history could not be saved' }, { status: 503 });
+      }
+
+      return NextResponse.json({ storyboard });
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error ? error.code : 'uncertain';
+      return NextResponse.json({ error: 'AI generation unavailable' }, { status: code === 'uncertain' ? 500 : 502 });
+    }
+  };
+  if (operationKey !== null) return execute();
+  const confirmed = await unkeyedStoryboardGeneration(userId, request.signal, execute);
+  if (confirmed.ok) {
+    const result = await confirmed.json();
+    return NextResponse.json({ storyboard: result.content }, { headers: { 'Cache-Control': 'no-store' } });
   }
+  return confirmed;
 }
