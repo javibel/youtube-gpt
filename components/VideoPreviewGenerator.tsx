@@ -939,7 +939,7 @@ export default function VideoPreviewGenerator({
   const [showControls, setShowControls] = useState(false);
   const [isPlaying, setIsPlaying]       = useState(true);
 
-  const [viewScope, setViewScope] = useState(interaction);
+  const [viewScope, setViewScope] = useState<typeof interaction | null>(null);
   const [storageWarning, setStorageWarning] = useState(false);
   const viewCurrent = viewScope === interaction;
   const status = viewCurrent ? storedStatus : 'idle';
