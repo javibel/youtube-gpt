@@ -75,6 +75,44 @@ export default function PredictorPage() {
   const [error, setError] = useState('');
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [baseline, setBaseline] = useState<Baseline | null>(null);
+  const [storageWarning, setStorageWarning] = useState(false);
+  const pendingSlot = 'ytv:predictor:pending:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
+  // This untrusted same-tab selection can only request an original retained result.
+  function readPending(): { version: number; key: string; body: string } | null {
+    if (status !== 'authenticated' || !session?.user?.id || !session.user.email) return null;
+    try {
+      const raw = sessionStorage.getItem(pendingSlot);
+      if (!raw || raw.length > 32_768) return null;
+      const value = JSON.parse(raw);
+      if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1
+        || Object.keys(value).sort().join(',') !== 'body,key,version'
+        || typeof value.key !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(value.key)
+        || typeof value.body !== 'string' || value.body.length > 32_000) return null;
+      const original = JSON.parse(value.body);
+      if (!original || typeof original !== 'object' || Array.isArray(original)
+        || Object.keys(original).sort().join(',') !== 'description,lang,tags,title'
+        || ['title', 'description', 'tags'].some(field => typeof original[field] !== 'string' || original[field] !== original[field].trim())
+        || !original.title || original.title.length > 200 || original.lang !== lang || !['es', 'en'].includes(lang)
+        || JSON.stringify({ title: original.title, description: original.description, tags: original.tags, lang: original.lang }) !== value.body) return null;
+      return value;
+    } catch { return null; }
+  }
+  function storePending(key: string, body: string) {
+    try {
+      if (!session?.user?.email || body.length > 32_000) return false;
+      const value = JSON.stringify({ version: 1, key, body });
+      if (value.length > 32_768) return false;
+      sessionStorage.setItem(pendingSlot, value);
+      return sessionStorage.getItem(pendingSlot) === value;
+    } catch { return false; }
+  }
+  function clearPending(key: string | null, body: string | null) {
+    try {
+      const retained = readPending();
+      if (key && body && retained?.key === key && retained.body === body) sessionStorage.removeItem(pendingSlot);
+      return sessionStorage.getItem(pendingSlot) === null;
+    } catch { return false; }
+  }
   const predictionOperation = useMemo(() => ({
     run: createRetryOperation(() => crypto.randomUUID()), key: null as string | null,
     body: null as string | null, generation: 0, active: true, busy: false, controller: null as AbortController | null,
@@ -87,6 +125,18 @@ export default function PredictorPage() {
   useEffect(() => {
     predictionOperation.active = true;
     setPrediction(null); setBaseline(null); setError(''); setLoading(false);
+    setTitle(''); setDescription(''); setTags('');
+    setStorageWarning(false);
+    const retained = readPending();
+    if (retained) {
+      const original = JSON.parse(retained.body);
+      predictionOperation.key = retained.key; predictionOperation.body = retained.body;
+      predictionOperation.run = createRetryOperation(() => retained.key);
+      setTitle(original.title); setDescription(original.description); setTags(original.tags);
+      setError(lang === 'en'
+        ? 'An unconfirmed prediction was restored. Retry only retrieves the original result; it never starts another generation.'
+        : 'Se restauró una predicción sin confirmar. Reintentar solo consulta el resultado original; no inicia otra generación.');
+    }
     return () => { predictionOperation.active = false; predictionOperation.controller?.abort(); };
   }, [predictionOperation]);
 
@@ -125,6 +175,7 @@ export default function PredictorPage() {
         if (!stillCurrent() || controller.signal.aborted) throw new Error('Input changed');
         const readOnly = operation.key === operationKey;
         operation.key = operationKey; operation.body = body;
+        setStorageWarning(!storePending(operationKey, body));
         const res = await Promise.race([fetch('/api/predictor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey,
@@ -146,6 +197,7 @@ export default function PredictorPage() {
         return json;
       });
       if (stillCurrent()) {
+        setStorageWarning(!clearPending(operation.key, operation.body));
         operation.key = null; operation.body = null;
         operation.generation++;
         operation.run = createRetryOperation(() => crypto.randomUUID());
@@ -167,6 +219,7 @@ export default function PredictorPage() {
     const operation = predictionOperation;
     if (!operation.active || operation.busy || currentPredictionOperation.current !== operation || status !== 'authenticated'
       || operation.generation !== interaction || !pendingKey || operation.key !== pendingKey) return;
+    setStorageWarning(!clearPending(operation.key, operation.body));
     operation.key = null; operation.body = null;
     operation.generation++;
     operation.run = createRetryOperation(() => crypto.randomUUID());
@@ -281,6 +334,12 @@ export default function PredictorPage() {
             </button>
           </div>
 
+          {storageWarning && (
+            <p role="status" className="font-mono-jb text-[13px] mt-3 text-center">
+              {t('No se pudo actualizar la solicitud guardada. Tras recargar puede faltar o reaparecer una anterior. Esta interacción sigue disponible en memoria.',
+                'The saved request could not be updated. After reloading it may be missing or an older one may reappear. This interaction remains available in memory.')}
+            </p>
+          )}
           {error && (
             <div role="alert" className="text-red-400 font-mono-jb text-[13px] mt-3 text-center">
               <p>{error}</p>

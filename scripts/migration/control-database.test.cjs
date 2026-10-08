@@ -398,7 +398,7 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   assert.equal((await invoke(JSON.stringify({...input,title:'Changed title'}),keys[0],true)).status,500);assert.equal(calls,1);
   changedContext=true;assert.equal((await invoke(JSON.stringify(input),keys[0],true)).status,500);assert.equal(calls,1);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
-  await test('actual Predictor component/API/ledger retained retry cannot admit absent receipt; original result has one inference/settlement even after local timeout',async()=>{
+  await test('actual Predictor component/API/ledger survives same-tab reload after absent admission and committed timeout; selector never authorizes a new inference or settlement',async()=>{
    const {harness}=require('./predictor-client-retry.test.cjs');changedContext=false;
    const browser=harness();browser.setField('title','Synthetic title');browser.setField('description','Synthetic description');browser.setField('tags','synthetic');
    try{
@@ -406,13 +406,24 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
     browser.state.send=init=>invoke(init.body,prefix+'_component_'+init.headers['Idempotency-Key'],init.headers['X-Predictor-Recovery']==='retained-only-v1');
     await browser.click();assert.ok(browser.alert());assert.equal(calls,1);assert.equal(Number((await stats(budgetId)).settled_micros),7);
     assert.equal(browser.requests[1].headers['X-Predictor-Recovery'],'retained-only-v1');assert.equal(browser.requests[0].body,browser.requests[1].body);
+    const missingReload=harness({storage:browser.storage});
+    try{
+     missingReload.render();assert.equal(missingReload.requests.length,0);assert.ok(missingReload.alert());
+     missingReload.state.send=init=>invoke(init.body,prefix+'_component_'+init.headers['Idempotency-Key'],init.headers['X-Predictor-Recovery']==='retained-only-v1');
+     await missingReload.click();assert.ok(missingReload.alert());assert.equal(calls,1);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+     assert.equal(missingReload.requests[0].body,browser.requests[0].body);assert.equal(missingReload.requests[0].headers['X-Predictor-Recovery'],'retained-only-v1');
+    }finally{missingReload.unmount();}
     browser.discard();let committed,ready;const received=new Promise(resolve=>{ready=resolve;});
     browser.state.send=async init=>{try{const r=await invoke(init.body,prefix+'_component_'+init.headers['Idempotency-Key'],false);assert.equal(r.status,200);committed=await r.json();return new Promise(()=>{});}finally{ready();}};
     const pending=browser.click();await received;assert.ok(committed);browser.advance(90000);await pending;
     assert.ok(browser.alert());assert.equal(calls,2);assert.equal(Number((await stats(budgetId)).settled_micros),14);
-    browser.state.send=init=>invoke(init.body,prefix+'_component_'+init.headers['Idempotency-Key'],init.headers['X-Predictor-Recovery']==='retained-only-v1');
-    await browser.click();assert.equal(browser.alert(),undefined);assert.match(browser.text(),/Synthetic advice/);assert.equal(calls,2);
-    assert.equal(browser.requests[2].headers['Idempotency-Key'],browser.requests[3].headers['Idempotency-Key']);assert.equal(browser.requests[3].headers['X-Predictor-Recovery'],'retained-only-v1');
+    browser.unmount();const reload=harness({storage:browser.storage});
+    try{
+     reload.render();assert.equal(reload.requests.length,0);assert.ok(reload.alert());
+     reload.state.send=init=>invoke(init.body,prefix+'_component_'+init.headers['Idempotency-Key'],init.headers['X-Predictor-Recovery']==='retained-only-v1');
+     await reload.click();assert.equal(reload.alert(),undefined);assert.match(reload.text(),/Synthetic advice/);assert.equal(calls,2);
+     assert.equal(browser.requests[2].headers['Idempotency-Key'],reload.requests[0].headers['Idempotency-Key']);assert.equal(reload.requests[0].body,browser.requests[2].body);assert.equal(reload.requests[0].headers['X-Predictor-Recovery'],'retained-only-v1');assert.equal(reload.storage.size,0);
+    }finally{reload.unmount();}
     assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),14);
    }finally{browser.unmount();}
   });
