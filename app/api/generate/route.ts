@@ -343,9 +343,12 @@ export async function POST(request: Request) {
       }
       const data = await task.create({ max_tokens: maxTokens, messages });
       const content = data.content?.[0]?.text;
-      const tokensUsed = data.usage?.output_tokens ?? 0;
+      // The task boundary preserves unknown usage as null/absent. It is not
+      // evidence of a measured zero, including partial text and keyed replay.
+      const tokensUsed = data.usage?.output_tokens;
       const truncated = data.incomplete === true;
-      if (typeof content !== 'string' || !content.trim() || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
+      if (typeof content !== 'string' || !content.trim() || typeof tokensUsed !== 'number'
+        || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
         return Response.json({ error: 'Generation result unavailable' }, { status: 502 });
       }
 
