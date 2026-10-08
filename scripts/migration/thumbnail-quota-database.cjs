@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),crypto=require('node:crypto'),{load}=require('./route-harness.cjs'),{meta}=require('./thumbnail-save.test.cjs');
 module.exports=async function(prisma,results){
- const users=await Promise.all(Array.from({length:7},()=>prisma.user.create({data:{email:'quota-'+crypto.randomUUID()+'@example.invalid'}})));
+ const users=await Promise.all(Array.from({length:9},()=>prisma.user.create({data:{email:'quota-'+crypto.randomUUID()+'@example.invalid'}})));
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),rate=load('lib/rate-limit-db.ts',{'@/lib/prisma':{prisma}}),quota=load('lib/image/thumbnail-quota.ts');
  const signals=[],releases=[];let effects=0,uploads=0;
  const gate=()=>{let release,entered;const wait=new Promise(r=>release=r),arrival=new Promise(r=>entered=r);releases.push(release);return{wait,arrival,release,entered};};
@@ -9,7 +9,7 @@ module.exports=async function(prisma,results){
  const measured=user=>prisma.$transaction(async tx=>{await tx.$queryRaw`SELECT id FROM users WHERE id=${user.id} FOR UPDATE`;return quota.thumbnailQuota(tx,user.id,month);});
  const seed=user=>prisma.generation.createMany({data:Array.from({length:199},()=>({userId:user.id,template:'title',inputs:{synthetic:true},output:'Synthetic history',tokensUsed:0}))});
  const legacy=(user,db=prisma,held=null)=>{const api=load('lib/image/legacy-thumbnail-attempt.ts',{'node:crypto':crypto,'@/lib/prisma':{prisma:db},'@/lib/plans':plans,'@/lib/rate-limit-db':rate,'@/lib/image/thumbnail-quota':quota},{Buffer,Uint8Array});return key=>api.keyedLegacyThumbnail(user.id,key,['Synthetic quota topic'],null,new AbortController().signal,async()=>async()=>{effects++;if(held){held.entered();await held.wait;}return{imageUrl:'https://example.invalid/quota.png',prompt:'Synthetic quota scene',inputs:{synthetic:true},tokensUsed:8,ipAddress:null};});};
- const saver=(user,db=prisma,held=null)=>{const api=load('app/api/thumbnail-save/route.ts',{'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},'@/lib/prisma':{prisma:db},'@/lib/plans':plans,'@/lib/image/thumbnail-quota':quota,'node:crypto':crypto,'@vercel/blob':{put:async()=>{uploads++;if(held){held.entered();await held.wait;}return{url:'https://example.invalid/final.png'};}}},{Buffer,URL});return key=>{const body=new FormData();body.append('image',new Blob(['synthetic PNG snapshot'],{type:'image/png'}),'final.png');body.append('meta',JSON.stringify(meta));return api.POST(new Request('https://example.invalid/api/thumbnail-save',{method:'POST',headers:{'Idempotency-Key':key},body}));};};
+ const saver=(user,db=prisma,held=null)=>{const api=load('app/api/thumbnail-save/route.ts',{'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},'@/lib/prisma':{prisma:db},'@/lib/plans':plans,'@/lib/image/thumbnail-quota':quota,'node:crypto':crypto,'@vercel/blob':{put:async()=>{uploads++;if(held){held.entered();await held.wait;}return{url:'https://example.invalid/final.png'};}}},{Buffer,URL});return key=>{const body=new FormData();body.append('image',new Blob(['synthetic PNG snapshot'],{type:'image/png'}),'final.png');body.append('meta',JSON.stringify(meta));return api.POST(new Request('https://example.invalid/api/thumbnail-save',{method:'POST',headers:key===null?{}:{'Idempotency-Key':key},body}));};};
  try{
   await prisma.subscription.createMany({data:users.map(u=>({userId:u.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});
   const a=users[0];await seed(a);const held=gate(),generate=legacy(a,prisma,held),save=saver(a),first=generate('first');signals.push(first);await held.arrival;
@@ -49,6 +49,22 @@ module.exports=async function(prisma,results){
   await prisma.thumbnailSaveReceipt.create({data:{id:priorId,userId:fresh.id,digest:priorDigest,createdAt:prior}});assert.equal((await measured(fresh)).total,1);assert.equal((await saver(fresh)('prior-retained')).status,409);assert.equal((await prisma.thumbnailSaveReceipt.findUnique({where:{id:priorId}})).createdAt.getTime(),prior.getTime());results.push('native prior-period deleted-save guard adds no current-month charge and never renews age or authorizes another upload; foreign owner occupancy stays independent');
   const badRetention={...prisma,$transaction:(fn,opts)=>prisma.$transaction(tx=>fn(new Proxy(tx,{get(target,key){if(key==='$queryRaw')return async(strings,...values)=>{if(strings.join('').includes('thumbnail_save_receipts'))throw Error('private retention SQL unavailable');return target.$queryRaw(strings,...values);};const value=target[key];return typeof value==='function'?value.bind(target):value;}})),opts)};
   assert.equal((await saver(fresh,badRetention)('retention-unavailable')).status,503);assert.equal((await legacy(fresh,badRetention)('retention-unavailable')).status,503);assert.equal(effects,blockedEffects);assert.equal(uploads,blockedUploads);results.push('native unavailable retained-save SQL fails closed in both final save and legacy admission before Blob/model rather than freeing capacity');
+  }
+  {
+   const user=users[7];await seed(user);const save=saver(user),beforeUploads=uploads,beforeEffects=effects;
+   const response=await save(null);assert.equal(response.status,200);const saved=await response.json();assert.equal(saved.operationKey,null);assert.match(saved.id,/^thumbnail_keyless_[-a-f0-9]{36}$/);
+   const row=await prisma.generation.findUnique({where:{id:saved.id}}),receipt=await prisma.thumbnailSaveReceipt.findUnique({where:{id:saved.id}});assert.equal(receipt.userId,user.id);assert.equal(receipt.createdAt.getTime(),row.createdAt.getTime());assert.equal((await measured(user)).total,200);
+   await prisma.generation.delete({where:{id:saved.id}});assert.equal(await prisma.generation.count({where:{userId:user.id}}),199);assert.equal((await measured(user)).total,200);
+   assert.deepEqual((await Promise.all([save(null),save(null)])).map(r=>r.status),[429,429]);assert.equal((await legacy(user)('after-keyless-deletion')).status,429);assert.equal(uploads,beforeUploads+1);assert.equal(effects,beforeEffects);assert.equal((await measured(users[8])).total,0);
+   results.push('native new keyless save retains one original monthly charge after history deletion; concurrent fresh keyless saves and legacy reject429 without Blob/model, other account remains empty');
+  }
+  {
+   const user=users[8];await seed(user);let failGuard=true;
+   const db={...prisma,$transaction:(fn,opts)=>prisma.$transaction(tx=>fn(new Proxy(tx,{get(target,key){if(key==='thumbnailSaveReceipt')return {create:async args=>{if(failGuard)throw Error('Synthetic keyless charge write failure');return target.thumbnailSaveReceipt.create(args);}};const value=target[key];return typeof value==='function'?value.bind(target):value;}})),opts)},save=saver(user,db),beforeUploads=uploads;
+   assert.equal((await save(null)).status,503);assert.equal(await prisma.generation.count({where:{userId:user.id}}),199);assert.equal(await prisma.thumbnailSaveReceipt.count({where:{userId:user.id}}),0);assert.equal((await measured(user)).total,199);
+   failGuard=false;assert.equal((await save(null)).status,200);assert.equal(uploads,beforeUploads+2);assert.equal(await prisma.thumbnailSaveReceipt.count({where:{userId:user.id}}),1);assert.equal((await measured(user)).total,200);
+   await prisma.user.delete({where:{id:user.id}});assert.equal(await prisma.thumbnailSaveReceipt.count({where:{userId:user.id}}),0);
+   results.push('native failed keyless charge insertion rolls back actual history/charge together; explicit fresh request consumes one slot, synthetic Blob remains outside transaction and account deletion cascades charge');
   }
  }finally{for(const release of releases)release();await Promise.allSettled(signals);for(const u of users)await prisma.$executeRawUnsafe('DELETE FROM rate_limits WHERE key=$1','gen-thumb:'+u.id);await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});}
 };

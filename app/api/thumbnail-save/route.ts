@@ -2,7 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { put } from '@vercel/blob';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { thumbnailQuota } from '@/lib/image/thumbnail-quota';
 
 function imageUrl(value: unknown): value is string {
@@ -18,7 +18,9 @@ export async function POST(request: Request) {
   const key = request.headers.get('Idempotency-Key');
   if (key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key)) return Response.json({ error: 'Clave inválida' }, { status: 400 });
   // Receipt identity is account scoped, never an operational recovery credential.
-  const id = key === null ? undefined : 'thumbnail_' + createHash('sha256').update(JSON.stringify([userId,key])).digest('hex');
+  // A keyless request is a fresh save, never a recovery identity. Its unique ID
+  // retains the committed charge without sharing a timestamp-based Blob path.
+  const id = key === null ? 'thumbnail_keyless_' + randomUUID() : 'thumbnail_' + createHash('sha256').update(JSON.stringify([userId,key])).digest('hex');
   let buffer: Buffer, meta: { topic: string; hasPhoto: boolean; textCount: number; backgroundOperationKey?: string };
   try {
     const form = await request.formData(), file = form.get('image'), raw = form.get('meta');
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
     return await prisma.$transaction(async tx => {
       const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE id=${userId} FOR UPDATE`;
       if (locked.length !== 1) throw Error('Owner unavailable');
-      if (id) {
+      if (key !== null) {
         const receipt = await tx.thumbnailSaveReceipt.findUnique({ where: { id } });
         if (receipt && (receipt.userId !== userId || receipt.digest !== digest)) {
           return Response.json({ error: 'La captura no coincide con el guardado' }, { status: 409 });
@@ -84,22 +86,22 @@ export async function POST(request: Request) {
       const quota = await thumbnailQuota(tx,userId,startOfMonth), limit = getLimits(plan).generationsPerMonth;
       if (quota.total >= limit) return Response.json({ error: 'Límite del plan alcanzado', limitReached: true,
         quotaRecorded: quota.recorded, quotaReserved: quota.reserved, quotaLimit: limit }, { status: 429 });
-      const filename = `thumbnails/final/${userId}/${id ?? Date.now()}.png`;
+      const filename = `thumbnails/final/${userId}/${id}.png`;
       // Blob and PostgreSQL are not one transaction. A failure before history commits may
       // require re-uploading identical bytes; keyed writes use the same object path.
       const blob = await put(filename,buffer,{ access: 'public',contentType: 'image/png',
-        ...(id ? { addRandomSuffix: false, allowOverwrite: true } : {}) });
+        ...(key !== null ? { addRandomSuffix: false, allowOverwrite: true } : {}) });
       if (!imageUrl(blob.url)) throw Error('Invalid stored image');
       const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || request.headers.get('x-real-ip');
-      const saved = await tx.generation.create({ data: { ...(id ? { id } : {}), userId,
+      const saved = await tx.generation.create({ data: { id, userId,
         template: 'thumbnail', inputs: { ...meta, editor: 'canvas-v2', _editorSave: { version: 1,digest },
           ...(backgroundId ? {_editorBackground:{version:1,id:backgroundId}} : {}) },
         output: blob.url,tokensUsed: 0,ipAddress: ip } });
-      if (id) await tx.thumbnailSaveReceipt.create({ data: { id,userId,digest,createdAt:saved.createdAt } });
+      await tx.thumbnailSaveReceipt.create({ data: { id,userId,digest,createdAt:saved.createdAt } });
       return Response.json({ id: saved.id,userId,imageUrl: saved.output,operationKey: key });
     }, { maxWait: 10_000, timeout: 30_000 });
   } catch {
-    if (id) {
+    if (key !== null) {
       try {
         const owner = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
         if (owner?.id === userId) { const saved = await prisma.generation.findUnique({ where: { id } }); if (saved) return replay(saved); }
