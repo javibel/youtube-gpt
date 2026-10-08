@@ -22,6 +22,11 @@ function harness(options={}) {
 const results=[];
 async function test(name,fn,known=false){try{await fn();results.push({name,status:known?'KNOWN_DEFECT_REPRODUCED':'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.message});}}
 (async()=>{
+ for(const paid of [false,true])for(const keyed of [false,true]){
+  const headers=keyed?{'Idempotency-Key':'usage-contract'}:{};
+  for(const usage of [undefined,{}, {output_tokens:null}])await test((paid?'paid':'free')+' '+(keyed?'keyed':'keyless')+' unknown usage cannot be invented as zero '+JSON.stringify(usage),async()=>{const h=harness({paid,reply:{content:[{type:'text',text:story}],stop_reason:'end_turn',...(usage===undefined?{}:{usage})}}),r=await h.run(undefined,headers);assert.equal(r.status,502);assert.equal(h.calls.length,1);assert.equal(h.saved.length,0);assert.equal(r.body.storyboard,undefined);assert.equal(r.body.error,'Storyboard result unavailable');});
+  await test((paid?'paid':'free')+' '+(keyed?'keyed':'keyless')+' explicit measured zero remains valid',async()=>{const h=harness({paid,reply:{content:[{type:'text',text:story}],usage:{output_tokens:0},stop_reason:'end_turn'}}),r=await h.run(undefined,headers);assert.equal(r.status,200);assert.equal(r.body.storyboard,story);assert.equal(h.calls.length,1);assert.equal(h.saved.length,1);assert.equal(h.saved[0].tokensUsed,0);});
+ }
  for(const [name,options,status] of [['anonymous blocked',{anonymous:true},401],['free pool quota',{used:10},429],['free tips quota',{tips:1},429],['paid pool quota',{paid:true,used:200},429],['minute throttle',{hits:6},429],['missing control',{noKey:true},503]])await test(name,async()=>{const h=harness(options);assert.equal((await h.run()).status,status);assert.equal(h.calls.length,0);assert.equal(h.saved.length,0);});
  for(const script of ['', ' ',42,{},[]])await test('invalid script controlled: '+JSON.stringify(script),async()=>{const h=harness();assert.equal((await h.run({script})).status,400);assert.equal(h.calls.length,0);});
  await test('null body rejected',async()=>assert.equal((await harness().run(null)).status,400));

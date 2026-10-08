@@ -175,6 +175,12 @@ export async function POST(request: Request) {
       messages: [{ role: 'user', content: lang === 'en' ? EN_PROMPT(script) : ES_PROMPT(script) }],
     });
     const storyboard: string = data.content?.[0]?.text ?? '';
+    const tokensUsed = data.usage?.output_tokens;
+    // Unknown usage is not a measured zero. Validate before quota/history effects.
+    if (typeof storyboard !== 'string' || !storyboard.trim() || data.incomplete === true
+      || typeof tokensUsed !== 'number' || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
+      return NextResponse.json({ error: 'Storyboard result unavailable' }, { status: 502 });
+    }
 
     // Registrar la generacion — cuenta para el pool mensual (10 free / 200 pro)
     // igual que cualquier otro template, y es lo que alimenta el tope de
@@ -187,7 +193,7 @@ export async function POST(request: Request) {
           template: 'video_preview',
           inputs: { script: script.slice(0, 4000), ...(generationId ? { retryInputDigest: inputDigest } : {}) },
           output: storyboard,
-          tokensUsed: data.usage?.output_tokens ?? 0,
+          tokensUsed,
           ipAddress: getIp(request),
         },
       });
