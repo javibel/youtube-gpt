@@ -4,13 +4,13 @@ const {load}=require('./route-harness.cjs');
 const {taskFixture}=require('./task-fixture.cjs');
 const {TEMPLATES}=load('utils/prompts.js');
 function harness(options={}) {
- const requests=[],saved=[];
+ const requests=[],saved=[];let quotaReads=0,factories=0;
  const runtime=taskFixture({taskType:'content.bulk-generate',controlUnavailable:options.noKey,respond:async()=>{requests.push({body:runtime.calls.at(-1)});const index=requests.length-1;if(options.transportError)throw Error('Synthetic transport failure');if(options.statuses?.[index]&&options.statuses[index]!==200)throw {status:options.statuses[index]};return options.replies?.[index]??options.reply??{content:[{type:'text',text:'Synthetic output'}],usage:{output_tokens:8},stop_reason:'end_turn'};}});
  const prisma={generation:{count:async()=> (options.used??0)+saved.length,create:async({data})=>{if(options.saveError)throw Error('Synthetic database failure');saved.push(data);return data;}}};
- prisma.$transaction=async fn=>{if(options.quotaFailure||options.lateQuotaFailure&&requests.length)throw Error('Private quota failure');return fn({...prisma,$queryRawUnsafe:async()=>options.noOwner?[]:[{id:'synthetic'}],textGenerationAttempt:{count:async()=>0},legacyThumbnailAttempt:{count:async()=>options.lateReservation&&requests.length?10:(options.reserved??0)}});};
+ prisma.$transaction=async fn=>{quotaReads++;if(options.quotaFailure||options.lateQuotaFailure&&requests.length)throw Error('Private quota failure');return fn({...prisma,$queryRawUnsafe:async()=>options.noOwner?[]:[{id:'synthetic'}],textGenerationAttempt:{count:async()=>0},legacyThumbnailAttempt:{count:async()=>options.lateReservation&&requests.length?10:(options.reserved??0)}});};
  const route=load('app/api/generate/bulk/route.ts',{
   '@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),
-  '@/lib/ai/task-runtime':runtime,
+  '@/lib/ai/task-runtime':{getMessagesTask:async identity=>{factories++;return runtime.getMessagesTask(identity);}},
   '@/utils/prompts':{TEMPLATES},'@/auth':{auth:async()=>Object.hasOwn(options,'session')?options.session:{user:{id:'synthetic'}}},
   '@/lib/plans':{getUserPlan:async()=>options.plan??'pro',isPaid:plan=>plan!=='free',getLimits:()=>({bulkMaxTopics:3,generationsPerMonth:10})},
   '@/lib/prisma':{prisma},
@@ -19,11 +19,14 @@ function harness(options={}) {
   const r=await route.POST(new Request('https://example.invalid/api/generate/bulk',{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)}));
   return {status:r.status,body:await r.json()};
  }
- return {run,requests,saved};
+ return {run,requests,saved,get quotaReads(){return quotaReads;},get factories(){return factories;}};
 }
 const results=[];
 async function test(name,fn,known=false){try{await fn();results.push({name,status:known?'KNOWN_DEFECT_REPRODUCED':'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.message});}}
 (async()=>{
+ const malformed=[... [undefined,null,42,{},[],'constructor','__proto__','toString'].map(template=>({template,topics:['Synthetic']})),...[null,42,true,[],{}].map(tono=>({template:'title',topics:['Synthetic'],options:{tono}})),...[42,{},[],false].map(lang=>({template:'title',topics:['Synthetic'],lang})),...[null,{},' ','x'.repeat(501),42].map(topic=>({template:'title',topics:['Synthetic',topic]}))];
+ for(const body of malformed)await test('malformed batch rejected before quota/factory/model/history '+JSON.stringify(body),async()=>{const h=harness(),r=await h.run(body);assert.equal(r.status,400);assert.equal(h.quotaReads,0);assert.equal(h.factories,0);assert.equal(h.requests.length,0);assert.equal(h.saved.length,0);assert.deepEqual(Object.keys(r.body),['error']);});
+ await test('valid string options boundary, unicode and duplicate topic order preserved',async()=>{const h=harness(),topics=['  Tema á🙂  ','Other','Tema á🙂'],r=await h.run({template:'title',topics,options:{tono:'x'.repeat(500),duracion:'10'},lang:'en'});assert.equal(r.status,200);assert.equal(r.body.total,3);assert.equal(r.body.generated,3);assert.deepEqual(r.body.results.map(x=>x.topic),['Tema á🙂','Other','Tema á🙂']);assert.deepEqual(h.saved.map(x=>x.inputs.tema),['Tema á🙂','Other','Tema á🙂']);assert.ok(h.saved.every(x=>x.inputs.tono.length===500&&x.inputs.duracion==='10'&&x.inputs._bulk===true));assert.equal(h.requests.length,3);assert.ok(h.requests.every(x=>x.body.messages[0].content.includes('ENTIRE response in English')));});
  for(const [name,options,body,status] of [
   ['anonymous blocked',{session:null},undefined,401],
   ['missing identity blocked',{session:{user:{}}},undefined,401],
@@ -39,7 +42,7 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
   ['missing task control unavailable',{noKey:true},undefined,503],
  ])await test(name,async()=>{const h=harness(options);assert.equal((await h.run(body)).status,status);assert.equal(h.requests.length,0);assert.equal(h.saved.length,0);});
  await test('success response and stored ownership',async()=>{const h=harness();const r=await h.run();assert.deepEqual(r,{status:200,body:{results:[{topic:'Synthetic topic',content:'Synthetic output'}],generated:1,total:1}});assert.equal(h.saved[0].userId,'synthetic');assert.equal(h.saved[0].tokensUsed,8);assert.equal(h.saved[0].inputs._bulk,true);});
- await test('trims topics and filters empty values',async()=>{const h=harness();const r=await h.run({template:'title',topics:['  Synthetic topic  ',' ',null]});assert.equal(r.body.total,1);assert.equal(r.body.results[0].topic,'Synthetic topic');});
+ await test('trims valid topics without silently dropping malformed neighbours',async()=>{const h=harness();const r=await h.run({template:'title',topics:['  Synthetic topic  ']});assert.equal(r.body.total,1);assert.equal(r.body.results[0].topic,'Synthetic topic');});
  await test('English instruction preserved',async()=>{const h=harness();await h.run({template:'title',topics:['Synthetic'],lang:'en'});assert.match(h.requests[0].body.messages[0].content,/ENTIRE response in English/);});
  await test('long script allowance preserved',async()=>{const h=harness();await h.run({template:'script',topics:['Synthetic']});assert.equal(h.requests[0].body.max_tokens,8192);});
  await test('provider failure preserves partial batch success',async()=>{const h=harness({statuses:[429,200]});const r=await h.run({template:'title',topics:['one','two']});assert.equal(r.body.generated,1);assert.equal(r.body.results[0].error,'API error 429');assert.equal(h.saved.length,1);assert.equal(h.saved[0].inputs.tema,'two');});

@@ -29,10 +29,16 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object' || Array.isArray(body)) return Response.json({ error: 'Invalid body' }, { status: 400 });
-    const { template, topics, options = {}, lang = 'es' } = body;
-    if (!options || typeof options !== 'object' || Array.isArray(options) || Object.values(options).some(value => typeof value === 'string' && value.length > 500)) return Response.json({ error: 'Invalid options' }, { status: 400 });
+    const { template, topics, options = {}, lang: requestedLang = 'es' } = body;
+    if (requestedLang != null && typeof requestedLang !== 'string') return Response.json({ error: 'Invalid language' }, { status: 400 });
+    const lang = requestedLang === 'en' ? 'en' : 'es';
+    if (!options || typeof options !== 'object' || Array.isArray(options)
+      || Object.values(options).some(value => typeof value !== 'string' || value.length > 500)) return Response.json({ error: 'Invalid options' }, { status: 400 });
 
     // Validate template
+    if (typeof template !== 'string' || !Object.hasOwn(TEMPLATES, template)) {
+      return Response.json({ error: 'Invalid template' }, { status: 400 });
+    }
     const templateData = TEMPLATES[template as keyof typeof TEMPLATES];
     if (!templateData) {
       return Response.json({ error: 'Invalid template' }, { status: 400 });
@@ -43,13 +49,12 @@ export async function POST(request: Request) {
       return Response.json({ error: `Provide 1-${maxTopics} topics` }, { status: 400 });
     }
 
-    const cleanTopics = topics
-      .map((t: string) => (typeof t === 'string' ? t.trim() : ''))
-      .filter((t: string) => t.length > 0 && t.length <= 500);
-
-    if (cleanTopics.length === 0) {
-      return Response.json({ error: 'No valid topics' }, { status: 400 });
+    // Validate the whole batch before quota/task effects. Silently removing an
+    // invalid neighbour changes requested item positions and hides input errors.
+    if (topics.some(t => typeof t !== 'string' || !t.trim() || t.trim().length > 500)) {
+      return Response.json({ error: 'Invalid topics' }, { status: 400 });
     }
+    const cleanTopics = topics.map((t: string) => t.trim());
 
     // Check remaining quota
     const startOfMonth = new Date();
