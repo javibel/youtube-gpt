@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchThumbnailBackground } from '@/lib/thumbnail-background-response';
+import { readBackgroundRecovery, storeBackgroundRecovery, clearBackgroundRecovery } from '@/lib/thumbnail-background-recovery';
 
 type Operation = { key?:string;kind:'ai'|'upload'|'crop';topic:string;style:string;lang:string;file?:File;
   originalUrl?:string;eligible:() => boolean;context:string };
 const empty = () => ({ backgroundUrl:null as string|null,backgroundOperationKey:null as string|null,topic:'',style:'viral',busy:false,pending:false,
-  resultContext:'',error:null as 'input'|'unconfirmed'|'timeout'|'limit'|'pending'|null });
+  resultContext:'',reloadRecoveryAvailable:false,error:null as 'input'|'unconfirmed'|'timeout'|'limit'|'pending'|null });
 const styles = ['viral','cinematic','minimal','bold'];
 export function useThumbnailBackground(userId:string|undefined,email:string|null|undefined,status:string,lang:string,isPro:boolean) {
   const scope = useMemo(() => ({active:true,operation:null as Operation|null,flight:null as Promise<boolean>|null,
@@ -23,15 +24,18 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
   const live = (op:Operation) => current() && scope.operation === op;
   const discard = () => {
     if(!current())return;
+    const op=scope.operation;
+    if(op?.kind==='ai'&&op.key)clearBackgroundRecovery(userId!,email!,lang,op.key);
     scope.operation = null;scope.controller?.abort();scope.controller = null;
     if(scope.deadline)clearTimeout(scope.deadline);scope.deadline = null;scope.flight = null;
-    update({busy:false,pending:false,error:null});
+    update({busy:false,pending:false,reloadRecoveryAvailable:false,error:null});
   };
   const run = (op:Operation,readOnly=false) => {
     if(!current() || (!paid.current && !op.key))return Promise.resolve(false);
     if(scope.flight)return scope.flight;
     if(!op.eligible()){discard();return Promise.resolve(false);}
-    scope.operation = op;update({busy:true,pending:true,error:null});
+    const reloadRecoveryAvailable=op.kind==='ai'&&!!op.key&&storeBackgroundRecovery(userId!,email!,{version:1,key:op.key,topic:op.topic,style:op.style,lang:op.lang});
+    scope.operation = op;update({busy:true,pending:true,reloadRecoveryAvailable,error:null});
     const controller = new AbortController();scope.controller = controller;let timedOut = false;
     let stop:(error:Error)=>void=()=>{};
     const interrupted=new Promise<never>((_,reject)=>{stop=reject;});
@@ -56,7 +60,8 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
         if((!paid.current && !op.key) || !op.eligible()){scope.operation = null;update({pending:false});return false;}
         // This references an acknowledged AI result, not pixel ancestry or a credit entitlement.
         // Uploads/crops replace that result and clear the direct reference.
-        scope.operation = null;update({backgroundUrl:data.backgroundUrl,backgroundOperationKey:op.kind==='ai' ? op.key ?? null : null,resultContext:op.context,pending:false,error:null});return true;
+        if(op.kind==='ai'&&op.key)clearBackgroundRecovery(userId!,email!,lang,op.key);
+        scope.operation = null;update({backgroundUrl:data.backgroundUrl,backgroundOperationKey:op.kind==='ai' ? op.key ?? null : null,resultContext:op.context,pending:false,reloadRecoveryAvailable:false,error:null});return true;
       } catch {if(live(op))update({error:timedOut ? 'timeout' : 'unconfirmed'});return false;}
       finally {clearTimeout(deadline);controller.signal.removeEventListener('abort',abort);if(scope.deadline === deadline)scope.deadline = null;if(scope.controller === controller)scope.controller = null;
         if(current() && (scope.operation === op || scope.operation === null))update({busy:false});}
@@ -85,7 +90,13 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
   const setTopic = (topic:string) => {if(typeof topic === 'string')update({topic});};
   const setStyle = (style:string) => {if(styles.includes(style))update({style});};
   useEffect(() => {
-    scope.active = true;setStore({scope,...empty()});
+    scope.active = true;
+    const retained=readBackgroundRecovery(userId,email,status,lang);
+    if(current()&&retained){
+      // Restore input, never pixels/result/provenance or live model authority.
+      scope.operation={key:retained.key,kind:'ai',topic:retained.topic,style:retained.style,lang:retained.lang,eligible:()=>true,context:JSON.stringify([retained.topic,retained.style])};
+      setStore({scope,...empty(),topic:retained.topic,style:retained.style,pending:true,reloadRecoveryAvailable:true,error:'unconfirmed'});
+    }else setStore({scope,...empty()});
     return () => {scope.active = false;scope.operation = null;scope.controller?.abort();if(scope.deadline)clearTimeout(scope.deadline);};
   },[scope]);
   const view = store.scope === scope && current() ? store : empty();

@@ -469,6 +469,9 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
         {bgError && <p role="alert" className="text-[12px] mt-2" style={{ color: '#f5a623' }}>{bgError}</p>}
         {background.pending && <div className="text-[12px] mt-2" role="status">
           <p>{background.pendingKind!=='ai' ? tr('El reintento conserva la misma captura y recupera la subida si quedó confirmada. Puede volver a subir los mismos bytes si no hay recibo; descartarla no cancela el servidor.','Retry retains the same snapshot and recovers a confirmed upload. It may upload the same bytes again without a receipt; discarding does not cancel the server.') : tr('El reintento solo consulta el fondo original; no ejecuta otro modelo aunque su recibo no esté disponible. Descartarlo permite una solicitud nueva y podría consumir de nuevo; no cancela el servidor.','Retry only reads the original background; it does not run another model even if its receipt is unavailable. Discarding allows a new request and may consume again; it does not cancel the server.')}</p>
+          {background.pendingKind==='ai'&&<p>{background.reloadRecoveryAvailable
+            ? tr('El intento pendiente se conserva al recargar esta pestaña. Consulta el resultado antes de generar otro.','The pending attempt is retained when this tab reloads. Check its result before generating another.')
+            : tr('Mantén esta pestaña abierta para conservar el intento pendiente.','Keep this tab open to retain the pending attempt.')}</p>}
           {background.pendingStale && <p>{tr('Los cambios del tema o estilo no se incluyen en este intento.','Topic or style edits are not included in this attempt.')}</p>}
           <button onClick={() => { background.discard();if(cropTarget?.type === 'bg'){cropCurrent.current = null;setCropTarget(null);} }} className="soft-chip px-3 py-1.5 mt-1">{tr('Descartar intento de fondo','Discard background attempt')}</button>
         </div>}
