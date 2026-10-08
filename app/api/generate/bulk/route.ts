@@ -108,8 +108,15 @@ export async function POST(request: Request) {
         const task = firstTask ?? await getMessagesTask(identity);
         firstTask = null;
         const data = await task.create({ max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] });
-        const content = data.content[0].text;
-        const tokensUsed = data.usage?.output_tokens ?? 0;
+        const content = data?.content?.[0]?.text;
+        const tokensUsed = data?.usage?.output_tokens;
+        // Unknown usage is not zero usage. Keep the item unconfirmed rather
+        // than recording a fabricated token count or incomplete output.
+        if (data?.incomplete === true || typeof content !== 'string' || !content.trim()
+          || typeof tokensUsed !== 'number' || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
+          results.push({ topic, content: '', error: 'Generation result unavailable' });
+          continue;
+        }
 
         // Save generation
         await prisma.generation.create({
