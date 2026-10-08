@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { fetchThumbnailBackground } from '@/lib/thumbnail-background-response';
 
 type Operation = { key?:string;kind:'ai'|'upload'|'crop';topic:string;style:string;lang:string;file?:File;
   originalUrl?:string;eligible:() => boolean;context:string };
@@ -44,10 +45,7 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
         const body = new FormData();body.append('source',op.kind === 'ai' ? 'ai' : 'upload');body.append('lang',op.lang);
         if(op.kind === 'ai'){body.append('tema',op.topic);body.append('estilo',op.style);}
         else {if(!op.file)throw Error('Missing original file');body.append('backgroundFile',op.file);}
-        const {response,data}=await Promise.race([(async()=>{
-          const response=await fetch('/api/thumbnail-background',{method:'POST',body,signal:controller.signal,...(op.key ? {headers:{'Idempotency-Key':op.key}} : {})});
-          return {response,data:await response.json()};
-        })(),interrupted]);
+        const {response,data}=await Promise.race([fetchThumbnailBackground(body,controller.signal,op.key),interrupted]);
         if(!live(op))return false;
         if(timedOut)throw Error('Timed out');
         if(!response.ok){update({error:response.status===409 && data?.code==='image_attempt_pending' && data.operationPending===true && data.userId===userId && data.operationKey===op.key && typeof data.id==='string' && /^background_ai_[a-f0-9]{64}$/.test(data.id) ? 'pending' : data?.limitReached === true && [403,429].includes(response.status) ? 'limit' : 'unconfirmed'});return false;}
