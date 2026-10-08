@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { THUMB_H, type PhotoItem } from '@/lib/thumbnail-types';
+import { fetchRemovalPhoto } from '@/lib/thumbnail-removal-response';
 
 const empty = () => ({ photo: null as PhotoItem | null, originalFile: null as File | null,
   originalSrc: null as string | null, removed: false, busy: false,
@@ -81,11 +82,7 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     const flight = Promise.resolve().then(async () => {
       try {
         if(!live(op))return false;
-        const body = new FormData();body.append('file',originalFile,'photo.png');
-        const response = await fetch('/api/remove-bg',{method:'POST',body,signal:controller.signal});
-        if(!live(op))return false;
-        if(timedOut || !response.ok)throw Error('Removal unconfirmed');
-        const blob = await response.blob();
+        const blob = await fetchRemovalPhoto(originalFile,controller.signal);
         if(!live(op))return false;
         if(timedOut || blob.type !== 'image/png' || !valid(blob))throw Error('Removal unconfirmed');
         return await place(new File([blob],'removed.png',{type:'image/png'}),op,false);
