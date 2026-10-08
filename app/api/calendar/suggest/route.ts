@@ -15,6 +15,12 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  const operationKey=request.headers.get('idempotency-key');
+  const recovery=request.headers.get('X-Calendar-Recovery');
+  if((operationKey!==null&&!/^[-A-Za-z0-9._:]{1,128}$/.test(operationKey))
+    ||(recovery!==null&&(recovery!=='retained-only-v1'||operationKey===null))){
+    return NextResponse.json({error:'invalid_recovery'},{status:400});
+  }
 
   const plan = await getUserPlan(session.user.id);
   if (!isPaid(plan)) {
@@ -27,7 +33,7 @@ export async function POST(request: Request) {
   const userId = session.user.id;
   let task;
   try {
-    task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, taskType: 'calendar.suggestions', userId, language: lang, instructionsVersion: 'calendar-suggestions-v1',
+    task = await getMessagesTask({ operationKey: operationKey ?? undefined, taskType: 'calendar.suggestions', userId, language: lang, instructionsVersion: 'calendar-suggestions-v1',
       outputSchema: { type: 'array', items: { type: 'object', properties: { title: { type: 'string', minLength: 1 }, date: { type: 'string' }, reason: { type: 'string' }, description: { type: 'string' } }, required: ['title'], additionalProperties: true } },
     });
   } catch { return NextResponse.json({ error: 'ai_not_configured' }, { status: 500 }); }
@@ -111,10 +117,10 @@ export async function POST(request: Request) {
   });
 
   try {
-    const data = await task.create({
+    const parameters = {
         max_tokens: 1000,
         messages: [{
-          role: 'user',
+          role: 'user' as const,
           content: `You are a YouTube content strategist. Based on the data below, suggest 5 video ideas with optimal publish dates for the next 2 weeks. Reply in ${lang === 'en' ? 'English' : 'Spanish'}. Output ONLY valid JSON array:
 [{"title":"video title","date":"YYYY-MM-DD","hour":14,"reason":"why this date/topic","description":"brief content outline"}]
 
@@ -143,7 +149,11 @@ ${competitorUploads}
 Already scheduled:
 ${existingInfo}`,
         }],
-    });
+    };
+    const data = recovery !== null
+      ? await task.retrieve?.(parameters, { signal: request.signal })
+      : await task.create(parameters, { signal: request.signal });
+    if (!data) return NextResponse.json({ error: 'suggestions_unconfirmed', retryMayConsume: false }, { status: 503 });
 
     const text = data.content?.[0]?.text || '';
 
@@ -171,6 +181,10 @@ ${existingInfo}`,
 
     return NextResponse.json({ suggestions });
   } catch (e) {
+    if (recovery !== null) {
+      const conflict = e && typeof e === 'object' && 'code' in e && e.code === 'invalid_format';
+      return NextResponse.json({ error: conflict ? 'operation_input_changed' : 'suggestions_unconfirmed', retryMayConsume: false }, { status: conflict ? 409 : 503 });
+    }
     const msg = e && typeof e === 'object' && 'code' in e && e.code === 'invalid_format' ? 'ai_parse_error' : 'AI error';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

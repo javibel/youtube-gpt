@@ -77,13 +77,20 @@ export default function CalendarPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null);
   const [suggestError, setSuggestError] = useState('');
-  const suggestionOperation = useMemo(() => createRetryOperation(() => crypto.randomUUID()), [session?.user?.id, lang]);
+  const suggestionOperation = useMemo(() => ({
+    run: createRetryOperation(() => crypto.randomUUID()),
+    key: null as string | null,
+    busy: false,
+    active: true,
+  }), [session?.user?.id, session?.user?.email, status, lang]);
   const currentSuggestionOperation = useRef(suggestionOperation);
   currentSuggestionOperation.current = suggestionOperation;
   useEffect(() => {
+    suggestionOperation.active = true;
     setSuggestions([]);
     setSuggestError('');
     setSuggestLoading(false);
+    return () => { suggestionOperation.active = false; };
   }, [suggestionOperation]);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -164,17 +171,23 @@ export default function CalendarPage() {
   }
 
   async function fetchSuggestions() {
-    if (status !== 'authenticated' || suggestLoading) return;
+    if (status !== 'authenticated' || !session?.user?.id || !suggestionOperation.active || suggestionOperation.busy
+      || currentSuggestionOperation.current !== suggestionOperation) return;
     const operation = suggestionOperation;
+    operation.busy = true;
     setSuggestLoading(true);
     setShowSuggestions(true);
     setSuggestError('');
     setSuggestions([]);
     try {
-      const result = await operation({ lang }, async (body, operationKey) => {
+      const result = await operation.run({ lang }, async (body, operationKey) => {
+        if (!operation.active || currentSuggestionOperation.current !== operation) throw new Error('Account changed');
+        const readOnly = operation.key === operationKey;
+        operation.key = operationKey;
         const res = await fetch('/api/calendar/suggest', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey },
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey,
+            ...(readOnly ? { 'X-Calendar-Recovery': 'retained-only-v1' } : {}) },
           body,
         });
         if (!res.ok) throw new Error('Suggestions unavailable');
@@ -189,15 +202,29 @@ export default function CalendarPage() {
         })) throw new Error('Invalid suggestions');
         return json.suggestions as typeof suggestions;
       });
-      if (currentSuggestionOperation.current === operation) setSuggestions(result);
+      if (operation.active && currentSuggestionOperation.current === operation) {
+        operation.key = null;
+        setSuggestions(result);
+      }
     } catch {
-      if (currentSuggestionOperation.current === operation) setSuggestError(t(
-        'No se pudieron recuperar las sugerencias. Puedes volver a intentarlo.',
-        'Suggestions could not be retrieved. You can try again.',
+      if (operation.active && currentSuggestionOperation.current === operation) setSuggestError(t(
+        'Las sugerencias no están confirmadas. Reintentar solo consulta el resultado original. Puedes descartar esta solicitud para empezar otra; no cancela el trabajo del servidor y la nueva puede consumir créditos.',
+        'Suggestions are unconfirmed. Retry only retrieves the original result. You can discard this request to start another; it does not cancel server work and the new request may consume credits.',
       ));
     } finally {
-      if (currentSuggestionOperation.current === operation) setSuggestLoading(false);
+      operation.busy = false;
+      if (operation.active && currentSuggestionOperation.current === operation) setSuggestLoading(false);
     }
+  }
+
+  function discardSuggestions() {
+    const operation = suggestionOperation;
+    if (status !== 'authenticated' || !operation.active || operation.busy
+      || currentSuggestionOperation.current !== operation) return;
+    operation.run = createRetryOperation(() => crypto.randomUUID());
+    operation.key = null;
+    setSuggestError('');
+    setSuggestions([]);
   }
 
   async function addSuggestionToCalendar(idx: number) {
@@ -341,6 +368,9 @@ export default function CalendarPage() {
               <p>{suggestError}</p>
               <button onClick={fetchSuggestions} disabled={suggestLoading} className="mt-2 underline disabled:opacity-50">
                 {t('Reintentar sugerencias', 'Retry suggestions')}
+              </button>
+              <button onClick={discardSuggestions} disabled={suggestLoading} className="mt-2 ml-4 underline disabled:opacity-50">
+                {t('Descartar solicitud', 'Discard request')}
               </button>
             </div>}
             {suggestLoading && (

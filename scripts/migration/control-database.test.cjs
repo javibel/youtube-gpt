@@ -329,13 +329,23 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   const FixedDate=class extends Date {constructor(...args){super(...(args.length?args:['2026-10-07T12:00:00.000Z']));}static now(){return Date.parse('2026-10-07T12:00:00.000Z');}};
   const route=load('app/api/calendar/suggest/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:'synthetic'}})},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true},'@/lib/ai/task-runtime':runtime,
    '@/lib/prisma':{prisma:{bestTimeAnalysis:{findUnique:async()=>null},trendAlert:{findMany:async()=>[]},trackedCompetitor:{findMany:async()=>[]},calendarEntry:{findMany:async()=>changedContext?[{date:'2026-10-08',title:'Changed synthetic context',status:'idea'}]:[]},youtubeToken:{findUnique:async()=>null}}}}, {Date:FixedDate});
-  const keys=[],run=createRetryOperation(()=>prefix+'_calendar_retry');let lost=true;
-  const send=async(body,key)=>{keys.push(key);const response=await route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':key},body}));
-   assert.equal(response.status,200);const output=await response.json();if(lost){lost=false;throw Error('Synthetic lost response after settlement');}return output;};
-  await assert.rejects(run({lang:'es'},send),/lost response after settlement/);const recovered=await run({lang:'es'},send);
-  assert.deepEqual(recovered,{suggestions:[suggestion]});assert.equal(keys[0],keys[1]);assert.equal(calls,1);
-  changedContext=true;const conflict=await route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':keys[0]},body:'{"lang":"es"}'}));
-  assert.equal(conflict.status,500);assert.equal(calls,1);
+  const {harness}=require('./calendar-client-retry.test.cjs');
+  const invoke=init=>route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:init.headers,body:init.body}));
+  const missing=harness();missing.state.user='synthetic';missing.state.key=prefix+'_calendar_missing';
+  missing.state.send=async()=>{throw Error('Synthetic lost request before API admission');};await missing.click();
+  missing.state.send=invoke;await missing.click();assert.ok(missing.alert());assert.equal(calls,0);
+  assert.equal(missing.requests[1].headers['X-Calendar-Recovery'],'retained-only-v1');
+  assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),0);
+  const browser=harness();browser.state.user='synthetic';browser.state.key=prefix+'_calendar_retry';let lost=true;
+  browser.state.send=async init=>{const response=await invoke(init);assert.equal(response.status,200);
+   if(lost){lost=false;throw Error('Synthetic lost response after settlement');}return response;};
+  await browser.click();assert.ok(browser.alert());await browser.click();assert.equal(browser.alert(),undefined);
+  assert.match(browser.text(),/Synthetic calendar topic/);assert.equal(calls,1);
+  assert.equal(browser.requests[0].headers['Idempotency-Key'],browser.requests[1].headers['Idempotency-Key']);
+  assert.equal(browser.requests[0].headers['X-Calendar-Recovery'],undefined);
+  assert.equal(browser.requests[1].headers['X-Calendar-Recovery'],'retained-only-v1');
+  changedContext=true;const conflict=await invoke(browser.requests[1]);
+  assert.equal(conflict.status,409);assert.deepEqual(await conflict.json(),{error:'operation_input_changed',retryMayConsume:false});assert.equal(calls,1);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
  });
  await test('Predictor lost-response retry recovers one result and settlement; changed input or video context never redispatches',async()=>{

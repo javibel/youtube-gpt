@@ -19,12 +19,29 @@ function harness(options={}) {
   if(new URL(url).hostname==='www.googleapis.com')return Response.json({items:[{snippet:{title:'Synthetic recent upload',channelTitle:'Synthetic competitor'}}]},{status:options.youtubeStatus??200});
   throw Error('Unexpected external request');
  }});
- async function run(body={lang:'es'}){const r=await route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
+ async function run(body={lang:'es'},headers={}){const r=await route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
  return {run,requests,reads};
 }
 const results=[];
 async function test(name,fn,known=false){try{await fn();results.push({name,status:known?'KNOWN_DEFECT_REPRODUCED':'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.message});}}
 (async()=>{
+ for (const [name, headers] of [
+  ['recovery without key', {'X-Calendar-Recovery':'retained-only-v1'}],
+  ['unknown recovery mode', {'Idempotency-Key':'fixture-key','X-Calendar-Recovery':'fresh'}],
+  ['invalid operation key', {'Idempotency-Key':'invalid key'}],
+ ]) await test(name+' rejected before context or inference',async()=>{
+  const h=harness();assert.deepEqual(await h.run({lang:'es'},headers),{status:400,body:{error:'invalid_recovery'}});
+  assert.equal(h.reads.length,0);assert.equal(h.requests.length,0);
+ });
+ await test('missing original result does not fall back to a fresh model call',async()=>{
+  const h=harness();assert.deepEqual(await h.run({lang:'es'},{'Idempotency-Key':'fixture-key','X-Calendar-Recovery':'retained-only-v1'}),
+   {status:503,body:{error:'suggestions_unconfirmed',retryMayConsume:false}});assert.equal(h.requests.length,0);
+ });
+ await test('synthetic create output alone grants no retained retrieval authority',async()=>{
+  const h=harness();assert.equal((await h.run({lang:'es'},{'Idempotency-Key':'fixture-key'})).status,200);
+  assert.equal((await h.run({lang:'es'},{'Idempotency-Key':'fixture-key','X-Calendar-Recovery':'retained-only-v1'})).status,503);
+  assert.equal(h.requests.length,1);
+ });
  for(const [name,options,status] of [['anonymous blocked',{anonymous:true},401],['free account blocked',{free:true},403],['missing task control blocked',{noKey:true},500]])await test(name,async()=>{const h=harness(options);assert.equal((await h.run()).status,status);assert.equal(h.requests.length,0);assert.equal(h.reads.length,0);});
  await test('successful response shape',async()=>assert.deepEqual(await harness().run(),{status:200,body:{suggestions:[suggestion]}}));
  await test('all database reads scoped to authenticated user',async()=>{const h=harness();await h.run();assert.equal(h.reads.length,5);for(const read of h.reads)assert.equal(read.query.where.userId,'synthetic');});

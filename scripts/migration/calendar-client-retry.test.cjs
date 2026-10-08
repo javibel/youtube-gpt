@@ -10,7 +10,7 @@ const compiled = ts.transpileModule(source, { compilerOptions: {
 // Render the actual component with deterministic hook state and bounded synthetic HTTP.
 function harness() {
  const cells = [], effects = [], requests = []; let index = 0, dirty = false, number = 0;
- const state = { user: 'fixture-one', lang: 'es', send: async () => ({ suggestions: [] }) };
+ const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }) };
  const changed = (a, b) => !a || a.length !== b.length || a.some((value, i) => !Object.is(value, b[i]));
  const hooks = {
   useState(initial) { const i = index++; if (!cells[i]) cells[i] = { value: typeof initial === 'function' ? initial() : initial };
@@ -19,20 +19,22 @@ function harness() {
   useRef(value) { const i = index++; return cells[i] ??= { current: value }; },
   useMemo(make, deps) { const i = index++; if (!cells[i] || changed(cells[i].deps, deps)) cells[i] = { value: make(), deps }; return cells[i].value; },
   useCallback(fn, deps) { return hooks.useMemo(() => fn, deps); },
-  useEffect(fn, deps) { const i = index++; if (!cells[i] || changed(cells[i].deps, deps)) { cells[i] = { deps }; effects.push(fn); } },
+  useEffect(fn, deps) { const i = index++; if (!cells[i] || changed(cells[i].deps, deps)) {
+   const previous = cells[i]; cells[i] = { deps };
+   effects.push(() => { previous?.cleanup?.(); cells[i].cleanup = fn(); }); } },
  };
  const jsx = (type, props) => ({ type, props });
  const entry = { exports: {} };
  const mocks = {
   react: hooks, 'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
-  'next-auth/react': { useSession: () => ({ data: { user: { id: state.user } }, status: 'authenticated' }) },
+  'next-auth/react': { useSession: () => ({ data: state.user ? { user: { id: state.user, email: state.email } } : null, status: state.auth }) },
   '@/components/LangProvider': { useLang: () => state.lang },
   '@/components/DashboardShell': { default: 'shell' }, '@/components/ToolLoginGate': { default: 'login' },
   '@/lib/ai/retry-operation.cjs': { createRetryOperation },
  };
  vm.runInNewContext(compiled, { module: entry, exports: entry.exports,
   require(name) { assert.ok(Object.hasOwn(mocks, name), name); return mocks[name]; },
-  crypto: { randomUUID: () => `calendar-fixture-${++number}` },
+  crypto: { randomUUID: () => state.key ?? `calendar-fixture-${++number}` },
   fetch: async (url, init) => {
    if (url.startsWith('/api/calendar?')) return { ok: true, json: async () => ({ entries: [] }) };
    assert.equal(url, '/api/calendar/suggest'); assert.equal(init.method, 'POST');
@@ -49,19 +51,24 @@ function harness() {
  const handler = () => nodes(render()).find(n => n.type === 'button' && n.props.onClick?.name === 'fetchSuggestions').props.onClick;
  const click = () => handler()();
  const text = value => Array.isArray(value) ? value.map(text).join(' ') : value && typeof value === 'object' ? text(value.props?.children) : String(value ?? '');
- return { state, requests, click, handler, render, alert: () => nodes(render()).find(n => n.props?.role === 'alert'), text: () => text(render()) };
+ const discardHandler = () => nodes(render()).find(n => n.props.onClick?.name === 'discardSuggestions')?.props.onClick;
+ const discard = () => discardHandler()?.();
+ return { state, requests, click, handler, discard, discardHandler, render, unmount: () => cells.forEach(cell => cell?.cleanup?.()),
+  alert: () => nodes(render()).find(n => n.props?.role === 'alert'), text: () => text(render()) };
 }
 const suggestion = { title: 'Synthetic topic', date: '2026-10-08', hour: 0, reason: 'Synthetic reason', description: 'Synthetic outline' };
 const success = async () => ({ ok: true, json: async () => ({ suggestions: [suggestion] }) });
 const key = request => request.headers['Idempotency-Key'];
 const results = [];
 async function test(name, run) { await run(); results.push({ name, status: 'PASS' }); }
-(async () => {
+if (require.main === module) (async () => {
  await test('lost HTTP response retains identity and exposes a retry instead of an empty result', async () => {
   const h = harness(); h.state.send = async () => { throw Error('Response lost'); }; await h.click();
   assert.ok(h.alert()); assert.match(h.text(), /Reintentar sugerencias/); assert.doesNotMatch(h.text(), /No hay sugerencias disponibles/);
   h.state.send = success; await h.click(); assert.equal(key(h.requests[0]), key(h.requests[1]));
   assert.equal(h.requests[0].body, h.requests[1].body); assert.equal(h.requests[0].body, '{"lang":"es"}');
+  assert.equal(h.requests[0].headers['X-Calendar-Recovery'], undefined);
+  assert.equal(h.requests[1].headers['X-Calendar-Recovery'], 'retained-only-v1');
   assert.equal(h.alert(), undefined); assert.match(h.text(), /Synthetic topic/);
   await h.click(); assert.notEqual(key(h.requests[1]), key(h.requests[2]));
  });
@@ -96,5 +103,39 @@ async function test(name, run) { await run(); results.push({ name, status: 'PASS
   const h = harness(); h.state.send = async () => ({ ok: true, json: async () => ({ suggestions: [] }) });
   await h.click(); await h.click(); assert.equal(h.alert(), undefined); assert.notEqual(key(h.requests[0]), key(h.requests[1]));
  });
+ await test('missing retained result stays blocked until explicit discard starts a new operation', async () => {
+  const h = harness(); h.state.send = async () => ({ ok: false, status: 503 });
+  await h.click(); await h.click(); await h.click();
+  assert.equal(new Set(h.requests.map(key)).size, 1);
+  assert.equal(h.requests[2].headers['X-Calendar-Recovery'], 'retained-only-v1');
+  assert.match(h.text(), /no cancela.*créditos/);
+  const before = h.requests.length; h.discard(); assert.equal(h.requests.length, before);
+  h.state.send = success; await h.click(); assert.notEqual(key(h.requests[2]), key(h.requests[3]));
+  assert.equal(h.requests[3].headers['X-Calendar-Recovery'], undefined);
+ });
+ await test('discard captured before retry cannot replace an operation while its HTTP is pending', async () => {
+  const h = harness(); h.state.send = async () => ({ ok: false }); await h.click();
+  let release; h.state.send = () => new Promise(resolve => { release = resolve; });
+  const retry = h.handler(), discard = h.discardHandler(); const pending = retry(); discard();
+  await Promise.resolve(); assert.equal(h.requests.length, 2); release({ ok: false }); await pending;
+  h.state.send = success; await h.click(); assert.equal(key(h.requests[0]), key(h.requests[2]));
+ });
+ for (const [name, change] of [['email', h => { h.state.email = 'other@example.invalid'; }],
+  ['logout', h => { h.state.auth = 'unauthenticated'; h.state.user = null; }],
+  ['loading authentication', h => { h.state.auth = 'loading'; }]]) await test(name + ' ignores stale handler and delayed result', async () => {
+  const h = harness(); let release; h.state.send = () => new Promise(resolve => { release = resolve; });
+  const oldHandler = h.handler(); const old = oldHandler(); await Promise.resolve(); change(h); h.render();
+  await oldHandler(); assert.equal(h.requests.length, 1);
+  release(await success()); await old; assert.doesNotMatch(h.text(), /Synthetic topic/);
+ });
+ await test('unmounted account scope rejects captured handlers without another HTTP', async () => {
+  const h = harness(); const action = h.handler(); h.unmount(); await action(); assert.equal(h.requests.length, 0);
+ });
+ await test('context conflict remains explicit and never starts a fresh retry automatically', async () => {
+  const h = harness(); h.state.send = async () => ({ ok: false, status: 409 }); await h.click(); await h.click();
+  assert.ok(h.alert()); assert.equal(key(h.requests[0]), key(h.requests[1]));
+  assert.equal(h.requests[1].headers['X-Calendar-Recovery'], 'retained-only-v1');
+ });
  console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or calendar writes', results }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
+module.exports = { harness, success, suggestion };
