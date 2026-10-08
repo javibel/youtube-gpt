@@ -459,6 +459,18 @@ export default function GeneratePage() {
             )}
 
             {/* Error */}
+            {textGeneration.recoveryAvailable && !textGeneration.retry && !loading && !continuing && (
+              <div role="status" className="yv-note flex items-center justify-between gap-4 flex-wrap">
+                <span>{t('Hay una solicitud de texto pendiente guardada en esta pestaña. Puedes restaurar sus campos para consultar el resultado original.', 'A pending text request is saved in this tab. Restore its fields to check the original result.')}</span>
+                <button className="btn-offset px-4 py-1.5 text-[13px]" onClick={() => {
+                  if(!screen.current())return;
+                  const form=textGeneration.restoreRequest();if(!form)return;
+                  setSelectedTemplate(form.template);setFormData(form.inputs);
+                }}>{t('Restaurar solicitud pendiente', 'Restore pending request')}</button>
+              </div>
+            )}
+            {textGeneration.restored && <p role="status" className="yv-note">{t('Solicitud restaurada desde esta pestaña, sin enviar nada. El texto parcial procede del almacenamiento local; el resultado pendiente requiere confirmación del servidor.', 'Request restored from this tab without sending anything. Partial text comes from local storage; the pending result needs server confirmation.')}</p>}
+            {textGeneration.storageUnavailable && <p role="status" className="yv-note">{t('No se pudo guardar esta solicitud en la pestaña. Conserva la página abierta para reintentar; al recargar se perderá este intento.', 'This request could not be saved in the tab. Keep the page open to retry; reloading will lose this attempt.')}</p>}
             {error && (
               <div role="alert" className="yv-note yv-note--error flex items-center justify-between gap-4 flex-wrap">
                 <span className="inline-flex items-center gap-1.5"><WarningIcon size={14} /> {error}</span>

@@ -27,9 +27,11 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
   const input={template:'title',inputs:{tema:'Synthetic generic topic'},lang:'es'},key='same-generic-operation';
   const invoke=(body=input,operation=key,readOnly=false)=>route.POST(new Request('https://example.invalid/api/generate',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':operation,...(readOnly?{'X-Generation-Recovery':'retained-only-v1'}:{})},body:JSON.stringify(body)}));
   // A browser transport lost before admission cannot turn Retry into fresh inference.
-  const unadmitted=require('./generic-generation-client.test.cjs').harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,key:'never-admitted-ui'});
+  let unadmitted=require('./generic-generation-client.test.cjs').harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,key:'never-admitted-ui'});
   try{
    unadmitted.state.send=async()=>{throw Error('Synthetic HTTP lost before server admission');};await unadmitted.view().generate();
+   const localPending=unadmitted.storage;unadmitted.unmount();unadmitted=require('./generic-generation-client.test.cjs').harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,storage:localPending});
+   assert.equal(unadmitted.view().restored,true);assert.equal(unadmitted.requests.length,0);assert.equal(unadmitted.state.confirmed.length,0);
    unadmitted.state.send=async init=>{assert.equal(init.headers['X-Generation-Recovery'],'retained-only-v1');const response=await route.POST(new Request('https://example.invalid/api/generate',init));assert.equal(response.status,503);return response;};
    await unadmitted.view().retryGeneration();assert.equal(unadmitted.view().retry,true);assert.equal(unadmitted.state.confirmed.length,0);assert.equal(calls,0);assert.equal(await prisma.textGenerationAttempt.count({where:{userId:identity}}),0);assert.equal(await prisma.generation.count({where:{userId:identity}}),0);assert.equal(Number((await stats(budgetId)).settled_micros),0);
   }finally{unadmitted.unmount();}
@@ -44,13 +46,15 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
   // Original client hook -> original route -> real retained history/control ledger.
   // Lose the successful HTTP acknowledgement at an already exhausted quota; retry the same operation.
   const {harness}=require('./generic-generation-client.test.cjs');
-  const client=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,key});let loseAck=true;
-  client.state.send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/generate',init));assert.equal(response.status,200);if(loseAck){loseAck=false;throw Error('Synthetic lost HTTP acknowledgement');}return response;};
+  let client=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,key});let loseAck=true;
+  const send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/generate',init));assert.equal(response.status,200);if(loseAck){loseAck=false;throw Error('Synthetic lost HTTP acknowledgement');}return response;};client.state.send=send;
   try {
    await client.view().generate();assert.equal(client.view().error,'unconfirmed');assert.equal(client.state.confirmed.length,0);
+   const original=client.requests[0],localPending=client.storage;client.unmount();client=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,storage:localPending});
+   assert.equal(client.view().restored,true);assert.equal(client.requests.length,0);assert.equal(client.view().output,'');assert.equal(client.state.confirmed.length,0);client.state.send=send;
    await client.view().retryGeneration();assert.equal(client.view().output,text);assert.equal(client.view().truncated,true);
-   assert.equal(client.requests[0].body,client.requests[1].body);assert.equal(client.requests[0].headers['Idempotency-Key'],client.requests[1].headers['Idempotency-Key']);assert.equal(client.state.confirmed.length,1);
-   await client.view().retryGeneration();assert.equal(client.requests.length,2);assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+   assert.equal(client.requests[0].body,original.body);assert.equal(client.requests[0].headers['Idempotency-Key'],original.headers['Idempotency-Key']);assert.equal(client.requests[0].headers['X-Generation-Recovery'],'retained-only-v1');assert.equal(client.state.confirmed.length,1);assert.equal(client.storage.size,0);
+   await client.view().retryGeneration();assert.equal(client.requests.length,1);assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(Number((await stats(budgetId)).settled_micros),7);
   } finally {client.unmount();}
   // Original hook and real route/ledger: a stalled browser transport does not
   // imply server cancellation. Its explicit retry reads the committed result.
@@ -94,15 +98,16 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
   // Long continuation through the original hook, API, runtime and real rows.
   identity=users[0].id;extension=false;quotaLimit=10;
   await prisma.$executeRaw`UPDATE rate_limits SET hits=0 WHERE key=${'generate:'+identity}`;
-  const long=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang});
+  let long=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang});
   const base='x'.repeat(31990),delta='y'.repeat(20);let loseContinuation=true;
-  long.state.send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/generate',init));assert.equal(response.status,200);if(JSON.parse(init.body).inputs._previousContent&&loseContinuation){loseContinuation=false;quotaLimit=3;throw Error('Synthetic long continuation HTTP ack lost after saved history');}return response;};
+  const sendLong=async init=>{const response=await route.POST(new Request('https://example.invalid/api/generate',init));assert.equal(response.status,200);if(JSON.parse(init.body).inputs._previousContent&&loseContinuation){loseContinuation=false;quotaLimit=3;throw Error('Synthetic long continuation HTTP ack lost after saved history');}return response;};long.state.send=sendLong;
   try {
    text=base;await long.view().generate();assert.equal(long.view().output,base);
    text=delta;await long.view().continueGeneration();assert.equal(long.view().output,base);assert.equal(long.view().error,'unconfirmed');assert.equal(calls,4);assert.equal(messages.at(-1)[1].content[0].text,base);
-   const continuation=long.requests[1];await long.view().retryGeneration();assert.equal(long.requests[2].body,continuation.body);assert.equal(long.requests[2].headers['Idempotency-Key'],continuation.headers['Idempotency-Key']);assert.equal(long.view().output,base+delta);assert.equal(long.state.confirmed.length,2);assert.equal(calls,4);
+   const continuation=long.requests[1],localPending=long.storage;long.unmount();long=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,storage:localPending});assert.equal(long.view().restored,true);assert.equal(long.view().output,base);assert.equal(long.requests.length,0);assert.equal(long.state.confirmed.length,0);long.state.send=sendLong;
+   await long.view().retryGeneration();assert.equal(long.requests[0].body,continuation.body);assert.equal(long.requests[0].headers['Idempotency-Key'],continuation.headers['Idempotency-Key']);assert.equal(long.requests[0].headers['X-Generation-Recovery'],'retained-only-v1');assert.equal(long.view().output,base+delta);assert.equal(long.state.confirmed.length,1);assert.equal(calls,4);assert.equal(long.storage.size,0);
    const row=await prisma.generation.findFirst({where:{userId:identity,output:base+delta}});assert.ok(row);assert.equal(row.inputs._previousContent,base);assert.equal(row.inputs._migrationRetry.content,delta);
-   await long.view().continueGeneration();assert.equal(long.view().error,'length');assert.equal(long.requests.length,3);assert.equal(long.view().output,base+delta);assert.equal(await prisma.generation.count({where:{userId:identity}}),3);assert.equal(await prisma.generation.count({where:{userId:users[1].id}}),1);assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),28);
+   await long.view().continueGeneration();assert.equal(long.view().error,'length');assert.equal(long.requests.length,1);assert.equal(long.view().output,base+delta);assert.equal(await prisma.generation.count({where:{userId:identity}}),3);assert.equal(await prisma.generation.count({where:{userId:users[1].id}}),1);assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),28);
   } finally {long.unmount();}
   // Fresh native owner locks bind business quota before the original runner.
   // A lost reservation acknowledgement and an uncertain runner result never

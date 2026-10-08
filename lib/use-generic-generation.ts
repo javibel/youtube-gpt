@@ -1,18 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { readGenericRecovery, storeGenericRecovery, clearGenericRecovery, recoveryForm, type GenericRecovery } from '@/lib/generic-generation-recovery';
 
 type Action = 'generate'|'continue';
 type Failure = 'unconfirmed'|'timeout'|'limit'|'conflict'|'length';
 type Operation = { key: string; body: string; action: Action; base: string };
 const initial = () => ({ output: '', truncated: false, busy: null as Action|null,
-  error: null as Failure|null, slow: false, retry: false, copied: false });
+  error: null as Failure|null, slow: false, retry: false, copied: false, restored:false, storageUnavailable:false });
 
-// In-memory interaction identity only: no claim of persistence after reload or server cancellation.
+// A local pending record permits only explicit retained-result lookup after reload.
 export function useGenericGeneration(userId: string|undefined, email: string|null|undefined,
   authStatus: string, template: string, inputs: Record<string,string>, lang: string,
   onConfirmed: (action: Action) => void) {
   const inputBody = JSON.stringify(Object.fromEntries(Object.keys(inputs).sort().map(k => [k,inputs[k]])));
+  const account=useMemo(()=>({}),[userId,email,authStatus,lang]);
+  const [recovery,setRecovery]=useState<{account:typeof account;record:GenericRecovery|null}>(()=>({account,record:null}));
   const scope = useMemo(() => ({ active: true, pending: null as Operation|null,
     flight: null as Promise<void>|null, output: '', truncated: false, timers: new Set<ReturnType<typeof setTimeout>>(),
     controller: null as AbortController|null }), [userId,email,authStatus,template,inputBody,lang]);
@@ -37,6 +40,10 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
         const fields = JSON.parse(inputBody);
         if (action === 'continue') fields._previousContent=scope.output;
         scope.pending={key,action,base:action === 'continue' ? scope.output : '',body:JSON.stringify({template,inputs:fields,lang})};
+        const record:GenericRecovery={version:1,...scope.pending};
+        const stored=storeGenericRecovery(userId!,email!,lang,record);
+        update({storageUnavailable:!stored,restored:false});
+        setRecovery({account,record:stored?record:null});
       } catch {update({error:'unconfirmed',retry:false});return Promise.resolve();}
     }
     // Any retry button resumes the exact failed operation, including its continuation base.
@@ -70,7 +77,9 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
         }
         if (!body || typeof body.content !== 'string' || !body.content.trim() || typeof body.truncated !== 'boolean') throw Error('Invalid result');
         scope.output=op.base+body.content;scope.truncated=body.truncated;scope.pending=null;
-        update({output:scope.output,truncated:scope.truncated,error:null,retry:false});
+        clearGenericRecovery(userId!,email!,lang,op.key);
+        setRecovery({account,record:readGenericRecovery(userId,email,authStatus,lang)});
+        update({output:scope.output,truncated:scope.truncated,error:null,retry:false,restored:false,storageUnavailable:false});
         // Ancillary UI callbacks cannot turn a confirmed result into another operation.
         try {onConfirmed(op.action);} catch {}
       } catch {update({error:timedOut ? 'timeout' : 'unconfirmed',retry:true});}
@@ -84,16 +93,34 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
     scope.flight=flight;
     void flight.finally(() => {if (scope.flight === flight) scope.flight=null;});
     return flight;
-  }, [scope,current,inputBody,template,lang,update,onConfirmed]);
+  }, [scope,current,inputBody,template,lang,update,onConfirmed,userId,email,authStatus,account]);
   useEffect(() => {
     scope.active=true;setStore({scope,...initial()});
+    const record=readGenericRecovery(userId,email,authStatus,lang);
+    setRecovery({account,record});
+    if(record&&current()){
+      const form=recoveryForm(record);
+      const canonical=JSON.stringify(Object.fromEntries(Object.keys(form.inputs).sort().map(k=>[k,form.inputs[k]])));
+      if(form.template===template&&canonical===inputBody){
+        scope.pending={key:record.key,body:record.body,base:record.base,action:record.action};
+        scope.output=record.base;scope.truncated=record.action==='continue';
+        setStore({scope,...initial(),output:record.base,truncated:scope.truncated,error:'unconfirmed',retry:true,restored:true});
+      }
+    }
     return () => {scope.active=false;scope.controller?.abort();scope.timers.forEach(clearTimeout);scope.timers.clear();};
   }, [scope]);
   const view = store.scope === scope && current() ? store : initial();
   const discardGeneration=useCallback(()=>{
     if(!current()||scope.flight)return;
-    scope.pending=null;update({error:null,retry:false});
-  },[scope,current,update]);
+    if(scope.pending)clearGenericRecovery(userId!,email!,lang,scope.pending.key);
+    setRecovery({account,record:readGenericRecovery(userId,email,authStatus,lang)});
+    scope.pending=null;update({error:null,retry:false,storageUnavailable:false});
+  },[scope,current,update,userId,email,authStatus,lang,account]);
+  const restoreRequest=useCallback(()=>{
+    if(!current()||scope.flight)return null;
+    const record=readGenericRecovery(userId,email,authStatus,lang);
+    return record?recoveryForm(record):null;
+  },[current,scope,userId,email,authStatus,lang]);
   const copyOutput = useCallback(async () => {
     if (!current() || !scope.output) return;
     try {
@@ -105,7 +132,7 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
     } catch {update({copied:false});}
   }, [scope,current,update]);
   return {...view,loading:view.busy === 'generate',continuing:view.busy === 'continue',
-    copyOutput,discardGeneration,
+    copyOutput,discardGeneration,restoreRequest,recoveryAvailable:recovery.account===account&&current()&&!!recovery.record,
     generate:useCallback(() => run('generate'),[run]),continueGeneration:useCallback(() => run('continue'),[run]),
     retryGeneration:useCallback(() => run('generate',true),[run])};
 }
