@@ -393,6 +393,9 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   };
 
   const handleSave = save.pending ? save.retrySave : save.save;
+  const saveContinuity = save.reloadRecoveryAvailable
+    ? tr('La captura pendiente se conserva en esta pestaña para consultar el guardado tras recargar. El lienzo editable no se restaura.', 'The pending snapshot is retained in this tab to check its save after reload. The editable canvas is not restored.')
+    : tr('Esta captura no se pudo conservar para una recarga. Mantén esta pestaña abierta para consultar el guardado.', 'This snapshot could not be retained for reload. Keep this tab open to check its save.');
 
   // ─── Gate ─────────────────────────────────────────────────────────────────
   if(!photoState.current())return <p>{tr('Inicia sesión para editar miniaturas.','Sign in to edit thumbnails.')}</p>;
@@ -404,6 +407,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
           {tr('Disponible en planes Pro y Business', 'Available on Pro and Business plans')}
         </p>
         {save.pending && <div role="alert">
+          <p>{saveContinuity}</p>
           <p>{saveErr || tr('Hay una captura pendiente de confirmar.', 'A snapshot is awaiting confirmation.')}</p>
           <button onClick={save.retrySave} disabled={saving}>{tr('Reintentar guardado', 'Retry saving')}</button>
           <p>{tr('Reintentar solo consulta el guardado original. Descartar no cancela el servidor; guardar otra captura puede consumir de nuevo.', 'Retry only checks the original save. Discarding does not cancel the server; saving another snapshot may consume again.')}</p>
@@ -704,6 +708,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
             {saveErr && <div role="alert" className="text-[12px]" style={{ color:'#f5a623' }}><p>{saveErr}</p><a href="/dashboard">{tr('Consultar historial', 'Check history')}</a></div>}
             {save.pendingStale && <p>{tr('El reintento consulta la captura original. Los cambios posteriores aún no están guardados.', 'Retry checks the original snapshot. Later edits are not saved yet.')}</p>}
             {save.pending && <div role="alert">
+              <p>{saveContinuity}</p>
               <p>{tr('Reintentar solo consulta el guardado original. Descartar no cancela el servidor; guardar otra captura puede consumir de nuevo.', 'Retry only checks the original save. Discarding does not cancel the server; saving another snapshot may consume again.')}</p>
               <button onClick={save.discardSave} disabled={saving}>{tr('Descartar intento de guardado', 'Discard save attempt')}</button>
             </div>}

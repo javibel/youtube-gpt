@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { readSaveRecovery, storeSaveRecovery, clearSaveRecovery } from '@/lib/thumbnail-save-recovery';
 
 type Snapshot = { dataUrl: string; meta: { topic: string; hasPhoto: boolean; textCount: number; backgroundOperationKey?: string } };
 type Operation = { key: string; file: File; meta: string; context: string };
 const initial = () => ({ busy: false, pending: false, error: null as 'unconfirmed' | 'timeout' | 'conflict' | 'limit' | 'capture' | null,
-  savedUrl: '', savedContext: '' });
+  savedUrl: '', savedContext: '', reloadRecoveryAvailable: false });
 
 export function useThumbnailSave(userId: string | undefined, email: string | null | undefined, status: string,
   lang: string, isPro: boolean, context: string, capture: () => Snapshot | null, onSaved?: (url: string) => void) {
@@ -39,6 +40,8 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
         const bytes = Uint8Array.from(binary,c => c.charCodeAt(0));
         scope.operation = { key: crypto.randomUUID(),file: new File([bytes],'thumbnail.png',{type:'image/png'}),
           meta: JSON.stringify(snapshot.meta),context: latest.current.context };
+        update({reloadRecoveryAvailable:storeSaveRecovery(userId!,email!,lang,{version:1,key:scope.operation.key,
+          meta:scope.operation.meta,dataUrl:snapshot.dataUrl})});
       } catch { update({error:'capture'});return Promise.resolve(); }
     }
     const op = scope.operation;
@@ -66,7 +69,8 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
           || data.imageUrl.length > 4096) throw Error('Invalid acknowledgement');
         const url = new URL(data.imageUrl);
         if (url.protocol !== 'https:' || url.username || url.password || url.hash) throw Error('Invalid image URL');
-        scope.operation = null;update({savedUrl:data.imageUrl,savedContext:op.context,pending:false,error:null});
+        clearSaveRecovery(userId!,email!,lang,op.key);
+        scope.operation = null;update({savedUrl:data.imageUrl,savedContext:op.context,pending:false,error:null,reloadRecoveryAvailable:false});
         try { latest.current.onSaved?.(data.imageUrl); } catch {}
       } catch { update({error:timedOut ? 'timeout' : 'unconfirmed'}); }
       finally { clearTimeout(deadline);controller.signal.removeEventListener('abort',abort);if(scope.deadline===deadline)scope.deadline=null;if(scope.controller===controller)scope.controller=null;update({busy:false}); }
@@ -77,12 +81,26 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
   };
   useEffect(() => {
     scope.active=true;setStore({scope,...initial()});
+    const retained=readSaveRecovery(userId,email,status,lang);
+    if(current()&&retained&&!scope.operation)try {
+      const binary=atob(retained.dataUrl.slice('data:image/png;base64,'.length));
+      if(!binary.length)throw Error('Empty capture');
+      scope.operation={key:retained.key,meta:retained.meta,context:'',
+        file:new File([Uint8Array.from(binary,c=>c.charCodeAt(0))],'thumbnail.png',{type:'image/png'})};
+      // No transport, output confirmation or editable canvas reconstruction.
+      update({pending:true,error:'unconfirmed',reloadRecoveryAvailable:true});
+    }catch{/* Invalid local bytes cannot restore a pending operation. */}
+    // Development effect setup can run again without discarding the retained
+    // in-memory operation. Keep its pending state visible in that setup too.
+    if(current()&&scope.operation)update({pending:true,error:'unconfirmed',
+      reloadRecoveryAvailable:retained?.key===scope.operation.key});
     return () => { scope.active=false;scope.controller?.abort();if(scope.deadline)clearTimeout(scope.deadline); };
   }, [scope]);
   const view = store.scope===scope && current() ? store : initial();
   const discardSave = () => {
     if (!current() || scope.flight) return;
-    scope.operation = null; update({pending:false,error:null});
+    if(scope.operation)clearSaveRecovery(userId!,email!,lang,scope.operation.key);
+    scope.operation = null; update({pending:false,error:null,reloadRecoveryAvailable:false});
   };
   return { ...view, savedStale: !!view.savedUrl && view.savedContext !== context,
     pendingStale: !!scope.operation && scope.operation.context !== context,
