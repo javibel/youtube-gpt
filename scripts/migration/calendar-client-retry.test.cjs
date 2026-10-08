@@ -9,7 +9,7 @@ const compiled = ts.transpileModule(source, { compilerOptions: {
 } }).outputText;
 // Render the actual component with deterministic hook state and bounded synthetic HTTP.
 function harness(storage = new Map()) {
- const cells = [], effects = [], requests = [], listRequests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0;
+ const cells = [], effects = [], requests = [], listRequests = [], writeRequests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0;
  const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }), list: async () => ({ ok: true, json: async () => ({ entries: [] }) }) };
  const changed = (a, b) => !a || a.length !== b.length || a.some((value, i) => !Object.is(value, b[i]));
  const hooks = {
@@ -38,7 +38,8 @@ function harness(storage = new Map()) {
    setItem: (k, v) => { if (state.storageDenied) throw Error('Storage denied'); storage.set(k, v); }, removeItem: k => storage.delete(k) },
   crypto: { randomUUID: () => state.key ?? `calendar-fixture-${++number}` },
   fetch: async (url, init) => {
-   if (url.startsWith('/api/calendar?')) { listRequests.push({ url, ...init, owner: state.user }); return state.list(url, init); }
+   if (url.startsWith('/api/calendar?') && (!init?.method || init.method === 'GET')) { listRequests.push({ url, ...init, owner: state.user }); return state.list(url, init); }
+   if (url === '/api/calendar' || url.startsWith('/api/calendar?id=')) { writeRequests.push({ url, ...init, owner: state.user }); return state.write(url, init); }
    assert.equal(url, '/api/calendar/suggest'); assert.equal(init.method, 'POST');
    requests.push({ ...init, owner: state.user });
    return state.send(init);
@@ -57,7 +58,11 @@ function harness(storage = new Map()) {
  const text = value => Array.isArray(value) ? value.map(text).join(' ') : value && typeof value === 'object' ? text(value.props?.children) : String(value ?? '');
  const discardHandler = () => nodes(render()).find(n => n.props.onClick?.name === 'discardSuggestions')?.props.onClick;
  const discard = () => discardHandler()?.();
- return { state, requests, listRequests, storage, timers, nodes: () => nodes(render()), button: name => nodes(render()).find(n => n.props.onClick?.name === name)?.props.onClick,
+ return { state, requests, listRequests, writeRequests, storage, timers, nodes: () => nodes(render()), button: name => nodes(render()).find(n => n.props.onClick?.name === name)?.props.onClick,
+  open: () => nodes(render()).find(n => n.type === 'div' && n.props.className?.includes('min-h-[100px]') && n.props.onClick).props.onClick(),
+  field: (name, value) => nodes(render()).find(n => name === 'title' ? n.type === 'input' && n.props.maxLength === 200
+   : name === 'date' ? n.type === 'input' && n.props.type === 'date' : name === 'status' ? n.type === 'select' : n.type === 'textarea').props.onChange({ target: { value } }),
+  edit: title => nodes(render()).find(n => n.props.title === title && n.props.onClick).props.onClick({ stopPropagation() {} }),
   advance: ms => { for (const [id, timer] of [...timers]) if (timer.ms <= ms) { timers.delete(id); timer.fn(); } },
   click, handler, discard, discardHandler, render, unmount: () => cells.forEach(cell => cell?.cleanup?.()),
   alert: () => nodes(render()).find(n => n.props?.role === 'alert'), text: () => text(render()) };
@@ -66,6 +71,10 @@ const suggestion = { title: 'Synthetic topic', date: '2026-10-08', hour: 0, reas
 const success = async () => ({ ok: true, json: async () => ({ suggestions: [suggestion] }) });
 const key = request => request.headers['Idempotency-Key'];
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+const writeSuccess = h => async (_url, init) => ({ ok: true, json: async () => init.method === 'DELETE' ? { ok: true }
+ : { entry: { ...JSON.parse(init.body), id: JSON.parse(init.body).id || 'synthetic-created', userId: h.state.user, color: null,
+  description: JSON.parse(init.body).description?.trim() || null } } });
+async function draft(h, title = 'Synthetic draft') { h.render(); await flush(); h.open(); h.field('title', title); }
 const results = [];
 async function test(name, run) { await run(); results.push({ name, status: 'PASS' }); }
 if (require.main === module) (async () => {
@@ -267,6 +276,93 @@ if (require.main === module) (async () => {
   const h = harness(); h.state.list = () => new Promise(() => {}); h.render(); await flush(); h.unmount(); await flush();
   assert.equal(h.listRequests[0].signal.aborted, true); assert.equal(h.timers.size, 0); assert.equal(h.listRequests.length, 1);
  });
- console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or calendar writes', results }, null, 2));
+ await test('captured calendar save cannot write its old draft under a changed account', async () => {
+  const h = harness(); h.render(); await flush(); h.open(); h.field('title', 'Old account draft'); const save = h.button('saveEntry');
+  h.state.user = 'another-account'; h.state.write = async () => ({ ok: true }); h.render(); await flush(); await save();
+  assert.equal(h.writeRequests.length, 0, 'Old account handler must not issue a calendar write');
+ });
+ await test('only a matching create acknowledgement closes the draft and refreshes entries', async () => {
+  const h = harness(); await draft(h); h.state.write = writeSuccess(h); await h.button('saveEntry')(); await flush();
+  assert.equal(h.writeRequests.length, 1); assert.equal(h.writeRequests[0].method, 'POST'); assert.equal(h.button('saveEntry'), undefined);
+  assert.equal(h.listRequests.length, 2); assert.equal(h.alert(), undefined);
+ });
+ for (const [label, response] of [['failed HTTP', { ok: false }], ['missing entry', { ok: true, json: async () => ({}) }],
+  ['broken JSON', { ok: true, json: async () => { throw Error('Malformed'); } }]])
+  await test(label + ' preserves the draft and requires an explicit new-operation decision', async () => {
+   const h = harness(); await draft(h); h.state.write = async () => response; const save = h.button('saveEntry'); await save();
+   assert.ok(h.alert()); assert.match(h.text(), /puede haberse aplicado/); assert.equal(h.nodes().find(n => n.type === 'input' && n.props.maxLength === 200).props.value, 'Synthetic draft');
+   await save(); assert.equal(h.writeRequests.length, 1); assert.equal(h.listRequests.length, 1);
+   h.button('discardUnconfirmedWrite')(); assert.equal(h.writeRequests.length, 1); h.state.write = writeSuccess(h); await h.button('saveEntry')();
+   assert.equal(h.writeRequests.length, 2); assert.equal(h.alert(), undefined);
+  });
+ await test('wrong owner, identity or echoed fields cannot confirm create/update responses', async () => {
+  for (const changed of [{ userId: 'another-user' }, { title: 'Wrong title' }, { date: '1900-01-01' }, { status: 'invalid' }]) {
+   const h = harness(); await draft(h); h.state.write = async (url, init) => { const valid = await writeSuccess(h)(url, init); const data = await valid.json();
+    return { ok: true, json: async () => ({ entry: { ...data.entry, ...changed } }) }; };
+   await h.button('saveEntry')(); assert.ok(h.alert()); assert.ok(h.button('saveEntry')); assert.equal(h.listRequests.length, 1);
+  }
+ });
+ await test('rapid duplicate save and captured close cannot replace an active draft or issue two writes', async () => {
+  const h = harness(); await draft(h); let release; h.state.write = () => new Promise(resolve => { release = resolve; });
+  const save = h.button('saveEntry'), close = h.button('closeModal'); const first = save(), second = save(); close(); h.field('title', 'Changed during flight');
+  assert.equal(h.writeRequests.length, 1); assert.equal(JSON.parse(h.writeRequests[0].body).title, 'Synthetic draft');
+  assert.equal(h.nodes().find(n => n.type === 'input' && n.props.maxLength === 200).props.value, 'Synthetic draft');
+  release(await writeSuccess(h)(h.writeRequests[0].url, h.writeRequests[0])); await Promise.all([first, second]); assert.equal(h.alert(), undefined);
+ });
+ for (const [label, change] of [['account', h => { h.state.user = 'another-account'; }], ['email', h => { h.state.email = 'another@example.invalid'; }],
+  ['language', h => { h.state.lang = 'en'; }], ['month', h => { h.button('nextMonth')(); }], ['logout', h => { h.state.auth = 'unauthenticated'; }]])
+  await test('write ' + label + ' closes the old wait and rejects captured save/form handlers', async () => {
+   const h = harness(); await draft(h, 'Old sensitive draft'); let release; h.state.write = () => new Promise(resolve => { release = resolve; });
+   const save = h.button('saveEntry'), oldField = h.nodes().find(n => n.type === 'input' && n.props.maxLength === 200).props.onChange;
+   const pending = save(); change(h); h.render(); await flush(); await pending; await save(); oldField({ target: { value: 'Late old draft' } });
+   assert.equal(h.writeRequests.length, 1); assert.equal(h.writeRequests[0].signal.aborted, true); assert.doesNotMatch(h.text(), /Old sensitive draft|Late old draft/);
+   release({ ok: true, json: async () => ({}) }); await flush(); assert.equal(h.alert(), undefined);
+  });
+ for (const stage of ['fetch', 'json']) await test('write ' + stage + ' ignoring abort stops at30s without replaying an uncertain write', async () => {
+  const h = harness(); await draft(h); let release; const held = new Promise(resolve => { release = resolve; });
+  h.state.write = stage === 'fetch' ? () => held : async () => ({ ok: true, json: () => held });
+  const save = h.button('saveEntry'), pending = save(); await flush(); h.advance(30000); await flush(); await pending;
+  assert.ok(h.alert()); assert.equal(h.timers.size, 0); await save(); assert.equal(h.writeRequests.length, 1);
+  const old = { entry: {} }; release(stage === 'fetch' ? { ok: true, json: async () => old } : old); await flush(); assert.ok(h.alert());
+ });
+ await test('edit/delete confirmation and failed deletion preserve the selected entry', async () => {
+  const h = harness(); const item = { id: 'entry', title: 'Owned entry', status: 'idea', description: null, color: null };
+  h.state.list = async url => ({ ok: true, json: async () => ({ entries: [{ ...item, date: new URL('https://example.invalid' + url).searchParams.get('from') }] }) });
+  h.render(); await flush(); h.edit(item.title); h.field('status', 'scheduled'); h.state.write = writeSuccess(h); await h.button('saveEntry')(); await flush();
+  assert.equal(h.writeRequests[0].method, 'PUT'); assert.equal(JSON.parse(h.writeRequests[0].body).id, item.id);
+  h.edit(item.title); h.state.write = async () => ({ ok: true, json: async () => ({}) }); await h.button('deleteEntry')();
+  assert.ok(h.alert()); assert.ok(h.button('deleteEntry')); h.button('discardUnconfirmedWrite')(); h.state.write = writeSuccess(h); await h.button('deleteEntry')();
+  assert.equal(h.writeRequests[2].method, 'DELETE'); assert.equal(h.writeRequests[2].url, '/api/calendar?id=entry'); assert.equal(h.button('deleteEntry'), undefined);
+ });
+ await test('adding a suggestion keeps it after an unconfirmed write and removes it only after exact confirmation', async () => {
+  const h = harness(); h.state.send = success; await h.click(); const add = () => h.nodes().find(n => n.type === 'button' && n.props.children?.at?.(-1) === 'Añadir').props.onClick();
+  h.state.write = async () => ({ ok: false }); await add(); assert.ok(h.alert()); assert.match(h.text(), /Synthetic topic/); await add(); assert.equal(h.writeRequests.length, 1);
+  h.button('discardUnconfirmedWrite')(); h.state.write = writeSuccess(h); await add(); assert.doesNotMatch(h.text(), /Synthetic topic/); assert.equal(h.requests.length, 1);
+ });
+ await test('unmount closes its original active writer and never dispatches a captured second save', async () => {
+  const h = harness(); await draft(h); h.state.write = () => new Promise(() => {}); const save = h.button('saveEntry'), pending = save();
+  h.unmount(); await pending; await save(); assert.equal(h.writeRequests.length, 1); assert.equal(h.writeRequests[0].signal.aborted, true); assert.equal(h.timers.size, 0);
+ });
+ await test('confirmed or replaced modal invalidates captured save and field handlers without another write', async () => {
+  const h = harness(); await draft(h, 'Original draft'); const save = h.button('saveEntry'), oldField = h.nodes().find(n => n.type === 'input' && n.props.maxLength === 200).props.onChange;
+  h.state.write = writeSuccess(h); await save(); await save(); assert.equal(h.writeRequests.length, 1); await flush();
+  h.open(); h.field('title', 'New draft'); oldField({ target: { value: 'Wrong old edit' } }); await save();
+  assert.equal(h.writeRequests.length, 1); assert.equal(h.nodes().find(n => n.type === 'input' && n.props.maxLength === 200).props.value, 'New draft');
+ });
+ await test('confirmed suggestion addition invalidates its captured button without another calendar write', async () => {
+  const h = harness(); h.state.send = success; await h.click(); const add = h.nodes().find(n => n.type === 'button' && n.props.children?.at?.(-1) === 'Añadir').props.onClick;
+  h.state.write = writeSuccess(h); await add(); await add(); assert.equal(h.writeRequests.length, 1); assert.equal(h.requests.length, 1);
+ });
+ await test('confirmed write replaces an older active GET and its stale delivery cannot erase the refresh', async () => {
+  const h = harness(); await draft(h); let oldRelease; h.state.list = () => new Promise(resolve => { oldRelease = resolve; });
+  // A read retry is reached by a real failed list, while the pending draft stays open.
+  h.state.write = async () => ({ ok: false }); await h.button('saveEntry')();
+  const consult = h.nodes().find(n => n.type === 'button' && n.props.children === 'Consultar calendario').props.onClick;
+  const oldRead = consult(); await flush(); const old = h.listRequests.at(-1);
+  h.button('discardUnconfirmedWrite')(); h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); h.state.write = writeSuccess(h);
+  await h.button('saveEntry')(); await flush(); assert.equal(old.signal.aborted, true); await oldRead;
+  oldRelease({ ok: false }); await flush(); assert.equal(h.alert(), undefined); assert.equal(h.listRequests.length, 3);
+ });
+ console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or operational calendar writes', results }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
 module.exports = { harness, success, suggestion };

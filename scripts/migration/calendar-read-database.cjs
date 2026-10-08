@@ -38,5 +38,30 @@ module.exports=async function(prisma,results){
    assert.equal(await prisma.generation.count({where:{userId:{in:users.map(u=>u.id)}}}),0);assert.equal(read.requests.length,0);
    results.push('calendar read timeout and explicit retry respect stored Pro expiration/restoration; no calendar writes, generations or model requests');
   }finally{read.unmount();}
+  const editor=harness();editor.state.user=userId;editor.state.email=users[1].email;let lastRead;
+  editor.state.list=url=>(lastRead=invoke(url));
+  const write=(url,init)=>route[init.method](new Request('https://example.invalid'+url,init));
+  try{
+   editor.render();await lastRead;await flush();editor.open();editor.field('title','Synthetic newly created entry');
+   let lost=true;editor.state.write=async(url,init)=>{const response=await write(url,init);assert.equal(response.status,201);
+    if(lost){lost=false;throw Error('Lost create acknowledgement after original PostgreSQL commit');}return response;};
+   const save=editor.button('saveEntry');await save();assert.ok(editor.alert());await save();
+   assert.equal(editor.writeRequests.length,1);assert.equal(await prisma.calendarEntry.count({where:{userId,title:'Synthetic newly created entry'}}),1);
+   const consult=editor.nodes().find(n=>n.type==='button'&&n.props.children==='Consultar calendario').props.onClick;
+   await consult();assert.ok(editor.alert());assert.equal(editor.writeRequests.length,1);assert.match(editor.text(),/Synthetic newly created entry/);
+   results.push('original calendar create commits once in PostgreSQL after lost acknowledgement; blocked duplicate and explicit GET cannot authorize another write or certify the uncertain draft');
+   editor.button('discardUnconfirmedWrite')();editor.button('closeModal')();editor.edit('Synthetic newly created entry');
+   editor.field('title','Synthetic edited entry');editor.field('status','scheduled');editor.state.write=write;
+   await editor.button('saveEntry')();await lastRead;await flush();assert.equal(editor.alert(),undefined);
+   assert.equal(await prisma.calendarEntry.count({where:{userId,title:'Synthetic edited entry',status:'scheduled'}}),1);
+   editor.edit('Synthetic edited entry');await editor.button('deleteEntry')();await lastRead;await flush();
+   assert.equal(await prisma.calendarEntry.count({where:{userId,title:'Synthetic edited entry'}}),0);assert.equal(editor.alert(),undefined);
+   editor.open();editor.field('title','Old account unsent draft');const stale=editor.button('saveEntry'),before=editor.writeRequests.length;
+   userId=users[0].id;editor.state.user=userId;editor.state.email=users[0].email;editor.render();await lastRead;await flush();await stale();
+   assert.equal(editor.writeRequests.length,before);assert.equal(await prisma.calendarEntry.count({where:{title:'Old account unsent draft',userId:{in:users.map(u=>u.id)}}}),0);
+   assert.equal(await prisma.calendarEntry.count({where:{userId:{in:users.map(u=>u.id)}}}),2);
+   assert.equal(await prisma.generation.count({where:{userId:{in:users.map(u=>u.id)}}}),0);assert.equal(editor.requests.length,0);
+   results.push('actual calendar edit/delete acknowledgements refresh own PostgreSQL rows; old-account captured draft cannot dispatch under the new session or alter either account');
+  }finally{editor.unmount();}
  }finally{h.unmount();await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});}
 };

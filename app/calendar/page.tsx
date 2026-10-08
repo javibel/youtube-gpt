@@ -67,12 +67,15 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(new Date().getMonth());
 
   // Modal state
-  const [modal, setModal] = useState<{ mode: 'add' | 'edit'; entry?: Entry; date?: string } | null>(null);
+  const [modal, setModal] = useState<{ mode: 'add' | 'edit'; entry?: Entry; date?: string; identity: object } | null>(null);
+  const modalIdentity = useRef<object | null>(null);
   const [form, setForm] = useState({ title: '', description: '', status: 'idea', date: '' });
   const [saving, setSaving] = useState(false);
 
   // AI suggestions state
   const [suggestions, setSuggestions] = useState<{ title: string; date: string; hour: number; reason: string; description: string }[]>([]);
+  const currentSuggestions = useRef(suggestions);
+  currentSuggestions.current = suggestions;
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null);
@@ -128,6 +131,15 @@ export default function CalendarPage() {
   const currentReadScope = useRef(readScope);
   currentReadScope.current = readScope;
   const confirmedReadScope = useRef<typeof readScope | null>(null);
+  const modalScope = useRef<typeof readScope | null>(null);
+  const writes = useMemo(() => ({ busy: false, unconfirmed: false, controller: null as AbortController | null }), [readScope]);
+  const [writeError, setWriteError] = useState('');
+  useEffect(() => {
+    modalIdentity.current = null;
+    setModal(null); setForm({ title: '', description: '', status: 'idea', date: '' });
+    setWriteError(''); setSaving(false); setAddingSuggestion(null);
+    return () => { writes.controller?.abort(); };
+  }, [writes]);
   useEffect(() => {
     readScope.active = true;
     setEntries([]); setError(''); setLoading(false);
@@ -139,7 +151,7 @@ export default function CalendarPage() {
       || currentReadScope.current !== readScope) return;
     readScope.busy = true;
     const controller = new AbortController(); readScope.controller = controller;
-    const current = () => readScope.active && currentReadScope.current === readScope;
+    const current = () => readScope.active && currentReadScope.current === readScope && readScope.controller === controller;
     let interrupt: (error: Error) => void = () => {};
     const interrupted = new Promise<never>((_, reject) => { interrupt = reject; });
     void interrupted.catch(() => {});
@@ -169,10 +181,9 @@ export default function CalendarPage() {
     } catch {
       if (current()) setError(t('No se pudo confirmar el calendario. Puedes volver a consultarlo.', 'The calendar could not be confirmed. You can retrieve it again.'));
     } finally {
-      readScope.busy = false;
       clearTimeout(deadline); controller.signal.removeEventListener('abort', abort);
-      if (readScope.controller === controller) readScope.controller = null;
       if (current()) setLoading(false);
+      if (readScope.controller === controller) { readScope.controller = null; readScope.busy = false; }
     }
   }, [readScope, year, month, status, session?.user?.id, lang]);
 
@@ -190,46 +201,93 @@ export default function CalendarPage() {
   }
 
   function openAdd(date: string) {
+    if (!canWrite()) return;
+    modalScope.current = readScope;
     setForm({ title: '', description: '', status: 'idea', date });
-    setModal({ mode: 'add', date });
+    const identity = {}; modalIdentity.current = identity;
+    setModal({ mode: 'add', date, identity });
   }
 
   function openEdit(entry: Entry) {
+    if (!canWrite()) return;
+    modalScope.current = readScope;
     setForm({ title: entry.title, description: entry.description || '', status: entry.status, date: entry.date });
-    setModal({ mode: 'edit', entry });
+    const identity = {}; modalIdentity.current = identity;
+    setModal({ mode: 'edit', entry, identity });
+  }
+
+  function canWrite() {
+    return status === 'authenticated' && !!session?.user?.id && readScope.active
+      && currentReadScope.current === readScope && !writes.busy && !writes.unconfirmed;
+  }
+
+  function confirmsEntry(json: { entry?: Entry }, expected: Record<string, unknown>) {
+    const entry = json?.entry as (Entry & { userId?: string }) | undefined;
+    return !!entry && typeof entry.id === 'string' && !!entry.id && entry.userId === session?.user?.id
+      && typeof entry.title === 'string' && !!entry.title.trim() && entry.title.length <= 200
+      && typeof entry.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.date)
+      && Object.hasOwn(STATUS_LABELS, entry.status) && (entry.description === null || typeof entry.description === 'string')
+      && (entry.color === null || typeof entry.color === 'string')
+      && Object.entries(expected).every(([key, value]) => entry[key as keyof Entry] === value);
+  }
+
+  async function writeCalendar(url: string, init: RequestInit, confirm: (json: { entry?: Entry; ok?: boolean }) => boolean,
+    done: () => void, suggestionIndex: number | null = null) {
+    if (!canWrite()) return;
+    writes.busy = true;
+    const controller = new AbortController(); writes.controller = controller;
+    const current = () => readScope.active && currentReadScope.current === readScope;
+    let interrupt: (error: Error) => void = () => {};
+    const interrupted = new Promise<never>((_, reject) => { interrupt = reject; }); void interrupted.catch(() => {});
+    const abort = () => interrupt(new Error('Calendar write unconfirmed'));
+    controller.signal.addEventListener('abort', abort, { once: true });
+    const deadline = setTimeout(() => controller.abort(), 30_000);
+    setSaving(true); setAddingSuggestion(suggestionIndex); setWriteError('');
+    try {
+      const res = await Promise.race([fetch(url, { ...init, signal: controller.signal }), interrupted]);
+      if (!res.ok) throw new Error('Write unavailable');
+      const json = await Promise.race([res.json(), interrupted]);
+      if (controller.signal.aborted || !confirm(json)) throw new Error('Invalid acknowledgement');
+      if (current()) {
+        done();
+        // A read started before this confirmed write may be stale. Replace only
+        // its local wait; never claim remote cancellation or recover a writer.
+        readScope.controller?.abort(); readScope.busy = false;
+        void fetchEntries();
+      }
+    } catch {
+      if (current()) {
+        writes.unconfirmed = true;
+        setWriteError(t('El cambio no está confirmado y puede haberse aplicado. Consulta el calendario antes de empezar otra operación; repetir un alta puede crear un duplicado.',
+          'The change is unconfirmed and may have been applied. Retrieve the calendar before starting another operation; repeating an addition may create a duplicate.'));
+      }
+    } finally {
+      clearTimeout(deadline); controller.signal.removeEventListener('abort', abort);
+      writes.busy = false; if (writes.controller === controller) writes.controller = null;
+      if (current()) { setSaving(false); setAddingSuggestion(null); }
+    }
+  }
+
+  function discardUnconfirmedWrite() {
+    if (status !== 'authenticated' || !readScope.active || currentReadScope.current !== readScope || writes.busy) return;
+    // Discarding a local warning neither cancels nor certifies the server write.
+    writes.unconfirmed = false; setWriteError('');
   }
 
   async function saveEntry() {
-    if (!form.title.trim()) return;
-    setSaving(true);
-    try {
-      if (modal?.mode === 'add') {
-        const res = await fetch('/api/calendar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
-        });
-        if (res.ok) { setModal(null); fetchEntries(); }
-      } else if (modal?.mode === 'edit' && modal.entry) {
-        const res = await fetch('/api/calendar', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: modal.entry.id, ...form }),
-        });
-        if (res.ok) { setModal(null); fetchEntries(); }
-      }
-    } catch { /* */ }
-    setSaving(false);
+    if (!form.title.trim() || !modal || modalScope.current !== readScope || modalIdentity.current !== modal.identity || !canWrite()) return;
+    const values = { ...form, title: form.title.trim(), description: form.description.trim() };
+    const editing = modal.mode === 'edit' && modal.entry;
+    return writeCalendar('/api/calendar', { method: editing ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing ? { id: editing.id, ...values } : values) },
+      json => confirmsEntry(json, { ...values, description: values.description || null, ...(editing ? { id: editing.id } : {}) }),
+      () => { modalIdentity.current = null; setModal(null); });
   }
 
   async function deleteEntry() {
-    if (!modal?.entry) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/calendar?id=${modal.entry.id}`, { method: 'DELETE' });
-      if (res.ok) { setModal(null); fetchEntries(); }
-    } catch { /* */ }
-    setSaving(false);
+    if (!modal?.entry || modalScope.current !== readScope || modalIdentity.current !== modal.identity) return;
+    return writeCalendar(`/api/calendar?id=${encodeURIComponent(modal.entry.id)}`, { method: 'DELETE' },
+      json => json?.ok === true, () => { modalIdentity.current = null; setModal(null); });
   }
 
   async function fetchSuggestions() {
@@ -322,40 +380,40 @@ export default function CalendarPage() {
 
   async function addSuggestionToCalendar(idx: number) {
     const s = suggestions[idx];
-    if (!s) return;
-    setAddingSuggestion(idx);
-    try {
-      const res = await fetch('/api/calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: s.title,
-          description: `${s.description}\n\n⏰ ${t('Hora sugerida', 'Suggested time')}: ${s.hour}:00 UTC\n💡 ${s.reason}`,
-          date: s.date,
-          status: 'idea',
-        }),
-      });
-      if (res.ok) {
-        setSuggestions(prev => prev.filter((_, i) => i !== idx));
-        fetchEntries();
-      }
-    } catch { /* */ }
-    setAddingSuggestion(null);
+    if (!s || currentSuggestions.current[idx] !== s || !suggestionOperation.active || currentSuggestionOperation.current !== suggestionOperation) return;
+    const values = { title: s.title.trim(), description: `${s.description}\n\n⏰ ${t('Hora sugerida', 'Suggested time')}: ${s.hour}:00 UTC\n💡 ${s.reason}`.trim(),
+      date: s.date, status: 'idea' };
+    return writeCalendar('/api/calendar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) },
+      json => confirmsEntry(json, values), () => {
+        currentSuggestions.current = currentSuggestions.current.filter(item => item !== s);
+        setSuggestions(currentSuggestions.current);
+      }, idx);
   }
 
   async function cycleStatus(entry: Entry) {
     const order = ['idea', 'draft', 'scheduled', 'published'];
     const nextIdx = (order.indexOf(entry.status) + 1) % order.length;
     const newStatus = order[nextIdx];
-    try {
-      const res = await fetch('/api/calendar', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: entry.id, status: newStatus }),
-      });
-      if (res.ok) fetchEntries();
-    } catch { /* */ }
+    return writeCalendar('/api/calendar', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: entry.id, status: newStatus }) }, json => confirmsEntry(json, { id: entry.id, status: newStatus }), () => {});
   }
+
+  function closeModal() {
+    if (readScope.active && currentReadScope.current === readScope && !writes.busy) { modalIdentity.current = null; setModal(null); }
+  }
+  function changeForm(field: keyof typeof form, value: string) {
+    if (!modal || modalIdentity.current !== modal.identity || modalScope.current !== readScope || currentReadScope.current !== readScope || !readScope.active || writes.busy) return;
+    setForm(previous => ({ ...previous, [field]: value }));
+  }
+  const writeNotice = writeError && <div role="alert" className="mb-4 text-sm text-red-400">
+    <p>{writeError}</p>
+    <button onClick={fetchEntries} disabled={loading || saving} className="mt-2 underline disabled:opacity-50">
+      {t('Consultar calendario', 'Retrieve calendar')}
+    </button>
+    <button onClick={discardUnconfirmedWrite} disabled={saving} className="mt-2 ml-4 underline disabled:opacity-50">
+      {t('Empezar otra operación', 'Start another operation')}
+    </button>
+  </div>;
 
   const days = getMonthDays(year, month);
   const today = new Date().toISOString().slice(0, 10);
@@ -513,7 +571,7 @@ export default function CalendarPage() {
                       <p className="font-mono-jb text-[13px] leading-relaxed line-clamp-2" style={{ color: 'var(--yv-text-3)' }}>{s.reason}</p>
                       <button
                         onClick={() => addSuggestionToCalendar(i)}
-                        disabled={addingSuggestion === i}
+                        disabled={saving || writes.unconfirmed}
                         className="mt-auto flex items-center justify-center gap-1.5 py-1.5 rounded text-[13px] font-mono-jb transition border hover:border-purple-500/40 disabled:opacity-40"
                         style={{ borderColor: 'rgba(168,85,247,0.2)', color: '#c084fc' }}
                       >
@@ -533,6 +591,7 @@ export default function CalendarPage() {
         </div>
       )}
 
+        {(!modal || modalScope.current !== readScope) && writeNotice}
         {error && (
           <div role="alert" className="text-center py-8">
             <p className="text-red-400 font-mono-jb text-sm">{error}</p>
@@ -608,8 +667,8 @@ export default function CalendarPage() {
       </div>
 
       {/* Modal */}
-      {modal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={() => setModal(null)}>
+      {modal && modalIdentity.current === modal.identity && modalScope.current === readScope && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={closeModal}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
             className="yv-glass yv-glass--lift relative w-full max-w-md mx-4 p-6"
@@ -619,6 +678,7 @@ export default function CalendarPage() {
             <h2 className="font-display font-bold text-lg text-white mb-4">
               {modal.mode === 'add' ? t('Añadir contenido', 'Add content') : t('Editar contenido', 'Edit content')}
             </h2>
+            {writeNotice}
 
             <div className="space-y-3">
               <div>
@@ -627,7 +687,8 @@ export default function CalendarPage() {
                 </label>
                 <input
                   value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  onChange={e => changeForm('title', e.target.value)}
+                  disabled={saving}
                   placeholder={t('Ej: Tutorial de edición con DaVinci', 'Ex: DaVinci editing tutorial')}
                   className="yv-input text-sm font-mono-jb text-white placeholder-zinc-600"
                   maxLength={200}
@@ -641,7 +702,8 @@ export default function CalendarPage() {
                 </label>
                 <textarea
                   value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  onChange={e => changeForm('description', e.target.value)}
+                  disabled={saving}
                   placeholder={t('Notas, ideas, guión...', 'Notes, ideas, script...')}
                   rows={3}
                   className="yv-input resize-none text-sm font-mono-jb text-white placeholder-zinc-600"
@@ -656,7 +718,8 @@ export default function CalendarPage() {
                   <input
                     type="date"
                     value={form.date}
-                    onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                    onChange={e => changeForm('date', e.target.value)}
+                    disabled={saving}
                     className="yv-input text-sm font-mono-jb text-white"
                   />
                 </div>
@@ -666,7 +729,8 @@ export default function CalendarPage() {
                   </label>
                   <select
                     value={form.status}
-                    onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                    onChange={e => changeForm('status', e.target.value)}
+                    disabled={saving}
                     className="yv-input text-sm font-mono-jb text-white"
                   >
                     {Object.entries(STATUS_LABELS).map(([key, labels]) => (
@@ -692,7 +756,7 @@ export default function CalendarPage() {
             <div className="flex gap-2 mt-5">
               <button
                 onClick={saveEntry}
-                disabled={saving || !form.title.trim()}
+                disabled={saving || writes.unconfirmed || !form.title.trim()}
                 className="btn-offset flex-1 py-2.5 text-sm font-display rounded-lg disabled:opacity-30"
               >
                 {saving ? t('Guardando...', 'Saving...') : modal.mode === 'add' ? t('Añadir', 'Add') : t('Guardar', 'Save')}
@@ -700,14 +764,15 @@ export default function CalendarPage() {
               {modal.mode === 'edit' && (
                 <button
                   onClick={deleteEntry}
-                  disabled={saving}
+                  disabled={saving || writes.unconfirmed}
                   className="px-4 py-2.5 text-sm font-mono-jb text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition disabled:opacity-30"
                 >
                   {t('Eliminar', 'Delete')}
                 </button>
               )}
               <button
-                onClick={() => setModal(null)}
+                onClick={closeModal}
+                disabled={saving}
                 className="px-4 py-2.5 text-sm font-mono-jb hover:text-white transition"
                 style={{ color: 'var(--yv-text-3)' }}
               >
