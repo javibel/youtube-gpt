@@ -8,7 +8,7 @@ const compiled = ts.transpileModule(source, { compilerOptions: {
  module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX,
 } }).outputText;
 // Render the actual component with deterministic hook state and bounded synthetic HTTP.
-function harness() {
+function harness(storage = new Map()) {
  const cells = [], effects = [], requests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0;
  const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }) };
  const changed = (a, b) => !a || a.length !== b.length || a.some((value, i) => !Object.is(value, b[i]));
@@ -34,6 +34,8 @@ function harness() {
  };
  vm.runInNewContext(compiled, { module: entry, exports: entry.exports,
   require(name) { assert.ok(Object.hasOwn(mocks, name), name); return mocks[name]; },
+  sessionStorage: { getItem: k => { if (state.storageDenied) throw Error('Storage denied'); return storage.get(k) ?? null; },
+   setItem: (k, v) => { if (state.storageDenied) throw Error('Storage denied'); storage.set(k, v); }, removeItem: k => storage.delete(k) },
   crypto: { randomUUID: () => state.key ?? `calendar-fixture-${++number}` },
   fetch: async (url, init) => {
    if (url.startsWith('/api/calendar?')) return { ok: true, json: async () => ({ entries: [] }) };
@@ -55,7 +57,7 @@ function harness() {
  const text = value => Array.isArray(value) ? value.map(text).join(' ') : value && typeof value === 'object' ? text(value.props?.children) : String(value ?? '');
  const discardHandler = () => nodes(render()).find(n => n.props.onClick?.name === 'discardSuggestions')?.props.onClick;
  const discard = () => discardHandler()?.();
- return { state, requests, timers, advance: ms => { for (const [id, timer] of [...timers]) if (timer.ms <= ms) { timers.delete(id); timer.fn(); } },
+ return { state, requests, storage, timers, advance: ms => { for (const [id, timer] of [...timers]) if (timer.ms <= ms) { timers.delete(id); timer.fn(); } },
   click, handler, discard, discardHandler, render, unmount: () => cells.forEach(cell => cell?.cleanup?.()),
   alert: () => nodes(render()).find(n => n.props?.role === 'alert'), text: () => text(render()) };
 }
@@ -172,6 +174,46 @@ if (require.main === module) (async () => {
  await test('successful and failed HTTP clear their owned deadlines', async () => {
   const h = harness(); h.state.send = success; await h.click(); assert.equal(h.timers.size, 0);
   h.state.send = async () => ({ ok: false }); await h.click(); assert.equal(h.timers.size, 0);
+ });
+ await test('reload restores a pending request without HTTP; explicit retry only reads its original identity', async () => {
+  const first = harness(); first.state.key = 'calendar-original-reload'; first.state.send = async () => { throw Error('Lost response'); };
+  await first.click(); first.unmount(); const next = harness(first.storage); next.render(); await flush();
+  assert.ok(next.alert(), 'Reload must show the retained unconfirmed request'); assert.equal(next.requests.length, 0);
+  next.state.send = success; await next.click(); assert.equal(key(next.requests[0]), key(first.requests[0]));
+  assert.equal(next.requests[0].body, first.requests[0].body);
+  assert.equal(next.requests[0].headers['X-Calendar-Recovery'], 'retained-only-v1'); assert.equal(next.storage.size, 0);
+ });
+ for (const [label, change] of [['account', h => { h.state.user = 'other'; }], ['email', h => { h.state.email = 'other@example.invalid'; }],
+  ['language', h => { h.state.lang = 'en'; }], ['authentication', h => { h.state.auth = 'loading'; }]])
+  await test(label + ' cannot restore another scope from the same storage', async () => {
+   const first = harness(); first.state.send = async () => ({ ok: false }); await first.click();
+   const next = harness(first.storage); change(next); next.render(); assert.equal(next.alert(), undefined); assert.equal(next.requests.length, 0);
+  });
+ await test('malformed, oversized and extra-field records never become retries', async () => {
+  const slot = 'ytv:calendar:pending:v1:' + JSON.stringify(['fixture-one', 'fixture@example.invalid', 'es']);
+  for (const record of ['{', 'x'.repeat(513), JSON.stringify({ version: 1, key: 'fabricated', lang: 'es', confirmed: true }),
+   JSON.stringify({ version: 1, key: '../invalid', lang: 'es' })]) {
+   const h = harness(new Map([[slot, record]])); h.render(); assert.equal(h.alert(), undefined); assert.equal(h.requests.length, 0);
+  }
+ });
+ await test('denied storage keeps exact in-memory retry and warns about reload loss', async () => {
+  const h = harness(); h.state.storageDenied = true; h.state.send = async () => ({ ok: false }); await h.click();
+  assert.match(h.text(), /solo se conserva en memoria/); h.state.send = success; await h.click();
+  assert.equal(key(h.requests[0]), key(h.requests[1])); assert.equal(h.requests[1].headers['X-Calendar-Recovery'], 'retained-only-v1');
+  assert.doesNotMatch(h.text(), /solo se conserva en memoria/);
+ });
+ await test('restored missing receipt never switches to fresh admission; explicit discard clears its own selection', async () => {
+  const h = harness(); h.state.send = async () => ({ ok: false }); await h.click(); const old = key(h.requests[0]);
+  const next = harness(h.storage); next.state.key = 'calendar-new-after-discard'; next.state.send = async () => ({ ok: false, status: 409 });
+  await next.click(); await next.click(); assert.equal(next.requests.every(r => key(r) === old && r.headers['X-Calendar-Recovery'] === 'retained-only-v1'), true);
+  const before = next.requests.length; next.discard(); assert.equal(next.requests.length, before); assert.equal(next.storage.size, 0);
+  next.state.send = success; await next.click(); assert.notEqual(key(next.requests[2]), old); assert.equal(next.requests[2].headers['X-Calendar-Recovery'], undefined);
+ });
+ await test('late confirmation does not erase a newer saved selection', async () => {
+  const first = harness(); first.state.key = 'calendar-old-pending'; let release;
+  first.state.send = () => new Promise(resolve => { release = resolve; }); const pending = first.click(); await flush();
+  const slot = [...first.storage.keys()][0]; first.storage.set(slot, JSON.stringify({ version: 1, key: 'calendar-new-pending', lang: 'es' }));
+  release(await success()); await pending; assert.equal(JSON.parse(first.storage.get(slot)).key, 'calendar-new-pending');
  });
  console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or calendar writes', results }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });

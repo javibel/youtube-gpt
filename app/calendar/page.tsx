@@ -77,6 +77,23 @@ export default function CalendarPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null);
   const [suggestError, setSuggestError] = useState('');
+  const [storageWarning, setStorageWarning] = useState(false);
+  const suggestionSlot = 'ytv:calendar:pending:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
+  // Untrusted same-tab selection only; it cannot admit or restart server work.
+  function readPending(): { version: number; key: string; lang: Lang } | null {
+    if (status !== 'authenticated' || !session?.user?.id || !session.user.email) return null;
+    try {
+      const raw = sessionStorage.getItem(suggestionSlot);
+      if (!raw || raw.length > 512) return null;
+      const value = JSON.parse(raw);
+      return value?.version === 1 && Object.keys(value).sort().join(',') === 'key,lang,version'
+        && typeof value.key === 'string' && /^[-A-Za-z0-9._:]{1,128}$/.test(value.key)
+        && value.lang === lang && ['es', 'en'].includes(lang) ? value : null;
+    } catch { return null; }
+  }
+  function clearPending(key: string | null) {
+    try { if (key && readPending()?.key === key) sessionStorage.removeItem(suggestionSlot); } catch { /* Retain memory fallback. */ }
+  }
   const suggestionOperation = useMemo(() => ({
     run: createRetryOperation(() => crypto.randomUUID()),
     key: null as string | null,
@@ -91,6 +108,16 @@ export default function CalendarPage() {
     setSuggestions([]);
     setSuggestError('');
     setSuggestLoading(false);
+    setStorageWarning(false);
+    const retained = readPending();
+    if (retained) {
+      suggestionOperation.run = createRetryOperation(() => retained.key);
+      suggestionOperation.key = retained.key;
+      setShowSuggestions(true);
+      setSuggestError(lang === 'en'
+        ? 'An unconfirmed request was restored. Retry only retrieves the original result; it never starts another generation. Discarding does not cancel server work.'
+        : 'Se restauró una solicitud sin confirmar. Reintentar solo consulta el resultado original; no inicia otra generación. Descartar no cancela el trabajo del servidor.');
+    }
     return () => { suggestionOperation.active = false; suggestionOperation.controller?.abort(); };
   }, [suggestionOperation]);
 
@@ -195,6 +222,15 @@ export default function CalendarPage() {
         if (!operation.active || currentSuggestionOperation.current !== operation || controller.signal.aborted) throw new Error('Account changed');
         const readOnly = operation.key === operationKey;
         operation.key = operationKey;
+        let stored = false;
+        try {
+          if (session?.user?.email) {
+            const value = JSON.stringify({ version: 1, key: operationKey, lang });
+            sessionStorage.setItem(suggestionSlot, value);
+            stored = sessionStorage.getItem(suggestionSlot) === value;
+          }
+        } catch { /* The exact pending request remains in memory. */ }
+        setStorageWarning(!stored);
         const res = await Promise.race([fetch('/api/calendar/suggest', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey,
@@ -216,7 +252,10 @@ export default function CalendarPage() {
         return json.suggestions as typeof suggestions;
       });
       if (operation.active && currentSuggestionOperation.current === operation) {
+        clearPending(operation.key);
         operation.key = null;
+        operation.run = createRetryOperation(() => crypto.randomUUID());
+        setStorageWarning(false);
         setSuggestions(result);
       }
     } catch {
@@ -239,10 +278,12 @@ export default function CalendarPage() {
     const operation = suggestionOperation;
     if (status !== 'authenticated' || !operation.active || operation.busy
       || currentSuggestionOperation.current !== operation) return;
+    clearPending(operation.key);
     operation.run = createRetryOperation(() => crypto.randomUUID());
     operation.key = null;
     setSuggestError('');
     setSuggestions([]);
+    setStorageWarning(false);
   }
 
   async function addSuggestionToCalendar(idx: number) {
@@ -382,6 +423,10 @@ export default function CalendarPage() {
               </button>
             </div>
 
+            {storageWarning && <p role="status" className="mb-4 text-sm text-amber-400">{t(
+              'Esta solicitud solo se conserva en memoria. Si recargas o cierras la pestaña, perderás su reintento.',
+              'This request is retained only in memory. Reloading or closing the tab will lose its retry.',
+            )}</p>}
             {suggestError && <div role="alert" className="mb-4 text-sm text-red-400">
               <p>{suggestError}</p>
               <button onClick={fetchSuggestions} disabled={suggestLoading} className="mt-2 underline disabled:opacity-50">
