@@ -144,6 +144,18 @@ export default function BulkGeneratePage() {
           </div>
         )}
 
+        {batch.recoverable && (
+          <div className="mb-8">
+            <button onClick={batch.recover} disabled={loading} className="btn-offset px-5 py-3 text-sm font-display">
+              {t('Recuperar resultados', 'Recover results')}
+            </button>
+            <p className="mt-2 text-sm font-mono-jb" style={{ color: 'var(--yv-text-3)' }}>
+              {t('Consulta los resultados de esta solicitud sin volver a generar. Los temas sin confirmar pueden seguir pendientes.',
+                'Read results from this request without generating again. Unconfirmed topics may remain pending.')}
+            </p>
+          </div>
+        )}
+
         {/* Form */}
         <div className="yv-card p-6 mb-8">
 

@@ -3,7 +3,10 @@ import { TEMPLATES } from '@/utils/prompts';
 import { auth } from '@/auth';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { readGenerationQuota } from '@/lib/generation-quota';
-import { unkeyedTextGeneration } from '@/lib/text-generation-attempt';
+import { unkeyedTextGeneration, keyedTextGeneration, retrieveKeyedTextGeneration } from '@/lib/text-generation-attempt';
+import { admitBulkRequest } from '@/lib/bulk-generation-request';
+import { prisma } from '@/lib/prisma';
+import { createHash } from 'node:crypto';
 
 function getIp(request: Request): string | null {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -16,6 +19,10 @@ export async function POST(request: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const operationKey = request.headers.get('idempotency-key');
+    if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) {
+      return Response.json({ error: 'Invalid operation key' }, { status: 400 });
     }
 
     // Pro-only feature
@@ -61,6 +68,7 @@ export async function POST(request: Request) {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
+    const wholeBatchPreflight = async (): Promise<Response | null> => {
     let usedThisMonth: number;
     try { usedThisMonth = await readGenerationQuota(session.user.id, startOfMonth); }
     catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
@@ -77,6 +85,23 @@ export async function POST(request: Request) {
         { status: 429 },
       );
     }
+    return null;
+    };
+
+    const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+    const inputDigest = hash([template, cleanTopics, Object.keys(options).sort().map(k => [k, options[k]]), lang]);
+    const itemKeys = cleanTopics.map((_topic: string, index: number) => operationKey === null ? null
+      : 'bulk.' + hash([session.user.id, operationKey, index]));
+    const itemIds = itemKeys.map((key: string | null) => key === null ? null : 'generate_' + hash([session.user.id, key]));
+    let freshBatch = true;
+    if (operationKey === null) {
+      const denied = await wholeBatchPreflight(); if (denied) return denied;
+    } else {
+      const batch = await admitBulkRequest(session.user.id, 'bulk_' + hash([session.user.id, operationKey]),
+        inputDigest, itemIds as string[], request.signal, wholeBatchPreflight);
+      if (batch instanceof Response) return batch;
+      freshBatch = batch.fresh;
+    }
 
     const identity = { taskType: 'content.bulk-generate', userId: session.user.id, language: lang === 'en' ? 'en' : 'es', instructionsVersion: 'bulk-templates-v1' };
     const ip = getIp(request);
@@ -89,51 +114,80 @@ export async function POST(request: Request) {
     // Process topics sequentially to avoid API rate limits
     const results: { topic: string; content: string; error?: string; retryMayConsume?: true }[] = [];
 
-    for (const topic of cleanTopics) {
+    for (const [index, topic] of cleanTopics.entries()) {
+      const itemId = itemIds[index];
+      // Confirmed business replay requires its exact owner and ordered batch.
+      // Missing/corrupt history never restarts a completed item.
+      if (itemId) {
+        try {
+          const saved = await prisma.generation.findUnique({ where: { id: itemId } });
+          if (saved) {
+            const inputs = saved.inputs;
+            const meta = inputs && typeof inputs === 'object' && !Array.isArray(inputs) ? inputs._migrationBulk : null;
+            if (saved.userId !== session.user.id || saved.template !== template || !meta || typeof meta !== 'object'
+              || Array.isArray(meta) || meta.inputDigest !== inputDigest || meta.index !== index) {
+              return Response.json({ error: 'Operation input changed' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
+            }
+            if (typeof saved.output === 'string' && saved.output.trim() && Number.isSafeInteger(saved.tokensUsed) && saved.tokensUsed >= 0) {
+              results.push({ topic, content: saved.output }); continue;
+            }
+            results.push({ topic, content: '', error: 'Generation result unavailable' }); continue;
+          }
+        } catch { results.push({ topic, content: '', error: 'Generation result unavailable' }); continue; }
+      }
       // Other operations can occupy capacity between items. This is a snapshot,
       // not a reservation: do not infer fresh model authority from its result.
-      try {
+      const itemPreflight = async (): Promise<Response | null> => { try {
         const occupied = await readGenerationQuota(session.user.id, startOfMonth);
         if (occupied >= limits.generationsPerMonth) {
-          results.push({ topic, content: '', error: 'Not enough credits' });
-          continue;
+          return Response.json({ error: 'Not enough credits', limitReached: true }, { status: 429 });
         }
       } catch {
-        results.push({ topic, content: '', error: 'Generation quota unavailable' });
-        continue;
+        return Response.json({ error: 'Generation quota unavailable' }, { status: 503 });
       }
-      const confirmed = await unkeyedTextGeneration(session.user.id, request.signal, async () => {
+      return null; };
+      if (operationKey === null) {
+        const denied = await itemPreflight();
+        if (denied) { const data = await denied.json(); results.push({ topic, content: '', error: data.error }); continue; }
+      }
+      const execute = async (readOnly = false) => {
        try {
         const inputs = { ...options, tema: topic };
         const prompt = templateData.prompt(inputs) + langInstruction;
 
         let task;
-        try { task = await getMessagesTask(identity); }
-        catch { return Response.json({ error: 'Service unavailable', retryMayConsume: true }, { status: 503 }); }
-        const data = await task.create({ max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }, { signal: request.signal });
+        try { task = await getMessagesTask(itemKeys[index] === null ? identity : { ...identity,
+          operationKey: itemKeys[index]!, instructionsVersion: 'bulk-templates-v2:' + inputDigest }); }
+        catch { return Response.json({ error: 'Service unavailable', retryMayConsume: operationKey === null }, { status: 503 }); }
+        const parameters = { max_tokens: maxTokens, messages: [{ role: 'user' as const, content: prompt }] };
+        if (readOnly && typeof task.retrieve !== 'function') return Response.json({ error: 'Generation result unavailable', retryMayConsume: false }, { status: 503 });
+        const data = await (readOnly ? task.retrieve!(parameters, { signal: request.signal }) : task.create(parameters, { signal: request.signal }));
         const content = data?.content?.[0]?.text;
         const tokensUsed = data?.usage?.output_tokens;
         // Unknown usage is not zero usage. Keep the item unconfirmed rather
         // than recording a fabricated token count or incomplete output.
         if (data?.incomplete === true || typeof content !== 'string' || !content.trim()
           || typeof tokensUsed !== 'number' || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
-          return Response.json({ error: 'Generation result unavailable', retryMayConsume: true }, { status: 502 });
+          return Response.json({ error: 'Generation result unavailable', retryMayConsume: operationKey === null }, { status: 502 });
         }
 
         // Only this acknowledged fresh admission can execute this closure.
         // The helper commits history and its completed slot atomically.
         return { content, truncated: false, history: { template,
-          inputs: { ...options, tema: topic, _bulk: true }, output: content,
+          inputs: { ...options, tema: topic, _bulk: true, ...(itemId ? { _migrationBulk: { inputDigest, index } } : {}) }, output: content,
           tokensUsed, ipAddress: ip } };
       } catch (err) {
         return Response.json({ error: err && typeof err === 'object' && 'code' in err && err.code === 'rate_limit'
-          ? 'API error 429' : 'Generation failed', retryMayConsume: true }, { status: 502 });
+          ? 'API error 429' : 'Generation failed', retryMayConsume: operationKey === null }, { status: 502 });
       }
-      });
+      };
+      const confirmed = !itemId ? await unkeyedTextGeneration(session.user.id, request.signal, execute)
+        : freshBatch ? await keyedTextGeneration(session.user.id, itemId, request.signal, itemPreflight, execute, () => execute(true))
+        : await retrieveKeyedTextGeneration(session.user.id, itemId, request.signal, () => execute(true));
       const item = await confirmed.json();
       if (confirmed.ok && typeof item.content === 'string' && item.truncated === false) {
         results.push({ topic, content: item.content });
-      } else if (results.length === 0 && confirmed.status === 503 && item.error === 'Service unavailable') {
+      } else if (operationKey === null && results.length === 0 && confirmed.status === 503 && item.error === 'Service unavailable') {
         return Response.json({ error: 'Service unavailable', retryMayConsume: true }, { status: 503 });
       } else {
         const error = item.limitReached === true ? 'Not enough credits'
@@ -146,7 +200,7 @@ export async function POST(request: Request) {
       results,
       generated: results.filter(r => !r.error).length,
       total: cleanTopics.length,
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('[generate/bulk]', error);
     return Response.json({ error: 'Internal error' }, { status: 500 });

@@ -48,6 +48,7 @@ model User {
   removalAttempts RemovalAttempt[]
   legacyThumbnailAttempts LegacyThumbnailAttempt[]
   textGenerationAttempts TextGenerationAttempt[]
+  bulkGenerationRequests BulkGenerationRequest[]
   backgroundUploads BackgroundUpload[]
   generations     Generation[]
   emailLogs       EmailLog[]
@@ -894,4 +895,17 @@ model TextGenerationAttempt {
  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
  @@index([userId, createdAt], map: "text_generation_attempts_userid_createdat_idx")
  @@map("text_generation_attempts")
+}
+
+// Input identity only. A retained request never grants execution authority.
+model BulkGenerationRequest {
+  id          String   @id
+  userId      String
+  inputDigest String
+  itemCount   Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt], map: "bulk_generation_requests_userid_createdat_idx")
+  @@map("bulk_generation_requests")
 }

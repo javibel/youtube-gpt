@@ -36,9 +36,17 @@ export async function keyedStoryboardGeneration(userId: string, id: string, sign
   return runKeyedTextGeneration(userId, id, signal, preflight, execute, retrieve, true);
 }
 
+// A retained batch may read an admitted item, but may not admit a missing item.
+// Only the original fresh batch invocation is allowed to request new admission.
+export async function retrieveKeyedTextGeneration(userId: string, id: string, signal: AbortSignal,
+  retrieve: () => Promise<Response | TextGenerationResult>) {
+  return runKeyedTextGeneration(userId, id, signal, async () => null,
+    async () => { throw Error('Read-only item cannot execute'); }, retrieve, false, false);
+}
+
 async function runKeyedTextGeneration(userId: string, id: string, signal: AbortSignal,
   preflight: () => Promise<Response | null>, execute: () => Promise<Response | TextGenerationResult>,
-  retrieve: () => Promise<Response | TextGenerationResult>, storyboard: boolean) {
+  retrieve: () => Promise<Response | TextGenerationResult>, storyboard: boolean, allowFreshAdmission = true) {
   const uncertain = (status = 503) => Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
     retryMayConsume: false }, { status, headers: { 'Cache-Control': 'no-store' } });
   let result: TextGenerationResult | null = null;
@@ -66,6 +74,7 @@ async function runKeyedTextGeneration(userId: string, id: string, signal: AbortS
       return row;
     }, { maxWait: 10_000, timeout: 15_000 });
     let row = await inspect();
+    if (!row && !allowFreshAdmission) return uncertain();
     let fresh = false;
     if (!row) {
       // Preflight itself reads quota under an owner lock. Keep it outside this

@@ -487,3 +487,31 @@ completion watchdog makes unfinished contracts fail. The local verifier also
 requires a successful nonempty database terminal report before accepting that
 suite. Earlier exit-zero receipts remain historical, with this limitation.
 These are local synthetic checks; they do not grant operational recovery authority.
+
+# Keyed bulk HTTP recovery
+
+The original bulk screen now retains an opaque key and exact ordered request for
+each explicit generation. Its `Recover results` action reuses that request and
+preserves already confirmed neighbours. Fresh selective generation remains a
+separate operation with the existing possible-credit-consumption notice. Keys
+are scoped to account, input and language in browser memory; reload continuity
+and operational retention/rollout remain pending.
+
+The server stores owner/batch/input identity in `bulk_generation_requests` and
+gives repeated topic positions distinct item identities. Only the original
+acknowledged new batch may admit fresh items. Retained requests read confirmed
+history or authenticated settled runtime results; unstarted, pending, partial,
+unknown-usage and missing completed history never grant another inference.
+Lost admission acknowledgements retain uncertainty. Metadata and input digests
+identify a request and cannot reconstruct runner/recovery authority. Current
+paid-plan access is still required. Existing keyless clients remain supported.
+
+Directed checks exercise lost whole HTTP responses through the original page,
+hook, API, guarded native PostgreSQL and synthetic task runtime; concurrent
+readers, changed inputs and lost acknowledgements are also covered. A fixture
+assertion initially read hook state using page React indices; it was corrected
+to inspect the original page output, preserving that failed receipt. Required
+integral checks must be tied to the committed sources before declaring this
+web block verified. Agent 23cea5f original executor 69898 separately failed
+with EPERM while archiving its admission ownership; it remains retained and
+requires diagnosis without reset, fabricated authority or automatic relaunch.
