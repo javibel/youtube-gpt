@@ -7,7 +7,7 @@ function harness(options={}) {
  const saved=[],counts=[];
  const runtime=taskFixture({taskType:'content.storyboard',controlUnavailable:options.noKey,respond:async()=>{if(options.transportError)throw Error('Synthetic failure');if(options.status)throw {status:options.status};return options.reply??{content:[{type:'text',text:story}],usage:{output_tokens:20},stop_reason:'end_turn'};}});
  const calls=runtime.calls;
- const quotaDb={$transaction:async fn=>{if(options.quotaFailure)throw Error('Private quota failure');return fn({$queryRawUnsafe:async()=>options.noQuotaOwner?[]:[{id:'synthetic'}],legacyThumbnailAttempt:{count:async()=>options.reserved??0},generation:{count:async query=>{counts.push(query);return options.used??0;}}});}};
+ const quotaDb={$transaction:async fn=>{if(options.quotaFailure)throw Error('Private quota failure');return fn({$queryRawUnsafe:async()=>options.noQuotaOwner?[]:[{id:'synthetic'}],textGenerationAttempt:{count:async()=>0},legacyThumbnailAttempt:{count:async()=>options.reserved??0},generation:{count:async query=>{counts.push(query);return options.used??0;}}});}};
  const route=load('app/api/storyboard/route.ts',{
   '@/lib/generation-quota':require('./generation-quota-fixture.cjs')(quotaDb),
   'node:crypto':require('node:crypto'),

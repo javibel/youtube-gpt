@@ -192,7 +192,7 @@ export default function GeneratePage() {
         </header>
 
         {!!planStats?.generationsReserved && <p role="status" className="mb-4">
-          {planStats.generationsReserved} {t('créditos reservados para imágenes pendientes. Ya están descontados del cupo disponible.', 'credits reserved for pending images. They are already deducted from available quota.')}
+          {planStats.generationsReserved} {t('créditos reservados para generaciones pendientes. Ya están descontados del cupo disponible.', 'credits reserved for pending generations. They are already deducted from available quota.')}
         </p>}
 
         {accountStats.statsError && <div role="alert" className="yv-card p-4 mb-4">

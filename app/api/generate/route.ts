@@ -8,6 +8,7 @@ import { getChannelContext } from '@/lib/channel-context';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 import { createHash } from 'node:crypto';
 import { readGenerationQuota } from '@/lib/generation-quota';
+import { unkeyedTextGeneration } from '@/lib/text-generation-attempt';
 
 export const maxDuration = 60; // generación con Claude puede pasar de 15s en plantillas largas
 
@@ -328,32 +329,39 @@ export async function POST(request: Request) {
       : [{ role: 'user', content: prompt }];
 
     if (!userId) return Response.json({ error: 'No autorizado' }, { status: 401 });
-    let task;
-    try {
-      task = await getMessagesTask({
-        operationKey: operationKey ?? undefined,
-        taskType: 'content.generate', userId, language: lang === 'en' ? 'en' : 'es',
-        instructionsVersion: 'generation-templates-v1', incompletePolicy: 'expose-text',
-      });
-    } catch {
-      return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
-    }
-    const data = await task.create({ max_tokens: maxTokens, messages });
-    const content = data.content?.[0]?.text;
-    const tokensUsed = data.usage?.output_tokens ?? 0;
-    const truncated = data.incomplete === true;
-    if (typeof content !== 'string' || !content.trim() || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
-      return Response.json({ error: 'Generation result unavailable' }, { status: 502 });
-    }
+    const ownerId = userId;
+    const execute = async () => {
+      let task;
+      try {
+        task = await getMessagesTask({
+          operationKey: operationKey ?? undefined,
+          taskType: 'content.generate', userId: ownerId, language: lang === 'en' ? 'en' : 'es',
+          instructionsVersion: 'generation-templates-v1', incompletePolicy: 'expose-text',
+        });
+      } catch {
+        return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
+      }
+      const data = await task.create({ max_tokens: maxTokens, messages });
+      const content = data.content?.[0]?.text;
+      const tokensUsed = data.usage?.output_tokens ?? 0;
+      const truncated = data.incomplete === true;
+      if (typeof content !== 'string' || !content.trim() || !Number.isSafeInteger(tokensUsed) || tokensUsed < 0) {
+        return Response.json({ error: 'Generation result unavailable' }, { status: 502 });
+      }
 
+      return { content, truncated, history: { template,
+        inputs: { ...inputs, ...(generationId ? { _migrationRetry: { inputDigest, content, truncated } } : {}) },
+        output: isContinuation ? previousContent + content : content, tokensUsed, ipAddress: getIp(request) } };
+    };
+    if (operationKey === null) return unkeyedTextGeneration(ownerId, request.signal, execute);
+    const result = await execute();
+    if (result instanceof Response) return result;
+    const { content, truncated, history } = result;
     // Guardar generación con IP
     if (userId) {
-      const ip = getIp(request);
       try {
         await prisma.generation.create({
-          data: { ...(generationId ? { id: generationId } : {}), userId, template,
-            inputs: { ...inputs, ...(generationId ? { _migrationRetry: { inputDigest,content,truncated } } : {}) },
-            output: isContinuation ? previousContent + content : content, tokensUsed, ipAddress: ip },
+          data: { ...history, id: generationId!, userId },
         });
       } catch {
         if (generationId) {

@@ -47,6 +47,7 @@ model User {
   backgroundImageAttempts BackgroundImageAttempt[]
   removalAttempts RemovalAttempt[]
   legacyThumbnailAttempts LegacyThumbnailAttempt[]
+  textGenerationAttempts TextGenerationAttempt[]
   backgroundUploads BackgroundUpload[]
   generations     Generation[]
   emailLogs       EmailLog[]
@@ -883,4 +884,14 @@ model LegacyThumbnailAttempt {
  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
  @@index([userId, createdAt], map: "legacy_thumbnail_attempts_userid_createdat_idx")
  @@map("legacy_thumbnail_attempts")
+}
+
+model TextGenerationAttempt {
+ id String @id
+ userId String
+ state String @default("pending")
+ createdAt DateTime @default(now())
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ @@index([userId, createdAt], map: "text_generation_attempts_userid_createdat_idx")
+ @@map("text_generation_attempts")
 }

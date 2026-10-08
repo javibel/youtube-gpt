@@ -5,11 +5,15 @@ import type { Prisma } from '@prisma/client';
 // Accounting periods do not authorize reclaim or repeating an image effect.
 export async function thumbnailQuota(tx: Prisma.TransactionClient, userId: string, month: Date) {
   const recorded = await tx.generation.count({ where: { userId, createdAt: { gte: month } } });
-  const reserved = await tx.legacyThumbnailAttempt.count({
+  const imageReserved = await tx.legacyThumbnailAttempt.count({
     where: { userId, createdAt: { gte: month }, state: { not: 'complete' } },
   });
+  const textReserved = await tx.textGenerationAttempt.count({
+    where: { userId, createdAt: { gte: month }, state: { not: 'complete' } },
+  });
+  const reserved = imageReserved + textReserved;
   const total = recorded + reserved;
-  if (![recorded, reserved, total].every(n => Number.isSafeInteger(n) && n >= 0)) {
+  if (![recorded, imageReserved, textReserved, reserved, total].every(n => Number.isSafeInteger(n) && n >= 0)) {
     throw Error('Quota unavailable');
   }
   return { recorded, reserved, total };

@@ -7,7 +7,7 @@ function harness(options={}) {
  const requests=[],saved=[];
  const runtime=taskFixture({taskType:'content.bulk-generate',controlUnavailable:options.noKey,respond:async()=>{requests.push({body:runtime.calls.at(-1)});const index=requests.length-1;if(options.transportError)throw Error('Synthetic transport failure');if(options.statuses?.[index]&&options.statuses[index]!==200)throw {status:options.statuses[index]};return options.replies?.[index]??options.reply??{content:[{type:'text',text:'Synthetic output'}],usage:{output_tokens:8},stop_reason:'end_turn'};}});
  const prisma={generation:{count:async()=> (options.used??0)+saved.length,create:async({data})=>{if(options.saveError)throw Error('Synthetic database failure');saved.push(data);return data;}}};
- prisma.$transaction=async fn=>{if(options.quotaFailure||options.lateQuotaFailure&&requests.length)throw Error('Private quota failure');return fn({...prisma,$queryRawUnsafe:async()=>options.noOwner?[]:[{id:'synthetic'}],legacyThumbnailAttempt:{count:async()=>options.lateReservation&&requests.length?10:(options.reserved??0)}});};
+ prisma.$transaction=async fn=>{if(options.quotaFailure||options.lateQuotaFailure&&requests.length)throw Error('Private quota failure');return fn({...prisma,$queryRawUnsafe:async()=>options.noOwner?[]:[{id:'synthetic'}],textGenerationAttempt:{count:async()=>0},legacyThumbnailAttempt:{count:async()=>options.lateReservation&&requests.length?10:(options.reserved??0)}});};
  const route=load('app/api/generate/bulk/route.ts',{
   '@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),
   '@/lib/ai/task-runtime':runtime,

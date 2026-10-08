@@ -11,13 +11,17 @@ function harness(options={}){
  const counts=[];
  const prisma={user:{findUnique:async()=>options.missingUser?null:{id:options.userId??'synthetic'}},generation:{findUnique:async({where})=>{if(options.readError)throw Error('Private storage error');return options.savedRow??saved.find(row=>row.id===where.id)??null;},count:async({where})=>{counts.push(where);return where.ipAddress?(options.ipUsage??0):(options.used??0);},create:async({data})=>{if(options.saveError)throw Error('Synthetic save failure');if(data.id&&saved.some(row=>row.id===data.id))throw {code:'P2002'};saved.push(data);if(options.lostSaveAck)throw Error('Synthetic acknowledgement lost after commit');return data;}},$queryRaw:async()=>[{hits:options.hits??1}]};
  prisma.$transaction=async fn=>{if(options.quotaFailure)throw Error('Private quota failure');return fn({...prisma,$queryRawUnsafe:async()=>options.noQuotaOwner?[]:[{id:'synthetic'}],legacyThumbnailAttempt:{count:async()=>options.reserved??0}});};
+ const rows=new Map();
+ prisma.textGenerationAttempt={count:async()=>Array.from(rows.values()).filter(r=>r.state!=='complete').length,findUnique:async({where})=>rows.get(where.id)||null,create:async({data})=>{const row={...data,createdAt:new Date()};rows.set(data.id,row);return row;},updateMany:async({where,data})=>{const row=rows.get(where.id);if(!row||row.state!==where.state)return{count:0};rows.set(where.id,{...row,...data});return{count:1};}};
+ const planMock={getUserPlan:async()=>options.plan??'free',getLimits:()=>({generationsPerMonth:options.limit??10}),isPaid:plan=>plan!=='free'};
  const route=load('app/api/generate/route.ts',{
+  '@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(prisma,planMock),
   '@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),
   'node:crypto':require('node:crypto'),
   '@/lib/ai/task-runtime':runtime,
   '@/utils/prompts':{TEMPLATES},'@/auth':{auth:async()=>session},'@/lib/prisma':{prisma},
   '@/lib/extension-auth':{getExtensionUser:async()=>options.extension??null},
-  '@/lib/plans':{getUserPlan:async()=>options.plan??'free',getLimits:()=>({generationsPerMonth:options.limit??10}),isPaid:plan=>plan!=='free'},
+  '@/lib/plans':planMock,
   '@/lib/channel-context':{getChannelContext:async()=>options.context?{summary:options.context}:null},
   '@/lib/lifecycle-trigger':{triggerConversionEmail:async(...args)=>{emails.push(args);}},
  });
