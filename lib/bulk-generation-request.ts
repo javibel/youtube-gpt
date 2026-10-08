@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 // This table binds the entire ordered batch, including duplicates and options.
 // A lookup is identity evidence, never permission to run unstarted items.
 export async function admitBulkRequest(userId: string, id: string, inputDigest: string, itemIds: string[],
-  signal: AbortSignal, preflight: () => Promise<Response | null>) {
+  signal: AbortSignal, preflight: () => Promise<Response | null>, readOnly = false) {
   const unavailable = () => Response.json({ error: 'Batch unconfirmed', retryMayConsume: false },
     { status: 503, headers: { 'Cache-Control': 'no-store' } });
   const check = (row: { id: string; userId: string; inputDigest: string; itemCount: number; createdAt: Date }) => {
@@ -22,6 +22,10 @@ export async function admitBulkRequest(userId: string, id: string, inputDigest: 
       return tx.bulkGenerationRequest.findUnique({ where: { id } });
     }, { maxWait: 10_000, timeout: 15_000 });
     if (existing) return check(existing) ?? { fresh: false };
+    // Browser-retained input/key is not evidence that admission ever happened.
+    // Missing durable identity cannot turn an explicit recovery into fresh work.
+    if (readOnly) return Response.json({ error: 'Batch not admitted', retryMayConsume: false },
+      { status: 409, headers: { 'Cache-Control': 'no-store' } });
     const denied = await preflight();
     return await prisma.$transaction(async tx => {
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);

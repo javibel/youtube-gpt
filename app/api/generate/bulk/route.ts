@@ -22,6 +22,10 @@ export async function POST(request: Request) {
     }
     const userId = session.user.id;
     const operationKey = request.headers.get('idempotency-key');
+    const recovery = request.headers.get('X-Bulk-Recovery');
+    if (recovery !== null && (recovery !== 'retained-only-v1' || operationKey === null)) {
+      return Response.json({ error: 'Invalid recovery request' }, { status: 400 });
+    }
     if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) {
       return Response.json({ error: 'Invalid operation key' }, { status: 400 });
     }
@@ -99,7 +103,7 @@ export async function POST(request: Request) {
       const denied = await wholeBatchPreflight(); if (denied) return denied;
     } else {
       const batch = await admitBulkRequest(userId, 'bulk_' + hash([userId, operationKey]),
-        inputDigest, itemIds as string[], request.signal, wholeBatchPreflight);
+        inputDigest, itemIds as string[], request.signal, wholeBatchPreflight, recovery === 'retained-only-v1');
       if (batch instanceof Response) return batch;
       freshBatch = batch.fresh;
     }

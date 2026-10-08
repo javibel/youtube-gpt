@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
 import { useBulkGeneration } from '@/lib/use-bulk-generation';
+import { readBulkRecovery } from '@/lib/bulk-recovery';
 
 type Lang = 'es' | 'en';
 
@@ -50,6 +51,14 @@ export default function BulkGeneratePage() {
   const [niche, setNiche] = useState('tech');
   const [keywords, setKeywords] = useState('');
   const [copyState, setCopyState] = useState<{ current: () => boolean; index: number; results: unknown } | null>(null);
+  useEffect(()=>{
+    const retained=readBulkRecovery(session?.user?.id,session?.user?.email,status,lang);
+    const input=retained?.input;
+    setTemplate(input?.template??'title');setTopicsText(input?.topics.join('\n')??'');
+    setTone(input?.options.tono??'viral');setPlatform(input?.options.plataforma??'youtube');
+    setStyle(input?.options.estilo??'viral');setNiche(input?.options.nicho??'tech');setKeywords(input?.options.keywords??'');
+    setCopyState(null);
+  },[session?.user?.id,session?.user?.email,status,lang]);
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
   const topics = topicsText.split('\n').map(l => l.trim()).filter(Boolean);
   const tmpl = TEMPLATES[template];
@@ -152,6 +161,13 @@ export default function BulkGeneratePage() {
             <p className="mt-2 text-sm font-mono-jb" style={{ color: 'var(--yv-text-3)' }}>
               {t('Consulta los resultados de esta solicitud sin volver a generar. Los temas sin confirmar pueden seguir pendientes.',
                 'Read results from this request without generating again. Unconfirmed topics may remain pending.')}
+            </p>
+            <p className="mt-2 text-sm font-mono-jb" style={{ color: 'var(--yv-text-3)' }}>
+              {batch.reloadRecoveryAvailable
+                ? t('Al recargar esta pestaña podrás recuperar la última selección pendiente. Los resultados se comprueban de nuevo.',
+                    'After reloading this tab you can recover the last pending selection. Results are checked again.')
+                : t('Mantén esta página abierta para conservar el reintento de esta solicitud.',
+                    'Keep this page open to retain recovery for this request.')}
             </p>
           </div>
         )}

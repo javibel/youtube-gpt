@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { readBulkRecovery, storeBulkRecovery, clearBulkRecovery } from '@/lib/bulk-recovery';
 
 type Item = { topic: string; content: string; error?: string; retryMayConsume?: boolean };
 type Failure = 'unconfirmed' | 'limit' | 'pro';
-const initial = () => ({ results: [] as Item[], loading: false, pendingCount: 0, recoverable: false, error: null as Failure | null });
+const initial = () => ({ results: [] as Item[], loading: false, pendingCount: 0, recoverable: false, reloadRecoveryAvailable:false, error: null as Failure | null });
 
-// Keys and selection live in this browser interaction; the server retains batch
-// identity. Recovery reads the same batch. Generating failed topics is a new
+// A bounded tab record retains the last pending selection, never results or
+// authority. The server alone validates admitted identity. Generating failed topics is a new
 // acknowledged operation, never recovery authority for an uncertain old item.
 export function useBulkGeneration(userId: string | undefined, email: string | null | undefined,
   authStatus: string, template: string, topics: string[], options: Record<string, string>, lang: string) {
@@ -38,8 +39,9 @@ export function useBulkGeneration(userId: string | undefined, email: string | nu
     }
     const attempt = scope.attempt;
     if (!attempt) return Promise.resolve();
+    const reloadRecoveryAvailable=storeBulkRecovery(userId!,email!,lang,attempt.key,attempt.rawBody);
     if (!failedOnly && !recover) scope.results = [];
-    update({ loading: true, pendingCount: positions.length, recoverable: true, error: null, results: scope.results });
+    update({ loading: true, pendingCount: positions.length, recoverable: true, reloadRecoveryAvailable, error: null, results: scope.results });
     const controller = new AbortController(); scope.controller = controller;
     let timedOut = false;
     let rejectWait: (error: Error) => void = () => {};
@@ -54,7 +56,8 @@ export function useBulkGeneration(userId: string | undefined, email: string | nu
     const flight = Promise.resolve().then(async () => {
       try {
         if (!current()) return;
-        const response = await Promise.race([fetch('/api/generate/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': attempt.key },
+        const response = await Promise.race([fetch('/api/generate/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': attempt.key,
+          ...(recover ? {'X-Bulk-Recovery':'retained-only-v1'} : {}) },
           body: attempt.rawBody, signal: controller.signal }), interrupted]);
         const data = await Promise.race([response.json(), interrupted]);
         if (!current()) return;
@@ -86,7 +89,7 @@ export function useBulkGeneration(userId: string | undefined, email: string | nu
         });
         scope.results = merged;
         const recoverable = items.some(item => !!item.error);
-        if (!recoverable) scope.attempt = null;
+        if (!recoverable) {scope.attempt = null;clearBulkRecovery(userId!,email!,lang,attempt.key);}
         update({ results: merged, error: null, recoverable });
       } catch {
         if (current()) update({ error: 'unconfirmed' });
@@ -103,6 +106,12 @@ export function useBulkGeneration(userId: string | undefined, email: string | nu
   }, [body, scope, current, update]);
   useEffect(() => {
     scope.active = true;
+    const retained=readBulkRecovery(userId,email,authStatus,lang);
+    // Input changes do not attach another selection's results to the current form.
+    if(current() && retained && retained.rawBody===body && !scope.attempt){
+      scope.attempt={key:retained.key,rawBody:retained.rawBody,positions:retained.input.topics.map((_,i)=>i)};
+      update({recoverable:true,reloadRecoveryAvailable:true,error:'unconfirmed'});
+    }
     return () => { scope.active = false; scope.controller?.abort(); };
   }, [scope]);
   const value = store.scope === scope && current() ? store : initial();
