@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { rateLimitDb } from '@/lib/rate-limit-db';
+import { thumbnailQuota } from '@/lib/image/thumbnail-quota';
 import type { Prisma } from '@prisma/client';
 
 export type ThumbnailResult={imageUrl:string;prompt:string;inputs:Prisma.InputJsonValue;tokensUsed:number;ipAddress:string|null};
@@ -32,9 +33,8 @@ export async function keyedLegacyThumbnail(userId:string,key:string,fields:reado
    const row=await tx.legacyThumbnailAttempt.findUnique({where:{id}});if(row)return replay(row);
    const plan=await getUserPlan(userId);if(!isPaid(plan))return Response.json({limitReached:true,error:'pro_required'},{status:403});
    const month=new Date();month.setDate(1);month.setHours(0,0,0,0);
-   // Existing history policy only. Distinct attempts still need a shared monthly
-   // reservation policy; neither this receipt nor the background is a new charge.
-   if(await tx.generation.count({where:{userId,createdAt:{gte:month}}})>=getLimits(plan).generationsPerMonth)return Response.json({limitReached:true},{status:429});
+   const quota=await thumbnailQuota(tx,userId,month),limit=getLimits(plan).generationsPerMonth;
+   if(quota.total>=limit)return Response.json({limitReached:true,quotaRecorded:quota.recorded,quotaReserved:quota.reserved,quotaLimit:limit},{status:429});
    if(!await rateLimitDb('gen-thumb:'+userId,3,1,true))return Response.json({error:'Solicitud no admitida'},{status:429});
    await tx.legacyThumbnailAttempt.create({data:{id,userId,digest,state:'pending'}});
    return true as const;
@@ -45,7 +45,12 @@ export async function keyedLegacyThumbnail(userId:string,key:string,fields:reado
   // Storage cannot be rolled back. History and the completed receipt are one
   // PostgreSQL transaction; an ambiguous commit is read, never rerun.
   await prisma.$transaction(async tx=>{
-   await tx.generation.create({data:{id,userId,template:'thumbnail',inputs:result.inputs,output:result.imageUrl,tokensUsed:result.tokensUsed,ipAddress:result.ipAddress}});
+   const owner=await tx.$queryRawUnsafe<Array<{id:string}>>('SELECT id FROM users WHERE id=$1 FOR UPDATE',userId);
+   const row=await tx.legacyThumbnailAttempt.findUnique({where:{id}});
+   if(owner.length!==1||!row||row.userId!==userId||row.digest!==digest||row.state!=='pending'||row.output!==null||row.prompt!==null)throw Error('Unconfirmed');
+   // Only this original live closure reaches completion. Preserve admission's
+   // accounting period when converting its slot to history, even across a month.
+   await tx.generation.create({data:{id,userId,template:'thumbnail',inputs:result.inputs,output:result.imageUrl,tokensUsed:result.tokensUsed,ipAddress:result.ipAddress,createdAt:row.createdAt}});
    const changed=await tx.legacyThumbnailAttempt.updateMany({where:{id,userId,digest,state:'pending',output:null,prompt:null},data:{state:'complete',output:result.imageUrl,prompt:result.prompt}});
    if(changed.count!==1)throw Error('Unconfirmed');
   },{maxWait:10_000,timeout:15_000});

@@ -1,0 +1,45 @@
+'use strict';
+const assert=require('node:assert/strict'),crypto=require('node:crypto'),{load}=require('./route-harness.cjs'),{meta}=require('./thumbnail-save.test.cjs');
+module.exports=async function(prisma,results){
+ const users=await Promise.all(Array.from({length:7},()=>prisma.user.create({data:{email:'quota-'+crypto.randomUUID()+'@example.invalid'}})));
+ const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),rate=load('lib/rate-limit-db.ts',{'@/lib/prisma':{prisma}}),quota=load('lib/image/thumbnail-quota.ts');
+ const signals=[],releases=[];let effects=0,uploads=0;
+ const gate=()=>{let release,entered;const wait=new Promise(r=>release=r),arrival=new Promise(r=>entered=r);releases.push(release);return{wait,arrival,release,entered};};
+ const month=new Date();month.setDate(1);month.setHours(0,0,0,0);
+ const measured=user=>prisma.$transaction(async tx=>{await tx.$queryRaw`SELECT id FROM users WHERE id=${user.id} FOR UPDATE`;return quota.thumbnailQuota(tx,user.id,month);});
+ const seed=user=>prisma.generation.createMany({data:Array.from({length:199},()=>({userId:user.id,template:'title',inputs:{synthetic:true},output:'Synthetic history',tokensUsed:0}))});
+ const legacy=(user,db=prisma,held=null)=>{const api=load('lib/image/legacy-thumbnail-attempt.ts',{'node:crypto':crypto,'@/lib/prisma':{prisma:db},'@/lib/plans':plans,'@/lib/rate-limit-db':rate,'@/lib/image/thumbnail-quota':quota},{Buffer,Uint8Array});return key=>api.keyedLegacyThumbnail(user.id,key,['Synthetic quota topic'],null,new AbortController().signal,async()=>async()=>{effects++;if(held){held.entered();await held.wait;}return{imageUrl:'https://example.invalid/quota.png',prompt:'Synthetic quota scene',inputs:{synthetic:true},tokensUsed:8,ipAddress:null};});};
+ const saver=(user,db=prisma,held=null)=>{const api=load('app/api/thumbnail-save/route.ts',{'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},'@/lib/prisma':{prisma:db},'@/lib/plans':plans,'@/lib/image/thumbnail-quota':quota,'node:crypto':crypto,'@vercel/blob':{put:async()=>{uploads++;if(held){held.entered();await held.wait;}return{url:'https://example.invalid/final.png'};}}},{Buffer,URL});return key=>{const body=new FormData();body.append('image',new Blob(['synthetic PNG snapshot'],{type:'image/png'}),'final.png');body.append('meta',JSON.stringify(meta));return api.POST(new Request('https://example.invalid/api/thumbnail-save',{method:'POST',headers:{'Idempotency-Key':key},body}));};};
+ try{
+  await prisma.subscription.createMany({data:users.map(u=>({userId:u.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});
+  const a=users[0];await seed(a);const held=gate(),generate=legacy(a,prisma,held),save=saver(a),first=generate('first');signals.push(first);await held.arrival;
+  let q=await measured(a);assert.equal(q.recorded,199);assert.equal(q.reserved,1);assert.equal(q.total,200);
+  const beforeEffects=effects,beforeUploads=uploads;assert.equal((await generate('second')).status,429);assert.equal((await generate('first')).status,409);assert.equal((await save('final')).status,429);assert.equal(effects,beforeEffects);assert.equal(uploads,beforeUploads);
+  held.release();assert.equal((await first).status,200);q=await measured(a);assert.equal(q.recorded,200);assert.equal(q.reserved,0);assert.equal(q.total,200);const row=await prisma.legacyThumbnailAttempt.findFirst({where:{userId:a.id}}),history=await prisma.generation.findUnique({where:{id:row.id}});assert.equal(history.createdAt.getTime(),row.createdAt.getTime());assert.equal((await generate('first')).status,200);assert.equal(effects,beforeEffects);
+  results.push('native last Pro slot: keyed legacy pending blocks another key and final save before model/Blob; original atomic completion converts reservation to one Generation without double charge and preserves admission timestamp');
+
+  const b=users[1];await seed(b);const blob=gate(),saveFirst=saver(b,prisma,blob),saved=saveFirst('save-first');signals.push(saved);await blob.arrival;const before=effects,waiting=legacy(b)('legacy-second');signals.push(waiting);let settled=false;waiting.then(()=>settled=true);await new Promise(r=>setTimeout(r,30));assert.equal(settled,false);assert.equal(effects,before);blob.release();assert.equal((await saved).status,200);assert.equal((await waiting).status,429);assert.equal((await measured(b)).total,200);assert.equal(effects,before);
+  results.push('native reverse race: save holds real owner lock through synthetic Blob/history; distinct legacy waits and rejects exhausted slot after commit with zero model effects');
+
+  const c=users[2];await seed(c);const lost={legacyThumbnailAttempt:prisma.legacyThumbnailAttempt,$transaction:async(...args)=>{await prisma.$transaction(...args);throw Error('Synthetic actual admission ack lost');}},uncertain=legacy(c,lost),effectBefore=effects,uploadBefore=uploads;
+  assert.equal((await uncertain('lost')).status,409);assert.equal((await legacy(c)('lost')).status,409);assert.equal((await legacy(c)('new')).status,429);assert.equal((await saver(c)('final')).status,429);assert.equal(effects,effectBefore);assert.equal(uploads,uploadBefore);assert.equal((await measured(c)).reserved,1);
+  results.push('native lost admission acknowledgement reserves final slot with zero effects; exact pending retry and distinct save/key do not reclaim or oversubscribe');
+
+  const d=users[3];await seed(d);await prisma.legacyThumbnailAttempt.create({data:{id:'malformed-'+crypto.randomUUID(),userId:d.id,digest:'synthetic',state:'unknown'}});assert.equal((await measured(d)).total,200);const fresh=users[4];assert.equal((await measured(fresh)).total,0);assert.equal((await saver(d)('full')).status,429);assert.equal((await saver(fresh)('own')).status,200);assert.equal((await measured(fresh)).total,1);
+  results.push('native corrupt noncomplete receipt conservatively reserves its owner capacity; foreign account receives its own slot without leaking reservation');
+
+  const e=users[5],key='old-pending',id='legacy_thumbnail_'+crypto.createHash('sha256').update(JSON.stringify([e.id,key])).digest('hex'),digest=crypto.createHash('sha256').update(JSON.stringify([['Synthetic quota topic'],null])).digest('hex');const prior=new Date(month);prior.setDate(prior.getDate()-1);
+  await prisma.legacyThumbnailAttempt.create({data:{id,userId:e.id,digest,state:'pending',createdAt:prior}});assert.equal((await measured(e)).total,0);const oldEffects=effects;assert.equal((await legacy(e)(key)).status,409);assert.equal(effects,oldEffects);assert.equal((await saver(e)('current')).status,200);assert.equal((await measured(e)).total,1);assert.equal((await prisma.legacyThumbnailAttempt.findUnique({where:{id}})).createdAt.getTime(),prior.getTime());
+  results.push('native prior-period accounting excludes old pending capacity but never renews its timestamp or grants retry execution authority; current final save charges once');
+
+  await prisma.backgroundImageAttempt.create({data:{id:'bg-'+crypto.randomUUID(),userId:e.id,digest:'synthetic',state:'complete',output:'https://example.invalid/background.png',prompt:'Synthetic scene'}});
+  await prisma.removalAttempt.create({data:{id:'photo-'+crypto.randomUUID(),userId:e.id,digest:'synthetic',state:'complete',output:Buffer.from('synthetic retained PNG')}});
+  await prisma.backgroundUpload.create({data:{id:'upload-'+crypto.randomUUID(),userId:e.id,digest:'synthetic',output:'https://example.invalid/upload.png'}});
+  assert.equal((await measured(e)).total,1);const countUploads=uploads;assert.equal((await saver(e)('current')).status,200);assert.equal(uploads,countUploads);assert.equal((await measured(e)).total,1);
+  results.push('native independent background/photo/upload receipts do not add monthly charges; exact committed final save replays once without another Blob or double count');
+
+  const f=users[6],broken={user:prisma.user,generation:prisma.generation,legacyThumbnailAttempt:prisma.legacyThumbnailAttempt,$transaction:(fn,opts)=>prisma.$transaction(tx=>fn({...tx,legacyThumbnailAttempt:{...tx.legacyThumbnailAttempt,count:async()=>{throw Error('Synthetic quota query failure');}}}),opts)};const noEffects=effects,noUploads=uploads;
+  assert.equal((await legacy(f,broken)('unavailable')).status,503);assert.equal((await saver(f,broken)('unavailable')).status,503);assert.equal(effects,noEffects);assert.equal(uploads,noUploads);assert.equal((await measured(f)).total,0);
+  results.push('native unavailable reservation query rolls back fresh admission/save before any synthetic model or Blob; no zero-count fallback');
+ }finally{for(const release of releases)release();await Promise.allSettled(signals);for(const u of users)await prisma.$executeRawUnsafe('DELETE FROM rate_limits WHERE key=$1','gen-thumb:'+u.id);await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});}
+};

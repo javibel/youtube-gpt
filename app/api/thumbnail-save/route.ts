@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { put } from '@vercel/blob';
 import { createHash } from 'node:crypto';
+import { thumbnailQuota } from '@/lib/image/thumbnail-quota';
 
 function imageUrl(value: unknown): value is string {
   if (typeof value !== 'string' || !value || value.length > 4096) return false;
@@ -55,8 +56,9 @@ export async function POST(request: Request) {
       const plan = await getUserPlan(userId);
       if (!isPaid(plan)) return Response.json({ error: 'Plan Pro requerido', limitReached: true }, { status: 403 });
       const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
-      const used = await tx.generation.count({ where: { userId, createdAt: { gte: startOfMonth } } });
-      if (used >= getLimits(plan).generationsPerMonth) return Response.json({ error: 'Límite del plan alcanzado', limitReached: true }, { status: 429 });
+      const quota = await thumbnailQuota(tx,userId,startOfMonth), limit = getLimits(plan).generationsPerMonth;
+      if (quota.total >= limit) return Response.json({ error: 'Límite del plan alcanzado', limitReached: true,
+        quotaRecorded: quota.recorded, quotaReserved: quota.reserved, quotaLimit: limit }, { status: 429 });
       const filename = `thumbnails/final/${userId}/${id ?? Date.now()}.png`;
       // Blob and PostgreSQL are not one transaction. A failure before history commits may
       // require re-uploading identical bytes; keyed writes use the same object path.

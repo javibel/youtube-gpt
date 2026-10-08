@@ -353,3 +353,20 @@ Visible removal retains a random key and exact original file per account. Additi
 Legacy generate-thumbnail with an optional opaque key now admits a pending receipt before effects. Exact own complete URL/prompt replays before plan/config/rate; changed fields, photo MIME or bytes conflict. Only the fresh live admission executes its closure. Completion commits one deterministic owned Generation and its receipt atomically; lost acknowledgment reads committed result, pending never reclaims by reset/time/hash. Deleting history does not authorize rerun while receipt retained. Keyless callers retain historical non-idempotent behavior. Monthly reservation/shared editor policy, real providers/auth/schema rollout, retention and operational recovery remain pending.
 
 Visible background AI/upload/crop replies now use a fixed API/no-store/no-redirect reader, JSON MIME, actual decoded UTF8 bytes bounded at64KiB and caller abort independent of ignored fetch/reader cancellation. Invalid/oversized/stalled acknowledgement preserves attempt and original background, never regenerates automatically. Account/discard/unmount invalidates late replies. These local transport changes do not establish a monthly image policy or reservation, remote cancellation or operational acceptance.
+# Shared thumbnail capacity (local)
+
+Keyed legacy image admission and final editor saves now hold the same owner row
+lock and count monthly Generation history plus noncomplete legacy attempts.
+Pending/uncertain attempts retain capacity even if admission acknowledgement was
+lost before any model effect. Original completion holds that lock and atomically
+converts its slot into one Generation, preserving the admission timestamp.
+Exact completed replay precedes quota checks. Period accounting never permits
+reclaim or reconstructs execution authority.
+
+Existing limits and editor charging are preserved: background generation, upload
+and photo removal receipts add no Generation; the final save records once.
+This covers keyed legacy admission versus final save only. Keyless legacy and
+other Generation writers still require shared admission; background generation
+still needs a policy relating pending attempts to a final save. Retention,
+authentic reconciliation, operational approval and real providers remain open.
+
