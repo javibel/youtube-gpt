@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   if (key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key)) return Response.json({ error: 'Clave inválida' }, { status: 400 });
   // Receipt identity is account scoped, never an operational recovery credential.
   const id = key === null ? undefined : 'thumbnail_' + createHash('sha256').update(JSON.stringify([userId,key])).digest('hex');
-  let buffer: Buffer, meta: { topic: string; hasPhoto: boolean; textCount: number };
+  let buffer: Buffer, meta: { topic: string; hasPhoto: boolean; textCount: number; backgroundOperationKey?: string };
   try {
     const form = await request.formData(), file = form.get('image'), raw = form.get('meta');
     if (!file || typeof file === 'string' || !file.size || file.type !== 'image/png'
@@ -28,10 +28,13 @@ export async function POST(request: Request) {
     const data = JSON.parse(raw);
     if (!data || Array.isArray(data) || typeof data.topic !== 'string' || data.topic.length > 500
       || typeof data.hasPhoto !== 'boolean' || !Number.isSafeInteger(data.textCount) || data.textCount < 0
-      || data.textCount > 1000 || Object.keys(data).some(k => !['topic','hasPhoto','textCount'].includes(k))) {
+      || data.textCount > 1000 || Object.keys(data).some(k => !['topic','hasPhoto','textCount','backgroundOperationKey'].includes(k))
+      || (Object.hasOwn(data,'backgroundOperationKey') && (typeof data.backgroundOperationKey !== 'string'
+        || !/^[-A-Za-z0-9._:]{1,128}$/.test(data.backgroundOperationKey)))) {
       return Response.json({ error: 'Metadatos inválidos' }, { status: 400 });
     }
-    meta = { topic: data.topic, hasPhoto: data.hasPhoto, textCount: data.textCount };
+    meta = { topic: data.topic, hasPhoto: data.hasPhoto, textCount: data.textCount,
+      ...(Object.hasOwn(data,'backgroundOperationKey') ? {backgroundOperationKey:data.backgroundOperationKey} : {}) };
     buffer = Buffer.from(await file.arrayBuffer());
   } catch { return Response.json({ error: 'Cuerpo inválido' }, { status: 400 }); }
   const digest = createHash('sha256').update(JSON.stringify(meta)).update('\0image/png\0').update(buffer).digest('hex');
@@ -63,6 +66,18 @@ export async function POST(request: Request) {
         if (receipt) return Response.json({ error: 'El guardado ya no está disponible' }, { status: 409 });
       }
       // An exact committed replay precedes plan/quota checks and does not upload again.
+      let backgroundId: string | undefined;
+      if (meta.backgroundOperationKey !== undefined) {
+        // Hash locates the row; only its authenticated owner and completed result permit a reference.
+        // No inference, recovery authority, pixel provenance or quota exemption is created here.
+        backgroundId = 'background_ai_' + createHash('sha256').update(JSON.stringify([userId,meta.backgroundOperationKey])).digest('hex');
+        const background = await tx.backgroundImageAttempt.findUnique({ where: { id: backgroundId } });
+        if (!background || background.id !== backgroundId || background.userId !== userId || background.state !== 'complete'
+          || !imageUrl(background.output) || typeof background.prompt !== 'string' || !background.prompt.trim()
+          || background.prompt.length > 4000 || !/^[a-f0-9]{64}$/.test(background.digest)) {
+          return Response.json({ error: 'Fondo sin confirmar' }, { status: 409 });
+        }
+      }
       const plan = await getUserPlan(userId);
       if (!isPaid(plan)) return Response.json({ error: 'Plan Pro requerido', limitReached: true }, { status: 403 });
       const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
@@ -77,7 +92,8 @@ export async function POST(request: Request) {
       if (!imageUrl(blob.url)) throw Error('Invalid stored image');
       const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || request.headers.get('x-real-ip');
       const saved = await tx.generation.create({ data: { ...(id ? { id } : {}), userId,
-        template: 'thumbnail', inputs: { ...meta, editor: 'canvas-v2', _editorSave: { version: 1,digest } },
+        template: 'thumbnail', inputs: { ...meta, editor: 'canvas-v2', _editorSave: { version: 1,digest },
+          ...(backgroundId ? {_editorBackground:{version:1,id:backgroundId}} : {}) },
         output: blob.url,tokensUsed: 0,ipAddress: ip } });
       if (id) await tx.thumbnailSaveReceipt.create({ data: { id,userId,digest,createdAt:saved.createdAt } });
       return Response.json({ id: saved.id,userId,imageUrl: saved.output,operationKey: key });

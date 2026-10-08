@@ -372,9 +372,10 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     return stage.toDataURL({ mimeType: 'image/png', pixelRatio: 1 / (containerWidth / THUMB_W) });
   };
   const save = useThumbnailSave(session?.user?.id,session?.user?.email,sessionStatus,lang,isPro,
-    JSON.stringify([backgroundUrl,bgTopic,photo,texts]), () => {
+    JSON.stringify([backgroundUrl,background.backgroundOperationKey,bgTopic,photo,texts]), () => {
       const dataUrl = getDataURL();
-      return dataUrl ? {dataUrl,meta:{topic:bgTopic,hasPhoto:!!photo,textCount:texts.length}} : null;
+      return dataUrl ? {dataUrl,meta:{topic:bgTopic,hasPhoto:!!photo,textCount:texts.length,
+        ...(background.backgroundOperationKey ? {backgroundOperationKey:background.backgroundOperationKey} : {})}} : null;
     },onSaved);
   const {busy:saving,savedUrl} = save;
   const saveErr = save.error ? ({

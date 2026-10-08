@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-type Snapshot = { dataUrl: string; meta: { topic: string; hasPhoto: boolean; textCount: number } };
+type Snapshot = { dataUrl: string; meta: { topic: string; hasPhoto: boolean; textCount: number; backgroundOperationKey?: string } };
 type Operation = { key: string; file: File; meta: string; context: string };
 const initial = () => ({ busy: false, pending: false, error: null as 'unconfirmed' | 'timeout' | 'conflict' | 'limit' | 'capture' | null,
   savedUrl: '', savedContext: '' });
@@ -29,7 +29,9 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
         if (!snapshot) throw Error('Capture unavailable');
         if (typeof snapshot.meta.topic !== 'string' || snapshot.meta.topic.length > 500
           || typeof snapshot.meta.hasPhoto !== 'boolean' || !Number.isSafeInteger(snapshot.meta.textCount)
-          || snapshot.meta.textCount < 0 || snapshot.meta.textCount > 1000) throw Error('Invalid capture metadata');
+          || snapshot.meta.textCount < 0 || snapshot.meta.textCount > 1000
+          || (snapshot.meta.backgroundOperationKey !== undefined && (typeof snapshot.meta.backgroundOperationKey !== 'string'
+            || !/^[-A-Za-z0-9._:]{1,128}$/.test(snapshot.meta.backgroundOperationKey)))) throw Error('Invalid capture metadata');
         const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(snapshot.dataUrl);
         if (!match || match[1].length > 28_000_000) throw Error('Invalid capture');
         const binary = atob(match[1]); if (!binary.length || binary.length > 20 * 1024 * 1024) throw Error('Capture too large');

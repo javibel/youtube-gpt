@@ -4,7 +4,7 @@ import { fetchThumbnailBackground } from '@/lib/thumbnail-background-response';
 
 type Operation = { key?:string;kind:'ai'|'upload'|'crop';topic:string;style:string;lang:string;file?:File;
   originalUrl?:string;eligible:() => boolean;context:string };
-const empty = () => ({ backgroundUrl:null as string|null,topic:'',style:'viral',busy:false,pending:false,
+const empty = () => ({ backgroundUrl:null as string|null,backgroundOperationKey:null as string|null,topic:'',style:'viral',busy:false,pending:false,
   resultContext:'',error:null as 'input'|'unconfirmed'|'timeout'|'limit'|'pending'|null });
 const styles = ['viral','cinematic','minimal','bold'];
 export function useThumbnailBackground(userId:string|undefined,email:string|null|undefined,status:string,lang:string,isPro:boolean) {
@@ -54,7 +54,9 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
         if(op.key && (data.userId!==userId || data.operationKey!==op.key || typeof data.id!=='string' || !(op.kind==='ai' ? /^background_ai_[a-f0-9]{64}$/ : /^background_[a-f0-9]{64}$/).test(data.id) || (op.kind==='ai' ? typeof data.prompt!=='string' || !data.prompt.trim() || data.prompt.length>4000 : data.prompt!==null)))throw Error('Invalid upload receipt');
         // Cancellation/plan changes discard local application, never imply backend rollback.
         if((!paid.current && !op.key) || !op.eligible()){scope.operation = null;update({pending:false});return false;}
-        scope.operation = null;update({backgroundUrl:data.backgroundUrl,resultContext:op.context,pending:false,error:null});return true;
+        // This references an acknowledged AI result, not pixel ancestry or a credit entitlement.
+        // Uploads/crops replace that result and clear the direct reference.
+        scope.operation = null;update({backgroundUrl:data.backgroundUrl,backgroundOperationKey:op.kind==='ai' ? op.key ?? null : null,resultContext:op.context,pending:false,error:null});return true;
       } catch {if(live(op))update({error:timedOut ? 'timeout' : 'unconfirmed'});return false;}
       finally {clearTimeout(deadline);controller.signal.removeEventListener('abort',abort);if(scope.deadline === deadline)scope.deadline = null;if(scope.controller === controller)scope.controller = null;
         if(current() && (scope.operation === op || scope.operation === null))update({busy:false});}
