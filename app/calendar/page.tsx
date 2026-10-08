@@ -82,6 +82,7 @@ export default function CalendarPage() {
     key: null as string | null,
     busy: false,
     active: true,
+    controller: null as AbortController | null,
   }), [session?.user?.id, session?.user?.email, status, lang]);
   const currentSuggestionOperation = useRef(suggestionOperation);
   currentSuggestionOperation.current = suggestionOperation;
@@ -90,7 +91,7 @@ export default function CalendarPage() {
     setSuggestions([]);
     setSuggestError('');
     setSuggestLoading(false);
-    return () => { suggestionOperation.active = false; };
+    return () => { suggestionOperation.active = false; suggestionOperation.controller?.abort(); };
   }, [suggestionOperation]);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
@@ -175,23 +176,35 @@ export default function CalendarPage() {
       || currentSuggestionOperation.current !== suggestionOperation) return;
     const operation = suggestionOperation;
     operation.busy = true;
+    const controller = new AbortController();
+    operation.controller = controller;
+    let timedOut = false;
+    let stopWait: (error: Error) => void = () => {};
+    const interrupted = new Promise<never>((_, reject) => { stopWait = reject; });
+    // Cleanup may close the wait before the transport microtask starts.
+    void interrupted.catch(() => {});
+    const abort = () => stopWait(new Error('Unconfirmed suggestions'));
+    controller.signal.addEventListener('abort', abort, { once: true });
+    const deadline = setTimeout(() => { timedOut = true; controller.abort(); }, 90_000);
     setSuggestLoading(true);
     setShowSuggestions(true);
     setSuggestError('');
     setSuggestions([]);
     try {
       const result = await operation.run({ lang }, async (body, operationKey) => {
-        if (!operation.active || currentSuggestionOperation.current !== operation) throw new Error('Account changed');
+        if (!operation.active || currentSuggestionOperation.current !== operation || controller.signal.aborted) throw new Error('Account changed');
         const readOnly = operation.key === operationKey;
         operation.key = operationKey;
-        const res = await fetch('/api/calendar/suggest', {
+        const res = await Promise.race([fetch('/api/calendar/suggest', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey,
             ...(readOnly ? { 'X-Calendar-Recovery': 'retained-only-v1' } : {}) },
           body,
-        });
+          signal: controller.signal,
+        }), interrupted]);
         if (!res.ok) throw new Error('Suggestions unavailable');
-        const json = await res.json();
+        const json = await Promise.race([res.json(), interrupted]);
+        if (controller.signal.aborted) throw new Error('Unconfirmed suggestions');
         if (!Array.isArray(json.suggestions) || json.suggestions.length > 5 || json.suggestions.some((item: unknown) => {
           if (!item || typeof item !== 'object') return true;
           const s = item as Record<string, unknown>;
@@ -207,12 +220,17 @@ export default function CalendarPage() {
         setSuggestions(result);
       }
     } catch {
-      if (operation.active && currentSuggestionOperation.current === operation) setSuggestError(t(
+      if (operation.active && currentSuggestionOperation.current === operation) setSuggestError((timedOut ? t(
+        'La espera terminó a los 90 segundos. ', 'The wait ended after 90 seconds. ',
+      ) : '') + t(
         'Las sugerencias no están confirmadas. Reintentar solo consulta el resultado original. Puedes descartar esta solicitud para empezar otra; no cancela el trabajo del servidor y la nueva puede consumir créditos.',
         'Suggestions are unconfirmed. Retry only retrieves the original result. You can discard this request to start another; it does not cancel server work and the new request may consume credits.',
       ));
     } finally {
       operation.busy = false;
+      clearTimeout(deadline);
+      controller.signal.removeEventListener('abort', abort);
+      if (operation.controller === controller) operation.controller = null;
       if (operation.active && currentSuggestionOperation.current === operation) setSuggestLoading(false);
     }
   }

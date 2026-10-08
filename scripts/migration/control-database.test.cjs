@@ -344,9 +344,27 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   assert.equal(browser.requests[0].headers['Idempotency-Key'],browser.requests[1].headers['Idempotency-Key']);
   assert.equal(browser.requests[0].headers['X-Calendar-Recovery'],undefined);
   assert.equal(browser.requests[1].headers['X-Calendar-Recovery'],'retained-only-v1');
+  // Original route/runtime settles; only the browser fetch/body delivery remains hung.
+  for(const stage of ['fetch','json']){
+   const waiting=harness();waiting.state.user='synthetic';waiting.state.key=prefix+'_calendar_wait_'+stage;
+   let release,ready;const held=new Promise(resolve=>{release=resolve;}),received=new Promise(resolve=>{ready=resolve;});
+   waiting.state.send=async init=>{const response=await invoke(init);assert.equal(response.status,200);ready();
+    return stage==='fetch'?held:{ok:true,json:()=>held};};
+   const before=calls,pending=waiting.click();await received;for(let i=0;i<12;i++)await Promise.resolve();
+   waiting.advance(90000);for(let i=0;i<12;i++)await Promise.resolve();
+   assert.ok(waiting.alert());assert.match(waiting.text(),/90 segundos/);assert.equal(waiting.requests[0].signal.aborted,true);
+   assert.equal(waiting.timers.size,0);await pending;assert.equal(calls,before+1);
+   waiting.state.send=invoke;await waiting.click();assert.equal(waiting.alert(),undefined);assert.match(waiting.text(),/Synthetic calendar topic/);
+   assert.equal(waiting.requests[0].body,waiting.requests[1].body);
+   assert.equal(waiting.requests[0].headers['Idempotency-Key'],waiting.requests[1].headers['Idempotency-Key']);
+   assert.equal(waiting.requests[1].headers['X-Calendar-Recovery'],'retained-only-v1');assert.equal(calls,before+1);
+   const stale={suggestions:[{...suggestion,title:'Stale late calendar result'}]};
+   release(stage==='fetch'?{ok:true,json:async()=>stale}:stale);for(let i=0;i<12;i++)await Promise.resolve();
+   assert.doesNotMatch(waiting.text(),/Stale late calendar result/);assert.equal(waiting.requests.length,2);
+  }
   changedContext=true;const conflict=await invoke(browser.requests[1]);
-  assert.equal(conflict.status,409);assert.deepEqual(await conflict.json(),{error:'operation_input_changed',retryMayConsume:false});assert.equal(calls,1);
-  assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+  assert.equal(conflict.status,409);assert.deepEqual(await conflict.json(),{error:'operation_input_changed',retryMayConsume:false});assert.equal(calls,3);
+  assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),21);
  });
  await test('Predictor lost-response retry recovers one result and settlement; changed input or video context never redispatches',async()=>{
   const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');const {createRetryOperation}=require('../../lib/ai/retry-operation.cjs');

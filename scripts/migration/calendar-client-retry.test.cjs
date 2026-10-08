@@ -9,7 +9,7 @@ const compiled = ts.transpileModule(source, { compilerOptions: {
 } }).outputText;
 // Render the actual component with deterministic hook state and bounded synthetic HTTP.
 function harness() {
- const cells = [], effects = [], requests = []; let index = 0, dirty = false, number = 0;
+ const cells = [], effects = [], requests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0;
  const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }) };
  const changed = (a, b) => !a || a.length !== b.length || a.some((value, i) => !Object.is(value, b[i]));
  const hooks = {
@@ -40,7 +40,9 @@ function harness() {
    assert.equal(url, '/api/calendar/suggest'); assert.equal(init.method, 'POST');
    requests.push({ ...init, owner: state.user });
    return state.send(init);
-  }, Date, console,
+  }, Date, console, AbortController,
+  setTimeout: (fn, ms) => { const id = ++timerId; timers.set(id, { fn, ms }); return id; },
+  clearTimeout: id => timers.delete(id),
  });
  function render() { let tree; for (let n = 0; n < 10; n++) {
   index = 0; dirty = false; tree = entry.exports.default(); while (effects.length) effects.shift()();
@@ -53,12 +55,14 @@ function harness() {
  const text = value => Array.isArray(value) ? value.map(text).join(' ') : value && typeof value === 'object' ? text(value.props?.children) : String(value ?? '');
  const discardHandler = () => nodes(render()).find(n => n.props.onClick?.name === 'discardSuggestions')?.props.onClick;
  const discard = () => discardHandler()?.();
- return { state, requests, click, handler, discard, discardHandler, render, unmount: () => cells.forEach(cell => cell?.cleanup?.()),
+ return { state, requests, timers, advance: ms => { for (const [id, timer] of [...timers]) if (timer.ms <= ms) { timers.delete(id); timer.fn(); } },
+  click, handler, discard, discardHandler, render, unmount: () => cells.forEach(cell => cell?.cleanup?.()),
   alert: () => nodes(render()).find(n => n.props?.role === 'alert'), text: () => text(render()) };
 }
 const suggestion = { title: 'Synthetic topic', date: '2026-10-08', hour: 0, reason: 'Synthetic reason', description: 'Synthetic outline' };
 const success = async () => ({ ok: true, json: async () => ({ suggestions: [suggestion] }) });
 const key = request => request.headers['Idempotency-Key'];
+const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 const results = [];
 async function test(name, run) { await run(); results.push({ name, status: 'PASS' }); }
 if (require.main === module) (async () => {
@@ -135,6 +139,39 @@ if (require.main === module) (async () => {
   const h = harness(); h.state.send = async () => ({ ok: false, status: 409 }); await h.click(); await h.click();
   assert.ok(h.alert()); assert.equal(key(h.requests[0]), key(h.requests[1]));
   assert.equal(h.requests[1].headers['X-Calendar-Recovery'], 'retained-only-v1');
+ });
+ for (const stage of ['fetch', 'json']) await test(stage + ' ignoring abort stops local wait at90s and retains original retry identity', async () => {
+  const h = harness(); let release;
+  const held = new Promise(resolve => { release = resolve; });
+  h.state.send = stage === 'fetch' ? () => held : async () => ({ ok: true, json: () => held });
+  const first = h.click(); await flush(); h.advance(90000); await flush();
+  assert.ok(h.alert(), 'UI must finish even when transport ignores AbortSignal');
+  assert.equal(h.requests[0].signal.aborted, true); assert.equal(h.timers.size, 0); await first;
+  h.state.send = success; await h.click(); assert.equal(key(h.requests[0]), key(h.requests[1]));
+  assert.equal(h.requests[1].headers['X-Calendar-Recovery'], 'retained-only-v1');
+  assert.equal(h.alert(), undefined); assert.match(h.text(), /Synthetic topic/);
+  const old = { suggestions: [{ ...suggestion, title: 'Stale timed out result' }] };
+  release(stage === 'fetch' ? { ok: true, json: async () => old } : old); await flush();
+  assert.doesNotMatch(h.text(), /Stale timed out result/); assert.equal(h.requests.length, 2);
+ });
+ await test('account cleanup before transport microtask does not send the old request', async () => {
+  const h = harness(); const first = h.click(); h.state.user = 'fixture-two'; h.render(); await first;
+  assert.equal(h.requests.length, 0); assert.equal(h.timers.size, 0);
+ });
+ await test('account change closes a never-resolving original wait without affecting the new request', async () => {
+  const h = harness(); h.state.send = () => new Promise(() => {}); const first = h.click(); await flush();
+  h.state.user = 'fixture-two'; h.render(); await flush();
+  assert.equal(h.requests[0].signal.aborted, true); assert.equal(h.timers.size, 0); await first;
+  h.state.send = success; await h.click(); assert.notEqual(key(h.requests[0]), key(h.requests[1]));
+  assert.equal(h.requests[1].headers['X-Calendar-Recovery'], undefined); assert.match(h.text(), /Synthetic topic/);
+ });
+ await test('unmount closes a never-resolving original wait and clears its deadline', async () => {
+  const h = harness(); h.state.send = () => new Promise(() => {}); const first = h.click(); await flush();
+  h.unmount(); await flush(); assert.equal(h.requests[0].signal.aborted, true); assert.equal(h.timers.size, 0); await first;
+ });
+ await test('successful and failed HTTP clear their owned deadlines', async () => {
+  const h = harness(); h.state.send = success; await h.click(); assert.equal(h.timers.size, 0);
+  h.state.send = async () => ({ ok: false }); await h.click(); assert.equal(h.timers.size, 0);
  });
  console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or calendar writes', results }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
