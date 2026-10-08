@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { createHash } from 'node:crypto';
+import { readGenerationQuota } from '@/lib/generation-quota';
 
 // Free incluye Video Tips desde el 26/08 (gancho de retención — el 69% de lo
 // generado en free eran titulos, producto de un solo uso; ver
@@ -111,9 +112,9 @@ export async function POST(request: Request) {
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const usedThisMonth = await prisma.generation.count({
-    where: { userId, createdAt: { gte: startOfMonth } },
-  });
+  let usedThisMonth: number;
+  try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
+  catch { return NextResponse.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
 
   if (usedThisMonth >= limit) {
     return NextResponse.json(

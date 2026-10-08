@@ -355,6 +355,15 @@ Legacy generate-thumbnail with an optional opaque key now admits a pending recei
 Visible background AI/upload/crop replies now use a fixed API/no-store/no-redirect reader, JSON MIME, actual decoded UTF8 bytes bounded at64KiB and caller abort independent of ignored fetch/reader cancellation. Invalid/oversized/stalled acknowledgement preserves attempt and original background, never regenerates automatically. Account/discard/unmount invalidates late replies. These local transport changes do not establish a monthly image policy or reservation, remote cancellation or operational acceptance.
 # Shared thumbnail capacity (local)
 
+Web/extension content generation and Storyboard also read admitted legacy image
+capacity before starting text tasks. Their snapshot holds the owner lock while
+counting history and noncomplete image attempts; unavailable counts fail closed.
+Existing saved text replay still precedes quota, and Free/Pro/Business limits,
+Video Tips and IP caps remain unchanged. This read releases its lock before
+text inference: text operations do not yet reserve a monthly slot, and concurrent
+text/new image admission can still race. Other writers, global reservation and
+the background-to-final-save policy remain open; no operational acceptance.
+
 Keyed legacy image admission and final editor saves now hold the same owner row
 lock and count monthly Generation history plus noncomplete legacy attempts.
 Pending/uncertain attempts retain capacity even if admission acknowledgement was

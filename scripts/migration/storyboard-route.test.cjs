@@ -7,7 +7,9 @@ function harness(options={}) {
  const saved=[],counts=[];
  const runtime=taskFixture({taskType:'content.storyboard',controlUnavailable:options.noKey,respond:async()=>{if(options.transportError)throw Error('Synthetic failure');if(options.status)throw {status:options.status};return options.reply??{content:[{type:'text',text:story}],usage:{output_tokens:20},stop_reason:'end_turn'};}});
  const calls=runtime.calls;
+ const quotaDb={$transaction:async fn=>{if(options.quotaFailure)throw Error('Private quota failure');return fn({$queryRawUnsafe:async()=>options.noQuotaOwner?[]:[{id:'synthetic'}],legacyThumbnailAttempt:{count:async()=>options.reserved??0},generation:{count:async query=>{counts.push(query);return options.used??0;}}});}};
  const route=load('app/api/storyboard/route.ts',{
+  '@/lib/generation-quota':require('./generation-quota-fixture.cjs')(quotaDb),
   'node:crypto':require('node:crypto'),
   '@/lib/ai/task-runtime':runtime,
   'next/server':{NextResponse:Response},'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic'}}},
@@ -42,5 +44,6 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  await test('history read failure blocks without private error or inference',async()=>{const h=harness({readError:true});const reply=await h.run(undefined,{'Idempotency-Key':'read-error'});assert.deepEqual(reply,{status:503,body:{error:'Generation history unavailable'}});assert.equal(h.calls.length,0);assert.equal(h.counts.length,0);});
  await test('malformed stored identity never replays',async()=>{const h=harness({savedRow:{userId:'another-user',template:'video_preview',inputs:{},output:'Private output'}});const reply=await h.run(undefined,{'Idempotency-Key':'mismatch'});assert.equal(reply.status,409);assert.doesNotMatch(JSON.stringify(reply),/Private output/);assert.equal(h.calls.length,0);});
  await test('malformed language rejected before quota',async()=>{const h=harness();assert.equal((await h.run({script:'Synthetic',lang:{}})).status,400);assert.equal(h.counts.length,0);});
+ for(const options of [{paid:true,used:199,reserved:1},{quotaFailure:true},{noQuotaOwner:true}])await test('shared capacity/owner unavailable '+JSON.stringify(options),async()=>{const h=harness(options);assert.equal((await h.run()).status,options.reserved?429:503);assert.equal(h.calls.length,0);assert.equal(h.saved.length,0);});
  console.log(JSON.stringify({scope:'migrated storyboard route through common runner and adapter; synthetic auth, quota storage and transport',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
 })();

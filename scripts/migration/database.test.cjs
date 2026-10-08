@@ -30,6 +30,7 @@ const results=[];
  await require('./legacy-thumbnail-attempt-database.cjs')(prisma,results);
  await require('./thumbnail-quota-database.cjs')(prisma,results);
  await require('./unkeyed-thumbnail-database.cjs')(prisma,results);
+ await require('./generation-quota-database.cjs')(prisma,results);
  await require('./extension-generation-database.cjs')(prisma,results);
  await require('./generator-account-database.cjs')(prisma,results);
  await require('./dashboard-billing-database.cjs')(prisma,results);
@@ -69,7 +70,7 @@ const results=[];
   try {
    const {load}=require('./route-harness.cjs');let arrived=0,release;const barrier=new Promise(resolve=>{release=resolve;});
    const story='0s-6s: HOOK | A creator opens a notebook';
-   const route=load('app/api/storyboard/route.ts',{'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:storyboardUser.id}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true,getLimits:()=>({generationsPerMonth:200})},'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async()=>{if(++arrived===2)release();await barrier;return {content:[{text:story}],usage:{output_tokens:5}};}})}});
+   const route=load('app/api/storyboard/route.ts',{'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:storyboardUser.id}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true,getLimits:()=>({generationsPerMonth:200})},'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async()=>{if(++arrived===2)release();await barrier;return {content:[{text:story}],usage:{output_tokens:5}};}})}});
    const invoke=()=>route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':'synthetic-race'},body:JSON.stringify({script:'Synthetic race',lang:'es'})}));
    const replies=await Promise.all([invoke(),invoke()]);assert.deepEqual(replies.map(r=>r.status),[200,200]);for(const reply of replies)assert.deepEqual(await reply.json(),{storyboard:story});
    assert.equal(await prisma.generation.count({where:{userId:storyboardUser.id}}),1);results.push('concurrent Storyboard history insert uses real unique constraint and recovers committed row');

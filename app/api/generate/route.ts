@@ -7,6 +7,7 @@ import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 import { createHash } from 'node:crypto';
+import { readGenerationQuota } from '@/lib/generation-quota';
 
 export const maxDuration = 60; // generación con Claude puede pasar de 15s en plantillas largas
 
@@ -136,9 +137,9 @@ export async function POST(request: Request) {
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
-      const usedThisMonth = await prisma.generation.count({
-        where: { userId, createdAt: { gte: startOfMonth } },
-      });
+      let usedThisMonth: number;
+      try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
+      catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
       if (usedThisMonth >= limit) {
         if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
         // `code` is for the extension: it renders a different card for "free quota spent"
@@ -223,9 +224,9 @@ export async function POST(request: Request) {
         startOfMonth.setHours(0, 0, 0, 0);
 
         // Verificar límite por cuenta
-        const usedThisMonth = await prisma.generation.count({
-          where: { userId, createdAt: { gte: startOfMonth } },
-        });
+        let usedThisMonth: number;
+        try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
+        catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
 
         if (usedThisMonth >= limit) {
           if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
