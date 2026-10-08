@@ -8,7 +8,7 @@ function harness(o={}){
  const db={bulkGenerationRequest:model(batches,'batch'),textGenerationAttempt:model(attempts,'attempt'),generation:model(history,'generation')};
  db.$transaction=(fn,opts)=>{assert.equal(opts.maxWait,10000);assert.equal(opts.timeout,15000);const run=tail.then(async()=>{
   const before=[new Map(batches),new Map(attempts),new Map(history)];let batchWrite=false,itemWrite=false;
-  const tx={...db,bulkGenerationRequest:{...db.bulkGenerationRequest,create:async args=>{batchWrite=true;return db.bulkGenerationRequest.create(args);}},textGenerationAttempt:{...db.textGenerationAttempt,create:async args=>{itemWrite=true;return db.textGenerationAttempt.create(args);}},legacyThumbnailAttempt:{count:async()=>o.images??0},$queryRawUnsafe:async(sql,id)=>{assert.equal(sql,'SELECT id FROM users WHERE id=$1 FOR UPDATE');return o.noOwner?[]:[{id}];}};
+  const tx={...db,bulkGenerationRequest:{...db.bulkGenerationRequest,create:async args=>{batchWrite=true;return db.bulkGenerationRequest.create(args);}},textGenerationAttempt:{...db.textGenerationAttempt,create:async args=>{itemWrite=true;return db.textGenerationAttempt.create(args);}},legacyThumbnailAttempt:{count:async()=>o.images??0},$queryRaw:async()=>[{retained:0}],$queryRawUnsafe:async(sql,id)=>{assert.equal(sql,'SELECT id FROM users WHERE id=$1 FOR UPDATE');return o.noOwner?[]:[{id}];}};
   let v;try{v=await fn(tx);}catch(e){[batches,attempts,history].forEach((map,i)=>{map.clear();for(const[k,v]of before[i])map.set(k,v);});throw e;}
   if(batchWrite&&o.abortBatch)o.abortBatch.abort();
   if(batchWrite&&o.lostBatchAck||itemWrite&&o.lostItemAck)throw Error('Synthetic committed acknowledgement lost');return v;

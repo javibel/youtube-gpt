@@ -9,7 +9,7 @@ function harness(o={}){
  const db={textGenerationAttempt:model,generation,$transaction:(fn,opts)=>{
   assert.equal(opts.maxWait,10000);assert.equal(opts.timeout,15000);
   const run=tail.then(async()=>{const before=new Map(attempts),saved=new Map(history);let added=false,wrote=false,value;
-   try{value=await fn({textGenerationAttempt:{...model,create:async args=>{added=true;return model.create(args);}},generation:{...generation,create:async args=>{wrote=true;return generation.create(args);}},legacyThumbnailAttempt:{count:async()=>o.images??0},$queryRawUnsafe:async(sql,user)=>{assert.equal(sql,'SELECT id FROM users WHERE id=$1 FOR UPDATE');assert.equal(user,'owner');return o.noOwner?[]:[{id:user}];}});}
+   try{value=await fn({textGenerationAttempt:{...model,create:async args=>{added=true;return model.create(args);}},generation:{...generation,create:async args=>{wrote=true;return generation.create(args);}},legacyThumbnailAttempt:{count:async()=>o.images??0},$queryRaw:async()=>[{retained:0}],$queryRawUnsafe:async(sql,user)=>{assert.equal(sql,'SELECT id FROM users WHERE id=$1 FOR UPDATE');assert.equal(user,'owner');return o.noOwner?[]:[{id:user}];}});}
    catch(e){attempts.clear();history.clear();for(const[k,v]of before)attempts.set(k,v);for(const[k,v]of saved)history.set(k,v);throw e;}
    if(added&&o.lostAdmission)throw Error('Synthetic committed admission ack lost');
    if(wrote&&o.lostCompletion)throw Error('Synthetic committed completion ack lost');

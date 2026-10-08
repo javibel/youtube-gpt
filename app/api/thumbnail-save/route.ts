@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       const saved = await tx.generation.create({ data: { ...(id ? { id } : {}), userId,
         template: 'thumbnail', inputs: { ...meta, editor: 'canvas-v2', _editorSave: { version: 1,digest } },
         output: blob.url,tokensUsed: 0,ipAddress: ip } });
-      if (id) await tx.thumbnailSaveReceipt.create({ data: { id,userId,digest } });
+      if (id) await tx.thumbnailSaveReceipt.create({ data: { id,userId,digest,createdAt:saved.createdAt } });
       return Response.json({ id: saved.id,userId,imageUrl: saved.output,operationKey: key });
     }, { maxWait: 10_000, timeout: 30_000 });
   } catch {

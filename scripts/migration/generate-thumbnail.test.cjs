@@ -12,7 +12,7 @@ function harness(options={}){
  const db=mocks['@/lib/prisma'].prisma,rows=new Map();
  db.textGenerationAttempt={count:async()=>0};
  db.legacyThumbnailAttempt={findUnique:async({where})=>rows.get(where.id)||null,count:async()=>options.reserved??0,create:async({data})=>{const row={...data,output:null,prompt:null,createdAt:new Date()};rows.set(data.id,row);return row;},updateMany:async({where,data})=>{const row=rows.get(where.id);if(!row)return{count:0};rows.set(where.id,{...row,...data});return{count:1};}};
- db.$queryRawUnsafe=async()=>[{id:'synthetic'}];
+ db.$queryRaw=async()=>[{retained:0}];db.$queryRawUnsafe=async()=>[{id:'synthetic'}];
  db.$transaction=async fn=>{const before=new Map(rows),old=saved.length;let timer;try{return await Promise.race([fn(db),new Promise((_,reject)=>{timer=setTimer(()=>reject(Error('Synthetic transaction deadline')),15000);})]);}catch(e){rows.clear();for(const [id,row]of before)rows.set(id,row);saved.length=old;throw e;}finally{clearTimer(timer);}};
  mocks['@/lib/image/legacy-thumbnail-attempt']=load('lib/image/legacy-thumbnail-attempt.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/plans':mocks['@/lib/plans'],'@/lib/rate-limit-db':mocks['@/lib/rate-limit-db'],'@/lib/image/thumbnail-quota':load('lib/image/thumbnail-quota.ts')},globals);
  const route=load('app/api/generate-thumbnail/route.ts',mocks,globals);
