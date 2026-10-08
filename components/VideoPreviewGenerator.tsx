@@ -919,6 +919,7 @@ export default function VideoPreviewGenerator({
   const { data: session, status: sessionStatus } = useSession();
   const interaction = useMemo(() => ({
     run: createRetryOperation(() => crypto.randomUUID()), storyboard: null as string | null,
+    cacheCancel: null as (() => void) | null,
     selection: null as StoryboardSelection | null, ready: false, attempted: false, busy: false, active: true, cancel: null as (() => void) | null, videoUrl: null as string | null,
     upload: null as { blob: Blob; key: string; saved: boolean; attempted: boolean; cancel: (() => void) | null; flight: Promise<void> | null } | null,
   }), [session?.user?.id, session?.user?.email, sessionStatus, scriptContent, generationId, scriptTitle, lang]);
@@ -941,6 +942,7 @@ export default function VideoPreviewGenerator({
 
   const [viewScope, setViewScope] = useState<typeof interaction | null>(null);
   const [storageWarning, setStorageWarning] = useState(false);
+  const [cacheUnconfirmed, setCacheUnconfirmed] = useState(false);
   const viewCurrent = viewScope === interaction;
   const status = viewCurrent ? storedStatus : 'idle';
   const progress = viewCurrent ? storedProgress : 0;
@@ -1009,6 +1011,7 @@ export default function VideoPreviewGenerator({
     interaction.ready = true;
     setViewScope(interaction);
     setStorageWarning(unreadableSelection);
+    setCacheUnconfirmed(false);
     setStatus(interaction.selection && interaction.storyboard === null ? 'error' : 'idle');
     setVideoUrl(null); setProgress(0); setSaveStatus('idle');
     setErrorMsg(interaction.selection && interaction.storyboard === null
@@ -1016,6 +1019,7 @@ export default function VideoPreviewGenerator({
         'This tab has a pending storyboard. Retry retrieving the original result; closing the window does not cancel server work.') : '');
     return () => {
       interaction.active = false;
+      interaction.cacheCancel?.();
       interaction.upload?.cancel?.();
       interaction.cancel?.();
       if (interaction.videoUrl) URL.revokeObjectURL(interaction.videoUrl);
@@ -1242,11 +1246,29 @@ export default function VideoPreviewGenerator({
           setStatus('done'); setProgress(100);
           interaction.upload = { blob, key: crypto.randomUUID(), saved: false, attempted: false, cancel: null, flight: null };
 
-          // Save to IndexedDB (local, for immediate re-access)
+          // IndexedDB is optional. A blocked open/transaction must not hold the
+          // account upload indefinitely. Ending this wait does not prove that
+          // the storage operation itself was cancelled or persisted.
+          let endCacheWait: () => void = () => {};
+          const cacheInterrupted = new Promise<boolean>(resolve => {
+            endCacheWait = () => resolve(false);
+          });
+          interaction.cacheCancel = endCacheWait;
+          const cacheTimer = setTimeout(endCacheWait, 30_000);
+          let cached = false;
           try {
-            await savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() });
-          } catch { /* non-critical */ }
+            cached = await Promise.race([
+              savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() })
+                .then(() => true, () => false),
+              cacheInterrupted,
+            ]);
+          } catch { /* optional cache could throw before returning a Promise */ }
+          finally {
+            clearTimeout(cacheTimer);
+            if (interaction.cacheCancel === endCacheWait) interaction.cacheCancel = null;
+          }
           if (!current()) return;
+          setCacheUnconfirmed(!cached);
 
           // A rendered/downloadable video is distinct from a confirmed account save.
           await saveToAccount();
@@ -1367,6 +1389,7 @@ export default function VideoPreviewGenerator({
   const handleClose = () => {
     if (activeInteraction.current !== interaction || !interaction.active) return;
     interaction.active = false;
+    interaction.cacheCancel?.();
     interaction.upload?.cancel?.();
     interaction.cancel?.();
     onClose();
@@ -1377,6 +1400,7 @@ export default function VideoPreviewGenerator({
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     interaction.videoUrl = null;
     interaction.upload = null;
+    setCacheUnconfirmed(false);
     setStatus('idle'); setVideoUrl(null); setProgress(0); setErrorMsg(''); setSaveStatus('idle');
   };
 
@@ -1606,6 +1630,13 @@ export default function VideoPreviewGenerator({
             </p>
           )}
 
+          {viewCurrent && cacheUnconfirmed && status === 'done' && (
+            <p className="font-mono-jb text-[13px] text-amber-300">
+              {t('No se pudo confirmar la copia local. El vídeo sigue disponible para descargar; el estado del guardado en tu cuenta se muestra por separado.',
+                'The local copy could not be confirmed. The video remains available to download; account saving status is shown separately.')}
+            </p>
+          )}
+
           {viewCurrent && storageWarning && (
             <p className="font-mono-jb text-[13px] text-amber-300">
               {t('No se pudo leer, conservar o retirar la selección de esta pestaña. Mantén abierta esta ventana para reintentar; una selección antigua puede reaparecer al recargar y solo consultará el resultado original.',
@@ -1637,7 +1668,7 @@ export default function VideoPreviewGenerator({
                     {t('Reintentar guardado', 'Retry saving')}
                   </button>
                 )}
-                <button onClick={reset} disabled={saveStatus === 'saving'} className="btn-offset btn-offset-white py-3 px-4 text-[13px] font-display">
+                <button onClick={reset} disabled={interaction.busy || saveStatus === 'saving'} className="btn-offset btn-offset-white py-3 px-4 text-[13px] font-display">
                   ↺ {t('Regenerar', 'Regenerate')}
                 </button>
               </>

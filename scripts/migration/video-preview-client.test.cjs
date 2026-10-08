@@ -7,6 +7,19 @@ const key=r=>r.headers['Idempotency-Key'];
 async function test(name,fn){await fn();results.push({name,status:'PASS'});}
 (async()=>{
 
+ const flushCache=async()=>{for(let n=0;n<30;n++)await Promise.resolve();};
+ await test('stalled local cache ends its wait at30s and cannot prevent one account upload; late cache rejection never changes confirmation',async()=>{
+  const h=harness();let reject;const started=new Promise(resolve=>{h.state.save=()=>{resolve();return new Promise((_,r)=>{reject=r;});};});await h.click();const finished=h.finish();await started;
+  assert.equal(h.uploads.length,0);h.advance(29999);await flushCache();assert.equal(h.uploads.length,0);h.advance(1);await flushCache();assert.equal(h.uploads.length,1,'local cache must not block account save beyond30s');await finished;
+  assert.match(h.text(),/Guardado en tu cuenta/);assert.match(h.text(),/copia local/);assert.deepEqual(h.callbacks,['generated','saved']);reject(Error('late cache error'));await flushCache();assert.match(h.text(),/Guardado en tu cuenta/);assert.equal(h.alert(),undefined);assert.equal(h.uploads.length,1);assert.equal(h.timers.size,0);h.unmount();
+ });
+ for(const action of ['account','email','close','unmount'])await test(action+' closes a stalled local cache wait without any old account upload or late save effect',async()=>{
+  const h=harness();let release;const started=new Promise(resolve=>{h.state.save=()=>{resolve();return new Promise(r=>{release=r;});};});await h.click();const finished=h.finish();await started;
+  if(action==='account'){h.state.user='fixture-two';h.render();}else if(action==='email'){h.state.email='changed@example.invalid';h.render();}else if(action==='close')h.close();else h.unmount();
+  let settled=false;finished.then(()=>{settled=true;});await flushCache();assert.equal(settled,true,'leaving the scope must settle the local wait');assert.equal(h.uploads.length,0);assert.equal(h.timers.size,0);release();await flushCache();assert.equal(h.uploads.length,0);assert.equal(h.callbacks.includes('saved'),false);h.unmount();
+ });
+ await test('successful local cache alone never confirms an uncertain account upload',async()=>{const h=harness();h.state.upload=async()=>{throw Error('lost account acknowledgement');};await h.click();await h.finish();assert.ok(h.alert());assert.deepEqual(h.callbacks,['generated']);assert.match(h.text(),/Descargar/);assert.doesNotMatch(h.text(),/Guardado en tu cuenta/);h.unmount();});
+
  const flush=async()=>{for(let n=0;n<30;n++)await Promise.resolve();};
  for(const mode of ['fetch','json'])await test(mode+' that ignores abort ends local save wait at90s; late result cannot confirm and retry only reads original',async()=>{
   const h=harness();let release,started;const reached=new Promise(r=>{started=r;});
