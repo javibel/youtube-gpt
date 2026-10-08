@@ -41,13 +41,20 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
     const op = scope.operation;
     update({busy:true,pending:true,error:null});
     const controller = new AbortController();scope.controller = controller;let timedOut = false;
+    let stopWait: (error: Error) => void = () => {};
+    const interrupted = new Promise<never>((_, reject) => { stopWait = reject; });
+    // Unmount can abort before the first microtask attaches the race.
+    void interrupted.catch(() => {});
+    const abort = () => stopWait(Error('Unconfirmed save'));
+    controller.signal.addEventListener('abort',abort,{once:true});
+    // A bounded browser wait preserves uncertainty about remote storage.
     const deadline = setTimeout(() => { timedOut=true;controller.abort(); },60_000);scope.deadline = deadline;
     const flight = Promise.resolve().then(async () => {
       try {
         if (!current()) return;
         const body = new FormData();body.append('image',op.file);body.append('meta',op.meta);
-        const response = await fetch('/api/thumbnail-save',{method:'POST',headers:{'Idempotency-Key':op.key},body,signal:controller.signal});
-        const data = await response.json();
+        const response = await Promise.race([fetch('/api/thumbnail-save',{method:'POST',headers:{'Idempotency-Key':op.key},body,signal:controller.signal}),interrupted]);
+        const data = await Promise.race([response.json(),interrupted]);
         if (!current()) return;
         if (timedOut) throw Error('Timed out');
         if (!response.ok) { update({error:response.status === 409 ? 'conflict' : data?.limitReached === true ? 'limit' : 'unconfirmed'});return; }
@@ -58,7 +65,7 @@ export function useThumbnailSave(userId: string | undefined, email: string | nul
         scope.operation = null;update({savedUrl:data.imageUrl,savedContext:op.context,pending:false,error:null});
         try { latest.current.onSaved?.(data.imageUrl); } catch {}
       } catch { update({error:timedOut ? 'timeout' : 'unconfirmed'}); }
-      finally { clearTimeout(deadline);if(scope.deadline===deadline)scope.deadline=null;if(scope.controller===controller)scope.controller=null;update({busy:false}); }
+      finally { clearTimeout(deadline);controller.signal.removeEventListener('abort',abort);if(scope.deadline===deadline)scope.deadline=null;if(scope.controller===controller)scope.controller=null;update({busy:false}); }
     });
     scope.flight = flight;
     void flight.finally(() => { if(scope.flight===flight)scope.flight=null; });

@@ -527,3 +527,14 @@ overwrite a later confirmed recovery. Account change/unmount ends the old wait
 without dispatch in the new account, including cleanup before fetch starts.
 This does not establish server cancellation, zero consumption, a completed
 result or durable browser continuity; no automatic retry is performed.
+
+## Bounded editor save waits
+
+The original save hook now ends its 60-second browser wait even if fetch or JSON
+parsing ignores AbortSignal. The frozen PNG, metadata and key remain pending;
+the original editor can explicitly retry the same snapshot after later edits
+or loss of Pro access. Late replies cannot overwrite the confirmed retry.
+Unmount/account changes close the old local wait without exposing another
+account's capture. This does not establish remote cancellation, rollback or
+zero consumption; the storage/database transaction and quota policy are
+unchanged. Monthly background/save entitlement linkage remains separate work.
