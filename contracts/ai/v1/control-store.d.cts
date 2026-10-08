@@ -13,6 +13,7 @@ export interface ControlStore {
   revision(revision: string): Promise<Configuration | null>;
   metrics(interval: { from: string; to: string }): Promise<ReadonlyArray<Readonly<MetricGroup>>>;
   admit(request: AiRequest | CodingRequest, context: { runId: string; budgetId: string; agentId?: string; principalId?: string; executor?: 'ai' | 'coding' }): Promise<Admission>;
+  retrieve(request: AiRequest, context: { runId: string; budgetId: string; agentId?: string; principalId: string; executor?: 'ai' }): Promise<Admission | null>;
   claimDispatch(request: AiRequest | CodingRequest, context: { runId: string; budgetId: string; agentId?: string; principalId?: string; executor?: 'ai' | 'coding'; dispatchDigest: string }): Promise<{ runId: string; snapshot: Readonly<Snapshot>; dispatchDigest: string; remainingDeadlineMs: number }>;
   reconcile(runId: string, outcome: { status: Status | 'uncertain'; usage?: Partial<Usage>; result?: Readonly<Result> }): Promise<{ state: 'settled' | 'uncertain'; replay?: boolean; retainedMicros?: number }>;
 }

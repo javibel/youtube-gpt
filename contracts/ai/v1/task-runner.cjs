@@ -25,6 +25,17 @@ function createTaskRunner({store,registry,executor='ai',clock=Date.now}){
   if(admission?.runId!==runId||!admission.snapshot||typeof admission.snapshot!=='object')throw new ContractError('uncertain','Fresh admission receipt does not match the requested execution; reconcile before retrying');
   const remaining=request.budget.deadlineMs-Math.max(0,clock()-started);
   return executeAdmitted(validated,request,admission,remaining,signal);
+ },async retrieve(rawRequest,{runId,budgetId,agentId,principalId,signal}={}){
+  if(executor!=='ai'||typeof store.retrieve!=='function')throw new ContractError('configuration','Read-only AI result store required');
+  if(signal?.aborted)throw new ContractError('cancelled','Cancelled before result lookup');
+  const request=validateRequest(rawRequest);
+  const saved=await store.retrieve(request,{runId,budgetId,agentId,principalId,executor});
+  if(signal?.aborted)throw new ContractError('cancelled','Cancelled during result lookup');
+  if(saved===null)return null;
+  if(saved?.runId!==runId||saved.replay!==true||!saved.result||saved.accounting?.state!=='settled'
+    ||saved.result.runId!==runId||saved.result.requestId!==request.requestId
+    ||!['completed','incomplete'].includes(saved.result.status))throw new ContractError('uncertain','Read-only result receipt unavailable');
+  return {kind:'result',result:saved.result,accounting:saved.accounting};
  },async runClaimed(rawRequest,{runId,budgetId,agentId,principalId,dispatchDigest,signal}={}){
   if(typeof store.claimDispatch!=='function')throw new ContractError('configuration','One-shot dispatch store required');
   if(signal?.aborted)throw new ContractError('cancelled','Cancelled before dispatch claim');

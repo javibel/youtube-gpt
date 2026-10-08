@@ -1,6 +1,6 @@
 'use strict';
 const {createHash}=require('node:crypto');
-const {ContractError,validateRequest}=require('./core.cjs');
+const {ContractError,validateRequest,validateResult}=require('./core.cjs');
 const fail=(code,message)=>{throw new ContractError(code,message);};
 const stable=value=>value===null||typeof value!=='object'?JSON.stringify(value):Array.isArray(value)?'['+value.map(stable).join(',')+']':'{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+stable(value[key])).join(',')+'}';
 const immutable=value=>{if(value&&typeof value==='object'){Object.freeze(value);for(const child of Object.values(value))immutable(child);}return value;};
@@ -101,6 +101,43 @@ function createControlStore(database,registry){
     await tx.query("INSERT INTO ytv_ai_test_v1.runs(run_id,request_id,task_type,idempotency_key,request_fingerprint,revision,snapshot,agent_id,status) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,'running')",[runId,requestId,request.taskType,request.idempotencyKey??null,fingerprint,cfg.revision,JSON.stringify(snapshot),agentId??null]);
     await tx.query("INSERT INTO ytv_ai_test_v1.reservations(run_id,budget_id,amount_micros,state) VALUES($1,$2,$3,'reserved')",[runId,budgetId,request.budget.maxCostMicros]);
     return {runId,snapshot,status:'running',replay:false};
+   });
+  },
+  // A retained, settled result may be read without admitting or dispatching a
+  // task. Absence and uncertainty never authorize a replacement execution.
+  async retrieve(rawRequest,{runId,budgetId,agentId,principalId,executor='ai'}={}){
+   requireRole('executor');
+   if(executor!=='ai')fail('capability','Coding continuation requires its existing supervisor');
+   const request=validateRequest(rawRequest);
+   if(typeof runId!=='string'||!runId||typeof budgetId!=='string'||!budgetId
+     ||typeof principalId!=='string'||!principalId.trim())fail('permissions','Authenticated result scope required');
+   if(agentId!==undefined&&(typeof agentId!=='string'||!agentId.trim()))fail('invalid_format','Invalid agent identity');
+   const {requestId,...operation}=request;
+   const fingerprint=createHash('sha256').update(stable({operation,budgetId,agentId:agentId??null,principalId,executor})).digest('hex');
+   return database.transaction(async tx=>{
+    const matches=await tx.query(`SELECT r.run_id,r.request_fingerprint,r.snapshot,r.status,r.usage,
+      o.payload,q.state,q.budget_id,q.actual_micros,b.currency
+     FROM ytv_ai_test_v1.runs r
+     LEFT JOIN ytv_ai_test_v1.results o ON o.run_id=r.run_id
+     LEFT JOIN ytv_ai_test_v1.reservations q ON q.run_id=r.run_id
+     LEFT JOIN ytv_ai_test_v1.budgets b ON b.budget_id=q.budget_id
+     WHERE r.request_id=$1 OR (r.task_type=$2 AND r.idempotency_key=$3)`,[requestId,request.taskType,request.idempotencyKey??null]);
+    if(matches.length>1)fail('invalid_format','Request and idempotency identities name different executions');
+    const saved=matches[0];if(!saved)return null;
+    if(saved.run_id!==runId||saved.request_fingerprint!==fingerprint||saved.budget_id!==budgetId)fail('invalid_format','Result differs from authenticated operation');
+    if(!['completed','incomplete'].includes(saved.status)||saved.state!=='settled'||!saved.payload)return null;
+    const result=saved.payload;
+    const normalized=validateResult({status:result.status,text:result.text,data:result.data,sources:result.sources,
+     usage:result.usage,error:result.error?{code:result.error.code,message:result.error.message}:null},request,saved.snapshot,runId);
+    if(result.runId!==runId||result.requestId!==requestId||result.instructionsVersion!==request.instructionsVersion
+      ||result.status!==saved.status||stable(result.usage)!==stable(saved.usage)
+      ||!Number.isSafeInteger(result.usage?.costMicros)||result.usage.costMicros<0
+      ||saved.actual_micros===null||saved.actual_micros===undefined
+      ||Number(saved.actual_micros)!==result.usage.costMicros||result.usage.currency!==saved.currency
+      ||!Number.isSafeInteger(result.usage?.outputTokens)||result.usage.outputTokens<0
+      ||stable(normalized)!==stable(result))fail('uncertain','Retained result unavailable');
+    return {runId,snapshot:immutable(saved.snapshot),status:saved.status,replay:true,
+     result:immutable(result),accounting:{state:'settled',replay:true}};
    });
   },
   async claimDispatch(rawRequest,{runId,budgetId,agentId,principalId,executor='ai',dispatchDigest}={}){

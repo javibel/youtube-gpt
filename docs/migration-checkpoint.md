@@ -434,3 +434,18 @@ Confirmed history and completion commit atomically with the admission date. Unkn
 ## Selective bulk generation
 
 The bulk page can explicitly generate only failed item positions, preserving every acknowledged neighbour and the original order even when topics repeat. It validates the complete partial response and counts before merging, shares competing clicks, and hides/discards old results and callbacks on account, language, template, input or option changes. Each selective action is a fresh keyless generation using existing durable admission; it may consume another credit and retains all older uncertain reservations. The page explains that cost before the action. HTTP/JSON failure or timeout keeps confirmed neighbours and asks the user to consult history; it never automatically replays the whole batch or infers authority from pending data. Selection and results are in browser memory only, with no recovery after reload, lost whole-response acknowledgement or deletion of history. Keyed bulk HTTP replay remains unfinished. Copy/CSV include only confirmed items in their original positions.
+## Read-only retained task results
+
+The task runtime now has a separate `retrieve` method. It reads only a retained
+AI result with settled accounting and known output usage, authenticated against
+the original principal, task, input, budget and run. It neither admits nor
+dispatches work, changes accounting, consults the current provider selection,
+claims a pending reservation, nor falls back to `create`. An absent, running,
+uncertain or unsettled operation returns no recoverable result. Partial text
+still requires the existing explicit exposure policy. Coding recovery continues
+to require its supervisor and is excluded from this API.
+
+This is a prerequisite for keyed text/Storyboard quota admission. Those routes
+still use their previous generation path; integrating admission and retry without
+new inference remains pending. The isolated contracts and synthetic ledger do
+not establish operational provenance or acceptance.

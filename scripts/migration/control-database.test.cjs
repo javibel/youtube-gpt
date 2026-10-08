@@ -403,6 +403,7 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
  await test('Generic generation real ledger and history recover failed write, concurrent inserts and lost response with one inference/settlement; web and extension owners remain separate',async()=>{
   await require('./generic-generate-control.cjs')({config,prefix,createRegistry,createControlStore,createTaskRunner,database,cfg,budget,stats});
  });
+ await require('./result-retrieval-database.cjs')({prefix,createRegistry,createControlStore,createTaskRunner,database,cfg,budget,stats,test});
 })().catch(error=>{results.push({name:'setup or orchestration',status:'FAIL',error:error.message});}).finally(async()=>{
  try{if(migrated){
   const cleanup=await pool.connect();
