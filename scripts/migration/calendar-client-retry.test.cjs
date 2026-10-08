@@ -9,8 +9,8 @@ const compiled = ts.transpileModule(source, { compilerOptions: {
 } }).outputText;
 // Render the actual component with deterministic hook state and bounded synthetic HTTP.
 function harness(storage = new Map()) {
- const cells = [], effects = [], requests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0;
- const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }) };
+ const cells = [], effects = [], requests = [], listRequests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0;
+ const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }), list: async () => ({ ok: true, json: async () => ({ entries: [] }) }) };
  const changed = (a, b) => !a || a.length !== b.length || a.some((value, i) => !Object.is(value, b[i]));
  const hooks = {
   useState(initial) { const i = index++; if (!cells[i]) cells[i] = { value: typeof initial === 'function' ? initial() : initial };
@@ -38,7 +38,7 @@ function harness(storage = new Map()) {
    setItem: (k, v) => { if (state.storageDenied) throw Error('Storage denied'); storage.set(k, v); }, removeItem: k => storage.delete(k) },
   crypto: { randomUUID: () => state.key ?? `calendar-fixture-${++number}` },
   fetch: async (url, init) => {
-   if (url.startsWith('/api/calendar?')) return { ok: true, json: async () => ({ entries: [] }) };
+   if (url.startsWith('/api/calendar?')) { listRequests.push({ url, ...init, owner: state.user }); return state.list(url, init); }
    assert.equal(url, '/api/calendar/suggest'); assert.equal(init.method, 'POST');
    requests.push({ ...init, owner: state.user });
    return state.send(init);
@@ -57,7 +57,8 @@ function harness(storage = new Map()) {
  const text = value => Array.isArray(value) ? value.map(text).join(' ') : value && typeof value === 'object' ? text(value.props?.children) : String(value ?? '');
  const discardHandler = () => nodes(render()).find(n => n.props.onClick?.name === 'discardSuggestions')?.props.onClick;
  const discard = () => discardHandler()?.();
- return { state, requests, storage, timers, advance: ms => { for (const [id, timer] of [...timers]) if (timer.ms <= ms) { timers.delete(id); timer.fn(); } },
+ return { state, requests, listRequests, storage, timers, nodes: () => nodes(render()), button: name => nodes(render()).find(n => n.props.onClick?.name === name)?.props.onClick,
+  advance: ms => { for (const [id, timer] of [...timers]) if (timer.ms <= ms) { timers.delete(id); timer.fn(); } },
   click, handler, discard, discardHandler, render, unmount: () => cells.forEach(cell => cell?.cleanup?.()),
   alert: () => nodes(render()).find(n => n.props?.role === 'alert'), text: () => text(render()) };
 }
@@ -214,6 +215,57 @@ if (require.main === module) (async () => {
   first.state.send = () => new Promise(resolve => { release = resolve; }); const pending = first.click(); await flush();
   const slot = [...first.storage.keys()][0]; first.storage.set(slot, JSON.stringify({ version: 1, key: 'calendar-new-pending', lang: 'es' }));
   release(await success()); await pending; assert.equal(JSON.parse(first.storage.get(slot)).key, 'calendar-new-pending');
+ });
+ await test('late entries from a previous account never become the current calendar', async () => {
+  const h = harness(); let release; h.state.list = () => new Promise(resolve => { release = resolve; }); h.render(); await flush();
+  const old = h.listRequests[0]; h.state.user = 'other'; h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); h.render(); await flush();
+  release({ ok: true, json: async () => ({ entries: [{ id: 'private-old', title: 'Private old account title', date: new URL('https://example.invalid' + old.url).searchParams.get('from'), description: null, status: 'idea', color: null }] }) });
+  await flush(); assert.doesNotMatch(h.text(), /Private old account title/); assert.equal(h.listRequests.length, 2);
+ });
+ for (const [label, change] of [['email', h => { h.state.email = 'another@example.invalid'; }], ['language', h => { h.state.lang = 'en'; }],
+  ['logout', h => { h.state.auth = 'unauthenticated'; }], ['authentication loading', h => { h.state.auth = 'loading'; }]])
+  await test('calendar ' + label + ' closes the old read even when fetch ignores abort', async () => {
+   const h = harness(); let release; h.state.list = () => new Promise(resolve => { release = resolve; }); h.render(); await flush();
+   const old = h.listRequests[0]; change(h); h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); h.render(); await flush();
+   assert.equal(old.signal.aborted, true); release({ ok: true, json: async () => ({ entries: [] }) }); await flush();
+   assert.equal(h.timers.size, 0); assert.equal(h.listRequests.length, h.state.auth === 'authenticated' ? 2 : 1);
+  });
+ await test('new month read wins over a late failed read of the previous month', async () => {
+  const h = harness(); let release; h.state.list = () => new Promise(resolve => { release = resolve; }); h.render(); await flush();
+  const old = h.listRequests[0]; h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); h.button('nextMonth')(); h.render(); await flush();
+  assert.equal(h.listRequests.length, 2); assert.notEqual(old.url, h.listRequests[1].url); assert.equal(old.signal.aborted, true);
+  release({ ok: false }); await flush(); assert.equal(h.alert(), undefined);
+ });
+ for (const payload of [{}, { entries: {} }, { entries: [null] }, { entries: Array(201).fill(null) }])
+  await test('invalid calendar response ' + JSON.stringify(payload).slice(0, 45) + ' exposes retry instead of an empty month', async () => {
+   const h = harness(); h.state.list = async () => ({ ok: true, json: async () => payload }); h.render(); await flush();
+   assert.ok(h.alert()); assert.match(h.text(), /Volver a consultar calendario/);
+   const retry = h.nodes().find(n => n.type === 'button' && String(n.props.children).includes('Volver a consultar calendario')).props.onClick;
+   h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); await retry(); await flush();
+   assert.equal(h.alert(), undefined); assert.equal(h.listRequests.length, 2); assert.equal(h.listRequests[1].cache, 'no-store'); assert.equal(h.requests.length, 0);
+  });
+ await test('invalid entry fields, duplicate identities and entries outside the requested month are not displayed', async () => {
+  for (const variant of ['status', 'description', 'duplicate', 'outside']) {
+   const h = harness(); h.state.list = async url => { const date = new URL('https://example.invalid' + url).searchParams.get('from');
+    const item = { id: 'entry', title: 'Unvalidated title', date, description: null, color: null, status: 'idea' };
+    if (variant === 'status') item.status = 'invalid'; if (variant === 'description') item.description = 7;
+    if (variant === 'outside') item.date = '1900-01-01';
+    return { ok: true, json: async () => ({ entries: variant === 'duplicate' ? [item, item] : [item] }) }; };
+   h.render(); await flush(); assert.ok(h.alert()); assert.doesNotMatch(h.text(), /Unvalidated title/);
+  }
+ });
+ for (const stage of ['fetch', 'json']) await test('calendar ' + stage + ' ignoring abort finishes waiting at30s and can be read again', async () => {
+  const h = harness(); let release; const held = new Promise(resolve => { release = resolve; });
+  h.state.list = stage === 'fetch' ? () => held : async () => ({ ok: true, json: () => held }); h.render(); await flush();
+  h.advance(30000); await flush(); assert.ok(h.alert()); assert.equal(h.listRequests[0].signal.aborted, true); assert.equal(h.timers.size, 0);
+  const retry = h.nodes().find(n => n.type === 'button' && String(n.props.children).includes('Volver a consultar calendario')).props.onClick;
+  h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); const first = retry(), duplicate = retry();
+  await Promise.all([first, duplicate]); assert.equal(h.listRequests.length, 2); assert.equal(h.alert(), undefined);
+  release(stage === 'fetch' ? { ok: false } : {}); await flush(); assert.equal(h.alert(), undefined);
+ });
+ await test('calendar unmount aborts and closes its original read without creating another request', async () => {
+  const h = harness(); h.state.list = () => new Promise(() => {}); h.render(); await flush(); h.unmount(); await flush();
+  assert.equal(h.listRequests[0].signal.aborted, true); assert.equal(h.timers.size, 0); assert.equal(h.listRequests.length, 1);
  });
  console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or calendar writes', results }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });

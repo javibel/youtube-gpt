@@ -123,24 +123,58 @@ export default function CalendarPage() {
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
+  const readScope = useMemo(() => ({ active: true, busy: false, controller: null as AbortController | null }),
+    [session?.user?.id, session?.user?.email, status, lang, year, month]);
+  const currentReadScope = useRef(readScope);
+  currentReadScope.current = readScope;
+  const confirmedReadScope = useRef<typeof readScope | null>(null);
+  useEffect(() => {
+    readScope.active = true;
+    setEntries([]); setError(''); setLoading(false);
+    return () => { readScope.active = false; readScope.controller?.abort(); };
+  }, [readScope]);
+
   const fetchEntries = useCallback(async () => {
+    if (status !== 'authenticated' || !session?.user?.id || !readScope.active || readScope.busy
+      || currentReadScope.current !== readScope) return;
+    readScope.busy = true;
+    const controller = new AbortController(); readScope.controller = controller;
+    const current = () => readScope.active && currentReadScope.current === readScope;
+    let interrupt: (error: Error) => void = () => {};
+    const interrupted = new Promise<never>((_, reject) => { interrupt = reject; });
+    void interrupted.catch(() => {});
+    const abort = () => interrupt(new Error('Calendar read unconfirmed'));
+    controller.signal.addEventListener('abort', abort, { once: true });
+    const deadline = setTimeout(() => controller.abort(), 30_000);
     setLoading(true);
+    setError('');
     const mm = String(month + 1).padStart(2, '0');
     const from = `${year}-${mm}-01`;
     const lastDay = new Date(year, month + 1, 0).getDate();
     const to = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
     try {
-      const res = await fetch(`/api/calendar?from=${from}&to=${to}`);
-      const json = await res.json();
-      if (res.ok) setEntries(json.entries || []);
-      else if (json.error === 'pro_required') setError(t('Plan Pro requerido.', 'Pro plan required.'));
-      else setError(json.error || 'Error');
+      const res = await Promise.race([fetch(`/api/calendar?from=${from}&to=${to}`, {
+        cache: 'no-store', signal: controller.signal,
+      }), interrupted]);
+      if (!res.ok) throw new Error('Calendar unavailable');
+      const json = await Promise.race([res.json(), interrupted]);
+      if (controller.signal.aborted || !Array.isArray(json.entries) || json.entries.length > 200
+        || json.entries.some((e: Entry) => !e || typeof e.id !== 'string' || !e.id
+          || typeof e.title !== 'string' || !e.title.trim() || e.title.length > 200
+          || typeof e.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(e.date) || e.date < from || e.date > to
+          || !Object.hasOwn(STATUS_LABELS, e.status) || (e.description !== null && typeof e.description !== 'string')
+          || (e.color !== null && typeof e.color !== 'string'))
+        || new Set(json.entries.map((e: Entry) => e.id)).size !== json.entries.length) throw new Error('Invalid calendar');
+      if (current()) { confirmedReadScope.current = readScope; setEntries(json.entries); }
     } catch {
-      setError(t('Error de conexión', 'Connection error'));
+      if (current()) setError(t('No se pudo confirmar el calendario. Puedes volver a consultarlo.', 'The calendar could not be confirmed. You can retrieve it again.'));
     } finally {
-      setLoading(false);
+      readScope.busy = false;
+      clearTimeout(deadline); controller.signal.removeEventListener('abort', abort);
+      if (readScope.controller === controller) readScope.controller = null;
+      if (current()) setLoading(false);
     }
-  }, [year, month]);
+  }, [readScope, year, month, status, session?.user?.id, lang]);
 
   useEffect(() => {
     if (status === 'authenticated') fetchEntries();
@@ -500,18 +534,21 @@ export default function CalendarPage() {
       )}
 
         {error && (
-          <div className="text-center py-8">
+          <div role="alert" className="text-center py-8">
             <p className="text-red-400 font-mono-jb text-sm">{error}</p>
+            <button onClick={fetchEntries} disabled={loading} className="mt-3 underline disabled:opacity-50">
+              {t('Volver a consultar calendario', 'Retrieve calendar again')}
+            </button>
           </div>
         )}
 
-        {loading && !entries.length && (
+        {(loading || (!error && confirmedReadScope.current !== readScope)) && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           </div>
         )}
 
-        {!error && (
+        {!error && !loading && confirmedReadScope.current === readScope && (
           <>
             {/* Day headers */}
             <div className="grid grid-cols-7 gap-1 mb-1">
