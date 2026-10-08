@@ -217,7 +217,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'AI generation unavailable' }, { status: code === 'uncertain' ? 500 : 502 });
     }
   };
-  if (operationKey !== null) return execute();
+  if (operationKey !== null) {
+    const response = await execute();
+    if (response instanceof Response) return response;
+    return NextResponse.json({ error: 'Storyboard result unavailable' }, { status: 503 });
+  }
   const confirmed = await unkeyedStoryboardGeneration(userId, request.signal, execute);
   if (confirmed.ok) {
     const result = await confirmed.json();
