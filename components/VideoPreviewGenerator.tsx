@@ -909,6 +909,8 @@ interface Props {
   onLimitReached?: (reason: 'video_tips_capped' | 'limit') => void;
 }
 
+type StoryboardSelection = { version: 1; key: string; body: string; generationId: string; scriptTitle: string };
+
 const TRANSITION_DURATION = 0.55; // seconds
 
 export default function VideoPreviewGenerator({
@@ -917,7 +919,7 @@ export default function VideoPreviewGenerator({
   const { data: session, status: sessionStatus } = useSession();
   const interaction = useMemo(() => ({
     run: createRetryOperation(() => crypto.randomUUID()), storyboard: null as string | null,
-    attempted: false, busy: false, active: true, cancel: null as (() => void) | null, videoUrl: null as string | null,
+    selection: null as StoryboardSelection | null, ready: false, attempted: false, busy: false, active: true, cancel: null as (() => void) | null, videoUrl: null as string | null,
     upload: null as { blob: Blob; key: string; saved: boolean; flight: Promise<void> | null } | null,
   }), [session?.user?.id, session?.user?.email, sessionStatus, scriptContent, generationId, scriptTitle, lang]);
   const activeInteraction = useRef<typeof interaction | null>(interaction);
@@ -929,20 +931,89 @@ export default function VideoPreviewGenerator({
   const videoRef    = useRef<HTMLVideoElement>(null);
   const hideTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [status, setStatus]     = useState<'idle'|'adapting'|'generating'|'done'|'error'>('idle');
-  const [progress, setProgress] = useState(0);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
+  const [storedStatus, setStatus]     = useState<'idle'|'adapting'|'generating'|'done'|'error'>('idle');
+  const [storedProgress, setProgress] = useState(0);
+  const [storedVideoUrl, setVideoUrl] = useState<string | null>(null);
+  const [storedErrorMsg, setErrorMsg] = useState('');
+  const [storedSaveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
   const [showControls, setShowControls] = useState(false);
   const [isPlaying, setIsPlaying]       = useState(true);
 
+  const [viewScope, setViewScope] = useState(interaction);
+  const [storageWarning, setStorageWarning] = useState(false);
+  const viewCurrent = viewScope === interaction;
+  const status = viewCurrent ? storedStatus : 'idle';
+  const progress = viewCurrent ? storedProgress : 0;
+  const videoUrl = viewCurrent ? storedVideoUrl : null;
+  const errorMsg = viewCurrent ? storedErrorMsg : '';
+  const saveStatus = viewCurrent ? storedSaveStatus : 'idle';
+  const pendingSlot = 'ytv:storyboard:pending:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+  // Untrusted last selection in this tab. It never grants admission or recovery
+  // authority: restoration can only request the original retained server result.
+  function readPending(): StoryboardSelection | null {
+    if (sessionStatus !== 'authenticated' || !session?.user?.id || !session.user.email) return null;
+    try {
+      const raw = sessionStorage.getItem(pendingSlot);
+      if (!raw || raw.length > 65_536) return null;
+      const value = JSON.parse(raw);
+      if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1
+        || Object.keys(value).sort().join(',') !== 'body,generationId,key,scriptTitle,version'
+        || typeof value.key !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(value.key)
+        || typeof value.body !== 'string' || value.body.length > 64_000
+        || typeof value.generationId !== 'string' || value.generationId.length > 256 || value.generationId !== generationId
+        || typeof value.scriptTitle !== 'string' || value.scriptTitle.length > 512 || value.scriptTitle !== scriptTitle) return null;
+      const input = JSON.parse(value.body);
+      if (!input || typeof input !== 'object' || Array.isArray(input)
+        || Object.keys(input).sort().join(',') !== 'lang,script' || typeof input.script !== 'string' || !input.script.trim()
+        || input.script !== scriptContent || input.lang !== lang || !['es', 'en'].includes(input.lang)
+        || JSON.stringify({ script: input.script, lang: input.lang }) !== value.body) return null;
+      return value;
+    } catch { throw new Error('Storyboard selection unavailable'); }
+  }
+  function storePending(selection: StoryboardSelection) {
+    try {
+      if (sessionStatus !== 'authenticated' || !session?.user?.id || !session.user.email
+        || selection.body.length > 64_000 || selection.generationId.length > 256 || selection.scriptTitle.length > 512) return false;
+      const value = JSON.stringify(selection);
+      if (value.length > 65_536) return false;
+      sessionStorage.setItem(pendingSlot, value);
+      return sessionStorage.getItem(pendingSlot) === value;
+    } catch { return false; }
+  }
+  function clearPending(selection: StoryboardSelection | null) {
+    try {
+      const retained = readPending();
+      if (selection && retained?.key === selection.key && retained.body === selection.body
+        && retained.generationId === selection.generationId && retained.scriptTitle === selection.scriptTitle) {
+        sessionStorage.removeItem(pendingSlot);
+        return sessionStorage.getItem(pendingSlot) === null;
+      }
+      return true; // Preserve another selection, including one in another modal.
+    } catch { return false; }
+  }
 
   useEffect(() => {
     interaction.active = true;
     activeInteraction.current = interaction;
-    setStatus('idle'); setVideoUrl(null); setProgress(0); setErrorMsg(''); setSaveStatus('idle');
+    let unreadableSelection = false;
+    if (!interaction.attempted && interaction.storyboard === null) {
+      let retained: StoryboardSelection | null = null;
+      try { retained = readPending(); } catch { unreadableSelection = true; }
+      if (retained) {
+        interaction.selection = retained;
+        interaction.attempted = true;
+        interaction.run = createRetryOperation(() => retained.key);
+      }
+    }
+    interaction.ready = true;
+    setViewScope(interaction);
+    setStorageWarning(unreadableSelection);
+    setStatus(interaction.selection && interaction.storyboard === null ? 'error' : 'idle');
+    setVideoUrl(null); setProgress(0); setSaveStatus('idle');
+    setErrorMsg(interaction.selection && interaction.storyboard === null
+      ? t('Hay un storyboard pendiente en esta pestaña. Reintenta consultar el resultado original; cerrar la ventana no cancela el trabajo del servidor.',
+        'This tab has a pending storyboard. Retry retrieving the original result; closing the window does not cancel server work.') : '');
     return () => {
       interaction.active = false;
       interaction.cancel?.();
@@ -983,7 +1054,7 @@ export default function VideoPreviewGenerator({
 
   const generate = useCallback(async () => {
     const current = () => activeInteraction.current === interaction && interaction.active;
-    if (!current() || interaction.busy) return;
+    if (!current() || !interaction.ready || interaction.busy) return;
     if (sessionStatus !== 'authenticated' || !session?.user?.id) {
       setStatus('error'); setErrorMsg(t('Inicia sesión para generar el storyboard.', 'Sign in to generate the storyboard.'));
       return;
@@ -1018,6 +1089,11 @@ export default function VideoPreviewGenerator({
         const retainedOnly = interaction.attempted;
         interaction.attempted = true;
         const storyboard = await interaction.run({ script: scriptContent, lang }, async (body, key) => {
+          if (!current()) throw new StoryboardRequestError('Storyboard scope changed');
+          if (!retainedOnly) {
+            interaction.selection = { version: 1, key, body, generationId, scriptTitle };
+            setStorageWarning(!storePending(interaction.selection));
+          }
           const controller = new AbortController();
           const cancel = () => controller.abort();
           interaction.cancel = cancel;
@@ -1063,6 +1139,8 @@ export default function VideoPreviewGenerator({
         });
         if (!current()) return;
         interaction.storyboard = storyboard;
+        setStorageWarning(!clearPending(interaction.selection));
+        interaction.selection = null;
         onGenerated?.();
       }
       const scriptForSlides = interaction.storyboard;
@@ -1261,7 +1339,7 @@ export default function VideoPreviewGenerator({
   }, [interaction, sessionStatus, session?.user?.id, scriptContent, generationId, scriptTitle, lang, onGenerated, saveToAccount, onLimitReached]);
 
   const handleDownload = () => {
-    if (!videoUrl) return;
+    if (activeInteraction.current !== interaction || !interaction.active || !videoUrl) return;
     const a = document.createElement('a');
     a.href = videoUrl;
     a.download = `ytubviral-preview-${generationId.slice(0, 8)}.webm`;
@@ -1269,13 +1347,14 @@ export default function VideoPreviewGenerator({
   };
 
   const handleClose = () => {
+    if (activeInteraction.current !== interaction || !interaction.active) return;
     interaction.active = false;
     interaction.cancel?.();
     onClose();
   };
 
   const reset = () => {
-    if (interaction.busy || interaction.upload?.flight) return;
+    if (activeInteraction.current !== interaction || !interaction.active || interaction.busy || interaction.upload?.flight) return;
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     interaction.videoUrl = null;
     interaction.upload = null;
@@ -1508,10 +1587,17 @@ export default function VideoPreviewGenerator({
             </p>
           )}
 
+          {viewCurrent && storageWarning && (
+            <p className="font-mono-jb text-[13px] text-amber-300">
+              {t('No se pudo leer, conservar o retirar la selección de esta pestaña. Mantén abierta esta ventana para reintentar; una selección antigua puede reaparecer al recargar y solo consultará el resultado original.',
+                'This tab selection could not be read, stored or removed. Keep this window open to retry; an older selection may reappear after reload and will only retrieve the original result.')}
+            </p>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3">
             {status === 'idle' && (
-              <button onClick={generate} className="btn-offset flex-1 py-3 text-[13px] font-display gap-2">
+              <button onClick={generate} disabled={!interaction.ready} className="btn-offset flex-1 py-3 text-[13px] font-display gap-2">
                 🎬 {t('Generar storyboard', 'Generate storyboard')}
               </button>
             )}
@@ -1538,7 +1624,7 @@ export default function VideoPreviewGenerator({
               </>
             )}
             {status === 'error' && (
-              <button onClick={generate} className="btn-offset btn-offset-white flex-1 py-3 text-[13px] font-display">
+              <button onClick={generate} disabled={!interaction.ready} className="btn-offset btn-offset-white flex-1 py-3 text-[13px] font-display">
                 {t('Reintentar storyboard', 'Retry storyboard')}
               </button>
             )}
