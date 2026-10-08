@@ -117,6 +117,8 @@ export default function PredictorPage() {
     run: createRetryOperation(() => crypto.randomUUID()), key: null as string | null,
     body: null as string | null, generation: 0, active: true, busy: false, controller: null as AbortController | null,
   }), [session?.user?.id, session?.user?.email, status, lang]);
+  const [draftScope, setDraftScope] = useState(predictionOperation);
+  const draftCurrent = draftScope === predictionOperation;
   const currentPredictionOperation = useRef(predictionOperation);
   currentPredictionOperation.current = predictionOperation;
   const input = { title: title.trim(), description: description.trim(), tags: tags.trim(), lang };
@@ -124,6 +126,7 @@ export default function PredictorPage() {
   currentInput.current = JSON.stringify(input);
   useEffect(() => {
     predictionOperation.active = true;
+    setDraftScope(predictionOperation);
     setPrediction(null); setBaseline(null); setError(''); setLoading(false);
     setTitle(''); setDescription(''); setTags('');
     setStorageWarning(false);
@@ -154,7 +157,7 @@ export default function PredictorPage() {
 
   async function predict() {
     const operation = predictionOperation, submittedInput = JSON.stringify(input);
-    if (status !== 'authenticated' || !session?.user?.id || !title.trim() || !operation.active || operation.busy
+    if (!draftCurrent || status !== 'authenticated' || !session?.user?.id || !title.trim() || !operation.active || operation.busy
       || currentPredictionOperation.current !== operation || currentInput.current !== submittedInput || operation.generation !== interaction) return;
     if (operation.key && operation.body !== submittedInput) { setError(pendingMessage); return; }
     const stillCurrent = () => operation.active && currentPredictionOperation.current === operation && currentInput.current === submittedInput;
@@ -278,14 +281,14 @@ export default function PredictorPage() {
                 {t('Título del vídeo', 'Video title')} *
               </label>
               <input
-                value={title}
+                value={draftCurrent ? title : ''}
                 onChange={e => setTitle(e.target.value)}
                 placeholder={t('Ej: 10 Trucos de Edición que Nadie te Enseña', 'Ex: 10 Editing Tricks Nobody Teaches You')}
                 className="yv-input text-sm font-mono-jb text-white placeholder-zinc-500"
                 style={{ background: 'rgba(255,255,255,0.04)' }}
                 maxLength={200}
               />
-              <div className="text-right font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{title.length}/200</div>
+              <div className="text-right font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-4)' }}>{draftCurrent ? title.length : 0}/200</div>
             </div>
 
             <div>
@@ -293,7 +296,7 @@ export default function PredictorPage() {
                 {t('Descripción (opcional)', 'Description (optional)')}
               </label>
               <textarea
-                value={description}
+                value={draftCurrent ? description : ''}
                 onChange={e => setDescription(e.target.value)}
                 placeholder={t('Primeras líneas de la descripción...', 'First lines of the description...')}
                 rows={3}
@@ -307,7 +310,7 @@ export default function PredictorPage() {
                 {t('Tags (separados por coma)', 'Tags (comma separated)')}
               </label>
               <input
-                value={tags}
+                value={draftCurrent ? tags : ''}
                 onChange={e => setTags(e.target.value)}
                 placeholder={t('edición, tutorial, davinci resolve, premiere', 'editing, tutorial, davinci resolve, premiere')}
                 className="yv-input text-sm font-mono-jb text-white placeholder-zinc-500"
@@ -317,7 +320,7 @@ export default function PredictorPage() {
 
             <button
               onClick={predict}
-              disabled={loading || !title.trim()}
+              disabled={!draftCurrent || loading || !title.trim()}
               className="btn-offset w-full py-3 text-sm font-display rounded-lg disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -334,16 +337,16 @@ export default function PredictorPage() {
             </button>
           </div>
 
-          {storageWarning && (
+          {draftCurrent && storageWarning && (
             <p role="status" className="font-mono-jb text-[13px] mt-3 text-center">
               {t('No se pudo actualizar la solicitud guardada. Tras recargar puede faltar o reaparecer una anterior. Esta interacción sigue disponible en memoria.',
                 'The saved request could not be updated. After reloading it may be missing or an older one may reappear. This interaction remains available in memory.')}
             </p>
           )}
-          {error && (
+          {draftCurrent && error && (
             <div role="alert" className="text-red-400 font-mono-jb text-[13px] mt-3 text-center">
               <p>{error}</p>
-              <button onClick={predict} disabled={loading || !title.trim()} className="mt-2 underline disabled:opacity-50">
+              <button onClick={predict} disabled={!draftCurrent || loading || !title.trim()} className="mt-2 underline disabled:opacity-50">
                 {t('Reintentar predicción', 'Retry prediction')}
               </button>
               <button onClick={discardPrediction} disabled={loading} className="mt-2 ml-3 underline disabled:opacity-50">
@@ -354,7 +357,7 @@ export default function PredictorPage() {
         </div>
 
         {/* Results */}
-        {prediction && baseline && (
+        {draftCurrent && prediction && baseline && (
           <div className="space-y-6">
             {/* View estimate */}
             <div className="yv-card p-6">

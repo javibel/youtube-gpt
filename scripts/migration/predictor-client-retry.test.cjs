@@ -52,6 +52,7 @@ function harness(options={}) {
  const click = () => handler()();
  const text = value => Array.isArray(value) ? value.map(text).join(' ') : value && typeof value === 'object' ? text(value.props?.children) : String(value ?? '');
  return { state, requests, click, handler, render,timers,storage,
+  beforeEffects(){index=0;dirty=false;const tree=entry.exports.default(),all=nodes(tree);return{fields:all.filter(n=>n.type==='input'||n.type==='textarea').map(n=>n.props.value),text:text(tree),predict:all.find(n=>n.type==='button'&&n.props.onClick?.name==='predict')};},
   discard:()=>nodes(render()).find(n=>n.props.onClick?.name==='discardPrediction').props.onClick(),
   discardHandler:()=>nodes(render()).find(n=>n.props.onClick?.name==='discardPrediction').props.onClick,
   unmount:()=>cells.forEach(cell=>cell?.cleanup?.()),
@@ -69,6 +70,11 @@ function create() { const h=harness();h.setField('title',' Synthetic title ');re
 const results=[];
 async function test(name,run){await run();results.push({name,status:'PASS'});}
 async function main(){
+ for(const changed of [{user:'fixture-two'},{email:'another@example.invalid'},{lang:'en'}])await test('scope transition hides old draft/results before effects and blocks a pre-effect submission '+JSON.stringify(changed),async()=>{
+  const h=create();h.setField('title','Private old account title');h.setField('description','Private old account draft');await h.click();assert.match(h.text(),/Synthetic advice/);
+  Object.assign(h.state,changed);const frame=h.beforeEffects();assert.deepEqual(frame.fields,['','','']);assert.doesNotMatch(frame.text,/Synthetic advice/);
+  assert.equal(frame.predict.props.disabled,true);const before=h.requests.length;await frame.predict.props.onClick();assert.equal(h.requests.length,before);h.render();h.unmount();
+ });
  await test('reload restores only pending exact input and selection, without automatic HTTP or fresh admission',async()=>{
   const h=create();h.setField('description',' Original description ');h.setField('tags',' original, tags ');h.state.send=async()=>{throw Error('Lost');};await h.click();
   assert.equal(h.storage.size,1);h.unmount();const reload=harness({storage:h.storage});reload.render();assert.equal(reload.requests.length,0);assert.ok(reload.alert());
