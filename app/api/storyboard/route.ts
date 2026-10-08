@@ -5,7 +5,7 @@ import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { createHash } from 'node:crypto';
 import { readGenerationQuota } from '@/lib/generation-quota';
-import { unkeyedStoryboardGeneration, keyedStoryboardGeneration, type TextGenerationResult } from '@/lib/text-generation-attempt';
+import { unkeyedStoryboardGeneration, keyedStoryboardGeneration, retrieveKeyedStoryboardGeneration, type TextGenerationResult } from '@/lib/text-generation-attempt';
 
 // Free incluye Video Tips desde el 26/08 (gancho de retención — el 69% de lo
 // generado en free eran titulos, producto de un solo uso; ver
@@ -62,6 +62,10 @@ export async function POST(request: Request) {
   if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) {
     return NextResponse.json({ error: 'Invalid operation key' }, { status: 400 });
   }
+  const recovery = request.headers.get('X-Storyboard-Recovery');
+  if (recovery !== null && (recovery !== 'retained-only-v1' || operationKey === null)) {
+    return NextResponse.json({ error: 'Invalid recovery mode' }, { status: 400 });
+  }
   let script: string, lang: string;
   try {
     const body = await request.json();
@@ -96,7 +100,7 @@ export async function POST(request: Request) {
     if (!saved.output.trim()) {
       return NextResponse.json({ error: 'Saved generation unavailable' }, { status: 503 });
     }
-    return NextResponse.json({ storyboard: saved.output });
+    return NextResponse.json({ storyboard: saved.output }, { headers: { 'Cache-Control': 'no-store' } });
   }
   try {
     const saved = await savedResponse();
@@ -212,7 +216,9 @@ export async function POST(request: Request) {
   };
   const confirmed = operationKey === null
     ? await unkeyedStoryboardGeneration(userId, request.signal, () => execute())
-    : await keyedStoryboardGeneration(userId, generationId!, request.signal, preflight, () => execute(), () => execute(true));
+    : recovery !== null
+      ? await retrieveKeyedStoryboardGeneration(userId, generationId!, request.signal, () => execute(true))
+      : await keyedStoryboardGeneration(userId, generationId!, request.signal, preflight, () => execute(), () => execute(true));
   if (confirmed.ok) {
     const result = await confirmed.json();
     return NextResponse.json({ storyboard: result.content }, { headers: { 'Cache-Control': 'no-store' } });

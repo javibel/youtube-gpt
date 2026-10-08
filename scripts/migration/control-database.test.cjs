@@ -448,6 +448,13 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
    }})),opts);if(admitted&&loseAdmission){loseAdmission=false;throw Error('Synthetic committed admission ack lost');}if(completed)throw Error('Synthetic committed completion ack lost');return value;};const v=target[key];return typeof v==='function'?v.bind(target):v;}});
    const paid=new Set(),planMock={getUserPlan:async()=>paid.has(identity)?'pro':'free',isPaid:plan=>plan==='pro',getLimits:plan=>({generationsPerMonth:plan==='pro'?200:10})};
    const route=load('app/api/storyboard/route.ts',{'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(db,planMock),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:identity}})},'@/lib/plans':planMock,'@/lib/prisma':{prisma:db},'@/lib/ai/task-runtime':runtime});
+   // The actual component lost transport before server admission. Its retry
+   // cannot turn a local selector into a new quota admission or inference.
+   const missing=require('./storyboard-client-retry.test.cjs').harness();missing.state.user=identity;
+   missing.state.send=async()=>{throw Error('Synthetic request lost before admission');};await missing.click();
+   const beforeMissing=await stats(budgetId);
+   missing.state.send=init=>route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:init.headers,body:init.body}));
+   await missing.click();assert.ok(missing.alert());assert.equal(missing.requests[1].headers['X-Storyboard-Recovery'],'retained-only-v1');assert.equal(missing.requests[1].body,missing.requests[0].body);assert.equal(calls,0);assert.equal(await prisma.textGenerationAttempt.count({where:{userId:identity}}),0);assert.equal(await prisma.generation.count({where:{userId:identity}}),0);assert.equal(missing.recorders.length,0);assert.equal(missing.daily(),0);assert.deepEqual(missing.callbacks,[]);assert.deepEqual(await stats(budgetId),beforeMissing);missing.unmount();
    const browser=require('./storyboard-client-retry.test.cjs').harness();browser.state.user=identity;
    const input={script:browser.state.scriptContent,lang:browser.state.lang};let lost=true;
    browser.state.send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:init.headers,body:init.body}));if(response.ok&&lost){lost=false;throw Error('Synthetic lost response after real history commit');}return response;};
@@ -483,6 +490,14 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
     identity=users[index].id;if(isPaid){paid.add(identity);await prisma.generation.createMany({data:Array.from({length:199},()=>({userId:identity,template:'title',inputs:{},output:'Synthetic historical quota',tokensUsed:0}))});}
     const beforeRace=calls,raced=await Promise.all([invoke(input,'racing-key'),mixed?keyless():invoke(input,'racing-other')]);assert.deepEqual(raced.map(r=>r.status).sort(),[200,429]);assert.equal(calls,beforeRace+1);assert.equal(await prisma.generation.count({where:{userId:identity,template:'video_preview'}}),1);assert.equal(await prisma.textGenerationAttempt.count({where:{userId:identity}}),1);
    }
+   // Native history/ledger commit survives a client deadline; neither local
+   // abort nor a later read can infer another Storyboard or settlement.
+   const timedUser=await prisma.user.create({data:{email:prefix+'_storyboard_timeout@example.invalid',name:'Synthetic timed Storyboard'}});users.push(timedUser);identity=timedUser.id;paid.add(identity);
+   const timed=require('./storyboard-client-retry.test.cjs').harness();timed.state.user=identity;
+   const beforeTimedCalls=calls,beforeTimed=await stats(budgetId);let signalReady;const timedReady=new Promise(resolve=>{signalReady=resolve;});
+   timed.state.send=async init=>{const r=await route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:init.headers,body:init.body}));assert.equal(r.status,200);signalReady();return new Promise(()=>{});};
+   const waiting=timed.click();await timedReady;timed.advance(90000);await waiting;assert.ok(timed.alert());assert.equal(timed.requests[0].signal.aborted,true);assert.equal(timed.recorders.length,0);assert.deepEqual(timed.callbacks,[]);assert.equal(calls,beforeTimedCalls+1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);
+   timed.state.send=init=>route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:init.headers,body:init.body}));await timed.click();assert.equal(timed.alert(),undefined);assert.equal(timed.requests[1].headers['X-Storyboard-Recovery'],'retained-only-v1');assert.equal(timed.requests[1].headers['Idempotency-Key'],timed.requests[0].headers['Idempotency-Key']);assert.equal(timed.requests[1].body,timed.requests[0].body);assert.equal(timed.recorders.length,1);assert.equal(timed.daily(),1);assert.deepEqual(timed.callbacks,['generated']);assert.equal(calls,beforeTimedCalls+1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);const afterTimed=await stats(budgetId);assert.equal(Number(afterTimed.settled_micros),Number(beforeTimed.settled_micros)+7);assert.equal(Number(afterTimed.reserved_micros),0);timed.unmount();
   } finally {
    for(const user of users){await prisma.$executeRaw`DELETE FROM rate_limits WHERE key=${'storyboard:'+user.id}`;await prisma.user.delete({where:{id:user.id}});}
    if((await actualStore('reader').active()).revision!==previous)await actualStore('activator').activate(previous,{expectedRevision:selection.revision,actor:'test-admin',reason:'Restore prior synthetic selection'});

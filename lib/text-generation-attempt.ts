@@ -44,6 +44,14 @@ export async function retrieveKeyedTextGeneration(userId: string, id: string, si
     async () => { throw Error('Read-only item cannot execute'); }, retrieve, false, false);
 }
 
+// An explicit Storyboard recovery request may only inspect its retained slot.
+// The selector/key never permits admission, inference, release or takeover.
+export async function retrieveKeyedStoryboardGeneration(userId: string, id: string, signal: AbortSignal,
+  retrieve: () => Promise<Response | TextGenerationResult>) {
+  return runKeyedTextGeneration(userId, id, signal, async () => null,
+    async () => { throw Error('Read-only Storyboard cannot execute'); }, retrieve, true, false);
+}
+
 async function runKeyedTextGeneration(userId: string, id: string, signal: AbortSignal,
   preflight: () => Promise<Response | null>, execute: () => Promise<Response | TextGenerationResult>,
   retrieve: () => Promise<Response | TextGenerationResult>, storyboard: boolean, allowFreshAdmission = true) {

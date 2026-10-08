@@ -917,9 +917,9 @@ export default function VideoPreviewGenerator({
   const { data: session, status: sessionStatus } = useSession();
   const interaction = useMemo(() => ({
     run: createRetryOperation(() => crypto.randomUUID()), storyboard: null as string | null,
-    busy: false, active: true, cancel: null as (() => void) | null, videoUrl: null as string | null,
+    attempted: false, busy: false, active: true, cancel: null as (() => void) | null, videoUrl: null as string | null,
     upload: null as { blob: Blob; key: string; saved: boolean; flight: Promise<void> | null } | null,
-  }), [session?.user?.id, sessionStatus, scriptContent, generationId, scriptTitle, lang]);
+  }), [session?.user?.id, session?.user?.email, sessionStatus, scriptContent, generationId, scriptTitle, lang]);
   const activeInteraction = useRef<typeof interaction | null>(interaction);
   activeInteraction.current = interaction;
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -1015,27 +1015,51 @@ export default function VideoPreviewGenerator({
       setStatus('adapting');
       setErrorMsg('');
       if (interaction.storyboard === null) {
+        const retainedOnly = interaction.attempted;
+        interaction.attempted = true;
         const storyboard = await interaction.run({ script: scriptContent, lang }, async (body, key) => {
-          const response = await fetch('/api/storyboard', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body,
+          const controller = new AbortController();
+          const cancel = () => controller.abort();
+          interaction.cancel = cancel;
+          let deadline: ReturnType<typeof setTimeout> | undefined;
+          let onAbort: () => void = () => {};
+          const interrupted = new Promise<never>((_resolve, reject) => {
+            onAbort = () => reject(new StoryboardRequestError(t(
+              'La espera terminó sin confirmar el storyboard. El trabajo puede seguir en el servidor; reintenta consultar el resultado original.',
+              'The wait ended without confirming the storyboard. Work may continue on the server; retry retrieving the original result.')));
+            controller.signal.addEventListener('abort', onAbort, { once: true });
+            deadline = setTimeout(cancel, 90_000);
           });
-          const data = await response.json();
-          if (!response.ok) {
-            if (response.status === 429 && data?.limitReached === true) {
-              const capped = data.videoTipsCapped === true;
-              throw new StoryboardRequestError(capped
-                ? t('Ya usaste tu Video Tips gratis este mes.', 'You already used your free Video Tips this month.')
-                : t('Límite mensual alcanzado.', 'Monthly limit reached.'), capped ? 'video_tips_capped' : 'limit');
+          try {
+            const request = (async () => {
+            const response = await fetch('/api/storyboard', {
+              method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key,
+                ...(retainedOnly ? { 'X-Storyboard-Recovery': 'retained-only-v1' } : {}) }, body, signal: controller.signal,
+            });
+            const data = await response.json();
+            if (!response.ok) {
+              if (response.status === 429 && data?.limitReached === true) {
+                const capped = data.videoTipsCapped === true;
+                throw new StoryboardRequestError(capped
+                  ? t('Ya usaste tu Video Tips gratis este mes.', 'You already used your free Video Tips this month.')
+                  : t('Límite mensual alcanzado.', 'Monthly limit reached.'), capped ? 'video_tips_capped' : 'limit');
+              }
+              throw new StoryboardRequestError(response.status === 429
+                ? t('Demasiadas solicitudes. Espera un momento y reintenta.', 'Too many requests. Wait a moment and retry.')
+                : t('No se pudo adaptar el storyboard. Reintenta.', 'Could not adapt the storyboard. Retry.'));
             }
-            throw new StoryboardRequestError(response.status === 429
-              ? t('Demasiadas solicitudes. Espera un momento y reintenta.', 'Too many requests. Wait a moment and retry.')
-              : t('No se pudo adaptar el storyboard. Reintenta.', 'Could not adapt the storyboard. Retry.'));
+            if (typeof data?.storyboard !== 'string' || !data.storyboard.trim()
+              || data.storyboard.length > 65536 || parseScript(data.storyboard).length === 0) {
+              throw new StoryboardRequestError(t('La respuesta del storyboard no es válida. Reintenta.', 'The storyboard response is invalid. Retry.'));
+            }
+            return data.storyboard;
+          })();
+          return await Promise.race([request, interrupted]);
+          } finally {
+            clearTimeout(deadline);
+            controller.signal.removeEventListener('abort', onAbort);
+            if (interaction.cancel === cancel) interaction.cancel = null;
           }
-          if (typeof data?.storyboard !== 'string' || !data.storyboard.trim()
-            || data.storyboard.length > 65536 || parseScript(data.storyboard).length === 0) {
-            throw new StoryboardRequestError(t('La respuesta del storyboard no es válida. Reintenta.', 'The storyboard response is invalid. Retry.'));
-          }
-          return data.storyboard;
         });
         if (!current()) return;
         interaction.storyboard = storyboard;
