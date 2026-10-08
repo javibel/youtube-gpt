@@ -4,8 +4,8 @@ const id='generate_'+'a'.repeat(64),other='generate_'+'b'.repeat(64);
 const good={content:'Synthetic delta',truncated:true,history:{template:'title',inputs:{tema:'Synthetic'},output:'Previous Synthetic delta',tokensUsed:8,ipAddress:null}};
 function harness(o={}){
  const attempts=new Map(),history=new Map();let effects=0,reads=0,preflights=0,tail=Promise.resolve(),retained=null,completionWrites=0;
- const model={count:async()=>Array.from(attempts.values()).filter(r=>r.state!=='complete').length,create:async({data})=>{const row={...data,createdAt:new Date()};attempts.set(data.id,row);return row;},findUnique:async({where})=>attempts.get(where.id)||null,updateMany:async({where,data})=>{const row=attempts.get(where.id);if(o.updateFailure||!row||row.state!==where.state)return{count:0};attempts.set(where.id,{...row,...data});return{count:1};}};
- const generation={count:async()=>o.used??history.size,findUnique:async({where})=>history.get(where.id)||null,create:async({data})=>{if(o.saveFailure)throw Error('Synthetic completion rollback');assert(!history.has(data.id));completionWrites++;history.set(data.id,data);return data;}};
+ const model={count:async({where})=>Array.from(attempts.values()).filter(r=>r.state!=='complete'&&(!where.id||r.id.startsWith(where.id.startsWith))).length,create:async({data})=>{const row={...data,createdAt:new Date()};attempts.set(data.id,row);return row;},findUnique:async({where})=>attempts.get(where.id)||null,updateMany:async({where,data})=>{const row=attempts.get(where.id);if(o.updateFailure||!row||row.state!==where.state)return{count:0};attempts.set(where.id,{...row,...data});return{count:1};}};
+ const generation={count:async({where})=>where.template?(o.tips??0)+Array.from(history.values()).filter(row=>row.template===where.template).length:o.used??history.size,findUnique:async({where})=>history.get(where.id)||null,create:async({data})=>{if(o.saveFailure)throw Error('Synthetic completion rollback');assert(!history.has(data.id));completionWrites++;history.set(data.id,data);return data;}};
  const db={textGenerationAttempt:model,generation,$transaction:(fn,opts)=>{
   assert.equal(opts.maxWait,10000);assert.equal(opts.timeout,15000);
   const run=tail.then(async()=>{const before=new Map(attempts),saved=new Map(history);let added=false,wrote=false,value;
@@ -16,15 +16,17 @@ function harness(o={}){
    if(added&&o.abortAfterAdmission)o.abortAfterAdmission.abort();return value;
   });tail=run.catch(()=>{});return run;
  }};
- const helper=fixture(db,{getUserPlan:async()=>'free',getLimits:()=>({generationsPerMonth:10})});
+ const helper=fixture(db,{getUserPlan:async()=>o.paid?'pro':'free',getLimits:()=>({generationsPerMonth:o.paid?200:10}),isPaid:plan=>plan==='pro'});
  return{attempts,history,effects:()=>effects,reads:()=>reads,preflights:()=>preflights,writes:()=>completionWrites,
-  run:(key=id,signal=new AbortController().signal)=>helper.keyedTextGeneration('owner',key,signal,
+  keylessStoryboard:(signal=new AbortController().signal)=>helper.unkeyedStoryboardGeneration('owner',signal,async()=>{effects++;return o.result??good;}),
+  run:(key=o.storyboard?'storyboard_'+'a'.repeat(64):id,signal=new AbortController().signal)=>(o.storyboard?helper.keyedStoryboardGeneration:helper.keyedTextGeneration)('owner',key,signal,
    async()=>{preflights++;return o.denied?new Response(null,{status:403}):null;},
    async()=>{effects++;assert.equal(attempts.get(key).state,'pending');if(o.pause)await o.pause;retained=o.result??good;return retained;},
    async()=>{reads++;if(o.readFailure)throw Error('Synthetic unavailable settled result');return retained??new Response(null,{status:503});})};
 }
 async function test(name,fn){await fn();results.push({name,status:'PASS'});}
-(async()=>{
+module.exports={harness,good};
+if(require.main===module)(async()=>{
  await test('fresh acknowledged admission precedes one model and atomic quota conversion',async()=>{const h=harness();assert.equal((await h.run()).status,200);assert.equal(h.effects(),1);assert.equal(h.reads(),0);assert.equal(h.attempts.get(id).state,'complete');assert.equal(h.history.get(id).createdAt.getTime(),h.attempts.get(id).createdAt.getTime());});
  await test('history failure retains capacity; exhausted-quota retry reads settled result without preflight or model',async()=>{const o={saveFailure:true},h=harness(o);assert.equal((await h.run()).status,503);assert.equal(h.history.size,0);assert.equal(h.attempts.get(id).state,'pending');o.used=9;o.denied=true;o.saveFailure=false;assert.equal((await h.run()).status,200);assert.equal(h.effects(),1);assert.equal(h.reads(),1);assert.equal(h.preflights(),1);assert.equal(h.history.size,1);});
  await test('missing admission acknowledgement leaves pending but next HTTP never infers from that row',async()=>{const h=harness({lostAdmission:true});assert.equal((await h.run()).status,503);assert.equal(h.attempts.size,1);assert.equal((await h.run()).status,503);assert.equal(h.effects(),0);assert.equal(h.reads(),1);assert.equal(h.preflights(),1);});

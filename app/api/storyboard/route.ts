@@ -5,7 +5,7 @@ import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { createHash } from 'node:crypto';
 import { readGenerationQuota } from '@/lib/generation-quota';
-import { unkeyedStoryboardGeneration, type TextGenerationResult } from '@/lib/text-generation-attempt';
+import { unkeyedStoryboardGeneration, keyedStoryboardGeneration, type TextGenerationResult } from '@/lib/text-generation-attempt';
 
 // Free incluye Video Tips desde el 26/08 (gancho de retención — el 69% de lo
 // generado en free eran titulos, producto de un solo uso; ver
@@ -105,77 +105,93 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Generation history unavailable' }, { status: 503 });
   }
 
-  const plan = await getUserPlan(userId);
-  const isPro = isPaid(plan);
-  const limit = getLimits(plan).generationsPerMonth;
+  const preflight = async (): Promise<Response | null> => {
+    const plan = await getUserPlan(userId);
+    const isPro = isPaid(plan);
+    const limit = getLimits(plan).generationsPerMonth;
 
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
 
-  let usedThisMonth: number;
-  try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
-  catch { return NextResponse.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
+    let usedThisMonth: number;
+    try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
+    catch { return NextResponse.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
 
-  if (usedThisMonth >= limit) {
-    return NextResponse.json(
-      { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
-      { status: 429 }
-    );
-  }
-
-  // Tope adicional solo para free: 1 Video Tips/mes (comparte pool con las 10
-  // generaciones normales, pero ademas no puede "gastarlas todas" en esto).
-  if (!isPro) {
-    const videoTipsThisMonth = await prisma.generation.count({
-      where: { userId, template: 'video_preview', createdAt: { gte: startOfMonth } },
-    });
-    if (videoTipsThisMonth >= FREE_VIDEO_TIPS_PER_MONTH) {
+    if (usedThisMonth >= limit) {
       return NextResponse.json(
-        { error: 'Ya usaste tu Video Tips gratis este mes', limitReached: true, videoTipsCapped: true },
+        { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
         { status: 429 }
       );
     }
+
+    // Tope adicional solo para free: 1 Video Tips/mes (comparte pool con las 10
+    // generaciones normales, pero ademas no puede "gastarlas todas" en esto).
+    if (!isPro) {
+      const videoTipsThisMonth = await prisma.generation.count({
+        where: { userId, template: 'video_preview', createdAt: { gte: startOfMonth } },
+      });
+      if (videoTipsThisMonth >= FREE_VIDEO_TIPS_PER_MONTH) {
+        return NextResponse.json(
+          { error: 'Ya usaste tu Video Tips gratis este mes', limitReached: true, videoTipsCapped: true },
+          { status: 429 }
+        );
+      }
+    }
+
+    // Rate limit por minuto: mismo patron atomico que /api/generate (anti-abuso)
+    const rlKey = `storyboard:${userId}`;
+    const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
+      INSERT INTO rate_limits (key, hits, window_start)
+      VALUES (${rlKey}, 1, NOW())
+      ON CONFLICT (key) DO UPDATE
+      SET
+        hits = CASE
+          WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
+          THEN 1
+          ELSE rate_limits.hits + 1
+        END,
+        window_start = CASE
+          WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
+          THEN NOW()
+          ELSE rate_limits.window_start
+        END
+      RETURNING hits
+    `;
+    if (Number(rlResult[0].hits) > 5) {
+      return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' }, { status: 429 });
+    }
+
+  return null;
+  };
+  if (operationKey === null) {
+    const denied = await preflight();
+    if (denied) return denied;
   }
 
-  // Rate limit por minuto: mismo patron atomico que /api/generate (anti-abuso)
-  const rlKey = `storyboard:${userId}`;
-  const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
-    INSERT INTO rate_limits (key, hits, window_start)
-    VALUES (${rlKey}, 1, NOW())
-    ON CONFLICT (key) DO UPDATE
-    SET
-      hits = CASE
-        WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
-        THEN 1
-        ELSE rate_limits.hits + 1
-      END,
-      window_start = CASE
-        WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
-        THEN NOW()
-        ELSE rate_limits.window_start
-      END
-    RETURNING hits
-  `;
-  if (Number(rlResult[0].hits) > 5) {
-    return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' }, { status: 429 });
-  }
-
-  const execute = async (): Promise<Response | TextGenerationResult> => {
+  const execute = async (readOnly = false): Promise<Response | TextGenerationResult> => {
     let task;
     try {
       task = await getMessagesTask({ operationKey: operationKey ?? undefined,
         taskType: 'content.storyboard', userId, language: lang === 'en' ? 'en' : 'es',
-        instructionsVersion: 'storyboard-v1',
+        // Bind the complete caller input, including the suffix beyond the prompt
+        // ceiling. This digest identifies input; it never grants run authority.
+        instructionsVersion: operationKey === null ? 'storyboard-v1' : 'storyboard-v2:' + inputDigest,
       });
     } catch {
       return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
     }
     try {
-      const data = await task.create({
+      const parameters = {
         max_tokens: 1024,
-        messages: [{ role: 'user', content: lang === 'en' ? EN_PROMPT(script) : ES_PROMPT(script) }],
-      });
+        messages: [{ role: 'user' as const, content: lang === 'en' ? EN_PROMPT(script) : ES_PROMPT(script) }],
+      };
+      const uncertain = () => NextResponse.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
+        retryMayConsume: false }, { status: 503 });
+      if (readOnly && !task.retrieve) return uncertain();
+      const data = readOnly ? await task.retrieve!(parameters, { signal: request.signal })
+        : await task.create(parameters, { signal: request.signal });
+      if (!data) return uncertain();
       const storyboard: string = data.content?.[0]?.text ?? '';
       const tokensUsed = data.usage?.output_tokens;
       // Unknown usage is not a measured zero. Validate before quota/history effects.
@@ -186,43 +202,17 @@ export async function POST(request: Request) {
       const history = { template: 'video_preview',
         inputs: { script: script.slice(0, 4000), ...(generationId ? { retryInputDigest: inputDigest } : {}) },
         output: storyboard, tokensUsed, ipAddress: getIp(request) };
-      if (operationKey === null) return { content: storyboard, truncated: false, history };
-
-      // Registrar la generacion — cuenta para el pool mensual (10 free / 200 pro)
-      // igual que cualquier otro template, y es lo que alimenta el tope de
-      // FREE_VIDEO_TIPS_PER_MONTH de arriba.
-      try {
-        await prisma.generation.create({
-          data: {
-            ...(generationId ? { id: generationId } : {}),
-            userId,
-            ...history,
-          },
-        });
-      } catch {
-        // A concurrent retry, or an acknowledged-late insert, may have saved it.
-        // Read the committed row; never overwrite an existing operation's input.
-        if (generationId) {
-          try {
-            const saved = await savedResponse();
-            if (saved) return saved;
-          } catch { /* Preserve uncertain persistence as a retryable failure. */ }
-        }
-        return NextResponse.json({ error: 'Generation history could not be saved' }, { status: 503 });
-      }
-
-      return NextResponse.json({ storyboard });
+      return { content: storyboard, truncated: false, history };
     } catch (error) {
       const code = error && typeof error === 'object' && 'code' in error ? error.code : 'uncertain';
+      if (readOnly) return NextResponse.json({ error: code === 'invalid_format' ? 'Operation input changed' : 'Generation unconfirmed',
+        code: 'text_result_unconfirmed', retryMayConsume: false }, { status: code === 'invalid_format' ? 409 : 503 });
       return NextResponse.json({ error: 'AI generation unavailable' }, { status: code === 'uncertain' ? 500 : 502 });
     }
   };
-  if (operationKey !== null) {
-    const response = await execute();
-    if (response instanceof Response) return response;
-    return NextResponse.json({ error: 'Storyboard result unavailable' }, { status: 503 });
-  }
-  const confirmed = await unkeyedStoryboardGeneration(userId, request.signal, execute);
+  const confirmed = operationKey === null
+    ? await unkeyedStoryboardGeneration(userId, request.signal, () => execute())
+    : await keyedStoryboardGeneration(userId, generationId!, request.signal, preflight, () => execute(), () => execute(true));
   if (confirmed.ok) {
     const result = await confirmed.json();
     return NextResponse.json({ storyboard: result.content }, { headers: { 'Cache-Control': 'no-store' } });

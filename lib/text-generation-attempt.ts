@@ -27,6 +27,18 @@ export async function unkeyedStoryboardGeneration(userId: string, signal: AbortS
 export async function keyedTextGeneration(userId: string, id: string, signal: AbortSignal,
   preflight: () => Promise<Response | null>, execute: () => Promise<Response | TextGenerationResult>,
   retrieve: () => Promise<Response | TextGenerationResult>) {
+  return runKeyedTextGeneration(userId, id, signal, preflight, execute, retrieve, false);
+}
+
+export async function keyedStoryboardGeneration(userId: string, id: string, signal: AbortSignal,
+  preflight: () => Promise<Response | null>, execute: () => Promise<Response | TextGenerationResult>,
+  retrieve: () => Promise<Response | TextGenerationResult>) {
+  return runKeyedTextGeneration(userId, id, signal, preflight, execute, retrieve, true);
+}
+
+async function runKeyedTextGeneration(userId: string, id: string, signal: AbortSignal,
+  preflight: () => Promise<Response | null>, execute: () => Promise<Response | TextGenerationResult>,
+  retrieve: () => Promise<Response | TextGenerationResult>, storyboard: boolean) {
   const uncertain = (status = 503) => Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
     retryMayConsume: false }, { status, headers: { 'Cache-Control': 'no-store' } });
   let result: TextGenerationResult | null = null;
@@ -43,7 +55,8 @@ export async function keyedTextGeneration(userId: string, id: string, signal: Ab
   const response = () => Response.json({ content: result!.content, truncated: result!.truncated },
     { headers: { 'Cache-Control': 'no-store' } });
   try {
-    if (!/^generate_[a-f0-9]{64}$/.test(id) || !userId || signal.aborted) return uncertain();
+    if (!(storyboard ? /^storyboard_[a-f0-9]{64}$/ : /^generate_[a-f0-9]{64}$/).test(id)
+      || !userId || signal.aborted) return uncertain();
     const inspect = () => prisma.$transaction(async tx => {
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       if (owner.length !== 1 || owner[0].id !== userId || signal.aborted) throw Error('Admission unavailable');
@@ -72,6 +85,14 @@ export async function keyedTextGeneration(userId: string, id: string, signal: Ab
         if ((await thumbnailQuota(tx, userId, month)).total >= getLimits(plan).generationsPerMonth) {
           return Response.json({ error: 'Límite del plan alcanzado', limitReached: true }, { status: 429 });
         }
+        if (storyboard && !isPaid(plan)) {
+          const recorded = await tx.generation.count({ where: { userId, template: 'video_preview', createdAt: { gte: month } } });
+          const pending = await tx.textGenerationAttempt.count({ where: { userId, createdAt: { gte: month },
+            state: { not: 'complete' }, id: { startsWith: 'storyboard_' } } });
+          if (![recorded, pending, recorded + pending].every(n => Number.isSafeInteger(n) && n >= 0)) throw Error('Video Tips quota unavailable');
+          if (recorded + pending >= 1) return Response.json({ error: 'Ya usaste tu Video Tips gratis este mes',
+            limitReached: true, videoTipsCapped: true }, { status: 429 });
+        }
         return { row: await tx.textGenerationAttempt.create({ data: { id, userId, state: 'pending' } }), fresh: true };
       }, { maxWait: 10_000, timeout: 15_000 });
       if (admission instanceof Response) return admission;
@@ -83,6 +104,7 @@ export async function keyedTextGeneration(userId: string, id: string, signal: Ab
     if (produced instanceof Response) return produced;
     result = produced;
     if (typeof result.content !== 'string' || !result.content.trim() || typeof result.truncated !== 'boolean'
+      || (storyboard && (result.history.template !== 'video_preview' || result.truncated))
       || typeof result.history.output !== 'string' || !result.history.output.trim()
       || !Number.isSafeInteger(result.history.tokensUsed) || result.history.tokensUsed < 0 || signal.aborted) return uncertain();
     await prisma.$transaction(async tx => {
@@ -133,7 +155,7 @@ async function runTextGeneration(userId: string, id: string, signal: AbortSignal
       if (storyboard && !isPaid(plan)) {
         const recorded = await tx.generation.count({ where: { userId, template: 'video_preview', createdAt: { gte: month } } });
         const pending = await tx.textGenerationAttempt.count({ where: { userId, createdAt: { gte: month },
-          state: { not: 'complete' }, id: { startsWith: 'storyboard_generation_' } } });
+          state: { not: 'complete' }, id: { startsWith: 'storyboard_' } } });
         if (![recorded, pending, recorded + pending].every(n => Number.isSafeInteger(n) && n >= 0)) throw Error('Video Tips quota unavailable');
         if (recorded + pending >= 1) return Response.json({ error: 'Ya usaste tu Video Tips gratis este mes',
           limitReached: true, videoTipsCapped: true }, { status: 429 });

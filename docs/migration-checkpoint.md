@@ -445,10 +445,9 @@ uncertain or unsettled operation returns no recoverable result. Partial text
 still requires the existing explicit exposure policy. Coding recovery continues
 to require its supervisor and is excluded from this API.
 
-This is a prerequisite for keyed text/Storyboard quota admission. Those routes
-still use their previous generation path; integrating admission and retry without
-new inference remains pending. The isolated contracts and synthetic ledger do
-not establish operational provenance or acceptance.
+This read-only API is the prerequisite used by the keyed generic and Storyboard
+quota admission below. The isolated contracts and synthetic ledger do not
+establish operational provenance or acceptance.
 # Keyed generic text admission
 
 Generic generation in the web and extension reserves shared business quota under
@@ -459,5 +458,19 @@ permit `create`, reclaim capacity or reconstruct runner ownership. Confirmed
 history and completion convert the reservation atomically using its admission
 date. Same-key settled retries bypass new quota/throttle admission, while new
 keys compete with pending text and image slots. Deleted completed history cannot
-be resurrected by the admission helper. Storyboard keyed admission, durable bulk
-HTTP replay and operational reconciliation/acceptance remain separate work.
+be resurrected by the admission helper. Durable bulk HTTP replay and operational
+reconciliation/acceptance remain separate work.
+
+# Keyed Storyboard admission
+
+Storyboard now uses the same fresh-admission/read-only-retry boundary. Its Free
+Video Tips cap counts both keyed and keyless pending reservations under the
+owner lock, alongside the shared text/image pool. Confirmed retries complete the
+original reservation rather than spending another entitlement; pending, absent
+or unsettled runtime results never permit another inference. The complete input,
+including the script suffix beyond the 4,000-character prompt ceiling, binds the
+keyed portable instruction version. That digest only identifies input and does
+not grant execution, reconciliation or coordinator recovery authority. Existing
+saved business responses still replay before quota/throttle. Unconfirmed legacy
+v1 runtime results are not promoted to the new keyed input envelope. Known output
+usage and complete text remain required; partial or unknown results retain quota.

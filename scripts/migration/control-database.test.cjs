@@ -364,22 +364,29 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
  await test('Storyboard actual client lost response recovers one inference, settlement and real history row after free quota is consumed',async()=>{
   const {PrismaClient}=require('@prisma/client');const prisma=new PrismaClient({datasources:{db:{url:config.databaseUrl}}});
   const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');
-  const actualRegistry=createRegistry();let calls=0,identity,failSave=true;
+  const actualRegistry=createRegistry();let calls=0,identity,failSave=true,loseAdmission=false,unknownReply=false;
   const story='0s-6s: HOOK | A creator opens a notebook';
-  actualRegistry.register(createAnthropicAdapter({models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},credentialRef:'test:fixture',preflight:async()=>({upperBoundMicros:60,currency:'EUR',priceVersion:'test-v1'}),priceUsage:async()=>({costMicros:7,currency:'EUR',priceVersion:'test-v1',estimated:true}),transport:{create:async()=>{calls++;return {content:[{type:'text',text:story}],stop_reason:'end_turn',usage:{input_tokens:10,output_tokens:5}};}}}));
+  actualRegistry.register(createAnthropicAdapter({models:{'test-model':{verified:true,executors:['ai'],capabilities:['text']}},credentialRef:'test:fixture',preflight:async()=>({upperBoundMicros:60,currency:'EUR',priceVersion:'test-v1'}),priceUsage:async()=>({costMicros:7,currency:'EUR',priceVersion:'test-v1',estimated:true}),transport:{create:async()=>{calls++;if(unknownReply)throw Error('Synthetic lost Storyboard response');return {content:[{type:'text',text:story}],stop_reason:'end_turn',usage:{input_tokens:10,output_tokens:5}};}}}));
   const actualStore=role=>createControlStore(database(role),actualRegistry),selection=cfg('storyboard-retry','anthropic');selection.profiles.default={'content.storyboard':{providerId:'anthropic',model:'test-model'}};
   const previous=(await actualStore('reader').active()).revision;const users=[];
   try {
    await actualStore('activator').publish(selection,{actor:'test-admin'});await actualStore('activator').activate(selection.revision,{expectedRevision:previous,actor:'test-admin',reason:'Synthetic Storyboard business replay'});
    for(const suffix of ['first','other'])users.push(await prisma.user.create({data:{email:prefix+'_'+suffix+'@example.invalid',name:'Synthetic Storyboard retry'}}));identity=users[0].id;
-   const budgetId=await budget('storyboard-retry',200),runtime=load('lib/ai/task-runtime.ts');
+   const budgetId=await budget('storyboard-retry',1000),runtime=load('lib/ai/task-runtime.ts');
    runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'content.storyboard':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:1024,deadlineMs:3000}}},authorize:async({userId,taskType})=>users.some(u=>u.id===userId)&&taskType==='content.storyboard'?{budgetId}:null}));
-   const db={generation:{findUnique:args=>prisma.generation.findUnique(args),count:args=>prisma.generation.count(args),create:args=>{if(failSave){failSave=false;throw Error('Synthetic failure before history commit');}return prisma.generation.create(args);}},$queryRaw:prisma.$queryRaw.bind(prisma)};
-   const route=load('app/api/storyboard/route.ts',{'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(prisma),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:identity}})},'@/lib/plans':{getUserPlan:async()=>'free',isPaid:()=>false,getLimits:()=>({generationsPerMonth:10})},'@/lib/prisma':{prisma:db},'@/lib/ai/task-runtime':runtime});
+   const db=new Proxy(prisma,{get(target,key){if(key==='$transaction')return async(fn,opts)=>{let admitted=false,completed=false;const value=await target.$transaction(tx=>fn(new Proxy(tx,{get(t,k){
+    if(k==='generation')return new Proxy(t.generation,{get(model,method){if(method==='create')return async args=>{if(failSave){failSave=false;throw Error('Synthetic failure before history commit');}const row=await model.create(args);completed=true;return row;};const v=model[method];return typeof v==='function'?v.bind(model):v;}});
+    if(k==='textGenerationAttempt')return new Proxy(t.textGenerationAttempt,{get(model,method){if(method==='create')return async args=>{const row=await model.create(args);admitted=true;return row;};const v=model[method];return typeof v==='function'?v.bind(model):v;}});
+    const v=t[k];return typeof v==='function'?v.bind(t):v;
+   }})),opts);if(admitted&&loseAdmission){loseAdmission=false;throw Error('Synthetic committed admission ack lost');}if(completed)throw Error('Synthetic committed completion ack lost');return value;};const v=target[key];return typeof v==='function'?v.bind(target):v;}});
+   const paid=new Set(),planMock={getUserPlan:async()=>paid.has(identity)?'pro':'free',isPaid:plan=>plan==='pro',getLimits:plan=>({generationsPerMonth:plan==='pro'?200:10})};
+   const route=load('app/api/storyboard/route.ts',{'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(db,planMock),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:identity}})},'@/lib/plans':planMock,'@/lib/prisma':{prisma:db},'@/lib/ai/task-runtime':runtime});
    const browser=require('./storyboard-client-retry.test.cjs').harness();browser.state.user=identity;
    const input={script:browser.state.scriptContent,lang:browser.state.lang};let lost=true;
    browser.state.send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:init.headers,body:init.body}));if(response.ok&&lost){lost=false;throw Error('Synthetic lost response after real history commit');}return response;};
    await browser.click();assert.ok(browser.alert());assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),0);assert.equal(browser.daily(),0);assert.deepEqual(browser.callbacks,[]);
+   assert.equal(await prisma.textGenerationAttempt.count({where:{userId:identity,state:'pending'}}),1);
+   await prisma.$executeRaw`UPDATE rate_limits SET hits=99 WHERE key=${'storyboard:'+identity}`;
    await browser.click();assert.ok(browser.alert());assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(browser.recorders.length,0);assert.deepEqual(browser.callbacks,[]);
    const key=browser.requests[0].headers['Idempotency-Key'];assert.equal(browser.requests[1].headers['Idempotency-Key'],key);
    const invoke=(body=input,operation=key)=>route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':operation},body:JSON.stringify(body)}));
@@ -394,6 +401,21 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
    assert.equal((await invoke(input,key+'_new')).status,429);assert.equal(calls,1);
    identity=users[1].id;assert.equal((await invoke()).status,200);assert.equal(calls,2);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);
    assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),14);
+   for(const suffix of ['full-binding','unknown','admission-ack','free-race','mixed-race','paid-race'])users.push(await prisma.user.create({data:{email:prefix+'_storyboard_'+suffix+'@example.invalid',name:'Synthetic keyed Storyboard'}}));
+   // Same truncated prompt is insufficient to establish identical caller input.
+   identity=users[2].id;failSave=true;const full={script:'z'.repeat(4000)+'a',lang:'en'},beforeBinding=calls;
+   assert.equal((await invoke(full,'full-input')).status,503);assert.equal(calls,beforeBinding+1);assert.equal(await prisma.generation.count({where:{userId:identity}}),0);
+   assert.equal((await invoke({...full,script:'z'.repeat(4000)+'b'},'full-input')).status,409);assert.equal(calls,beforeBinding+1);assert.equal(await prisma.generation.count({where:{userId:identity}}),0);
+   const settled=await Promise.all([invoke(full,'full-input'),invoke(full,'full-input')]);assert(settled.every(r=>r.status===200));assert.equal(calls,beforeBinding+1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);
+   const fullRow=await prisma.generation.findFirst({where:{userId:identity}});assert.equal(fullRow.inputs.script,'z'.repeat(4000));assert.equal(await prisma.textGenerationAttempt.count({where:{userId:identity,state:'complete'}}),1);
+   identity=users[3].id;unknownReply=true;const beforeUnknown=calls;assert.equal((await invoke(input,'unknown-story')).status,500);assert.equal(calls,beforeUnknown+1);assert.equal(await prisma.generation.count({where:{userId:identity}}),0);
+   assert.equal((await invoke(input,'unknown-story')).status,503);assert.equal((await invoke(input,'new-after-unknown')).status,429);assert.equal(calls,beforeUnknown+1);assert.equal(await prisma.textGenerationAttempt.count({where:{userId:identity,state:'pending'}}),1);unknownReply=false;
+   identity=users[4].id;loseAdmission=true;const beforeAck=calls;assert.equal((await invoke(input,'lost-admission')).status,503);assert.equal((await invoke(input,'lost-admission')).status,503);assert.equal((await invoke(input,'new-after-ack')).status,429);assert.equal(calls,beforeAck);assert.equal(await prisma.textGenerationAttempt.count({where:{userId:identity,state:'pending'}}),1);
+   const keyless=()=>route.POST(new Request('https://example.invalid/api/storyboard',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)}));
+   for(const[index,mixed,isPaid]of [[5,false,false],[6,true,false],[7,true,true]]){
+    identity=users[index].id;if(isPaid){paid.add(identity);await prisma.generation.createMany({data:Array.from({length:199},()=>({userId:identity,template:'title',inputs:{},output:'Synthetic historical quota',tokensUsed:0}))});}
+    const beforeRace=calls,raced=await Promise.all([invoke(input,'racing-key'),mixed?keyless():invoke(input,'racing-other')]);assert.deepEqual(raced.map(r=>r.status).sort(),[200,429]);assert.equal(calls,beforeRace+1);assert.equal(await prisma.generation.count({where:{userId:identity,template:'video_preview'}}),1);assert.equal(await prisma.textGenerationAttempt.count({where:{userId:identity}}),1);
+   }
   } finally {
    for(const user of users){await prisma.$executeRaw`DELETE FROM rate_limits WHERE key=${'storyboard:'+user.id}`;await prisma.user.delete({where:{id:user.id}});}
    if((await actualStore('reader').active()).revision!==previous)await actualStore('activator').activate(previous,{expectedRevision:selection.revision,actor:'test-admin',reason:'Restore prior synthetic selection'});
