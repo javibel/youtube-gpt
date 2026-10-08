@@ -47,6 +47,8 @@ export async function POST(request: Request) {
     }
     const key=request.headers.get('Idempotency-Key');
     if(key!==null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))return Response.json({error:'Clave inválida'},{status:400});
+    const recovery=request.headers.get('X-Background-Recovery');
+    if(recovery!==null && (recovery!=='retained-only-v1'||key===null||source!=='ai'))return Response.json({error:'Consulta de recuperación inválida'},{status:400});
 
     if(key!==null && source==='upload' && file && typeof file!=='string')return await uploadBackgroundReceipt(user.id,key,file,lang as string,request.signal);
     const generate=async (task:Awaited<ReturnType<typeof getMessagesTask>>)=>{
@@ -74,7 +76,7 @@ Respond with ONLY the image generation prompt in English.`}]});
       if(!backgroundImageAvailable())return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});
       let task;try{task=await getMessagesTask({taskType:'thumbnail.background-prompt',userId:user.id,language:'en',instructionsVersion:'background-prompt-v1'});}catch{return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});}
       return ()=>generate(task);
-    });
+    },recovery==='retained-only-v1');
     if(!isPaid(await getUserPlan(user.id)))return Response.json({error:isEn?'Pro plan required':'Se requiere plan Pro',limitReached:true},{status:403});
     if(request.signal.aborted)throw Error('Unconfirmed');
     if(source==='upload'&&file&&typeof file!=='string'){

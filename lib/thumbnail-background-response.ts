@@ -1,6 +1,6 @@
 // Bounds decoded JSON, independent of declared/wire length. Caller abort only
 // releases local waiting; it never proves cancellation of a remote image task.
-export async function fetchThumbnailBackground(body:FormData,signal:AbortSignal,key?:string):Promise<{response:Response;data:Record<string,unknown>}> {
+export async function fetchThumbnailBackground(body:FormData,signal:AbortSignal,key?:string,readOnly=false):Promise<{response:Response;data:Record<string,unknown>}> {
  if(signal.aborted)throw Error('Background unconfirmed');
  const limit=64*1024;
  let stopped=false,reader:ReadableStreamDefaultReader<Uint8Array>|undefined,stream:ReadableStream<Uint8Array>|null=null;
@@ -11,7 +11,7 @@ export async function fetchThumbnailBackground(body:FormData,signal:AbortSignal,
  signal.addEventListener('abort',stop,{once:true});
  try{
   const work=(async()=>{
-   const response=await fetch('/api/thumbnail-background',{method:'POST',body,signal,redirect:'error',cache:'no-store',...(key?{headers:{'Idempotency-Key':key}}:{})});
+   const response=await fetch('/api/thumbnail-background',{method:'POST',body,signal,redirect:'error',cache:'no-store',...(key?{headers:{'Idempotency-Key':key,...(readOnly?{'X-Background-Recovery':'retained-only-v1'}:{})}}:{})});
    stream=response.body;
    if(stopped||signal.aborted){cancel();throw Error('Background unconfirmed');}
    if(response.redirected||response.status===206||response.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='application/json'||!stream)throw Error('Background unconfirmed');

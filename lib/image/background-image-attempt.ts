@@ -11,7 +11,7 @@ function validResult(value:{output:unknown;prompt:unknown}) {
 }
 // Only this invocation's successful fresh admission may execute its closure. No
 // persisted token/JSON/hash/time/PID can reclaim a pending attempt or regenerate.
-export async function keyedBackgroundImage(userId:string,key:string,inputs:{topic:string;style:string;lang:string},signal:AbortSignal,prepare:()=>Promise<Response|(()=>Promise<Result>)>) {
+export async function keyedBackgroundImage(userId:string,key:string,inputs:{topic:string;style:string;lang:string},signal:AbortSignal,prepare:()=>Promise<Response|(()=>Promise<Result>)>,readOnly=false) {
  const id='background_ai_'+createHash('sha256').update(JSON.stringify([userId,key])).digest('hex');
  const digest=createHash('sha256').update(JSON.stringify([inputs.topic,inputs.style,inputs.lang])).digest('hex');
  const pending=()=>Response.json({error:'Generación pendiente de confirmar. Este intento no vuelve a ejecutar modelos.',code:'image_attempt_pending',operationPending:true,id,userId,operationKey:key},{status:409,headers:{'Cache-Control':'no-store'}});
@@ -23,6 +23,9 @@ export async function keyedBackgroundImage(userId:string,key:string,inputs:{topi
  };
  try{
   const existing=await prisma.backgroundImageAttempt.findUnique({where:{id}});if(existing)return replay(existing);
+  // An explicit recovery may read only a retained own original receipt. A key
+  // whose admission was never confirmed or has disappeared cannot create work.
+  if(readOnly)return Response.json({error:'Intento no retenido. La consulta no genera otro fondo.',code:'image_attempt_not_retained',retryMayConsume:false},{status:409,headers:{'Cache-Control':'no-store'}});
   const generate=await prepare();if(generate instanceof Response)return generate;
   const admission=await prisma.$transaction(async tx=>{
    const locked=await tx.$queryRawUnsafe<Array<{id:string}>>('SELECT id FROM users WHERE id=$1 FOR UPDATE',userId);

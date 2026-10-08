@@ -27,7 +27,7 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
     if(scope.deadline)clearTimeout(scope.deadline);scope.deadline = null;scope.flight = null;
     update({busy:false,pending:false,error:null});
   };
-  const run = (op:Operation) => {
+  const run = (op:Operation,readOnly=false) => {
     if(!current() || (!paid.current && !op.key))return Promise.resolve(false);
     if(scope.flight)return scope.flight;
     if(!op.eligible()){discard();return Promise.resolve(false);}
@@ -45,7 +45,7 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
         const body = new FormData();body.append('source',op.kind === 'ai' ? 'ai' : 'upload');body.append('lang',op.lang);
         if(op.kind === 'ai'){body.append('tema',op.topic);body.append('estilo',op.style);}
         else {if(!op.file)throw Error('Missing original file');body.append('backgroundFile',op.file);}
-        const {response,data}=await Promise.race([fetchThumbnailBackground(body,controller.signal,op.key),interrupted]);
+        const {response,data}=await Promise.race([fetchThumbnailBackground(body,controller.signal,op.key,readOnly),interrupted]);
         if(!live(op))return false;
         if(timedOut)throw Error('Timed out');
         if(!response.ok){update({error:response.status===409 && data?.code==='image_attempt_pending' && data.operationPending===true && data.userId===userId && data.operationKey===op.key && typeof data.id==='string' && /^background_ai_[a-f0-9]{64}$/.test(data.id) ? 'pending' : data?.limitReached === true && [403,429].includes(response.status) ? 'limit' : 'unconfirmed'});return false;}
@@ -80,7 +80,7 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
     if(!['image/png','image/jpeg','image/webp'].includes(file.type) || !file.size || file.size > 15*1024*1024){update({error:'input'});return Promise.resolve(false);}
     return run({key:'bg-'+crypto.randomUUID(),kind:originalUrl ? 'crop' : 'upload',file,originalUrl,eligible,topic:snapshot().topic.trim(),style:snapshot().style,lang,context:context()});
   };
-  const retry = () => scope.operation ? run(scope.operation) : Promise.resolve(false);
+  const retry = () => scope.operation ? run(scope.operation,scope.operation.kind==='ai') : Promise.resolve(false);
   const cancelCrop = () => {if(current() && scope.operation?.kind === 'crop')discard();};
   const setTopic = (topic:string) => {if(typeof topic === 'string')update({topic});};
   const setStyle = (style:string) => {if(styles.includes(style))update({style});};
