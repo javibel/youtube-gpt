@@ -6,6 +6,7 @@ import { put } from '@vercel/blob';
 import { rateLimitDb } from '@/lib/rate-limit-db';
 import { backgroundImageAvailable, generateBackgroundImage } from '@/lib/image/background-image-provider';
 import sharp from 'sharp';
+import { keyedLegacyThumbnail, type ThumbnailResult } from '@/lib/image/legacy-thumbnail-attempt';
 
 export const maxDuration = 60;
 
@@ -69,6 +70,11 @@ export async function POST(request: Request) {
     }
 
     if(user.id!==session.user.id)return Response.json({error:'No autorizado'},{status:401});
+    const key=request.headers.get('Idempotency-Key');
+    if(key!==null&&!/^[A-Za-z0-9_-]{1,128}$/.test(key))return Response.json({error:'invalid_operation_key'},{status:400});
+    let facePhotoBuffer:Buffer|null=null;
+    if(facePhotoFile)facePhotoBuffer=Buffer.from(await bounded(()=>facePhotoFile.arrayBuffer(),request.signal));
+    const prepare=async():Promise<Response|(()=>Promise<ThumbnailResult>)>=>{
     const plan = await getUserPlan(user.id);
     const isPro = isPaid(plan);
 
@@ -100,16 +106,14 @@ export async function POST(request: Request) {
     }
 
     if(!backgroundImageAvailable())return Response.json({error:'Servicio no disponible',code:'image_service_unavailable',retryMayConsume:false},{status:503});
-    let facePhotoBuffer:Buffer|null=null;
     if(facePhotoFile){
       try{
-        facePhotoBuffer=Buffer.from(await bounded(()=>facePhotoFile.arrayBuffer(),request.signal));
         const meta=await bounded(()=>decode(facePhotoBuffer!).metadata(),request.signal);
         if(!meta.width||!meta.height||meta.width>16384||meta.height>16384||meta.width*meta.height>40_000_000||!meta.format||!['png','jpeg','webp'].includes(meta.format))throw Error('Invalid photo');
       }catch{return Response.json({error:'invalid_photo'},{status:400});}
     }
     if(request.signal.aborted)throw Error('Unconfirmed');
-    if(!await rateLimitDb('gen-thumb:'+user.id,3,1,true))return Response.json({error:'Solicitud no admitida'},{status:429});
+    if(!key&&!await rateLimitDb('gen-thumb:'+user.id,3,1,true))return Response.json({error:'Solicitud no admitida'},{status:429});
 
     const hasFace = !!facePhotoBuffer;
     const faceOnLeft = facePosition === 'left';
@@ -159,6 +163,7 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
     } catch {
       return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
+    return async()=>{
     if(request.signal.aborted)throw Error('Unconfirmed');
     const promptResult = await task.create({ max_tokens: 400, messages: [{ role: 'user', content: claudePrompt }] });
     const imagePrompt=promptResult.content?.[0]?.text?.trim();
@@ -184,23 +189,14 @@ Respond with ONLY the image generation prompt, nothing else. Write in English.`;
     const stored=new URL(blob.url);if(stored.protocol!=='https:'||stored.username||stored.password||stored.hash)throw Error('Unconfirmed');
     const permanentUrl=blob.url;
 
-    // Save generation
-    const ip = getIp(request);
-    await bounded(()=>prisma.generation.create({
-      data: {
-        userId: user.id,
-        template: 'thumbnail',
-        inputs: { tema, estilo, imagePrompt, hasFace, facePosition, faceScalePct, customText },
-        output: permanentUrl,
-        tokensUsed: promptResult.usage?.output_tokens ?? 0,
-        ipAddress: ip,
-      },
-    }),request.signal);
-
-    return Response.json({
-      imageUrl: permanentUrl,
-      prompt: imagePrompt,
-    },{headers:{'Cache-Control':'no-store'}});
+    return {imageUrl:permanentUrl,prompt:imagePrompt,inputs:{tema,estilo,imagePrompt,hasFace,facePosition,faceScalePct,customText},tokensUsed:promptResult.usage?.output_tokens??0,ipAddress:getIp(request)};
+    };
+    };
+    if(key)return await keyedLegacyThumbnail(user.id,key,[tema,estilo,lang,facePosition,faceScalePct,customText],facePhotoBuffer?{type:facePhotoFile!.type,bytes:facePhotoBuffer}:null,request.signal,prepare);
+    const generate=await prepare();if(generate instanceof Response)return generate;
+    const result=await generate();
+    await bounded(()=>prisma.generation.create({data:{userId:user.id,template:'thumbnail',inputs:result.inputs,output:result.imageUrl,tokensUsed:result.tokensUsed,ipAddress:result.ipAddress}}),request.signal);
+    return Response.json({imageUrl:result.imageUrl,prompt:result.prompt},{headers:{'Cache-Control':'no-store'}});
   } catch {
     return Response.json({error:'Miniatura sin confirmar. Repetir puede consumir de nuevo.',code:'image_result_unconfirmed',retryMayConsume:true},{status:503});
   }

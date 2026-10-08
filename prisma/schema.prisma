@@ -46,6 +46,7 @@ model User {
   sessions        Session[]
   backgroundImageAttempts BackgroundImageAttempt[]
   removalAttempts RemovalAttempt[]
+  legacyThumbnailAttempts LegacyThumbnailAttempt[]
   backgroundUploads BackgroundUpload[]
   generations     Generation[]
   emailLogs       EmailLog[]
@@ -868,4 +869,18 @@ model RemovalAttempt {
  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
  @@index([userId, createdAt], map: "removal_attempts_userid_createdat_idx")
  @@map("removal_attempts")
+}
+
+// Result persists independently of history deletion; no authority to rerun pending.
+model LegacyThumbnailAttempt {
+ id String @id
+ userId String
+ digest String
+ state String @default("pending")
+ output String?
+ prompt String?
+ createdAt DateTime @default(now())
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ @@index([userId, createdAt], map: "legacy_thumbnail_attempts_userid_createdat_idx")
+ @@map("legacy_thumbnail_attempts")
 }
