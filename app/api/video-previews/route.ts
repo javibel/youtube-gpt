@@ -23,14 +23,18 @@ export async function GET() {
 // generaba pero no se guardaba en la cuenta. Coste marginal: solo storage,
 // max 8MB, se conservan las ultimas 3 igual que Pro.
 export async function POST(request: Request) {
+  const reply = (data: unknown, init?: { status: number }) => NextResponse.json(data, { ...init, headers: { "Cache-Control": "no-store" } });
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session?.user?.id) return reply({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = session.user.id;
   const key = request.headers.get('Idempotency-Key');
   if (key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key)) {
-    return NextResponse.json({ error: 'Invalid retry key' }, { status: 400 });
+    return reply({ error: 'Invalid retry key' }, { status: 400 });
   }
+  const mode = request.headers.get('X-Video-Preview-Recovery');
+  if (mode !== null && (mode !== 'retained-only-v1' || key === null)) return reply({ error: 'Invalid recovery mode' }, { status: 400 });
+  const retainedOnly = mode === 'retained-only-v1';
   // Business-record identity only. Replay lasts while the preview is retained;
   // this is not an operational recovery credential or a permanent tombstone.
   const id = key === null ? undefined : 'video_preview_' + createHash('sha256').update(JSON.stringify([userId, key])).digest('hex');
@@ -41,26 +45,26 @@ export async function POST(request: Request) {
     const suppliedTitle = form.get('title');
     const file = form.get('video');
     if (typeof suppliedTitle !== 'string' || !suppliedTitle.trim() || !file || typeof file === 'string') {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      return reply({ error: 'Missing fields' }, { status: 400 });
     }
     title = suppliedTitle;
-    if (file.size > 8 * 1024 * 1024) return NextResponse.json({ error: 'File too large' }, { status: 413 });
+    if (file.size > 8 * 1024 * 1024) return reply({ error: 'File too large' }, { status: 413 });
     // Grabacion vacia/rota (p.ej. la pestaña paso a segundo plano durante la
     // grabacion real-time y el navegador dejo de componer el canvas — ver
     // VideoPreviewGenerator.tsx). Mejor rechazar que guardar un video que
     // luego no reproduce.
-    if (file.size < 2000) return NextResponse.json({ error: 'Empty or corrupt video' }, { status: 422 });
+    if (file.size < 2000) return reply({ error: 'Empty or corrupt video' }, { status: 422 });
     buffer = Buffer.from(await file.arrayBuffer());
     mimeType = file.type || 'video/webm';
   } catch {
-    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    return reply({ error: 'Invalid body' }, { status: 400 });
   }
 
   type Saved = { id: string; userId: string; title: string; mimeType: string; size: number; videoData: Uint8Array };
   const replay = (saved: Saved) => saved.userId === userId && saved.title === title && saved.mimeType === mimeType
     && saved.size === buffer.length && Buffer.from(saved.videoData).equals(buffer)
-    ? NextResponse.json({ id: saved.id })
-    : NextResponse.json({ error: 'Retry input changed' }, { status: 409 });
+    ? reply({ id: saved.id })
+    : reply({ error: 'Retry input changed' }, { status: 409 });
   try {
     return await prisma.$transaction(async tx => {
       // Serialize saves and retention for this account, including legacy callers.
@@ -79,7 +83,7 @@ export async function POST(request: Request) {
       const keep = new Set([preview.id, ...all.filter(p => p.id !== preview.id).slice(0, 2).map(p => p.id)]);
       const surplus = all.filter(p => !keep.has(p.id)).map(p => p.id);
       if (surplus.length) await tx.videoPreview.deleteMany({ where: { userId, id: { in: surplus } } });
-      return NextResponse.json({ id: preview.id });
+      return reply({ id: preview.id });
     });
   } catch {
     // A commit acknowledgement may have been lost. Only a committed, exact
@@ -90,6 +94,6 @@ export async function POST(request: Request) {
         if (saved) return replay(saved);
       } catch { /* bounded failure below */ }
     }
-    return NextResponse.json({ error: 'Preview save unavailable' }, { status: 503 });
+    return reply({ error: 'Preview save unavailable' }, { status: 503 });
   }
 }

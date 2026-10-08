@@ -11,12 +11,32 @@ module.exports=async function(prisma,results){
   const h=harness();h.state.user=owner;let lost=true;
   h.state.upload=async init=>{const response=await route.POST(new Request('https://example.invalid/api/video-previews',init));if(lost){lost=false;assert.equal(response.status,200);throw Error('synthetic lost acknowledgement');}return response;};
   await h.click();await h.finish();assert.ok(h.alert());assert.deepEqual(h.callbacks,['generated']);await h.retrySave();assert.deepEqual(h.callbacks,['generated','saved']);assert.equal(h.daily(),1);assert.equal(h.recorders.length,1);assert.equal(h.requests.length,1);assert.equal(await prisma.videoPreview.count({where:{userId:owner}}),1);h.unmount();results.push('actual component/API/PostgreSQL lost upload response reuses one stored preview without another render or AI request');
+
+  for(const mode of ['fetch','json']){
+   const screen=harness();screen.state.user=owner;let release,started;const reached=new Promise(r=>{started=r;});let original;
+   screen.state.upload=async init=>{original=await route.POST(new Request('https://example.invalid/api/video-previews',init));assert.equal(original.status,200);if(mode==='fetch'){started();return new Promise(r=>{release=r;});}return {ok:true,status:200,json:()=>{started();return new Promise(r=>{release=r;});}};};
+   await screen.click();const finishing=screen.finish();await reached;screen.advance(90000);for(let n=0;n<30;n++)await Promise.resolve();assert.ok(screen.alert());await finishing;
+   const beforeRows=await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}});
+   screen.state.upload=init=>route.POST(new Request('https://example.invalid/api/video-previews',init));await screen.retrySave();assert.equal(screen.uploads[1].headers['X-Video-Preview-Recovery'],'retained-only-v1');assert.deepEqual(await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}}),beforeRows);
+   release(mode==='fetch'?original:await original.json());for(let n=0;n<30;n++)await Promise.resolve();assert.deepEqual(screen.callbacks,['generated','saved']);assert.equal(screen.requests.length,1);assert.equal(screen.recorders.length,1);screen.unmount();results.push('actual component/API/PostgreSQL '+mode+' timeout retrieves exact committed upload without new row, retention, AI or rendering');
+  }
+
+  const absent=harness();absent.state.user=owner;absent.state.upload=async()=>{throw Error('synthetic failure before server dispatch');};await absent.click();await absent.finish();const absentBefore=await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}});absent.state.upload=init=>route.POST(new Request('https://example.invalid/api/video-previews',init));await absent.retrySave();assert.ok(absent.alert());assert.deepEqual(absent.callbacks,['generated']);assert.deepEqual(await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}}),absentBefore);absent.unmount();results.push('actual component/API/PostgreSQL upload lost before admission cannot recreate a missing preview during retained-only retry');
+  const retainedRequest=(key,title='Synthetic preview',data='x'.repeat(2500))=>{const req=request(key,title,data);req.headers.set('X-Video-Preview-Recovery','retained-only-v1');return req;};
+  const snapshot=await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}});
+  const missing=await route.POST(retainedRequest('missing-retained'));assert.equal(missing.status,503);assert.equal(missing.headers.get('cache-control'),'no-store');
+  assert.equal((await route.POST(retainedRequest(null))).status,400);
+  const invalid=request('invalid-mode');invalid.headers.set('X-Video-Preview-Recovery','reset');assert.equal((await route.POST(invalid)).status,400);
+  assert.deepEqual(await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}}),snapshot);results.push('retained-only unadmitted selector and invalid/keyless modes never insert or prune');
+
   const replies=await Promise.all([route.POST(request('race')),route.POST(request('race'))]);assert.deepEqual(replies.map(r=>r.status),[200,200]);assert.equal((await replies[0].json()).id,(await replies[1].json()).id);assert.equal(await prisma.videoPreview.count({where:{userId:owner,title:'Synthetic preview'}}),1);results.push('simultaneous upload retries serialize on real account row and save one preview');
   for(const req of [request('race','Changed'),request('race','Synthetic preview','y'.repeat(2500)),request('race','Synthetic preview','x'.repeat(2500),'video/mp4')])assert.equal((await route.POST(req)).status,409);
+  assert.equal((await route.POST(retainedRequest('race','Changed'))).status,409);assert.equal((await route.POST(retainedRequest('race'))).status,200);
   results.push('title, exact binary content and MIME changes conflict without overwriting');
   owner=users[1].id;const second=await (await route.POST(request('race'))).json();owner=users[0].id;const first=await (await route.POST(request('race'))).json();assert.notEqual(first.id,second.id);results.push('authenticated accounts have independent retry identities');
   for(const key of ['third','fourth','fifth','sixth'])assert.equal((await route.POST(request(key))).status,200);
   const count=()=>prisma.videoPreview.count({where:{userId:owner}});assert.equal(await count(),3);assert.equal(await prisma.videoPreview.count({where:{userId:users[1].id}}),1);
+  const prunedBefore=await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}});assert.equal((await route.POST(retainedRequest('race'))).status,503);assert.deepEqual(await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}}),prunedBefore);results.push('pruned original retry cannot reinsert a video or evict current retained previews');
   const before=await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}});
   const failing=routeFor({videoPreview:prisma.videoPreview,$transaction:fn=>prisma.$transaction(tx=>fn({$queryRaw:tx.$queryRaw.bind(tx),videoPreview:{findUnique:tx.videoPreview.findUnique.bind(tx.videoPreview),create:tx.videoPreview.create.bind(tx.videoPreview),findMany:tx.videoPreview.findMany.bind(tx.videoPreview),deleteMany:async()=>{throw Error('synthetic prune failure');}}}))});
   assert.equal((await failing.POST(request('rollback'))).status,503);assert.deepEqual(await prisma.videoPreview.findMany({where:{userId:owner},orderBy:{id:'asc'}}),before);results.push('create and pruning roll back together on real PostgreSQL; failure cannot report saved');

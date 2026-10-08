@@ -920,7 +920,7 @@ export default function VideoPreviewGenerator({
   const interaction = useMemo(() => ({
     run: createRetryOperation(() => crypto.randomUUID()), storyboard: null as string | null,
     selection: null as StoryboardSelection | null, ready: false, attempted: false, busy: false, active: true, cancel: null as (() => void) | null, videoUrl: null as string | null,
-    upload: null as { blob: Blob; key: string; saved: boolean; flight: Promise<void> | null } | null,
+    upload: null as { blob: Blob; key: string; saved: boolean; attempted: boolean; cancel: (() => void) | null; flight: Promise<void> | null } | null,
   }), [session?.user?.id, session?.user?.email, sessionStatus, scriptContent, generationId, scriptTitle, lang]);
   const activeInteraction = useRef<typeof interaction | null>(interaction);
   activeInteraction.current = interaction;
@@ -1016,6 +1016,7 @@ export default function VideoPreviewGenerator({
         'This tab has a pending storyboard. Retry retrieving the original result; closing the window does not cancel server work.') : '');
     return () => {
       interaction.active = false;
+      interaction.upload?.cancel?.();
       interaction.cancel?.();
       if (interaction.videoUrl) URL.revokeObjectURL(interaction.videoUrl);
       interaction.videoUrl = null;
@@ -1026,28 +1027,45 @@ export default function VideoPreviewGenerator({
   const saveToAccount = useCallback(async () => {
     const current = () => activeInteraction.current === interaction && interaction.active;
     const upload = interaction.upload;
-    if (!current() || !upload || upload.saved) return;
+    if (!current() || !interaction.ready || !upload || upload.saved) return;
     if (upload.flight) return upload.flight;
+    const retainedOnly = upload.attempted;
+    upload.attempted = true;
+    const controller = new AbortController();
+    const cancel = () => controller.abort();
+    upload.cancel = cancel;
+    let interrupt: () => void = () => {};
+    const interrupted = new Promise<never>((_, reject) => {
+      interrupt = () => reject(new Error('Local preview wait ended'));
+      controller.signal.addEventListener('abort', interrupt, { once: true });
+    });
+    const timer = setTimeout(cancel, 90_000);
     setSaveStatus('saving');
     upload.flight = (async () => {
       try {
         const form = new FormData();
         form.append('video', upload.blob, 'preview.webm');
         form.append('title', scriptTitle);
-        const response = await fetch('/api/video-previews', {
-          method: 'POST', headers: { 'Idempotency-Key': upload.key }, body: form,
-        });
+        const response = await Promise.race([fetch('/api/video-previews', {
+          method: 'POST', headers: { 'Idempotency-Key': upload.key,
+            ...(retainedOnly ? { 'X-Video-Preview-Recovery': 'retained-only-v1' } : {}) },
+          body: form, signal: controller.signal, cache: 'no-store',
+        }), interrupted]);
+        if (!current() || controller.signal.aborted) return;
         if (!response.ok) throw new Error('Preview save failed');
-        const data = await response.json();
+        const data = await Promise.race([response.json(), interrupted]);
+        if (!current() || controller.signal.aborted) return;
         if (typeof data?.id !== 'string' || !data.id.trim() || data.id.length > 256) throw new Error('Invalid preview acknowledgement');
+        upload.saved = true;
+        setSaveStatus('saved');
+        onSaved?.();
       } catch {
         if (current()) setSaveStatus('error');
-        return;
+      } finally {
+        clearTimeout(timer);
+        controller.signal.removeEventListener('abort', interrupt);
+        if (upload.cancel === cancel) upload.cancel = null;
       }
-      if (!current()) return;
-      upload.saved = true;
-      setSaveStatus('saved');
-      onSaved?.();
     })();
     try { await upload.flight; } finally { upload.flight = null; }
   }, [interaction, scriptTitle, onSaved]);
@@ -1222,7 +1240,7 @@ export default function VideoPreviewGenerator({
           interaction.videoUrl = URL.createObjectURL(blob);
           setVideoUrl(interaction.videoUrl);
           setStatus('done'); setProgress(100);
-          interaction.upload = { blob, key: crypto.randomUUID(), saved: false, flight: null };
+          interaction.upload = { blob, key: crypto.randomUUID(), saved: false, attempted: false, cancel: null, flight: null };
 
           // Save to IndexedDB (local, for immediate re-access)
           try {
@@ -1349,6 +1367,7 @@ export default function VideoPreviewGenerator({
   const handleClose = () => {
     if (activeInteraction.current !== interaction || !interaction.active) return;
     interaction.active = false;
+    interaction.upload?.cancel?.();
     interaction.cancel?.();
     onClose();
   };
@@ -1572,7 +1591,7 @@ export default function VideoPreviewGenerator({
 
           {status === 'done' && saveStatus === 'error' && (
             <p role="alert" className="font-mono-jb text-[13px]" style={{ color: 'var(--red)' }}>
-              {t('Vídeo listo para descargar. No se pudo confirmar el guardado en tu cuenta.', 'Video ready to download. Saving to your account could not be confirmed.')}
+              {t('Vídeo listo para descargar. No se pudo confirmar el guardado. Reintenta consultar el vídeo original; terminar la espera o cerrar no cancela el servidor.', 'Video ready to download. Saving could not be confirmed. Retry retrieving the original video; ending the wait or closing does not cancel server work.')}
             </p>
           )}
           {status === 'done' && (saveStatus === 'saving' || saveStatus === 'saved') && (
