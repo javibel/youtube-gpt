@@ -4,15 +4,9 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
+import { useBulkGeneration } from '@/lib/use-bulk-generation';
 
 type Lang = 'es' | 'en';
-
-interface Result {
-  topic: string;
-  content: string;
-  error?: string;
-  retryMayConsume?: boolean;
-}
 
 const TEMPLATES: Record<string, { label: Record<Lang, string>; icon: string; options: string[] }> = {
   title:       { label: { es: 'Titulos', en: 'Titles' },           icon: 'M4 6h16M4 12h16M4 18h8', options: ['tono'] },
@@ -55,91 +49,50 @@ export default function BulkGeneratePage() {
   const [style, setStyle] = useState('viral');
   const [niche, setNiche] = useState('tech');
   const [keywords, setKeywords] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState('');
-  const [results, setResults] = useState<Result[]>([]);
-  const [error, setError] = useState('');
-  const [copied, setCopied] = useState<number | null>(null);
-
+  const [copyState, setCopyState] = useState<{ current: () => boolean; index: number; results: unknown } | null>(null);
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
-
   const topics = topicsText.split('\n').map(l => l.trim()).filter(Boolean);
   const tmpl = TEMPLATES[template];
+  const options: Record<string, string> = {};
+  if (tmpl.options.includes('tono')) options.tono = tone;
+  if (tmpl.options.includes('plataforma')) options.plataforma = platform;
+  if (tmpl.options.includes('estilo')) options.estilo = style;
+  if (tmpl.options.includes('nicho')) options.nicho = niche;
+  if (tmpl.options.includes('keywords') && keywords) options.keywords = keywords;
+  const batch = useBulkGeneration(session?.user?.id, session?.user?.email, status, template, topics, options, lang);
+  const { results, loading, generate } = batch;
+  const progress = loading ? t(`Generando ${batch.pendingCount} contenidos...`, `Generating ${batch.pendingCount} items...`)
+    : t(`${batch.generated}/${results.length} generados correctamente`, `${batch.generated}/${results.length} generated successfully`);
+  const error = batch.error === 'pro' ? t('Necesitas el plan Pro.', 'You need the Pro plan.')
+    : batch.error === 'limit' ? t('No hay créditos suficientes para esta selección.', 'Not enough credits for this selection.')
+    : batch.error ? t('Resultado sin confirmar. Consulta tu historial antes de generar de nuevo; otra solicitud puede consumir nuevos créditos.',
+      'Result unconfirmed. Check your history before generating again; another request may consume new credits.') : '';
+  const copied = copyState?.current() && copyState.results === results ? copyState.index : null;
 
-  async function generate() {
-    if (topics.length === 0) return;
-    setLoading(true);
-    setError('');
-    setResults([]);
-    setProgress(t(`Generando ${topics.length} contenidos...`, `Generating ${topics.length} items...`));
-
-    const options: Record<string, string> = {};
-    if (tmpl.options.includes('tono')) options.tono = tone;
-    if (tmpl.options.includes('plataforma')) options.plataforma = platform;
-    if (tmpl.options.includes('estilo')) options.estilo = style;
-    if (tmpl.options.includes('nicho')) options.nicho = niche;
-    if (tmpl.options.includes('keywords') && keywords) options.keywords = keywords;
-
-    try {
-      const res = await fetch('/api/generate/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template, topics, options, lang }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.error === 'pro_required') {
-          setError(t('Necesitas el plan Pro.', 'You need the Pro plan.'));
-        } else {
-          const message = data.error || t('Error al generar', 'Generation error');
-          setError(data.retryMayConsume === true ? message + ' ' + t(
-            'Resultado sin confirmar. Generar de nuevo puede consumir otro crédito.',
-            'Result unconfirmed. Generating again may consume another credit.',
-          ) : message);
-        }
-        return;
-      }
-      setResults(data.results || []);
-      setProgress(t(
-        `${data.generated}/${data.total} generados correctamente`,
-        `${data.generated}/${data.total} generated successfully`,
-      ));
-    } catch {
-      setError(t('Error de conexion', 'Connection error'));
-    } finally {
-      setLoading(false);
-    }
+  async function copyOne(idx: number) {
+    if (!batch.isCurrent() || !results[idx] || results[idx].error) return;
+    try { await navigator.clipboard.writeText(results[idx].content); }
+    catch { return; }
+    if (batch.isCurrent()) setCopyState({ current: batch.isCurrent, index: idx, results });
   }
 
-  function copyOne(idx: number) {
-    navigator.clipboard.writeText(results[idx].content);
-    setCopied(idx);
-    setTimeout(() => setCopied(null), 1500);
-  }
-
-  function copyAll() {
-    const text = results
-      .filter(r => !r.error)
-      .map(r => `--- ${r.topic} ---\n${r.content}`)
-      .join('\n\n');
-    navigator.clipboard.writeText(text);
-    setCopied(-1);
-    setTimeout(() => setCopied(null), 1500);
+  async function copyAll() {
+    if (!batch.isCurrent()) return;
+    const text = results.filter(r => !r.error).map(r => `--- ${r.topic} ---\n${r.content}`).join('\n\n');
+    try { await navigator.clipboard.writeText(text); }
+    catch { return; }
+    if (batch.isCurrent()) setCopyState({ current: batch.isCurrent, index: -1, results });
   }
 
   function exportCSV() {
-    const header = 'Topic,Content\n';
-    const rows = results
-      .filter(r => !r.error)
-      .map(r => `"${r.topic.replace(/"/g, '""')}","${r.content.replace(/"/g, '""').replace(/\n/g, ' ')}"`)
-      .join('\n');
-    const blob = new Blob([header + rows], { type: 'text/csv' });
+    if (!batch.isCurrent()) return;
+    const rows = results.filter(r => !r.error).map(r =>
+      `"${r.topic.replace(/"/g, '""')}","${r.content.replace(/"/g, '""').replace(/\n/g, ' ')}"`).join('\n');
+    const blob = new Blob(['Topic,Content\n' + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const a = document.createElement('a'); a.href = url;
     a.download = `ytubviral-bulk-${template}-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    a.click(); URL.revokeObjectURL(url);
   }
 
   if (status === 'loading') {
@@ -186,7 +139,7 @@ export default function BulkGeneratePage() {
 
         {/* Error */}
         {error && (
-          <div className="mb-8 p-4 rounded-lg border border-red-500/30" style={{ background: 'rgba(232,77,91,0.08)' }}>
+          <div role="alert" className="mb-8 p-4 rounded-lg border border-red-500/30" style={{ background: 'rgba(232,77,91,0.08)' }}>
             <p className="text-sm text-red-400 font-mono-jb">{error}</p>
           </div>
         )}
@@ -384,6 +337,19 @@ export default function BulkGeneratePage() {
                 </button>
               </div>
             </div>
+
+            {batch.failed > 0 && (
+              <div className="mb-4">
+                <button onClick={batch.generateFailed} disabled={loading}
+                  className="btn-offset px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {t(`Generar temas fallidos (${batch.failed})`, `Generate failed topics (${batch.failed})`)}
+                </button>
+                <p className="text-sm mt-2" style={{ color: 'var(--yv-text-2)' }}>
+                  {t('Son generaciones nuevas y pueden consumir nuevos créditos. Se conservan los resultados confirmados.',
+                    'These are new generations and may consume new credits. Confirmed results are preserved.')}
+                </p>
+              </div>
+            )}
 
             <div className="space-y-4">
               {results.map((r, i) => (
