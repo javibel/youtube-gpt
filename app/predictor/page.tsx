@@ -75,34 +75,65 @@ export default function PredictorPage() {
   const [error, setError] = useState('');
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [baseline, setBaseline] = useState<Baseline | null>(null);
-  const predictionOperation = useMemo(() => createRetryOperation(() => crypto.randomUUID()), [session?.user?.id, lang]);
+  const predictionOperation = useMemo(() => ({
+    run: createRetryOperation(() => crypto.randomUUID()), key: null as string | null,
+    body: null as string | null, generation: 0, active: true, busy: false, controller: null as AbortController | null,
+  }), [session?.user?.id, session?.user?.email, status, lang]);
   const currentPredictionOperation = useRef(predictionOperation);
   currentPredictionOperation.current = predictionOperation;
   const input = { title: title.trim(), description: description.trim(), tags: tags.trim(), lang };
   const currentInput = useRef(JSON.stringify(input));
   currentInput.current = JSON.stringify(input);
   useEffect(() => {
+    predictionOperation.active = true;
     setPrediction(null); setBaseline(null); setError(''); setLoading(false);
+    return () => { predictionOperation.active = false; predictionOperation.controller?.abort(); };
   }, [predictionOperation]);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const interaction = predictionOperation.generation, pendingKey = predictionOperation.key;
+  const pendingMessage = t(
+    'No se pudo recuperar la predicción. Reintentar solo consulta el resultado original. Para otra entrada, descarta esta solicitud; no cancela el trabajo del servidor y una nueva puede consumir créditos.',
+    'The prediction could not be retrieved. Retry only retrieves the original result. For another input, discard this request; it does not cancel server work and a new request may consume credits.',
+  );
+  useEffect(() => {
+    predictionOperation.controller?.abort();
+    setPrediction(null); setBaseline(null);
+    if (predictionOperation.key) setError(pendingMessage);
+  }, [currentInput.current, predictionOperation]);
 
   async function predict() {
-    if (status !== 'authenticated' || !title.trim() || loading) return;
     const operation = predictionOperation, submittedInput = JSON.stringify(input);
-    const stillCurrent = () => currentPredictionOperation.current === operation && currentInput.current === submittedInput;
+    if (status !== 'authenticated' || !session?.user?.id || !title.trim() || !operation.active || operation.busy
+      || currentPredictionOperation.current !== operation || currentInput.current !== submittedInput || operation.generation !== interaction) return;
+    if (operation.key && operation.body !== submittedInput) { setError(pendingMessage); return; }
+    const stillCurrent = () => operation.active && currentPredictionOperation.current === operation && currentInput.current === submittedInput;
+    operation.busy = true;
+    const controller = new AbortController(); operation.controller = controller;
+    let timedOut = false, stopWait: (error: Error) => void = () => {};
+    const interrupted = new Promise<never>((_, reject) => { stopWait = reject; });
+    void interrupted.catch(() => {});
+    const abort = () => stopWait(new Error('Unconfirmed prediction'));
+    controller.signal.addEventListener('abort', abort, { once: true });
+    const deadline = setTimeout(() => { timedOut = true; controller.abort(); }, 90_000);
     setLoading(true);
     setError('');
     setPrediction(null);
     setBaseline(null);
     try {
-      const result = await operation(input, async (body, operationKey) => {
-        const res = await fetch('/api/predictor', {
+      const result = await operation.run(input, async (body, operationKey) => {
+        if (!stillCurrent() || controller.signal.aborted) throw new Error('Input changed');
+        const readOnly = operation.key === operationKey;
+        operation.key = operationKey; operation.body = body;
+        const res = await Promise.race([fetch('/api/predictor', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey },
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey,
+            ...(readOnly ? { 'X-Predictor-Recovery': 'retained-only-v1' } : {}) },
           body,
-        });
-        const json = await res.json();
+          signal: controller.signal,
+        }), interrupted]);
+        const json = await Promise.race([res.json(), interrupted]);
+        if (!stillCurrent() || controller.signal.aborted) throw new Error('Unconfirmed prediction');
         if (!res.ok) {
           let message = t('No se pudo recuperar la predicción. Puedes volver a intentarlo.', 'The prediction could not be retrieved. You can try again.');
           if (json?.error === 'pro_required') message = t('Plan Pro requerido.', 'Pro plan required.');
@@ -115,17 +146,31 @@ export default function PredictorPage() {
         return json;
       });
       if (stillCurrent()) {
+        operation.key = null; operation.body = null;
+        operation.generation++;
+        operation.run = createRetryOperation(() => crypto.randomUUID());
         setPrediction(result.prediction);
         setBaseline(result.baseline);
       }
     } catch (e) {
-      if (stillCurrent()) setError(e instanceof PredictionRequestError ? e.message : t(
-        'No se pudo recuperar la predicción. Puedes volver a intentarlo.',
-        'The prediction could not be retrieved. You can try again.',
-      ));
+      if (stillCurrent()) setError((timedOut ? t('La espera terminó a los 90 segundos. ', 'The wait ended after 90 seconds. ') : '')
+        + (e instanceof PredictionRequestError ? e.message + ' ' : '') + pendingMessage);
     } finally {
-      if (currentPredictionOperation.current === operation) setLoading(false);
+      operation.busy = false; clearTimeout(deadline);
+      controller.signal.removeEventListener('abort', abort);
+      if (operation.controller === controller) operation.controller = null;
+      if (operation.active && currentPredictionOperation.current === operation) setLoading(false);
     }
+  }
+
+  function discardPrediction() {
+    const operation = predictionOperation;
+    if (!operation.active || operation.busy || currentPredictionOperation.current !== operation || status !== 'authenticated'
+      || operation.generation !== interaction || !pendingKey || operation.key !== pendingKey) return;
+    operation.key = null; operation.body = null;
+    operation.generation++;
+    operation.run = createRetryOperation(() => crypto.randomUUID());
+    setError(''); setPrediction(null); setBaseline(null);
   }
 
   if (status === 'loading') {
@@ -241,6 +286,9 @@ export default function PredictorPage() {
               <p>{error}</p>
               <button onClick={predict} disabled={loading || !title.trim()} className="mt-2 underline disabled:opacity-50">
                 {t('Reintentar predicción', 'Retry prediction')}
+              </button>
+              <button onClick={discardPrediction} disabled={loading} className="mt-2 ml-3 underline disabled:opacity-50">
+                {t('Descartar solicitud', 'Discard request')}
               </button>
             </div>
           )}

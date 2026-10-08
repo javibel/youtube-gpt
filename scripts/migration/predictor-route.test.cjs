@@ -7,6 +7,10 @@ const videos=[100,200,900].map((views,i)=>({id:'synthetic-'+i,snippet:{title:'Sy
 function harness(options={}){
  const requests=[];
  const runtime=taskFixture({taskType:'youtube.performance-prediction',controlUnavailable:options.noKey,respond:async()=>{requests.push({url:'synthetic:provider',body:runtime.calls.at(-1)});if(options.transportError)throw Error('Synthetic failure');if(options.providerStatus&&options.providerStatus!==200)throw {status:options.providerStatus};return {content:[{type:'text',text:options.text??JSON.stringify(prediction)}],stop_reason:options.stopReason??'end_turn'};}});
+ if(options.retained!==undefined){const original=runtime.getMessagesTask.bind(runtime);runtime.getMessagesTask=async identity=>{
+  assert.equal(identity.operationKey,'synthetic-retained');const task=await original(identity);
+  task.retrieve=async(parameters,{signal})=>{assert.match(parameters.messages[0].content,/Synthetic proposal/);assert.ok(signal);requests.push({url:'synthetic:retained'});return options.retained;};return task;
+ };}
  const route=load('app/api/predictor/route.ts',{
   '@/lib/ai/task-runtime':runtime,
   'next/server':{NextResponse:Response},'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic'}}},
@@ -22,12 +26,27 @@ function harness(options={}){
   }
   throw Error('Unexpected external URL: '+url);
  }});
- async function run(body={title:'Synthetic proposal',description:'Synthetic description',tags:'synthetic',lang:'es'}){const r=await route.POST(new Request('https://example.invalid/api/predictor',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
+ async function run(body={title:'Synthetic proposal',description:'Synthetic description',tags:'synthetic',lang:'es'},headers={}){const r=await route.POST(new Request('https://example.invalid/api/predictor',{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
  return {run,requests};
 }
 const results=[];
 async function test(name,fn,known=false){try{await fn();results.push({name,status:known?'KNOWN_DEFECT_REPRODUCED':'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.message});}}
 (async()=>{
+ for(const headers of [
+  {'X-Predictor-Recovery':'retained-only-v1'}, {'X-Predictor-Recovery':'fresh','Idempotency-Key':'synthetic-retained'},
+  {'X-Predictor-Recovery':'','Idempotency-Key':'synthetic-retained'}, {'Idempotency-Key':'invalid key'}, {'Idempotency-Key':''},
+ ])await test('invalid recovery cannot obtain channel/token or start a task: '+JSON.stringify(headers),async()=>{
+  const h=harness();assert.equal((await h.run(undefined,headers)).status,400);assert.equal(h.requests.length,0);
+ });
+ for(const options of [{},{retained:null}])await test('absent retained result/retriever cannot fall back to fresh admission '+JSON.stringify(options),async()=>{
+  const h=harness(options);const r=await h.run(undefined,{'X-Predictor-Recovery':'retained-only-v1','Idempotency-Key':'synthetic-retained'});
+  assert.equal(r.status,503);assert.deepEqual(r.body,{error:'prediction_unconfirmed',retryMayConsume:false});assert.equal(h.requests.filter(r=>r.url==='synthetic:provider').length,0);
+ });
+ await test('retained result uses original input and request signal without invoking create',async()=>{
+  const h=harness({retained:{content:[{type:'text',text:JSON.stringify(prediction)}]}});
+  const r=await h.run(undefined,{'X-Predictor-Recovery':'retained-only-v1','Idempotency-Key':'synthetic-retained'});
+  assert.equal(r.status,200);assert.deepEqual(r.body.prediction,prediction);assert.equal(h.requests.filter(r=>r.url==='synthetic:retained').length,1);assert.equal(h.requests.filter(r=>r.url==='synthetic:provider').length,0);
+ });
  for(const [name,options,body,status] of [
   ['anonymous blocked',{anonymous:true},undefined,401],['free plan blocked',{free:true},undefined,403],['empty title blocked',{}, {title:' '},400],['missing channel blocked',{noChannel:true},undefined,400],['expired token blocked',{noToken:true},undefined,401],
  ])await test(name,async()=>{const h=harness(options);assert.equal((await h.run(body)).status,status);assert.equal(h.requests.length,0);});

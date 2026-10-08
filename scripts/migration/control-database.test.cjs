@@ -391,13 +391,31 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
     if(address.pathname==='/youtube/v3/search')return Response.json({items:[0,1,2].map(i=>({id:{videoId:'synthetic-'+i}}))});
     assert.equal(address.pathname,'/youtube/v3/videos');return Response.json({items:[0,1,2].map(i=>({snippet:{title:'Synthetic video '+i,publishedAt:'2026-09-20T12:00:00.000Z',tags:['synthetic'],description:'Synthetic description',thumbnails:{high:{}}},statistics:{viewCount:String(100+i*100+(changedContext?100:0)),likeCount:'10',commentCount:'2'},contentDetails:{duration:'PT5M'}}))});}});
   const keys=[],run=createRetryOperation(()=>prefix+'_predictor_retry');let lost=true,first;
-  const invoke=(body,key)=>route.POST(new Request('https://example.invalid/api/predictor',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':key},body}));
-  const send=async(body,key)=>{keys.push(key);const response=await invoke(body,key);assert.equal(response.status,200);const output=await response.json();if(lost){first=output;lost=false;throw Error('Synthetic lost Predictor response after settlement');}return output;};
+  const invoke=(body,key,recovery=false)=>route.POST(new Request('https://example.invalid/api/predictor',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':key,...(recovery?{'X-Predictor-Recovery':'retained-only-v1'}:{})},body}));
+  const send=async(body,key)=>{keys.push(key);const response=await invoke(body,key,!lost);assert.equal(response.status,200);const output=await response.json();if(lost){first=output;lost=false;throw Error('Synthetic lost Predictor response after settlement');}return output;};
   const input={title:'Synthetic title',description:'Synthetic description',tags:'synthetic',lang:'es'};
   await assert.rejects(run(input,send),/lost Predictor response after settlement/);const recovered=await run(input,send);assert.deepEqual(recovered,first);assert.deepEqual(recovered.prediction,prediction);assert.equal(keys[0],keys[1]);assert.equal(calls,1);
-  assert.equal((await invoke(JSON.stringify({...input,title:'Changed title'}),keys[0])).status,500);assert.equal(calls,1);
-  changedContext=true;assert.equal((await invoke(JSON.stringify(input),keys[0])).status,500);assert.equal(calls,1);
+  assert.equal((await invoke(JSON.stringify({...input,title:'Changed title'}),keys[0],true)).status,500);assert.equal(calls,1);
+  changedContext=true;assert.equal((await invoke(JSON.stringify(input),keys[0],true)).status,500);assert.equal(calls,1);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+  await test('actual Predictor component/API/ledger retained retry cannot admit absent receipt; original result has one inference/settlement even after local timeout',async()=>{
+   const {harness}=require('./predictor-client-retry.test.cjs');changedContext=false;
+   const browser=harness();browser.setField('title','Synthetic title');browser.setField('description','Synthetic description');browser.setField('tags','synthetic');
+   try{
+    browser.state.send=async()=>{throw Error('Synthetic loss before server admission');};await browser.click();assert.ok(browser.alert());
+    browser.state.send=init=>invoke(init.body,prefix+'_component_'+init.headers['Idempotency-Key'],init.headers['X-Predictor-Recovery']==='retained-only-v1');
+    await browser.click();assert.ok(browser.alert());assert.equal(calls,1);assert.equal(Number((await stats(budgetId)).settled_micros),7);
+    assert.equal(browser.requests[1].headers['X-Predictor-Recovery'],'retained-only-v1');assert.equal(browser.requests[0].body,browser.requests[1].body);
+    browser.discard();let committed,ready;const received=new Promise(resolve=>{ready=resolve;});
+    browser.state.send=async init=>{try{const r=await invoke(init.body,prefix+'_component_'+init.headers['Idempotency-Key'],false);assert.equal(r.status,200);committed=await r.json();return new Promise(()=>{});}finally{ready();}};
+    const pending=browser.click();await received;assert.ok(committed);browser.advance(90000);await pending;
+    assert.ok(browser.alert());assert.equal(calls,2);assert.equal(Number((await stats(budgetId)).settled_micros),14);
+    browser.state.send=init=>invoke(init.body,prefix+'_component_'+init.headers['Idempotency-Key'],init.headers['X-Predictor-Recovery']==='retained-only-v1');
+    await browser.click();assert.equal(browser.alert(),undefined);assert.match(browser.text(),/Synthetic advice/);assert.equal(calls,2);
+    assert.equal(browser.requests[2].headers['Idempotency-Key'],browser.requests[3].headers['Idempotency-Key']);assert.equal(browser.requests[3].headers['X-Predictor-Recovery'],'retained-only-v1');
+    assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),14);
+   }finally{browser.unmount();}
+  });
  });
  await test('Storyboard actual client lost response recovers one inference, settlement and real history row after free quota is consumed',async()=>{
   const {PrismaClient}=require('@prisma/client');const prisma=new PrismaClient({datasources:{db:{url:config.databaseUrl}}});

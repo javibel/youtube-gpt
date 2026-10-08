@@ -24,6 +24,12 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  const operationKey = request.headers.get('idempotency-key');
+  const recovery = request.headers.get('X-Predictor-Recovery');
+  if ((operationKey !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(operationKey))
+    || (recovery !== null && (recovery !== 'retained-only-v1' || operationKey === null))) {
+    return NextResponse.json({ error: 'invalid_recovery' }, { status: 400 });
+  }
 
   const plan = await getUserPlan(session.user.id);
   if (!isPaid(plan)) {
@@ -155,7 +161,7 @@ Be realistic. Base predictions on actual channel metrics, not optimistic guesses
   try {
     let task;
     try {
-      task = await getMessagesTask({ operationKey: request.headers.get('idempotency-key') ?? undefined, taskType: 'youtube.performance-prediction', userId: session.user.id,
+      task = await getMessagesTask({ operationKey: operationKey ?? undefined, taskType: 'youtube.performance-prediction', userId: session.user.id,
         language: userLang, instructionsVersion: 'performance-prediction-v1',
         outputSchema: {
           type: 'object', additionalProperties: false,
@@ -175,7 +181,13 @@ Be realistic. Base predictions on actual channel metrics, not optimistic guesses
     } catch {
       return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
     }
-    const data = await task.create({ max_tokens: 600, messages: [{ role: 'user', content: prompt }] });
+    const parameters = { max_tokens: 600, messages: [{ role: 'user' as const, content: prompt }] };
+    const data = recovery !== null
+      ? await task.retrieve?.(parameters, { signal: request.signal })
+      : await task.create(parameters, { signal: request.signal });
+    if (!data) return NextResponse.json({ error: 'prediction_unconfirmed', retryMayConsume: false }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
     const prediction = JSON.parse(data.content[0].text);
     if (prediction.estimatedViews.low > prediction.estimatedViews.mid || prediction.estimatedViews.mid > prediction.estimatedViews.high) {
       return NextResponse.json({ error: 'prediction_failed' }, { status: 500 });
