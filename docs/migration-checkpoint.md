@@ -449,3 +449,15 @@ This is a prerequisite for keyed text/Storyboard quota admission. Those routes
 still use their previous generation path; integrating admission and retry without
 new inference remains pending. The isolated contracts and synthetic ledger do
 not establish operational provenance or acceptance.
+# Keyed generic text admission
+
+Generic generation in the web and extension reserves shared business quota under
+the authenticated owner's lock before a freshly acknowledged invocation can call
+the common task runtime. A retry with a retained reservation only calls the
+runtime's authenticated `retrieve`; absent, pending or unsettled results never
+permit `create`, reclaim capacity or reconstruct runner ownership. Confirmed
+history and completion convert the reservation atomically using its admission
+date. Same-key settled retries bypass new quota/throttle admission, while new
+keys compete with pending text and image slots. Deleted completed history cannot
+be resurrected by the admission helper. Storyboard keyed admission, durable bulk
+HTTP replay and operational reconciliation/acceptance remain separate work.

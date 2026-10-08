@@ -8,7 +8,7 @@ import { getChannelContext } from '@/lib/channel-context';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 import { createHash } from 'node:crypto';
 import { readGenerationQuota } from '@/lib/generation-quota';
-import { unkeyedTextGeneration } from '@/lib/text-generation-attempt';
+import { unkeyedTextGeneration, keyedTextGeneration } from '@/lib/text-generation-attempt';
 
 export const maxDuration = 60; // generación con Claude puede pasar de 15s en plantillas largas
 
@@ -125,131 +125,48 @@ export async function POST(request: Request) {
     }
     try { const saved = await savedResponse(); if (saved) return saved; }
     catch { return Response.json({ error: 'Generation history unavailable' }, { status: 503 }); }
-    let isPro = false;
+    const preflight = async (): Promise<Response | null> => {
+      let isPro = false;
 
-    if (extAuth) {
-      // Extension Bearer token auth
-      userId = extAuth.user.id;
-      isPro = extAuth.isPro;
-      const extPlan = await getUserPlan(userId);
-      const limit = getLimits(extPlan).generationsPerMonth;
-
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      let usedThisMonth: number;
-      try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
-      catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
-      if (usedThisMonth >= limit) {
-        if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
-        // `code` is for the extension: it renders a different card for "free quota spent"
-        // (upgrade prompt) vs "Pro quota spent" (no upsell — they already pay).
-        return Response.json(
-          {
-            error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado',
-            code: isPro ? 'quota_pro' : 'quota_free',
-            limit,
-            limitReached: true,
-          },
-          { status: 429 }
-        );
-      }
-
-      if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
-        await triggerConversionEmail(userId, 'c3');
-        return Response.json(
-          { error: 'Este template es exclusivo del plan Pro', code: 'pro_required', limitReached: true },
-          { status: 403 }
-        );
-      }
-
-      const rlKey = `generate:${userId}`;
-      const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
-        INSERT INTO rate_limits (key, hits, window_start)
-        VALUES (${rlKey}, 1, NOW())
-        ON CONFLICT (key) DO UPDATE
-        SET
-          hits = CASE
-            WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
-            THEN 1
-            ELSE rate_limits.hits + 1
-          END,
-          window_start = CASE
-            WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
-            THEN NOW()
-            ELSE rate_limits.window_start
-          END
-        RETURNING hits
-      `;
-      if (Number(rlResult[0].hits) > 5) {
-        return Response.json(
-          { error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' },
-          { status: 429 }
-        );
-      }
-
-      // Same anti multi-account cap as the web branch. It was never needed while the
-      // blanket Pro gate above blocked every free extension call; now that free users
-      // get their monthly quota here, the extension needs the same IP ceiling or it
-      // becomes the cheap way around it.
-      if (!isPro) {
-        const ip = getIp(request);
-        if (ip) {
-          const ipUsageThisMonth = await prisma.generation.count({
-            where: { ipAddress: ip, createdAt: { gte: startOfMonth } },
-          });
-          if (ipUsageThisMonth >= IP_FREE_LIMIT) {
-            return Response.json(
-              { error: 'Límite del plan gratuito alcanzado', code: 'quota_free', limitReached: true },
-              { status: 429 }
-            );
-          }
-        }
-      }
-    } else if (session?.user?.email) {
-      const user = authenticatedUser;
-      // A stale or inconsistent session must not fall through without accounting.
-      if (!user || user.id !== session.user.id) {
-        return Response.json({ error: 'No autorizado' }, { status: 401 });
-      }
-      if (user) {
-        userId = user.id;
-
-        const plan = await getUserPlan(user.id);
-        isPro = isPaid(plan);
-        const limit = getLimits(plan).generationsPerMonth;
+      if (extAuth) {
+        // Extension Bearer token auth
+        userId = extAuth.user.id;
+        isPro = extAuth.isPro;
+        const extPlan = await getUserPlan(userId);
+        const limit = getLimits(extPlan).generationsPerMonth;
 
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
 
-        // Verificar límite por cuenta
         let usedThisMonth: number;
         try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
         catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
-
         if (usedThisMonth >= limit) {
           if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
+          // `code` is for the extension: it renders a different card for "free quota spent"
+          // (upgrade prompt) vs "Pro quota spent" (no upsell — they already pay).
           return Response.json(
-            { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
+            {
+              error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado',
+              code: isPro ? 'quota_pro' : 'quota_free',
+              limit,
+              limitReached: true,
+            },
             { status: 429 }
           );
         }
 
-        // Bloquear templates Pro para usuarios free
         if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
           await triggerConversionEmail(userId, 'c3');
           return Response.json(
-            { error: 'Este template es exclusivo del plan Pro', limitReached: true },
+            { error: 'Este template es exclusivo del plan Pro', code: 'pro_required', limitReached: true },
             { status: 403 }
           );
         }
 
-        // Rate limit por minuto: máx 5 generaciones/minuto por usuario (anti-abuso)
-        // Upsert atómico en BD: una sola operación SQL sin race condition
         const rlKey = `generate:${userId}`;
-        const result = await prisma.$queryRaw<{ hits: number }[]>`
+        const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
           INSERT INTO rate_limits (key, hits, window_start)
           VALUES (${rlKey}, 1, NOW())
           ON CONFLICT (key) DO UPDATE
@@ -266,14 +183,17 @@ export async function POST(request: Request) {
             END
           RETURNING hits
         `;
-        if (Number(result[0].hits) > 5) {
+        if (Number(rlResult[0].hits) > 5) {
           return Response.json(
             { error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' },
             { status: 429 }
           );
         }
 
-        // Verificar límite por IP (solo usuarios free, para evitar multi-cuenta)
+        // Same anti multi-account cap as the web branch. It was never needed while the
+        // blanket Pro gate above blocked every free extension call; now that free users
+        // get their monthly quota here, the extension needs the same IP ceiling or it
+        // becomes the cheap way around it.
         if (!isPro) {
           const ip = getIp(request);
           if (ip) {
@@ -282,13 +202,101 @@ export async function POST(request: Request) {
             });
             if (ipUsageThisMonth >= IP_FREE_LIMIT) {
               return Response.json(
-                { error: 'Límite del plan gratuito alcanzado', limitReached: true },
+                { error: 'Límite del plan gratuito alcanzado', code: 'quota_free', limitReached: true },
                 { status: 429 }
               );
             }
           }
         }
+      } else if (session?.user?.email) {
+        const user = authenticatedUser;
+        // A stale or inconsistent session must not fall through without accounting.
+        if (!user || user.id !== session.user.id) {
+          return Response.json({ error: 'No autorizado' }, { status: 401 });
+        }
+        if (user) {
+          userId = user.id;
+
+          const plan = await getUserPlan(user.id);
+          isPro = isPaid(plan);
+          const limit = getLimits(plan).generationsPerMonth;
+
+          const startOfMonth = new Date();
+          startOfMonth.setDate(1);
+          startOfMonth.setHours(0, 0, 0, 0);
+
+          // Verificar límite por cuenta
+          let usedThisMonth: number;
+          try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
+          catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
+
+          if (usedThisMonth >= limit) {
+            if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
+            return Response.json(
+              { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
+              { status: 429 }
+            );
+          }
+
+          // Bloquear templates Pro para usuarios free
+          if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
+            await triggerConversionEmail(userId, 'c3');
+            return Response.json(
+              { error: 'Este template es exclusivo del plan Pro', limitReached: true },
+              { status: 403 }
+            );
+          }
+
+          // Rate limit por minuto: máx 5 generaciones/minuto por usuario (anti-abuso)
+          // Upsert atómico en BD: una sola operación SQL sin race condition
+          const rlKey = `generate:${userId}`;
+          const result = await prisma.$queryRaw<{ hits: number }[]>`
+            INSERT INTO rate_limits (key, hits, window_start)
+            VALUES (${rlKey}, 1, NOW())
+            ON CONFLICT (key) DO UPDATE
+            SET
+              hits = CASE
+                WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
+                THEN 1
+                ELSE rate_limits.hits + 1
+              END,
+              window_start = CASE
+                WHEN rate_limits.window_start < NOW() - INTERVAL '1 minute'
+                THEN NOW()
+                ELSE rate_limits.window_start
+              END
+            RETURNING hits
+          `;
+          if (Number(result[0].hits) > 5) {
+            return Response.json(
+              { error: 'Demasiadas solicitudes. Espera un momento antes de continuar.' },
+              { status: 429 }
+            );
+          }
+
+          // Verificar límite por IP (solo usuarios free, para evitar multi-cuenta)
+          if (!isPro) {
+            const ip = getIp(request);
+            if (ip) {
+              const ipUsageThisMonth = await prisma.generation.count({
+                where: { ipAddress: ip, createdAt: { gte: startOfMonth } },
+              });
+              if (ipUsageThisMonth >= IP_FREE_LIMIT) {
+                return Response.json(
+                  { error: 'Límite del plan gratuito alcanzado', limitReached: true },
+                  { status: 429 }
+                );
+              }
+            }
+          }
+        }
       }
+
+    return null;
+    };
+    if (operationKey === null) {
+      const denied = await preflight();
+      if (denied) return denied;
     }
 
     // Token limits per template — long-form content needs more tokens
@@ -330,7 +338,7 @@ export async function POST(request: Request) {
 
     if (!userId) return Response.json({ error: 'No autorizado' }, { status: 401 });
     const ownerId = userId;
-    const execute = async () => {
+    const execute = async (readOnly = false) => {
       let task;
       try {
         task = await getMessagesTask({
@@ -341,7 +349,22 @@ export async function POST(request: Request) {
       } catch {
         return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
       }
-      const data = await task.create({ max_tokens: maxTokens, messages });
+      const parameters = { max_tokens: maxTokens, messages };
+      let data;
+      try {
+        if (readOnly) {
+          if (!task.retrieve) return Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
+            retryMayConsume: false }, { status: 503 });
+          data = await task.retrieve(parameters, { signal: request.signal });
+          if (!data) return Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
+            retryMayConsume: false }, { status: 503 });
+        } else data = await task.create(parameters, { signal: request.signal });
+      } catch (error) {
+        if (!readOnly) throw error;
+        const code = error && typeof error === 'object' && 'code' in error ? error.code : null;
+        return Response.json({ error: code === 'invalid_format' ? 'Operation input changed' : 'Generation unconfirmed',
+          code: 'text_result_unconfirmed', retryMayConsume: false }, { status: code === 'invalid_format' ? 409 : 503 });
+      }
       const content = data.content?.[0]?.text;
       // The task boundary preserves unknown usage as null/absent. It is not
       // evidence of a measured zero, including partial text and keyed replay.
@@ -356,26 +379,8 @@ export async function POST(request: Request) {
         inputs: { ...inputs, ...(generationId ? { _migrationRetry: { inputDigest, content, truncated } } : {}) },
         output: isContinuation ? previousContent + content : content, tokensUsed, ipAddress: getIp(request) } };
     };
-    if (operationKey === null) return unkeyedTextGeneration(ownerId, request.signal, execute);
-    const result = await execute();
-    if (result instanceof Response) return result;
-    const { content, truncated, history } = result;
-    // Guardar generación con IP
-    if (userId) {
-      try {
-        await prisma.generation.create({
-          data: { ...history, id: generationId!, userId },
-        });
-      } catch {
-        if (generationId) {
-          try { const saved = await savedResponse(); if (saved) return saved; }
-          catch { /* Persisted state is uncertain; do not invent success or a new operation. */ }
-        }
-        return Response.json({ error: 'Generation history could not be saved' }, { status: 503 });
-      }
-    }
-
-    return Response.json({ content, truncated });
+    if (operationKey === null) return unkeyedTextGeneration(ownerId, request.signal, () => execute());
+    return keyedTextGeneration(ownerId, generationId!, request.signal, preflight, () => execute(), () => execute(true));
   } catch (error) {
     console.error('API Error:', error);
     const code = error && typeof error === 'object' && 'code' in error ? error.code : null;
