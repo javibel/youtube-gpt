@@ -27,6 +27,7 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
   const run = useCallback((action: Action, retryOnly = false) => {
     if (!current()) return Promise.resolve();
     if (scope.flight) return scope.flight;
+    const readOnly=!!scope.pending;
     if (!scope.pending) {
       if (retryOnly || (action === 'continue' && (!scope.output || !scope.truncated))) return Promise.resolve();
       // Match the API's retained-context ceiling; do not crop the confirmed base.
@@ -57,7 +58,8 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
     const flight = Promise.resolve().then(async () => {
       try {
         if (!current()) return;
-        const response=await Promise.race([fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':op.key},
+        const response=await Promise.race([fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':op.key,
+          ...(readOnly ? {'X-Generation-Recovery':'retained-only-v1'} : {})},
           body:op.body,signal:controller.signal}),interrupted]);
         const body=await Promise.race([response.json(),interrupted]);
         if (!current()) return;
@@ -88,6 +90,10 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
     return () => {scope.active=false;scope.controller?.abort();scope.timers.forEach(clearTimeout);scope.timers.clear();};
   }, [scope]);
   const view = store.scope === scope && current() ? store : initial();
+  const discardGeneration=useCallback(()=>{
+    if(!current()||scope.flight)return;
+    scope.pending=null;update({error:null,retry:false});
+  },[scope,current,update]);
   const copyOutput = useCallback(async () => {
     if (!current() || !scope.output) return;
     try {
@@ -99,7 +105,7 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
     } catch {update({copied:false});}
   }, [scope,current,update]);
   return {...view,loading:view.busy === 'generate',continuing:view.busy === 'continue',
-    copyOutput,
+    copyOutput,discardGeneration,
     generate:useCallback(() => run('generate'),[run]),continueGeneration:useCallback(() => run('continue'),[run]),
     retryGeneration:useCallback(() => run('generate',true),[run])};
 }

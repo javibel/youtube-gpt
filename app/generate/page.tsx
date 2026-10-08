@@ -465,6 +465,10 @@ export default function GeneratePage() {
                 {textGeneration.retry && <button onClick={textGeneration.retryGeneration} disabled={loading || continuing} className="btn-offset shrink-0 px-4 py-1.5 text-[13px] font-display disabled:opacity-40">
                   {t('Reintentar', 'Retry')}
                 </button>}
+                {textGeneration.retry && <>
+                  <p className="w-full text-sm">{t('Reintentar consulta únicamente el resultado de la solicitud original. Descartar no cancela el trabajo del servidor; generar o continuar después será una nueva solicitud y puede consumir créditos.', 'Retry only checks the original request result. Discarding does not cancel server work; generating or continuing afterwards starts a new request and may consume credits.')}</p>
+                  <button onClick={textGeneration.discardGeneration} disabled={loading || continuing} className="btn-offset shrink-0 px-4 py-1.5 text-[13px] font-display disabled:opacity-40">{t('Descartar solicitud', 'Discard request')}</button>
+                </>}
                 <a href="/dashboard" className="underline">{t('Consultar historial', 'Check history')}</a>
               </div>
             )}

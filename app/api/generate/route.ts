@@ -8,7 +8,7 @@ import { getChannelContext } from '@/lib/channel-context';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 import { createHash } from 'node:crypto';
 import { readGenerationQuota } from '@/lib/generation-quota';
-import { unkeyedTextGeneration, keyedTextGeneration } from '@/lib/text-generation-attempt';
+import { unkeyedTextGeneration, keyedTextGeneration, retrieveKeyedTextGeneration } from '@/lib/text-generation-attempt';
 
 export const maxDuration = 60; // generación con Claude puede pasar de 15s en plantillas largas
 
@@ -41,6 +41,10 @@ export async function POST(request: Request) {
     const operationKey = request.headers.get('idempotency-key');
     if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) {
       return Response.json({ error: 'Invalid operation key' }, { status: 400 });
+    }
+    const recovery = request.headers.get('X-Generation-Recovery');
+    if (recovery !== null && (recovery !== 'retained-only-v1' || operationKey === null)) {
+      return Response.json({ error: 'Invalid recovery mode' }, { status: 400 });
     }
     let body;
     try { body = await request.json(); }
@@ -380,6 +384,7 @@ export async function POST(request: Request) {
         output: isContinuation ? previousContent + content : content, tokensUsed, ipAddress: getIp(request) } };
     };
     if (operationKey === null) return unkeyedTextGeneration(ownerId, request.signal, () => execute());
+    if (recovery !== null) return retrieveKeyedTextGeneration(ownerId, generationId!, request.signal, () => execute(true));
     return keyedTextGeneration(ownerId, generationId!, request.signal, preflight, () => execute(), () => execute(true));
   } catch (error) {
     console.error('API Error:', error);
