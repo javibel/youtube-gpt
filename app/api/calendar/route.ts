@@ -53,6 +53,12 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  if (!body || typeof body !== 'object' || Array.isArray(body)
+    || typeof body.title !== 'string' || typeof body.date !== 'string'
+    || (body.description != null && typeof body.description !== 'string')
+    || (body.color != null && typeof body.color !== 'string')) {
+    return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
+  }
   const title = (body.title as string || '').trim();
   const date = body.date as string || '';
   const description = (body.description as string || '').trim();
@@ -66,24 +72,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 });
   }
 
-  // Limit total entries
-  const count = await prisma.calendarEntry.count({ where: { userId: session.user.id } });
-  if (count >= MAX_ENTRIES) {
-    return NextResponse.json({ error: 'max_entries' }, { status: 400 });
+  const userId = session.user.id;
+  try {
+    const entry = await prisma.$transaction(async (tx) => {
+      if (request.signal.aborted) throw new Error('Calendar request aborted');
+      // Every calendar admission locks the owner before counting and inserting.
+      const owners = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        'SELECT id FROM users WHERE id=$1 FOR UPDATE', userId,
+      );
+      if (owners.length !== 1 || owners[0].id !== userId || request.signal.aborted) {
+        throw new Error('Calendar owner unconfirmed');
+      }
+      const count = await tx.calendarEntry.count({ where: { userId } });
+      if (!Number.isSafeInteger(count) || count < 0) throw new Error('Calendar count unconfirmed');
+      if (count >= MAX_ENTRIES) return null;
+      if (request.signal.aborted) throw new Error('Calendar request aborted');
+      return tx.calendarEntry.create({
+        data: { userId, title, description: description || null, date, status, color },
+      });
+    }, { maxWait: 10_000, timeout: 15_000 });
+    if (!entry) return NextResponse.json({ error: 'max_entries' }, { status: 400 });
+    return NextResponse.json({ entry }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: 'calendar_write_unconfirmed' }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
   }
-
-  const entry = await prisma.calendarEntry.create({
-    data: {
-      userId: session.user.id,
-      title,
-      description: description || null,
-      date,
-      status,
-      color,
-    },
-  });
-
-  return NextResponse.json({ entry }, { status: 201 });
 }
 
 // PUT — update entry
