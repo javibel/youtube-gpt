@@ -44,6 +44,12 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
     update({busy:op.action,error:null,slow:false,retry:false,output:scope.output,truncated:scope.truncated});
     const controller = new AbortController();scope.controller=controller;
     let timedOut=false;
+    let stopWait:(error:Error)=>void=()=>{};
+    const interrupted=new Promise<never>((_,reject)=>{stopWait=reject;});
+    // Cleanup may abort before the transport microtask starts.
+    void interrupted.catch(()=>{});
+    const abort=()=>stopWait(Error('Unconfirmed generation'));
+    controller.signal.addEventListener('abort',abort,{once:true});
     const slow=setTimeout(() => update({slow:true}),15_000);
     const deadline=setTimeout(() => {timedOut=true;controller.abort();},90_000);
     scope.timers.add(slow);scope.timers.add(deadline);
@@ -51,9 +57,9 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
     const flight = Promise.resolve().then(async () => {
       try {
         if (!current()) return;
-        const response=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':op.key},
-          body:op.body,signal:controller.signal});
-        const body=await response.json();
+        const response=await Promise.race([fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':op.key},
+          body:op.body,signal:controller.signal}),interrupted]);
+        const body=await Promise.race([response.json(),interrupted]);
         if (!current()) return;
         if (timedOut) throw Error('Timed out');
         if (!response.ok) {
@@ -67,6 +73,7 @@ export function useGenericGeneration(userId: string|undefined, email: string|nul
         try {onConfirmed(op.action);} catch {}
       } catch {update({error:timedOut ? 'timeout' : 'unconfirmed',retry:true});}
       finally {
+        controller.signal.removeEventListener('abort',abort);
         clearTimeout(slow);clearTimeout(deadline);scope.timers.delete(slow);scope.timers.delete(deadline);
         if (scope.controller === controller) scope.controller=null;
         update({busy:null,slow:false});

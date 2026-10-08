@@ -45,6 +45,19 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
    assert.equal(client.requests[0].body,client.requests[1].body);assert.equal(client.requests[0].headers['Idempotency-Key'],client.requests[1].headers['Idempotency-Key']);assert.equal(client.state.confirmed.length,1);
    await client.view().retryGeneration();assert.equal(client.requests.length,2);assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(Number((await stats(budgetId)).settled_micros),7);
   } finally {client.unmount();}
+  // Original hook and real route/ledger: a stalled browser transport does not
+  // imply server cancellation. Its explicit retry reads the committed result.
+  for(const stage of ['fetch','json']){
+   const {deferred}=require('./generic-generation-client.test.cjs'),blocked=deferred(),ready=deferred();
+   const bounded=harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,key});
+   const callsBefore=calls,rowsBefore=await prisma.generation.count({where:{userId:identity}}),ledgerBefore=Number((await stats(budgetId)).settled_micros);
+   try {
+    bounded.state.send=async init=>{const response=await route.POST(new Request('https://example.invalid/api/generate',init));assert.equal(response.status,200);ready.resolve();return stage==='fetch'?blocked.promise:{ok:true,status:200,json:()=>blocked.promise};};
+    const wait=bounded.view().generate();await ready.promise;for(let i=0;i<12;i++)await Promise.resolve();bounded.fire(90000);for(let i=0;i<12;i++)await Promise.resolve();assert.equal(bounded.view().busy,null);assert.equal(bounded.view().error,'timeout');assert.equal(bounded.state.confirmed.length,0);await wait;
+    const original=bounded.requests[0];bounded.state.send=init=>route.POST(new Request('https://example.invalid/api/generate',init));await bounded.view().retryGeneration();assert.equal(bounded.requests[1].headers['Idempotency-Key'],original.headers['Idempotency-Key']);assert.equal(bounded.requests[1].body,original.body);assert.equal(bounded.view().output,text);assert.equal(bounded.state.confirmed.length,1);
+    blocked.resolve(stage==='fetch'?Response.json({content:'Late different content',truncated:false}):{content:'Late different content',truncated:false});for(let i=0;i<12;i++)await Promise.resolve();assert.equal(bounded.view().output,text);assert.equal(bounded.state.confirmed.length,1);assert.equal(bounded.timers.size,0);assert.equal(calls,callsBefore);assert.equal(await prisma.generation.count({where:{userId:identity}}),rowsBefore);assert.equal(Number((await stats(budgetId)).settled_micros),ledgerBefore);
+   }finally{bounded.unmount();}
+  }
   // Original onboarding hook -> generation and onboarding routes -> real rows.
   // Recover lost generation and step acknowledgements independently at exhausted quota.
   const welcome=require('./dashboard-onboarding.test.cjs').harness();welcome.state.user=identity;welcome.state.email=users[0].email;welcome.state.key=key;
