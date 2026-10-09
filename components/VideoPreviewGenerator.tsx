@@ -1249,16 +1249,18 @@ export default function VideoPreviewGenerator({
           // IndexedDB is optional. A blocked open/transaction must not hold the
           // account upload indefinitely. Ending this wait does not prove that
           // the storage operation itself was cancelled or persisted.
+          const cacheController = new AbortController();
           let endCacheWait: () => void = () => {};
           const cacheInterrupted = new Promise<boolean>(resolve => {
-            endCacheWait = () => resolve(false);
+            endCacheWait = () => { cacheController.abort(); resolve(false); };
           });
           interaction.cacheCancel = endCacheWait;
           const cacheTimer = setTimeout(endCacheWait, 30_000);
           let cached = false;
           try {
             cached = await Promise.race([
-              savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() })
+              savePreview({ id: generationId, blob, title: scriptTitle, format: '4x3', createdAt: new Date().toISOString() },
+                { userId: session?.user?.id ?? '', email: session?.user?.email ?? '' }, cacheController.signal)
                 .then(() => true, () => false),
               cacheInterrupted,
             ]);
