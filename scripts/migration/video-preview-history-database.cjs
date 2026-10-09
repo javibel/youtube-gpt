@@ -24,6 +24,26 @@ module.exports=async function(prisma,results){
   };
   await h.view().handleDeletePreview(first.id);assert.ok(h.view().previewError);assert.equal(h.view().dbPreviews.length,1);assert.equal(await prisma.videoPreview.count({where:{id:first.id}}),0);
   await h.view().handleDeletePreview(first.id);assert.equal(h.view().dbPreviews.length,0);assert.equal(h.view().playingPreview,null);assert.equal(h.requests.filter(r=>r.init?.method==='DELETE').length,2);assert.equal(await prisma.videoPreview.count({where:{id:other.id}}),1);results.push('actual DELETE commit with lost response retains UI row until retry 404 and refresh confirm absence');
+  await h.view().loadDbPreviews();
+  const delayed=await prisma.videoPreview.create({data:{userId:owner,title:'Synthetic delayed acknowledgement',videoData:Buffer.from('d'.repeat(2500)),mimeType:'video/webm',size:2500}});
+  await h.view().refreshDbPreviews();assert.equal(h.view().dbPreviews[0].id,delayed.id);
+  let committed,release;const nativeCommit=new Promise(resolve=>committed=resolve);let writes=0;
+  h.state.send=async(url,init)=>{
+   if(url==='/api/video-previews')return list.GET();
+   const id=decodeURIComponent(url.split('/').at(-1));assert.equal(id,delayed.id);assert.equal(init.method,'DELETE');writes++;
+   const response=await invoke(id,'DELETE');assert.equal(response.status,204);committed();
+   return new Promise(resolve=>release=()=>resolve(response));
+  };
+  const deleting=h.view().handleDeletePreview(delayed.id);await nativeCommit;h.advance(30_000);await deleting;
+  assert.equal(h.view().dbPreviews[0].id,delayed.id);assert.ok(h.view().previewError);assert.equal(h.view().loadingPreviewId,null);assert.equal(h.requests.at(-1).init.signal.aborted,true);assert.equal(await prisma.videoPreview.count({where:{id:delayed.id}}),0);assert.equal(writes,1);
+  release();for(let i=0;i<32;i++)await Promise.resolve();assert.equal(h.view().dbPreviews[0].id,delayed.id);assert.equal(writes,1);
+  h.state.send=async(url,init)=>{
+   if(url==='/api/video-previews')return list.GET();
+   assert.equal(decodeURIComponent(url.split('/').at(-1)),delayed.id);assert.equal(init.method,'DELETE');writes++;
+   const response=await invoke(delayed.id,'DELETE');assert.equal(response.status,404);return response;
+  };
+  await h.view().handleDeletePreview(delayed.id);await h.view().loadDbPreviews();assert.equal(h.view().dbPreviews.length,0);assert.equal(h.view().previewError,null);assert.equal(writes,2);assert.equal(await prisma.videoPreview.count({where:{id:other.id,userId:users[1].id}}),1);
+  results.push('history deadline after actual DELETE commit retains uncertainty and ignores late204 until explicit same-id404; other account remains intact');
   owner=users[1].id;h.state.user=owner;h.state.send=async()=>list.GET();await h.ready();assert.equal(h.view().dbPreviews[0].id,other.id);
   const unavailable=load('app/api/video-previews/route.ts',mocks({videoPreview:{findMany:async()=>{throw Error('synthetic storage unavailable');}}}),{Buffer});h.state.send=async()=>unavailable.GET();await h.view().refreshDbPreviews();assert.equal(h.view().previewListError,true);assert.equal(h.view().dbPreviews[0].id,other.id);results.push('original list route storage failure is visible in history and preserves last confirmed rows');
   owner=null;const denied=new Proxy({}, {get(){throw Error('Anonymous storage access');}});const anonList=load('app/api/video-previews/route.ts',mocks(denied),{Buffer}),anonItem=load('app/api/video-previews/[id]/route.ts',mocks(denied),{Buffer});
