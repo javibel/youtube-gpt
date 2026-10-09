@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createClientReadWait } from '@/lib/client-read-wait';
 
 type Channel = { id: string; name: string; thumbnail: string|null; subscribers: number; totalViews: number; videoCount: number };
 type Video = { videoId: string; title: string; thumbnail: string; publishedAt: string; views: number };
@@ -60,6 +61,7 @@ function ideas(value: unknown, userId: string): Idea[]|null {
 export function useYoutubeConnection(userId: string|undefined, email: string|null|undefined, authStatus: string) {
   const scope = useMemo(()=>({active:true,sequence:0,connected:null as boolean|null,channelId:null as string|null,
     read:null as Promise<void>|null,details:null as Promise<void>|null,disconnect:null as Promise<void>|null,
+    readWait:null as ReturnType<typeof createClientReadWait>|null,detailWaits:new Set<ReturnType<typeof createClientReadWait>>(),
     statsFailed:false,ideasFailed:false,timer:null as ReturnType<typeof setTimeout>|null}),[userId,email,authStatus]);
   const active=useRef(scope);active.current=scope;
   const [store,setStore]=useState(()=>({scope,...initial()}));
@@ -67,29 +69,49 @@ export function useYoutubeConnection(userId: string|undefined, email: string|nul
   const update=useCallback((fn:(v:ReturnType<typeof initial>)=>ReturnType<typeof initial>)=>{
     if(current())setStore(prev=>({scope,...fn(prev.scope===scope?prev:initial())}));
   },[scope,current]);
+  const cancelReads=useCallback(()=>{
+    scope.readWait?.cancel();
+    for(const waiting of scope.detailWaits)waiting.cancel();
+  },[scope]);
   const details=useCallback(async(sequence:number,stats=true,daily=true)=>{
     if(!current() || scope.sequence!==sequence || !scope.connected || scope.disconnect)return;
     update(v=>({...v,detailsLoading:true}));
     const valid=()=>current() && scope.sequence===sequence && scope.connected && !scope.disconnect;
-    await Promise.all([
-      stats?(async()=>{try{const r=await fetch('/api/youtube/stats',{cache:'no-store'});if(!r.ok)throw Error();const data=statistics(await r.json(),userId!);if(valid()){scope.statsFailed=false;update(v=>({...v,...data,statsError:false}));}}catch{if(valid()){scope.statsFailed=true;update(v=>({...v,statsError:true}));}}})():Promise.resolve(),
-      daily?(async()=>{try{const r=await fetch('/api/daily-ideas',{cache:'no-store'});if(!r.ok)throw Error();const data=ideas(await r.json(),userId!);if(valid()){scope.ideasFailed=false;update(v=>({...v,ideas:data,ideasError:false}));}}catch{if(valid()){scope.ideasFailed=true;update(v=>({...v,ideasError:true}));}}})():Promise.resolve(),
-    ]);
+    const readDetail=async(kind:'stats'|'ideas')=>{
+      const waiting=createClientReadWait();scope.detailWaits.add(waiting);
+      try{
+        const r=await waiting.wait(fetch(kind==='stats'?'/api/youtube/stats':'/api/daily-ideas',{cache:'no-store',signal:waiting.signal}));
+        if(!r.ok)throw Error();const body=await waiting.wait(r.json());
+        if(kind==='stats'){
+          const data=statistics(body,userId!);if(valid()){scope.statsFailed=false;update(v=>({...v,...data,statsError:false}));}
+        }else{
+          const data=ideas(body,userId!);if(valid()){scope.ideasFailed=false;update(v=>({...v,ideas:data,ideasError:false}));}
+        }
+      }catch{
+        if(valid()){
+          if(kind==='stats'){scope.statsFailed=true;update(v=>({...v,statsError:true}));}
+          else{scope.ideasFailed=true;update(v=>({...v,ideasError:true}));}
+        }
+      }finally{waiting.finish();scope.detailWaits.delete(waiting);}
+    };
+    await Promise.all([stats?readDetail('stats'):Promise.resolve(),daily?readDetail('ideas'):Promise.resolve()]);
     if(valid())update(v=>({...v,detailsLoading:false}));
   },[scope,current,update,userId]);
   const retryYoutube=useCallback(async()=>{
     if(!current() || scope.disconnect)return;
     if(scope.read)return scope.read;
     const sequence=++scope.sequence;
+    const waiting=createClientReadWait();scope.readWait=waiting;
     update(v=>({...v,loading:true,error:false,detailsLoading:false}));
     const flight=(async()=>{try{
-      const r=await fetch('/api/youtube/channel',{cache:'no-store'});if(!r.ok)throw Error();const data=connection(await r.json(),userId!);
+      const r=await waiting.wait(fetch('/api/youtube/channel',{cache:'no-store',signal:waiting.signal}));if(!r.ok)throw Error();const data=connection(await waiting.wait(r.json()),userId!);
+      waiting.finish();if(scope.readWait===waiting)scope.readWait=null;
       if(!current() || scope.sequence!==sequence)return;
       const changed=scope.channelId!==data.channel?.id;scope.connected=data.connected;scope.channelId=data.channel?.id??null;
       update(v=>({...v,...data,...(!data.connected||changed?{growth:null,points:[],ideas:null,statsError:false,ideasError:false}:{}),loading:false}));
       if(data.connected)await details(sequence);else{scope.statsFailed=false;scope.ideasFailed=false;}
     }catch{if(current()&&scope.sequence===sequence)update(v=>({...v,error:true}));}
-    finally{if(current()&&scope.sequence===sequence)update(v=>({...v,loading:false}));}})();
+    finally{waiting.finish();if(scope.readWait===waiting)scope.readWait=null;if(current()&&scope.sequence===sequence)update(v=>({...v,loading:false}));}})();
     scope.read=flight;try{await flight;}finally{if(scope.read===flight)scope.read=null;}
   },[scope,current,update,userId,details]);
   const retryYoutubeDetails=useCallback(async()=>{
@@ -99,7 +121,7 @@ export function useYoutubeConnection(userId: string|undefined, email: string|nul
   },[scope,current,details]);
   const handleYtDisconnect=useCallback(async()=>{
     if(!current())return;if(scope.disconnect)return scope.disconnect;if(scope.connected!==true)return;
-    ++scope.sequence;update(v=>({...v,disconnecting:true,disconnectError:false,loading:false,detailsLoading:false}));
+    ++scope.sequence;cancelReads();update(v=>({...v,disconnecting:true,disconnectError:false,loading:false,detailsLoading:false}));
     const flight=(async()=>{try{
       const r=await fetch('/api/youtube/disconnect',{method:'POST'});if(!r.ok)throw Error();const body=await r.json();
       if(body?.ok!==true||body.userId!==userId)throw Error();if(!current())return;
@@ -108,7 +130,7 @@ export function useYoutubeConnection(userId: string|undefined, email: string|nul
     }catch{if(current())update(v=>({...v,disconnectError:true}));}
     finally{update(v=>({...v,disconnecting:false}));}})();
     scope.disconnect=flight;try{await flight;}finally{if(scope.disconnect===flight)scope.disconnect=null;}
-  },[scope,current,update,userId]);
+  },[scope,current,update,userId,cancelReads]);
   const handleYtConnect=useCallback(()=>{if(!current()||scope.disconnect||scope.connected!==false)return;update(v=>({...v,connecting:true}));window.location.href='/api/youtube/auth';},[scope,current,update]);
   useEffect(()=>{
     scope.active=true;active.current=scope;setStore({scope,...initial()});void retryYoutube();
@@ -119,8 +141,12 @@ export function useYoutubeConnection(userId: string|undefined, email: string|nul
         scope.timer=setTimeout(()=>update(v=>({...v,notice:null})),4000);
       }
     }
-    return()=>{scope.active=false;if(scope.timer)clearTimeout(scope.timer);};
-  },[scope,current,update,retryYoutube]);
+    return()=>{
+      scope.active=false;if(scope.timer)clearTimeout(scope.timer);
+      // Immediate Strict Mode setup keeps the same original read alive.
+      void Promise.resolve().then(()=>{if(!scope.active||active.current!==scope)cancelReads();});
+    };
+  },[scope,current,update,retryYoutube,cancelReads]);
   const view=store.scope===scope&&current()?store:initial();
   return {ytChannel:view.channel,ytVideos:view.videos,ytConnected:view.connected,ytExpired:view.expired,
     ytConnecting:view.connecting,ytDisconnecting:view.disconnecting,ytGrowth:view.growth,ytSparkline:view.points,dailyIdeas:view.ideas,

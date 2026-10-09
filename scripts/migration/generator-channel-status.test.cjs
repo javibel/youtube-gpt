@@ -3,10 +3,12 @@ const assert=require('node:assert/strict');
 const {harness:cells,reply,deferred}=require('./generic-generation-client.test.cjs'),{load}=require('./route-harness.cjs');
 const connection=(userId='fixture-one')=>({userId,connected:true,cached:true,channel:{id:'UC_fixture'}});
 function harness(){
- const h=cells(),requests=[];h.state.read=null;
- const module=load('lib/use-generator-channel-status.ts',{react:h.hooks},{fetch:async(url,init)=>{assert.equal(url,'/api/youtube/channel');assert.equal(init.cache,'no-store');requests.push({url,user:h.state.user});return h.state.read?h.state.read():reply(connection(h.state.user));}});
+ const h=cells(),requests=[];h.state.read=null;let clock=0;
+ const timerGlobals={...h.globals,setTimeout(fn,ms){const id=h.globals.setTimeout(fn,ms);h.timers.get(id).at=clock+ms;return id;}};
+ const readWait=load('lib/client-read-wait.ts',{},timerGlobals);
+ const module=load('lib/use-generator-channel-status.ts',{react:h.hooks,'@/lib/client-read-wait':readWait},{fetch:async(url,init)=>{assert.equal(url,'/api/youtube/channel');assert.equal(init.cache,'no-store');requests.push({url,init,user:h.state.user});return h.state.read?h.state.read(url,init):reply(connection(h.state.user));}});
  function view(noEffects=false){for(let n=0;n<12;n++){h.setIndex();const v=module.useGeneratorChannelStatus(h.state.user,h.state.email,h.state.auth);if(!noEffects)h.flushEffects();if(!h.isDirty())return v;}throw Error('Channel hook did not settle');}
- return{...h,requests,view,ready:async()=>{await view().retryChannel();return view();}};
+ return{...h,requests,advance(ms){clock+=ms;for(const[id,t]of [...h.timers])if(t.at<=clock){h.timers.delete(id);t.fn();}},view,ready:async()=>{await view().retryChannel();return view();}};
 }
 const results=[];async function test(name,fn){await fn();results.push({name,status:'PASS'});}
 if(require.main===module)(async()=>{
