@@ -132,12 +132,50 @@ export default function CalendarPage() {
   currentReadScope.current = readScope;
   const confirmedReadScope = useRef<typeof readScope | null>(null);
   const modalScope = useRef<typeof readScope | null>(null);
+  const creationSlot = 'ytv:calendar:create:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
+  type Creation = { key: string; body: string; done?: () => void; scope?: typeof readScope };
+  const creation = useMemo(() => ({ pending: null as Creation | null, storageWarning: false }),
+    [session?.user?.id, session?.user?.email, status, lang]);
+  const currentCreation = useRef(creation); currentCreation.current = creation;
+  const writeNoticeScope = useRef<object | null>(null);
+  function readCreation(): Creation | null {
+    if (status !== 'authenticated' || !session?.user?.id || !session.user.email) return null;
+    try {
+      const raw = sessionStorage.getItem(creationSlot);
+      if (!raw || raw.length > 66000) return null;
+      const value = JSON.parse(raw);
+      if (value?.version !== 1 || Object.keys(value).sort().join(',') !== 'body,key,version'
+        || typeof value.key !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(value.key)
+        || typeof value.body !== 'string' || value.body.length > 65536) return null;
+      const fields = JSON.parse(value.body);
+      if (!fields || Object.keys(fields).sort().join(',') !== 'date,description,status,title'
+        || typeof fields.title !== 'string' || !fields.title.trim() || fields.title !== fields.title.trim() || fields.title.length > 200
+        || typeof fields.description !== 'string' || fields.description !== fields.description.trim()
+        || typeof fields.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(fields.date)
+        || !Object.hasOwn(STATUS_LABELS, fields.status)) return null;
+      return { key: value.key, body: value.body };
+    } catch { return null; }
+  }
+  function clearCreation(pending: Creation) {
+    try {
+      const stored = readCreation();
+      if (stored?.key === pending.key && stored.body === pending.body) sessionStorage.removeItem(creationSlot);
+    } catch { /* Never erase a different original selector. */ }
+  }
+  function creationMessage() {
+    return t('El alta no está confirmada y puede haberse aplicado. Reintentar alta solo consulta la entrada original; no crea otra. Empezar otra operación descarta este selector, no cancela el servidor y puede duplicar el alta.',
+      'The addition is unconfirmed and may have been applied. Retry addition only retrieves the original entry; it never creates another. Starting another operation discards this selector, does not cancel server work and may duplicate the addition.');
+  }
+  useEffect(() => { creation.pending = readCreation(); }, [creation]);
   const writes = useMemo(() => ({ busy: false, unconfirmed: false, controller: null as AbortController | null }), [readScope]);
   const [writeError, setWriteError] = useState('');
+  const offeredCreation = creation.pending;
   useEffect(() => {
     modalIdentity.current = null;
     setModal(null); setForm({ title: '', description: '', status: 'idea', date: '' });
-    setWriteError(''); setSaving(false); setAddingSuggestion(null);
+    writeNoticeScope.current = writes;
+    writes.unconfirmed = !!creation.pending;
+    setWriteError(creation.pending ? creationMessage() : ''); setSaving(false); setAddingSuggestion(null);
     return () => { writes.controller?.abort(); };
   }, [writes]);
   useEffect(() => {
@@ -218,7 +256,7 @@ export default function CalendarPage() {
 
   function canWrite() {
     return status === 'authenticated' && !!session?.user?.id && readScope.active
-      && currentReadScope.current === readScope && !writes.busy && !writes.unconfirmed;
+      && currentReadScope.current === readScope && currentCreation.current === creation && !creation.pending && !writes.busy && !writes.unconfirmed;
   }
 
   function confirmsEntry(json: { entry?: Entry }, expected: Record<string, unknown>) {
@@ -232,11 +270,31 @@ export default function CalendarPage() {
   }
 
   async function writeCalendar(url: string, init: RequestInit, confirm: (json: { entry?: Entry; ok?: boolean }) => boolean,
-    done: () => void, suggestionIndex: number | null = null) {
-    if (!canWrite()) return;
+    done: () => void, suggestionIndex: number | null = null, retained: Creation | null = null) {
+    if (retained ? status !== 'authenticated' || !session?.user?.id || !readScope.active
+      || currentReadScope.current !== readScope || currentCreation.current !== creation || writes.busy || creation.pending !== retained : !canWrite()) return;
+    let original = retained;
+    if (init.method === 'POST' && !original) {
+      if (typeof init.body !== 'string' || init.body.length > 65536) {
+        writes.unconfirmed = true; setWriteError(t('El alta supera el tamaño permitido. Reduce la descripción antes de empezar otra operación.',
+          'The addition exceeds the allowed size. Shorten the description before starting another operation.')); return;
+      }
+      original = { key: crypto.randomUUID(), body: init.body, done, scope: readScope };
+      creation.pending = original;
+      let stored = false;
+      try {
+        if (session?.user?.email) {
+          const raw = JSON.stringify({ version: 1, key: original.key, body: original.body });
+          if (raw.length <= 66000) { sessionStorage.setItem(creationSlot, raw); stored = sessionStorage.getItem(creationSlot) === raw; }
+        }
+      } catch { /* Exact original remains in memory without claiming reload continuity. */ }
+      creation.storageWarning = !stored;
+    }
+    if (original) init = { ...init, body: original.body, headers: { 'Content-Type': 'application/json',
+      'Idempotency-Key': original.key, ...(retained ? { 'X-Calendar-Write-Recovery': 'retained-only-v1' } : {}) } };
     writes.busy = true;
     const controller = new AbortController(); writes.controller = controller;
-    const current = () => readScope.active && currentReadScope.current === readScope;
+    const current = () => readScope.active && currentReadScope.current === readScope && currentCreation.current === creation;
     let interrupt: (error: Error) => void = () => {};
     const interrupted = new Promise<never>((_, reject) => { interrupt = reject; }); void interrupted.catch(() => {});
     const abort = () => interrupt(new Error('Calendar write unconfirmed'));
@@ -249,6 +307,8 @@ export default function CalendarPage() {
       const json = await Promise.race([res.json(), interrupted]);
       if (controller.signal.aborted || !confirm(json)) throw new Error('Invalid acknowledgement');
       if (current()) {
+        if (original && creation.pending === original) { clearCreation(original); creation.pending = null; creation.storageWarning = false; }
+        writes.unconfirmed = false;
         done();
         // A read started before this confirmed write may be stale. Replace only
         // its local wait; never claim remote cancellation or recover a writer.
@@ -258,7 +318,7 @@ export default function CalendarPage() {
     } catch {
       if (current()) {
         writes.unconfirmed = true;
-        setWriteError(t('El cambio no está confirmado y puede haberse aplicado. Consulta el calendario antes de empezar otra operación; repetir un alta puede crear un duplicado.',
+        setWriteError(original ? creationMessage() : t('El cambio no está confirmado y puede haberse aplicado. Consulta el calendario antes de empezar otra operación; repetir un alta puede crear un duplicado.',
           'The change is unconfirmed and may have been applied. Retrieve the calendar before starting another operation; repeating an addition may create a duplicate.'));
       }
     } finally {
@@ -271,7 +331,19 @@ export default function CalendarPage() {
   function discardUnconfirmedWrite() {
     if (status !== 'authenticated' || !readScope.active || currentReadScope.current !== readScope || writes.busy) return;
     // Discarding a local warning neither cancels nor certifies the server write.
+    if (currentCreation.current !== creation || creation.pending !== offeredCreation) return;
+    if (creation.pending) clearCreation(creation.pending);
+    creation.pending = null; creation.storageWarning = false;
     writes.unconfirmed = false; setWriteError('');
+  }
+
+  async function retryCalendarCreation() {
+    const original = offeredCreation;
+    if (!original) return;
+    const fields = JSON.parse(original.body);
+    return writeCalendar('/api/calendar', { method: 'POST' },
+      json => confirmsEntry(json, { ...fields, description: fields.description || null, color: null }),
+      () => { if (original.scope === readScope) original.done?.(); }, null, original);
   }
 
   async function saveEntry() {
@@ -405,8 +477,13 @@ export default function CalendarPage() {
     if (!modal || modalIdentity.current !== modal.identity || modalScope.current !== readScope || currentReadScope.current !== readScope || !readScope.active || writes.busy) return;
     setForm(previous => ({ ...previous, [field]: value }));
   }
-  const writeNotice = writeError && <div role="alert" className="mb-4 text-sm text-red-400">
+  const writeNotice = writeNoticeScope.current === writes && writeError && <div role="alert" className="mb-4 text-sm text-red-400">
     <p>{writeError}</p>
+    {creation.pending && <button onClick={retryCalendarCreation} disabled={saving} className="mt-2 mr-4 underline disabled:opacity-50">
+      {t('Reintentar alta original', 'Retry original addition')}
+    </button>}
+    {creation.pending && creation.storageWarning && <p>{t('No se pudo conservar este intento en la pestaña. La consulta original sigue disponible en memoria; recargar puede perderla.',
+      'This attempt could not be retained in the tab. The original query remains available in memory; reload may lose it.')}</p>}
     <button onClick={fetchEntries} disabled={loading || saving} className="mt-2 underline disabled:opacity-50">
       {t('Consultar calendario', 'Retrieve calendar')}
     </button>

@@ -316,7 +316,7 @@ if (require.main === module) (async () => {
    const save = h.button('saveEntry'), oldField = h.nodes().find(n => n.type === 'input' && n.props.maxLength === 200).props.onChange;
    const pending = save(); change(h); h.render(); await flush(); await pending; await save(); oldField({ target: { value: 'Late old draft' } });
    assert.equal(h.writeRequests.length, 1); assert.equal(h.writeRequests[0].signal.aborted, true); assert.doesNotMatch(h.text(), /Old sensitive draft|Late old draft/);
-   release({ ok: true, json: async () => ({}) }); await flush(); assert.equal(h.alert(), undefined);
+   release({ ok: true, json: async () => ({}) }); await flush(); if (label === 'month') assert.ok(h.button('retryCalendarCreation')); else assert.equal(h.alert(), undefined);
   });
  for (const stage of ['fetch', 'json']) await test('write ' + stage + ' ignoring abort stops at30s without replaying an uncertain write', async () => {
   const h = harness(); await draft(h); let release; const held = new Promise(resolve => { release = resolve; });
