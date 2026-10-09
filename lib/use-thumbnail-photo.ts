@@ -5,15 +5,17 @@ import { THUMB_H, type PhotoItem } from '@/lib/thumbnail-types';
 import { fetchRemovalPhoto } from '@/lib/thumbnail-removal-response';
 import { readPhotoDraft, storePhotoDraft, matchesPhotoDraft, discardPhotoDraft, type StoredPhotoDraft } from '@/lib/thumbnail-photo-draft';
 
+import { readRemovalRecovery, storeRemovalRecovery, discardRemovalRecovery } from '@/lib/thumbnail-removal-recovery';
+
 const empty = () => ({ photo: null as PhotoItem | null, originalFile: null as File | null,
-  originalSrc: null as string | null, displayFile:null as File|null, draftAvailable:false,draftWarning:false, removed: false, busy: false,
+  originalSrc: null as string | null, displayFile:null as File|null, draftAvailable:false,draftWarning:false, removalReloadAvailable:false, removed: false, busy: false,
   error: null as 'invalid' | 'decode' | 'unconfirmed' | null });
 const valid = (file: Blob) => ['image/png','image/jpeg','image/webp'].includes(file.type) && file.size > 0 && file.size <= 10 * 1024 * 1024;
 
 export function useThumbnailPhoto(userId: string | undefined, email: string | null | undefined,
   status: string, lang: string, isPro: boolean) {
   const scope = useMemo(() => ({ active: true, changed:false,offered:null as StoredPhotoDraft|null,savedRaw:null as string|null,write:null as AbortController|null,operation: null as object | null,
-    removal:null as {key:string;file:File;src:string}|null, flight: null as Promise<boolean> | null, controller: null as AbortController | null,
+    retainedRemovalRaw:null as string|null,removal:null as {key:string;file:File;src:string}|null, flight: null as Promise<boolean> | null, controller: null as AbortController | null,
     deadline: null as ReturnType<typeof setTimeout> | null, cancelImage: null as (() => void) | null, urls: new Set<string>() }), [userId,email,status,lang]);
   const active = useRef(scope);active.current = scope;
   const paid = useRef(isPro);paid.current = isPro;
@@ -26,6 +28,10 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     if (current()) setStore(old => current() ? { ...(old.scope === scope ? old : {scope,...empty()}),...change } : old);
   };
   const snapshot = () => state.current.scope === scope ? state.current : {scope,...empty()};
+  const discardRetainedRemoval = () => {
+    if(!scope.retainedRemovalRaw)return;
+    discardRemovalRecovery(userId!,email!,lang,scope.retainedRemovalRaw);scope.retainedRemovalRaw=null;
+  };
   const cancel = () => {
     scope.operation = null;scope.removal = null;scope.cancelImage?.();scope.cancelImage = null;
     scope.controller?.abort();scope.controller = null;if(scope.deadline)clearTimeout(scope.deadline);scope.deadline = null;
@@ -47,24 +53,25 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     const timer = setTimeout(abort,15_000);scope.cancelImage = abort;
     img.onload = () => finish(true);img.onerror = abort;img.src = src;
   });
-  const place = async (file: File, op: object, original: boolean, eligible = () => true) => {
-    const src = URL.createObjectURL(file);scope.urls.add(src);let applied = false;
+  const place = async (file: File, op: object, original: boolean, eligible = () => true, recoveredOriginal?:File) => {
+    const src = URL.createObjectURL(file);scope.urls.add(src);let applied = false, recoveredSrc:string|null=null;
     try {
       const size = await measure(src,op);
+      if(recoveredOriginal){recoveredSrc=URL.createObjectURL(recoveredOriginal);scope.urls.add(recoveredSrc);await measure(recoveredSrc,op);}
       if(!live(op) || !eligible())return false;
       const previous = snapshot().photo, height = previous?.height ?? Math.round(THUMB_H * .85);
       const photo = previous ? {...previous,src,width:Math.round(height * size.width / size.height)}
         : {src,x:0,y:THUMB_H-height,width:Math.round(height * size.width / size.height),height,opacity:1};
-      update(original ? {photo,originalFile:file,originalSrc:src,displayFile:file,removed:false} : {photo,displayFile:file,removed:true});
+      update(original ? {photo,originalFile:file,originalSrc:src,displayFile:file,removed:false} : {photo,displayFile:file,removed:true,...(recoveredOriginal?{originalFile:recoveredOriginal,originalSrc:recoveredSrc}:{})});
       applied = true;return true;
-    } finally { if(!applied)release(src); }
+    } finally { if(!applied){release(src);if(recoveredSrc)release(recoveredSrc);} }
   };
   const upload = (file: File, eligible = () => true) => {
     if(!current() || !paid.current)return Promise.resolve(false);
     // A replacement invalidates every asynchronous operation on the previous photo.
     const op = begin();
     if(!valid(file)){update({busy:false,error:'invalid'});return Promise.resolve(false);}
-    const flight = place(file,op,true,eligible).catch(() => {if(live(op))update({error:'decode'});return false;})
+    const flight = place(file,op,true,eligible).then(applied=>{if(applied&&live(op)){discardRetainedRemoval();update({removalReloadAvailable:false});}return applied;}).catch(() => {if(live(op))update({error:'decode'});return false;})
       .finally(() => {if(current() && scope.operation === op)update({busy:false});if(scope.flight === flight)scope.flight = null;});
     scope.flight = flight;return flight;
   };
@@ -76,19 +83,22 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     if(!current() || (!paid.current && !scope.removal))return Promise.resolve(false);
     if(scope.flight)return scope.flight;
     const original = snapshot();
-    if(!original.originalFile || original.removed || (original.error === 'unconfirmed' && !explicitRetry))return Promise.resolve(false);
-    const attempt=scope.removal??{key:'remove-'+crypto.randomUUID(),file:original.originalFile,src:original.originalSrc!};
+    if(scope.removal&&!explicitRetry)return Promise.resolve(false);
+    if((!original.originalFile && !scope.removal) || original.removed || (original.error === 'unconfirmed' && !explicitRetry))return Promise.resolve(false);
+    const attempt=scope.removal??{key:'remove-'+crypto.randomUUID(),file:original.originalFile!,src:original.originalSrc!};
     const originalFile = attempt.file;
     const op = begin();scope.removal=attempt;const controller = new AbortController();scope.controller = controller;let timedOut = false;
     const deadline = setTimeout(() => {timedOut = true;controller.abort();},45_000);scope.deadline = deadline;
     const flight = Promise.resolve().then(async () => {
       try {
         if(!live(op))return false;
-        const blob = await fetchRemovalPhoto(originalFile,controller.signal,{key:attempt.key,userId:userId!});
+        if(!explicitRetry){scope.retainedRemovalRaw=await storeRemovalRecovery(userId!,email!,lang,attempt.key,attempt.file,controller.signal);
+          if(!live(op))return false;if(controller.signal.aborted)throw Error('Removal unconfirmed');update({removalReloadAvailable:!!scope.retainedRemovalRaw});}
+        const blob = await fetchRemovalPhoto(originalFile,controller.signal,{key:attempt.key,userId:userId!,readOnly:explicitRetry});
         if(!live(op))return false;
         if(timedOut || blob.type !== 'image/png' || !valid(blob))throw Error('Removal unconfirmed');
-        const applied=await place(new File([blob],'removed.png',{type:'image/png'}),op,false);
-        if(applied && scope.removal===attempt)scope.removal=null;return applied;
+        const applied=await place(new File([blob],'removed.png',{type:'image/png'}),op,false,()=>true,!snapshot().originalFile?attempt.file:undefined);
+        if(applied && scope.removal===attempt){discardRetainedRemoval();scope.removal=null;update({removalReloadAvailable:false});}return applied;
       } catch {if(live(op))update({error:'unconfirmed'});return false;}
       finally {clearTimeout(deadline);if(scope.deadline === deadline)scope.deadline = null;if(scope.controller === controller)scope.controller = null;if(current() && scope.operation === op)update({busy:false});}
     });
@@ -96,10 +106,17 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
   };
   const restore = () => {
     if(!current() || (!paid.current && !scope.removal))return;
-    scope.changed=true;scope.write?.abort();cancel();scope.flight = null;const original = snapshot();
+    discardRetainedRemoval();scope.changed=true;scope.write?.abort();cancel();scope.flight = null;const original = snapshot();
     if(original.photo && original.originalSrc)update({photo:{...original.photo,src:original.originalSrc},displayFile:original.originalFile,removed:false,busy:false,error:null});
   };
-  const clear = () => {if(!current())return;scope.changed=true;scope.write?.abort();cancel();scope.flight = null;const removed=!scope.savedRaw||discardPhotoDraft(userId!,email!,lang,scope.savedRaw);if(removed)scope.savedRaw=null;scope.offered=null;update({...empty(),draftWarning:!removed});};
+  const discardRemoval = () => {
+    if(!current()||!scope.removal)return;
+    discardRetainedRemoval();scope.write?.abort();cancel();scope.flight=null;
+    const offered=!snapshot().photo&&scope.offered&&matchesPhotoDraft(userId!,email!,lang,scope.offered.raw);
+    if(offered)scope.changed=false;
+    update({busy:false,error:null,removalReloadAvailable:false,draftAvailable:!!offered});
+  };
+  const clear = () => {if(!current())return;discardRetainedRemoval();scope.changed=true;scope.write?.abort();cancel();scope.flight = null;const removed=!scope.savedRaw||discardPhotoDraft(userId!,email!,lang,scope.savedRaw);if(removed)scope.savedRaw=null;scope.offered=null;update({...empty(),draftWarning:!removed});};
   const updatePhoto = (updates: Partial<PhotoItem>) => {
     if(!current() || !paid.current)return;
     // Canvas geometry cannot replace a file, original identity or owned URL.
@@ -109,7 +126,7 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
   };
   const restoreDraft = async () => {
     const offered=scope.offered;
-    if(!current()||!paid.current||scope.changed||!offered||snapshot().photo||scope.operation)return false;
+    if(!current()||!paid.current||scope.changed||!offered||snapshot().photo||scope.operation||scope.removal)return false;
     if(!matchesPhotoDraft(userId!,email!,lang,offered.raw)){update({draftAvailable:false,draftWarning:true});return false;}
     const op=begin(),originalSrc=URL.createObjectURL(offered.originalFile);scope.urls.add(originalSrc);
     const src=offered.displayFile===offered.originalFile?originalSrc:URL.createObjectURL(offered.displayFile);scope.urls.add(src);let applied=false;
@@ -126,11 +143,13 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     }}
   };
   const discardDraft = () => {
-    const offered=scope.offered;if(!current()||!paid.current||scope.changed||!offered||snapshot().photo||scope.operation)return;
+    const offered=scope.offered;if(!current()||!paid.current||scope.changed||!offered||snapshot().photo||scope.operation||scope.removal)return;
     const removed=discardPhotoDraft(userId!,email!,lang,offered.raw);if(removed){scope.offered=null;scope.savedRaw=null;}update({draftAvailable:false,draftWarning:!removed});
   };
   useEffect(() => {
-    scope.active = true;scope.offered=readPhotoDraft(userId,email,status,lang);scope.savedRaw=scope.offered?.raw??null;setStore({scope,...empty(),draftAvailable:!!scope.offered});
+    scope.active = true;scope.offered=readPhotoDraft(userId,email,status,lang);scope.savedRaw=scope.offered?.raw??null;const pending=readRemovalRecovery(userId,email,status,lang);scope.retainedRemovalRaw=pending?.raw??null;
+    scope.removal=pending?{key:pending.key,file:pending.file,src:''}:null;
+    setStore({scope,...empty(),draftAvailable:!!scope.offered&&!pending,error:pending?'unconfirmed':null,removalReloadAvailable:!!pending});
     return () => {scope.active = false;scope.write?.abort();cancel();for(const url of [...scope.urls])release(url);};
   },[scope]);
   useEffect(() => {
@@ -149,6 +168,6 @@ export function useThumbnailPhoto(userId: string | undefined, email: string | nu
     return ()=>controller.abort();
   },[scope,view.photo,view.originalFile,view.displayFile]);
   return {...view,current,upload,crop,restoreDraft,discardDraft,removeBackground:() => remove(),retryRemoval:() => remove(true),
-    restore,clear,updatePhoto,pendingRemoval:!!scope.removal};
+    restore,discardRemoval,clear,updatePhoto,pendingRemoval:!!scope.removal};
 }
 

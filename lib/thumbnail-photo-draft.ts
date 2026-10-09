@@ -11,7 +11,7 @@ function geometry(v:unknown):v is Geometry {
   return Object.values(p).every(n=>typeof n==='number'&&Number.isFinite(n))&&Math.abs(p.x)<=32768&&Math.abs(p.y)<=32768
     &&p.width>0&&p.width<=32768&&p.height>0&&p.height<=32768&&p.opacity>=0&&p.opacity<=1;
 }
-function file(raw:unknown):File|null {
+export function decodePhotoFile(raw:unknown):File|null {
   if(typeof raw!=='string'||raw.length>14_000_000)return null;
   const match=/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(raw);
   if(!match||match[2].length%4!==0)return null;
@@ -21,7 +21,7 @@ function file(raw:unknown):File|null {
 export function parsePhotoDraft(raw:string|null):StoredPhotoDraft|null {
   if(!raw||raw.length>maximumRecord)return null;
   try{const v=JSON.parse(raw);if(v?.version!==1||Object.keys(v).sort().join(',')!=='displayed,geometry,original,version'||!geometry(v.geometry))return null;
-    const originalFile=file(v.original),displayFile=v.original===v.displayed?originalFile:file(v.displayed);
+    const originalFile=decodePhotoFile(v.original),displayFile=v.original===v.displayed?originalFile:decodePhotoFile(v.displayed);
     return originalFile&&displayFile?{raw,originalFile,displayFile,geometry:v.geometry}:null;
   }catch{return null;}
 }
@@ -38,7 +38,7 @@ export function discardPhotoDraft(userId:string,email:string,lang:string,raw:str
 const validFile=(f:File)=>['image/png','image/jpeg','image/webp'].includes(f.type)&&f.size>0&&f.size<=maximumFile;
 // Immutable File bytes are encoded once; dragging changes only the small layout record.
 const encodedFiles=new WeakMap<File,Promise<string>>();
-function encode(f:File):Promise<string> {
+export function encodePhotoFile(f:File):Promise<string> {
   const retained=encodedFiles.get(f);if(retained)return retained;
   const pending=(async()=>{const bytes=new Uint8Array(await f.arrayBuffer());if(bytes.length!==f.size)throw Error('Local file unavailable');
     let binary='';for(let n=0;n<bytes.length;n+=32768)binary+=String.fromCharCode(...bytes.subarray(n,n+32768));return 'data:'+f.type+';base64,'+btoa(binary);})();
@@ -49,7 +49,7 @@ export async function storePhotoDraft(userId:string,email:string,lang:string,ori
   let timeout:ReturnType<typeof setTimeout>|undefined,abort:()=>void=()=>{};
   try{
     const interrupted=new Promise<never>((_,reject)=>{abort=()=>reject(Error('Local wait ended'));signal.addEventListener('abort',abort,{once:true});timeout=setTimeout(abort,15_000);});
-    const serialized=await Promise.race([(async()=>{const a=await encode(original),b=displayed===original?a:await encode(displayed);return JSON.stringify({version:1,original:a,displayed:b,geometry:layout});})(),interrupted]);
+    const serialized=await Promise.race([(async()=>{const a=await encodePhotoFile(original),b=displayed===original?a:await encodePhotoFile(displayed);return JSON.stringify({version:1,original:a,displayed:b,geometry:layout});})(),interrupted]);
     if(signal.aborted||serialized.length>maximumRecord)return null;
     const name=slot(userId,email,lang);if(sessionStorage.getItem(name)!==expected)return null;sessionStorage.setItem(name,serialized);return sessionStorage.getItem(name)===serialized?serialized:null;
   }catch{return null;}finally{if(timeout)clearTimeout(timeout);signal.removeEventListener('abort',abort);}

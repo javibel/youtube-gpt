@@ -1,5 +1,5 @@
 // Bounds browser waiting and decoded bytes; abort never proves provider cancellation.
-export async function fetchRemovalPhoto(file:File,signal:AbortSignal,identity?:{key:string;userId:string}):Promise<Blob> {
+export async function fetchRemovalPhoto(file:File,signal:AbortSignal,identity?:{key:string;userId:string;readOnly?:boolean}):Promise<Blob> {
  if(signal.aborted)throw Error('Removal unconfirmed');
  const limit=10*1024*1024;
  let stopped=false,reader:ReadableStreamDefaultReader<Uint8Array>|undefined,body:ReadableStream<Uint8Array>|null=null;
@@ -12,7 +12,7 @@ export async function fetchRemovalPhoto(file:File,signal:AbortSignal,identity?:{
  try{
   const work=(async()=>{
    const form=new FormData();form.append('file',file,'photo.png');
-   const response=await fetch('/api/remove-bg',{method:'POST',body:form,signal,redirect:'error',cache:'no-store',...(identity?{headers:{'Idempotency-Key':identity.key}}:{})});
+   const response=await fetch('/api/remove-bg',{method:'POST',body:form,signal,redirect:'error',cache:'no-store',...(identity?{headers:{'Idempotency-Key':identity.key,...(identity.readOnly?{'X-Removal-Recovery':'retained-only-v1'}:{})}}:{})});
    body=response.body;
    if(stopped||signal.aborted){cancel();throw Error('Removal unconfirmed');}
    if(!response.ok||response.redirected||response.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='image/png'||!body)throw Error('Removal unconfirmed');

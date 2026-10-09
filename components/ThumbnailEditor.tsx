@@ -482,7 +482,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
         {photoState.pendingRemoval && <div role="alert">
           <p>{photoError || tr('La eliminación anterior está pendiente de confirmar. Consulta el mismo intento.','The previous removal is awaiting confirmation. Check the same attempt.')}</p>
           <button onClick={photoState.retryRemoval} disabled={removingBg}>{tr('Volver a intentar eliminación','Try removal again')}</button>
-          <button onClick={handleRestoreOriginal}>{tr('Descartar intento de eliminación','Discard removal attempt')}</button>
+          <button onClick={photoState.discardRemoval}>{tr('Descartar intento de eliminación','Discard removal attempt')}</button>
         </div>}
         <a href="/pricing" className="btn-offset px-6 py-2.5 text-[14px] font-bold">{tr('Ver planes', 'See plans')}</a>
       </div>
@@ -616,7 +616,13 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                   'High resolution. Solid background gives best results.')}
             </p>
 
-            {photoState.draftAvailable&&!photo&&<div role="status" className="text-[12px] mb-2">
+            {photoState.pendingRemoval && <div role="status" className="text-[12px] mb-2">
+              {tr('Consultar este intento solo recupera el recibo original; si falta, permanece sin confirmar y no inicia otra eliminación.','Querying this attempt only retrieves its original receipt; if absent it stays unconfirmed and does not start another removal.')}
+              {!photoState.removalReloadAvailable&&<p>{tr('Mantén esta pestaña abierta: no se ha confirmado la conservación local del archivo y la clave para recargar.','Keep this tab open: local retention of the original file and key for reload is unconfirmed.')}</p>}
+              {!photo&&<><button onClick={photoState.retryRemoval} disabled={removingBg}>{tr('Volver a intentar eliminación','Try removal again')}</button>
+              <button onClick={photoState.discardRemoval}>{tr('Descartar intento de eliminación','Discard removal attempt')}</button></>}
+            </div>}
+            {photoState.draftAvailable&&!photo&&!photoState.pendingRemoval&&<div role="status" className="text-[12px] mb-2">
               <p>{tr('Hay una foto local de esta pestaña. Restaurarla recupera sus archivos y posición; no confirma una eliminación ni un guardado.','A local photo is retained in this tab. Restoring recovers its files and layout; it does not confirm removal or saving.')}</p>
               <button onClick={photoState.restoreDraft} disabled={removingBg} className="soft-chip px-3 py-1.5">{tr('Restaurar foto local','Restore local photo')}</button>
               <button onClick={photoState.discardDraft} disabled={removingBg} className="soft-chip px-3 py-1.5">{tr('Descartar foto local','Discard local photo')}</button>
@@ -650,7 +656,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                 {/* Remove / restore */}
                 <div className="mt-2.5">
                   {!bgRemoved ? (
-                    <button onClick={photoState.error === 'unconfirmed' ? photoState.retryRemoval : handleRemoveBg} disabled={removingBg}
+                    <button onClick={photoState.pendingRemoval ? photoState.retryRemoval : handleRemoveBg} disabled={removingBg}
                       className="soft-chip w-full py-1.5 text-[11px] disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {removingBg
@@ -658,7 +664,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                             <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full spin-r" />
                             <span className="truncate max-w-[130px]">{bgStatus || tr('Procesando…', 'Processing…')}</span>
                           </span>
-                        : photoState.error === 'unconfirmed' ? tr('Volver a intentar eliminación','Try removal again') : tr('Eliminar fondo', 'Remove BG')}
+                        : photoState.pendingRemoval ? tr('Volver a intentar eliminación','Try removal again') : tr('Eliminar fondo', 'Remove BG')}
                     </button>
                   ) : (
                     <button onClick={handleRestoreOriginal}
@@ -669,7 +675,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                   )}
                 </div>
 
-                {photoState.pendingRemoval && !removingBg && <button onClick={handleRestoreOriginal} className="soft-chip w-full py-1.5 text-[11px] mt-2">{tr('Descartar intento de eliminación','Discard removal attempt')}</button>}
+                {photoState.pendingRemoval && !removingBg && <button onClick={photoState.discardRemoval} className="soft-chip w-full py-1.5 text-[11px] mt-2">{tr('Descartar intento de eliminación','Discard removal attempt')}</button>}
 
                 {/* Opacity */}
                 <div className="mt-3">

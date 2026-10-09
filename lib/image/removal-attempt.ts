@@ -6,7 +6,7 @@ import { assertRemovalPng } from '@/lib/image/remove-background-provider';
 type Saved={id:string;userId:string;digest:string;state:string;output:Uint8Array|null};
 // Pending is never a lease or recovered authority. Only the live invocation
 // receiving a fresh admission return may execute its original local closure.
-export async function keyedRemoval(userId:string,key:string,file:File,signal:AbortSignal,prepare:()=>Promise<Response|(()=>Promise<Uint8Array>)>) {
+export async function keyedRemoval(userId:string,key:string,file:File,signal:AbortSignal,prepare:()=>Promise<Response|(()=>Promise<Uint8Array>)>,readOnly=false) {
  const id='removal_'+createHash('sha256').update(JSON.stringify([userId,key])).digest('hex');
  try{
   if(signal.aborted)throw Error('Unconfirmed');
@@ -21,6 +21,7 @@ export async function keyedRemoval(userId:string,key:string,file:File,signal:Abo
    return new Response(new Blob([new Uint8Array(saved.output)],{type:'image/png'}),{headers:{'Content-Type':'image/png','Cache-Control':'no-store','X-Removal-Id':id,'X-Operation-Key':key,'X-User-Id':userId}});
   };
   const existing=await prisma.removalAttempt.findUnique({where:{id}});if(existing)return replay(existing);
+  if(readOnly)return Response.json({code:'removal_attempt_not_retained',retryMayConsume:false},{status:409,headers:{'Cache-Control':'no-store'}});
   const generate=await prepare();if(generate instanceof Response)return generate;
   try{
    const admission=await prisma.$transaction(async tx=>{
