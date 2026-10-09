@@ -1,12 +1,13 @@
 // Same-tab untrusted selector only. It cannot confirm a result, renew an
 // operation, release a reservation or authorize admission/model execution.
-export type WelcomeRecovery = { version: 1; key: string; topic: string; body: string };
+export type WelcomeRecovery = { version: 1; key: string; topic: string; body: string; stepTarget?: 2 };
 const slot = (user: string, email: string, lang: string) => 'ytv:welcome:pending:v1:'+JSON.stringify([user,email,lang]);
 function parse(value: string|null, lang: string): WelcomeRecovery|null {
   if (!value || value.length > 4096 || !['es','en'].includes(lang)) return null;
   try {
     const record = JSON.parse(value);
-    if (!record || Object.keys(record).sort().join(',') !== 'body,key,topic,version' || record.version !== 1
+    if (!record || !['body,key,topic,version','body,key,stepTarget,topic,version'].includes(Object.keys(record).sort().join(',')) || record.version !== 1
+      || ('stepTarget' in record && record.stepTarget !== 2)
       || typeof record.key !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(record.key)
       || typeof record.topic !== 'string' || record.topic !== record.topic.trim() || record.topic.length < 3 || record.topic.length > 200
       || typeof record.body !== 'string' || record.body.length > 2048) return null;
@@ -24,7 +25,13 @@ export function storeWelcomeRecovery(user: string, email: string, lang: string, 
   if (!user || !email) return false;
   try {
     const value = JSON.stringify(record); if (!parse(value,lang)) return false;
-    const name = slot(user,email,lang); sessionStorage.setItem(name,value);
+    const name = slot(user,email,lang);
+    // A late title cannot overwrite another request already kept in this tab.
+    if (record.stepTarget === 2) {
+      const existing=parse(sessionStorage.getItem(name),lang);
+      if (existing && existing.key !== record.key) return true;
+    }
+    sessionStorage.setItem(name,value);
     return sessionStorage.getItem(name) === value;
   } catch { return false; }
 }

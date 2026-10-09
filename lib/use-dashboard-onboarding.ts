@@ -19,7 +19,7 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
   const scope = useMemo(() => ({ active: true, flight: null as Promise<boolean>|null, target: null as number|null,
     waiting: null as ReturnType<typeof createClientReadWait>|null,
     generation: null as Promise<void>|null, generated: false, step: null as number|null,
-    operation: null as {key: string; body: string; topic: string}|null,
+    operation: null as {key: string; body: string; topic: string; stepTarget?: 2}|null,
     restored: false,
     controller: null as AbortController|null, deadline: null as ReturnType<typeof setTimeout>|null,
     sequence: 0, timer: null as ReturnType<typeof setTimeout>|null }), [userId,email,authStatus,lang]);
@@ -35,6 +35,9 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     if (scope.generation && !fromGeneration) return false;
     if (scope.flight) return target === scope.target ? scope.flight : false;
     if (target !== null && (!Number.isSafeInteger(target) || target < 0 || target > 99)) return false;
+    // A restored step selector cannot advance the welcome until the original
+    // retained result has been confirmed by the authenticated API.
+    if (target !== null && target < 4 && scope.operation?.stepTarget === 2 && !scope.generated) return false;
     scope.target = target;
     const waiting = createClientReadWait(); scope.waiting = waiting;
     update(v => ({ ...v, loading: target === null, saving: target !== null, error: false }));
@@ -46,8 +49,9 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
         const data = decode(await waiting.wait(response.json()), userId!, target ?? 0);
         if (!current()) return false;
         update(v => ({ ...v, ...data })); scope.step=data.step;scope.target = null;
-        // A confirmed close discards only this tab selector, never server work.
-        if (data.step >= 4 && scope.operation) {
+        // Confirmed result + step (or confirmed close) discards only this tab
+        // selector, never server work or reservations.
+        if ((data.step >= 4 || (data.step >= 2 && scope.generated)) && scope.operation) {
           const removed = clearWelcomeRecovery(userId!,email!,lang,scope.operation.key);
           scope.operation=null;scope.restored=false;
           update(v => ({...v,generationPending:false,generationRestored:false,generationError:false,storageUnavailable:!removed}));
@@ -76,7 +80,7 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     // A result waiting for step persistence must never spend another generation.
     const readOnly = !!scope.operation;
     if (scope.generated || (readOnly ? scope.step === null || scope.step < 1 || scope.step >= 4 : scope.step !== 1)
-      || scope.target !== null || !['es','en'].includes(lang)) return;
+      || (scope.target !== null && !(readOnly && scope.operation?.stepTarget === 2 && scope.target === 2)) || !['es','en'].includes(lang)) return;
     if (!scope.operation) {
       const topic = rawTopic.trim(); if (topic.length < 3 || topic.length > 200) return;
       try {
@@ -110,10 +114,24 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
         // Step persistence has its own wait; a confirmed result is never timed out.
         clearTimeout(deadline);if(scope.deadline===deadline)scope.deadline=null;
         controller.signal.removeEventListener('abort',abort);
-        const removed=clearWelcomeRecovery(userId!,email!,lang,operation.key);
-        scope.generated = true;scope.operation=null;scope.restored=false;
-        update(v => ({ ...v,result: data.content,truncated:data.truncated,generationPending:false,generationRestored:false,storageUnavailable:!removed }));
-        await request(2,true);
+        const restoredStep = scope.restored && operation.stepTarget === 2;
+        operation.stepTarget=2;
+        // Keep only the original selector and bounded absolute target across
+        // reload. No title or server acknowledgement is trusted from storage.
+        const retained=storeWelcomeRecovery(userId!,email!,lang,{version:1,...operation});
+        scope.generated = true;scope.restored=false;
+        update(v => ({ ...v,result: data.content,truncated:data.truncated,generationPending:false,generationRestored:false,storageUnavailable:!retained }));
+        if (restoredStep) {
+          if (scope.step !== null && scope.step >= 2) {
+            const removed=clearWelcomeRecovery(userId!,email!,lang,operation.key);
+            scope.operation=null;scope.target=null;
+            update(v=>({...v,error:false,storageUnavailable:!removed}));
+          } else {
+            // Querying the title and retrying an uncertain step are separate
+            // explicit actions after reload; JSON alone never writes a step.
+            scope.target=2;update(v=>({...v,error:true}));
+          }
+        } else await request(2,true);
         if (current()) { void refreshStats(); void refreshHistory(); }
       } catch { if (current()) update(v => ({ ...v,generationError: true,generationTimedOut:timedOut })); }
       finally {controller.signal.removeEventListener('abort',abort);clearTimeout(deadline);if(scope.deadline===deadline)scope.deadline=null;if(scope.controller===controller)scope.controller=null;update(v => ({ ...v,generating: false })); }
@@ -136,7 +154,7 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     scope.active = true; active.current = scope;
     const retained = readWelcomeRecovery(userId,email,authStatus,lang);
     if (current() && retained && !scope.operation && !scope.generated) {
-      scope.operation={key:retained.key,topic:retained.topic,body:retained.body};scope.restored=true;
+      scope.operation={key:retained.key,topic:retained.topic,body:retained.body,...(retained.stepTarget===2?{stepTarget:2 as const}:{})};scope.restored=true;
     }
     // Restore a selector, not a result or step. The existing GET still confirms
     // the server step; only an explicit action can query retained generation.
