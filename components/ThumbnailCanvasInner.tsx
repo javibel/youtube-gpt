@@ -1,7 +1,7 @@
 'use client';
 
 // Loaded only via dynamic import (ssr: false) — Konva requires window/document.
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { Stage, Layer, Image as KonvaImage, Text as KonvaText, Transformer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
@@ -17,20 +17,39 @@ interface Props {
   onUpdatePhoto: (updates: Partial<PhotoItem>) => void;
   onUpdateText: (id: string, updates: Partial<TextItem>) => void;
   stageRef: React.RefObject<Konva.Stage | null>;
+  resourceScope: object;
+  onResourcesReady: (ready: boolean) => void;
 }
 
-function useLoadedImage(src: string | null): HTMLImageElement | null {
-  const [img, setImg] = useState<HTMLImageElement | null>(null);
+function useLoadedImage(src: string | null, resourceScope: object): HTMLImageElement | null {
+  const request = useMemo(() => ({ active: true }), [src, resourceScope]);
+  const current = useRef(request); current.current = request;
+  const [loaded, setLoaded] = useState<{ request: typeof request; image: HTMLImageElement } | null>(null);
   useEffect(() => {
-    if (!src) { setImg(null); return; }
-    const i = new window.Image();
-    i.crossOrigin = 'anonymous';
-    i.onload  = () => setImg(i);
-    i.onerror = () => setImg(null);
-    i.src = src;
-    return () => { i.onload = null; i.onerror = null; };
-  }, [src]);
-  return img;
+    request.active = true;
+    if (!src) return () => { request.active = false; };
+    let settled = false;
+    const image = new window.Image();
+    const valid = () => request.active && current.current === request && !settled;
+    const finish = (success: boolean) => {
+      if (!valid()) return;
+      settled = true; clearTimeout(deadline);
+      image.onload = null; image.onerror = null;
+      if (success && image.naturalWidth > 0 && image.naturalHeight > 0) setLoaded({ request, image });
+      else setLoaded(null);
+    };
+    const deadline = setTimeout(() => finish(false), 30_000);
+    image.crossOrigin = 'anonymous';
+    image.onload = () => finish(true);
+    image.onerror = () => finish(false);
+    image.src = src;
+    return () => {
+      request.active = false; settled = true; clearTimeout(deadline);
+      image.onload = null; image.onerror = null;
+    };
+  }, [request, src]);
+  // Hide the prior source during render, before effect cleanup or replacement load.
+  return src && loaded?.request === request && request.active ? loaded.image : null;
 }
 
 export default function ThumbnailCanvasInner({
@@ -43,12 +62,17 @@ export default function ThumbnailCanvasInner({
   onUpdatePhoto,
   onUpdateText,
   stageRef,
+  resourceScope,
+  onResourcesReady,
 }: Props) {
   const scale       = containerWidth / THUMB_W;
   const displayH    = Math.round(THUMB_H * scale);
 
-  const bgImage     = useLoadedImage(backgroundUrl);
-  const photoImage  = useLoadedImage(photo?.src ?? null);
+  const bgImage     = useLoadedImage(backgroundUrl, resourceScope);
+  const photoImage  = useLoadedImage(photo?.src ?? null, resourceScope);
+
+  const resourcesReady = !!backgroundUrl && !!bgImage && (!photo || !!photoImage);
+  useEffect(() => { onResourcesReady(resourcesReady); }, [resourcesReady, resourceScope, onResourcesReady]);
 
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const photoNodeRef   = useRef<Konva.Image | null>(null);
@@ -68,7 +92,7 @@ export default function ThumbnailCanvasInner({
 
     tr.nodes(node ? [node] : []);
     tr.getLayer()?.batchDraw();
-  }, [selectedId, photo, texts]);
+  }, [selectedId, photo, texts, photoImage]);
 
   const handleStageTap = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (e.target === (e.target as Konva.Node).getStage()) onSelect(null);

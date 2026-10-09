@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useThumbnailSave } from '@/lib/use-thumbnail-save';
@@ -366,7 +366,18 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   const selectedText = texts.find(t => t.id === selectedId) ?? null;
 
   // ─── Save / Export ────────────────────────────────────────────────────────
+  const resourceScope = useMemo(() => ({}), [session?.user?.id, session?.user?.email, sessionStatus, lang, backgroundUrl, photo?.src]);
+  const currentResources = useRef(resourceScope); currentResources.current = resourceScope;
+  const readyResources = useRef<{ scope: object; ready: boolean } | null>(null);
+  const [canvasState, setCanvasState] = useState<{ scope: object; ready: boolean } | null>(null);
+  const onResourcesReady = useCallback((ready: boolean) => {
+    if (currentResources.current !== resourceScope) return;
+    readyResources.current = { scope: resourceScope, ready };
+    setCanvasState(old => old?.scope === resourceScope && old.ready === ready ? old : { scope: resourceScope, ready });
+  }, [resourceScope]);
+  const canvasReady = canvasState?.scope === resourceScope && canvasState.ready;
   const getDataURL = () => {
+    if (currentResources.current !== resourceScope || readyResources.current?.scope !== resourceScope || !readyResources.current.ready) return null;
     const stage = stageRef.current;
     if (!stage) return null;
     return stage.toDataURL({ mimeType: 'image/png', pixelRatio: 1 / (containerWidth / THUMB_W) });
@@ -503,6 +514,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
         >
           {/* Canvas always mounted to keep containerWidth accurate */}
           <div style={{ cursor: 'crosshair' }}>
+            {!canvasReady && backgroundUrl && <p role="status">{tr('Las imágenes actuales están cargando o no se pudieron leer. Guardar y descargar requieren que terminen de cargar.', 'The current images are loading or could not be read. Saving and downloading require them to finish loading.')}</p>}
             <ThumbnailCanvasInner
               containerWidth={Math.max(containerWidth, 1)}
               backgroundUrl={backgroundUrl}
@@ -513,6 +525,8 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               onUpdatePhoto={photoState.updatePhoto}
               onUpdateText={updateText}
               stageRef={stageRef}
+              resourceScope={resourceScope}
+              onResourcesReady={onResourcesReady}
             />
           </div>
 
@@ -712,7 +726,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               <p>{tr('Reintentar solo consulta el guardado original. Descartar no cancela el servidor; guardar otra captura puede consumir de nuevo.', 'Retry only checks the original save. Discarding does not cancel the server; saving another snapshot may consume again.')}</p>
               <button onClick={save.discardSave} disabled={saving}>{tr('Descartar intento de guardado', 'Discard save attempt')}</button>
             </div>}
-            <button onClick={handleSave} disabled={saving || (!save.pending && !backgroundUrl)}
+            <button onClick={handleSave} disabled={saving || (!save.pending && (!backgroundUrl || !canvasReady))}
               className="btn-offset w-full py-3 text-[14px] font-bold disabled:opacity-40 disabled:cursor-not-allowed">
               {saving
                 ? <span className="flex items-center justify-center gap-2">
@@ -721,7 +735,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                   </span>
                 : <span className="inline-flex items-center justify-center gap-1.5"><SaveIcon size={14} /> {save.pending ? tr('Reintentar guardado', 'Retry saving') : tr('Guardar miniatura', 'Save thumbnail')}</span>}
             </button>
-            <button onClick={handleDownload} disabled={!backgroundUrl}
+            <button onClick={handleDownload} disabled={!backgroundUrl || !canvasReady}
               className="soft-chip w-full py-2.5 text-[13px] text-center disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5">
               <DownloadIcon size={13} /> {tr('Descargar PNG', 'Download PNG')}
             </button>
