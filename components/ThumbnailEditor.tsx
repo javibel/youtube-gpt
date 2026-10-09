@@ -252,7 +252,6 @@ const STYLES = [
   { label:'Bold & Bright', value:'bold' },
 ];
 
-let _textCounter = 0;
 
 interface Props {
   lang: string;
@@ -314,8 +313,28 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     decode: tr('No se pudo leer la foto. La anterior se conserva; prueba otro archivo.','Could not read the photo. The previous one is retained; try another file.'),
     unconfirmed: tr('El resultado de eliminar el fondo no está confirmado. Reintenta para consultar este mismo intento. Descartarlo e iniciar otro podría consumir de nuevo; la foto original se conserva.','Background removal is unconfirmed. Retry to check this same attempt. Discarding it and starting another may consume again; the original photo is retained.'),
   })[photoState.error] : '';
-  const [selectedId,setSelectedId] = useState<string | null>(null);
-  const [cropTarget,setCropTarget] = useState<{src:string;type:'photo'|'bg'} | null>(null);
+  const editScope = useMemo(() => ({ active: true }), [session?.user?.id, session?.user?.email, sessionStatus, lang]);
+  const activeEdits = useRef(editScope); activeEdits.current = editScope;
+  const latestPro = useRef(isPro); latestPro.current = isPro;
+  type EditState = { scope: typeof editScope; texts: TextItem[]; selectedId: string | null; cropTarget: { src: string; type: 'photo' | 'bg' } | null };
+  const blankEdits = (): EditState => ({ scope: editScope, texts: [], selectedId: null, cropTarget: null });
+  const [edits, setEdits] = useState<EditState>(blankEdits);
+  const editCurrent = () => editScope.active && activeEdits.current === editScope && latestPro.current && photoState.current();
+  const updateEdits = (change: (old: EditState) => EditState) => {
+    if (!editCurrent()) return;
+    setEdits(old => editCurrent() ? change(old.scope === editScope ? old : blankEdits()) : old);
+  };
+  useEffect(() => {
+    editScope.active = true;
+    setEdits(old => old.scope === editScope ? old : blankEdits());
+    return () => { editScope.active = false; };
+  }, [editScope]);
+  const visibleEdits = edits.scope === editScope && editCurrent() ? edits : blankEdits();
+  const { texts, selectedId, cropTarget } = visibleEdits;
+  const setSelectedId = (id: string | null) => updateEdits(old => ({ ...old, selectedId: id }));
+  const setCropTarget = (target: EditState['cropTarget']) => updateEdits(old => ({ ...old, cropTarget: target }));
+  const setTexts = (change: (old: TextItem[]) => TextItem[]) => updateEdits(old => ({ ...old, texts: change(old.texts) }));
+  const textCounter = useRef(0);
   const cropCurrent = useRef(cropTarget);cropCurrent.current = cropTarget;
   const cropFlight = useRef<object | null>(null);
   const handlePhotoUpload = async (file: File) => {if(await photoState.upload(file) && photoState.current())setSelectedId('photo');};
@@ -339,11 +358,10 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   };
 
   // ─── Texts ───────────────────────────────────────────────────────────────
-  const [texts, setTexts] = useState<TextItem[]>([]);
 
   const addText = () => {
-    _textCounter++;
-    const id = `text-${_textCounter}`;
+    if (!editCurrent()) return;
+    const id = `text-${++textCounter.current}`;
     setTexts(prev => [...prev, {
       id, text: tr('TEXTO AQUÍ', 'YOUR TEXT'),
       x: Math.round(THUMB_W * 0.08), y: Math.round(THUMB_H * 0.35),
@@ -490,7 +508,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
             ? tr('El intento pendiente se conserva al recargar esta pestaña. Consulta el resultado antes de generar otro.','The pending attempt is retained when this tab reloads. Check its result before generating another.')
             : tr('Mantén esta pestaña abierta para conservar el intento pendiente.','Keep this tab open to retain the pending attempt.')}</p>}
           {background.pendingStale && <p>{tr('Los cambios del tema o estilo no se incluyen en este intento.','Topic or style edits are not included in this attempt.')}</p>}
-          <button onClick={() => { background.discard();if(cropTarget?.type === 'bg'){cropCurrent.current = null;setCropTarget(null);} }} className="soft-chip px-3 py-1.5 mt-1">{tr('Descartar intento de fondo','Discard background attempt')}</button>
+          <button onClick={() => { if(!editCurrent())return; background.discard();if(cropTarget?.type === 'bg'){cropCurrent.current = null;setCropTarget(null);} }} className="soft-chip px-3 py-1.5 mt-1">{tr('Descartar intento de fondo','Discard background attempt')}</button>
         </div>}
         {background.resultStale && <p className="text-[12px] mt-2">{tr('El fondo mostrado corresponde al tema o estilo anterior.','The displayed background belongs to the earlier topic or style.')}</p>}
         <p className="text-[11px] mt-2.5" style={{ color: 'var(--yv-text-4)' }}>
@@ -540,7 +558,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
               cW={containerWidth}
               cH={containerHeight}
               onConfirm={handleCropConfirm}
-              onCancel={() => { if(cropTarget.type === 'bg')background.cancelCrop();cropCurrent.current = null;setCropTarget(null); }}
+              onCancel={() => { if(!editCurrent() || cropCurrent.current !== cropTarget)return; if(cropTarget.type === 'bg')background.cancelCrop();cropCurrent.current = null;setCropTarget(null); }}
             />
           )}
         </div>
@@ -622,6 +640,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                   className="mt-2 text-[11px] w-full text-center hover:text-white transition"
                   style={{ color:'var(--yv-text-4)' }}
                   onClick={() => {
+                    if(!editCurrent())return;
                     photoState.clear();cropCurrent.current = null;setCropTarget(null);
                     if (selectedId === 'photo') setSelectedId(null);
                   }}
