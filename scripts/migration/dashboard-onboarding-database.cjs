@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
-const {load}=require('./route-harness.cjs'),{harness,reply}=require('./dashboard-onboarding.test.cjs');
+const {load}=require('./route-harness.cjs'),{harness,reply,deferred}=require('./dashboard-onboarding.test.cjs');
 module.exports=async function(prisma,results){
  const users=await Promise.all([1,2].map(i=>prisma.user.create({data:{email:'onboarding-'+randomUUID()+'@example.invalid',name:'Synthetic welcome '+i}})));
  let userId=users[0].id;const h=harness();
@@ -9,6 +9,19 @@ module.exports=async function(prisma,results){
  const send=r=>r.method==='POST'?post(r.body.step):route.GET();
  try {
   h.state.user=userId;h.state.email=users[0].email;h.state.send=send;await h.ready();assert.equal(h.view().onboardingStep,0);assert.equal(h.view().onboardingName,users[0].name);assert.equal(await h.view().advanceOnboarding(1),true);assert.equal((await prisma.user.findUnique({where:{id:userId}})).onboardingStep,1);assert.equal((await prisma.user.findUnique({where:{id:users[1].id}})).onboardingStep,0);results.push('actual onboarding hook/route/PostgreSQL reads and advances only the authenticated account');
+  for(const mode of ['read','save-result']){
+   const priorUser=userId,waitUser=await prisma.user.create({data:{email:'onboarding-wait-'+randomUUID()+'@example.invalid',name:'Synthetic bounded welcome',onboardingStep:1}}),timed=harness();userId=waitUser.id;
+   try{
+    timed.state.user=userId;timed.state.email=waitUser.email;timed.state.send=send;if(mode==='save-result')await timed.ready();const body=deferred(),bodyStarted=deferred();let originalBody;
+    timed.state.send=async r=>{if(r.url==='/api/generate')return reply({content:'Synthetic confirmed title',truncated:true});const response=await send(r);originalBody=await response.json();return{ok:response.ok,status:response.status,json:()=>{bodyStarted.resolve();return body.promise;}};};
+    const old=timed.view(),pending=mode==='read'?old.retryOnboarding():old.runOnboardingGenerate('Synthetic topic');await bodyStarted.promise;for(let i=0;i<40;i++)await Promise.resolve();const original=timed.requests.at(-1);timed.advance(30000);await pending;
+    const uncertain=()=>{assert.equal(timed.view().onboardingStep,mode==='read'?null:1);assert.equal(timed.view().onboardingBusy,false);assert.equal(timed.view().onboardingError,true);if(mode==='save-result'){assert.equal(timed.view().onboardingResult,'Synthetic confirmed title');assert.equal(timed.view().onboardingTruncated,true);assert.equal(timed.view().generationError,false);}};uncertain();assert.equal(original.signal.aborted,true);assert.equal((await prisma.user.findUnique({where:{id:userId}})).onboardingStep,mode==='read'?1:2);
+    body.resolve(originalBody);for(let i=0;i<40;i++)await Promise.resolve();uncertain();timed.state.send=send;const before=timed.requests.length;assert.equal(await timed.view().retryOnboarding(),true);assert.equal(timed.requests.length,before+1);assert.equal(timed.requests.at(-1).method,original.method);assert.equal(timed.requests.at(-1).rawBody,original.rawBody);assert.equal(timed.view().onboardingStep,mode==='read'?1:2);
+    if(mode==='save-result'){await old.runOnboardingGenerate('Different topic');assert.equal(timed.requests.filter(r=>r.url==='/api/generate').length,1);assert.equal(timed.refreshes.length,2);assert.equal(timed.view().onboardingResult,'Synthetic confirmed title');}else assert.equal(timed.requests.some(r=>r.method==='POST'),false);
+    assert.equal((await prisma.user.findUnique({where:{id:users[0].id}})).onboardingStep,1);assert.equal((await prisma.user.findUnique({where:{id:users[1].id}})).onboardingStep,0);
+    results.push('native onboarding '+mode+' JSON withheld after original PostgreSQL operation: deadline preserves uncertainty/result, rejects late body, explicit same request confirms own step and other owners stay intact');
+   }finally{timed.unmount();for(let i=0;i<40;i++)await Promise.resolve();assert.equal(timed.timers.size,0);await prisma.user.delete({where:{id:waitUser.id}});userId=priorUser;}
+  }
   h.state.send=async r=>{const response=await send(r);if(r.method==='POST')throw Error('Synthetic lost acknowledgement');return response;};assert.equal(await h.view().advanceOnboarding(4),false);assert.equal(h.view().onboardingStep,1);assert.equal(h.view().onboardingError,true);assert.equal((await prisma.user.findUnique({where:{id:userId}})).onboardingStep,4);h.state.send=send;assert.equal(await h.view().retryOnboarding(),true);assert.equal(h.requests.at(-1).body.step,4);assert.equal(h.view().onboardingStep,4);results.push('lost POST acknowledgement preserves confirmed UI step and retries same absolute write without reopening stored completion');
   const lower=await post(1);assert.equal(lower.status,200);assert.equal((await lower.json()).step,4);await post(0);assert.equal((await (await route.GET()).json()).step,4);results.push('late lower or zero step cannot regress a completed onboarding row');
   userId=users[1].id;await Promise.all([post(4),post(1),post(3),post(2)]);assert.equal((await (await route.GET()).json()).step,4);results.push('concurrent original onboarding route writes use atomic conditional PostgreSQL updates and converge on highest step');

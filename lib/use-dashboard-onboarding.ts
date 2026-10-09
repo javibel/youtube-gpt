@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createClientReadWait } from '@/lib/client-read-wait';
 
 const initial = () => ({ step: null as number|null, name: '', topic: '', result: null as string|null,
   loading: false, saving: false, generating: false, copied: false, error: false, generationError: false,
@@ -15,6 +16,7 @@ function decode(value: unknown, userId: string, minimum = 0) {
 export function useDashboardOnboarding(userId: string|undefined, email: string|null|undefined, authStatus: string,
   lang: string, refreshStats: () => Promise<void>, refreshHistory: () => Promise<void>) {
   const scope = useMemo(() => ({ active: true, flight: null as Promise<boolean>|null, target: null as number|null,
+    waiting: null as ReturnType<typeof createClientReadWait>|null,
     generation: null as Promise<void>|null, generated: false, step: null as number|null,
     operation: null as {key: string; body: string; topic: string}|null,
     controller: null as AbortController|null, deadline: null as ReturnType<typeof setTimeout>|null,
@@ -32,19 +34,21 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     if (scope.flight) return target === scope.target ? scope.flight : false;
     if (target !== null && (!Number.isSafeInteger(target) || target < 0 || target > 99)) return false;
     scope.target = target;
+    const waiting = createClientReadWait(); scope.waiting = waiting;
     update(v => ({ ...v, loading: target === null, saving: target !== null, error: false }));
     const flight = (async () => {
       try {
-        const response = await fetch('/api/onboarding', target === null ? { cache: 'no-store' } : {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: target }) });
+        const response = await waiting.wait(fetch('/api/onboarding', target === null ? { cache: 'no-store', signal: waiting.signal } : {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: target }), signal: waiting.signal }));
         if (!response.ok) throw Error('Onboarding unavailable');
-        const data = decode(await response.json(), userId!, target ?? 0);
+        const data = decode(await waiting.wait(response.json()), userId!, target ?? 0);
         if (!current()) return false;
         update(v => ({ ...v, ...data })); scope.step=data.step;scope.target = null; return true;
       } catch {
         if (current()) update(v => ({ ...v,error: true }));
         return false;
       } finally {
+        waiting.finish(); if (scope.waiting === waiting) scope.waiting = null;
         update(v => ({ ...v,loading: false,saving: false }));
       }
     })();
@@ -102,7 +106,11 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
   }, [scope,current,store,update]);
   useEffect(() => {
     scope.active = true; active.current = scope; setStore({ scope, ...initial() }); void request(null);
-    return () => { scope.active = false;scope.controller?.abort();if(scope.deadline)clearTimeout(scope.deadline);if (scope.timer) clearTimeout(scope.timer); };
+    return () => {
+      scope.active = false;scope.controller?.abort();if(scope.deadline)clearTimeout(scope.deadline);if (scope.timer) clearTimeout(scope.timer);
+      // Immediate Strict Mode setup keeps the same original step read alive.
+      void Promise.resolve().then(() => { if (!scope.active || active.current !== scope) scope.waiting?.cancel(); });
+    };
   }, [scope,request]);
   const view = store.scope === scope && current() ? store : initial();
   return { onboardingStep: view.step, onboardingName: view.name, onboardingTopic: view.topic,

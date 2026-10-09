@@ -5,17 +5,18 @@ const compiled=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../../lib
 const reply=(data,status=200)=>({ok:status>=200&&status<300,status,json:async()=>data});
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve};};
 function harness(){
- const cells=[],effects=[],requests=[],refreshes=[],copies=[],timers=new Map();let index=0,dirty=false,timer=0,keyNumber=0;
+ const cells=[],effects=[],requests=[],refreshes=[],copies=[],timers=new Map();let index=0,dirty=false,timer=0,keyNumber=0,clock=0;
  const state={user:'fixture-one',email:'fixture-one@example.invalid',auth:'authenticated',step:0,lang:'es',send:null,copy:null};
  const changed=(a,b)=>!a||a.length!==b.length||a.some((v,i)=>!Object.is(v,b[i]));
  const hooks={useState(initial){const i=index++;if(!cells[i])cells[i]={value:typeof initial==='function'?initial():initial};return[cells[i].value,v=>{const next=typeof v==='function'?v(cells[i].value):v;if(!Object.is(next,cells[i].value)){cells[i].value=next;dirty=true;}}];},useRef(v){return cells[index++]??={current:v};},useMemo(fn,deps){const i=index++;if(!cells[i]||changed(cells[i].deps,deps))cells[i]={value:fn(),deps};return cells[i].value;},useCallback(fn,deps){return hooks.useMemo(()=>fn,deps);},useEffect(fn,deps){const i=index++;if(!cells[i]||changed(cells[i].deps,deps)){const prior=cells[i];cells[i]={fn,deps};effects.push(()=>{prior?.cleanup?.();cells[i].cleanup=fn();});}}};
+ const readWait=load('lib/client-read-wait.ts',{}, {AbortController,setTimeout(fn,ms){timers.set(++timer,{fn,ms,at:clock+ms});return timer;},clearTimeout(id){timers.delete(id);}});
  const entry={exports:{}};
- vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(name){assert.equal(name,'react');return hooks;},Date,Number,Object,AbortController,crypto:{randomUUID:()=>state.key || "onboarding-fixture-"+(++keyNumber)},
-  navigator:{clipboard:{writeText:async content=>{copies.push(content);if(state.copy)await state.copy();}}},setTimeout(fn,ms){timers.set(++timer,{fn,ms});return timer;},clearTimeout(id){timers.delete(id);},
+ vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(name){if(name==='@/lib/client-read-wait')return readWait;assert.equal(name,'react');return hooks;},Date,Number,Object,AbortController,crypto:{randomUUID:()=>state.key || "onboarding-fixture-"+(++keyNumber)},
+  navigator:{clipboard:{writeText:async content=>{copies.push(content);if(state.copy)await state.copy();}}},setTimeout(fn,ms){timers.set(++timer,{fn,ms,at:clock+ms});return timer;},clearTimeout(id){timers.delete(id);},
   fetch:async(url,init)=>{assert.ok(['/api/onboarding','/api/generate'].includes(url));if(!init.method)assert.equal(init.cache,'no-store');const request={url,method:init.method||'GET',body:init.body?JSON.parse(init.body):null,rawBody:init.body,headers:init.headers,signal:init.signal,user:state.user};requests.push(request);if(state.send)return state.send(request);if(url==='/api/generate')return reply({content:'Synthetic first titles',truncated:false});if(init.method)state.step=Math.max(state.step,request.body.step);return reply({userId:state.user,step:state.step,name:'Synthetic'});}});
  const runEffects=()=>{while(effects.length)effects.shift()();};
  function view(noEffects=false){let result;for(let n=0;n<12;n++){index=0;dirty=false;const user=state.user;result=entry.exports.useDashboardOnboarding(user,state.email,state.auth,state.lang,async()=>{refreshes.push({kind:'stats',user});},async()=>{refreshes.push({kind:'history',user});});if(!noEffects)runEffects();if(!dirty)return result;}throw Error('Hook did not settle');}
- return{state,requests,refreshes,copies,timers,view,runEffects,ready:async()=>{await view().retryOnboarding();return view();},unmount:()=>cells.forEach(c=>c?.cleanup?.()),fire(ms){for(const [id,t]of [...timers])if(t.ms===ms){timers.delete(id);t.fn();}},strictEffects:()=>{view();for(const c of cells)if(c.fn){c.cleanup?.();c.cleanup=c.fn();}}};
+ return{state,requests,refreshes,copies,timers,advance(ms){clock+=ms;for(const[id,t]of [...timers])if(t.at<=clock){timers.delete(id);t.fn();}},view,runEffects,ready:async()=>{await view().retryOnboarding();return view();},unmount:()=>cells.forEach(c=>c?.cleanup?.()),fire(ms){for(const [id,t]of [...timers])if(t.ms===ms){timers.delete(id);t.fn();}},strictEffects:()=>{view();for(const c of cells)if(c.fn){c.cleanup?.();c.cleanup=c.fn();}}};
 }
 const results=[];async function test(name,fn){await fn();results.push({name,status:'PASS'});}
 if(require.main===module)(async()=>{
