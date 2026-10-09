@@ -65,6 +65,7 @@ model User {
   extensionTokens      ExtensionToken[]
   extensionEvents      ExtensionEvent[]
   calendarEntries      CalendarEntry[]
+  calendarCreationReceipts CalendarCreationReceipt[]
   trendAlerts          TrendAlert[]
   feedback        UserFeedback?
   abTests         AbTest[]
@@ -608,6 +609,8 @@ model CalendarEntry {
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  creationReceipts CalendarCreationReceipt[]
+
   @@index([userId, date])
   @@map("calendar_entries")
 }
@@ -920,4 +923,21 @@ model BulkGenerationRequest {
 
   @@index([userId, createdAt], map: "bulk_generation_requests_userid_createdat_idx")
   @@map("bulk_generation_requests")
+}
+
+
+// Committed atomically with the original entry; retained after entry deletion.
+// Only original business lookup, never native runner recovery authority.
+model CalendarCreationReceipt {
+  id String @id @default(cuid())
+  userId String
+  key String
+  input String
+  entryId String?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entry CalendarEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  @@unique([userId, key], map: "calendar_creation_receipts_userid_key_key")
+  @@index([userId, createdAt], map: "calendar_creation_receipts_userid_createdat_idx")
+  @@map("calendar_creation_receipts")
 }

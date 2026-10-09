@@ -5,6 +5,8 @@ import { getUserPlan, isPaid } from '@/lib/plans';
 
 const MAX_ENTRIES = 200;
 const VALID_STATUSES = ['idea', 'draft', 'scheduled', 'published'];
+class CalendarCreationConflict extends Error {}
+
 
 // GET — list entries for a month (or range)
 export async function GET(request: Request) {
@@ -47,6 +49,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  const key = request.headers.get('Idempotency-Key');
+  const recovery = request.headers.get('X-Calendar-Write-Recovery');
+  if ((key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))
+    || (recovery !== null && (recovery !== 'retained-only-v1' || !key))) {
+    return NextResponse.json({ error: 'invalid_recovery' }, { status: 400 });
+  }
+
   const plan = await getUserPlan(session.user.id);
   if (!isPaid(plan)) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
@@ -72,6 +81,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 });
   }
 
+  const input = JSON.stringify({ title, description: description || null, date, status, color });
+  if (key && (input.length > 65_536 || Object.keys(body).some(name => !['title','description','date','status','color'].includes(name)))) {
+    return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
+  }
+
   const userId = session.user.id;
   try {
     const entry = await prisma.$transaction(async (tx) => {
@@ -83,17 +97,38 @@ export async function POST(request: Request) {
       if (owners.length !== 1 || owners[0].id !== userId || request.signal.aborted) {
         throw new Error('Calendar owner unconfirmed');
       }
+      if (key) {
+        const receipt = await tx.calendarCreationReceipt.findUnique({ where: { userId_key: { userId, key } } });
+        if (receipt) {
+          if (receipt.userId !== userId || receipt.key !== key) throw new Error('Calendar receipt unconfirmed');
+          if (receipt.input !== input) throw new CalendarCreationConflict('calendar_key_conflict');
+          // A retained business receipt selects the original committed row only.
+          // Deletion or subsequent edits never authorize another creation.
+          const retained = receipt.entryId ? await tx.calendarEntry.findUnique({ where: { id: receipt.entryId } }) : null;
+          if (!retained || retained.userId !== userId) throw new Error('Calendar original unavailable');
+          const retainedInput = JSON.stringify({ title: retained.title, description: retained.description,
+            date: retained.date, status: retained.status, color: retained.color });
+          if (retainedInput !== input) throw new CalendarCreationConflict('calendar_entry_changed');
+          return retained;
+        }
+        if (recovery === 'retained-only-v1') throw new Error('Calendar original unconfirmed');
+      }
       const count = await tx.calendarEntry.count({ where: { userId } });
       if (!Number.isSafeInteger(count) || count < 0) throw new Error('Calendar count unconfirmed');
       if (count >= MAX_ENTRIES) return null;
       if (request.signal.aborted) throw new Error('Calendar request aborted');
-      return tx.calendarEntry.create({
+      const created = await tx.calendarEntry.create({
         data: { userId, title, description: description || null, date, status, color },
       });
+      if (key) await tx.calendarCreationReceipt.create({ data: { userId, key, input, entryId: created.id } });
+      return created;
     }, { maxWait: 10_000, timeout: 15_000 });
     if (!entry) return NextResponse.json({ error: 'max_entries' }, { status: 400 });
-    return NextResponse.json({ entry }, { status: 201 });
-  } catch {
+    return NextResponse.json({ entry }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    if (error instanceof CalendarCreationConflict) return NextResponse.json({ error: error.message }, {
+      status: 409, headers: { 'Cache-Control': 'no-store' },
+    });
     return NextResponse.json({ error: 'calendar_write_unconfirmed' }, {
       status: 503, headers: { 'Cache-Control': 'no-store' },
     });
