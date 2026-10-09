@@ -104,7 +104,7 @@ export default function DashboardPage() {
   const { onboardingStep, onboardingName, onboardingTopic, onboardingResult, onboardingGenerating,
     onboardingCopied, onboardingBusy, onboardingError, generationError, advanceOnboarding,
     retryOnboarding, runOnboardingGenerate, setOnboardingTopic, copyOnboarding,
-    generationTimedOut,onboardingGenerationPending,onboardingTruncated,
+    generationTimedOut,onboardingGenerationPending,onboardingTruncated,onboardingGenerationRestored,onboardingStorageUnavailable,
   } = useDashboardOnboarding(session?.user?.id, session?.user?.email, status, lang, refreshStats, refreshHistory);
 
   const { billingBusy, upgrading, cancelling, syncing, billingError, cancelConfirmed, syncResult,
@@ -238,6 +238,8 @@ function handleCopy(id: string, out: string) {
           <div className="yv-glass yv-glass--lift mx-4 w-full max-w-lg p-8" style={{ borderRadius: 'var(--yv-radius-xl)' }}>
 
             {onboardingBusy && !onboardingGenerating && <p role="status">{t('Guardando o cargando…', 'Saving or loading…')}</p>}
+            {onboardingGenerationRestored && <p role="status" className="mb-4">{t('Se conservó tu solicitud anterior en esta pestaña. Consulta su resultado para confirmar si terminó.', 'Your previous request was kept in this tab. Check its result to confirm whether it finished.')}</p>}
+            {onboardingStorageUnavailable && <p role="alert" className="mb-4">{t('No se pudo conservar la solicitud en esta pestaña. Su selección puede perderse al recargar.', 'Could not retain the request in this tab. Its selection may be lost after reload.')}</p>}
             {onboardingError && (
               <div role="alert" className="mb-4">
                 <p>{onboardingResult
@@ -252,7 +254,7 @@ function handleCopy(id: string, out: string) {
                   ? t('La respuesta tardó demasiado; el servidor puede haber completado la generación. Reintenta la misma solicitud o consulta el historial.', 'The response took too long; the server may have completed the generation. Retry the same request or check history.')
                   : t('No se confirmó la generación. Reintenta la misma solicitud o consulta el historial.', 'Generation was not confirmed. Retry the same request or check history.')}</p>
                 {onboardingGenerationPending && <button onClick={() => runOnboardingGenerate(onboardingTopic)} disabled={onboardingBusy || onboardingError}>
-                  {t('Reintentar mis títulos', 'Retry my titles')}
+                  {t('Consultar mis títulos anteriores', 'Check my previous titles')}
                 </button>}
                 <button onClick={() => advanceOnboarding(4)} disabled={onboardingBusy || onboardingError}>
                   {t('Cerrar bienvenida y ver mi historial', 'Close welcome and see my history')}

@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClientReadWait } from '@/lib/client-read-wait';
+import { readWelcomeRecovery, storeWelcomeRecovery, clearWelcomeRecovery } from '@/lib/onboarding-generation-recovery';
 
 const initial = () => ({ step: null as number|null, name: '', topic: '', result: null as string|null,
   loading: false, saving: false, generating: false, copied: false, error: false, generationError: false,
-  generationTimedOut: false, generationPending: false, truncated: false });
+  generationTimedOut: false, generationPending: false, generationRestored: false, storageUnavailable: false, truncated: false });
 function decode(value: unknown, userId: string, minimum = 0) {
   const data = value as { userId?: unknown; step?: unknown; name?: unknown } | null;
   if (!data || data.userId !== userId || typeof data.step !== 'number' || !Number.isSafeInteger(data.step)
@@ -19,6 +20,7 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     waiting: null as ReturnType<typeof createClientReadWait>|null,
     generation: null as Promise<void>|null, generated: false, step: null as number|null,
     operation: null as {key: string; body: string; topic: string}|null,
+    restored: false,
     controller: null as AbortController|null, deadline: null as ReturnType<typeof setTimeout>|null,
     sequence: 0, timer: null as ReturnType<typeof setTimeout>|null }), [userId,email,authStatus,lang]);
   const active = useRef(scope); active.current = scope;
@@ -43,7 +45,14 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
         if (!response.ok) throw Error('Onboarding unavailable');
         const data = decode(await waiting.wait(response.json()), userId!, target ?? 0);
         if (!current()) return false;
-        update(v => ({ ...v, ...data })); scope.step=data.step;scope.target = null; return true;
+        update(v => ({ ...v, ...data })); scope.step=data.step;scope.target = null;
+        // A confirmed close discards only this tab selector, never server work.
+        if (data.step >= 4 && scope.operation) {
+          const removed = clearWelcomeRecovery(userId!,email!,lang,scope.operation.key);
+          scope.operation=null;scope.restored=false;
+          update(v => ({...v,generationPending:false,generationRestored:false,generationError:false,storageUnavailable:!removed}));
+        }
+        return true;
       } catch {
         if (current()) update(v => ({ ...v,error: true }));
         return false;
@@ -54,7 +63,7 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     })();
     scope.flight = flight;
     try { return await flight; } finally { if (scope.flight === flight) scope.flight = null; }
-  }, [scope,current,update,userId]);
+  }, [scope,current,update,userId,email,lang]);
   const advanceOnboarding = useCallback((step: number) => request(step), [request]);
   const retryOnboarding = useCallback(() => request(scope.target), [request,scope]);
   const setOnboardingTopic = useCallback((topic: string) => {
@@ -65,11 +74,16 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     if (!current() || scope.flight) return;
     if (scope.generation) return scope.generation;
     // A result waiting for step persistence must never spend another generation.
-    if (scope.generated || scope.step !== 1 || scope.target !== null || !['es','en'].includes(lang)) return;
     const readOnly = !!scope.operation;
+    if (scope.generated || (readOnly ? scope.step === null || scope.step < 1 || scope.step >= 4 : scope.step !== 1)
+      || scope.target !== null || !['es','en'].includes(lang)) return;
     if (!scope.operation) {
       const topic = rawTopic.trim(); if (topic.length < 3 || topic.length > 200) return;
-      try {scope.operation={key:crypto.randomUUID(),topic,body:JSON.stringify({template:'title',inputs:{tema:topic},lang})};}
+      try {
+        scope.operation={key:crypto.randomUUID(),topic,body:JSON.stringify({template:'title',inputs:{tema:topic},lang})};
+        const stored=storeWelcomeRecovery(userId!,email!,lang,{version:1,...scope.operation});
+        scope.restored=false;update(v=>({...v,storageUnavailable:!stored,generationRestored:false}));
+      }
       catch {update(v=>({...v,generationError:true}));return;}
     }
     const operation=scope.operation;
@@ -96,8 +110,9 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
         // Step persistence has its own wait; a confirmed result is never timed out.
         clearTimeout(deadline);if(scope.deadline===deadline)scope.deadline=null;
         controller.signal.removeEventListener('abort',abort);
-        scope.generated = true;scope.operation=null;
-        update(v => ({ ...v,result: data.content,truncated:data.truncated,generationPending:false }));
+        const removed=clearWelcomeRecovery(userId!,email!,lang,operation.key);
+        scope.generated = true;scope.operation=null;scope.restored=false;
+        update(v => ({ ...v,result: data.content,truncated:data.truncated,generationPending:false,generationRestored:false,storageUnavailable:!removed }));
         await request(2,true);
         if (current()) { void refreshStats(); void refreshHistory(); }
       } catch { if (current()) update(v => ({ ...v,generationError: true,generationTimedOut:timedOut })); }
@@ -105,7 +120,7 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     })();
     scope.generation = generation;
     try { await generation; } finally { if (scope.generation === generation) scope.generation = null; }
-  }, [scope,current,update,lang,request,refreshStats,refreshHistory]);
+  }, [scope,current,update,lang,userId,email,request,refreshStats,refreshHistory]);
   const copyOnboarding = useCallback(async () => {
     if (!current() || store.scope !== scope || !store.result) return;
     const sequence = ++scope.sequence;
@@ -118,19 +133,29 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     } catch { /* Copy failure does not discard the generated result. */ }
   }, [scope,current,store,update]);
   useEffect(() => {
-    scope.active = true; active.current = scope; setStore({ scope, ...initial() }); void request(null);
+    scope.active = true; active.current = scope;
+    const retained = readWelcomeRecovery(userId,email,authStatus,lang);
+    if (current() && retained && !scope.operation && !scope.generated) {
+      scope.operation={key:retained.key,topic:retained.topic,body:retained.body};scope.restored=true;
+    }
+    // Restore a selector, not a result or step. The existing GET still confirms
+    // the server step; only an explicit action can query retained generation.
+    setStore({scope,...initial(),...(scope.operation ? {topic:scope.operation.topic,generationPending:true,
+      generationError:true,generationRestored:scope.restored} : {})});
+    void request(null);
     return () => {
       scope.active = false;scope.controller?.abort();if(scope.deadline)clearTimeout(scope.deadline);if (scope.timer) clearTimeout(scope.timer);
       // Immediate Strict Mode setup keeps the same original step read alive.
       void Promise.resolve().then(() => { if (!scope.active || active.current !== scope) scope.waiting?.cancel(); });
     };
-  }, [scope,request]);
+  }, [scope,request,current,userId,email,authStatus,lang]);
   const view = store.scope === scope && current() ? store : initial();
   return { onboardingStep: view.step, onboardingName: view.name, onboardingTopic: view.topic,
     onboardingResult: view.result, onboardingGenerating: view.generating, onboardingCopied: view.copied,
     onboardingBusy: view.loading || view.saving || view.generating,
     onboardingError: view.error || (authStatus === 'authenticated' && !userId), generationError: view.generationError,
     generationTimedOut:view.generationTimedOut,onboardingGenerationPending:view.generationPending,onboardingTruncated:view.truncated,
+    onboardingGenerationRestored:view.generationRestored,onboardingStorageUnavailable:view.storageUnavailable,
     advanceOnboarding, retryOnboarding, runOnboardingGenerate, setOnboardingTopic, copyOnboarding };
 }
 
