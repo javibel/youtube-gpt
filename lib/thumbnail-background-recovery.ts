@@ -1,4 +1,4 @@
-// Same-tab continuity of the last pending AI request only. Stored input/key is
+// Same-tab continuity of the last original AI request, pending or confirmed. Stored input/key is
 // untrusted: recovery always uses the server's retained-only receipt lookup.
 export type BackgroundRecovery = { version:1;key:string;topic:string;style:string;lang:string };
 const storageKey=(userId:string,email:string,lang:string)=>'ytv:background-ai:pending:v1:'+JSON.stringify([userId,email,lang]);

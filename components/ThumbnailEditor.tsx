@@ -547,6 +547,9 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
           {background.pendingStale && <p>{tr('Los cambios del tema o estilo no se incluyen en este intento.','Topic or style edits are not included in this attempt.')}</p>}
           <button onClick={() => { if(!editCurrent())return; background.discard();if(cropTarget?.type === 'bg'){cropCurrent.current = null;setCropTarget(null);} }} className="soft-chip px-3 py-1.5 mt-1">{tr('Descartar intento de fondo','Discard background attempt')}</button>
         </div>}
+        {!background.pending&&backgroundUrl&&background.backgroundOperationKey&&<p role="status" className="text-[12px] mt-2">{background.reloadRecoveryAvailable
+          ? tr('La consulta del fondo original se conserva al recargar esta pestaña. Para recuperar la imagen, consulta explícitamente su resultado; los textos se restauran por separado.','The original background lookup is retained when this tab reloads. Explicitly check its result to recover the image; text layers restore separately.')
+          : tr('Mantén esta pestaña abierta para conservar el fondo. Su consulta original no está guardada para recargar.','Keep this tab open to retain the background. Its original lookup is not saved for reload.')}</p>}
         {background.resultStale && <p className="text-[12px] mt-2">{tr('El fondo mostrado corresponde al tema o estilo anterior.','The displayed background belongs to the earlier topic or style.')}</p>}
         <p className="text-[11px] mt-2.5" style={{ color: 'var(--yv-text-4)' }}>
           {tr('YouTube recomienda 1920×1080 px (16:9). Mínimo: 1280×720. Menos de 2 MB.',
