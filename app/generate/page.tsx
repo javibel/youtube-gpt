@@ -207,6 +207,16 @@ export default function GeneratePage() {
         {channelStatus.loading && ytConnected === null && <p role="status">{t('Comprobando canal…', 'Checking channel…')}</p>}
         {channelStatus.cached && ytConnected === true && <p>{t('Conexión según el último estado guardado del canal.', 'Connection reflects the last stored channel status.')}</p>}
 
+        {media.persistenceUnavailable && <p role="alert" className="mb-4">
+          {t('No se pudo conservar el guion del vídeo en esta pestaña. Al recargar puede perderse su selección.', 'Could not retain the video script in this tab. Its selection may be lost after reload.')}
+        </p>}
+        {media.canResume && <div className="yv-card p-4 mb-4">
+          <p>{t('Hay un guion de vídeo guardado en esta pestaña. Reabrirlo no genera ni confirma un vídeo.', 'There is a video script saved in this tab. Reopening it does not generate or confirm a video.')}</p>
+          <button onClick={media.resumePreview} className="btn-offset btn-offset-white py-2 px-3">
+            {t('Reabrir guion de vídeo', 'Reopen video script')}
+          </button>
+        </div>}
+
         {/* Template picker */}
         <div className="mb-8">
           <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>01 · {t('¿Qué necesitas?', 'What do you need?')}</p>
