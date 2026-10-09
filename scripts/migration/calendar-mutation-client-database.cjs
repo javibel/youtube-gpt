@@ -4,7 +4,7 @@ module.exports=async(prisma,results)=>{
  const user=await prisma.user.create({data:{email:'calendar-mutation-client-'+randomUUID()+'@example.invalid'}}),handles=[];
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),api=load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id}})},'@/lib/prisma':{prisma},'@/lib/plans':plans});
  const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
- const setup=storage=>{const h=harness(storage);handles.push(h);h.state.user=user.id;h.state.email=user.email;let read;h.state.list=url=>(read=api.GET(new Request('https://example.invalid'+url)));h.state.write=(url,init)=>api[init.method](new Request('https://example.invalid'+url,init));return {h,ready:async()=>{h.render();await read;await flush();},settle:async()=>{await read;await flush();}};};
+ const setup=storage=>{const h=harness(storage);handles.push(h);h.state.user=user.id;h.state.email=user.email;h.state.key='calendar-native-page-'+randomUUID();let read;h.state.list=url=>(read=api.GET(new Request('https://example.invalid'+url)));h.state.write=(url,init)=>api[init.method](new Request('https://example.invalid'+url,init));return {h,ready:async()=>{h.render();await read;await flush();},settle:async()=>{await read;await flush();}};};
  const rows=()=>prisma.calendarEntry.findMany({where:{userId:user.id},orderBy:{id:'asc'}}),receipts=()=>prisma.calendarMutationReceipt.findMany({where:{userId:user.id},orderBy:{id:'asc'}}),date=new Date().toISOString().slice(0,7)+'-01';
  try{
   await prisma.subscription.create({data:{userId:user.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}});
