@@ -17,7 +17,7 @@ function validSelection(value: unknown, owner: string): value is Selection {
   const s = value as Selection;
   return Object.keys(s).sort().join(',') === 'generationId,owner,scriptContent,scriptTitle,version'
     && s.version === 1 && s.owner === owner
-    && typeof s.generationId === 'string' && /^vp-[-A-Za-z0-9._:]{1,124}$/.test(s.generationId)
+    && typeof s.generationId === 'string' && /^[-A-Za-z0-9._:]{1,128}$/.test(s.generationId)
     && typeof s.scriptContent === 'string' && !!s.scriptContent.trim() && s.scriptContent.length <= 64000
     && typeof s.scriptTitle === 'string' && !!s.scriptTitle.trim() && s.scriptTitle.length <= 512;
 }
@@ -30,11 +30,13 @@ function readSelection(owner: string): Selection | null {
 
 // A local draft selection only. It never confirms a result or grants server recovery authority.
 export function useGeneratorMediaLaunch(owner: GeneratorScreenScope, template: string,
-  inputs: Record<string,string>, output: string, onConfirmed: () => void) {
+  inputs: Record<string,string>, output: string, onConfirmed: () => void,
+  surface: 'generator' | 'dashboard' = 'generator', onSavedConfirmed?: () => void) {
+  const selectionOwner = surface === 'dashboard' ? 'dashboard:' + owner.scope.key : owner.scope.key;
   const context = JSON.stringify(Object.keys(inputs).sort().map(k => [k,inputs[k]]));
   const scope = useMemo(() => ({ active: true, preview: null as Preview | null,
     selection: null as Selection | null, limit: null as ReturnType<typeof initial>['limit'] }),
-    [owner.scope,template,context,output]);
+    [owner.scope,template,context,output,surface]);
   const latest = useRef(scope); latest.current = scope;
   const [store,setStore] = useState(() => ({ scope, ...initial() }));
   const current = () => scope.active && latest.current === scope && owner.current();
@@ -51,12 +53,12 @@ export function useGeneratorMediaLaunch(owner: GeneratorScreenScope, template: s
   };
   const selectPreview = (selection: Selection) => {
     if (!current() || scope.preview) return;
-    let confirmed = false;
+    let confirmed = false, saved = false;
     const belongs = () => current() && scope.preview === preview;
     const preview: Preview = { generationId: selection.generationId,
       scriptContent: selection.scriptContent, scriptTitle: selection.scriptTitle,
       onClose: () => { if (belongs()) { scope.preview = null; update({ preview: null, canResume: !!scope.selection }); } },
-      onSaved: () => { if (belongs()) update({ saved: true }); },
+      onSaved: () => { if (belongs() && !saved) { saved = true; update({ saved: true }); try { onSavedConfirmed?.(); } catch {} } },
       onGenerated: () => {
         if (!belongs() || confirmed) return;
         confirmed = true;
@@ -70,17 +72,20 @@ export function useGeneratorMediaLaunch(owner: GeneratorScreenScope, template: s
     scope.preview = preview; scope.limit = null;
     update({ preview, saved: false, canResume: false, limit: null });
   };
-  const openPreview = (scriptContent: string, scriptTitle: string) => {
+  const openPreview = (scriptContent: string, scriptTitle: string, originalId?: string) => {
     if (!current() || scope.preview || !scriptContent.trim()) return;
     let generationId: string;
-    try { generationId = 'vp-' + crypto.randomUUID(); } catch { return; }
-    const selection: Selection = { version: 1, owner: owner.scope.key, generationId, scriptContent, scriptTitle };
+    if (surface === 'dashboard') {
+      if (typeof originalId !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(originalId)) return;
+      generationId = originalId;
+    } else { try { generationId = 'vp-' + crypto.randomUUID(); } catch { return; } }
+    const selection: Selection = { version: 1, owner: selectionOwner, generationId, scriptContent, scriptTitle };
     scope.selection = null;
     try {
-      if (!validSelection(selection,owner.scope.key)) throw Error('Draft too large');
+      if (!validSelection(selection,selectionOwner)) throw Error('Draft too large');
       const raw = JSON.stringify(selection);
       if (raw.length > 400000) throw Error('Draft too large');
-      sessionStorage.setItem(slot(owner.scope.key),raw);
+      sessionStorage.setItem(slot(selectionOwner),raw);
       scope.selection = selection; update({ persistenceUnavailable: false });
     } catch { update({ persistenceUnavailable: true }); }
     selectPreview(selection);
@@ -88,7 +93,7 @@ export function useGeneratorMediaLaunch(owner: GeneratorScreenScope, template: s
   const resumePreview = () => {
     if (!current() || scope.preview || !scope.selection) return;
     try {
-      const saved = readSelection(owner.scope.key);
+      const saved = readSelection(selectionOwner);
       if (!saved || JSON.stringify(saved) !== JSON.stringify(scope.selection)) {
         scope.selection = null; update({ canResume: false }); return;
       }
@@ -100,7 +105,7 @@ export function useGeneratorMediaLaunch(owner: GeneratorScreenScope, template: s
     setStore({ scope, ...initial() });
     if (current()) {
       try {
-        scope.selection = readSelection(owner.scope.key);
+        scope.selection = readSelection(selectionOwner);
         update({ canResume: !!scope.selection });
       } catch { update({ persistenceUnavailable: true }); }
     }

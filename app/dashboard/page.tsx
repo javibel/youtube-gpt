@@ -15,6 +15,9 @@ import { useDashboardOnboarding } from '@/lib/use-dashboard-onboarding';
 import { useYoutubeConnection } from '@/lib/use-youtube-connection';
 import { useGenerationHistory } from '@/lib/use-generation-history';
 import { useVideoPreviewHistory } from '@/lib/use-video-preview-history';
+import { useGeneratorScreenScope } from '@/lib/use-generator-screen-scope';
+import { useGeneratorMediaLaunch } from '@/lib/use-generator-media-launch';
+import LimitReachedModal from '@/components/LimitReachedModal';
 import { AFFILIATES_DORMANT } from '@/lib/features';
 import { toast } from '@/components/Toaster';
 import { CheckIcon, CrossIcon, VideoIcon, StarIcon } from '@/components/icons';
@@ -83,13 +86,15 @@ export default function DashboardPage() {
   const bizYrPrice = formatPrice(PRICES.business.yearly.eur, currency, lang);
   const bizYrSavings = formatPrice(PRICES.business.monthly.eur * 12 - PRICES.business.yearly.eur, currency, lang);
   const bizYrMoEquiv = formatPrice(PRICES.business.yearly.eur / 12, currency, lang);
-  const [previewGen, setPreviewGen] = useState<{ id: string; output: string; title?: string } | null>(null);
   const [dailyTip, setDailyTip] = useState<{ es: string; en: string } | null>(null);
 
   const { dbPreviews, previewsLoaded, previewListLoading, previewListError, loadingPreviewId,
     playingPreview, previewError, loadDbPreviews, refreshDbPreviews,
     handleSelectPreview, handleDeletePreview, handleDownloadPreview, closePlayingPreview,
   } = useVideoPreviewHistory(session?.user?.id, status);
+  const videoOwner = useGeneratorScreenScope(session?.user?.id, session?.user?.email, status, lang);
+  const video = useGeneratorMediaLaunch(videoOwner, 'dashboard-script', {}, '',
+    () => { void refreshStats(); }, 'dashboard', () => { void refreshDbPreviews(); });
   const { ytChannel, ytVideos, ytConnected, ytExpired, ytConnecting, ytDisconnecting,
     ytGrowth, ytSparkline, dailyIdeas, ytLoading, ytError, ytCached, ytDisconnectError,
     ytStatsError, ytIdeasError, ytDetailsLoading, ytNotice, retryYoutube, retryYoutubeDetails,
@@ -147,6 +152,25 @@ function handleCopy(id: string, out: string) {
     void runOnboardingGenerate(onboardingTopic);
   }
 
+  const videoControls = <>
+    {video.persistenceUnavailable && <p role="alert">{lang === 'en'
+      ? 'Could not retain the video script in this tab. Its selection may be lost after reload.'
+      : 'No se pudo conservar el guion del vídeo en esta pestaña. Al recargar puede perderse su selección.'}</p>}
+    {video.canResume && <div className="yv-card p-4 mb-4">
+      <p>{lang === 'en' ? 'Reopening the saved video script does not generate or confirm a video.'
+        : 'Reabrir el guion de vídeo guardado no genera ni confirma un vídeo.'}</p>
+      <button onClick={video.resumePreview} className="btn-offset btn-offset-white py-2 px-3">
+        {lang === 'en' ? 'Reopen video script' : 'Reabrir guion de vídeo'}
+      </button>
+    </div>}
+  </>;
+  const videoOverlay = <>
+    {video.limit && <LimitReachedModal {...video.limit} lang={lang} />}
+    {video.preview && <Suspense fallback={null}>
+      <VideoPreviewGenerator key={video.preview.generationId} {...video.preview} lang={lang} />
+    </Suspense>}
+  </>;
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-bg-0)' }}>
@@ -161,10 +185,12 @@ function handleCopy(id: string, out: string) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-bg-0)' }}>
         <div className="yv-card p-8 max-w-md">
+          {videoControls}
           <p role="alert" className="mb-4">{lang === 'en' ? 'Could not load your statistics and plan.' : 'No se pudieron cargar tus estadísticas y plan.'}</p>
           <button onClick={retryStats} disabled={statsRefreshing} className="btn-offset px-5 py-2.5 disabled:opacity-50">
             {lang === 'en' ? 'Retry dashboard' : 'Reintentar dashboard'}
           </button>
+          {videoOverlay}
         </div>
       </div>
     );
@@ -434,6 +460,7 @@ function handleCopy(id: string, out: string) {
       )}
 
       <div className="yv-page">
+        {videoControls}
         <header className="yv-page-header">
           <div className="yv-page-header__left">
             <span className="yv-page-header__eyebrow">{t('PANEL DE CONTROL', 'DASHBOARD')}</span>
@@ -970,7 +997,7 @@ function handleCopy(id: string, out: string) {
                             )}
                             {isPro && gen.template === 'script' && (
                               <button
-                                onClick={() => setPreviewGen({ id: gen.id, output: gen.output, title: gen.inputs?.tema ?? 'Script' })}
+                                onClick={() => video.openPreview(gen.output, gen.inputs?.tema ?? 'Script', gen.id)}
                                 className="px-3 py-1.5 text-[13px] font-display gap-1.5 rounded-lg border transition flex items-center"
                                 style={{ borderColor: 'rgba(0,217,255,0.35)', color: '#00D9FF', background: 'rgba(0,217,255,0.06)' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,217,255,0.12)')}
@@ -1471,19 +1498,7 @@ function handleCopy(id: string, out: string) {
         </div>
       </footer>
 
-      {/* Video Preview Modal (generate new) */}
-      {previewGen && (
-        <Suspense fallback={null}>
-          <VideoPreviewGenerator
-            scriptContent={previewGen.output}
-            generationId={previewGen.id}
-            scriptTitle={previewGen.title ?? 'Script'}
-            lang={lang}
-            onClose={() => setPreviewGen(null)}
-            onSaved={refreshDbPreviews}
-          />
-        </Suspense>
-      )}
+      {videoOverlay}
 
       {/* Playback modal — TV2 */}
       {playingPreview && (
