@@ -5,15 +5,17 @@ const row=id=>({id:'generation-'+id,template:'title',createdAt:'2026-10-07T14:00
 const page=(p,start=(p-1)*10,count=Math.min(10,23-start),total=23)=>({generations:Array.from({length:count},(_,i)=>row(start+i)),page:p,total,hasMore:(p-1)*10+count<total});
 const reply=(data,status=200)=>({ok:status>=200&&status<300,status,json:async()=>data});
 function harness(){
- const cells=[],effects=[],requests=[];let index=0,dirty=false;
+ const cells=[],effects=[],requests=[],timers=new Map();let index=0,dirty=false,clock=0,timerId=0;
  const state={user:'fixture-one',email:'fixture-one@example.invalid',auth:'authenticated',send:null};
  const changed=(a,b)=>!a||a.length!==b.length||a.some((v,i)=>!Object.is(v,b[i]));
  const hooks={useState(initial){const i=index++;if(!cells[i])cells[i]={value:typeof initial==='function'?initial():initial};return[cells[i].value,v=>{const next=typeof v==='function'?v(cells[i].value):v;if(!Object.is(next,cells[i].value)){cells[i].value=next;dirty=true;}}];},useRef(v){return cells[index++]??={current:v};},useMemo(fn,deps){const i=index++;if(!cells[i]||changed(cells[i].deps,deps))cells[i]={value:fn(),deps};return cells[i].value;},useCallback(fn,deps){return hooks.useMemo(()=>fn,deps);},useEffect(fn,deps){const i=index++;if(!cells[i]||changed(cells[i].deps,deps)){const prior=cells[i];cells[i]={fn,deps};effects.push(()=>{prior?.cleanup?.();cells[i].cleanup=fn();});}}};
+ const timerGlobals={AbortController,setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,at:clock+ms});return id;},clearTimeout:id=>timers.delete(id)};
+ const readWait=require('./route-harness.cjs').load('lib/client-read-wait.ts',{},timerGlobals);
  const entry={exports:{}};
- vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(name){assert.equal(name,'react');return hooks;},Date,Number,Object,Set,fetch:async(url,init)=>{assert.match(url,/^\/api\/user\/generations\?page=\d+$/);assert.equal(init.cache,'no-store');requests.push({url,owner:state.user,email:state.email});return state.send?state.send(url,init):reply(page(Number(url.split('=').at(-1))));}});
+ vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(name){if(name==='@/lib/client-read-wait')return readWait;assert.equal(name,'react');return hooks;},Date,Number,Object,...timerGlobals,Set,fetch:async(url,init)=>{assert.match(url,/^\/api\/user\/generations\?page=\d+$/);assert.equal(init.cache,'no-store');requests.push({url,init,owner:state.user,email:state.email});return state.send?state.send(url,init):reply(page(Number(url.split('=').at(-1))));}});
  const runEffects=()=>{while(effects.length)effects.shift()();};
  function view(noEffects=false){let result;for(let n=0;n<12;n++){index=0;dirty=false;result=entry.exports.useGenerationHistory(state.user,state.email,state.auth);if(!noEffects)runEffects();if(!dirty)return result;}throw Error('Hook did not settle');}
- return{state,requests,view,runEffects,ready:async()=>{await view().retryHistory();return view();},unmount:()=>cells.forEach(c=>c?.cleanup?.()),strictEffects:()=>{view();for(const c of cells)if(c.fn){c.cleanup?.();c.cleanup=c.fn();}}};
+ return{state,requests,timers,advance(ms){clock+=ms;for(const[id,timer]of [...timers])if(timer.at<=clock){timers.delete(id);timer.fn();}},view,runEffects,ready:async()=>{await view().retryHistory();return view();},unmount:()=>cells.forEach(c=>c?.cleanup?.()),strictEffects:()=>{view();for(const c of cells)if(c.fn){c.cleanup?.();c.cleanup=c.fn();}}};
 }
 const results=[];async function test(name,fn){await fn();results.push({name,status:'PASS'});}
 if(require.main===module)(async()=>{

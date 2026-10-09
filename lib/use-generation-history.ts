@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createClientReadWait } from '@/lib/client-read-wait';
 
 export type Generation = { id: string; template: string; createdAt: string; tokensUsed: number | null; output: string; inputs: Record<string, string> };
 const empty = () => ({ rows: [] as Generation[], loaded: false, page: 0, hasMore: false, loading: false, error: null as 'refresh'|'more'|null });
@@ -29,7 +30,8 @@ function decode(data: unknown, requested: number): { rows: Generation[]; hasMore
 
 export function useGenerationHistory(userId: string | undefined, email: string | null | undefined, authStatus: string) {
   const scope = useMemo(() => ({ active: true, sequence: 0, page: 0, hasMore: false,
-    failed: 'refresh' as 'refresh'|'more', flight: null as Promise<void>|null }), [userId, email, authStatus]);
+    failed: 'refresh' as 'refresh'|'more', flight: null as Promise<void>|null,
+    waiting: null as ReturnType<typeof createClientReadWait>|null }), [userId, email, authStatus]);
   const active = useRef(scope); active.current = scope;
   const [store, setStore] = useState(() => ({ scope, ...empty() }));
   const current = useCallback(() => active.current === scope && scope.active && authStatus === 'authenticated' && !!email,
@@ -40,14 +42,16 @@ export function useGenerationHistory(userId: string | undefined, email: string |
   const read = useCallback(async (page: number, force = false) => {
     if (!current()) return;
     if (!force && scope.flight) return scope.flight;
+    scope.waiting?.cancel();
     const sequence = ++scope.sequence;
+    const waiting = createClientReadWait(); scope.waiting = waiting;
     const mode = page === 1 ? 'refresh' : 'more';
     update(view => ({ ...view, loading: true, error: null }));
     const flight = (async () => {
       try {
-        const response = await fetch(`/api/user/generations?page=${page}`, { cache: 'no-store' });
+        const response = await waiting.wait(fetch(`/api/user/generations?page=${page}`, { cache: 'no-store', signal: waiting.signal }));
         if (!response.ok) throw new Error('History unavailable');
-        const data = decode(await response.json(), page);
+        const data = decode(await waiting.wait(response.json()), page);
         if (!current() || scope.sequence !== sequence) return;
         scope.page = page; scope.hasMore = data.hasMore;
         update(view => {
@@ -59,6 +63,7 @@ export function useGenerationHistory(userId: string | undefined, email: string |
       } catch {
         if (current() && scope.sequence === sequence) { scope.failed = mode; update(view => ({ ...view, error: mode })); }
       } finally {
+        waiting.finish(); if (scope.waiting === waiting) scope.waiting = null;
         if (current() && scope.sequence === sequence) update(view => ({ ...view, loading: false }));
       }
     })();
@@ -75,7 +80,11 @@ export function useGenerationHistory(userId: string | undefined, email: string |
   useEffect(() => {
     scope.active = true; active.current = scope; setStore({ scope, ...empty() });
     void read(1);
-    return () => { scope.active = false; };
+    return () => {
+      scope.active = false;
+      // Immediate Strict Mode setup retains the original initial GET.
+      void Promise.resolve().then(() => { if (!scope.active || active.current !== scope) scope.waiting?.cancel(); });
+    };
   }, [scope, read]);
   const view = store.scope === scope && current() ? store : empty();
   return { historyGens: view.rows, historyLoaded: view.loaded, historyPage: view.page, historyHasMore: view.hasMore,

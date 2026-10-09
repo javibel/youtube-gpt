@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createClientReadWait } from '@/lib/client-read-wait';
 
 export type DashboardStats = {
   user: { id: string; email: string; name: string | null; createdAt: string };
@@ -33,7 +34,8 @@ function decode(value: unknown, userId: string, email: string): DashboardStats {
 }
 
 export function useDashboardStats(userId: string | undefined, email: string | null | undefined, authStatus: string) {
-  const scope = useMemo(() => ({ active: true, sequence: 0, flight: null as Promise<void>|null }), [userId,email,authStatus]);
+  const scope = useMemo(() => ({ active: true, sequence: 0, flight: null as Promise<void>|null,
+    waiting: null as ReturnType<typeof createClientReadWait>|null }), [userId,email,authStatus]);
   const active = useRef(scope); active.current = scope;
   const [store,setStore] = useState(() => ({ scope, ...initial() }));
   const current = useCallback(() => active.current === scope && scope.active && authStatus === 'authenticated' && !!userId && !!email,
@@ -44,17 +46,20 @@ export function useDashboardStats(userId: string | undefined, email: string | nu
   const read = useCallback(async (force = false) => {
     if (!current()) return;
     if (!force && scope.flight) return scope.flight;
+    scope.waiting?.cancel();
     const sequence = ++scope.sequence;
+    const waiting = createClientReadWait(); scope.waiting = waiting;
     update(v => ({ ...v, refreshing: true, error: false }));
     const flight = (async () => {
       try {
-        const response = await fetch('/api/user/stats', { cache: 'no-store' });
+        const response = await waiting.wait(fetch('/api/user/stats', { cache: 'no-store', signal: waiting.signal }));
         if (!response.ok) throw Error('Statistics unavailable');
-        const data = decode(await response.json(), userId!, email!);
+        const data = decode(await waiting.wait(response.json()), userId!, email!);
         if (current() && scope.sequence === sequence) update(v => ({ ...v,data }));
       } catch {
         if (current() && scope.sequence === sequence) update(v => ({ ...v,error: true }));
       } finally {
+        waiting.finish(); if (scope.waiting === waiting) scope.waiting = null;
         if (current() && scope.sequence === sequence) update(v => ({ ...v,refreshing: false }));
       }
     })();
@@ -65,7 +70,10 @@ export function useDashboardStats(userId: string | undefined, email: string | nu
   const retryStats = useCallback(() => read(), [read]);
   useEffect(() => {
     scope.active = true; active.current = scope; setStore({ scope, ...initial() }); void read();
-    return () => { scope.active = false; };
+    return () => {
+      scope.active = false;
+      void Promise.resolve().then(() => { if (!scope.active || active.current !== scope) scope.waiting?.cancel(); });
+    };
   }, [scope,read]);
   const view = store.scope === scope && current() ? store : initial();
   const error = view.error || (authStatus === 'authenticated' && (!userId || !email));

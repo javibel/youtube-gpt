@@ -4,15 +4,17 @@ const compiled=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../../lib
 const stats=(email='fixture-one@example.invalid',total=3)=>({user:{id:'fixture-one',email,name:'Synthetic',createdAt:'2026-10-07T14:00:00Z'},stats:{totalGenerations:total,generationsThisMonth:total,generationsReserved:0,quotaOccupied:total,limit:10,remaining:Math.max(0,10-total),isPro:false,plan:'free',streak:1,videoTipsRemaining:1},subscription:null});
 const reply=(data,status=200)=>({ok:status>=200&&status<300,status,json:async()=>data});
 function harness(){
- const cells=[],effects=[],requests=[];let index=0,dirty=false;
+ const cells=[],effects=[],requests=[],timers=new Map();let index=0,dirty=false,clock=0,timerId=0;
  const state={user:'fixture-one',email:'fixture-one@example.invalid',auth:'authenticated',send:null};
  const changed=(a,b)=>!a||a.length!==b.length||a.some((v,i)=>!Object.is(v,b[i]));
  const hooks={useState(initial){const i=index++;if(!cells[i])cells[i]={value:typeof initial==='function'?initial():initial};return[cells[i].value,v=>{const next=typeof v==='function'?v(cells[i].value):v;if(!Object.is(next,cells[i].value)){cells[i].value=next;dirty=true;}}];},useRef(v){return cells[index++]??={current:v};},useMemo(fn,deps){const i=index++;if(!cells[i]||changed(cells[i].deps,deps))cells[i]={value:fn(),deps};return cells[i].value;},useCallback(fn,deps){return hooks.useMemo(()=>fn,deps);},useEffect(fn,deps){const i=index++;if(!cells[i]||changed(cells[i].deps,deps)){const prior=cells[i];cells[i]={fn,deps};effects.push(()=>{prior?.cleanup?.();cells[i].cleanup=fn();});}}};
+ const timerGlobals={AbortController,setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,at:clock+ms});return id;},clearTimeout:id=>timers.delete(id)};
+ const readWait=require('./route-harness.cjs').load('lib/client-read-wait.ts',{},timerGlobals);
  const entry={exports:{}};
- vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(name){assert.equal(name,'react');return hooks;},Date,Number,Object,fetch:async(url,init)=>{assert.equal(url,'/api/user/stats');assert.equal(init.cache,'no-store');requests.push({url,owner:state.user,email:state.email});return state.send?state.send(url,init):reply(stats(state.email));}});
+ vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(name){if(name==='@/lib/client-read-wait')return readWait;assert.equal(name,'react');return hooks;},Date,Number,Object,...timerGlobals,fetch:async(url,init)=>{assert.equal(url,'/api/user/stats');assert.equal(init.cache,'no-store');requests.push({url,init,owner:state.user,email:state.email});return state.send?state.send(url,init):reply(stats(state.email));}});
  const runEffects=()=>{while(effects.length)effects.shift()();};
  function view(noEffects=false){let result;for(let n=0;n<12;n++){index=0;dirty=false;result=entry.exports.useDashboardStats(state.user,state.email,state.auth);if(!noEffects)runEffects();if(!dirty)return result;}throw Error('Hook did not settle');}
- return{state,requests,view,runEffects,ready:async()=>{await view().retryStats();return view();},unmount:()=>cells.forEach(c=>c?.cleanup?.()),strictEffects:()=>{view();for(const c of cells)if(c.fn){c.cleanup?.();c.cleanup=c.fn();}}};
+ return{state,requests,timers,advance(ms){clock+=ms;for(const[id,timer]of [...timers])if(timer.at<=clock){timers.delete(id);timer.fn();}},view,runEffects,ready:async()=>{await view().retryStats();return view();},unmount:()=>cells.forEach(c=>c?.cleanup?.()),strictEffects:()=>{view();for(const c of cells)if(c.fn){c.cleanup?.();c.cleanup=c.fn();}}};
 }
 const results=[];async function test(name,fn){await fn();results.push({name,status:'PASS'});}
 if(require.main===module)(async()=>{
