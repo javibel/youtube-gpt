@@ -66,6 +66,7 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     if (scope.generation) return scope.generation;
     // A result waiting for step persistence must never spend another generation.
     if (scope.generated || scope.step !== 1 || scope.target !== null || !['es','en'].includes(lang)) return;
+    const readOnly = !!scope.operation;
     if (!scope.operation) {
       const topic = rawTopic.trim(); if (topic.length < 3 || topic.length > 200) return;
       try {scope.operation={key:crypto.randomUUID(),topic,body:JSON.stringify({template:'title',inputs:{tema:topic},lang})};}
@@ -74,21 +75,33 @@ export function useDashboardOnboarding(userId: string|undefined, email: string|n
     const operation=scope.operation;
     update(v => ({ ...v,topic:operation.topic,generating: true,generationError: false,generationTimedOut:false,generationPending:true }));
     let timedOut=false;const controller=new AbortController();scope.controller=controller;
+    let stopWait!: (reason: Error) => void;
+    const interrupted = new Promise<never>((_, reject) => { stopWait = reject; });
+    // Abort retires the local wait even if the original transport ignores it.
+    void interrupted.catch(() => {});
+    const abort = () => stopWait(Error('Unconfirmed welcome generation'));
+    controller.signal.addEventListener('abort',abort,{once:true});
     const deadline=setTimeout(()=>{timedOut=true;controller.abort();},90_000);scope.deadline=deadline;
     const generation = (async () => {
       try {
-        const response = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json','Idempotency-Key':operation.key },
-          body:operation.body,signal:controller.signal });
-        if (!response.ok) throw Error('Generation failed');
-        const data = await response.json();
-        if (timedOut || typeof data?.content !== 'string' || !data.content.trim() || typeof data.truncated !== 'boolean') throw Error('Invalid result');
+        const response = await Promise.race([fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json','Idempotency-Key':operation.key,
+          ...(readOnly ? {'X-Generation-Recovery':'retained-only-v1'} : {}) },
+          body:operation.body,signal:controller.signal }),interrupted]);
         if (!current()) return;
+        if (controller.signal.aborted) throw Error('Unconfirmed generation');
+        if (!response.ok) throw Error('Generation failed');
+        const data = await Promise.race([response.json(),interrupted]);
+        if (controller.signal.aborted || typeof data?.content !== 'string' || !data.content.trim() || typeof data.truncated !== 'boolean') throw Error('Invalid result');
+        if (!current()) return;
+        // Step persistence has its own wait; a confirmed result is never timed out.
+        clearTimeout(deadline);if(scope.deadline===deadline)scope.deadline=null;
+        controller.signal.removeEventListener('abort',abort);
         scope.generated = true;scope.operation=null;
         update(v => ({ ...v,result: data.content,truncated:data.truncated,generationPending:false }));
         await request(2,true);
         if (current()) { void refreshStats(); void refreshHistory(); }
       } catch { if (current()) update(v => ({ ...v,generationError: true,generationTimedOut:timedOut })); }
-      finally {clearTimeout(deadline);if(scope.deadline===deadline)scope.deadline=null;if(scope.controller===controller)scope.controller=null;update(v => ({ ...v,generating: false })); }
+      finally {controller.signal.removeEventListener('abort',abort);clearTimeout(deadline);if(scope.deadline===deadline)scope.deadline=null;if(scope.controller===controller)scope.controller=null;update(v => ({ ...v,generating: false })); }
     })();
     scope.generation = generation;
     try { await generation; } finally { if (scope.generation === generation) scope.generation = null; }
