@@ -19,6 +19,7 @@ function harness(){
      if(state.holdCommit)heldCommit=commit;else queueMicrotask(commit);
     };if(state.holdRequest)heldRequest=complete;else queueMicrotask(complete);return req;
    };return {
+    get(key){return request(()=>pending.get(JSON.stringify(key)));},
     put(value){assert.equal(mode,'readwrite');return request(()=>{pending.set(JSON.stringify([value.scope,value.id]),value);return [value.scope,value.id];});},
     delete(key){assert.equal(mode,'readwrite');return request(()=>{pending.delete(JSON.stringify(key));return undefined;});},
     index(name){assert.equal(name,'scope');assert(indices.has(name));return {getAll(scope){reads.push(scope);return request(()=>state.badRows??[...pending.values()].filter(r=>r.scope===scope));}};},
@@ -52,6 +53,10 @@ if(require.main===module){const guard=setTimeout(()=>{console.error('FAIL: cache
  await test('malformed local row is unavailable rather than an empty confirmed list',async()=>{const h=harness();await h.api.savePreview(row(),a);h.state.badRows=[{...row(),scope:JSON.stringify([b.userId,b.email])}];await assert.rejects(h.api.loadPreviews(a),/record unavailable/);});
  await test('duplicate or forged-authority cache rows are rejected without confirming them',async()=>{const h=harness();await h.api.savePreview(row(),a);const stored=[...h.stores.get('scopedPreviews').values()][0];h.state.badRows=[stored,stored];await assert.rejects(h.api.loadPreviews(a),/record unavailable/);h.state.badRows=[{...stored,confirmed:true}];await assert.rejects(h.api.loadPreviews(a),/record unavailable/);});
  await test('invalid capture/date or oversize id rejected before opening storage',async()=>{const h=harness();for(const value of [{...row(),createdAt:'invalid'},{...row(),blob:new Blob(['x'])},{...row(),id:'x'.repeat(257)}])await assert.rejects(h.api.savePreview(value,a),/input unavailable/);assert.equal(h.opens.length,0);});
+
+ await test('exact scoped lookup preserves upload selector and binary without granting confirmation',async()=>{const h=harness(),value={...row(),uploadSelection:{version:1,key:'original-key',script:'Synthetic script',lang:'es'}};await h.api.savePreview(value,a);const found=await h.api.loadPreview('shared',a);assert.equal(found.uploadSelection.key,'original-key');assert.equal(found.uploadSelection.script,'Synthetic script');assert.equal(found.blob,value.blob);assert.equal(await h.api.loadPreview('shared',b),null);assert.equal(await h.api.loadPreview('missing',a),null);});
+ await test('scoped rows without upload selector remain readable but never acquire one',async()=>{const h=harness();await h.api.savePreview(row(),a);assert.equal((await h.api.loadPreview('shared',a)).uploadSelection,undefined);assert.equal(h.stores.get('previews').size,1);});
+ await test('invalid/oversize upload selection or forged extra authority rejected before storage',async()=>{const h=harness(),selected={version:1,key:'original',script:'Synthetic script',lang:'es'};for(const selector of [{...selected,key:'bad key'},{...selected,script:'x'.repeat(64001)},{...selected,version:2},{...selected,lang:'fr'},{...selected,confirmed:true}])await assert.rejects(h.api.savePreview({...row(),uploadSelection:selector},a),/input unavailable/);assert.equal(h.opens.length,0);});
  console.log(JSON.stringify({scope:'actual cache module with synthetic IndexedDB transaction events; no real browser durability or operational provenance acceptance',results},null,2));
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>clearTimeout(guard));}
 module.exports={harness};

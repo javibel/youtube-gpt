@@ -10,6 +10,7 @@ export interface StoredPreview {
   title: string;
   format: string;
   createdAt: string;
+  uploadSelection?: { version: 1; key: string; script: string; lang: 'es' | 'en' };
 }
 type ScopedPreview = StoredPreview & { scope: string };
 
@@ -29,7 +30,23 @@ function validPreview(value: StoredPreview): boolean {
     && typeof value.createdAt === 'string' && value.createdAt.length <= 64
     && Number.isFinite(Date.parse(value.createdAt))
     && value.blob instanceof Blob && value.blob.size >= 2000 && value.blob.size <= 8 * 1024 * 1024
+    && (value.uploadSelection === undefined || validSelection(value.uploadSelection))
     && value.blob.type.length <= 256 && /^video\/[a-z0-9.+-]{1,64}$/i.test(value.blob.type.split(';')[0]);
+}
+function validSelection(value: NonNullable<StoredPreview['uploadSelection']>): boolean {
+  return !!value && !Array.isArray(value) && value.version === 1
+    && Object.keys(value).sort().join(',') === 'key,lang,script,version'
+    && typeof value.key === 'string' && /^[-A-Za-z0-9._:]{1,128}$/.test(value.key)
+    && (value.lang === 'es' || value.lang === 'en')
+    && typeof value.script === 'string' && !!value.script.trim() && value.script.length <= 64_000;
+}
+function readRow(value: unknown, scope: string): StoredPreview {
+  const row = value as ScopedPreview;
+  if (row?.scope !== scope || !validPreview(row)
+    || Object.keys(row).sort().join(',') !== (row.uploadSelection
+      ? 'blob,createdAt,format,id,scope,title,uploadSelection' : 'blob,createdAt,format,id,scope,title')) throw new Error('Invalid cache row');
+  return { id: row.id, blob: row.blob, title: row.title, format: row.format, createdAt: row.createdAt,
+    ...(row.uploadSelection ? { uploadSelection: { ...row.uploadSelection } } : {}) };
 }
 function openDB(deadline: number, signal?: AbortSignal): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -100,18 +117,28 @@ export async function savePreview(preview: StoredPreview, owner: PreviewScope, s
   if (!validPreview(preview)) throw new Error('Preview cache input unavailable');
   await operation(owner, 'readwrite', (store, scope) => store.put({
     scope, id: preview.id, blob: preview.blob, title: preview.title, format: preview.format, createdAt: preview.createdAt,
+    ...(preview.uploadSelection ? { uploadSelection: { ...preview.uploadSelection } } : {}),
   }), () => undefined, signal);
 }
 export async function loadPreviews(owner: PreviewScope, signal?: AbortSignal): Promise<StoredPreview[]> {
   return operation(owner, 'readonly', (store, scope) => store.index('scope').getAll(scope), (value, scope) => {
     if (!Array.isArray(value)) throw new Error('Invalid cache listing');
     const ids = new Set<string>();
-    return value.map((row: ScopedPreview) => {
-      if (row?.scope !== scope || !validPreview(row) || ids.has(row.id)
-        || Object.keys(row).sort().join(',') !== 'blob,createdAt,format,id,scope,title') throw new Error('Invalid cache row');
-      ids.add(row.id);
-      return { id: row.id, blob: row.blob, title: row.title, format: row.format, createdAt: row.createdAt };
+    return value.map((value: unknown) => {
+      const row = readRow(value, scope);
+      if (ids.has(row.id)) throw new Error('Duplicate cache identity');
+      ids.add(row.id); return row;
     }).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  }, signal);
+}
+export async function loadPreview(id: string, owner: PreviewScope, signal?: AbortSignal): Promise<StoredPreview | null> {
+  scopeKey(owner);
+  if (typeof id !== 'string' || !id.trim() || id.length > 256) throw new Error('Preview cache identity unavailable');
+  return operation(owner, 'readonly', (store, scope) => store.get([scope, id]), (value, scope) => {
+    if (value === undefined) return null;
+    const row = readRow(value, scope);
+    if (row.id !== id) throw new Error('Invalid cache identity');
+    return row;
   }, signal);
 }
 export async function deletePreview(id: string, owner: PreviewScope, signal?: AbortSignal): Promise<void> {
