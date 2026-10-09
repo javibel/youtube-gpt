@@ -2,6 +2,7 @@
 const assert=require('node:assert/strict');
 const {createOpenAITaskFactory}=require('../../lib/ai/openai-task-factory.cjs');
 const {createOpenAIAdapter}=require('../../lib/ai/adapters/openai.cjs');
+const {fixture:httpsFixture}=require('./openai-https-fixture.cjs');
 module.exports=async function({prefix,createRegistry,createControlStore,database,cfg,budget,stats,test}){
  const models={
   'fixture-openai-a':{verified:true,executors:['ai'],capabilities:['text']},
@@ -89,6 +90,29 @@ module.exports=async function({prefix,createRegistry,createControlStore,database
    const make=()=>factory({preflight:async()=>({upperBoundMicros:61,currency:'EUR',priceVersion:'synthetic-runtime-v1'}),readCredential:async()=>{credentials++;return 'synthetic';},fetch:async()=>{calls++;return response();}});
    for(let i=0;i<2;i++)await assert.rejects((await make()(identity('preflight'))).create(parameters),e=>e.result?.error?.code==='quota');
    assert.equal(calls,0);assert.equal(credentials,0);assert.deepEqual(await ledger(),before);
+  });
+  await test('OpenAI fixed HTTPS capability follows native durable admission and settled replay opens no second request',async()=>{
+   const before=await ledger(),r=httpsFixture();let credentials=0,resolutions=0;
+   const {fetch:unused,...httpsBase}=base;
+   const make=()=>r.factory.createOpenAIHttpsTaskFactory({...httpsBase,
+    readCredential:async()=>{credentials++;assert.deepEqual(await ledger(),{...before,reserved:before.reserved+60});return 'synthetic-runtime-credential';},
+    resolveAddress:async value=>{resolutions++;assert.equal(credentials,1);assert.deepEqual(await ledger(),{...before,reserved:before.reserved+60});return r.resolveAddress(value);}});
+   const output=await (await make()(identity('https-pinned'))).create(parameters);
+   assert.equal(output.execution.model,'fixture-openai-b');assert.equal(output.content[0].text,'Synthetic pinned response');assert.equal(output.execution.usage.costMicros,7);
+   assert.equal(r.sends.length,1);assert.equal(r.calls.length,1);assert.equal(r.agents[0].destroyed,true);
+   const after=await ledger();assert.deepEqual(after,{...before,settled:before.settled+7});
+   for(const method of ['retrieve','create']){const result=await (await make()(identity('https-pinned')))[method](parameters);assert.equal(result.accounting.replay,true);assert.equal(result.content[0].text,output.content[0].text);}
+   assert.equal(credentials,1);assert.equal(resolutions,1);assert.equal(r.calls.length,1);assert.deepEqual(await ledger(),after);
+  });
+  await test('OpenAI rejected private DNS retains original admission uncertainty without native post or resolver retry',async()=>{
+   const before=await ledger(),r=httpsFixture({address:'127.0.0.1'});let credentials=0;
+   const {fetch:unused,...httpsBase}=base;
+   const make=()=>r.factory.createOpenAIHttpsTaskFactory({...httpsBase,resolveAddress:r.resolveAddress,readCredential:async()=>{credentials++;return 'synthetic-runtime-credential';}});
+   await assert.rejects((await make()(identity('https-denied'))).create(parameters),e=>e.result?.error?.code==='uncertain');
+   const after=await ledger();assert.deepEqual(after,{...before,reserved:before.reserved+60});
+   await assert.rejects((await make()(identity('https-denied'))).create(parameters),e=>e.code==='uncertain');
+   assert.equal(await (await make()(identity('https-denied'))).retrieve(parameters),null);
+   assert.equal(credentials,1);assert.equal(r.resolutions.length,1);assert.equal(r.calls.length,0);assert.equal(r.sends.length,0);assert.deepEqual(await ledger(),after);
   });
  }finally{
   const active=(await reader.active()).revision;
