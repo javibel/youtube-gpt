@@ -71,9 +71,9 @@ const suggestion = { title: 'Synthetic topic', date: '2026-10-08', hour: 0, reas
 const success = async () => ({ ok: true, json: async () => ({ suggestions: [suggestion] }) });
 const key = request => request.headers['Idempotency-Key'];
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-const writeSuccess = h => async (_url, init) => ({ ok: true, json: async () => init.method === 'DELETE' ? { ok: true }
+const writeSuccess = h => async (_url, init) => ({ ok: true, json: async () => init.method === 'DELETE' ? { ok: true, id: decodeURIComponent(_url.split('id=')[1]), originalMutation: true }
  : { entry: { ...JSON.parse(init.body), id: JSON.parse(init.body).id || 'synthetic-created', userId: h.state.user, color: null,
-  description: JSON.parse(init.body).description?.trim() || null } } });
+  description: JSON.parse(init.body).description?.trim() || null }, ...(init.method === 'PUT' ? { originalMutation: true } : {}) } });
 async function draft(h, title = 'Synthetic draft') { h.render(); await flush(); h.open(); h.field('title', title); }
 const results = [];
 async function test(name, run) { await run(); results.push({ name, status: 'PASS' }); }

@@ -167,15 +167,66 @@ export default function CalendarPage() {
       'The addition is unconfirmed and may have been applied. Retry addition only retrieves the original entry; it never creates another. Starting another operation discards this selector, does not cancel server work and may duplicate the addition.');
   }
   useEffect(() => { creation.pending = readCreation(); }, [creation]);
+  type Mutation = Creation & { method: 'PUT' | 'DELETE'; id: string; url: string };
+  const mutationSlot = 'ytv:calendar:mutation:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
+  const mutation = useMemo(() => ({ pending: null as Mutation | null, storageWarning: false }),
+    [session?.user?.id, session?.user?.email, status, lang]);
+  const currentMutation = useRef(mutation); currentMutation.current = mutation;
+  function snapshot(entry: Entry) {
+    return { title: entry.title, description: entry.description, date: entry.date, status: entry.status, color: entry.color };
+  }
+  function validSnapshot(value: unknown): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const fields = value as Record<string, unknown>;
+    return Object.keys(fields).sort().join(',') === 'color,date,description,status,title'
+      && typeof fields.title === 'string' && !!fields.title.trim() && fields.title.length <= 200
+      && typeof fields.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fields.date)
+      && typeof fields.status === 'string' && Object.hasOwn(STATUS_LABELS, fields.status)
+      && (fields.description === null || typeof fields.description === 'string')
+      && (fields.color === null || typeof fields.color === 'string');
+  }
+  function readMutation(): Mutation | null {
+    if (status !== 'authenticated' || !session?.user?.id || !session.user.email) return null;
+    try {
+      const raw = sessionStorage.getItem(mutationSlot);
+      if (!raw || raw.length > 66000) return null;
+      const v = JSON.parse(raw);
+      if (v?.version !== 1 || Object.keys(v).sort().join(',') !== 'body,id,key,method,version'
+        || typeof v.key !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(v.key)
+        || !['PUT','DELETE'].includes(v.method) || typeof v.id !== 'string' || !v.id || v.id.length > 128
+        || typeof v.body !== 'string' || v.body.length > 65536) return null;
+      const b = JSON.parse(v.body);
+      if (!b || typeof b !== 'object' || Array.isArray(b) || !validSnapshot(b.expected)) return null;
+      if (v.method === 'DELETE') { if (Object.keys(b).join(',') !== 'expected') return null; }
+      else {
+        if (b.id !== v.id || Object.keys(b).length < 3 || Object.keys(b).some(k => !['id','expected','title','description','date','status','color'].includes(k))) return null;
+        if (!validSnapshot({ ...b.expected, ...Object.fromEntries(Object.entries(b).filter(([k]) => !['id','expected'].includes(k))) })) return null;
+      }
+      return { key: v.key, body: v.body, method: v.method, id: v.id,
+        url: v.method === 'PUT' ? '/api/calendar' : '/api/calendar?id=' + encodeURIComponent(v.id) };
+    } catch { return null; }
+  }
+  function clearMutation(pending: Mutation) {
+    try {
+      const stored = readMutation();
+      if (stored?.key === pending.key && stored.body === pending.body && stored.id === pending.id && stored.method === pending.method) sessionStorage.removeItem(mutationSlot);
+    } catch { /* A newer selector must remain untouched. */ }
+  }
+  function mutationMessage() {
+    return t('El cambio no está confirmado y puede haberse aplicado. Reintentar el cambio solo consulta el acuse original; no repite la edición ni el borrado. Ese acuse confirma la operación pasada, no el estado actual del calendario. Empezar otra operación no cancela el servidor.',
+      'The change is unconfirmed and may have been applied. Retry change only retrieves the original acknowledgement; it does not repeat the edit or deletion. That acknowledgement confirms the past operation, not the current calendar state. Starting another operation does not cancel server work.');
+  }
+  useEffect(() => { mutation.pending = readMutation(); }, [mutation]);
   const writes = useMemo(() => ({ busy: false, unconfirmed: false, controller: null as AbortController | null }), [readScope]);
   const [writeError, setWriteError] = useState('');
   const offeredCreation = creation.pending;
+  const offeredMutation = mutation.pending;
   useEffect(() => {
     modalIdentity.current = null;
     setModal(null); setForm({ title: '', description: '', status: 'idea', date: '' });
     writeNoticeScope.current = writes;
-    writes.unconfirmed = !!creation.pending;
-    setWriteError(creation.pending ? creationMessage() : ''); setSaving(false); setAddingSuggestion(null);
+    writes.unconfirmed = !!creation.pending || !!mutation.pending;
+    setWriteError(mutation.pending ? mutationMessage() : creation.pending ? creationMessage() : ''); setSaving(false); setAddingSuggestion(null);
     return () => { writes.controller?.abort(); };
   }, [writes]);
   useEffect(() => {
@@ -256,7 +307,7 @@ export default function CalendarPage() {
 
   function canWrite() {
     return status === 'authenticated' && !!session?.user?.id && readScope.active
-      && currentReadScope.current === readScope && currentCreation.current === creation && !creation.pending && !writes.busy && !writes.unconfirmed;
+      && currentReadScope.current === readScope && currentCreation.current === creation && currentMutation.current === mutation && !creation.pending && !mutation.pending && !writes.busy && !writes.unconfirmed;
   }
 
   function confirmsEntry(json: { entry?: Entry }, expected: Record<string, unknown>) {
@@ -270,9 +321,10 @@ export default function CalendarPage() {
   }
 
   async function writeCalendar(url: string, init: RequestInit, confirm: (json: { entry?: Entry; ok?: boolean }) => boolean,
-    done: () => void, suggestionIndex: number | null = null, retained: Creation | null = null) {
+    done: () => void, suggestionIndex: number | null = null, retained: Creation | Mutation | null = null) {
     if (retained ? status !== 'authenticated' || !session?.user?.id || !readScope.active
-      || currentReadScope.current !== readScope || currentCreation.current !== creation || writes.busy || creation.pending !== retained : !canWrite()) return;
+      || currentReadScope.current !== readScope || currentCreation.current !== creation || currentMutation.current !== mutation || writes.busy
+      || ('method' in retained ? mutation.pending !== retained : creation.pending !== retained) : !canWrite()) return;
     let original = retained;
     if (init.method === 'POST' && !original) {
       if (typeof init.body !== 'string' || init.body.length > 65536) {
@@ -290,11 +342,29 @@ export default function CalendarPage() {
       } catch { /* Exact original remains in memory without claiming reload continuity. */ }
       creation.storageWarning = !stored;
     }
+    if ((init.method === 'PUT' || init.method === 'DELETE') && !original) {
+      if (typeof init.body !== 'string' || init.body.length > 65536) {
+        writes.unconfirmed = true; setWriteError(t('El cambio supera el tamaño permitido. Reduce la descripción antes de empezar otra operación.',
+          'The change exceeds the allowed size. Shorten the description before starting another operation.')); return;
+      }
+      const fields = JSON.parse(init.body);
+      const id = init.method === 'PUT' ? fields.id : decodeURIComponent(url.slice('/api/calendar?id='.length));
+      const pending: Mutation = { key: crypto.randomUUID(), body: init.body, method: init.method, id, url, done, scope: readScope };
+      original = pending; mutation.pending = pending;
+      let stored = false;
+      try {
+        if (session?.user?.email) {
+          const raw = JSON.stringify({ version: 1, key: pending.key, body: pending.body, method: pending.method, id: pending.id });
+          if (raw.length <= 66000) { sessionStorage.setItem(mutationSlot, raw); stored = sessionStorage.getItem(mutationSlot) === raw; }
+        }
+      } catch { /* Exact original remains in memory without claiming browser durability. */ }
+      mutation.storageWarning = !stored;
+    }
     if (original) init = { ...init, body: original.body, headers: { 'Content-Type': 'application/json',
       'Idempotency-Key': original.key, ...(retained ? { 'X-Calendar-Write-Recovery': 'retained-only-v1' } : {}) } };
     writes.busy = true;
     const controller = new AbortController(); writes.controller = controller;
-    const current = () => readScope.active && currentReadScope.current === readScope && currentCreation.current === creation;
+    const current = () => readScope.active && currentReadScope.current === readScope && currentCreation.current === creation && currentMutation.current === mutation;
     let interrupt: (error: Error) => void = () => {};
     const interrupted = new Promise<never>((_, reject) => { interrupt = reject; }); void interrupted.catch(() => {});
     const abort = () => interrupt(new Error('Calendar write unconfirmed'));
@@ -305,10 +375,12 @@ export default function CalendarPage() {
       const res = await Promise.race([fetch(url, { ...init, signal: controller.signal }), interrupted]);
       if (!res.ok) throw new Error('Write unavailable');
       const json = await Promise.race([res.json(), interrupted]);
-      if (controller.signal.aborted || !confirm(json)) throw new Error('Invalid acknowledgement');
+      if (controller.signal.aborted || !(original && 'method' in original ? confirmsMutation(json, original as Mutation) : confirm(json))) throw new Error('Invalid acknowledgement');
       if (current()) {
         if (original && creation.pending === original) { clearCreation(original); creation.pending = null; creation.storageWarning = false; }
-        writes.unconfirmed = false;
+        if (original && mutation.pending === original) { clearMutation(original as Mutation); mutation.pending = null; mutation.storageWarning = false; }
+        writes.unconfirmed = !!creation.pending || !!mutation.pending;
+        if (writes.unconfirmed) setWriteError(mutation.pending ? mutationMessage() : creationMessage());
         done();
         // A read started before this confirmed write may be stale. Replace only
         // its local wait; never claim remote cancellation or recover a writer.
@@ -318,7 +390,7 @@ export default function CalendarPage() {
     } catch {
       if (current()) {
         writes.unconfirmed = true;
-        setWriteError(original ? creationMessage() : t('El cambio no está confirmado y puede haberse aplicado. Consulta el calendario antes de empezar otra operación; repetir un alta puede crear un duplicado.',
+        setWriteError(original ? ('method' in original ? mutationMessage() : creationMessage()) : t('El cambio no está confirmado y puede haberse aplicado. Consulta el calendario antes de empezar otra operación; repetir un alta puede crear un duplicado.',
           'The change is unconfirmed and may have been applied. Retrieve the calendar before starting another operation; repeating an addition may create a duplicate.'));
       }
     } finally {
@@ -331,9 +403,11 @@ export default function CalendarPage() {
   function discardUnconfirmedWrite() {
     if (status !== 'authenticated' || !readScope.active || currentReadScope.current !== readScope || writes.busy) return;
     // Discarding a local warning neither cancels nor certifies the server write.
-    if (currentCreation.current !== creation || creation.pending !== offeredCreation) return;
+    if (currentCreation.current !== creation || currentMutation.current !== mutation || creation.pending !== offeredCreation || mutation.pending !== offeredMutation) return;
     if (creation.pending) clearCreation(creation.pending);
     creation.pending = null; creation.storageWarning = false;
+    if (mutation.pending) clearMutation(mutation.pending);
+    mutation.pending = null; mutation.storageWarning = false;
     writes.unconfirmed = false; setWriteError('');
   }
 
@@ -346,19 +420,37 @@ export default function CalendarPage() {
       () => { if (original.scope === readScope) original.done?.(); }, null, original);
   }
 
+  function confirmsMutation(json: unknown, original: Mutation) {
+    const result = json as { originalMutation?: boolean; ok?: boolean; id?: string; entry?: Entry };
+    if (result?.originalMutation !== true) return false;
+    if (original.method === 'DELETE') return result.ok === true && result.id === original.id;
+    const { expected, id, ...changes } = JSON.parse(original.body);
+    const normalized = { ...changes,
+      ...(Object.hasOwn(changes, 'description') ? { description: changes.description?.trim() || null } : {}),
+      ...(Object.hasOwn(changes, 'color') ? { color: changes.color?.trim() || null } : {}),
+      ...(Object.hasOwn(changes, 'title') ? { title: changes.title.trim() } : {}) };
+    return confirmsEntry(result, { ...expected, ...normalized, id });
+  }
+  async function retryCalendarMutation() {
+    const original = offeredMutation;
+    if (!original) return;
+    return writeCalendar(original.url, { method: original.method }, json => confirmsMutation(json, original),
+      () => { if (original.scope === readScope) original.done?.(); }, null, original);
+  }
+
   async function saveEntry() {
     if (!form.title.trim() || !modal || modalScope.current !== readScope || modalIdentity.current !== modal.identity || !canWrite()) return;
     const values = { ...form, title: form.title.trim(), description: form.description.trim() };
     const editing = modal.mode === 'edit' && modal.entry;
     return writeCalendar('/api/calendar', { method: editing ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing ? { id: editing.id, ...values } : values) },
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing ? { id: editing.id, ...values, expected: snapshot(editing) } : values) },
       json => confirmsEntry(json, { ...values, description: values.description || null, ...(editing ? { id: editing.id } : {}) }),
       () => { modalIdentity.current = null; setModal(null); });
   }
 
   async function deleteEntry() {
     if (!modal?.entry || modalScope.current !== readScope || modalIdentity.current !== modal.identity) return;
-    return writeCalendar(`/api/calendar?id=${encodeURIComponent(modal.entry.id)}`, { method: 'DELETE' },
+    return writeCalendar(`/api/calendar?id=${encodeURIComponent(modal.entry.id)}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expected: snapshot(modal.entry) }) },
       json => json?.ok === true, () => { modalIdentity.current = null; setModal(null); });
   }
 
@@ -467,7 +559,7 @@ export default function CalendarPage() {
     const nextIdx = (order.indexOf(entry.status) + 1) % order.length;
     const newStatus = order[nextIdx];
     return writeCalendar('/api/calendar', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: entry.id, status: newStatus }) }, json => confirmsEntry(json, { id: entry.id, status: newStatus }), () => {});
+      body: JSON.stringify({ id: entry.id, status: newStatus, expected: snapshot(entry) }) }, json => confirmsEntry(json, { id: entry.id, status: newStatus }), () => {});
   }
 
   function closeModal() {
@@ -479,6 +571,11 @@ export default function CalendarPage() {
   }
   const writeNotice = writeNoticeScope.current === writes && writeError && <div role="alert" className="mb-4 text-sm text-red-400">
     <p>{writeError}</p>
+    {mutation.pending && <button onClick={retryCalendarMutation} disabled={saving} className="mt-2 mr-4 underline disabled:opacity-50">
+      {t('Reintentar cambio original', 'Retry original change')}
+    </button>}
+    {mutation.pending && mutation.storageWarning && <p>{t('No se pudo conservar este cambio en la pestaña. La consulta original sigue en memoria; recargar puede perderla.',
+      'This change could not be retained in the tab. The original query remains in memory; reload may lose it.')}</p>}
     {creation.pending && <button onClick={retryCalendarCreation} disabled={saving} className="mt-2 mr-4 underline disabled:opacity-50">
       {t('Reintentar alta original', 'Retry original addition')}
     </button>}
