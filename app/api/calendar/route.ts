@@ -136,6 +136,81 @@ export async function POST(request: Request) {
 }
 
 // PUT — update entry
+class CalendarMutationConflict extends Error {}
+function calendarSnapshot(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (Object.keys(v).sort().join(',') !== 'color,date,description,status,title'
+    || typeof v.title !== 'string' || !v.title.trim() || v.title.length > 200
+    || typeof v.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v.date)
+    || typeof v.status !== 'string' || !VALID_STATUSES.includes(v.status)
+    || (v.description !== null && typeof v.description !== 'string')
+    || (v.color !== null && typeof v.color !== 'string')) return null;
+  return { title: v.title, description: v.description, date: v.date, status: v.status, color: v.color };
+}
+
+// Immutable receipt confirms only the original business mutation, never current
+// row state, cancellation, or authority to recover a native runner.
+async function keyedCalendarMutation(request: Request, userId: string, method: 'PUT' | 'DELETE', body: unknown, id: unknown) {
+  const key = request.headers.get('Idempotency-Key'), recovery = request.headers.get('X-Calendar-Write-Recovery');
+  const invalid = () => NextResponse.json({ error: 'invalid mutation' }, { status: 400 });
+  if (!key || !/^[-A-Za-z0-9._:]{1,128}$/.test(key) || (recovery !== null && recovery !== 'retained-only-v1')) return invalid();
+  if (typeof id !== 'string' || !id || id.length > 128 || !body || typeof body !== 'object' || Array.isArray(body)) return invalid();
+  const b = body as Record<string, unknown>, expected = calendarSnapshot(b.expected);
+  if (!expected || Object.keys(b).some(k => !(method === 'PUT' ? ['id','title','description','date','status','color','expected'] : ['expected']).includes(k))) return invalid();
+  const data: { title?: string; description?: string | null; date?: string; status?: string; color?: string | null } = {};
+  if (method === 'PUT') {
+    if (b.title !== undefined) { if (typeof b.title !== 'string' || !b.title.trim() || b.title.trim().length > 200) return invalid(); data.title = b.title.trim(); }
+    if (b.description !== undefined) { if (b.description !== null && typeof b.description !== 'string') return invalid(); data.description = (b.description as string | null)?.trim() || null; }
+    if (b.date !== undefined) { if (typeof b.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return invalid(); data.date = b.date; }
+    if (b.status !== undefined) { if (typeof b.status !== 'string' || !VALID_STATUSES.includes(b.status)) return invalid(); data.status = b.status; }
+    if (b.color !== undefined) { if (b.color !== null && typeof b.color !== 'string') return invalid(); data.color = (b.color as string | null)?.trim() || null; }
+    if (!Object.keys(data).length) return invalid();
+  }
+  const input = JSON.stringify({ id, expected, data });
+  if (input.length > 65536) return invalid();
+  try {
+    const result = await prisma.$transaction(async tx => {
+      if (request.signal.aborted) throw new Error('Mutation aborted');
+      const owners = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
+      if (owners.length !== 1 || owners[0].id !== userId || request.signal.aborted) throw new Error('Owner unconfirmed');
+      const receipt = await tx.calendarMutationReceipt.findUnique({ where: { userId_key: { userId, key } } });
+      if (receipt) {
+        if (receipt.userId !== userId || receipt.key !== key || typeof receipt.output !== 'string' || receipt.output.length > 65536) throw new Error('Receipt unconfirmed');
+        if (receipt.method !== method || receipt.entryId !== id || receipt.input !== input) throw new CalendarMutationConflict('calendar_key_conflict');
+        const retained = JSON.parse(receipt.output);
+        if (retained?.originalMutation !== true || Object.keys(retained).sort().join(',') !== (method === 'PUT' ? 'entry,originalMutation' : 'id,ok,originalMutation')) throw new Error('Original output unconfirmed');
+        if (method === 'PUT') {
+          const e = retained.entry;
+          if (!e || e.id !== id || e.userId !== userId || !calendarSnapshot({ title:e.title, description:e.description, date:e.date, status:e.status, color:e.color })) throw new Error('Original entry unconfirmed');
+          for (const [field,value] of Object.entries({ ...expected, ...data })) if (e[field] !== value) throw new Error('Original output changed');
+        } else if (retained.ok !== true || retained.id !== id) throw new Error('Original deletion unconfirmed');
+        return retained;
+      }
+      if (recovery === 'retained-only-v1') throw new Error('Original mutation unavailable');
+      // Row lock also orders legacy writers that do not acquire the owner lock.
+      const locked = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM calendar_entries WHERE id=$1 AND "userId"=$2 FOR UPDATE', id, userId);
+      if (locked.length !== 1 || locked[0].id !== id) throw new CalendarMutationConflict('calendar_entry_unavailable');
+      const existing = await tx.calendarEntry.findUnique({ where: { id } });
+      if (!existing || existing.userId !== userId) throw new CalendarMutationConflict('calendar_entry_unavailable');
+      const current = JSON.stringify({ title:existing.title, description:existing.description, date:existing.date, status:existing.status, color:existing.color });
+      if (current !== JSON.stringify(expected)) throw new CalendarMutationConflict('calendar_entry_changed');
+      if (request.signal.aborted) throw new Error('Mutation aborted');
+      const output = method === 'PUT' ? { entry: await tx.calendarEntry.update({ where: { id }, data }), originalMutation: true }
+        : (await tx.calendarEntry.delete({ where: { id } }), { ok: true, id, originalMutation: true });
+      const serialized = JSON.stringify(output);
+      if (serialized.length > 65536) throw new Error('Original output too large');
+      await tx.calendarMutationReceipt.create({ data: { userId, key, method, entryId: id, input, output: serialized } });
+      return output;
+    }, { maxWait: 10000, timeout: 15000 });
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store', 'X-Calendar-Write-Result': 'original-v1' } });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof CalendarMutationConflict ? error.message : 'calendar_write_unconfirmed' }, {
+      status: error instanceof CalendarMutationConflict ? 409 : 503, headers: { 'Cache-Control': 'no-store' },
+    });
+  }
+}
+
 export async function PUT(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -143,6 +218,7 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  if (request.headers.get('Idempotency-Key') !== null || request.headers.get('X-Calendar-Write-Recovery') !== null) return keyedCalendarMutation(request, session.user.id, 'PUT', body, body?.id);
   const id = body.id as string;
   if (!id) {
     return NextResponse.json({ error: 'id required' }, { status: 400 });
@@ -184,6 +260,7 @@ export async function DELETE(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
+  if (request.headers.get('Idempotency-Key') !== null || request.headers.get('X-Calendar-Write-Recovery') !== null) return keyedCalendarMutation(request, session.user.id, 'DELETE', await request.json().catch(() => null), id);
   if (!id) {
     return NextResponse.json({ error: 'id required' }, { status: 400 });
   }

@@ -66,6 +66,7 @@ model User {
   extensionEvents      ExtensionEvent[]
   calendarEntries      CalendarEntry[]
   calendarCreationReceipts CalendarCreationReceipt[]
+  calendarMutationReceipts CalendarMutationReceipt[]
   trendAlerts          TrendAlert[]
   feedback        UserFeedback?
   abTests         AbTest[]
@@ -940,4 +941,20 @@ model CalendarCreationReceipt {
   @@unique([userId, key], map: "calendar_creation_receipts_userid_key_key")
   @@index([userId, createdAt], map: "calendar_creation_receipts_userid_createdat_idx")
   @@map("calendar_creation_receipts")
+}
+
+// Immutable original update/deletion result; never native recovery authority.
+model CalendarMutationReceipt {
+ id String @id @default(cuid())
+ userId String
+ key String
+ method String
+ entryId String
+ input String
+ output String
+ createdAt DateTime @default(now())
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ @@unique([userId,key],map:"calendar_mutation_receipts_userid_key_key")
+ @@index([userId,createdAt],map:"calendar_mutation_receipts_userid_createdat_idx")
+ @@map("calendar_mutation_receipts")
 }
