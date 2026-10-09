@@ -952,14 +952,18 @@ export default function VideoPreviewGenerator({
   const videoUrl = viewCurrent ? storedVideoUrl : null;
   const errorMsg = viewCurrent ? storedErrorMsg : '';
   const saveStatus = viewCurrent ? storedSaveStatus : 'idle';
-  const pendingSlot = 'ytv:storyboard:pending:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
+  const legacyPendingSlot = 'ytv:storyboard:pending:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
+  const pendingSlot = 'ytv:storyboard:selection:v2:' + JSON.stringify([session?.user?.id, session?.user?.email, lang, generationId]);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
-  // Untrusted last selection in this tab. It never grants admission or recovery
+  // Untrusted per-script selection in this tab. It never grants admission or recovery
   // authority: restoration can only request the original retained server result.
   function readPending(): StoryboardSelection | null {
     if (sessionStatus !== 'authenticated' || !session?.user?.id || !session.user.email) return null;
     try {
-      const raw = sessionStorage.getItem(pendingSlot);
+      // Read legacy last-selection metadata only when no per-script entry exists.
+      // An invalid newer entry must never resurrect a different legacy identity.
+      if (pendingSlot.length > 2_000) return null;
+      const raw = sessionStorage.getItem(pendingSlot) ?? sessionStorage.getItem(legacyPendingSlot);
       if (!raw || raw.length > 65_536) return null;
       const value = JSON.parse(raw);
       if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1
@@ -981,7 +985,7 @@ export default function VideoPreviewGenerator({
       if (sessionStatus !== 'authenticated' || !session?.user?.id || !session.user.email
         || selection.body.length > 64_000 || selection.generationId.length > 256 || selection.scriptTitle.length > 512) return false;
       const value = JSON.stringify(selection);
-      if (value.length > 65_536) return false;
+      if (value.length > 65_536 || pendingSlot.length > 2_000) return false;
       sessionStorage.setItem(pendingSlot, value);
       return sessionStorage.getItem(pendingSlot) === value;
     } catch { return false; }
