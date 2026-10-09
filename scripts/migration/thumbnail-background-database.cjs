@@ -12,8 +12,8 @@ module.exports=async function(prisma,results){
   h=editor({user:user.id,email:user.email});let lost=true,first;
   h.state.backgroundSend=init=>{first=background.POST(new Request('https://example.invalid/api/thumbnail-background',init)).then(response=>{if(lost){lost=false;assert.equal(response.status,200);throw Error('synthetic lost upload acknowledgement');}return response;});return first;};
   h.nodes().filter(n=>n.type==='input'&&n.props.type==='file')[0].props.onChange({target:{files:[new File(['synthetic background PNG'],'bg.png',{type:'image/png'})],value:''}});
-  for(let i=0;i<4;i++)await Promise.resolve();assert.ok(first);await first.catch(()=>{});for(let i=0;i<16;i++)await Promise.resolve();h.render();
-  assert.match(h.text(),/Fondo sin confirmar/);assert.match(h.text(),/misma captura/);assert.equal(uploads.length,1);assert.equal(await prisma.generation.count({where:{userId:user.id}}),0);
+  await new Promise(r=>setImmediate(r));for(let i=0;i<16;i++)await Promise.resolve();assert.ok(first);await first.catch(()=>{});for(let i=0;i<16;i++)await Promise.resolve();h.render();
+  assert.match(h.text(),/Fondo sin confirmar/);assert.match(h.text(),/mismo archivo y clave/);assert.equal(uploads.length,1);assert.equal(await prisma.generation.count({where:{userId:user.id}}),0);
   await h.button('Volver a intentar fondo')();h.render();assert.equal(uploads.length,1);assert.equal(await prisma.backgroundUpload.count({where:{userId:user.id}}),1);assert.equal(uploads[0].settings.contentType,'image/png');assert.equal(h.state.backgroundRequests.length,2);
   h.state.send=init=>save.POST(new Request('https://example.invalid/api/thumbnail-save',init));await h.button('Guardar miniatura')();assert.equal(await prisma.generation.count({where:{userId:user.id,template:'thumbnail'}}),1);assert.equal(uploads.length,2);assert.equal(h.state.confirmed.length,1);
   results.push('original background editor/hook/upload API/plans/PostgreSQL preserve exact file after lost upload acknowledgement and replay committed own receipt on explicit retry (one synthetic Blob write, zero models); subsequent immutable save records once');
