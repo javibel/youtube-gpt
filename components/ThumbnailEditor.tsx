@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
+import { readTextDraft, storeTextDraft, discardTextDraft, type StoredTextDraft } from '@/lib/thumbnail-text-draft';
 import { useThumbnailSave } from '@/lib/use-thumbnail-save';
 import { useThumbnailPhoto } from '@/lib/use-thumbnail-photo';
 import { useThumbnailBackground } from '@/lib/use-thumbnail-background';
@@ -313,11 +314,11 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
     decode: tr('No se pudo leer la foto. La anterior se conserva; prueba otro archivo.','Could not read the photo. The previous one is retained; try another file.'),
     unconfirmed: tr('El resultado de eliminar el fondo no está confirmado. Reintenta para consultar este mismo intento. Descartarlo e iniciar otro podría consumir de nuevo; la foto original se conserva.','Background removal is unconfirmed. Retry to check this same attempt. Discarding it and starting another may consume again; the original photo is retained.'),
   })[photoState.error] : '';
-  const editScope = useMemo(() => ({ active: true }), [session?.user?.id, session?.user?.email, sessionStatus, lang]);
+  const editScope = useMemo(() => ({ active: true, textChanged: false }), [session?.user?.id, session?.user?.email, sessionStatus, lang]);
   const activeEdits = useRef(editScope); activeEdits.current = editScope;
   const latestPro = useRef(isPro); latestPro.current = isPro;
-  type EditState = { scope: typeof editScope; texts: TextItem[]; selectedId: string | null; cropTarget: { src: string; type: 'photo' | 'bg' } | null };
-  const blankEdits = (): EditState => ({ scope: editScope, texts: [], selectedId: null, cropTarget: null });
+  type EditState = { scope: typeof editScope; dirty: boolean; texts: TextItem[]; selectedId: string | null; cropTarget: { src: string; type: 'photo' | 'bg' } | null };
+  const blankEdits = (): EditState => ({ scope: editScope, dirty: false, texts: [], selectedId: null, cropTarget: null });
   const [edits, setEdits] = useState<EditState>(blankEdits);
   const editCurrent = () => editScope.active && activeEdits.current === editScope && latestPro.current && photoState.current();
   const updateEdits = (change: (old: EditState) => EditState) => {
@@ -331,10 +332,40 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   }, [editScope]);
   const visibleEdits = edits.scope === editScope && editCurrent() ? edits : blankEdits();
   const { texts, selectedId, cropTarget } = visibleEdits;
-  const setSelectedId = (id: string | null) => updateEdits(old => ({ ...old, selectedId: id }));
+  const setSelectedId = (id: string | null) => updateEdits(old => ({ ...old, selectedId: id, dirty: old.dirty || old.texts.length > 0 }));
   const setCropTarget = (target: EditState['cropTarget']) => updateEdits(old => ({ ...old, cropTarget: target }));
-  const setTexts = (change: (old: TextItem[]) => TextItem[]) => updateEdits(old => ({ ...old, texts: change(old.texts) }));
+  const setTexts = (change: (old: TextItem[]) => TextItem[]) => {
+    if (!editCurrent()) return; editScope.textChanged = true;
+    updateEdits(old => ({ ...old, texts: change(old.texts), dirty: true }));
+  };
   const textCounter = useRef(0);
+  const retainedTextDraft = useMemo(() => readTextDraft(session?.user?.id,session?.user?.email,sessionStatus,lang), [editScope]);
+  const [textDraftState,setTextDraftState] = useState<{scope: typeof editScope; offered: StoredTextDraft | null; storageOk: boolean}>(() => ({scope: editScope, offered: retainedTextDraft?.record.texts.length ? retainedTextDraft : null, storageOk: true}));
+  const textDraftView = textDraftState.scope === editScope ? textDraftState : {scope: editScope,offered:null,storageOk:true};
+  useEffect(() => {
+    setTextDraftState({scope: editScope,offered:retainedTextDraft?.record.texts.length ? retainedTextDraft : null,storageOk:true});
+  }, [editScope,retainedTextDraft]);
+  useEffect(() => {
+    if (!editCurrent() || edits.scope !== editScope || !edits.dirty) return;
+    const storageOk = storeTextDraft(session!.user!.id!,session!.user!.email!,lang,{version:1,texts:edits.texts,selectedId:edits.texts.some(t=>t.id===edits.selectedId) ? edits.selectedId : null});
+    if (editCurrent()) setTextDraftState({scope:editScope,offered:null,storageOk});
+  }, [edits,editScope]);
+  const restoreTexts = () => {
+    const offered = textDraftView.offered;
+    if (!editCurrent() || editScope.textChanged || !offered || texts.length || edits.scope !== editScope) return;
+    const original = readTextDraft(session?.user?.id,session?.user?.email,sessionStatus,lang);
+    if (!original || original.serialized !== offered.serialized) { setTextDraftState({scope:editScope,offered:null,storageOk:false}); return; }
+    editScope.textChanged = true;
+    textCounter.current = Math.max(textCounter.current,...original.record.texts.map(t=>Number(t.id.slice(5))));
+    setEdits({scope:editScope,dirty:false,texts:original.record.texts,selectedId:original.record.selectedId,cropTarget:null});
+    setTextDraftState({scope:editScope,offered:null,storageOk:true});
+  };
+  const discardTexts = () => {
+    const offered = textDraftView.offered;
+    if (!editCurrent() || editScope.textChanged || !offered || texts.length) return;
+    const removed = discardTextDraft(session!.user!.id!,session!.user!.email!,lang,offered.serialized);
+    setTextDraftState({scope:editScope,offered:removed ? null : offered,storageOk:removed});
+  };
   const cropCurrent = useRef(cropTarget);cropCurrent.current = cropTarget;
   const cropFlight = useRef<object | null>(null);
   const handlePhotoUpload = async (file: File) => {if(await photoState.upload(file) && photoState.current())setSelectedId('photo');};
@@ -423,7 +454,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
 
   const handleSave = save.pending ? save.retrySave : save.save;
   const saveContinuity = save.reloadRecoveryAvailable
-    ? tr('La captura pendiente se conserva en esta pestaña para consultar el guardado tras recargar. El lienzo editable no se restaura.', 'The pending snapshot is retained in this tab to check its save after reload. The editable canvas is not restored.')
+    ? tr('La captura pendiente se conserva en esta pestaña para consultar el guardado tras recargar. El lienzo editable no se restaura con esta consulta.', 'The pending snapshot is retained in this tab to check its save after reload. The editable canvas is not restored by this save lookup.')
     : tr('Esta captura no se pudo conservar para una recarga. Mantén esta pestaña abierta para consultar el guardado.', 'This snapshot could not be retained for reload. Keep this tab open to check its save.');
 
   // ─── Gate ─────────────────────────────────────────────────────────────────
@@ -462,6 +493,12 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   return (
     <div className="flex flex-col gap-4">
 
+      {textDraftView.offered && !texts.length && <div role="status">
+        <p>{tr('Hay un borrador local de textos en esta pestaña. Restaurarlo no recupera imágenes ni confirma un guardado del servidor.', 'This tab has a local text draft. Restoring it does not recover images or confirm a server save.')}</p>
+        <button onClick={restoreTexts}>{tr('Restaurar textos','Restore text layers')}</button>
+        <button onClick={discardTexts}>{tr('Descartar borrador de textos','Discard text draft')}</button>
+      </div>}
+      {!textDraftView.storageOk && <p role="alert">{tr('No se pudo conservar o recuperar este borrador de textos. Mantén la pestaña abierta; recargar puede perder cambios.','This text draft could not be retained or recovered. Keep this tab open; reload may lose edits.')}</p>}
       {/* ── Background toolbar ──────────────────────────────────────────────── */}
       <div className="yv-card p-4">
         <p className="font-mono-jb text-[11px] tracking-wider uppercase mb-3" style={{ color: 'var(--yv-text-3)' }}>
