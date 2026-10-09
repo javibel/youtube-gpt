@@ -62,6 +62,7 @@ export function useYoutubeConnection(userId: string|undefined, email: string|nul
   const scope = useMemo(()=>({active:true,sequence:0,connected:null as boolean|null,channelId:null as string|null,
     read:null as Promise<void>|null,details:null as Promise<void>|null,disconnect:null as Promise<void>|null,
     readWait:null as ReturnType<typeof createClientReadWait>|null,detailWaits:new Set<ReturnType<typeof createClientReadWait>>(),
+    disconnectWait:null as ReturnType<typeof createClientReadWait>|null,
     statsFailed:false,ideasFailed:false,timer:null as ReturnType<typeof setTimeout>|null}),[userId,email,authStatus]);
   const active=useRef(scope);active.current=scope;
   const [store,setStore]=useState(()=>({scope,...initial()}));
@@ -122,13 +123,14 @@ export function useYoutubeConnection(userId: string|undefined, email: string|nul
   const handleYtDisconnect=useCallback(async()=>{
     if(!current())return;if(scope.disconnect)return scope.disconnect;if(scope.connected!==true)return;
     ++scope.sequence;cancelReads();update(v=>({...v,disconnecting:true,disconnectError:false,loading:false,detailsLoading:false}));
+    const waiting=createClientReadWait();scope.disconnectWait=waiting;
     const flight=(async()=>{try{
-      const r=await fetch('/api/youtube/disconnect',{method:'POST'});if(!r.ok)throw Error();const body=await r.json();
+      const r=await waiting.wait(fetch('/api/youtube/disconnect',{method:'POST',signal:waiting.signal}));if(!r.ok)throw Error();const body=await waiting.wait(r.json());
       if(body?.ok!==true||body.userId!==userId)throw Error();if(!current())return;
       scope.connected=false;scope.channelId=null;scope.statsFailed=false;scope.ideasFailed=false;
       update(v=>({...initial(),connected:false,notice:v.notice}));
     }catch{if(current())update(v=>({...v,disconnectError:true}));}
-    finally{update(v=>({...v,disconnecting:false}));}})();
+    finally{waiting.finish();if(scope.disconnectWait===waiting)scope.disconnectWait=null;update(v=>({...v,disconnecting:false}));}})();
     scope.disconnect=flight;try{await flight;}finally{if(scope.disconnect===flight)scope.disconnect=null;}
   },[scope,current,update,userId,cancelReads]);
   const handleYtConnect=useCallback(()=>{if(!current()||scope.disconnect||scope.connected!==false)return;update(v=>({...v,connecting:true}));window.location.href='/api/youtube/auth';},[scope,current,update]);
@@ -144,7 +146,7 @@ export function useYoutubeConnection(userId: string|undefined, email: string|nul
     return()=>{
       scope.active=false;if(scope.timer)clearTimeout(scope.timer);
       // Immediate Strict Mode setup keeps the same original read alive.
-      void Promise.resolve().then(()=>{if(!scope.active||active.current!==scope)cancelReads();});
+      void Promise.resolve().then(()=>{if(!scope.active||active.current!==scope){cancelReads();scope.disconnectWait?.cancel();}});
     };
   },[scope,current,update,retryYoutube,cancelReads]);
   const view=store.scope===scope&&current()?store:initial();
