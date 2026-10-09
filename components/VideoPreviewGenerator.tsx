@@ -986,18 +986,6 @@ export default function VideoPreviewGenerator({
       return sessionStorage.getItem(pendingSlot) === value;
     } catch { return false; }
   }
-  function clearPending(selection: StoryboardSelection | null) {
-    try {
-      const retained = readPending();
-      if (selection && retained?.key === selection.key && retained.body === selection.body
-        && retained.generationId === selection.generationId && retained.scriptTitle === selection.scriptTitle) {
-        sessionStorage.removeItem(pendingSlot);
-        return sessionStorage.getItem(pendingSlot) === null;
-      }
-      return true; // Preserve another selection, including one in another modal.
-    } catch { return false; }
-  }
-
   function matchesCached(value: StoredPreview | null): value is StoredPreview {
     const selected = value?.uploadSelection;
     return !!value && value.id === generationId && value.title === scriptTitle && value.format === '4x3'
@@ -1011,7 +999,7 @@ export default function VideoPreviewGenerator({
   }
   const restoreCached = () => {
     if (activeInteraction.current !== interaction || !interaction.active || !interaction.ready
-      || interaction.busy || interaction.attempted || interaction.upload || !matchesCached(interaction.cached)) return;
+      || interaction.busy || (interaction.attempted && !interaction.selection) || interaction.upload || !matchesCached(interaction.cached)) return;
     const cached = interaction.cached;
     // Restoring a browser copy only selects an original retained account query.
     // It never admits an upload or confirms an account save.
@@ -1043,7 +1031,7 @@ export default function VideoPreviewGenerator({
       interaction.cacheReadCancel = () => reader.abort();
       void loadPreview(generationId, { userId: session.user.id, email: session.user.email }, reader.signal).then(value => {
         if (activeInteraction.current !== interaction || !interaction.active || reader.signal.aborted
-          || interaction.busy || interaction.attempted || interaction.upload) return;
+          || interaction.busy || (interaction.attempted && !interaction.selection) || interaction.upload) return;
         if (matchesCached(value)) { interaction.cached = value; setCachedAvailable(true); }
       }, () => {
         if (activeInteraction.current === interaction && interaction.active && !reader.signal.aborted) setCacheReadFailed(true);
@@ -1055,8 +1043,8 @@ export default function VideoPreviewGenerator({
     setStatus(interaction.selection && interaction.storyboard === null ? 'error' : 'idle');
     setVideoUrl(null); setProgress(0); setSaveStatus('idle');
     setErrorMsg(interaction.selection && interaction.storyboard === null
-      ? t('Hay un storyboard pendiente en esta pestaña. Reintenta consultar el resultado original; cerrar la ventana no cancela el trabajo del servidor.',
-        'This tab has a pending storyboard. Retry retrieving the original result; closing the window does not cancel server work.') : '');
+      ? t('Hay una selección de storyboard en esta pestaña. Reintenta consultar el resultado original; esto no inicia otra adaptación ni cancela trabajo en el servidor.',
+        'This tab has a storyboard selection. Retry retrieving the original result; this does not start another adaptation or cancel server work.') : '');
     return () => {
       interaction.active = false;
       interaction.cacheReadCancel?.();
@@ -1203,8 +1191,9 @@ export default function VideoPreviewGenerator({
         });
         if (!current()) return;
         interaction.storyboard = storyboard;
-        setStorageWarning(!clearPending(interaction.selection));
-        interaction.selection = null;
+        // Keep only the original query selector, including after confirmed adaptation.
+        // Reload must retrieve that retained server result; local metadata is not confirmation.
+        // Do not overwrite a later selection belonging to another modal.
         onGenerated?.();
       }
       const scriptForSlides = interaction.storyboard;
@@ -1694,7 +1683,7 @@ export default function VideoPreviewGenerator({
           {viewCurrent && cacheReadFailed && status === 'idle' && (
             <p className="font-mono-jb text-[13px] text-amber-300">{t('No se pudo consultar la copia local del vídeo.', 'The local video copy could not be retrieved.')}</p>
           )}
-          {viewCurrent && cachedAvailable && status === 'idle' && !interaction.busy && !interaction.attempted && (
+          {viewCurrent && cachedAvailable && (status === 'idle' || status === 'error') && !interaction.busy && (!interaction.attempted || !!interaction.selection) && (
             <div className="space-y-2">
               <p className="font-mono-jb text-[13px]">{t('Hay una copia local de este vídeo. Recuperarla no genera otro vídeo ni confirma su guardado en la cuenta.', 'A local copy of this video is available. Restoring it does not generate another video or confirm an account save.')}</p>
               <button onClick={restoreCached} className="btn-offset btn-offset-white py-3 px-4 text-[13px] font-display">{t('Recuperar copia local', 'Restore local copy')}</button>
