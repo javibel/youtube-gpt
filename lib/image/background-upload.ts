@@ -8,7 +8,7 @@ function validUrl(value:unknown):value is string {
   if(typeof value!=='string'||!value||value.length>4096)return false;
   try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.hash;}catch{return false;}
 }
-export async function uploadBackgroundReceipt(userId:string,key:string,file:File,lang:string,signal:AbortSignal) {
+export async function uploadBackgroundReceipt(userId:string,key:string,file:File,lang:string,signal:AbortSignal,readOnly=false) {
   const bytes=Buffer.from(await file.arrayBuffer());
   const id='background_'+createHash('sha256').update(JSON.stringify([userId,key])).digest('hex');
   const digest=createHash('sha256').update(JSON.stringify([file.type,lang])).update(bytes).digest('hex');
@@ -19,6 +19,11 @@ export async function uploadBackgroundReceipt(userId:string,key:string,file:File
     if(!validUrl(saved.output))throw Error('Unconfirmed');
     return Response.json({backgroundUrl:saved.output,prompt:null,id,userId,operationKey:key},{headers:{'Cache-Control':'no-store'}});
   };
+  if(readOnly){
+    try{if(signal.aborted)throw Error('Unconfirmed');const saved=await prisma.backgroundUpload.findUnique({where:{id}});
+      if(signal.aborted)throw Error('Unconfirmed');return saved?replay(saved):Response.json({code:'image_upload_not_retained',retryMayConsume:false},{status:409,headers:{'Cache-Control':'no-store'}});
+    }catch{return Response.json({code:'image_upload_unconfirmed',retryMayConsume:false},{status:503,headers:{'Cache-Control':'no-store'}});}
+  }
   try{
     return await prisma.$transaction(async tx=>{
       const locked=await tx.$queryRaw<Array<{id:string}>>`SELECT id FROM users WHERE id=${userId} FOR UPDATE`;

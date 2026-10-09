@@ -48,9 +48,9 @@ export async function POST(request: Request) {
     const key=request.headers.get('Idempotency-Key');
     if(key!==null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))return Response.json({error:'Clave inválida'},{status:400});
     const recovery=request.headers.get('X-Background-Recovery');
-    if(recovery!==null && (recovery!=='retained-only-v1'||key===null||source!=='ai'))return Response.json({error:'Consulta de recuperación inválida'},{status:400});
+    if(recovery!==null && (recovery!=='retained-only-v1'||key===null))return Response.json({error:'Consulta de recuperación inválida'},{status:400});
 
-    if(key!==null && source==='upload' && file && typeof file!=='string')return await uploadBackgroundReceipt(user.id,key,file,lang as string,request.signal);
+    if(key!==null && source==='upload' && file && typeof file!=='string')return await uploadBackgroundReceipt(user.id,key,file,lang as string,request.signal,recovery==='retained-only-v1');
     const generate=async (task:Awaited<ReturnType<typeof getMessagesTask>>)=>{
     const promptResult=await task.create({max_tokens:400,messages:[{role:'user',content:`Generate an Ideogram v3 image prompt for a YouTube thumbnail background.
 VIDEO TOPIC: ${tema}

@@ -3,14 +3,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchThumbnailBackground } from '@/lib/thumbnail-background-response';
 import { readBackgroundRecovery, storeBackgroundRecovery, clearBackgroundRecovery } from '@/lib/thumbnail-background-recovery';
 
+import { readUploadRecovery, storeUploadRecovery, clearUploadRecovery } from '@/lib/thumbnail-upload-recovery';
+
 type Operation = { key?:string;kind:'ai'|'upload'|'crop';topic:string;style:string;lang:string;file?:File;
   originalUrl?:string;eligible:() => boolean;context:string };
 const empty = () => ({ backgroundUrl:null as string|null,backgroundOperationKey:null as string|null,topic:'',style:'viral',busy:false,pending:false,
-  resultContext:'',reloadRecoveryAvailable:false,error:null as 'input'|'unconfirmed'|'timeout'|'limit'|'pending'|null });
+  resultContext:'',retainedUpload:false,reloadRecoveryAvailable:false,error:null as 'input'|'unconfirmed'|'timeout'|'limit'|'pending'|null });
 const styles = ['viral','cinematic','minimal','bold'];
 export function useThumbnailBackground(userId:string|undefined,email:string|null|undefined,status:string,lang:string,isPro:boolean) {
   const scope = useMemo(() => ({active:true,operation:null as Operation|null,flight:null as Promise<boolean>|null,
-    retainedAiKey:null as string|null,controller:null as AbortController|null,deadline:null as ReturnType<typeof setTimeout>|null}),[userId,email,status,lang]);
+    retainedUploadRaw:null as string|null,retainedAiKey:null as string|null,controller:null as AbortController|null,deadline:null as ReturnType<typeof setTimeout>|null}),[userId,email,status,lang]);
   const active = useRef(scope);active.current = scope;
   const paid = useRef(isPro);paid.current = isPro;
   const [store,setStore] = useState(() => ({scope,...empty()}));
@@ -26,6 +28,7 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
     if(!current())return;
     const op=scope.operation;
     if(op?.kind==='ai'&&op.key){clearBackgroundRecovery(userId!,email!,lang,op.key);if(scope.retainedAiKey===op.key)scope.retainedAiKey=null;}
+    if(op&&op.kind!=='ai'&&scope.retainedUploadRaw){clearUploadRecovery(userId!,email!,lang,scope.retainedUploadRaw);scope.retainedUploadRaw=null;}
     scope.operation = null;scope.controller?.abort();scope.controller = null;
     if(scope.deadline)clearTimeout(scope.deadline);scope.deadline = null;scope.flight = null;
     update({busy:false,pending:false,reloadRecoveryAvailable:false,error:null});
@@ -35,10 +38,10 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
     if(scope.flight)return scope.flight;
     if(!op.eligible()){discard();return Promise.resolve(false);}
     // A lookup must never replace another editor's newer selector. Storage is not a receipt.
-    const reloadRecoveryAvailable=op.kind==='ai'&&!!op.key&&(readOnly
+    const reloadRecoveryAvailable=op.kind!=='ai' ? !!scope.retainedUploadRaw&&readUploadRecovery(userId,email,status,lang)?.raw===scope.retainedUploadRaw : op.kind==='ai'&&!!op.key&&(readOnly
       ? readBackgroundRecovery(userId,email,status,lang)?.key===op.key
       : storeBackgroundRecovery(userId!,email!,{version:1,key:op.key,topic:op.topic,style:op.style,lang:op.lang}));
-    if(reloadRecoveryAvailable)scope.retainedAiKey=op.key!;
+    if(reloadRecoveryAvailable&&op.kind==='ai')scope.retainedAiKey=op.key!;
     scope.operation = op;update({busy:true,pending:true,reloadRecoveryAvailable,error:null});
     const controller = new AbortController();scope.controller = controller;let timedOut = false;
     let stop:(error:Error)=>void=()=>{};
@@ -50,6 +53,10 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
     const flight = Promise.resolve().then(async () => {
       try {
         if(!live(op))return false;
+        if(op.kind!=='ai'&&!readOnly){
+          const raw=await storeUploadRecovery(userId!,email!,{key:op.key!,file:op.file!,topic:op.topic,style:op.style,lang:op.lang,priorAiKey:scope.retainedAiKey},controller.signal);
+          if(!live(op))return false;if(controller.signal.aborted)throw Error('Unconfirmed');scope.retainedUploadRaw=raw;update({reloadRecoveryAvailable:!!raw});
+        }
         const body = new FormData();body.append('source',op.kind === 'ai' ? 'ai' : 'upload');body.append('lang',op.lang);
         if(op.kind === 'ai'){body.append('tema',op.topic);body.append('estilo',op.style);}
         else {if(!op.file)throw Error('Missing original file');body.append('backgroundFile',op.file);}
@@ -65,8 +72,9 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
         // This references an acknowledged AI result, not pixel ancestry or a credit entitlement.
         // Uploads/crops replace that result and clear the direct reference.
         if(op.kind!=='ai'&&scope.retainedAiKey){clearBackgroundRecovery(userId!,email!,lang,scope.retainedAiKey);scope.retainedAiKey=null;}
-        const retained=op.kind==='ai'&&!!op.key&&readBackgroundRecovery(userId,email,status,lang)?.key===op.key;
-        scope.operation = null;update({backgroundUrl:data.backgroundUrl,backgroundOperationKey:op.kind==='ai' ? op.key ?? null : null,resultContext:op.context,pending:false,reloadRecoveryAvailable:retained,error:null});return true;
+        if(op.kind==='ai'&&scope.retainedUploadRaw){clearUploadRecovery(userId!,email!,lang,scope.retainedUploadRaw);scope.retainedUploadRaw=null;}
+        const retained=op.kind==='ai'?!!op.key&&readBackgroundRecovery(userId,email,status,lang)?.key===op.key:!!scope.retainedUploadRaw&&readUploadRecovery(userId,email,status,lang)?.raw===scope.retainedUploadRaw;
+        scope.operation = null;update({backgroundUrl:data.backgroundUrl,backgroundOperationKey:op.kind==='ai' ? op.key ?? null : null,resultContext:op.context,pending:false,retainedUpload:op.kind!=='ai',reloadRecoveryAvailable:retained,error:null});return true;
       } catch {if(live(op))update({error:timedOut ? 'timeout' : 'unconfirmed'});return false;}
       finally {clearTimeout(deadline);controller.signal.removeEventListener('abort',abort);if(scope.deadline === deadline)scope.deadline = null;if(scope.controller === controller)scope.controller = null;
         if(current() && (scope.operation === op || scope.operation === null))update({busy:false});}
@@ -90,18 +98,21 @@ export function useThumbnailBackground(userId:string|undefined,email:string|null
     if(!['image/png','image/jpeg','image/webp'].includes(file.type) || !file.size || file.size > 15*1024*1024){update({error:'input'});return Promise.resolve(false);}
     return run({key:'bg-'+crypto.randomUUID(),kind:originalUrl ? 'crop' : 'upload',file,originalUrl,eligible,topic:snapshot().topic.trim(),style:snapshot().style,lang,context:context()});
   };
-  const retry = () => scope.operation ? run(scope.operation,scope.operation.kind==='ai') : Promise.resolve(false);
+  const retry = () => scope.operation ? run(scope.operation,true) : Promise.resolve(false);
   const cancelCrop = () => {if(current() && scope.operation?.kind === 'crop')discard();};
   const setTopic = (topic:string) => {if(typeof topic === 'string')update({topic});};
   const setStyle = (style:string) => {if(styles.includes(style))update({style});};
   useEffect(() => {
     scope.active = true;
-    const retained=readBackgroundRecovery(userId,email,status,lang);
-    if(current()&&retained){
+    const retained=readBackgroundRecovery(userId,email,status,lang),uploaded=readUploadRecovery(userId,email,status,lang);scope.retainedUploadRaw=uploaded?.raw??null;
+    if(current()&&retained&&(!uploaded||uploaded.priorAiKey!==retained.key)){
       // Restore input, never pixels/result/provenance or live model authority.
       scope.retainedAiKey=retained.key;
       scope.operation={key:retained.key,kind:'ai',topic:retained.topic,style:retained.style,lang:retained.lang,eligible:()=>true,context:JSON.stringify([retained.topic,retained.style])};
       setStore({scope,...empty(),topic:retained.topic,style:retained.style,pending:true,reloadRecoveryAvailable:true,error:'unconfirmed'});
+    }else if(current()&&uploaded){
+      scope.operation={key:uploaded.key,kind:'upload',file:uploaded.file,topic:uploaded.topic,style:uploaded.style,lang:uploaded.lang,eligible:()=>true,context:JSON.stringify([uploaded.topic,uploaded.style])};
+      setStore({scope,...empty(),topic:uploaded.topic,style:uploaded.style,pending:true,reloadRecoveryAvailable:true,error:'unconfirmed'});
     }else setStore({scope,...empty()});
     return () => {scope.active = false;scope.operation = null;scope.controller?.abort();if(scope.deadline)clearTimeout(scope.deadline);};
   },[scope]);

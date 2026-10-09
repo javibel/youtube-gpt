@@ -11,11 +11,11 @@ function geometry(v:unknown):v is Geometry {
   return Object.values(p).every(n=>typeof n==='number'&&Number.isFinite(n))&&Math.abs(p.x)<=32768&&Math.abs(p.y)<=32768
     &&p.width>0&&p.width<=32768&&p.height>0&&p.height<=32768&&p.opacity>=0&&p.opacity<=1;
 }
-export function decodePhotoFile(raw:unknown):File|null {
-  if(typeof raw!=='string'||raw.length>14_000_000)return null;
+export function decodePhotoFile(raw:unknown,maximum=maximumFile):File|null {
+  if(typeof raw!=='string'||!Number.isSafeInteger(maximum)||maximum<1||maximum>15*1024*1024||raw.length>Math.ceil(maximum/3)*4+64)return null;
   const match=/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(raw);
   if(!match||match[2].length%4!==0)return null;
-  try{const bytes=atob(match[2]);if(!bytes.length||bytes.length>maximumFile||btoa(bytes)!==match[2])return null;
+  try{const bytes=atob(match[2]);if(!bytes.length||bytes.length>maximum||btoa(bytes)!==match[2])return null;
     return new File([Uint8Array.from(bytes,c=>c.charCodeAt(0))],'local-photo',{type:match[1]});}catch{return null;}
 }
 export function parsePhotoDraft(raw:string|null):StoredPhotoDraft|null {
