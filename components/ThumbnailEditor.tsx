@@ -616,6 +616,12 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
                   'High resolution. Solid background gives best results.')}
             </p>
 
+            {photoState.draftAvailable&&!photo&&<div role="status" className="text-[12px] mb-2">
+              <p>{tr('Hay una foto local de esta pestaña. Restaurarla recupera sus archivos y posición; no confirma una eliminación ni un guardado.','A local photo is retained in this tab. Restoring recovers its files and layout; it does not confirm removal or saving.')}</p>
+              <button onClick={photoState.restoreDraft} disabled={removingBg} className="soft-chip px-3 py-1.5">{tr('Restaurar foto local','Restore local photo')}</button>
+              <button onClick={photoState.discardDraft} disabled={removingBg} className="soft-chip px-3 py-1.5">{tr('Descartar foto local','Discard local photo')}</button>
+            </div>}
+            {photoState.draftWarning&&<p role="alert" className="text-[12px] mb-2">{tr('No se pudo conservar o recuperar la foto local; recargar puede perder la foto o mostrar un borrador anterior. Mantén esta pestaña abierta.','The local photo could not be retained or recovered; reload may lose the photo or offer an older draft. Keep this tab open.')}</p>}
             {photoError && <p role="alert" className="text-[12px] mb-2" style={{color:'#f5a623'}}>{photoError}</p>}
 
             {/* Upload */}
