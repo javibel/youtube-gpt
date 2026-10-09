@@ -5,7 +5,7 @@ const canvas=h=>h.nodes().find(n=>n.type==='thumbnail-canvas').props;
 const record=(h,key,topic='Newer topic')=>({version:1,key,topic,style:'viral',lang:h.state.lang});
 const kept=h=>h.backgroundRecovery.readBackgroundRecovery(h.state.user,h.state.email,h.state.auth,h.state.lang);
 const ack=(h,url='https://example.invalid/original.png')=>{const r=h.state.backgroundRequests.at(-1),ai=r.body.get('source')==='ai';return reply({backgroundUrl:url,id:(ai?'background_ai_':'background_')+'a'.repeat(64),userId:h.state.user,operationKey:r.headers['Idempotency-Key'],prompt:ai?'Synthetic prompt':null});};
-const upload=async h=>{h.nodes().filter(n=>n.type==='input'&&n.props.type==='file')[0].props.onChange({target:{files:[new File(['synthetic replacement'],'bg.png',{type:'image/png'})],value:''}});await tick();h.render();};
+const upload=async h=>{h.nodes().filter(n=>n.type==='input'&&n.props.type==='file')[0].props.onChange({target:{files:[new File(['synthetic replacement'],'bg.png',{type:'image/png'})],value:''}});await new Promise(r=>setImmediate(r));await tick();h.render();};
 const confirm=async(storage)=>{const h=editor({storage});h.topic('Original confirmed topic');h.state.backgroundSend=()=>ack(h);await h.button('Generar con IA')();return h;};
 const results=[];async function test(name,fn){await fn();results.push({name,status:'PASS'});}
 (async()=>{

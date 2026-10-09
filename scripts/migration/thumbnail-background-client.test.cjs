@@ -6,7 +6,7 @@ const bgInput=h=>h.nodes().filter(n=>n.type==='input'&&n.props.type==='file')[0]
 const style=(h,value)=>{h.nodes().find(n=>n.type==='select').props.onChange({target:{value}});h.render();};
 const crop=h=>h.nodes().find(n=>n.type?.name==='CropUI').props;
 const file=(text='synthetic BG',type='image/png')=>new File([text],'bg.png',{type});
-const upload=async(h,f=file())=>{bgInput(h)({target:{files:[f],value:''}});await tick();h.render();};
+const upload=async(h,f=file())=>{bgInput(h)({target:{files:[f],value:''}});await new Promise(r=>setImmediate(r));await tick();h.render();};
 const ack=(h,backgroundUrl)=>reply({backgroundUrl,id:(h.state.backgroundRequests.at(-1).body.get('source')==='ai'?'background_ai_':'background_')+'a'.repeat(64),userId:h.state.user,operationKey:h.state.backgroundRequests.at(-1).headers['Idempotency-Key'],prompt:h.state.backgroundRequests.at(-1).body.get('source')==='ai'?'Synthetic prompt':null});
 const results=[];async function test(name,fn){await fn();results.push({name,status:'PASS'});}
 (async()=>{
