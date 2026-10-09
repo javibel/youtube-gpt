@@ -159,9 +159,16 @@ function handleCopy(id: string, out: string) {
     {video.canResume && <div className="yv-card p-4 mb-4">
       <p>{lang === 'en' ? 'Reopening the saved video script does not generate or confirm a video.'
         : 'Reabrir el guion de vídeo guardado no genera ni confirma un vídeo.'}</p>
-      <button onClick={video.resumePreview} className="btn-offset btn-offset-white py-2 px-3">
+      <button onClick={() => video.resumePreview()} className="btn-offset btn-offset-white py-2 px-3">
         {lang === 'en' ? 'Reopen video script' : 'Reabrir guion de vídeo'}
       </button>
+      {video.resumable.length > 1 && <ul className="mt-3 flex flex-wrap gap-2">
+        {video.resumable.map(script => <li key={script.generationId}>
+          <button type="button" onClick={() => video.resumePreview(script.generationId)} className="btn-offset btn-offset-white py-2 px-3">
+            {(lang === 'en' ? 'Open: ' : 'Abrir: ') + script.scriptTitle}
+          </button>
+        </li>)}
+      </ul>}
     </div>}
   </>;
   const videoOverlay = <>

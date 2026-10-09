@@ -212,9 +212,16 @@ export default function GeneratePage() {
         </p>}
         {media.canResume && <div className="yv-card p-4 mb-4">
           <p>{t('Hay un guion de vídeo guardado en esta pestaña. Reabrirlo no genera ni confirma un vídeo.', 'There is a video script saved in this tab. Reopening it does not generate or confirm a video.')}</p>
-          <button onClick={media.resumePreview} className="btn-offset btn-offset-white py-2 px-3">
+          <button onClick={() => media.resumePreview()} className="btn-offset btn-offset-white py-2 px-3">
             {t('Reabrir guion de vídeo', 'Reopen video script')}
           </button>
+          {media.resumable.length > 1 && <ul className="mt-3 flex flex-wrap gap-2">
+            {media.resumable.map(script => <li key={script.generationId}>
+              <button type="button" onClick={() => media.resumePreview(script.generationId)} className="btn-offset btn-offset-white py-2 px-3">
+                {t('Abrir: ', 'Open: ') + script.scriptTitle}
+              </button>
+            </li>)}
+          </ul>}
         </div>}
 
         {/* Template picker */}
