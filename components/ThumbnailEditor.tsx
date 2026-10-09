@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { readTextDraft, storeTextDraft, discardTextDraft, type StoredTextDraft } from '@/lib/thumbnail-text-draft';
+import { thumbnailFontSignature } from '@/lib/use-thumbnail-fonts';
 import { useThumbnailSave } from '@/lib/use-thumbnail-save';
 import { useThumbnailPhoto } from '@/lib/use-thumbnail-photo';
 import { useThumbnailBackground } from '@/lib/use-thumbnail-background';
@@ -415,7 +416,8 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
   const selectedText = texts.find(t => t.id === selectedId) ?? null;
 
   // ─── Save / Export ────────────────────────────────────────────────────────
-  const resourceScope = useMemo(() => ({}), [session?.user?.id, session?.user?.email, sessionStatus, lang, backgroundUrl, photo?.src]);
+  const fontSignature = thumbnailFontSignature(texts);
+  const resourceScope = useMemo(() => ({}), [session?.user?.id, session?.user?.email, sessionStatus, lang, backgroundUrl, photo?.src, fontSignature]);
   const currentResources = useRef(resourceScope); currentResources.current = resourceScope;
   const readyResources = useRef<{ scope: object; ready: boolean } | null>(null);
   const [canvasState, setCanvasState] = useState<{ scope: object; ready: boolean } | null>(null);
@@ -572,7 +574,7 @@ export default function ThumbnailEditor({ lang, isPro, onSaved }: Props) {
         >
           {/* Canvas always mounted to keep containerWidth accurate */}
           <div style={{ cursor: 'crosshair' }}>
-            {!canvasReady && backgroundUrl && <p role="status">{tr('Las imágenes actuales están cargando o no se pudieron leer. Guardar y descargar requieren que terminen de cargar.', 'The current images are loading or could not be read. Saving and downloading require them to finish loading.')}</p>}
+            {!canvasReady && backgroundUrl && <p role="status">{tr('Las imágenes actuales o las fuentes del texto están cargando o no están disponibles. Guardar y descargar requieren que estén listas. Si una fuente no carga, elige Arial, Arial Black o Impact.', 'The current images or text fonts are loading or unavailable. Saving and downloading require them to be ready. If a font does not load, choose Arial, Arial Black or Impact.')}</p>}
             <ThumbnailCanvasInner
               containerWidth={Math.max(containerWidth, 1)}
               backgroundUrl={backgroundUrl}

@@ -5,6 +5,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import { Stage, Layer, Image as KonvaImage, Text as KonvaText, Transformer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
+import { useThumbnailFonts } from '@/lib/use-thumbnail-fonts';
 import { THUMB_W, THUMB_H, type PhotoItem, type TextItem } from '@/lib/thumbnail-types';
 
 interface Props {
@@ -71,7 +72,8 @@ export default function ThumbnailCanvasInner({
   const bgImage     = useLoadedImage(backgroundUrl, resourceScope);
   const photoImage  = useLoadedImage(photo?.src ?? null, resourceScope);
 
-  const resourcesReady = !!backgroundUrl && !!bgImage && (!photo || !!photoImage);
+  const fontsReady = useThumbnailFonts(texts, resourceScope);
+  const resourcesReady = !!backgroundUrl && !!bgImage && (!photo || !!photoImage) && fontsReady;
   useEffect(() => { onResourcesReady(resourcesReady); }, [resourcesReady, resourceScope, onResourcesReady]);
 
   const transformerRef = useRef<Konva.Transformer | null>(null);
@@ -92,7 +94,7 @@ export default function ThumbnailCanvasInner({
 
     tr.nodes(node ? [node] : []);
     tr.getLayer()?.batchDraw();
-  }, [selectedId, photo, texts, photoImage]);
+  }, [selectedId, photo, texts, photoImage, fontsReady]);
 
   const handleStageTap = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (e.target === (e.target as Konva.Node).getStage()) onSelect(null);
@@ -166,7 +168,7 @@ export default function ThumbnailCanvasInner({
         {/* Text layers */}
         {texts.map((t) => (
           <KonvaText
-            key={t.id}
+            key={t.id + (fontsReady ? ':loaded' : ':pending')}
             ref={(node) => {
               if (node) textNodeRefs.current.set(t.id, node);
               else       textNodeRefs.current.delete(t.id);

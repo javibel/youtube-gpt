@@ -2,11 +2,13 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
 const {harness}=require('./generic-generation-client.test.cjs'),{load}=require('./route-harness.cjs');
 const compiled=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../../components/ThumbnailCanvasInner.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-function canvas(){const h=harness(),images=[],readiness=[],entry={exports:{}};const jsx=(type,props)=>({type,props});
+function canvas(options={}){const h=harness(),images=[],readiness=[],entry={exports:{}};const jsx=(type,props,key)=>({type,props,key});
  const mocks={react:h.hooks,'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'},'react-konva':{Stage:'stage',Layer:'layer',Image:'image',Text:'text',Transformer:'transformer',Rect:'rect'},'@/lib/thumbnail-types':load('lib/thumbnail-types.ts')};
+ const document=options.document||{fonts:{load:async()=>[]}};
+ if(fs.existsSync(path.join(__dirname,'../../lib/use-thumbnail-fonts.ts')))mocks['@/lib/use-thumbnail-fonts']=load('lib/use-thumbnail-fonts.ts',{react:h.hooks},{document,setTimeout:h.globals.setTimeout,clearTimeout:h.globals.clearTimeout});
  class FakeImage{naturalWidth=1280;naturalHeight=720;onload=null;onerror=null;set src(v){this.source=v;images.push(this);}}
- vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require:n=>{assert.ok(Object.hasOwn(mocks,n),n);return mocks[n];},window:{Image:FakeImage},setTimeout:h.globals.setTimeout,clearTimeout:h.globals.clearTimeout});
- const props={containerWidth:800,backgroundUrl:'https://example.invalid/a.png',photo:null,texts:[],selectedId:null,onSelect(){},onUpdatePhoto(){},onUpdateText(){},stageRef:{current:null},resourceScope:{},onResourcesReady:ready=>readiness.push(ready)};
+ vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require:n=>{assert.ok(Object.hasOwn(mocks,n),n);return mocks[n];},window:{Image:FakeImage},document,setTimeout:h.globals.setTimeout,clearTimeout:h.globals.clearTimeout});
+ const props={containerWidth:800,backgroundUrl:'https://example.invalid/a.png',photo:null,texts:options.texts||[],selectedId:null,onSelect(){},onUpdatePhoto(){},onUpdateText(){},stageRef:{current:null},resourceScope:{},onResourcesReady:ready=>readiness.push(ready)};
  const nodes=v=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
  function render(noEffects=false){for(let n=0;n<12;n++){h.setIndex();const tree=entry.exports.default(props);if(!noEffects)h.runEffects();if(!h.isDirty())return nodes(tree);}throw Error('Canvas did not settle');}
  render();return{...h,props,images,readiness,render,visible:()=>render().filter(n=>n.type==='image').map(n=>n.props.image),visibleBeforeEffects:()=>render(true).filter(n=>n.type==='image').map(n=>n.props.image)};}
