@@ -7,39 +7,75 @@ const MAX_ENTRIES = 200;
 const VALID_STATUSES = ['idea', 'draft', 'scheduled', 'published'];
 class CalendarCreationConflict extends Error {}
 
+// Retiring the HTTP waiter does not cancel or replace an original dependency.
+function calendarReadWait(signal: AbortSignal) {
+  const deadline = performance.now() + 30_000;
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(new Error('Calendar read unconfirmed')); }
+  };
+  const timer = setTimeout(retire, 30_000);
+  signal.addEventListener('abort', retire, { once: true });
+  const check = () => {
+    if (signal.aborted || performance.now() >= deadline) retire();
+    if (retired) throw new Error('Calendar read unconfirmed');
+  };
+  return {
+    async run<T>(operation: () => Promise<T>): Promise<T> {
+      check();
+      const original = Promise.resolve().then(() => { check(); return operation(); });
+      const result = await Promise.race([original, stopped]);
+      check();
+      return result;
+    },
+    close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
+  };
+}
 
 // GET — list entries for a month (or range)
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const wait = calendarReadWait(request.signal);
+  const headers = { 'Cache-Control': 'no-store' };
+  try {
+    const session = await wait.run(() => auth());
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401, headers });
+    }
+
+    const userId = session.user.id;
+    const plan = await wait.run(() => getUserPlan(userId));
+    if (!isPaid(plan)) {
+      return NextResponse.json({ error: 'pro_required' }, { status: 403, headers });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const from = searchParams.get('from') || '';
+    const to = searchParams.get('to') || '';
+
+    const where: { userId: string; date?: { gte?: string; lte?: string } } = {
+      userId,
+    };
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = from;
+      if (to) where.date.lte = to;
+    }
+
+    const entries = await wait.run(() => prisma.calendarEntry.findMany({
+      where,
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+      take: MAX_ENTRIES,
+    }));
+
+    return NextResponse.json({ entries }, { headers });
+  } catch {
+    return NextResponse.json({ error: 'calendar_read_unconfirmed' }, { status: 503, headers });
+  } finally {
+    wait.close();
   }
-
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  const from = searchParams.get('from') || '';
-  const to = searchParams.get('to') || '';
-
-  const where: { userId: string; date?: { gte?: string; lte?: string } } = {
-    userId: session.user.id,
-  };
-  if (from || to) {
-    where.date = {};
-    if (from) where.date.gte = from;
-    if (to) where.date.lte = to;
-  }
-
-  const entries = await prisma.calendarEntry.findMany({
-    where,
-    orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
-    take: MAX_ENTRIES,
-  });
-
-  return NextResponse.json({ entries });
 }
 
 // POST — create entry
