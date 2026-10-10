@@ -8,35 +8,10 @@ import DashboardShell from '@/components/DashboardShell';
 import { FlameIcon, BoltIcon, LeafIcon } from '@/components/icons';
 import { beginCompetitorDeletion, competitorDeletionBlocked, mergeCompetitorDeletions, retainedCompetitorDeletions } from '@/lib/competitor-delete-client';
 import type { DeleteOutcome } from '@/lib/competitor-delete-client';
+import { beginCompetitorListRead } from '@/lib/competitor-list-read';
+import type { CompetitorRecord as Competitor } from '@/lib/competitor-list-read';
 
 type Lang = 'es' | 'en';
-
-interface GrowthData {
-  subs7d: number;
-  subs30d: number;
-  views7d: number;
-  views30d: number;
-}
-
-interface SnapshotPoint {
-  subscribers: number;
-  totalViews: number;
-  videoCount: number;
-  recordedAt: string;
-}
-
-interface Competitor {
-  id: string;
-  channelId: string;
-  channelName: string;
-  channelThumb: string | null;
-  subscribers: number;
-  totalViews: number;
-  videoCount: number;
-  addedAt: string;
-  snapshots: SnapshotPoint[];
-  growth: GrowthData | null;
-}
 
 interface OutlierVideo {
   videoId: string; title: string; thumbnail: string;
@@ -103,6 +78,8 @@ export default function CompetitorTrackingPage() {
   const lang = useLang();
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listOwner, setListOwner] = useState('');
+  const [listUnavailable, setListUnavailable] = useState(false);
   const [adding, setAdding] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState('');
@@ -111,6 +88,8 @@ export default function CompetitorTrackingPage() {
   const owner = { userId: session?.user?.id ?? '', email: session?.user?.email ?? '' };
   const ownerKey = JSON.stringify([status, owner.userId, owner.email]);
   const currentOwner = useRef(ownerKey); currentOwner.current = ownerKey;
+  const currentRead = useRef<{ ownerKey: string; entry: ReturnType<typeof beginCompetitorListRead> | null }>({ ownerKey, entry: null });
+  if (currentRead.current.ownerKey !== ownerKey) currentRead.current = { ownerKey, entry: null };
   const mounted = useRef(true);
   const [outlierMap, setOutlierMap] = useState<Record<string, OutlierData>>({});
   const [expandedOutliers, setExpandedOutliers] = useState<string | null>(null);
@@ -127,23 +106,34 @@ export default function CompetitorTrackingPage() {
     if (outcome.status === 'confirmed') setCompetitors(prev => prev.filter(c => c.id !== id));
     setDeleteStates(prev => ({ ...prev, [id]: outcome.status }));
   }
+  function readCompetitors() {
+    const capturedOwner = ownerKey;
+    if (status !== 'authenticated' || !owner.userId || !mounted.current || currentOwner.current !== capturedOwner) return;
+    const read = beginCompetitorListRead(owner);
+    currentRead.current = { ownerKey: capturedOwner, entry: read };
+    setListOwner(capturedOwner); setLoading(true); setListUnavailable(false);
+    const apply = (outcome: Awaited<typeof read.original>) => {
+      if (!mounted.current || currentOwner.current !== capturedOwner || currentRead.current.entry !== read) return;
+      setCompetitors(prev => mergeCompetitorDeletions(owner, outcome.status === 'ready' ? outcome.competitors : prev));
+      setListUnavailable(outcome.status !== 'ready'); setLoading(false);
+    };
+    void read.original.then(apply);
+    void read.waiter.then(outcome => { if (read.outcome?.status !== 'ready') apply(outcome); });
+  }
   useEffect(() => {
     setCompetitors([]); setDeleteStates({});
     setAdding(false); setError(''); setErrorUpgrade(false); setUrlInput('');
     setOutlierMap({}); setExpandedOutliers(null); setTrending([]); setNewUploads([]); setOpportunities([]); setIntelLoading(false);
     setLoading(status === 'authenticated');
-    if (status !== 'authenticated') return;
+    setListOwner(ownerKey); setListUnavailable(false);
+    if (status !== 'authenticated' || !owner.userId) { setLoading(false); setListUnavailable(status === 'authenticated'); return; }
     const capturedOwner = ownerKey;
     for (const attempt of retainedCompetitorDeletions<Competitor>(owner)) {
       setDeleteStates(prev => ({ ...prev, [attempt.row.id]: attempt.outcome?.status ?? attempt.waitOutcome?.status ?? 'pending' }));
       void attempt.waiter.then(result => { if (attempt.outcome?.status !== 'confirmed') applyDeletion(capturedOwner, attempt.row.id, result); });
       void attempt.original.then(result => applyDeletion(capturedOwner, attempt.row.id, result));
     }
-    fetch('/api/youtube/competitors')
-      .then(r => r.json())
-      .then(d => { if (mounted.current && currentOwner.current === capturedOwner && Array.isArray(d.competitors)) setCompetitors(mergeCompetitorDeletions(owner, d.competitors)); })
-      .catch(() => {})
-      .finally(() => { if (mounted.current && currentOwner.current === capturedOwner) setLoading(false); });
+    readCompetitors();
   }, [ownerKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch outliers for all competitors
@@ -181,7 +171,7 @@ export default function CompetitorTrackingPage() {
 
   async function addCompetitor() {
     const capturedOwner = ownerKey;
-    if (!urlInput.trim() || status !== 'authenticated' || currentOwner.current !== capturedOwner || !mounted.current) return;
+    if (!urlInput.trim() || status !== 'authenticated' || !owner.userId || currentOwner.current !== capturedOwner || !mounted.current) return;
     setAdding(true);
     setError('');
     setErrorUpgrade(false);
@@ -226,7 +216,7 @@ export default function CompetitorTrackingPage() {
     if (attempt.outcome?.status !== 'confirmed') applyDeletion(capturedOwner, id, result);
   }
 
-  if (status === 'loading' || loading) {
+  if (status === 'loading' || loading || listOwner !== ownerKey) {
     return (
       <div className="min-h-screen grain flex items-center justify-center" style={{ background: 'var(--yv-bg-0)', color: 'var(--yv-text-2)' }}>
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -249,6 +239,11 @@ export default function CompetitorTrackingPage() {
   return (
     <DashboardShell>
       <div className="yv-page">
+        {listUnavailable && <div role="status" className="mb-6 text-sm text-amber-300">
+          <p>{t('No se pudo cargar la lista de competidores.', 'The competitor list could not be loaded.')}</p>
+          {currentRead.current.entry?.pending && <p>{t('La lectura anterior sigue pendiente.', 'The previous read is still pending.')}</p>}
+          <button type="button" onClick={readCompetitors} disabled={!owner.userId || currentRead.current.entry?.pending} className="btn-offset mt-2 px-4 py-2 disabled:opacity-50">{t('Reintentar lista', 'Retry list')}</button>
+        </div>}
         {/* Title */}
         <div className="yv-page-header mb-8">
           <div className="yv-page-header__left">

@@ -10,68 +10,86 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
 
 // GET: list tracked competitors with latest snapshots
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const competitors = await prisma.trackedCompetitor.findMany({
-    where: { userId: session.user.id },
-    orderBy: { addedAt: 'asc' },
-    include: {
-      snapshots: {
-        orderBy: { recordedAt: 'asc' },
-        where: { recordedAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } },
-      },
-    },
-  });
-
-  const result = competitors.map(c => {
-    const snaps = c.snapshots.map(s => ({
-      subscribers: s.subscribers,
-      totalViews: Number(s.totalViews),
-      videoCount: s.videoCount,
-      recordedAt: s.recordedAt.toISOString(),
-    }));
-
-    // Growth calculations
-    const latest = snaps.length > 0 ? snaps[snaps.length - 1] : null;
-    const now = Date.now();
-    function findClosest(daysAgo: number) {
-      if (snaps.length === 0) return null;
-      const target = now - daysAgo * 24 * 60 * 60 * 1000;
-      let best = snaps[0];
-      let bestDiff = Math.abs(new Date(best.recordedAt).getTime() - target);
-      for (const p of snaps) {
-        const diff = Math.abs(new Date(p.recordedAt).getTime() - target);
-        if (diff < bestDiff) { best = p; bestDiff = diff; }
+export async function GET(request?: Request) {
+  const deadline = performance.now() + 25_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(new Error('List unavailable')); } };
+  const timer = setTimeout(retire, 25_000);
+  request?.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request?.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('List unavailable'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id) {
+        return reply({ error: 'unauthorized' }, 401);
       }
-      return best;
-    }
-    const week = findClosest(7);
-    const month = findClosest(30);
 
-    return {
-      id: c.id,
-      channelId: c.channelId,
-      channelName: c.channelName,
-      channelThumb: c.channelThumb,
-      subscribers: c.subscribers,
-      totalViews: Number(c.totalViews),
-      videoCount: c.videoCount,
-      addedAt: c.addedAt.toISOString(),
-      snapshots: snaps,
-      growth: latest && week && month ? {
-        subs7d: latest.subscribers - week.subscribers,
-        subs30d: latest.subscribers - month.subscribers,
-        views7d: latest.totalViews - week.totalViews,
-        views30d: latest.totalViews - month.totalViews,
-      } : null,
-    };
-  });
+      const userId = session.user.id;
+      const competitors = await prisma.trackedCompetitor.findMany({
+        where: { userId },
+        orderBy: { addedAt: 'asc' },
+        include: {
+          snapshots: {
+            orderBy: { recordedAt: 'asc' },
+            where: { recordedAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } },
+          },
+        },
+      });
 
-  return NextResponse.json({ competitors: result });
+      check();
+      if (!competitors.every(c => c.userId === userId)) throw Error('List unavailable');
+      const result = competitors.map(c => {
+        const snaps = c.snapshots.map(s => ({
+          subscribers: s.subscribers,
+          totalViews: Number(s.totalViews),
+          videoCount: s.videoCount,
+          recordedAt: s.recordedAt.toISOString(),
+        }));
+
+        // Growth calculations
+        const latest = snaps.length > 0 ? snaps[snaps.length - 1] : null;
+        const now = Date.now();
+        function findClosest(daysAgo: number) {
+          if (snaps.length === 0) return null;
+          const target = now - daysAgo * 24 * 60 * 60 * 1000;
+          let best = snaps[0];
+          let bestDiff = Math.abs(new Date(best.recordedAt).getTime() - target);
+          for (const p of snaps) {
+            const diff = Math.abs(new Date(p.recordedAt).getTime() - target);
+            if (diff < bestDiff) { best = p; bestDiff = diff; }
+          }
+          return best;
+        }
+        const week = findClosest(7);
+        const month = findClosest(30);
+
+        return {
+          id: c.id,
+          channelId: c.channelId,
+          channelName: c.channelName,
+          channelThumb: c.channelThumb,
+          subscribers: c.subscribers,
+          totalViews: Number(c.totalViews),
+          videoCount: c.videoCount,
+          addedAt: c.addedAt.toISOString(),
+          snapshots: snaps,
+          growth: latest && week && month ? {
+            subs7d: latest.subscribers - week.subscribers,
+            subs30d: latest.subscribers - month.subscribers,
+            views7d: latest.totalViews - week.totalViews,
+            views30d: latest.totalViews - month.totalViews,
+          } : null,
+        };
+      });
+
+      check(); return reply({ userId, competitors: result });
+    });
+    const response = await Promise.race([original, stopped]); check(); return response;
+  } catch { return reply({ error: 'competitors_read_unavailable' }, 503); }
+  finally { clearTimeout(timer); request?.signal.removeEventListener('abort', retire); }
 }
 
 // POST: add a competitor to track
