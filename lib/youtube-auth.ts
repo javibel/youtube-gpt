@@ -4,8 +4,10 @@ import { prisma } from '@/lib/prisma';
  * Get a valid YouTube OAuth access token for the given user.
  * Automatically refreshes expired tokens with retry on transient failure.
  */
-export async function getAccessToken(userId: string): Promise<string | null> {
+export async function getAccessToken(userId: string, beforeStep?: () => void): Promise<string | null> {
+  beforeStep?.();
   const yt = await prisma.youtubeToken.findUnique({ where: { userId } });
+  beforeStep?.();
   if (!yt) return null;
 
   // No refresh token and no access token → truly disconnected
@@ -18,11 +20,14 @@ export async function getAccessToken(userId: string): Promise<string | null> {
   if (!yt.refreshToken) return yt.accessToken || null;
 
   // Attempt refresh with retry (even if accessToken is empty)
+  beforeStep?.();
   const result = await attemptRefresh(userId, yt.refreshToken);
   if (result) return result;
 
   // First attempt failed — wait briefly and retry once
+  beforeStep?.();
   await new Promise(r => setTimeout(r, 1000));
+  beforeStep?.();
   const retry = await attemptRefresh(userId, yt.refreshToken);
   if (retry) return retry;
 

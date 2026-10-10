@@ -49,18 +49,22 @@ export type CreateAbTestResult =
 export async function createAbTest(
   userId: string,
   input: { videoId?: string; variantA?: string; variantB?: string; hoursPerVariant?: number },
+  beforeStep?: () => void,
 ): Promise<CreateAbTestResult> {
+  const { videoId, variantA, variantB, hoursPerVariant = 48 } = input;
+  beforeStep?.();
   const plan = await getUserPlan(userId);
+  beforeStep?.();
   if (!isPaid(plan)) {
     return { ok: false, status: 403, error: 'pro_required' };
   }
 
-  const token = await getAccessToken(userId);
+  const token = await getAccessToken(userId, beforeStep);
+  beforeStep?.();
   if (!token) {
     return { ok: false, status: 400, error: 'youtube_not_connected' };
   }
 
-  const { videoId, variantA, variantB, hoursPerVariant = 48 } = input;
   if (!videoId || !variantA || !variantB) {
     return { ok: false, status: 400, error: 'Missing fields' };
   }
@@ -68,6 +72,7 @@ export async function createAbTest(
   const active = await prisma.abTest.findFirst({
     where: { userId, videoId, status: { in: ['variant_a', 'variant_b'] } },
   });
+  beforeStep?.();
   if (active) {
     return { ok: false, status: 400, error: 'active_test_exists' };
   }
@@ -76,11 +81,13 @@ export async function createAbTest(
   const activeCount = await prisma.abTest.count({
     where: { userId, status: { in: ['variant_a', 'variant_b'] } },
   });
+  beforeStep?.();
   if (activeCount >= maxTests) {
     return { ok: false, status: 400, error: 'max_active_tests', limit: maxTests };
   }
 
   const video = await fetchVideoSnippet(token, videoId);
+  beforeStep?.();
   if (!video) {
     return { ok: false, status: 404, error: 'video_not_found' };
   }
@@ -90,6 +97,9 @@ export async function createAbTest(
   const thumbnail = video.snippet.thumbnails?.medium?.url ?? null;
   const initialViews = parseInt(video.statistics?.viewCount ?? '0', 10);
 
+  beforeStep?.();
+  // Once the original title write starts, its SQL record and result remain
+  // part of that producer, even if the HTTP waiter retires in the meantime.
   const result = await updateVideoTitle(token, videoId, variantA, categoryId);
   if (!result.ok) {
     if (result.status === 403) {
