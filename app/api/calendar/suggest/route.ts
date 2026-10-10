@@ -6,15 +6,59 @@ import { getUserPlan, isPaid } from '@/lib/plans';
 
 export const maxDuration = 60;
 
+// The HTTP deadline retires this waiter; it never replaces the original task.
+function suggestionHttpWait(signal: AbortSignal) {
+  const deadline = performance.now() + 55_000;
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(new Error('Suggestions unconfirmed')); }
+  };
+  const timer = setTimeout(retire, 55_000);
+  signal.addEventListener('abort', retire, { once: true });
+  const check = () => {
+    if (signal.aborted || performance.now() >= deadline) retire();
+    if (retired) throw new Error('Suggestions unconfirmed');
+  };
+  return {
+    async run<T>(operation: () => Promise<T>): Promise<T> {
+      check();
+      const original = Promise.resolve().then(() => { check(); return operation(); });
+      const result = await Promise.race([original, stopped]);
+      check();
+      return result;
+    },
+    check,
+    close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
+  };
+}
+
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 
 const DAY_NAMES_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export async function POST(request: Request) {
-  const session = await auth();
+  const wait = suggestionHttpWait(request.signal);
+  try {
+    const response = await suggest(request, wait);
+    wait.check();
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  } catch {
+    return NextResponse.json({ error: 'suggestions_unconfirmed', retryMayConsume: false }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
+  } finally { wait.close(); }
+}
+
+async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpWait>) {
+  const session = await wait.run(() => auth());
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  const userId = session.user.id;
   const operationKey=request.headers.get('idempotency-key');
   const recovery=request.headers.get('X-Calendar-Recovery');
   if((operationKey!==null&&!/^[-A-Za-z0-9._:]{1,128}$/.test(operationKey))
@@ -22,24 +66,23 @@ export async function POST(request: Request) {
     return NextResponse.json({error:'invalid_recovery'},{status:400});
   }
 
-  const plan = await getUserPlan(session.user.id);
+  const plan = await wait.run(() => getUserPlan(userId));
   if (!isPaid(plan)) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
-  const body = (await request.json().catch(() => ({}))) ?? {};
+  const body = (await wait.run(() => request.json().catch(() => ({})))) ?? {};
   const lang = body.lang === 'en' ? 'en' : 'es';
 
-  const userId = session.user.id;
   let task;
   try {
-    task = await getMessagesTask({ operationKey: operationKey ?? undefined, taskType: 'calendar.suggestions', userId, language: lang, instructionsVersion: 'calendar-suggestions-v1',
+    task = await wait.run(() => getMessagesTask({ operationKey: operationKey ?? undefined, taskType: 'calendar.suggestions', userId, language: lang, instructionsVersion: 'calendar-suggestions-v1',
       outputSchema: { type: 'array', items: { type: 'object', properties: { title: { type: 'string', minLength: 1 }, date: { type: 'string' }, reason: { type: 'string' }, description: { type: 'string' } }, required: ['title'], additionalProperties: true } },
-    });
-  } catch { return NextResponse.json({ error: 'ai_not_configured' }, { status: 500 }); }
+    }));
+  } catch { wait.check(); return NextResponse.json({ error: 'ai_not_configured' }, { status: 500 }); }
 
   // Gather data in parallel
-  const [bestTime, trendAlerts, competitors, existingEntries, ytToken] = await Promise.all([
+  const [bestTime, trendAlerts, competitors, existingEntries, ytToken] = await wait.run(() => Promise.all([
     prisma.bestTimeAnalysis.findUnique({ where: { userId } }),
     prisma.trendAlert.findMany({
       where: { userId, relevance: { gte: 60 } },
@@ -57,7 +100,7 @@ export async function POST(request: Request) {
       take: 30,
     }),
     prisma.youtubeToken.findUnique({ where: { userId }, select: { channelId: true, channelName: true } }),
-  ]);
+  ]));
 
   // Best time slots
   let bestTimeInfo = 'No best time analysis available.';
@@ -77,31 +120,33 @@ export async function POST(request: Request) {
   let competitorUploads = 'No competitor data.';
   if (competitors.length > 0 && YT_API_KEY) {
     try {
-      const res = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${competitors[0].channelId}&type=video&order=date&maxResults=5&publishedAfter=${new Date(Date.now() - 7 * 86400000).toISOString()}&key=${YT_API_KEY}`
-      );
+      const res = await wait.run(() => fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${competitors[0].channelId}&type=video&order=date&maxResults=5&publishedAfter=${new Date(Date.now() - 7 * 86400000).toISOString()}&key=${YT_API_KEY}`,
+        { signal: request.signal }
+      ));
       if (res.ok) {
-        const data = await res.json();
+        const data = await wait.run(() => res.json());
         const titles = (data.items || []).map((i: { snippet: { title: string; channelTitle: string } }) =>
           `- ${i.snippet.channelTitle}: "${i.snippet.title}"`
         );
         if (titles.length > 0) competitorUploads = titles.join('\n');
       }
-    } catch { /* */ }
+    } catch { wait.check(); }
   }
 
   // User's recent videos
   let recentTitles: string[] = [];
   if (ytToken?.channelId && YT_API_KEY) {
     try {
-      const res = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${ytToken.channelId}&type=video&order=date&maxResults=10&key=${YT_API_KEY}`
-      );
+      const res = await wait.run(() => fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${ytToken.channelId}&type=video&order=date&maxResults=10&key=${YT_API_KEY}`,
+        { signal: request.signal }
+      ));
       if (res.ok) {
-        const data = await res.json();
+        const data = await wait.run(() => res.json());
         recentTitles = (data.items || []).map((i: { snippet: { title: string } }) => i.snippet.title).filter(Boolean);
       }
-    } catch { /* */ }
+    } catch { wait.check(); }
   }
 
   // Existing calendar entries
@@ -150,9 +195,9 @@ Already scheduled:
 ${existingInfo}`,
         }],
     };
-    const data = recovery !== null
-      ? await task.retrieve?.(parameters, { signal: request.signal })
-      : await task.create(parameters, { signal: request.signal });
+    const data = await wait.run(() => recovery !== null
+      ? Promise.resolve(task.retrieve?.(parameters, { signal: request.signal }))
+      : task.create(parameters, { signal: request.signal }));
     if (!data) return NextResponse.json({ error: 'suggestions_unconfirmed', retryMayConsume: false }, { status: 503 });
 
     const text = data.content?.[0]?.text || '';
@@ -181,6 +226,7 @@ ${existingInfo}`,
 
     return NextResponse.json({ suggestions });
   } catch (e) {
+    wait.check();
     if (recovery !== null) {
       const conflict = e && typeof e === 'object' && 'code' in e && e.code === 'invalid_format';
       return NextResponse.json({ error: conflict ? 'operation_input_changed' : 'suggestions_unconfirmed', retryMayConsume: false }, { status: conflict ? 409 : 503 });
