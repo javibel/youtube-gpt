@@ -13,8 +13,12 @@ const DAY = 86400_000;
 
 type ConvStep = 'c1' | 'c3';
 
-export async function triggerConversionEmail(userId: string, step: ConvStep, extra?: Record<string, string | number>): Promise<void> {
+export async function triggerConversionEmail(
+  userId: string, step: ConvStep, extra?: Record<string, string | number>,
+  beforeEffect?: () => void,
+): Promise<void> {
   try {
+    beforeEffect?.();
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { email: true, name: true, lang: true, emailVerified: true, marketingOptOut: true },
@@ -23,12 +27,14 @@ export async function triggerConversionEmail(userId: string, step: ConvStep, ext
     if (isInternalAccount(user.email)) return; // cuentas internas/de prueba
 
     // Idempotencia: este paso ya enviado.
+    beforeEffect?.();
     const already = await prisma.emailLog.findUnique({
       where: { userId_sequence_step: { userId, sequence: 'conv', step } },
     }).catch(() => null);
     if (already) return;
 
     // Cooldown: ningún email de conversión en los últimos 14 días.
+    beforeEffect?.();
     const recentConv = await prisma.emailLog.findFirst({
       where: { userId, sequence: 'conv', sentAt: { gt: new Date(Date.now() - 14 * DAY) } },
     }).catch(() => null);
@@ -38,12 +44,15 @@ export async function triggerConversionEmail(userId: string, step: ConvStep, ext
     const name = user.name?.split(' ')[0] || (lang === 'en' ? 'there' : 'crack');
     const tpl = step === 'c1' ? SEQUENCES.conversion.c1 : SEQUENCES.conversion.c3;
 
+    beforeEffect?.();
     if (!LIVE) {
       console.log(`[lifecycle-trigger DRY_RUN] conv/${step} → ${user.email} (${lang})`);
       return;
     }
 
     await sendTransactionalEmail({ to: user.email, subject: tpl.subject[lang], html: tpl.build(name, lang, userId, extra) });
+    // Once sending starts, keep its original log writer with it even when a
+    // caller retires its wait. A timeout must not manufacture a new mail send.
     await prisma.emailLog.create({ data: { userId, sequence: 'conv', step } });
   } catch (e) {
     console.error('[lifecycle-trigger] failed', step, (e as Error).message);

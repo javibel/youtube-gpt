@@ -11,23 +11,75 @@ export const maxDuration = 60;
 
 const MAX_CONTEXT = 10;
 
+// Retire only the HTTP waiter. Already invoked SQL, mail or AI producers keep
+// their original completion; expiry never authorizes cancellation or replay.
+function coachSendWait(signal: AbortSignal) {
+  const deadline = performance.now() + 55_000;
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(new Error('Coach send unconfirmed')); }
+  };
+  const timer = setTimeout(retire, 55_000);
+  signal.addEventListener('abort', retire, { once: true });
+  const check = () => {
+    if (signal.aborted || performance.now() >= deadline) retire();
+    if (retired) throw new Error('Coach send unconfirmed');
+  };
+  return {
+    async run<T>(operation: () => Promise<T>): Promise<T> {
+      check();
+      const original = Promise.resolve().then(() => { check(); return operation(); });
+      const result = await Promise.race([original, stopped]);
+      check();
+      return result;
+    },
+    check,
+    close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
+  };
+}
+
 export async function POST(request: Request) {
+  const wait = coachSendWait(request.signal);
+  try {
+    const response = await sendCoach(request, wait);
+    wait.check();
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  } catch {
+    try { wait.check(); }
+    catch {
+      return NextResponse.json({ error: 'coach_send_unconfirmed' }, {
+        status: 503, headers: { 'Cache-Control': 'no-store' },
+      });
+    }
+    return NextResponse.json({ error: 'service unavailable' }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
+  } finally { wait.close(); }
+}
+
+async function sendCoach(request: Request, wait: ReturnType<typeof coachSendWait>) {
   // Web uses the NextAuth session; the Chrome extension (P5 — Coach tab) sends a Bearer token.
-  const session = await auth();
-  const extUser = !session?.user?.id ? await getExtensionUser(request) : null;
+  const session = await wait.run(() => auth());
+  const extUser = !session?.user?.id ? await wait.run(() => getExtensionUser(request)) : null;
   const userId = session?.user?.id || extUser?.user.id || null;
   if (!userId) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const isProUser = extUser ? extUser.isPro : isPaid(await getUserPlan(userId));
+  const isProUser = extUser ? extUser.isPro : isPaid(await wait.run(() => getUserPlan(userId)));
   if (!isProUser) {
     // C3: tocó el paywall del Coach — email explicativo (idempotente, DRY_RUN por defecto)
-    await triggerConversionEmail(userId, 'c3');
+    await wait.run(() => triggerConversionEmail(userId, 'c3', undefined, wait.check));
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
-  const body = await request.json().catch(() => null);
+  let body;
+  try { body = await wait.run(() => request.json()); }
+  catch { wait.check(); body = null; }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   const { message, context, mode, lang: clientLang, pageContext } = body;
   const lang = clientLang === 'en' ? 'en' : 'es';
@@ -39,7 +91,7 @@ export async function POST(request: Request) {
 
   // Rate limit: 1 message per 5 seconds
   const throttleKey = `coach_throttle:${userId}`;
-  const throttleResult = await prisma.$queryRaw<{ hits: number }[]>`
+  const throttleResult = await wait.run(() => prisma.$queryRaw<{ hits: number }[]>`
     INSERT INTO rate_limits (key, hits, window_start)
     VALUES (${throttleKey}, 1, NOW())
     ON CONFLICT (key) DO UPDATE
@@ -47,13 +99,13 @@ export async function POST(request: Request) {
       hits = CASE WHEN rate_limits.window_start < NOW() - INTERVAL '5 seconds' THEN 1 ELSE rate_limits.hits + 1 END,
       window_start = CASE WHEN rate_limits.window_start < NOW() - INTERVAL '5 seconds' THEN NOW() ELSE rate_limits.window_start END
     RETURNING hits
-  `;
+  `);
   if (Number(throttleResult[0].hits) > 1) {
     return NextResponse.json({ error: 'throttled' }, { status: 429 });
   }
 
   // Build channel context (shared with AI Generator)
-  const ctx = await getChannelContext(userId);
+  const ctx = await wait.run(() => getChannelContext(userId));
   const channelContext = ctx?.summary || 'No YouTube channel connected.';
 
   const MODE_PROMPTS: Record<string, string> = {
@@ -159,17 +211,24 @@ RULES:
   const messages: { role: 'user' | 'assistant'; content: string }[] = [...contextMessages, { role: 'user', content: message.trim().slice(0, 2000) }];
   let task;
   try {
-    task = await getMessagesTask({
+    task = await wait.run(() => getMessagesTask({
       taskType: 'channel.coach', userId, language: lang, instructionsVersion: 'coach-modes-v1',
       requiredCapabilities: ['prompt_cache'],
-    });
+    }));
   } catch {
+    wait.check();
     return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
   }
   try {
-    const data = await task.create({ max_tokens: 4096, system: systemPrompt, messages });
-    return NextResponse.json({ reply: data.content[0].text });
+    // Keep the original task and result reader together after dispatch. Coach
+    // has no persisted history: a retired HTTP response cannot expose this
+    // late result, and losing the process cannot recover it.
+    return await wait.run(async () => {
+      const data = await task.create({ max_tokens: 4096, system: systemPrompt, messages });
+      return NextResponse.json({ reply: data.content[0].text });
+    });
   } catch {
+    wait.check();
     return NextResponse.json({ error: 'AI service error' }, { status: 500 });
   }
 }
