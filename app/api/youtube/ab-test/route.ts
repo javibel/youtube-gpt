@@ -54,13 +54,14 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const userId = session.user.id;
   const tests = await prisma.abTest.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     orderBy: { startedAt: 'desc' },
     take: 20,
   });
 
-  return NextResponse.json({ tests });
+  return NextResponse.json({ userId, tests }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 // ── POST — create new test ─────────────────────────────────────────────────

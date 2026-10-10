@@ -1,40 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { createRetryOperation } from '@/lib/ai/retry-operation.cjs';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useAbTestRead, type AbVideo as Video, type AbTest } from '@/lib/use-ab-test-read';
+import { useAbSuggestions } from '@/lib/use-ab-suggestions';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
 
 type Lang = 'es' | 'en';
-
-interface Video {
-  videoId: string;
-  title: string;
-  thumbnail: string;
-  publishedAt: string;
-  views: number;
-  likes: number;
-}
-
-interface AbTest {
-  id: string;
-  videoId: string;
-  thumbnail: string | null;
-  originalTitle: string;
-  variantA: string;
-  variantB: string;
-  status: string;
-  hoursPerVariant: number;
-  startedAt: string;
-  switchedAt: string | null;
-  completedAt: string | null;
-  initialViews: number;
-  switchViews: number | null;
-  endViews: number | null;
-  winner: string | null;
-  aiInsight: { es: string; en: string } | null;
-}
 
 function fmtNum(n: number | null | undefined): string {
   if (n == null || isNaN(n)) return '0';
@@ -60,75 +33,62 @@ function progressPct(start: Date, end: Date): number {
 export default function AbTestPage() {
   const { data: session, status } = useSession();
   const lang = useLang();
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [tests, setTests] = useState<AbTest[]>([]);
-  const [channelConnected, setChannelConnected] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const userId = session?.user?.id;
+  const email = session?.user?.email;
+  const scope = useMemo(() => ({ active: true }), [userId, email, status, lang]);
+  const active = useRef(scope); active.current = scope;
+  useEffect(() => { scope.active = true; return () => { scope.active = false; }; }, [scope]);
+  const isCurrent = () => active.current === scope && scope.active && status === 'authenticated';
+  if (status === 'loading') return <p>{lang === 'en' ? 'Loading...' : 'Cargando...'}</p>;
+  if (status !== 'authenticated' || !userId || !email) return <DashboardShell><p>{lang === 'en' ? 'Sign in to use A/B testing.' : 'Inicia sesión para usar A/B testing.'}</p><a href="/login">{lang === 'en' ? 'Sign in' : 'Iniciar sesión'}</a></DashboardShell>;
+  return <AbTestSession key={JSON.stringify([userId, email])} userId={userId} email={email} lang={lang} isCurrent={isCurrent} />;
+}
+
+function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; email: string; lang: Lang; isCurrent: () => boolean }) {
+  const read = useAbTestRead(userId, email, lang);
+  const { videos, tests, connected: channelConnected } = read;
+  const suggestions = useAbSuggestions(JSON.stringify([userId, email]));
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(() => suggestions.selection?.lang === lang ? suggestions.selection.video : null);
   const [variantA, setVariantA] = useState('');
   const [variantB, setVariantB] = useState('');
   const [hours, setHours] = useState(48);
   const [loading, setLoading] = useState(false);
-  const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState('');
-  const [loadingVideos, setLoadingVideos] = useState(true);
-  const suggestionOperation = useRef<ReturnType<typeof createRetryOperation> | null>(null);
-  if (!suggestionOperation.current) suggestionOperation.current = createRetryOperation(() => crypto.randomUUID());
+  const selection = useRef<object>(suggestions.selection?.token ?? {});
+  const selected = useRef(selectedVideo); selected.current = selectedVideo;
+  const visibleSelection = selection.current;
+  const applied = useRef<object | null>(null);
+  const createFlight = useRef(false);
+  const suggesting = suggestions.status === 'sending';
+  const loadingVideos = read.status === 'loading';
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
 
-  // Load videos and tests on mount
   useEffect(() => {
-    if (status !== 'authenticated') return;
-    Promise.all([
-      fetch('/api/youtube/channel').then(r => r.json()),
-      fetch('/api/youtube/ab-test').then(r => r.json()),
-    ]).then(async ([ch, ab]) => {
-      if (ab.tests) setTests(ab.tests);
-      if (ch.connected) {
-        setChannelConnected(true);
-        if (ch.videos && ch.videos.length > 0) {
-          setVideos(ch.videos);
-        } else {
-          // Cached response has no videos — fetch fresh
-          const fresh = await fetch('/api/youtube/channel?fresh=1').then(r => r.json());
-          if (fresh.videos) setVideos(fresh.videos);
-        }
-      }
-      setLoadingVideos(false);
-    }).catch(() => setLoadingVideos(false));
-  }, [status]);
+    const original = suggestions.selection;
+    if (isCurrent() && original && suggestions.variants && original.lang === lang
+      && selection.current === original.token && applied.current !== original.token) {
+      applied.current = original.token;
+      setVariantA(suggestions.variants.variantA); setVariantB(suggestions.variants.variantB);
+    }
+  }, [suggestions.selection, suggestions.variants, lang, isCurrent]);
 
   const activeTests = tests.filter(t => t.status === 'variant_a' || t.status === 'variant_b');
   const pastTests = tests.filter(t => t.status === 'completed' || t.status === 'cancelled');
   const activeVideoIds = new Set(activeTests.map(t => t.videoId));
 
   async function suggestTitles() {
-    if (!selectedVideo || suggesting) return;
-    setSuggesting(true);
+    if (!isCurrent() || read.status !== 'ready' || !selectedVideo || selected.current !== selectedVideo || suggestions.blocked) return;
     setError('');
-    try {
-      const data = await suggestionOperation.current!({ title: selectedVideo.title, lang }, async (body, operationKey) => {
-        const res = await fetch('/api/youtube/ab-test/suggest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey },
-          body,
-        });
-        if (!res.ok) throw new Error('Suggestions unavailable');
-        const result = await res.json();
-        if (typeof result.variantA !== 'string' || typeof result.variantB !== 'string') throw new Error('Invalid suggestions');
-        return result as { variantA: string; variantB: string };
-      });
-      if (data.variantA) setVariantA(data.variantA);
-      if (data.variantB) setVariantB(data.variantB);
-    } catch {
-      setError(t('Error generando sugerencias', 'Error generating suggestions'));
-    } finally {
-      setSuggesting(false);
-    }
+    const wait = suggestions.start({ video: selectedVideo, lang, token: selection.current });
+    if (wait) applied.current = null;
+    await wait;
   }
 
   async function createTest() {
-    if (!selectedVideo || !variantA.trim() || !variantB.trim()) return;
+    if (!isCurrent() || read.status !== 'ready' || createFlight.current || !selectedVideo || selected.current !== selectedVideo || selection.current !== visibleSelection || !variantA.trim() || !variantB.trim()) return;
+    createFlight.current = true;
+    const originalSelection = selection.current;
     setLoading(true);
     setError('');
     try {
@@ -143,6 +103,7 @@ export default function AbTestPage() {
         }),
       });
       const data = await res.json();
+      if (!isCurrent()) return;
       if (!res.ok) {
         if (data.error === 'pro_required') {
           setError(t('Necesitas el plan Pro.', 'You need the Pro plan.'));
@@ -162,48 +123,31 @@ export default function AbTestPage() {
         }
         return;
       }
-      setTests(prev => [data.test, ...prev]);
-      setSelectedVideo(null);
-      setVariantA('');
-      setVariantB('');
+      read.updateTests(prev => [data.test, ...prev]);
+      if (selection.current === originalSelection) {
+        selection.current = {}; setSelectedVideo(null); setVariantA(''); setVariantB('');
+      }
     } catch {
-      setError(t('Error de conexion', 'Connection error'));
+      if (isCurrent()) setError(t('Error de conexion', 'Connection error'));
     } finally {
+      createFlight.current = false;
       setLoading(false);
     }
   }
 
   async function cancelTest(testId: string) {
+    if (!isCurrent() || read.status !== 'ready') return;
     try {
-      await fetch('/api/youtube/ab-test', {
+      const response = await fetch('/api/youtube/ab-test', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ testId, action: 'cancel' }),
       });
-      setTests(prev => prev.map(t => t.id === testId ? { ...t, status: 'cancelled' } : t));
+      if (!response.ok) throw Error('Cancellation unavailable');
+      if (isCurrent()) read.updateTests(prev => prev.map(t => t.id === testId ? { ...t, status: 'cancelled' } : t));
     } catch {
-      setError(t('Error al cancelar', 'Error cancelling'));
+      if (isCurrent()) setError(t('Error al cancelar', 'Error cancelling'));
     }
-  }
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
-        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (status === 'unauthenticated') {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-white mb-4">A/B Testing</h1>
-          <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para usar A/B testing.', 'Sign in to use A/B testing.')}</p>
-          <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -229,6 +173,12 @@ export default function AbTestPage() {
         </div>
 
         {/* Error */}
+        {suggestions.selection && ['sending', 'unconfirmed', 'storage-unavailable'].includes(suggestions.status) && <p role="status">{t('Petición original: ', 'Original request: ')}{suggestions.selection.video.title} ({suggestions.selection.lang})</p>}
+        {read.status === 'error' && <div role="alert"><p>{t('No se pudieron cargar el canal y los tests. Reintenta la lectura.', 'Channel and tests could not be loaded. Retry the read.')}</p><button onClick={() => { if (isCurrent()) void read.retry(); }}>{t('Reintentar lectura', 'Retry read')}</button></div>}
+        {['unconfirmed', 'lost', 'storage-unavailable'].includes(suggestions.status) && <p role="status">{suggestions.variants
+          ? t('Sugerencias recibidas. La continuidad está bloqueada y no se enviará otra petición.', 'Suggestions received. Continuity is blocked and another request will not be sent.')
+          : t('Las sugerencias no están confirmadas. No se enviará otra petición.', 'Suggestions are unconfirmed. Another request will not be sent.')}</p>}
+        {suggestions.status === 'rejected' && <p role="alert">{t('No se pudieron generar sugerencias. Comprueba tu acceso y el título.', 'Suggestions could not be generated. Check your access and title.')}</p>}
         {error && (
           <div className="mb-8 p-4 rounded-lg border border-red-500/30" style={{ background: 'rgba(232,77,91,0.08)' }}>
             <p className="text-sm text-red-400 font-mono-jb">{error}</p>
@@ -248,7 +198,7 @@ export default function AbTestPage() {
         )}
 
         {/* Create new test */}
-        {activeTests.length < 3 && (
+        {activeTests.length < 3 && read.status !== 'error' && (
           <div className="yv-card mb-10">
             <h2 className="font-display font-bold text-lg text-white mb-6">{t('Nuevo test', 'New test')}</h2>
 
@@ -270,6 +220,9 @@ export default function AbTestPage() {
                     <button
                       key={v.videoId}
                       onClick={() => {
+                        if (!isCurrent() || read.status !== 'ready') return;
+                        selection.current = {};
+                        selected.current = v;
                         setSelectedVideo(v);
                         setVariantA(v.title);
                         setVariantB('');
@@ -301,7 +254,7 @@ export default function AbTestPage() {
                         </label>
                         <input
                           value={variantA}
-                          onChange={e => setVariantA(e.target.value)}
+                          onChange={e => { if (isCurrent() && selection.current === visibleSelection) { selection.current = {}; setVariantA(e.target.value); } }}
                           maxLength={100}
                           className="yv-input text-white text-sm font-mono-jb"
                           placeholder={t('Título variante A...', 'Variant A title...')}
@@ -314,7 +267,7 @@ export default function AbTestPage() {
                         </label>
                         <input
                           value={variantB}
-                          onChange={e => setVariantB(e.target.value)}
+                          onChange={e => { if (isCurrent() && selection.current === visibleSelection) { selection.current = {}; setVariantB(e.target.value); } }}
                           maxLength={100}
                           className="yv-input text-white text-sm font-mono-jb"
                           placeholder={t('Título variante B...', 'Variant B title...')}
@@ -326,7 +279,7 @@ export default function AbTestPage() {
                     {/* AI suggest button */}
                     <button
                       onClick={suggestTitles}
-                      disabled={suggesting}
+                      disabled={suggestions.blocked}
                       className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500/30 text-purple-400 text-sm font-mono-jb hover:bg-purple-500/10 transition disabled:opacity-50"
                     >
                       {suggesting ? (
@@ -348,7 +301,7 @@ export default function AbTestPage() {
                         {[24, 48, 72].map(h => (
                           <button
                             key={h}
-                            onClick={() => setHours(h)}
+                            onClick={() => { if (isCurrent()) setHours(h); }}
                             className="px-4 py-2 rounded-lg border text-sm font-mono-jb transition"
                             style={{
                               borderColor: hours === h ? 'var(--yv-brand)' : 'rgba(255,255,255,0.08)',
