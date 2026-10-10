@@ -47,6 +47,10 @@ export type CreateAbTestResult =
   | { ok: true; status: 201; test: Awaited<ReturnType<typeof prisma.abTest.create>> }
   | { ok: false; status: number; error: string; limit?: number };
 
+type CreationAdmission =
+  | { denied: 'active_test_exists' | 'max_active_tests' | 'uncertain' }
+  | { row: Awaited<ReturnType<typeof prisma.abTestCreationAttempt.create>> };
+
 export async function createAbTest(
   userId: string,
   input: { videoId?: string; variantA?: string; variantB?: string; hoursPerVariant?: number },
@@ -112,7 +116,7 @@ export async function createAbTest(
     // never authorizes execution, takeover, retry or release after uncertainty.
     const id = randomUUID();
     beforeStep?.();
-    const admission = await prisma.$transaction(async tx => {
+    const admission = await prisma.$transaction(async (tx): Promise<CreationAdmission> => {
       beforeStep?.();
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       beforeStep?.();
