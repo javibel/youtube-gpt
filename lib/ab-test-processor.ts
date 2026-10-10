@@ -3,6 +3,40 @@ import { getAccessToken } from '@/lib/youtube-auth';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { beginAbTestTransition } from '@/lib/ab-test';
 
+type ProcessorResult = { switched: number; completed: number; errors: string[]; unconfirmed?: true };
+
+// This budget retires only the caller. The original title, insight and SQL
+// promises stay observed; a pending durable reservation never authorizes replay.
+export async function processAbTests(beforeStep?: () => void): Promise<ProcessorResult> {
+  const deadline = performance.now() + 55_000;
+  const stoppedError = new Error('ab_processor_unconfirmed');
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(stoppedError); }
+  };
+  const checkDeadline = () => {
+    if (performance.now() >= deadline) retire();
+    if (retired) throw stoppedError;
+  };
+  const check = () => {
+    checkDeadline();
+    beforeStep?.();
+    checkDeadline();
+  };
+  const timer = setTimeout(retire, 55_000);
+  try {
+    const original = Promise.resolve().then(() => { check(); return runAbTests(check); });
+    const result = await Promise.race([original, stopped]);
+    checkDeadline(); return result;
+  } catch (error) {
+    if (error !== stoppedError) throw error;
+    // Zero counters are unconfirmed, not proof that no title/SQL was applied.
+    return { switched: 0, completed: 0, errors: ['ab_processor_unconfirmed'], unconfirmed: true };
+  } finally { clearTimeout(timer); }
+}
 
 async function fetchVideoData(token: string, videoId: string) {
   const res = await fetch(
@@ -29,7 +63,7 @@ async function updateTitle(token: string, videoId: string, title: string, catego
   return res.ok;
 }
 
-export async function processAbTests(beforeStep?: () => void): Promise<{ switched: number; completed: number; errors: string[] }> {
+async function runAbTests(beforeStep: () => void): Promise<ProcessorResult> {
   const errors: string[] = [];
   let switched = 0;
   let completed = 0;
@@ -42,6 +76,7 @@ export async function processAbTests(beforeStep?: () => void): Promise<{ switche
 
   beforeStep?.();
   for (const found of testsToSwitch) {
+    beforeStep();
     const test = { ...found };
     const switchTime = new Date(test.startedAt.getTime() + test.hoursPerVariant * 3600_000);
     if (now < switchTime) continue;
@@ -95,6 +130,7 @@ export async function processAbTests(beforeStep?: () => void): Promise<{ switche
 
   beforeStep?.();
   for (const found of testsToComplete) {
+    beforeStep();
     const test = { ...found };
     const endTime = new Date(test.switchedAt!.getTime() + test.hoursPerVariant * 3600_000);
     if (now < endTime) continue;

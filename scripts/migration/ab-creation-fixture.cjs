@@ -10,7 +10,7 @@ module.exports=function fixture(prisma,owner,options={}){
   const value=await prisma.$transaction(tx=>fn({
    $queryRawUnsafe:(...args)=>tx.$queryRawUnsafe(...args),
    abTest:tx.abTest,
-   abTestMutationAttempt:{findFirst:args=>tx.abTestMutationAttempt.findFirst(args),findUnique:args=>tx.abTestMutationAttempt.findUnique(args),create:async args=>{const row=await tx.abTestMutationAttempt.create(args);options.afterReservation?.();return row;},updateMany:args=>{if(options.completionFails)throw Error('Synthetic original completion failure');return tx.abTestMutationAttempt.updateMany(args);}},
+   abTestMutationAttempt:{findFirst:args=>tx.abTestMutationAttempt.findFirst(args),findUnique:args=>tx.abTestMutationAttempt.findUnique(args),create:async args=>{const row=await tx.abTestMutationAttempt.create(args);options.afterReservation?.();return row;},updateMany:async args=>{await options.onCompletion?.();if(options.completionFails)throw Error('Synthetic original completion failure');return tx.abTestMutationAttempt.updateMany(args);}},
    abTestCreationAttempt:{
     findFirst:args=>tx.abTestCreationAttempt.findFirst(args),count:args=>tx.abTestCreationAttempt.count(args),findUnique:args=>tx.abTestCreationAttempt.findUnique(args),
     create:async args=>{const row=await tx.abTestCreationAttempt.create(args);options.afterReservation?.();return row;},

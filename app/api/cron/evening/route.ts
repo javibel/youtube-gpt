@@ -77,9 +77,10 @@ export async function GET(request: Request) {
     const abResult = await processAbTests().catch(err => ({
       switched: 0,
       completed: 0,
+      unconfirmed: true,
       errors: [`A/B test processor: ${err instanceof Error ? err.message : String(err)}`],
     }));
-    results.abTests = { switched: abResult.switched, completed: abResult.completed };
+    results.abTests = { switched: abResult.switched, completed: abResult.completed, unconfirmed: abResult.unconfirmed === true };
     errors.push(...abResult.errors);
 
     if (errors.length > 0) {
