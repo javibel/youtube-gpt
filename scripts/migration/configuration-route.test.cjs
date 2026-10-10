@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {load}=require('./route-harness.cjs');
 function harness({denied=false,missing=false,code,url='https://synthetic.invalid/api/admin/ai-configuration'}={}){
  const calls=[];const service=Object.fromEntries(['current','validate','preview','previewRollback','activate'].map(method=>[method,async(...args)=>{calls.push({method,args});if(code)throw {code,message:'synthetic private detail'};return {synthetic:true};}]));
- const route=load('app/api/admin/ai-configuration/route.ts',{'@/lib/auth-guards':{requireAdmin:async()=>denied?{ok:false,response:Response.json({error:'Denied'},{status:403})}:{ok:true,email:'synthetic@example.invalid'}},'@/lib/ai/configuration-runtime':{getConfigurationService:()=>missing?undefined:service}},{TextDecoder});
+ const route=load('app/api/admin/ai-configuration/route.ts',{'@/lib/auth-guards':{requireAdmin:async()=>denied?{ok:false,response:Response.json({error:'Denied'},{status:403})}:{ok:true,email:'synthetic@example.invalid'}},'@/lib/ai/configuration-runtime':{getConfigurationService:()=>missing?undefined:service}},{TextDecoder,performance,setTimeout,clearTimeout});
  return {calls,read:()=>route.GET(),invoke:(body,headers={})=>route.POST(new Request(url,{method:'POST',headers:{origin:'https://synthetic.invalid','content-type':'application/json',...headers},body:typeof body==='string'?body:JSON.stringify(body)}))};
 }
 let count=0;async function test(fn){await fn();count++;}

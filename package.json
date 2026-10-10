@@ -21,7 +21,7 @@
     "migration:test:control": "node scripts/migration/control-database.test.cjs",
     "migration:test:adapters": "node scripts/migration/anthropic-adapter.test.cjs && node scripts/migration/compatibility.test.cjs && node scripts/migration/task-runtime.test.cjs && node scripts/migration/task-factory.test.cjs && node scripts/migration/openai-adapter.test.cjs && node scripts/migration/openai-http.test.cjs && node scripts/migration/openai-https.test.cjs && node scripts/migration/provider-switch.test.cjs && node scripts/migration/third-provider.test.cjs && node scripts/migration/composite-provider.test.cjs && node scripts/migration/result-retrieval.test.cjs",
     "migration:test:boundary": "node scripts/migration/provider-boundary.test.cjs",
-    "migration:test:configuration": "node scripts/migration/configuration-service.test.cjs && node scripts/migration/configuration-route.test.cjs && node scripts/migration/openai-bootstrap.test.cjs",
+    "migration:test:configuration": "node scripts/migration/configuration-service.test.cjs && node scripts/migration/configuration-route.test.cjs && node scripts/migration/configuration-route-deadline.test.cjs && node scripts/migration/openai-bootstrap.test.cjs",
     "migration:verify": "pwsh -NoProfile -File scripts/migration/verify-local.ps1",
     "migration:verify:local": "pwsh -NoProfile -File scripts/migration/verify-local.ps1 -WithDatabase",
     "migration:test:startup": "node scripts/migration/runtime-file-policy.test.cjs && node scripts/migration/runtime-file-guard.test.cjs && node scripts/migration/runtime-network-policy.test.cjs && node scripts/migration/runtime-http-policy.test.cjs && node scripts/migration/start-local.test.cjs && node scripts/migration/runtime-bundles.test.cjs",

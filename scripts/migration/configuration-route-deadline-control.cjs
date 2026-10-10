@@ -1,0 +1,25 @@
+'use strict';
+const assert=require('node:assert/strict'),{createConfigurationService}=require('../../lib/ai/configuration-service.cjs'),{harness,deferred,flush,terminal}=require('./configuration-route-deadline.test.cjs');
+module.exports=async function({prefix,registry,createControlStore,database,cfg,pool,test}){
+ const reader=createControlStore(database('reader'),registry),activator=createControlStore(database('activator'),registry),previous=(await reader.active()).revision,base=cfg('configuration_http'),candidate={...base,revision:prefix+'_configuration_http_next'};
+ const dependencies={registry,reader,activator,taskCatalog:{summary:{executor:'ai',capabilities:['text'],runtimeIds:['web']}},getActor:async()=> 'synthetic-http-operator',getRuntimes:async()=>[{id:'web',contractVersions:['1.0'],adapters:{'fixture-alpha':'test-1','fixture-beta':'test-1'}}],checkCredential:async()=>true};
+ try{
+  await activator.publish(base,{actor:'test-admin'});await activator.activate(base.revision,{expectedRevision:previous,actor:'test-admin',reason:'Synthetic configuration HTTP setup'});
+  await test('configuration HTTP deadline retires original authorization before any native service operation',async()=>{
+   const originalAuth=deferred();let calls=0;const service=createConfigurationService(dependencies),h=harness({auth:()=>originalAuth.promise,service:{...service,activate:async id=>{calls++;return service.activate(id);}}}),pending=h.post({action:'activate',previewId:'not-a-preview'});await flush();h.clock.advance(30000);assert.equal((await terminal(pending)).status,503);originalAuth.resolve({ok:true});await flush();assert.equal(calls,0);assert.equal((await reader.active()).revision,base.revision);assert.equal((await pool.query('SELECT count(*)::int AS n FROM ytv_ai_test_v1.switch_events WHERE revision=$1',[candidate.revision])).rows[0].n,0);
+  });
+  await test('configuration HTTP native current read finishes but its late acknowledgement cannot confirm the retired route',async()=>{
+   const queryFinished=deferred(),ack=deferred(),service=createConfigurationService(dependencies);let reads=0;const h=harness({service:{...service,current:async()=>{reads++;const value=await service.current();queryFinished.resolve();await ack.promise;return value;}}}),pending=h.get();await queryFinished.promise;h.clock.advance(30000);const response=await terminal(pending);assert.equal(response.status,503);ack.resolve();await flush();assert.equal(response.status,503);assert.equal(reads,1);assert.equal((await reader.active()).revision,base.revision);assert.equal(h.clock.pending,0);
+  });
+  await test('configuration HTTP uncertain activation retains original preview; native state read and explicit same-token retry create one switch without renewal',async()=>{
+   const switched=deferred(),ack=deferred();let writes=0,route;const dependenciesWithAck={...dependencies,clock:()=>route.clock.now,activator:{...activator,activate:async(...args)=>{writes++;const result=await activator.activate(...args);switched.resolve();await ack.promise;return result;}}},service=createConfigurationService(dependenciesWithAck);route=harness({service});
+   const preview=await service.preview(candidate,{reason:'Synthetic HTTP original activation'}),expiresAt=preview.expiresAt;
+   // Advance the shared monotonic clock without changing the original preview expiry.
+   const pending=route.post({action:'activate',previewId:preview.previewId});await switched.promise;route.clock.advance(30000);const response=await terminal(pending),body=await response.json();assert.equal(response.status,503);assert.equal(body.state,'uncertain');assert.equal(preview.expiresAt,expiresAt);assert.equal(writes,1);
+   const currentResponse=await route.get();assert.equal(currentResponse.status,200);assert.equal((await currentResponse.json()).configuration.revision,candidate.revision);
+   const retry=await route.post({action:'activate',previewId:preview.previewId});assert.equal(retry.status,200);assert.equal((await retry.json()).alreadyActive,true);assert.equal(writes,1);assert.equal(preview.expiresAt,expiresAt);
+   const fresh=harness({service:createConfigurationService(dependenciesWithAck)});assert.equal((await fresh.post({action:'activate',previewId:preview.previewId})).status,403);assert.equal(writes,1);
+   ack.resolve();await flush();assert.equal(response.status,503);const events=(await pool.query('SELECT actor,reason FROM ytv_ai_test_v1.switch_events WHERE revision=$1',[candidate.revision])).rows;assert.equal(events.length,1);assert.equal(events[0].actor,'synthetic-http-operator');assert.equal(events[0].reason,'Synthetic HTTP original activation');assert.equal(route.clock.pending,0);
+  });
+ }finally{const current=(await reader.active()).revision;if(current!==previous)await activator.activate(previous,{expectedRevision:current,actor:'test-admin',reason:'Restore synthetic configuration after HTTP deadline tests'});}
+};
