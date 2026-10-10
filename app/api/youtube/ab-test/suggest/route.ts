@@ -3,18 +3,72 @@ import { auth } from '@/auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 
+export const maxDuration = 60;
+
+// This retires only the HTTP wait, never the original task or its authority.
+function suggestionWait(signal: AbortSignal) {
+  const deadline = performance.now() + 55_000;
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(new Error('Suggestions unconfirmed')); }
+  };
+  const timer = setTimeout(retire, 55_000);
+  signal.addEventListener('abort', retire, { once: true });
+  const check = () => {
+    if (signal.aborted || performance.now() >= deadline) retire();
+    if (retired) throw new Error('Suggestions unconfirmed');
+  };
+  return {
+    async run<T>(operation: () => Promise<T>): Promise<T> {
+      check();
+      const original = Promise.resolve().then(() => { check(); return operation(); });
+      const result = await Promise.race([original, stopped]);
+      check();
+      return result;
+    },
+    check,
+    close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
+  };
+}
+
 export async function POST(req: NextRequest) {
-  const session = await auth();
+  const wait = suggestionWait(req.signal);
+  try {
+    const response = await suggestTitles(req, wait);
+    wait.check();
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  } catch {
+    try { wait.check(); }
+    catch {
+      return NextResponse.json({ error: 'ab_suggestions_unconfirmed' }, {
+        status: 503, headers: { 'Cache-Control': 'no-store' },
+      });
+    }
+    return NextResponse.json({ error: 'AI suggestions temporarily unavailable' }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
+  } finally { wait.close(); }
+}
+
+async function suggestTitles(req: NextRequest, wait: ReturnType<typeof suggestionWait>) {
+  const session = await wait.run(() => auth());
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const plan = await getUserPlan(session.user.id);
+  const userId = session.user.id;
+  const plan = await wait.run(() => getUserPlan(userId));
   if (!isPaid(plan)) {
     return NextResponse.json({ error: 'pro_required' }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => null);
+  let body;
+  try { body = await wait.run(() => req.json()); }
+  catch { wait.check(); body = null; }
   const { title, lang = 'es' } = body ?? {};
   if (typeof title !== 'string' || !title.trim()) {
     return NextResponse.json({ error: 'Title required' }, { status: 400 });
@@ -55,30 +109,35 @@ Reglas:
 Responde SOLO con un objeto JSON: {"variantA": "...", "variantB": "..."}`;
 
   try {
-    const task = await getMessagesTask({
-      taskType: 'youtube.ab-title-suggestions', userId: session.user.id, operationKey,
+    const task = await wait.run(() => getMessagesTask({
+      taskType: 'youtube.ab-title-suggestions', userId, operationKey,
       language: isEn ? 'en' : 'es', instructionsVersion: 'ab-titles-v1',
       outputSchema: { type: 'object', properties: { variantA: { type: 'string' }, variantB: { type: 'string' } }, additionalProperties: false },
-    });
-    const msg = await task.create({
-      max_tokens: 200,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    }));
+    // Once dispatched, keep creation and parsing in the original producer.
+    // A late result cannot replace the retired response or authorize a retry.
+    return await wait.run(async () => {
+      const msg = await task.create({
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }],
+      });
 
-    const text = msg.content[0]?.type === 'text' ? msg.content[0].text : '';
-    const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
+      const text = msg.content[0]?.type === 'text' ? msg.content[0].text : '';
+      const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
 
-    const parsed = JSON.parse(cleaned);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)
-      || (parsed.variantA !== undefined && typeof parsed.variantA !== 'string')
-      || (parsed.variantB !== undefined && typeof parsed.variantB !== 'string')) {
-      return NextResponse.json({ error: 'AI response parse error' }, { status: 500 });
-    }
-    return NextResponse.json({
-      variantA: parsed.variantA || title,
-      variantB: parsed.variantB || title,
+      const parsed = JSON.parse(cleaned);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)
+        || (parsed.variantA !== undefined && typeof parsed.variantA !== 'string')
+        || (parsed.variantB !== undefined && typeof parsed.variantB !== 'string')) {
+        return NextResponse.json({ error: 'AI response parse error' }, { status: 500 });
+      }
+      return NextResponse.json({
+        variantA: parsed.variantA || title,
+        variantB: parsed.variantB || title,
+      });
     });
   } catch {
+    wait.check();
     return NextResponse.json({ error: 'AI suggestions temporarily unavailable' }, { status: 503 });
   }
 }

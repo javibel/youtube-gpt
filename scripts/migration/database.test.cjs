@@ -56,6 +56,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  await require('./coach-plan-database.cjs')(prisma,results);
  await require('./coach-send-client-database.cjs')(prisma,results);
  await require('./coach-send-deadline-database.cjs')(prisma,results);
+ await require('./ab-suggest-deadline-database.cjs')(prisma,results);
  await require('./dashboard-onboarding-database.cjs')(prisma,results);
  await require('./onboarding-generation-database.cjs')(prisma,results);
  await require('./onboarding-generation-reload-database.cjs')(prisma,results);
