@@ -519,6 +519,7 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
  await require('./openai-bootstrap-control.cjs')({prefix,createRegistry,createControlStore,database,cfg,budget,stats,test});
  await require('./configuration-route-deadline-control.cjs')({prefix,registry,createControlStore,database,cfg,pool,test});
  await require('./configuration-panel-control.cjs')({prefix,registry,createControlStore,database,cfg,pool,test});
+ await require('./configuration-bootstrap-control.cjs')({prefix,registry,createControlStore,database,cfg,pool,test});
 })().catch(error=>{results.push({name:'setup or orchestration',status:'FAIL',error:error.message});}).finally(async()=>{
  try{if(migrated){
   const cleanup=await pool.connect();
