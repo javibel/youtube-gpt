@@ -5,7 +5,7 @@ import { createClientReadWait } from './client-read-wait';
 
 export interface AbVideo { videoId: string; title: string; thumbnail: string; publishedAt: string; views: number; likes: number }
 export interface AbTest {
-  id: string; videoId: string; thumbnail: string | null; originalTitle: string;
+  id: string; userId: string; videoId: string; thumbnail: string | null; originalTitle: string;
   variantA: string; variantB: string; status: string; hoursPerVariant: number;
   startedAt: string; switchedAt: string | null; completedAt: string | null;
   initialViews: number; switchViews: number | null; endViews: number | null;
@@ -26,16 +26,19 @@ function channel(value: unknown, owner: string) {
     && date(v.publishedAt) && number(v.views) && number(v.likes))) throw Error('Invalid videos');
   return { connected: true, videos: value.videos as AbVideo[] };
 }
-function tests(value: unknown, owner: string) {
-  if (!object(value) || value.userId !== owner || !Array.isArray(value.tests)
-    || !value.tests.every(v => object(v) && v.userId === owner && typeof v.id === 'string' && v.id.trim()
+export function decodeAbTest(v: unknown, owner: string): AbTest | null {
+  return object(v) && v.userId === owner && typeof v.id === 'string' && v.id.trim()
       && typeof v.videoId === 'string' && v.videoId.trim() && string(v.originalTitle)
       && string(v.variantA) && string(v.variantB) && ['variant_a', 'variant_b', 'completed', 'cancelled'].includes(v.status as string)
       && number(v.hoursPerVariant) && (v.hoursPerVariant as number) > 0 && date(v.startedAt)
       && nullable(v.thumbnail, string) && nullable(v.switchedAt, date) && nullable(v.completedAt, date)
       && number(v.initialViews) && nullable(v.switchViews, number) && nullable(v.endViews, number)
       && nullable(v.winner, x => ['A', 'B', 'tie'].includes(x as string))
-      && nullable(v.aiInsight, x => object(x) && string(x.es) && string(x.en)))) throw Error('Invalid tests identity or data');
+      && nullable(v.aiInsight, x => object(x) && string(x.es) && string(x.en)) ? v as unknown as AbTest : null;
+}
+function tests(value: unknown, owner: string) {
+  if (!object(value) || value.userId !== owner || !Array.isArray(value.tests)
+    || !value.tests.every(v => decodeAbTest(v, owner))) throw Error('Invalid tests identity or data');
   return value.tests as AbTest[];
 }
 

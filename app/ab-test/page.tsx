@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAbTestRead, type AbVideo as Video, type AbTest } from '@/lib/use-ab-test-read';
 import { useAbSuggestions } from '@/lib/use-ab-suggestions';
+import { useAbMutation } from '@/lib/use-ab-mutation';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
@@ -46,19 +47,27 @@ export default function AbTestPage() {
 
 function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; email: string; lang: Lang; isCurrent: () => boolean }) {
   const read = useAbTestRead(userId, email, lang);
-  const { videos, tests, connected: channelConnected } = read;
+  const { videos, connected: channelConnected } = read;
+  const mutations = useAbMutation(userId, email);
+  // Original acknowledgments can supply a missing row after remount. A newer
+  // terminal GET row wins over the original creation; GET never releases a send.
+  const acknowledged = new Map(mutations.confirmed.map(test => [test.id, test]));
+  const tests = read.tests.map(test => {
+    const ack = acknowledged.get(test.id); acknowledged.delete(test.id);
+    return ack?.status === 'cancelled' && ['variant_a', 'variant_b'].includes(test.status) ? ack : test;
+  }).concat([...acknowledged.values()]);
   const suggestions = useAbSuggestions(JSON.stringify([userId, email]));
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(() => suggestions.selection?.lang === lang ? suggestions.selection.video : null);
-  const [variantA, setVariantA] = useState('');
-  const [variantB, setVariantB] = useState('');
-  const [hours, setHours] = useState(48);
-  const [loading, setLoading] = useState(false);
+  const capturedCreate = mutations.mutation?.kind === 'create' && mutations.mutation.lang === lang ? mutations.mutation : null;
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(() => capturedCreate?.video ?? (suggestions.selection?.lang === lang ? suggestions.selection.video : null));
+  const [variantA, setVariantA] = useState(() => capturedCreate?.variantA ?? '');
+  const [variantB, setVariantB] = useState(() => capturedCreate?.variantB ?? '');
+  const [hours, setHours] = useState(() => capturedCreate?.hours ?? 48);
+  const loading = mutations.status === 'sending' && mutations.mutation?.kind === 'create';
   const [error, setError] = useState('');
-  const selection = useRef<object>(suggestions.selection?.token ?? {});
+  const selection = useRef<object>(capturedCreate?.token ?? suggestions.selection?.token ?? {});
   const selected = useRef(selectedVideo); selected.current = selectedVideo;
   const visibleSelection = selection.current;
   const applied = useRef<object | null>(null);
-  const createFlight = useRef(false);
   const suggesting = suggestions.status === 'sending';
   const loadingVideos = read.status === 'loading';
 
@@ -69,9 +78,17 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
     if (isCurrent() && original && suggestions.variants && original.lang === lang
       && selection.current === original.token && applied.current !== original.token) {
       applied.current = original.token;
+      selection.current = {};
       setVariantA(suggestions.variants.variantA); setVariantB(suggestions.variants.variantB);
     }
   }, [suggestions.selection, suggestions.variants, lang, isCurrent]);
+
+  useEffect(() => {
+    if (isCurrent() && mutations.received && capturedCreate && selection.current === capturedCreate.token) {
+      selection.current = {}; selected.current = null;
+      setSelectedVideo(null); setVariantA(''); setVariantB('');
+    }
+  }, [mutations.received, capturedCreate, lang, isCurrent]);
 
   const activeTests = tests.filter(t => t.status === 'variant_a' || t.status === 'variant_b');
   const pastTests = tests.filter(t => t.status === 'completed' || t.status === 'cancelled');
@@ -86,68 +103,16 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
   }
 
   async function createTest() {
-    if (!isCurrent() || read.status !== 'ready' || createFlight.current || !selectedVideo || selected.current !== selectedVideo || selection.current !== visibleSelection || !variantA.trim() || !variantB.trim()) return;
-    createFlight.current = true;
-    const originalSelection = selection.current;
-    setLoading(true);
+    if (!isCurrent() || read.status !== 'ready' || mutations.blocked || !selectedVideo || selected.current !== selectedVideo
+      || selection.current !== visibleSelection || !variantA.trim() || !variantB.trim() || variantA.trim() === variantB.trim()) return;
     setError('');
-    try {
-      const res = await fetch('/api/youtube/ab-test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoId: selectedVideo.videoId,
-          variantA: variantA.trim(),
-          variantB: variantB.trim(),
-          hoursPerVariant: hours,
-        }),
-      });
-      const data = await res.json();
-      if (!isCurrent()) return;
-      if (!res.ok) {
-        if (data.error === 'pro_required') {
-          setError(t('Necesitas el plan Pro.', 'You need the Pro plan.'));
-        } else if (data.error === 'youtube_not_connected') {
-          setError(t('Conecta tu canal de YouTube primero.', 'Connect your YouTube channel first.'));
-        } else if (data.error === 'youtube_reconnect_required') {
-          setError(t(
-            'Necesitas reconectar tu canal de YouTube para habilitar A/B testing. Ve a tu panel, desconecta el canal y vuelve a conectarlo.',
-            'You need to reconnect your YouTube channel to enable A/B testing. Go to your dashboard, disconnect and reconnect your channel.',
-          ));
-        } else if (data.error === 'active_test_exists') {
-          setError(t('Este vídeo ya tiene un test activo.', 'This video already has an active test.'));
-        } else if (data.error === 'max_active_tests') {
-          setError(t('Máximo 3 tests activos a la vez. Cancela o espera a que termine alguno.', 'Maximum 3 active tests at a time. Cancel or wait for one to finish.'));
-        } else {
-          setError(data.error || t('Error al crear el test', 'Error creating test'));
-        }
-        return;
-      }
-      read.updateTests(prev => [data.test, ...prev]);
-      if (selection.current === originalSelection) {
-        selection.current = {}; setSelectedVideo(null); setVariantA(''); setVariantB('');
-      }
-    } catch {
-      if (isCurrent()) setError(t('Error de conexion', 'Connection error'));
-    } finally {
-      createFlight.current = false;
-      setLoading(false);
-    }
+    await mutations.start({ kind: 'create', video: selectedVideo, variantA: variantA.trim(), variantB: variantB.trim(), hours, lang, token: selection.current });
   }
 
   async function cancelTest(testId: string) {
-    if (!isCurrent() || read.status !== 'ready') return;
-    try {
-      const response = await fetch('/api/youtube/ab-test', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ testId, action: 'cancel' }),
-      });
-      if (!response.ok) throw Error('Cancellation unavailable');
-      if (isCurrent()) read.updateTests(prev => prev.map(t => t.id === testId ? { ...t, status: 'cancelled' } : t));
-    } catch {
-      if (isCurrent()) setError(t('Error al cancelar', 'Error cancelling'));
-    }
+    if (!isCurrent() || read.status !== 'ready' || mutations.blocked) return;
+    const test = tests.find(test => test.id === testId && ['variant_a', 'variant_b'].includes(test.status));
+    if (test) { setError(''); await mutations.start({ kind: 'cancel', test, lang }); }
   }
 
   return (
@@ -173,6 +138,18 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
         </div>
 
         {/* Error */}
+        {mutations.mutation && ['sending', 'unconfirmed', 'storage-unavailable'].includes(mutations.status) && <p role="status">{mutations.mutation.kind === 'create'
+          ? t('Creación original: ', 'Original creation: ') + mutations.mutation.video.title
+          : t('Cancelación original: ', 'Original cancellation: ') + mutations.mutation.test.originalTitle} ({mutations.mutation.lang})</p>}
+        {mutations.status === 'sending' && mutations.mutation?.kind === 'cancel' && <p role="status">{t('Cancelando test...', 'Cancelling test...')}</p>}
+        {['unconfirmed', 'lost', 'storage-unavailable'].includes(mutations.status) && <p role="status">{mutations.received
+          ? t('Cambio recibido. La continuidad está bloqueada y no se enviará otra modificación.', 'Change received. Continuity is blocked and another mutation will not be sent.')
+          : t('El cambio del test no está confirmado. No se enviará otra modificación.', 'The test change is unconfirmed. Another mutation will not be sent.')}</p>}
+        {mutations.status === 'rejected' && <p role="alert">{mutations.error === 'pro_required' ? t('Necesitas el plan Pro.', 'You need the Pro plan.')
+          : mutations.error === 'youtube_not_connected' ? t('Conecta tu canal de YouTube primero.', 'Connect your YouTube channel first.')
+          : mutations.error === 'active_test_exists' ? t('Este vídeo ya tiene un test activo.', 'This video already has an active test.')
+          : mutations.error === 'max_active_tests' ? t('Máximo 3 tests activos a la vez.', 'Maximum 3 active tests at a time.')
+          : t('No se pudo modificar el test. Comprueba tu acceso y los datos.', 'The test could not be changed. Check your access and data.')}</p>}
         {suggestions.selection && ['sending', 'unconfirmed', 'storage-unavailable'].includes(suggestions.status) && <p role="status">{t('Petición original: ', 'Original request: ')}{suggestions.selection.video.title} ({suggestions.selection.lang})</p>}
         {read.status === 'error' && <div role="alert"><p>{t('No se pudieron cargar el canal y los tests. Reintenta la lectura.', 'Channel and tests could not be loaded. Retry the read.')}</p><button onClick={() => { if (isCurrent()) void read.retry(); }}>{t('Reintentar lectura', 'Retry read')}</button></div>}
         {['unconfirmed', 'lost', 'storage-unavailable'].includes(suggestions.status) && <p role="status">{suggestions.variants
@@ -191,7 +168,7 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
             <h2 className="font-display font-bold text-lg text-white mb-4">{t('Tests activos', 'Active tests')} <span className="text-sm font-mono-jb" style={{ color: 'var(--yv-text-3)' }}>({activeTests.length}/3)</span></h2>
             <div className="space-y-4">
               {activeTests.map(at => (
-                <ActiveTestCard key={at.id} test={at} lang={lang} t={t} onCancel={cancelTest} />
+                <ActiveTestCard key={at.id} test={at} lang={lang} t={t} onCancel={cancelTest} blocked={mutations.blocked} />
               ))}
             </div>
           </div>
@@ -301,7 +278,7 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
                         {[24, 48, 72].map(h => (
                           <button
                             key={h}
-                            onClick={() => { if (isCurrent()) setHours(h); }}
+                            onClick={() => { if (isCurrent() && selection.current === visibleSelection) { selection.current = {}; setHours(h); } }}
                             className="px-4 py-2 rounded-lg border text-sm font-mono-jb transition"
                             style={{
                               borderColor: hours === h ? 'var(--yv-brand)' : 'rgba(255,255,255,0.08)',
@@ -321,7 +298,7 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
                     {/* Start button */}
                     <button
                       onClick={createTest}
-                      disabled={loading || !variantA.trim() || !variantB.trim() || variantA.trim() === variantB.trim()}
+                      disabled={mutations.blocked || !variantA.trim() || !variantB.trim() || variantA.trim() === variantB.trim()}
                       className="btn-offset inline-flex items-center gap-2 px-8 py-3 text-sm font-display disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
@@ -395,11 +372,13 @@ function ActiveTestCard({
   lang,
   t,
   onCancel,
+  blocked,
 }: {
   test: AbTest;
   lang: Lang;
   t: (es: string, en: string) => string;
   onCancel: (id: string) => void;
+  blocked: boolean;
 }) {
   const isA = test.status === 'variant_a';
   const startTime = new Date(test.startedAt);
@@ -471,6 +450,7 @@ function ActiveTestCard({
         <div className="flex justify-end mt-3">
           <button
             onClick={() => onCancel(test.id)}
+            disabled={blocked}
             className="font-mono-jb text-[13px] hover:text-red-400 transition"
             style={{ color: 'var(--yv-text-4)' }}
           >

@@ -7,8 +7,7 @@ import { createAbTest } from '@/lib/ab-test';
 // ── Helpers ────────────────────────────────────────────────────────────────
 // fetchVideoSnippet/updateVideoTitle usados por PATCH (cancel/apply_winner)
 // viven en lib/ab-test.ts para POST; PATCH los necesita también, así que se
-// mantiene una copia mínima local hasta que PATCH se extraiga (fuera de
-// alcance de esta spec — solo tocamos POST).
+// mantiene una copia mínima local hasta que PATCH se extraiga.
 
 async function fetchVideoSnippet(token: string, videoId: string) {
   const res = await fetch(
@@ -72,12 +71,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const userId = session.user.id;
   const body = await req.json();
-  const result = await createAbTest(session.user.id, body);
+  const result = await createAbTest(userId, body);
   if (!result.ok) {
     return NextResponse.json({ error: result.error, limit: result.limit }, { status: result.status });
   }
-  return NextResponse.json({ test: result.test }, { status: 201 });
+  return NextResponse.json({ test: result.test }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
 }
 
 // ── PATCH — cancel test / apply winner ─────────────────────────────────────
@@ -88,35 +88,37 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const userId = session.user.id;
   const { testId, action } = await req.json();
   if (!testId || !action) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
   const test = await prisma.abTest.findFirst({
-    where: { id: testId, userId: session.user.id },
+    where: { id: testId, userId },
   });
   if (!test) {
     return NextResponse.json({ error: 'Test not found' }, { status: 404 });
   }
 
-  const token = await getAccessToken(session.user.id);
+  const token = await getAccessToken(userId);
 
   if (action === 'cancel') {
     // Restore original title
-    if (token && (test.status === 'variant_a' || test.status === 'variant_b')) {
+    if (test.status === 'variant_a' || test.status === 'variant_b') {
+      if (!token) return NextResponse.json({ error: 'ab_mutation_unconfirmed' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
       const video = await fetchVideoSnippet(token, test.videoId);
-      if (video) {
-        await updateVideoTitle(token, test.videoId, test.originalTitle, video.snippet.categoryId);
-      }
+      if (!video) return NextResponse.json({ error: 'ab_mutation_unconfirmed' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+      const restored = await updateVideoTitle(token, test.videoId, test.originalTitle, video.snippet.categoryId);
+      if (!restored.ok) return NextResponse.json({ error: 'ab_mutation_unconfirmed' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    await prisma.abTest.update({
+    const cancelled = await prisma.abTest.update({
       where: { id: testId },
       data: { status: 'cancelled', completedAt: new Date() },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, userId, test: cancelled }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   if (action === 'apply_winner' && test.status === 'completed' && test.winner && token) {
