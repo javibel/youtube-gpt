@@ -107,7 +107,7 @@ export default function CompetitorTrackingPage() {
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState('');
   const [errorUpgrade, setErrorUpgrade] = useState(false);
-  const [deleteStates, setDeleteStates] = useState<Record<string, 'pending' | 'unconfirmed' | 'rejected'>>({});
+  const [deleteStates, setDeleteStates] = useState<Record<string, 'pending' | 'unconfirmed' | 'rejected' | 'confirmed'>>({});
   const owner = { userId: session?.user?.id ?? '', email: session?.user?.email ?? '' };
   const ownerKey = JSON.stringify([status, owner.userId, owner.email]);
   const currentOwner = useRef(ownerKey); currentOwner.current = ownerKey;
@@ -125,7 +125,7 @@ export default function CompetitorTrackingPage() {
   function applyDeletion(capturedOwner: string, id: string, outcome: DeleteOutcome) {
     if (!mounted.current || currentOwner.current !== capturedOwner) return;
     if (outcome.status === 'confirmed') setCompetitors(prev => prev.filter(c => c.id !== id));
-    setDeleteStates(prev => ({ ...prev, [id]: outcome.status === 'confirmed' ? 'rejected' : outcome.status }));
+    setDeleteStates(prev => ({ ...prev, [id]: outcome.status }));
   }
   useEffect(() => {
     setCompetitors([]); setDeleteStates({});
@@ -135,7 +135,7 @@ export default function CompetitorTrackingPage() {
     if (status !== 'authenticated') return;
     const capturedOwner = ownerKey;
     for (const attempt of retainedCompetitorDeletions<Competitor>(owner)) {
-      setDeleteStates(prev => ({ ...prev, [attempt.row.id]: attempt.outcome?.status === 'confirmed' ? 'rejected' : attempt.outcome?.status ?? attempt.waitOutcome?.status ?? 'pending' }));
+      setDeleteStates(prev => ({ ...prev, [attempt.row.id]: attempt.outcome?.status ?? attempt.waitOutcome?.status ?? 'pending' }));
       void attempt.waiter.then(result => { if (attempt.outcome?.status !== 'confirmed') applyDeletion(capturedOwner, attempt.row.id, result); });
       void attempt.original.then(result => applyDeletion(capturedOwner, attempt.row.id, result));
     }
