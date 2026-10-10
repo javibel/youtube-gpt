@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useLang } from './LangProvider';
-import { useChatHistory, type ChatMessage } from '@/lib/use-chat-history';
+import { useChatHistory } from '@/lib/use-chat-history';
+import { useChatSend } from '@/lib/use-chat-send';
 
 type Lang = 'es' | 'en';
 
@@ -13,21 +14,23 @@ export default function ChatWidget() {
   const { data: session, status } = useSession();
   const lang = useLang();
   if (status !== 'authenticated' || !session?.user?.email) return null;
-  return <ChatConversation key={JSON.stringify([session.user.id, session.user.email])} lang={lang} />;
+  const account = JSON.stringify([session.user.id, session.user.email]);
+  return <ChatConversation key={account} account={account} lang={lang} />;
 }
 
-function ChatConversation({ lang }: { lang: Lang }) {
+function ChatConversation({ lang, account }: { lang: Lang; account: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const history = useChatHistory(isOpen);
-  const { messages, setMessages, historyLoaded, historyLoading, historyError } = history;
+  const { historyLoaded, historyLoading, historyError } = history;
+  const send = useChatSend(account);
+  const messages = send.messages ?? history.messages;
+  const isLoading = send.status === 'sending';
+  const remaining = send.remaining;
+  const [consulted, setConsulted] = useState(false);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [remaining, setRemaining] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastSentAt, setLastSentAt] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const sending = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,11 +44,11 @@ function ChatConversation({ lang }: { lang: Lang }) {
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || !history.canSend() || sending.current || remaining === 0) return;
+    if (!text || !history.canSend() || send.blocked || remaining === 0) return;
 
     // Throttle client-side (3s)
     const now = Date.now();
-    if (now - lastSentAt < 3000) {
+    if (now - send.lastSentAt < 3000) {
       setError(t(lang, 'Espera un momento antes de enviar otro mensaje.', 'Wait a moment before sending another message.'));
       return;
     }
@@ -55,44 +58,12 @@ function ChatConversation({ lang }: { lang: Lang }) {
       return;
     }
 
+    const original = send.start(text, lang, history.messages);
+    if (!original) return;
     setError(null);
     setInput('');
-    setLastSentAt(now);
-
-    const newUserMsg: ChatMessage = { role: 'user', content: text };
-    const prevMessages = messages;
-    const updatedMessages = [...prevMessages, newUserMsg];
-    setMessages(updatedMessages);
-    setIsLoading(true);
-    sending.current = true;
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, lang }),
-      });
-
-      if (!history.isCurrent()) return;
-      const data = await res.json();
-      if (!history.isCurrent()) return;
-
-      if (!res.ok) {
-        setError(data.error || t(lang, 'Error al enviar el mensaje.', 'Error sending message.'));
-        setMessages(prevMessages);
-        if (data.limitReached) setRemaining(0);
-      } else {
-        const assistantMsg: ChatMessage = { role: 'assistant', content: data.reply };
-        setMessages([...updatedMessages, assistantMsg]);
-        if (typeof data.remaining === 'number') setRemaining(data.remaining);
-      }
-    } catch {
-      if (!history.isCurrent()) return;
-      setError(t(lang, 'Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'));
-      setMessages(prevMessages);
-    } finally {
-      if (history.isCurrent()) { sending.current = false; setIsLoading(false); }
-    }
+    setConsulted(false);
+    await original;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -102,7 +73,8 @@ function ChatConversation({ lang }: { lang: Lang }) {
     }
   };
 
-  const isDisabled = !historyLoaded || isLoading || remaining === 0;
+  const isDisabled = !historyLoaded || send.blocked || remaining === 0;
+  const unconfirmed = ['unconfirmed', 'lost', 'storage-unavailable'].includes(send.status);
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
@@ -163,6 +135,22 @@ function ChatConversation({ lang }: { lang: Lang }) {
                 </div>
               </div>
             ))}
+            {unconfirmed && <div role="alert" className="text-[13px] text-yellow-300">
+              <p>{send.status === 'storage-unavailable'
+                ? t(lang, 'No se puede habilitar un nuevo envío en esta sesión. Consulta el historial.', 'A new send cannot be enabled in this session. Check the history.')
+                : t(lang, 'El envío no está confirmado. No lo vuelvas a enviar; podría haberse procesado.', 'The send is unconfirmed. Do not resend it; it may have been processed.')}</p>
+              <button disabled={historyLoading} className="mt-2 underline" onClick={async () => {
+                setConsulted(false);
+                const confirmed = await history.refreshHistory();
+                if (history.isCurrent() && confirmed) setConsulted(true);
+              }}>{t(lang, 'Consultar historial', 'Check history')}</button>
+              {consulted && <details className="mt-2" open>
+                <summary>{t(lang, 'Historial consultado; el envío sigue sin confirmar.', 'History checked; the send is still unconfirmed.')}</summary>
+                {history.messages.length === 0
+                  ? <p>{t(lang, 'El historial consultado está vacío.', 'The checked history is empty.')}</p>
+                  : history.messages.map((message, i) => <p key={i}>{message.content}</p>)}
+              </details>}
+            </div>}
             {isLoading && (
               <div className="flex justify-start">
                 <div
@@ -181,12 +169,12 @@ function ChatConversation({ lang }: { lang: Lang }) {
           </div>
 
           {/* Error */}
-          {error && (
+          {(error || send.error) && (
             <div
               className="px-4 py-2 text-[13px] text-red-400 flex-shrink-0"
               style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}
             >
-              {error}
+              {error || send.error}
             </div>
           )}
 

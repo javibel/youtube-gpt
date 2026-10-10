@@ -24,7 +24,7 @@ function decodeHistory(data: unknown): ChatMessage[] {
 export function useChatHistory(isOpen: boolean) {
   const scope = useMemo(() => ({
     mounted: true, open: false, active: false, confirmed: false, sequence: 0,
-    flight: null as Promise<void> | null,
+    flight: null as Promise<boolean> | null,
     waiting: null as ReturnType<typeof createClientReadWait> | null,
   }), []);
   scope.open = isOpen;
@@ -34,8 +34,8 @@ export function useChatHistory(isOpen: boolean) {
   const [confirmed, setConfirmed] = useState(false);
   const current = useCallback(() => scope.mounted && scope.active && scope.open, [scope]);
 
-  const read = useCallback(async () => {
-    if (!current() || scope.confirmed) return;
+  const read = useCallback(async (force = false) => {
+    if (!current() || (scope.confirmed && !force)) return false;
     if (scope.flight) return scope.flight;
     const sequence = ++scope.sequence;
     const waiting = createClientReadWait();
@@ -45,15 +45,17 @@ export function useChatHistory(isOpen: boolean) {
     const flight = (async () => {
       try {
         const response = await waiting.wait(fetch('/api/chat', { cache: 'no-store', signal: waiting.signal }));
-        if (!current() || sequence !== scope.sequence) return;
+        if (!current() || sequence !== scope.sequence) return false;
         if (!response.ok) throw new Error('Unconfirmed history');
         const rows = decodeHistory(await waiting.wait(response.json()));
-        if (!current() || sequence !== scope.sequence) return;
+        if (!current() || sequence !== scope.sequence) return false;
         updateMessages(rows);
         scope.confirmed = true;
         setConfirmed(true);
+        return true;
       } catch {
         if (current() && sequence === scope.sequence) setError(true);
+        return false;
       } finally {
         waiting.finish();
         if (scope.waiting === waiting) scope.waiting = null;
@@ -61,7 +63,7 @@ export function useChatHistory(isOpen: boolean) {
       }
     })();
     scope.flight = flight;
-    try { await flight; } finally { if (scope.flight === flight) scope.flight = null; }
+    try { return await flight; } finally { if (scope.flight === flight) scope.flight = null; }
   }, [scope, current]);
 
   const retire = useCallback(() => {
@@ -98,8 +100,8 @@ export function useChatHistory(isOpen: boolean) {
 
   return {
     messages, setMessages, historyLoaded: confirmed,
-    historyLoading: isOpen && !confirmed && (loading || !error), historyError: error,
-    retryHistory: read, retireHistory: retire,
+    historyLoading: isOpen && (loading || (!confirmed && !error)), historyError: error,
+    retryHistory: () => read(), refreshHistory: () => read(true), retireHistory: retire,
     isCurrent: () => scope.mounted,
     canSend: () => current() && scope.confirmed,
   };
