@@ -24,7 +24,7 @@ function harness(options={}){
    if(options.dataEdit)data=options.dataEdit(data,prefix);return data;
   })}));
  }});
- const headers=new Headers({'Idempotency-Key':'original-intel-key'}),request={url:'https://example.invalid/api/youtube/competitor-intel?lang=en',headers,signal:controller.signal};
+ const headers=new Headers({'Idempotency-Key':'original-intel-key'}),request={url:options.url??'https://example.invalid/api/youtube/competitor-intel?lang=en',headers,signal:controller.signal};
  if(options.preAborted)controller.abort();const original=route.GET(request);
  return{state,calls,plans,queries,identities,transports,timers,gates,entered,controller,request,original,runtime,owned,advance(ms,fire=true){now+=ms;if(fire)for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
 }

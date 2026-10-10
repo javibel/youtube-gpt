@@ -14,18 +14,11 @@ import { beginCompetitorCreation, competitorCreationBlocked, mergeCompetitorCrea
 import type { CreationAttempt, CreationOutcome } from '@/lib/competitor-create-client';
 import { beginOutlierRead } from '@/lib/outlier-read-client';
 import type { OutlierRead, OutlierOutcome } from '@/lib/outlier-read-client';
+import { beginCompetitorIntel, intelRetryAllowed } from '@/lib/competitor-intel-client';
+import type { IntelRead, IntelOutcome } from '@/lib/competitor-intel-client';
 
 type Lang = 'es' | 'en';
 
-interface TrendingVideo {
-  videoId: string; title: string; thumbnail: string;
-  channelName: string; channelId: string; publishedAt: string;
-  views: number; likes: number; vph: number; ageHours: number;
-}
-interface MissedOpportunity {
-  topic: string; coveredBy: string[];
-  totalViews: number; suggestion: string;
-}
 type IntelTab = 'trending' | 'new' | 'opportunities';
 
 function fmtNum(n: number): string {
@@ -96,10 +89,15 @@ export default function CompetitorTrackingPage() {
   const outlierMap = outlierState.scope === outlierScope ? outlierState.values : {};
   const [expandedOutliers, setExpandedOutliers] = useState<string | null>(null);
   const [intelTab, setIntelTab] = useState<IntelTab>('trending');
-  const [trending, setTrending] = useState<TrendingVideo[]>([]);
-  const [newUploads, setNewUploads] = useState<TrendingVideo[]>([]);
-  const [opportunities, setOpportunities] = useState<MissedOpportunity[]>([]);
-  const [intelLoading, setIntelLoading] = useState(false);
+  const intelScope = JSON.stringify([ownerKey, lang, channels]);
+  const currentIntel = useRef<{ scope: string; read: IntelRead | null }>({ scope: intelScope, read: null });
+  if (currentIntel.current.scope !== intelScope) currentIntel.current = { scope: intelScope, read: null };
+  type IntelView = { read: IntelRead; outcome: IntelOutcome | { status: 'pending' } };
+  const [intelState, setIntelState] = useState<{ scope: string; value: IntelView | null }>({ scope: intelScope, value: null });
+  const intel = intelState.scope === intelScope ? intelState.value : null;
+  const intelData = intel?.outcome.status === 'ready' ? intel.outcome.data : null;
+  const trending = intelData?.trending ?? [], newUploads = intelData?.newUploads ?? [], opportunities = intelData?.opportunities ?? [];
+  const intelLoading = !intel || intel.outcome.status === 'pending';
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -153,7 +151,7 @@ export default function CompetitorTrackingPage() {
   useEffect(() => {
     setCompetitors([]); setDeleteStates({});
     setAdding(false); setCreationUnconfirmed(false); setError(''); setErrorUpgrade(false); setUrlInput('');
-    setExpandedOutliers(null); setTrending([]); setNewUploads([]); setOpportunities([]); setIntelLoading(false);
+    setExpandedOutliers(null);
     setLoading(status === 'authenticated');
     setListOwner(ownerKey); setListUnavailable(false);
     if (status !== 'authenticated' || !owner.userId) { setLoading(false); setListUnavailable(status === 'authenticated'); return; }
@@ -200,23 +198,27 @@ export default function CompetitorTrackingPage() {
     return () => { active = false; };
   }, [outlierScope]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch competitor intel
+  function observeIntel(alive: () => boolean = () => true, retry?: IntelRead) {
+    const capturedOwner = ownerKey, capturedScope = intelScope;
+    if (status !== 'authenticated' || !owner.userId || !channels.length || listOwner !== capturedOwner || !mounted.current
+      || currentOwner.current !== capturedOwner || currentIntel.current.scope !== capturedScope) return;
+    if (retry && (currentIntel.current.read !== retry || !intelRetryAllowed(retry))) return;
+    const read = beginCompetitorIntel(owner, { language: lang, channelIds: channels }, retry);
+    currentIntel.current.read = read;
+    const apply = (outcome: IntelView['outcome']) => {
+      if (!alive() || !mounted.current || currentOwner.current !== capturedOwner || currentIntel.current.scope !== capturedScope
+        || currentIntel.current.read !== read) return;
+      setIntelState({ scope: capturedScope, value: { read, outcome } });
+    };
+    apply(read.outcome ?? read.waitOutcome ?? { status: 'pending' });
+    void read.original.then(apply);
+    void read.waiter.then(outcome => { if (!read.outcome) apply(outcome); });
+  }
   useEffect(() => {
-    if (competitors.length === 0) return;
-    const capturedOwner = ownerKey;
-    setIntelLoading(true);
-    fetch(`/api/youtube/competitor-intel?lang=${lang}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-          if (data && mounted.current && currentOwner.current === capturedOwner) {
-          setTrending(data.trending || []);
-          setNewUploads(data.newUploads || []);
-          setOpportunities(data.opportunities || []);
-        }
-      })
-      .catch(() => {})
-      .finally(() => { if (mounted.current && currentOwner.current === capturedOwner) setIntelLoading(false); });
-  }, [competitors.length, lang, ownerKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    let active = true;
+    observeIntel(() => active);
+    return () => { active = false; };
+  }, [intelScope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function addCompetitor() {
     const capturedOwner = ownerKey;
@@ -486,7 +488,7 @@ export default function CompetitorTrackingPage() {
         </div>
 
         {/* Competitor Intelligence v2 */}
-        {competitors.length > 0 && (trending.length > 0 || newUploads.length > 0 || opportunities.length > 0 || intelLoading) && (
+        {channels.length > 0 && (
           <div className="mt-10 space-y-5">
             <div className="flex items-center justify-between">
               <div>
@@ -497,7 +499,31 @@ export default function CompetitorTrackingPage() {
                   {t('¿Qué hacen tus competidores?', 'What are your competitors doing?')}
                 </h2>
               </div>
+              <button type="button" aria-label={t('Actualizar inteligencia', 'Refresh intelligence')}
+                disabled={!intel || !intelRetryAllowed(intel.read)} onClick={() => { if (intel) observeIntel(() => true, intel.read); }}
+                className="btn-offset px-4 py-2 text-sm disabled:opacity-50">{t('Actualizar', 'Refresh')}</button>
             </div>
+
+            {intel?.outcome.status === 'unconfirmed' && <p role="status" className="text-sm text-amber-300">
+              {t('El análisis no está confirmado. Conservamos la solicitud original; no se repetirá automáticamente.', 'The analysis is unconfirmed. The original request is retained and will not be repeated automatically.')}
+            </p>}
+            {intel?.outcome.status === 'deferred' && <p role="status" className="text-sm text-amber-300">
+              {t('El análisis anterior ha terminado. Pulsa Actualizar para analizar esta selección.', 'The previous analysis has finished. Press Refresh to analyze this selection.')}
+            </p>}
+            {intel?.outcome.status === 'rejected' && <p role="status" className="text-sm text-amber-300">
+              {intel.outcome.error === 'pro_required' ? t('La inteligencia competitiva requiere el plan Pro.', 'Competitive intelligence requires the Pro plan.')
+                : intel.outcome.error === 'selection_changed' ? t('La selección de competidores ha cambiado. Recarga la lista antes de actualizar el análisis.', 'The competitor selection changed. Reload the list before refreshing the analysis.')
+                : t('No se pudo iniciar el análisis de competidores.', 'The competitor analysis could not be started.')}
+            </p>}
+            {intel?.outcome.status === 'rejected' && intel.outcome.error === 'selection_changed' && <button type="button"
+              onClick={readCompetitors} disabled={currentRead.current.entry?.pending} className="btn-offset px-4 py-2 text-sm disabled:opacity-50">
+              {t('Recargar selección', 'Reload selection')}</button>}
+            {intelData?.collectionStatus === 'partial' && <p role="status" className="text-sm text-amber-300">
+              {t('Cobertura parcial: algunos canales no están disponibles. Los resultados solo incluyen los canales consultados correctamente.', 'Partial coverage: some channels are unavailable. Results only include successfully queried channels.')}
+            </p>}
+            {intelData && intelData.analyzedChannelIds.length < intelData.channelIds.length && <p className="text-sm text-amber-300">
+              {t('Este análisis incluye los primeros 10 canales de la selección.', 'This analysis includes the first 10 channels in the selection.')}
+            </p>}
 
             {/* Intel tabs */}
             <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line)' }}>
@@ -605,10 +631,13 @@ export default function CompetitorTrackingPage() {
               </div>
             )}
 
+            {intelData && intelTab === 'trending' && trending.length === 0 && <div className="yv-card p-8 text-center">
+              <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('No se encontraron vídeos trending en los canales consultados.', 'No trending videos were found in the queried channels.')}</p>
+            </div>}
             {/* Empty new uploads */}
-            {!intelLoading && intelTab === 'new' && newUploads.length === 0 && (
+            {intelData && intelTab === 'new' && newUploads.length === 0 && (
               <div className="yv-card p-8 text-center">
-                <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Ningún competidor ha subido vídeos en las últimas 48 horas.', 'No competitors uploaded videos in the last 48 hours.')}</p>
+                <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('No se encontraron vídeos de las últimas 48 horas en los canales consultados.', 'No videos from the last 48 hours were found in the queried channels.')}</p>
               </div>
             )}
 
@@ -659,9 +688,13 @@ export default function CompetitorTrackingPage() {
             )}
 
             {/* Empty opportunities */}
-            {!intelLoading && intelTab === 'opportunities' && opportunities.length === 0 && (
+            {intelData && intelTab === 'opportunities' && opportunities.length === 0 && (
               <div className="yv-card p-8 text-center">
-                <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Conecta tu canal YouTube para descubrir oportunidades perdidas.', 'Connect your YouTube channel to discover missed opportunities.')}</p>
+                <p role="status" className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{intelData.opportunitiesStatus === 'unavailable'
+                  ? t('Las oportunidades no están disponibles. La generación no se repetirá desde esta lectura.', 'Opportunities are unavailable. Generation will not be repeated from this read.')
+                  : intelData.opportunitiesStatus === 'not_applicable'
+                    ? t('No hay suficientes vídeos para analizar oportunidades.', 'There are not enough videos to analyze opportunities.')
+                    : t('No se encontraron oportunidades en este análisis.', 'No opportunities were found in this analysis.')}</p>
               </div>
             )}
           </div>

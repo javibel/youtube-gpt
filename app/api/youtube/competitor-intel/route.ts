@@ -45,7 +45,9 @@ export async function GET(request: Request) {
   const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw unavailable(); };
   const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    const language = new URL(request.url).searchParams.get('lang') === 'en' ? 'en' : 'es';
+    const url = new URL(request.url), language = url.searchParams.get('lang') === 'en' ? 'en' : 'es';
+    const selectedText = url.searchParams.get('channelIds');
+    const selectedChannels = selectedText === null ? null : selectedText.split(',').sort();
     const operationKey = request.headers.get('idempotency-key') ?? undefined;
     const original = Promise.resolve().then(async () => {
       check(); const session = await auth(); check();
@@ -53,6 +55,8 @@ export async function GET(request: Request) {
       const userId = session.user.id;
       const plan = await getUserPlan(userId); check();
       if (!isPaid(plan)) return reply({ error: 'pro_required' }, 403);
+      if (selectedChannels && (!selectedChannels.length || selectedChannels.some(c => !identifier(c)) || new Set(selectedChannels).size !== selectedChannels.length
+        || url.searchParams.getAll('channelIds').length !== 1)) return reply({ error: 'invalid_selection' }, 400);
       if (!YT_API_KEY) return reply({ error: 'no_api_key' }, 503);
 
       const rows = await prisma.trackedCompetitor.findMany({ where: { userId }, orderBy: { addedAt: 'asc' },
@@ -62,6 +66,7 @@ export async function GET(request: Request) {
       // Copy the original owner selection before any external transport can wait.
       const competitors = rows.map(c => ({ channelId: c.channelId, channelName: c.channelName }));
       const channelIds = competitors.map(c => c.channelId).sort();
+      if (selectedChannels && JSON.stringify(selectedChannels) !== JSON.stringify(channelIds)) return reply({ error: 'selection_changed' }, 409);
       const analyzedChannelIds = competitors.slice(0, 10).map(c => c.channelId);
       const unavailableChannelIds: string[] = [], allVideos: TrendingVideo[] = [];
       let completedChannels = 0;

@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),{harness,deferred,flush,reply}=require('./chat-widget-harness.cjs');
 const row=(id='selected')=>({id,channelId:'UC_synthetic_'+id,channelName:'Synthetic '+id,channelThumb:null,subscribers:12,totalViews:100,videoCount:2,addedAt:'2026-10-01T00:00:00.000Z',snapshots:[],growth:null});
-const defaults=r=>r.url==='/api/youtube/competitors'?reply({userId:r.owner,competitors:[row()]}):reply({outliers:[],trending:[],newUploads:[],opportunities:[]});
+const defaults=r=>r.url==='/api/youtube/competitors'?reply({userId:r.owner,competitors:[row()]}):r.url.startsWith('/api/youtube/competitor-intel?')?reply(require('./competitor-intel-fixture.cjs').emptyIntel(r)):reply({outliers:[]});
 const create=options=>{const h=harness({competitors:true,...options});h.state.send=defaults;return h;};
 const ready=async h=>{h.view();await flush();h.view();await flush();h.view();};
 const buttons=h=>h.nodes().filter(n=>n.type==='button'&&['Dejar de seguir','Untrack'].includes(n.props.title));
