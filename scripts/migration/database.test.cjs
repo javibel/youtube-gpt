@@ -63,6 +63,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await require('./calendar-mutation-client-database.cjs')(prisma,results);
   await require('./calendar-http-write-database.cjs')(prisma,results);
   await require('./calendar-suggest-deadline-database.cjs')(prisma,results);
+  await require('./predictor-deadline-database.cjs')(prisma,results);
  const email='contract-'+randomUUID()+'@example.invalid';
  const user=await prisma.user.create({data:{email,name:'Synthetic contract test'}});
  try {
