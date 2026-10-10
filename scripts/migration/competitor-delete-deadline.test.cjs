@@ -13,7 +13,7 @@ function harness(options={}){
   let result;try{result=await fn(tx);}catch(e){Object.assign(state,snapshot);throw e;}return step(phase+'Commit',()=>result);}};
  const globals={performance:{now:()=>now},setTimeout(fn,ms){const id=++serial;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id)};
  const helper=load('lib/competitor-deletion.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma}},globals);
- const route=load('app/api/youtube/competitors/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:()=>step('auth',()=>state.auth)},'@/lib/prisma':{prisma},'@/lib/plans':{},'@/lib/competitor-deletion':helper},globals);
+ const route=load('app/api/youtube/competitors/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:()=>step('auth',()=>state.auth)},'@/lib/prisma':{prisma},'@/lib/plans':{},'@/lib/competitor-creation':{},'@/lib/competitor-deletion':helper},globals);
  const request=new Request('https://example.invalid/api/youtube/competitors',{method:'DELETE',body:'{}',signal:controller.signal});request.json=()=>step('body',()=>state.body);if(options.preAborted)controller.abort();
  const original=route.DELETE(request);
  return{state,calls,captures,timers,gates,entered,controller,original,advance(ms,fire=true){now+=ms;if(fire)for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};

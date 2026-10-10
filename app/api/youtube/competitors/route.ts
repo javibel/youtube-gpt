@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getUserPlan, getLimits } from '@/lib/plans';
+import { createTrackedCompetitor } from '@/lib/competitor-creation';
 import { deleteTrackedCompetitor } from '@/lib/competitor-deletion';
 
 export const maxDuration = 60;
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
-const YT_BASE = 'https://www.googleapis.com/youtube/v3';
+
 
 // GET: list tracked competitors with latest snapshots
 export async function GET(request?: Request) {
@@ -94,126 +94,33 @@ export async function GET(request?: Request) {
 
 // POST: add a competitor to track
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  // Free incluye 1 competidor como gancho (decision Javier 26/08/2026):
-  // no hay puerta de pago, solo el limite por plan.
-  const plan = await getUserPlan(session.user.id);
-  const maxCompetitors = getLimits(plan).competitors;
-  const count = await prisma.trackedCompetitor.count({
-    where: { userId: session.user.id },
-  });
-  if (count >= maxCompetitors) {
-    return NextResponse.json({ error: 'limit_reached', max: maxCompetitors, plan }, { status: 400 });
-  }
-
-  const body = await request.json();
-  const url: string = body.url || '';
-
-  // Extract channel identifier from URL
-  let channelId: string | null = null;
-  let handle: string | null = null;
-
-  const idMatch = url.match(/youtube\.com\/channel\/(UC[\w-]+)/);
-  const handleMatch = url.match(/youtube\.com\/@([\w.-]+)/);
-  const customMatch = url.match(/youtube\.com\/c\/([\w.-]+)/);
-
-  if (idMatch) {
-    channelId = idMatch[1];
-  } else if (handleMatch) {
-    handle = handleMatch[1];
-  } else if (customMatch) {
-    handle = customMatch[1];
-  } else if (url.startsWith('UC') && url.length >= 20) {
-    channelId = url;
-  } else if (url.startsWith('@')) {
-    handle = url.slice(1);
-  } else {
-    return NextResponse.json({ error: 'invalid_url' }, { status: 400 });
-  }
-
-  if (!YT_API_KEY) {
-    return NextResponse.json({ error: 'api_key_missing' }, { status: 500 });
-  }
-
+  const deadline = performance.now() + 55_000;
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(new Error('Creation unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Creation unconfirmed'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    // Resolve handle to channel ID if needed
-    if (!channelId && handle) {
-      const searchRes = await fetch(
-        `${YT_BASE}/search?part=snippet&type=channel&q=${encodeURIComponent(handle)}&maxResults=1&key=${YT_API_KEY}`
-      );
-      const searchData = await searchRes.json();
-      channelId = searchData.items?.[0]?.snippet?.channelId || null;
-      if (!channelId) {
-        return NextResponse.json({ error: 'channel_not_found' }, { status: 404 });
-      }
-    }
-
-    // Check not already tracked
-    const existing = await prisma.trackedCompetitor.findUnique({
-      where: { userId_channelId: { userId: session.user.id, channelId: channelId! } },
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id) return reply({ error: 'unauthorized' }, 401);
+      const userId = session.user.id;
+      let body;
+      try { body = await request.json(); } catch { check(); return reply({ error: 'invalid_url' }, 400); }
+      check();
+      const url = body?.url;
+      const result = await createTrackedCompetitor(userId, url, YT_API_KEY, check);
+      check();
+      return result.ok ? reply(result) : reply(result, result.status);
     });
-    if (existing) {
-      return NextResponse.json({ error: 'already_tracked' }, { status: 409 });
-    }
-
-    // Fetch channel info
-    const chRes = await fetch(
-      `${YT_BASE}/channels?part=snippet,statistics&id=${channelId}&key=${YT_API_KEY}`
-    );
-    const chData = await chRes.json();
-    const ch = chData.items?.[0];
-    if (!ch) {
-      return NextResponse.json({ error: 'channel_not_found' }, { status: 404 });
-    }
-
-    const subs = parseInt(ch.statistics.subscriberCount || '0', 10);
-    const views = BigInt(ch.statistics.viewCount || '0');
-    const vids = parseInt(ch.statistics.videoCount || '0', 10);
-
-    const competitor = await prisma.trackedCompetitor.create({
-      data: {
-        userId: session.user.id,
-        channelId: channelId!,
-        channelName: ch.snippet.title,
-        channelThumb: ch.snippet.thumbnails?.default?.url || null,
-        subscribers: subs,
-        totalViews: views,
-        videoCount: vids,
-      },
-    });
-
-    // Create initial snapshot
-    await prisma.competitorSnapshot.create({
-      data: {
-        competitorId: competitor.id,
-        subscribers: subs,
-        totalViews: views,
-        videoCount: vids,
-      },
-    });
-
-    return NextResponse.json({
-      ok: true,
-      competitor: {
-        id: competitor.id,
-        channelId: channelId,
-        channelName: ch.snippet.title,
-        channelThumb: ch.snippet.thumbnails?.default?.url,
-        subscribers: subs,
-        totalViews: Number(views),
-        videoCount: vids,
-      },
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+    const response = await Promise.race([original, stopped]); check(); return response;
+  } catch { return reply({ error: 'competitor_create_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
-
 // DELETE: remove a tracked competitor
 export async function DELETE(request: Request) {
   const deadline = performance.now() + 55_000;

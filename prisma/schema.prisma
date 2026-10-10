@@ -63,6 +63,7 @@ model User {
   dailyIdeas           DailyIdea[]
   trackedCompetitors   TrackedCompetitor[]
   competitorDeletionAttempts CompetitorDeletionAttempt[]
+  competitorCreationAttempts CompetitorCreationAttempt[]
   extensionTokens      ExtensionToken[]
   extensionEvents      ExtensionEvent[]
   calendarEntries      CalendarEntry[]
@@ -339,6 +340,18 @@ model CompetitorDeletionAttempt {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, competitorId])
   @@map("competitor_deletion_attempts")
+}
+
+model CompetitorCreationAttempt {
+  id String @id
+  userId String
+  channelId String
+  state String @default("pending")
+  competitorId String?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, channelId, state])
+  @@map("competitor_creation_attempts")
 }
 
 model CompetitorSnapshot {
