@@ -1,0 +1,33 @@
+'use strict';
+const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), ts = require('typescript');
+const deferred = () => { let resolve, reject; const promise = new Promise((a,b) => { resolve=a; reject=b; }); return {promise,resolve,reject}; };
+const flush = async () => { for(let n=0;n<45;n++) await Promise.resolve(); };
+const reply = (data,status=200) => ({ok:status>=200&&status<300,status,json:async()=>data});
+function harness() {
+  const root=path.resolve(__dirname,'../..'), contexts=new Map(), effects=[], requests=[], timers=new Map(), cache=new Map();
+  let context, index=0, dirty=false, now=10000, serial=0, active=new Set();
+  const state={user:'fixture-one',email:'fixture-one@example.invalid',auth:'authenticated',lang:'es',send:null};
+  const changed=(a,b)=>!a||a.length!==b.length||a.some((v,i)=>!Object.is(v,b[i]));
+  const hooks={
+    useState(initial){const c=context,i=index++;if(!c.cells[i])c.cells[i]={value:typeof initial==='function'?initial():initial};return[c.cells[i].value,v=>{const next=typeof v==='function'?v(c.cells[i].value):v;if(!Object.is(next,c.cells[i].value)){c.cells[i].value=next;dirty=true;}}];},
+    useRef(value){return context.cells[index++]??={current:value};},
+    useMemo(fn,deps){const c=context,i=index++;if(!c.cells[i]||changed(c.cells[i].deps,deps))c.cells[i]={value:fn(),deps};return c.cells[i].value;},
+    useCallback(fn,deps){return hooks.useMemo(()=>fn,deps);},
+    useEffect(fn,deps){const c=context,i=index++;if(!c.cells[i]||changed(c.cells[i].deps,deps)){const prior=c.cells[i];c.cells[i]={fn,deps};effects.push(()=>{prior?.cleanup?.();c.cells[i].cleanup=fn();});}}
+  };
+  const globals={AbortController,Date:class extends Date{static now(){return now;}},setTimeout(fn,ms){const id=++serial;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:async(url,init={})=>{assert.equal(url,'/api/chat');const request={url,init,owner:state.user,email:state.email,body:init.body?JSON.parse(init.body):null};requests.push(request);return state.send?state.send(request):reply({messages:[]});}};
+  function load(name){if(cache.has(name))return cache.get(name);const entry={exports:{}},file=name==='components/ChatWidget.tsx'&&process.env.MIGRATION_CHAT_WIDGET_BASELINE?process.env.MIGRATION_CHAT_WIDGET_BASELINE:path.join(root,name),compiled=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+    vm.runInNewContext(compiled,{module:entry,exports:entry.exports,console:{log(){},warn(){},error(){}},require(id){if(id==='react')return hooks;if(id==='react/jsx-runtime')return{jsx:(type,props,key)=>({type,props,key}),jsxs:(type,props,key)=>({type,props,key}),Fragment:'fragment'};if(id==='next-auth/react')return{useSession:()=>({data:state.auth==='authenticated'?{user:{id:state.user,email:state.email}}:null,status:state.auth})};if(id==='./LangProvider')return{useLang:()=>state.lang};if(id.startsWith('@/lib/'))return load(id.slice(2)+'.ts');throw Error('Unexpected chat dependency: '+id);},...globals},{filename:name});cache.set(name,entry.exports);return entry.exports;
+  }
+  const widget=load('components/ChatWidget.tsx').default;
+  function render(node,identity){if(Array.isArray(node))return node.map((n,i)=>render(n,identity+'/'+i));if(!node||typeof node!=='object')return node;if(typeof node.type==='function'){const id=identity+'/'+node.type.name+'/'+(node.key??''),c=contexts.get(id)??{cells:[]};contexts.set(id,c);active.add(id);const prior=context,priorIndex=index;context=c;index=0;const tree=node.type(node.props);context=prior;index=priorIndex;return render(tree,id);}return{...node,props:{...node.props,children:render(node.props?.children,identity+'/children')}};}
+  const runEffects=()=>{for(const[id,c]of contexts)if(!active.has(id)){c.cells.forEach(v=>v?.cleanup?.());contexts.delete(id);}while(effects.length)effects.shift()();};
+  function view(noEffects=false){let tree;for(let n=0;n<15;n++){dirty=false;active=new Set();tree=render({type:widget,props:{}},'root');if(!noEffects)runEffects();if(!dirty)return tree;}throw Error('Chat did not settle');}
+  function nodes(tree=view()){if(tree==null||typeof tree==='boolean')return[];if(Array.isArray(tree))return tree.flatMap(n=>nodes(n??null));if(typeof tree!=='object')return[tree];return[tree,...nodes(tree.props?.children??null)];}
+  const text=(tree=view())=>nodes(tree).filter(n=>typeof n==='string'||typeof n==='number').join(' ').replace(/\s+/g,' ').trim();
+  const button=label=>{const b=nodes().find(n=>n.type==='button'&&(n.props['aria-label']===label||text(n)===label));assert(b,'Missing button: '+label);return b;};
+  const click=label=>{const b=button(label);assert(!b.props.disabled,'Disabled button: '+label);return b.props.onClick();};
+  const input=()=>nodes().find(n=>n.type==='input');
+  return{state,requests,timers,view,nodes,text,button,click,input,runEffects,advance(ms){now+=ms;for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}},change(value){const n=input();assert(n&&!n.props.disabled);n.props.onChange({target:{value}});view();},async open(){click(state.lang==='en'?'Open assistant':'Abrir asistente');view();await flush();view();},unmount(){for(const c of contexts.values())c.cells.forEach(v=>v?.cleanup?.());contexts.clear();},strictEffects(){view();for(const c of contexts.values())for(const v of c.cells)if(v.fn){v.cleanup?.();v.cleanup=v.fn();}}};
+}
+module.exports={harness,deferred,flush,reply};

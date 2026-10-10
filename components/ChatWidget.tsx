@@ -3,22 +3,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useLang } from './LangProvider';
+import { useChatHistory, type ChatMessage } from '@/lib/use-chat-history';
 
 type Lang = 'es' | 'en';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
 
 const t = (lang: Lang, es: string, en: string) => lang === 'en' ? en : es;
 
 export default function ChatWidget() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const lang = useLang();
+  if (status !== 'authenticated' || !session?.user?.email) return null;
+  return <ChatConversation key={JSON.stringify([session.user.id, session.user.email])} lang={lang} />;
+}
+
+function ChatConversation({ lang }: { lang: Lang }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const history = useChatHistory(isOpen);
+  const { messages, setMessages, historyLoaded, historyLoading, historyError } = history;
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -26,35 +27,21 @@ export default function ChatWidget() {
   const [lastSentAt, setLastSentAt] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sending = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Load chat history when first opened
   useEffect(() => {
-    if (isOpen && !historyLoaded) {
-      fetch('/api/chat')
-        .then(r => r.json())
-        .then(data => {
-          if (data.messages?.length > 0) {
-            setMessages(data.messages.map((m: { role: string; content: string }) => ({
-              role: m.role as 'user' | 'assistant',
-              content: m.content,
-            })));
-          }
-          setHistoryLoaded(true);
-        })
-        .catch(() => setHistoryLoaded(true));
-    }
-    if (isOpen) inputRef.current?.focus();
+    if (isOpen && historyLoaded) inputRef.current?.focus();
   }, [isOpen, historyLoaded]);
 
-  if (status !== 'authenticated') return null;
+  const close = () => { history.retireHistory(); setIsOpen(false); };
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || isLoading) return;
+    if (!text || !history.canSend() || sending.current || remaining === 0) return;
 
     // Throttle client-side (3s)
     const now = Date.now();
@@ -72,11 +59,12 @@ export default function ChatWidget() {
     setInput('');
     setLastSentAt(now);
 
-    const newUserMsg: Message = { role: 'user', content: text };
+    const newUserMsg: ChatMessage = { role: 'user', content: text };
     const prevMessages = messages;
     const updatedMessages = [...prevMessages, newUserMsg];
     setMessages(updatedMessages);
     setIsLoading(true);
+    sending.current = true;
 
     try {
       const res = await fetch('/api/chat', {
@@ -85,22 +73,25 @@ export default function ChatWidget() {
         body: JSON.stringify({ message: text, lang }),
       });
 
+      if (!history.isCurrent()) return;
       const data = await res.json();
+      if (!history.isCurrent()) return;
 
       if (!res.ok) {
         setError(data.error || t(lang, 'Error al enviar el mensaje.', 'Error sending message.'));
         setMessages(prevMessages);
         if (data.limitReached) setRemaining(0);
       } else {
-        const assistantMsg: Message = { role: 'assistant', content: data.reply };
+        const assistantMsg: ChatMessage = { role: 'assistant', content: data.reply };
         setMessages([...updatedMessages, assistantMsg]);
         if (typeof data.remaining === 'number') setRemaining(data.remaining);
       }
     } catch {
+      if (!history.isCurrent()) return;
       setError(t(lang, 'Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'));
       setMessages(prevMessages);
     } finally {
-      setIsLoading(false);
+      if (history.isCurrent()) { sending.current = false; setIsLoading(false); }
     }
   };
 
@@ -111,7 +102,7 @@ export default function ChatWidget() {
     }
   };
 
-  const isDisabled = isLoading || remaining === 0;
+  const isDisabled = !historyLoaded || isLoading || remaining === 0;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
@@ -132,7 +123,7 @@ export default function ChatWidget() {
               </span>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={close}
               className="text-white/40 hover:text-white/80 transition-colors text-xl leading-none"
               aria-label={t(lang, 'Cerrar', 'Close')}
             >
@@ -142,7 +133,16 @@ export default function ChatWidget() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
-            {messages.length === 0 && (
+            {historyLoading && <p role="status" className="text-white/40 text-[13px] text-center mt-6">
+              {t(lang, 'Cargando historial...', 'Loading history...')}
+            </p>}
+            {historyError && <div role="alert" className="text-[13px] text-red-400">
+              <p>{t(lang, 'No se pudo cargar el historial. Vuelve a consultarlo para continuar.', 'History could not be loaded. Retry to continue.')}</p>
+              <button onClick={() => history.retryHistory()} disabled={historyLoading} className="mt-2 underline">
+                {t(lang, 'Reintentar historial', 'Retry history')}
+              </button>
+            </div>}
+            {historyLoaded && messages.length === 0 && (
               <p className="text-white/40 text-[13px] text-center mt-6 leading-relaxed">
                 {t(lang,
                   'Pregúntame sobre YTubViral o sobre cómo crear contenido para YouTube, TikTok o Instagram.',
@@ -225,8 +225,9 @@ export default function ChatWidget() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isDisabled
+              placeholder={remaining === 0
                 ? t(lang, 'Sin mensajes disponibles hoy.', 'No messages available today.')
+                : !historyLoaded ? t(lang, 'Esperando historial...', 'Waiting for history...')
                 : t(lang, 'Escribe tu pregunta...', 'Type your question...')
               }
               maxLength={500}
@@ -251,7 +252,7 @@ export default function ChatWidget() {
 
       {/* Botón flotante */}
       <button
-        onClick={() => setIsOpen(v => !v)}
+        onClick={() => { if (isOpen) close(); else setIsOpen(true); }}
         className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
         style={{ background: 'var(--yv-brand-fill)' }}
         aria-label={isOpen
