@@ -8,7 +8,7 @@ type Result = { ok: true; userId: string; competitor: {
   snapshots: { subscribers: number; totalViews: number; videoCount: number; recordedAt: string }[]; growth: null;
 } } | { ok: false; status: number; error: string; max?: number; plan?: string };
 const uncertain = (): Result => ({ ok: false, status: 503, error: 'competitor_create_unconfirmed' });
-const channel = (value: unknown): value is string => typeof value === 'string' && /^UC[\w-]{18,98}$/.test(value);
+const channel = (value: unknown): boolean => typeof value === 'string' && /^UC[\w-]{18,98}$/.test(value);
 function selection(input: unknown): { channelId?: string; handle?: string } | null {
   if (typeof input !== 'string' || !input.trim() || input.length > 2048) return null;
   const text = input.trim();
