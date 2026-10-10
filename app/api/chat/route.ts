@@ -6,6 +6,37 @@ import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_CONTEXT_MESSAGES = 4;
 const MAX_TOKENS = 350;
+export const maxDuration = 60;
+
+// Only the HTTP waiter retires. An original SQL write or dispatched producer
+// keeps its own acknowledgement and completion; this grants no retry authority.
+function chatSendWait(signal: AbortSignal) {
+  const deadline = performance.now() + 55_000;
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(new Error('Chat send unconfirmed')); }
+  };
+  const timer = setTimeout(retire, 55_000);
+  signal.addEventListener('abort', retire, { once: true });
+  const check = () => {
+    if (signal.aborted || performance.now() >= deadline) retire();
+    if (retired) throw new Error('Chat send unconfirmed');
+  };
+  return {
+    async run<T>(operation: () => Promise<T>): Promise<T> {
+      check();
+      const original = Promise.resolve().then(() => { check(); return operation(); });
+      const result = await Promise.race([original, stopped]);
+      check();
+      return result;
+    },
+    check,
+    close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
+  };
+}
 
 const SYSTEM_PROMPT = `You are the YTubViral support assistant. Help content creators use YTubViral and answer general questions about creating content for YouTube, TikTok, Instagram, and similar platforms.
 
@@ -181,26 +212,57 @@ async function readChatHistory(wait: ReturnType<typeof chatHistoryWait>) {
 }
 
 export async function POST(request: Request) {
+  const wait = chatSendWait(request.signal);
   try {
-    const session = await auth();
+    const response = await sendChat(request, wait);
+    wait.check();
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  } catch (err) {
+    try { wait.check(); }
+    catch {
+      return NextResponse.json({ error: 'chat_send_unconfirmed' }, {
+        status: 503, headers: { 'Cache-Control': 'no-store' },
+      });
+    }
+    console.error('[chat]', err);
+    return NextResponse.json({ error: 'Error interno del servidor' }, {
+      status: 500, headers: { 'Cache-Control': 'no-store' },
+    });
+  } finally { wait.close(); }
+}
+
+async function sendChat(request: Request, wait: ReturnType<typeof chatSendWait>) {
+  try {
+    const session = await wait.run(() => auth());
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const email = session.user.email;
+    const user = await wait.run(() => prisma.user.findUnique({
+      where: { email },
       select: { id: true, subscription: { select: { status: true } } },
-    });
+    }));
 
     if (!user) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    const plan = await getUserPlan(user.id);
+    const userId = user.id;
+    const plan = await wait.run(() => getUserPlan(userId));
     const isPro = isPaid(plan);
     const dailyLimit = getLimits(plan).chatMessagesPerDay;
 
-    const body = await request.json();
+    let body;
+    try { body = await wait.run(() => request.json()); }
+    catch {
+      wait.check();
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    }
     const { message, lang: clientLang } = body;
     const en = clientLang === 'en';
 
@@ -216,8 +278,8 @@ export async function POST(request: Request) {
     }
 
     // Throttle: 1 mensaje cada 3 segundos por usuario
-    const throttleKey = `chat_throttle:${user.id}`;
-    const throttleResult = await prisma.$queryRaw<{ hits: number }[]>`
+    const throttleKey = `chat_throttle:${userId}`;
+    const throttleResult = await wait.run(() => prisma.$queryRaw<{ hits: number }[]>`
       INSERT INTO rate_limits (key, hits, window_start)
       VALUES (${throttleKey}, 1, NOW())
       ON CONFLICT (key) DO UPDATE
@@ -233,7 +295,7 @@ export async function POST(request: Request) {
           ELSE rate_limits.window_start
         END
       RETURNING hits
-    `;
+    `);
     if (Number(throttleResult[0].hits) > 1) {
       return NextResponse.json(
         { error: en ? 'Wait a moment before sending another message.' : 'Espera un momento antes de enviar otro mensaje.' },
@@ -242,8 +304,8 @@ export async function POST(request: Request) {
     }
 
     // Límite diario (ventana de 24h)
-    const dailyKey = `chat_day:${user.id}`;
-    const dailyResult = await prisma.$queryRaw<{ hits: number }[]>`
+    const dailyKey = `chat_day:${userId}`;
+    const dailyResult = await wait.run(() => prisma.$queryRaw<{ hits: number }[]>`
       INSERT INTO rate_limits (key, hits, window_start)
       VALUES (${dailyKey}, 1, NOW())
       ON CONFLICT (key) DO UPDATE
@@ -259,7 +321,7 @@ export async function POST(request: Request) {
           ELSE rate_limits.window_start
         END
       RETURNING hits
-    `;
+    `);
 
     const hitsToday = Number(dailyResult[0].hits);
     if (hitsToday > dailyLimit) {
@@ -276,12 +338,12 @@ export async function POST(request: Request) {
     }
 
     // Load recent messages from DB for context
-    const recentMessages = await prisma.chatMessage.findMany({
-      where: { userId: user.id },
+    const recentMessages = await wait.run(() => prisma.chatMessage.findMany({
+      where: { userId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: MAX_CONTEXT_MESSAGES,
       select: { role: true, content: true },
-    });
+    }));
     const orderedMessages = recentMessages.reverse();
     const firstUser = orderedMessages.findIndex(m => m.role === 'user');
     // A legacy or partially retained history can begin with an assistant turn.
@@ -298,49 +360,57 @@ export async function POST(request: Request) {
 
     let task;
     try {
-      task = await getMessagesTask({
-        taskType: 'support.chat', userId: user.id, language: en ? 'en' : 'es',
+      task = await wait.run(() => getMessagesTask({
+        taskType: 'support.chat', userId, language: en ? 'en' : 'es',
         instructionsVersion: 'support-chat-v1', requiredCapabilities: ['prompt_cache'],
-      });
+      }));
     } catch {
+      wait.check();
       return NextResponse.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
     }
-    const data = await task.create({ max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT, messages });
-    const reply: string = data.content?.[0]?.text ?? '';
-    const remaining = Math.max(0, dailyLimit - hitsToday);
+    // Once create starts, keep inference and its history writer together in the
+    // original producer. Do not race either internally or cancel it via HTTP.
+    const producer = async (): Promise<{ reply: string } | { response: Response }> => {
+      const data = await task.create({ max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT, messages });
+      const reply: string = data.content?.[0]?.text ?? '';
 
-    // Mismo fallo que habia en /api/track: sin await, la instancia serverless se
-    // congela al devolver la respuesta y el historial se pierde sin dejar rastro.
-    try {
-      await prisma.chatMessage.createMany({
-        data: [
-          { userId: user.id, role: 'user', content: message.trim().slice(0, MAX_MESSAGE_LENGTH) },
-          { userId: user.id, role: 'assistant', content: reply.slice(0, 2000) },
-        ],
-      });
-    } catch (err) {
-      console.error('[chat] save error:', err);
-      return NextResponse.json({ error: 'Conversation history could not be saved' }, { status: 503 });
-    }
+      // Await the actual writer even if the outer HTTP wait has already retired.
+      try {
+        await prisma.chatMessage.createMany({
+          data: [
+            { userId, role: 'user', content: message.trim().slice(0, MAX_MESSAGE_LENGTH) },
+            { userId, role: 'assistant', content: reply.slice(0, 2000) },
+          ],
+        });
+      } catch (err) {
+        console.error('[chat] save error:', err);
+        return { response: NextResponse.json({ error: 'Conversation history could not be saved' }, { status: 503 }) };
+      }
+      return { reply };
+    };
+    const result = await wait.run(producer);
+    if ('response' in result) return result.response;
+    const reply = result.reply;
+    const remaining = Math.max(0, dailyLimit - hitsToday);
 
     try {
       // Poda: conservar los ultimos 50 mensajes por usuario.
-      const old = await prisma.chatMessage.findMany({
-        where: { userId: user.id },
+      const old = await wait.run(() => prisma.chatMessage.findMany({
+        where: { userId },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: 50,
         select: { id: true },
-      });
+      }));
       if (old.length > 0) {
-        await prisma.chatMessage.deleteMany({ where: { id: { in: old.map(m => m.id) } } });
+        await wait.run(() => prisma.chatMessage.deleteMany({ where: { id: { in: old.map(m => m.id) } } }));
       }
     } catch (err) {
+      wait.check();
       console.error('[chat] optional pruning error:', err);
     }
 
     return NextResponse.json({ reply, remaining, isPro });
   } catch (err) {
-    console.error('[chat]', err);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+    throw err;
   }
 }

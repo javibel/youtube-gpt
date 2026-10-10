@@ -42,6 +42,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  await require('./storyboard-admission-database.cjs')(prisma,results);
  await require('./storyboard-deadline-database.cjs')(prisma,results);
  await require('./chat-history-deadline-database.cjs')(prisma,results);
+ await require('./chat-send-deadline-database.cjs')(prisma,results);
  await require('./bulk-input-database.cjs')(prisma,results);
  await require('./bulk-admission-database.cjs')(prisma,results);
  await require('./bulk-selective-database.cjs')(prisma,results);
