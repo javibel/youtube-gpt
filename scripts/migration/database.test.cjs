@@ -40,6 +40,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  await require('./generic-usage-database.cjs')(prisma,results);
  await require('./storyboard-usage-database.cjs')(prisma,results);
  await require('./storyboard-admission-database.cjs')(prisma,results);
+ await require('./storyboard-deadline-database.cjs')(prisma,results);
  await require('./bulk-input-database.cjs')(prisma,results);
  await require('./bulk-admission-database.cjs')(prisma,results);
  await require('./bulk-selective-database.cjs')(prisma,results);
