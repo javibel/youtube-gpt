@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import { FlameIcon, BoltIcon, LeafIcon } from '@/components/icons';
+import { useCompetitorTracking } from '@/lib/use-competitor-tracking';
 
 type Lang = 'es' | 'en';
 
@@ -62,96 +63,65 @@ export default function CompetitorsPage() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<CompetitorResult | null>(null);
+  const owner = { userId: session?.user?.id ?? '', email: session?.user?.email ?? '' };
+  const ownerKey = JSON.stringify([status, owner.userId, owner.email]);
+  const currentOwner = useRef(ownerKey); currentOwner.current = ownerKey;
+  const resetOwner = useRef(ownerKey);
+  const mounted = useRef(true);
+  const analysis = useRef<object | null>(null);
+  const [resultState, setResultState] = useState<{ ownerKey: string; data: CompetitorResult } | null>(null);
+  const result = resultState?.ownerKey === ownerKey ? resultState.data : null;
   const [outliers, setOutliers] = useState<OutlierResult | null>(null);
   const [outliersLoading, setOutliersLoading] = useState(false);
   const [outlierPeriod, setOutlierPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('all');
   // Guardar el canal analizado como competidor seguido (cierra el bucle
   // analisis -> seguimiento; antes /competitors/tracking no tenia ni un enlace).
-  const [trackState, setTrackState] = useState<'idle' | 'loading' | 'tracked'>('idle');
-  const [trackError, setTrackError] = useState('');
-  const [trackUpgrade, setTrackUpgrade] = useState(false);
+  const tracking = useCompetitorTracking(owner, status, result?.channel?.id ?? '');
+  const trackState = tracking.state;
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const trackError = trackState === 'unconfirmed' ? t('El alta no está confirmada. Conservamos la solicitud original.', 'The addition is unconfirmed. The original request is retained.')
+    : tracking.error === 'already_tracked' ? t('Este canal ya figura en seguimiento. Comprueba la lista.', 'This channel is already tracked. Check the list.')
+      : tracking.error === 'limit_reached' ? t('Has llegado al máximo de competidores de tu plan.', "You've reached your plan's competitor limit.")
+        : tracking.error ? t('No se pudo iniciar el seguimiento.', 'Tracking could not be started.') : '';
+  const trackUpgrade = tracking.error === 'limit_reached';
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    if (resetOwner.current === ownerKey) return;
+    resetOwner.current = ownerKey;
+    analysis.current = null; setResultState(null); setLoading(false); setError(''); setUrl(''); setOutliers(null); setOutliersLoading(false);
+  }, [ownerKey]);
 
   // Fetch outliers when we have a result or period changes
   useEffect(() => {
     if (!result?.channel?.id) { setOutliers(null); return; }
     let cancelled = false;
+    const capturedOwner = ownerKey;
     async function fetchOutliers() {
       setOutliersLoading(true);
       try {
         const res = await fetch(`/api/youtube/outliers?channelId=${result!.channel.id}&period=${outlierPeriod}`);
-        if (!cancelled && res.ok) {
+        if (!cancelled && mounted.current && currentOwner.current === capturedOwner && res.ok) {
           const data = await res.json();
-          setOutliers(data);
+          if (!cancelled && mounted.current && currentOwner.current === capturedOwner) setOutliers(data);
         }
       } catch { /* ignore */ }
-      finally { if (!cancelled) setOutliersLoading(false); }
+      finally { if (!cancelled && mounted.current && currentOwner.current === capturedOwner) setOutliersLoading(false); }
     }
     fetchOutliers();
     return () => { cancelled = true; };
-  }, [result?.channel?.id, outlierPeriod]);
-
-  // Marca el boton como "siguiendo" si el canal ya esta en la lista del usuario
-  useEffect(() => {
-    setTrackState('idle');
-    setTrackError('');
-    setTrackUpgrade(false);
-    if (!result?.channel?.id || status !== 'authenticated') return;
-    let cancelled = false;
-    fetch('/api/youtube/competitors')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (cancelled || !d?.competitors) return;
-        const id = result!.channel.id;
-        if (d.competitors.some((c: { channelId: string }) => c.channelId === id)) {
-          setTrackState('tracked');
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [result?.channel?.id, status]);
+  }, [result?.channel?.id, outlierPeriod, ownerKey]);
 
   // No redirect — show public landing if unauthenticated
 
-  const t = (es: string, en: string) => lang === 'en' ? en : es;
-
-  async function trackChannel() {
-    if (!result?.channel?.id || trackState !== 'idle') return;
-    setTrackState('loading');
-    setTrackError('');
-    setTrackUpgrade(false);
-    try {
-      const res = await fetch('/api/youtube/competitors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: result.channel.id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok || data.error === 'already_tracked') {
-        setTrackState('tracked');
-        return;
-      }
-      setTrackState('idle');
-      if (data.error === 'pro_required') {
-        setTrackUpgrade(true);
-        setTrackError(t('El seguimiento de competidores es del plan Pro.', 'Competitor tracking is a Pro plan feature.'));
-      } else if (data.error === 'limit_reached') {
-        setTrackError(t('Has llegado al maximo de competidores de tu plan.', "You've reached your plan's competitor limit."));
-      } else {
-        setTrackError(t('No se pudo guardar. Intentalo de nuevo.', 'Could not save. Please try again.'));
-      }
-    } catch {
-      setTrackState('idle');
-      setTrackError(t('Error de conexion.', 'Connection error.'));
-    }
-  }
-
   async function handleAnalyze(e: React.FormEvent) {
     e.preventDefault();
-    if (!url.trim()) return;
+    const capturedOwner = ownerKey;
+    if (!url.trim() || status !== 'authenticated' || !owner.userId || !mounted.current || currentOwner.current !== capturedOwner) return;
+    const invocation = {}; analysis.current = invocation;
+    const active = () => mounted.current && currentOwner.current === capturedOwner && analysis.current === invocation;
     setLoading(true);
     setError('');
-    setResult(null);
+    setResultState(null);
     try {
       const res = await fetch('/api/youtube/competitor', {
         method: 'POST',
@@ -159,6 +129,7 @@ export default function CompetitorsPage() {
         body: JSON.stringify({ url: url.trim(), lang }),
       });
       const data = await res.json();
+      if (!active()) return;
       if (!res.ok || data.error) {
         if (data.error === 'pro_required') {
           setError(t('Esta función es exclusiva del Plan Pro. Actualiza tu cuenta desde el dashboard.', 'This feature is exclusive to the Pro Plan. Upgrade your account from the dashboard.'));
@@ -169,11 +140,11 @@ export default function CompetitorsPage() {
         }
         return;
       }
-      setResult(data);
+      setResultState({ ownerKey: capturedOwner, data });
     } catch {
-      setError(t('Error de conexión.', 'Connection error.'));
+      if (active()) setError(t('Error de conexión.', 'Connection error.'));
     } finally {
-      setLoading(false);
+      if (active()) setLoading(false);
     }
   }
 
@@ -264,6 +235,15 @@ export default function CompetitorsPage() {
           </div>
         </div>
 
+        {!result && (tracking.retained || tracking.blocked) && <div role="status" className="yv-note font-mono-jb text-sm">
+          {tracking.retained?.outcome?.status === 'confirmed'
+            ? t('El seguimiento anterior está confirmado.', 'The previous addition is confirmed.')
+            : tracking.retained?.outcome?.status === 'rejected'
+              ? t('No se pudo iniciar el seguimiento anterior.', 'The previous addition could not be started.')
+              : t('El alta anterior no está confirmada. Conservamos la solicitud original.', 'The previous addition is unconfirmed. The original request is retained.')}
+          {tracking.retained && <p>{tracking.retained.input}</p>}
+          <a href="/competitors/tracking" className="underline">{t('Ver tracking', 'View tracking')}</a>
+        </div>}
         {/* Search form */}
         <form onSubmit={handleAnalyze} className="space-y-3">
           <div className="flex gap-2">
@@ -352,16 +332,16 @@ export default function CompetitorsPage() {
                         {t('Siguiendo — ver tracking', 'Tracking — view')}
                       </a>
                     ) : (
-                      <button type="button" onClick={trackChannel} disabled={trackState === 'loading'}
+                      <button type="button" onClick={tracking.track} disabled={trackState !== 'idle'}
                         className="btn-offset px-4 py-2 text-[13px] font-mono-jb tracking-wider disabled:opacity-50 flex items-center gap-2 whitespace-nowrap">
-                        {trackState === 'loading' ? (
+                        {trackState === 'loading' || trackState === 'checking' ? (
                           <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                           </svg>
                         ) : (
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
                         )}
-                        {t('Seguir canal', 'Track channel')}
+                        {trackState === 'checking' ? t('Comprobando seguimiento...', 'Checking tracking...') : t('Seguir canal', 'Track channel')}
                       </button>
                     )}
                     {trackError && (
@@ -374,6 +354,13 @@ export default function CompetitorsPage() {
                         )}
                       </p>
                     )}
+                    {tracking.previousInput && <p role="status" className="font-mono-jb text-[12px] text-right">{tracking.previousInput}</p>}
+                    {tracking.listUnavailable && <p role="status" className="font-mono-jb text-[12px] text-right">
+                      {t('No se pudo comprobar la lista de seguimiento.', 'The tracking list could not be checked.')}
+                    </p>}
+                    {(tracking.listUnavailable || tracking.error === 'already_tracked') && <button type="button"
+                      onClick={tracking.refreshList} disabled={tracking.listPending} className="underline text-[12px] disabled:opacity-50">
+                      {t('Comprobar lista', 'Check list')}</button>}
                   </div>
                 )}
               </div>
