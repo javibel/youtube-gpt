@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
 import { useCurrency } from '@/components/CurrencyProvider';
 import { PRICES, formatPrice } from '@/lib/pricing';
 import DashboardShell from '@/components/DashboardShell';
 import ToolLoginGate from '@/components/ToolLoginGate';
+import { useDashboardStats } from '@/lib/use-dashboard-stats';
 
 type Lang = 'es' | 'en';
 type CoachMode = 'create' | 'analyze' | 'optimize' | 'research';
@@ -80,74 +80,16 @@ const MODE_COLORS: Record<CoachMode, string> = {
 
 export default function CoachPage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const lang = useLang();
   const currency = useCurrency();
   const proPrice = formatPrice(PRICES.pro.monthly.eur, currency, lang);
-  const [mode, setMode] = useState<CoachMode>('analyze');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  // Paywall al entrar (E1 #2): null = comprobando, false = free → pantalla de upgrade
-  const [isPro, setIsPro] = useState<boolean | null>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
+  const userId = session?.user?.id;
+  const email = session?.user?.email;
+  const scope = useMemo(() => ({ active: true }), [userId, email, status]);
+  const active = useRef(scope); active.current = scope;
+  useEffect(() => { scope.active = true; return () => { scope.active = false; }; }, [scope]);
+  const isCurrent = () => active.current === scope && scope.active && status === 'authenticated';
   const t = (es: string, en: string) => lang === 'en' ? en : es;
-
-  useEffect(() => {
-    if (status !== 'authenticated') return;
-    fetch('/api/user/stats')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => setIsPro(d?.stats?.isPro ?? false))
-      .catch(() => setIsPro(false));
-  }, [status]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  async function send() {
-    const text = input.trim();
-    if (!text || loading) return;
-
-    setInput('');
-    setError('');
-    const userMsg: Message = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMsg]);
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, context: messages, mode, lang }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        if (json.error === 'pro_required') {
-          setError(t('Necesitas el plan Pro para usar el Coach.', 'You need the Pro plan to use the Coach.'));
-        } else if (json.error === 'throttled') {
-          setError(t('Espera unos segundos antes de enviar otro mensaje.', 'Wait a few seconds before sending another message.'));
-        } else {
-          setError(json.error || t('Error de conexión', 'Connection error'));
-        }
-        return;
-      }
-      setMessages(prev => [...prev, { role: 'assistant', content: json.reply }]);
-    } catch {
-      setError(t('Error de conexión', 'Connection error'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  }
 
   if (status === 'loading') {
     return (
@@ -178,11 +120,94 @@ export default function CoachPage() {
     );
   }
 
-  // Comprobando plan: spinner breve
+  // A new authenticated identity gets a new conversation and plan reader.
+  return <CoachSession key={JSON.stringify([userId ?? null, email ?? null])}
+    userId={userId} email={email} lang={lang} proPrice={proPrice} isCurrent={isCurrent} />;
+}
+
+function CoachSession({ userId, email, lang, proPrice, isCurrent }: {
+  userId: string | undefined; email: string | null | undefined; lang: Lang;
+  proPrice: string; isCurrent: () => boolean;
+}) {
+  const plan = useDashboardStats(userId, email, 'authenticated');
+  const isPro = plan.data?.stats.isPro ?? null;
+  const [mode, setMode] = useState<CoachMode>('analyze');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  async function send() {
+    const text = input.trim();
+    if (!text || loading || !isCurrent() || isPro !== true || plan.statsError || plan.statsRefreshing) return;
+
+    setInput('');
+    setError('');
+    const userMsg: Message = { role: 'user', content: text };
+    setMessages(prev => [...prev, userMsg]);
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, context: messages, mode, lang }),
+      });
+      if (!isCurrent()) return;
+      const json = await res.json();
+      if (!isCurrent()) return;
+      if (!res.ok) {
+        if (json.error === 'pro_required') {
+          setError(t('Necesitas el plan Pro para usar el Coach.', 'You need the Pro plan to use the Coach.'));
+        } else if (json.error === 'throttled') {
+          setError(t('Espera unos segundos antes de enviar otro mensaje.', 'Wait a few seconds before sending another message.'));
+        } else {
+          setError(json.error || t('Error de conexión', 'Connection error'));
+        }
+        return;
+      }
+      setMessages(prev => [...prev, { role: 'assistant', content: json.reply }]);
+    } catch {
+      if (isCurrent()) setError(t('Error de conexión', 'Connection error'));
+    } finally {
+      if (isCurrent()) setLoading(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  }
+
+  if (plan.statsError) {
+    return (
+      <DashboardShell>
+        <div className="yv-page" role="alert">
+          <p>{t('No se pudo comprobar tu plan. Reintenta antes de usar el Coach.', 'Your plan could not be checked. Retry before using the Coach.')}</p>
+          <button onClick={() => { if (isCurrent()) void plan.retryStats(); }} disabled={plan.statsRefreshing}
+            className="btn-offset mt-4 px-5 py-3">
+            {t('Reintentar plan', 'Retry plan')}
+          </button>
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  // Only a validated read can choose the paid conversation or Free paywall.
   if (isPro === null) {
     return (
       <DashboardShell>
-        <div className="yv-page flex items-center justify-center" style={{ minHeight: '60vh' }}>
+        <div className="yv-page flex items-center justify-center" style={{ minHeight: '60vh' }} role="status">
+          <span>{t('Comprobando tu plan…', 'Checking your plan…')}</span>
           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
         </div>
       </DashboardShell>
