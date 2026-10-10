@@ -13,7 +13,7 @@ function harness(options={}) {
   'next/server':{NextResponse:Response},'@/auth':{auth:async()=>Object.hasOwn(options,'session')?options.session:{user:{email:'synthetic@example.invalid'}}},'@/lib/prisma':{prisma},
   '@/lib/plans':{getUserPlan:async()=>options.plan??'free',getLimits:()=>({chatMessagesPerDay:options.limit??5}),isPaid:plan=>plan!=='free'},
  });
- async function run(body={message:'Synthetic question',lang:'es'},method='POST') {const r=method==='GET'?await route.GET():await route.POST(new Request('https://example.invalid/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
+ async function run(body={message:'Synthetic question',lang:'es'},method='POST') {const r=method==='GET'?await route.GET(new Request('https://example.invalid/api/chat')):await route.POST(new Request('https://example.invalid/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
  return {run,requests,saved,reads,deleted};
 }
 const results=[];

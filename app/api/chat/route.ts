@@ -115,23 +115,68 @@ Rules:
 - Only answer about YTubViral or content creation for YouTube, TikTok, Instagram, etc. Politely decline unrelated requests.
 - If you are unsure about something not listed above, say so instead of guessing.`;
 
-export async function GET() {
-  const session = await auth();
+// Retiring the HTTP read does not cancel or replace an original auth/SELECT.
+function chatHistoryWait(signal: AbortSignal) {
+  const deadline = performance.now() + 30_000;
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(new Error('Chat history unconfirmed')); }
+  };
+  const timer = setTimeout(retire, 30_000);
+  signal.addEventListener('abort', retire, { once: true });
+  const check = () => {
+    if (signal.aborted || performance.now() >= deadline) retire();
+    if (retired) throw new Error('Chat history unconfirmed');
+  };
+  return {
+    async run<T>(operation: () => Promise<T>): Promise<T> {
+      check();
+      const original = Promise.resolve().then(() => { check(); return operation(); });
+      const result = await Promise.race([original, stopped]);
+      check();
+      return result;
+    },
+    check,
+    close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
+  };
+}
+
+export async function GET(request: Request) {
+  const wait = chatHistoryWait(request.signal);
+  try {
+    const response = await readChatHistory(wait);
+    wait.check();
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  } catch {
+    return NextResponse.json({ error: 'chat_history_unconfirmed' }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
+  } finally { wait.close(); }
+}
+
+async function readChatHistory(wait: ReturnType<typeof chatHistoryWait>) {
+  const session = await wait.run(() => auth());
   if (!session?.user?.email) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+  const email = session.user.email;
+  const user = await wait.run(() => prisma.user.findUnique({
+    where: { email },
     select: { id: true },
-  });
+  }));
   if (!user) return NextResponse.json({ messages: [] });
 
-  const recentMessages = await prisma.chatMessage.findMany({
-    where: { userId: user.id },
+  const userId = user.id;
+  const recentMessages = await wait.run(() => prisma.chatMessage.findMany({
+    where: { userId },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: 50,
     select: { role: true, content: true, createdAt: true },
-  });
+  }));
   return NextResponse.json({ messages: recentMessages.reverse() });
 }
 

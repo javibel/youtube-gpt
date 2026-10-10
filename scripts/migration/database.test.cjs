@@ -41,6 +41,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  await require('./storyboard-usage-database.cjs')(prisma,results);
  await require('./storyboard-admission-database.cjs')(prisma,results);
  await require('./storyboard-deadline-database.cjs')(prisma,results);
+ await require('./chat-history-deadline-database.cjs')(prisma,results);
  await require('./bulk-input-database.cjs')(prisma,results);
  await require('./bulk-admission-database.cjs')(prisma,results);
  await require('./bulk-selective-database.cjs')(prisma,results);
@@ -73,7 +74,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await prisma.chatMessage.createMany({data:Array.from({length:51},(_,i)=>({userId:user.id,role:i%2?'assistant':'user',content:'Synthetic message '+i,createdAt:new Date(Date.UTC(2026,8,1,0,i))}))});
   const {load}=require('./route-harness.cjs');
   const chat=load('app/api/chat/route.ts',{'@/lib/ai/task-runtime':{getMessagesTask:async()=>{throw Error('GET must not execute a model');}},'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{email}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>{throw Error('GET must not load a plan');}}});
-  const history=await (await chat.GET()).json();
+  const history=await (await chat.GET(new Request('https://example.invalid/api/chat'))).json();
   assert.equal(history.messages.length,50);assert.equal(history.messages[0].content,'Synthetic message 1');assert.equal(history.messages.at(-1).content,'Synthetic message 50');
   assert.equal(history.messages.some(message=>message.content==='Synthetic message 0'),false);results.push('real PostgreSQL chat route retains latest fifty in chronological order');
   const conversationEmail='conversation-'+randomUUID()+'@example.invalid';
@@ -87,7 +88,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
    assert.equal((await post('Segunda pregunta')).status,200);
    assert.deepEqual(captures[0].map(x=>[x.role,x.content]),[['user','Primera pregunta']]);
    assert.deepEqual(captures[1].map(x=>[x.role,x.content]),[['user','Primera pregunta'],['assistant','Synthetic answer 1'],['user','Segunda pregunta']]);
-   const saved=await (await conversation.GET()).json();
+   const saved=await (await conversation.GET(new Request('https://example.invalid/api/chat'))).json();
    assert.deepEqual(saved.messages.map(x=>x.content),['Primera pregunta','Synthetic answer 1','Segunda pregunta','Synthetic answer 2']);
    results.push('two-turn chat route persists and reloads conversation with simulated model');
   } finally {await prisma.user.delete({where:{id:conversationUser.id}});}
