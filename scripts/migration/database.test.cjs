@@ -68,6 +68,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  await require('./competitor-read-database.cjs')(prisma,results);
  await require('./competitor-create-database.cjs')(prisma,results);
  await require('./competitor-create-client-database.cjs')(prisma,results);
+ await require('./outliers-database.cjs')(prisma,results);
  await require('./dashboard-onboarding-database.cjs')(prisma,results);
  await require('./onboarding-generation-database.cjs')(prisma,results);
  await require('./onboarding-generation-reload-database.cjs')(prisma,results);

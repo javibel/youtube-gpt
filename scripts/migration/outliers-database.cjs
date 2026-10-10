@@ -1,0 +1,25 @@
+'use strict';
+const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs'),{harness,response}=require('./outliers-deadline.test.cjs');
+module.exports=async(prisma,results)=>{
+ const users=[],newOwner=async paid=>{const u=await prisma.user.create({data:{email:'outliers-native-'+randomUUID()+'@example.invalid'}});users.push(u.id);if(paid)await prisma.subscription.create({data:{userId:u.id,plan:'pro',status:'active'}});return u;};
+ const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),rows=()=>prisma.trackedCompetitor.findMany({where:{userId:{in:users}},include:{snapshots:true},orderBy:{id:'asc'}}),admissions=()=>prisma.competitorCreationAttempt.findMany({where:{userId:{in:users}},orderBy:{id:'asc'}});
+ try{
+  const owner=await newOwner(true),free=await newOwner(false),neighbor=await newOwner(true);for(const u of [owner,neighbor]){const c=await prisma.trackedCompetitor.create({data:{userId:u.id,channelId:'UC_synthetic_'+randomUUID(),channelName:'Native retained '+u.id}});await prisma.competitorSnapshot.create({data:{competitorId:c.id,subscribers:12,totalViews:100n,videoCount:2}});}const beforeRows=await rows(),beforeAdmissions=await admissions(),beforeUsers=await prisma.user.findMany({where:{id:{in:users}},orderBy:{id:'asc'}}),beforeSubscriptions=await prisma.subscription.findMany({where:{userId:{in:users}},orderBy:{id:'asc'}});
+  {
+   const ids=[],h=harness({userId:free.id,planReader:async id=>{ids.push(id);return plans.getUserPlan(id);}});await response(h,403);assert.deepEqual(ids,[free.id]);assert.equal(h.transports.length,0);results.push('Outliers native Free plan: actual GET/getUserPlan/PostgreSQL selects captured owner, rejects403 before Google and makes no business writes');
+  }
+  {
+   const ids=[],h=harness({userId:owner.id,planReader:async id=>{ids.push(id);return plans.getUserPlan(id);}}),body=await response(h,200);assert.deepEqual(ids,[owner.id]);assert.equal(body.userId,owner.id);assert.equal(body.medianViews,100);assert.equal(body.totalVideosAnalyzed,51);assert.equal(body.outliers[0].multiplier,20);assert.equal(body.outliers[0].publishedAt,'2026-01-01T00:00:00.000Z');assert.equal(h.transports.length,4);results.push('Outliers native Pro plan: actual captured subscription/route plus fictitious paginated Google, scoped original response, median/order/publication dates preserved');
+  }
+  {
+   const gate=deferred(),entered=deferred(),owned=[];const h=harness({userId:owner.id,planReader:id=>{const original=(async()=>{const plan=await plans.getUserPlan(id);entered.resolve();await gate.promise;return plan;})();owned.push(original);return original;}});await entered.promise;h.advance(25000);await response(h,503);gate.resolve();await Promise.all(owned);await flush();assert.equal(h.transports.length,0);assert.equal(owned.length,1);results.push('Outliers native held plan acknowledgement: same25s waiter retires and actual original SELECT completes without starting Google or renewing budget');
+  }
+  {
+   const gate=deferred(),entered=deferred(),ids=[],owned=[];const h=harness({userId:owner.id,query:'&period=90d&threshold=2',planReader:id=>{ids.push(id);const original=(async()=>{const plan=await plans.getUserPlan(id);entered.resolve();await gate.promise;return plan;})();owned.push(original);return original;}});await entered.promise;h.state.auth.user.id=neighbor.id;h.request.url='https://example.invalid/?channelId=foreign&period=all&threshold=0.1';gate.resolve();await Promise.all(owned);const body=await response(h,200);assert.deepEqual(ids,[owner.id]);assert.equal(body.userId,owner.id);assert.equal(body.channelId,'UC_synthetic_original');assert.equal(body.period,'90d');assert.equal(body.threshold,2);results.push('Outliers native captured identity/selection: changing auth/request during actual native plan cannot redirect owner/channel/period/threshold or disclose neighbor data');
+  }
+  {
+   const h=harness({userId:owner.id,held:'stats1JSON',planReader:id=>plans.getUserPlan(id)});await h.entered.stats1JSON.promise;h.advance(25000);await response(h,503);const before=h.transports.length;h.gates.stats1JSON.resolve();await flush();assert.equal(h.transports.length,before);results.push('Outliers native plan plus held Google body: original25s read completes503, late body starts no second statistics batch or replacement reader');
+  }
+  assert.deepEqual(await rows(),beforeRows);assert.deepEqual(await admissions(),beforeAdmissions);assert.deepEqual(await prisma.user.findMany({where:{id:{in:users}},orderBy:{id:'asc'}}),beforeUsers);assert.deepEqual(await prisma.subscription.findMany({where:{userId:{in:users}},orderBy:{id:'asc'}}),beforeSubscriptions);assert.equal(await prisma.competitorDeletionAttempt.count({where:{userId:{in:users}}}),0);results.push('Outliers native preservation: owner/neighbor accounts/subscriptions/competitors/snapshots unchanged, no creation/deletion admission, no recovered operational authority');
+ }finally{await prisma.user.deleteMany({where:{id:{in:users}}});}
+};
