@@ -8,7 +8,7 @@ module.exports=async(prisma,results)=>{
  const listFor=owner=>load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma},'@/lib/youtube-auth':{getAccessToken:noWrite},'@/lib/ab-test':{createAbTest:noWrite}});
  try{
   await prisma.subscription.createMany({data:users.map(u=>({userId:u.id,status:'active',plan:'pro',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});
-  await prisma.abTest.createMany({data:users.map(u=>({userId:u.id,videoId:'own-'+u.id,originalTitle:'Own native history '+u.id,variantA:'Own A',variantB:'Own B',status:'cancelled'}))});
+  await prisma.abTest.createMany({data:users.map(u=>({userId:u.id,videoId:'own-'+u.id,originalTitle:'Own native history '+u.id,variantA:'Own A '+u.id,variantB:'Own B',status:'cancelled'}))});
   await prisma.generation.create({data:{userId:neighbor.id,template:'title',inputs:{},output:'Neighbor synthetic title',tokensUsed:0}});
   const before={subscriptions:await prisma.subscription.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}}),tests:await prisma.abTest.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}}),generations:await prisma.generation.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}})};
   for(const[index,held]of ['read','JSON','headers','remount'].entries()){
@@ -25,7 +25,7 @@ module.exports=async(prisma,results)=>{
    };
    await ready(h);await Promise.all(reads);await ready(h);
    if(held==='read'){
-    await entered.promise;h.advance(30000);await ready(h);assert.match(h.text(),/No se pudieron cargar/);h.state.user=neighbor.id;h.state.email=neighbor.email;await ready(h);await Promise.all(reads);await ready(h);assert.match(h.text(),new RegExp('Own native history '+neighbor.id));assert.doesNotMatch(h.text(),new RegExp('Own native history '+owner.id));gate.resolve();await ready(h);assert.doesNotMatch(h.text(),new RegExp('Own native history '+owner.id));assert.equal(posts(h).length,0);
+    await entered.promise;h.advance(30000);await ready(h);assert.match(h.text(),/No se pudieron cargar/);h.state.user=neighbor.id;h.state.email=neighbor.email;await ready(h);await Promise.all(reads);await ready(h);assert.match(h.text(),new RegExp('Own A '+neighbor.id));assert.doesNotMatch(h.text(),new RegExp('Own A '+owner.id));gate.resolve();await ready(h);assert.doesNotMatch(h.text(),new RegExp('Own A '+owner.id));assert.equal(posts(h).length,0);
    }else{
     pick(h);h.view();const p=h.click('Sugerir con IA');await Promise.race([entered.promise,finished.promise.then(()=>{if(held!=='JSON')throw Error('Task completed before held entry');})]);
     if(held==='remount'){h.unmount();await ready(h);await Promise.all(reads);await ready(h);}
