@@ -10,6 +10,8 @@ import { beginCompetitorDeletion, competitorDeletionBlocked, mergeCompetitorDele
 import type { DeleteOutcome } from '@/lib/competitor-delete-client';
 import { beginCompetitorListRead } from '@/lib/competitor-list-read';
 import type { CompetitorRecord as Competitor } from '@/lib/competitor-list-read';
+import { beginCompetitorCreation, competitorCreationBlocked, mergeCompetitorCreations, retainedCompetitorCreation } from '@/lib/competitor-create-client';
+import type { CreationAttempt, CreationOutcome } from '@/lib/competitor-create-client';
 
 type Lang = 'es' | 'en';
 
@@ -81,6 +83,7 @@ export default function CompetitorTrackingPage() {
   const [listOwner, setListOwner] = useState('');
   const [listUnavailable, setListUnavailable] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [creationUnconfirmed, setCreationUnconfirmed] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState('');
   const [errorUpgrade, setErrorUpgrade] = useState(false);
@@ -90,6 +93,8 @@ export default function CompetitorTrackingPage() {
   const currentOwner = useRef(ownerKey); currentOwner.current = ownerKey;
   const currentRead = useRef<{ ownerKey: string; entry: ReturnType<typeof beginCompetitorListRead> | null }>({ ownerKey, entry: null });
   if (currentRead.current.ownerKey !== ownerKey) currentRead.current = { ownerKey, entry: null };
+  const currentCreation = useRef<{ ownerKey: string; attempt: CreationAttempt | null }>({ ownerKey, attempt: null });
+  if (currentCreation.current.ownerKey !== ownerKey) currentCreation.current = { ownerKey, attempt: null };
   const mounted = useRef(true);
   const [outlierMap, setOutlierMap] = useState<Record<string, OutlierData>>({});
   const [expandedOutliers, setExpandedOutliers] = useState<string | null>(null);
@@ -106,6 +111,34 @@ export default function CompetitorTrackingPage() {
     if (outcome.status === 'confirmed') setCompetitors(prev => prev.filter(c => c.id !== id));
     setDeleteStates(prev => ({ ...prev, [id]: outcome.status }));
   }
+  function applyCreation(capturedOwner: string, attempt: CreationAttempt, outcome: CreationOutcome) {
+    if (!mounted.current || currentOwner.current !== capturedOwner || currentCreation.current.attempt !== attempt) return;
+    setAdding(false); setErrorUpgrade(false);
+    setCreationUnconfirmed(outcome.status === 'unconfirmed' || competitorCreationBlocked(attempt.owner));
+    if (outcome.status === 'confirmed') {
+      setCompetitors(prev => mergeCompetitorDeletions(attempt.owner, mergeCompetitorCreations(attempt.owner, prev)));
+      setUrlInput(prev => prev.trim() === attempt.input ? '' : prev); setError('');
+    } else if (outcome.status === 'unconfirmed') {
+      setError(t('El alta no está confirmada. Conservamos la solicitud original.', 'The addition is unconfirmed. The original request is retained.'));
+    } else {
+      const msgs: Record<string, string> = {
+        limit_reached: t(`Has llegado al máximo de competidores de tu plan${outcome.max ? ` (${outcome.max})` : ''}.`, `You've reached your plan's competitor limit${outcome.max ? ` (${outcome.max})` : ''}.`),
+        invalid_url: t('URL no válida. Usa youtube.com/@canal o youtube.com/channel/UCxxx', 'Invalid URL. Use youtube.com/@channel or youtube.com/channel/UCxxx'),
+        channel_not_found: t('Canal no encontrado.', 'Channel not found.'),
+        already_tracked: t('Ya estás siguiendo este canal.', 'Already tracking this channel.'),
+      };
+      setErrorUpgrade(outcome.error === 'limit_reached');
+      setError(msgs[outcome.error] || t('No se pudo añadir el competidor.', 'The competitor could not be added.'));
+    }
+  }
+  function observeCreation(capturedOwner: string, attempt: CreationAttempt) {
+    currentCreation.current = { ownerKey: capturedOwner, attempt };
+    const terminal = attempt.outcome ?? attempt.waitOutcome;
+    if (terminal) applyCreation(capturedOwner, attempt, terminal);
+    else { setAdding(true); setCreationUnconfirmed(false); setError(''); setErrorUpgrade(false); }
+    void attempt.original.then(result => applyCreation(capturedOwner, attempt, result));
+    void attempt.waiter.then(result => { if (attempt.outcome?.status !== 'confirmed') applyCreation(capturedOwner, attempt, result); });
+  }
   function readCompetitors() {
     const capturedOwner = ownerKey;
     if (status !== 'authenticated' || !owner.userId || !mounted.current || currentOwner.current !== capturedOwner) return;
@@ -114,7 +147,7 @@ export default function CompetitorTrackingPage() {
     setListOwner(capturedOwner); setLoading(true); setListUnavailable(false);
     const apply = (outcome: Awaited<typeof read.original>) => {
       if (!mounted.current || currentOwner.current !== capturedOwner || currentRead.current.entry !== read) return;
-      setCompetitors(prev => mergeCompetitorDeletions(owner, outcome.status === 'ready' ? outcome.competitors : prev));
+      setCompetitors(prev => mergeCompetitorDeletions(owner, mergeCompetitorCreations(owner, outcome.status === 'ready' ? outcome.competitors : prev)));
       setListUnavailable(outcome.status !== 'ready'); setLoading(false);
     };
     void read.original.then(apply);
@@ -122,12 +155,20 @@ export default function CompetitorTrackingPage() {
   }
   useEffect(() => {
     setCompetitors([]); setDeleteStates({});
-    setAdding(false); setError(''); setErrorUpgrade(false); setUrlInput('');
+    setAdding(false); setCreationUnconfirmed(false); setError(''); setErrorUpgrade(false); setUrlInput('');
     setOutlierMap({}); setExpandedOutliers(null); setTrending([]); setNewUploads([]); setOpportunities([]); setIntelLoading(false);
     setLoading(status === 'authenticated');
     setListOwner(ownerKey); setListUnavailable(false);
     if (status !== 'authenticated' || !owner.userId) { setLoading(false); setListUnavailable(status === 'authenticated'); return; }
     const capturedOwner = ownerKey;
+    const creation = retainedCompetitorCreation(owner);
+    if (creation) {
+      if (creation.outcome?.status !== 'confirmed') setUrlInput(creation.input);
+      observeCreation(capturedOwner, creation);
+    } else if (competitorCreationBlocked(owner)) {
+      setCreationUnconfirmed(true);
+      setError(t('El alta anterior no está confirmada.', 'The previous addition is unconfirmed.'));
+    }
     for (const attempt of retainedCompetitorDeletions<Competitor>(owner)) {
       setDeleteStates(prev => ({ ...prev, [attempt.row.id]: attempt.outcome?.status ?? attempt.waitOutcome?.status ?? 'pending' }));
       void attempt.waiter.then(result => { if (attempt.outcome?.status !== 'confirmed') applyDeletion(capturedOwner, attempt.row.id, result); });
@@ -169,39 +210,13 @@ export default function CompetitorTrackingPage() {
       .finally(() => { if (mounted.current && currentOwner.current === capturedOwner) setIntelLoading(false); });
   }, [competitors.length, lang, ownerKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function addCompetitor() {
+  function addCompetitor() {
     const capturedOwner = ownerKey;
     if (!urlInput.trim() || status !== 'authenticated' || !owner.userId || currentOwner.current !== capturedOwner || !mounted.current) return;
-    setAdding(true);
-    setError('');
-    setErrorUpgrade(false);
-    try {
-      const res = await fetch('/api/youtube/competitors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlInput.trim() }),
-      });
-      const data = await res.json();
-      if (currentOwner.current !== capturedOwner || !mounted.current) return;
-      if (!res.ok) {
-        if (data.error === 'limit_reached') setErrorUpgrade(true);
-        const msgs: Record<string, string> = {
-          pro_required: t('Necesitas el plan Pro.', 'Pro plan required.'),
-          limit_reached: t(`Has llegado al máximo de competidores de tu plan${data.max ? ` (${data.max})` : ''}.`, `You've reached your plan's competitor limit${data.max ? ` (${data.max})` : ''}.`),
-          invalid_url: t('URL no válida. Usa youtube.com/@canal o youtube.com/channel/UCxxx', 'Invalid URL. Use youtube.com/@channel or youtube.com/channel/UCxxx'),
-          channel_not_found: t('Canal no encontrado.', 'Channel not found.'),
-          already_tracked: t('Ya estás siguiendo este canal.', 'Already tracking this channel.'),
-        };
-        setError(msgs[data.error] || data.error);
-        return;
-      }
-      setCompetitors(prev => [...prev, { ...data.competitor, snapshots: [], growth: null, addedAt: new Date().toISOString() }]);
-      setUrlInput('');
-    } catch {
-      if (currentOwner.current === capturedOwner && mounted.current) setError(t('Error de conexión', 'Connection error'));
-    } finally {
-      if (currentOwner.current === capturedOwner && mounted.current) setAdding(false);
-    }
+    const attempt = beginCompetitorCreation(owner, urlInput);
+    if (!attempt) { setAdding(false); setCreationUnconfirmed(true); setError(t('El alta anterior no está confirmada.', 'The previous addition is unconfirmed.')); return; }
+    setUrlInput(attempt.input);
+    observeCreation(capturedOwner, attempt);
   }
 
   async function removeCompetitor(id: string) {
@@ -268,6 +283,7 @@ export default function CompetitorTrackingPage() {
           <input
             type="text"
             value={urlInput}
+            disabled={adding || creationUnconfirmed}
             onChange={e => setUrlInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addCompetitor()}
             placeholder={t('youtube.com/@canal o ID del canal', 'youtube.com/@channel or channel ID')}
@@ -275,7 +291,7 @@ export default function CompetitorTrackingPage() {
           />
           <button
             onClick={addCompetitor}
-            disabled={adding || !urlInput.trim()}
+            disabled={adding || creationUnconfirmed || !owner.userId || !urlInput.trim()}
             className="btn-offset px-6 py-3 text-sm font-display disabled:opacity-50 flex items-center gap-2"
           >
             {adding ? (
