@@ -8,14 +8,10 @@ import { PRICES, formatPrice } from '@/lib/pricing';
 import DashboardShell from '@/components/DashboardShell';
 import ToolLoginGate from '@/components/ToolLoginGate';
 import { useDashboardStats } from '@/lib/use-dashboard-stats';
+import { useCoachSend } from '@/lib/use-coach-send';
 
 type Lang = 'es' | 'en';
 type CoachMode = 'create' | 'analyze' | 'optimize' | 'research';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
 
 const MODES: { key: CoachMode; icon: string; label: { es: string; en: string }; desc: { es: string; en: string } }[] = [
   {
@@ -132,13 +128,22 @@ function CoachSession({ userId, email, lang, proPrice, isCurrent }: {
   const plan = useDashboardStats(userId, email, 'authenticated');
   const isPro = plan.data?.stats.isPro ?? null;
   const [mode, setMode] = useState<CoachMode>('analyze');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const conversation = useCoachSend(JSON.stringify([userId ?? null, email ?? null]));
+  const messages = conversation.messages;
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const loading = conversation.status === 'sending';
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const error = conversation.status === 'storage-unavailable'
+    ? t('No se puede habilitar un nuevo envío porque no se puede conservar su estado. La pregunta original no se volverá a enviar.', 'A new send cannot be enabled because its state cannot be retained. The original question will not be sent again.')
+    : ['unconfirmed', 'lost'].includes(conversation.status)
+      ? t('El envío no está confirmado. No envíes de nuevo esta pregunta mientras no se confirme el resultado original.', 'The send is unconfirmed. Do not send this question again until the original result is confirmed.')
+      : conversation.error === 'pro_required'
+        ? t('Necesitas el plan Pro para usar el Coach.', 'You need the Pro plan to use the Coach.')
+        : conversation.error === 'throttled'
+          ? t('Espera unos segundos antes de enviar otro mensaje.', 'Wait a few seconds before sending another message.')
+          : conversation.error || '';
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -146,39 +151,11 @@ function CoachSession({ userId, email, lang, proPrice, isCurrent }: {
 
   async function send() {
     const text = input.trim();
-    if (!text || loading || !isCurrent() || isPro !== true || plan.statsError || plan.statsRefreshing) return;
-
+    if (!text || conversation.blocked || !isCurrent() || isPro !== true || plan.statsError || plan.statsRefreshing) return;
+    const wait = conversation.start(text, mode, lang);
+    if (!wait) return;
     setInput('');
-    setError('');
-    const userMsg: Message = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMsg]);
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, context: messages, mode, lang }),
-      });
-      if (!isCurrent()) return;
-      const json = await res.json();
-      if (!isCurrent()) return;
-      if (!res.ok) {
-        if (json.error === 'pro_required') {
-          setError(t('Necesitas el plan Pro para usar el Coach.', 'You need the Pro plan to use the Coach.'));
-        } else if (json.error === 'throttled') {
-          setError(t('Espera unos segundos antes de enviar otro mensaje.', 'Wait a few seconds before sending another message.'));
-        } else {
-          setError(json.error || t('Error de conexión', 'Connection error'));
-        }
-        return;
-      }
-      setMessages(prev => [...prev, { role: 'assistant', content: json.reply }]);
-    } catch {
-      if (isCurrent()) setError(t('Error de conexión', 'Connection error'));
-    } finally {
-      if (isCurrent()) setLoading(false);
-    }
+    await wait;
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -352,7 +329,7 @@ function CoachSession({ userId, email, lang, proPrice, isCurrent }: {
 
           {error && (
             <div className="text-center">
-              <span className="inline-block text-red-400 text-[13px] font-mono-jb px-3 py-2 rounded border border-red-500/20" style={{ background: 'rgba(155,32,32,0.15)' }}>
+              <span role="alert" className="inline-block text-red-400 text-[13px] font-mono-jb px-3 py-2 rounded border border-red-500/20" style={{ background: 'rgba(155,32,32,0.15)' }}>
                 {error}
               </span>
             </div>
@@ -372,11 +349,11 @@ function CoachSession({ userId, email, lang, proPrice, isCurrent }: {
               rows={1}
               className="flex-1 resize-none rounded-lg px-4 py-3 text-sm font-mono-jb focus:outline-none transition yv-input"
               style={{ background: 'var(--yv-bg-1)' }}
-              disabled={loading}
+              disabled={conversation.blocked}
             />
             <button
               onClick={send}
-              disabled={loading || !input.trim()}
+              disabled={conversation.blocked || !input.trim()}
               className="btn-offset px-5 py-3 text-sm font-display rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {loading ? (
