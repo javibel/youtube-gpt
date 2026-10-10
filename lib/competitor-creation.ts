@@ -52,7 +52,10 @@ export async function createTrackedCompetitor(userId: string, input: unknown, ap
       subscribers: integer(ch.statistics?.subscriberCount ?? '0', 2147483647), totalViews: BigInt(integer(ch.statistics?.viewCount ?? '0', Number.MAX_SAFE_INTEGER)), videoCount: integer(ch.statistics?.videoCount ?? '0', 2147483647) };
     if (!(captured.channelThumb === null || typeof captured.channelThumb === 'string')) return uncertain();
     const id = randomUUID(); beforeStep();
-    const admission = await prisma.$transaction(async tx => {
+    const admission = await prisma.$transaction(async (tx): Promise<
+      { denied: 'uncertain' | 'already_tracked' | 'limit_reached' }
+      | { row: Awaited<ReturnType<typeof prisma.competitorCreationAttempt.create>> }
+    > => {
       beforeStep(); const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId); beforeStep();
       if (owner.length !== 1 || owner[0].id !== userId) throw Error('Admission unavailable');
       const pending = await tx.competitorCreationAttempt.findFirst({ where: { userId, channelId: captured.channelId, state: { not: 'complete' } } }); beforeStep();
