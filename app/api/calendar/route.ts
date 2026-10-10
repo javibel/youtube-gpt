@@ -8,20 +8,20 @@ const VALID_STATUSES = ['idea', 'draft', 'scheduled', 'published'];
 class CalendarCreationConflict extends Error {}
 
 // Retiring the HTTP waiter does not cancel or replace an original dependency.
-function calendarReadWait(signal: AbortSignal) {
+function calendarHttpWait(signal: AbortSignal) {
   const deadline = performance.now() + 30_000;
   let retired = false;
   let rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
   const retire = () => {
-    if (!retired) { retired = true; rejectWait(new Error('Calendar read unconfirmed')); }
+    if (!retired) { retired = true; rejectWait(new Error('Calendar HTTP unconfirmed')); }
   };
   const timer = setTimeout(retire, 30_000);
   signal.addEventListener('abort', retire, { once: true });
   const check = () => {
     if (signal.aborted || performance.now() >= deadline) retire();
-    if (retired) throw new Error('Calendar read unconfirmed');
+    if (retired) throw new Error('Calendar HTTP unconfirmed');
   };
   return {
     async run<T>(operation: () => Promise<T>): Promise<T> {
@@ -31,13 +31,29 @@ function calendarReadWait(signal: AbortSignal) {
       check();
       return result;
     },
+    check,
     close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
   };
 }
 
+type CalendarHttpWait = ReturnType<typeof calendarHttpWait>;
+async function boundedCalendarWrite(request: Request, handler: (wait: CalendarHttpWait) => Promise<Response>) {
+  const wait = calendarHttpWait(request.signal);
+  try {
+    const response = await handler(wait);
+    wait.check();
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  } catch {
+    return NextResponse.json({ error: 'calendar_write_unconfirmed' }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
+  } finally { wait.close(); }
+}
+
 // GET — list entries for a month (or range)
 export async function GET(request: Request) {
-  const wait = calendarReadWait(request.signal);
+  const wait = calendarHttpWait(request.signal);
   const headers = { 'Cache-Control': 'no-store' };
   try {
     const session = await wait.run(() => auth());
@@ -80,85 +96,86 @@ export async function GET(request: Request) {
 
 // POST — create entry
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+  return boundedCalendarWrite(request, async wait => {
+    const session = await wait.run(() => auth());
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
 
-  const key = request.headers.get('Idempotency-Key');
-  const recovery = request.headers.get('X-Calendar-Write-Recovery');
-  if ((key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))
-    || (recovery !== null && (recovery !== 'retained-only-v1' || !key))) {
-    return NextResponse.json({ error: 'invalid_recovery' }, { status: 400 });
-  }
+    const key = request.headers.get('Idempotency-Key');
+    const recovery = request.headers.get('X-Calendar-Write-Recovery');
+    if ((key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))
+      || (recovery !== null && (recovery !== 'retained-only-v1' || !key))) {
+      return NextResponse.json({ error: 'invalid_recovery' }, { status: 400 });
+    }
 
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
+    const userId = session.user.id;
+    const plan = await wait.run(() => getUserPlan(userId));
+    if (!isPaid(plan)) {
+      return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+    }
 
-  const body = await request.json().catch(() => ({}));
-  if (!body || typeof body !== 'object' || Array.isArray(body)
-    || typeof body.title !== 'string' || typeof body.date !== 'string'
-    || (body.description != null && typeof body.description !== 'string')
-    || (body.color != null && typeof body.color !== 'string')) {
-    return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
-  }
-  const title = (body.title as string || '').trim();
-  const date = body.date as string || '';
-  const description = (body.description as string || '').trim();
-  const status = VALID_STATUSES.includes(body.status) ? body.status : 'idea';
-  const color = (body.color as string || '').trim() || null;
+    const body = await wait.run(() => request.json().catch(() => ({})));
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || typeof body.title !== 'string' || typeof body.date !== 'string'
+      || (body.description != null && typeof body.description !== 'string')
+      || (body.color != null && typeof body.color !== 'string')) {
+      return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
+    }
+    const title = (body.title as string || '').trim();
+    const date = body.date as string || '';
+    const description = (body.description as string || '').trim();
+    const status = VALID_STATUSES.includes(body.status) ? body.status : 'idea';
+    const color = (body.color as string || '').trim() || null;
 
-  if (!title || title.length > 200) {
-    return NextResponse.json({ error: 'title required (max 200)' }, { status: 400 });
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 });
-  }
+    if (!title || title.length > 200) {
+      return NextResponse.json({ error: 'title required (max 200)' }, { status: 400 });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 });
+    }
 
-  const input = JSON.stringify({ title, description: description || null, date, status, color });
-  if (key && (input.length > 65_536 || Object.keys(body).some(name => !['title','description','date','status','color'].includes(name)))) {
-    return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
-  }
+    const input = JSON.stringify({ title, description: description || null, date, status, color });
+    if (key && (input.length > 65_536 || Object.keys(body).some(name => !['title','description','date','status','color'].includes(name)))) {
+      return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
+    }
 
-  const userId = session.user.id;
-  try {
-    const entry = await prisma.$transaction(async (tx) => {
-      if (request.signal.aborted) throw new Error('Calendar request aborted');
-      // Every calendar admission locks the owner before counting and inserting.
-      const owners = await tx.$queryRawUnsafe<Array<{ id: string }>>(
-        'SELECT id FROM users WHERE id=$1 FOR UPDATE', userId,
-      );
-      if (owners.length !== 1 || owners[0].id !== userId || request.signal.aborted) {
-        throw new Error('Calendar owner unconfirmed');
-      }
-      if (key) {
-        const receipt = await tx.calendarCreationReceipt.findUnique({ where: { userId_key: { userId, key } } });
-        if (receipt) {
-          if (receipt.userId !== userId || receipt.key !== key) throw new Error('Calendar receipt unconfirmed');
-          if (receipt.input !== input) throw new CalendarCreationConflict('calendar_key_conflict');
-          // A retained business receipt selects the original committed row only.
-          // Deletion or subsequent edits never authorize another creation.
-          const retained = receipt.entryId ? await tx.calendarEntry.findUnique({ where: { id: receipt.entryId } }) : null;
-          if (!retained || retained.userId !== userId) throw new Error('Calendar original unavailable');
-          const retainedInput = JSON.stringify({ title: retained.title, description: retained.description,
-            date: retained.date, status: retained.status, color: retained.color });
-          if (retainedInput !== input) throw new CalendarCreationConflict('calendar_entry_changed');
-          return retained;
+    try {
+      const entry = await wait.run(() => prisma.$transaction(async (tx) => {
+        if (request.signal.aborted) throw new Error('Calendar request aborted');
+        // Every calendar admission locks the owner before counting and inserting.
+        const owners = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+          'SELECT id FROM users WHERE id=$1 FOR UPDATE', userId,
+        );
+        if (owners.length !== 1 || owners[0].id !== userId || request.signal.aborted) {
+          throw new Error('Calendar owner unconfirmed');
         }
-        if (recovery === 'retained-only-v1') throw new Error('Calendar original unconfirmed');
-      }
-      const count = await tx.calendarEntry.count({ where: { userId } });
-      if (!Number.isSafeInteger(count) || count < 0) throw new Error('Calendar count unconfirmed');
-      if (count >= MAX_ENTRIES) return null;
-      if (request.signal.aborted) throw new Error('Calendar request aborted');
-      const created = await tx.calendarEntry.create({
-        data: { userId, title, description: description || null, date, status, color },
-      });
+        if (key) {
+          const receipt = await tx.calendarCreationReceipt.findUnique({ where: { userId_key: { userId, key } } });
+          if (receipt) {
+            if (receipt.userId !== userId || receipt.key !== key) throw new Error('Calendar receipt unconfirmed');
+            if (receipt.input !== input) throw new CalendarCreationConflict('calendar_key_conflict');
+            // A retained business receipt selects the original committed row only.
+            // Deletion or subsequent edits never authorize another creation.
+            const retained = receipt.entryId ? await tx.calendarEntry.findUnique({ where: { id: receipt.entryId } }) : null;
+            if (!retained || retained.userId !== userId) throw new Error('Calendar original unavailable');
+            const retainedInput = JSON.stringify({ title: retained.title, description: retained.description,
+              date: retained.date, status: retained.status, color: retained.color });
+            if (retainedInput !== input) throw new CalendarCreationConflict('calendar_entry_changed');
+            return retained;
+          }
+          if (recovery === 'retained-only-v1') throw new Error('Calendar original unconfirmed');
+        }
+        const count = await tx.calendarEntry.count({ where: { userId } });
+        if (!Number.isSafeInteger(count) || count < 0) throw new Error('Calendar count unconfirmed');
+        if (count >= MAX_ENTRIES) return null;
+        if (request.signal.aborted) throw new Error('Calendar request aborted');
+        const created = await tx.calendarEntry.create({
+          data: { userId, title, description: description || null, date, status, color },
+        });
       if (key) await tx.calendarCreationReceipt.create({ data: { userId, key, input, entryId: created.id } });
       return created;
-    }, { maxWait: 10_000, timeout: 15_000 });
+    }, { maxWait: 10_000, timeout: 15_000 }));
     if (!entry) return NextResponse.json({ error: 'max_entries' }, { status: 400 });
     return NextResponse.json({ entry }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
@@ -169,6 +186,7 @@ export async function POST(request: Request) {
       status: 503, headers: { 'Cache-Control': 'no-store' },
     });
   }
+  });
 }
 
 // PUT — update entry
@@ -187,7 +205,7 @@ function calendarSnapshot(value: unknown) {
 
 // Immutable receipt confirms only the original business mutation, never current
 // row state, cancellation, or authority to recover a native runner.
-async function keyedCalendarMutation(request: Request, userId: string, method: 'PUT' | 'DELETE', body: unknown, id: unknown) {
+async function keyedCalendarMutation(request: Request, userId: string, method: 'PUT' | 'DELETE', body: unknown, id: unknown, wait: CalendarHttpWait) {
   const key = request.headers.get('Idempotency-Key'), recovery = request.headers.get('X-Calendar-Write-Recovery');
   const invalid = () => NextResponse.json({ error: 'invalid mutation' }, { status: 400 });
   if (!key || !/^[-A-Za-z0-9._:]{1,128}$/.test(key) || (recovery !== null && recovery !== 'retained-only-v1')) return invalid();
@@ -206,7 +224,7 @@ async function keyedCalendarMutation(request: Request, userId: string, method: '
   const input = JSON.stringify({ id, expected, data });
   if (input.length > 65536) return invalid();
   try {
-    const result = await prisma.$transaction(async tx => {
+    const result = await wait.run(() => prisma.$transaction(async tx => {
       if (request.signal.aborted) throw new Error('Mutation aborted');
       const owners = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       if (owners.length !== 1 || owners[0].id !== userId || request.signal.aborted) throw new Error('Owner unconfirmed');
@@ -238,7 +256,7 @@ async function keyedCalendarMutation(request: Request, userId: string, method: '
       if (serialized.length > 65536) throw new Error('Original output too large');
       await tx.calendarMutationReceipt.create({ data: { userId, key, method, entryId: id, input, output: serialized } });
       return output;
-    }, { maxWait: 10000, timeout: 15000 });
+    }, { maxWait: 10000, timeout: 15000 }));
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store', 'X-Calendar-Write-Result': 'original-v1' } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof CalendarMutationConflict ? error.message : 'calendar_write_unconfirmed' }, {
@@ -248,64 +266,70 @@ async function keyedCalendarMutation(request: Request, userId: string, method: '
 }
 
 export async function PUT(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+  return boundedCalendarWrite(request, async wait => {
+    const session = await wait.run(() => auth());
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
 
-  const body = await request.json().catch(() => ({}));
-  if (request.headers.get('Idempotency-Key') !== null || request.headers.get('X-Calendar-Write-Recovery') !== null) return keyedCalendarMutation(request, session.user.id, 'PUT', body, body?.id);
-  const id = body.id as string;
-  if (!id) {
-    return NextResponse.json({ error: 'id required' }, { status: 400 });
-  }
+    const userId = session.user.id;
+    const body = await wait.run(() => request.json().catch(() => ({})));
+    if (request.headers.get('Idempotency-Key') !== null || request.headers.get('X-Calendar-Write-Recovery') !== null) return keyedCalendarMutation(request, userId, 'PUT', body, body?.id, wait);
+    const id = body.id as string;
+    if (!id) {
+      return NextResponse.json({ error: 'id required' }, { status: 400 });
+    }
 
-  const existing = await prisma.calendarEntry.findUnique({ where: { id } });
-  if (!existing || existing.userId !== session.user.id) {
-    return NextResponse.json({ error: 'not found' }, { status: 404 });
-  }
+    const existing = await wait.run(() => prisma.calendarEntry.findUnique({ where: { id } }));
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: 'not found' }, { status: 404 });
+    }
 
-  const data: { title?: string; description?: string | null; date?: string; status?: string; color?: string | null } = {};
+    const data: { title?: string; description?: string | null; date?: string; status?: string; color?: string | null } = {};
 
-  if (body.title !== undefined) {
-    const title = (body.title as string).trim();
-    if (!title || title.length > 200) return NextResponse.json({ error: 'invalid title' }, { status: 400 });
-    data.title = title;
-  }
-  if (body.date !== undefined) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) return NextResponse.json({ error: 'invalid date' }, { status: 400 });
-    data.date = body.date;
-  }
-  if (body.status !== undefined) {
-    if (!VALID_STATUSES.includes(body.status)) return NextResponse.json({ error: 'invalid status' }, { status: 400 });
-    data.status = body.status;
-  }
-  if (body.description !== undefined) data.description = (body.description as string || '').trim() || null;
-  if (body.color !== undefined) data.color = (body.color as string || '').trim() || null;
+    if (body.title !== undefined) {
+      const title = (body.title as string).trim();
+      if (!title || title.length > 200) return NextResponse.json({ error: 'invalid title' }, { status: 400 });
+      data.title = title;
+    }
+    if (body.date !== undefined) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) return NextResponse.json({ error: 'invalid date' }, { status: 400 });
+      data.date = body.date;
+    }
+    if (body.status !== undefined) {
+      if (!VALID_STATUSES.includes(body.status)) return NextResponse.json({ error: 'invalid status' }, { status: 400 });
+      data.status = body.status;
+    }
+    if (body.description !== undefined) data.description = (body.description as string || '').trim() || null;
+    if (body.color !== undefined) data.color = (body.color as string || '').trim() || null;
 
-  const entry = await prisma.calendarEntry.update({ where: { id }, data });
-  return NextResponse.json({ entry });
+    const entry = await wait.run(() => prisma.calendarEntry.update({ where: { id }, data }));
+    return NextResponse.json({ entry });
+  });
 }
 
 // DELETE — remove entry
 export async function DELETE(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+  return boundedCalendarWrite(request, async wait => {
+    const session = await wait.run(() => auth());
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
 
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-  if (request.headers.get('Idempotency-Key') !== null || request.headers.get('X-Calendar-Write-Recovery') !== null) return keyedCalendarMutation(request, session.user.id, 'DELETE', await request.json().catch(() => null), id);
-  if (!id) {
-    return NextResponse.json({ error: 'id required' }, { status: 400 });
-  }
+    const userId = session.user.id;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (request.headers.get('Idempotency-Key') !== null || request.headers.get('X-Calendar-Write-Recovery') !== null) return keyedCalendarMutation(request, userId, 'DELETE', await wait.run(() => request.json().catch(() => null)), id, wait);
+    if (!id) {
+      return NextResponse.json({ error: 'id required' }, { status: 400 });
+    }
 
-  const existing = await prisma.calendarEntry.findUnique({ where: { id } });
-  if (!existing || existing.userId !== session.user.id) {
-    return NextResponse.json({ error: 'not found' }, { status: 404 });
-  }
+    const existing = await wait.run(() => prisma.calendarEntry.findUnique({ where: { id } }));
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: 'not found' }, { status: 404 });
+    }
 
-  await prisma.calendarEntry.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+    await wait.run(() => prisma.calendarEntry.delete({ where: { id } }));
+    return NextResponse.json({ ok: true });
+  });
 }
