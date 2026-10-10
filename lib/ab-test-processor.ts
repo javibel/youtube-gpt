@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
+import { beginAbTestTransition } from '@/lib/ab-test';
 
 
 async function fetchVideoData(token: string, videoId: string) {
@@ -28,7 +29,7 @@ async function updateTitle(token: string, videoId: string, title: string, catego
   return res.ok;
 }
 
-export async function processAbTests(): Promise<{ switched: number; completed: number; errors: string[] }> {
+export async function processAbTests(beforeStep?: () => void): Promise<{ switched: number; completed: number; errors: string[] }> {
   const errors: string[] = [];
   let switched = 0;
   let completed = 0;
@@ -39,24 +40,36 @@ export async function processAbTests(): Promise<{ switched: number; completed: n
     where: { status: 'variant_a' },
   });
 
-  for (const test of testsToSwitch) {
+  beforeStep?.();
+  for (const found of testsToSwitch) {
+    const test = { ...found };
     const switchTime = new Date(test.startedAt.getTime() + test.hoursPerVariant * 3600_000);
     if (now < switchTime) continue;
 
     try {
-      const token = await getAccessToken(test.userId);
+      beforeStep?.();
+      const token = await getAccessToken(test.userId, beforeStep);
+      beforeStep?.();
       if (!token) {
         errors.push(`A/B test ${test.id}: no YouTube token`);
         continue;
       }
 
       const video = await fetchVideoData(token, test.videoId);
+      beforeStep?.();
       if (!video) {
         errors.push(`A/B test ${test.id}: video not found`);
         continue;
       }
 
       const currentViews = parseInt(video.statistics?.viewCount ?? '0', 10);
+      if (typeof video.snippet?.categoryId !== 'string' || !video.snippet.categoryId.trim()
+        || !/^\d+$/.test(String(video.statistics?.viewCount ?? '0'))) {
+        errors.push(`A/B test ${test.id}: invalid video data`); continue;
+      }
+      const admission = await beginAbTestTransition(test.userId, test, { action: 'switch_variant', at: now, views: currentViews }, beforeStep);
+      if (!admission.ok) { errors.push(`A/B test ${test.id}: switch unconfirmed`); continue; }
+      beforeStep?.();
 
       // Switch title to variant B
       const ok = await updateTitle(token, test.videoId, test.variantB, video.snippet.categoryId);
@@ -65,14 +78,9 @@ export async function processAbTests(): Promise<{ switched: number; completed: n
         continue;
       }
 
-      await prisma.abTest.update({
-        where: { id: test.id },
-        data: {
-          status: 'variant_b',
-          switchedAt: now,
-          switchViews: currentViews,
-        },
-      });
+      // Once the original title starts, retain its original completion even
+      // if the caller stops waiting. A pending row never permits a new producer.
+      await admission.complete();
       switched++;
     } catch (err) {
       errors.push(`A/B test ${test.id}: ${err instanceof Error ? err.message : String(err)}`);
@@ -80,33 +88,46 @@ export async function processAbTests(): Promise<{ switched: number; completed: n
   }
 
   // 2. Complete tests from variant_b → completed
+  beforeStep?.();
   const testsToComplete = await prisma.abTest.findMany({
     where: { status: 'variant_b', switchedAt: { not: null } },
   });
 
-  for (const test of testsToComplete) {
+  beforeStep?.();
+  for (const found of testsToComplete) {
+    const test = { ...found };
     const endTime = new Date(test.switchedAt!.getTime() + test.hoursPerVariant * 3600_000);
     if (now < endTime) continue;
 
     try {
-      const token = await getAccessToken(test.userId);
+      beforeStep?.();
+      const token = await getAccessToken(test.userId, beforeStep);
+      beforeStep?.();
       if (!token) {
         errors.push(`A/B test ${test.id}: no YouTube token for completion`);
         continue;
       }
 
       const video = await fetchVideoData(token, test.videoId);
+      beforeStep?.();
       if (!video) {
         errors.push(`A/B test ${test.id}: video not found for completion`);
         continue;
       }
 
       const endViews = parseInt(video.statistics?.viewCount ?? '0', 10);
+      if (typeof video.snippet?.categoryId !== 'string' || !video.snippet.categoryId.trim()
+        || !/^\d+$/.test(String(video.statistics?.viewCount ?? '0'))) {
+        errors.push(`A/B test ${test.id}: invalid completion data`); continue;
+      }
       const viewsA = (test.switchViews ?? 0) - test.initialViews;
       const viewsB = endViews - (test.switchViews ?? 0);
 
       // Determine winner
       const winner = viewsA > viewsB ? 'A' : viewsB > viewsA ? 'B' : 'A';
+      const admission = await beginAbTestTransition(test.userId, test, { action: 'complete_test', at: now, views: endViews, winner }, beforeStep);
+      if (!admission.ok) { errors.push(`A/B test ${test.id}: completion unconfirmed`); continue; }
+      beforeStep?.();
 
       // Set winning title
       const winningTitle = winner === 'A' ? test.variantA : test.variantB;
@@ -118,6 +139,7 @@ export async function processAbTests(): Promise<{ switched: number; completed: n
       // AI insight
       let aiInsight: { es: string; en: string } | null = null;
       try {
+        beforeStep?.();
         const prompt = `A/B test results for a YouTube video:
 Original title: "${test.originalTitle}"
 Variant A: "${test.variantA}" — ${viewsA} views in ${test.hoursPerVariant}h
@@ -129,6 +151,7 @@ Give a brief insight (1-2 sentences) about why the winning title likely performe
         const task = await getMessagesTask({ userId: test.userId, taskType: 'youtube.ab-result-insight', language: 'es', instructionsVersion: 'ab-result-insight-v1',
           outputSchema: { type: 'object', required: ['es', 'en'], additionalProperties: false, properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
         });
+        beforeStep?.();
         const msg = await task.create({
           max_tokens: 200,
           messages: [{ role: 'user', content: prompt }],
@@ -139,16 +162,7 @@ Give a brief insight (1-2 sentences) about why the winning title likely performe
         // Non-critical
       }
 
-      await prisma.abTest.update({
-        where: { id: test.id },
-        data: {
-          status: 'completed',
-          completedAt: now,
-          endViews,
-          winner,
-          aiInsight: aiInsight ?? undefined,
-        },
-      });
+      await admission.complete(aiInsight ?? undefined);
       completed++;
     } catch (err) {
       errors.push(`A/B test ${test.id}: ${err instanceof Error ? err.message : String(err)}`);
