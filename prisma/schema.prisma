@@ -71,6 +71,7 @@ model User {
   feedback        UserFeedback?
   abTests         AbTest[]
   abTestCreationAttempts AbTestCreationAttempt[]
+  abTestMutationAttempts AbTestMutationAttempt[]
   teamMemberships TeamMember[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
@@ -466,6 +467,22 @@ model AbTestCreationAttempt {
   @@index([userId, state])
   @@index([userId, videoId, state])
   @@map("ab_test_creation_attempts")
+}
+
+// Stored records only deny fresh work. Only the original live invocation may
+// finish its reservation; no expiry, takeover or recovery from an identifier.
+model AbTestMutationAttempt {
+  id String @id
+  userId String
+  videoId String
+  testId String
+  action String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, videoId, state])
+  @@index([userId, testId, action, state])
+  @@map("ab_test_mutation_attempts")
 }
 
 model SocialPost {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
-import { createAbTest } from '@/lib/ab-test';
+import { createAbTest, beginAbTestMutation } from '@/lib/ab-test';
 
 export const maxDuration = 60;
 
@@ -173,6 +173,8 @@ async function changeTest(req: NextRequest, wait: ReturnType<typeof httpWait>) {
       if (!video || typeof video.snippet?.categoryId !== 'string' || !video.snippet.categoryId.trim()) return unconfirmed();
       categoryId = video.snippet.categoryId;
     }
+    const admission = await wait.run(() => beginAbTestMutation(userId, test, 'cancel', wait.check));
+    if (!admission.ok) return unconfirmed();
     // The original restoration and its SQL completion stay together. A late
     // restoration must not be stranded by discarding its persistence reader.
     return wait.run(async () => {
@@ -180,10 +182,7 @@ async function changeTest(req: NextRequest, wait: ReturnType<typeof httpWait>) {
         const restored = await updateVideoTitle(token!, test.videoId, test.originalTitle, categoryId);
         if (!restored.ok) return unconfirmed();
       }
-      const cancelled = await prisma.abTest.update({
-        where: { id: testId },
-        data: { status: 'cancelled', completedAt: new Date() },
-      });
+      const cancelled = await admission.complete();
       return NextResponse.json({ ok: true, userId, test: cancelled }, { headers: { 'Cache-Control': 'no-store' } });
     });
   }
@@ -192,9 +191,13 @@ async function changeTest(req: NextRequest, wait: ReturnType<typeof httpWait>) {
     const winningTitle = test.winner === 'A' ? test.variantA : test.variantB;
     const video = await wait.run(() => fetchVideoSnippet(token, test.videoId));
     if (!video || typeof video.snippet?.categoryId !== 'string' || !video.snippet.categoryId.trim()) return unconfirmed();
+    const admission = await wait.run(() => beginAbTestMutation(userId, test, 'apply_winner', wait.check));
+    if (!admission.ok) return unconfirmed();
     return wait.run(async () => {
       const applied = await updateVideoTitle(token, test.videoId, winningTitle, video.snippet.categoryId);
-      return applied.ok ? NextResponse.json({ ok: true }) : unconfirmed();
+      if (!applied.ok) return unconfirmed();
+      await admission.complete();
+      return NextResponse.json({ ok: true });
     });
   }
 

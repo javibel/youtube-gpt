@@ -62,6 +62,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  await require('./ab-mutation-deadline-database.cjs')(prisma,results);
  await require('./ab-read-deadline-database.cjs')(prisma,results);
  await require('./ab-creation-admission-database.cjs')(prisma,results);
+ await require('./ab-mutation-admission-database.cjs')(prisma,results);
  await require('./dashboard-onboarding-database.cjs')(prisma,results);
  await require('./onboarding-generation-database.cjs')(prisma,results);
  await require('./onboarding-generation-reload-database.cjs')(prisma,results);

@@ -22,7 +22,9 @@ function harness(options={}){
  const globals={Date:class extends Date{static now(){return now;}},performance:{now:()=>now},setTimeout(fn,ms){const id=++next;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,init={})=>{captures.push({url,init});return step(url==='https://oauth2.googleapis.com/token'?'refreshHeaders':init.method==='PUT'?'putHeaders':'snippetHeaders');}};
  const db={abTest:{findFirst:args=>{captures.push({query:args});return step(method==='POST'?'active':'find');},count:args=>{captures.push({countOwner:args.where.userId});return step('count');},create:args=>{captures.push({create:args});state.createSQL={...row,...args.data};return step('createSQL');},update:args=>{captures.push({update:args});state.updateSQL={...row,...args.data};return step('updateSQL');}},youtubeToken:{findUnique:args=>{captures.push({tokenOwner:args.where.userId});return step('tokenLookup');},update:args=>{captures.push({tokenUpdate:args});return step('tokenSQL');}}};
  let admission;
- db.$queryRawUnsafe=async()=>[{id:'owner'}];db.$transaction=async fn=>fn(db);
+ const stored=structuredClone(row);let mutation;
+ db.$queryRawUnsafe=async()=>[{id:'owner'}];db.$transaction=async fn=>fn({...db,abTest:{...db.abTest,findFirst:async args=>typeof args.where.id==='string'?stored:args.where.id?null:state.active}});
+ db.abTestMutationAttempt={findFirst:async()=>null,create:async args=>(mutation={...args.data}),findUnique:async()=>mutation,updateMany:async args=>{Object.assign(mutation,args.data);return{count:1};}};
  db.abTestCreationAttempt={findFirst:async()=>null,count:async()=>0,create:async args=>(admission={...args.data}),findUnique:async()=>admission,updateMany:async args=>{Object.assign(admission,args.data);return{count:1};}};
  const youtube=options.oauth?source('lib/youtube-auth.ts',{'@/lib/prisma':{prisma:db}},globals):{getAccessToken:(id,guard)=>{captures.push({tokenOwner:id,guard:typeof guard});return step('token');}};
  const plans={getUserPlan:id=>{captures.push({planOwner:id});return step('plan');},isPaid:p=>p!=='free',getLimits:()=>({abTestsSimultaneous:3})};

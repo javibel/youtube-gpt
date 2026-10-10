@@ -127,6 +127,9 @@ export async function createAbTest(
       const pending = await tx.abTestCreationAttempt.findFirst({ where: { userId, videoId, state: { not: 'complete' } } });
       beforeStep?.();
       if (pending) return { denied: 'uncertain' as const };
+      const mutation = await tx.abTestMutationAttempt.findFirst({ where: { userId, videoId, state: { not: 'complete' } } });
+      beforeStep?.();
+      if (mutation) return { denied: 'uncertain' as const };
       const activeCount = await tx.abTest.count({ where: { userId, status: { in: ['variant_a', 'variant_b'] } } });
       beforeStep?.();
       const pendingCount = await tx.abTestCreationAttempt.count({ where: { userId, state: { not: 'complete' } } });
@@ -187,4 +190,70 @@ export async function countActiveAbTests(userId: string): Promise<number> {
   return prisma.abTest.count({
     where: { userId, status: { in: ['variant_a', 'variant_b'] } },
   });
+}
+
+type MutationTest = NonNullable<Awaited<ReturnType<typeof prisma.abTest.findFirst>>>;
+type MutationAdmission =
+  | { ok: false }
+  | { ok: true; complete: () => Promise<MutationTest> };
+
+// Only a fresh, acknowledged reservation returns a live completion closure.
+// It cannot be serialized, retrieved by id, reconstituted or handed over.
+export async function beginAbTestMutation(
+  userId: string,
+  expected: MutationTest,
+  action: 'cancel' | 'apply_winner',
+  beforeStep?: () => void,
+): Promise<MutationAdmission> {
+  try {
+    const test = { ...expected };
+    if (test.userId !== userId || !test.videoId || test.status === 'cancelled') return { ok: false };
+    if (action === 'apply_winner' && (test.status !== 'completed' || !['A', 'B'].includes(test.winner ?? ''))) return { ok: false };
+    const fields = ['id', 'userId', 'videoId', 'status', 'winner', 'originalTitle', 'variantA', 'variantB'] as const;
+    const unchanged = (row: MutationTest | null) => row !== null && fields.every(field => row[field] === test[field]);
+    const id = randomUUID();
+    beforeStep?.();
+    const reserved = await prisma.$transaction(async tx => {
+      beforeStep?.();
+      const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
+      beforeStep?.();
+      if (owner.length !== 1 || owner[0].id !== userId) throw Error('Mutation unavailable');
+      const current = await tx.abTest.findFirst({ where: { id: test.id, userId } });
+      beforeStep?.();
+      if (!unchanged(current)) return null;
+      const other = await tx.abTest.findFirst({ where: { userId, videoId: test.videoId, id: { not: test.id }, status: { in: ['variant_a', 'variant_b'] } } });
+      beforeStep?.();
+      if (other) return null;
+      const creation = await tx.abTestCreationAttempt.findFirst({ where: { userId, videoId: test.videoId, state: { not: 'complete' } } });
+      beforeStep?.();
+      if (creation) return null;
+      const pending = await tx.abTestMutationAttempt.findFirst({ where: { userId, videoId: test.videoId, state: { not: 'complete' } } });
+      beforeStep?.();
+      if (pending) return null;
+      if (action === 'apply_winner') {
+        const applied = await tx.abTestMutationAttempt.findFirst({ where: { userId, testId: test.id, action, state: 'complete' } });
+        beforeStep?.();
+        if (applied) return null;
+      }
+      const row = await tx.abTestMutationAttempt.create({ data: { id, userId, videoId: test.videoId, testId: test.id, action, state: 'pending' } });
+      beforeStep?.();
+      return row;
+    }, { maxWait: 10_000, timeout: 15_000 });
+    if (!reserved || reserved.id !== id || reserved.userId !== userId || reserved.videoId !== test.videoId
+      || reserved.testId !== test.id || reserved.action !== action || reserved.state !== 'pending') return { ok: false };
+    beforeStep?.();
+    return { ok: true, complete: () => prisma.$transaction(async tx => {
+      const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
+      if (owner.length !== 1 || owner[0].id !== userId) throw Error('Completion unavailable');
+      const pending = await tx.abTestMutationAttempt.findUnique({ where: { id } });
+      if (!pending || pending.userId !== userId || pending.videoId !== test.videoId || pending.testId !== test.id
+        || pending.action !== action || pending.state !== 'pending') throw Error('Completion unavailable');
+      const current = await tx.abTest.findFirst({ where: { id: test.id, userId } });
+      if (!unchanged(current)) throw Error('Completion unavailable');
+      const result = action === 'cancel' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'cancelled', completedAt: new Date() } }) : test;
+      const completed = await tx.abTestMutationAttempt.updateMany({ where: { id, userId, testId: test.id, action, state: 'pending' }, data: { state: 'complete' } });
+      if (completed.count !== 1) throw Error('Completion unavailable');
+      return result;
+    }, { maxWait: 10_000, timeout: 15_000 }) };
+  } catch { return { ok: false }; }
 }
