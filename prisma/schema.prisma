@@ -70,6 +70,7 @@ model User {
   trendAlerts          TrendAlert[]
   feedback        UserFeedback?
   abTests         AbTest[]
+  abTestCreationAttempts AbTestCreationAttempt[]
   teamMemberships TeamMember[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
@@ -444,9 +445,27 @@ model AbTest {
   winner          String?
   aiInsight       Json?
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creationAttempt AbTestCreationAttempt?
 
   @@index([userId])
   @@map("ab_tests")
+}
+
+// A pending reservation only denies more fresh work. Its stored identity
+// never grants execution, recovery, release or ownership after process loss.
+model AbTestCreationAttempt {
+  id        String   @id
+  userId    String
+  videoId   String
+  state     String   @default("pending")
+  testId    String?  @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  test      AbTest?  @relation(fields: [testId], references: [id], onDelete: SetNull)
+
+  @@index([userId, state])
+  @@index([userId, videoId, state])
+  @@map("ab_test_creation_attempts")
 }
 
 model SocialPost {

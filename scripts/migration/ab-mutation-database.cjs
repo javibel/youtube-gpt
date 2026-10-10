@@ -15,6 +15,7 @@ module.exports=async(prisma,results)=>{
    harnesses.push(h);h.state.user=owner.id;h.state.email=owner.email;
    const seed=kind==='cancel'?await prisma.abTest.create({data:{userId:owner.id,videoId:'Original',originalTitle:'Original synthetic video',variantA:'Native A',variantB:'Native B'}}):null;
    const db={...prisma,abTest:{findMany:args=>prisma.abTest.findMany(args),findFirst:args=>prisma.abTest.findFirst(args),count:args=>prisma.abTest.count(args),create:args=>{assert.equal(args.data.userId,owner.id);nativeWrites.push('create');return prisma.abTest.create(args);},update:args=>{assert.equal(args.where.id,seed.id);nativeWrites.push('cancel');return prisma.abTest.update(args);}}};
+   db.$transaction=(fn,options)=>prisma.$transaction(tx=>fn({$queryRawUnsafe:(...args)=>tx.$queryRawUnsafe(...args),abTestCreationAttempt:tx.abTestCreationAttempt,abTest:{findFirst:args=>tx.abTest.findFirst(args),count:args=>tx.abTest.count(args),create:args=>{assert.equal(args.data.userId,owner.id);nativeWrites.push('create');return tx.abTest.create(args);}}}),options);
    const transport=async(url,init={})=>{
     assert.match(url,/^https:\/\/www.googleapis.com\/youtube\/v3\/videos\?/);assert.equal(init.headers.Authorization,'Bearer synthetic-title-token');provider.push({url,init});
     if(init.method!=='PUT')return Response.json({items:[{id:'Original',snippet:{title:'Original synthetic video',categoryId:'22',thumbnails:{}},statistics:{viewCount:'12'}}]});
@@ -23,7 +24,7 @@ module.exports=async(prisma,results)=>{
     return mode==='cancel-rejected'?new Response('Synthetic provider rejection',{status:403}):Response.json({id:'Original'});
    };
    const youtube={getAccessToken:async userId=>{assert.equal(userId,owner.id);return'synthetic-title-token';}};
-   const helper=load('lib/ab-test.ts',{'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},{fetch:transport});
+   const helper=load('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},{fetch:transport});
    const route=load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},{fetch:transport});
    h.state.send=request=>{
     if(request.url.includes('channel'))return defaults(request);

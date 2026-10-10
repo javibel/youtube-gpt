@@ -21,9 +21,12 @@ function harness(options={}){
  state.snippetHeaders={ok:true,status:200,json:()=>step('snippetJSON')};state.putHeaders={ok:!options.providerStatus,status:options.providerStatus??200,text:()=>step('putError')};state.refreshHeaders={ok:true,status:200,json:()=>step('refreshJSON')};
  const globals={Date:class extends Date{static now(){return now;}},performance:{now:()=>now},setTimeout(fn,ms){const id=++next;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,init={})=>{captures.push({url,init});return step(url==='https://oauth2.googleapis.com/token'?'refreshHeaders':init.method==='PUT'?'putHeaders':'snippetHeaders');}};
  const db={abTest:{findFirst:args=>{captures.push({query:args});return step(method==='POST'?'active':'find');},count:args=>{captures.push({countOwner:args.where.userId});return step('count');},create:args=>{captures.push({create:args});state.createSQL={...row,...args.data};return step('createSQL');},update:args=>{captures.push({update:args});state.updateSQL={...row,...args.data};return step('updateSQL');}},youtubeToken:{findUnique:args=>{captures.push({tokenOwner:args.where.userId});return step('tokenLookup');},update:args=>{captures.push({tokenUpdate:args});return step('tokenSQL');}}};
+ let admission;
+ db.$queryRawUnsafe=async()=>[{id:'owner'}];db.$transaction=async fn=>fn(db);
+ db.abTestCreationAttempt={findFirst:async()=>null,count:async()=>0,create:async args=>(admission={...args.data}),findUnique:async()=>admission,updateMany:async args=>{Object.assign(admission,args.data);return{count:1};}};
  const youtube=options.oauth?source('lib/youtube-auth.ts',{'@/lib/prisma':{prisma:db}},globals):{getAccessToken:(id,guard)=>{captures.push({tokenOwner:id,guard:typeof guard});return step('token');}};
  const plans={getUserPlan:id=>{captures.push({planOwner:id});return step('plan');},isPaid:p=>p!=='free',getLimits:()=>({abTestsSimultaneous:3})};
- const helper=source('lib/ab-test.ts',{'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},globals);
+ const helper=source('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},globals);
  const route=source('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:()=>step('auth')},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},globals);
  const request=new Request('https://example.invalid/api/youtube/ab-test',{method,body:'{}',signal:controller.signal});request.json=()=>step('body');if(options.preAborted)controller.abort();
  const original=options.directHelper?helper.createAbTest('owner',state.body):route[method](request);
