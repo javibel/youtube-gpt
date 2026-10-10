@@ -1,0 +1,7 @@
+'use strict';
+const path=require('node:path'),assert=require('node:assert/strict'),{load}=require('./route-harness.cjs');
+const root=path.resolve(__dirname,'../../..'),config=require(path.join(root,'migration-config.json'));
+const checked=require('./isolation.cjs').validate(config,{root,operationalRoots:['C:/Users/jimen/youtube-gpt/youtube-gpt','C:/Users/jimen/youtube-gpt/local-agent'],environment:process.env});
+const prisma=new(require('@prisma/client').PrismaClient)({datasources:{db:{url:config.databaseUrl}}});
+let transactions=0;const db={$transaction:async(fn,options)=>{const result=await prisma.$transaction(fn,options);if(++transactions===1){process.send({stage:'original-admission-committed'});await new Promise(()=>{});}return result;}};
+(async()=>{try{const identity=(await prisma.$queryRawUnsafe("SELECT current_database() AS db,current_setting('data_directory') AS directory"))[0];assert.equal(identity.db,'ytubviral_migration_test');assert.equal(path.resolve(identity.directory).toLowerCase(),path.resolve(checked.paths.database).toLowerCase());const helper=load('lib/competitor-deletion.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db}});await helper.deleteTrackedCompetitor(process.argv[2],process.argv[3],()=>{});throw Error('Native original should remain held');}catch(e){process.send?.({error:e.message});process.exitCode=1;await prisma.$disconnect();}})();

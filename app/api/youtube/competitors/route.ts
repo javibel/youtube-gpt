@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits } from '@/lib/plans';
+import { deleteTrackedCompetitor } from '@/lib/competitor-deletion';
+
+export const maxDuration = 60;
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -195,23 +198,30 @@ export async function POST(request: Request) {
 
 // DELETE: remove a tracked competitor
 export async function DELETE(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const body = await request.json();
-  const id: string = body.id || '';
-  if (!id) {
-    return NextResponse.json({ error: 'missing id' }, { status: 400 });
-  }
-
-  // Verify ownership
-  const comp = await prisma.trackedCompetitor.findUnique({ where: { id } });
-  if (!comp || comp.userId !== session.user.id) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
-  await prisma.trackedCompetitor.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  const deadline = performance.now() + 55_000;
+  let retired = false;
+  let rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(new Error('Deletion unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Deletion unconfirmed'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id) return reply({ error: 'unauthorized' }, 401);
+      const userId = session.user.id;
+      let body;
+      try { body = await request.json(); } catch { check(); return reply({ error: 'missing id' }, 400); }
+      check();
+      const id = body?.id;
+      if (!body || typeof body !== 'object' || Array.isArray(body) || typeof id !== 'string' || !id.trim() || id !== id.trim() || id.length > 200) return reply({ error: 'missing id' }, 400);
+      const result = await deleteTrackedCompetitor(userId, id, check);
+      return result.ok ? reply(result) : reply({ error: result.error }, result.status);
+    });
+    const result = await Promise.race([original, stopped]); check(); return result;
+  } catch { return reply({ error: 'competitor_delete_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

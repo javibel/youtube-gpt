@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import { FlameIcon, BoltIcon, LeafIcon } from '@/components/icons';
+import { beginCompetitorDeletion, competitorDeletionBlocked, mergeCompetitorDeletions, retainedCompetitorDeletions } from '@/lib/competitor-delete-client';
+import type { DeleteOutcome } from '@/lib/competitor-delete-client';
 
 type Lang = 'es' | 'en';
 
@@ -105,7 +107,11 @@ export default function CompetitorTrackingPage() {
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState('');
   const [errorUpgrade, setErrorUpgrade] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteStates, setDeleteStates] = useState<Record<string, 'pending' | 'unconfirmed' | 'rejected'>>({});
+  const owner = { userId: session?.user?.id ?? '', email: session?.user?.email ?? '' };
+  const ownerKey = JSON.stringify([status, owner.userId, owner.email]);
+  const currentOwner = useRef(ownerKey); currentOwner.current = ownerKey;
+  const mounted = useRef(true);
   const [outlierMap, setOutlierMap] = useState<Record<string, OutlierData>>({});
   const [expandedOutliers, setExpandedOutliers] = useState<string | null>(null);
   const [intelTab, setIntelTab] = useState<IntelTab>('trending');
@@ -115,48 +121,67 @@ export default function CompetitorTrackingPage() {
   const [intelLoading, setIntelLoading] = useState(false);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  function applyDeletion(capturedOwner: string, id: string, outcome: DeleteOutcome) {
+    if (!mounted.current || currentOwner.current !== capturedOwner) return;
+    if (outcome.status === 'confirmed') setCompetitors(prev => prev.filter(c => c.id !== id));
+    setDeleteStates(prev => ({ ...prev, [id]: outcome.status === 'confirmed' ? 'rejected' : outcome.status }));
+  }
   useEffect(() => {
+    setCompetitors([]); setDeleteStates({});
+    setAdding(false); setError(''); setErrorUpgrade(false); setUrlInput('');
+    setOutlierMap({}); setExpandedOutliers(null); setTrending([]); setNewUploads([]); setOpportunities([]); setIntelLoading(false);
+    setLoading(status === 'authenticated');
     if (status !== 'authenticated') return;
+    const capturedOwner = ownerKey;
+    for (const attempt of retainedCompetitorDeletions<Competitor>(owner)) {
+      setDeleteStates(prev => ({ ...prev, [attempt.row.id]: attempt.outcome?.status === 'confirmed' ? 'rejected' : attempt.outcome?.status ?? attempt.waitOutcome?.status ?? 'pending' }));
+      void attempt.waiter.then(result => { if (attempt.outcome?.status !== 'confirmed') applyDeletion(capturedOwner, attempt.row.id, result); });
+      void attempt.original.then(result => applyDeletion(capturedOwner, attempt.row.id, result));
+    }
     fetch('/api/youtube/competitors')
       .then(r => r.json())
-      .then(d => { if (d.competitors) setCompetitors(d.competitors); })
+      .then(d => { if (mounted.current && currentOwner.current === capturedOwner && Array.isArray(d.competitors)) setCompetitors(mergeCompetitorDeletions(owner, d.competitors)); })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [status]);
+      .finally(() => { if (mounted.current && currentOwner.current === capturedOwner) setLoading(false); });
+  }, [ownerKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch outliers for all competitors
   useEffect(() => {
     if (competitors.length === 0) return;
+    const capturedOwner = ownerKey;
     competitors.forEach(comp => {
       if (outlierMap[comp.channelId]) return;
       fetch(`/api/youtube/outliers?channelId=${comp.channelId}&period=90d`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
-          if (data) setOutlierMap(prev => ({ ...prev, [comp.channelId]: data }));
+          if (data && mounted.current && currentOwner.current === capturedOwner) setOutlierMap(prev => ({ ...prev, [comp.channelId]: data }));
         })
         .catch(() => {});
     });
-  }, [competitors.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [competitors.length, ownerKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch competitor intel
   useEffect(() => {
     if (competitors.length === 0) return;
+    const capturedOwner = ownerKey;
     setIntelLoading(true);
     fetch(`/api/youtube/competitor-intel?lang=${lang}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data) {
+          if (data && mounted.current && currentOwner.current === capturedOwner) {
           setTrending(data.trending || []);
           setNewUploads(data.newUploads || []);
           setOpportunities(data.opportunities || []);
         }
       })
       .catch(() => {})
-      .finally(() => setIntelLoading(false));
-  }, [competitors.length, lang]);
+      .finally(() => { if (mounted.current && currentOwner.current === capturedOwner) setIntelLoading(false); });
+  }, [competitors.length, lang, ownerKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function addCompetitor() {
-    if (!urlInput.trim()) return;
+    const capturedOwner = ownerKey;
+    if (!urlInput.trim() || status !== 'authenticated' || currentOwner.current !== capturedOwner || !mounted.current) return;
     setAdding(true);
     setError('');
     setErrorUpgrade(false);
@@ -167,6 +192,7 @@ export default function CompetitorTrackingPage() {
         body: JSON.stringify({ url: urlInput.trim() }),
       });
       const data = await res.json();
+      if (currentOwner.current !== capturedOwner || !mounted.current) return;
       if (!res.ok) {
         if (data.error === 'limit_reached') setErrorUpgrade(true);
         const msgs: Record<string, string> = {
@@ -182,21 +208,22 @@ export default function CompetitorTrackingPage() {
       setCompetitors(prev => [...prev, { ...data.competitor, snapshots: [], growth: null, addedAt: new Date().toISOString() }]);
       setUrlInput('');
     } catch {
-      setError(t('Error de conexión', 'Connection error'));
+      if (currentOwner.current === capturedOwner && mounted.current) setError(t('Error de conexión', 'Connection error'));
     } finally {
-      setAdding(false);
+      if (currentOwner.current === capturedOwner && mounted.current) setAdding(false);
     }
   }
 
   async function removeCompetitor(id: string) {
-    setDeleting(id);
-    await fetch('/api/youtube/competitors', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    }).catch(() => {});
-    setCompetitors(prev => prev.filter(c => c.id !== id));
-    setDeleting(null);
+    const capturedOwner = ownerKey;
+    if (status !== 'authenticated' || !owner.userId || !mounted.current || currentOwner.current !== capturedOwner) return;
+    const selected = competitors.find(c => c.id === id); if (!selected) return;
+    const attempt = beginCompetitorDeletion(owner, selected);
+    if (!attempt) { applyDeletion(capturedOwner, id, { status: 'unconfirmed' }); return; }
+    setDeleteStates(prev => ({ ...prev, [id]: 'pending' }));
+    void attempt.original.then(result => applyDeletion(capturedOwner, id, result));
+    const result = await attempt.waiter;
+    if (attempt.outcome?.status !== 'confirmed') applyDeletion(capturedOwner, id, result);
   }
 
   if (status === 'loading' || loading) {
@@ -326,13 +353,15 @@ export default function CompetitorTrackingPage() {
                     </div>
                     <button
                       onClick={() => removeCompetitor(comp.id)}
-                      disabled={deleting === comp.id}
+                      disabled={deleteStates[comp.id] === 'pending' || competitorDeletionBlocked(owner, comp.id)}
                       className="hover:text-red-400 transition p-1" style={{ color: 'var(--yv-text-4)' }}
                       title={t('Dejar de seguir', 'Untrack')}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     </button>
                   </div>
+                  {(deleteStates[comp.id] === 'unconfirmed' || (deleteStates[comp.id] !== 'pending' && competitorDeletionBlocked(owner, comp.id))) && <p role="status" className="text-sm text-amber-300 mb-3">{t('El borrado no está confirmado. Conservamos este competidor.', 'Deletion is unconfirmed. This competitor is kept.')}</p>}
+                  {deleteStates[comp.id] === 'rejected' && !competitorDeletionBlocked(owner, comp.id) && <p role="status" className="text-sm text-red-400 mb-3">{t('No se pudo borrar el competidor.', 'The competitor could not be deleted.')}</p>}
 
                   {/* Stats grid */}
                   <div className="grid grid-cols-3 gap-3 mb-3">
