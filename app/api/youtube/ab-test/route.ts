@@ -8,14 +8,14 @@ export const maxDuration = 60;
 
 // Retire only HTTP. A title/credential write already invoked keeps its own
 // persistence/result reader; neither timeout nor abort grants another attempt.
-function mutationWait(signal?: AbortSignal) {
-  const deadline = performance.now() + 55_000;
+function httpWait(signal?: AbortSignal, budget = 55_000) {
+  const deadline = performance.now() + budget;
   let retired = false;
   let rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
   const retire = () => { if (!retired) { retired = true; rejectWait(new Error('Mutation unconfirmed')); } };
-  const timer = setTimeout(retire, 55_000);
+  const timer = setTimeout(retire, budget);
   signal?.addEventListener('abort', retire, { once: true });
   const check = () => {
     if (signal?.aborted || performance.now() >= deadline) retire();
@@ -35,8 +35,8 @@ function mutationWait(signal?: AbortSignal) {
 function unconfirmed() {
   return NextResponse.json({ error: 'ab_mutation_unconfirmed' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
 }
-async function bounded(req: NextRequest, operation: (wait: ReturnType<typeof mutationWait>) => Promise<NextResponse>) {
-  const wait = mutationWait(req.signal);
+async function bounded(req: NextRequest, operation: (wait: ReturnType<typeof httpWait>) => Promise<NextResponse>) {
+  const wait = httpWait(req.signal);
   try {
     const response = await operation(wait);
     wait.check(); response.headers.set('Cache-Control', 'no-store'); return response;
@@ -87,20 +87,28 @@ async function updateVideoTitle(
 
 // ── GET — list tests ───────────────────────────────────────────────────────
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function GET(req: NextRequest) {
+  // This read has a shorter budget than the client's total 30s list/channel
+  // wait. Retiring HTTP never cancels or duplicates its original SQL reader.
+  const wait = httpWait(req?.signal, 25_000);
+  try {
+    const session = await wait.run(() => auth());
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
+    }
 
-  const userId = session.user.id;
-  const tests = await prisma.abTest.findMany({
-    where: { userId },
-    orderBy: { startedAt: 'desc' },
-    take: 20,
-  });
+    const userId = session.user.id;
+    const tests = await wait.run(() => prisma.abTest.findMany({
+      where: { userId },
+      orderBy: { startedAt: 'desc' },
+      take: 20,
+    }));
 
-  return NextResponse.json({ userId, tests }, { headers: { 'Cache-Control': 'no-store' } });
+    const response = NextResponse.json({ userId, tests }, { headers: { 'Cache-Control': 'no-store' } });
+    wait.check(); return response;
+  } catch {
+    return NextResponse.json({ error: 'ab_read_unconfirmed' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+  } finally { wait.close(); }
 }
 
 // ── POST — create new test ─────────────────────────────────────────────────
@@ -108,7 +116,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   return bounded(req, wait => createTest(req, wait));
 }
-async function createTest(req: NextRequest, wait: ReturnType<typeof mutationWait>) {
+async function createTest(req: NextRequest, wait: ReturnType<typeof httpWait>) {
   const session = await wait.run(() => auth());
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -132,7 +140,7 @@ async function createTest(req: NextRequest, wait: ReturnType<typeof mutationWait
 export async function PATCH(req: NextRequest) {
   return bounded(req, wait => changeTest(req, wait));
 }
-async function changeTest(req: NextRequest, wait: ReturnType<typeof mutationWait>) {
+async function changeTest(req: NextRequest, wait: ReturnType<typeof httpWait>) {
   const session = await wait.run(() => auth());
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
