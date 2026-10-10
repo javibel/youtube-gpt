@@ -12,19 +12,10 @@ import { beginCompetitorListRead } from '@/lib/competitor-list-read';
 import type { CompetitorRecord as Competitor } from '@/lib/competitor-list-read';
 import { beginCompetitorCreation, competitorCreationBlocked, mergeCompetitorCreations, retainedCompetitorCreation } from '@/lib/competitor-create-client';
 import type { CreationAttempt, CreationOutcome } from '@/lib/competitor-create-client';
+import { beginOutlierRead } from '@/lib/outlier-read-client';
+import type { OutlierRead, OutlierOutcome } from '@/lib/outlier-read-client';
 
 type Lang = 'es' | 'en';
-
-interface OutlierVideo {
-  videoId: string; title: string; thumbnail: string;
-  publishedAt: string; views: number; multiplier: number;
-  type: 'viral' | 'evergreen';
-}
-interface OutlierData {
-  medianViews: number;
-  totalVideosAnalyzed: number;
-  outliers: OutlierVideo[];
-}
 
 interface TrendingVideo {
   videoId: string; title: string; thumbnail: string;
@@ -96,7 +87,13 @@ export default function CompetitorTrackingPage() {
   const currentCreation = useRef<{ ownerKey: string; attempt: CreationAttempt | null }>({ ownerKey, attempt: null });
   if (currentCreation.current.ownerKey !== ownerKey) currentCreation.current = { ownerKey, attempt: null };
   const mounted = useRef(true);
-  const [outlierMap, setOutlierMap] = useState<Record<string, OutlierData>>({});
+  const channels = listOwner === ownerKey ? [...new Set(competitors.map(c => c.channelId))].sort() : [];
+  const outlierScope = JSON.stringify([ownerKey, channels]);
+  const currentOutliers = useRef<{ scope: string; reads: Record<string, OutlierRead> }>({ scope: outlierScope, reads: {} });
+  if (currentOutliers.current.scope !== outlierScope) currentOutliers.current = { scope: outlierScope, reads: {} };
+  type OutlierView = { read: OutlierRead; outcome: OutlierOutcome | { status: 'pending' } };
+  const [outlierState, setOutlierState] = useState<{ scope: string; values: Record<string, OutlierView> }>({ scope: outlierScope, values: {} });
+  const outlierMap = outlierState.scope === outlierScope ? outlierState.values : {};
   const [expandedOutliers, setExpandedOutliers] = useState<string | null>(null);
   const [intelTab, setIntelTab] = useState<IntelTab>('trending');
   const [trending, setTrending] = useState<TrendingVideo[]>([]);
@@ -156,7 +153,7 @@ export default function CompetitorTrackingPage() {
   useEffect(() => {
     setCompetitors([]); setDeleteStates({});
     setAdding(false); setCreationUnconfirmed(false); setError(''); setErrorUpgrade(false); setUrlInput('');
-    setOutlierMap({}); setExpandedOutliers(null); setTrending([]); setNewUploads([]); setOpportunities([]); setIntelLoading(false);
+    setExpandedOutliers(null); setTrending([]); setNewUploads([]); setOpportunities([]); setIntelLoading(false);
     setLoading(status === 'authenticated');
     setListOwner(ownerKey); setListUnavailable(false);
     if (status !== 'authenticated' || !owner.userId) { setLoading(false); setListUnavailable(status === 'authenticated'); return; }
@@ -177,20 +174,31 @@ export default function CompetitorTrackingPage() {
     readCompetitors();
   }, [ownerKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch outliers for all competitors
+  function observeOutlier(channelId: string, alive: () => boolean, retry?: OutlierRead) {
+    const capturedOwner = ownerKey, capturedScope = outlierScope;
+    if (status !== 'authenticated' || !owner.userId || listOwner !== capturedOwner || !mounted.current
+      || currentOwner.current !== capturedOwner || currentOutliers.current.scope !== capturedScope || !channels.includes(channelId)) return;
+    const previous = currentOutliers.current.reads[channelId];
+    if (retry && (previous !== retry || retry.pending)) return;
+    const read = retry ? beginOutlierRead(owner, { channelId, period: '90d', threshold: 10 })
+      : previous ?? beginOutlierRead(owner, { channelId, period: '90d', threshold: 10 });
+    currentOutliers.current.reads[channelId] = read;
+    const apply = (outcome: OutlierView['outcome']) => {
+      if (!alive() || !mounted.current || currentOwner.current !== capturedOwner || currentOutliers.current.scope !== capturedScope
+        || currentOutliers.current.reads[channelId] !== read) return;
+      setOutlierState(prev => ({ scope: capturedScope, values: { ...(prev.scope === capturedScope ? prev.values : {}), [channelId]: { read, outcome } } }));
+    };
+    apply(read.outcome ?? read.waitOutcome ?? { status: 'pending' });
+    void read.original.then(apply);
+    void read.waiter.then(result => { if (!read.outcome) apply(result); });
+  }
+
+  // Strict setup and remounts observe each original account/channel read.
   useEffect(() => {
-    if (competitors.length === 0) return;
-    const capturedOwner = ownerKey;
-    competitors.forEach(comp => {
-      if (outlierMap[comp.channelId]) return;
-      fetch(`/api/youtube/outliers?channelId=${comp.channelId}&period=90d`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data && mounted.current && currentOwner.current === capturedOwner) setOutlierMap(prev => ({ ...prev, [comp.channelId]: data }));
-        })
-        .catch(() => {});
-    });
-  }, [competitors.length, ownerKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    let active = true;
+    for (const channelId of channels) observeOutlier(channelId, () => active);
+    return () => { active = false; };
+  }, [outlierScope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch competitor intel
   useEffect(() => {
@@ -393,6 +401,14 @@ export default function CompetitorTrackingPage() {
                   </div>
 
                   {/* Sparkline + Outlier badge row */}
+                  {outlierMap[comp.channelId]?.outcome.status === 'pending' && <p role="status" className="text-sm mb-3" style={{ color: 'var(--yv-text-4)' }}>{t('Cargando outliers…', 'Loading outliers…')}</p>}
+                  {outlierMap[comp.channelId]?.outcome.status === 'error' && <div role="status" className="text-sm mb-3 text-amber-300">
+                    <p>{t('No se pudieron cargar los outliers.', 'Outliers could not be loaded.')}</p>
+                    {outlierMap[comp.channelId].read.pending && <p>{t('La lectura anterior sigue pendiente.', 'The previous read is still pending.')}</p>}
+                    <button className="underline disabled:opacity-50" aria-label={t(`Reintentar outliers de ${comp.channelName}`, `Retry outliers for ${comp.channelName}`)}
+                      disabled={outlierMap[comp.channelId].read.pending}
+                      onClick={() => observeOutlier(comp.channelId, () => true, outlierMap[comp.channelId].read)}>{t('Reintentar outliers', 'Retry outliers')}</button>
+                  </div>}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       {comp.snapshots.length > 2 && (
@@ -403,11 +419,13 @@ export default function CompetitorTrackingPage() {
                       )}
                     </div>
                     {(() => {
-                      const od = outlierMap[comp.channelId];
-                      if (!od || od.outliers.length === 0) return null;
+                      const outcome = outlierMap[comp.channelId]?.outcome;
+                      if (outcome?.status !== 'ready') return null;
+                      const od = outcome.data;
+                      if (od.outliers.length === 0) return <span className="text-sm" style={{ color: 'var(--yv-text-4)' }}>{t('Sin outliers en este periodo.', 'No outliers in this period.')}</span>;
                       return (
                         <button
-                          onClick={() => setExpandedOutliers(expandedOutliers === comp.channelId ? null : comp.channelId)}
+                          onClick={() => { if (mounted.current && currentOwner.current === ownerKey && currentOutliers.current.scope === outlierScope) setExpandedOutliers(expandedOutliers === comp.channelId ? null : comp.channelId); }}
                           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full transition hover:opacity-80"
                           style={{ background: 'rgba(255,107,0,0.12)', border: '1px solid rgba(255,107,0,0.25)' }}
                         >
@@ -425,12 +443,15 @@ export default function CompetitorTrackingPage() {
                   </div>
 
                   {/* Expanded outlier videos */}
-                  {expandedOutliers === comp.channelId && outlierMap[comp.channelId]?.outliers.length > 0 && (
+                  {expandedOutliers === comp.channelId && outlierMap[comp.channelId]?.outcome.status === 'ready' && (() => {
+                    const outcome = outlierMap[comp.channelId].outcome;
+                    if (outcome.status !== 'ready' || !outcome.data.outliers.length) return null;
+                    return (
                     <div className="mt-3 pt-3 space-y-2" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07)' }}>
                       <p className="font-mono-jb text-[13px] mb-2" style={{ color: 'var(--yv-text-4)' }}>
                         {t('Vídeos con 10x+ vistas sobre la mediana (90d)', 'Videos with 10x+ views above median (90d)')}
                       </p>
-                      {outlierMap[comp.channelId].outliers.slice(0, 5).map(v => (
+                      {outcome.data.outliers.slice(0, 5).map(v => (
                         <a key={v.videoId} href={`https://www.youtube.com/watch?v=${v.videoId}`}
                           target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition">
@@ -457,7 +478,7 @@ export default function CompetitorTrackingPage() {
                         </a>
                       ))}
                     </div>
-                  )}
+                  ); })()}
                 </div>
               </div>
             </div>
