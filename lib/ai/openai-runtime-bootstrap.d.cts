@@ -14,8 +14,8 @@ export interface OpenAIRuntimeDependencies {
   taskCatalog: Record<string, { capabilities: string[]; agentIds?: string[] }>;
   pricing: { version: string; currency: string };
   budgetBindings: Record<string, string[]>;
-  checkCredential: (context: { runtimeId: 'web'; providerId: 'openai'; credentialRef: string; signal: AbortSignal }) => Promise<boolean>;
+  checkCredential: (context: { runtimeId: 'web'; providerId: string; credentialRef: string; signal: AbortSignal }) => Promise<boolean>;
   timeoutMs: number;
 }
-export interface OpenAIRuntimeReadiness { runtimeId: 'web'; providerId: 'openai'; adapterVersion: 'responses-v1'; configRevision: string; activeProfile: string; priceVersion: string; currency: string; taskTypes: readonly string[]; assignments: readonly Readonly<{ profile: string; taskType: string; agentId: string | null; model: string }>[] }
+export interface OpenAIRuntimeReadiness { runtimeId: 'web'; providerId: string; adapterVersion: string; configRevision: string; activeProfile: string; priceVersion: string; currency: string; taskTypes: readonly string[]; assignments: readonly Readonly<{ profile: string; taskType: string; agentId: string | null; model: string }>[] }
 export declare function createOpenAIRuntimeBootstrap(dependencies: OpenAIRuntimeDependencies): Readonly<{ prepare(options?: { signal?: AbortSignal }): Promise<Readonly<{ factory: (identity: TaskIdentity) => Promise<MessagesTask>; readiness: Readonly<OpenAIRuntimeReadiness> }>> }>;
