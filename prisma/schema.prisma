@@ -77,6 +77,7 @@ model User {
   teamMemberships TeamMember[]
   teamCreations TeamCreationAttempt[]
   teamMemberMutations TeamMemberMutationAttempt[]
+  teamInvitationRevocations TeamInvitationRevocationAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -480,6 +481,28 @@ model TeamMemberMutationAttempt {
   @@unique([userId, key])
   @@index([teamId, state], map: "team_member_mutation_lookup")
   @@map("team_member_mutation_attempts")
+}
+
+// Denial survives invitation/team deletion; no stored row can continue its original producer.
+model TeamInvitationRevocationAttempt {
+  id String @id
+  userId String
+  email String
+  key String
+  operation String
+  teamId String
+  actorMemberId String
+  actorRole String
+  invitationId String
+  targetEmail String
+  previousRole String
+  previousExpiresAt String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([teamId, state], map: "team_invitation_revocation_lookup")
+  @@map("team_invitation_revocation_attempts")
 }
 
 model TeamInvitation {
