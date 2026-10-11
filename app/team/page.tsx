@@ -15,6 +15,7 @@ import { useTeamExit } from '@/lib/use-team-exit';
 import { readConfirmedTeamExit } from '@/lib/team-exit-client';
 import { useTeamInvite } from '@/lib/use-team-invite';
 import { readConfirmedTeamInvite } from '@/lib/team-invite-client';
+import { activeTeamInvitationCount, isTeamInvitationExpired } from '@/lib/team-read-contract';
 import { useTeamRename } from '@/lib/use-team-rename';
 import { readConfirmedTeamRename } from '@/lib/team-rename-client';
 
@@ -45,7 +46,8 @@ export default function TeamPage() {
   const revocation = useTeamRevoke({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const exit = useTeamExit({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const rename = useTeamRename({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
-  const invite = useTeamInvite({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
+  const observedAt = read.data?.observedAt ?? '';
+  const invite = useTeamInvite({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole, observedAt);
   const formScope = useRef(scope);
   if (formScope.current !== scope) {
     formScope.current = scope;
@@ -326,24 +328,24 @@ export default function TeamPage() {
             {team.invitations.length > 0 && (
               <div className="yv-card yv-card--flush">
                 <div className="yv-card__header">
-                  <h2 className="yv-card__title">{t('Invitaciones pendientes', 'Pending invitations')}</h2>
+                  <h2 className="yv-card__title">{t('Invitaciones', 'Invitations')}</h2>
                 </div>
                 <div className="divide-y divide-white/5">
                   {team.invitations.map(inv => (
-                    <div key={inv.id} className="flex items-center gap-3 px-5 py-3.5">
+                    <div key={inv.id} data-team-invitation={inv.id} data-invitation-status={isTeamInvitationExpired(inv, observedAt) ? 'expired' : 'pending'} className="flex items-center gap-3 px-5 py-3.5">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525b" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm truncate" style={{ color: 'var(--yv-text-2)' }}>{inv.email}</p>
                         <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
-                          {t('Expira', 'Expires')} {new Date(inv.expiresAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' })}
+                          {isTeamInvitationExpired(inv, observedAt) ? t('Caducada desde', 'Expired since') : t('Expira', 'Expires')} <time dateTime={inv.expiresAt}>{new Date(inv.expiresAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric', year: 'numeric' })}</time>
                         </p>
                       </div>
                       {isOwnerOrAdmin && (
                         <button
                           onClick={() => revokeInvitation(inv.id)}
-                      disabled={!revocation.canStart(inv.id)}
+                          disabled={!read.canAct() || !revocation.canStart(inv.id)}
                           className="font-mono-jb text-[13px] hover:text-red-400 transition"
                           style={{ color: 'var(--yv-text-4)' }}
                         >
@@ -357,7 +359,7 @@ export default function TeamPage() {
             )}
 
             {/* Invite form */}
-            {isOwnerOrAdmin && team.members.length + team.invitations.length < team.maxMembers && (
+            {isOwnerOrAdmin && team.members.length + activeTeamInvitationCount(team, observedAt) < team.maxMembers && (
               <div className="yv-card p-5">
                 <h2 className="font-display font-bold mb-4" style={{ color: 'var(--yv-text-1)' }}>{t('Invitar miembro', 'Invite member')}</h2>
                 <div className="flex items-end gap-3">
@@ -393,6 +395,7 @@ export default function TeamPage() {
                     {t('Invitar', 'Invite')}
                   </button>
                 </div>
+                {invite.expiredTarget && <p role="alert">{t('Existe una invitación caducada para ese correo. Revócala expresamente en la lista antes de crear otra.', 'An expired invitation exists for that email. Explicitly revoke it in the list before creating another.')}</p>}
               </div>
             )}
 

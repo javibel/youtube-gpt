@@ -31,7 +31,7 @@ export async function GET(request?: Request) {
         select: { id: true, userId: true, teamId: true, role: true, team: { select: {
           id: true, name: true, slug: true, plan: true, maxMembers: true,
           members: { take: 1001, orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }], select: { id: true, userId: true, teamId: true, role: true, joinedAt: true, user: { select: { id: true, name: true, email: true } } } },
-          invitations: { take: 1001, where: { expiresAt: { gt: new Date(observedAt) } }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], select: { id: true, teamId: true, email: true, role: true, expiresAt: true } },
+          invitations: { take: 1001, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], select: { id: true, teamId: true, email: true, role: true, expiresAt: true } },
         } } },
       });
       check();

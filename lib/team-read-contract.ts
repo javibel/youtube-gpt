@@ -11,6 +11,15 @@ const email = (v: unknown): v is string => text(v, 320) && /^[^\s@]+@[^\s@]+\.[^
 const role = (v: unknown): v is TeamRole => v === 'owner' || v === 'admin' || v === 'member';
 const date = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
 
+// Classification uses the confirmed read's observation, never a renewed expiry.
+// This is display/capacity data, not authority to recover or settle a command.
+export function isTeamInvitationExpired(invitation: TeamInvitationView, observedAt: string): boolean {
+  return !date(observedAt) || !date(invitation.expiresAt) || Date.parse(invitation.expiresAt) <= Date.parse(observedAt);
+}
+export function activeTeamInvitationCount(team: TeamView, observedAt: string): number {
+  return team.invitations.filter(i => !isTeamInvitationExpired(i, observedAt)).length;
+}
+
 // A public read is display data only; it cannot grant a mutation or recovery.
 export function decodeTeamRead(value: unknown, owner: TeamOwner): TeamReadData {
   if (!object(value) || value.userId !== owner.userId || value.email !== owner.email || !id(owner.userId) || !date(value.observedAt)) throw Error('Team unavailable');
@@ -34,7 +43,7 @@ export function decodeTeamRead(value: unknown, owner: TeamOwner): TeamReadData {
   const inviteIds = new Set<string>(), emails = new Set<string>();
   const invitations = t.invitations.map(i => {
     if (!object(i) || !id(i.id) || inviteIds.has(i.id) || !email(i.email) || emails.has(i.email.toLowerCase())
-      || (i.role !== 'admin' && i.role !== 'member') || !date(i.expiresAt) || Date.parse(i.expiresAt) <= Date.parse(value.observedAt as string)) throw Error('Team unavailable');
+      || (i.role !== 'admin' && i.role !== 'member') || !date(i.expiresAt)) throw Error('Team unavailable');
     inviteIds.add(i.id); emails.add(i.email.toLowerCase());
     return { id: i.id, email: i.email, role: i.role as 'admin' | 'member', expiresAt: i.expiresAt };
   });

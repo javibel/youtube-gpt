@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { beginTeamInvite, retainedTeamInvite, retainedTeamInviteForOwner, teamInviteBlocked, teamInviteCreationBlocked } from '@/lib/team-invite-client';
 import type { TeamInviteAttempt, TeamInviteOutcome } from '@/lib/team-invite-client';
 import type { TeamOwner, TeamView } from '@/lib/team-read-contract';
+import { activeTeamInvitationCount, isTeamInvitationExpired } from '@/lib/team-read-contract';
 
-export function useTeamInvite(owner: TeamOwner, status: string, language: string, team: TeamView | null, role: string) {
+export function useTeamInvite(owner: TeamOwner, status: string, language: string, team: TeamView | null, role: string, observedAt: string) {
   const ownerIdentity = JSON.stringify([owner.userId, owner.email]);
   const retainedId = retainedTeamInviteForOwner(owner)?.input.teamId ?? null;
   const lastTeam = useRef({ ownerIdentity, teamId: team?.id ?? retainedId });
@@ -12,7 +13,7 @@ export function useTeamInvite(owner: TeamOwner, status: string, language: string
   else if (team) lastTeam.current.teamId = team.id;
   const own = team?.members.find(m => m.user.id === owner.userId);
   const teamId = lastTeam.current.teamId, identity = JSON.stringify([ownerIdentity, teamId]);
-  const draftScope = JSON.stringify([identity, status, language, role, team?.name, own?.id, own?.role, own?.user.email, team?.maxMembers, team?.invitations.map(i => [i.id,i.email,i.role,i.expiresAt])]);
+  const draftScope = JSON.stringify([identity, status, language, role, observedAt, team?.name, own?.id, own?.role, own?.user.email, team?.maxMembers, team?.invitations.map(i => [i.id,i.email,i.role,i.expiresAt])]);
   const [draft, setDraft] = useState({ scope: draftScope, value: '', requestedRole: 'member' as 'member' | 'admin' });
   const value = draft.scope === draftScope ? draft.value : '', requestedRole = draft.scope === draftScope ? draft.requestedRole : 'member';
   const scope = JSON.stringify([draftScope, value, requestedRole]);
@@ -40,7 +41,7 @@ export function useTeamInvite(owner: TeamOwner, status: string, language: string
   function canStart() {
     const email = value.trim().toLowerCase();
     return canEdit() && email.length <= 320 && /^[^\s@<>"\x00-\x1f\x7f]+@[^\s@<>"\x00-\x1f\x7f]+\.[^\s@<>"\x00-\x1f\x7f]+$/.test(email)
-      && team!.members.length + team!.invitations.length < team!.maxMembers
+      && team!.members.length + activeTeamInvitationCount(team!, observedAt) < team!.maxMembers
       && !team!.members.some(m => m.user.email.toLowerCase() === email) && !team!.invitations.some(i => i.email.toLowerCase() === email)
       && !(relevant?.outcome?.status === 'rejected' && relevant.outcome.error === 'expired_invitation_requires_revocation' && relevant.attempt.input.targetEmail === email);
   }
@@ -51,7 +52,8 @@ export function useTeamInvite(owner: TeamOwner, status: string, language: string
     const a = beginTeamInvite(owner, { teamId: team!.id, memberId: own!.id, previousRole: own!.role as 'owner' | 'admin', targetEmail: value.trim().toLowerCase(), role: requestedRole });
     if (a) observe(a); else renderDenial(n => n + 1);
   }
-  return { value, requestedRole, change, changeRole, start, canStart, canEdit, canObserve: active, attempt: relevant?.attempt ?? null, outcome: relevant?.outcome,
+  const expiredTarget = !!team && team.invitations.some(i => i.email.toLowerCase() === value.trim().toLowerCase() && isTeamInvitationExpired(i, observedAt));
+  return { value, requestedRole, expiredTarget, change, changeRole, start, canStart, canEdit, canObserve: active, attempt: relevant?.attempt ?? null, outcome: relevant?.outcome,
     updating: !!relevant && !relevant.outcome, blocked: activeOwner() && (teamId ? blocked() : teamInviteCreationBlocked(owner)),
     creationBlocked: activeOwner() && teamInviteCreationBlocked(owner), pending: !!relevant?.attempt.pending };
 }
