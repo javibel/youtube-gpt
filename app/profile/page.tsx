@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { setLangClient } from '@/lib/get-lang-client';
-import { useLang } from '@/components/LangProvider';
+import { useLang, useSetLang } from '@/components/LangProvider';
+import { useProfileSettings } from '@/lib/use-profile-settings';
+import { claimConfirmedProfileLanguage } from '@/lib/profile-update-client';
+import type { ProfileData } from '@/lib/profile-read-client';
 import DashboardShell from '@/components/DashboardShell';
 import PasswordInput from '@/components/PasswordInput';
 import { toast } from '@/components/Toaster';
@@ -12,23 +14,34 @@ import { CrossIcon, CheckIcon, WarningIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
 
-type UserData = {
-  user: { email: string; name: string | null; createdAt: string };
-  stats: { isPro: boolean; plan: 'free' | 'pro' | 'business'; totalGenerations: number; generationsThisMonth: number; limit: number };
-  subscription: { status: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
-};
-
 export default function ProfilePage() {
   const { data: session, status } = useSession();
+  const scope = JSON.stringify([session?.user?.id, session?.user?.email, status]);
+  const invocation = useMemo(() => ({}), [scope]);
+  const current = useRef(invocation);
+  current.current = invocation;
+  return <ProfileAccount key={scope} isCurrent={() => current.current === invocation} />;
+}
+
+function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const serverLang = useLang();
-  const [lang, setLang] = useState<Lang>(serverLang);
-  const [data, setData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const lang = useLang();
+  const applyLang = useSetLang();
+  const owner = { userId: session?.user?.id ?? '', email: session?.user?.email ?? '' };
+  const profile = useProfileSettings(owner, status, lang, isCurrent);
+  const [dataStore, setData] = useState<ProfileData | null>(null);
+  const data = profile.canObserve() && dataStore?.user.id === owner.userId && dataStore.user.email === owner.email ? dataStore : null;
+  const loading = profile.loading && !data;
   const [nameInput, setNameInput] = useState('');
   const [editingName, setEditingName] = useState(false);
-  const [savingName, setSavingName] = useState(false);
-  const [nameSaved, setNameSaved] = useState(false);
+  const savingName = profile.updating || profile.pending;
+  const nameSaved = profile.confirmedCurrent && profile.outcome?.status === 'confirmed' && profile.outcome.receipt.operation === 'name';
+  const [langApplyError, setLangApplyError] = useState(false);
+  const ui = useMemo(() => ({}), [owner.userId, owner.email, status, lang, nameInput, editingName, profile.read]);
+  const currentUI = useRef(ui);
+  currentUI.current = ui;
+  const canUseUI = () => currentUI.current === ui && profile.canObserve();
   const [showPwdForm, setShowPwdForm] = useState(false);
   const [currentPwd, setCurrentPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
@@ -45,13 +58,20 @@ export default function ProfilePage() {
   }, [status, router]);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetch('/api/user/stats')
-        .then(r => r.json())
-        .then(d => { setData(d); setNameInput(d.user?.name ?? ''); })
-        .finally(() => setLoading(false));
+    if (profile.data && profile.canObserve()) {
+      setData(profile.data);
+      if (!editingName) setNameInput(profile.data.user.name ?? '');
     }
-  }, [status]);
+  }, [profile.data, editingName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!profile.canObserve() || !profile.confirmedCurrent || profile.outcome?.status !== 'confirmed'
+        || profile.outcome.receipt.operation !== 'language' || !profile.attempt || !profile.read) return;
+    const next = claimConfirmedProfileLanguage(profile.attempt, profile.read);
+    if (!next) return;
+    try { applyLang(next); setLangApplyError(false); }
+    catch { setLangApplyError(true); }
+  }, [profile.outcome, profile.confirmedCurrent, profile.attempt, applyLang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
@@ -125,30 +145,13 @@ export default function ProfilePage() {
   }
 
   function handleLangChange(next: Lang) {
-    setLang(next);
-    setLangClient(next);
-    // Persist to DB so server-side emails use the correct language
-    fetch('/api/user/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lang: next }),
-    }).catch(() => {});
+    if (!canUseUI() || !profile.canAct() || !profile.data) return;
+    profile.start({ operation: 'language', previousLang: profile.data.user.lang, lang: next });
   }
 
-  async function handleSaveName() {
-    setSavingName(true);
-    const res = await fetch('/api/user/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: nameInput.trim() }),
-    });
-    if (res.ok) {
-      setData(prev => prev ? { ...prev, user: { ...prev.user, name: nameInput.trim() } } : null);
-      setEditingName(false);
-      setNameSaved(true);
-      setTimeout(() => setNameSaved(false), 2500);
-    }
-    setSavingName(false);
+  function handleSaveName() {
+    if (!canUseUI() || !profile.canAct() || !profile.data) return;
+    profile.start({ operation: 'name', previousName: profile.data.user.name, name: nameInput.trim() });
   }
 
   if (status === 'loading' || loading) {
@@ -173,6 +176,15 @@ export default function ProfilePage() {
     <DashboardShell>
 
       <main className="yv-page space-y-6">
+        {profile.readError && <p role="alert">{t('No se pudo leer tu perfil. Puedes volver a consultarlo cuando termine la lectura original.', 'Could not read your profile. You can refresh when the original read finishes.')}</p>}
+        {profile.updating && <p role="status">{t('Confirmando el cambio del perfil...', 'Confirming profile change...')}</p>}
+        {(profile.outcome?.status === 'unconfirmed' || (profile.blocked && !profile.updating && profile.outcome?.status !== 'confirmed')) && <p role="alert">{t('Cambio del perfil sin confirmar. No se reenviará automáticamente.', 'Profile change unconfirmed. It will not be sent again automatically.')} {profile.pending && t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+        {profile.outcome?.status === 'rejected' && <p role="alert">{t('Cambio rechazado antes de aplicarse. Consulta el perfil antes de elegir otro cambio.', 'Change rejected before applying. Read the profile before choosing another change.')}</p>}
+        {profile.outcome?.status === 'confirmed' && !profile.confirmedCurrent && <p role="status">{t('Acuse recibido, pero el perfil actual no está confirmado.', 'Acknowledgement received, but the current profile is unconfirmed.')}</p>}
+        {profile.confirmedCurrent && profile.outcome?.status === 'confirmed' && profile.outcome.receipt.operation === 'language' && <p role="status">{t('Idioma actualizado', 'Language updated')}</p>}
+        {profile.outcome?.status === 'confirmed' && profile.blocked && <p role="alert">{t('Cambio confirmado. No se puede iniciar otro cambio porque el registro local no se pudo liberar.', 'Change confirmed. Another change cannot start because the local record could not be cleared.')}</p>}
+        {langApplyError && <p role="alert">{t('El idioma está guardado, pero no se pudo aplicar a esta pantalla.', 'Language is saved, but could not be applied to this screen.')}</p>}
+        <button onClick={() => { if (canUseUI()) profile.refresh(); }} disabled={!profile.canObserve() || profile.blocked || profile.readPending} className="font-mono-jb text-[13px] disabled:opacity-50">{t('Actualizar perfil', 'Refresh profile')}</button>
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -205,21 +217,22 @@ export default function ProfilePage() {
                 <input
                   autoFocus
                   value={nameInput}
-                  onChange={e => setNameInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
+                  maxLength={100}
+                  onChange={e => { if (canUseUI()) setNameInput(e.target.value); }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape' && canUseUI()) setEditingName(false); }}
                   className="yv-input flex-1 py-2.5 px-3 text-sm"
                   style={{ borderRadius: '10px' }}
                 />
-                <button onClick={handleSaveName} disabled={savingName || !nameInput.trim()}
+                <button onClick={handleSaveName} disabled={!profile.canAct() || !nameInput.trim() || nameInput.trim().length > 100 || nameInput.trim() === profile.data?.user.name}
                   className="btn-offset px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
                   {savingName ? '...' : t('Guardar', 'Save')}
                 </button>
-                <button onClick={() => setEditingName(false)} className="px-3 hover:text-white transition font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}><CrossIcon size={14} /></button>
+                <button onClick={() => { if (canUseUI()) setEditingName(false); }} className="px-3 hover:text-white transition font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}><CrossIcon size={14} /></button>
               </div>
             ) : (
               <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }}>
                 <span className="text-sm" style={{ color: 'var(--yv-text-2)' }}>{data?.user?.name || <span style={{ color: 'var(--yv-text-4)' }}>{t('Sin nombre', 'No name set')}</span>}</span>
-                <button onClick={() => { setNameInput(data?.user?.name ?? ''); setEditingName(true); }}
+                <button onClick={() => { if (canUseUI() && profile.canAct()) { setNameInput(profile.data?.user.name ?? ''); setEditingName(true); } }} disabled={!profile.canAct()}
                   className="font-mono-jb text-[13px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                   {t('Editar', 'Edit')}
                 </button>
@@ -248,12 +261,13 @@ export default function ProfilePage() {
               <button
                 key={l}
                 onClick={() => handleLangChange(l)}
+                disabled={!profile.canAct() || profile.data?.user.lang === l}
                 className="flex-1 py-3 rounded-xl font-display font-bold text-sm transition"
                 style={{
-                  background: lang === l ? 'var(--yv-brand)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${lang === l ? 'var(--yv-brand)' : 'var(--line)'}`,
-                  color: lang === l ? '#fff' : '#71717a',
-                  boxShadow: lang === l ? '0 6px 20px -8px rgba(232,77,91,0.6)' : 'none',
+                  background: profile.data?.user.lang === l ? 'var(--yv-brand)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${profile.data?.user.lang === l ? 'var(--yv-brand)' : 'var(--line)'}`,
+                  color: profile.data?.user.lang === l ? '#fff' : '#71717a',
+                  boxShadow: profile.data?.user.lang === l ? '0 6px 20px -8px rgba(232,77,91,0.6)' : 'none',
                 }}
               >
                 {l === 'es' ? 'Español' : 'English'}

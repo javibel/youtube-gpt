@@ -12,7 +12,7 @@ export type DashboardStats = {
 const initial = () => ({ data: null as DashboardStats|null, refreshing: false, error: false });
 const count = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
 const date = (v: unknown): v is string => typeof v === 'string' && Number.isFinite(Date.parse(v));
-function decode(value: unknown, userId: string, email: string): DashboardStats {
+export function decodeDashboardStats(value: unknown, userId: string, email: string): DashboardStats {
   const body = value as DashboardStats | null;
   if (!body?.user || body.user.id !== userId || body.user.email !== email || !(body.user.name === null || typeof body.user.name === 'string')
     || !date(body.user.createdAt) || !body.stats || !Object.hasOwn(body, 'subscription')) throw Error('Invalid statistics');
@@ -54,7 +54,7 @@ export function useDashboardStats(userId: string | undefined, email: string | nu
       try {
         const response = await waiting.wait(fetch('/api/user/stats', { cache: 'no-store', signal: waiting.signal }));
         if (!response.ok) throw Error('Statistics unavailable');
-        const data = decode(await waiting.wait(response.json()), userId!, email!);
+        const data = decodeDashboardStats(await waiting.wait(response.json()), userId!, email!);
         if (current() && scope.sequence === sequence) update(v => ({ ...v,data }));
       } catch {
         if (current() && scope.sequence === sequence) update(v => ({ ...v,error: true }));

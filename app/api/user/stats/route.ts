@@ -43,7 +43,7 @@ export async function GET() {
   try {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, email: true, name: true, createdAt: true },
+      select: { id: true, email: true, name: true, lang: true, createdAt: true },
     });
 
     if (!user) {
@@ -88,7 +88,7 @@ export async function GET() {
     const streak = calcStreak(allDates.map((g) => g.createdAt));
 
     return NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt },
+      user: { id: user.id, email: user.email, name: user.name, lang: user.lang, createdAt: user.createdAt },
       stats: {
         totalGenerations,
         generationsThisMonth: quota.recorded,
