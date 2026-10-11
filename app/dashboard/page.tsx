@@ -108,7 +108,8 @@ export default function DashboardPage() {
   } = useDashboardOnboarding(session?.user?.id, session?.user?.email, status, lang, refreshStats, refreshHistory);
 
   const { billingBusy, upgrading, cancelling, syncing, billingError, cancelConfirmed, syncResult,
-    handleUpgrade, handleCancel, handleSync } = useDashboardBilling(session?.user?.id, session?.user?.email, status, lang, refreshStats);
+    checkoutBlocked, checkoutHasOriginal, checkoutPending, checkoutSelectionMatches, checkoutState, checkoutNavigationFailed,
+    handleUpgrade, handleObserveCheckout, handleCancel, handleSync } = useDashboardBilling(session?.user?.id, session?.user?.email, status, lang, refreshStats, billingPlan, data?.stats.plan);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -478,7 +479,7 @@ function handleCopy(id: string, out: string) {
           </div>
           <div className="yv-page-header__actions">
             {!isPro && (
-              <button onClick={() => handleUpgrade(billingPlan)} disabled={billingBusy}
+              <button onClick={() => handleUpgrade(billingPlan)} disabled={billingBusy || checkoutBlocked}
                 className="btn-offset btn-offset-ghost px-4 py-2.5 text-[13px] font-display gap-2 disabled:opacity-50">
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18M4 8l4 4 4-6 4 6 4-4-1 10H5z" /></svg>
                 {upgrading ? t('Redirigiendo...', 'Redirecting...') : 'Upgrade to Pro'}
@@ -497,9 +498,23 @@ function handleCopy(id: string, out: string) {
         <main className="space-y-8 min-w-0">
 
           {statsRefreshing && <p role="status">{t('Actualizando estadísticas…', 'Refreshing statistics…')}</p>}
+          {checkoutBlocked && (
+            <div role="status" className="yv-card p-4 mb-4">
+              <p>{checkoutState === 'confirmed' ? t('Sesión de pago simulada confirmada. No acredita un pago ni un cambio de plan.', 'Simulated checkout session confirmed. This does not confirm payment or a plan change.')
+                : t('Sesión de pago sin confirmar. No inicies otra sesión mientras este resultado siga pendiente.', 'Checkout session unconfirmed. Do not start another session while this result is pending.')}</p>
+              {checkoutPending && <p>{t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+              {checkoutHasOriginal ? <>
+                {!checkoutSelectionMatches && <p>{t('La sesión original corresponde a otro plan o idioma. Selecciona los originales para abrirla.', 'The original session belongs to another plan or language. Select the originals to open it.')}</p>}
+                {checkoutNavigationFailed && <p>{t('No se pudo abrir la sesión. Puedes consultar la misma solicitud original.', 'Could not open the session. You can observe the same original request.')}</p>}
+                <button onClick={handleObserveCheckout} disabled={billingBusy} className="btn-offset mt-2 px-4 py-2 disabled:opacity-50">
+                  {t('Consultar sesión de pago original', 'Observe original checkout session')}
+                </button>
+              </> : <p>{t('La solicitud original no está disponible en esta pantalla. Este registro no permite recuperarla ni iniciar otra.', 'The original request is unavailable in this screen. This record cannot restore it or start another.')}</p>}
+            </div>
+          )}
           {billingError && (
             <div role="alert" className="yv-card p-4 mb-4">
-              <p>{billingError === 'checkout' ? t('No se pudo confirmar el enlace de pago. Comprueba tu suscripción antes de iniciar otro pago.', 'Could not confirm the payment link. Check your subscription before starting another checkout.')
+              <p>{billingError === 'checkout' ? t('No se pudo confirmar el enlace de pago. Consulta la solicitud original; este resultado no permite iniciar otro pago.', 'Could not confirm the payment link. Observe the original request; this result does not allow another checkout.')
                 : billingError === 'cancel' ? t('No se pudo confirmar la cancelación. Puedes comprobar y reintentar.', 'Could not confirm cancellation. You can check and retry.')
                 : t('No se pudo comprobar la suscripción. Puedes reintentar.', 'Could not check the subscription. You can retry.')}</p>
               {billingError !== 'checkout' && <button disabled={billingBusy} className="btn-offset mt-2 px-4 py-2 disabled:opacity-50" onClick={billingError === 'cancel' ? handleCancel : handleSync}>
@@ -647,7 +662,7 @@ function handleCopy(id: string, out: string) {
               </div>
               <div className="flex items-center gap-3">
                 {isPro && !isBusiness && !data.subscription.cancelAtPeriodEnd && (
-                  <button onClick={() => handleUpgrade('business_monthly')} disabled={billingBusy} className="font-mono-jb text-[13px] transition" style={{ color: '#00E5FF' }}>
+                  <button onClick={() => handleUpgrade('business_monthly')} disabled={billingBusy || checkoutBlocked} className="font-mono-jb text-[13px] transition" style={{ color: '#00E5FF' }}>
                     {upgrading ? '...' : t('Subir a Business', 'Upgrade to Business')}
                   </button>
                 )}
@@ -1318,7 +1333,7 @@ function handleCopy(id: string, out: string) {
                     </div>
                   )}
                   {(billingPlan === 'monthly' || billingPlan === 'yearly') && (
-                    <button onClick={() => handleUpgrade(billingPlan)} disabled={billingBusy} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
+                    <button onClick={() => handleUpgrade(billingPlan)} disabled={billingBusy || checkoutBlocked} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50">
                       {upgrading ? t('Redirigiendo...', 'Redirecting...') : billingPlan === 'yearly' ? t('Empezar Pro anual →', 'Start Pro yearly →') : t('Empezar con Pro →', 'Start with Pro →')}
                     </button>
                   )}
@@ -1363,7 +1378,7 @@ function handleCopy(id: string, out: string) {
                     </div>
                   )}
                   {(billingPlan === 'business_monthly' || billingPlan === 'business_yearly') && (
-                    <button onClick={() => handleUpgrade(billingPlan)} disabled={billingBusy} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50" style={{ background: 'linear-gradient(90deg,#B388FF,#7C4DFF)' }}>
+                    <button onClick={() => handleUpgrade(billingPlan)} disabled={billingBusy || checkoutBlocked} className="btn-offset w-full px-4 py-2.5 text-[13px] font-display disabled:opacity-50" style={{ background: 'linear-gradient(90deg,#B388FF,#7C4DFF)' }}>
                       {upgrading ? t('Redirigiendo...', 'Redirecting...') : billingPlan === 'business_yearly' ? t('Empezar Business anual →', 'Start Business yearly →') : t('Empezar con Business →', 'Start with Business →')}
                     </button>
                   )}
@@ -1446,7 +1461,7 @@ function handleCopy(id: string, out: string) {
                 </p>
                 <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(232,77,91,0.06)', border: '1px solid rgba(232,77,91,0.2)' }}>
                   <p className="font-mono-jb text-[13px] mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Función exclusiva Pro', 'Pro exclusive feature')}</p>
-                  <button onClick={() => handleUpgrade(billingPlan)} disabled={billingBusy}
+                  <button onClick={() => handleUpgrade(billingPlan)} disabled={billingBusy || checkoutBlocked}
                     className="btn-offset px-4 py-1.5 text-[13px] font-display">
                     {t('Activar Pro →', 'Activate Pro →')}
                   </button>

@@ -1,0 +1,70 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
+const {harness,reply,deferred,ack,flush}=require('./dashboard-billing.test.cjs');
+const own=h=>({userId:h.state.user,email:h.state.email});
+const ready=async h=>{h.view();await flush();h.view();};
+function ui(h) {
+ const page=fs.readFileSync(path.join(__dirname,'../../app/dashboard/page.tsx'),'utf8'),ast=ts.createSourceFile('dashboard.tsx',page,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ let expression;const disabled=[];
+ function visit(n){if(ts.isJsxExpression(n)&&n.expression&&n.expression.getText(ast).startsWith('checkoutBlocked &&'))expression=n.expression.getText(ast);
+ if(ts.isJsxOpeningElement(n)&&n.tagName.getText(ast)==='button'){const attributes=n.attributes.properties;const on=attributes.find(a=>a.name?.text==='onClick'),disable=attributes.find(a=>a.name?.text==='disabled');if(on?.initializer?.expression?.getText(ast).includes('handleUpgrade('))disabled.push(disable.initializer.expression.getText(ast));}ts.forEachChild(n,visit);}visit(ast);assert(expression);assert.equal(disabled.length,5);
+ const src='exports.render=(p)=>{const {checkoutBlocked,checkoutHasOriginal,checkoutPending,checkoutSelectionMatches,checkoutState,checkoutNavigationFailed,billingBusy,handleObserveCheckout,t}=p;return <>{'+expression+'}</>;};';
+ const compiled=ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX}}).outputText,entry={exports:{}};
+ vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(id){assert.equal(id,'react/jsx-runtime');return{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props}),Fragment:'fragment'};}});
+ const v=h.view(),tree=entry.exports.render({...v,t:(es,en)=>h.state.lang==='en'?en:es}),nodes=n=>Array.isArray(n)?n.flatMap(nodes):n&&typeof n==='object'?[n,...nodes(n.props?.children)]:n==null||typeof n==='boolean'?[]:[n],flat=nodes(tree);
+ return{text:flat.filter(n=>typeof n==='string').join(' '),button:flat.find(n=>n.type==='button'),denied:disabled.map(e=>vm.runInNewContext(e,{billingBusy:false,checkoutBlocked:true})),tree};
+}
+async function run(){
+ const results=[];async function test(name,fn){const h=harness();try{await fn(h);results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}finally{h.unmount();}}
+ for(const lang of ['es','en'])for(const plan of ['monthly','yearly','business_monthly','business_yearly'])await test(plan+'/'+lang+' exact keyed original200; all UI entries denied after confirmation, no payment or stats write',async h=>{
+  h.state.lang=lang;h.state.plan=plan;const v=h.view(),a=v.handleUpgrade(plan),b=v.handleUpgrade(plan);assert.equal(a,b);await flush();assert.equal(h.requests.length,1);assert.equal(h.requests[0].init.cache,'no-store');assert.equal(h.requests[0].init.signal,undefined);assert.deepEqual(h.requests[0].body,{plan,lang});assert.match(h.requests[0].init.headers['Idempotency-Key'],/^[\w-]{1,128}$/);await a;
+  assert.equal(h.state.navigationWrites.length,1);assert.equal(h.view().checkoutState,'confirmed');await h.view().handleUpgrade(plan);assert.equal(h.requests.length,1);assert.equal(h.state.navigationWrites.length,1);assert.equal(h.state.refreshes,0);assert.deepEqual([...h.storage.values()],['pending']);const rendered=ui(h);assert(rendered.denied.every(Boolean));assert.match(rendered.text,lang==='en'?/does not confirm payment/:/No acredita un pago/);rendered.button.props.onClick();await ready(h);assert.equal(h.state.navigationWrites.length,2);assert.equal(h.requests.length,1);
+ });
+ for(const held of ['headers','JSON'])await test(held+'60s leaves one original pending, late receipt requires explicit bounded coalesced observation',async h=>{
+  const g=deferred();let reads=0;h.state.send=r=>held==='headers'?g.promise.then(()=>reply(ack(r))):{ok:true,status:200,json:()=>{reads++;return g.promise.then(()=>ack(r));}};
+  const pending=h.view().handleUpgrade('monthly');await ready(h);h.advance(60000);await pending;assert.equal(h.view().billingBusy,false);assert.equal(h.view().checkoutState,'unconfirmed');assert(ui(h).button);await h.view().handleUpgrade('monthly');assert.equal(h.requests.length,1);
+  const v=h.view(),one=v.handleObserveCheckout(),two=v.handleObserveCheckout();assert.equal(h.timers.size,1);await two;h.advance(60000);await one;assert.equal(h.view().billingBusy,false);g.resolve();await ready(h);assert(!h.state.href);await h.view().handleObserveCheckout();assert.equal(h.state.navigationWrites.length,1);assert.equal(h.requests.length,1);if(held==='JSON')assert.equal(reads,1);
+ });
+ await test('headers/JSON single budget includes delayed timer delivery',async h=>{
+  const headers=deferred(),body=deferred();h.state.send=r=>headers.promise.then(()=>({ok:true,status:200,json:()=>body.promise.then(()=>ack(r))}));const p=h.view().handleUpgrade('monthly');await ready(h);h.advance(45000);headers.resolve();await ready(h);h.advance(16000,false);body.resolve();await ready(h);await p;assert(!h.state.href);assert.equal(h.view().checkoutState,'unconfirmed');await h.view().handleObserveCheckout();assert.equal(h.state.navigationWrites.length,1);
+ });
+ for(const field of ['userId','email','key','plan','lang','mode','url'])await test('foreign '+field+' never redirects or grants another original',async h=>{
+  h.state.send=r=>reply({...ack(r),[field]:'foreign',privateDiagnostic:'PRIVATE'});await h.view().handleUpgrade('monthly');assert(!h.state.href);assert.equal(h.view().checkoutState,'unconfirmed');await h.view().handleUpgrade('yearly');await h.view().handleObserveCheckout();assert.equal(h.requests.length,1);assert(!h.state.href);assert(!ui(h).text.includes('PRIVATE'));
+ });
+ for(const status of [201,202,400,401,403,409,500,503])await test('success-shaped HTTP'+status+' retained denial',async h=>{
+  h.state.send=r=>reply(ack(r),status);await h.view().handleUpgrade('monthly');await h.view().handleObserveCheckout();await h.view().handleUpgrade('monthly');assert(!h.state.href);assert.equal(h.requests.length,1);assert.equal(h.view().checkoutState,'unconfirmed');
+ });
+ for(const url of ['https://checkout.stripe.com/private','http://example.invalid/checkout','https://example.invalid:443/checkout','https://u:p@example.invalid/checkout','https://example.invalid.evil/checkout','https://example.invalid/other','https://example.invalid/checkout#private',' https://example.invalid/checkout','https://EXAMPLE.invalid/checkout'])await test('noncanonical destination '+url+' denied',async h=>{
+  h.state.send=r=>reply({...ack(r),url});await h.view().handleUpgrade('monthly');assert(!h.state.href);assert.equal(h.view().checkoutState,'unconfirmed');
+ });
+ for(const type of ['network','JSON'])await test(type+' error preserves pending denial without fresh POST or secret UI',async h=>{
+  h.state.send=r=>type==='network'?Promise.reject(Error('PRIVATE_TOKEN')):{ok:true,status:200,json:()=>Promise.reject(Error('PRIVATE_TOKEN'))};await h.view().handleUpgrade('monthly');await h.view().handleUpgrade('monthly');assert.equal(h.requests.length,1);assert.equal(h.view().checkoutState,'unconfirmed');assert(!ui(h).text.includes('PRIVATE'));
+ });
+ for(const field of ['user','email','auth','lang','plan','subscriptionPlan'])await test(field+' cycle retires old callback synchronously before effect',async h=>{
+  const v=h.view(),prior=h.state[field];h.state[field]=field==='auth'?'unauthenticated':field==='lang'?'en':field==='plan'?'yearly':'foreign';h.view(true);await v.handleUpgrade('monthly');h.state[field]=prior;h.view(true);await v.handleUpgrade('monthly');assert.equal(h.requests.length,0);
+ });
+ for(const field of ['user','email','auth'])for(const held of ['headers','JSON'])await test(field+' after '+held+' never consumes retired account body or redirects',async h=>{
+  const g=deferred();let reads=0;h.state.send=r=>held==='headers'?g.promise.then(()=>({ok:true,status:200,json:async()=>{reads++;return ack(r);}})):{ok:true,status:200,json:()=>{reads++;return g.promise.then(()=>ack(r));}};const p=h.view().handleUpgrade('monthly');await ready(h);h.state[field]=field==='auth'?'unauthenticated':'foreign';h.view(true);g.resolve();await p;assert(!h.state.href);assert.equal(reads,held==='headers'?0:1);
+ });
+ for(const field of ['lang','plan','subscriptionPlan'])await test(field+' after dispatch retires old navigation while same original remains explicit',async h=>{
+  const g=deferred();h.state.send=r=>g.promise.then(()=>reply(ack(r)));const p=h.view().handleUpgrade('monthly');await ready(h);const prior=h.state[field];h.state[field]=field==='lang'?'en':field==='plan'?'yearly':'pro';h.view(true);g.resolve();await p;assert(!h.state.href);if(field!=='subscriptionPlan'){await h.view().handleObserveCheckout();assert(!h.state.href);}const old=h.view().handleObserveCheckout;h.state[field]=prior;h.view(true);await old();assert(!h.state.href);await h.view().handleObserveCheckout();assert.equal(h.state.navigationWrites.length,1);assert.equal(h.requests.length,1);
+ });
+ for(const cleanup of ['unmount','Strict'])await test(cleanup+' retires old callbacks; live original explicit only after remount',async h=>{
+  const g=deferred();h.state.send=r=>g.promise.then(()=>reply(ack(r)));const v=h.view(),p=v.handleUpgrade('monthly');await ready(h);if(cleanup==='Strict')h.strictEffects();else h.unmount();await ready(h);g.resolve();await p;await ready(h);assert(!h.state.href);await v.handleUpgrade('monthly');assert.equal(h.requests.length,1);await h.view().handleObserveCheckout();assert.equal(h.state.navigationWrites.length,1);assert.equal(h.requests.length,1);
+ });
+ await test('navigation failure preserves confirmed receipt and same original, no second session',async h=>{
+  h.state.navigationFailure=true;await h.view().handleUpgrade('monthly');assert.equal(h.view().checkoutNavigationFailed,true);assert.equal(h.view().checkoutState,'confirmed');assert.match(ui(h).text,/No se pudo abrir/);h.state.navigationFailure=false;await h.view().handleObserveCheckout();assert.equal(h.state.navigationWrites.length,1);assert.equal(h.requests.length,1);
+ });
+ for(const failure of ['get','set'])await test('storage '+failure+' only denies, cannot recover or admit',async h=>{
+  h.state.storageFailure=failure;await h.view().handleUpgrade('monthly');assert.equal(h.requests.length,0);assert.equal(h.view().checkoutHasOriginal,false);assert(h.view().checkoutBlocked);assert.equal(ui(h).button,undefined);
+ });
+ await test('lost module and arbitrary copied marker cannot restore original or permit POST',async h=>{
+  const g=deferred();h.state.send=r=>g.promise.then(()=>reply(ack(r)));const p=h.view().handleUpgrade('monthly');await ready(h);const lost=harness({storage:h.storage});try{const v=lost.view();assert(v.checkoutBlocked);assert(!v.checkoutHasOriginal);await v.handleUpgrade('monthly');await v.handleObserveCheckout();assert.equal(lost.requests.length,0);assert(!lost.state.href);assert.equal(ui(lost).button,undefined);assert.match(ui(lost).text,/no permite recuperarla/);}finally{lost.unmount();g.resolve();await p;}
+ });
+ for(const first of ['Dashboard','Profile'])await test(first+' shares one live original with actual other hook, never auto-adopts a receipt',async h=>{
+  const c=h.load('lib/profile-checkout-client.ts'),p=harness({profile:true,checkoutClient:c,storage:h.storage});try{const g=deferred();h.state.send=r=>g.promise.then(()=>reply(ack(r)));if(first==='Dashboard')h.view().handleUpgrade('monthly');else p.view().start('monthly');await ready(h);await ready(p);assert.equal(h.requests.length,1);if(first==='Dashboard')p.view().start('monthly');else await h.view().handleUpgrade('monthly');assert.equal(h.requests.length,1);g.resolve();await ready(h);await ready(p);if(first==='Dashboard')assert(!p.state.href);else assert(!h.state.href);if(first==='Dashboard')p.view().observe();else await h.view().handleObserveCheckout();await ready(h);await ready(p);assert(h.state.href&&p.state.href);assert.equal(h.requests.length,1);}finally{p.unmount();}
+ });
+ return{suite:'dashboard-checkout-client',status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',scope:'Actual Dashboard hook/JSX and profile hook, fake clock/HTTP/storage/window only; no real payment or navigation',results};
+}
+if(require.main===module)run().then(r=>{console.log(JSON.stringify(r,null,2));if(r.status!=='PASS')process.exitCode=1;}).catch(e=>{console.error(e);process.exitCode=1;});
+module.exports={run,harness,ready,ui,own};
