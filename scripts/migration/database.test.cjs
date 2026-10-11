@@ -99,6 +99,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await require('./profile-update-database.cjs')(prisma,results);
   await require('./profile-client-database.cjs')(prisma,results);
   await require('./stats-read-database.cjs')(prisma,results);
+  await require('./generation-read-database.cjs')(prisma,results);
   await require('./learn-plan-database.cjs')(prisma,results);
   await require('./team-invite-client-database.cjs')(prisma,results,require('./team-expired-invitation-database.cjs'));
  await require('./dashboard-onboarding-database.cjs')(prisma,results);

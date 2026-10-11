@@ -5,7 +5,7 @@ module.exports=async function(prisma,results){
  const users=await Promise.all([1,2].map(i=>prisma.user.create({data:{email:'generation-history-'+randomUUID()+'@example.invalid',name:'Synthetic history '+i}})));
  let email=users[0].email;
  const usage=load('lib/ai/history-usage.ts');
- const routeFor=db=>load('app/api/user/generations/route.ts',{'@/lib/ai/history-usage':usage,'next/server':{NextResponse:Response},'@/auth':{auth:async()=>email?{user:{email}}:null},'@/lib/prisma':{prisma:db}});
+ const routeFor=db=>load('app/api/user/generations/route.ts',{'@/lib/ai/history-usage':usage,'next/server':{NextResponse:Response},'@/auth':{auth:async()=>email?{user:{id:users.find(u=>u.email===email)?.id??users[0].id,email}}:null},'@/lib/prisma':{prisma:db}});
  const route=routeFor(prisma),invoke=(r=route,url='/api/user/generations?page=1')=>r.GET({nextUrl:new URL(url,'https://example.invalid')});
  const h=harness(),prefix='synthetic-history-'+randomUUID()+'-';
  try {

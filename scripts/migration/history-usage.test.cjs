@@ -7,8 +7,8 @@ const results=[];
 async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.message});}}
 function harness(path,denied=false){
  let reads=0;
- const prisma={user:{findUnique:async()=>{reads++;return {id:'synthetic'};},count:async()=>0,findMany:async()=>[]},subscription:{findMany:async()=>[]},generation:{count:async()=>2,groupBy:async()=>[],findMany:async()=>{reads++;return rows;}}};
- const route=load(path,{'@/lib/ai/history-usage':usage,'next/server':{NextResponse:Response},'@/auth':{auth:async()=>denied?null:{user:{email:'synthetic@example.invalid'}}},'@/lib/prisma':{prisma},'@/lib/auth-guards':{requireAdmin:async()=>denied?{ok:false,response:Response.json({error:'Unauthorized'},{status:403})}:{ok:true}},'@/lib/plans':{isPaidStatus:()=>false}});
+ const prisma={user:{findUnique:async()=>{reads++;return {id:'synthetic',email:'synthetic@example.invalid'};},count:async()=>0,findMany:async()=>[]},subscription:{findMany:async()=>[]},generation:{count:async()=>2,groupBy:async()=>[],findMany:async()=>{reads++;return rows;}}};
+ const route=load(path,{'@/lib/ai/history-usage':usage,'next/server':{NextResponse:Response},'@/auth':{auth:async()=>denied?null:{user:{id:'synthetic',email:'synthetic@example.invalid'}}},'@/lib/prisma':{prisma},'@/lib/auth-guards':{requireAdmin:async()=>denied?{ok:false,response:Response.json({error:'Unauthorized'},{status:403})}:{ok:true}},'@/lib/plans':{isPaidStatus:()=>false}});
  return {route,reads:()=>reads};
 }
 (async()=>{
