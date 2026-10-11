@@ -34,7 +34,7 @@ function videoCount(value: unknown): number {
 // Only an acknowledged, valid empty playlist establishes absence of uploads.
 async function getRecentUploads(ctx: Ctx, channelId: string): Promise<{ videoId: string; publishedAt: string }[]> {
   if (!/^UC[A-Za-z0-9_-]{22}$/.test(channelId)) throw Error('Actions unavailable');
-  const token = await ctx.read(() => getAccessToken(ctx.userId, ctx.check));
+  const token = await ctx.read(() => getAccessToken(ctx.userId, ctx.check, { checkRefreshStep: ctx.check }));
   if (!token) throw Error('Actions unavailable');
   const uploadsPlaylistId = 'UU' + channelId.slice(2);
   const res = await ctx.read(() => fetch(
