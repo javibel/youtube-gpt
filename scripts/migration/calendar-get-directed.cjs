@@ -13,5 +13,7 @@ const watchdog=setTimeout(()=>{console.error('Missing terminal diagnostic report
  await require('./calendar-read-database.cjs')(prisma,results);
  await require('./calendar-get-server-database.cjs')(prisma,results);
  await require('./calendar-http-write-database.cjs')(prisma,results);
+ await require('./calendar-create-client-database.cjs')(prisma,results);
+ await require('./calendar-mutation-client-database.cjs')(prisma,results);
  console.log(JSON.stringify({status:'PASS',identity,results},null,2));
 }finally{await prisma.$disconnect();clearTimeout(watchdog);}})().catch(e=>{console.error(e.stack);process.exitCode=1;});

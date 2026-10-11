@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs'),{harness}=require('./calendar-client-retry.test.cjs');
 module.exports=async(prisma,results)=>{
  const user=await prisma.user.create({data:{email:'calendar-create-client-'+randomUUID()+'@example.invalid'}});
- const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),api=load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id}})},'@/lib/plans':plans,'@/lib/prisma':{prisma}});
+ const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),api=load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},'@/lib/plans':plans,'@/lib/prisma':{prisma}});
  const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};const handles=[];
  const setup=storage=>{const h=harness(storage);handles.push(h);h.state.user=user.id;h.state.email=user.email;let read;h.state.list=url=>(read=api.GET(new Request('https://example.invalid'+url)));h.state.write=(url,init)=>api[init.method](new Request('https://example.invalid'+url,init));return {h,ready:async()=>{h.render();await read;await flush();}};};
  const entries=()=>prisma.calendarEntry.findMany({where:{userId:user.id},orderBy:{id:'asc'}}),receipts=()=>prisma.calendarCreationReceipt.findMany({where:{userId:user.id},orderBy:{id:'asc'}});
