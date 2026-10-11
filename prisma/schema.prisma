@@ -82,6 +82,7 @@ model User {
   teamRenames TeamRenameAttempt[]
   teamInvitations TeamInvitationAttempt[]
   teamJoins TeamJoinAttempt[]
+  profileUpdates ProfileUpdateAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -1183,4 +1184,21 @@ model CalendarMutationReceipt {
  @@unique([userId,key],map:"calendar_mutation_receipts_userid_key_key")
  @@index([userId,createdAt],map:"calendar_mutation_receipts_userid_createdat_idx")
  @@map("calendar_mutation_receipts")
+}
+
+model ProfileUpdateAttempt {
+  id           String   @id
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email        String
+  key          String
+  operation    String
+  previousName String?
+  name         String?
+  previousLang String?
+  lang         String?
+  state        String   @default("pending")
+  createdAt    DateTime @default(now())
+  @@unique([userId, key])
+  @@map("profile_update_attempts")
 }
