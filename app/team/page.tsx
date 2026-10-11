@@ -9,6 +9,8 @@ import { useTeamCreate } from '@/lib/use-team-create';
 import { readConfirmedTeamCreation, validTeamName } from '@/lib/team-create-client';
 import { useTeamMembers } from '@/lib/use-team-members';
 import { readConfirmedMemberMutation } from '@/lib/team-members-client';
+import { useTeamRevoke } from '@/lib/use-team-revoke';
+import { readConfirmedRevocation } from '@/lib/team-revoke-client';
 
 type Lang = 'es' | 'en';
 
@@ -40,6 +42,7 @@ export default function TeamPage() {
   const [inviting, setInviting] = useState(false);
   const creation = useTeamCreate({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, teamName);
   const members = useTeamMembers({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
+  const revocation = useTeamRevoke({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const formScope = useRef(scope);
   if (formScope.current !== scope) {
     formScope.current = scope;
@@ -60,6 +63,19 @@ export default function TeamPage() {
       const next = readConfirmedMemberMutation(members.attempt); if (next) read.install(next);
     }
   }, [members.attempt, members.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (revocation.canObserve() && revocation.attempt && revocation.outcome?.status === 'confirmed') {
+      const next = readConfirmedRevocation(revocation.attempt); if (next) read.install(next);
+    }
+  }, [revocation.attempt, revocation.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const revocationNotice = <div data-team-revoke={revocation.outcome?.status ?? (revocation.updating ? 'waiting' : revocation.blocked ? 'blocked' : 'idle')}>
+    {revocation.updating && <p role="status">{t('Revocando invitación…', 'Revoking invitation…')}</p>}
+    {(revocation.outcome?.status === 'unconfirmed' || revocation.blocked && !revocation.updating && !revocation.outcome) && <p role="alert">{t('Revocación sin confirmar. No inicies otra acción.', 'Revocation unconfirmed. Do not start another action.')}</p>}
+    {revocation.pending && revocation.outcome?.status === 'unconfirmed' && <p role="status">{t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+    {revocation.outcome?.status === 'confirmed' && <p role="status">{t('Revocación confirmada:', 'Revocation confirmed:')} {revocation.outcome.receipt.targetEmail}</p>}
+    {revocation.outcome?.status === 'rejected' && <><p role="alert">{t('No se revocó la invitación. Revisa el equipo y la sesión.', 'The invitation was not revoked. Check the team and session.')}</p><button onClick={read.refresh} disabled={read.pending}>{t('Actualizar equipo', 'Refresh team')}</button></>}
+    {revocation.blocked && revocation.outcome && revocation.outcome.status !== 'unconfirmed' && <p role="alert">{t('No se puede iniciar otra acción en esta pestaña.', 'Another action cannot be started in this tab.')}</p>}
+  </div>;
   const memberNotice = <div data-team-members={members.outcome?.status ?? (members.updating ? 'waiting' : members.blocked ? 'blocked' : 'idle')}>
     {members.updating && <p role="status">{t('Actualizando miembros…', 'Updating members…')}</p>}
     {(members.outcome?.status === 'unconfirmed' || members.blocked && !members.updating && !members.outcome) && <p role="alert">{t('Acción de miembros sin confirmar. No inicies otra acción.', 'Member action unconfirmed. Do not start another action.')}</p>}
@@ -112,19 +128,7 @@ export default function TeamPage() {
     if (read.canAct() && (role === 'admin' || role === 'member')) members.start('role', memberId, role);
   }
 
-  async function revokeInvitation(invitationId: string) {
-    if (!read.canAct() || !members.canAct() || !isOwnerOrAdmin || !team?.invitations.some(i => i.id === invitationId)) return;
-    try {
-      const res = await fetch('/api/team/invite', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitationId }),
-      });
-      if (res.ok && read.canAct()) read.refresh();
-    } catch {
-      if (read.canAct()) setError(t('Error', 'Error'));
-    }
-  }
+  function revokeInvitation(invitationId: string) { if (read.canAct()) revocation.start(invitationId); }
 
   async function leaveOrDeleteTeam() {
     if (!read.canAct() || !members.canAct() || !team) return;
@@ -142,6 +146,7 @@ export default function TeamPage() {
         <p role="status">{t('Leyendo tu equipo…', 'Reading your team…')}</p>
         {status === 'authenticated' && creationNotice}
         {status === 'authenticated' && memberNotice}
+        {status === 'authenticated' && revocationNotice}
       </div>
     );
   }
@@ -160,6 +165,7 @@ export default function TeamPage() {
   if (read.error || !read.data) return <DashboardShell><div className="yv-page" data-team-read="error">
     {creationNotice}
     {memberNotice}
+    {revocationNotice}
     <p role="alert">{t('No se pudo cargar el equipo.', 'Could not load the team.')}</p>
     {read.pending && <p role="status">{t('La lectura original sigue pendiente.', 'The original read is still pending.')}</p>}
     <button onClick={read.refresh} disabled={read.pending}>{t('Reintentar lectura', 'Retry read')}</button>
@@ -173,6 +179,7 @@ export default function TeamPage() {
       <div className="yv-page" data-clarity-mask="true" data-team-read={team ? 'team' : 'empty'}>
         {creationNotice}
         {memberNotice}
+        {revocationNotice}
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -320,7 +327,7 @@ export default function TeamPage() {
                       {isOwnerOrAdmin && (
                         <button
                           onClick={() => revokeInvitation(inv.id)}
-                          disabled={!members.canAct()}
+                      disabled={!revocation.canStart(inv.id)}
                           className="font-mono-jb text-[13px] hover:text-red-400 transition"
                           style={{ color: 'var(--yv-text-4)' }}
                         >

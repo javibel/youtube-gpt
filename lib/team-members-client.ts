@@ -1,4 +1,5 @@
 import { beginTeamRead } from '@/lib/team-read-client';
+import { teamCommandBlocked, reserveTeamCommand } from '@/lib/team-command-client';
 import type { TeamRead } from '@/lib/team-read-client';
 import type { TeamOwner } from '@/lib/team-read-contract';
 import type { MemberInput, MemberOperation } from '@/lib/team-member-mutation';
@@ -31,7 +32,7 @@ function acknowledgement(body: unknown, a: MemberAttempt): MemberReceipt | null 
 export function retainedMemberMutation(owner: TeamOwner, teamId: string): MemberAttempt | undefined { return attempts.get(identity(owner, teamId)); }
 export function memberMutationBlocked(owner: TeamOwner, teamId: string): boolean {
   const key = identity(owner, teamId), a = attempts.get(key), outcome = a && settled.get(a);
-  if (denied.has(key) || a && (!outcome || outcome.status === 'unconfirmed')) return true;
+  if (teamCommandBlocked(owner, teamId) || denied.has(key) || a && (!outcome || outcome.status === 'unconfirmed')) return true;
   try { return sessionStorage.getItem(key) !== null; } catch { return true; }
 }
 // Only the successful live producer's private settled outcome can grant its
@@ -48,6 +49,7 @@ export function beginMemberMutation(owner: TeamOwner, input: MemberInput, operat
   const own = Object.freeze({ userId: owner.userId, email: owner.email });
   const selected = Object.freeze({ teamId: input.teamId, memberId: input.memberId, targetUserId: input.targetUserId,
     previousRole: input.previousRole, role: input.role }), scope = identity(own, selected.teamId);
+  const release = reserveTeamCommand(own, selected.teamId); if (!release) return null;
   let key: string;
   try { key = crypto.randomUUID(); if (!id(key)) return null; sessionStorage.setItem(scope, 'pending'); }
   catch { denied.add(scope); return null; }
@@ -68,7 +70,7 @@ export function beginMemberMutation(owner: TeamOwner, input: MemberInput, operat
       else if (!res.ok && object(body) && [[401, 'Unauthorized'], [400, 'invalid_input'], [400, 'cannot_mutate_self'],
         [403, 'not_authorized'], [404, 'team_not_found'], [404, 'member_not_found'], [409, 'member_changed']]
         .some(([status, error]) => res.status === status && body.error === error)) outcome = { status: 'rejected', error: body.error as string };
-      if (outcome.status !== 'unconfirmed') { try { sessionStorage.removeItem(scope); } catch { denied.add(scope); } }
+      if (outcome.status !== 'unconfirmed') { try { sessionStorage.removeItem(scope); release(); } catch { denied.add(scope); } }
     } catch { /* Transport/private errors retain denial, never resend or recover. */ }
     return outcome;
   }).then(outcome => { Object.freeze(outcome); a.pending = false; a.outcome = outcome; settled.set(a, outcome); return outcome; });
