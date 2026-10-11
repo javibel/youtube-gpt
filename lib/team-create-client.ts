@@ -1,5 +1,5 @@
 import { beginTeamRead } from '@/lib/team-read-client';
-import { teamOwnerCommandBlocked, reserveTeamOwnerCommand } from '@/lib/team-command-client';
+import { teamOwnerCommandBlocked, reserveTeamOwnerCommand, teamOwnerStorageDenied } from '@/lib/team-command-client';
 import type { TeamRead } from '@/lib/team-read-client';
 import type { TeamOwner } from '@/lib/team-read-contract';
 
@@ -29,7 +29,7 @@ export function teamCreationBlocked(owner: TeamOwner): boolean { return teamOwne
 // Draft edits are local; only starting a command requires owner exclusion.
 export function teamCreationDraftBlocked(owner: TeamOwner): boolean {
   const id = identity(owner), a = attempts.get(id);
-  if (denied.has(id) || a && (!a.outcome || a.outcome.status === 'unconfirmed')) return true;
+  if (teamOwnerStorageDenied(owner) || denied.has(id) || a && (!a.outcome || a.outcome.status === 'unconfirmed')) return true;
   try { return sessionStorage.getItem(id) !== null; } catch { return true; }
 }
 // A stored receipt/ID/key never grants this continuation. Only the same

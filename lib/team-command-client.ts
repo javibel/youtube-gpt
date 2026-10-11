@@ -21,6 +21,7 @@ export function teamOwnerCommandBlocked(owner: TeamOwner): boolean {
     return false;
   } catch { return true; }
 }
+export function teamOwnerStorageDenied(owner: TeamOwner): boolean { return deniedOwners.has(ownerScope(owner)); }
 export function reserveTeamOwnerCommand(owner: TeamOwner): (() => void) | null {
   if (teamOwnerCommandBlocked(owner)) return null;
   const identity = ownerScope(owner), token = {}, marker = ownerPrefix + identity;
