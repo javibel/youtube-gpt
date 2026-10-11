@@ -13,6 +13,8 @@ import { useTeamRevoke } from '@/lib/use-team-revoke';
 import { readConfirmedRevocation } from '@/lib/team-revoke-client';
 import { useTeamExit } from '@/lib/use-team-exit';
 import { readConfirmedTeamExit } from '@/lib/team-exit-client';
+import { useTeamInvite } from '@/lib/use-team-invite';
+import { readConfirmedTeamInvite } from '@/lib/team-invite-client';
 import { useTeamRename } from '@/lib/use-team-rename';
 import { readConfirmedTeamRename } from '@/lib/team-rename-client';
 
@@ -36,29 +38,24 @@ export default function TeamPage() {
   const read = useTeamRead({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang);
   const team = read.data?.team ?? null, myRole = read.data?.role ?? '';
   const scope = JSON.stringify([session?.user?.id, session?.user?.email, status, lang]);
-  const current = useRef({ scope });
-  if (current.current.scope !== scope) current.current = { scope };
-  const invocation = current.current;
   const [error, setError] = useState('');
   const [teamName, setTeamName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('member');
-  const [inviting, setInviting] = useState(false);
   const creation = useTeamCreate({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, teamName);
   const members = useTeamMembers({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const revocation = useTeamRevoke({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const exit = useTeamExit({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const rename = useTeamRename({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
+  const invite = useTeamInvite({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const formScope = useRef(scope);
   if (formScope.current !== scope) {
     formScope.current = scope;
-    setError(''); setTeamName(''); setInviteEmail(''); setInviteRole('member'); setInviting(false);
+    setError(''); setTeamName('');
   }
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
   const isOwnerOrAdmin = myRole === 'owner' || myRole === 'admin';
 
-  function createTeam() { if (read.canAct() && !team && !exit.creationBlocked && !rename.creationBlocked && creation.canAct()) { setError(''); creation.start(); } }
+  function createTeam() { if (read.canAct() && !team && !exit.creationBlocked && !rename.creationBlocked && !invite.creationBlocked && creation.canAct()) { setError(''); creation.start(); } }
   useEffect(() => {
     if (creation.canAct() && creation.attempt && creation.outcome?.status === 'confirmed') {
       const next = readConfirmedTeamCreation(creation.attempt); if (next) read.install(next);
@@ -84,6 +81,21 @@ export default function TeamPage() {
       const next = readConfirmedTeamRename(rename.attempt); if (next) read.install(next);
     }
   }, [rename.attempt, rename.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (invite.canObserve() && invite.attempt && invite.outcome?.status === 'confirmed') {
+      const next = readConfirmedTeamInvite(invite.attempt); if (next) read.install(next);
+    }
+  }, [invite.attempt, invite.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const inviteNotice = <div data-team-invite={invite.outcome?.status ?? (invite.updating ? 'waiting' : invite.blocked ? 'blocked' : 'idle')}>
+    {invite.updating && <p role="status">{t('Confirmando invitación…', 'Confirming invitation…')}</p>}
+    {(invite.outcome?.status === 'unconfirmed' || invite.blocked && !invite.updating && !invite.outcome) && <p role="alert">{t('Invitación sin confirmar. No inicies otra acción.', 'Invitation unconfirmed. Do not start another action.')}</p>}
+    {invite.pending && invite.outcome?.status === 'unconfirmed' && <p role="status">{t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+    {invite.outcome?.status === 'confirmed' && <p role="status">{t('Invitación creada:', 'Invitation created:')} {invite.outcome.receipt.targetEmail}. {t('El proveedor aceptó el correo; su entrega no está confirmada.', 'The provider accepted the email; delivery is not confirmed.')}</p>}
+    {invite.outcome?.status === 'rejected' && <><p role="alert">{invite.outcome.error === 'expired_invitation_requires_revocation'
+      ? t('Existe una invitación caducada para ese correo. Hay que revocarla expresamente antes de crear otra.', 'An expired invitation exists for that email. It must be explicitly revoked before creating another.')
+      : t('No se creó la invitación. Revisa el equipo, el cupo y el destinatario.', 'Invitation was not created. Check the team, capacity and recipient.')}</p><button onClick={read.refresh} disabled={read.pending}>{t('Actualizar equipo', 'Refresh team')}</button></>}
+    {invite.blocked && invite.outcome && invite.outcome.status !== 'unconfirmed' && <p role="alert">{t('No se puede iniciar otra acción en esta pestaña.', 'Another action cannot be started in this tab.')}</p>}
+  </div>;
   const renameNotice = <div data-team-rename={rename.outcome?.status ?? (rename.updating ? 'waiting' : rename.blocked ? 'blocked' : 'idle')}>
     {rename.updating && <p role="status">{t('Confirmando nombre del equipo…', 'Confirming team name…')}</p>}
     {(rename.outcome?.status === 'unconfirmed' || rename.blocked && !rename.updating && !rename.outcome) && <p role="alert">{t('Nombre sin confirmar. No inicies otra acción.', 'Team name unconfirmed. Do not start another action.')}</p>}
@@ -124,36 +136,7 @@ export default function TeamPage() {
     {creation.outcome?.status === 'rejected' && <p role="alert">{creation.outcome.error === 'pro_required' ? t('Necesitas el plan Pro.', 'You need the Pro plan.') : creation.outcome.error === 'already_in_team' ? t('Ya perteneces a un equipo.', 'You already belong to a team.') : t('No se creó el equipo. Revisa los datos y la sesión.', 'The team was not created. Check the details and session.')}</p>}
   </div>;
 
-  async function inviteMember() {
-    if (!read.canAct() || !members.canAct() || !isOwnerOrAdmin || !inviteEmail.trim()) return;
-    setInviting(true);
-    setError('');
-    try {
-      const res = await fetch('/api/team/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
-      });
-      const data = await res.json();
-      if (!read.canAct()) return;
-      if (!res.ok) {
-        const msgs: Record<string, string> = {
-          team_full: t('El equipo esta lleno.', 'Team is full.'),
-          already_member: t('Ya es miembro del equipo.', 'Already a team member.'),
-          already_invited: t('Ya tiene una invitacion pendiente.', 'Already has a pending invitation.'),
-        };
-        setError(msgs[data.error] || data.error || 'Error');
-        return;
-      }
-      // Refresh team data
-      read.refresh();
-      setInviteEmail('');
-    } catch {
-      if (read.canAct()) setError(t('Error de conexion', 'Connection error'));
-    } finally {
-      if (current.current === invocation) setInviting(false);
-    }
-  }
+  function inviteMember() { if (read.canAct()) invite.start(); }
 
   function removeMember(memberId: string) { if (read.canAct()) members.start('remove', memberId, null); }
   function changeRole(memberId: string, role: string) {
@@ -173,6 +156,7 @@ export default function TeamPage() {
         {status === 'authenticated' && revocationNotice}
         {status === 'authenticated' && exitNotice}
         {status === 'authenticated' && renameNotice}
+        {status === 'authenticated' && inviteNotice}
       </div>
     );
   }
@@ -194,6 +178,7 @@ export default function TeamPage() {
     {revocationNotice}
     {exitNotice}
     {renameNotice}
+    {inviteNotice}
     <p role="alert">{t('No se pudo cargar el equipo.', 'Could not load the team.')}</p>
     {read.pending && <p role="status">{t('La lectura original sigue pendiente.', 'The original read is still pending.')}</p>}
     <button onClick={read.refresh} disabled={read.pending}>{t('Reintentar lectura', 'Retry read')}</button>
@@ -210,6 +195,7 @@ export default function TeamPage() {
         {revocationNotice}
         {exitNotice}
         {renameNotice}
+    {inviteNotice}
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -259,7 +245,7 @@ export default function TeamPage() {
               />
               <button
                 onClick={createTeam}
-                disabled={creation.creating || creation.blocked || exit.creationBlocked || rename.creationBlocked || !validTeamName(teamName)}
+                disabled={creation.creating || creation.blocked || exit.creationBlocked || rename.creationBlocked || invite.creationBlocked || !validTeamName(teamName)}
                 className="btn-offset px-6 py-3 text-sm font-display disabled:opacity-50"
               >
                 {creation.creating ? '...' : t('Crear', 'Create')}
@@ -376,11 +362,11 @@ export default function TeamPage() {
                 <h2 className="font-display font-bold mb-4" style={{ color: 'var(--yv-text-1)' }}>{t('Invitar miembro', 'Invite member')}</h2>
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
-                    <label className="font-mono-jb text-[13px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>Email</label>
+                    <label htmlFor="team-invite-email" className="font-mono-jb text-[13px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>Email</label>
                     <input
                       type="email"
-                      value={inviteEmail}
-                      onChange={e => { if (read.canAct()) setInviteEmail(e.target.value); }}
+                      id="team-invite-email" maxLength={320} value={invite.value} disabled={!read.canAct() || !invite.canEdit()}
+                      onChange={e => { if (read.canAct()) invite.change(e.target.value); }}
                       placeholder="colleague@example.com"
                       className="w-full px-4 py-2.5 yv-input text-sm font-mono-jb"
                       onKeyDown={e => e.key === 'Enter' && inviteMember()}
@@ -390,8 +376,8 @@ export default function TeamPage() {
                     <div>
                       <label className="font-mono-jb text-[13px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Rol', 'Role')}</label>
                       <select
-                        value={inviteRole}
-                        onChange={e => { if (read.canAct()) setInviteRole(e.target.value); }}
+                        aria-label={t('Rol de invitación', 'Invitation role')} value={invite.requestedRole} disabled={!read.canAct() || !invite.canEdit()}
+                        onChange={e => { if (read.canAct()) invite.changeRole(e.target.value); }}
                         className="px-3 py-2.5 yv-input text-sm font-mono-jb"
                       >
                         <option value="member">{t('Miembro', 'Member')}</option>
@@ -401,10 +387,10 @@ export default function TeamPage() {
                   )}
                   <button
                     onClick={inviteMember}
-                    disabled={inviting || !inviteEmail.trim() || !members.canAct()}
+                    disabled={!read.canAct() || !invite.canStart()}
                     className="btn-offset px-6 py-2.5 text-sm font-display disabled:opacity-50"
                   >
-                    {inviting ? '...' : t('Invitar', 'Invite')}
+                    {t('Invitar', 'Invite')}
                   </button>
                 </div>
               </div>
