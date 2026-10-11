@@ -9,117 +9,107 @@ import { computeScore, validOptimizeDraft } from '@/lib/optimize-score';
 
 // ── GET: load video data + optimize history ─────────────────────────────
 
+const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const identifier = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{1,128}$/.test(v);
+const safeCount = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+function googleCount(v: unknown): number {
+  if (v === undefined) return 0;
+  if (typeof v !== 'string' || !/^\d+$/.test(v) || !safeCount(Number(v))) throw Error('Optimize unavailable');
+  return Number(v);
+}
+function videoData(value: unknown) {
+  if (!object(value) || !identifier(value.id) || !object(value.snippet) || !object(value.statistics)) throw Error('Optimize unavailable');
+  const s = value.snippet, stats = value.statistics;
+  const draft = { videoId: value.id, title: s.title, description: s.description === undefined ? '' : s.description, tags: s.tags === undefined ? [] : s.tags };
+  if (!validOptimizeDraft(draft) || typeof s.publishedAt !== 'string' || !Number.isFinite(Date.parse(s.publishedAt))
+    || (s.categoryId !== undefined && (typeof s.categoryId !== 'string' || s.categoryId.length > 128))) throw Error('Optimize unavailable');
+  const thumbnail = object(s.thumbnails) && object(s.thumbnails.medium) ? s.thumbnails.medium.url : '';
+  if (typeof thumbnail !== 'string' || thumbnail.length > 2048) throw Error('Optimize unavailable');
+  if (thumbnail) { const u = new URL(thumbnail); if (u.protocol !== 'https:' || u.username || u.password) throw Error('Optimize unavailable'); }
+  return { ...draft, thumbnail, publishedAt: s.publishedAt, categoryId: (s.categoryId as string) ?? '',
+    views: googleCount(stats.viewCount), likes: googleCount(stats.likeCount), comments: googleCount(stats.commentCount) };
+}
+
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
-
-  const accessToken = await getAccessToken(session.user.id);
-  if (!accessToken) {
-    return NextResponse.json({ error: 'youtube_not_connected' }, { status: 400 });
-  }
-
-  const url = new URL(request.url);
-  const videoId = url.searchParams.get('videoId');
-
+  const deadline = performance.now() + 25_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Optimize unavailable')); } };
+  const timer = setTimeout(retire, 25_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Optimize unavailable'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    // If specific videoId requested, return full details for editing
-    if (videoId) {
-      const vRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,status&id=${videoId}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const vData = await vRes.json();
-      if (!vRes.ok || !vData.items?.length) {
-        return NextResponse.json({ error: 'video_not_found' }, { status: 404 });
-      }
-
-      const video = vData.items[0];
-      const snippet = video.snippet;
-      const stats = video.statistics;
-
-      const { score, checks } = computeScore(
-        snippet.title || '',
-        snippet.description || '',
-        snippet.tags || [],
-      );
-
-      // Load optimize history for this video
-      const history = await prisma.optimizeHistory.findMany({
-        where: { userId: session.user.id, videoId },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-      });
-
-      return NextResponse.json({
-        video: {
-          videoId: video.id,
-          title: snippet.title || '',
-          description: snippet.description || '',
-          tags: snippet.tags || [],
-          thumbnail: snippet.thumbnails?.medium?.url || '',
-          publishedAt: snippet.publishedAt || '',
-          categoryId: snippet.categoryId || '',
-          views: parseInt(stats.viewCount || '0', 10),
-          likes: parseInt(stats.likeCount || '0', 10),
-          comments: parseInt(stats.commentCount || '0', 10),
-        },
-        score,
-        checks,
-        history,
-      });
-    }
-
-    // No videoId: return user's videos list for selection
-    const searchRes = await fetch(
-      'https://www.googleapis.com/youtube/v3/search?part=id,snippet&forMine=true&type=video&order=date&maxResults=20',
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const searchData = await searchRes.json();
-    if (!searchRes.ok) {
-      return NextResponse.json({ error: searchData.error?.message || 'YouTube API error' }, { status: 500 });
-    }
-
-    const ids = (searchData.items || []).map((i: { id: { videoId: string } }) => i.id.videoId);
-    if (!ids.length) {
-      return NextResponse.json({ videos: [] });
-    }
-
-    // Fetch stats for all videos
-    const statsRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids.join(',')}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const statsData = await statsRes.json();
-
-    const videos = (statsData.items || []).map((v: {
-      id: string;
-      snippet: { title: string; thumbnails?: { medium?: { url: string } }; publishedAt: string; tags?: string[]; description: string };
-      statistics: { viewCount?: string; likeCount?: string };
-    }) => {
-      const { score } = computeScore(v.snippet.title, v.snippet.description, v.snippet.tags || []);
-      return {
-        videoId: v.id,
-        title: v.snippet.title,
-        thumbnail: v.snippet.thumbnails?.medium?.url || '',
-        publishedAt: v.snippet.publishedAt,
-        views: parseInt(v.statistics.viewCount || '0', 10),
-        likes: parseInt(v.statistics.likeCount || '0', 10),
-        score,
+    // Capture the URL selection before authentication, plan, token or transport.
+    const params = new URL(request.url).searchParams, videoId = params.get('videoId');
+    const selectionValid = params.getAll('videoId').length <= 1 && (videoId === null || identifier(videoId));
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id) return reply({ error: 'Unauthorized' }, 401);
+      const userId = session.user.id, email = session.user.email ?? null;
+      const plan = await getUserPlan(userId); check();
+      if (!isPaid(plan)) return reply({ error: 'pro_required' }, 403);
+      if (!selectionValid) return reply({ error: 'invalid_selection' }, 400);
+      const accessToken = await getAccessToken(userId, check); check();
+      if (!accessToken) return reply({ error: 'youtube_not_connected' }, 400);
+      const envelope = { userId, email, selection: { videoId } };
+      const google = async (path: string, limit: number) => {
+        check(); const res = await fetch('https://www.googleapis.com/youtube/v3/' + path,
+          { cache: 'no-store', headers: { Authorization: 'Bearer ' + accessToken } }); check();
+        if (!res.ok || res.status !== 200) throw Error('Optimize unavailable');
+        const data: unknown = await res.json(); check();
+        if (!object(data) || !Array.isArray(data.items) || data.items.length > limit) throw Error('Optimize unavailable');
+        return data.items as unknown[];
       };
+      if (videoId !== null) {
+        const items = await google('videos?part=snippet,statistics,status&id=' + encodeURIComponent(videoId), 1);
+        if (!items.length) return reply({ error: 'video_not_found' }, 404);
+        const video = videoData(items[0]); if (video.videoId !== videoId) throw Error('Optimize unavailable');
+        const result = computeScore(video.title, video.description, video.tags);
+        check(); const rows = await prisma.optimizeHistory.findMany({
+          where: { userId, videoId }, orderBy: { createdAt: 'desc' }, take: 20,
+          select: { id: true, userId: true, videoId: true, field: true, oldValue: true, newValue: true, scoreBefore: true, scoreAfter: true, viewsBefore: true, viewsAfter: true, createdAt: true },
+        }); check();
+        if (!Array.isArray(rows) || rows.length > 20) throw Error('Optimize unavailable');
+        const seen = new Set<string>(); let prior = Infinity;
+        const history = rows.map(row => {
+          const createdAt = row.createdAt.toISOString(), timestamp = Date.parse(createdAt);
+          if (!identifier(row.id) || seen.has(row.id) || row.userId !== userId || row.videoId !== videoId
+            || !['title', 'description', 'tags'].includes(row.field)
+            || typeof row.oldValue !== 'string' || row.oldValue.length > 50_000 || typeof row.newValue !== 'string' || row.newValue.length > 50_000
+            || [row.scoreBefore, row.scoreAfter].some(v => v !== null && (!safeCount(v) || v > 100))
+            || [row.viewsBefore, row.viewsAfter].some(v => v !== null && !safeCount(v))
+            || !Number.isFinite(timestamp) || timestamp > prior) throw Error('Optimize unavailable');
+          seen.add(row.id); prior = timestamp;
+          return { id: row.id, userId, videoId, field: row.field, oldValue: row.oldValue, newValue: row.newValue,
+            scoreBefore: row.scoreBefore, scoreAfter: row.scoreAfter, viewsBefore: row.viewsBefore, viewsAfter: row.viewsAfter, createdAt };
+        });
+        check(); return reply({ ...envelope, video, ...result, history });
+      }
+      const items = await google('search?part=id,snippet&forMine=true&type=video&order=date&maxResults=20', 20);
+      const ids = new Set<string>();
+      for (const item of items) {
+        if (!object(item) || !object(item.id) || !identifier(item.id.videoId)) throw Error('Optimize unavailable');
+        ids.add(item.id.videoId);
+      }
+      const requestedVideoIds = [...ids], found = new Map<string, ReturnType<typeof videoData>>();
+      if (ids.size) for (const item of await google('videos?part=snippet,statistics&id=' + encodeURIComponent(requestedVideoIds.join(',')), 20)) {
+        const video = videoData(item);
+        if (!ids.has(video.videoId) || found.has(video.videoId)) throw Error('Optimize unavailable');
+        found.set(video.videoId, video);
+      }
+      const missingVideoIds = requestedVideoIds.filter(id => !found.has(id));
+      const videos = requestedVideoIds.filter(id => found.has(id)).map(id => {
+        const v = found.get(id)!;
+        return { videoId: v.videoId, title: v.title, thumbnail: v.thumbnail, publishedAt: v.publishedAt, views: v.views, likes: v.likes,
+          score: computeScore(v.title, v.description, v.tags).score };
+      });
+      check(); return reply({ ...envelope, requestedVideoIds, missingVideoIds, coverage: missingVideoIds.length ? 'partial' : 'complete', videos });
     });
-
-    return NextResponse.json({ videos });
-  } catch (err) {
-    console.error('[youtube/optimize] GET error', err);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
+    const result = await Promise.race([original, stopped]); check(); return result;
+  } catch { return reply({ error: 'optimize_unavailable' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
 
 // ── POST: real-time score calculation (no YouTube API call) ─────────────
