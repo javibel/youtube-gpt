@@ -9,18 +9,8 @@ import { FlameIcon, BoltIcon, LeafIcon } from '@/components/icons';
 import { useCompetitorTracking } from '@/lib/use-competitor-tracking';
 import { useCompetitorAnalysis } from '@/lib/use-competitor-analysis';
 import { retainedCompetitorAnalysis } from '@/lib/competitor-analysis-client';
+import { useAnalysisOutliers } from '@/lib/use-analysis-outliers';
 type Lang = 'es' | 'en';
-interface OutlierVideo {
-  videoId: string; title: string; thumbnail: string;
-  publishedAt: string; views: number; likes: number;
-  multiplier: number; type: 'viral' | 'evergreen';
-}
-interface OutlierResult {
-  channelId: string;
-  medianViews: number;
-  totalVideosAnalyzed: number;
-  outliers: OutlierVideo[];
-}
 
 function fmtNum(n: number, lang: Lang): string {
   if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'B';
@@ -53,14 +43,11 @@ export default function CompetitorsPage() {
   const analysis = useCompetitorAnalysis(owner, status, { input: url, language: lang });
   const { result, loading } = analysis;
   const ownerKey = JSON.stringify([status, owner.userId, owner.email]);
-  const currentOwner = useRef(ownerKey); currentOwner.current = ownerKey;
   const resetOwner = useRef(ownerKey);
-  const mounted = useRef(true);
-  const currentAnalysis = useRef(result); currentAnalysis.current = result;
-  const [outlierState, setOutliers] = useState<{ source: typeof result; data: OutlierResult } | null>(null);
-  const outliers = outlierState?.source === result ? outlierState?.data : null;
-  const [outliersLoading, setOutliersLoading] = useState(false);
   const [outlierPeriod, setOutlierPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('all');
+  const outlierRead = useAnalysisOutliers(owner, status, { channelId: result?.channel.id ?? '', period: outlierPeriod, threshold: 10 }, result);
+  const outliers = outlierRead.data;
+  const outliersLoading = outlierRead.loading;
   // Guardar el canal analizado como competidor seguido (cierra el bucle
   // analisis -> seguimiento; antes /competitors/tracking no tenia ni un enlace).
   const tracking = useCompetitorTracking(owner, status, result?.channel?.id ?? '');
@@ -76,32 +63,11 @@ export default function CompetitorsPage() {
     : analysis.error === 'channel_not_found' ? t('No se encontró el canal. Comprueba la URL.', 'Channel not found. Check the URL.')
       : analysis.error === 'invalid_selection' || analysis.error === 'Missing URL' ? t('Comprueba la URL del canal.', 'Check the channel URL.')
         : analysis.error ? t('No se pudo obtener el análisis. Si la consulta sigue en curso, conservamos la original.', 'The analysis is unavailable. If the query is still running, the original is retained.') : '';
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     if (resetOwner.current === ownerKey) return;
     resetOwner.current = ownerKey;
-    setUrl(''); setOutliers(null); setOutliersLoading(false);
+    setUrl('');
   }, [ownerKey]);
-
-  // Fetch outliers when we have a result or period changes
-  useEffect(() => {
-    if (!result?.channel?.id) { setOutliers(null); return; }
-    let cancelled = false;
-    const capturedOwner = ownerKey;
-    async function fetchOutliers() {
-      setOutliersLoading(true);
-      try {
-        const res = await fetch(`/api/youtube/outliers?channelId=${result!.channel.id}&period=${outlierPeriod}`);
-        if (!cancelled && mounted.current && currentOwner.current === capturedOwner && currentAnalysis.current === result && res.ok) {
-          const data = await res.json();
-          if (!cancelled && mounted.current && currentOwner.current === capturedOwner && currentAnalysis.current === result) setOutliers({ source: result, data });
-        }
-      } catch { /* ignore */ }
-      finally { if (!cancelled && mounted.current && currentOwner.current === capturedOwner && currentAnalysis.current === result) setOutliersLoading(false); }
-    }
-    fetchOutliers();
-    return () => { cancelled = true; };
-  }, [result, outlierPeriod, ownerKey]);
   // No redirect — show public landing if unauthenticated
   function handleAnalyze(e: React.FormEvent) {
     e.preventDefault();
@@ -452,8 +418,17 @@ export default function CompetitorsPage() {
               ) : null}
 
               {outliersLoading ? (
-                <div className="flex items-center justify-center py-8">
+                <div role="status" className="flex items-center justify-center gap-2 py-8">
                   <div className="w-6 h-6 rounded-full border-2 border-transparent spin-r" style={{ borderTopColor: '#FF6B00' }} />
+                  <span>{t('Cargando outliers…', 'Loading outliers…')}</span>
+                </div>
+              ) : outlierRead.error ? (
+                <div role="status" className="text-center py-8 space-y-2">
+                  <p>{t('No se pudieron cargar los outliers.', 'Outliers could not be loaded.')}</p>
+                  {outlierRead.pending && <p>{t('La lectura anterior sigue pendiente.', 'The previous read is still pending.')}</p>}
+                  <button type="button" onClick={outlierRead.retry} disabled={outlierRead.pending} className="btn-offset px-3 py-1 disabled:opacity-50">
+                    {t('Reintentar outliers', 'Retry outliers')}
+                  </button>
                 </div>
               ) : outliers && outliers.outliers.length > 0 ? (
                 <div className="space-y-2">
