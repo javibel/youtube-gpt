@@ -59,7 +59,7 @@ module.exports=async function(prisma,results){
   h.unmount();
   const read=harness();read.state.user=userId;read.state.email=users[1].email;
   let delivered;const complete=new Promise(resolve=>{delivered=resolve;});
-  read.state.list=async url=>{const response=await invoke(url);assert.equal(response.status,200);delivered();return {ok:true,json:()=>new Promise(()=>{})};};
+  read.state.list=async url=>{const response=await invoke(url);assert.equal(response.status,200);delivered();return {ok:true,status:200,json:()=>new Promise(()=>{})};};
   try{
    read.render();await complete;await flush();read.advance(30000);await flush();assert.ok(read.alert());assert.equal(read.timers.size,0);
    await prisma.subscription.updateMany({where:{userId},data:{currentPeriodEnd:new Date(Date.now()-1000)}});

@@ -3,14 +3,21 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
 const ts = require('typescript');
 const { createRetryOperation } = require('../../lib/ai/retry-operation.cjs');
+const {load}=require('./route-harness.cjs');
+const readContract=load('lib/calendar-read-contract.ts');
+function readSuccess(h, entries=[], url=h.listRequests.at(-1).url, owner={id:h.state.user,email:h.state.email}) {
+ const params=new URL('https://example.invalid'+url).searchParams;
+ const body={owner:{...owner},range:{from:params.get('from'),to:params.get('to')},coverage:{complete:true,count:entries.length,limit:200},entries:entries.map(e=>({userId:owner.id,createdAt:'2026-10-01T00:00:00.000Z',updatedAt:'2026-10-01T00:00:00.000Z',...e}))};
+ return {ok:true,status:200,json:async()=>body};
+}
 const source = fs.readFileSync(path.join(__dirname, '../../app/calendar/page.tsx'), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: {
  module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX,
 } }).outputText;
 // Render the actual component with deterministic hook state and bounded synthetic HTTP.
 function harness(storage = new Map()) {
- const cells = [], effects = [], requests = [], listRequests = [], writeRequests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0;
- const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }), list: async () => ({ ok: true, json: async () => ({ entries: [] }) }) };
+ const cells = [], effects = [], requests = [], listRequests = [], writeRequests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0, clock = 0;
+ const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }), list: async url => readSuccess({state},[],url) };
  const changed = (a, b) => !a || a.length !== b.length || a.some((value, i) => !Object.is(value, b[i]));
  const hooks = {
   useState(initial) { const i = index++; if (!cells[i]) cells[i] = { value: typeof initial === 'function' ? initial() : initial };
@@ -20,7 +27,7 @@ function harness(storage = new Map()) {
   useMemo(make, deps) { const i = index++; if (!cells[i] || changed(cells[i].deps, deps)) cells[i] = { value: make(), deps }; return cells[i].value; },
   useCallback(fn, deps) { return hooks.useMemo(() => fn, deps); },
   useEffect(fn, deps) { const i = index++; if (!cells[i] || changed(cells[i].deps, deps)) {
-   const previous = cells[i]; cells[i] = { deps };
+   const previous = cells[i]; cells[i] = { deps, effect: fn };
    effects.push(() => { previous?.cleanup?.(); cells[i].cleanup = fn(); }); } },
  };
  const jsx = (type, props) => ({ type, props });
@@ -31,6 +38,7 @@ function harness(storage = new Map()) {
   '@/components/LangProvider': { useLang: () => state.lang },
   '@/components/DashboardShell': { default: 'shell' }, '@/components/ToolLoginGate': { default: 'login' },
   '@/lib/ai/retry-operation.cjs': { createRetryOperation },
+  '@/lib/calendar-read-contract': readContract,
  };
  vm.runInNewContext(compiled, { module: entry, exports: entry.exports,
   require(name) { assert.ok(Object.hasOwn(mocks, name), name); return mocks[name]; },
@@ -43,12 +51,12 @@ function harness(storage = new Map()) {
    assert.equal(url, '/api/calendar/suggest'); assert.equal(init.method, 'POST');
    requests.push({ ...init, owner: state.user });
    return state.send(init);
-  }, Date, console, AbortController,
-  setTimeout: (fn, ms) => { const id = ++timerId; timers.set(id, { fn, ms }); return id; },
+  }, Date, console, AbortController, performance: {now:()=>clock},
+  setTimeout: (fn, ms) => { const id = ++timerId; timers.set(id, { fn, ms, at:clock+ms }); return id; },
   clearTimeout: id => timers.delete(id),
  });
- function render() { let tree; for (let n = 0; n < 10; n++) {
-  index = 0; dirty = false; tree = entry.exports.default(); while (effects.length) effects.shift()();
+ function render(deferEffects=false) { let tree; for (let n = 0; n < 10; n++) {
+  index = 0; dirty = false; tree = entry.exports.default(); if(deferEffects)return tree; while (effects.length) effects.shift()();
   if (!dirty) return tree;
  } throw Error('Render did not settle'); }
  function nodes(tree) { if (Array.isArray(tree)) return tree.flatMap(nodes); if (!tree || typeof tree !== 'object') return [];
@@ -63,7 +71,10 @@ function harness(storage = new Map()) {
   field: (name, value) => nodes(render()).find(n => name === 'title' ? n.type === 'input' && n.props.maxLength === 200
    : name === 'date' ? n.type === 'input' && n.props.type === 'date' : name === 'status' ? n.type === 'select' : n.type === 'textarea').props.onChange({ target: { value } }),
   edit: title => nodes(render()).find(n => n.props.title === title && n.props.onClick).props.onClick({ stopPropagation() {} }),
-  advance: ms => { for (const [id, timer] of [...timers]) if (timer.ms <= ms) { timers.delete(id); timer.fn(); } },
+  elapseWithoutTimers: ms=>{clock+=ms;},
+  strictEffects:()=>{const active=cells.filter(c=>c?.effect);for(const c of active)c.cleanup?.();for(const c of active)c.cleanup=c.effect();render();},
+  runEffects:()=>{while(effects.length)effects.shift()();render();},
+  advance: ms => { clock+=ms;for (const [id, timer] of [...timers]) if (timer.at <= clock) { timers.delete(id); timer.fn(); } },
   click, handler, discard, discardHandler, render, unmount: () => cells.forEach(cell => cell?.cleanup?.()),
   alert: () => nodes(render()).find(n => n.props?.role === 'alert'), text: () => text(render()) };
 }
@@ -227,7 +238,7 @@ if (require.main === module) (async () => {
  });
  await test('late entries from a previous account never become the current calendar', async () => {
   const h = harness(); let release; h.state.list = () => new Promise(resolve => { release = resolve; }); h.render(); await flush();
-  const old = h.listRequests[0]; h.state.user = 'other'; h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); h.render(); await flush();
+  const old = h.listRequests[0]; h.state.user = 'other'; h.state.list = async url => readSuccess(h,[],url); h.render(); await flush();
   release({ ok: true, json: async () => ({ entries: [{ id: 'private-old', title: 'Private old account title', date: new URL('https://example.invalid' + old.url).searchParams.get('from'), description: null, status: 'idea', color: null }] }) });
   await flush(); assert.doesNotMatch(h.text(), /Private old account title/); assert.equal(h.listRequests.length, 2);
  });
@@ -235,22 +246,22 @@ if (require.main === module) (async () => {
   ['logout', h => { h.state.auth = 'unauthenticated'; }], ['authentication loading', h => { h.state.auth = 'loading'; }]])
   await test('calendar ' + label + ' closes the old read even when fetch ignores abort', async () => {
    const h = harness(); let release; h.state.list = () => new Promise(resolve => { release = resolve; }); h.render(); await flush();
-   const old = h.listRequests[0]; change(h); h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); h.render(); await flush();
+   const old = h.listRequests[0]; change(h); h.state.list = async url => readSuccess(h,[],url); h.render(); await flush();
    assert.equal(old.signal.aborted, true); release({ ok: true, json: async () => ({ entries: [] }) }); await flush();
    assert.equal(h.timers.size, 0); assert.equal(h.listRequests.length, h.state.auth === 'authenticated' ? 2 : 1);
   });
  await test('new month read wins over a late failed read of the previous month', async () => {
   const h = harness(); let release; h.state.list = () => new Promise(resolve => { release = resolve; }); h.render(); await flush();
-  const old = h.listRequests[0]; h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); h.button('nextMonth')(); h.render(); await flush();
+  const old = h.listRequests[0]; h.state.list = async url => readSuccess(h,[],url); h.button('nextMonth')(); h.render(); await flush();
   assert.equal(h.listRequests.length, 2); assert.notEqual(old.url, h.listRequests[1].url); assert.equal(old.signal.aborted, true);
   release({ ok: false }); await flush(); assert.equal(h.alert(), undefined);
  });
  for (const payload of [{}, { entries: {} }, { entries: [null] }, { entries: Array(201).fill(null) }])
   await test('invalid calendar response ' + JSON.stringify(payload).slice(0, 45) + ' exposes retry instead of an empty month', async () => {
-   const h = harness(); h.state.list = async () => ({ ok: true, json: async () => payload }); h.render(); await flush();
+   const h = harness(); h.state.list = async () => ({ ok: true, status:200,json: async () => payload }); h.render(); await flush();
    assert.ok(h.alert()); assert.match(h.text(), /Volver a consultar calendario/);
    const retry = h.nodes().find(n => n.type === 'button' && String(n.props.children).includes('Volver a consultar calendario')).props.onClick;
-   h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); await retry(); await flush();
+   h.state.list = async url => readSuccess(h,[],url); await retry(); await flush();
    assert.equal(h.alert(), undefined); assert.equal(h.listRequests.length, 2); assert.equal(h.listRequests[1].cache, 'no-store'); assert.equal(h.requests.length, 0);
   });
  await test('invalid entry fields, duplicate identities and entries outside the requested month are not displayed', async () => {
@@ -259,16 +270,16 @@ if (require.main === module) (async () => {
     const item = { id: 'entry', title: 'Unvalidated title', date, description: null, color: null, status: 'idea' };
     if (variant === 'status') item.status = 'invalid'; if (variant === 'description') item.description = 7;
     if (variant === 'outside') item.date = '1900-01-01';
-    return { ok: true, json: async () => ({ entries: variant === 'duplicate' ? [item, item] : [item] }) }; };
+    return readSuccess(h,variant === 'duplicate' ? [item,item] : [item],url); };
    h.render(); await flush(); assert.ok(h.alert()); assert.doesNotMatch(h.text(), /Unvalidated title/);
   }
  });
  for (const stage of ['fetch', 'json']) await test('calendar ' + stage + ' ignoring abort finishes waiting at30s and can be read again', async () => {
   const h = harness(); let release; const held = new Promise(resolve => { release = resolve; });
-  h.state.list = stage === 'fetch' ? () => held : async () => ({ ok: true, json: () => held }); h.render(); await flush();
+  h.state.list = stage === 'fetch' ? () => held : async () => ({ ok: true, status:200,json: () => held }); h.render(); await flush();
   h.advance(30000); await flush(); assert.ok(h.alert()); assert.equal(h.listRequests[0].signal.aborted, true); assert.equal(h.timers.size, 0);
   const retry = h.nodes().find(n => n.type === 'button' && String(n.props.children).includes('Volver a consultar calendario')).props.onClick;
-  h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); const first = retry(), duplicate = retry();
+  h.state.list = async url => readSuccess(h,[],url); const first = retry(), duplicate = retry();
   await Promise.all([first, duplicate]); assert.equal(h.listRequests.length, 2); assert.equal(h.alert(), undefined);
   release(stage === 'fetch' ? { ok: false } : {}); await flush(); assert.equal(h.alert(), undefined);
  });
@@ -327,7 +338,7 @@ if (require.main === module) (async () => {
  });
  await test('edit/delete confirmation and failed deletion preserve the selected entry', async () => {
   const h = harness(); const item = { id: 'entry', title: 'Owned entry', status: 'idea', description: null, color: null };
-  h.state.list = async url => ({ ok: true, json: async () => ({ entries: [{ ...item, date: new URL('https://example.invalid' + url).searchParams.get('from') }] }) });
+  h.state.list = async url => readSuccess(h,[{...item,date:new URL('https://example.invalid'+url).searchParams.get('from')}],url);
   h.render(); await flush(); h.edit(item.title); h.field('status', 'scheduled'); h.state.write = writeSuccess(h); await h.button('saveEntry')(); await flush();
   assert.equal(h.writeRequests[0].method, 'PUT'); assert.equal(JSON.parse(h.writeRequests[0].body).id, item.id);
   h.edit(item.title); h.state.write = async () => ({ ok: true, json: async () => ({}) }); await h.button('deleteEntry')();
@@ -359,10 +370,10 @@ if (require.main === module) (async () => {
   h.state.write = async () => ({ ok: false }); await h.button('saveEntry')();
   const consult = h.nodes().find(n => n.type === 'button' && n.props.children === 'Consultar calendario').props.onClick;
   const oldRead = consult(); await flush(); const old = h.listRequests.at(-1);
-  h.button('discardUnconfirmedWrite')(); h.state.list = async () => ({ ok: true, json: async () => ({ entries: [] }) }); h.state.write = writeSuccess(h);
+  h.button('discardUnconfirmedWrite')(); h.state.list = async url => readSuccess(h,[],url); h.state.write = writeSuccess(h);
   await h.button('saveEntry')(); await flush(); assert.equal(old.signal.aborted, true); await oldRead;
   oldRelease({ ok: false }); await flush(); assert.equal(h.alert(), undefined); assert.equal(h.listRequests.length, 3);
  });
  console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or operational calendar writes', results }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
-module.exports = { harness, success, suggestion };
+module.exports = { harness, success, suggestion, readSuccess };

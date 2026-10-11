@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createRetryOperation } from '@/lib/ai/retry-operation.cjs';
 import { useSession } from 'next-auth/react';
+import { calendarMonthRange, decodeCalendarRead } from '@/lib/calendar-read-contract';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
 import ToolLoginGate from '@/components/ToolLoginGate';
@@ -43,16 +44,17 @@ const DAY_HEADERS: Record<Lang, string[]> = {
 };
 
 function getMonthDays(year: number, month: number) {
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  let startOffset = firstDay.getDay() - 1;
+  const range = calendarMonthRange(year, month);
+  if (!range) return [];
+  const firstDay = new Date(range.from + 'T00:00:00.000Z');
+  let startOffset = firstDay.getUTCDay() - 1;
   if (startOffset < 0) startOffset = 6;
   const days: (string | null)[] = [];
   for (let i = 0; i < startOffset; i++) days.push(null);
-  for (let d = 1; d <= lastDay.getDate(); d++) {
+  for (let d = 1; d <= Number(range.to.slice(8)); d++) {
     const mm = String(month + 1).padStart(2, '0');
     const dd = String(d).padStart(2, '0');
-    days.push(`${year}-${mm}-${dd}`);
+    days.push(String(year).padStart(4, '0') + '-' + mm + '-' + dd);
   }
   return days;
 }
@@ -126,8 +128,12 @@ export default function CalendarPage() {
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
-  const readScope = useMemo(() => ({ active: true, busy: false, controller: null as AbortController | null }),
-    [session?.user?.id, session?.user?.email, status, lang, year, month]);
+  const [readGeneration, setReadGeneration] = useState(0);
+  const readScope = useMemo(() => ({ active: true, busy: false, controller: null as AbortController | null,
+    owner: Object.freeze({ id: typeof session?.user?.id === 'string' ? session.user.id : '',
+      email: typeof session?.user?.email === 'string' ? session.user.email : '' }),
+    range: calendarMonthRange(year, month),
+  }), [session?.user?.id, session?.user?.email, status, lang, year, month, readGeneration]);
   const currentReadScope = useRef(readScope);
   currentReadScope.current = readScope;
   const confirmedReadScope = useRef<typeof readScope | null>(null);
@@ -230,54 +236,57 @@ export default function CalendarPage() {
     return () => { writes.controller?.abort(); };
   }, [writes]);
   useEffect(() => {
-    readScope.active = true;
+    // A retired generation is never reactivated by repeated effect setup.
+    if (!readScope.active) { setReadGeneration(value => value + 1); return; }
     setEntries([]); setError(''); setLoading(false);
     return () => { readScope.active = false; readScope.controller?.abort(); };
   }, [readScope]);
 
   const fetchEntries = useCallback(async () => {
-    if (status !== 'authenticated' || !session?.user?.id || !readScope.active || readScope.busy
-      || currentReadScope.current !== readScope) return;
+    if (status !== 'authenticated' || !readScope.owner.id || !readScope.owner.email
+      || !readScope.active || readScope.busy || currentReadScope.current !== readScope) return;
+    const range = readScope.range;
+    if (!range) { setError(t('El mes no es válido.', 'The month is invalid.')); return; }
+    // Admission is synchronous, before transport or a second captured click.
     readScope.busy = true;
-    const controller = new AbortController(); readScope.controller = controller;
-    const current = () => readScope.active && currentReadScope.current === readScope && readScope.controller === controller;
+    const owner = readScope.owner, controller = new AbortController(); readScope.controller = controller;
+    const expires = performance.now() + 30_000;
+    const ownsView = () => readScope.active && currentReadScope.current === readScope && readScope.controller === controller;
     let interrupt: (error: Error) => void = () => {};
     const interrupted = new Promise<never>((_, reject) => { interrupt = reject; });
     void interrupted.catch(() => {});
     const abort = () => interrupt(new Error('Calendar read unconfirmed'));
     controller.signal.addEventListener('abort', abort, { once: true });
-    const deadline = setTimeout(() => controller.abort(), 30_000);
-    setLoading(true);
-    setError('');
-    const mm = String(month + 1).padStart(2, '0');
-    const from = `${year}-${mm}-01`;
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const to = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
+    const timer = setTimeout(() => controller.abort(), 30_000);
+    const check = () => {
+      if (!ownsView() || controller.signal.aborted || performance.now() >= expires) {
+        controller.abort(); throw new Error('Calendar read unconfirmed');
+      }
+    };
+    setLoading(true); setError('');
     try {
-      const res = await Promise.race([fetch(`/api/calendar?from=${from}&to=${to}`, {
-        cache: 'no-store', signal: controller.signal,
+      check();
+      const res = await Promise.race([fetch('/api/calendar?from=' + range.from + '&to=' + range.to, {
+        method: 'GET', cache: 'no-store', signal: controller.signal,
       }), interrupted]);
-      if (!res.ok) throw new Error('Calendar unavailable');
-      const json = await Promise.race([res.json(), interrupted]);
-      if (controller.signal.aborted || !Array.isArray(json.entries) || json.entries.length > 200
-        || json.entries.some((e: Entry) => !e || typeof e.id !== 'string' || !e.id
-          || typeof e.title !== 'string' || !e.title.trim() || e.title.length > 200
-          || typeof e.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(e.date) || e.date < from || e.date > to
-          || !Object.hasOwn(STATUS_LABELS, e.status) || (e.description !== null && typeof e.description !== 'string')
-          || (e.color !== null && typeof e.color !== 'string'))
-        || new Set(json.entries.map((e: Entry) => e.id)).size !== json.entries.length) throw new Error('Invalid calendar');
-      if (current()) { confirmedReadScope.current = readScope; setEntries(json.entries); }
+      check();
+      if (!res.ok || res.status !== 200) throw new Error('Calendar unavailable');
+      const json: unknown = await Promise.race([res.json(), interrupted]);
+      check();
+      const receipt = decodeCalendarRead(json, owner, range);
+      check();
+      confirmedReadScope.current = readScope; setEntries([...receipt.entries]);
     } catch {
-      if (current()) setError(t('No se pudo confirmar el calendario. Puedes volver a consultarlo.', 'The calendar could not be confirmed. You can retrieve it again.'));
+      if (ownsView()) { confirmedReadScope.current = null; setError(t('No se pudo confirmar el calendario. Puedes volver a consultarlo.', 'The calendar could not be confirmed. You can retrieve it again.')); }
     } finally {
-      clearTimeout(deadline); controller.signal.removeEventListener('abort', abort);
-      if (current()) setLoading(false);
+      clearTimeout(timer); controller.signal.removeEventListener('abort', abort);
+      if (ownsView()) setLoading(false);
       if (readScope.controller === controller) { readScope.controller = null; readScope.busy = false; }
     }
-  }, [readScope, year, month, status, session?.user?.id, lang]);
+  }, [readScope, status, lang]);
 
   useEffect(() => {
-    if (status === 'authenticated') fetchEntries();
+    if (status === 'authenticated') void fetchEntries();
   }, [status, fetchEntries]);
 
   function prevMonth() {
@@ -306,7 +315,7 @@ export default function CalendarPage() {
   }
 
   function canWrite() {
-    return status === 'authenticated' && !!session?.user?.id && readScope.active
+    return status === 'authenticated' && !!session?.user?.id && readScope.active && confirmedReadScope.current === readScope
       && currentReadScope.current === readScope && currentCreation.current === creation && currentMutation.current === mutation && !creation.pending && !mutation.pending && !writes.busy && !writes.unconfirmed;
   }
 

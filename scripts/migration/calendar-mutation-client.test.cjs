@@ -1,7 +1,7 @@
 'use strict';
-const assert=require('node:assert/strict'),{harness}=require('./calendar-client-retry.test.cjs');
+const assert=require('node:assert/strict'),{harness,readSuccess}=require('./calendar-client-retry.test.cjs');
 const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
-const setup=async(storage)=>{const h=harness(storage),entry={id:'owned-original',title:'Original entry',description:null,status:'idea',color:null};h.state.list=async url=>{entry.date=new URL('https://example.invalid'+url).searchParams.get('from');return {ok:true,json:async()=>({entries:[{...entry}]})};};h.render();await flush();return {h,entry};};
+const setup=async(storage)=>{const h=harness(storage),entry={id:'owned-original',title:'Original entry',description:null,status:'idea',color:null};h.state.list=async url=>{entry.date=new URL('https://example.invalid'+url).searchParams.get('from');return readSuccess(h,[{...entry}],url);};h.render();await flush();return {h,entry};};
 const retry=h=>h.button('retryCalendarMutation');
 const ack=h=>async(url,init)=>{const b=JSON.parse(init.body);return {ok:true,json:async()=>init.method==='DELETE'?{ok:true,id:decodeURIComponent(url.split('id=')[1]),originalMutation:true}:{entry:{...b.expected,...b,id:b.id,userId:h.state.user,description:Object.hasOwn(b,'description')?b.description?.trim()||null:b.expected.description,color:Object.hasOwn(b,'color')?b.color?.trim()||null:b.expected.color},originalMutation:true}};};
 const start=async(method,storage)=>{const {h,entry}=await setup(storage);h.edit(entry.title);if(method==='PUT')h.field('title','Edited original');return {h,entry,run:()=>h.button(method==='PUT'?'saveEntry':'deleteEntry')()};};

@@ -125,6 +125,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  await runContract('./youtube-connection-database.cjs',prisma,results);
  await runContract('./calendar-read-database.cjs',prisma,results);
  await runContract('./calendar-get-server-database.cjs',prisma,results);
+ await runContract('./calendar-read-client-database.cjs',prisma,results);
  await runContract('./calendar-capacity-database.cjs',prisma,results);
  await runContract('./calendar-create-keyed-database.cjs',prisma,results);
   await runContract('./calendar-create-client-database.cjs',prisma,results);
