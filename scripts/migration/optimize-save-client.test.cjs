@@ -1,0 +1,71 @@
+'use strict';
+const assert=require('node:assert/strict'),{harness,deferred,flush,reply}=require('./chat-widget-harness.cjs'),read=require('./optimize-read-client.test.cjs'),{load}=require('./route-harness.cjs'),{computeScore}=load('lib/optimize-score.ts');
+const puts=h=>h.requests.filter(r=>r.init.method==='PUT'),gets=(h,id='synthetic01')=>h.requests.filter(r=>r.init.method==='GET'&&r.url.includes('?videoId='+id));
+function receipt(r){const b=r.body,after=computeScore(b.title,b.description,b.tags),before=computeScore(b.original.title,b.original.description,b.original.tags);return{success:true,userId:r.owner,email:r.email,operationKey:r.init.headers['Idempotency-Key'],selection:{videoId:b.videoId},draft:structuredClone(b),publicationStatus:'confirmed',historyStatus:JSON.stringify([b.title,b.description,b.tags])===JSON.stringify([b.original.title,b.original.description,b.original.tags])?'unchanged':'complete',metricsStatus:'unavailable',scoreAfter:after.score,scoreBefore:before.score,checks:after.checks,aiSuggestion:null};}
+function defaults(h,r){
+ if(r.init.method==='POST'){return reply({userId:r.owner,email:r.email,draft:structuredClone(r.body),...computeScore(r.body.title,r.body.description,r.body.tags)});}
+ if(r.init.method==='PUT'){h.saved=r.body;return reply(receipt(r));}
+ const b=read.ack(r);if(r.url.includes('?')&&h.saved?.videoId===b.video.videoId){b.video={...b.video,...h.saved};delete b.video.original;Object.assign(b,computeScore(b.video.title,b.video.description,b.video.tags));b.history.unshift({...read.row(r.owner),id:'history02',oldValue:h.saved.original.title,newValue:h.saved.title,createdAt:'2026-10-11T00:00:00.000Z'});}return reply(b);
+}
+function create(options){const h=harness({optimize:true,...options});h.state.send=r=>defaults(h,r);return h;}
+const save=h=>{const b=h.nodes().find(n=>n.props?.['data-optimize-save']==='true');assert(b,'Missing save button');return b;};
+const ready=async h=>{for(let n=0;n<3;n++)await read.ready(h);};
+async function edit(h,title='Top 5 synthetic improvements for creators'){await read.open(h);read.input(h).props.onChange({target:{value:title}});await ready(h);}
+async function run(){
+ const results=[],test=async(name,fn,options)=>{const h=create(options);try{await fn(h);results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}finally{h.unmount();}};
+ await test('actual page sends one owned immutable draft/original/key and confirms publication/history before exactly one coordinated GET',async h=>{
+  await edit(h);const click=save(h).props.onClick,oldEdit=read.input(h).props.onChange;click();click();oldEdit({target:{value:'Obsolete draft'}});await ready(h);
+  assert.equal(puts(h).length,1);const r=puts(h)[0];assert(r.init.headers['Idempotency-Key']);assert.equal(r.init.signal,undefined);assert.equal(r.init.cache,'no-store');assert.equal(r.body.original.title,read.video('synthetic01').title);assert.equal(r.body.title,'Top 5 synthetic improvements for creators');assert(h.text().includes('Publicación e historial confirmados'));assert(h.text().includes('Top 5 synthetic improvements'));assert.equal(gets(h).length,2);assert(save(h).props.disabled);assert.equal(h.timers.size,0);
+ });
+ for(const held of ['headers','JSON'])await test(held+' original60s deadline across strict/lang/remount, no cancel/substitute, same live late receipt alone initiates GET',async h=>{
+  const gate=deferred();h.state.send=r=>r.init.method==='PUT'?(h.saved=r.body,held==='headers'?gate.promise.then(()=>reply(receipt(r))):{ok:true,status:200,json:()=>gate.promise.then(()=>receipt(r))}):defaults(h,r);
+  await edit(h);save(h).props.onClick();await ready(h);h.advance(20000);h.strictEffects();const old=save(h).props.onClick;h.state.lang='en';h.view(true);old();await ready(h);h.unmount();await read.open(h);h.advance(40000);await ready(h);
+  assert.match(h.text(),/original request is still pending/);assert(save(h).props.disabled);save(h).props.onClick();assert.equal(puts(h).length,1);assert.equal(gets(h).length,2,'Remount detail only; no post-save GET before receipt');gate.resolve();await ready(h);assert.match(h.text(),/Publication and history confirmed/);assert.equal(puts(h).length,1);assert.equal(gets(h).length,3);assert.equal(h.timers.size,0);
+ });
+ await test('60s is measured from initial invocation, delayed headers do not renew JSON budget',async h=>{
+  const headers=deferred(),body=deferred();h.state.send=r=>r.init.method==='PUT'?headers.promise.then(()=>({ok:true,status:200,json:()=>body.promise.then(()=>{h.saved=r.body;return receipt(r);})})):defaults(h,r);await edit(h);save(h).props.onClick();await ready(h);h.advance(40000);headers.resolve();await ready(h);h.advance(20000);await ready(h);assert.match(h.text(),/solicitud original sigue pendiente/);assert(save(h).props.disabled);assert.equal(gets(h).length,1);body.resolve();await ready(h);assert.equal(gets(h).length,2);
+ });
+ for(const fault of ['headers','JSON','503','500','201'])await test(fault+' terminal uncertainty never starts another key/PUT or history read and keeps private diagnostics out',async h=>{
+  h.state.send=r=>r.init.method==='PUT'?fault==='headers'?Promise.reject(Error('private token')):fault==='JSON'?{ok:true,status:200,json:()=>Promise.reject(Error('private SQL'))}:reply({error:'private token',publicationStatus:'confirmed',historyStatus:'complete'},Number(fault)):defaults(h,r);
+  await edit(h);const old=save(h).props.onClick;old();await ready(h);assert.match(h.text(),/No se ha confirmado/);assert(!h.text().includes('private'));assert(save(h).props.disabled);old();save(h).props.onClick();h.advance(90000);await ready(h);assert.equal(puts(h).length,1);assert.equal(gets(h).length,1);assert.equal(h.timers.size,0);
+ });
+ const mutations=[['owner',b=>b.userId='neighbor'],['email',b=>b.email=null],['key',b=>b.operationKey='another-key'],['selection',b=>b.selection.videoId='synthetic02'],['draft-title',b=>b.draft.title='Other draft'],['draft-tags',b=>b.draft.tags.reverse().push('other')],['category',b=>b.draft.categoryId='22'],['original-title',b=>b.draft.original.title='Other original'],['original-tags',b=>b.draft.original.tags=[]],['publication',b=>b.publicationStatus='unconfirmed'],['history',b=>b.historyStatus='unchanged'],['metrics',b=>delete b.metricsStatus],['score-before',b=>b.scoreBefore=-1],['score-after',b=>b.scoreAfter=100],['checks',b=>b.checks.pop()],['weights',b=>b.checks[0].w=100],['tip',b=>b.aiSuggestion={es:'private',en:2}],['missing-tip',b=>delete b.aiSuggestion],['false-success',b=>b.success=false]];
+ for(const[name,corrupt]of mutations)await test('malformed200 '+name+' cannot confirm baseline/history or authorize another publication',async h=>{
+  h.state.send=r=>{if(r.init.method==='PUT'){const b=receipt(r);corrupt(b);return reply(b);}return defaults(h,r);};await edit(h);save(h).props.onClick();await ready(h);assert.match(h.text(),/No se ha confirmado/);assert(save(h).props.disabled);assert.equal(gets(h).length,1);assert(!h.text().includes('Cambios guardados'));save(h).props.onClick();await ready(h);assert.equal(puts(h).length,1);
+ });
+ for(const[status,error]of [[400,'invalid_input'],[401,'Unauthorized'],[403,'pro_required'],[400,'youtube_not_connected']])await test('safe pre-effect rejection '+error+' alone permits explicit new key and preserves original baseline',async h=>{
+  h.state.send=r=>r.init.method==='PUT'?reply({error},status):defaults(h,r);await edit(h);save(h).props.onClick();await ready(h);assert(!save(h).props.disabled);assert.equal(gets(h).length,1);assert(!h.text().includes('No se ha confirmado'));h.state.send=r=>defaults(h,r);save(h).props.onClick();await ready(h);assert.equal(puts(h).length,2);assert.notEqual(puts(h)[0].init.headers['Idempotency-Key'],puts(h)[1].init.headers['Idempotency-Key']);assert.equal(puts(h)[1].body.original.title,read.video('synthetic01').title);
+ });
+ for(const reason of ['account','email','auth','video'])await test(reason+' render-before-effects retires save/edit/receipt handlers before the old original body',async h=>{
+  const gate=deferred();h.state.send=r=>r.init.method==='PUT'?{ok:true,status:200,json:()=>gate.promise.then(()=>receipt(r))}:defaults(h,r);await edit(h);const old=save(h).props.onClick,oldEdit=read.input(h).props.onChange;old();await ready(h);
+  if(reason==='video'){read.back(h).props.onClick();await read.open(h,'synthetic02');}else{if(reason==='account')h.state.user='neighbor';if(reason==='email')h.state.email='neighbor@example.invalid';if(reason==='auth')h.state.auth='unauthenticated';h.view(true);}
+  old();oldEdit({target:{value:'Obsolete draft'}});gate.resolve();await flush();h.view();await ready(h);assert.equal(puts(h).length,1);assert.equal(gets(h).length,1);assert(!h.text().includes('Publicación e historial confirmados'));if(reason==='video')assert.equal(read.input(h).props.value,read.video('synthetic02').title);
+ });
+ for(const held of ['headers','JSON'])await test('post-confirmation GET '+held+' keeps sole original30s; failed read never loses receipt or republishes',async h=>{
+  const gate=deferred();let n=0;h.state.send=r=>{if(r.init.method==='GET'&&r.url.includes('?')&&++n===2)return held==='headers'?gate.promise.then(()=>defaults(h,r)):{ok:true,status:200,json:()=>gate.promise.then(async()=>await defaults(h,r).json())};return defaults(h,r);};await edit(h);save(h).props.onClick();await ready(h);h.advance(30000);await ready(h);assert.match(h.text(),/Publicación e historial confirmados/);assert.match(h.text(),/lectura original sigue pendiente/);assert(read.retry(h).props.disabled);read.retry(h).props.onClick();assert.equal(gets(h).length,2);gate.resolve();await ready(h);assert(read.input(h));assert.equal(puts(h).length,1);assert.equal(gets(h).length,2);
+ });
+ for(const fault of ['get','set','remove'])await test('storage '+fault+' denies replacement; failed remove cannot erase authentic confirmed receipt',async h=>{
+  await edit(h);h.state.storageFailure=fault;save(h).props.onClick();await ready(h);assert(save(h).props.disabled);assert.equal(puts(h).length,fault==='remove'?1:0);if(fault==='remove')assert.match(h.text(),/Publicación e historial confirmados/);save(h).props.onClick();await ready(h);assert.equal(puts(h).length,fault==='remove'?1:0);
+ });
+ await test('module loss with persisted marker/JSON forbids recovery/new key from stored metadata',async h=>{
+  const shared=h.storage,gate=deferred();h.state.send=r=>r.init.method==='PUT'?gate.promise:defaults(h,r);await edit(h);save(h).props.onClick();await ready(h);h.unmount();for(const key of shared.keys())if(key.startsWith('ytubviral:optimize-save:'))shared.set(key,JSON.stringify({state:'complete',key:'forged',date:'2099',pid:123,success:true}));const other=create({storage:shared});try{await read.open(other);assert(read.input(other).props.disabled);save(other).props.onClick();await read.ready(other);assert.equal(puts(other).length,0);assert.match(other.text(),/guardado anterior/);}finally{other.unmount();gate.resolve(reply({error:'optimize_update_unconfirmed'},503));await flush();}
+ });
+ await test('new deliberate edit after exact successful receipt uses fresh key and confirmed original values, never reuses first draft',async h=>{
+  await edit(h);save(h).props.onClick();await ready(h);read.input(h).props.onChange({target:{value:'Top 7 deliberate second revision'}});await ready(h);save(h).props.onClick();await ready(h);assert.equal(puts(h).length,2);assert.notEqual(puts(h)[0].init.headers['Idempotency-Key'],puts(h)[1].init.headers['Idempotency-Key']);assert.equal(puts(h)[1].body.original.title,puts(h)[0].body.title);assert.equal(gets(h).length,3);
+ });
+ await test('confirmed invalidation queues behind another pending original GET; it never replaces that body or repeats the PUT',async h=>{
+  await edit(h);const gate=deferred(),owner={userId:h.state.user,email:h.state.email};let oldRequest;
+  h.state.send=r=>{if(r.init.method==='GET'&&r.url.includes('?')&&!oldRequest){oldRequest=r;return{ok:true,status:200,json:()=>gate.promise.then(async()=>await defaults(h,r).json())};}return defaults(h,r);};
+  const prior=h.load('lib/optimize-read-client.ts').beginOptimizeRead(owner,'synthetic01');await flush();save(h).props.onClick();await ready(h);assert.equal(gets(h).length,2);assert(prior.pending);assert.match(h.text(),/Publicación e historial confirmados/);gate.resolve();await ready(h);assert.equal(gets(h).length,3);assert.equal(puts(h).length,1);assert(!prior.pending);assert(read.input(h));
+ });
+ await test('serialized successful receipt or time cannot recreate the original post-save read authority',async h=>{
+  await edit(h);save(h).props.onClick();await ready(h);const client=h.load('lib/optimize-save-client.ts'),a=client.retainedOptimizeSave({userId:h.state.user,email:h.state.email},'synthetic01');assert(a&&a.outcome.status==='confirmed');const count=gets(h).length;
+  assert.equal(client.readConfirmedOptimizeSave(JSON.parse(JSON.stringify(a))),null);assert.equal(client.readConfirmedOptimizeSave({...a,key:'forged'}),null);h.advance(999999);assert.equal(gets(h).length,count);assert.equal(puts(h).length,1);
+ });
+ await test('completed old receipt cannot overwrite newer selected video/draft/history on reselect, and unsaved edits have no success label',async h=>{
+  await edit(h);save(h).props.onClick();await ready(h);read.input(h).props.onChange({target:{value:'New unsaved local draft'}});await ready(h);assert(!h.text().includes('Publicación e historial confirmados'));
+  read.back(h).props.onClick();h.saved={...h.saved,title:'New external synthetic title'};await read.open(h);await ready(h);assert.equal(read.input(h).props.value,'New external synthetic title');assert(!read.input(h).props.disabled);assert(!h.text().includes('Publicación e historial confirmados'));assert.equal(puts(h).length,1);
+ });
+ return{status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',scope:'Actual Optimize page/hooks/client PUT/post-confirmation read; synthetic auth/HTTP only, no real publication/OAuth/models or recovery authority',results};
+}
+module.exports={create,edit,save,puts,gets,receipt,defaults,run};if(require.main===module)run().then(r=>{console.log(JSON.stringify(r,null,2));if(r.status!=='PASS')process.exitCode=1;});

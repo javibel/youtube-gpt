@@ -83,13 +83,16 @@ function decode(value: unknown, owner: ScoreOwner, videoId: string | null): Opti
 
 // Keep only the original live GET/body in this instance. A timer retires the
 // wait, never the producer or its authority, and cannot start a replacement.
-export function beginOptimizeRead(owner: ScoreOwner, videoId: string | null): OptimizeRead {
+export function beginOptimizeRead(owner: ScoreOwner, videoId: string | null, afterCurrent = false): OptimizeRead {
   const own = Object.freeze({ userId: owner.userId, email: owner.email }), key = JSON.stringify([own.userId, own.email, videoId]);
-  const existing = live.get(key); if (existing) return existing;
+  const existing = live.get(key); if (existing && !afterCurrent) return existing;
   const read: OptimizeRead = { owner: own, videoId, pending: true, original: Promise.resolve(unavailable()), waiter: Promise.resolve(unavailable()) };
   live.set(key, read); const deadline = performance.now() + 30_000;
   read.original = Promise.resolve().then(async (): Promise<OptimizeOutcome> => {
     try {
+      // A confirmed edit may invalidate a read already in flight. Queue behind
+      // that same body instead of replacing it; the visible budget is shared.
+      if (existing) await existing.original;
       if (!own.userId || (videoId !== null && !identifier(videoId)) || performance.now() >= deadline) return unavailable();
       const res = await fetch('/api/youtube/optimize' + (videoId === null ? '' : '?videoId=' + encodeURIComponent(videoId)), { method: 'GET', cache: 'no-store' });
       const body: unknown = await res.json();

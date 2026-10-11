@@ -29,7 +29,11 @@ export function useOptimizeRead(owner: ScoreOwner, status: string, videoId: stri
   function retry() {
     if (active() && relevant?.outcome?.status === 'error' && !relevant.read.pending && current.current.read === relevant.read) observe(beginOptimizeRead(owner, videoId));
   }
-  return { canAct: active, retire: () => { if (active()) current.current.retired = true; }, retry,
+  function install(read: OptimizeRead) {
+    if (!active() || read.owner.userId !== owner.userId || read.owner.email !== owner.email || read.videoId !== videoId || current.current.read === read) return;
+    observe(read);
+  }
+  return { canAct: active, retire: () => { if (active()) current.current.retired = true; }, retry, install,
     data: relevant?.outcome?.status === 'ready' ? relevant.outcome.data : null,
     error: relevant?.outcome?.status === 'error' ? relevant.outcome.error : '',
     loading: active() && !relevant?.outcome, pending: !!relevant?.read.pending };

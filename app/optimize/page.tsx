@@ -6,6 +6,9 @@ import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import { useOptimizeScore } from '@/lib/use-optimize-score';
 import { useOptimizeRead } from '@/lib/use-optimize-read';
+import { useOptimizeSave } from '@/lib/use-optimize-save';
+import { readConfirmedOptimizeSave, validOptimizeSave } from '@/lib/optimize-save-client';
+import type { OptimizeSave } from '@/lib/optimize-save-client';
 import type { OptimizeVideo as VideoDetail, OptimizeHistory as HistoryEntry } from '@/lib/optimize-read-client';
 
 type Lang = 'es' | 'en';
@@ -93,8 +96,6 @@ export default function OptimizePage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editTags, setEditTags] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveResult, setSaveResult] = useState<{ success: boolean; aiSuggestion?: { es: string; en: string } } | null>(null);
 
   // Original values for diff
   const originalRef = useRef<{ title: string; description: string; tags: string[] }>({ title: '', description: '', tags: [] });
@@ -120,6 +121,16 @@ export default function OptimizePage() {
     editDesc !== originalRef.current.description ||
     editTags !== originalRef.current.tags.join(', ')
   );
+  const saveInput = { videoId: selectedVideo?.videoId || '', title: editTitle, description: editDesc,
+    tags: editTags.split(',').map(tag => tag.trim()).filter(Boolean), categoryId: selectedVideo?.categoryId || '22',
+    original: originalRef.current };
+  const save = useOptimizeSave(owner, status, requestId, lang, JSON.stringify(saveInput));
+  const appliedSave = useRef<OptimizeSave | null>(null);
+  const matchesSavedDraft = (a: OptimizeSave) => a.input.title === editTitle && a.input.description === editDesc
+    && JSON.stringify(a.input.tags) === JSON.stringify(saveInput.tags);
+  const saveResult = save.outcome?.status === 'confirmed' && save.attempt && matchesSavedDraft(save.attempt) ? save.outcome : null;
+  const saving = save.saving;
+  const canEdit = () => { const a = save.currentAttempt(); return save.canEdit() && (a?.outcome?.status !== 'confirmed' || appliedSave.current === a || !matchesSavedDraft(a)); };
   const preview = useOptimizeScore(owner, status, {
     videoId: selectedVideo?.videoId || '', title: editTitle, description: editDesc,
     tags: editTags.split(',').map(tag => tag.trim()).filter(Boolean),
@@ -149,13 +160,13 @@ export default function OptimizePage() {
     detail.retire(); preview.retire();
     setSelectedVideo(null);
     setSelection({ account, videoId });
-    setError(''); setSaveResult(null);
+    setError('');
   }
   function backToList() {
     if (!detail.canAct() || selectionSerial.current !== selectionVersion) return;
     selectionSerial.current++;
     detail.retire(); preview.retire();
-    setSelection(null); setSelectedVideo(null); setError(''); setSaveResult(null);
+    setSelection(null); setSelectedVideo(null); setError('');
   }
   function readError(code: string) {
     if (code === 'pro_required') return t('Esta función requiere el plan Pro.', 'This feature requires the Pro plan.');
@@ -164,50 +175,31 @@ export default function OptimizePage() {
     return t('No se pudieron cargar los datos.', 'Could not load the data.');
   }
 
-  function onTitleChange(v: string) { if (preview.canEdit()) setEditTitle(v); }
-  function onDescChange(v: string) { if (preview.canEdit()) setEditDesc(v); }
-  function onTagsChange(v: string) { if (preview.canEdit()) setEditTags(v); }
+  function onTitleChange(v: string) { if (preview.canEdit() && canEdit()) setEditTitle(v); }
+  function onDescChange(v: string) { if (preview.canEdit() && canEdit()) setEditDesc(v); }
+  function onTagsChange(v: string) { if (preview.canEdit() && canEdit()) setEditTags(v); }
 
   // Save to YouTube
-  async function handleSave() {
-    if (!selectedVideo) return;
-    setSaving(true);
-    setError('');
-    setSaveResult(null);
-    try {
-      const tags = editTags.split(',').map(t => t.trim()).filter(Boolean);
-      const res = await fetch('/api/youtube/optimize', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoId: selectedVideo.videoId,
-          title: editTitle,
-          description: editDesc,
-          tags,
-          categoryId: selectedVideo.categoryId,
-          original: originalRef.current,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Error saving to YouTube');
-        return;
-      }
-      setSaveResult({ success: true, aiSuggestion: data.aiSuggestion });
-      setScore(data.scoreAfter);
-      setOriginalScore(data.scoreAfter);
-      // Update original ref so subsequent saves diff correctly
-      originalRef.current = { title: editTitle, description: editDesc, tags };
-      // Refresh history
-      const hRes = await fetch(`/api/youtube/optimize?videoId=${selectedVideo.videoId}`);
-      const hData = await hRes.json();
-      if (hRes.ok) setHistory(hData.history || []);
-    } catch {
-      setError(t('Error de conexión', 'Connection error'));
-    } finally {
-      setSaving(false);
-    }
+  function handleSave() {
+    if (!selectedVideo || !detail.canAct() || !canEdit() || !hasChanges || !validOptimizeSave(saveInput)
+      || liveAccount.current !== account || selectionSerial.current !== selectionVersion) return;
+    setError(''); save.start(saveInput);
   }
+
+  useEffect(() => {
+    if (!save.canAct() || !detail.canAct() || !save.attempt || !saveResult || appliedSave.current === save.attempt) return;
+    appliedSave.current = save.attempt;
+    // Apply only the exact original acknowledgement, then install its one
+    // coordinated GET. A history read cannot acknowledge or repeat a PUT.
+    const i = saveResult.input;
+    originalRef.current = { title: i.title, description: i.description, tags: [...i.tags] };
+    setEditTitle(i.title); setEditDesc(i.description); setEditTags(i.tags.join(', '));
+    setScore(saveResult.score); setOriginalScore(saveResult.score); setChecks(saveResult.checks);
+    preview.retire();
+    if (!save.attempt.read || save.attempt.read.pending) {
+      const read = readConfirmedOptimizeSave(save.attempt); if (read) detail.install(read);
+    }
+  }, [save.attempt, saveResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scoreDelta = score === null ? 0 : score - originalScore;
 
@@ -259,6 +251,19 @@ export default function OptimizePage() {
             {error}
           </div>
         )}
+
+        {requestId && <div role="status" className="mb-6 font-mono-jb text-sm">
+          {saving && t('Guardando en YouTube…', 'Saving to YouTube…')}
+          {save.outcome?.status === 'unconfirmed' && t('No se ha confirmado la publicación ni su historial. No vuelvas a guardar estos cambios.', 'The publication and its history are unconfirmed. Do not save these changes again.')}
+          {save.outcome?.status === 'unconfirmed' && save.pending && <p>{t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+          {save.blocked && !saving && save.outcome?.status !== 'unconfirmed' && <p>{saveResult
+            ? t('Los cambios están confirmados; no se puede iniciar otro guardado desde esta sesión.', 'The changes are confirmed; this session cannot start another save.')
+            : t('El guardado anterior no permite iniciar otro. Conserva esta sesión; no se ha confirmado su cierre.', 'The previous save prevents another attempt. Keep this session; its completion is unconfirmed.')}</p>}
+          {save.outcome?.status === 'rejected' && <p>{save.outcome.error === 'invalid_input'
+            ? t('Revisa el título, la descripción y los tags antes de guardar.', 'Check the title, description and tags before saving.')
+            : readError(save.outcome.error)}</p>}
+          {saveResult && t('Publicación e historial confirmados. Consultando los datos del vídeo.', 'Publication and history confirmed. Reading the video data.')}
+        </div>}
 
         {((requestId ? detail.error : list.error) || (requestId ? detail.loading : list.loading)) && (
           <div role="status" className="mb-6 font-mono-jb text-sm">
@@ -378,6 +383,7 @@ export default function OptimizePage() {
                   <input
                     type="text"
                     value={editTitle}
+                    disabled={!canEdit()}
                     onChange={e => onTitleChange(e.target.value)}
                     maxLength={100}
                     className="yv-input text-white font-display text-lg"
@@ -410,6 +416,7 @@ export default function OptimizePage() {
                   </div>
                   <textarea
                     value={editDesc}
+                    disabled={!canEdit()}
                     onChange={e => onDescChange(e.target.value)}
                     rows={10}
                     className="yv-input text-[color:var(--yv-text-2)] font-mono-jb text-sm resize-y"
@@ -441,6 +448,7 @@ export default function OptimizePage() {
                   </div>
                   <textarea
                     value={editTags}
+                    disabled={!canEdit()}
                     onChange={e => onTagsChange(e.target.value)}
                     rows={3}
                     className="yv-input text-[color:var(--yv-text-2)] font-mono-jb text-sm resize-y"
@@ -462,7 +470,8 @@ export default function OptimizePage() {
                 <div className="flex items-center gap-4">
                   <button
                     onClick={handleSave}
-                    disabled={saving || !hasChanges}
+                    data-optimize-save="true"
+                    disabled={!canEdit() || !hasChanges || !validOptimizeSave(saveInput)}
                     className="btn-offset px-8 py-3.5 text-sm font-mono-jb tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ borderRadius: '10px' }}
                   >
@@ -488,7 +497,7 @@ export default function OptimizePage() {
                 </div>
 
                 {/* Save result */}
-                {saveResult?.success && (
+                {saveResult && (
                   <div className="rounded-xl border border-green-500/30 p-5" style={{ background: 'rgba(34,197,94,0.06)' }}>
                     <div className="flex items-center gap-2 mb-2">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5">
