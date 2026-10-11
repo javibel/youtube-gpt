@@ -1,60 +1,40 @@
 import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
-import { stripe } from '@/lib/stripe';
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
+import { downgradeSubscriptionOriginal, validDowngradeKey, validDowngradeInput } from '@/lib/subscription-downgrade';
 
-export async function POST() {
-  const session = await auth();
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { subscription: true },
-  });
-
-  if (!user?.subscription?.stripeCustomerId || user.subscription.plan !== 'business') {
-    return NextResponse.json({ error: 'No tienes un plan Business activo' }, { status: 400 });
-  }
-
-  let subscriptions;
+export const maxDuration = 60;
+export async function POST(request: Request) {
+  const deadline = performance.now() + 55_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Downgrade unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Downgrade unconfirmed'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    subscriptions = await stripe.subscriptions.list({
-      customer: user.subscription.stripeCustomerId,
-      status: 'active',
-      limit: 1,
+    const original = Promise.resolve().then(async () => {
+      check();
+      const suppliedKey = request.headers.get('Idempotency-Key'), key = suppliedKey ?? randomUUID();
+      if (!validDowngradeKey(key)) return { body: { error: 'invalid_input' }, status: 400 };
+      const session = await auth(); check();
+      if (!session?.user?.id || typeof session.user.email !== 'string' || !session.user.email)
+        return { body: { error: 'Unauthorized' }, status: 401 };
+      const owner = Object.freeze({ userId: session.user.id, email: session.user.email });
+      let body: unknown;
+      try { body = request.body === null ? {} : await request.json(); } catch { check(); return { body: { error: 'invalid_input' }, status: 400 }; }
+      check(); if (!validDowngradeInput(body, suppliedKey !== null)) return { body: { error: 'invalid_input' }, status: 400 };
+      const input = Object.freeze({ ...body });
+      const result = await downgradeSubscriptionOriginal(owner, input, key, check); check();
+      if (!result.ok) return { body: { error: result.error }, status: result.status };
+      if (suppliedKey === null) {
+        return { body: { ok: true }, status: 200 };
+      }
+      return { body: result, status: 200 };
     });
-  } catch {
-    return NextResponse.json({ error: 'No se pudo contactar con Stripe' }, { status: 500 });
-  }
-
-  if (subscriptions.data.length === 0) {
-    return NextResponse.json({ error: 'No se encontró suscripción activa en Stripe' }, { status: 400 });
-  }
-
-  const sub = subscriptions.data[0];
-  if (sub.cancel_at_period_end) {
-    return NextResponse.json({ error: 'La suscripción ya está programada para cancelarse' }, { status: 400 });
-  }
-
-  const item = sub.items.data[0];
-  const isYearly = item.price.recurring?.interval === 'year';
-  const proPriceId = (isYearly ? process.env.STRIPE_PRO_YEARLY_PRICE_ID : process.env.STRIPE_PRO_PRICE_ID)?.trim();
-  if (!proPriceId) {
-    return NextResponse.json({ error: 'Price ID de Pro no configurado' }, { status: 500 });
-  }
-
-  await stripe.subscriptions.update(sub.id, {
-    items: [{ id: item.id, price: proPriceId }],
-    proration_behavior: 'create_prorations',
-  });
-
-  await prisma.subscription.update({
-    where: { userId: user.id },
-    data: { plan: 'pro', stripePriceId: proPriceId },
-  });
-
-  return NextResponse.json({ ok: true });
+    const result = await Promise.race([original, stopped]); check(); return reply(result.body, result.status);
+  } catch { return reply({ error: 'downgrade_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

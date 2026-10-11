@@ -109,6 +109,8 @@ export async function checkoutOriginal(owner: Owner, input: unknown, key: string
       && Object.entries(captured).every(([k,v]) => r[k] === v);
     const admission = await prisma.$transaction(async tx => {
       await lock(tx);
+      const downgrade = await tx.subscriptionDowngradeAttempt.findUnique({ where: { userId: own.userId } });
+      check(); if (downgrade) return null;
       const prior = await tx.checkoutAttempt.findUnique({ where: { userId: own.userId } });
       check(); if (prior) return null;
       const row = await tx.checkoutAttempt.create({ data: { ...captured, state: 'pending' } });

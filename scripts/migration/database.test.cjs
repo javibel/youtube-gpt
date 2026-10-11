@@ -108,6 +108,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await require('./profile-checkout-client-database.cjs')(prisma,results);
   await require('./checkout-server-database.cjs')(prisma,results);
   await require('./cancellation-server-database.cjs')(prisma,results);
+  await require('./downgrade-server-database.cjs')(prisma,results);
   await require('./cancellation-client-database.cjs')(prisma,results);
   await require('./dashboard-checkout-client-database.cjs')(prisma,results);
   await require('./learn-plan-database.cjs')(prisma,results);
