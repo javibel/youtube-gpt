@@ -79,6 +79,7 @@ model User {
   teamMemberMutations TeamMemberMutationAttempt[]
   teamInvitationRevocations TeamInvitationRevocationAttempt[]
   teamExits TeamExitAttempt[]
+  teamRenames TeamRenameAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -522,6 +523,24 @@ model TeamExitAttempt {
   @@unique([userId, key])
   @@index([teamId, state], map: "team_exit_lookup")
   @@map("team_exit_attempts")
+}
+
+model TeamRenameAttempt {
+  id String @id
+  userId String
+  email String
+  key String
+  teamId String
+  memberId String
+  previousRole String
+  previousName String
+  name String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([teamId, state], map: "team_rename_lookup")
+  @@map("team_rename_attempts")
 }
 
 model TeamInvitation {

@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { createTeamOriginal, validTeamCreation } from '@/lib/team-creation';
 import { exitTeamOriginal, validTeamExit } from '@/lib/team-exit';
+import { renameTeamOriginal, validTeamRename } from '@/lib/team-rename';
 export const maxDuration = 60;
 import { decodeTeamRead } from '@/lib/team-read-contract';
 
@@ -80,31 +81,32 @@ export async function POST(request: NextRequest) {
   finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
 
-// PATCH — update team name
-export async function PATCH(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const membership = await prisma.teamMember.findFirst({
-    where: { userId: session.user.id, role: { in: ['owner', 'admin'] } },
-  });
-  if (!membership) {
-    return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
-  }
-
-  const { name } = await req.json();
-  if (!name || typeof name !== 'string' || name.trim().length < 2) {
-    return NextResponse.json({ error: 'Team name required' }, { status: 400 });
-  }
-
-  await prisma.team.update({
-    where: { id: membership.teamId },
-    data: { name: name.trim() },
-  });
-
-  return NextResponse.json({ ok: true });
+// PATCH — change captured team name
+export async function PATCH(request: NextRequest) {
+  const deadline = performance.now() + 55_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Team rename unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Team rename unconfirmed'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id || typeof session.user.email !== 'string') return reply({ error: 'Unauthorized' }, 401);
+      const owner = Object.freeze({ userId: session.user.id, email: session.user.email });
+      const key = request.headers.get('Idempotency-Key');
+      let body: unknown;
+      try { body = await request.json(); } catch { check(); return reply({ error: 'invalid_input' }, 400); }
+      check(); if (!validTeamRename(body, key)) return reply({ error: 'invalid_input' }, 400);
+      const result = await renameTeamOriginal(owner, body, key!, check);
+      return result.ok ? reply(result) : reply({ error: result.error }, result.status);
+    });
+    const response = await Promise.race([original, stopped]); check(); return response;
+  } catch { return reply({ error: 'team_rename_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
 
 // DELETE — leave or delete team
