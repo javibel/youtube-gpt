@@ -25,9 +25,11 @@ function acknowledgement(body: unknown, a: TeamCreateAttempt): TeamCreationRecei
   return { teamId: body.teamId, membershipId: body.membershipId, name: a.name, slug: body.slug, role: 'owner', createdAt: body.createdAt };
 }
 export function retainedTeamCreation(owner: TeamOwner): TeamCreateAttempt | undefined { return attempts.get(identity(owner)); }
-export function teamCreationBlocked(owner: TeamOwner): boolean {
+export function teamCreationBlocked(owner: TeamOwner): boolean { return teamOwnerCommandBlocked(owner) || teamCreationDraftBlocked(owner); }
+// Draft edits are local; only starting a command requires owner exclusion.
+export function teamCreationDraftBlocked(owner: TeamOwner): boolean {
   const id = identity(owner), a = attempts.get(id);
-  if (teamOwnerCommandBlocked(owner) || denied.has(id) || a && (!a.outcome || a.outcome.status === 'unconfirmed')) return true;
+  if (denied.has(id) || a && (!a.outcome || a.outcome.status === 'unconfirmed')) return true;
   try { return sessionStorage.getItem(id) !== null; } catch { return true; }
 }
 // A stored receipt/ID/key never grants this continuation. Only the same

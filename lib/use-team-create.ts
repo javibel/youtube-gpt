@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { beginTeamCreation, retainedTeamCreation, teamCreationBlocked, validTeamName } from '@/lib/team-create-client';
+import { beginTeamCreation, retainedTeamCreation, teamCreationBlocked, teamCreationDraftBlocked, validTeamName } from '@/lib/team-create-client';
 import type { TeamCreateAttempt, TeamCreateOutcome } from '@/lib/team-create-client';
 import type { TeamOwner } from '@/lib/team-read-contract';
 export function useTeamCreate(owner: TeamOwner, status: string, language: string, name: string) {
@@ -20,7 +20,7 @@ export function useTeamCreate(owner: TeamOwner, status: string, language: string
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { let alive = true; if (active()) { const a = current.current.attempt ?? retainedTeamCreation(owner); if (a) observe(a, () => alive); } return () => { alive = false; }; }, [scope]); // eslint-disable-line react-hooks/exhaustive-deps
   function start() { if (!active() || !validTeamName(name) || teamCreationBlocked(owner)) return; const a = beginTeamCreation(owner, name); if (a) observe(a); else renderDenial(n => n + 1); }
-  return { start, canAct: active, canEdit: () => active() && !teamCreationBlocked(owner),
+  return { start, canAct: active, canEdit: () => active() && !teamCreationDraftBlocked(owner),
     attempt: relevant?.attempt ?? null, outcome: relevant?.outcome, creating: !!relevant && !relevant.outcome,
     blocked: active() && teamCreationBlocked(owner), pending: !!relevant?.attempt.pending };
 }
