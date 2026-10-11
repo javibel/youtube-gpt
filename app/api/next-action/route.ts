@@ -1,25 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { prisma } from '@/lib/prisma';
 import { getUserPlan } from '@/lib/plans';
 import { getNextActions } from '@/lib/next-action';
 
+export const maxDuration = 30;
+
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const deadline = performance.now() + 25_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(Error('Actions unavailable')); }
+  };
+  const timer = setTimeout(retire, 25_000);
+  req.signal?.addEventListener('abort', retire, { once: true });
+  const check = () => {
+    if (req.signal?.aborted || performance.now() >= deadline) retire();
+    if (retired) throw Error('Actions unavailable');
+  };
+  const reply = (body: unknown, status = 200) =>
+    NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
-  const skip = (req.nextUrl.searchParams.get('skip') || '').split(',').filter(Boolean);
-
-  // getUserPlan ya resuelve 'free' cuando la suscripción no está en estado
-  // pagado (active/trialing) — no hace falta volver a consultarla aquí.
-  // No hay parámetro de idioma: la respuesta lleva siempre ES y EN y el
-  // cliente elige al renderizar.
-  const plan = await getUserPlan(session.user.id);
-  const isPaid = plan !== 'free';
-
-  // Se devuelve la lista completa (para navegar) y `action`, la primera no
-  // descartada, que es lo que el cliente muestra por defecto.
-  const actions = await getNextActions(session.user.id, isPaid);
-  const skipSet = new Set(skip);
-  const action = actions.find(a => !skipSet.has(a.id)) ?? null;
-  return NextResponse.json({ action, actions });
+  try {
+    const original = Promise.resolve().then(async () => {
+      check();
+      const session = await auth();
+      check();
+      if (typeof session?.user?.id !== 'string' || !session.user.id
+        || typeof session.user.email !== 'string' || !session.user.email)
+        return reply({ error: 'unauthorized' }, 401);
+      const owner = Object.freeze({ id: session.user.id, email: session.user.email });
+      const skip = new Set((req.nextUrl.searchParams.get('skip') || '').split(',').filter(Boolean));
+      const selected = await prisma.user.findUnique({
+        where: { email: owner.email }, select: { id: true, email: true },
+      });
+      check();
+      if (!selected) return reply({ error: 'Usuario no encontrado' }, 404);
+      if (selected.id !== owner.id || selected.email !== owner.email)
+        return reply({ error: 'unauthorized' }, 401);
+      const plan = await getUserPlan(owner.id);
+      check();
+      const actions = await getNextActions(owner.id, plan !== 'free', check);
+      check();
+      return reply({ action: actions.find(a => !skip.has(a.id)) ?? null, actions });
+    });
+    // A retired wait neither cancels nor repeats SQL/OAuth already dispatched.
+    const response = await Promise.race([original, stopped]);
+    check();
+    return response;
+  } catch {
+    return reply({ error: 'Acciones no disponibles' }, 503);
+  } finally {
+    retire();
+    clearTimeout(timer);
+    req.signal?.removeEventListener('abort', retire);
+  }
 }

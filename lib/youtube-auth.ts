@@ -21,14 +21,16 @@ export async function getAccessToken(userId: string, beforeStep?: () => void): P
 
   // Attempt refresh with retry (even if accessToken is empty)
   beforeStep?.();
-  const result = await attemptRefresh(userId, yt.refreshToken);
+  const result = await attemptRefresh(userId, yt.refreshToken, beforeStep);
+  beforeStep?.();
   if (result) return result;
 
   // First attempt failed — wait briefly and retry once
   beforeStep?.();
   await new Promise(r => setTimeout(r, 1000));
   beforeStep?.();
-  const retry = await attemptRefresh(userId, yt.refreshToken);
+  const retry = await attemptRefresh(userId, yt.refreshToken, beforeStep);
+  beforeStep?.();
   if (retry) return retry;
 
   // Both attempts failed — return stale token if non-empty, otherwise null
@@ -37,8 +39,9 @@ export async function getAccessToken(userId: string, beforeStep?: () => void): P
   return yt.accessToken || null;
 }
 
-async function attemptRefresh(userId: string, refreshToken: string): Promise<string | null> {
+async function attemptRefresh(userId: string, refreshToken: string, beforeStep?: () => void): Promise<string | null> {
   try {
+    beforeStep?.();
     const res = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -50,15 +53,19 @@ async function attemptRefresh(userId: string, refreshToken: string): Promise<str
       }),
     });
 
+    beforeStep?.();
     const data = await res.json();
+    beforeStep?.();
 
     // Permanent failure — user actually revoked access
     if (data.error === 'invalid_grant' && data.error_description?.includes('revoked')) {
       console.error(`[youtube-auth] Revoked for user ${userId}: ${data.error_description}`);
+      beforeStep?.();
       await prisma.youtubeToken.update({
         where: { userId },
         data: { accessToken: '', refreshToken: '', expiresAt: new Date(0) },
       });
+      beforeStep?.();
       return null;
     }
 
@@ -85,13 +92,17 @@ async function attemptRefresh(userId: string, refreshToken: string): Promise<str
       updateData.refreshToken = data.refresh_token as string;
     }
 
+    beforeStep?.();
     await prisma.youtubeToken.update({
       where: { userId },
       data: updateData,
     });
+    beforeStep?.();
 
     return data.access_token as string;
   } catch (err) {
+    // Retirement must propagate; it is not a refresh failure to retry.
+    beforeStep?.();
     console.warn(`[youtube-auth] Network error refreshing token for user ${userId}:`, err instanceof Error ? err.message : err);
     return null;
   }
