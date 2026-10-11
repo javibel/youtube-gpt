@@ -112,6 +112,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await runContract('./cancellation-server-database.cjs',prisma,results);
   await runContract('./downgrade-server-database.cjs',prisma,results);
   await runContract('./cancellation-client-database.cjs',prisma,results);
+  await runContract('./downgrade-client-database.cjs',prisma,results);
   await runContract('./dashboard-checkout-client-database.cjs',prisma,results);
   await runContract('./learn-plan-database.cjs',prisma,results);
   await runContract('./team-invite-client-database.cjs',prisma,results,require('./team-expired-invitation-database.cjs'));

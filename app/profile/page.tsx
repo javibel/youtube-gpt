@@ -8,6 +8,7 @@ import { useProfileSettings } from '@/lib/use-profile-settings';
 import { usePasswordChange } from '@/lib/use-password-change';
 import { passwordInputError } from '@/lib/password-change-client';
 import type { PasswordReceipt } from '@/lib/password-change-client';
+import { useSubscriptionDowngrade } from '@/lib/use-subscription-downgrade';
 import { useSubscriptionCancellation } from '@/lib/use-subscription-cancellation';
 import { useProfileCheckout } from '@/lib/use-profile-checkout';
 import type { CheckoutPlan } from '@/lib/profile-checkout-client';
@@ -15,7 +16,6 @@ import { claimConfirmedProfileLanguage } from '@/lib/profile-update-client';
 import type { ProfileData } from '@/lib/profile-read-client';
 import DashboardShell from '@/components/DashboardShell';
 import PasswordInput from '@/components/PasswordInput';
-import { toast } from '@/components/Toaster';
 import { CrossIcon, CheckIcon, WarningIcon } from '@/components/icons';
 
 type Lang = 'es' | 'en';
@@ -68,7 +68,8 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
   const sub = data?.subscription;
   const cancellation = useSubscriptionCancellation(owner,status,lang,sub && (sub.plan==='pro'||sub.plan==='business') ? {subscriptionId:sub.id??'',plan:sub.plan,status:sub.status,cancelAtPeriodEnd:sub.cancelAtPeriodEnd}:null,isCurrent,()=>{});
   const cancelling = cancellation.waiting;
-  const [downgrading, setDowngrading] = useState(false);
+  const downgrade = useSubscriptionDowngrade(owner,status,lang,sub && (sub.plan==='pro'||sub.plan==='business') ? {subscriptionId:sub.id??'',plan:sub.plan,status:sub.status,cancelAtPeriodEnd:sub.cancelAtPeriodEnd}:null,isCurrent,()=>{});
+  const downgrading = downgrade.waiting;
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -117,20 +118,7 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
 
   function handleUpgrade(plan: CheckoutPlan) { checkout.start(plan); }
 
-  async function handleDowngrade() {
-    if (!confirm(t('¿Bajar de Business a Pro? El cambio se aplica ahora, con prorrateo en tu próxima factura.', 'Downgrade from Business to Pro? This applies now, prorated on your next invoice.'))) return;
-    setDowngrading(true);
-    try {
-      const res = await fetch('/api/stripe/downgrade', { method: 'POST' });
-      if (res.ok) {
-        setData(prev => prev ? { ...prev, stats: { ...prev.stats, plan: 'pro' } } : null);
-        toast(t('Has bajado a Pro', 'You are now on Pro'), 'success');
-      } else {
-        const { error } = await res.json();
-        toast(error ?? t('Error al cambiar de plan', 'Error changing plan'), 'error');
-      }
-    } finally { setDowngrading(false); }
-  }
+  function handleDowngrade() { if(!upgrading&&!cancelling)void downgrade.start(); }
 
   function handleCancel() { if(!upgrading&&!downgrading)void cancellation.start(); }
 
@@ -181,6 +169,12 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
           <p>{cancellation.confirmed ? t('Cancelación confirmada al final del periodo. Tu acceso continúa hasta entonces.','Cancellation confirmed at period end. Access continues until then.') : t('Cancelación sin confirmar. No se reenviará automáticamente.','Cancellation unconfirmed. It will not be sent again automatically.')}</p>
           {cancellation.pending && <p>{t('La solicitud original sigue pendiente.','The original request is still pending.')}</p>}
           {cancellation.hasOriginal ? <><p>{!cancellation.selectionMatches && t('El original pertenece a otra suscripción o idioma. Selecciona el original para consultarlo.','The original belongs to another subscription or language. Select the original to observe it.')}</p><button onClick={()=>{if(!upgrading&&!downgrading)void cancellation.observe();}} disabled={!cancellation.canObserve||upgrading||downgrading}>{t('Consultar cancelación original','Observe original cancellation')}</button></> : <p>{t('La solicitud original no está disponible. Este registro no permite recuperarla ni iniciar otra.','The original request is unavailable. This record cannot restore it or start another.')}</p>}
+        </div>}
+
+        {downgrade.blocked && <div role={downgrade.confirmed||downgrade.waiting?'status':'alert'} className="yv-card p-4">
+          <p>{downgrade.confirmed ? t('Cambio a Pro confirmado.','Downgrade to Pro confirmed.') : downgrade.waiting ? t('Confirmando el cambio a Pro...','Confirming downgrade to Pro...') : t('Cambio a Pro sin confirmar. No se reenviará automáticamente.','Downgrade to Pro unconfirmed. It will not be sent again automatically.')}</p>
+          {downgrade.pending && <p>{t('La solicitud original sigue pendiente.','The original request is still pending.')}</p>}
+          {downgrade.hasOriginal ? <><p>{!downgrade.selectionMatches && t('El original pertenece a otra suscripción o idioma. Selecciona el original para consultarlo.','The original belongs to another subscription or language. Select the original to observe it.')}</p><button onClick={()=>{if(!upgrading&&!cancelling)void downgrade.observe();}} disabled={!downgrade.canObserve||upgrading||cancelling}>{t('Consultar cambio a Pro original','Observe original downgrade')}</button></> : <p>{t('La solicitud original no está disponible. Este registro no permite recuperarla ni iniciar otra.','The original request is unavailable. This record cannot restore it or start another.')}</p>}
         </div>}
 
         {/* Page title */}
@@ -314,7 +308,7 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
                 </button>
               )}
               {isBusiness && !cancellationScheduled && (
-                <button onClick={handleDowngrade} disabled={downgrading}
+                <button onClick={handleDowngrade} disabled={downgrading || upgrading || cancelling || !downgrade.canStart}
                   className="font-mono-jb text-[13px] transition" style={{ color: 'var(--yv-text-3)' }}>
                   {downgrading ? '...' : t('Bajar a Pro', 'Downgrade to Pro')}
                 </button>
