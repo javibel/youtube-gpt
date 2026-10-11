@@ -2,108 +2,144 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getLimits, hasPaidAccess, isPaid, type PlanType } from "@/lib/plans";
-import { readGenerationQuotaSnapshot } from '@/lib/generation-quota';
+import { readGenerationQuotaSnapshot } from "@/lib/generation-quota";
 
-function calcStreak(dates: Date[]): number {
-  if (!dates.length) return 0;
+export const maxDuration = 30;
 
-  // Unique days in UTC (YYYY-MM-DD)
-  const days = new Set(dates.map((d) => d.toISOString().split('T')[0]));
+function count(value: number): number {
+  if (!Number.isSafeInteger(value) || value < 0) throw Error("Statistics unavailable");
+  return value;
+}
 
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+function date(value: Date): string {
+  return value.toISOString();
+}
 
-  // Si hoy no tiene generación, empezamos desde ayer
-  const cursor = new Date(today);
-  if (!days.has(todayStr)) {
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
+function calcStreak(dates: string[]): number {
+  const days = new Set(dates.map(d => d.split("T")[0]));
+  const cursor = new Date();
+  if (!days.has(cursor.toISOString().split("T")[0])) cursor.setUTCDate(cursor.getUTCDate() - 1);
   let streak = 0;
-  while (true) {
-    const dateStr = cursor.toISOString().split('T')[0];
-    if (days.has(dateStr)) {
-      streak++;
-      cursor.setDate(cursor.getDate() - 1);
-    } else {
-      break;
-    }
+  while (days.has(cursor.toISOString().split("T")[0])) {
+    streak++;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
-
   return streak;
 }
 
-export async function GET() {
-  const session = await auth();
-
-  if (!session?.user?.id || !session.user.email) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+export async function GET(request?: Request) {
+  // This retires the HTTP wait. The original read is not cancelled or retried.
+  const deadline = performance.now() + 25_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => {
+    if (!retired) { retired = true; rejectWait(Error("Statistics unavailable")); }
+  };
+  const timer = setTimeout(retire, 25_000);
+  request?.signal.addEventListener("abort", retire, { once: true });
+  const check = () => {
+    if (request?.signal.aborted || performance.now() >= deadline) retire();
+    if (retired) throw Error("Statistics unavailable");
+  };
+  const reply = (body: unknown, status = 200) =>
+    NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true, email: true, name: true, lang: true, createdAt: true },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
-    }
-    if (user.id !== session.user.id) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const [totalGenerations, quota, videoTipsThisMonth, subscription, allDates] =
-      await Promise.all([
-        prisma.generation.count({ where: { userId: user.id } }),
-        readGenerationQuotaSnapshot(user.id, startOfMonth),
-        // Video Tips free (26/08): tope de 1/mes ademas del pool general — ver
-        // app/api/storyboard/route.ts (FREE_VIDEO_TIPS_PER_MONTH).
-        prisma.generation.count({
-          where: { userId: user.id, template: 'video_preview', createdAt: { gte: startOfMonth } },
+    const original = Promise.resolve().then(async () => {
+      check();
+      const session = await auth();
+      check();
+      if (typeof session?.user?.id !== "string" || !session.user.id
+        || typeof session.user.email !== "string" || !session.user.email)
+        return reply({ error: "No autorizado" }, 401);
+      const owner = Object.freeze({ id: session.user.id, email: session.user.email });
+      const selected = await prisma.user.findUnique({
+        where: { email: owner.email },
+        select: { id: true, email: true, name: true, lang: true, createdAt: true },
+      });
+      check();
+      if (!selected) return reply({ error: "Usuario no encontrado" }, 404);
+      if (selected.id !== owner.id || selected.email !== owner.email)
+        return reply({ error: "No autorizado" }, 401);
+      if ((selected.name !== null && typeof selected.name !== "string") || typeof selected.lang !== "string")
+        throw Error("Statistics unavailable");
+      const user = Object.freeze({
+        ...owner, name: selected.name, lang: selected.lang, createdAt: date(selected.createdAt),
+      });
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const read = async <T, R>(query: () => PromiseLike<T>, project: (value: T) => R) => {
+        check();
+        const value = await query();
+        check();
+        return project(value);
+      };
+      const [totalGenerations, quota, videoTipsThisMonth, subscription, allDates] = await Promise.all([
+        read(() => prisma.generation.count({ where: { userId: owner.id } }), count),
+        read(() => readGenerationQuotaSnapshot(owner.id, startOfMonth), value => {
+          const recorded = count(value.recorded), reserved = count(value.reserved), total = count(value.total);
+          if (!Number.isSafeInteger(recorded + reserved) || total !== recorded + reserved)
+            throw Error("Statistics unavailable");
+          return Object.freeze({ recorded, reserved, total });
         }),
-        prisma.subscription.findUnique({
-          where: { userId: user.id },
+        read(() => prisma.generation.count({
+          where: { userId: owner.id, template: "video_preview", createdAt: { gte: startOfMonth } },
+        }), count),
+        read(() => prisma.subscription.findUnique({
+          where: { userId: owner.id },
           select: { status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodEnd: true, stripeCustomerId: true },
+        }), value => {
+          if (value === null) return null;
+          if (typeof value.status !== "string" || !value.status || typeof value.plan !== "string"
+            || typeof value.cancelAtPeriodEnd !== "boolean"
+            || (value.stripeCustomerId !== null && typeof value.stripeCustomerId !== "string"))
+            throw Error("Statistics unavailable");
+          // The private customer marker is needed only for manual-plan expiry.
+          return Object.freeze({
+            status: value.status, plan: value.plan, cancelAtPeriodEnd: value.cancelAtPeriodEnd,
+            currentPeriodEnd: value.currentPeriodEnd === null ? null : date(value.currentPeriodEnd),
+            stripeCustomerId: value.stripeCustomerId,
+          });
         }),
-        prisma.generation.findMany({
-          where: {
-            userId: user.id,
-            createdAt: { gte: new Date(Date.now() - 60 * 24 * 3600 * 1000) },
-          },
-          select: { createdAt: true },
-          orderBy: { createdAt: "desc" },
-        }),
+        read(() => prisma.generation.findMany({
+          where: { userId: owner.id, createdAt: { gte: new Date(now.getTime() - 60 * 24 * 3600 * 1000) } },
+          select: { createdAt: true }, orderBy: { createdAt: "desc" },
+        }), values => values.map(value => date(value.createdAt))),
       ]);
-
-    const plan: PlanType = hasPaidAccess(subscription)
-      ? (subscription!.plan === 'business' ? 'business' : 'pro')
-      : 'free';
-    const isProUser = isPaid(plan);
-    const limits = getLimits(plan);
-    const limit = limits.generationsPerMonth;
-    const streak = calcStreak(allDates.map((g) => g.createdAt));
-
-    return NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, lang: user.lang, createdAt: user.createdAt },
-      stats: {
-        totalGenerations,
-        generationsThisMonth: quota.recorded,
-        generationsReserved: quota.reserved,
-        quotaOccupied: quota.total,
-        limit,
-        remaining: Math.max(0, limit - quota.total),
-        isPro: isProUser,
-        plan,
-        streak,
-        videoTipsRemaining: isProUser ? null : Math.max(0, 1 - videoTipsThisMonth),
-      },
-      subscription: subscription ?? null,
-    }, { headers: { 'Cache-Control': 'no-store' } });
+      check();
+      const paid = hasPaidAccess(subscription === null ? null : {
+        ...subscription,
+        currentPeriodEnd: subscription.currentPeriodEnd === null ? null : new Date(subscription.currentPeriodEnd),
+      });
+      const plan: PlanType = paid ? (subscription!.plan === "business" ? "business" : "pro") : "free";
+      const limit = count(getLimits(plan).generationsPerMonth);
+      if (!limit) throw Error("Statistics unavailable");
+      const publicSubscription = subscription === null ? null : {
+        status: subscription.status, plan: subscription.plan, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        currentPeriodEnd: subscription.currentPeriodEnd,
+      };
+      const body = {
+        user,
+        stats: {
+          totalGenerations, generationsThisMonth: quota.recorded, generationsReserved: quota.reserved,
+          quotaOccupied: quota.total, limit, remaining: Math.max(0, limit - quota.total),
+          isPro: isPaid(plan), plan, streak: calcStreak(allDates),
+          videoTipsRemaining: isPaid(plan) ? null : Math.max(0, 1 - videoTipsThisMonth),
+        },
+        subscription: publicSubscription,
+      };
+      check();
+      return reply(body);
+    });
+    const response = await Promise.race([original, stopped]);
+    check();
+    return response;
   } catch {
-    return NextResponse.json({ error: "Estadísticas no disponibles" }, { status: 503 });
+    return reply({ error: "Estadísticas no disponibles" }, 503);
+  } finally {
+    retire();
+    clearTimeout(timer);
+    request?.signal.removeEventListener("abort", retire);
   }
 }
