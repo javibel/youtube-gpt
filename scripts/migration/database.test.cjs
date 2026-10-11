@@ -16,7 +16,7 @@ const prisma=new PrismaClient({datasources:{db:{url:config.databaseUrl}}});
 const results=[];
 // A pending Promise alone does not keep Node alive. Fail rather than let an
 // unfinished database contract exit zero without its terminal report.
-const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts did not produce a terminal report within 60 seconds');process.exit(1);},60_000);
+const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts did not produce a terminal report within 90 seconds');process.exit(1);},90_000);
 (async()=>{try{
  const identity=(await prisma.$queryRawUnsafe("SELECT current_database() AS db,current_setting('data_directory') AS directory"))[0];
  assert.equal(identity.db,'ytubviral_migration_test');
@@ -103,6 +103,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await require('./generation-history-concurrency-database.cjs')(prisma,results);
   await require('./next-action-database.cjs')(prisma,results);
   await require('./next-action-client-database.cjs')(prisma,results);
+  await require('./password-change-database.cjs')(prisma,results);
   await require('./learn-plan-database.cjs')(prisma,results);
   await require('./team-invite-client-database.cjs')(prisma,results,require('./team-expired-invitation-database.cjs'));
  await require('./dashboard-onboarding-database.cjs')(prisma,results);
