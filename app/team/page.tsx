@@ -1,35 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
+import { useTeamRead } from '@/lib/use-team-read';
 
 type Lang = 'es' | 'en';
-
-interface Member {
-  id: string;
-  role: string;
-  joinedAt: string;
-  user: { id: string; name: string | null; email: string; image: string | null };
-}
-
-interface Invitation {
-  id: string;
-  email: string;
-  role: string;
-  expiresAt: string;
-}
-
-interface Team {
-  id: string;
-  name: string;
-  slug: string;
-  plan: string;
-  maxMembers: number;
-  members: Member[];
-  invitations: Invitation[];
-}
 
 const ROLE_LABELS: Record<string, Record<Lang, string>> = {
   owner: { es: 'Propietario', en: 'Owner' },
@@ -46,33 +23,29 @@ const ROLE_COLORS: Record<string, string> = {
 export default function TeamPage() {
   const { data: session, status } = useSession();
   const lang = useLang();
-  const [team, setTeam] = useState<Team | null>(null);
-  const [myRole, setMyRole] = useState('');
-  const [loading, setLoading] = useState(true);
+  const read = useTeamRead({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang);
+  const team = read.data?.team ?? null, myRole = read.data?.role ?? '';
+  const scope = JSON.stringify([session?.user?.id, session?.user?.email, status, lang]);
+  const current = useRef({ scope });
+  if (current.current.scope !== scope) current.current = { scope };
+  const invocation = current.current;
   const [error, setError] = useState('');
   const [teamName, setTeamName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const formScope = useRef(scope);
+  if (formScope.current !== scope) {
+    formScope.current = scope;
+    setError(''); setTeamName(''); setInviteEmail(''); setInviteRole('member'); setCreating(false); setInviting(false);
+  }
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
   const isOwnerOrAdmin = myRole === 'owner' || myRole === 'admin';
 
-  useEffect(() => {
-    if (status !== 'authenticated') return;
-    fetch('/api/team')
-      .then(r => r.json())
-      .then(data => {
-        setTeam(data.team || null);
-        setMyRole(data.role || '');
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [status]);
-
   async function createTeam() {
-    if (!teamName.trim()) return;
+    if (!read.canAct() || team || !teamName.trim()) return;
     setCreating(true);
     setError('');
     try {
@@ -82,23 +55,23 @@ export default function TeamPage() {
         body: JSON.stringify({ name: teamName.trim() }),
       });
       const data = await res.json();
+      if (!read.canAct()) return;
       if (!res.ok) {
         if (data.error === 'pro_required') setError(t('Necesitas el plan Pro.', 'You need the Pro plan.'));
         else if (data.error === 'already_in_team') setError(t('Ya perteneces a un equipo.', 'You already belong to a team.'));
         else setError(data.error || 'Error');
         return;
       }
-      setTeam(data.team);
-      setMyRole(data.role);
+      read.refresh();
     } catch {
-      setError(t('Error de conexion', 'Connection error'));
+      if (read.canAct()) setError(t('Error de conexion', 'Connection error'));
     } finally {
-      setCreating(false);
+      if (current.current === invocation) setCreating(false);
     }
   }
 
   async function inviteMember() {
-    if (!inviteEmail.trim()) return;
+    if (!read.canAct() || !isOwnerOrAdmin || !inviteEmail.trim()) return;
     setInviting(true);
     setError('');
     try {
@@ -108,6 +81,7 @@ export default function TeamPage() {
         body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
       });
       const data = await res.json();
+      if (!read.canAct()) return;
       if (!res.ok) {
         const msgs: Record<string, string> = {
           team_full: t('El equipo esta lleno.', 'Team is full.'),
@@ -118,72 +92,71 @@ export default function TeamPage() {
         return;
       }
       // Refresh team data
-      const refreshed = await fetch('/api/team').then(r => r.json());
-      setTeam(refreshed.team);
+      read.refresh();
       setInviteEmail('');
     } catch {
-      setError(t('Error de conexion', 'Connection error'));
+      if (read.canAct()) setError(t('Error de conexion', 'Connection error'));
     } finally {
-      setInviting(false);
+      if (current.current === invocation) setInviting(false);
     }
   }
 
   async function removeMember(memberId: string) {
+    if (!read.canAct() || myRole !== 'owner' || !team?.members.some(m => m.id === memberId && m.user.id !== session?.user?.id)) return;
     try {
-      await fetch('/api/team/members', {
+      const res = await fetch('/api/team/members', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId }),
       });
-      setTeam(prev => prev ? { ...prev, members: prev.members.filter(m => m.id !== memberId) } : null);
+      if (res.ok && read.canAct()) read.refresh();
     } catch {
-      setError(t('Error al eliminar', 'Error removing'));
+      if (read.canAct()) setError(t('Error al eliminar', 'Error removing'));
     }
   }
 
   async function changeRole(memberId: string, role: string) {
+    if (!read.canAct() || myRole !== 'owner' || !['admin', 'member'].includes(role) || !team?.members.some(m => m.id === memberId && m.user.id !== session?.user?.id)) return;
     try {
-      await fetch('/api/team/members', {
+      const res = await fetch('/api/team/members', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId, role }),
       });
-      setTeam(prev => prev ? {
-        ...prev,
-        members: prev.members.map(m => m.id === memberId ? { ...m, role } : m),
-      } : null);
+      if (res.ok && read.canAct()) read.refresh();
     } catch {
-      setError(t('Error al cambiar rol', 'Error changing role'));
+      if (read.canAct()) setError(t('Error al cambiar rol', 'Error changing role'));
     }
   }
 
   async function revokeInvitation(invitationId: string) {
+    if (!read.canAct() || !isOwnerOrAdmin || !team?.invitations.some(i => i.id === invitationId)) return;
     try {
-      await fetch('/api/team/invite', {
+      const res = await fetch('/api/team/invite', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invitationId }),
       });
-      setTeam(prev => prev ? { ...prev, invitations: prev.invitations.filter(i => i.id !== invitationId) } : null);
+      if (res.ok && read.canAct()) read.refresh();
     } catch {
-      setError(t('Error', 'Error'));
+      if (read.canAct()) setError(t('Error', 'Error'));
     }
   }
 
   async function leaveOrDeleteTeam() {
+    if (!read.canAct() || !team) return;
     try {
-      await fetch('/api/team', { method: 'DELETE' });
-      setTeam(null);
-      setMyRole('');
+      const res = await fetch('/api/team', { method: 'DELETE' });
+      if (res.ok && read.canAct()) read.refresh();
     } catch {
-      setError(t('Error', 'Error'));
+      if (read.canAct()) setError(t('Error', 'Error'));
     }
   }
 
-  if (status === 'loading' || loading) {
+  if (status === 'loading' || (status === 'authenticated' && read.loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
-        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        <p role="status">{t('Leyendo tu equipo…', 'Reading your team…')}</p>
       </div>
     );
   }
@@ -199,12 +172,18 @@ export default function TeamPage() {
     );
   }
 
+  if (read.error || !read.data) return <DashboardShell><div className="yv-page" data-team-read="error">
+    <p role="alert">{t('No se pudo cargar el equipo.', 'Could not load the team.')}</p>
+    {read.pending && <p role="status">{t('La lectura original sigue pendiente.', 'The original read is still pending.')}</p>}
+    <button onClick={read.refresh} disabled={read.pending}>{t('Reintentar lectura', 'Retry read')}</button>
+  </div></DashboardShell>;
+
   return (
     <DashboardShell>
 
       {/* data-clarity-mask: lista emails de los miembros del equipo — datos de terceros
           que no han consentido esta grabación. Ver app/admin/page.tsx. */}
-      <div className="yv-page" data-clarity-mask="true">
+      <div className="yv-page" data-clarity-mask="true" data-team-read={team ? 'team' : 'empty'}>
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -226,6 +205,7 @@ export default function TeamPage() {
         {/* No team — create one */}
         {!team && (
           <div className="yv-card p-8 text-center">
+            <p role="status">{t('Lectura confirmada: no perteneces a un equipo.', 'Confirmed read: you do not belong to a team.')}</p>
             <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'var(--yv-brand-soft)' }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--yv-brand)" strokeWidth="1.5">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -244,7 +224,7 @@ export default function TeamPage() {
             <div className="flex items-center gap-3 max-w-sm mx-auto">
               <input
                 value={teamName}
-                onChange={e => setTeamName(e.target.value)}
+                onChange={e => { if (read.canAct()) setTeamName(e.target.value); }}
                 placeholder={t('Nombre del equipo...', 'Team name...')}
                 maxLength={50}
                 className="flex-1 px-4 py-3 yv-input text-sm font-mono-jb"
@@ -368,7 +348,7 @@ export default function TeamPage() {
                     <input
                       type="email"
                       value={inviteEmail}
-                      onChange={e => setInviteEmail(e.target.value)}
+                      onChange={e => { if (read.canAct()) setInviteEmail(e.target.value); }}
                       placeholder="colleague@example.com"
                       className="w-full px-4 py-2.5 yv-input text-sm font-mono-jb"
                       onKeyDown={e => e.key === 'Enter' && inviteMember()}
@@ -379,7 +359,7 @@ export default function TeamPage() {
                       <label className="font-mono-jb text-[13px] block mb-1.5" style={{ color: 'var(--yv-text-4)' }}>{t('Rol', 'Role')}</label>
                       <select
                         value={inviteRole}
-                        onChange={e => setInviteRole(e.target.value)}
+                        onChange={e => { if (read.canAct()) setInviteRole(e.target.value); }}
                         className="px-3 py-2.5 yv-input text-sm font-mono-jb"
                       >
                         <option value="member">{t('Miembro', 'Member')}</option>
