@@ -18,6 +18,9 @@ type Outcome = { ok: true; userId: string; email: string; key: string; selectedS
   | { ok: false; status: number; error: string };
 const unconfirmed = (): Outcome => ({ ok: false, status: 503, error: 'sync_unconfirmed' });
 const customerID = (v: unknown): v is string => typeof v === 'string' && /^cus_[A-Za-z0-9_-]{1,128}$/.test(v);
+// Validate the runtime deletion flag as unknown: Stripe's Customer type marks
+// this property void, while an untrusted fixture/response can still be deleted.
+const deletedCustomer = (v: unknown): boolean => !!v && typeof v === 'object' && (v as Record<string,unknown>).deleted === true;
 const priceID = (v: unknown): v is string => typeof v === 'string' && /^price_[A-Za-z0-9_-]{1,128}$/.test(v);
 const seconds = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= 8_640_000_000_000;
 const statuses = ['active','trialing','past_due','unpaid','canceled','incomplete','incomplete_expired','paused'];
@@ -80,7 +83,7 @@ export async function syncSubscriptionOriginal(owner: Owner, input: Input, key: 
       let result:{subscriptionId:string|null;synced:boolean;status:string|null;plan:string|null}={subscriptionId:selected.id,synced:false,status:null,plan:null};
       if(customers.data.length){
         const customer=customers.data[0];
-        if(!customerID(customer.id) || customer.email!==own.email || ('deleted' in customer && customer.deleted===true) || (selected.customer!==null && customer.id!==selected.customer))throw Error('Sync unconfirmed');
+        if(!customerID(customer.id) || customer.email!==own.email || deletedCustomer(customer) || (selected.customer!==null && customer.id!==selected.customer))throw Error('Sync unconfirmed');
         const originalCustomer=customer.id;
         const listed=await stripe.subscriptions.list({customer:originalCustomer,status:'all',limit:10}); check();
         if(!listed || listed.has_more!==false || !Array.isArray(listed.data) || listed.data.length>10
