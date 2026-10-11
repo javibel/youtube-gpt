@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useDashboardStats } from '@/lib/use-dashboard-stats';
 import { useLang } from '@/components/LangProvider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -10,7 +11,6 @@ import GuideArticleRenderer from '@/components/GuideArticleRenderer';
 import ProVideoSection from '@/components/ProVideoSection';
 import GuideCard from '@/components/GuideCard';
 import { getGuide, getRelatedGuides, GUIDE_BODIES } from '@/lib/learn-data';
-import type { PlanType } from '@/lib/plans';
 
 type Lang = 'es' | 'en';
 
@@ -25,14 +25,13 @@ export default function LearnGuidePage() {
   const params = useParams();
   const slug = params.slug as string;
   const lang = useLang();
-  const [plan, setPlan] = useState<PlanType>('free');
-
-  useEffect(() => {
-    fetch('/api/user/stats')
-      .then((r) => r.json())
-      .then((data) => { if (data?.plan) setPlan(data.plan); })
-      .catch(() => {});
-  }, []);
+  const { data: session, status } = useSession();
+  const { data, statsRefreshing, statsError, retryStats } =
+    useDashboardStats(session?.user?.id, session?.user?.email, status);
+  const canRead = status === 'authenticated' && !!session?.user?.id && !!session.user.email;
+  // A retained snapshot labels the last confirmed plan; it never grants video
+  // access while the current read is pending, failed or belongs to another user.
+  const plan = canRead && data && !statsRefreshing && !statsError ? data.stats.plan : null;
 
   const guide = getGuide(slug);
   if (!guide) {
@@ -65,6 +64,38 @@ export default function LearnGuidePage() {
           <span>/</span>
           <span style={{ color: 'var(--yv-text-1)' }}>{guide.title[lang]}</span>
         </nav>
+
+        <div className="yv-card p-4 mb-6">
+          {status === 'loading' ? (
+            <p role="status">{t('Comprobando sesión…', 'Checking session…')}</p>
+          ) : !canRead ? (
+            <p>
+              {t('Inicia sesión para comprobar tu plan y acceder a los vídeos.', 'Sign in to check your plan and access videos.')}
+              {' '}<Link href="/login" className="underline">{t('Iniciar sesión', 'Sign in')}</Link>
+            </p>
+          ) : (
+            <>
+              {statsError ? (
+                <p role="alert">{t('No hemos podido comprobar tu plan. Reintenta para ver los vídeos.', 'We could not check your plan. Retry to view videos.')}</p>
+              ) : plan === null ? (
+                <p role="status">{t('Comprobando tu plan…', 'Checking your plan…')}</p>
+              ) : (
+                <p>{t('Plan confirmado:', 'Confirmed plan:')} <strong>{plan === 'free' ? 'Free' : plan === 'pro' ? 'Pro' : 'Business'}</strong></p>
+              )}
+              {data && plan === null && (
+                <p className="text-sm mt-2">
+                  {t('Último plan confirmado:', 'Last confirmed plan:')} {data.stats.plan === 'free' ? 'Free' : data.stats.plan === 'pro' ? 'Pro' : 'Business'}.
+                  {' '}{t('Los vídeos esperan una comprobación actual.', 'Videos await a current check.')}
+                </p>
+              )}
+              {(data || statsError) && (
+                <button onClick={retryStats} disabled={statsRefreshing} className="yv-btn yv-btn--ghost mt-3 disabled:opacity-50">
+                  {statsError ? t('Reintentar plan', 'Retry plan') : t('Actualizar plan', 'Refresh plan')}
+                </button>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Header card */}
         <div className="yv-card overflow-hidden mb-8">
@@ -121,7 +152,7 @@ export default function LearnGuidePage() {
         {/* Article body or fallback steps */}
         <div className="yv-card p-6 md:p-8 mb-8">
           {body ? (
-            <GuideArticleRenderer blocks={body} lang={lang} showVideo plan={plan} />
+            <GuideArticleRenderer blocks={body} lang={lang} showVideo={plan !== null} plan={plan ?? undefined} />
           ) : (
             <div>
               <h2 className="font-display font-bold text-xl mb-6" style={{ color: 'var(--yv-text-1)' }}>
@@ -143,7 +174,7 @@ export default function LearnGuidePage() {
         </div>
 
         {/* Pro video section (when guide has videoId but body doesn't include inline video) */}
-        {guide.videoId && !body && (
+        {guide.videoId && !body && plan !== null && (
           <div className="yv-card p-6 md:p-8 mb-8">
             <h2 className="font-display font-bold text-xl mb-4" style={{ color: 'var(--yv-text-1)' }}>
               {t('Video tutorial', 'Video Tutorial')}
