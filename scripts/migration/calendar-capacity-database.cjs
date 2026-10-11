@@ -4,7 +4,7 @@ const {load}=require('./route-harness.cjs');
 module.exports=async function(prisma,results){
  const users=await Promise.all([1,2].map(i=>prisma.user.create({data:{email:'calendar-capacity-'+randomUUID()+'@example.invalid',name:'Synthetic capacity '+i}})));
  const date=new Date().toISOString().slice(0,10),plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
- const route=(user,db=prisma)=>load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id}})},'@/lib/prisma':{prisma:db},'@/lib/plans':plans});
+ const route=(user,db=prisma)=>load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},'@/lib/prisma':{prisma:db},'@/lib/plans':plans});
  const post=(api,title)=>api.POST(new Request('https://example.invalid/api/calendar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,date})}));
  const count=user=>prisma.calendarEntry.count({where:{userId:user.id}});
  try{

@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs');
 module.exports=async(prisma,results)=>{
  const users=await Promise.all([1,2].map(i=>prisma.user.create({data:{email:'calendar-create-keyed-'+randomUUID()+'@example.invalid'}}))),plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
- const route=(user,db=prisma)=>load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id}})},'@/lib/plans':plans,'@/lib/prisma':{prisma:db}});
+ const route=(user,db=prisma)=>load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},'@/lib/plans':plans,'@/lib/prisma':{prisma:db}});
  const body={title:'Original keyed title',description:'Original keyed description',date:'2026-10-09',status:'idea',color:null};
  const post=(api,key,input=body,recovery=false)=>api.POST(new Request('https://example.invalid/api/calendar',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key,...(recovery?{'X-Calendar-Write-Recovery':'retained-only-v1'}:{})},body:JSON.stringify(input)}));
  const entries=user=>prisma.calendarEntry.findMany({where:{userId:user.id},orderBy:{id:'asc'}}),receipts=user=>prisma.calendarCreationReceipt.findMany({where:{userId:user.id},orderBy:{id:'asc'}});

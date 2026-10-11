@@ -6,6 +6,9 @@ import { getUserPlan, hasPaidAccess, isPaid } from '@/lib/plans';
 const MAX_ENTRIES = 200;
 const VALID_STATUSES = ['idea', 'draft', 'scheduled', 'published'];
 class CalendarCreationConflict extends Error {}
+class CalendarCreationDenied extends Error {
+  constructor(readonly status: number, readonly code: string) { super(code); }
+}
 
 // Retiring the HTTP waiter does not cancel or replace an original dependency.
 function calendarHttpWait(signal: AbortSignal, duration = 30_000) {
@@ -153,98 +156,134 @@ export async function GET(request: Request) {
   } finally { wait.close(); }
 }
 
-// POST — create entry
+// POST — create one entry under the captured owner and original input.
 export async function POST(request: Request) {
   return boundedCalendarWrite(request, async wait => {
     const session = await wait.run(() => auth());
-    if (!session?.user?.id) {
+    if (typeof session?.user?.id !== 'string' || !session.user.id
+      || typeof session.user.email !== 'string' || !session.user.email) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
-
-    const key = request.headers.get('Idempotency-Key');
+    const owner = Object.freeze({ id: session.user.id, email: session.user.email });
+    const userId = owner.id, key = request.headers.get('Idempotency-Key');
     const recovery = request.headers.get('X-Calendar-Write-Recovery');
     if ((key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))
       || (recovery !== null && (recovery !== 'retained-only-v1' || !key))) {
       return NextResponse.json({ error: 'invalid_recovery' }, { status: 400 });
     }
-
-    const userId = session.user.id;
-    const plan = await wait.run(() => getUserPlan(userId));
-    if (!isPaid(plan)) {
-      return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-    }
-
     const body = await wait.run(() => request.json().catch(() => ({})));
     if (!body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).some(name => !['title', 'description', 'date', 'status', 'color'].includes(name))
       || typeof body.title !== 'string' || typeof body.date !== 'string'
       || (body.description != null && typeof body.description !== 'string')
-      || (body.color != null && typeof body.color !== 'string')) {
+      || (body.color != null && typeof body.color !== 'string')
+      || (body.status !== undefined && !VALID_STATUSES.includes(body.status))) {
       return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
     }
-    const title = (body.title as string || '').trim();
-    const date = body.date as string || '';
-    const description = (body.description as string || '').trim();
-    const status = VALID_STATUSES.includes(body.status) ? body.status : 'idea';
-    const color = (body.color as string || '').trim() || null;
-
-    if (!title || title.length > 200) {
-      return NextResponse.json({ error: 'title required (max 200)' }, { status: 400 });
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 });
-    }
-
-    const input = JSON.stringify({ title, description: description || null, date, status, color });
-    if (key && (input.length > 65_536 || Object.keys(body).some(name => !['title','description','date','status','color'].includes(name)))) {
-      return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
-    }
-
+    const title = body.title.trim(), date = body.date, description = (body.description || '').trim();
+    const status = body.status === undefined ? 'idea' : body.status, color = (body.color || '').trim() || null;
+    if (!title || title.length > 200) return NextResponse.json({ error: 'title required (max 200)' }, { status: 400 });
+    let canonical = false;
+    try { canonical = /^\d{4}-\d{2}-\d{2}$/.test(date) && !date.startsWith('0000-')
+      && new Date(date + 'T00:00:00.000Z').toISOString().slice(0, 10) === date; } catch { /* Invalid civil day. */ }
+    if (!canonical) return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 });
+    const values = Object.freeze({ title, description: description || null, date, status, color });
+    const input = JSON.stringify(values);
+    if (input.length > 65_536) return NextResponse.json({ error: 'invalid entry' }, { status: 400 });
+    type StoredEntry = { id: string; userId: string; title: string; description: string | null;
+      date: string; status: string; color: string | null; createdAt: Date; updatedAt: Date };
+    const capture = (row: StoredEntry, expectedId?: string) => {
+      if (!row || typeof row.id !== 'string' || !row.id || (expectedId !== undefined && row.id !== expectedId)
+        || row.userId !== owner.id) throw Error('Calendar original unconfirmed');
+      const storedInput = JSON.stringify({ title: row.title, description: row.description,
+        date: row.date, status: row.status, color: row.color });
+      if (storedInput !== input) throw new CalendarCreationConflict('calendar_entry_changed');
+      return Object.freeze({ id: row.id, userId: owner.id, ...values,
+        createdAt: Date.prototype.toISOString.call(row.createdAt), updatedAt: Date.prototype.toISOString.call(row.updatedAt) });
+    };
     try {
-      const entry = await wait.run(() => prisma.$transaction(async (tx) => {
-        if (request.signal.aborted) throw new Error('Calendar request aborted');
-        // Every calendar admission locks the owner before counting and inserting.
-        const owners = await tx.$queryRawUnsafe<Array<{ id: string }>>(
-          'SELECT id FROM users WHERE id=$1 FOR UPDATE', userId,
-        );
-        if (owners.length !== 1 || owners[0].id !== userId || request.signal.aborted) {
-          throw new Error('Calendar owner unconfirmed');
+      const result = await wait.run(() => prisma.$transaction(async tx => {
+        wait.check();
+        // Lock owner, then paid source in the same order as billing writers.
+        const owners = await tx.$queryRawUnsafe<Array<{ id: string; email: string }>>(
+          'SELECT id,email FROM users WHERE id=$1 FOR UPDATE', owner.id);
+        wait.check();
+        if (!Array.isArray(owners) || owners.length > 1
+          || (owners.length === 1 && (typeof owners[0].id !== 'string' || typeof owners[0].email !== 'string')))
+          throw Error('Calendar owner unconfirmed');
+        if (owners.length !== 1 || owners[0].id !== owner.id || owners[0].email !== owner.email)
+          throw new CalendarCreationDenied(401, 'unauthorized');
+        const locks = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+          'SELECT id FROM subscriptions WHERE "userId"=$1 FOR UPDATE', owner.id);
+        wait.check();
+        if (!Array.isArray(locks) || locks.length > 1 || (locks.length === 1 && (typeof locks[0].id !== 'string' || !locks[0].id)))
+          throw Error('Calendar plan unconfirmed');
+        const lockedId = locks[0]?.id;
+        const selected = await tx.subscription.findUnique({ where: { userId: owner.id },
+          select: { id: true, userId: true, status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true } });
+        wait.check();
+        if (selected === null) {
+          if (locks.length !== 0) throw Error('Calendar plan unconfirmed');
+          throw new CalendarCreationDenied(403, 'pro_required');
         }
+        if (locks.length !== 1 || selected.id !== lockedId || selected.userId !== owner.id
+          || typeof selected.status !== 'string' || !selected.status || !['free', 'pro', 'business'].includes(selected.plan)
+          || (selected.stripeCustomerId !== null && typeof selected.stripeCustomerId !== 'string'))
+          throw Error('Calendar plan unconfirmed');
+        const access = Object.freeze({ status: selected.status, stripeCustomerId: selected.stripeCustomerId,
+          currentPeriodEnd: selected.currentPeriodEnd === null ? null : new Date(Date.prototype.toISOString.call(selected.currentPeriodEnd)) });
+        const selectedPlan = selected.plan;
+        const checkPaid = () => {
+          wait.check();
+          if (!['pro', 'business'].includes(selectedPlan) || !hasPaidAccess(access))
+            throw new CalendarCreationDenied(403, 'pro_required');
+        };
+        checkPaid();
         if (key) {
-          const receipt = await tx.calendarCreationReceipt.findUnique({ where: { userId_key: { userId, key } } });
-          if (receipt) {
-            if (receipt.userId !== userId || receipt.key !== key) throw new Error('Calendar receipt unconfirmed');
-            if (receipt.input !== input) throw new CalendarCreationConflict('calendar_key_conflict');
-            // A retained business receipt selects the original committed row only.
-            // Deletion or subsequent edits never authorize another creation.
-            const retained = receipt.entryId ? await tx.calendarEntry.findUnique({ where: { id: receipt.entryId } }) : null;
-            if (!retained || retained.userId !== userId) throw new Error('Calendar original unavailable');
-            const retainedInput = JSON.stringify({ title: retained.title, description: retained.description,
-              date: retained.date, status: retained.status, color: retained.color });
-            if (retainedInput !== input) throw new CalendarCreationConflict('calendar_entry_changed');
-            return retained;
+          const record = await tx.calendarCreationReceipt.findUnique({ where: { userId_key: { userId, key } } });
+          checkPaid();
+          if (record) {
+            if (record.userId !== userId || record.key !== key || typeof record.input !== 'string'
+              || (record.entryId !== null && (typeof record.entryId !== 'string' || !record.entryId)))
+              throw Error('Calendar receipt unconfirmed');
+            const original = Object.freeze({ input: record.input, entryId: record.entryId });
+            if (original.input !== input) throw new CalendarCreationConflict('calendar_key_conflict');
+            // Select the existing business result only; it never admits another creation.
+            if (!original.entryId) throw Error('Calendar original unavailable');
+            const retained = await tx.calendarEntry.findUnique({ where: { id: original.entryId } });
+            checkPaid();
+            if (!retained) throw Error('Calendar original unavailable');
+            return { entry: capture(retained, original.entryId), access };
           }
-          if (recovery === 'retained-only-v1') throw new Error('Calendar original unconfirmed');
+          if (recovery === 'retained-only-v1') throw Error('Calendar original unconfirmed');
         }
         const count = await tx.calendarEntry.count({ where: { userId } });
-        if (!Number.isSafeInteger(count) || count < 0) throw new Error('Calendar count unconfirmed');
-        if (count >= MAX_ENTRIES) return null;
-        if (request.signal.aborted) throw new Error('Calendar request aborted');
-        const created = await tx.calendarEntry.create({
-          data: { userId, title, description: description || null, date, status, color },
-        });
-      if (key) await tx.calendarCreationReceipt.create({ data: { userId, key, input, entryId: created.id } });
-      return created;
-    }, { maxWait: 10_000, timeout: 15_000 }));
-    if (!entry) return NextResponse.json({ error: 'max_entries' }, { status: 400 });
-    return NextResponse.json({ entry }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    if (error instanceof CalendarCreationConflict) return NextResponse.json({ error: error.message }, {
-      status: 409, headers: { 'Cache-Control': 'no-store' },
-    });
-    return NextResponse.json({ error: 'calendar_write_unconfirmed' }, {
-      status: 503, headers: { 'Cache-Control': 'no-store' },
-    });
-  }
+        checkPaid();
+        if (!Number.isSafeInteger(count) || count < 0) throw Error('Calendar count unconfirmed');
+        if (count >= MAX_ENTRIES) return { entry: null, access };
+        const created = await tx.calendarEntry.create({ data: { userId, ...values } });
+        wait.check();
+        if (!hasPaidAccess(access)) throw Error('Calendar write unconfirmed');
+        const entry = capture(created);
+        if (key) {
+          const receipt = await tx.calendarCreationReceipt.create({ data: { userId, key, input, entryId: entry.id } });
+          wait.check();
+          if (!hasPaidAccess(access) || receipt.userId !== userId || receipt.key !== key
+            || receipt.input !== input || receipt.entryId !== entry.id) throw Error('Calendar receipt unconfirmed');
+        }
+        wait.check();
+        if (!hasPaidAccess(access)) throw Error('Calendar write unconfirmed');
+        return { entry, access };
+      }, { maxWait: 10_000, timeout: 15_000 }));
+      wait.check();
+      if (!hasPaidAccess(result.access)) throw Error('Calendar write unconfirmed');
+      if (!result.entry) return NextResponse.json({ error: 'max_entries' }, { status: 400 });
+      return NextResponse.json({ entry: result.entry }, { status: 201 });
+    } catch (error) {
+      if (error instanceof CalendarCreationDenied) return NextResponse.json({ error: error.code }, { status: error.status });
+      if (error instanceof CalendarCreationConflict) return NextResponse.json({ error: error.message }, { status: 409 });
+      return NextResponse.json({ error: 'calendar_write_unconfirmed' }, { status: 503 });
+    }
   });
 }
 

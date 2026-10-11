@@ -4,7 +4,7 @@ const {deferred,flush}=require('./calendar-http-read-deadline.test.cjs');
 module.exports=async(prisma,results)=>{
  const users=await Promise.all([1,2].map(()=>prisma.user.create({data:{email:'calendar-http-write-'+randomUUID()+'@example.invalid'}}))),owner=users[0].id,other=users[1].id;
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),fields=e=>({title:e.title,description:e.description,date:e.date,status:e.status,color:e.color});
- const api=(db=prisma,globals={})=>load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner}})},'@/lib/plans':plans,'@/lib/prisma':{prisma:db}},globals);
+ const api=(db=prisma,globals={})=>load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner,email:users[0].email}})},'@/lib/plans':plans,'@/lib/prisma':{prisma:db}},globals);
  const request=(method,key,body,id,recovery=false,signal)=>new Request('https://example.invalid/api/calendar'+(method==='DELETE'?'?id='+id:''),{method,headers:{'Content-Type':'application/json','Idempotency-Key':key,...(recovery?{'X-Calendar-Write-Recovery':'retained-only-v1'}:{})},body:JSON.stringify(body),signal});
  const snapshot=async()=>({rows:await prisma.calendarEntry.findMany({where:{userId:owner},orderBy:{id:'asc'}}),creations:await prisma.calendarCreationReceipt.findMany({where:{userId:owner},orderBy:{id:'asc'}}),mutations:await prisma.calendarMutationReceipt.findMany({where:{userId:owner},orderBy:{id:'asc'}})});
  try{
@@ -23,7 +23,7 @@ module.exports=async(prisma,results)=>{
    elapsed=30000;for(const fn of [...timers.values()])fn();const failed=await original;assert.equal(failed.status,503);assert.deepEqual(await failed.json(),{error:'calendar_write_unconfirmed'});assert.equal(failed.headers.get('cache-control'),'no-store');assert.equal(timers.size,0);
    ack.resolve();await finished.promise;await flush();assert.equal(failed.status,503);assert.equal(transactions,1);
    const retained=await api()[method](request(method,key,body,entry?.id,true));assert.equal(retained.status,method==='POST'?201:200);
-   assert.deepEqual(await retained.json(),JSON.parse(JSON.stringify(method==='POST'?{entry:output}:output)));assert.deepEqual(await snapshot(),before);
+   assert.deepEqual(await retained.json(),JSON.parse(JSON.stringify(method==='POST'?{entry:output.entry}:output)));assert.deepEqual(await snapshot(),before);
    assert.deepEqual(await prisma.calendarEntry.findUnique({where:{id:neighbor.id}}),neighbor);assert.equal(await prisma.generation.count({where:{userId:{in:users.map(u=>u.id)}}}),0);
    results.push('calendar '+method+' original native commit and durable receipt precede HTTP timeout503; late acknowledgement stays uncertain and explicit identical retained query returns original output without another mutation, neighboring owner unchanged');
   }
@@ -33,7 +33,7 @@ module.exports=async(prisma,results)=>{
    const req=request('POST','native-aborted-body',{title:'Never admitted body',date:'2026-10-10'},undefined,false,controller.signal);req.json=()=>{started.resolve();return body.promise;};
    const original=bounded.POST(req);await started.promise;controller.abort();const response=await original;assert.equal(response.status,503);body.resolve({title:'Never admitted body',date:'2026-10-10'});await flush();assert.equal(transactions,0);assert.deepEqual(await snapshot(),before);
    assert.equal(await prisma.calendarCreationReceipt.count({where:{userId:owner,key:'native-aborted-body'}}),0);
-   results.push('calendar POST abort during original body wait after native stored-Pro authorization cannot admit a late body or create an entry/receipt in PostgreSQL');
+   results.push('calendar POST abort during original body wait before any native paid-source admission cannot admit a late body or create an entry/receipt in PostgreSQL');
   }
  }finally{await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});}
 };
