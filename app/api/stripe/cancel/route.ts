@@ -1,72 +1,41 @@
 import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
-import { stripe } from '@/lib/stripe';
-import { isPaidStatus } from '@/lib/plans';
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
+import { cancelSubscriptionOriginal, validCancellationKey, validCancellationInput } from '@/lib/subscription-cancellation';
 
-export async function POST() {
-  const session = await auth();
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
-
+export const maxDuration = 60;
+export async function POST(request: Request) {
+  const deadline = performance.now() + 55_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Cancellation unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Cancellation unconfirmed'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { subscription: true },
-    });
-
-    if (!user?.subscription?.stripeCustomerId) {
-      return NextResponse.json({ error: 'No tienes una suscripción activa' }, { status: 400 });
-    }
-
-    // Buscar la suscripción activa (o en trial) en Stripe
-    let subscriptions;
-    try {
-      subscriptions = await stripe.subscriptions.list({
-        customer: user.subscription.stripeCustomerId,
-        status: 'all',
-        limit: 10,
-      });
-    } catch {
-      return NextResponse.json({ error: 'No se pudo contactar con Stripe' }, { status: 500 });
-    }
-
-    const sub = subscriptions.data.find((s) => isPaidStatus(s.status));
-
-    if (!sub) {
-      return NextResponse.json({ error: 'No se encontró suscripción activa en Stripe' }, { status: 400 });
-    }
-
-    if (sub.cancel_at_period_end) {
-      // The provider may have accepted an earlier request while our DB write failed.
-      // Reconcile that confirmed provider state without issuing another cancellation.
-      if (!user.subscription.cancelAtPeriodEnd) {
-        await prisma.subscription.update({
-          where: { userId: user.id },
-          data: { cancelAtPeriodEnd: true },
-        });
-        return NextResponse.json({ ok: true, userId: user.id, email: user.email, cancelAtPeriodEnd: true });
+    const original = Promise.resolve().then(async () => {
+      check();
+      const suppliedKey = request.headers.get('Idempotency-Key'), key = suppliedKey ?? randomUUID();
+      if (!validCancellationKey(key)) return { body: { error: 'invalid_input' }, status: 400 };
+      const session = await auth(); check();
+      if (!session?.user?.id || typeof session.user.email !== 'string' || !session.user.email)
+        return { body: { error: 'Unauthorized' }, status: 401 };
+      const owner = Object.freeze({ userId: session.user.id, email: session.user.email });
+      let body: unknown;
+      try { body = request.body === null ? {} : await request.json(); } catch { check(); return { body: { error: 'invalid_input' }, status: 400 }; }
+      check(); if (!validCancellationInput(body, suppliedKey !== null)) return { body: { error: 'invalid_input' }, status: 400 };
+      const input = Object.freeze({ ...body });
+      const result = await cancelSubscriptionOriginal(owner, input, key, check); check();
+      if (!result.ok) return { body: { error: result.error }, status: result.status };
+      if (suppliedKey === null) {
+        const { key: _key, subscriptionId: _subscriptionId, mode: _mode, ...legacy } = result;
+        return { body: legacy, status: 200 };
       }
-      return NextResponse.json({ ok: true, userId: user.id, email: user.email, cancelAtPeriodEnd: true });
-    }
-
-    // Cancelar al final del periodo (no inmediatamente)
-    const updated = await stripe.subscriptions.update(sub.id, {
-      cancel_at_period_end: true,
+      return { body: result, status: 200 };
     });
-    if (!updated || updated.id !== sub.id || updated.cancel_at_period_end !== true) {
-      return NextResponse.json({ error: 'Confirmación de cancelación incompleta' }, { status: 502 });
-    }
-
-    await prisma.subscription.update({
-      where: { userId: user.id },
-      data: { cancelAtPeriodEnd: true },
-    });
-
-    return NextResponse.json({ ok: true, userId: user.id, email: user.email, cancelAtPeriodEnd: true });
-  } catch {
-    return NextResponse.json({ error: 'Cancellation unavailable' }, { status: 503 });
-  }
+    const result = await Promise.race([original, stopped]); check(); return reply(result.body, result.status);
+  } catch { return reply({ error: 'cancellation_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

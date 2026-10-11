@@ -17,7 +17,7 @@ const pricing=compile('lib/pricing.ts');
 const user={id:'synthetic',email:'synthetic@example.invalid',name:'Synthetic',subscription:null};
 const subscriptionWrites=[];
 const mocks={'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},
- '@/lib/prisma':{prisma:{...require('./checkout-store-fixture.cjs')(user),subscription:{update:async args=>{subscriptionWrites.push(args);return args.data;}}}},
+ '@/lib/prisma':{prisma:{...require('./cancellation-store-fixture.cjs')(user,{onWrite:async args=>{subscriptionWrites.push(args);}})}},
  '@/lib/stripe':{stripe:runtime.stripe},
  '@/lib/pricing':pricing,
  '@/lib/plans':{isPaidStatus:status=>['active','trialing'].includes(status)},
@@ -45,31 +45,32 @@ global.fetch=()=>{externalAttempts++;throw Error('Network forbidden');};
     metadata:{userId:user.id,service:'YTubViral.com',plan:'pro'},trial_period_days:7},
    custom_text:{submit:{message:'7 días gratis, luego 9,99€/mes. Cancela antes del día 7 sin coste.'}}
   }],result:{url:'https://example.invalid/checkout'}},
-  {operation:'subscriptions.list',args:[{customer:'cus_synthetic',status:'all',limit:10}],result:{data:[{id:'sub_synthetic',status:'active',cancel_at_period_end:false}]}},
-  {operation:'subscriptions.update',args:['sub_synthetic',{cancel_at_period_end:true}],result:{id:'sub_synthetic',cancel_at_period_end:true}}
+  {operation:'subscriptions.list',args:[{customer:'cus_synthetic',status:'all',limit:10}],result:{data:[{id:'sub_synthetic',customer:'cus_synthetic',status:'active',cancel_at_period_end:false}],has_more:false}},
+  {operation:'subscriptions.update',args:['sub_synthetic',{cancel_at_period_end:true}],result:{id:'sub_synthetic',customer:'cus_synthetic',status:'active',cancel_at_period_end:true}}
  ]});
  process.env.STRIPE_PRO_PRICE_ID='price_synthetic_monthly';
  const response=await POST(new Request('https://example.invalid/api/stripe/checkout',{
   method:'POST',headers:{'content-type':'application/json','x-vercel-ip-country':'ES'},
   body:JSON.stringify({plan:'monthly',lang:'es'})}));
  assert.equal(response.status,200);assert.deepEqual(await response.json(),{userId:user.id,email:user.email,mode:'simulated',url:'https://example.invalid/checkout'});
- user.subscription={stripeCustomerId:'cus_synthetic'};
+ user.subscription={id:'local_sub',userId:user.id,stripeCustomerId:'cus_synthetic',stripePriceId:null,plan:'pro',status:'active',cancelAtPeriodEnd:false,currentPeriodStart:null,currentPeriodEnd:null};
+ mocks['@/lib/subscription-cancellation']=compile('lib/subscription-cancellation.ts');
  const {POST:cancel}=compile('app/api/stripe/cancel/route.ts');
- const cancelled=await cancel();
+ const cancelled=await cancel(new Request('https://example.invalid/api/stripe/cancel',{method:'POST'}));
  assert.equal(cancelled.status,200);assert.deepEqual(await cancelled.json(),{ok:true,userId:user.id,email:user.email,cancelAtPeriodEnd:true});
- assert.deepEqual(subscriptionWrites,[{where:{userId:user.id},data:{cancelAtPeriodEnd:true}}]);
+ assert.equal(subscriptionWrites.length,1);assert.equal(subscriptionWrites[0].where.userId,user.id);assert.deepEqual(subscriptionWrites[0].data,{cancelAtPeriodEnd:true});
  delete process.env.STRIPE_PRO_PRICE_ID;
  runtime.configureOffline({config,context,paymentFixtures:[
-  {operation:'subscriptions.list',args:[{customer:'cus_synthetic',status:'all',limit:10}],result:{data:[{id:'sub_synthetic',status:'active',cancel_at_period_end:true}]}}
+  {operation:'subscriptions.list',args:[{customer:'cus_synthetic',status:'all',limit:10}],result:{data:[{id:'sub_synthetic',customer:'cus_synthetic',status:'active',cancel_at_period_end:true}],has_more:false}}
  ]});
- user.subscription={stripeCustomerId:'cus_synthetic',cancelAtPeriodEnd:false};
- const reconciled=await cancel();
- assert.equal(reconciled.status,200);assert.deepEqual(await reconciled.json(),{ok:true,userId:user.id,email:user.email,cancelAtPeriodEnd:true});
- assert.equal(subscriptionWrites.length,2);
- user.subscription={stripeCustomerId:'cus_unconfigured'};
- const unconfigured=await cancel();
- assert.equal(unconfigured.status,500);
- assert.equal(subscriptionWrites.length,2);
+ user.subscription={...user.subscription,cancelAtPeriodEnd:false};
+ const reconciled=await cancel(new Request('https://example.invalid/api/stripe/cancel',{method:'POST'}));
+ assert.equal(reconciled.status,503);assert.deepEqual(await reconciled.json(),{error:'cancellation_unconfirmed'});
+ assert.equal(subscriptionWrites.length,1);
+ user.subscription={...user.subscription,stripeCustomerId:'cus_unconfigured'};
+ const unconfigured=await cancel(new Request('https://example.invalid/api/stripe/cancel',{method:'POST'}));
+ assert.equal(unconfigured.status,503);
+ assert.equal(subscriptionWrites.length,1);
  assert.equal(externalAttempts,0);
  console.log('PASS: actual checkout and cancellation routes compose with exact synthetic payment fixtures; no external effect');
 }finally{
