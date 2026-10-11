@@ -81,6 +81,7 @@ model User {
   teamExits TeamExitAttempt[]
   teamRenames TeamRenameAttempt[]
   teamInvitations TeamInvitationAttempt[]
+  teamJoins TeamJoinAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -563,6 +564,27 @@ model TeamInvitationAttempt {
   @@unique([userId, key])
   @@index([teamId, state], map: "team_invitation_lookup")
   @@map("team_invitation_attempts")
+}
+
+// No token or team/member FK: denial survives consumption and team deletion.
+model TeamJoinAttempt {
+  id String @id
+  userId String
+  email String
+  key String
+  teamId String
+  teamName String
+  invitationId String
+  targetEmail String
+  role String
+  expiresAt String
+  membershipId String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([teamId, state], map: "team_join_lookup")
+  @@map("team_join_attempts")
 }
 
 model TeamInvitation {

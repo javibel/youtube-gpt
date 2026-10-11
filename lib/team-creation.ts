@@ -31,6 +31,8 @@ export async function createTeamOriginal(owner: TeamOwner, input: unknown, key: 
       if (!hasPaidAccess(subscription)) return { denied: 'pro_required' as const };
       const prior = await tx.teamCreationAttempt.findFirst({ where: { userId: own.userId, OR: [{ key }, { state: { not: 'complete' } }] } }); beforeStep();
       if (prior) return { denied: 'team_create_unconfirmed' as const };
+      const joining = await tx.teamJoinAttempt.findFirst({ where: { userId: own.userId, OR: [{ key }, { state: { not: 'complete' } }] } }); beforeStep();
+      if (joining) return { denied: 'team_create_unconfirmed' as const };
       const existing = await tx.teamMember.findFirst({ where: { userId: own.userId } }); beforeStep();
       if (existing) return { denied: 'already_in_team' as const };
       if (!hasPaidAccess(subscription)) return { denied: 'pro_required' as const };
