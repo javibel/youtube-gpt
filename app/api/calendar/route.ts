@@ -287,147 +287,169 @@ export async function POST(request: Request) {
   });
 }
 
-// PUT — update entry
+// PUT/DELETE — captured input under the original owner and paid SQL source.
 class CalendarMutationConflict extends Error {}
+class CalendarMutationDenied extends Error {
+  constructor(readonly status: number, readonly code: string) { super(code); }
+}
+function calendarMutationDay(value: unknown): value is string {
+  try { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    && !value.startsWith('0000-') && new Date(value + 'T00:00:00.000Z').toISOString().slice(0, 10) === value;
+  } catch { return false; }
+}
 function calendarSnapshot(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
   if (Object.keys(v).sort().join(',') !== 'color,date,description,status,title'
     || typeof v.title !== 'string' || !v.title.trim() || v.title.length > 200
-    || typeof v.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v.date)
-    || typeof v.status !== 'string' || !VALID_STATUSES.includes(v.status)
+    || !calendarMutationDay(v.date) || typeof v.status !== 'string' || !VALID_STATUSES.includes(v.status)
     || (v.description !== null && typeof v.description !== 'string')
     || (v.color !== null && typeof v.color !== 'string')) return null;
-  return { title: v.title, description: v.description, date: v.date, status: v.status, color: v.color };
+  return Object.freeze({ title: v.title, description: v.description, date: v.date, status: v.status, color: v.color });
 }
 
-// Immutable receipt confirms only the original business mutation, never current
-// row state, cancellation, or authority to recover a native runner.
-async function keyedCalendarMutation(request: Request, userId: string, method: 'PUT' | 'DELETE', body: unknown, id: unknown, wait: CalendarHttpWait) {
-  const key = request.headers.get('Idempotency-Key'), recovery = request.headers.get('X-Calendar-Write-Recovery');
+// A business receipt confirms only the original mutation. It never proves current
+// row state, cancellation, or authority to recover an executor or another write.
+async function calendarMutation(request: Request, method: 'PUT' | 'DELETE', wait: CalendarHttpWait) {
   const invalid = () => NextResponse.json({ error: 'invalid mutation' }, { status: 400 });
-  if (!key || !/^[-A-Za-z0-9._:]{1,128}$/.test(key) || (recovery !== null && recovery !== 'retained-only-v1')) return invalid();
-  if (typeof id !== 'string' || !id || id.length > 128 || !body || typeof body !== 'object' || Array.isArray(body)) return invalid();
-  const b = body as Record<string, unknown>, expected = calendarSnapshot(b.expected);
-  if (!expected || Object.keys(b).some(k => !(method === 'PUT' ? ['id','title','description','date','status','color','expected'] : ['expected']).includes(k))) return invalid();
-  const data: { title?: string; description?: string | null; date?: string; status?: string; color?: string | null } = {};
+  const session = await wait.run(() => auth());
+  if (typeof session?.user?.id !== 'string' || !session.user.id
+    || typeof session.user.email !== 'string' || !session.user.email)
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const owner = Object.freeze({ id: session.user.id, email: session.user.email });
+  const key = request.headers.get('Idempotency-Key'), recovery = request.headers.get('X-Calendar-Write-Recovery');
+  if ((key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))
+    || (recovery !== null && (recovery !== 'retained-only-v1' || !key))) return invalid();
+  const params = new URL(request.url).searchParams;
+  if (method === 'DELETE' && ([...params.keys()].some(name => name !== 'id') || params.getAll('id').length !== 1)) return invalid();
+  const body = method === 'PUT' || key ? await wait.run(() => request.json().catch(() => null)) : {};
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return invalid();
+  const b = body as Record<string, unknown>, id = method === 'PUT' ? b.id : params.get('id');
+  if (typeof id !== 'string' || !id || id.length > 128
+    || Object.keys(b).some(name => !(method === 'PUT'
+      ? ['id', 'title', 'description', 'date', 'status', 'color', 'expected'] : ['expected']).includes(name))) return invalid();
+  const expected = b.expected === undefined && !key ? null : calendarSnapshot(b.expected);
+  if ((key || b.expected !== undefined) && !expected) return invalid();
+  const patch: { title?: string; description?: string | null; date?: string; status?: string; color?: string | null } = {};
   if (method === 'PUT') {
-    if (b.title !== undefined) { if (typeof b.title !== 'string' || !b.title.trim() || b.title.trim().length > 200) return invalid(); data.title = b.title.trim(); }
-    if (b.description !== undefined) { if (b.description !== null && typeof b.description !== 'string') return invalid(); data.description = (b.description as string | null)?.trim() || null; }
-    if (b.date !== undefined) { if (typeof b.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return invalid(); data.date = b.date; }
-    if (b.status !== undefined) { if (typeof b.status !== 'string' || !VALID_STATUSES.includes(b.status)) return invalid(); data.status = b.status; }
-    if (b.color !== undefined) { if (b.color !== null && typeof b.color !== 'string') return invalid(); data.color = (b.color as string | null)?.trim() || null; }
-    if (!Object.keys(data).length) return invalid();
+    if (b.title !== undefined) { if (typeof b.title !== 'string' || !b.title.trim() || b.title.trim().length > 200) return invalid(); patch.title = b.title.trim(); }
+    if (b.description !== undefined) { if (b.description !== null && typeof b.description !== 'string') return invalid(); patch.description = (b.description as string | null)?.trim() || null; }
+    if (b.date !== undefined) { if (!calendarMutationDay(b.date)) return invalid(); patch.date = b.date; }
+    if (b.status !== undefined) { if (typeof b.status !== 'string' || !VALID_STATUSES.includes(b.status)) return invalid(); patch.status = b.status; }
+    if (b.color !== undefined) { if (b.color !== null && typeof b.color !== 'string') return invalid(); patch.color = (b.color as string | null)?.trim() || null; }
+    if (!Object.keys(patch).length) return invalid();
   }
-  const input = JSON.stringify({ id, expected, data });
-  if (input.length > 65536) return invalid();
+  const data = Object.freeze(patch), input = JSON.stringify({ id, expected, data });
+  if (input.length > 65_536) return invalid();
+  type Row = { id: string; userId: string; title: string; description: string | null; date: string;
+    status: string; color: string | null; createdAt: Date; updatedAt: Date };
+  const capture = (row: Row) => {
+    if (!row || row.id !== id || row.userId !== owner.id) throw Error('Calendar row unconfirmed');
+    const fields = calendarSnapshot({ title: row.title, description: row.description, date: row.date, status: row.status, color: row.color });
+    if (!fields) throw Error('Calendar row unconfirmed');
+    return Object.freeze({ id, userId: owner.id, ...fields,
+      createdAt: Date.prototype.toISOString.call(row.createdAt), updatedAt: Date.prototype.toISOString.call(row.updatedAt) });
+  };
   try {
     const result = await wait.run(() => prisma.$transaction(async tx => {
-      if (request.signal.aborted) throw new Error('Mutation aborted');
-      const owners = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
-      if (owners.length !== 1 || owners[0].id !== userId || request.signal.aborted) throw new Error('Owner unconfirmed');
-      const receipt = await tx.calendarMutationReceipt.findUnique({ where: { userId_key: { userId, key } } });
-      if (receipt) {
-        if (receipt.userId !== userId || receipt.key !== key || typeof receipt.output !== 'string' || receipt.output.length > 65536) throw new Error('Receipt unconfirmed');
-        if (receipt.method !== method || receipt.entryId !== id || receipt.input !== input) throw new CalendarMutationConflict('calendar_key_conflict');
-        const retained = JSON.parse(receipt.output);
-        if (retained?.originalMutation !== true || Object.keys(retained).sort().join(',') !== (method === 'PUT' ? 'entry,originalMutation' : 'id,ok,originalMutation')) throw new Error('Original output unconfirmed');
-        if (method === 'PUT') {
-          const e = retained.entry;
-          if (!e || e.id !== id || e.userId !== userId || !calendarSnapshot({ title:e.title, description:e.description, date:e.date, status:e.status, color:e.color })) throw new Error('Original entry unconfirmed');
-          for (const [field,value] of Object.entries({ ...expected, ...data })) if (e[field] !== value) throw new Error('Original output changed');
-        } else if (retained.ok !== true || retained.id !== id) throw new Error('Original deletion unconfirmed');
-        return retained;
+      wait.check();
+      const owners = await tx.$queryRawUnsafe<Array<{ id: string; email: string }>>(
+        'SELECT id,email FROM users WHERE id=$1 FOR UPDATE', owner.id);
+      wait.check();
+      if (!Array.isArray(owners) || owners.length > 1 || (owners.length === 1
+        && (typeof owners[0].id !== 'string' || typeof owners[0].email !== 'string'))) throw Error('Calendar owner unconfirmed');
+      if (owners.length !== 1 || owners[0].id !== owner.id || owners[0].email !== owner.email)
+        throw new CalendarMutationDenied(401, 'unauthorized');
+      const locks = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        'SELECT id FROM subscriptions WHERE "userId"=$1 FOR UPDATE', owner.id);
+      wait.check();
+      if (!Array.isArray(locks) || locks.length > 1 || (locks.length === 1
+        && (typeof locks[0].id !== 'string' || !locks[0].id))) throw Error('Calendar source unconfirmed');
+      const lockedId = locks[0]?.id;
+      const selected = await tx.subscription.findUnique({ where: { userId: owner.id },
+        select: { id: true, userId: true, status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true } });
+      wait.check();
+      if (selected === null) { if (locks.length) throw Error('Calendar source unconfirmed'); throw new CalendarMutationDenied(403, 'pro_required'); }
+      if (locks.length !== 1 || selected.id !== lockedId || selected.userId !== owner.id
+        || typeof selected.status !== 'string' || !selected.status || !['free', 'pro', 'business'].includes(selected.plan)
+        || (selected.stripeCustomerId !== null && typeof selected.stripeCustomerId !== 'string')) throw Error('Calendar source unconfirmed');
+      const plan = selected.plan, access = Object.freeze({ status: selected.status, stripeCustomerId: selected.stripeCustomerId,
+        currentPeriodEnd: selected.currentPeriodEnd === null ? null : new Date(Date.prototype.toISOString.call(selected.currentPeriodEnd)) });
+      const checkPaid = () => { wait.check(); if (!['pro', 'business'].includes(plan) || !hasPaidAccess(access))
+        throw new CalendarMutationDenied(403, 'pro_required'); };
+      checkPaid();
+      if (key) {
+        const record = await tx.calendarMutationReceipt.findUnique({ where: { userId_key: { userId: owner.id, key } } });
+        checkPaid();
+        if (record) {
+          if (record.userId !== owner.id || record.key !== key || typeof record.input !== 'string'
+            || typeof record.output !== 'string' || record.output.length > 65_536) throw Error('Calendar receipt unconfirmed');
+          const receipt = Object.freeze({ method: record.method, entryId: record.entryId, input: record.input, output: record.output });
+          if (receipt.method !== method || receipt.entryId !== id || receipt.input !== input)
+            throw new CalendarMutationConflict('calendar_key_conflict');
+          const retained = JSON.parse(receipt.output);
+          if (!retained || retained.originalMutation !== true || Object.keys(retained).sort().join(',') !==
+            (method === 'PUT' ? 'entry,originalMutation' : 'id,ok,originalMutation')) throw Error('Calendar output unconfirmed');
+          if (method === 'PUT') {
+            const e = retained.entry, fields = e && calendarSnapshot({ title: e.title, description: e.description, date: e.date, status: e.status, color: e.color });
+            if (!fields || e.id !== id || e.userId !== owner.id || Object.keys(e).sort().join(',') !==
+              'color,createdAt,date,description,id,status,title,updatedAt,userId') throw Error('Calendar output unconfirmed');
+            for (const [field, value] of Object.entries({ ...expected, ...data }))
+              if (e[field] !== value) throw Error('Calendar output unconfirmed');
+            for (const instant of [e.createdAt, e.updatedAt])
+              if (typeof instant !== 'string' || new Date(instant).toISOString() !== instant) throw Error('Calendar output unconfirmed');
+            Object.freeze(e);
+          } else if (retained.ok !== true || retained.id !== id) throw Error('Calendar output unconfirmed');
+          return Object.freeze({ output: Object.freeze(retained), access });
+        }
+        if (recovery === 'retained-only-v1') throw Error('Calendar original unavailable');
       }
-      if (recovery === 'retained-only-v1') throw new Error('Original mutation unavailable');
-      // Row lock also orders legacy writers that do not acquire the owner lock.
-      const locked = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM calendar_entries WHERE id=$1 AND "userId"=$2 FOR UPDATE', id, userId);
-      if (locked.length !== 1 || locked[0].id !== id) throw new CalendarMutationConflict('calendar_entry_unavailable');
-      const existing = await tx.calendarEntry.findUnique({ where: { id } });
-      if (!existing || existing.userId !== userId) throw new CalendarMutationConflict('calendar_entry_unavailable');
-      const current = JSON.stringify({ title:existing.title, description:existing.description, date:existing.date, status:existing.status, color:existing.color });
-      if (current !== JSON.stringify(expected)) throw new CalendarMutationConflict('calendar_entry_changed');
-      if (request.signal.aborted) throw new Error('Mutation aborted');
-      const output = method === 'PUT' ? { entry: await tx.calendarEntry.update({ where: { id }, data }), originalMutation: true }
-        : (await tx.calendarEntry.delete({ where: { id } }), { ok: true, id, originalMutation: true });
-      const serialized = JSON.stringify(output);
-      if (serialized.length > 65536) throw new Error('Original output too large');
-      await tx.calendarMutationReceipt.create({ data: { userId, key, method, entryId: id, input, output: serialized } });
-      return output;
-    }, { maxWait: 10000, timeout: 15000 }));
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store', 'X-Calendar-Write-Result': 'original-v1' } });
+      const locked = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        'SELECT id FROM calendar_entries WHERE id=$1 AND "userId"=$2 FOR UPDATE', id, owner.id);
+      checkPaid();
+      if (!Array.isArray(locked) || locked.length > 1 || (locked.length === 1 && locked[0].id !== id)) throw Error('Calendar row unconfirmed');
+      if (locked.length !== 1) { if (key) throw new CalendarMutationConflict('calendar_entry_unavailable'); throw new CalendarMutationDenied(404, 'not found'); }
+      const row = await tx.calendarEntry.findUnique({ where: { id } });
+      checkPaid();
+      const current = capture(row as Row), fields = calendarSnapshot({ title: current.title, description: current.description,
+        date: current.date, status: current.status, color: current.color });
+      if (expected && JSON.stringify(fields) !== JSON.stringify(expected)) throw new CalendarMutationConflict('calendar_entry_changed');
+      const changed = method === 'PUT' ? await tx.calendarEntry.update({ where: { id }, data }) : await tx.calendarEntry.delete({ where: { id } });
+      wait.check();
+      if (!hasPaidAccess(access)) throw Error('Calendar mutation unconfirmed');
+      const captured = capture(changed);
+      if (captured.createdAt !== current.createdAt || JSON.stringify(calendarSnapshot({ title: captured.title,
+        description: captured.description, date: captured.date, status: captured.status, color: captured.color }))
+        !== JSON.stringify(method === 'PUT' ? { ...fields, ...data } : fields)) throw Error('Calendar mutation unconfirmed');
+      const output = Object.freeze(method === 'PUT' ? { entry: captured, ...(key ? { originalMutation: true } : {}) }
+        : { ok: true, ...(key ? { id, originalMutation: true } : {}) });
+      if (key) {
+        const serialized = JSON.stringify(output);
+        if (serialized.length > 65_536) throw Error('Calendar output unconfirmed');
+        const stored = await tx.calendarMutationReceipt.create({ data: { userId: owner.id, key, method, entryId: id, input, output: serialized } });
+        wait.check();
+        if (!hasPaidAccess(access) || stored.userId !== owner.id || stored.key !== key || stored.method !== method
+          || stored.entryId !== id || stored.input !== input || stored.output !== serialized) throw Error('Calendar receipt unconfirmed');
+      }
+      wait.check();
+      if (!hasPaidAccess(access)) throw Error('Calendar mutation unconfirmed');
+      return Object.freeze({ output, access });
+    }, { maxWait: 10_000, timeout: 15_000 }));
+    wait.check();
+    if (!hasPaidAccess(result.access)) throw Error('Calendar mutation unconfirmed');
+    const response = NextResponse.json(result.output, { headers: key ? { 'X-Calendar-Write-Result': 'original-v1' } : {} });
+    wait.check();
+    if (!hasPaidAccess(result.access)) throw Error('Calendar mutation unconfirmed');
+    return response;
   } catch (error) {
-    return NextResponse.json({ error: error instanceof CalendarMutationConflict ? error.message : 'calendar_write_unconfirmed' }, {
-      status: error instanceof CalendarMutationConflict ? 409 : 503, headers: { 'Cache-Control': 'no-store' },
-    });
+    if (error instanceof CalendarMutationDenied) return NextResponse.json({ error: error.code }, { status: error.status });
+    if (error instanceof CalendarMutationConflict) return NextResponse.json({ error: error.message }, { status: 409 });
+    return NextResponse.json({ error: 'calendar_write_unconfirmed' }, { status: 503 });
   }
 }
-
 export async function PUT(request: Request) {
-  return boundedCalendarWrite(request, async wait => {
-    const session = await wait.run(() => auth());
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    }
-
-    const userId = session.user.id;
-    const body = await wait.run(() => request.json().catch(() => ({})));
-    if (request.headers.get('Idempotency-Key') !== null || request.headers.get('X-Calendar-Write-Recovery') !== null) return keyedCalendarMutation(request, userId, 'PUT', body, body?.id, wait);
-    const id = body.id as string;
-    if (!id) {
-      return NextResponse.json({ error: 'id required' }, { status: 400 });
-    }
-
-    const existing = await wait.run(() => prisma.calendarEntry.findUnique({ where: { id } }));
-    if (!existing || existing.userId !== userId) {
-      return NextResponse.json({ error: 'not found' }, { status: 404 });
-    }
-
-    const data: { title?: string; description?: string | null; date?: string; status?: string; color?: string | null } = {};
-
-    if (body.title !== undefined) {
-      const title = (body.title as string).trim();
-      if (!title || title.length > 200) return NextResponse.json({ error: 'invalid title' }, { status: 400 });
-      data.title = title;
-    }
-    if (body.date !== undefined) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) return NextResponse.json({ error: 'invalid date' }, { status: 400 });
-      data.date = body.date;
-    }
-    if (body.status !== undefined) {
-      if (!VALID_STATUSES.includes(body.status)) return NextResponse.json({ error: 'invalid status' }, { status: 400 });
-      data.status = body.status;
-    }
-    if (body.description !== undefined) data.description = (body.description as string || '').trim() || null;
-    if (body.color !== undefined) data.color = (body.color as string || '').trim() || null;
-
-    const entry = await wait.run(() => prisma.calendarEntry.update({ where: { id }, data }));
-    return NextResponse.json({ entry });
-  });
+  return boundedCalendarWrite(request, wait => calendarMutation(request, 'PUT', wait));
 }
-
-// DELETE — remove entry
 export async function DELETE(request: Request) {
-  return boundedCalendarWrite(request, async wait => {
-    const session = await wait.run(() => auth());
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    }
-
-    const userId = session.user.id;
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (request.headers.get('Idempotency-Key') !== null || request.headers.get('X-Calendar-Write-Recovery') !== null) return keyedCalendarMutation(request, userId, 'DELETE', await wait.run(() => request.json().catch(() => null)), id, wait);
-    if (!id) {
-      return NextResponse.json({ error: 'id required' }, { status: 400 });
-    }
-
-    const existing = await wait.run(() => prisma.calendarEntry.findUnique({ where: { id } }));
-    if (!existing || existing.userId !== userId) {
-      return NextResponse.json({ error: 'not found' }, { status: 404 });
-    }
-
-    await wait.run(() => prisma.calendarEntry.delete({ where: { id } }));
-    return NextResponse.json({ ok: true });
-  });
+  return boundedCalendarWrite(request, wait => calendarMutation(request, 'DELETE', wait));
 }

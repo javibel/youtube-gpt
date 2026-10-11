@@ -2,12 +2,13 @@
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs');
 module.exports=async(prisma,results)=>{
  const users=await Promise.all([1,2].map(()=>prisma.user.create({data:{email:'calendar-mutation-'+randomUUID()+'@example.invalid'}})));
- const api=(user,db=prisma)=>load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id}})},'@/lib/prisma':{prisma:db},'@/lib/plans':{getUserPlan:async()=> 'pro',isPaid:()=>true}});
+ const api=(user,db=prisma)=>load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},'@/lib/prisma':{prisma:db},'@/lib/plans':load('lib/plans.ts',{'@/lib/prisma':{prisma}})});
  const a=api(users[0]),b=api(users[1]),fields=e=>({title:e.title,description:e.description,date:e.date,status:e.status,color:e.color});
  const row=()=>prisma.calendarEntry.create({data:{userId:users[0].id,title:'Original native mutation',date:'2026-10-09',status:'idea'}});
  const call=(route,method,key,e,changes={status:'draft'},recovery=false)=>route[method](new Request('https://example.invalid/api/calendar'+(method==='DELETE'?'?id='+e.id:''),{method,headers:{'Content-Type':'application/json','Idempotency-Key':key,...(recovery?{'X-Calendar-Write-Recovery':'retained-only-v1'}:{})},body:JSON.stringify(method==='PUT'?{id:e.id,...changes,expected:fields(e)}:{expected:fields(e)})}));
  const receipts=()=>prisma.calendarMutationReceipt.findMany({where:{userId:users[0].id},orderBy:{id:'asc'}});
  try{
+  await prisma.subscription.createMany({data:users.map(u=>({userId:u.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});
   let e=await row();const r=await Promise.all([call(a,'PUT','concurrent-update',e),call(a,'PUT','concurrent-update',e)]);assert.deepEqual(r.map(x=>x.status),[200,200]);assert.deepEqual(await r[0].json(),await r[1].json());assert.equal((await receipts()).length,1);
   const snapshot=await receipts();await prisma.calendarEntry.update({where:{id:e.id},data:{title:'Later native edit',status:'published'}});const current=await prisma.calendarEntry.findUnique({where:{id:e.id}});assert.equal((await call(a,'PUT','concurrent-update',e,{status:'draft'},true)).status,200);assert.deepEqual(await prisma.calendarEntry.findUnique({where:{id:e.id}}),current);assert.deepEqual(await receipts(),snapshot);
   results.push('original keyed PUT/PostgreSQL same-key concurrency executes once; original receipt replay after later edit leaves current row and receipt unchanged');

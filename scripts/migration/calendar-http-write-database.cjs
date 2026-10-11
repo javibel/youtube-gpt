@@ -23,7 +23,7 @@ module.exports=async(prisma,results)=>{
    elapsed=30000;for(const fn of [...timers.values()])fn();const failed=await original;assert.equal(failed.status,503);assert.deepEqual(await failed.json(),{error:'calendar_write_unconfirmed'});assert.equal(failed.headers.get('cache-control'),'no-store');assert.equal(timers.size,0);
    ack.resolve();await finished.promise;await flush();assert.equal(failed.status,503);assert.equal(transactions,1);
    const retained=await api()[method](request(method,key,body,entry?.id,true));assert.equal(retained.status,method==='POST'?201:200);
-   assert.deepEqual(await retained.json(),JSON.parse(JSON.stringify(method==='POST'?{entry:output.entry}:output)));assert.deepEqual(await snapshot(),before);
+   assert.deepEqual(await retained.json(),JSON.parse(JSON.stringify(method==='POST'?{entry:output.entry}:output.output)));assert.deepEqual(await snapshot(),before);
    assert.deepEqual(await prisma.calendarEntry.findUnique({where:{id:neighbor.id}}),neighbor);assert.equal(await prisma.generation.count({where:{userId:{in:users.map(u=>u.id)}}}),0);
    results.push('calendar '+method+' original native commit and durable receipt precede HTTP timeout503; late acknowledgement stays uncertain and explicit identical retained query returns original output without another mutation, neighboring owner unchanged');
   }
