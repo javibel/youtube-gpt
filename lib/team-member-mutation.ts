@@ -68,7 +68,7 @@ export async function mutateTeamMemberOriginal(
         { userId: own.userId, key }, { teamId: selected.teamId, state: { not: 'complete' } },
       ] } });
       beforeStep(); if (prior) return { denied: 'member_mutation_unconfirmed' };
-      const invitationPrior = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM team_invitation_revocation_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') LIMIT 1', own.userId, key, selected.teamId);
+      const invitationPrior = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM team_invitation_revocation_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') UNION ALL SELECT id FROM team_invitation_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') LIMIT 1', own.userId, key, selected.teamId);
       beforeStep(); if (invitationPrior.length) return { denied: 'member_mutation_unconfirmed' };
       const exitPrior = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM team_exit_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') UNION ALL SELECT id FROM team_rename_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') LIMIT 1', own.userId, key, selected.teamId);
       beforeStep(); if (exitPrior.length) return { denied: 'member_mutation_unconfirmed' };

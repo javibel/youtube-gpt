@@ -44,7 +44,7 @@ export async function exitTeamOriginal(owner: TeamOwner, input: unknown, key: st
         { userId: own.userId, key }, { teamId: selected.teamId, state: { not: 'complete' } },
       ] } });
       beforeStep(); if (prior) return { denied: 'team_exit_unconfirmed' };
-      const other = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM team_member_mutation_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') UNION ALL SELECT id FROM team_invitation_revocation_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') UNION ALL SELECT id FROM team_rename_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') LIMIT 1', own.userId, key, selected.teamId);
+      const other = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM team_member_mutation_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') UNION ALL SELECT id FROM team_invitation_revocation_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') UNION ALL SELECT id FROM team_rename_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') UNION ALL SELECT id FROM team_invitation_attempts WHERE ("userId"=$1 AND key=$2) OR ("teamId"=$3 AND state<>\'complete\') LIMIT 1', own.userId, key, selected.teamId);
       beforeStep(); if (other.length) return { denied: 'team_exit_unconfirmed' };
       const denied = permission(member); if (denied) return { denied };
       const captured = Object.freeze({ id: attemptId, ...own, key, ...selected });

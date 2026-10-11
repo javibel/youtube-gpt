@@ -80,6 +80,7 @@ model User {
   teamInvitationRevocations TeamInvitationRevocationAttempt[]
   teamExits TeamExitAttempt[]
   teamRenames TeamRenameAttempt[]
+  teamInvitations TeamInvitationAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -541,6 +542,27 @@ model TeamRenameAttempt {
   @@unique([userId, key])
   @@index([teamId, state], map: "team_rename_lookup")
   @@map("team_rename_attempts")
+}
+
+// Retained denial survives invitation/team deletion; no mail sender recovery.
+model TeamInvitationAttempt {
+  id String @id
+  userId String
+  email String
+  key String
+  teamId String
+  memberId String
+  previousRole String
+  targetEmail String
+  role String
+  invitationId String
+  expiresAt String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([teamId, state], map: "team_invitation_lookup")
+  @@map("team_invitation_attempts")
 }
 
 model TeamInvitation {
