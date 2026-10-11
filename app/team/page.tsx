@@ -11,6 +11,8 @@ import { useTeamMembers } from '@/lib/use-team-members';
 import { readConfirmedMemberMutation } from '@/lib/team-members-client';
 import { useTeamRevoke } from '@/lib/use-team-revoke';
 import { readConfirmedRevocation } from '@/lib/team-revoke-client';
+import { useTeamExit } from '@/lib/use-team-exit';
+import { readConfirmedTeamExit } from '@/lib/team-exit-client';
 
 type Lang = 'es' | 'en';
 
@@ -43,6 +45,7 @@ export default function TeamPage() {
   const creation = useTeamCreate({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, teamName);
   const members = useTeamMembers({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const revocation = useTeamRevoke({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
+  const exit = useTeamExit({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const formScope = useRef(scope);
   if (formScope.current !== scope) {
     formScope.current = scope;
@@ -52,7 +55,7 @@ export default function TeamPage() {
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
   const isOwnerOrAdmin = myRole === 'owner' || myRole === 'admin';
 
-  function createTeam() { if (read.canAct() && !team && creation.canAct()) { setError(''); creation.start(); } }
+  function createTeam() { if (read.canAct() && !team && !exit.creationBlocked && creation.canAct()) { setError(''); creation.start(); } }
   useEffect(() => {
     if (creation.canAct() && creation.attempt && creation.outcome?.status === 'confirmed') {
       const next = readConfirmedTeamCreation(creation.attempt); if (next) read.install(next);
@@ -68,6 +71,19 @@ export default function TeamPage() {
       const next = readConfirmedRevocation(revocation.attempt); if (next) read.install(next);
     }
   }, [revocation.attempt, revocation.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (exit.canObserve() && exit.attempt && exit.outcome?.status === 'confirmed') {
+      const next = readConfirmedTeamExit(exit.attempt); if (next) read.install(next);
+    }
+  }, [exit.attempt, exit.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const exitNotice = <div data-team-exit={exit.outcome?.status ?? (exit.updating ? 'waiting' : exit.blocked ? 'blocked' : 'idle')}>
+    {exit.updating && <p role="status">{t('Confirmando salida del equipo…', 'Confirming team exit…')}</p>}
+    {(exit.outcome?.status === 'unconfirmed' || exit.blocked && !exit.updating && !exit.outcome) && <p role="alert">{t('Salida sin confirmar. No inicies otra acción.', 'Team exit unconfirmed. Do not start another action.')}</p>}
+    {exit.pending && exit.outcome?.status === 'unconfirmed' && <p role="status">{t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+    {exit.outcome?.status === 'confirmed' && <p role="status">{exit.outcome.receipt.operation === 'delete' ? t('Eliminación del equipo confirmada.', 'Team deletion confirmed.') : t('Abandono del equipo confirmado.', 'Team departure confirmed.')}</p>}
+    {exit.outcome?.status === 'rejected' && <><p role="alert">{t('No se realizó la salida. Revisa el equipo y la sesión.', 'Team exit was not performed. Check the team and session.')}</p><button onClick={read.refresh} disabled={read.pending}>{t('Actualizar equipo', 'Refresh team')}</button></>}
+    {exit.blocked && exit.outcome && exit.outcome.status !== 'unconfirmed' && <p role="alert">{t('No se puede iniciar otra acción en esta pestaña.', 'Another action cannot be started in this tab.')}</p>}
+  </div>;
   const revocationNotice = <div data-team-revoke={revocation.outcome?.status ?? (revocation.updating ? 'waiting' : revocation.blocked ? 'blocked' : 'idle')}>
     {revocation.updating && <p role="status">{t('Revocando invitación…', 'Revoking invitation…')}</p>}
     {(revocation.outcome?.status === 'unconfirmed' || revocation.blocked && !revocation.updating && !revocation.outcome) && <p role="alert">{t('Revocación sin confirmar. No inicies otra acción.', 'Revocation unconfirmed. Do not start another action.')}</p>}
@@ -130,15 +146,7 @@ export default function TeamPage() {
 
   function revokeInvitation(invitationId: string) { if (read.canAct()) revocation.start(invitationId); }
 
-  async function leaveOrDeleteTeam() {
-    if (!read.canAct() || !members.canAct() || !team) return;
-    try {
-      const res = await fetch('/api/team', { method: 'DELETE' });
-      if (res.ok && read.canAct()) read.refresh();
-    } catch {
-      if (read.canAct()) setError(t('Error', 'Error'));
-    }
-  }
+  function leaveOrDeleteTeam() { if (read.canAct()) exit.start(); }
 
   if (status === 'loading' || (status === 'authenticated' && read.loading)) {
     return (
@@ -147,6 +155,7 @@ export default function TeamPage() {
         {status === 'authenticated' && creationNotice}
         {status === 'authenticated' && memberNotice}
         {status === 'authenticated' && revocationNotice}
+        {status === 'authenticated' && exitNotice}
       </div>
     );
   }
@@ -166,6 +175,7 @@ export default function TeamPage() {
     {creationNotice}
     {memberNotice}
     {revocationNotice}
+    {exitNotice}
     <p role="alert">{t('No se pudo cargar el equipo.', 'Could not load the team.')}</p>
     {read.pending && <p role="status">{t('La lectura original sigue pendiente.', 'The original read is still pending.')}</p>}
     <button onClick={read.refresh} disabled={read.pending}>{t('Reintentar lectura', 'Retry read')}</button>
@@ -180,6 +190,7 @@ export default function TeamPage() {
         {creationNotice}
         {memberNotice}
         {revocationNotice}
+        {exitNotice}
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -229,7 +240,7 @@ export default function TeamPage() {
               />
               <button
                 onClick={createTeam}
-                disabled={creation.creating || creation.blocked || !validTeamName(teamName)}
+                disabled={creation.creating || creation.blocked || exit.creationBlocked || !validTeamName(teamName)}
                 className="btn-offset px-6 py-3 text-sm font-display disabled:opacity-50"
               >
                 {creation.creating ? '...' : t('Crear', 'Create')}
@@ -387,7 +398,7 @@ export default function TeamPage() {
               </h2>
               <button
                 onClick={leaveOrDeleteTeam}
-                disabled={!members.canAct()}
+                disabled={!exit.canStart()}
                 className="font-mono-jb text-[13px] text-red-400 hover:text-red-300 transition"
               >
                 {myRole === 'owner'

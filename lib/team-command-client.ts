@@ -2,7 +2,7 @@ import type { TeamOwner } from '@/lib/team-read-contract';
 
 const active = new Map<string, object>(), denied = new Set<string>();
 const scope = (owner: TeamOwner, teamId: string) => JSON.stringify([owner.userId, owner.email, teamId]);
-const prefixes = ['ytubviral:team-command:', 'ytubviral:team-members:', 'ytubviral:team-revoke:'];
+const prefixes = ['ytubviral:team-command:', 'ytubviral:team-members:', 'ytubviral:team-revoke:', 'ytubviral:team-exit:'];
 export function teamCommandBlocked(owner: TeamOwner, teamId: string): boolean {
   const identity = scope(owner, teamId);
   if (active.has(identity) || denied.has(identity)) return true;
