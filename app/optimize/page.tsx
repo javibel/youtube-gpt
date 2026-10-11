@@ -1,46 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import { useOptimizeScore } from '@/lib/use-optimize-score';
+import { useOptimizeRead } from '@/lib/use-optimize-read';
+import type { OptimizeVideo as VideoDetail, OptimizeHistory as HistoryEntry } from '@/lib/optimize-read-client';
 
 type Lang = 'es' | 'en';
-
-interface VideoItem {
-  videoId: string;
-  title: string;
-  thumbnail: string;
-  publishedAt: string;
-  views: number;
-  likes: number;
-  score: number;
-}
-
-interface VideoDetail {
-  videoId: string;
-  title: string;
-  description: string;
-  tags: string[];
-  thumbnail: string;
-  publishedAt: string;
-  categoryId: string;
-  views: number;
-  likes: number;
-  comments: number;
-}
-
-interface HistoryEntry {
-  id: string;
-  field: string;
-  oldValue: string;
-  newValue: string;
-  scoreBefore: number | null;
-  scoreAfter: number | null;
-  viewsBefore: number | null;
-  createdAt: string;
-}
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
@@ -114,10 +82,7 @@ export default function OptimizePage() {
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   // State
-  const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [loadingList, setLoadingList] = useState(false);
   const [selectedSource, setSelectedVideo] = useState<VideoDetail | null>(null);
-  const [loadingVideo, setLoadingVideo] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [baseChecks, setChecks] = useState<{ key: string; ok: boolean; w: number }[]>([]);
   const [baseScore, setScore] = useState(0);
@@ -138,9 +103,18 @@ export default function OptimizePage() {
   const account = JSON.stringify([status, owner.userId, owner.email]);
   const liveAccount = useRef(account);
   liveAccount.current = account;
-  const [selectionAccount, setSelectionAccount] = useState('');
+  const [selection, setSelection] = useState<{ account: string; videoId: string } | null>(null);
   const selectionSerial = useRef(0);
-  const selectedVideo = selectionAccount === account ? selectedSource : null;
+  const requestId = selection?.account === account ? selection.videoId : null;
+  const list = useOptimizeRead(owner, status, null, lang, requestId === null);
+  const detail = useOptimizeRead(owner, status, requestId, lang, requestId !== null);
+  const listData = list.data?.kind === 'list' ? list.data : null;
+  const detailData = detail.data?.kind === 'detail' ? detail.data : null;
+  const videos = listData?.videos ?? [];
+  const loadingList = list.loading;
+  const loadingVideo = detail.loading;
+  const selectedVideo = detailData?.video === selectedSource && selection?.account === account ? selectedSource : null;
+  const selectionVersion = selectionSerial.current;
   const hasChanges = !!selectedVideo && (
     editTitle !== originalRef.current.title ||
     editDesc !== originalRef.current.description ||
@@ -154,67 +128,40 @@ export default function OptimizePage() {
   const score = selectedVideo ? (hasChanges ? preview.data?.score ?? null : baseScore) : null;
   const checks = selectedVideo ? (hasChanges ? preview.data?.checks ?? [] : baseChecks) : [];
 
-  // Load videos list
-  const loadVideos = useCallback(async () => {
-    setLoadingList(true);
-    setError('');
-    try {
-      const res = await fetch('/api/youtube/optimize');
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.error === 'pro_required') setError(t('Esta función requiere el plan Pro.', 'This feature requires the Pro plan.'));
-        else if (data.error === 'youtube_not_connected') setError(t('Conecta tu canal de YouTube primero desde el Dashboard.', 'Connect your YouTube channel first from the Dashboard.'));
-        else setError(data.error || 'Error');
-        return;
-      }
-      setVideos(data.videos || []);
-    } catch {
-      setError(t('Error de conexión', 'Connection error'));
-    } finally {
-      setLoadingList(false);
-    }
-  }, [lang]);
-
   useEffect(() => {
-    if (status === 'authenticated') loadVideos();
-  }, [status, loadVideos]);
+    if (!detail.canAct() || !detailData || detailData.video === selectedSource) return;
+    const data = detailData;
+    setSelectedVideo(data.video);
+    setEditTitle(data.video.title);
+    setEditDesc(data.video.description);
+    setEditTags(data.video.tags.join(', '));
+    setScore(data.score);
+    setOriginalScore(data.score);
+    setChecks(data.checks);
+    setHistory(data.history);
+    originalRef.current = { title: data.video.title, description: data.video.description, tags: [...data.video.tags] };
+  }, [detailData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Select a video for editing
-  async function selectVideo(videoId: string) {
-    if (liveAccount.current !== account || status !== 'authenticated' || !owner.userId) return;
-    const serial = ++selectionSerial.current;
-    preview.retire();
+  function selectVideo(videoId: string) {
+    if (!list.canAct() || liveAccount.current !== account || selectionSerial.current !== selectionVersion
+      || !listData?.videos.some(v => v.videoId === videoId)) return;
+    selectionSerial.current++;
+    detail.retire(); preview.retire();
     setSelectedVideo(null);
-    setLoadingVideo(true);
-    setError('');
-    setSaveResult(null);
-    try {
-      const res = await fetch(`/api/youtube/optimize?videoId=${videoId}`);
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Error');
-        return;
-      }
-      if (liveAccount.current !== account || selectionSerial.current !== serial) return;
-      setSelectionAccount(account);
-      setSelectedVideo(data.video);
-      setEditTitle(data.video.title);
-      setEditDesc(data.video.description);
-      setEditTags((data.video.tags || []).join(', '));
-      setScore(data.score);
-      setOriginalScore(data.score);
-      setChecks(data.checks || []);
-      setHistory(data.history || []);
-      originalRef.current = {
-        title: data.video.title,
-        description: data.video.description,
-        tags: data.video.tags || [],
-      };
-    } catch {
-      setError(t('Error de conexión', 'Connection error'));
-    } finally {
-      setLoadingVideo(false);
-    }
+    setSelection({ account, videoId });
+    setError(''); setSaveResult(null);
+  }
+  function backToList() {
+    if (!detail.canAct() || selectionSerial.current !== selectionVersion) return;
+    selectionSerial.current++;
+    detail.retire(); preview.retire();
+    setSelection(null); setSelectedVideo(null); setError(''); setSaveResult(null);
+  }
+  function readError(code: string) {
+    if (code === 'pro_required') return t('Esta función requiere el plan Pro.', 'This feature requires the Pro plan.');
+    if (code === 'youtube_not_connected') return t('Conecta tu canal de YouTube primero desde el Dashboard.', 'Connect your YouTube channel first from the Dashboard.');
+    if (code === 'video_not_found') return t('El vídeo seleccionado no está disponible.', 'The selected video is unavailable.');
+    return t('No se pudieron cargar los datos.', 'Could not load the data.');
   }
 
   function onTitleChange(v: string) { if (preview.canEdit()) setEditTitle(v); }
@@ -313,17 +260,34 @@ export default function OptimizePage() {
           </div>
         )}
 
+        {((requestId ? detail.error : list.error) || (requestId ? detail.loading : list.loading)) && (
+          <div role="status" className="mb-6 font-mono-jb text-sm">
+            {(requestId ? detail.loading : list.loading) && t('Cargando datos…', 'Loading data…')}
+            {(requestId ? detail.error : list.error) && <>
+              <p>{readError(requestId ? detail.error : list.error)}</p>
+              {(requestId ? detail.pending : list.pending) && <p>{t('La lectura original sigue pendiente.', 'The original read is still pending.')}</p>}
+              <button type="button" disabled={requestId ? detail.pending : list.pending} onClick={requestId ? detail.retry : list.retry} className="mt-2 underline disabled:opacity-40">
+                {t('Reintentar lectura', 'Retry read')}
+              </button>
+            </>}
+          </div>
+        )}
+        {requestId && !selectedVideo && <button type="button" onClick={backToList} className="mb-6 underline">{t('Volver a la lista', 'Back to list')}</button>}
+        {!requestId && listData?.coverage === 'partial' && <p role="status" className="mb-6 font-mono-jb text-sm">
+          {t('Datos parciales:', 'Partial data:')} {listData.videos.length}/{listData.requestedVideoIds.length} {t('vídeos disponibles.', 'videos available.')}
+        </p>}
+
         {/* ── VIDEO SELECTOR ──────────────────────────────────────────── */}
-        {!selectedVideo && (
+        {!requestId && (
           <>
             {loadingList ? (
               <div className="flex items-center justify-center py-20">
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               </div>
-            ) : videos.length === 0 ? (
+            ) : listData?.coverage === 'complete' && videos.length === 0 ? (
               <div className="text-center py-20">
                 <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
-                  {t('No se encontraron vídeos. Conecta tu canal desde el Dashboard.', 'No videos found. Connect your channel from the Dashboard.')}
+                  {t('No se encontraron vídeos en la búsqueda confirmada.', 'No videos found in the confirmed search.')}
                 </p>
               </div>
             ) : (
@@ -332,6 +296,7 @@ export default function OptimizePage() {
                 {videos.map(v => (
                   <button
                     key={v.videoId}
+                    data-video-id={v.videoId}
                     onClick={() => selectVideo(v.videoId)}
                     className="yv-card yv-glass--hover w-full flex items-center gap-4 p-4 transition text-left"
                   >
@@ -370,7 +335,7 @@ export default function OptimizePage() {
           <div>
             {/* Back button */}
             <button
-              onClick={() => { if (preview.canEdit()) { preview.retire(); setSelectedVideo(null); setSaveResult(null); } }}
+              onClick={backToList}
               className="flex items-center gap-2 hover:text-white font-mono-jb text-[13px] mb-6 transition"
               style={{ color: 'var(--yv-text-3)' }}
             >
