@@ -140,152 +140,135 @@ export async function POST(request: Request) {
   finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
 
-// ── PUT: save changes to YouTube + record history ──────────────────────
+// ── PUT: finite HTTP wait; original publication retains its own history ──
+
+export const maxDuration = 60;
+
+type UpdateInput = { videoId: string; title: string; description: string; tags: string[]; categoryId: string;
+  original: { title: string; description: string; tags: string[] } };
+type UpdateResult = { status: number; body: Record<string, unknown> };
+type OwnedUpdate = { owner: { userId: string; email: string | null }; input: UpdateInput; pending: boolean; complete: boolean;
+  publication: 'not-started' | 'unconfirmed' | 'confirmed'; history: 'not-started' | 'unconfirmed' | 'complete' | 'unchanged';
+  original: Promise<UpdateResult>; result?: UpdateResult };
+// These references are only the real producer in this instance. They provide
+// no durable admission, cross-instance recovery, cancellation or replacement.
+const ownedUpdates = new Map<string, Map<string, OwnedUpdate>>();
+const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every((t, i) => t === b[i]);
+function sameUpdate(a: UpdateInput, b: UpdateInput) {
+  return a.videoId === b.videoId && a.title === b.title && a.description === b.description && a.categoryId === b.categoryId
+    && sameTags(a.tags, b.tags) && a.original.title === b.original.title && a.original.description === b.original.description && sameTags(a.original.tags, b.original.tags);
+}
+function updateInput(v: unknown): UpdateInput | null {
+  if (!object(v) || !validOptimizeDraft(v) || !v.title.trim() || !object(v.original)
+    || !validOptimizeDraft({ ...v.original, videoId: v.videoId })
+    || (v.categoryId !== undefined && v.categoryId !== null && v.categoryId !== '' && (typeof v.categoryId !== 'string' || !/^\d{1,3}$/.test(v.categoryId)))) return null;
+  const original = v.original as UpdateInput['original'];
+  return { videoId: v.videoId, title: v.title, description: v.description, tags: [...v.tags], categoryId: (v.categoryId as string) || '22',
+    original: { title: original.title, description: original.description, tags: [...original.tags] } };
+}
+function unconfirmedUpdate(record?: OwnedUpdate): UpdateResult {
+  return { status: 503, body: { error: 'optimize_update_unconfirmed', publicationStatus: record?.publication ?? 'not-started', historyStatus: record?.history ?? 'not-started' } };
+}
 
 export async function PUT(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
-
-  const accessToken = await getAccessToken(session.user.id);
-  if (!accessToken) {
-    return NextResponse.json({ error: 'youtube_not_connected' }, { status: 400 });
-  }
-
-  const body = await request.json().catch(() => ({}));
-  if (!body || typeof body !== 'object' || Array.isArray(body) || ['videoId', 'title', 'description'].some(key => typeof body[key] !== 'string')
-    || !Array.isArray(body.tags) || body.tags.some((tag: unknown) => typeof tag !== 'string')
-    || (body.categoryId != null && typeof body.categoryId !== 'string')
-    || !body.original || typeof body.original.title !== 'string' || typeof body.original.description !== 'string'
-    || !Array.isArray(body.original.tags) || body.original.tags.some((tag: unknown) => typeof tag !== 'string')) {
-    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
-  }
-  const { videoId, title, description, tags, categoryId, original } = body as {
-    videoId: string;
-    title: string;
-    description: string;
-    tags: string[];
-    categoryId: string;
-    original: { title: string; description: string; tags: string[] };
-  };
-
-  if (!videoId || !title) {
-    return NextResponse.json({ error: 'Missing videoId or title' }, { status: 400 });
-  }
-
+  const deadline = performance.now() + 55_000;
+  let retired = false, record: OwnedUpdate | undefined, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; }); void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Update unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000); request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Update unconfirmed'); };
+  const reply = (r: UpdateResult) => NextResponse.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    // Calculate scores before and after
-    const { score: scoreBefore } = computeScore(original.title, original.description, original.tags);
-    const { score: scoreAfter, checks } = computeScore(title, description, tags);
-
-    // Update video on YouTube via Data API v3
-    const updateRes = await fetch(
-      'https://www.googleapis.com/youtube/v3/videos?part=snippet',
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: videoId,
-          snippet: {
-            title,
-            description,
-            tags,
-            categoryId: categoryId || '22', // 22 = People & Blogs (default)
-          },
-        }),
+    const original = Promise.resolve().then(async (): Promise<UpdateResult> => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id) return { status: 401, body: { error: 'Unauthorized' } };
+      const owner = Object.freeze({ userId: session.user.id, email: session.user.email ?? null });
+      let body: unknown;
+      try { body = await request.json(); } catch { check(); return { status: 400, body: { error: 'invalid_input' } }; }
+      check(); const input = updateInput(body);
+      if (!input) return { status: 400, body: { error: 'invalid_input' } };
+      // Snapshot validated arrays before delayed plan/token/provider operations.
+      Object.freeze(input.tags); Object.freeze(input.original.tags); Object.freeze(input.original); Object.freeze(input);
+      const plan = await getUserPlan(owner.userId); check();
+      if (!isPaid(plan)) return { status: 403, body: { error: 'pro_required' } };
+      let byVideo = ownedUpdates.get(owner.userId);
+      if (!byVideo) { byVideo = new Map(); ownedUpdates.set(owner.userId, byVideo); }
+      const previous = byVideo.get(input.videoId);
+      if (previous) {
+        record = previous;
+        // A live/uncertain original blocks every substitute, including a second
+        // OAuth attempt. Only its actual successful receipt can be replayed.
+        if (previous.pending || !previous.complete) return unconfirmedUpdate(previous);
+        if (previous.owner.email === owner.email && sameUpdate(previous.input, input)) return previous.result!;
       }
-    );
-
-    const updateData = await updateRes.json();
-    if (!updateRes.ok) {
-      console.error('[youtube/optimize] PUT YouTube error', updateData);
-      return NextResponse.json({
-        error: updateData.error?.message || 'YouTube API error',
-        detail: updateData.error?.errors?.[0]?.reason,
-      }, { status: 500 });
-    }
-
-    // Get current views for impact tracking
-    const statsRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const statsData = await statsRes.json();
-    const currentViews = parseInt(statsData.items?.[0]?.statistics?.viewCount || '0', 10);
-
-    // Record history for each changed field
-    const historyEntries: { field: string; oldValue: string; newValue: string }[] = [];
-
-    if (original.title !== title) {
-      historyEntries.push({ field: 'title', oldValue: original.title, newValue: title });
-    }
-    if (original.description !== description) {
-      historyEntries.push({ field: 'description', oldValue: original.description, newValue: description });
-    }
-    const oldTagStr = (original.tags || []).join(', ');
-    const newTagStr = (tags || []).join(', ');
-    if (oldTagStr !== newTagStr) {
-      historyEntries.push({ field: 'tags', oldValue: oldTagStr, newValue: newTagStr });
-    }
-
-    if (historyEntries.length > 0) {
-      await prisma.optimizeHistory.createMany({
-        data: historyEntries.map(e => ({
-          userId: session.user!.id!,
-          videoId,
-          field: e.field,
-          oldValue: e.oldValue,
-          newValue: e.newValue,
-          scoreBefore,
-          scoreAfter,
-          viewsBefore: currentViews,
-        })),
+      check();
+      const current: OwnedUpdate = { owner, input, pending: true, complete: false, publication: 'not-started', history: 'not-started',
+        original: Promise.resolve(unconfirmedUpdate()) };
+      record = current; byVideo.set(input.videoId, current);
+      const persistOriginal = async (): Promise<UpdateResult> => {
+        try {
+          check(); const accessToken = await getAccessToken(owner.userId, check); check();
+          if (!accessToken) return { status: 400, body: { error: 'youtube_not_connected' } };
+          const before = computeScore(input.original.title, input.original.description, input.original.tags);
+          const after = computeScore(input.title, input.description, input.tags);
+          check(); current.publication = 'unconfirmed';
+          const update = await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet', { method: 'PUT', cache: 'no-store',
+            headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: input.videoId, snippet: { title: input.title, description: input.description, tags: input.tags, categoryId: input.categoryId } }) });
+          // Once invoked, this same writer/body and mandatory history continue
+          // together after HTTP retirement. Never replace or cancel the writer.
+          const ack: unknown = await update.json();
+          if (!update.ok || update.status !== 200 || !object(ack) || ack.id !== input.videoId || !object(ack.snippet)
+            || ack.snippet.title !== input.title || ack.snippet.description !== input.description || ack.snippet.categoryId !== input.categoryId
+            || !Array.isArray(ack.snippet.tags) || !sameTags(ack.snippet.tags as string[], input.tags)) return unconfirmedUpdate(current);
+          current.publication = 'confirmed';
+          let views: number | null = null;
+          try {
+            const stats = await fetch('https://www.googleapis.com/youtube/v3/videos?part=statistics&id=' + encodeURIComponent(input.videoId),
+              { cache: 'no-store', headers: { Authorization: 'Bearer ' + accessToken } });
+            const data: unknown = await stats.json();
+            if (stats.ok && stats.status === 200 && object(data) && Array.isArray(data.items) && data.items.length === 1
+              && object(data.items[0]) && data.items[0].id === input.videoId && object(data.items[0].statistics)
+              && data.items[0].statistics.viewCount !== undefined) views = googleCount(data.items[0].statistics.viewCount);
+          } catch { /* Unknown impact metrics stay null; never fabricate zero. */ }
+          const entries: { field: string; oldValue: string; newValue: string }[] = [];
+          if (input.original.title !== input.title) entries.push({ field: 'title', oldValue: input.original.title, newValue: input.title });
+          if (input.original.description !== input.description) entries.push({ field: 'description', oldValue: input.original.description, newValue: input.description });
+          if (!sameTags(input.original.tags, input.tags)) entries.push({ field: 'tags', oldValue: input.original.tags.join(', '), newValue: input.tags.join(', ') });
+          if (entries.length) {
+            current.history = 'unconfirmed';
+            const saved = await prisma.optimizeHistory.createMany({ data: entries.map(e => ({ ...e, userId: owner.userId, videoId: input.videoId,
+              scoreBefore: before.score, scoreAfter: after.score, viewsBefore: views })) });
+            if (saved.count !== entries.length) return unconfirmedUpdate(current);
+            current.history = 'complete';
+          } else current.history = 'unchanged';
+          let aiSuggestion: { es: string; en: string } | null = null;
+          try {
+            check();
+            const task = await getMessagesTask({ userId: owner.userId, taskType: 'youtube.optimization-tip', language: 'es', instructionsVersion: 'optimization-tip-v1',
+              outputSchema: { type: 'object', additionalProperties: false, required: ['es', 'en'], properties: { es: { type: 'string', minLength: 1, maxLength: 1000 }, en: { type: 'string', minLength: 1, maxLength: 1000 } } } });
+            check();
+            const msg = await task.create({ max_tokens: 200, messages: [{ role: 'user', content: 'I just optimized a YouTube video. Score went from ' + before.score + ' to ' + after.score
+              + '.\nTitle: ' + JSON.stringify(input.title) + '\nTags: ' + input.tags.slice(0, 10).join(', ') + '\nDescription first 200 chars: ' + JSON.stringify(input.description.slice(0, 200))
+              + '\nGive ONE next step to improve further. Be specific and actionable. Reply in JSON: {"es":"consejo en español","en":"tip in english"}' }] });
+            check();
+            const parsed: unknown = JSON.parse((msg.content[0] as { type: string; text: string }).text);
+            if (object(parsed) && typeof parsed.es === 'string' && parsed.es.trim() && parsed.es.length <= 1000
+              && typeof parsed.en === 'string' && parsed.en.trim() && parsed.en.length <= 1000) aiSuggestion = { es: parsed.es, en: parsed.en };
+          } catch { /* Optional advice cannot undo the original publication/history. */ }
+          return { status: 200, body: { success: true, userId: owner.userId, email: owner.email, selection: { videoId: input.videoId },
+            draft: input, publicationStatus: 'confirmed', historyStatus: current.history, metricsStatus: views === null ? 'unavailable' : 'observed',
+            scoreAfter: after.score, scoreBefore: before.score, checks: after.checks, aiSuggestion } };
+        } catch { return unconfirmedUpdate(current); }
+      };
+      current.original = Promise.resolve().then(persistOriginal).then(result => {
+        current.pending = false; current.result = result; current.complete = result.status === 200 && result.body.success === true;
+        if (current.publication === 'not-started' && byVideo!.get(input.videoId) === current) byVideo!.delete(input.videoId);
+        return result;
       });
-    }
-
-    // Generate AI suggestion for further improvement
-    let aiSuggestion: { es: string; en: string } | null = null;
-    try {
-      const task = await getMessagesTask({ userId: session.user.id, taskType: 'youtube.optimization-tip', language: 'es', instructionsVersion: 'optimization-tip-v1',
-        outputSchema: { type: 'object', additionalProperties: false, required: ['es', 'en'], properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
-      });
-      const msg = await task.create({
-        max_tokens: 200,
-        messages: [{
-          role: 'user',
-          content: `I just optimized a YouTube video. Score went from ${scoreBefore} to ${scoreAfter}.
-Title: "${title}"
-Tags: ${tags.slice(0, 10).join(', ')}
-Description first 200 chars: "${description.slice(0, 200)}"
-
-Give ONE next step to improve further. Be specific and actionable. Reply in JSON: {"es":"consejo en español","en":"tip in english"}`,
-        }],
-      });
-      const text = (msg.content[0] as { type: string; text: string }).text;
-      const parsed = JSON.parse(text) as { es: string; en: string };
-      if (parsed.es && parsed.en) aiSuggestion = parsed;
-    } catch {
-      // AI suggestion is optional
-    }
-
-    return NextResponse.json({
-      success: true,
-      scoreAfter,
-      scoreBefore,
-      checks,
-      aiSuggestion,
+      return current.original;
     });
-  } catch (err) {
-    console.error('[youtube/optimize] PUT error', err);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
+    const result = await Promise.race([original, stopped]); check(); const response = reply(result); check(); return response;
+  } catch { return reply(unconfirmedUpdate(record)); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
