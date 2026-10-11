@@ -7,24 +7,9 @@ import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
 import { FlameIcon, BoltIcon, LeafIcon } from '@/components/icons';
 import { useCompetitorTracking } from '@/lib/use-competitor-tracking';
-
+import { useCompetitorAnalysis } from '@/lib/use-competitor-analysis';
+import { retainedCompetitorAnalysis } from '@/lib/competitor-analysis-client';
 type Lang = 'es' | 'en';
-
-interface ChannelInfo {
-  id: string; name: string; description: string; thumbnail: string;
-  country: string | null; subscribers: number; totalViews: number; videoCount: number;
-}
-interface VideoItem {
-  videoId: string; title: string; thumbnail: string;
-  publishedAt: string; views: number; likes: number;
-}
-interface CompetitorResult {
-  channel: ChannelInfo;
-  topVideos: VideoItem[];
-  keywords: string[];
-  uploadFrequency: string;
-  avgViews: number;
-}
 interface OutlierVideo {
   videoId: string; title: string; thumbnail: string;
   publishedAt: string; views: number; likes: number;
@@ -60,18 +45,20 @@ export default function CompetitorsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const lang = useLang();
-  const [url, setUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const owner = { userId: session?.user?.id ?? '', email: session?.user?.email ?? '' };
+  const [url, setUrl] = useState(() => {
+    const retained = retainedCompetitorAnalysis(owner);
+    return retained?.pending && retained.selection.language === lang ? retained.selection.input : '';
+  });
+  const analysis = useCompetitorAnalysis(owner, status, { input: url, language: lang });
+  const { result, loading } = analysis;
   const ownerKey = JSON.stringify([status, owner.userId, owner.email]);
   const currentOwner = useRef(ownerKey); currentOwner.current = ownerKey;
   const resetOwner = useRef(ownerKey);
   const mounted = useRef(true);
-  const analysis = useRef<object | null>(null);
-  const [resultState, setResultState] = useState<{ ownerKey: string; data: CompetitorResult } | null>(null);
-  const result = resultState?.ownerKey === ownerKey ? resultState.data : null;
-  const [outliers, setOutliers] = useState<OutlierResult | null>(null);
+  const currentAnalysis = useRef(result); currentAnalysis.current = result;
+  const [outlierState, setOutliers] = useState<{ source: typeof result; data: OutlierResult } | null>(null);
+  const outliers = outlierState?.source === result ? outlierState?.data : null;
   const [outliersLoading, setOutliersLoading] = useState(false);
   const [outlierPeriod, setOutlierPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('all');
   // Guardar el canal analizado como competidor seguido (cierra el bucle
@@ -84,11 +71,16 @@ export default function CompetitorsPage() {
       : tracking.error === 'limit_reached' ? t('Has llegado al máximo de competidores de tu plan.', "You've reached your plan's competitor limit.")
         : tracking.error ? t('No se pudo iniciar el seguimiento.', 'Tracking could not be started.') : '';
   const trackUpgrade = tracking.error === 'limit_reached';
+  const error = analysis.error === 'pro_required'
+    ? t('Esta función es exclusiva del Plan Pro. Actualiza tu cuenta desde el dashboard.', 'This feature is exclusive to the Pro Plan. Upgrade your account from the dashboard.')
+    : analysis.error === 'channel_not_found' ? t('No se encontró el canal. Comprueba la URL.', 'Channel not found. Check the URL.')
+      : analysis.error === 'invalid_selection' || analysis.error === 'Missing URL' ? t('Comprueba la URL del canal.', 'Check the channel URL.')
+        : analysis.error ? t('No se pudo obtener el análisis. Si la consulta sigue en curso, conservamos la original.', 'The analysis is unavailable. If the query is still running, the original is retained.') : '';
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     if (resetOwner.current === ownerKey) return;
     resetOwner.current = ownerKey;
-    analysis.current = null; setResultState(null); setLoading(false); setError(''); setUrl(''); setOutliers(null); setOutliersLoading(false);
+    setUrl(''); setOutliers(null); setOutliersLoading(false);
   }, [ownerKey]);
 
   // Fetch outliers when we have a result or period changes
@@ -100,52 +92,20 @@ export default function CompetitorsPage() {
       setOutliersLoading(true);
       try {
         const res = await fetch(`/api/youtube/outliers?channelId=${result!.channel.id}&period=${outlierPeriod}`);
-        if (!cancelled && mounted.current && currentOwner.current === capturedOwner && res.ok) {
+        if (!cancelled && mounted.current && currentOwner.current === capturedOwner && currentAnalysis.current === result && res.ok) {
           const data = await res.json();
-          if (!cancelled && mounted.current && currentOwner.current === capturedOwner) setOutliers(data);
+          if (!cancelled && mounted.current && currentOwner.current === capturedOwner && currentAnalysis.current === result) setOutliers({ source: result, data });
         }
       } catch { /* ignore */ }
-      finally { if (!cancelled && mounted.current && currentOwner.current === capturedOwner) setOutliersLoading(false); }
+      finally { if (!cancelled && mounted.current && currentOwner.current === capturedOwner && currentAnalysis.current === result) setOutliersLoading(false); }
     }
     fetchOutliers();
     return () => { cancelled = true; };
-  }, [result?.channel?.id, outlierPeriod, ownerKey]);
-
+  }, [result, outlierPeriod, ownerKey]);
   // No redirect — show public landing if unauthenticated
-
-  async function handleAnalyze(e: React.FormEvent) {
+  function handleAnalyze(e: React.FormEvent) {
     e.preventDefault();
-    const capturedOwner = ownerKey;
-    if (!url.trim() || status !== 'authenticated' || !owner.userId || !mounted.current || currentOwner.current !== capturedOwner) return;
-    const invocation = {}; analysis.current = invocation;
-    const active = () => mounted.current && currentOwner.current === capturedOwner && analysis.current === invocation;
-    setLoading(true);
-    setError('');
-    setResultState(null);
-    try {
-      const res = await fetch('/api/youtube/competitor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), lang }),
-      });
-      const data = await res.json();
-      if (!active()) return;
-      if (!res.ok || data.error) {
-        if (data.error === 'pro_required') {
-          setError(t('Esta función es exclusiva del Plan Pro. Actualiza tu cuenta desde el dashboard.', 'This feature is exclusive to the Pro Plan. Upgrade your account from the dashboard.'));
-        } else if (data.error === 'channel_not_found') {
-          setError(t('No se encontró el canal. Comprueba la URL.', 'Channel not found. Check the URL.'));
-        } else {
-          setError(t('Error al analizar el canal. Inténtalo de nuevo.', 'Error analysing channel. Please try again.'));
-        }
-        return;
-      }
-      setResultState({ ownerKey: capturedOwner, data });
-    } catch {
-      if (active()) setError(t('Error de conexión.', 'Connection error.'));
-    } finally {
-      if (active()) setLoading(false);
-    }
+    analysis.analyze();
   }
 
   if (status === 'loading') return null;
@@ -255,7 +215,7 @@ export default function CompetitorsPage() {
               className="soft-field flex-1 py-3 px-4 text-sm font-mono-jb"
               style={{ borderRadius: '10px' }}
             />
-            <button type="submit" disabled={loading || !url.trim()}
+            <button type="submit" disabled={analysis.pending || loading || !url.trim()}
               className="btn-offset px-6 py-3 text-[13px] font-mono-jb tracking-wider disabled:opacity-50 flex items-center gap-2 whitespace-nowrap">
               {loading ? (
                 <>
@@ -285,7 +245,10 @@ export default function CompetitorsPage() {
             ))}
           </div>
         </form>
-
+        {analysis.pending && <div role="status" className="yv-note font-mono-jb text-sm">
+          {t('La consulta original sigue en curso. Esperamos su respuesta sin repetirla.', 'The original query is still running. Its response is observed without repeating it.')}
+          {analysis.previous && <p>{analysis.previous.input} ({analysis.previous.language})</p>}
+        </div>}
         {/* Error */}
         {error && (
           <div className="yv-note yv-note--error font-mono-jb">
@@ -296,6 +259,12 @@ export default function CompetitorsPage() {
         {/* Results */}
         {result && (
           <div className="space-y-6 animate-fade-in">
+            {result.collectionStatus === 'partial' && <div role="status" className="yv-note font-mono-jb text-sm">
+              {t('Análisis parcial: datos disponibles de', 'Partial analysis: data available for')} {result.totalVideosAvailable}/{result.totalVideosRequested} {t('vídeos solicitados.', 'requested videos.')}
+            </div>}
+            {result.totalVideosRequested === 0 && <div role="status" className="yv-note font-mono-jb text-sm">
+              {t('El canal no tiene vídeos en la colección consultada.', 'The channel has no videos in the queried collection.')}
+            </div>}
             {/* Channel card */}
             <div className="yv-card p-6">
               <div className="flex items-start gap-4">
