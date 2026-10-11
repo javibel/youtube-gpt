@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useLang } from '@/components/LangProvider';
 import DashboardShell from '@/components/DashboardShell';
+import { useOptimizeScore } from '@/lib/use-optimize-score';
 
 type Lang = 'es' | 'en';
 
@@ -115,11 +116,11 @@ export default function OptimizePage() {
   // State
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loadingList, setLoadingList] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<VideoDetail | null>(null);
+  const [selectedSource, setSelectedVideo] = useState<VideoDetail | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [checks, setChecks] = useState<{ key: string; ok: boolean; w: number }[]>([]);
-  const [score, setScore] = useState(0);
+  const [baseChecks, setChecks] = useState<{ key: string; ok: boolean; w: number }[]>([]);
+  const [baseScore, setScore] = useState(0);
   const [originalScore, setOriginalScore] = useState(0);
   const [error, setError] = useState('');
 
@@ -133,8 +134,25 @@ export default function OptimizePage() {
   // Original values for diff
   const originalRef = useRef<{ title: string; description: string; tags: string[] }>({ title: '', description: '', tags: [] });
 
-  // Debounce score calculation
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const owner = { userId: session?.user?.id || '', email: session?.user?.email ?? null };
+  const account = JSON.stringify([status, owner.userId, owner.email]);
+  const liveAccount = useRef(account);
+  liveAccount.current = account;
+  const [selectionAccount, setSelectionAccount] = useState('');
+  const selectionSerial = useRef(0);
+  const selectedVideo = selectionAccount === account ? selectedSource : null;
+  const hasChanges = !!selectedVideo && (
+    editTitle !== originalRef.current.title ||
+    editDesc !== originalRef.current.description ||
+    editTags !== originalRef.current.tags.join(', ')
+  );
+  const preview = useOptimizeScore(owner, status, {
+    videoId: selectedVideo?.videoId || '', title: editTitle, description: editDesc,
+    tags: editTags.split(',').map(tag => tag.trim()).filter(Boolean),
+  }, selectedVideo, hasChanges);
+  // Do not present a score from an earlier draft as the current preview.
+  const score = selectedVideo ? (hasChanges ? preview.data?.score ?? null : baseScore) : null;
+  const checks = selectedVideo ? (hasChanges ? preview.data?.checks ?? [] : baseChecks) : [];
 
   // Load videos list
   const loadVideos = useCallback(async () => {
@@ -163,6 +181,10 @@ export default function OptimizePage() {
 
   // Select a video for editing
   async function selectVideo(videoId: string) {
+    if (liveAccount.current !== account || status !== 'authenticated' || !owner.userId) return;
+    const serial = ++selectionSerial.current;
+    preview.retire();
+    setSelectedVideo(null);
     setLoadingVideo(true);
     setError('');
     setSaveResult(null);
@@ -173,6 +195,8 @@ export default function OptimizePage() {
         setError(data.error || 'Error');
         return;
       }
+      if (liveAccount.current !== account || selectionSerial.current !== serial) return;
+      setSelectionAccount(account);
       setSelectedVideo(data.video);
       setEditTitle(data.video.title);
       setEditDesc(data.video.description);
@@ -193,38 +217,9 @@ export default function OptimizePage() {
     }
   }
 
-  // Real-time score update (debounced)
-  function updateScore(title: string, desc: string, tagsStr: string) {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
-        const res = await fetch('/api/youtube/optimize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, description: desc, tags }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setScore(data.score);
-          setChecks(data.checks || []);
-        }
-      } catch { /* silent */ }
-    }, 400);
-  }
-
-  function onTitleChange(v: string) {
-    setEditTitle(v);
-    updateScore(v, editDesc, editTags);
-  }
-  function onDescChange(v: string) {
-    setEditDesc(v);
-    updateScore(editTitle, v, editTags);
-  }
-  function onTagsChange(v: string) {
-    setEditTags(v);
-    updateScore(editTitle, editDesc, v);
-  }
+  function onTitleChange(v: string) { if (preview.canEdit()) setEditTitle(v); }
+  function onDescChange(v: string) { if (preview.canEdit()) setEditDesc(v); }
+  function onTagsChange(v: string) { if (preview.canEdit()) setEditTags(v); }
 
   // Save to YouTube
   async function handleSave() {
@@ -267,13 +262,7 @@ export default function OptimizePage() {
     }
   }
 
-  const hasChanges = selectedVideo && (
-    editTitle !== originalRef.current.title ||
-    editDesc !== originalRef.current.description ||
-    editTags !== (originalRef.current.tags || []).join(', ')
-  );
-
-  const scoreDelta = score - originalScore;
+  const scoreDelta = score === null ? 0 : score - originalScore;
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -381,7 +370,7 @@ export default function OptimizePage() {
           <div>
             {/* Back button */}
             <button
-              onClick={() => { setSelectedVideo(null); setSaveResult(null); }}
+              onClick={() => { if (preview.canEdit()) { preview.retire(); setSelectedVideo(null); setSaveResult(null); } }}
               className="flex items-center gap-2 hover:text-white font-mono-jb text-[13px] mb-6 transition"
               style={{ color: 'var(--yv-text-3)' }}
             >
@@ -563,7 +552,15 @@ export default function OptimizePage() {
                 <div className="yv-card p-6 text-center">
                   <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase yv-muted mb-4">SEO SCORE</p>
                   <div className="flex justify-center">
-                    <ScoreRing score={score} size={120} />
+                    <span aria-label="SEO score">{score !== null ? <ScoreRing score={score} size={120} /> : '—'}</span>
+                  </div>
+                  <div role="status" className="mt-3 font-mono-jb text-sm">
+                    {preview.loading && t('Calculando puntuación…', 'Calculating score…')}
+                    {preview.error && t('No se pudo calcular la puntuación.', 'Could not calculate the score.')}
+                    {preview.error && preview.pending && <p>{t('El cálculo original sigue pendiente.', 'The original calculation is still pending.')}</p>}
+                    {preview.error && <button type="button" onClick={preview.retry} disabled={preview.pending} className="mt-2 underline disabled:opacity-40">
+                      {t('Reintentar cálculo', 'Retry calculation')}
+                    </button>}
                   </div>
                   {scoreDelta !== 0 && (
                     <div className="mt-3 font-mono-jb text-sm font-bold" style={{ color: scoreDelta > 0 ? '#22c55e' : '#e84d5b' }}>
@@ -587,8 +584,8 @@ export default function OptimizePage() {
                     ))}
                   </div>
                   <div className="mt-3 pt-3 flex justify-between font-mono-jb text-[13px]" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' }}>
-                    <span style={{ color: 'var(--yv-text-2)' }}>{checks.filter(c => c.ok).length}/{checks.length} {t('pasados', 'passed')}</span>
-                    <span style={{ color: scoreColor(score) }}>{score}/100</span>
+                    <span style={{ color: 'var(--yv-text-2)' }}>{score !== null ? checks.filter(c => c.ok).length + '/' + checks.length : '—'} {t('pasados', 'passed')}</span>
+                    <span style={{ color: score !== null ? scoreColor(score) : 'var(--yv-text-4)' }}>{score !== null ? score + '/100' : '—'}</span>
                   </div>
                 </div>
 

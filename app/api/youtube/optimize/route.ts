@@ -4,54 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
+import { computeScore, validOptimizeDraft } from '@/lib/optimize-score';
 
-
-// ── Scoring helpers (shared with seo-score but lightweight inline for optimize) ──
-
-function scoreTitleChecks(title: string) {
-  const len = title.length;
-  const checks = [
-    { key: 'title_length', ok: len >= 30 && len <= 70, w: 8 },
-    { key: 'title_number', ok: /\d/.test(title), w: 5 },
-    { key: 'title_caps', ok: title !== title.toUpperCase(), w: 4 },
-    { key: 'title_emoji', ok: /[\p{Emoji_Presentation}]/u.test(title), w: 3 },
-    { key: 'title_power', ok: /\b(cómo|how|best|mejor|secret|secreto|ultimate|top|hack|error|mistake)\b/i.test(title), w: 4 },
-  ];
-  return checks;
-}
-
-function scoreDescChecks(desc: string) {
-  const wordCount = desc.split(/\s+/).filter(Boolean).length;
-  const checks = [
-    { key: 'desc_length', ok: wordCount >= 100, w: 10 },
-    { key: 'desc_links', ok: /https?:\/\//.test(desc), w: 5 },
-    { key: 'desc_timestamps', ok: /\d{1,2}:\d{2}/.test(desc), w: 7 },
-    { key: 'desc_hashtags', ok: /#\w+/.test(desc), w: 4 },
-    { key: 'desc_cta', ok: /suscri|subscribe|like|comenta|comment/i.test(desc), w: 3 },
-  ];
-  return checks;
-}
-
-function scoreTagChecks(tags: string[]) {
-  const count = tags.length;
-  const checks = [
-    { key: 'tags_count', ok: count >= 5 && count <= 20, w: 8 },
-    { key: 'tags_long', ok: tags.some(t => t.split(/\s+/).length >= 3), w: 4 },
-    { key: 'tags_short', ok: tags.some(t => t.split(/\s+/).length === 1), w: 3 },
-  ];
-  return checks;
-}
-
-function computeScore(title: string, description: string, tags: string[]): { score: number; checks: { key: string; ok: boolean; w: number }[] } {
-  const allChecks = [
-    ...scoreTitleChecks(title),
-    ...scoreDescChecks(description),
-    ...scoreTagChecks(tags),
-  ];
-  const maxW = allChecks.reduce((s, c) => s + c.w, 0);
-  const rawW = allChecks.filter(c => c.ok).reduce((s, c) => s + c.w, 0);
-  return { score: Math.round((rawW / maxW) * 100), checks: allChecks };
-}
 
 // ── GET: load video data + optimize history ─────────────────────────────
 
@@ -171,21 +125,29 @@ export async function GET(request: Request) {
 // ── POST: real-time score calculation (no YouTube API call) ─────────────
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const body = await request.json().catch(() => ({}));
-  if (!body || typeof body !== 'object' || Array.isArray(body) || ['title', 'description'].some(key => body[key] != null && typeof body[key] !== 'string') || (body.tags != null && (!Array.isArray(body.tags) || body.tags.some((tag: unknown) => typeof tag !== 'string')))) {
-    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
-  }
-  const title = (body.title as string) || '';
-  const description = (body.description as string) || '';
-  const tags = (body.tags as string[]) || [];
-
-  const { score, checks } = computeScore(title, description, tags);
-  return NextResponse.json({ score, checks });
+  const deadline = performance.now() + 25_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Score unavailable')); } };
+  const timer = setTimeout(retire, 25_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Score unavailable'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id) return reply({ error: 'Unauthorized' }, 401);
+      const userId = session.user.id, email = session.user.email ?? null;
+      const body: unknown = await request.json().catch(() => null); check();
+      if (!validOptimizeDraft(body)) return reply({ error: 'invalid_input' }, 400);
+      const draft = { videoId: body.videoId, title: body.title, description: body.description, tags: [...body.tags] };
+      const result = computeScore(draft.title, draft.description, draft.tags);
+      check(); return reply({ userId, email, draft, ...result });
+    });
+    const result = await Promise.race([original, stopped]); check(); return result;
+  } catch { return reply({ error: 'score_unavailable' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
 
 // ── PUT: save changes to YouTube + record history ──────────────────────
