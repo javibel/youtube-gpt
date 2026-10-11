@@ -88,16 +88,16 @@ export async function GET(request?: Request) {
         }), count),
         read(() => prisma.subscription.findUnique({
           where: { userId: owner.id },
-          select: { status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodEnd: true, stripeCustomerId: true },
+          select: { id: true, status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodEnd: true, stripeCustomerId: true },
         }), value => {
           if (value === null) return null;
-          if (typeof value.status !== "string" || !value.status || typeof value.plan !== "string"
+          if (typeof value.id !== "string" || !/^[\w-]{1,128}$/.test(value.id) || typeof value.status !== "string" || !value.status || typeof value.plan !== "string"
             || typeof value.cancelAtPeriodEnd !== "boolean"
             || (value.stripeCustomerId !== null && typeof value.stripeCustomerId !== "string"))
             throw Error("Statistics unavailable");
           // The private customer marker is needed only for manual-plan expiry.
           return Object.freeze({
-            status: value.status, plan: value.plan, cancelAtPeriodEnd: value.cancelAtPeriodEnd,
+            id: value.id, status: value.status, plan: value.plan, cancelAtPeriodEnd: value.cancelAtPeriodEnd,
             currentPeriodEnd: value.currentPeriodEnd === null ? null : date(value.currentPeriodEnd),
             stripeCustomerId: value.stripeCustomerId,
           });
@@ -116,7 +116,7 @@ export async function GET(request?: Request) {
       const limit = count(getLimits(plan).generationsPerMonth);
       if (!limit) throw Error("Statistics unavailable");
       const publicSubscription = subscription === null ? null : {
-        status: subscription.status, plan: subscription.plan, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        id: subscription.id, status: subscription.status, plan: subscription.plan, cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
         currentPeriodEnd: subscription.currentPeriodEnd,
       };
       const body = {

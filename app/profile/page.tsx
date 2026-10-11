@@ -8,6 +8,7 @@ import { useProfileSettings } from '@/lib/use-profile-settings';
 import { usePasswordChange } from '@/lib/use-password-change';
 import { passwordInputError } from '@/lib/password-change-client';
 import type { PasswordReceipt } from '@/lib/password-change-client';
+import { useSubscriptionCancellation } from '@/lib/use-subscription-cancellation';
 import { useProfileCheckout } from '@/lib/use-profile-checkout';
 import type { CheckoutPlan } from '@/lib/profile-checkout-client';
 import { claimConfirmedProfileLanguage } from '@/lib/profile-update-client';
@@ -64,7 +65,9 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
   const checkoutPlan = data ? data.stats.plan === 'free' ? 'monthly' : data.stats.plan === 'pro' && !data.subscription?.cancelAtPeriodEnd ? 'business_monthly' : null : null;
   const checkout = useProfileCheckout(owner, status, lang, checkoutPlan, isCurrent);
   const upgrading = checkout.waiting;
-  const [cancelling, setCancelling] = useState(false);
+  const sub = data?.subscription;
+  const cancellation = useSubscriptionCancellation(owner,status,lang,sub && (sub.plan==='pro'||sub.plan==='business') ? {subscriptionId:sub.id??'',plan:sub.plan,status:sub.status,cancelAtPeriodEnd:sub.cancelAtPeriodEnd}:null,isCurrent,()=>{});
+  const cancelling = cancellation.waiting;
   const [downgrading, setDowngrading] = useState(false);
 
   useEffect(() => {
@@ -129,19 +132,7 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
     } finally { setDowngrading(false); }
   }
 
-  async function handleCancel() {
-    if (!confirm(t('¿Seguro que quieres cancelar tu suscripción?', 'Are you sure you want to cancel your subscription?'))) return;
-    setCancelling(true);
-    try {
-      const res = await fetch('/api/stripe/cancel', { method: 'POST' });
-      if (res.ok) {
-        setData(prev => prev ? { ...prev, subscription: prev.subscription ? { ...prev.subscription, cancelAtPeriodEnd: true } : null } : null);
-      } else {
-        const { error } = await res.json();
-        toast(error ?? t('Error al cancelar', 'Cancellation error'), 'error');
-      }
-    } finally { setCancelling(false); }
-  }
+  function handleCancel() { if(!upgrading&&!downgrading)void cancellation.start(); }
 
   function handleLangChange(next: Lang) {
     if (!canUseUI() || !profile.canAct() || !profile.data) return;
@@ -170,6 +161,7 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
   const displayName = data?.user?.name ?? session.user?.email ?? '';
   const initials = displayName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
   const dateLocale = lang === 'en' ? 'en-US' : 'es-ES';
+  const cancellationScheduled = !!data?.subscription?.cancelAtPeriodEnd || cancellation.confirmed;
 
   return (
     <DashboardShell>
@@ -184,6 +176,12 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
         {profile.outcome?.status === 'confirmed' && profile.blocked && <p role="alert">{t('Cambio confirmado. No se puede iniciar otro cambio porque el registro local no se pudo liberar.', 'Change confirmed. Another change cannot start because the local record could not be cleared.')}</p>}
         {langApplyError && <p role="alert">{t('El idioma está guardado, pero no se pudo aplicar a esta pantalla.', 'Language is saved, but could not be applied to this screen.')}</p>}
         <button onClick={() => { if (canUseUI()) profile.refresh(); }} disabled={!profile.canObserve() || profile.blocked || profile.readPending} className="font-mono-jb text-[13px] disabled:opacity-50">{t('Actualizar perfil', 'Refresh profile')}</button>
+
+        {cancellation.blocked && <div role={cancellation.confirmed?'status':'alert'} className="yv-card p-4">
+          <p>{cancellation.confirmed ? t('Cancelación confirmada al final del periodo. Tu acceso continúa hasta entonces.','Cancellation confirmed at period end. Access continues until then.') : t('Cancelación sin confirmar. No se reenviará automáticamente.','Cancellation unconfirmed. It will not be sent again automatically.')}</p>
+          {cancellation.pending && <p>{t('La solicitud original sigue pendiente.','The original request is still pending.')}</p>}
+          {cancellation.hasOriginal ? <><p>{!cancellation.selectionMatches && t('El original pertenece a otra suscripción o idioma. Selecciona el original para consultarlo.','The original belongs to another subscription or language. Select the original to observe it.')}</p><button onClick={()=>{if(!upgrading&&!downgrading)void cancellation.observe();}} disabled={!cancellation.canObserve||upgrading||downgrading}>{t('Consultar cancelación original','Observe original cancellation')}</button></> : <p>{t('La solicitud original no está disponible. Este registro no permite recuperarla ni iniciar otra.','The original request is unavailable. This record cannot restore it or start another.')}</p>}
+        </div>}
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -294,8 +292,8 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
               </p>
               <p className="font-mono-jb text-[13px] mt-1" style={{ color: 'var(--yv-text-3)' }}>
                 {isPro
-                  ? (data?.subscription?.cancelAtPeriodEnd
-                      ? t('Cancela el ', 'Cancels on ') + (data.subscription.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—')
+                  ? (cancellationScheduled
+                      ? t('Cancela el ', 'Cancels on ') + (data?.subscription?.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—')
                       : data?.subscription?.status === 'trialing'
                       ? t('Tu prueba termina el ', 'Your trial ends on ') + (data?.subscription?.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—')
                       : t('Renovación el ', 'Renews on ') + (data?.subscription?.currentPeriodEnd ? new Date(data.subscription.currentPeriodEnd).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—'))
@@ -309,20 +307,20 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
                   {upgrading ? '...' : 'Upgrade →'}
                 </button>
               )}
-              {isPro && !isBusiness && !data?.subscription?.cancelAtPeriodEnd && (
+              {isPro && !isBusiness && !cancellationScheduled && (
                 <button onClick={() => handleUpgrade('business_monthly')} disabled={!checkout.canStart}
                   className="font-mono-jb text-[13px] transition" style={{ color: '#00E5FF' }}>
                   {upgrading ? '...' : t('Subir a Business', 'Upgrade to Business')}
                 </button>
               )}
-              {isBusiness && !data?.subscription?.cancelAtPeriodEnd && (
+              {isBusiness && !cancellationScheduled && (
                 <button onClick={handleDowngrade} disabled={downgrading}
                   className="font-mono-jb text-[13px] transition" style={{ color: 'var(--yv-text-3)' }}>
                   {downgrading ? '...' : t('Bajar a Pro', 'Downgrade to Pro')}
                 </button>
               )}
-              {isPro && !data?.subscription?.cancelAtPeriodEnd && (
-                <button onClick={handleCancel} disabled={cancelling}
+              {isPro && !cancellationScheduled && (
+                <button onClick={handleCancel} disabled={cancelling || upgrading || downgrading || !cancellation.canStart}
                   className="font-mono-jb text-[13px] hover:text-white transition" style={{ color: 'var(--yv-text-4)' }}>
                   {cancelling ? t('Cancelando...', 'Cancelling...') : t('Cancelar suscripción', 'Cancel subscription')}
                 </button>

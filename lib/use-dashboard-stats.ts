@@ -7,7 +7,7 @@ export type DashboardStats = {
   user: { id: string; email: string; name: string | null; createdAt: string };
   stats: { totalGenerations: number; generationsThisMonth: number; generationsReserved: number; quotaOccupied: number; limit: number; remaining: number;
     isPro: boolean; plan: 'free'|'pro'|'business'; streak: number; videoTipsRemaining: number|null };
-  subscription: { status: string; plan?: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
+  subscription: { id?: string; status: string; plan?: string; cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null;
 };
 const initial = () => ({ data: null as DashboardStats|null, refreshing: false, error: false });
 const count = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
@@ -23,14 +23,14 @@ export function decodeDashboardStats(value: unknown, userId: string, email: stri
     || s.remaining !== Math.max(0, s.limit - s.quotaOccupied)
     || (s.isPro ? s.videoTipsRemaining !== null : !count(s.videoTipsRemaining) || s.videoTipsRemaining > 1)) throw Error('Invalid statistics');
   const sub = body.subscription;
-  if (sub !== null && (!sub || typeof sub.status !== 'string' || !sub.status
+  if (sub !== null && (!sub || (sub.id !== undefined && (typeof sub.id !== 'string' || !/^[\w-]{1,128}$/.test(sub.id))) || typeof sub.status !== 'string' || !sub.status
     || !(sub.plan === undefined || typeof sub.plan === 'string') || typeof sub.cancelAtPeriodEnd !== 'boolean'
     || !(sub.currentPeriodEnd === null || date(sub.currentPeriodEnd)))) throw Error('Invalid subscription');
   return { user: { id: body.user.id, email: body.user.email, name: body.user.name, createdAt: body.user.createdAt },
     stats: { totalGenerations: s.totalGenerations, generationsThisMonth: s.generationsThisMonth,
       generationsReserved: s.generationsReserved, quotaOccupied: s.quotaOccupied, limit: s.limit,
       remaining: s.remaining, isPro: s.isPro, plan: s.plan, streak: s.streak, videoTipsRemaining: s.videoTipsRemaining },
-    subscription: sub ? { status: sub.status, plan: sub.plan, cancelAtPeriodEnd: sub.cancelAtPeriodEnd, currentPeriodEnd: sub.currentPeriodEnd } : null };
+    subscription: sub ? { id: sub.id, status: sub.status, plan: sub.plan, cancelAtPeriodEnd: sub.cancelAtPeriodEnd, currentPeriodEnd: sub.currentPeriodEnd } : null };
 }
 
 export function useDashboardStats(userId: string | undefined, email: string | null | undefined, authStatus: string) {

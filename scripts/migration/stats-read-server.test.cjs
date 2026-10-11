@@ -69,13 +69,13 @@ async function run(){
   for(const c of f.calls.filter(c=>c.q?.where?.userId))assert.equal(c.q.where.userId,identity.id);
  });
  for(const plan of ['pro','business'])for(const active of [true,false])await test(plan+(active?' active':' expired')+' manual expiry policy keeps customer marker internal',async()=>{
-  const subscription={status:'active',plan,cancelAtPeriodEnd:true,currentPeriodEnd:new Date(Date.now()+(active?86400000:-86400000)),stripeCustomerId:'manual_admin',token:'NEVER_PUBLIC'},f=fixture({values:{subscription}}),r=await f.original,b=await r.json();
+  const subscription={id:'local-stats',status:'active',plan,cancelAtPeriodEnd:true,currentPeriodEnd:new Date(Date.now()+(active?86400000:-86400000)),stripeCustomerId:'manual_admin',token:'NEVER_PUBLIC'},f=fixture({values:{subscription}}),r=await f.original,b=await r.json();
   assert.equal(r.status,200);assert.equal(b.stats.plan,active?plan:'free');assert.equal(b.stats.limit,active?(plan==='pro'?200:999999):10);assert.equal(b.stats.videoTipsRemaining,active?null:0);assert.equal(b.subscription.cancelAtPeriodEnd,true);
-  assert.deepEqual(Object.keys(b.subscription).sort(),['cancelAtPeriodEnd','currentPeriodEnd','plan','status']);assert(!JSON.stringify(b).includes('manual_admin'));assert(!JSON.stringify(b).includes('NEVER_PUBLIC'));
+  assert.deepEqual(Object.keys(b.subscription).sort(),['cancelAtPeriodEnd','currentPeriodEnd','id','plan','status']);assert(!JSON.stringify(b).includes('manual_admin'));assert(!JSON.stringify(b).includes('NEVER_PUBLIC'));
  });
- await test('Stripe active plan retains paid access without manual expiry requirement',async()=>{const f=fixture({values:{subscription:{status:'trialing',plan:'pro',cancelAtPeriodEnd:false,currentPeriodEnd:null,stripeCustomerId:'NEVER_PUBLIC'}}}),r=await f.original,b=await r.json();assert.equal(r.status,200);assert.equal(b.stats.plan,'pro');assert(!JSON.stringify(b).includes('NEVER_PUBLIC'));});
+ await test('Stripe active plan retains paid access without manual expiry requirement',async()=>{const f=fixture({values:{subscription:{id:'local-stats',status:'trialing',plan:'pro',cancelAtPeriodEnd:false,currentPeriodEnd:null,stripeCustomerId:'NEVER_PUBLIC'}}}),r=await f.original,b=await r.json();assert.equal(r.status,200);assert.equal(b.stats.plan,'pro');assert(!JSON.stringify(b).includes('NEVER_PUBLIC'));});
  await test('early quota/subscription/date results cannot mutate while another SQL branch waits',async()=>{
-  const g=deferred(),quota={recorded:2,reserved:1,total:3},end=new Date(Date.now()+86400000),created=new Date(),subscription={status:'active',plan:'pro',cancelAtPeriodEnd:false,currentPeriodEnd:end,stripeCustomerId:'manual_admin'};
+  const g=deferred(),quota={recorded:2,reserved:1,total:3},end=new Date(Date.now()+86400000),created=new Date(),subscription={id:'local-stats',status:'active',plan:'pro',cancelAtPeriodEnd:false,currentPeriodEnd:end,stripeCustomerId:'manual_admin'};
   const f=fixture({values:{quota,subscription,dates:[{createdAt:created}]},stages:{total:()=>g.promise}});await flush();
   Object.assign(quota,{recorded:100,reserved:100,total:200});subscription.plan='business';end.setFullYear(2000);created.setFullYear(2000);g.resolve(3);
   const b=await(await f.original).json();assert.equal(b.stats.plan,'pro');assert.equal(b.stats.remaining,197);assert.equal(b.stats.streak,1);
@@ -85,7 +85,7 @@ async function run(){
   ['quota missing',{quota:undefined}],['quota negative',{quota:{recorded:2,reserved:-1,total:1}}],['quota incoherent',{quota:{recorded:2,reserved:1,total:2}}],
   ['quota overflow',{quota:{recorded:Number.MAX_SAFE_INTEGER,reserved:1,total:Number.MAX_SAFE_INTEGER}}],
   ['user name object',{user:{...selected(),name:{private:'NEVER_PUBLIC'}}}],['user date invalid',{user:{...selected(),createdAt:new Date('invalid')}}],
-  ['date invalid',{dates:[{createdAt:new Date('invalid')}]}],['subscription incomplete',{subscription:{status:'active',plan:'pro'}}]
+  ['date invalid',{dates:[{createdAt:new Date('invalid')}]}],['subscription incomplete',{subscription:{id:'local-stats',status:'active',plan:'pro'}}]
  ];
  for(const[name,values]of bad)await test(name+' fails closed without fabricated counts or private projection',async()=>{await unavailable(fixture({values}));});
  for(const action of ['timeout','abort','reject'])await test('public JSON acknowledgement '+action+' remains inside common wait',async()=>{

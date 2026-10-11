@@ -109,7 +109,8 @@ export default function DashboardPage() {
 
   const { billingBusy, upgrading, cancelling, syncing, billingError, cancelConfirmed, syncResult,
     checkoutBlocked, checkoutHasOriginal, checkoutPending, checkoutSelectionMatches, checkoutState, checkoutNavigationFailed,
-    handleUpgrade, handleObserveCheckout, handleCancel, handleSync } = useDashboardBilling(session?.user?.id, session?.user?.email, status, lang, refreshStats, billingPlan, data?.stats.plan);
+    cancelBlocked,cancelHasOriginal,cancelPending,cancelSelectionMatches,cancelCanStart,cancelCanObserve,handleObserveCancel,
+    handleUpgrade, handleObserveCheckout, handleCancel, handleSync } = useDashboardBilling(session?.user?.id, session?.user?.email, status, lang, refreshStats, billingPlan, data?.stats.plan, data?.subscription);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -515,13 +516,16 @@ function handleCopy(id: string, out: string) {
           {billingError && (
             <div role="alert" className="yv-card p-4 mb-4">
               <p>{billingError === 'checkout' ? t('No se pudo confirmar el enlace de pago. Consulta la solicitud original; este resultado no permite iniciar otro pago.', 'Could not confirm the payment link. Observe the original request; this result does not allow another checkout.')
-                : billingError === 'cancel' ? t('No se pudo confirmar la cancelación. Puedes comprobar y reintentar.', 'Could not confirm cancellation. You can check and retry.')
+                : billingError === 'cancel' ? t('Cancelación sin confirmar. No se reenviará automáticamente.', 'Cancellation unconfirmed. It will not be sent again automatically.')
                 : t('No se pudo comprobar la suscripción. Puedes reintentar.', 'Could not check the subscription. You can retry.')}</p>
-              {billingError !== 'checkout' && <button disabled={billingBusy} className="btn-offset mt-2 px-4 py-2 disabled:opacity-50" onClick={billingError === 'cancel' ? handleCancel : handleSync}>
-                {billingError === 'cancel' ? t('Reintentar cancelación', 'Retry cancellation') : t('Reintentar comprobación', 'Retry check')}
-              </button>}
+              {billingError === 'sync' && <button disabled={billingBusy} className="btn-offset mt-2 px-4 py-2 disabled:opacity-50" onClick={handleSync}>{t('Reintentar comprobación','Retry check')}</button>}
             </div>
           )}
+          {cancelBlocked && <div role={cancelConfirmed?'status':'alert'} className="yv-card p-4 mb-4">
+            {!cancelConfirmed && <p>{t('Cancelación sin confirmar. No se reenviará automáticamente.','Cancellation unconfirmed. It will not be sent again automatically.')}</p>}
+            {cancelPending && <p>{t('La solicitud original sigue pendiente.','The original request is still pending.')}</p>}
+            {cancelHasOriginal ? <><p>{!cancelSelectionMatches && t('El original pertenece a otra suscripción o idioma. Selecciona el original para consultarlo.','The original belongs to another subscription or language. Select the original to observe it.')}</p><button onClick={handleObserveCancel} disabled={billingBusy||!cancelCanObserve}>{t('Consultar cancelación original','Observe original cancellation')}</button></> : <p>{t('La solicitud original no está disponible. Este registro no permite recuperarla ni iniciar otra.','The original request is unavailable. This record cannot restore it or start another.')}</p>}
+          </div>}
           {cancelConfirmed && <p role="status" className="mb-4">{t('Cancelación confirmada al final del periodo. Tu acceso continúa hasta entonces.', 'Cancellation confirmed at period end. Access continues until then.')}</p>}
           {statsError && (
             <div className="yv-card p-4">
@@ -667,7 +671,7 @@ function handleCopy(id: string, out: string) {
                   </button>
                 )}
                 {!data.subscription.cancelAtPeriodEnd && (
-                  <button onClick={handleCancel} disabled={billingBusy || cancelConfirmed} className="font-mono-jb text-[13px] hover:opacity-80 disabled:opacity-50 transition" style={{ color: 'var(--yv-text-4)' }}>
+                  <button onClick={handleCancel} disabled={billingBusy || cancelConfirmed || !cancelCanStart} className="font-mono-jb text-[13px] hover:opacity-80 disabled:opacity-50 transition" style={{ color: 'var(--yv-text-4)' }}>
                     {cancelling ? t('Cancelando...', 'Cancelling...') : t('Cancelar suscripción', 'Cancel subscription')}
                   </button>
                 )}
