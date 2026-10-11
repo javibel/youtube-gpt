@@ -5,7 +5,7 @@ module.exports=async function(prisma,results){
  const users=await Promise.all([1,2].map(i=>prisma.user.create({data:{email:'calendar-read-'+randomUUID()+'@example.invalid',name:'Synthetic calendar '+i}})));
  let userId=users[0].id;const h=harness(),date=new Date().toISOString().slice(0,10);
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
- const route=load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:userId}})},'@/lib/prisma':{prisma},'@/lib/plans':plans});
+ const route=load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:userId,email:users.find(u=>u.id===userId).email}})},'@/lib/prisma':{prisma},'@/lib/plans':plans});
  const invoke=url=>route.GET(new Request('https://example.invalid'+url));
  const flush=async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
  const retry=()=>h.nodes().find(n=>n.type==='button'&&String(n.props.children).includes('Volver a consultar calendario')).props.onClick();
@@ -17,14 +17,14 @@ module.exports=async function(prisma,results){
    const {deferred,flush:drain}=require('./calendar-http-read-deadline.test.cjs');
    const selected=deferred(),ack=deferred(),timers=new Map();let elapsed=0,queryCount=0;
    const bounded=load('app/api/calendar/route.ts',{
-    'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:userId}})},'@/lib/plans':plans,
-    '@/lib/prisma':{prisma:{calendarEntry:{findMany:async input=>{
-     queryCount++;const rows=await prisma.calendarEntry.findMany(input);selected.resolve(rows);await ack.promise;return rows;
-    }}}},
+    'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:userId,email:users.find(u=>u.id===userId).email}})},'@/lib/plans':plans,
+    '@/lib/prisma':{prisma:{$transaction:(fn,opts)=>prisma.$transaction(tx=>fn({...tx,calendarEntry:{...tx.calendarEntry,findMany:async input=>{
+     queryCount++;const rows=await tx.calendarEntry.findMany(input);selected.resolve(rows);await ack.promise;return rows;
+    }}}),opts)}},
    },{performance:{now:()=>elapsed},setTimeout(fn,ms){timers.set(1,fn);return 1;},clearTimeout(id){timers.delete(id);}});
    const original=bounded.GET(new Request('https://example.invalid/api/calendar'));
    const rows=await selected.promise;assert.equal(rows.length,1);assert.equal(rows[0].userId,userId);
-   elapsed=30000;for(const fn of [...timers.values()])fn();const response=await original;
+   elapsed=25000;for(const fn of [...timers.values()])fn();const response=await original;
    assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:'calendar_read_unconfirmed'});assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(timers.size,0);
    ack.resolve();await drain();assert.equal(queryCount,1);assert.equal(response.status,503);
    assert.equal(await prisma.calendarEntry.count({where:{userId:{in:users.map(u=>u.id)}}}),2);
@@ -41,7 +41,7 @@ module.exports=async function(prisma,results){
    });
    const original=bounded.GET(new Request('https://example.invalid/api/calendar',{signal:controller.signal}));
    await started.promise;controller.abort();const response=await original;assert.equal(response.status,503);
-   authorization.resolve({user:{id:userId}});await drain();assert.equal(planCalls,0);assert.equal(queryCalls,0);
+   authorization.resolve({user:{id:userId,email:users.find(u=>u.id===userId).email}});await drain();assert.equal(planCalls,0);assert.equal(queryCalls,0);
    assert.equal(await prisma.calendarEntry.count({where:{userId:{in:users.map(u=>u.id)}}}),2);
    results.push('calendar GET aborted while original authorization is held does not start stored-plan or PostgreSQL reads after late authorization, and leaves native calendar rows intact');
   }

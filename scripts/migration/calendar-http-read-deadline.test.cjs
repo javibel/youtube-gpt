@@ -1,47 +1,58 @@
 'use strict';
 const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs');
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
-async function flush(){for(let i=0;i<35;i++)await Promise.resolve();}
+async function flush(){for(let i=0;i<60;i++)await Promise.resolve();}
+const owner={id:'synthetic-calendar-owner',email:'calendar-owner@example.invalid'};
+const row=()=>({id:'own-entry',userId:owner.id,title:'Synthetic retained row',date:'2026-10-10',description:null,color:null,status:'idea',createdAt:new Date('2026-10-01T00:00:00Z'),updatedAt:new Date('2026-10-01T00:00:00Z')});
 function harness(options={}){
- let now=0,next=0;const timers=new Map(),calls=[],signal=new AbortController(),gates={auth:deferred(),plan:deferred(),query:deferred()};
- const state={auth:Object.hasOwn(options,'auth')?options.auth:{user:{id:'synthetic-calendar-owner'}},plan:options.plan??'pro',rows:[{id:'own-entry',userId:'synthetic-calendar-owner',title:'Synthetic retained row',date:'2026-10-10'}]};
+ let now=0,next=0;const timers=new Map(),calls=[],signal=new AbortController(),gates=Object.fromEntries(['auth','transaction','owner','plan','query','commit'].map(s=>[s,deferred()]));
+ const state={auth:Object.hasOwn(options,'auth')?options.auth:{user:{...owner}},owner:{...owner},plan:{userId:owner.id,plan:'pro',status:'active',stripeCustomerId:'synthetic-offline',currentPeriodEnd:null},rows:[row()]};
+ Object.assign(state,options.state);
  const read=stage=>async args=>{calls.push({stage,args});return options.held===stage||options.held?.includes(stage)?gates[stage].promise:state[stage==='query'?'rows':stage];};
- const route=load('app/api/calendar/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:read('auth')},'@/lib/plans':{getUserPlan:read('plan'),isPaid:p=>p==='pro'},'@/lib/prisma':{prisma:{calendarEntry:{findMany:read('query')}}}},
+ const tx={user:{findUnique:read('owner')},subscription:{findUnique:read('plan')},calendarEntry:{findMany:read('query')}};
+ const prisma={$transaction:async(fn,opts)=>{await read('transaction')(opts);const result=await fn(tx);await read('commit')();return result;}};
+ const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
+ const api=load('app/api/calendar/route.ts',{'next/server':{NextResponse:{json(body,opts){const response=Response.json(body,opts);if(options.serializationElapsed&&opts.status===200)now+=options.serializationElapsed;return response;}}},'@/auth':{auth:read('auth')},'@/lib/plans':plans,'@/lib/prisma':{prisma}},
  {performance:{now:()=>now},setTimeout(fn,ms){const id=++next;timers.set(id,{fn,at:now+ms});return id;},clearTimeout(id){timers.delete(id);}});
- let response,error;const original=route.GET(new Request('https://example.invalid/api/calendar?from=2026-10-01&to=2026-10-31',{signal:signal.signal}));void original.then(r=>{response=r;},e=>{error=e;});
+ let response,error;const original=api.GET(new Request('https://example.invalid/api/calendar'+(options.query??'?from=2026-10-01&to=2026-10-31'),{signal:signal.signal}));void original.then(r=>{response=r;},e=>{error=e;});
  return {state,calls,gates,timers,signal,original,get response(){return response;},get error(){return error;},elapseWithoutTimers(ms){now+=ms;},advance(ms){now+=ms;for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
 }
+function value(h,stage){return h.state[stage==='query'?'rows':stage];}
+async function unconfirmed(h){await flush();assert(h.response);assert.equal(h.response.status,503);assert.deepEqual(await h.response.json(),{error:'calendar_read_unconfirmed'});assert.equal(h.response.headers.get('cache-control'),'no-store');assert.equal(h.timers.size,0);}
 const results=[];async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.message});}}
 async function run(){
- for(const stage of ['auth','plan','query'])for(const retire of ['deadline','abort'])await test(stage+' '+retire+' retires original HTTP waiter and never starts a later dependency',async()=>{
-  const h=harness({held:stage});await flush();assert.equal(h.calls.at(-1).stage,stage);if(retire==='deadline')h.advance(30000);else h.signal.abort();await flush();
-  assert(h.response,'HTTP read remained unresolved after retirement');assert.equal(h.response.status,503);assert.deepEqual(await h.response.json(),{error:'calendar_read_unconfirmed'});assert.equal(h.response.headers.get('cache-control'),'no-store');assert.equal(h.timers.size,0);
-  const count=h.calls.length;h.gates[stage].resolve(stage==='auth'?h.state.auth:stage==='plan'?h.state.plan:h.state.rows);await flush();assert.equal(h.calls.length,count);assert.equal(h.response.status,503);assert.equal(h.error,undefined);
+ for(const stage of ['auth','transaction','owner','plan','query','commit'])for(const retire of ['deadline','abort'])await test(stage+' '+retire+' retires only the original waiter and prevents later data reads',async()=>{
+  const h=harness({held:stage});await flush();assert.equal(h.calls.at(-1).stage,stage);if(retire==='deadline')h.advance(25000);else h.signal.abort();await unconfirmed(h);
+  const count=h.calls.filter(c=>!['transaction','commit'].includes(c.stage)).length;h.gates[stage].resolve(value(h,stage));await flush();assert.equal(h.calls.filter(c=>!['transaction','commit'].includes(c.stage)).length,count);assert.equal(h.response.status,503);assert.equal(h.error,undefined);
  });
- await test('one monotonic budget spans authorization, plan and query without extending after each step',async()=>{
-  const h=harness({held:['auth','plan','query']});await flush();h.advance(20000);h.gates.auth.resolve(h.state.auth);await flush();assert.equal(h.calls.at(-1).stage,'plan');
-  h.advance(9000);h.gates.plan.resolve(h.state.plan);await flush();assert.equal(h.calls.at(-1).stage,'query');assert.equal(h.response,undefined);
-  h.advance(999);await flush();assert.equal(h.response,undefined);h.advance(1);await flush();assert.equal(h.response.status,503);assert.equal(h.timers.size,0);
-  h.gates.query.resolve(h.state.rows);await flush();assert.equal(h.response.status,503);assert.equal(h.calls.filter(c=>c.stage==='query').length,1);
+ for(const stage of ['auth','transaction','owner','plan','query','commit'])await test(stage+' rejection is sanitized without replacement or new data work',async()=>{
+  const h=harness({held:stage});await flush();const count=h.calls.length;h.gates[stage].reject(Error('Synthetic private diagnostic'));await unconfirmed(h);assert.equal(h.calls.length,count);
  });
- await test('authorized successful query keeps owner and date bounds and removes deadline',async()=>{
-  const h=harness();await flush();assert.equal(h.response.status,200);assert.deepEqual(await h.response.json(),{entries:h.state.rows});assert.equal(h.response.headers.get('cache-control'),'no-store');const query=h.calls.find(c=>c.stage==='query').args;assert.equal(query.where.userId,h.state.auth.user.id);assert.equal(query.where.date.gte,'2026-10-01');assert.equal(query.where.date.lte,'2026-10-31');assert.equal(query.take,200);assert.equal(h.timers.size,0);
+ await test('one 25s monotonic budget covers auth, SQL snapshot and commit acknowledgement',async()=>{
+  const h=harness({held:['auth','owner','plan','query','commit']});await flush();h.advance(10000);h.gates.auth.resolve(h.state.auth);await flush();h.advance(5000);h.gates.owner.resolve(h.state.owner);await flush();h.advance(5000);h.gates.plan.resolve(h.state.plan);await flush();h.advance(4999);h.gates.query.resolve(h.state.rows);await flush();assert.equal(h.calls.at(-1).stage,'commit');assert.equal(h.response,undefined);h.advance(1);await unconfirmed(h);h.gates.commit.resolve();await flush();assert.equal(h.response.status,503);
  });
- for(const[name,options,status]of [['anonymous',{auth:null},401],['free',{plan:'free'},403]])await test(name+' remains blocked before any calendar query',async()=>{
-  const h=harness(options);await flush();assert.equal(h.response.status,status);assert.equal(h.calls.some(c=>c.stage==='query'),false);assert.equal(h.timers.size,0);
+ await test('elapsed deadline blocks late authorization before delayed timer delivery',async()=>{const h=harness({held:'auth'});await flush();h.elapseWithoutTimers(25000);h.gates.auth.resolve(h.state.auth);await unconfirmed(h);assert.equal(h.calls.length,1);});
+ await test('pre-aborted waiter never starts authorization',async()=>{const h=harness();h.signal.abort();await unconfirmed(h);assert.equal(h.calls.length,0);});
+ for(const stage of ['query','commit'])await test('late '+stage+' rejection is observed after retirement',async()=>{const h=harness({held:stage});await flush();h.advance(25000);await unconfirmed(h);h.gates[stage].reject(Error('Synthetic late diagnostic'));await flush();assert.equal(h.error,undefined);});
+ await test('acknowledgement binds exact ID/email/range, deterministic SQL order and sentinel coverage',async()=>{
+  const h=harness();const response=await h.original;assert.equal(response.status,200);const body=await response.json();assert.deepEqual(body,{owner,range:{from:'2026-10-01',to:'2026-10-31'},coverage:{complete:true,count:1,limit:200},entries:JSON.parse(JSON.stringify(h.state.rows))});assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(h.timers.size,0);
+  const query=h.calls.find(c=>c.stage==='query').args;assert.deepEqual(JSON.parse(JSON.stringify(query.where)),{userId:owner.id,date:{gte:'2026-10-01',lte:'2026-10-31'}});assert.equal(query.take,201);assert.deepEqual(JSON.parse(JSON.stringify(query.orderBy)),[{date:'asc'},{createdAt:'asc'},{id:'asc'}]);assert.deepEqual(JSON.parse(JSON.stringify(h.calls.find(c=>c.stage==='transaction').args)),{isolationLevel:'RepeatableRead',maxWait:25000,timeout:25000});
  });
- await test('late rejection of original query is observed without replacing failed response',async()=>{
-  const h=harness({held:'query'});await flush();h.advance(30000);await flush();assert.equal(h.response.status,503);h.gates.query.reject(Error('Synthetic late database failure'));await flush();assert.equal(h.error,undefined);assert.equal(h.response.status,503);
- });
- for(const stage of ['auth','plan','query'])await test(stage+' failure is sanitized and never starts a later dependency',async()=>{
-  const h=harness({held:stage});await flush();const count=h.calls.length;h.gates[stage].reject(Error('Synthetic private diagnostic'));await flush();assert.equal(h.response.status,503);assert.deepEqual(await h.response.json(),{error:'calendar_read_unconfirmed'});assert.equal(h.calls.length,count);assert.equal(h.timers.size,0);
- });
- await test('elapsed monotonic deadline blocks late authorization even before timer delivery',async()=>{
-  const h=harness({held:'auth'});await flush();h.elapseWithoutTimers(30000);h.gates.auth.resolve(h.state.auth);await flush();assert.equal(h.response.status,503);assert.equal(h.calls.length,1);assert.equal(h.timers.size,0);
- });
- await test('abort before scheduled authorization does not call a dependency',async()=>{
-  const h=harness({held:'auth'});h.signal.abort();await flush();assert(h.response);assert.equal(h.response.status,503);assert.equal(h.calls.length,0);
- });
+ for(const [q,range]of [['',{from:null,to:null}],['?from=2026-10-01',{from:'2026-10-01',to:null}],['?to=2026-10-31',{from:null,to:'2026-10-31'}],['?from=2026-10-10&to=2026-10-10',{from:'2026-10-10',to:'2026-10-10'}]])await test('optional range '+q+' remains explicit in complete acknowledgement',async()=>{const h=harness({query:q});const r=await h.original;assert.equal(r.status,200);assert.deepEqual((await r.json()).range,range);});
+ for(const q of ['?from=','?to=','?from=2026-02-29','?from=2026-02-30','?to=2026-13-01','?to=0000-01-01','?from=2026-10-32','?from=2026-10-31&to=2026-10-01','?from=2026-10-01&from=2026-10-01','?to=2026-10-31&to=2026-10-31','?from=2026-10-01T00:00:00Z','?userId=foreign','?from=%202026-10-01','?from=2026-1-01','?page=1'])await test('invalid or ambiguous range rejected before SQL '+q,async()=>{const h=harness({query:q});const r=await h.original;assert.equal(r.status,400);assert.deepEqual(await r.json(),{error:'invalid_range'});assert.equal(h.calls.length,1);assert.equal(h.timers.size,0);});
+ await test('canonical leap day is accepted',async()=>{const h=harness({query:'?from=2024-02-29&to=2024-02-29',state:{rows:[]}});const r=await h.original;assert.equal(r.status,200);assert.deepEqual((await r.json()).coverage,{complete:true,count:0,limit:200});});
+ for(const auth of [null,{user:{id:owner.id}},{user:{id:owner.id,email:''}},{user:{id:42,email:owner.email}}])await test('incomplete authorization cannot start SQL '+JSON.stringify(auth),async()=>{const h=harness({auth});assert.equal((await h.original).status,401);assert.equal(h.calls.length,1);});
+ for(const [selected,status]of [[null,404],[{id:'foreign',email:owner.email},401],[{...owner,email:'other@example.invalid'},401]])await test('SQL owner missing or mismatched is rejected '+JSON.stringify(selected),async()=>{const h=harness({state:{owner:selected}});assert.equal((await h.original).status,status);assert.equal(h.calls.some(c=>['plan','query'].includes(c.stage)),false);});
+ for(const plan of [null,{userId:owner.id,plan:'free',status:'active',stripeCustomerId:null,currentPeriodEnd:null},{userId:owner.id,plan:'pro',status:'canceled',stripeCustomerId:null,currentPeriodEnd:null},{userId:owner.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date('2000-01-01')},{userId:owner.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:null}])await test('unpaid or declared expired plan cannot read calendar '+JSON.stringify(plan),async()=>{const h=harness({state:{plan}});assert.equal((await h.original).status,403);assert.equal(h.calls.some(c=>c.stage==='query'),false);});
+ for(const patch of [{userId:'foreign'},{plan:'unrecognized'},{status:null},{stripeCustomerId:12},{currentPeriodEnd:new Date(NaN)}])await test('malformed subscription source is unavailable '+JSON.stringify(patch),async()=>{const h=harness();Object.assign(h.state.plan,patch);await unconfirmed(h);assert.equal(h.calls.some(c=>c.stage==='query'),false);});
+ for(const plan of ['pro','business'])await test('stored '+plan+' access is accepted without modifying subscription',async()=>{const h=harness();h.state.plan.plan=plan;assert.equal((await h.original).status,200);});
+ const malformed=[{userId:'foreign'},{id:''},{title:''},{title:'x'.repeat(201)},{description:12},{color:{}},{date:'2026-02-30'},{date:'2026-09-30'},{date:'2026-11-01'},{status:'unknown'},{createdAt:new Date(NaN)},{updatedAt:null}];
+ for(const patch of malformed)await test('malformed, foreign or out-of-range row cannot claim coverage '+JSON.stringify(patch).slice(0,100),async()=>{const h=harness();Object.assign(h.state.rows[0],patch);await unconfirmed(h);});
+ for(const rows of [null,{},[row(),row()],Array.from({length:201},(_,i)=>({...row(),id:'e'+String(i).padStart(3,'0')})),[{...row(),id:'b'},{...row(),id:'a'}],[{...row(),date:'2026-10-11'},{...row(),id:'next'}],[{...row(),createdAt:new Date('2026-10-02')},{...row(),id:'next'}]])await test('incomplete, duplicate or disordered result cannot acknowledge complete coverage '+results.length,async()=>{const h=harness({state:{rows}});await unconfirmed(h);});
+ await test('exact capacity 200 is complete only with sentinel query and unique ordered own rows',async()=>{const rows=Array.from({length:200},(_,i)=>({...row(),id:'e'+String(i).padStart(3,'0')})),h=harness({state:{rows}});const r=await h.original;assert.equal(r.status,200);assert.deepEqual((await r.json()).coverage,{complete:true,count:200,limit:200});});
+ await test('authorization and range are captured before SQL and cannot follow a mutable session',async()=>{const h=harness({held:'owner'});await flush();h.state.auth.user.id='foreign';h.state.auth.user.email='foreign@example.invalid';h.gates.owner.resolve(h.state.owner);const r=await h.original;assert.equal(r.status,200);assert.deepEqual((await r.json()).owner,owner);assert.equal(h.calls.find(c=>c.stage==='query').args.where.userId,owner.id);});
+ await test('row and access bytes are captured before delayed transaction acknowledgement',async()=>{const h=harness({held:'commit'});await flush();h.state.rows[0].title='Mutated source';h.state.rows[0].createdAt.setUTCFullYear(2040);h.state.plan.status='canceled';h.gates.commit.resolve();const r=await h.original;assert.equal(r.status,200);const b=await r.json();assert.equal(b.entries[0].title,'Synthetic retained row');assert.equal(b.entries[0].createdAt,'2026-10-01T00:00:00.000Z');});
+ await test('response serialization remains inside the original monotonic budget',async()=>{const h=harness({serializationElapsed:25000});await unconfirmed(h);});
  return {status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',results};
 }
 module.exports={harness,deferred,flush};

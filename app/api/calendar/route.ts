@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getUserPlan, isPaid } from '@/lib/plans';
+import { getUserPlan, hasPaidAccess, isPaid } from '@/lib/plans';
 
 const MAX_ENTRIES = 200;
 const VALID_STATUSES = ['idea', 'draft', 'scheduled', 'published'];
 class CalendarCreationConflict extends Error {}
 
 // Retiring the HTTP waiter does not cancel or replace an original dependency.
-function calendarHttpWait(signal: AbortSignal) {
-  const deadline = performance.now() + 30_000;
+function calendarHttpWait(signal: AbortSignal, duration = 30_000) {
+  const deadline = performance.now() + duration;
   let retired = false;
   let rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
@@ -17,7 +17,7 @@ function calendarHttpWait(signal: AbortSignal) {
   const retire = () => {
     if (!retired) { retired = true; rejectWait(new Error('Calendar HTTP unconfirmed')); }
   };
-  const timer = setTimeout(retire, 30_000);
+  const timer = setTimeout(retire, duration);
   signal.addEventListener('abort', retire, { once: true });
   const check = () => {
     if (signal.aborted || performance.now() >= deadline) retire();
@@ -51,47 +51,106 @@ async function boundedCalendarWrite(request: Request, handler: (wait: CalendarHt
   } finally { wait.close(); }
 }
 
-// GET — list entries for a month (or range)
+// GET — an owner-bound, complete SQL snapshot for the requested date range.
 export async function GET(request: Request) {
-  const wait = calendarHttpWait(request.signal);
-  const headers = { 'Cache-Control': 'no-store' };
+  const wait = calendarHttpWait(request.signal, 25_000);
+  const reply = (body: unknown, status = 200) => {
+    const response = NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+    wait.check();
+    return response;
+  };
   try {
     const session = await wait.run(() => auth());
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401, headers });
+    if (typeof session?.user?.id !== 'string' || !session.user.id
+      || typeof session.user.email !== 'string' || !session.user.email) {
+      return reply({ error: 'unauthorized' }, 401);
     }
-
-    const userId = session.user.id;
-    const plan = await wait.run(() => getUserPlan(userId));
-    if (!isPaid(plan)) {
-      return NextResponse.json({ error: 'pro_required' }, { status: 403, headers });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const from = searchParams.get('from') || '';
-    const to = searchParams.get('to') || '';
-
-    const where: { userId: string; date?: { gte?: string; lte?: string } } = {
-      userId,
-    };
-    if (from || to) {
-      where.date = {};
-      if (from) where.date.gte = from;
-      if (to) where.date.lte = to;
-    }
-
-    const entries = await wait.run(() => prisma.calendarEntry.findMany({
-      where,
-      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
-      take: MAX_ENTRIES,
-    }));
-
-    return NextResponse.json({ entries }, { headers });
+    const owner = Object.freeze({ id: session.user.id, email: session.user.email });
+    const params = new URL(request.url).searchParams;
+    const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
+      && value.slice(0, 4) !== '0000'
+      && new Date(value + 'T00:00:00.000Z').toISOString().slice(0, 10) === value;
+    const from = params.get('from'), to = params.get('to');
+    let validRange = true;
+    try {
+      validRange = [...params.keys()].every(key => key === 'from' || key === 'to')
+        && params.getAll('from').length <= 1 && params.getAll('to').length <= 1
+        && (from === null || validDate(from)) && (to === null || validDate(to))
+        && (from === null || to === null || from <= to);
+    } catch { validRange = false; }
+    if (!validRange) return reply({ error: 'invalid_range' }, 400);
+    const range = Object.freeze({ from, to });
+    const snapshot = await wait.run(() => prisma.$transaction(async tx => {
+      wait.check();
+      const selected = await tx.user.findUnique({
+        where: { email: owner.email }, select: { id: true, email: true },
+      });
+      wait.check();
+      if (!selected) return { status: 404, body: { error: 'owner_not_found' }, access: null };
+      if (selected.id !== owner.id || selected.email !== owner.email)
+        return { status: 401, body: { error: 'unauthorized' }, access: null };
+      const subscription = await tx.subscription.findUnique({
+        where: { userId: owner.id },
+        select: { userId: true, status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true },
+      });
+      wait.check();
+      if (subscription !== null && (subscription.userId !== owner.id
+        || typeof subscription.status !== 'string' || !subscription.status
+        || !['free', 'pro', 'business'].includes(subscription.plan)
+        || (subscription.stripeCustomerId !== null && typeof subscription.stripeCustomerId !== 'string')))
+        throw Error('Calendar read unconfirmed');
+      const access = subscription === null ? null : Object.freeze({
+        status: subscription.status, stripeCustomerId: subscription.stripeCustomerId,
+        currentPeriodEnd: subscription.currentPeriodEnd === null ? null
+          : new Date(Date.prototype.toISOString.call(subscription.currentPeriodEnd)),
+      });
+      if (subscription === null || !['pro', 'business'].includes(subscription.plan) || !hasPaidAccess(access))
+        return { status: 403, body: { error: 'pro_required' }, access: null };
+      // The extra row proves truncation. Never acknowledge a capped list as complete.
+      const rows = await tx.calendarEntry.findMany({
+        where: { userId: owner.id, ...((from !== null || to !== null) ? {
+          date: { ...(from !== null ? { gte: from } : {}), ...(to !== null ? { lte: to } : {}) },
+        } : {}) },
+        orderBy: [{ date: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], take: MAX_ENTRIES + 1,
+        select: { id: true, userId: true, title: true, description: true, date: true,
+          status: true, color: true, createdAt: true, updatedAt: true },
+      });
+      wait.check();
+      if (!Array.isArray(rows) || rows.length > MAX_ENTRIES) throw Error('Calendar read unconfirmed');
+      const ids = new Set<string>();
+      const entries = Array.from(rows, row => {
+        if (typeof row.id !== 'string' || !row.id || ids.has(row.id) || row.userId !== owner.id
+          || typeof row.title !== 'string' || !row.title.trim() || row.title.length > 200
+          || (row.description !== null && typeof row.description !== 'string')
+          || typeof row.date !== 'string' || !validDate(row.date)
+          || (from !== null && row.date < from) || (to !== null && row.date > to)
+          || typeof row.status !== 'string' || !VALID_STATUSES.includes(row.status)
+          || (row.color !== null && typeof row.color !== 'string')) throw Error('Calendar read unconfirmed');
+        ids.add(row.id);
+        return Object.freeze({ id: row.id, userId: owner.id, title: row.title,
+          description: row.description, date: row.date, status: row.status, color: row.color,
+          createdAt: Date.prototype.toISOString.call(row.createdAt),
+          updatedAt: Date.prototype.toISOString.call(row.updatedAt),
+        });
+      });
+      for (let i = 1; i < entries.length; i++) {
+        const a = entries[i - 1], b = entries[i];
+        if (a.date > b.date || (a.date === b.date && (a.createdAt > b.createdAt
+          || (a.createdAt === b.createdAt && a.id > b.id)))) throw Error('Calendar read unconfirmed');
+      }
+      wait.check();
+      return { status: 200, access, body: { owner, range,
+        coverage: { complete: true, count: entries.length, limit: MAX_ENTRIES }, entries } };
+    }, { isolationLevel: 'RepeatableRead', maxWait: 25_000, timeout: 25_000 }));
+    wait.check();
+    // A delayed transaction acknowledgement cannot renew declared manual access.
+    if (snapshot.status === 200 && !hasPaidAccess(snapshot.access)) return reply({ error: 'pro_required' }, 403);
+    return reply(snapshot.body, snapshot.status);
   } catch {
-    return NextResponse.json({ error: 'calendar_read_unconfirmed' }, { status: 503, headers });
-  } finally {
-    wait.close();
-  }
+    return NextResponse.json({ error: 'calendar_read_unconfirmed' }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
+  } finally { wait.close(); }
 }
 
 // POST — create entry
