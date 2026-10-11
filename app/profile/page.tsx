@@ -5,6 +5,9 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useLang, useSetLang } from '@/components/LangProvider';
 import { useProfileSettings } from '@/lib/use-profile-settings';
+import { usePasswordChange } from '@/lib/use-password-change';
+import { passwordInputError } from '@/lib/password-change-client';
+import type { PasswordReceipt } from '@/lib/password-change-client';
 import { claimConfirmedProfileLanguage } from '@/lib/profile-update-client';
 import type { ProfileData } from '@/lib/profile-read-client';
 import DashboardShell from '@/components/DashboardShell';
@@ -47,8 +50,15 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [pwdError, setPwdError] = useState('');
-  const [pwdLoading, setPwdLoading] = useState(false);
-  const [pwdSuccess, setPwdSuccess] = useState(false);
+  const [pwdReceipt, setPwdReceipt] = useState<PasswordReceipt | null>(null);
+  const pwdDraft = useMemo(() => ({}), [currentPwd, newPwd, confirmPwd, showPwdForm]);
+  const password = usePasswordChange(owner, status, lang, pwdDraft, isCurrent);
+  const pwdUI = useMemo(() => ({}), [pwdDraft, owner.userId, owner.email, status, lang]);
+  const currentPwdUI = useRef(pwdUI);
+  currentPwdUI.current = pwdUI;
+  const canUsePwdUI = () => currentPwdUI.current === pwdUI && password.canObserve();
+  const pwdLoading = password.waiting;
+  const pwdSuccess = password.canObserve() && !!pwdReceipt;
   const [upgrading, setUpgrading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [downgrading, setDowngrading] = useState(false);
@@ -75,32 +85,27 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
-  async function handleChangePassword(e: React.FormEvent) {
+  function editPassword(field: 'current' | 'new' | 'confirm', value: string) {
+    if (!canUsePwdUI()) return;
+    (field === 'current' ? setCurrentPwd : field === 'new' ? setNewPwd : setConfirmPwd)(value);
+    setPwdError(''); setPwdReceipt(null);
+  }
+  function passwordConfirmed(receipt: PasswordReceipt, clearDraft: boolean) {
+    if (!canUsePwdUI()) return;
+    setPwdReceipt(receipt); setPwdError('');
+    if (clearDraft) { setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); setShowPwdForm(false); }
+  }
+  function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
-    setPwdError('');
-    if (newPwd !== confirmPwd) {
-      setPwdError(t('Las contraseñas no coinciden', 'Passwords do not match'));
-      return;
-    }
-    if (newPwd.length < 8 || !/[a-zA-Z]/.test(newPwd) || !/[0-9]/.test(newPwd)) {
-      setPwdError(t(
-        'Mínimo 8 caracteres, con al menos 1 letra y 1 número',
-        'At least 8 characters, with at least 1 letter and 1 number'
-      ));
-      return;
-    }
-    setPwdLoading(true);
-    const res = await fetch('/api/user/change-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd, lang }),
-    });
-    const d = await res.json();
-    setPwdLoading(false);
-    if (!res.ok) { setPwdError(d.error ?? t('Error al cambiar la contraseña', 'Error changing password')); return; }
-    setPwdSuccess(true);
-    setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
-    setTimeout(() => { setPwdSuccess(false); setShowPwdForm(false); }, 3000);
+    if (!canUsePwdUI() || !password.canStart) return;
+    setPwdError(''); setPwdReceipt(null);
+    const error = passwordInputError(currentPwd, newPwd, confirmPwd, lang);
+    if (error) { setPwdError(error); return; }
+    password.start({ currentPassword: currentPwd, newPassword: newPwd, lang }, receipt => passwordConfirmed(receipt, true));
+  }
+  function observePassword() {
+    if (!canUsePwdUI()) return;
+    password.observe(receipt => passwordConfirmed(receipt, false));
   }
 
   async function handleUpgrade(plan: 'monthly' | 'yearly' | 'business_monthly' | 'business_yearly') {
@@ -337,7 +342,7 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
           <div className="flex items-center justify-between mb-4">
             <p className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-3)' }}>{t('Seguridad', 'Security')}</p>
             {!showPwdForm && (
-              <button onClick={() => setShowPwdForm(true)}
+              <button onClick={() => { if (!canUsePwdUI()) return; setShowPwdForm(true); setPwdReceipt(null); setPwdError(''); }}
                 className="font-mono-jb text-[13px] tracking-wider uppercase hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
                 {t('Cambiar contraseña', 'Change password')}
               </button>
@@ -352,49 +357,71 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
           )}
 
           {pwdSuccess && (
-            <p className="font-mono-jb text-[13px] py-2 inline-flex items-start gap-1.5" style={{ color: '#22c55e' }}>
-              <CheckIcon size={13} className="mt-0.5 shrink-0" /> {t('Contraseña actualizada. Te hemos enviado un email de confirmación.', 'Password updated. A confirmation email has been sent.')}
+            <p role="status" className="font-mono-jb text-[13px] py-2 inline-flex items-start gap-1.5" style={{ color: '#22c55e' }}>
+              <CheckIcon size={13} className="mt-0.5 shrink-0" /> {t('Contraseña actualizada.', 'Password updated.')}
+              {pwdReceipt?.notification === 'acknowledged'
+                ? t('El proveedor ha aceptado el aviso; su entrega no está confirmada.', 'The provider accepted the notice; delivery is not confirmed.')
+                : pwdReceipt?.notification === 'unconfirmed'
+                  ? t('El envío del aviso está sin confirmar. No se reenviará automáticamente.', 'The notice send is unconfirmed. It will not be sent again automatically.')
+                  : t('El aviso no se ha enviado.', 'The notice was not sent.')}
             </p>
           )}
 
-          {showPwdForm && !pwdSuccess && (
+          {pwdLoading && <p role="status">{t('Confirmando el cambio de contraseña...', 'Confirming password change...')}</p>}
+          {!pwdLoading && password.blocked && !pwdSuccess && <p role="alert">
+            {t('Cambio de contraseña sin confirmar. No vuelvas a enviarlo.', 'Password change unconfirmed. Do not send it again.')}
+            {password.pending && t('La solicitud original sigue pendiente.', 'The original request is still pending.')}
+          </p>}
+          {pwdSuccess && password.blocked && <p role="alert">{t('Cambio confirmado, pero no se pudo liberar el registro local. Otro cambio está bloqueado.', 'Change confirmed, but the local record could not be released. Another change is blocked.')}</p>}
+          {password.outcome?.status === 'rejected' && <p role="alert">
+            {password.outcome.error === 'wrong_current' ? t('La contraseña actual no es correcta', 'Current password is incorrect')
+              : password.outcome.error === 'passwordless' ? t('No se puede cambiar la contraseña de esta cuenta', 'Cannot change password for this account')
+                : password.outcome.error === 'changed' ? t('La contraseña cambió durante la solicitud. Revisa la contraseña actual antes de iniciar otro cambio.', 'The password changed during the request. Review the current password before starting another change.')
+                  : password.outcome.error === 'unauthorized' ? t('No autorizado. Comprueba tu sesión.', 'Unauthorized. Check your session.')
+                    : t('Solicitud de contraseña rechazada antes de aplicarse.', 'Password request rejected before applying.')}
+          </p>}
+          {password.retained && !pwdSuccess && <button type="button" onClick={observePassword} disabled={pwdLoading}
+            className="font-mono-jb text-[13px] py-2 disabled:opacity-50">
+            {t('Consultar solicitud original', 'Observe original request')}
+          </button>}
+          {showPwdForm && (
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
                 <label className="block font-mono-jb text-[13px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Contraseña actual', 'Current password')}
                 </label>
-                <PasswordInput required value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
+                <PasswordInput required value={currentPwd} onChange={e => editPassword('current', e.target.value)}
                   className="py-2.5 px-3 text-sm" />
               </div>
               <div>
                 <label className="block font-mono-jb text-[13px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Nueva contraseña', 'New password')}
                 </label>
-                <PasswordInput required value={newPwd} onChange={e => setNewPwd(e.target.value)}
+                <PasswordInput required value={newPwd} onChange={e => editPassword('new', e.target.value)}
                   className="py-2.5 px-3 text-sm" placeholder={t('Mínimo 8 caracteres', 'At least 8 characters')} />
               </div>
               <div>
                 <label className="block font-mono-jb text-[13px] tracking-wider uppercase mb-1.5 yv-muted">
                   {t('Confirmar contraseña', 'Confirm password')}
                 </label>
-                <PasswordInput required value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
+                <PasswordInput required value={confirmPwd} onChange={e => editPassword('confirm', e.target.value)}
                   className="py-2.5 px-3 text-sm" />
               </div>
               {pwdError && (
-                <div className="rounded-xl px-4 py-3 text-sm inline-flex items-center gap-1.5" style={{ background: 'var(--yv-brand-soft)', border: '1px solid var(--yv-brand-border)', color: '#f87171' }}>
+                <div role="alert" className="rounded-xl px-4 py-3 text-sm inline-flex items-center gap-1.5" style={{ background: 'var(--yv-brand-soft)', border: '1px solid var(--yv-brand-border)', color: '#f87171' }}>
                   <WarningIcon size={14} /> {pwdError}
                 </div>
               )}
               <div className="flex gap-3">
-                <button type="submit" disabled={pwdLoading}
+                <button type="submit" disabled={!password.canStart || pwdLoading}
                   className="btn-offset px-5 py-2.5 text-[13px] font-display disabled:opacity-50 flex items-center gap-2">
                   {pwdLoading
                     ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full spin-r" />{t('Guardando...', 'Saving...')}</>
                     : t('Guardar contraseña', 'Save password')}
                 </button>
-                <button type="button" onClick={() => { setShowPwdForm(false); setPwdError(''); setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }}
+                <button type="button" onClick={() => { if (!canUsePwdUI()) return; setShowPwdForm(false); setPwdError(''); setPwdReceipt(null); setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }}
                   className="px-4 py-2.5 font-mono-jb text-[13px] hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
-                  {t('Cancelar', 'Cancel')}
+                  {t('Cerrar formulario', 'Close form')}
                 </button>
               </div>
             </form>
