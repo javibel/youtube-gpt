@@ -110,6 +110,7 @@ export default function DashboardPage() {
   const { billingBusy, upgrading, cancelling, syncing, billingError, cancelConfirmed, syncResult,
     checkoutBlocked, checkoutHasOriginal, checkoutPending, checkoutSelectionMatches, checkoutState, checkoutNavigationFailed,
     cancelBlocked,cancelHasOriginal,cancelPending,cancelSelectionMatches,cancelCanStart,cancelCanObserve,handleObserveCancel,
+    syncBlocked,syncHasOriginal,syncPending,syncSelectionMatches,syncCanStart,syncCanObserve,handleObserveSync,
     handleUpgrade, handleObserveCheckout, handleCancel, handleSync } = useDashboardBilling(session?.user?.id, session?.user?.email, status, lang, refreshStats, billingPlan, data?.stats.plan, data?.subscription);
 
   useEffect(() => {
@@ -517,10 +518,17 @@ function handleCopy(id: string, out: string) {
             <div role="alert" className="yv-card p-4 mb-4">
               <p>{billingError === 'checkout' ? t('No se pudo confirmar el enlace de pago. Consulta la solicitud original; este resultado no permite iniciar otro pago.', 'Could not confirm the payment link. Observe the original request; this result does not allow another checkout.')
                 : billingError === 'cancel' ? t('Cancelación sin confirmar. No se reenviará automáticamente.', 'Cancellation unconfirmed. It will not be sent again automatically.')
-                : t('No se pudo comprobar la suscripción. Puedes reintentar.', 'Could not check the subscription. You can retry.')}</p>
-              {billingError === 'sync' && <button disabled={billingBusy} className="btn-offset mt-2 px-4 py-2 disabled:opacity-50" onClick={handleSync}>{t('Reintentar comprobación','Retry check')}</button>}
+                : t('Comprobación sin confirmar. Consulta la solicitud original; no se reenviará.', 'Check unconfirmed. Observe the original request; it will not be sent again.')}</p>
             </div>
           )}
+          {syncBlocked && <div role={syncResult?'status':'alert'} className="yv-card p-4 mb-4">
+            {!syncResult && <p>{t('Comprobación sin confirmar. No se iniciará otra solicitud.','Check unconfirmed. Another request will not be started.')}</p>}
+            {syncPending && <p>{t('La solicitud original sigue pendiente.','The original request is still pending.')}</p>}
+            {syncHasOriginal ? <>
+              {!syncSelectionMatches && <p>{t('La solicitud original corresponde a otra selección o idioma. Su resultado no confirma la selección actual.','The original request belongs to another selection or language. Its result does not confirm the current selection.')}</p>}
+              <button onClick={handleObserveSync} disabled={billingBusy||!syncCanObserve}>{t('Consultar comprobación original','Observe original check')}</button>
+            </> : <p>{t('El original no está disponible. Este registro no permite recuperarlo ni iniciar otra solicitud.','The original is unavailable. This record cannot restore it or start another request.')}</p>}
+          </div>}
           {cancelBlocked && <div role={cancelConfirmed?'status':'alert'} className="yv-card p-4 mb-4">
             {!cancelConfirmed && <p>{t('Cancelación sin confirmar. No se reenviará automáticamente.','Cancellation unconfirmed. It will not be sent again automatically.')}</p>}
             {cancelPending && <p>{t('La solicitud original sigue pendiente.','The original request is still pending.')}</p>}
@@ -1388,13 +1396,13 @@ function handleCopy(id: string, out: string) {
                   )}
                 </div>
                 <div className="mt-3 pt-3">
-                  <button onClick={handleSync} disabled={billingBusy}
+                  <button onClick={handleSync} disabled={billingBusy||!syncCanStart}
                     className="w-full font-mono-jb text-[13px] tracking-wider uppercase hover:opacity-80 disabled:opacity-50 transition py-1" style={{ color: 'var(--yv-text-3)' }}>
                     {syncing ? t('Sincronizando...', 'Syncing...') : t('¿Ya pagaste? Sincronizar suscripción', 'Already paid? Sync subscription')}
                   </button>
                   {syncResult && (
                     <p className="font-mono-jb text-[13px] mt-2 text-center inline-flex items-center justify-center gap-1.5 w-full" style={{ color: syncResult === 'synced' ? '#16a34a' : '#f87171' }}>
-                      {syncResult === 'synced' ? <CheckIcon size={13} /> : <CrossIcon size={13} />} {syncResult === 'synced' ? t('Suscripción confirmada. Datos actualizados cuando termine la lectura.', 'Subscription confirmed. Data updates when the read finishes.') : t('No se encontró suscripción activa.', 'No active subscription found.')}
+                      {syncResult === 'synced' ? <CheckIcon size={13} /> : <CrossIcon size={13} />} {syncResult === 'synced' ? t('Comprobación original simulada confirmada. Los datos se actualizan cuando termine la lectura.', 'Original simulated check confirmed. Data updates when the read finishes.') : t('La comprobación original no encontró una suscripción activa. Los datos anteriores se conservan.', 'The original check found no active subscription. Previous data is retained.')}
                     </p>
                   )}
                 </div>

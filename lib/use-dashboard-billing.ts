@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { beginCheckout, checkoutBlocked, observeCheckoutOriginal, retainedCheckout, trustedCheckoutOutcome } from '@/lib/profile-checkout-client';
 import type { CheckoutAttempt, CheckoutOutcome, CheckoutPlan } from '@/lib/profile-checkout-client';
 
+import { useSubscriptionSync } from '@/lib/use-subscription-sync';
+import type { SyncSelection } from '@/lib/subscription-sync-client';
 import { useSubscriptionCancellation } from '@/lib/use-subscription-cancellation';
 import type { CancellationSelection } from '@/lib/subscription-cancellation-client';
 
@@ -14,7 +16,7 @@ const initial = () => ({ busy: null as Action|null, error: null as Action|null,
   checkoutState: null as 'confirmed'|'unconfirmed'|null, navigationFailed: false });
 
 export function useDashboardBilling(userId: string|undefined, email: string|null|undefined,
-  authStatus: string, lang: string, refreshStats: () => Promise<void>, selectedPlan: CheckoutPlan = 'monthly', subscriptionPlan?: string, subscription?: { id?: string; plan?: string; status: string; cancelAtPeriodEnd: boolean } | null) {
+  authStatus: string, lang: string, refreshStats: () => Promise<void>, selectedPlan: CheckoutPlan = 'monthly', subscriptionPlan?: string, subscription?: { id?: string; plan?: string; status: string; cancelAtPeriodEnd: boolean; currentPeriodEnd?: string|null } | null) {
   const account = useMemo(() => ({ userId, email, authStatus }), [userId,email,authStatus]);
   const activeAccount = useRef(account); activeAccount.current = account;
   const scope = useMemo(() => ({ active: true, action: null as Action|null,
@@ -31,6 +33,9 @@ export function useDashboardBilling(userId: string|undefined, email: string|null
   const owner = { userId: userId ?? '', email: email ?? '' };
   const selection: CancellationSelection | null = subscription && (subscription.plan==='pro'||subscription.plan==='business') ? {subscriptionId:subscription.id??'',plan:subscription.plan,status:subscription.status,cancelAtPeriodEnd:subscription.cancelAtPeriodEnd}:null;
   const cancellation=useSubscriptionCancellation(owner,authStatus,lang,selection,canConsume,()=>{ void refreshStats().catch(()=>{}); });
+
+  const syncSelection: SyncSelection | null = subscription === undefined ? null : subscription === null ? {subscriptionId:null,plan:null,status:null,cancelAtPeriodEnd:null,currentPeriodEnd:null} : {subscriptionId:subscription.id??'',plan:subscription.plan??subscriptionPlan??null,status:subscription.status,cancelAtPeriodEnd:subscription.cancelAtPeriodEnd,currentPeriodEnd:subscription.currentPeriodEnd??null};
+  const synchronization=useSubscriptionSync(owner,authStatus,lang,syncSelection,canConsume,receipt=>{if(receipt.synced)void refreshStats().catch(()=>{});});
 
   function waitCheckout(a: CheckoutAttempt, pending: Promise<CheckoutOutcome>, navigate: boolean) {
     scope.action='checkout'; scope.key=a.plan+':'+a.lang;
@@ -50,7 +55,7 @@ export function useDashboardBilling(userId: string|undefined, email: string|null
     return flight;
   }
   function handleUpgrade(plan: CheckoutPlan) {
-    if (!current() || cancellation.waiting) return Promise.resolve();
+    if (!current() || cancellation.waiting || synchronization.blocked) return Promise.resolve();
     if (scope.flight) return scope.action === 'checkout' && scope.key === plan+':'+lang ? scope.flight : Promise.resolve();
     if (!plans.includes(plan) || !plans.includes(selectedPlan) || (lang !== 'es' && lang !== 'en')) {
       update({error:'checkout'}); return Promise.resolve();
@@ -68,40 +73,20 @@ export function useDashboardBilling(userId: string|undefined, email: string|null
     if (!original) return Promise.resolve();
     return waitCheckout(original,observeCheckoutOriginal(original),original.plan === selectedPlan && original.lang === lang);
   }
-  const run = useCallback((action: 'sync') => {
-    if (!current()) return Promise.resolve();
-    if (scope.flight) return scope.action === action ? scope.flight : Promise.resolve();
-    scope.action=action;scope.key=action; update({busy:action,error:null,syncResult:null});
-    const flight = (async () => {
-      try {
-        const response = await fetch('/api/stripe/'+action, {method:'POST'});
-        if (!response.ok) throw Error('Billing unconfirmed');
-        const body = await response.json();
-        if (!current()) return;
-        if (!body || body.userId !== userId || body.email !== email) throw Error('Billing identity mismatch');
-        if (typeof body.synced !== 'boolean' || (body.synced && !['active','trialing'].includes(body.status))) throw Error('Sync unconfirmed');
-        update({syncResult:body.synced ? 'synced' : 'none'});
-        if (body.synced) await refreshStats();
-      } catch { update({error:action}); }
-      finally { update({busy:null}); }
-    })();
-    scope.flight=flight;
-    void flight.finally(() => { if (scope.flight === flight) {scope.flight=null;scope.action=null;} });
-    return flight;
-  }, [scope,current,update,userId,email,lang,refreshStats]);
   useEffect(() => {scope.active=true;setStore({scope,...initial()});return () => {
     scope.active=false;scope.generation={};
     if(scope.action === 'checkout') {scope.flight=null;scope.action=null;}
   };}, [scope]);
   const view = store.scope === scope && current() ? store : initial();
   const original=current() ? retainedCheckout(owner) : undefined;
-  return {billingBusy:view.busy !== null || cancellation.waiting,upgrading:view.busy === 'checkout',cancelling:cancellation.waiting,
-    syncing:view.busy === 'sync',billingError:cancellation.outcome?.status==='unconfirmed'?'cancel' as const:view.error,cancelConfirmed:cancellation.confirmed,syncResult:view.syncResult,
+  return {billingBusy:view.busy !== null || cancellation.waiting || synchronization.waiting,upgrading:view.busy === 'checkout',cancelling:cancellation.waiting,
+    syncing:synchronization.waiting,billingError:cancellation.outcome?.status==='unconfirmed'?'cancel' as const:synchronization.outcome?.status==='unconfirmed'?'sync' as const:view.error,cancelConfirmed:cancellation.confirmed,syncResult:synchronization.outcome?.status==='confirmed'?(synchronization.outcome.receipt.synced?'synced' as const:'none' as const):null,
     checkoutBlocked:current() && checkoutBlocked(owner),checkoutHasOriginal:!!original,checkoutPending:!!original?.pending,
     checkoutSelectionMatches:!!original && original.plan === selectedPlan && original.lang === lang,
     checkoutState:view.checkoutState,checkoutNavigationFailed:view.navigationFailed,
     handleUpgrade,handleObserveCheckout,
     cancelBlocked:cancellation.blocked,cancelHasOriginal:cancellation.hasOriginal,cancelPending:cancellation.pending,cancelSelectionMatches:cancellation.selectionMatches,cancelCanStart:cancellation.canStart,cancelCanObserve:cancellation.canObserve,
-    handleCancel:()=>current()&&!scope.flight?cancellation.start():Promise.resolve(),
-    handleObserveCancel:()=>current()&&!scope.flight?cancellation.observe():Promise.resolve(),handleSync:()=>!cancellation.waiting?run('sync'):Promise.resolve()};
+    syncBlocked:synchronization.blocked,syncHasOriginal:synchronization.hasOriginal,syncPending:synchronization.pending,syncSelectionMatches:synchronization.selectionMatches,syncCanStart:synchronization.canStart,syncCanObserve:synchronization.canObserve,
+    handleCancel:()=>current()&&!scope.flight&&!synchronization.blocked?cancellation.start():Promise.resolve(),
+    handleObserveCancel:()=>current()&&!scope.flight?cancellation.observe():Promise.resolve(),handleSync:()=>current()&&!scope.flight&&!cancellation.waiting?synchronization.start():Promise.resolve(),handleObserveSync:()=>current()&&!scope.flight&&!cancellation.waiting?synchronization.observe():Promise.resolve()};
 }

@@ -1,3 +1,4 @@
+import { syncDenied, denyOtherBilling } from '@/lib/subscription-sync-denial';
 export type CheckoutOwner = Readonly<{ userId: string; email: string }>;
 export type CheckoutPlan = 'monthly' | 'yearly' | 'business_monthly' | 'business_yearly';
 export type CheckoutReceipt = Readonly<{ userId: string; email: string; key: string; plan: CheckoutPlan; lang: 'es' | 'en'; mode: 'simulated'; url: string }>;
@@ -46,11 +47,12 @@ export function observeCheckoutOriginal(a: CheckoutAttempt): Promise<CheckoutOut
 export function beginCheckout(owner: CheckoutOwner, plan: CheckoutPlan, lang: 'es' | 'en', canConsume: () => boolean): CheckoutAttempt | null {
   if (!id(owner.userId) || typeof owner.email !== 'string' || !owner.email || owner.email.length > 320
       || !['monthly', 'yearly', 'business_monthly', 'business_yearly'].includes(plan) || !['es', 'en'].includes(lang)
-      || !canConsume() || checkoutBlocked(owner)) return null;
+      || !canConsume() || checkoutBlocked(owner) || syncDenied(owner)) return null;
   let key: string; try { key = crypto.randomUUID(); if (!id(key)) return null; } catch { return null; }
   const own = Object.freeze({ userId: owner.userId, email: owner.email }), scope = identity(own), body = JSON.stringify({ plan, lang });
   // Presence only: neither a public receipt nor a stored key restores this original.
   try { sessionStorage.setItem(scope, 'pending'); } catch { denied.add(scope); return null; }
+  denyOtherBilling(own);
   const state: RecordState = { pending: true }, a = { owner: own, key, plan, lang } as CheckoutAttempt;
   records.set(a, state); attempts.set(scope, a);
   const deadline = performance.now() + 60_000;

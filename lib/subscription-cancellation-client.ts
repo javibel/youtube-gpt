@@ -1,3 +1,4 @@
+import { syncDenied, denyOtherBilling } from '@/lib/subscription-sync-denial';
 export type CancellationOwner = Readonly<{ userId: string; email: string }>;
 export type CancellationSelection = Readonly<{ subscriptionId: string; plan: 'pro' | 'business'; status: string; cancelAtPeriodEnd: boolean }>;
 export type CancellationReceipt = Readonly<{ ok: true; userId: string; email: string; key: string; subscriptionId: string; cancelAtPeriodEnd: true; mode: 'simulated' }>;
@@ -40,11 +41,12 @@ export function observeCancellationOriginal(a: CancellationAttempt): Promise<Can
 export function beginCancellation(owner: CancellationOwner, selection: CancellationSelection, lang: 'es' | 'en', canConsume: () => boolean): CancellationAttempt | null {
   if (!id(owner.userId) || typeof owner.email !== 'string' || !owner.email || owner.email.length > 320
       || !validCancellationSelection(selection) || selection.cancelAtPeriodEnd || !['es', 'en'].includes(lang)
-      || !canConsume() || cancellationBlocked(owner)) return null;
+      || !canConsume() || cancellationBlocked(owner) || syncDenied(owner)) return null;
   let key: string; try { key = crypto.randomUUID(); if (!id(key)) return null; } catch { return null; }
   const own = Object.freeze({ userId: owner.userId, email: owner.email }), scope = identity(own), selected = Object.freeze({ subscriptionId: selection.subscriptionId, plan: selection.plan, status: selection.status, cancelAtPeriodEnd: selection.cancelAtPeriodEnd }), body = JSON.stringify({ subscriptionId: selected.subscriptionId, plan: selected.plan });
   // Presence only: neither a public receipt nor a stored key restores this original.
   try { sessionStorage.setItem(scope, 'pending'); } catch { denied.add(scope); return null; }
+  denyOtherBilling(own);
   const state: RecordState = { pending: true }, a = { owner: own, key, selection: selected, lang } as CancellationAttempt;
   records.set(a, state); attempts.set(scope, a);
   const deadline = performance.now() + 60_000;
