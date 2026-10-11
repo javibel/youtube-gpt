@@ -7,6 +7,8 @@ import { useLang } from '@/components/LangProvider';
 import { useTeamRead } from '@/lib/use-team-read';
 import { useTeamCreate } from '@/lib/use-team-create';
 import { readConfirmedTeamCreation, validTeamName } from '@/lib/team-create-client';
+import { useTeamMembers } from '@/lib/use-team-members';
+import { readConfirmedMemberMutation } from '@/lib/team-members-client';
 
 type Lang = 'es' | 'en';
 
@@ -37,6 +39,7 @@ export default function TeamPage() {
   const [inviteRole, setInviteRole] = useState('member');
   const [inviting, setInviting] = useState(false);
   const creation = useTeamCreate({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, teamName);
+  const members = useTeamMembers({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const formScope = useRef(scope);
   if (formScope.current !== scope) {
     formScope.current = scope;
@@ -52,6 +55,19 @@ export default function TeamPage() {
       const next = readConfirmedTeamCreation(creation.attempt); if (next) read.install(next);
     }
   }, [creation.attempt, creation.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (members.canObserve() && members.attempt && members.outcome?.status === 'confirmed') {
+      const next = readConfirmedMemberMutation(members.attempt); if (next) read.install(next);
+    }
+  }, [members.attempt, members.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const memberNotice = <div data-team-members={members.outcome?.status ?? (members.updating ? 'waiting' : members.blocked ? 'blocked' : 'idle')}>
+    {members.updating && <p role="status">{t('Actualizando miembros…', 'Updating members…')}</p>}
+    {(members.outcome?.status === 'unconfirmed' || members.blocked && !members.updating && !members.outcome) && <p role="alert">{t('Acción de miembros sin confirmar. No inicies otra acción.', 'Member action unconfirmed. Do not start another action.')}</p>}
+    {members.pending && members.outcome?.status === 'unconfirmed' && <p role="status">{t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+    {members.outcome?.status === 'confirmed' && <p role="status">{members.outcome.receipt.operation === 'role' ? t('Cambio de rol confirmado.', 'Role change confirmed.') : t('Retirada de miembro confirmada.', 'Member removal confirmed.')}</p>}
+    {members.outcome?.status === 'rejected' && <><p role="alert">{t('No se realizó la acción de miembros. Revisa el equipo y la sesión.', 'The member action was not performed. Check the team and session.')}</p><button onClick={read.refresh} disabled={read.pending}>{t('Actualizar equipo', 'Refresh team')}</button></>}
+    {members.blocked && members.outcome && members.outcome.status !== 'unconfirmed' && <p role="alert">{t('No se puede iniciar otra acción de miembros en esta pestaña.', 'Another member action cannot be started in this tab.')}</p>}
+  </div>;
   const creationNotice = <div data-team-create={creation.outcome?.status ?? (creation.creating ? 'waiting' : creation.blocked ? 'blocked' : 'idle')}>
     {creation.creating && <p role="status">{t('Creando tu equipo…', 'Creating your team…')}</p>}
     {(creation.outcome?.status === 'unconfirmed' || creation.blocked && !creation.creating && creation.outcome?.status !== 'confirmed' && creation.outcome?.status !== 'rejected') && <p role="alert">{t('Creación sin confirmar. No inicies otra creación.', 'Creation unconfirmed. Do not start another creation.')}</p>}
@@ -61,7 +77,7 @@ export default function TeamPage() {
   </div>;
 
   async function inviteMember() {
-    if (!read.canAct() || !isOwnerOrAdmin || !inviteEmail.trim()) return;
+    if (!read.canAct() || !members.canAct() || !isOwnerOrAdmin || !inviteEmail.trim()) return;
     setInviting(true);
     setError('');
     try {
@@ -91,36 +107,13 @@ export default function TeamPage() {
     }
   }
 
-  async function removeMember(memberId: string) {
-    if (!read.canAct() || myRole !== 'owner' || !team?.members.some(m => m.id === memberId && m.user.id !== session?.user?.id)) return;
-    try {
-      const res = await fetch('/api/team/members', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId }),
-      });
-      if (res.ok && read.canAct()) read.refresh();
-    } catch {
-      if (read.canAct()) setError(t('Error al eliminar', 'Error removing'));
-    }
-  }
-
-  async function changeRole(memberId: string, role: string) {
-    if (!read.canAct() || myRole !== 'owner' || !['admin', 'member'].includes(role) || !team?.members.some(m => m.id === memberId && m.user.id !== session?.user?.id)) return;
-    try {
-      const res = await fetch('/api/team/members', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId, role }),
-      });
-      if (res.ok && read.canAct()) read.refresh();
-    } catch {
-      if (read.canAct()) setError(t('Error al cambiar rol', 'Error changing role'));
-    }
+  function removeMember(memberId: string) { if (read.canAct()) members.start('remove', memberId, null); }
+  function changeRole(memberId: string, role: string) {
+    if (read.canAct() && (role === 'admin' || role === 'member')) members.start('role', memberId, role);
   }
 
   async function revokeInvitation(invitationId: string) {
-    if (!read.canAct() || !isOwnerOrAdmin || !team?.invitations.some(i => i.id === invitationId)) return;
+    if (!read.canAct() || !members.canAct() || !isOwnerOrAdmin || !team?.invitations.some(i => i.id === invitationId)) return;
     try {
       const res = await fetch('/api/team/invite', {
         method: 'DELETE',
@@ -134,7 +127,7 @@ export default function TeamPage() {
   }
 
   async function leaveOrDeleteTeam() {
-    if (!read.canAct() || !team) return;
+    if (!read.canAct() || !members.canAct() || !team) return;
     try {
       const res = await fetch('/api/team', { method: 'DELETE' });
       if (res.ok && read.canAct()) read.refresh();
@@ -148,6 +141,7 @@ export default function TeamPage() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <p role="status">{t('Leyendo tu equipo…', 'Reading your team…')}</p>
         {status === 'authenticated' && creationNotice}
+        {status === 'authenticated' && memberNotice}
       </div>
     );
   }
@@ -165,6 +159,7 @@ export default function TeamPage() {
 
   if (read.error || !read.data) return <DashboardShell><div className="yv-page" data-team-read="error">
     {creationNotice}
+    {memberNotice}
     <p role="alert">{t('No se pudo cargar el equipo.', 'Could not load the team.')}</p>
     {read.pending && <p role="status">{t('La lectura original sigue pendiente.', 'The original read is still pending.')}</p>}
     <button onClick={read.refresh} disabled={read.pending}>{t('Reintentar lectura', 'Retry read')}</button>
@@ -177,6 +172,7 @@ export default function TeamPage() {
           que no han consentido esta grabación. Ver app/admin/page.tsx. */}
       <div className="yv-page" data-clarity-mask="true" data-team-read={team ? 'team' : 'empty'}>
         {creationNotice}
+        {memberNotice}
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -273,19 +269,23 @@ export default function TeamPage() {
                     <span className="font-mono-jb text-[13px] font-bold px-2 py-0.5 rounded" style={{ background: `${ROLE_COLORS[member.role]}15`, color: ROLE_COLORS[member.role] }}>
                       {ROLE_LABELS[member.role]?.[lang] || member.role}
                     </span>
-                    {myRole === 'owner' && member.user.id !== session?.user?.id && (
+                    {(myRole === 'owner' || myRole === 'admin' && member.role === 'member') && member.role !== 'owner' && member.user.id !== session?.user?.id && (
                       <div className="flex items-center gap-1">
-                        <select
+                        {myRole === 'owner' && <select
                           value={member.role}
                           onChange={e => changeRole(member.id, e.target.value)}
+                          aria-label={t('Cambiar rol', 'Change role')}
+                          disabled={!read.canAct() || !members.canStart('role', member.id)}
                           className="text-[13px] font-mono-jb bg-transparent rounded px-1.5 py-1 focus:outline-none"
                           style={{ border: '1px solid var(--yv-border)', color: 'var(--yv-text-2)' }}
                         >
                           <option value="member">{t('Miembro', 'Member')}</option>
                           <option value="admin">Admin</option>
-                        </select>
+                        </select>}
                         <button
                           onClick={() => removeMember(member.id)}
+                          aria-label={t('Eliminar miembro', 'Remove member')}
+                          disabled={!read.canAct() || !members.canStart('remove', member.id)}
                           className="hover:text-red-400 transition p-1"
                           style={{ color: 'var(--yv-text-4)' }}
                           title={t('Eliminar', 'Remove')}
@@ -320,6 +320,7 @@ export default function TeamPage() {
                       {isOwnerOrAdmin && (
                         <button
                           onClick={() => revokeInvitation(inv.id)}
+                          disabled={!members.canAct()}
                           className="font-mono-jb text-[13px] hover:text-red-400 transition"
                           style={{ color: 'var(--yv-text-4)' }}
                         >
@@ -363,7 +364,7 @@ export default function TeamPage() {
                   )}
                   <button
                     onClick={inviteMember}
-                    disabled={inviting || !inviteEmail.trim()}
+                    disabled={inviting || !inviteEmail.trim() || !members.canAct()}
                     className="btn-offset px-6 py-2.5 text-sm font-display disabled:opacity-50"
                   >
                     {inviting ? '...' : t('Invitar', 'Invite')}
@@ -379,6 +380,7 @@ export default function TeamPage() {
               </h2>
               <button
                 onClick={leaveOrDeleteTeam}
+                disabled={!members.canAct()}
                 className="font-mono-jb text-[13px] text-red-400 hover:text-red-300 transition"
               >
                 {myRole === 'owner'
