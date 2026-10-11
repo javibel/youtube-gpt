@@ -5,6 +5,7 @@ import { getAccessToken } from '@/lib/youtube-auth';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { computeScore, validOptimizeDraft } from '@/lib/optimize-score';
+import { beginOptimizeUpdate } from '@/lib/optimize-update';
 
 
 // ── GET: load video data + optimize history ─────────────────────────────
@@ -147,11 +148,12 @@ export const maxDuration = 60;
 type UpdateInput = { videoId: string; title: string; description: string; tags: string[]; categoryId: string;
   original: { title: string; description: string; tags: string[] } };
 type UpdateResult = { status: number; body: Record<string, unknown> };
-type OwnedUpdate = { owner: { userId: string; email: string | null }; input: UpdateInput; pending: boolean; complete: boolean;
+type OwnedUpdate = { owner: { userId: string; email: string | null }; input: UpdateInput; key: string; admitted: boolean; pending: boolean; complete: boolean;
   publication: 'not-started' | 'unconfirmed' | 'confirmed'; history: 'not-started' | 'unconfirmed' | 'complete' | 'unchanged';
   original: Promise<UpdateResult>; result?: UpdateResult };
 // These references are only the real producer in this instance. They provide
-// no durable admission, cross-instance recovery, cancellation or replacement.
+// no cross-instance recovery, cancellation or replacement. Durable rows only
+// deny other writers; they cannot recreate these original references/receipts.
 const ownedUpdates = new Map<string, Map<string, OwnedUpdate>>();
 const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every((t, i) => t === b[i]);
 function sameUpdate(a: UpdateInput, b: UpdateInput) {
@@ -172,6 +174,7 @@ function unconfirmedUpdate(record?: OwnedUpdate): UpdateResult {
 
 export async function PUT(request: Request) {
   const deadline = performance.now() + 55_000;
+  const key = request.headers.get('Idempotency-Key');
   let retired = false, record: OwnedUpdate | undefined, rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; }); void stopped.catch(() => {});
   const retire = () => { if (!retired) { retired = true; rejectWait(Error('Update unconfirmed')); } };
@@ -186,7 +189,7 @@ export async function PUT(request: Request) {
       let body: unknown;
       try { body = await request.json(); } catch { check(); return { status: 400, body: { error: 'invalid_input' } }; }
       check(); const input = updateInput(body);
-      if (!input) return { status: 400, body: { error: 'invalid_input' } };
+      if (!input || !identifier(key)) return { status: 400, body: { error: 'invalid_input' } };
       // Snapshot validated arrays before delayed plan/token/provider operations.
       Object.freeze(input.tags); Object.freeze(input.original.tags); Object.freeze(input.original); Object.freeze(input);
       const plan = await getUserPlan(owner.userId); check();
@@ -199,16 +202,19 @@ export async function PUT(request: Request) {
         // A live/uncertain original blocks every substitute, including a second
         // OAuth attempt. Only its actual successful receipt can be replayed.
         if (previous.pending || !previous.complete) return unconfirmedUpdate(previous);
-        if (previous.owner.email === owner.email && sameUpdate(previous.input, input)) return previous.result!;
+        if (previous.key === key && previous.owner.email === owner.email && sameUpdate(previous.input, input)) return previous.result!;
       }
       check();
-      const current: OwnedUpdate = { owner, input, pending: true, complete: false, publication: 'not-started', history: 'not-started',
+      const current: OwnedUpdate = { owner, input, key, admitted: false, pending: true, complete: false, publication: 'not-started', history: 'not-started',
         original: Promise.resolve(unconfirmedUpdate()) };
       record = current; byVideo.set(input.videoId, current);
       const persistOriginal = async (): Promise<UpdateResult> => {
         try {
+          check(); const admission = await beginOptimizeUpdate(owner.userId, input.videoId, key, check);
+          if (!admission.ok) return admission.error === 'youtube_not_connected' ? { status: 400, body: { error: 'youtube_not_connected' } } : unconfirmedUpdate(current);
+          current.admitted = true;
           check(); const accessToken = await getAccessToken(owner.userId, check); check();
-          if (!accessToken) return { status: 400, body: { error: 'youtube_not_connected' } };
+          if (!accessToken) return unconfirmedUpdate(current);
           const before = computeScore(input.original.title, input.original.description, input.original.tags);
           const after = computeScore(input.title, input.description, input.tags);
           check(); current.publication = 'unconfirmed';
@@ -229,19 +235,15 @@ export async function PUT(request: Request) {
             const data: unknown = await stats.json();
             if (stats.ok && stats.status === 200 && object(data) && Array.isArray(data.items) && data.items.length === 1
               && object(data.items[0]) && data.items[0].id === input.videoId && object(data.items[0].statistics)
-              && data.items[0].statistics.viewCount !== undefined) views = googleCount(data.items[0].statistics.viewCount);
+              && data.items[0].statistics.viewCount !== undefined) { const value = googleCount(data.items[0].statistics.viewCount); if (value <= 2_147_483_647) views = value; }
           } catch { /* Unknown impact metrics stay null; never fabricate zero. */ }
           const entries: { field: string; oldValue: string; newValue: string }[] = [];
           if (input.original.title !== input.title) entries.push({ field: 'title', oldValue: input.original.title, newValue: input.title });
           if (input.original.description !== input.description) entries.push({ field: 'description', oldValue: input.original.description, newValue: input.description });
           if (!sameTags(input.original.tags, input.tags)) entries.push({ field: 'tags', oldValue: input.original.tags.join(', '), newValue: input.tags.join(', ') });
-          if (entries.length) {
-            current.history = 'unconfirmed';
-            const saved = await prisma.optimizeHistory.createMany({ data: entries.map(e => ({ ...e, userId: owner.userId, videoId: input.videoId,
-              scoreBefore: before.score, scoreAfter: after.score, viewsBefore: views })) });
-            if (saved.count !== entries.length) return unconfirmedUpdate(current);
-            current.history = 'complete';
-          } else current.history = 'unchanged';
+          current.history = 'unconfirmed';
+          await admission.complete(entries.map(e => ({ ...e, scoreBefore: before.score, scoreAfter: after.score, viewsBefore: views })));
+          current.history = entries.length ? 'complete' : 'unchanged';
           let aiSuggestion: { es: string; en: string } | null = null;
           try {
             check();
@@ -256,14 +258,14 @@ export async function PUT(request: Request) {
             if (object(parsed) && typeof parsed.es === 'string' && parsed.es.trim() && parsed.es.length <= 1000
               && typeof parsed.en === 'string' && parsed.en.trim() && parsed.en.length <= 1000) aiSuggestion = { es: parsed.es, en: parsed.en };
           } catch { /* Optional advice cannot undo the original publication/history. */ }
-          return { status: 200, body: { success: true, userId: owner.userId, email: owner.email, selection: { videoId: input.videoId },
+          return { status: 200, body: { success: true, userId: owner.userId, email: owner.email, operationKey: key, selection: { videoId: input.videoId },
             draft: input, publicationStatus: 'confirmed', historyStatus: current.history, metricsStatus: views === null ? 'unavailable' : 'observed',
             scoreAfter: after.score, scoreBefore: before.score, checks: after.checks, aiSuggestion } };
         } catch { return unconfirmedUpdate(current); }
       };
       current.original = Promise.resolve().then(persistOriginal).then(result => {
         current.pending = false; current.result = result; current.complete = result.status === 200 && result.body.success === true;
-        if (current.publication === 'not-started' && byVideo!.get(input.videoId) === current) byVideo!.delete(input.videoId);
+        if (!current.admitted && byVideo!.get(input.videoId) === current) byVideo!.delete(input.videoId);
         return result;
       });
       return current.original;

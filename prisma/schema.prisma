@@ -78,6 +78,7 @@ model User {
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
+  optimizeUpdateAttempts OptimizeUpdateAttempt[]
 
   @@map("users")
 }
@@ -692,6 +693,21 @@ model TrendAlert {
 
   @@index([userId, createdAt])
   @@map("trend_alerts")
+}
+
+// A stored key/row denies another writer; only a freshly acknowledged original
+// invocation receives a live completion closure. No expiry/recovery/release API.
+model OptimizeUpdateAttempt {
+  id String @id
+  userId String
+  videoId String
+  key String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([userId, videoId, state])
+  @@map("optimize_update_attempts")
 }
 
 model OptimizeHistory {

@@ -130,6 +130,9 @@ export async function createAbTest(
       const mutation = await tx.abTestMutationAttempt.findFirst({ where: { userId, videoId, state: { not: 'complete' } } });
       beforeStep?.();
       if (mutation) return { denied: 'uncertain' as const };
+      const optimization = await tx.optimizeUpdateAttempt.findFirst({ where: { userId, videoId, state: { not: 'complete' } } });
+      beforeStep?.();
+      if (optimization) return { denied: 'uncertain' as const };
       const activeCount = await tx.abTest.count({ where: { userId, status: { in: ['variant_a', 'variant_b'] } } });
       beforeStep?.();
       const pendingCount = await tx.abTestCreationAttempt.count({ where: { userId, state: { not: 'complete' } } });
@@ -264,6 +267,9 @@ async function admitMutation(
       const pending = await tx.abTestMutationAttempt.findFirst({ where: { userId, videoId: test.videoId, state: { not: 'complete' } } });
       beforeStep?.();
       if (pending) return null;
+      const optimization = await tx.optimizeUpdateAttempt.findFirst({ where: { userId, videoId: test.videoId, state: { not: 'complete' } } });
+      beforeStep?.();
+      if (optimization) return null;
       if (action === 'apply_winner') {
         const applied = await tx.abTestMutationAttempt.findFirst({ where: { userId, testId: test.id, action: { in: ['apply_winner', 'complete_test'] }, state: 'complete' } });
         beforeStep?.();

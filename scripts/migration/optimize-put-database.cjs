@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs'),{harness,response,settle,draft}=require('./optimize-put-server.test.cjs');
 module.exports=async(prisma,results)=>{
  const users=[],newOwner=async(plan='pro',token=true)=>{const u=await prisma.user.create({data:{email:'optimize-put-'+randomUUID()+'@example.invalid'}});users.push(u.id);await prisma.subscription.create({data:{userId:u.id,plan,status:plan==='free'?'canceled':'active'}});if(token)await prisma.youtubeToken.create({data:{userId:u.id,accessToken:'synthetic-token',refreshToken:null,expiresAt:new Date('2026-11-01T00:00:00Z'),channelId:'UC_synthetic'}});return u;};
- const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),bind=(u,options={})=>harness({userId:u.id,email:u.email,realToken:true,authReader:()=>prisma.user.findUnique({where:{id:u.id},select:{id:true,email:true}}).then(user=>user?{user}:null),planReader:id=>plans.getUserPlan(id),tokenReader:q=>prisma.youtubeToken.findUnique(q),tokenWriter:q=>prisma.youtubeToken.update(q),historyWriter:q=>prisma.optimizeHistory.createMany(q),...options});
+ const bind=(u,options={})=>require('./optimize-admission-fixture.cjs')(prisma,u,options);
  try{
   const neighbor=await newOwner();await prisma.optimizeHistory.createMany({data:[{userId:neighbor.id,videoId:'synthetic01',field:'title',oldValue:'Private neighbor',newValue:'Neighbor revision',createdAt:new Date('2026-10-01T00:00:00Z')}]});
   const neighborRows=await prisma.optimizeHistory.findMany({where:{userId:neighbor.id}}),neighborToken=await prisma.youtubeToken.findUnique({where:{userId:neighbor.id}}),neighborUser=await prisma.user.findUnique({where:{id:neighbor.id}});
