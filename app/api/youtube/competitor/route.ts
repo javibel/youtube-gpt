@@ -6,6 +6,7 @@ import { getUserPlan, isPaid } from '@/lib/plans';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
+export const maxDuration = 30;
 
 const STOP_WORDS = new Set([
   'the','a','an','in','on','at','to','for','of','and','or','is','are','was','were',
@@ -62,164 +63,149 @@ function calcUploadFrequency(dates: string[], lang: 'es' | 'en'): string {
   return lang === 'es' ? 'Irregular'        : 'Irregular';
 }
 
-async function resolveChannelId(input: string): Promise<string | null> {
-  const trimmed = input.trim();
 
-  // Direct channel ID (UCxxxxxxxx)
-  const ucMatch = trimmed.match(/(?:\/channel\/)?(UC[\w-]{22})/);
-  if (ucMatch) return ucMatch[1];
-
-  // @handle
-  const handleMatch = trimmed.match(/@([\w.-]+)/);
-  if (handleMatch) {
-    const res = await fetch(
-      `${YT_BASE}/channels?part=id&forHandle=${encodeURIComponent(handleMatch[1])}&key=${YT_API_KEY}`
-    );
-    const data = await res.json();
-    return data.items?.[0]?.id || null;
+const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const channelIdValid = (v: unknown): boolean => typeof v === 'string' && /^UC[\w-]{22}$/.test(v);
+const videoIdValid = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{1,128}$/.test(v);
+function count(v: unknown): number {
+  if (v === undefined) return 0;
+  if (typeof v !== 'string' || !/^\d+$/.test(v)) throw Error('Analysis unavailable');
+  const n = Number(v); if (!Number.isSafeInteger(n) || n < 0) throw Error('Analysis unavailable'); return n;
+}
+function text(v: unknown, max: number, fallback?: string): string {
+  if (v === undefined && fallback !== undefined) return fallback;
+  if (typeof v !== 'string' || v.length > max) throw Error('Analysis unavailable'); return v;
+}
+function thumbnail(snippet: Record<string, unknown>): string {
+  if (snippet.thumbnails === undefined) return '';
+  if (!object(snippet.thumbnails)) throw Error('Analysis unavailable');
+  if (snippet.thumbnails.medium === undefined) return '';
+  if (!object(snippet.thumbnails.medium)) throw Error('Analysis unavailable');
+  const url = text(snippet.thumbnails.medium.url, 2048);
+  if (!url) return '';
+  const parsed = new URL(url); if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw Error('Analysis unavailable'); return url;
+}
+function published(v: unknown, observedTime: number): string {
+  const value = text(v, 64), n = Date.parse(value);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(n) || n > observedTime) throw Error('Analysis unavailable');
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number), date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) throw Error('Analysis unavailable');
+  return value;
+}
+type Selection = { kind: 'id' | 'handle' | 'name'; value: string };
+function selection(input: string): Selection | null {
+  if (channelIdValid(input)) return { kind: 'id', value: input };
+  let pathname = input;
+  if (!input.startsWith('@')) {
+    try {
+      const url = new URL(input);
+      if (url.protocol !== 'https:' || !['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(url.hostname) || url.username || url.password || url.port) return null;
+      pathname = decodeURIComponent(url.pathname).replace(/\/$/, '');
+    } catch { return null; }
   }
-
-  // /c/name or /user/name — search by query
-  const nameMatch = trimmed.match(/\/(?:c|user)\/([\w.-]+)/);
-  if (nameMatch) {
-    const res = await fetch(
-      `${YT_BASE}/search?part=snippet&type=channel&q=${encodeURIComponent(nameMatch[1])}&maxResults=1&key=${YT_API_KEY}`
-    );
-    const data = await res.json();
-    return data.items?.[0]?.snippet?.channelId || null;
-  }
-
-  return null;
+  const id = pathname.match(/^\/channel\/(UC[\w-]{22})$/);
+  if (id) return { kind: 'id', value: id[1] };
+  const handle = pathname.match(/^\/?@([^/?#\s]{1,100})$/);
+  if (handle) return { kind: 'handle', value: handle[1] };
+  const name = pathname.match(/^\/(?:c|user)\/([^/?#\s]{1,100})$/);
+  return name ? { kind: 'name', value: name[1] } : null;
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  const extAuth = !session?.user ? await getExtensionUser(request) : null;
-  if (!session?.user && !extAuth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  if (extAuth && !extAuth.isPro) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
-
-  if (session?.user?.email) {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
-    if (!user) {
-      return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-    }
-    const plan = await getUserPlan(user.id);
-    if (!isPaid(plan)) {
-      return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-    }
-  }
-  if (!YT_API_KEY) {
-    return NextResponse.json({ error: 'no_api_key' }, { status: 503 });
-  }
-
-  const { url, lang = 'es' } = await request.json();
-  if (!url?.trim()) {
-    return NextResponse.json({ error: 'Missing URL' }, { status: 400 });
-  }
-
+  const deadline = performance.now() + 25_000, observedTime = Date.now();
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Analysis unavailable')); } };
+  const timer = setTimeout(retire, 25_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Analysis unavailable'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    const channelId = await resolveChannelId(url);
-    if (!channelId) {
-      return NextResponse.json({ error: 'channel_not_found' }, { status: 404 });
-    }
-
-    // Channel info (+ contentDetails para la playlist de subidas, ver abajo)
-    const channelRes = await fetch(
-      `${YT_BASE}/channels?part=snippet,statistics,contentDetails&id=${channelId}&key=${YT_API_KEY}`
-    );
-    const channelData = await channelRes.json();
-    const ch = channelData.items?.[0];
-    if (!ch) return NextResponse.json({ error: 'channel_not_found' }, { status: 404 });
-
-    // 13/09/2026 — antes esto usaba `search.list?channelId=...&order=viewCount` (y otro
-    // igual con order=date para la frecuencia). Javier reportó "Media vistas: 0" y
-    // "Datos insuficientes" en un canal real de 998 vídeos — comprobado a mano contra la
-    // API: `search.list` con `channelId` devuelve 0 resultados para ese canal en concreto
-    // (el índice de búsqueda de YouTube no cubre todos los canales de forma fiable, es una
-    // limitación conocida de esa API, no un bug nuestro). `playlistItems.list` sobre la
-    // playlist de subidas del canal SÍ funciona siempre y cuesta 1 unidad de cuota en vez
-    // de las 100 de `search.list` — más fiable y ~100x más barato.
-    const uploadsPlaylistId = ch.contentDetails?.relatedPlaylists?.uploads as string | undefined;
-
-    let topVideos: {
-      videoId: string; title: string; thumbnail: string;
-      publishedAt: string; views: number; likes: number;
-    }[] = [];
-    let recentDates: string[] = [];
-    let recentTitles: string[] = [];
-
-    if (uploadsPlaylistId) {
-      const playlistRes = await fetch(
-        `${YT_BASE}/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50&key=${YT_API_KEY}`
-      );
-      const playlistData = await playlistRes.json();
-      const playlistItems: { snippet: { title: string; publishedAt: string; resourceId: { videoId: string } } }[] = playlistData.items || [];
-
-      // La playlist de subidas ya viene en orden cronológico descendente — los primeros
-      // 20 SON los más recientes, sin necesidad de una llamada aparte para frecuencia.
-      const recentSlice = playlistItems.slice(0, 20);
-      recentDates = recentSlice.map(v => v.snippet?.publishedAt).filter(Boolean);
-      recentTitles = recentSlice.map(v => v.snippet?.title).filter(Boolean);
-
-      const videoIds = playlistItems
-        .map(v => v.snippet?.resourceId?.videoId)
-        .filter(Boolean)
-        .join(',');
-
-      if (videoIds) {
-        const statsRes = await fetch(
-          `${YT_BASE}/videos?part=statistics,snippet&id=${videoIds}&key=${YT_API_KEY}`
-        );
-        const statsData = await statsRes.json();
-        topVideos = (statsData.items || []).map((v: {
-          id: string;
-          snippet: { title: string; thumbnails: { medium: { url: string } }; publishedAt: string };
-          statistics: { viewCount?: string; likeCount?: string };
-        }) => ({
-          videoId: v.id,
-          title: v.snippet?.title || '',
-          thumbnail: v.snippet?.thumbnails?.medium?.url || '',
-          publishedAt: v.snippet?.publishedAt || '',
-          views: parseInt(v.statistics?.viewCount || '0', 10),
-          likes: parseInt(v.statistics?.likeCount || '0', 10),
-        }));
-        topVideos.sort((a, b) => b.views - a.views);
-        topVideos = topVideos.slice(0, 10);
+    // Extension auth reads only URL and headers. Capture those without consuming
+    // or transferring the original body, before awaiting session authentication.
+    const extensionRequest = new Request(request.url, { method: 'POST', headers: request.headers });
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      let userId: string;
+      if (session?.user) {
+        const id = session.user.id, email = session.user.email;
+        if (typeof id !== 'string' || !id || id.length > 512) return reply({ error: 'Unauthorized' }, 401);
+        userId = id;
+        if (email !== undefined && email !== null) {
+          if (typeof email !== 'string' || !email || email.length > 320) return reply({ error: 'Unauthorized' }, 401);
+          const user = await prisma.user.findUnique({ where: { email }, select: { id: true } }); check();
+          if (!user || user.id !== userId) return reply({ error: 'pro_required' }, 403);
+        }
+        const plan = await getUserPlan(userId); check();
+        if (!isPaid(plan)) return reply({ error: 'pro_required' }, 403);
+      } else {
+        const extension = await getExtensionUser(extensionRequest); check();
+        if (!extension || typeof extension.user?.id !== 'string' || !extension.user.id || extension.user.id.length > 512) return reply({ error: 'Unauthorized' }, 401);
+        userId = extension.user.id;
+        if (extension.isPro !== true) return reply({ error: 'pro_required' }, 403);
       }
-    }
-
-    const uploadFrequency = calcUploadFrequency(recentDates, lang as 'es' | 'en');
-    // Use all recent titles + top video titles for broader keyword coverage
-    const allTitles = [...recentTitles, ...topVideos.map(v => v.title)];
-    const keywords = extractKeywords(allTitles);
-
-    return NextResponse.json({
-      channel: {
-        id: channelId,
-        name: ch.snippet?.title || '',
-        description: ch.snippet?.description?.slice(0, 200) || '',
-        thumbnail: ch.snippet?.thumbnails?.medium?.url || '',
-        country: ch.snippet?.country || null,
-        subscribers: parseInt(ch.statistics?.subscriberCount || '0', 10),
-        totalViews: parseInt(ch.statistics?.viewCount || '0', 10),
-        videoCount: parseInt(ch.statistics?.videoCount || '0', 10),
-      },
-      topVideos,
-      keywords,
-      uploadFrequency,
-      avgViews: topVideos.length
-        ? Math.round(topVideos.reduce((s, v) => s + v.views, 0) / topVideos.length)
-        : 0,
+      if (!YT_API_KEY) return reply({ error: 'no_api_key' }, 503);
+      const body: unknown = await request.json(); check();
+      if (!object(body) || typeof body.url !== 'string' || !body.url.trim() || body.url.length > 2048) return reply({ error: 'Missing URL' }, 400);
+      const input = body.url.trim(), language = body.lang === undefined ? 'es' : body.lang, selected = selection(input);
+      if (!selected || !['es', 'en'].includes(language as string)) return reply({ error: 'invalid_selection' }, 400);
+      const google = async (route: string, max: number) => {
+        check(); const res = await fetch(`${YT_BASE}/${route}&key=${encodeURIComponent(YT_API_KEY)}`, { cache: 'no-store' }); check();
+        if (!res.ok || res.status !== 200) throw Error('Analysis unavailable');
+        const data: unknown = await res.json(); check();
+        if (!object(data) || !Array.isArray(data.items) || data.items.length > max || data.items.some(v => !object(v))) throw Error('Analysis unavailable');
+        return data.items as Record<string, unknown>[];
+      };
+      let channelId = selected.value;
+      if (selected.kind !== 'id') {
+        const items = selected.kind === 'handle'
+          ? await google('channels?part=id&forHandle=' + encodeURIComponent(selected.value), 1)
+          : await google('search?part=snippet&type=channel&q=' + encodeURIComponent(selected.value) + '&maxResults=1', 1);
+        if (!items.length) return reply({ error: 'channel_not_found' }, 404);
+        const value = selected.kind === 'handle' ? items[0].id : object(items[0].snippet) ? items[0].snippet.channelId : undefined;
+        if (typeof value !== 'string' || !channelIdValid(value)) throw Error('Analysis unavailable'); channelId = value;
+      }
+      const channels = await google('channels?part=snippet,statistics,contentDetails&id=' + encodeURIComponent(channelId), 1);
+      if (!channels.length) return reply({ error: 'channel_not_found' }, 404);
+      const ch = channels[0];
+      if (ch.id !== channelId || !object(ch.snippet) || !object(ch.statistics) || !object(ch.contentDetails)
+        || !object(ch.contentDetails.relatedPlaylists)) throw Error('Analysis unavailable');
+      const snippet = ch.snippet, country = snippet.country === undefined ? null : snippet.country;
+      if (country !== null && (typeof country !== 'string' || !/^[A-Z]{2}$/.test(country))) throw Error('Analysis unavailable');
+      const channel = { id: channelId, name: text(snippet.title, 1000), description: text(snippet.description, 100000, '').slice(0, 200),
+        thumbnail: thumbnail(snippet), country, subscribers: count(ch.statistics.subscriberCount), totalViews: count(ch.statistics.viewCount), videoCount: count(ch.statistics.videoCount) };
+      const playlistId = ch.contentDetails.relatedPlaylists.uploads;
+      if (typeof playlistId !== 'string' || !/^[\w-]{1,128}$/.test(playlistId)) throw Error('Analysis unavailable');
+      const playlist = await google('playlistItems?part=snippet&playlistId=' + encodeURIComponent(playlistId) + '&maxResults=50', 50);
+      const entries: { id: string; title: string; publishedAt: string }[] = [], seen = new Set<string>();
+      for (const item of playlist) {
+        if (!object(item.snippet) || !object(item.snippet.resourceId) || !videoIdValid(item.snippet.resourceId.videoId)) throw Error('Analysis unavailable');
+        const s = item.snippet, id = item.snippet.resourceId.videoId;
+        if (s.channelId !== undefined && s.channelId !== channelId) throw Error('Analysis unavailable');
+        const title = text(s.title, 1000), date = published(s.publishedAt, observedTime);
+        if (!seen.has(id)) { seen.add(id); entries.push({ id, title, publishedAt: date }); }
+      }
+      const videos: { videoId: string; title: string; thumbnail: string; publishedAt: string; views: number; likes: number }[] = [], available = new Set<string>();
+      if (entries.length) {
+        const items = await google('videos?part=statistics,snippet&id=' + encodeURIComponent(entries.map(v => v.id).join(',')), 50);
+        for (const v of items) {
+          if (!videoIdValid(v.id) || !seen.has(v.id) || available.has(v.id) || !object(v.snippet) || !object(v.statistics)) throw Error('Analysis unavailable');
+          if (v.snippet.channelId !== undefined && v.snippet.channelId !== channelId) throw Error('Analysis unavailable');
+          available.add(v.id);
+          videos.push({ videoId: v.id, title: text(v.snippet.title, 1000), thumbnail: thumbnail(v.snippet), publishedAt: published(v.snippet.publishedAt, observedTime), views: count(v.statistics.viewCount), likes: count(v.statistics.likeCount) });
+        }
+      }
+      const topVideos = videos.sort((a, b) => b.views - a.views).slice(0, 10), unavailableVideoIds = entries.filter(v => !available.has(v.id)).map(v => v.id);
+      const recent = entries.slice(0, 20), keywords = extractKeywords([...recent.map(v => v.title), ...topVideos.map(v => v.title)]);
+      const uploadFrequency = calcUploadFrequency(recent.map(v => v.publishedAt), language as 'es' | 'en');
+      const totalViews = topVideos.reduce((n, v) => n + BigInt(v.views), BigInt(0));
+      const avgViews = topVideos.length ? Number((totalViews + BigInt(Math.floor(topVideos.length / 2))) / BigInt(topVideos.length)) : 0;
+      if (!Number.isSafeInteger(avgViews) || avgViews < 0) throw Error('Analysis unavailable');
+      check(); return reply({ userId, language, input, channel, topVideos, keywords, uploadFrequency, avgViews,
+        collectionStatus: unavailableVideoIds.length ? 'partial' : 'complete', unavailableVideoIds, totalVideosRequested: entries.length, totalVideosAvailable: videos.length });
     });
-  } catch (err) {
-    console.error('[youtube/competitor]', err);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
+    const response = await Promise.race([original, stopped]); check(); return response;
+  } catch { return reply({ error: 'competitor_analysis_unavailable' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
