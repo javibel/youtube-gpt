@@ -1,4 +1,5 @@
 import { beginTeamRead } from '@/lib/team-read-client';
+import { teamOwnerCommandBlocked, reserveTeamOwnerCommand } from '@/lib/team-command-client';
 import type { TeamRead } from '@/lib/team-read-client';
 import type { TeamOwner } from '@/lib/team-read-contract';
 
@@ -26,7 +27,7 @@ function acknowledgement(body: unknown, a: TeamCreateAttempt): TeamCreationRecei
 export function retainedTeamCreation(owner: TeamOwner): TeamCreateAttempt | undefined { return attempts.get(identity(owner)); }
 export function teamCreationBlocked(owner: TeamOwner): boolean {
   const id = identity(owner), a = attempts.get(id);
-  if (denied.has(id) || a && (!a.outcome || a.outcome.status === 'unconfirmed')) return true;
+  if (teamOwnerCommandBlocked(owner) || denied.has(id) || a && (!a.outcome || a.outcome.status === 'unconfirmed')) return true;
   try { return sessionStorage.getItem(id) !== null; } catch { return true; }
 }
 // A stored receipt/ID/key never grants this continuation. Only the same
@@ -39,6 +40,7 @@ export function beginTeamCreation(owner: TeamOwner, input: string): TeamCreateAt
   const id = identity(owner), existing = attempts.get(id);
   if (existing && (!existing.outcome || existing.outcome.status === 'unconfirmed')) return existing;
   if (!identifier(owner.userId) || typeof owner.email !== 'string' || !owner.email || !validTeamName(input) || teamCreationBlocked(owner)) return null;
+  const release = reserveTeamOwnerCommand(owner); if (!release) return null;
   let key: string;
   try {
     key = crypto.randomUUID(); if (!identifier(key)) return null;
@@ -60,7 +62,7 @@ export function beginTeamCreation(owner: TeamOwner, input: string): TeamCreateAt
       else if (!res.ok && object(body) && [[401, 'Unauthorized'], [400, 'invalid_input'], [403, 'pro_required'], [400, 'already_in_team']]
         .some(([status, error]) => res.status === status && body.error === error)) outcome = { status: 'rejected', error: body.error as string };
       if (outcome.status !== 'unconfirmed') {
-        try { sessionStorage.removeItem(id); } catch { denied.add(id); }
+        try { sessionStorage.removeItem(id); release(); } catch { denied.add(id); }
       }
     } catch { /* Private/transport errors leave denial and the original alone. */ }
     return outcome;
