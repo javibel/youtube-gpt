@@ -8,6 +8,8 @@ import { useProfileSettings } from '@/lib/use-profile-settings';
 import { usePasswordChange } from '@/lib/use-password-change';
 import { passwordInputError } from '@/lib/password-change-client';
 import type { PasswordReceipt } from '@/lib/password-change-client';
+import { useProfileCheckout } from '@/lib/use-profile-checkout';
+import type { CheckoutPlan } from '@/lib/profile-checkout-client';
 import { claimConfirmedProfileLanguage } from '@/lib/profile-update-client';
 import type { ProfileData } from '@/lib/profile-read-client';
 import DashboardShell from '@/components/DashboardShell';
@@ -59,7 +61,9 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
   const canUsePwdUI = () => currentPwdUI.current === pwdUI && password.canObserve();
   const pwdLoading = password.waiting;
   const pwdSuccess = password.canObserve() && !!pwdReceipt;
-  const [upgrading, setUpgrading] = useState(false);
+  const checkoutPlan = data ? data.stats.plan === 'free' ? 'monthly' : data.stats.plan === 'pro' && !data.subscription?.cancelAtPeriodEnd ? 'business_monthly' : null : null;
+  const checkout = useProfileCheckout(owner, status, lang, checkoutPlan, isCurrent);
+  const upgrading = checkout.waiting;
   const [cancelling, setCancelling] = useState(false);
   const [downgrading, setDowngrading] = useState(false);
 
@@ -108,17 +112,7 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
     password.observe(receipt => passwordConfirmed(receipt, false));
   }
 
-  async function handleUpgrade(plan: 'monthly' | 'yearly' | 'business_monthly' | 'business_yearly') {
-    setUpgrading(true);
-    try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, lang }) });
-      const d = await res.json();
-      if (d.error) { toast(d.error, 'error'); return; }
-      if (!d.url) { toast(t('No se pudo iniciar el pago. Inténtalo de nuevo.', 'Could not start payment. Please try again.'), 'error'); return; }
-      window.location.href = d.url;
-    } catch { toast(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Please try again.'), 'error'); }
-    finally { setUpgrading(false); }
-  }
+  function handleUpgrade(plan: CheckoutPlan) { checkout.start(plan); }
 
   async function handleDowngrade() {
     if (!confirm(t('¿Bajar de Business a Pro? El cambio se aplica ahora, con prorrateo en tu próxima factura.', 'Downgrade from Business to Pro? This applies now, prorated on your next invoice.'))) return;
@@ -310,13 +304,13 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
             </div>
             <div className="flex items-center gap-3">
               {!isPro && (
-                <button onClick={() => handleUpgrade('monthly')} disabled={upgrading}
+                <button onClick={() => handleUpgrade('monthly')} disabled={!checkout.canStart}
                   className="btn-offset px-4 py-2 text-[13px] font-display disabled:opacity-50">
                   {upgrading ? '...' : 'Upgrade →'}
                 </button>
               )}
               {isPro && !isBusiness && !data?.subscription?.cancelAtPeriodEnd && (
-                <button onClick={() => handleUpgrade('business_monthly')} disabled={upgrading}
+                <button onClick={() => handleUpgrade('business_monthly')} disabled={!checkout.canStart}
                   className="font-mono-jb text-[13px] transition" style={{ color: '#00E5FF' }}>
                   {upgrading ? '...' : t('Subir a Business', 'Upgrade to Business')}
                 </button>
@@ -335,6 +329,12 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
               )}
             </div>
           </div>
+          {checkout.waiting && <p role="status">{t('Consultando la sesión de pago original...', 'Checking the original checkout session...')}</p>}
+          {checkout.blocked && !checkout.waiting && checkout.outcome?.status !== 'confirmed' && <p role="alert">{t('Sesión de pago sin confirmar. No vuelvas a enviarla.', 'Checkout session unconfirmed. Do not send it again.')} {checkout.pending && t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+          {checkout.outcome?.status === 'confirmed' && <p role="status">{t('Sesión de prueba confirmada. No acredita un pago ni un cambio de plan.', 'Test session confirmed. It does not confirm payment or a plan change.')}</p>}
+          {checkout.retained && !checkout.selectionMatches && <p role="alert">{t('La solicitud original corresponde a otro plan o idioma. No se abrirá automáticamente.', 'The original request belongs to another plan or language. It will not open automatically.')}</p>}
+          {checkout.navigationFailed && <p role="alert">{t('No se pudo abrir la sesión confirmada. Puedes consultar la misma solicitud original.', 'Could not open the confirmed session. You can observe the same original request.')}</p>}
+          {checkout.retained && <button onClick={checkout.observe} disabled={!checkout.canObserve} className="font-mono-jb text-[13px] disabled:opacity-50">{t('Consultar sesión de pago original', 'Observe original checkout session')}</button>}
         </div>
 
         {/* Security */}

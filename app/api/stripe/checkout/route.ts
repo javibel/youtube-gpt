@@ -57,6 +57,8 @@ function getSubmitMessage(plan: CheckoutPlan, isEn: boolean, trialEligible: bool
 
 export async function POST(request: Request) {
   try {
+    const key = request.headers.get('Idempotency-Key');
+    if (key !== null && !/^[\w-]{1,128}$/.test(key)) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
     const session = await auth();
 
     if (!session?.user?.email) {
@@ -65,6 +67,12 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const validPlans: CheckoutPlan[] = ['monthly', 'yearly', 'business_monthly', 'business_yearly'];
+    // Additive binding for the profile's live original. This echo is not durable
+    // admission, deduplication, payment acceptance or recovery authority.
+    if (key !== null && (!session.user.id || !body || typeof body !== 'object' || Array.isArray(body)
+        || Object.keys(body).some(field => !['plan', 'lang'].includes(field))
+        || !validPlans.includes(body.plan) || !['es', 'en'].includes(body.lang)))
+      return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
     const plan: CheckoutPlan = validPlans.includes(body.plan) ? body.plan : 'monthly';
     const lang: 'es' | 'en' = body.lang === 'en' ? 'en' : 'es';
     const isEn = lang === 'en';
@@ -86,6 +94,7 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
+    if (key !== null && user.id !== session.user.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Reutilizar customer de Stripe si ya existe (must start with 'cus_' to be a real Stripe ID)
     let customerId = user.subscription?.stripeCustomerId;
@@ -127,7 +136,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No se pudo crear la sesión de pago' }, { status: 500 });
     }
 
-    return NextResponse.json({ userId: user.id, email: user.email, mode: 'simulated', url: checkoutSession.url });
+    return NextResponse.json({ userId: user.id, email: user.email, mode: 'simulated', url: checkoutSession.url,
+      ...(key !== null ? { key, plan, lang } : {}) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'Checkout unavailable' }, { status: 503 });
   }
