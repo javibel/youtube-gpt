@@ -28,6 +28,12 @@ export function useTeamRead(owner: TeamOwner, status: string, language: string) 
   }, [scope]); // eslint-disable-line react-hooks/exhaustive-deps
   const canAct = () => active() && current.current.read === relevant?.read && relevant?.outcome?.status === 'ready' && !relevant.read.pending;
   function refresh() { if (active() && current.current.read && !current.current.read.pending) observe(beginTeamRead(owner)); }
-  return { canAct, refresh, data: relevant?.outcome?.status === 'ready' ? relevant.outcome.data : null,
+  function install(read: TeamRead) {
+    // A prior terminal read cannot overwrite a newer read after a remount or
+    // another mutation. Its POST receipt remains separate from public display.
+    if (active() && read.owner.userId === owner.userId && read.owner.email === owner.email
+      && (read.pending || !current.current.read || current.current.read === read)) observe(read);
+  }
+  return { canAct, refresh, install, data: relevant?.outcome?.status === 'ready' ? relevant.outcome.data : null,
     error: relevant?.outcome?.status === 'error' ? relevant.outcome.error : '', loading: active() && !relevant?.outcome, pending: !!relevant?.read.pending };
 }

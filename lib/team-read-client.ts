@@ -4,13 +4,14 @@ export type TeamOutcome = { status: 'ready'; data: TeamReadData } | { status: 'e
 export interface TeamRead { owner: TeamOwner; pending: boolean; original: Promise<TeamOutcome>; waiter: Promise<TeamOutcome>; outcome?: TeamOutcome; waitOutcome?: TeamOutcome }
 const live = new Map<string, TeamRead>();
 const unavailable = (): TeamOutcome => ({ status: 'error', error: 'team_read_unavailable' });
-export function beginTeamRead(owner: TeamOwner): TeamRead {
+export function beginTeamRead(owner: TeamOwner, afterCurrent = false): TeamRead {
   const own = Object.freeze({ userId: owner.userId, email: owner.email }), key = JSON.stringify([own.userId, own.email]);
-  const existing = live.get(key); if (existing) return existing;
+  const existing = live.get(key); if (existing && !afterCurrent) return existing;
   const read: TeamRead = { owner: own, pending: true, original: Promise.resolve(unavailable()), waiter: Promise.resolve(unavailable()) };
   live.set(key, read); const deadline = performance.now() + 30_000;
   read.original = Promise.resolve().then(async (): Promise<TeamOutcome> => {
     try {
+      if (existing) await existing.original;
       if (!own.userId || performance.now() >= deadline) return unavailable();
       const response = await fetch('/api/team', { method: 'GET', cache: 'no-store' });
       const body: unknown = await response.json();

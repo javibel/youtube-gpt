@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
 import { useTeamRead } from '@/lib/use-team-read';
+import { useTeamCreate } from '@/lib/use-team-create';
+import { readConfirmedTeamCreation, validTeamName } from '@/lib/team-create-client';
 
 type Lang = 'es' | 'en';
 
@@ -33,42 +35,30 @@ export default function TeamPage() {
   const [teamName, setTeamName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
-  const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const creation = useTeamCreate({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, teamName);
   const formScope = useRef(scope);
   if (formScope.current !== scope) {
     formScope.current = scope;
-    setError(''); setTeamName(''); setInviteEmail(''); setInviteRole('member'); setCreating(false); setInviting(false);
+    setError(''); setTeamName(''); setInviteEmail(''); setInviteRole('member'); setInviting(false);
   }
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
   const isOwnerOrAdmin = myRole === 'owner' || myRole === 'admin';
 
-  async function createTeam() {
-    if (!read.canAct() || team || !teamName.trim()) return;
-    setCreating(true);
-    setError('');
-    try {
-      const res = await fetch('/api/team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: teamName.trim() }),
-      });
-      const data = await res.json();
-      if (!read.canAct()) return;
-      if (!res.ok) {
-        if (data.error === 'pro_required') setError(t('Necesitas el plan Pro.', 'You need the Pro plan.'));
-        else if (data.error === 'already_in_team') setError(t('Ya perteneces a un equipo.', 'You already belong to a team.'));
-        else setError(data.error || 'Error');
-        return;
-      }
-      read.refresh();
-    } catch {
-      if (read.canAct()) setError(t('Error de conexion', 'Connection error'));
-    } finally {
-      if (current.current === invocation) setCreating(false);
+  function createTeam() { if (read.canAct() && !team && creation.canAct()) { setError(''); creation.start(); } }
+  useEffect(() => {
+    if (creation.canAct() && creation.attempt && creation.outcome?.status === 'confirmed') {
+      const next = readConfirmedTeamCreation(creation.attempt); if (next) read.install(next);
     }
-  }
+  }, [creation.attempt, creation.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const creationNotice = <div data-team-create={creation.outcome?.status ?? (creation.creating ? 'waiting' : creation.blocked ? 'blocked' : 'idle')}>
+    {creation.creating && <p role="status">{t('Creando tu equipo…', 'Creating your team…')}</p>}
+    {(creation.outcome?.status === 'unconfirmed' || creation.blocked && !creation.creating && creation.outcome?.status !== 'confirmed' && creation.outcome?.status !== 'rejected') && <p role="alert">{t('Creación sin confirmar. No inicies otra creación.', 'Creation unconfirmed. Do not start another creation.')}</p>}
+    {creation.pending && creation.outcome?.status === 'unconfirmed' && <p role="status">{t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+    {creation.outcome?.status === 'confirmed' && <p role="status">{t('Creación confirmada:', 'Creation confirmed:')} {creation.outcome.receipt.name}</p>}
+    {creation.outcome?.status === 'rejected' && <p role="alert">{creation.outcome.error === 'pro_required' ? t('Necesitas el plan Pro.', 'You need the Pro plan.') : creation.outcome.error === 'already_in_team' ? t('Ya perteneces a un equipo.', 'You already belong to a team.') : t('No se creó el equipo. Revisa los datos y la sesión.', 'The team was not created. Check the details and session.')}</p>}
+  </div>;
 
   async function inviteMember() {
     if (!read.canAct() || !isOwnerOrAdmin || !inviteEmail.trim()) return;
@@ -157,6 +147,7 @@ export default function TeamPage() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--yv-light)', color: 'var(--yv-text-1)' }}>
         <p role="status">{t('Leyendo tu equipo…', 'Reading your team…')}</p>
+        {status === 'authenticated' && creationNotice}
       </div>
     );
   }
@@ -173,6 +164,7 @@ export default function TeamPage() {
   }
 
   if (read.error || !read.data) return <DashboardShell><div className="yv-page" data-team-read="error">
+    {creationNotice}
     <p role="alert">{t('No se pudo cargar el equipo.', 'Could not load the team.')}</p>
     {read.pending && <p role="status">{t('La lectura original sigue pendiente.', 'The original read is still pending.')}</p>}
     <button onClick={read.refresh} disabled={read.pending}>{t('Reintentar lectura', 'Retry read')}</button>
@@ -184,6 +176,7 @@ export default function TeamPage() {
       {/* data-clarity-mask: lista emails de los miembros del equipo — datos de terceros
           que no han consentido esta grabación. Ver app/admin/page.tsx. */}
       <div className="yv-page" data-clarity-mask="true" data-team-read={team ? 'team' : 'empty'}>
+        {creationNotice}
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -224,7 +217,8 @@ export default function TeamPage() {
             <div className="flex items-center gap-3 max-w-sm mx-auto">
               <input
                 value={teamName}
-                onChange={e => { if (read.canAct()) setTeamName(e.target.value); }}
+                onChange={e => { if (read.canAct() && creation.canEdit()) setTeamName(e.target.value); }}
+                disabled={!creation.canEdit()}
                 placeholder={t('Nombre del equipo...', 'Team name...')}
                 maxLength={50}
                 className="flex-1 px-4 py-3 yv-input text-sm font-mono-jb"
@@ -232,10 +226,10 @@ export default function TeamPage() {
               />
               <button
                 onClick={createTeam}
-                disabled={creating || !teamName.trim()}
+                disabled={creation.creating || creation.blocked || !validTeamName(teamName)}
                 className="btn-offset px-6 py-3 text-sm font-display disabled:opacity-50"
               >
-                {creating ? '...' : t('Crear', 'Create')}
+                {creation.creating ? '...' : t('Crear', 'Create')}
               </button>
             </div>
           </div>
