@@ -7,7 +7,7 @@ export function useSubscriptionCancellation(owner: CancellationOwner, status: st
   const account = useMemo(() => ({ userId: owner.userId, email: owner.email, status }), [owner.userId,owner.email,status]);
   const activeAccount = useRef(account); activeAccount.current = account;
   const scope = useMemo(() => ({ active: true, generation: {}, flight: null as Promise<void> | null, delivered: null as CancellationAttempt | null }),
-    [account,lang,selection?.subscriptionId,selection?.plan,selection?.status,selection?.cancelAtPeriodEnd]);
+    [account,lang,selection?.subscriptionId,selection?.plan,selection?.status]);
   const generation = scope.generation, currentScope = useRef(scope); currentScope.current = scope;
   const [view,setView] = useState<{ scope: object; generation: object; waiting: boolean; outcome?: CancellationOutcome } | null>(null);
   const [,render] = useState(0);
