@@ -76,6 +76,7 @@ model User {
   abTestMutationAttempts AbTestMutationAttempt[]
   teamMemberships TeamMember[]
   teamCreations TeamCreationAttempt[]
+  teamMemberMutations TeamMemberMutationAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -457,6 +458,28 @@ model TeamCreationAttempt {
   @@unique([userId, key])
   @@index([userId, state], map: "team_creation_lookup")
   @@map("team_creation_attempts")
+}
+
+// Retained denial survives member/team deletion; only the original live producer may finish.
+model TeamMemberMutationAttempt {
+  id String @id
+  userId String
+  email String
+  key String
+  operation String
+  teamId String
+  actorMemberId String
+  actorRole String
+  memberId String
+  targetUserId String
+  previousRole String
+  role String?
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([teamId, state], map: "team_member_mutation_lookup")
+  @@map("team_member_mutation_attempts")
 }
 
 model TeamInvitation {
