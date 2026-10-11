@@ -84,6 +84,7 @@ model User {
   teamJoins TeamJoinAttempt[]
   profileUpdates ProfileUpdateAttempt[]
   passwordChanges PasswordChangeAttempt[]
+  checkoutAttempts CheckoutAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -1215,4 +1216,19 @@ model PasswordChangeAttempt {
   createdAt DateTime @default(now())
   @@unique([userId, key])
   @@map("password_change_attempts")
+}
+
+model CheckoutAttempt {
+  id String @id
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email String
+  key String
+  plan String
+  lang String
+  currency String
+  priceId String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  @@map("checkout_attempts")
 }

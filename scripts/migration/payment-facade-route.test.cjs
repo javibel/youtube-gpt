@@ -16,8 +16,8 @@ function compile(relative){
 const pricing=compile('lib/pricing.ts');
 const user={id:'synthetic',email:'synthetic@example.invalid',name:'Synthetic',subscription:null};
 const subscriptionWrites=[];
-const mocks={'@/auth':{auth:async()=>({user:{email:user.email}})},
- '@/lib/prisma':{prisma:{user:{findUnique:async()=>user},subscription:{update:async args=>{subscriptionWrites.push(args);return args.data;}}}},
+const mocks={'@/auth':{auth:async()=>({user:{id:user.id,email:user.email}})},
+ '@/lib/prisma':{prisma:{...require('./checkout-store-fixture.cjs')(user),subscription:{update:async args=>{subscriptionWrites.push(args);return args.data;}}}},
  '@/lib/stripe':{stripe:runtime.stripe},
  '@/lib/pricing':pricing,
  '@/lib/plans':{isPaidStatus:status=>['active','trialing'].includes(status)},
@@ -33,6 +33,7 @@ Module._load=function(name,...args){
 };
 global.fetch=()=>{externalAttempts++;throw Error('Network forbidden');};
 (async()=>{try{
+ mocks['@/lib/checkout-session']=compile('lib/checkout-session.ts');
  const {POST}=compile('app/api/stripe/checkout/route.ts');
  runtime.configureOffline({config,context,paymentFixtures:[
   {operation:'customers.create',args:[{email:user.email,name:user.name,metadata:{userId:user.id}}],result:{id:'cus_synthetic'}},

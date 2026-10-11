@@ -18,7 +18,8 @@ module.exports=async(prisma,results)=>{
   async function routed(r){
    const isCheckout=r.url==='/api/stripe/checkout';
    if(isCheckout){const user=await prisma.user.findUnique({where:{id:u.id},include:{subscription:true}});install(user,r.body.plan??'monthly',r.body.lang??'es');}
-   const deps={'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:isCheckout?(options.authId??r.owner):r.owner,email:r.email}})},'@/lib/prisma':{prisma},'@/lib/stripe':{stripe:live},'@/lib/pricing':pricing,'@/lib/plans':load('lib/plans.ts',{'@/lib/prisma':{prisma}}),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma)};
+   const deps={'node:crypto':require('node:crypto'),'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:isCheckout?(options.authId??r.owner):r.owner,email:r.email}})},'@/lib/prisma':{prisma},'@/lib/stripe':{stripe:live},'@/lib/pricing':pricing,'@/lib/plans':load('lib/plans.ts',{'@/lib/prisma':{prisma}}),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma)};
+   if(isCheckout)deps['@/lib/checkout-session']=load('lib/checkout-session.ts',deps,{process:{env:options.missingPrice?{}:env}});
    const route=load(isCheckout?'app/api/stripe/checkout/route.ts':'app/api/user/stats/route.ts',deps,{process:{env:options.missingPrice?{}:env}});
    const response=await route[r.init.method](new Request('https://example.invalid'+r.url,{method:r.init.method,...(isCheckout?{headers:r.init.headers,body:JSON.stringify(r.body)}:{})})),body=await response.json();
    if(isCheckout){entered.resolve({status:response.status,cache:response.headers.get('Cache-Control'),body});if(options.corrupt)options.corrupt(body);if(options.held==='headers')await gate.promise;}
