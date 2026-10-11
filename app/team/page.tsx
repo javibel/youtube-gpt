@@ -13,6 +13,8 @@ import { useTeamRevoke } from '@/lib/use-team-revoke';
 import { readConfirmedRevocation } from '@/lib/team-revoke-client';
 import { useTeamExit } from '@/lib/use-team-exit';
 import { readConfirmedTeamExit } from '@/lib/team-exit-client';
+import { useTeamRename } from '@/lib/use-team-rename';
+import { readConfirmedTeamRename } from '@/lib/team-rename-client';
 
 type Lang = 'es' | 'en';
 
@@ -46,6 +48,7 @@ export default function TeamPage() {
   const members = useTeamMembers({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const revocation = useTeamRevoke({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const exit = useTeamExit({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
+  const rename = useTeamRename({ userId: session?.user?.id ?? '', email: session?.user?.email ?? null }, status, lang, team, myRole);
   const formScope = useRef(scope);
   if (formScope.current !== scope) {
     formScope.current = scope;
@@ -55,7 +58,7 @@ export default function TeamPage() {
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
   const isOwnerOrAdmin = myRole === 'owner' || myRole === 'admin';
 
-  function createTeam() { if (read.canAct() && !team && !exit.creationBlocked && creation.canAct()) { setError(''); creation.start(); } }
+  function createTeam() { if (read.canAct() && !team && !exit.creationBlocked && !rename.creationBlocked && creation.canAct()) { setError(''); creation.start(); } }
   useEffect(() => {
     if (creation.canAct() && creation.attempt && creation.outcome?.status === 'confirmed') {
       const next = readConfirmedTeamCreation(creation.attempt); if (next) read.install(next);
@@ -76,6 +79,19 @@ export default function TeamPage() {
       const next = readConfirmedTeamExit(exit.attempt); if (next) read.install(next);
     }
   }, [exit.attempt, exit.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (rename.canObserve() && rename.attempt && rename.outcome?.status === 'confirmed') {
+      const next = readConfirmedTeamRename(rename.attempt); if (next) read.install(next);
+    }
+  }, [rename.attempt, rename.outcome, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const renameNotice = <div data-team-rename={rename.outcome?.status ?? (rename.updating ? 'waiting' : rename.blocked ? 'blocked' : 'idle')}>
+    {rename.updating && <p role="status">{t('Confirmando nombre del equipo…', 'Confirming team name…')}</p>}
+    {(rename.outcome?.status === 'unconfirmed' || rename.blocked && !rename.updating && !rename.outcome) && <p role="alert">{t('Nombre sin confirmar. No inicies otra acción.', 'Team name unconfirmed. Do not start another action.')}</p>}
+    {rename.pending && rename.outcome?.status === 'unconfirmed' && <p role="status">{t('La solicitud original sigue pendiente.', 'The original request is still pending.')}</p>}
+    {rename.outcome?.status === 'confirmed' && <p role="status">{t('Cambio de nombre confirmado:', 'Team name change confirmed:')} {rename.outcome.receipt.name}</p>}
+    {rename.outcome?.status === 'rejected' && <><p role="alert">{t('No se cambió el nombre. Revisa el equipo y la sesión.', 'Team name was not changed. Check the team and session.')}</p><button onClick={read.refresh} disabled={read.pending}>{t('Actualizar equipo', 'Refresh team')}</button></>}
+    {rename.blocked && rename.outcome && rename.outcome.status !== 'unconfirmed' && <p role="alert">{t('No se puede iniciar otra acción en esta pestaña.', 'Another action cannot be started in this tab.')}</p>}
+  </div>;
   const exitNotice = <div data-team-exit={exit.outcome?.status ?? (exit.updating ? 'waiting' : exit.blocked ? 'blocked' : 'idle')}>
     {exit.updating && <p role="status">{t('Confirmando salida del equipo…', 'Confirming team exit…')}</p>}
     {(exit.outcome?.status === 'unconfirmed' || exit.blocked && !exit.updating && !exit.outcome) && <p role="alert">{t('Salida sin confirmar. No inicies otra acción.', 'Team exit unconfirmed. Do not start another action.')}</p>}
@@ -156,6 +172,7 @@ export default function TeamPage() {
         {status === 'authenticated' && memberNotice}
         {status === 'authenticated' && revocationNotice}
         {status === 'authenticated' && exitNotice}
+        {status === 'authenticated' && renameNotice}
       </div>
     );
   }
@@ -176,6 +193,7 @@ export default function TeamPage() {
     {memberNotice}
     {revocationNotice}
     {exitNotice}
+    {renameNotice}
     <p role="alert">{t('No se pudo cargar el equipo.', 'Could not load the team.')}</p>
     {read.pending && <p role="status">{t('La lectura original sigue pendiente.', 'The original read is still pending.')}</p>}
     <button onClick={read.refresh} disabled={read.pending}>{t('Reintentar lectura', 'Retry read')}</button>
@@ -191,6 +209,7 @@ export default function TeamPage() {
         {memberNotice}
         {revocationNotice}
         {exitNotice}
+        {renameNotice}
 
         {/* Page title */}
         <div className="yv-page-header">
@@ -240,7 +259,7 @@ export default function TeamPage() {
               />
               <button
                 onClick={createTeam}
-                disabled={creation.creating || creation.blocked || exit.creationBlocked || !validTeamName(teamName)}
+                disabled={creation.creating || creation.blocked || exit.creationBlocked || rename.creationBlocked || !validTeamName(teamName)}
                 className="btn-offset px-6 py-3 text-sm font-display disabled:opacity-50"
               >
                 {creation.creating ? '...' : t('Crear', 'Create')}
@@ -390,6 +409,19 @@ export default function TeamPage() {
                 </div>
               </div>
             )}
+
+            {isOwnerOrAdmin && <div className="yv-card p-5">
+              <h2 className="font-display font-bold mb-4" style={{ color: 'var(--yv-text-1)' }}>{t('Cambiar nombre del equipo', 'Change team name')}</h2>
+              <label htmlFor="team-rename" className="font-mono-jb text-[13px] block mb-1.5">{t('Nuevo nombre', 'New name')}</label>
+              <div className="flex items-center gap-3">
+                <input id="team-rename" aria-label={t('Nuevo nombre del equipo', 'New team name')} value={rename.value}
+                  onChange={e => { if (read.canAct()) rename.change(e.target.value); }} disabled={!read.canAct() || !rename.canEdit()}
+                  maxLength={50} className="flex-1 px-4 py-2.5 yv-input text-sm font-mono-jb"
+                  onKeyDown={e => { if (e.key === 'Enter' && read.canAct()) rename.start(); }} />
+                <button onClick={() => { if (read.canAct()) rename.start(); }} disabled={!read.canAct() || !rename.canStart()}
+                  className="btn-offset px-6 py-2.5 text-sm font-display disabled:opacity-50">{t('Guardar nombre', 'Save name')}</button>
+              </div>
+            </div>}
 
             {/* Danger zone */}
             <div className="yv-card p-5">
