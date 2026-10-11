@@ -87,6 +87,7 @@ model User {
   checkoutAttempts CheckoutAttempt[]
   subscriptionCancellations SubscriptionCancellationAttempt[]
   subscriptionDowngrades SubscriptionDowngradeAttempt[]
+  subscriptionSyncs SubscriptionSyncAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -1261,4 +1262,16 @@ model SubscriptionDowngradeAttempt {
   state String @default("pending")
   createdAt DateTime @default(now())
   @@map("subscription_downgrade_attempts")
+}
+
+model SubscriptionSyncAttempt {
+  id String @id
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email String
+  key String
+  subscriptionId String?
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  @@map("subscription_sync_attempts")
 }

@@ -56,8 +56,12 @@ export async function cancelSubscriptionOriginal(owner: Owner, input: Input, key
     const matches = (row: Record<string, unknown> | null) => !!row && row.state === 'pending' && Object.entries(captured).every(([k,v]) => row[k] === v);
     const admission = await prisma.$transaction(async tx => {
       await lock(tx);
+      const sync = await tx.subscriptionSyncAttempt.findUnique({ where: { userId: own.userId } });
+      check(); if (sync) return null;
       const downgrade = await tx.subscriptionDowngradeAttempt.findUnique({ where: { userId: own.userId } });
       check(); if (downgrade) return null;
+      const checkout = await tx.checkoutAttempt.findUnique({ where: { userId: own.userId } });
+      check(); if (checkout && checkout.state !== 'complete') return null;
       const prior = await tx.subscriptionCancellationAttempt.findUnique({ where: { userId: own.userId } });
       check(); if (prior) return null;
       const row = await tx.subscriptionCancellationAttempt.create({ data: { ...captured, state: 'pending' } });

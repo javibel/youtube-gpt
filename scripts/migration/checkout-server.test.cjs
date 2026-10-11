@@ -11,7 +11,7 @@ function harness(options={}){
   const i=++txs;assert.deepEqual(copy(settings),{maxWait:10000,timeout:i===1?15000:55000});let locks=0;
   const attempt={findUnique:q=>step(i===1?'prior':'attempt',()=>options.foreignAttempt&&i===2?{...row,key:'foreign'}:row),
    create:q=>{queries.push(q);return step('admit',()=>row={...q.data});},updateMany:q=>{queries.push(q);return step('mark',()=>{if(!options.noMark)row.state='complete';return{count:options.noMark?0:1};});}};
-  const tx={subscriptionDowngradeAttempt:{findUnique:async()=>null},$queryRawUnsafe:(sql,...args)=>{queries.push({sql,args});return step('lock'+i+'-'+(++locks),()=>state.user?[copy(state.user)]:[]);},
+  const tx={subscriptionSyncAttempt:{findUnique:()=>step('sync',()=>options.syncPrior?{state:options.syncPrior}:null)},subscriptionCancellationAttempt:{findUnique:()=>step('cancellation',()=>options.cancellationPrior?{state:options.cancellationPrior}:null)},subscriptionDowngradeAttempt:{findUnique:async()=>null},$queryRawUnsafe:(sql,...args)=>{queries.push({sql,args});return step('lock'+i+'-'+(++locks),()=>state.user?[copy(state.user)]:[]);},
    user:{findUnique:q=>step('selection'+i,()=>state.user&&copy(state.user))},checkoutAttempt:attempt};
   const p=(async()=>{const prior=row&&{...row};let r;try{r=await fn(tx);}catch(e){row=prior;throw e;}return step('ack'+i,()=>options.foreignAdmission&&i===1?{...r,priceId:'price_foreign'}:r);})();running.push(p);void p.catch(()=>{});return p;
  }};
@@ -53,6 +53,8 @@ async function run(){const results=[],test=async(name,fn)=>{try{await fn();resul
  await test('missing price is500 before admission/effect',async()=>{const h=harness({noPrice:true});await observe(h,500);assert.equal(h.row(),null);assert(!h.calls.includes('read'));});
  await test('captured owner/input/currency/price survive mutation while original SQL is held',async()=>{const h=harness({held:'read'});await h.reach('read');h.state.owner.email='foreign@example.invalid';h.state.body.plan='yearly';h.state.body.lang='en';h.state.country='US';await h.release('read');const b=await observe(h,200);assert.equal(b.email,'own@example.invalid');assert.equal(b.plan,'monthly');assert.equal(b.lang,'es');assert.equal(h.row().currency,'eur');});
  for(const field of ['email','name','subscription'])await test(field+' changes after original admission deny provider',async()=>{const h=harness({held:'ack1'});await h.reach('ack1');h.state.user[field]=field==='subscription'?{id:'new',stripeCustomerId:'cus_new',stripePriceId:'price_new'}:'changed';await h.release('ack1');await observe(h,503);assert.equal(h.row().state,'pending');assert(!h.calls.includes('customer'));});
+ for(const syncPrior of ['pending','complete'])await test('sync '+syncPrior+' excludes a fresh original without retiring or recovering sync',async()=>{const h=harness({syncPrior});await observe(h,503);assert.equal(h.row(),null);assert(!h.calls.includes('customer'));});
+ for(const cancellationPrior of ['pending','complete'])await test('cancellation '+cancellationPrior+' denies checkout overlap',async()=>{const h=harness({cancellationPrior});await observe(h,503);assert.equal(h.row(),null);assert(!h.calls.includes('customer'));});
  return results;
 }
 module.exports={run,harness};if(require.main===module)run().then(results=>{console.log(JSON.stringify({scope:'Actual checkout server/55s/closed payload/durable denial, unit transport only',results},null,2));if(results.some(x=>x.status!=='PASS'))process.exitCode=1;});

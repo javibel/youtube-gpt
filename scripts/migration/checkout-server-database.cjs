@@ -9,7 +9,7 @@ module.exports=async(prisma,results)=>{
   const key=options.key??randomUUID(),body=options.body??{plan:options.plan??'monthly',lang:options.lang??'es'};
   const stage=async(name,work)=>{calls.push(name);const p=(async()=>{const v=await work();if(options.held===name){entered.resolve();await gate.promise;}if(options.reject===name)throw Error('PRIVATE_LOST_ACK');return v;})();running.push(p);void p.catch(()=>{});return p;};
   const db={user:{findUnique:q=>stage('read',()=>prisma.user.findUnique(q))},$transaction:(fn,settings)=>{const i=++transactions;let locks=0;
-   return stage('ack'+i,()=>prisma.$transaction(tx=>fn({ subscriptionDowngradeAttempt:tx.subscriptionDowngradeAttempt,
+   return stage('ack'+i,()=>prisma.$transaction(tx=>fn({ subscriptionSyncAttempt:tx.subscriptionSyncAttempt,subscriptionCancellationAttempt:tx.subscriptionCancellationAttempt,subscriptionDowngradeAttempt:tx.subscriptionDowngradeAttempt,
     $queryRawUnsafe:(...a)=>stage('lock'+i+'-'+(++locks),()=>tx.$queryRawUnsafe(...a)),user:{findUnique:q=>stage('selection'+i,()=>tx.user.findUnique(q))},
     checkoutAttempt:{findUnique:q=>stage(i===1?'prior':'attempt',async()=>{const r=await tx.checkoutAttempt.findUnique(q);return options.foreignAttempt&&i===2?{...r,plan:'foreign'}:r;}),
      create:q=>stage('admit',()=>tx.checkoutAttempt.create(q)),updateMany:q=>stage('mark',()=>options.noMark?{count:0}:tx.checkoutAttempt.updateMany(q))}

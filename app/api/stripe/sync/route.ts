@@ -1,72 +1,40 @@
 import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
-import { stripe, subscriptionPeriod } from '@/lib/stripe';
-import { isPaidStatus } from '@/lib/plans';
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
+import { syncSubscriptionOriginal, validSyncKey, validSyncInput } from '@/lib/subscription-sync';
 
-/**
- * POST /api/stripe/sync
- * Looks up the authenticated user's active Stripe subscription and syncs it to the DB.
- * Used when the webhook fails to activate Pro after payment.
- */
-export async function POST() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
-
+export const maxDuration = 60;
+export async function POST(request: Request) {
+  const deadline = performance.now() + 55_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Sync unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Sync unconfirmed'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
-    const response = (data: object) => NextResponse.json({ userId: user.id, email: user.email, ...data });
-    // Find customer in Stripe by email
-    const customers = await stripe.customers.list({ email: session.user.email, limit: 5 });
-
-    if (!customers.data.length) {
-      return response({ synced: false });
-    }
-
-    // Check all customers for an active (or trialing) subscription
-    for (const customer of customers.data) {
-      const subscriptions = await stripe.subscriptions.list({
-        customer: customer.id,
-        status: 'all',
-        limit: 10,
-      });
-
-      const sub = subscriptions.data.find((s) => isPaidStatus(s.status));
-
-      if (sub) {
-        const item = sub.items.data[0];
-
-        const period = subscriptionPeriod(sub);
-        await prisma.subscription.upsert({
-          where: { userId: user.id },
-          create: {
-            userId: user.id,
-            stripeCustomerId: customer.id,
-            stripePriceId: item.price.id,
-            status: sub.status,
-            cancelAtPeriodEnd: sub.cancel_at_period_end,
-            currentPeriodStart: period.start,
-            currentPeriodEnd: period.end,
-          },
-          update: {
-            stripeCustomerId: customer.id,
-            stripePriceId: item.price.id,
-            status: sub.status,
-            cancelAtPeriodEnd: sub.cancel_at_period_end,
-            currentPeriodStart: period.start,
-            currentPeriodEnd: period.end,
-          },
-        });
-
-        return response({ synced: true, status: sub.status });
+    const original = Promise.resolve().then(async () => {
+      check();
+      const suppliedKey = request.headers.get('Idempotency-Key'), key = suppliedKey ?? randomUUID();
+      if (!validSyncKey(key)) return { body: { error: 'invalid_input' }, status: 400 };
+      const session = await auth(); check();
+      if (!session?.user?.id || typeof session.user.email !== 'string' || !session.user.email)
+        return { body: { error: 'Unauthorized' }, status: 401 };
+      const owner = Object.freeze({ userId: session.user.id, email: session.user.email });
+      let body: unknown;
+      try { body = request.body === null ? {} : await request.json(); } catch { check(); return { body: { error: 'invalid_input' }, status: 400 }; }
+      check(); if (!validSyncInput(body, suppliedKey !== null)) return { body: { error: 'invalid_input' }, status: 400 };
+      const input = Object.freeze({ ...body });
+      const result = await syncSubscriptionOriginal(owner, input, key, check); check();
+      if (!result.ok) return { body: { error: result.error }, status: result.status };
+      if (suppliedKey === null) {
+        return { body: result.synced ? {userId:owner.userId,email:owner.email,synced:true,status:result.status} : {userId:owner.userId,email:owner.email,synced:false}, status: 200 };
       }
-    }
-
-    return response({ synced: false });
-  } catch {
-    return NextResponse.json({ error: 'Sync unavailable' }, { status: 503 });
-  }
+      return { body: result, status: 200 };
+    });
+    const result = await Promise.race([original, stopped]); check(); return reply(result.body, result.status);
+  } catch { return reply({ error: 'sync_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
