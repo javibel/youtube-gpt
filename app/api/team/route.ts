@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { createTeamOriginal, validTeamCreation } from '@/lib/team-creation';
+import { exitTeamOriginal, validTeamExit } from '@/lib/team-exit';
 export const maxDuration = 60;
 import { decodeTeamRead } from '@/lib/team-read-contract';
 
@@ -107,27 +108,29 @@ export async function PATCH(req: NextRequest) {
 }
 
 // DELETE — leave or delete team
-export async function DELETE() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const membership = await prisma.teamMember.findFirst({
-    where: { userId: session.user.id },
-    include: { team: { include: { members: true } } },
-  });
-  if (!membership) {
-    return NextResponse.json({ error: 'Not in a team' }, { status: 400 });
-  }
-
-  if (membership.role === 'owner') {
-    // Owner deletes the entire team
-    await prisma.team.delete({ where: { id: membership.teamId } });
-    return NextResponse.json({ ok: true, deleted: true });
-  }
-
-  // Members just leave
-  await prisma.teamMember.delete({ where: { id: membership.id } });
-  return NextResponse.json({ ok: true, left: true });
+export async function DELETE(request: NextRequest) {
+  const deadline = performance.now() + 55_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Team exit unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Team exit unconfirmed'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id || typeof session.user.email !== 'string') return reply({ error: 'Unauthorized' }, 401);
+      const owner = Object.freeze({ userId: session.user.id, email: session.user.email });
+      const key = request.headers.get('Idempotency-Key');
+      let body: unknown;
+      try { body = await request.json(); } catch { check(); return reply({ error: 'invalid_input' }, 400); }
+      check(); if (!validTeamExit(body, key)) return reply({ error: 'invalid_input' }, 400);
+      const result = await exitTeamOriginal(owner, body, key!, check);
+      return result.ok ? reply(result) : reply({ error: result.error }, result.status);
+    });
+    const response = await Promise.race([original, stopped]); check(); return response;
+  } catch { return reply({ error: 'team_exit_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

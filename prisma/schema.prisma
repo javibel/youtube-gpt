@@ -78,6 +78,7 @@ model User {
   teamCreations TeamCreationAttempt[]
   teamMemberMutations TeamMemberMutationAttempt[]
   teamInvitationRevocations TeamInvitationRevocationAttempt[]
+  teamExits TeamExitAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -503,6 +504,24 @@ model TeamInvitationRevocationAttempt {
   @@unique([userId, key])
   @@index([teamId, state], map: "team_invitation_revocation_lookup")
   @@map("team_invitation_revocation_attempts")
+}
+
+// Denial survives team/membership deletion; only the original producer may finish.
+model TeamExitAttempt {
+  id String @id
+  userId String
+  email String
+  key String
+  teamId String
+  memberId String
+  previousRole String
+  operation String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([teamId, state], map: "team_exit_lookup")
+  @@map("team_exit_attempts")
 }
 
 model TeamInvitation {
