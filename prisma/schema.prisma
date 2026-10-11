@@ -75,6 +75,7 @@ model User {
   abTestCreationAttempts AbTestCreationAttempt[]
   abTestMutationAttempts AbTestMutationAttempt[]
   teamMemberships TeamMember[]
+  teamCreations TeamCreationAttempt[]
   chatMessages      ChatMessage[]
   achievements      Achievement[]
   optimizeHistory   OptimizeHistory[]
@@ -420,6 +421,7 @@ model Team {
   updatedAt   DateTime         @updatedAt
   members     TeamMember[]
   invitations TeamInvitation[]
+  creationAttempt TeamCreationAttempt?
 
   @@map("teams")
 }
@@ -435,7 +437,26 @@ model TeamMember {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
+  @@unique([userId], map: "team_member_user_single")
   @@map("team_members")
+}
+
+// Stored rows deny fresh work; only the original live invocation may finish.
+model TeamCreationAttempt {
+  id String @id
+  userId String
+  email String
+  key String
+  name String
+  state String @default("pending")
+  teamId String? @unique
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, key])
+  @@index([userId, state], map: "team_creation_lookup")
+  @@map("team_creation_attempts")
 }
 
 model TeamInvitation {

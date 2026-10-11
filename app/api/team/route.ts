@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getUserPlan, isPaid } from '@/lib/plans';
+import { createTeamOriginal, validTeamCreation } from '@/lib/team-creation';
+export const maxDuration = 60;
 import { decodeTeamRead } from '@/lib/team-read-contract';
-
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40);
-}
 
 // GET — get user's team (if any)
 export async function GET(request?: Request) {
@@ -61,67 +52,31 @@ export async function GET(request?: Request) {
 }
 
 // POST — create team
-export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // Check user doesn't already belong to a team
-  const existing = await prisma.teamMember.findFirst({
-    where: { userId: session.user.id },
-  });
-  if (existing) {
-    return NextResponse.json({ error: 'already_in_team' }, { status: 400 });
-  }
-
-  // Check user has an active subscription (Team/Agency requires at least Pro)
-  const plan = await getUserPlan(session.user.id);
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
-
-  const { name } = await req.json();
-  if (!name || typeof name !== 'string' || name.trim().length < 2) {
-    return NextResponse.json({ error: 'Team name required (min 2 chars)' }, { status: 400 });
-  }
-
-  const baseSlug = slugify(name.trim());
-  let slug = baseSlug;
-  let attempt = 0;
-  let team;
-
-  // Retry loop handles race condition where slug is taken between check and create
-  for (;;) {
-    try {
-      team = await prisma.team.create({
-        data: {
-          name: name.trim(),
-          slug,
-          members: {
-            create: { userId: session.user.id, role: 'owner' },
-          },
-        },
-        include: {
-          members: {
-            include: { user: { select: { id: true, name: true, email: true, image: true } } },
-          },
-          invitations: true,
-        },
-      });
-      break;
-    } catch (e: unknown) {
-      const code = (e as { code?: string }).code;
-      if (code === 'P2002' && attempt < 5) {
-        attempt++;
-        slug = `${baseSlug}-${attempt}`;
-        continue;
-      }
-      throw e;
-    }
-  }
-
-  return NextResponse.json({ team, role: 'owner' }, { status: 201 });
+export async function POST(request: NextRequest) {
+  const deadline = performance.now() + 55_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Team unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Team unconfirmed'); };
+  const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    const original = Promise.resolve().then(async () => {
+      check(); const session = await auth(); check();
+      if (!session?.user?.id || typeof session.user.email !== 'string') return reply({ error: 'Unauthorized' }, 401);
+      const owner = Object.freeze({ userId: session.user.id, email: session.user.email });
+      const key = request.headers.get('Idempotency-Key');
+      let body: unknown;
+      try { body = await request.json(); } catch { check(); return reply({ error: 'invalid_input' }, 400); }
+      check(); if (!validTeamCreation(body, key)) return reply({ error: 'invalid_input' }, 400);
+      const result = await createTeamOriginal(owner, { name: body.name }, key!, check);
+      return result.ok ? reply(result, 201) : reply({ error: result.error }, result.status);
+    });
+    const response = await Promise.race([original, stopped]); check(); return response;
+  } catch { return reply({ error: 'team_create_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
 
 // PATCH — update team name
