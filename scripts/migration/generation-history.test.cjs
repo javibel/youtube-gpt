@@ -19,8 +19,8 @@ function harness(){
 }
 const results=[];async function test(name,fn){await fn();results.push({name,status:'PASS'});}
 if(require.main===module)(async()=>{
- for(const mode of [401,503,'network','JSON','missing','wrong page','bad hasMore','duplicate','bad row','incomplete page'])await test(String(mode)+' first-page failure remains explicit and never reports an empty history',async()=>{
-  const h=harness();h.state.send=async()=>{if(mode==='network')throw Error('private');if(mode==='JSON')return{ok:true,json:async()=>{throw Error('private JSON');}};const data=page(1);if(mode==='missing')delete data.generations;if(mode==='wrong page')data.page=2;if(mode==='bad hasMore')data.hasMore='true';if(mode==='duplicate')data.generations[1]=data.generations[0];if(mode==='bad row')data.generations[0].createdAt='invalid';if(mode==='incomplete page')data.generations.pop();return reply(data,typeof mode==='number'?mode:200);};
+ for(const mode of [401,503,'network','JSON','missing','wrong page','bad hasMore','duplicate','bad row','negative total'])await test(String(mode)+' first-page failure remains explicit and never reports an empty history',async()=>{
+  const h=harness();h.state.send=async()=>{if(mode==='network')throw Error('private');if(mode==='JSON')return{ok:true,json:async()=>{throw Error('private JSON');}};const data=page(1);if(mode==='missing')delete data.generations;if(mode==='wrong page')data.page=2;if(mode==='bad hasMore')data.hasMore='true';if(mode==='duplicate')data.generations[1]=data.generations[0];if(mode==='bad row')data.generations[0].createdAt='invalid';if(mode==='negative total')data.total=-1;return reply(data,typeof mode==='number'?mode:200);};
   const v=await h.ready();assert.equal(v.historyError,'refresh');assert.equal(v.historyLoaded,false);assert.equal(v.historyPage,0);h.state.send=null;await v.retryHistory();assert.equal(h.requests.at(-1).url,'/api/user/generations?page=1');assert.equal(h.view().historyGens.length,10);h.unmount();
  });
  for(const mode of [401,503,'network','JSON','wrong page','invalid usage'])await test(String(mode)+' next-page failure retains rows/cursor and retries the same page',async()=>{

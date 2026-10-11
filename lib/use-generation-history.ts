@@ -8,9 +8,10 @@ const empty = () => ({ rows: [] as Generation[], loaded: false, page: 0, hasMore
 function decode(data: unknown, requested: number): { rows: Generation[]; hasMore: boolean } {
   const body = data as { generations?: unknown; total?: unknown; page?: unknown; hasMore?: unknown } | null;
   if (!body || !Array.isArray(body.generations) || body.generations.length > 10 || body.page !== requested
-    || !Number.isSafeInteger(body.total) || (body.total as number) < body.generations.length || typeof body.hasMore !== 'boolean'
-    || body.hasMore !== ((requested - 1) * 10 + body.generations.length < (body.total as number))
-    || (body.hasMore && body.generations.length !== 10)) throw new Error('Invalid history page');
+    || !Number.isSafeInteger(body.total) || (body.total as number) < 0 || typeof body.hasMore !== 'boolean'
+    || body.hasMore !== ((requested - 1) * 10 + body.generations.length < (body.total as number))) throw new Error('Invalid history page');
+  // Count and page are separate server reads. Concurrent writes can leave a
+  // short page with more rows indicated, or a count smaller than this page.
   const ids = new Set<string>();
   const rows = body.generations.map(row => {
     if (!row || typeof row.id !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(row.id) || ids.has(row.id)
@@ -34,8 +35,8 @@ export function useGenerationHistory(userId: string | undefined, email: string |
     waiting: null as ReturnType<typeof createClientReadWait>|null }), [userId, email, authStatus]);
   const active = useRef(scope); active.current = scope;
   const [store, setStore] = useState(() => ({ scope, ...empty() }));
-  const current = useCallback(() => active.current === scope && scope.active && authStatus === 'authenticated' && !!email,
-    [scope, authStatus, email]);
+  const current = useCallback(() => active.current === scope && scope.active && authStatus === 'authenticated' && !!userId && !!email,
+    [scope, authStatus, userId, email]);
   const update = useCallback((fn: (view: ReturnType<typeof empty>) => ReturnType<typeof empty>) => {
     if (current()) setStore(prev => ({ scope, ...fn(prev.scope === scope ? prev : empty()) }));
   }, [scope, current]);
@@ -50,9 +51,11 @@ export function useGenerationHistory(userId: string | undefined, email: string |
     const flight = (async () => {
       try {
         const response = await waiting.wait(fetch(`/api/user/generations?page=${page}`, { cache: 'no-store', signal: waiting.signal }));
-        if (!response.ok) throw new Error('History unavailable');
-        const data = decode(await waiting.wait(response.json()), page);
         if (!current() || scope.sequence !== sequence) return;
+        if (!response.ok) throw new Error('History unavailable');
+        const body = await waiting.wait(response.json());
+        if (!current() || scope.sequence !== sequence) return;
+        const data = decode(body, page);
         scope.page = page; scope.hasMore = data.hasMore;
         update(view => {
           const combined = page === 1 ? data.rows : [...view.rows, ...data.rows];
