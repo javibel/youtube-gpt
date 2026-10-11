@@ -24,14 +24,16 @@ export async function createTeamOriginal(owner: TeamOwner, input: unknown, key: 
       if (users.length !== 1 || users[0].id !== own.userId || users[0].email !== own.email) throw Error('Team unconfirmed');
       await tx.$queryRawUnsafe('SELECT "userId" FROM subscriptions WHERE "userId"=$1 FOR UPDATE', own.userId); beforeStep();
       const sub = await tx.subscription.findUnique({ where: { userId: own.userId }, select: { status: true, stripeCustomerId: true, currentPeriodEnd: true } }); beforeStep();
-      return hasPaidAccess(sub);
+      return sub;
     };
     const admission = await prisma.$transaction(async tx => {
-      if (!await lock(tx)) return { denied: 'pro_required' as const };
+      const subscription = await lock(tx);
+      if (!hasPaidAccess(subscription)) return { denied: 'pro_required' as const };
       const prior = await tx.teamCreationAttempt.findFirst({ where: { userId: own.userId, OR: [{ key }, { state: { not: 'complete' } }] } }); beforeStep();
       if (prior) return { denied: 'team_create_unconfirmed' as const };
       const existing = await tx.teamMember.findFirst({ where: { userId: own.userId } }); beforeStep();
       if (existing) return { denied: 'already_in_team' as const };
+      if (!hasPaidAccess(subscription)) return { denied: 'pro_required' as const };
       const row = await tx.teamCreationAttempt.create({ data: { id, userId: own.userId, email: own.email, key, name, state: 'pending' } }); beforeStep();
       return { row };
     }, { maxWait: 10_000, timeout: 15_000 });
@@ -39,11 +41,13 @@ export async function createTeamOriginal(owner: TeamOwner, input: unknown, key: 
     if (admission.row.id !== id || admission.row.userId !== own.userId || admission.row.email !== own.email || admission.row.key !== key || admission.row.name !== name || admission.row.state !== 'pending') return uncertain();
     beforeStep();
     const result = await prisma.$transaction(async tx => {
-      if (!await lock(tx)) throw Error('Team unconfirmed');
+      const subscription = await lock(tx);
+      if (!hasPaidAccess(subscription)) throw Error('Team unconfirmed');
       const attempt = await tx.teamCreationAttempt.findUnique({ where: { id } }); beforeStep();
       if (!attempt || attempt.userId !== own.userId || attempt.email !== own.email || attempt.key !== key || attempt.name !== name || attempt.state !== 'pending') throw Error('Team unconfirmed');
       const existing = await tx.teamMember.findFirst({ where: { userId: own.userId } }); beforeStep();
       if (existing) throw Error('Team unconfirmed');
+      if (!hasPaidAccess(subscription)) throw Error('Team unconfirmed');
       // From this invocation onward the original transaction alone creates the
       // team/owner and terminal marker atomically, even if HTTP has retired.
       const team = await tx.team.create({ data: { name, slug, plan: 'team', maxMembers: 5, members: { create: { userId: own.userId, role: 'owner' } } }, select: { id: true, name: true, slug: true, createdAt: true, members: { select: { id: true, userId: true, role: true } } } });
