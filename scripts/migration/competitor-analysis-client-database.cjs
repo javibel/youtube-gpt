@@ -15,7 +15,7 @@ module.exports=async(prisma,results)=>{
    if(r.url==='/api/youtube/competitors'){const p=r.init.method==='POST'?route.POST(new Request('https://example.invalid/api/youtube/competitors',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(r.body)})):route.GET();owned.push(p);return p;}
    return defaults(r);
   };
-  const settle=async()=>{await ready(h);await Promise.all(owned);await ready(h);return ready(h);};return{h,owned,servers,settle};
+  const settle=async()=>{let observed=0;do{await ready(h);const batch=owned.slice(observed);observed=owned.length;await Promise.all(batch);await ready(h);}while(observed<owned.length);return ready(h);};return{h,owned,servers,settle};
  }
  try{
   const owner=await newOwner(true),free=await newOwner(false),neighbor=await newOwner(true);const c=await prisma.trackedCompetitor.create({data:{userId:neighbor.id,channelId:'UC_neighbor_'+randomUUID(),channelName:'Untouched neighbor'}});await prisma.competitorSnapshot.create({data:{competitorId:c.id,subscribers:1,totalViews:10n,videoCount:1}});const neighborBefore=await row(neighbor),ownerBefore=await prisma.user.findUnique({where:{id:owner.id}});
