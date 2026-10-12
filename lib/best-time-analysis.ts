@@ -6,6 +6,10 @@ type Slot = Readonly<{ day: number; hour: number; score: number; videoCount: num
 export type BestTimeProjection = Readonly<{
   channelId: string; referenceAt: string; videos: readonly Video[];
 }>;
+export type BestTimeSearchCapture = Readonly<{
+  channelId: string; referenceAt: string;
+  videos: readonly Readonly<{ id: string; publishedAt: string }>[];
+}>;
 export type BestTimeAnalysis = Readonly<{
   channelId: string; referenceAt: string; windowDays: 180 | 365;
   videos: readonly Video[]; videoCount: number;
@@ -39,11 +43,17 @@ function items(value: unknown): unknown[] {
   if (!Array.isArray(list) || list.length > 50) return fail();
   return list;
 }
-export function captureBestTimeVideos(value: unknown, check: Check): BestTimeProjection {
+export function captureBestTimeReference(value: unknown, check: Check) {
   check();
   const channelId = id(field(value, 'channelId'));
-  const referenceAt = field(value, 'referenceAt'), reference = timestamp(referenceAt);
-  const search = items(field(value, 'search')), details = items(field(value, 'details'));
+  const referenceAt = field(value, 'referenceAt'); timestamp(referenceAt);
+  check();
+  return Object.freeze({ channelId, referenceAt: referenceAt as string });
+}
+export function captureBestTimeSearch(value: unknown, check: Check): BestTimeSearchCapture {
+  const { channelId, referenceAt } = captureBestTimeReference(value, check);
+  const reference = timestamp(referenceAt);
+  const search = items(field(value, 'search'));
   check();
   const selected = new Map<string, string>();
   let previous = Infinity;
@@ -57,6 +67,16 @@ export function captureBestTimeVideos(value: unknown, check: Check): BestTimePro
     selected.set(videoId, publishedAt as string); previous = published;
     check();
   }
+  check();
+  return Object.freeze({ channelId, referenceAt: referenceAt as string,
+    videos: Object.freeze(Array.from(selected, ([id, publishedAt]) => Object.freeze({ id, publishedAt }))) });
+}
+export function captureBestTimeVideos(value: unknown, check: Check): BestTimeProjection {
+  const search = captureBestTimeSearch(value, check);
+  const { channelId, referenceAt } = search;
+  const selected = new Map(search.videos.map(v => [v.id, v.publishedAt]));
+  const details = items(field(value, 'details'));
+  check();
   if (details.length !== selected.size) return fail();
   const captured = new Map<string, Video>();
   for (const item of Array.from(details)) {
@@ -75,7 +95,7 @@ export function captureBestTimeVideos(value: unknown, check: Check): BestTimePro
   }
   const videos = Object.freeze(Array.from(selected.keys(), videoId => captured.get(videoId)!));
   check();
-  return Object.freeze({ channelId, referenceAt: referenceAt as string, videos });
+  return Object.freeze({ channelId, referenceAt, videos });
 }
 export function analyzeBestTimeVideos(value: unknown, check: Check): BestTimeAnalysis {
   const projection = captureBestTimeVideos(value, check);
