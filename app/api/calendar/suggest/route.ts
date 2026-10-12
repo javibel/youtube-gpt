@@ -3,7 +3,7 @@ import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getUserPlan, isPaid } from '@/lib/plans';
+import { hasPaidAccess } from '@/lib/plans';
 
 export const maxDuration = 60;
 
@@ -66,10 +66,13 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
   selection: Readonly<{ baseDay: string; publishedAfter: string; next14: readonly string[] }>) {
   const next14 = selection.next14;
   const session = await wait.run(() => auth());
-  if (!session?.user?.id) {
+  const selectedUser = session?.user;
+  const id = selectedUser?.id, email = selectedUser?.email;
+  wait.check();
+  if (typeof id !== 'string' || !id || typeof email !== 'string' || !email)
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-  const userId = session.user.id;
+  const owner = Object.freeze({ id, email });
+  const userId = owner.id;
   const operationKey=request.headers.get('idempotency-key');
   const recovery=request.headers.get('X-Calendar-Recovery');
   if((operationKey!==null&&!/^[-A-Za-z0-9._:]{1,128}$/.test(operationKey))
@@ -77,13 +80,60 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
     return NextResponse.json({error:'invalid_recovery'},{status:400});
   }
 
-  const plan = await wait.run(() => getUserPlan(userId));
-  if (!isPaid(plan)) {
-    return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-  }
+  // Identity and declared permission come from the same own SQL snapshot.
+  // This read neither admits a task nor reconstructs an original producer.
+  const permission = await wait.run(() => prisma.$transaction(async tx => {
+    wait.check();
+    const user = await tx.user.findUnique({
+      where: { email: owner.email }, select: { id: true, email: true },
+    });
+    wait.check();
+    if (!user) return { status: 404, access: null };
+    if (user.id !== owner.id || user.email !== owner.email)
+      return { status: 401, access: null };
+    const subscription = await tx.subscription.findUnique({
+      where: { userId: owner.id },
+      select: { userId: true, status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true },
+    });
+    wait.check();
+    if (subscription === null) return { status: 403, access: null };
+    const { userId: planOwner, status, plan, stripeCustomerId, currentPeriodEnd } = subscription;
+    if (planOwner !== owner.id || typeof status !== 'string' || !status
+      || !['free', 'pro', 'business'].includes(plan)
+      || (stripeCustomerId !== null && typeof stripeCustomerId !== 'string'))
+      throw Error('Suggestions unconfirmed');
+    // Capture an expiry value, not the mutable Date returned by a dependency.
+    const expiry = currentPeriodEnd === null ? null : Date.prototype.toISOString.call(currentPeriodEnd);
+    const access = Object.freeze({ status, stripeCustomerId, expiry });
+    const paid = ['pro', 'business'].includes(plan) && hasPaidAccess({
+      status, stripeCustomerId, currentPeriodEnd: expiry === null ? null : new Date(expiry),
+    });
+    wait.check();
+    return { status: paid ? 200 : 403, access: paid ? access : null };
+  }, { isolationLevel: 'RepeatableRead', maxWait: 55_000, timeout: 55_000 }));
+  wait.check();
+  if (permission.status !== 200)
+    return NextResponse.json({ error: permission.status === 404 ? 'owner_not_found'
+      : permission.status === 401 ? 'unauthorized' : 'pro_required' }, { status: permission.status });
+  const paid = () => {
+    wait.check();
+    const access = permission.access;
+    return access !== null && hasPaidAccess({ status: access.status, stripeCustomerId: access.stripeCustomerId,
+      currentPeriodEnd: access.expiry === null ? null : new Date(access.expiry) });
+  };
 
-  const body = (await wait.run(() => request.json().catch(() => ({})))) ?? {};
-  const lang = body.lang === 'en' ? 'en' : 'es';
+  const body = await wait.run(() => request.json().catch(() => null));
+  wait.check();
+  if (!body || typeof body !== 'object' || Array.isArray(body)
+    || Object.keys(body).some(key => key !== 'lang'))
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  const language = body.lang;
+  wait.check();
+  if (language !== undefined && language !== 'es' && language !== 'en')
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  const input = Object.freeze({ lang: language === undefined ? 'es' : language });
+  const lang = input.lang;
+  if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
 
   let task;
   try {
@@ -91,6 +141,8 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
       outputSchema: { type: 'array', items: { type: 'object', properties: { title: { type: 'string', minLength: 1 }, date: { type: 'string' }, reason: { type: 'string' }, description: { type: 'string' } }, required: ['title'], additionalProperties: true } },
     }));
   } catch { wait.check(); return NextResponse.json({ error: 'ai_not_configured' }, { status: 500 }); }
+
+  if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
 
   // Gather data in parallel
   const [bestTime, trendAlerts, competitors, existingEntries, ytToken] = await wait.run(() => Promise.all([
@@ -112,6 +164,8 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
     }),
     prisma.youtubeToken.findUnique({ where: { userId }, select: { channelId: true, channelName: true } }),
   ]));
+
+  if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
 
   // Best time slots
   let bestTimeInfo = 'No best time analysis available.';
@@ -200,6 +254,7 @@ Already scheduled:
 ${existingInfo}`,
         }],
     };
+    if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
     const data = await wait.run(() => recovery !== null
       ? Promise.resolve(task.retrieve?.(parameters, { signal: request.signal }))
       : task.create(parameters, { signal: request.signal }));
@@ -222,6 +277,7 @@ ${existingInfo}`,
         : { error: 'suggestions_unconfirmed', retryMayConsume: false }, { status: recovery === null ? 500 : 503 });
     }
 
+    if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
     return NextResponse.json({ suggestions });
   } catch (e) {
     wait.check();

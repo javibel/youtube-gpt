@@ -11,9 +11,9 @@ function harness(options={}) {
  const read=(name,value)=>async query=>{reads.push({name,query});return value;};
  const route=load('app/api/calendar/suggest/route.ts',{
   '@/lib/ai/task-runtime':runtime,
-  'next/server':{NextResponse:Response},'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic'}}},
-  '@/lib/plans':{getUserPlan:async()=>options.free?'free':'pro',isPaid:plan=>plan!=='free'},
-  '@/lib/prisma':{prisma:{bestTimeAnalysis:{findUnique:read('times',options.times??null)},trendAlert:{findMany:read('trends',options.trends??[])},trackedCompetitor:{findMany:read('competitors',options.competitors??[])},calendarEntry:{findMany:read('calendar',options.entries??[])},youtubeToken:{findUnique:read('youtube',options.channel??null)}}},
+  'next/server':{NextResponse:Response},'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic',email:'synthetic@example.invalid'}}},
+  '@/lib/plans':load('lib/plans.ts',{'@/lib/prisma':{prisma:{}}},{Date:FixedDate}),
+  '@/lib/prisma':{prisma:{$transaction:async(fn)=>fn({user:{findUnique:async()=>({id:'synthetic',email:'synthetic@example.invalid'})},subscription:{findUnique:async()=>({userId:'synthetic',status:'active',plan:options.free?'free':'pro',stripeCustomerId:'synthetic',currentPeriodEnd:null})}}),bestTimeAnalysis:{findUnique:read('times',options.times??null)},trendAlert:{findMany:read('trends',options.trends??[])},trackedCompetitor:{findMany:read('competitors',options.competitors??[])},calendarEntry:{findMany:read('calendar',options.entries??[])},youtubeToken:{findUnique:read('youtube',options.channel??null)}}},
  },{Date:FixedDate,Error,process:{env:{...(options.noKey?{}:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}),...(options.youtube?{YOUTUBE_API_KEY:'synthetic-youtube'}:{})}},fetch:async(url,init)=>{
   requests.push({url,body:init?.body?JSON.parse(init.body):null});
   if(new URL(url).hostname==='www.googleapis.com')return Response.json({items:[{snippet:{title:'Synthetic recent upload',channelTitle:'Synthetic competitor'}}]},{status:options.youtubeStatus??200});
