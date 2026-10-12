@@ -1,0 +1,47 @@
+'use strict';
+const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs');
+const clone=x=>JSON.parse(JSON.stringify(x));
+const owner={id:'synthetic-source',email:'source@example.invalid'},channelId='UC_synthetic_source',referenceAt='2026-10-12T12:00:00Z',playlistId='UU_synthetic_source';
+const dates=['2026-10-11T12:00:00Z','2026-10-08T12:00:00Z','2026-10-03T12:00:00Z'];
+function pages(count=3){
+ const videos=Array.from({length:count},(_,i)=>({id:String(i).padStart(11,'0'),snippet:{channelId,publishedAt:dates[i]??'2026-10-01T12:00:00Z'},statistics:{viewCount:'300'}}));
+ const page=(kind,items)=>({kind,items,pageInfo:{resultsPerPage:items.length,totalResults:items.length}});
+ return {channels:page('youtube#channelListResponse',[{id:channelId,contentDetails:{relatedPlaylists:{uploads:playlistId}}}]),
+  playlistItems:page('youtube#playlistItemListResponse',videos.map((v,i)=>({kind:'youtube#playlistItem',snippet:{channelId,videoOwnerChannelId:channelId,playlistId,position:i,
+   publishedAt:'2026-10-12T11:59:59Z',resourceId:{kind:'youtube#video',videoId:v.id}},contentDetails:{videoId:v.id,videoPublishedAt:v.snippet.publishedAt}}))),videos:page('youtube#videoListResponse',videos.reverse())};
+}
+function fixture(options={}){
+ let retired=false;const signal=new AbortController(),calls=[],raw=pages(options.count),selection={owner:{...owner},channelId,referenceAt};options.change?.(raw);
+ const check=()=>{if(retired||signal.signal.aborted)throw Error('Original retired');};
+ const library=load('lib/best-time-youtube-sources.ts',{'@/lib/youtube-auth':{getAccessToken:async(id,before,opts)=>{calls.push('token');assert.equal(id,owner.id);assert.equal(before,opts.checkRefreshStep);before();if(options.stop==='token')retired=true;return options.noToken?null:'synthetic-not-a-token';}},'./best-time-analysis':load('lib/best-time-analysis.ts')},{fetch:async(url,init)=>{
+  const u=new URL(url),resource=u.pathname.split('/').at(-1);calls.push(resource);assert.equal(u.origin,'https://www.googleapis.com');assert.equal(init.method,'GET');assert.equal(init.headers.Authorization,'Bearer synthetic-not-a-token');assert.equal(init.signal,signal.signal);assert.equal(init.redirect,'error');assert.equal(init.cache,'no-store');
+  if(resource==='channels')assert.deepEqual(Object.fromEntries(u.searchParams),{part:'contentDetails',mine:'true',maxResults:'50'});
+  if(resource==='playlistItems')assert.deepEqual(Object.fromEntries(u.searchParams),{part:'snippet,contentDetails',playlistId,maxResults:'50'});
+  if(resource==='videos'){assert.equal(u.searchParams.get('part'),'snippet,statistics');assert.equal(u.searchParams.has('maxResults'),false);assert.equal(u.searchParams.get('id'),raw.playlistItems.items.map(v=>v.contentDetails.videoId).join(','));}
+  if(options.stop===resource)retired=true;
+  return {ok:options.httpError!==resource,redirected:options.redirected===resource,async json(){calls.push(resource+'-json');if(options.stop===resource+'-json')retired=true;if(options.jsonError===resource)throw Error('private token');return raw[resource];}};
+ }});
+ return {sources:library.createBestTimeYouTubeSources(referenceAt,signal.signal),selection,check,calls,raw,retire(){retired=true;},signal};
+}
+const results=[];async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.stack});}}
+async function complete(h){const searched=await h.sources.search(h.selection,h.check),ids=searched.collection.items.map(v=>v.id.videoId);const detailed=await h.sources.details(h.selection,ids,h.check);return {searched,detailed};}
+async function run(){
+ await test('authenticated uploads and exact details share one token, preserve publication/reference, freeze snapshots',async()=>{const h=fixture(),r=await complete(h);assert.deepEqual(h.calls,['token','channels','channels-json','playlistItems','playlistItems-json','videos','videos-json']);assert.equal(r.searched.referenceAt,referenceAt);assert.deepEqual(clone(r.searched.collection.items.map(v=>v.snippet.publishedAt)),dates);assert.equal(r.detailed.collection.items.length,3);assert.ok(Object.isFrozen(r.detailed.collection.items[0].statistics));await assert.rejects(h.sources.search(h.selection,h.check));await assert.rejects(h.sources.details(h.selection,['00000000000'],h.check));assert.equal(h.calls.length,7);});
+ await test('known empty uploads do not request details or renew the source timestamp',async()=>{const h=fixture({count:0}),r=await h.sources.search(h.selection,h.check);assert.equal(r.collection.items.length,0);assert.equal(r.referenceAt,referenceAt);await assert.rejects(h.sources.details(h.selection,[],h.check));assert.equal(h.calls.length,5);});
+ await test('the capped first 50 can have older pages without pretending full channel coverage',async()=>{const h=fixture({count:50,change:p=>p.playlistItems.nextPageToken='older'}),r=await complete(h);assert.equal(r.detailed.collection.items.length,50);assert.equal(h.calls.length,7);});
+ await test('short uploads page with next token is incomplete and never silently accepted/retried',async()=>{const h=fixture({change:p=>p.playlistItems.nextPageToken='more'});await assert.rejects(complete(h));await assert.rejects(h.sources.search(h.selection,h.check));assert.equal(h.calls.length,5);});
+ await test('missing token prevents every transport',async()=>{const h=fixture({noToken:true});await assert.rejects(complete(h));assert.deepEqual(h.calls,['token']);});
+ for(const stage of ['token','channels','channels-json','playlistItems','playlistItems-json','videos','videos-json'])await test('original retirement after '+stage+' prevents all subsequent effects',async()=>{const h=fixture({stop:stage});await assert.rejects(complete(h));assert.equal(h.calls.at(-1),stage);});
+ for(const [name,change]of [
+  ['different authenticated channel',p=>p.channels.items[0].id='foreign'],['ambiguous channels',p=>{p.channels.items.push(clone(p.channels.items[0]));p.channels.pageInfo.resultsPerPage=2;}],['channel pagination',p=>p.channels.nextPageToken='more'],
+  ['missing uploads identity',p=>delete p.channels.items[0].contentDetails.relatedPlaylists.uploads],['different playlist',p=>p.playlistItems.items[0].snippet.playlistId='foreign'],['foreign video owner',p=>p.playlistItems.items[0].snippet.videoOwnerChannelId='foreign'],
+  ['position gap',p=>p.playlistItems.items[0].snippet.position=1],['publication missing instead of playlist-added fallback',p=>delete p.playlistItems.items[0].contentDetails.videoPublishedAt],['wrong content ID',p=>p.playlistItems.items[0].contentDetails.videoId='foreign0000'],
+  ['unacknowledged page count',p=>p.playlistItems.pageInfo.resultsPerPage=50],['missing detail',p=>{p.videos.items.pop();p.videos.pageInfo.resultsPerPage=2;}],['details pagination',p=>p.videos.nextPageToken='more'],['missing views',p=>delete p.videos.items[0].statistics.viewCount]
+ ])await test(name+' cannot become a complete source',async()=>{const h=fixture({change});await assert.rejects(complete(h));assert.ok(h.calls.length<=7);});
+ for(const resource of ['channels','playlistItems','videos'])for(const mode of ['httpError','redirected','jsonError'])await test(resource+' '+mode+' stops without retry',async()=>{const h=fixture({[mode]:resource});await assert.rejects(complete(h));assert.equal(h.calls.filter(x=>x===resource).length,1);});
+ await test('source selection is detached while details wait and cannot retarget tokens or publication',async()=>{const h=fixture(),r=await h.sources.search(h.selection,h.check);h.raw.playlistItems.items[0].contentDetails.videoPublishedAt='2030-01-01T00:00:00Z';const d=await h.sources.details(h.selection,r.collection.items.map(v=>v.id.videoId),h.check);assert.deepEqual(clone(d.collection.items.map(v=>v.snippet.publishedAt)),dates);});
+ await test('details ID/owner/check mismatch consumes the original without any new transport',async()=>{for(const mode of ['ids','owner','check']){const h=fixture(),r=await h.sources.search(h.selection,h.check),ids=r.collection.items.map(v=>v.id.videoId);const input=mode==='owner'?{...h.selection,owner:{...owner,email:'foreign'}}:h.selection;await assert.rejects(h.sources.details(input,mode==='ids'?ids.slice(1):ids,mode==='check'?()=>{}:h.check));await assert.rejects(h.sources.details(h.selection,ids,h.check));assert.equal(h.calls.length,5);}});
+ return {status:results.every(x=>x.status==='PASS')?'PASS':'FAIL',scope:'Synthetic original YouTube transport adapter only; no live Google/OAuth call, source consent or operational freshness.',results};
+}
+if(require.main===module){const watchdog=setTimeout(()=>{console.error('Adapter did not produce a terminal report');process.exit(1);},15000);run().then(r=>{clearTimeout(watchdog);console.log(JSON.stringify(r,null,2));if(r.status!=='PASS')process.exitCode=1;},e=>{clearTimeout(watchdog);console.error(e);process.exitCode=1;});}
+module.exports={run,pages};

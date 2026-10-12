@@ -6,6 +6,8 @@ import { thumbnailQuota } from '@/lib/image/thumbnail-quota';
 import { bestTimeCache } from '@/lib/best-time-cache';
 import { readDeclaredBestTime, type BestTimeSources } from './best-time-source-reader';
 import { Prisma } from '@prisma/client';
+import { createBestTimeYouTubeSources } from './best-time-youtube-sources';
+import { generateBestTimeTip } from './best-time-tip';
 export type BestTimeOriginalSources = BestTimeSources & Readonly<{ referenceAt: string }>;
 
 // Fresh original only, detached from HTTP admission. Trusted server code must
@@ -13,6 +15,17 @@ export type BestTimeOriginalSources = BestTimeSources & Readonly<{ referenceAt: 
 // This deterministic path has no AI tip and preserves legacy's zero Generation
 // debit. Its durable row excludes another Best Time original, not an AI credit.
 export function runDeterministicBestTimeOriginal(request: Request, sources: BestTimeOriginalSources) {
+  return runOriginal(request, sources, false);
+}
+
+// Internal server composition only; HTTP still denies new analysis. Reference
+// comes from the identified source producer, never the request/admission clock.
+// withTip is a trusted composition choice, not a user-supplied model or budget.
+export function runYouTubeBestTimeOriginal(request: Request, referenceAt: string, withTip: boolean) {
+  return runOriginal(request, createBestTimeYouTubeSources(referenceAt, request.signal), withTip);
+}
+
+function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip: boolean) {
   let pending = true, retired = false, timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = performance.now() + 65_000;
   const uncertain = () => Object.freeze({ status: 503, body: { error: 'best_time_analysis_unconfirmed' } });
@@ -26,6 +39,7 @@ export function runDeterministicBestTimeOriginal(request: Request, sources: Best
   let capturedSources: BestTimeSources | undefined, declaredReference: string | undefined;
   try {
     check();
+    if (typeof withTip !== 'boolean') throw Error('Best time composition unavailable');
     const search = Object.getOwnPropertyDescriptor(sources, 'search')?.value;
     const details = Object.getOwnPropertyDescriptor(sources, 'details')?.value;
     const reference = Object.getOwnPropertyDescriptor(sources, 'referenceAt')?.value;
@@ -115,9 +129,7 @@ export function runDeterministicBestTimeOriginal(request: Request, sources: Best
         return { status: 400, body: produced.status === 'no_videos' ? { error: 'no_videos' }
           : { error: 'not_enough_videos', videoCount: produced.analysis.videoCount } };
       }
-      const data = bestTimeCache({ userId: owner.id, heatmap: produced.analysis.heatmap, topSlots: produced.analysis.topSlots,
-        videoCount: produced.analysis.videoCount, aiTip: null, analyzedAt: new Date(admission.referenceAt) }, owner.id);
-      const saved = await step(() => prisma.$transaction(async tx => {
+      const revalidate = async (tx: Prisma.TransactionClient) => {
         await locked(tx); const latestPlan = await paid(tx);
         if (!samePlan(admission.plan, latestPlan)) throw Error('Best time plan changed');
         const channel = await step(() => tx.youtubeToken.findUnique({ where: { userId: owner.id }, select: { userId: true, channelId: true } }));
@@ -126,8 +138,16 @@ export function runDeterministicBestTimeOriginal(request: Request, sources: Best
         if (!row || row.id !== id || row.userId !== owner.id || row.email !== owner.email || row.channelId !== admission.channelId
           || row.state !== 'pending' || Date.prototype.toISOString.call(row.createdAt) !== admission.createdAt
           || Date.prototype.toISOString.call(row.referenceAt) !== new Date(admission.referenceAt).toISOString()) throw Error('Best time original changed');
+      };
+      const analysis = produced.analysis;
+      if (withTip) await step(() => prisma.$transaction(revalidate, { isolationLevel: 'RepeatableRead', maxWait: 5000, timeout: 15000 }));
+      const aiTip = withTip ? await step(() => generateBestTimeTip(owner, id, analysis, check, request.signal)) : null;
+      const data = bestTimeCache({ userId: owner.id, heatmap: analysis.heatmap, topSlots: analysis.topSlots,
+        videoCount: analysis.videoCount, aiTip, analyzedAt: new Date(admission.referenceAt) }, owner.id);
+      const saved = await step(() => prisma.$transaction(async tx => {
+        await revalidate(tx);
         const values = { heatmap: data.heatmap as unknown as Prisma.InputJsonValue, topSlots: data.topSlots as unknown as Prisma.InputJsonValue,
-          videoCount: data.videoCount, aiTip: Prisma.JsonNull, analyzedAt: new Date(admission.referenceAt) };
+          videoCount: data.videoCount, aiTip: data.aiTip === null ? Prisma.JsonNull : data.aiTip, analyzedAt: new Date(admission.referenceAt) };
         const stored = await step(() => tx.bestTimeAnalysis.upsert({ where: { userId: owner.id }, create: { id: randomUUID(), userId: owner.id, ...values }, update: values }));
         const captured = bestTimeCache(stored, owner.id);
         if (JSON.stringify(captured) !== JSON.stringify(data)) throw Error('Best time native write unavailable');
