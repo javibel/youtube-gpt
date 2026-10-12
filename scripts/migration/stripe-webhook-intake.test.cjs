@@ -11,7 +11,7 @@ function harness(options={}) {
  const intake=load('lib/stripe-webhook-intake.ts',{'@/lib/stripe-webhook-contract':contract},globals);
  const current=options.event||event();
  const forbidden=name=>(...args)=>{calls.other.push(name);throw Error('Unexpected effect: '+name);};
- const prisma=options.prisma||{subscription:{upsert:async data=>{calls.upsert.push(data);return data;},findFirst:forbidden('findFirst'),updateMany:forbidden('updateMany')},user:{findUnique:forbidden('user')}};
+ const prisma=options.prisma||{$transaction:async()=>{throw new contract.WebhookInputError(503,'Synthetic admission unavailable');},subscription:{upsert:async data=>{calls.upsert.push(data);return data;},findFirst:forbidden('findFirst'),updateMany:forbidden('updateMany')},user:{findUnique:forbidden('user')}};
  const stripe={webhooks:{constructEvent:(...args)=>{calls.verify.push(args);if(options.verify)return options.verify(...args);return current;}},subscriptions:{retrieve:async key=>{calls.retrieve.push(key);return options.retrieve?options.retrieve(key):subscription();}},customers:{retrieve:async key=>{calls.customer.push(key);if(options.customer)return options.customer(key);return{object:'customer',id:key,email:'synthetic@example.invalid',metadata:{userId:'synthetic_user'}};}}};
  const business=load('lib/checkout-webhook-business.ts',{'@/lib/prisma':{prisma},'@/lib/stripe-webhook-contract':contract},globals);
  const preflight=(...args)=>{calls.preflight.push(args);return options.preflight?options.preflight(...args):{writeAuthorized:false};};
