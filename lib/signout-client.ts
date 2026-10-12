@@ -43,7 +43,15 @@ export function beginSignout(owner: SignoutOwner, origin: string, context: objec
       // Observe this exact SDK call. Do not let the SDK navigate after a retired UI wait.
       // This does not cancel or bind its internal CSRF/POST stages to an account,
       // and does not prove revocation on other devices or after loss of this realm.
-      const result = await invoke({ redirect: false, callbackUrl: '/' });
+      const result: unknown = await invoke({ redirect: false, callbackUrl: '/' });
+      // The installed SDK returns parsed JSON without exposing the HTTP status.
+      // Its expected result is only { url }; an error/negative or unknown shape
+      // must remain uncertain even when it also carries an allowed home URL.
+      if (!result || typeof result !== 'object' || Array.isArray(result))
+        { original.outcome = unknown; notify(); return unknown; }
+      const keys = Object.keys(result);
+      if (keys.length !== 1 || keys[0] !== 'url' || !('url' in result) || typeof result.url !== 'string')
+        { original.outcome = unknown; notify(); return unknown; }
       const url = new URL(result.url, origin);
       if (url.origin !== origin || url.pathname !== '/' || url.search || url.hash || url.username || url.password)
         { original.outcome = unknown; notify(); return unknown; }

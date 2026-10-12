@@ -41,6 +41,18 @@ async function run(){const results=[];
   h.state.signoutSDK=async()=>({url:value});await ready(h);const click=button(h,'profile').props.onClick;click();await ready(h);click();await ready(h);
   assert.equal(h.state.signouts.length,1);assert(!h.state.navigationWrites);assert.match(h.text(),/Salida sin confirmar/);assert.equal(h.timers.size,0);
  });
+ for(const mode of ['sidebar','profile'])for(const [name,result] of [
+  ['explicit SDK error with normal home URL',{url:'http://127.0.0.1:4300/',error:'private-denial'}],
+  ['HTTP failure metadata with normal home URL',{url:'http://127.0.0.1:4300/',status:503}],
+  ['negative success marker with normal home URL',{url:'http://127.0.0.1:4300/',ok:false}],
+  ['unknown result fields with normal home URL',{url:'http://127.0.0.1:4300/',extra:'unexpected'}],
+ ])await test(mode+' rejects '+name+' without claiming navigation or repeatability',mode,async h=>{
+  h.state.signoutSDK=async()=>result;await ready(h);button(h,mode).props.onClick();await ready(h);
+  assert.equal(h.state.signouts.length,1);assert(!h.state.navigationWrites);assert.match(h.text(),/Salida sin confirmar/);
+  observe(h).props.onClick();await ready(h);button(h,mode).props.onClick();await ready(h);
+  assert.equal(h.state.signouts.length,1);assert(!h.state.navigationWrites);assert(!h.text().includes('private-denial'));
+  assert.equal(h.timers.size,0);
+ });
  await test('SDK rejection stays uncertain, sanitized and excluded across consumers','both',async h=>{
   h.state.signoutSDK=async()=>{throw Error('private-native-failure-token');};await ready(h);
   h.click('Cerrar esta sesión');await ready(h);h.button('Cerrar sesión').props.onClick();observe(h).props.onClick();await ready(h);
