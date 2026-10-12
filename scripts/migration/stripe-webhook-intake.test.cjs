@@ -15,14 +15,15 @@ function harness(options={}) {
  const stripe={webhooks:{constructEvent:(...args)=>{calls.verify.push(args);if(options.verify)return options.verify(...args);return current;}},subscriptions:{retrieve:async key=>{calls.retrieve.push(key);return options.retrieve?options.retrieve(key):subscription();}},customers:{retrieve:async key=>{calls.customer.push(key);if(options.customer)return options.customer(key);return{object:'customer',id:key,email:'synthetic@example.invalid',metadata:{userId:'synthetic_user'}};}}};
  const business=load('lib/checkout-webhook-business.ts',{'@/lib/prisma':{prisma},'@/lib/stripe-webhook-contract':contract},globals);
  const preflight=(...args)=>{calls.preflight.push(args);return options.preflight?options.preflight(...args):{writeAuthorized:false};};
+ const original=load('lib/webhook-original.ts',{'@/lib/stripe':{stripe},'@/lib/stripe-webhook-contract':contract,'@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight}},globals);
  const route=load('app/api/stripe/webhook/route.ts',{
-  '@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight},'next/server':{NextResponse:Response},'@/lib/stripe-webhook-contract':contract,'@/lib/stripe-webhook-intake':intake,'@/lib/prisma':{prisma},
+  '@/lib/webhook-original':original,'@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight},'next/server':{NextResponse:Response},'@/lib/stripe-webhook-contract':contract,'@/lib/stripe-webhook-intake':intake,'@/lib/prisma':{prisma},
   '@/lib/stripe':{stripe,subscriptionPeriod:()=>({start:new Date('2000-01-01'),end:new Date('2000-01-02')}),createBillingPortalUrl:forbidden('portal')},
   '@/lib/lifecycle-trigger':{triggerTrialEndingEmail:forbidden('trial email'),triggerPaymentFailedEmail:forbidden('failed email')},
   '@/lib/affiliate':{accrueAffiliateCommission:forbidden('commission'),reverseAffiliateCommissionForInvoice:forbidden('reverse')},
  },globals);
  const request=(body=' \n{"unparsed":true}\n',headers={'stripe-signature':' synthetic-signature '},signal)=>new Request('https://example.invalid/api/stripe/webhook',{method:'POST',body,headers,signal,duplex:'half'});
- return{calls,logs,current,prisma,contract,intake,globals,timers,request,post:r=>route.POST(r||request()),advance(ms,fire=true){clock+=ms;if(fire)for(const[key,t]of [...timers])if(t.at<=clock){timers.delete(key);t.fn();}}};
+ return{calls,logs,current,original,prisma,contract,intake,globals,timers,request,post:r=>route.POST(r||request()),advance(ms,fire=true){clock+=ms;if(fire)for(const[key,t]of [...timers])if(t.at<=clock){timers.delete(key);t.fn();}}};
 }
 async function run(){
  const results=[];async function test(name,fn){await fn();results.push(name);}

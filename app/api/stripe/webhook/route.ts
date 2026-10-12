@@ -2,8 +2,8 @@ import { stripe, subscriptionPeriod, createBillingPortalUrl } from '@/lib/stripe
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { captureCheckoutPrices, captureCheckoutSubscription, captureCheckoutCustomer, preflightCheckoutBusiness } from '@/lib/checkout-webhook-business';
-import { captureWebhookEvent, checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
+import { prepareWebhookVerification, snapshotWebhookOriginal, preflightCheckoutOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
+import { checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { readWebhookBody, webhookWait, WebhookWaitRetired, type WebhookWait } from '@/lib/stripe-webhook-intake';
 import { triggerTrialEndingEmail, triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
 import { accrueAffiliateCommission, reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
@@ -73,35 +73,32 @@ function reply(data: object, status = 200) {
 }
 export async function POST(request: Request) {
   const wait = webhookWait(request.signal);
+  let producer: ReturnType<typeof prepareWebhookVerification> | undefined;
   try {
     wait.check();
     // Capture header and configured secret before waiting for the original raw body.
     const signature = request.headers.get('stripe-signature');
-    const secret = process.env.STRIPE_WEBHOOK_SECRET;
-    const checkoutPrices = captureCheckoutPrices(process.env);
+
     if (!signature || !signature.trim() || signature.length > 4096) throw new WebhookInputError(400, 'Firma inválida');
-    if (!secret || secret.length > 4096) return reply({ error: 'Webhook no configurado' }, 503);
+    producer = prepareWebhookVerification(wait.check);
     const body = await readWebhookBody(request, wait);
-    let verified: unknown;
+    let original: unknown;
     try {
       wait.check();
-      verified = stripe.webhooks.constructEvent(body, signature, secret);
+      original = producer.verify(body, signature);
       wait.check();
     } catch (error) {
-      if (error instanceof WebhookWaitRetired) throw error;
+      if (!(error instanceof WebhookSignatureFailure)) throw error;
       console.error('Webhook signature verification failed');
       return reply({ error: 'Firma inválida' }, 400);
     }
     // Snapshot the verified SDK result before any downstream await; no authority is inferred here.
-    const event = captureWebhookEvent(verified, wait.check) as Stripe.Event;
+    const event = snapshotWebhookOriginal(original) as Stripe.Event;
     const checkout = checkoutEventProjection(event);
     switch (event.type) {
       case 'checkout.session.completed': {
         if (checkout) {
-          if (!checkoutPrices) throw new WebhookInputError(503, 'Precios de checkout no configurados');
-          const subscription = await wait.run(async () => captureCheckoutSubscription(await stripe.subscriptions.retrieve(checkout.subscriptionId), wait.check));
-          const customer = await wait.run(async () => captureCheckoutCustomer(await stripe.customers.retrieve(checkout.customerId), wait.check));
-          await wait.run(() => preflightCheckoutBusiness(checkout, subscription, customer, checkoutPrices, wait.check));
+          await wait.run(() => preflightCheckoutOriginal(original));
           // Matching data is not a live durable admission capability. Never upsert from this projection.
           throw new WebhookInputError(503, 'Evento pendiente de admisión original');
         }
@@ -210,5 +207,5 @@ export async function POST(request: Request) {
     console.error('Webhook processing failed');
     // A failed or uncertain wait is not acknowledged. Durable delivery ownership is still pending.
     return reply({ error: 'Error interno procesando el webhook' }, 500);
-  } finally { wait.close(); }
+  } finally { producer?.close(); wait.close(); }
 }
