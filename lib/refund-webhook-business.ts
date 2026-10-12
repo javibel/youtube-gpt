@@ -35,20 +35,34 @@ export function refundEventProjection(event: any, check: () => void) {
   if (charge.invoice === null) return null; // Explicit non-invoice charge; no invoice commission action.
   const invoiceId = reference(charge.invoice,'in','invoice'),customerId = reference(charge.customer,'cus','customer'),
     paymentIntentId = reference(charge.payment_intent,'pi','payment_intent'),refunds = charge.refunds;
-  if (!refunds || refunds.object !== 'list' || refunds.has_more !== false || !Array.isArray(refunds.data) || refunds.data.length !== 1) return pending();
-  const refund = refunds.data[0];
-  if (!refund || refund.object !== 'refund' || !id(refund.id,'re') ||
+  if (!refunds || refunds.object !== 'list' || refunds.has_more !== false || !Array.isArray(refunds.data) ||
+      ![1,2].includes(refunds.data.length)) return pending();
+  const captured = refunds.data.map((refund: any) => {
+    if (!refund || refund.object !== 'refund' || !id(refund.id,'re') ||
       reference(refund.charge,'ch','charge') !== charge.id ||
       reference(refund.payment_intent,'pi','payment_intent') !== paymentIntentId ||
-      refund.currency !== charge.currency || !amount(refund.amount) || refund.amount !== charge.amount_refunded ||
+      refund.currency !== charge.currency || !amount(refund.amount) || refund.amount === 0 ||
       !seconds(refund.created) || refund.created < charge.created ||
       !['pending','requires_action','succeeded','failed','canceled'].includes(refund.status)) return invalid();
-  if (refund.status !== 'succeeded') return pending();
+    check();
+    return Object.freeze({ refundId: refund.id, amountCents: refund.amount, currency: refund.currency,
+      status: refund.status, createdSeconds: refund.created });
+  });
+  if (new Set(captured.map((refund: any) => refund.refundId)).size !== captured.length) return pending();
+  if (captured.length === 1 && captured[0].amountCents !== charge.amount_refunded) return invalid();
+  if (captured.some((refund: any) => refund.status !== 'succeeded')) return pending();
+  // Exact equality of declared data only. BigInt avoids overflow while checking
+  // the complete bounded collection; this never computes a commission/reversal.
+  const declaredTotal = captured.reduce((total: bigint, refund: any) => total + BigInt(refund.amountCents), BigInt(0));
+  if (declaredTotal !== BigInt(charge.amount_refunded)) return invalid();
+  const detail = captured.length === 1
+    ? { refundId: captured[0].refundId, refundCreatedSeconds: captured[0].createdSeconds }
+    : { refunds: Object.freeze(captured) };
   check();
-  return Object.freeze({ chargeId:charge.id,invoiceId,customerId,paymentIntentId,refundId:refund.id,
-    chargeCreatedSeconds:charge.created,refundCreatedSeconds:refund.created,currency:charge.currency,
+  return Object.freeze({ chargeId:charge.id,invoiceId,customerId,paymentIntentId,...detail,
+    chargeCreatedSeconds:charge.created,currency:charge.currency,
     amountCents:charge.amount,amountCapturedCents:charge.amount_captured,amountRefundedCents:charge.amount_refunded,
-    refundStatus:refund.status,fullyRefunded:charge.refunded,writeAuthorized:false as const });
+    refundStatus:'succeeded' as const,fullyRefunded:charge.refunded,writeAuthorized:false as const });
 }
 export function refundInvoiceProjection(charge: NonNullable<ReturnType<typeof refundEventProjection>>, input: unknown, check: () => void) {
   charge = captureWebhookData(charge,check);const invoice = captureWebhookData(input,check);
