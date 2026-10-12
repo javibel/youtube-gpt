@@ -17,7 +17,8 @@ function harness(options={}) {
  const preflight=(...args)=>{calls.preflight.push(args);return options.preflight?options.preflight(...args):{writeAuthorized:false};};
  const invoiceBusiness=load('lib/invoice-webhook-business.ts',{'@/lib/checkout-webhook-business':business,'@/lib/stripe-webhook-contract':contract},globals);
  const subscriptionBusiness=load('lib/subscription-webhook-business.ts',{'@/lib/checkout-webhook-business':business,'@/lib/stripe-webhook-contract':contract},globals);
- const original=load('lib/webhook-original.ts',{'@/lib/subscription-webhook-business':subscriptionBusiness,'@/lib/invoice-webhook-business':invoiceBusiness,'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma},'@/lib/stripe':{stripe},'@/lib/stripe-webhook-contract':contract,'@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight}},globals);
+ const failedInvoiceBusiness=load('lib/failed-invoice-webhook-business.ts',{'@/lib/checkout-webhook-business':business,'@/lib/stripe-webhook-contract':contract},globals);
+ const original=load('lib/webhook-original.ts',{'@/lib/failed-invoice-webhook-business':failedInvoiceBusiness,'@/lib/subscription-webhook-business':subscriptionBusiness,'@/lib/invoice-webhook-business':invoiceBusiness,'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma},'@/lib/stripe':{stripe},'@/lib/stripe-webhook-contract':contract,'@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight}},globals);
  const route=load('app/api/stripe/webhook/route.ts',{
   '@/lib/webhook-original':original,'@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight},'next/server':{NextResponse:Response},'@/lib/stripe-webhook-contract':contract,'@/lib/stripe-webhook-intake':intake,'@/lib/prisma':{prisma},
   '@/lib/stripe':{stripe,subscriptionPeriod:()=>({start:new Date('2000-01-01'),end:new Date('2000-01-02')}),createBillingPortalUrl:forbidden('portal')},

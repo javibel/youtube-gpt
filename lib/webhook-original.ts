@@ -5,6 +5,7 @@ import { captureWebhookEvent, checkoutEventProjection, WebhookInputError } from 
 import { captureCheckoutPrices, captureCheckoutSubscription, captureCheckoutCustomer, preflightCheckoutBusiness } from '@/lib/checkout-webhook-business';
 
 import { invoiceEventProjection, preflightInvoiceBusiness } from '@/lib/invoice-webhook-business';
+import { failedInvoiceEventProjection, preflightFailedInvoiceBusiness } from '@/lib/failed-invoice-webhook-business';
 
 import { subscriptionEventProjection, preflightSubscriptionBusiness } from '@/lib/subscription-webhook-business';
 
@@ -190,6 +191,29 @@ export async function preflightSubscriptionOriginal(value: unknown) {
     const result = await preflightSubscriptionBusiness(projected, customer, check);
     check();
     return result; // Never admission, billing retirement, entitlement or writer permission.
+  } catch(error) {
+    original.retired = true;
+    throw error;
+  }
+}
+
+export async function preflightFailedInvoiceOriginal(value: unknown) {
+  const original = owned(value);
+  if (original.claimed) throw new WebhookInputError(503, 'Preflight original consumido');
+  original.claimed = true;
+  const check = () => { if (original.retired) throw new WebhookInputError(503, 'Original de webhook retirado'); try { original.check(); } catch(error) { original.retired = true; throw error; } };
+  try {
+    check();
+    const invoice = failedInvoiceEventProjection(original.event, check);
+    if (!invoice) return null;
+    if (!original.prices) throw new WebhookInputError(503, 'Precios de factura fallida no configurados');
+    const subscription = captureCheckoutSubscription(await stripe.subscriptions.retrieve(invoice.subscriptionId), check);
+    check();
+    const customer = captureCheckoutCustomer(await stripe.customers.retrieve(invoice.customerId), check);
+    check();
+    const result = await preflightFailedInvoiceBusiness(invoice, subscription, customer, original.prices, check);
+    check();
+    return result; // No notice/portal admission, entitlement or billing retirement.
   } catch(error) {
     original.retired = true;
     throw error;

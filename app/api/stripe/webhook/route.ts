@@ -1,28 +1,12 @@
-import { stripe, createBillingPortalUrl } from '@/lib/stripe';
-import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, preflightSubscriptionOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
+import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, preflightFailedInvoiceOriginal, preflightSubscriptionOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
 import { checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
-import { readWebhookBody, webhookWait, WebhookWaitRetired, type WebhookWait } from '@/lib/stripe-webhook-intake';
-import { triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
+import { readWebhookBody, webhookWait, WebhookWaitRetired } from '@/lib/stripe-webhook-intake';
 import { reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-// Resolución histórica de dueño para avisos: vínculo por customerId y fallback por email.
-// Su contrato, admisión y efectos de notificación siguen pendientes.
-async function resolveUserIdByCustomer(customerId: string, wait: WebhookWait): Promise<string | null> {
-  const sub = await wait.run(() => prisma.subscription.findFirst({ where: { stripeCustomerId: customerId } }));
-  if (sub) return sub.userId;
-  const customer = await wait.run(() => stripe.customers.retrieve(customerId)) as Stripe.Customer;
-  if (customer.email) {
-    const user = await wait.run(() => prisma.user.findUnique({ where: { email: customer.email! } }));
-    if (user) return user.id;
-  }
-  return null;
-}
 
 function reply(data: object, status = 200) {
   return NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -73,23 +57,9 @@ export async function POST(request: Request) {
         throw new WebhookInputError(503, 'Aviso de trial pendiente de admisión original');
       }
 
-      // Cobro fallido (fin de trial o renovación) — avisar antes de que el usuario
-      // descubra que perdió el acceso sin saber por qué.
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        // Solo facturas de suscripción (mismo guard que payment_succeeded) — una
-        // factura suelta no debe disparar un email que habla de "tu suscripción".
-        if (!(invoice as any).subscription) break;
-        const customerId = invoice.customer as string;
-        const userId = await resolveUserIdByCustomer(customerId, wait);
-        if (userId) {
-          const manageUrl = (await wait.run(() => createBillingPortalUrl(customerId))) ?? 'https://ytubviral.com/profile';
-          await wait.run(() => triggerPaymentFailedEmail(userId, invoice.id, {
-            amountCents: invoice.amount_due ?? 0,
-            currency: (invoice.currency || 'eur').toUpperCase(),
-            manageUrl,
-          }));
-        }
+        const projected = await wait.run(() => preflightFailedInvoiceOriginal(original));
+        if (projected) throw new WebhookInputError(503, 'Aviso de factura fallida pendiente de admisión original');
         break;
       }
 
