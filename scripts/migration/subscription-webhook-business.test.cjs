@@ -4,7 +4,7 @@ const statuses=['active','trialing','past_due','unpaid','canceled','incomplete',
 function event(d=data(),type='updated',status=d.subscription.status){const sub=structuredClone(d.subscription);sub.status=status;if(status==='canceled'){sub.canceled_at=0;sub.ended_at=0;}return{id:'evt_subscription',object:'event',type:'customer.subscription.'+type,created:946684800,livemode:false,api_version:'2024-06-20',data:{object:sub}};}
 function fixture(d=data(),options={}){
  const calls=[],user={id:d.checkout.userId,email:d.customer.email,subscription:{id:'linked_row',userId:d.checkout.userId,stripeCustomerId:d.checkout.customerId}};
- const db={$transaction:async(fn,settings)=>{calls.push('transaction');assert.deepEqual({...settings},{isolationLevel:'RepeatableRead',maxWait:5000,timeout:10000});return fn({user:{findUnique:async()=>{calls.push('owner');return Object.hasOwn(options,'owner')?options.owner:user;}},subscription:{findMany:async()=>{calls.push('linked');return options.linked||[{...user.subscription}];}}});}};
+ const db={$transaction:async(fn,settings)=>{calls.push('transaction');assert.deepEqual({...settings},settings.isolationLevel===undefined?{maxWait:5000,timeout:10000}:{isolationLevel:'RepeatableRead',maxWait:5000,timeout:10000});return fn({user:{findUnique:async()=>{calls.push('owner');return Object.hasOwn(options,'owner')?options.owner:user;}},subscription:{findMany:async()=>{calls.push('linked');return options.linked||[{...user.subscription}];}}});}};
  return{db,calls,user};
 }
 function binding(db,d=data(),options={},check=()=>{}){
