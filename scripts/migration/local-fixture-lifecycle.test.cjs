@@ -1,6 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {createFixtureLifecycle}=require('../../lib/migration/local-fixture-lifecycle.cjs');
+const {load}=require('./route-harness.cjs');
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
 const results=[];async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}}
@@ -35,6 +36,22 @@ async function run(){
  await test('independent bundles share one genuine guarded lifecycle; JSON/clones/replace/reset cannot install',async()=>{
   const source=fs.readFileSync(require.resolve('../../lib/migration/local-fixture-lifecycle.cjs'),'utf8'),shared={__ytvRuntimeGuard:true},load=env=>{const module={exports:{}};vm.runInNewContext(source,{module,globalThis:shared,process:{env},Promise});return module.exports;};
   const first=load({YTV_MIGRATION_WEB_TEST:'1'}),second=load({YTV_MIGRATION_WEB_TEST:'1'}),closed=load({});const lifecycle=first.createFixtureLifecycle();assert.throws(()=>first.installFixtureLifecycle({...lifecycle}));assert.throws(()=>closed.installFixtureLifecycle(lifecycle));first.installFixtureLifecycle(lifecycle);assert.equal(second.getFixtureLifecycle(),lifecycle);assert.throws(()=>second.installFixtureLifecycle(second.createFixtureLifecycle()));assert.throws(()=>closed.getFixtureLifecycle());assert.throws(()=>Object.defineProperty(shared,Symbol.for('ytubviral.migration.fixture-lifecycle.v1'),{value:JSON.parse('{}')}));assert.equal(second.reset,undefined);
+ });
+ await test('guarded Prisma is one immutable physical client across bundles, with disconnect joined once',async()=>{
+  let created=0,closed=0;const disconnect=deferred(),lifecycle=createFixtureLifecycle(),shared={};
+  class PrismaClient{constructor(){created++;}$disconnect(){closed++;return disconnect.promise;}}
+  const mocks={'@prisma/client':{PrismaClient},'./migration/local-fixture-lifecycle.cjs':{getFixtureLifecycle:()=>lifecycle}},globals={globalThis:shared,process:{env:{YTV_MIGRATION_WEB_TEST:'1',NODE_ENV:'production'}}};
+  const a=load('lib/prisma.ts',mocks,globals),b=load('lib/prisma.ts',mocks,globals);assert.equal(a.prisma,b.prisma);assert.equal(created,1);
+  assert.throws(()=>Object.defineProperty(shared,Symbol.for('ytubviral.migration.fixture-prisma.v1'),{value:JSON.parse('{}')}));
+  const stopped=lifecycle.stop();let finished=false;stopped.then(()=>{finished=true;});await flush();assert.equal(closed,1);assert.equal(finished,false);assert.throws(()=>load('lib/prisma.ts',mocks,globals),/stopping/);assert.equal(created,1);
+  disconnect.resolve();const r=await stopped;assert.equal(r.status,'drained');assert.equal(r.resourcesClosed,1);assert.equal(closed,1);
+ });
+ await test('missing lifecycle or forged Prisma object blocks fixture construction; ordinary legacy client stays separate',async()=>{
+  let created=0,checked=0;class PrismaClient{constructor(){created++;}$disconnect(){return Promise.resolve();}}
+  const mocks={'@prisma/client':{PrismaClient},'./migration/local-fixture-lifecycle.cjs':{getFixtureLifecycle(){checked++;throw Error('Fixture lifecycle is not installed');}}};
+  assert.throws(()=>load('lib/prisma.ts',mocks,{globalThis:{},process:{env:{YTV_MIGRATION_WEB_TEST:'1',NODE_ENV:'production'}}}),/not installed/);assert.equal(created,0);
+  const legacy=new PrismaClient(),ordinary=load('lib/prisma.ts',mocks,{globalThis:{prisma:legacy},process:{env:{NODE_ENV:'production'}}});assert.equal(ordinary.prisma,legacy);assert.equal(checked,1);
+  const shared={[Symbol.for('ytubviral.migration.fixture-prisma.v1')]:{status:'completed'}},lifecycle=createFixtureLifecycle();mocks['./migration/local-fixture-lifecycle.cjs']={getFixtureLifecycle:()=>lifecycle};assert.throws(()=>load('lib/prisma.ts',mocks,{globalThis:shared,process:{env:{YTV_MIGRATION_WEB_TEST:'1'}}}),/Original fixture Prisma/);assert.equal(created,1);
  });
  return {status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',scope:'Owned fixture promise/pool drainage only, no business acceptance/recovery, services or real transports.',results};
 }
