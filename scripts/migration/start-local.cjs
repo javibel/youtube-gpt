@@ -29,18 +29,32 @@ async function main(){
  fs.mkdirSync(task.env.TEMP,{recursive:true});
  for(const key of Object.keys(process.env))delete process.env[key];Object.assign(process.env,task.env);process.chdir(task.cwd);
  const guard=path.join(__dirname,'runtime-guard.cjs');process.execArgv.push('--require',guard);require(guard);
- const {connectLocalFixture}=require('../../lib/migration/local-fixture.cjs');const prepared=await connectLocalFixture({seed:true});await prepared.close();
+ const {createFixtureLifecycle,installFixtureLifecycle}=require('../../lib/migration/local-fixture-lifecycle.cjs');
+ let server,app;
+ const lifecycle=createFixtureLifecycle({beforeDrain:()=>new Promise((resolve,reject)=>{if(!server)return resolve();server.close(error=>error?reject(error):resolve());}),afterDrain:()=>app?.close()});
+ installFixtureLifecycle(lifecycle);
+ let stopping;const stop=()=>stopping??=(async()=>{
+  const receipt=await lifecycle.stop();console.log('Synthetic fixture drainage: '+JSON.stringify(receipt));
+  if(process.connected)await new Promise(resolve=>process.send({type:'fixture-drain-terminal',receipt},()=>resolve()));
+  process.exit(receipt.status==='drained'?0:1);
+ })();
+ process.once('SIGINT',()=>{void stop();});process.once('SIGTERM',()=>{void stop();});
+ // This native parent channel can request process shutdown only. No HTTP/body,
+ // reset, admission recovery or serialized receipt is accepted as authority.
+ if(process.connected)process.on('message',message=>{if(message==='ytv-local-fixture-stop')void stop();});
+ try{
+ const {connectLocalFixture}=require('../../lib/migration/local-fixture.cjs');const prepared=await lifecycle.openResource(()=>connectLocalFixture({seed:true}));await lifecycle.closeResource(prepared);lifecycle.check();
  require('../../lib/migration-payments.cjs').installFixtures(paymentFixtures());
- const app=require('next')({dev:false,dir:task.cwd,hostname:task.host,port:task.port});await app.prepare();
+ app=require('next')({dev:false,dir:task.cwd,hostname:task.host,port:task.port});await lifecycle.runWork(()=>app.prepare());lifecycle.check();
  const handler=app.getRequestHandler(),{protectResponse}=require('./runtime-http-policy.cjs');
- const server=require('node:http').createServer(async(request,response)=>{
+ server=require('node:http').createServer(async(request,response)=>{
   protectResponse(response);
   if(request.headers.host!=='127.0.0.1:4300'||!request.url?.startsWith('/')||request.url.startsWith('//')){response.writeHead(400);response.end('Invalid local request');return;}
   delete request.headers['x-forwarded-host'];request.headers['x-forwarded-proto']='http';
-  try{await handler(request,response);}catch(error){console.error('Local fixture request failed:',error.message);if(!response.headersSent)response.writeHead(500);response.end('Local test request failed');}
+  try{lifecycle.check();await lifecycle.runWork(()=>handler(request,response));}catch(error){console.error('Local fixture request failed:',error.message);if(!response.headersSent)response.writeHead(503);response.end('Local test request unconfirmed');}
  });
- server.listen(task.port,task.host,()=>console.log('Synthetic local web ready at http://127.0.0.1:4300/admin/ai-configuration'));
- let stopping=false;const stop=()=>{if(stopping)return;stopping=true;server.close(()=>{Promise.resolve(app.close()).finally(()=>process.exit(0));});};process.once('SIGINT',stop);process.once('SIGTERM',stop);
+ server.listen(task.port,task.host,()=>{try{lifecycle.check();console.log('Synthetic local web ready at http://127.0.0.1:4300/admin/ai-configuration');}catch{/* Stop during startup never reports readiness. */}});
+ }catch(error){console.error('Local fixture startup failed:',error.message);const receipt=await lifecycle.stop();console.error('Synthetic fixture startup drainage: '+JSON.stringify(receipt));process.exitCode=1;}
 }
 module.exports={plan,paymentFixtures};
 if(require.main===module)main().catch(error=>{console.error(error.message);process.exitCode=1;});

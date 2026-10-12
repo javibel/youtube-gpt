@@ -24,7 +24,7 @@
     "migration:test:configuration": "node scripts/migration/configuration-service.test.cjs && node scripts/migration/configuration-route.test.cjs && node scripts/migration/configuration-route-deadline.test.cjs && node scripts/migration/openai-bootstrap.test.cjs && node scripts/migration/configuration-panel.test.cjs && node scripts/migration/configuration-bootstrap.test.cjs",
     "migration:verify": "pwsh -NoProfile -File scripts/migration/verify-local.ps1",
     "migration:verify:local": "pwsh -NoProfile -File scripts/migration/verify-local.ps1 -WithDatabase",
-    "migration:test:startup": "node scripts/migration/runtime-file-policy.test.cjs && node scripts/migration/runtime-file-guard.test.cjs && node scripts/migration/runtime-network-policy.test.cjs && node scripts/migration/runtime-http-policy.test.cjs && node scripts/migration/start-local.test.cjs && node scripts/migration/runtime-bundles.test.cjs",
+    "migration:test:startup": "node scripts/migration/runtime-file-policy.test.cjs && node scripts/migration/runtime-file-guard.test.cjs && node scripts/migration/runtime-network-policy.test.cjs && node scripts/migration/runtime-http-policy.test.cjs && node scripts/migration/start-local.test.cjs && node scripts/migration/runtime-bundles.test.cjs && node scripts/migration/local-fixture-lifecycle.test.cjs",
     "migration:start:fixture": "node scripts/migration/start-local.cjs",
     "migration:test:best-time-original": "node scripts/migration/best-time-original-directed-native.cjs"
   },
