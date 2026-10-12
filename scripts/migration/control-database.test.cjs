@@ -328,7 +328,8 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   await actualStore('activator').publish(config,{actor:'test-admin'});await actualStore('activator').activate(config.revision,{expectedRevision:previous,actor:'test-admin',reason:'synthetic calendar retry'});
   const budgetId=await budget('calendar-client'),runtime=load('lib/ai/task-runtime.ts');
   runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'calendar.suggestions':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:1200,deadlineMs:3000}}},authorize:async({userId,taskType})=>userId==='synthetic'&&taskType==='calendar.suggestions'?{budgetId}:null}));
-  const FixedDate=class extends Date {constructor(...args){super(...(args.length?args:['2026-10-07T12:00:00.000Z']));}static now(){return Date.parse('2026-10-07T12:00:00.000Z');}};
+  let wallEpoch=Date.parse('2026-10-07T12:00:00.000Z');
+  const FixedDate=class extends Date {constructor(...args){super(...(args.length?args:[wallEpoch]));}static now(){return wallEpoch;}};
   const route=load('app/api/calendar/suggest/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:'synthetic'}})},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true},'@/lib/ai/task-runtime':runtime,
    '@/lib/prisma':{prisma:{bestTimeAnalysis:{findUnique:async()=>null},trendAlert:{findMany:async()=>[]},trackedCompetitor:{findMany:async()=>[]},calendarEntry:{findMany:async()=>changedContext?[{date:'2026-10-08',title:'Changed synthetic context',status:'idea'}]:[]},youtubeToken:{findUnique:async()=>null}}}}, {Date:FixedDate});
   const {harness}=require('./calendar-client-retry.test.cjs');
@@ -377,6 +378,25 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   changedContext=true;const conflict=await invoke(browser.requests[1]);
   assert.equal(conflict.status,409);assert.deepEqual(await conflict.json(),{error:'operation_input_changed',retryMayConsume:false});assert.equal(calls,3);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),21);
+  await test('calendar original retained receipt conflicts after day change without renewal or redispatch',async()=>{
+   changedContext=false;wallEpoch+=86400000;
+   const response=await invoke(browser.requests[1]);
+   assert.equal(response.status,409);
+   assert.deepEqual(await response.json(),{error:'operation_input_changed',retryMayConsume:false});
+   assert.equal(suggestion.date,'2026-10-08');assert.equal(calls,3);
+   assert.equal(Number((await stats(budgetId)).reserved_micros),0);
+   assert.equal(Number((await stats(budgetId)).settled_micros),21);
+  });
+  await test('calendar invalid original proposal remains unconfirmed on retained retrieval, one settlement and no substituted date',async()=>{
+   wallEpoch=Date.parse('2026-10-07T12:00:00.000Z');suggestion.date='2020-01-01';
+   const init={headers:{'Content-Type':'application/json','Idempotency-Key':prefix+'_calendar_invalid_original'},body:JSON.stringify({lang:'es'})};
+   const response=await invoke(init);assert.equal(response.status,500);assert.deepEqual(await response.json(),{error:'ai_parse_error'});
+   const retained=await invoke({...init,headers:{...init.headers,'X-Calendar-Recovery':'retained-only-v1'}});
+   assert.equal(retained.status,503);assert.deepEqual(await retained.json(),{error:'suggestions_unconfirmed',retryMayConsume:false});
+   assert.equal(suggestion.date,'2020-01-01');assert.equal(calls,4);
+   assert.equal(Number((await stats(budgetId)).reserved_micros),0);
+   assert.equal(Number((await stats(budgetId)).settled_micros),28);
+  });
  });
  await test('Predictor lost-response retry recovers one result and settlement; changed input or video context never redispatches',async()=>{
   const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');const {createRetryOperation}=require('../../lib/ai/retry-operation.cjs');

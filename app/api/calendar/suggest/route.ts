@@ -1,3 +1,4 @@
+import { decodeCalendarSuggestions } from '@/lib/calendar-suggestion-contract';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
@@ -41,8 +42,16 @@ const DAY_NAMES_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'S
 
 export async function POST(request: Request) {
   const wait = suggestionHttpWait(request.signal);
+  // Capture this HTTP producer's civil horizon before any await. A later request
+  // cannot reconstruct an older producer: the task facade must match its original
+  // input, or retained-only retrieval remains unconfirmed.
+  const baseInstant = Date.now();
+  const baseDay = new Date(baseInstant).toISOString().slice(0, 10);
+  const next14 = Object.freeze(Array.from({ length: 14 }, (_, i) =>
+    new Date(baseInstant + (i + 1) * 86400000).toISOString().slice(0, 10)));
+  const selection = Object.freeze({ baseDay, publishedAfter: new Date(baseInstant - 7 * 86400000).toISOString(), next14 });
   try {
-    const response = await suggest(request, wait);
+    const response = await suggest(request, wait, selection);
     wait.check();
     response.headers.set('Cache-Control', 'no-store');
     return response;
@@ -53,7 +62,9 @@ export async function POST(request: Request) {
   } finally { wait.close(); }
 }
 
-async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpWait>) {
+async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpWait>,
+  selection: Readonly<{ baseDay: string; publishedAfter: string; next14: readonly string[] }>) {
+  const next14 = selection.next14;
   const session = await wait.run(() => auth());
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -95,7 +106,7 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
       take: 10,
     }),
     prisma.calendarEntry.findMany({
-      where: { userId, date: { gte: new Date().toISOString().slice(0, 10) } },
+      where: { userId, date: { gte: selection.baseDay } },
       orderBy: { date: 'asc' },
       take: 30,
     }),
@@ -121,7 +132,7 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
   if (competitors.length > 0 && YT_API_KEY) {
     try {
       const res = await wait.run(() => fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${competitors[0].channelId}&type=video&order=date&maxResults=5&publishedAfter=${new Date(Date.now() - 7 * 86400000).toISOString()}&key=${YT_API_KEY}`,
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${competitors[0].channelId}&type=video&order=date&maxResults=5&publishedAfter=${selection.publishedAfter}&key=${YT_API_KEY}`,
         { signal: request.signal }
       ));
       if (res.ok) {
@@ -154,12 +165,6 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
     ? existingEntries.slice(0, 15).map(e => `- ${e.date}: "${e.title}" (${e.status})`).join('\n')
     : 'No upcoming entries.';
 
-  // Calculate next 14 days dates for suggestions
-  const today = new Date();
-  const next14 = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(today.getTime() + (i + 1) * 86400000);
-    return d.toISOString().slice(0, 10);
-  });
 
   try {
     const parameters = {
@@ -200,29 +205,22 @@ ${existingInfo}`,
       : task.create(parameters, { signal: request.signal }));
     if (!data) return NextResponse.json({ error: 'suggestions_unconfirmed', retryMayConsume: false }, { status: 503 });
 
-    const text = data.content?.[0]?.text || '';
-
-    let suggestions: { title: string; date: string; hour: number; reason: string; description: string }[];
+    let suggestions;
     try {
-      // Extract JSON from possible markdown code block
-      const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-      suggestions = JSON.parse(cleaned);
+    wait.check();
+    const incomplete = data.incomplete, content = data.content;
+    wait.check();
+    if (incomplete || !Array.isArray(content) || content.length !== 1) throw Error('Incomplete suggestions');
+    const type = content[0]?.type, text = content[0]?.text;
+    wait.check();
+    if (type !== 'text') throw Error('Incomplete suggestions');
+    suggestions = decodeCalendarSuggestions(text, next14, wait.check);
+    wait.check();
     } catch {
-      return NextResponse.json({ error: 'ai_parse_error' }, { status: 500 });
+      wait.check();
+      return NextResponse.json(recovery === null ? { error: 'ai_parse_error' }
+        : { error: 'suggestions_unconfirmed', retryMayConsume: false }, { status: recovery === null ? 500 : 503 });
     }
-
-    // Validate and sanitize
-    suggestions = (Array.isArray(suggestions) ? suggestions : []).slice(0, 5).map(s => ({
-      title: String(s.title || '').slice(0, 200),
-      date: next14.includes(s.date) ? s.date : next14[0],
-      hour: Math.max(0, Math.min(23, Math.round(
-        s.hour !== null && s.hour !== undefined && String(s.hour).trim() !== '' && Number.isFinite(Number(s.hour))
-          ? Number(s.hour)
-          : 12,
-      ))),
-      reason: String(s.reason || '').slice(0, 300),
-      description: String(s.description || '').slice(0, 500),
-    }));
 
     return NextResponse.json({ suggestions });
   } catch (e) {
