@@ -18,7 +18,8 @@ function pair(primary: unknown, item: unknown) {
 export function subscriptionEventProjection(event: any, prices: ReturnType<typeof captureCheckoutPrices>, check: () => void) {
   event = captureWebhookData(event, check);prices = captureWebhookData(prices, check);
   if (!prices || !Array.isArray(prices)) throw new WebhookInputError(503, 'Precios de suscripción no configurados');
-  if (!event || !['customer.subscription.updated','customer.subscription.deleted'].includes(event.type)) return invalid();
+  if (!event || !['customer.subscription.updated','customer.subscription.deleted','customer.subscription.trial_will_end'].includes(event.type)) return invalid();
+  const trialEnding = event.type === 'customer.subscription.trial_will_end';
   const input = event.data?.object, sub = captureCheckoutSubscription(input, check);
   const userId = sub.metadata?.userId, customerId = reference(sub.customer);
   if (sub.object !== 'subscription' || !id(sub.id,'sub') ||
@@ -26,6 +27,7 @@ export function subscriptionEventProjection(event: any, prices: ReturnType<typeo
       sub.metadata?.service !== 'YTubViral.com' ||
       !['active','trialing','past_due','unpaid','canceled','incomplete','incomplete_expired','paused'].includes(sub.status) ||
       (event.type === 'customer.subscription.deleted' && sub.status !== 'canceled') ||
+      (trialEnding && sub.status !== 'trialing') ||
       typeof sub.cancel_at_period_end !== 'boolean') return invalid();
   const items = sub.items;
   if (!items || items.object !== 'list' || items.has_more !== false || !Array.isArray(items.data) || items.data.length !== 1) return invalid();
@@ -44,12 +46,21 @@ export function subscriptionEventProjection(event: any, prices: ReturnType<typeo
     end = sub.trial_end;start ??= sub.trial_start;
   }
   if (!seconds(start) || !seconds(end) || start >= end) return invalid();
+  // A declared price amount is data only, never the future invoice amount or
+  // consent to send a reminder. Missing values cannot become zero/EUR/now.
+  let trial: Readonly<{ trialStartSeconds: number; trialEndSeconds: number; unitAmountCents: number }> | undefined;
+  if (trialEnding) {
+    if (!seconds(sub.trial_start) || !seconds(sub.trial_end) ||
+        sub.trial_start !== start || sub.trial_end !== end || ended != null ||
+        !Number.isSafeInteger(price.unit_amount) || price.unit_amount < 0) return invalid();
+    trial = Object.freeze({ trialStartSeconds: sub.trial_start, trialEndSeconds: sub.trial_end, unitAmountCents: price.unit_amount });
+  }
   check();
   return Object.freeze({ eventType: event.type as string, userId, customerId, subscriptionId: sub.id,
     itemId: item.id, priceId: selected.id, plan: selected.plan, status: sub.status,
     currency: price.currency, cancelAtPeriodEnd: sub.cancel_at_period_end,
     periodStartSeconds: start, periodEndSeconds: end, canceledAtSeconds: canceled, endedAtSeconds: ended,
-    writeAuthorized: false as const });
+    ...(trial ? trial : {}), writeAuthorized: false as const });
 }
 export async function preflightSubscriptionBusiness(projection: ReturnType<typeof subscriptionEventProjection>, customer: unknown, check: () => void) {
   const original = captureWebhookData(projection, check), ownCustomer = captureCheckoutCustomer(customer, check);

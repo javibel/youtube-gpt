@@ -5,7 +5,7 @@ import type Stripe from 'stripe';
 import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, preflightSubscriptionOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
 import { checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { readWebhookBody, webhookWait, WebhookWaitRetired, type WebhookWait } from '@/lib/stripe-webhook-intake';
-import { triggerTrialEndingEmail, triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
+import { triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
 import { reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
 
 export const runtime = 'nodejs';
@@ -67,25 +67,10 @@ export async function POST(request: Request) {
         break;
       }
 
-      // 3 días antes de que termine el trial — dispara el recordatorio de cobro.
       case 'customer.subscription.trial_will_end': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-        const userId = await resolveUserIdByCustomer(customerId, wait);
-        // Si ya canceló durante el trial, NO avisar de un cobro que no va a
-        // producirse — sería confuso/alarmante para alguien que ya decidió irse.
-        const trialEndTs = subscription.trial_end;
-        if (userId && trialEndTs && !subscription.cancel_at_period_end) {
-          const item = subscription.items.data[0];
-          const manageUrl = (await wait.run(() => createBillingPortalUrl(customerId))) ?? 'https://ytubviral.com/profile';
-          await wait.run(() => triggerTrialEndingEmail(userId, subscription.id, {
-            trialEndTs,
-            amountCents: item?.price?.unit_amount ?? 0,
-            currency: (item?.price?.currency || 'eur').toUpperCase(),
-            manageUrl,
-          }));
-        }
-        break;
+        await wait.run(() => preflightSubscriptionOriginal(original));
+        // No notice/portal is admitted by a read-only original projection.
+        throw new WebhookInputError(503, 'Aviso de trial pendiente de admisión original');
       }
 
       // Cobro fallido (fin de trial o renovación) — avisar antes de que el usuario
