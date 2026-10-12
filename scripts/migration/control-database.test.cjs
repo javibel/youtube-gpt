@@ -362,10 +362,10 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
    const waiting=harness();waiting.state.user='synthetic';waiting.state.key=prefix+'_calendar_wait_'+stage;
    let release,ready;const held=new Promise(resolve=>{release=resolve;}),received=new Promise(resolve=>{ready=resolve;});
    waiting.state.send=async init=>{const response=await invoke(init);assert.equal(response.status,200);ready();
-    return stage==='fetch'?held:{ok:true,json:()=>held};};
+    return stage==='fetch'?held:{ok:true,status:200,json:()=>held};};
    const before=calls,pending=waiting.click();await received;for(let i=0;i<12;i++)await Promise.resolve();
-   waiting.advance(90000);for(let i=0;i<12;i++)await Promise.resolve();
-   assert.ok(waiting.alert());assert.match(waiting.text(),/90 segundos/);assert.equal(waiting.requests[0].signal.aborted,true);
+   waiting.advance(30000);for(let i=0;i<12;i++)await Promise.resolve();
+   assert.ok(waiting.alert());assert.match(waiting.text(),/30 segundos/);assert.equal(waiting.requests[0].signal.aborted,true);
    assert.equal(waiting.timers.size,0);await pending;assert.equal(calls,before+1);
    waiting.state.send=invoke;await waiting.click();assert.equal(waiting.alert(),undefined);assert.match(waiting.text(),/Synthetic calendar topic/);
    assert.equal(waiting.requests[0].body,waiting.requests[1].body);

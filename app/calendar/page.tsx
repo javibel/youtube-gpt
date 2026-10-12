@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { decodeCalendarSuggestionAck } from '@/lib/calendar-suggestion-ack';
+import type { CalendarSuggestion } from '@/lib/calendar-suggestion-contract';
 import { createRetryOperation } from '@/lib/ai/retry-operation.cjs';
 import { useSession } from 'next-auth/react';
 import { calendarMonthRange, decodeCalendarRead } from '@/lib/calendar-read-contract';
@@ -75,15 +77,15 @@ export default function CalendarPage() {
   const [form, setForm] = useState({ title: '', description: '', status: 'idea', date: '' });
   const [saving, setSaving] = useState(false);
 
-  // AI suggestions state
-  const [suggestions, setSuggestions] = useState<{ title: string; date: string; hour: number; reason: string; description: string }[]>([]);
-  const currentSuggestions = useRef(suggestions);
-  currentSuggestions.current = suggestions;
-  const [suggestLoading, setSuggestLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  // Proposals are visible only in the account/language scope that confirmed them.
+  const [storedSuggestions, setSuggestions] = useState<readonly CalendarSuggestion[]>([]);
+  const suggestionViewScope = useRef<object | null>(null);
+  const [storedSuggestLoading, setSuggestLoading] = useState(false);
+  const [storedShowSuggestions, setShowSuggestions] = useState(false);
   const [addingSuggestion, setAddingSuggestion] = useState<number | null>(null);
-  const [suggestError, setSuggestError] = useState('');
-  const [storageWarning, setStorageWarning] = useState(false);
+  const [storedSuggestError, setSuggestError] = useState('');
+  const [storedStorageWarning, setStorageWarning] = useState(false);
+  const [suggestionGeneration, setSuggestionGeneration] = useState(0);
   const suggestionSlot = 'ytv:calendar:pending:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
   // Untrusted same-tab selection only; it cannot admit or restart server work.
   function readPending(): { version: number; key: string; lang: Lang } | null {
@@ -102,19 +104,30 @@ export default function CalendarPage() {
   }
   const suggestionOperation = useMemo(() => ({
     run: createRetryOperation(() => crypto.randomUUID()),
-    key: null as string | null,
-    busy: false,
-    active: true,
+    owner: Object.freeze({ id: typeof session?.user?.id === 'string' ? session.user.id : '',
+      email: typeof session?.user?.email === 'string' ? session.user.email : '' }),
+    input: Object.freeze({ lang }),
+    key: null as string | null, busy: false, active: true, ready: false,
     controller: null as AbortController | null,
-  }), [session?.user?.id, session?.user?.email, status, lang]);
+  }), [session?.user?.id, session?.user?.email, status, lang, suggestionGeneration]);
   const currentSuggestionOperation = useRef(suggestionOperation);
   currentSuggestionOperation.current = suggestionOperation;
+  const suggestions = suggestionViewScope.current === suggestionOperation ? storedSuggestions : [];
+  const suggestError = suggestionViewScope.current === suggestionOperation ? storedSuggestError : '';
+  const suggestLoading = suggestionViewScope.current === suggestionOperation && storedSuggestLoading;
+  const showSuggestions = suggestionViewScope.current === suggestionOperation && storedShowSuggestions;
+  const storageWarning = suggestionViewScope.current === suggestionOperation && storedStorageWarning;
+  const currentSuggestions = useRef<readonly CalendarSuggestion[]>(suggestions);
+  currentSuggestions.current = suggestions;
+  // Captured UI handlers cannot replace a later original selection in this scope.
+  const offeredSuggestionRun = suggestionOperation.run, offeredSuggestionKey = suggestionOperation.key;
   useEffect(() => {
-    suggestionOperation.active = true;
-    setSuggestions([]);
-    setSuggestError('');
-    setSuggestLoading(false);
-    setStorageWarning(false);
+    // Repeated setup creates a new generation; a retired scope is never revived.
+    if (!suggestionOperation.active) { setSuggestionGeneration(value => value + 1); return; }
+    suggestionOperation.ready = true;
+    suggestionViewScope.current = suggestionOperation;
+    currentSuggestions.current = [];
+    setSuggestions([]); setSuggestError(''); setSuggestLoading(false); setShowSuggestions(false); setStorageWarning(false);
     const retained = readPending();
     if (retained) {
       suggestionOperation.run = createRetryOperation(() => retained.key);
@@ -124,9 +137,8 @@ export default function CalendarPage() {
         ? 'An unconfirmed request was restored. Retry only retrieves the original result; it never starts another generation. Discarding does not cancel server work.'
         : 'Se restauró una solicitud sin confirmar. Reintentar solo consulta el resultado original; no inicia otra generación. Descartar no cancela el trabajo del servidor.');
     }
-    return () => { suggestionOperation.active = false; suggestionOperation.controller?.abort(); };
+    return () => { suggestionOperation.active = false; suggestionOperation.ready = false; suggestionOperation.controller?.abort(); };
   }, [suggestionOperation]);
-
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   const [readGeneration, setReadGeneration] = useState(0);
@@ -428,96 +440,120 @@ export default function CalendarPage() {
   }
 
   async function fetchSuggestions() {
-    if (status !== 'authenticated' || !session?.user?.id || !suggestionOperation.active || suggestionOperation.busy
-      || currentSuggestionOperation.current !== suggestionOperation) return;
     const operation = suggestionOperation;
+    if (status !== 'authenticated' || !operation.owner.id || !operation.owner.email || !operation.active || !operation.ready
+      || operation.busy || currentSuggestionOperation.current !== operation
+      || operation.run !== offeredSuggestionRun || operation.key !== offeredSuggestionKey) return;
     operation.busy = true;
-    const controller = new AbortController();
-    operation.controller = controller;
-    let timedOut = false;
-    let stopWait: (error: Error) => void = () => {};
-    const interrupted = new Promise<never>((_, reject) => { stopWait = reject; });
-    // Cleanup may close the wait before the transport microtask starts.
-    void interrupted.catch(() => {});
-    const abort = () => stopWait(new Error('Unconfirmed suggestions'));
+    const expires = performance.now() + 30_000, baseDay = new Date().toISOString().slice(0,10);
+    const controller = new AbortController(); operation.controller = controller;
+    const ownsView = () => operation.active && operation.ready && currentSuggestionOperation.current === operation && operation.controller === controller;
+    let timedOut = false, interrupt: (error: Error) => void = () => {};
+    const interrupted = new Promise<never>((_, reject) => { interrupt = reject; }); void interrupted.catch(() => {});
+    const abort = () => interrupt(new Error('Unconfirmed suggestions'));
     controller.signal.addEventListener('abort', abort, { once: true });
-    const deadline = setTimeout(() => { timedOut = true; controller.abort(); }, 90_000);
-    setSuggestLoading(true);
-    setShowSuggestions(true);
-    setSuggestError('');
-    setSuggestions([]);
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, 30_000);
+    const check = () => {
+      if (!ownsView() || controller.signal.aborted || performance.now() >= expires) {
+        if (performance.now() >= expires) timedOut = true;
+        controller.abort(); throw Error('Unconfirmed suggestions');
+      }
+    };
+    suggestionViewScope.current = operation; currentSuggestions.current = [];
+    setSuggestLoading(true); setShowSuggestions(true); setSuggestError(''); setSuggestions([]);
     try {
-      const result = await operation.run({ lang }, async (body, operationKey) => {
-        if (!operation.active || currentSuggestionOperation.current !== operation || controller.signal.aborted) throw new Error('Account changed');
+      check();
+      const result = await operation.run(operation.input, async (body, operationKey) => {
+        check();
+        if (typeof operationKey !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(operationKey)
+          || body !== JSON.stringify(operation.input)) throw Error('Invalid original selection');
         const readOnly = operation.key === operationKey;
         operation.key = operationKey;
+        const expected = Object.freeze({ userId: operation.owner.id, lang: operation.input.lang, key: operationKey,
+          method: readOnly ? 'retrieve' as const : 'create' as const, baseDay });
         let stored = false;
         try {
-          if (session?.user?.email) {
-            const value = JSON.stringify({ version: 1, key: operationKey, lang });
+          const value = JSON.stringify({ version:1, key:operationKey, lang:operation.input.lang });
+          const selected = readPending();
+          check();
+          if (!selected || selected.key === operationKey) {
             sessionStorage.setItem(suggestionSlot, value);
             stored = sessionStorage.getItem(suggestionSlot) === value;
           }
-        } catch { /* The exact pending request remains in memory. */ }
-        setStorageWarning(!stored);
+        } catch { /* Exact original remains in memory; metadata cannot grant server authority. */ }
+        check(); setStorageWarning(!stored);
         const res = await Promise.race([fetch('/api/calendar/suggest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': operationKey,
-            ...(readOnly ? { 'X-Calendar-Recovery': 'retained-only-v1' } : {}) },
-          body,
-          signal: controller.signal,
+          method:'POST', headers:{'Content-Type':'application/json','Idempotency-Key':operationKey,
+            ...(readOnly ? {'X-Calendar-Recovery':'retained-only-v1'} : {})}, body, signal:controller.signal,
         }), interrupted]);
-        if (!res.ok) throw new Error('Suggestions unavailable');
-        const json = await Promise.race([res.json(), interrupted]);
-        if (controller.signal.aborted) throw new Error('Unconfirmed suggestions');
-        if (!Array.isArray(json.suggestions) || json.suggestions.length > 5 || json.suggestions.some((item: unknown) => {
-          if (!item || typeof item !== 'object') return true;
-          const s = item as Record<string, unknown>;
-          return typeof s.title !== 'string' || !s.title.trim() || typeof s.date !== 'string' ||
-            !/^\d{4}-\d{2}-\d{2}$/.test(s.date) || !Number.isInteger(s.hour) ||
-            (s.hour as number) < 0 || (s.hour as number) > 23 ||
-            typeof s.reason !== 'string' || typeof s.description !== 'string';
-        })) throw new Error('Invalid suggestions');
-        return json.suggestions as typeof suggestions;
+        check();
+        const ok = res.ok, status = res.status;
+        check();
+        if (!ok || status !== 200) throw Error('Suggestions unavailable');
+        const json: unknown = await Promise.race([res.json(), interrupted]);
+        check();
+        const receipt = decodeCalendarSuggestionAck(json, expected, check);
+        check();
+        return receipt.suggestions;
       });
-      if (operation.active && currentSuggestionOperation.current === operation) {
-        clearPending(operation.key);
-        operation.key = null;
-        operation.run = createRetryOperation(() => crypto.randomUUID());
-        setStorageWarning(false);
-        setSuggestions(result);
+      check();
+      // A matching ACK is required before removing this untrusted selector.
+      const selected = readPending(); check();
+      if (selected && selected.key !== operation.key) {
+        // Another untrusted selector is not erased or turned into fresh work.
+        operation.key = selected.key; operation.run = createRetryOperation(() => selected.key);
+        setStorageWarning(false); setSuggestError(t(
+          'Hay otra solicitud sin confirmar en esta pestaña. Reintentar solo consulta esa solicitud; descartar no cancela el trabajo del servidor.',
+          'Another request is unconfirmed in this tab. Retry only retrieves that request; discard does not cancel server work.'));
+        return;
       }
+      if (selected?.key === operation.key) {
+        try { sessionStorage.removeItem(suggestionSlot); } catch { /* No durability claim. */ }
+      }
+      check();
+      operation.key = null; operation.run = createRetryOperation(() => crypto.randomUUID());
+      currentSuggestions.current = result;
+      setStorageWarning(false); setSuggestions(result);
     } catch {
-      if (operation.active && currentSuggestionOperation.current === operation) setSuggestError((timedOut ? t(
-        'La espera terminó a los 90 segundos. ', 'The wait ended after 90 seconds. ',
-      ) : '') + t(
-        'Las sugerencias no están confirmadas. Reintentar solo consulta el resultado original. Puedes descartar esta solicitud para empezar otra; no cancela el trabajo del servidor y la nueva puede consumir créditos.',
-        'Suggestions are unconfirmed. Retry only retrieves the original result. You can discard this request to start another; it does not cancel server work and the new request may consume credits.',
-      ));
+      if (ownsView()) {
+        // The send controller can complete before local adoption expires. Keep
+        // its exact selector; a retry must still be retained-only, never fresh.
+        if (operation.key) { const originalKey = operation.key; operation.run = createRetryOperation(() => originalKey); }
+        // Preserve an original after a slow storage ACK too, without overwriting
+        // a different selector. This is local selection, never recovery authority.
+        let retained = false;
+        try {
+          const selected = readPending();
+          if (operation.key && (!selected || selected.key === operation.key)) {
+            const value = JSON.stringify({version:1,key:operation.key,lang:operation.input.lang});
+            sessionStorage.setItem(suggestionSlot,value); retained = sessionStorage.getItem(suggestionSlot) === value;
+          }
+        } catch { /* Memory fallback retains the exact key. */ }
+        setStorageWarning(!retained);
+        setSuggestError((timedOut ? t('La espera terminó a los 30 segundos. ', 'The wait ended after 30 seconds. ') : '') + t(
+          'Las sugerencias no están confirmadas. Reintentar solo consulta el resultado original; una captura distinta puede seguir sin confirmar. Descartar permite empezar otra solicitud, no cancela el servidor y la nueva puede consumir créditos.',
+          'Suggestions are unconfirmed. Retry only retrieves the original result; a different capture can remain unconfirmed. Discard allows a new request, does not cancel server work and the new request may consume credits.'));
+      }
     } finally {
-      operation.busy = false;
-      clearTimeout(deadline);
-      controller.signal.removeEventListener('abort', abort);
-      if (operation.controller === controller) operation.controller = null;
-      if (operation.active && currentSuggestionOperation.current === operation) setSuggestLoading(false);
+      clearTimeout(timer); controller.signal.removeEventListener('abort',abort);
+      if (ownsView()) setSuggestLoading(false);
+      if (operation.controller === controller) { operation.controller = null; operation.busy = false; }
     }
   }
 
   function discardSuggestions() {
     const operation = suggestionOperation;
-    if (status !== 'authenticated' || !operation.active || operation.busy
-      || currentSuggestionOperation.current !== operation) return;
+    if (status !== 'authenticated' || !operation.active || !operation.ready || operation.busy
+      || currentSuggestionOperation.current !== operation || operation.run !== offeredSuggestionRun
+      || operation.key !== offeredSuggestionKey) return;
     clearPending(operation.key);
-    operation.run = createRetryOperation(() => crypto.randomUUID());
-    operation.key = null;
-    setSuggestError('');
-    setSuggestions([]);
-    setStorageWarning(false);
+    operation.run = createRetryOperation(() => crypto.randomUUID()); operation.key = null;
+    currentSuggestions.current = []; setSuggestions([]); setSuggestError(''); setStorageWarning(false);
   }
 
   async function addSuggestionToCalendar(idx: number) {
     const s = suggestions[idx];
-    if (!s || currentSuggestions.current[idx] !== s || !suggestionOperation.active || currentSuggestionOperation.current !== suggestionOperation) return;
+    if (!s || currentSuggestions.current[idx] !== s || suggestionOperation.busy || !suggestionOperation.ready || !suggestionOperation.active || currentSuggestionOperation.current !== suggestionOperation) return;
     const values = { title: s.title.trim(), description: `${s.description}\n\n⏰ ${t('Hora sugerida', 'Suggested time')}: ${s.hour}:00 UTC\n💡 ${s.reason}`.trim(),
       date: s.date, status: 'idea' };
     return writeCalendar('/api/calendar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) },

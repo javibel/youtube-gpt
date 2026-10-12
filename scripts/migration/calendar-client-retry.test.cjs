@@ -17,7 +17,8 @@ const compiled = ts.transpileModule(source, { compilerOptions: {
 // Render the actual component with deterministic hook state and bounded synthetic HTTP.
 function harness(storage = new Map()) {
  const cells = [], effects = [], requests = [], listRequests = [], writeRequests = [], timers = new Map(); let index = 0, dirty = false, number = 0, timerId = 0, clock = 0;
- const state = { user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: async () => ({ suggestions: [] }), list: async url => readSuccess({state},[],url) };
+ const state = { wall:Date.parse('2026-10-07T12:00:00.000Z'),user: 'fixture-one', email: 'fixture@example.invalid', auth: 'authenticated', lang: 'es', send: success, list: async url => readSuccess({state},[],url) };
+ class WallDate extends Date{constructor(...args){super(...(args.length?args:[state.wall]));}static now(){return state.wall;}}
  const changed = (a, b) => !a || a.length !== b.length || a.some((value, i) => !Object.is(value, b[i]));
  const hooks = {
   useState(initial) { const i = index++; if (!cells[i]) cells[i] = { value: typeof initial === 'function' ? initial() : initial };
@@ -40,19 +41,20 @@ function harness(storage = new Map()) {
   '@/lib/ai/retry-operation.cjs': { createRetryOperation },
   '@/lib/calendar-read-contract': readContract,
   '@/lib/calendar-write-contract': writeContract,
+  '@/lib/calendar-suggestion-ack':load('lib/calendar-suggestion-ack.ts'),
  };
  vm.runInNewContext(compiled, { module: entry, exports: entry.exports,
   require(name) { assert.ok(Object.hasOwn(mocks, name), name); return mocks[name]; },
-  sessionStorage: { getItem: k => { if (state.storageDenied) throw Error('Storage denied'); return storage.get(k) ?? null; },
-   setItem: (k, v) => { if (state.storageDenied) throw Error('Storage denied'); storage.set(k, v); }, removeItem: k => storage.delete(k) },
+  sessionStorage: { getItem: k => { state.onStorageGet?.(k);if (state.storageDenied) throw Error('Storage denied'); return storage.get(k) ?? null; },
+   setItem: (k, v) => { state.onStorageSet?.(k,v);if (state.storageDenied) throw Error('Storage denied'); storage.set(k, v); }, removeItem: k => {state.onStorageRemove?.(k);storage.delete(k);} },
   crypto: { randomUUID: () => state.key ?? `calendar-fixture-${++number}` },
   fetch: async (url, init) => {
    if (url.startsWith('/api/calendar?') && (!init?.method || init.method === 'GET')) { listRequests.push({ url, ...init, owner: state.user }); return state.list(url, init); }
    if (url === '/api/calendar' || url.startsWith('/api/calendar?id=')) { writeRequests.push({ url, ...init, owner: state.user }); return state.write(url, init); }
    assert.equal(url, '/api/calendar/suggest'); assert.equal(init.method, 'POST');
    requests.push({ ...init, owner: state.user });
-   return state.send(init);
-  }, Date, console, AbortController, performance: {now:()=>clock},
+   return state.send(init,{user:state.user,wall:state.wall});
+  }, Date:WallDate, console, AbortController, performance: {now:()=>clock},
   setTimeout: (fn, ms) => { const id = ++timerId; timers.set(id, { fn, ms, at:clock+ms }); return id; },
   clearTimeout: id => timers.delete(id),
  });
@@ -79,8 +81,16 @@ function harness(storage = new Map()) {
   click, handler, discard, discardHandler, render, unmount: () => cells.forEach(cell => cell?.cleanup?.()),
   alert: () => nodes(render()).find(n => n.props?.role === 'alert'), text: () => text(render()) };
 }
-const suggestion = { title: 'Synthetic topic', date: '2026-10-08', hour: 0, reason: 'Synthetic reason', description: 'Synthetic outline' };
-const success = async () => ({ ok: true, json: async () => ({ suggestions: [suggestion] }) });
+const suggestion = { title:'Synthetic topic',date:'2026-10-08',hour:0,reason:'Synthetic reason',description:'Synthetic outline' };
+function suggestionSuccess(init={}, scope={user:'fixture-one',wall:Date.parse('2026-10-07T12:00:00.000Z')}, proposals=[suggestion]) {
+ const lang=init.body?JSON.parse(init.body).lang:'es',through=new Date(scope.wall).toISOString(),baseDay=through.slice(0,10);
+ const selection=limit=>({channelId:null,status:'not_requested',selectionLimit:limit,selectedCount:0,publishedAfter:limit===5?new Date(scope.wall-7*86400000).toISOString():null,publishedThrough:through,videos:[]});
+ const value={suggestions:proposals.map(s=>({...s})),ack:{version:1,userId:scope.user,operationKey:init.headers?.['Idempotency-Key']??'calendar-fixture-1',method:init.headers?.['X-Calendar-Recovery']?'retrieve':'create',
+  input:{lang},horizon:{baseDay,next14:Array.from({length:14},(_,i)=>new Date(scope.wall+(i+1)*86400000).toISOString().slice(0,10))},
+  context:{coverage:{calendarComplete:true,calendarCount:0,calendarLimit:200,watchlistComplete:true,watchlistCount:0,watchlistLimit:20,trendSelectionLimit:10,trendSelectionCount:0},bestTimeAnalyzedAt:null,competitorSearch:selection(5),ownSearch:selection(10)}}};
+ return {ok:true,status:200,json:async()=>value};
+}
+const success = async (init,scope) => suggestionSuccess(init,scope);
 const key = request => request.headers['Idempotency-Key'];
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 const writeSuccess = h => async (url, init) => {
@@ -129,9 +139,9 @@ if (require.main === module) (async () => {
   await h.click(); release({ ok: true, json: async () => ({ suggestions: [{ ...suggestion, title: 'Other account result' }] }) }); await old;
   assert.notEqual(key(h.requests[0]), key(h.requests[1])); assert.doesNotMatch(h.text(), /Other account result/);
  });
- await test('valid empty result finishes the interaction without a failure alert', async () => {
+ await test('empty proposals remain uncertain instead of clearing the original selector', async () => {
   const h = harness(); h.state.send = async () => ({ ok: true, json: async () => ({ suggestions: [] }) });
-  await h.click(); await h.click(); assert.equal(h.alert(), undefined); assert.notEqual(key(h.requests[0]), key(h.requests[1]));
+  await h.click(); await h.click(); assert.ok(h.alert()); assert.equal(key(h.requests[0]), key(h.requests[1]));
  });
  await test('missing retained result stays blocked until explicit discard starts a new operation', async () => {
   const h = harness(); h.state.send = async () => ({ ok: false, status: 503 });
@@ -166,11 +176,11 @@ if (require.main === module) (async () => {
   assert.ok(h.alert()); assert.equal(key(h.requests[0]), key(h.requests[1]));
   assert.equal(h.requests[1].headers['X-Calendar-Recovery'], 'retained-only-v1');
  });
- for (const stage of ['fetch', 'json']) await test(stage + ' ignoring abort stops local wait at90s and retains original retry identity', async () => {
+ for (const stage of ['fetch', 'json']) await test(stage + ' ignoring abort stops local wait at30s and retains original retry identity', async () => {
   const h = harness(); let release;
   const held = new Promise(resolve => { release = resolve; });
-  h.state.send = stage === 'fetch' ? () => held : async () => ({ ok: true, json: () => held });
-  const first = h.click(); await flush(); h.advance(90000); await flush();
+  h.state.send = stage === 'fetch' ? () => held : async () => ({ ok: true, status:200,json: () => held });
+  const first = h.click(); await flush(); h.advance(30000); await flush();
   assert.ok(h.alert(), 'UI must finish even when transport ignores AbortSignal');
   assert.equal(h.requests[0].signal.aborted, true); assert.equal(h.timers.size, 0); await first;
   h.state.send = success; await h.click(); assert.equal(key(h.requests[0]), key(h.requests[1]));
@@ -379,4 +389,4 @@ if (require.main === module) (async () => {
  });
  console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or operational calendar writes', results }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
-module.exports = { harness, success, suggestion, readSuccess, writeSuccess };
+module.exports = { harness, success, suggestion, suggestionSuccess, readSuccess, writeSuccess };
