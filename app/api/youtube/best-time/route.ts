@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { bestTimeCache } from '@/lib/best-time-cache';
 import { prisma } from '@/lib/prisma';
 import { readBestTimeEligibility } from '@/lib/best-time-eligibility';
+import { bestTimeFixturePost } from '@/lib/best-time-http';
 
 export const maxDuration = 60;
 
@@ -76,6 +77,8 @@ export async function GET(request?: Request) {
 
 // POST — original bounded eligibility only; producer admission remains closed.
 export async function POST(request?: Request) {
+  const fixture = await bestTimeFixturePost(request);
+  if (fixture) return fixture;
   const deadline = performance.now() + 25_000;
   let retired = false, rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });

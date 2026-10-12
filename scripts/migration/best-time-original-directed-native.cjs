@@ -24,5 +24,6 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  assert.equal(identity.db,'ytubviral_migration_test');
  assert.equal(path.resolve(identity.directory).toLowerCase(),path.resolve(checked.paths.database).toLowerCase());
  await runContract('./best-time-original-database.cjs',prisma,results);
+ await runContract('./best-time-entry-database.cjs',prisma,results);
  console.log(JSON.stringify({status:'PASS',identity,contractTimings,results},null,2));
  }finally{clearTimeout(completionWatchdog);await prisma.$disconnect();}})().catch(e=>{console.error(e);process.exitCode=1;});

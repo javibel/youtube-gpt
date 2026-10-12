@@ -3,6 +3,7 @@ import { captureBestTimeReference, captureBestTimeSearch, captureBestTimeVideos 
 import type { BestTimeSources, BestTimeSelection } from './best-time-source-reader';
 
 type Check = () => void;
+export type BestTimeYouTubeTransport = Readonly<{ token: typeof getAccessToken; fetch: typeof fetch }>;
 function fail(): never { throw Error('Best time YouTube source unavailable'); }
 function field(value: unknown, key: string): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return fail();
@@ -30,13 +31,17 @@ function page(value: unknown, kind: string, check: Check) {
 // adapter. Its callbacks run inside the freshly admitted coordinator and retain
 // that original's check; these copied facts never establish operational consent
 // or freshness. No exported result/token permits repeating a completed read.
-export function createBestTimeYouTubeSources(referenceAt: string, signal: AbortSignal): BestTimeSources & Readonly<{ referenceAt: string }> {
+export function createBestTimeYouTubeSources(referenceAt: string, signal: AbortSignal, transport?: BestTimeYouTubeTransport): BestTimeSources & Readonly<{ referenceAt: string }> {
   let phase: 'fresh' | 'reading' | 'selected' | 'finished' = 'fresh';
   let selected: BestTimeSelection | undefined, token: string | undefined;
   let search: ReturnType<typeof captureBestTimeSearch> | undefined;
   let capturedSearch: unknown;
   let originalCheck: Check | undefined;
-  const fetchOriginal = fetch, tokenOriginal = getAccessToken;
+  // Explicit server injection supplies fixture transport without replacing or
+  // weakening the global network guard. Never fall back after a binding fails.
+  const fetchOriginal = transport === undefined ? fetch : field(transport, 'fetch') as typeof fetch;
+  const tokenOriginal = transport === undefined ? getAccessToken : field(transport, 'token') as typeof getAccessToken;
+  if (typeof fetchOriginal !== 'function' || typeof tokenOriginal !== 'function') return fail();
   const same = (input: BestTimeSelection) => selected && input.owner.id === selected.owner.id
     && input.owner.email === selected.owner.email && input.channelId === selected.channelId && input.referenceAt === selected.referenceAt;
   const read = async (resource: 'channels' | 'playlistItems' | 'videos', parameters: Record<string, string>, check: Check) => {

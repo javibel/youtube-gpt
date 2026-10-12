@@ -128,6 +128,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await runContract('./best-time-client-database.cjs',prisma,results);
   await runContract('./best-time-post-database.cjs',prisma,results);
   await runContract('./best-time-original-database.cjs',prisma,results);
+ await runContract('./best-time-entry-database.cjs',prisma,results);
   await runContract('./cancellation-server-database.cjs',prisma,results);
   await runContract('./downgrade-server-database.cjs',prisma,results);
   await runContract('./sync-server-database.cjs',prisma,results);

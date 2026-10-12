@@ -25,7 +25,14 @@ export function runYouTubeBestTimeOriginal(request: Request, referenceAt: string
   return runOriginal(request, createBestTimeYouTubeSources(referenceAt, request.signal), withTip);
 }
 
-function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip: boolean) {
+// Trusted fixture bootstrap binds a data scope, never admission/recovery.
+// Auth, native business admission and all writer checks still run normally.
+export function runBoundBestTimeOriginal(request: Request, sources: BestTimeOriginalSources,
+  expectedOwner: Readonly<{ id: string; email: string }>) {
+  return runOriginal(request, sources, false, expectedOwner);
+}
+
+function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip: boolean, expectedOwner?: Readonly<{ id: string; email: string }>) {
   let pending = true, retired = false, timer: ReturnType<typeof setTimeout> | undefined;
   let liveAccess: Parameters<typeof hasPaidAccess>[0] | undefined;
   const deadline = performance.now() + 65_000;
@@ -39,9 +46,15 @@ function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip
   const step = async <T>(run: () => PromiseLike<T>) => { check(); const result = await run(); check(); return result; };
   request.signal.addEventListener('abort', retire, { once: true });
   let capturedSources: BestTimeSources | undefined, declaredReference: string | undefined;
+  let scope: Readonly<{ id: string; email: string }> | undefined;
   try {
     check();
     if (typeof withTip !== 'boolean') throw Error('Best time composition unavailable');
+    if (expectedOwner !== undefined) {
+      const id = Object.getOwnPropertyDescriptor(expectedOwner, 'id')?.value, email = Object.getOwnPropertyDescriptor(expectedOwner, 'email')?.value;
+      if (typeof id !== 'string' || !id || id.length > 128 || typeof email !== 'string' || !email || email.length > 320) throw Error('Best time fixture scope unavailable');
+      scope = Object.freeze({ id, email });
+    }
     const search = Object.getOwnPropertyDescriptor(sources, 'search')?.value;
     const details = Object.getOwnPropertyDescriptor(sources, 'details')?.value;
     const reference = Object.getOwnPropertyDescriptor(sources, 'referenceAt')?.value;
@@ -60,6 +73,7 @@ function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip
         || typeof session.user.email !== 'string' || !session.user.email || session.user.email.length > 320)
         return { status: 401, body: { error: 'unauthorized' } };
       const owner = Object.freeze({ id: session.user.id, email: session.user.email });
+      if (scope && (scope.id !== owner.id || scope.email !== owner.email)) return { status: 403, body: { error: 'best_time_fixture_owner_required' } };
       const id = randomUUID();
       const month = new Date(); month.setDate(1); month.setHours(0, 0, 0, 0);
       const locked = async (tx: Prisma.TransactionClient) => {
