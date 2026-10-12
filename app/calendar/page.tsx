@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createRetryOperation } from '@/lib/ai/retry-operation.cjs';
 import { useSession } from 'next-auth/react';
 import { calendarMonthRange, decodeCalendarRead } from '@/lib/calendar-read-contract';
+import { parseCalendarCreation, parseCalendarMutation, decodeCalendarWrite } from '@/lib/calendar-write-contract';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
 import ToolLoginGate from '@/components/ToolLoginGate';
@@ -139,7 +140,7 @@ export default function CalendarPage() {
   const confirmedReadScope = useRef<typeof readScope | null>(null);
   const modalScope = useRef<typeof readScope | null>(null);
   const creationSlot = 'ytv:calendar:create:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
-  type Creation = { key: string; body: string; done?: () => void; scope?: typeof readScope };
+  type Creation = Readonly<{ key: string; body: string; done?: () => void; scope?: typeof readScope }>;
   const creation = useMemo(() => ({ pending: null as Creation | null, storageWarning: false }),
     [session?.user?.id, session?.user?.email, status, lang]);
   const currentCreation = useRef(creation); currentCreation.current = creation;
@@ -153,13 +154,8 @@ export default function CalendarPage() {
       if (value?.version !== 1 || Object.keys(value).sort().join(',') !== 'body,key,version'
         || typeof value.key !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(value.key)
         || typeof value.body !== 'string' || value.body.length > 65536) return null;
-      const fields = JSON.parse(value.body);
-      if (!fields || Object.keys(fields).sort().join(',') !== 'date,description,status,title'
-        || typeof fields.title !== 'string' || !fields.title.trim() || fields.title !== fields.title.trim() || fields.title.length > 200
-        || typeof fields.description !== 'string' || fields.description !== fields.description.trim()
-        || typeof fields.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(fields.date)
-        || !Object.hasOwn(STATUS_LABELS, fields.status)) return null;
-      return { key: value.key, body: value.body };
+      parseCalendarCreation(value.body);
+      return Object.freeze({ key: value.key, body: value.body });
     } catch { return null; }
   }
   function clearCreation(pending: Creation) {
@@ -173,23 +169,13 @@ export default function CalendarPage() {
       'The addition is unconfirmed and may have been applied. Retry addition only retrieves the original entry; it never creates another. Starting another operation discards this selector, does not cancel server work and may duplicate the addition.');
   }
   useEffect(() => { creation.pending = readCreation(); }, [creation]);
-  type Mutation = Creation & { method: 'PUT' | 'DELETE'; id: string; url: string };
+  type Mutation = Creation & Readonly<{ method: 'PUT' | 'DELETE'; id: string; url: string }>;
   const mutationSlot = 'ytv:calendar:mutation:v1:' + JSON.stringify([session?.user?.id, session?.user?.email, lang]);
   const mutation = useMemo(() => ({ pending: null as Mutation | null, storageWarning: false }),
     [session?.user?.id, session?.user?.email, status, lang]);
   const currentMutation = useRef(mutation); currentMutation.current = mutation;
   function snapshot(entry: Entry) {
     return { title: entry.title, description: entry.description, date: entry.date, status: entry.status, color: entry.color };
-  }
-  function validSnapshot(value: unknown): boolean {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    const fields = value as Record<string, unknown>;
-    return Object.keys(fields).sort().join(',') === 'color,date,description,status,title'
-      && typeof fields.title === 'string' && !!fields.title.trim() && fields.title.length <= 200
-      && typeof fields.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fields.date)
-      && typeof fields.status === 'string' && Object.hasOwn(STATUS_LABELS, fields.status)
-      && (fields.description === null || typeof fields.description === 'string')
-      && (fields.color === null || typeof fields.color === 'string');
   }
   function readMutation(): Mutation | null {
     if (status !== 'authenticated' || !session?.user?.id || !session.user.email) return null;
@@ -201,15 +187,9 @@ export default function CalendarPage() {
         || typeof v.key !== 'string' || !/^[-A-Za-z0-9._:]{1,128}$/.test(v.key)
         || !['PUT','DELETE'].includes(v.method) || typeof v.id !== 'string' || !v.id || v.id.length > 128
         || typeof v.body !== 'string' || v.body.length > 65536) return null;
-      const b = JSON.parse(v.body);
-      if (!b || typeof b !== 'object' || Array.isArray(b) || !validSnapshot(b.expected)) return null;
-      if (v.method === 'DELETE') { if (Object.keys(b).join(',') !== 'expected') return null; }
-      else {
-        if (b.id !== v.id || Object.keys(b).length < 3 || Object.keys(b).some(k => !['id','expected','title','description','date','status','color'].includes(k))) return null;
-        if (!validSnapshot({ ...b.expected, ...Object.fromEntries(Object.entries(b).filter(([k]) => !['id','expected'].includes(k))) })) return null;
-      }
-      return { key: v.key, body: v.body, method: v.method, id: v.id,
-        url: v.method === 'PUT' ? '/api/calendar' : '/api/calendar?id=' + encodeURIComponent(v.id) };
+      parseCalendarMutation(v.body, v.method, v.id);
+      return Object.freeze({ key: v.key, body: v.body, method: v.method, id: v.id,
+        url: v.method === 'PUT' ? '/api/calendar' : '/api/calendar?id=' + encodeURIComponent(v.id) });
     } catch { return null; }
   }
   function clearMutation(pending: Mutation) {
@@ -319,93 +299,92 @@ export default function CalendarPage() {
       && currentReadScope.current === readScope && currentCreation.current === creation && currentMutation.current === mutation && !creation.pending && !mutation.pending && !writes.busy && !writes.unconfirmed;
   }
 
-  function confirmsEntry(json: { entry?: Entry }, expected: Record<string, unknown>) {
-    const entry = json?.entry as (Entry & { userId?: string }) | undefined;
-    return !!entry && typeof entry.id === 'string' && !!entry.id && entry.userId === session?.user?.id
-      && typeof entry.title === 'string' && !!entry.title.trim() && entry.title.length <= 200
-      && typeof entry.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.date)
-      && Object.hasOwn(STATUS_LABELS, entry.status) && (entry.description === null || typeof entry.description === 'string')
-      && (entry.color === null || typeof entry.color === 'string')
-      && Object.entries(expected).every(([key, value]) => entry[key as keyof Entry] === value);
-  }
-
-  async function writeCalendar(url: string, init: RequestInit, confirm: (json: { entry?: Entry; ok?: boolean }) => boolean,
-    done: () => void, suggestionIndex: number | null = null, retained: Creation | Mutation | null = null) {
-    if (retained ? status !== 'authenticated' || !session?.user?.id || !readScope.active
-      || currentReadScope.current !== readScope || currentCreation.current !== creation || currentMutation.current !== mutation || writes.busy
-      || ('method' in retained ? mutation.pending !== retained : creation.pending !== retained) : !canWrite()) return;
-    let original = retained;
-    if (init.method === 'POST' && !original) {
-      if (typeof init.body !== 'string' || init.body.length > 65536) {
-        writes.unconfirmed = true; setWriteError(t('El alta supera el tamaño permitido. Reduce la descripción antes de empezar otra operación.',
-          'The addition exceeds the allowed size. Shorten the description before starting another operation.')); return;
-      }
-      original = { key: crypto.randomUUID(), body: init.body, done, scope: readScope };
-      creation.pending = original;
-      let stored = false;
-      try {
-        if (session?.user?.email) {
-          const raw = JSON.stringify({ version: 1, key: original.key, body: original.body });
-          if (raw.length <= 66000) { sessionStorage.setItem(creationSlot, raw); stored = sessionStorage.getItem(creationSlot) === raw; }
-        }
-      } catch { /* Exact original remains in memory without claiming reload continuity. */ }
-      creation.storageWarning = !stored;
-    }
-    if ((init.method === 'PUT' || init.method === 'DELETE') && !original) {
-      if (typeof init.body !== 'string' || init.body.length > 65536) {
-        writes.unconfirmed = true; setWriteError(t('El cambio supera el tamaño permitido. Reduce la descripción antes de empezar otra operación.',
-          'The change exceeds the allowed size. Shorten the description before starting another operation.')); return;
-      }
-      const fields = JSON.parse(init.body);
-      const id = init.method === 'PUT' ? fields.id : decodeURIComponent(url.slice('/api/calendar?id='.length));
-      const pending: Mutation = { key: crypto.randomUUID(), body: init.body, method: init.method, id, url, done, scope: readScope };
-      original = pending; mutation.pending = pending;
-      let stored = false;
-      try {
-        if (session?.user?.email) {
-          const raw = JSON.stringify({ version: 1, key: pending.key, body: pending.body, method: pending.method, id: pending.id });
-          if (raw.length <= 66000) { sessionStorage.setItem(mutationSlot, raw); stored = sessionStorage.getItem(mutationSlot) === raw; }
-        }
-      } catch { /* Exact original remains in memory without claiming browser durability. */ }
-      mutation.storageWarning = !stored;
-    }
-    if (original) init = { ...init, body: original.body, headers: { 'Content-Type': 'application/json',
-      'Idempotency-Key': original.key, ...(retained ? { 'X-Calendar-Write-Recovery': 'retained-only-v1' } : {}) } };
+  async function writeCalendar(url: string, init: RequestInit, done: () => void,
+    suggestionIndex: number | null = null, retained: Creation | Mutation | null = null) {
+    if (status !== 'authenticated' || !readScope.owner.id || !readScope.owner.email
+      || (retained ? !readScope.active || currentReadScope.current !== readScope
+        || currentCreation.current !== creation || currentMutation.current !== mutation || writes.busy
+        || ('method' in retained ? mutation.pending !== retained : creation.pending !== retained) : !canWrite())) return;
+    // One admission, before parsing, persistence or a second captured click.
     writes.busy = true;
+    const expires = performance.now() + 30_000, owner = Object.freeze({ ...readScope.owner });
     const controller = new AbortController(); writes.controller = controller;
-    const current = () => readScope.active && currentReadScope.current === readScope && currentCreation.current === creation && currentMutation.current === mutation;
+    const current = () => readScope.active && currentReadScope.current === readScope
+      && currentCreation.current === creation && currentMutation.current === mutation && writes.controller === controller;
+    let original = retained, dispatched = false;
     let interrupt: (error: Error) => void = () => {};
     const interrupted = new Promise<never>((_, reject) => { interrupt = reject; }); void interrupted.catch(() => {});
     const abort = () => interrupt(new Error('Calendar write unconfirmed'));
     controller.signal.addEventListener('abort', abort, { once: true });
-    const deadline = setTimeout(() => controller.abort(), 30_000);
+    const timer = setTimeout(() => controller.abort(), 30_000);
+    const check = () => {
+      if (!current() || controller.signal.aborted || performance.now() >= expires
+        || (original && ('method' in original ? mutation.pending !== original : creation.pending !== original))) {
+        controller.abort(); throw Error('Calendar write unconfirmed');
+      }
+    };
     setSaving(true); setAddingSuggestion(suggestionIndex); setWriteError('');
     try {
-      const res = await Promise.race([fetch(url, { ...init, signal: controller.signal }), interrupted]);
-      if (!res.ok) throw new Error('Write unavailable');
-      const json = await Promise.race([res.json(), interrupted]);
-      if (controller.signal.aborted || !(original && 'method' in original ? confirmsMutation(json, original as Mutation) : confirm(json))) throw new Error('Invalid acknowledgement');
-      if (current()) {
-        if (original && creation.pending === original) { clearCreation(original); creation.pending = null; creation.storageWarning = false; }
-        if (original && mutation.pending === original) { clearMutation(original as Mutation); mutation.pending = null; mutation.storageWarning = false; }
-        writes.unconfirmed = !!creation.pending || !!mutation.pending;
-        if (writes.unconfirmed) setWriteError(mutation.pending ? mutationMessage() : creationMessage());
-        done();
-        // A read started before this confirmed write may be stale. Replace only
-        // its local wait; never claim remote cancellation or recover a writer.
-        readScope.controller?.abort(); readScope.busy = false;
-        void fetchEntries();
+      check();
+      const method = retained && 'method' in retained ? retained.method : retained ? 'POST' : init.method;
+      const body = retained ? retained.body : init.body;
+      if (typeof body !== 'string' || !['POST', 'PUT', 'DELETE'].includes(method as string)) throw Error('Invalid input');
+      const selectedId = method === 'PUT' ? JSON.parse(body)?.id : method === 'DELETE'
+        ? decodeURIComponent(url.slice('/api/calendar?id='.length)) : null;
+      const input = method === 'POST' ? parseCalendarCreation(body) : parseCalendarMutation(body, method as 'PUT' | 'DELETE', selectedId);
+      const target = method === 'DELETE' ? '/api/calendar?id=' + encodeURIComponent(input.id!) : '/api/calendar';
+      if (url !== target || (retained && 'method' in retained && (retained.id !== input.id || retained.url !== target))) throw Error('Invalid input');
+      check();
+      if (!original) {
+        const key = crypto.randomUUID();
+        if (method === 'POST') {
+          original = Object.freeze({ key, body, done, scope: readScope }); creation.pending = original;
+        } else {
+          const pending: Mutation = Object.freeze({ key, body, method: method as 'PUT' | 'DELETE', id: input.id!, url: target, done, scope: readScope });
+          original = pending; mutation.pending = pending;
+        }
+        let stored = false;
+        try {
+          const slot = method === 'POST' ? creationSlot : mutationSlot;
+          const raw = JSON.stringify(method === 'POST' ? { version: 1, key, body }
+            : { version: 1, key, body, method, id: input.id });
+          if (raw.length <= 66000) { sessionStorage.setItem(slot, raw); stored = sessionStorage.getItem(slot) === raw; }
+        } catch { /* The exact original remains in memory; no browser durability claimed. */ }
+        if (method === 'POST') creation.storageWarning = !stored; else mutation.storageWarning = !stored;
       }
+      const selected = Object.freeze({ key: original.key, body: original.body, method, target });
+      if (!/^[-A-Za-z0-9._:]{1,128}$/.test(selected.key)) throw Error('Invalid original key');
+      check();
+      dispatched = true;
+      const response = await Promise.race([fetch(selected.target, { method: selected.method,
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': selected.key,
+          ...(retained ? { 'X-Calendar-Write-Recovery': 'retained-only-v1' } : {}) },
+        body: selected.body, signal: controller.signal,
+      }), interrupted]);
+      check();
+      if (!response.ok || response.status !== (input.method === 'POST' ? 201 : 200)) throw Error('Write unavailable');
+      const json: unknown = await Promise.race([response.json(), interrupted]);
+      check();
+      decodeCalendarWrite(json, owner, input);
+      check();
+      if (creation.pending === original) { clearCreation(original); creation.pending = null; creation.storageWarning = false; }
+      if (mutation.pending === original) { clearMutation(original as Mutation); mutation.pending = null; mutation.storageWarning = false; }
+      writes.unconfirmed = !!creation.pending || !!mutation.pending;
+      if (writes.unconfirmed) setWriteError(mutation.pending ? mutationMessage() : creationMessage());
+      done();
+      // Refresh a complete own snapshot; it does not confirm another writer.
+      if (current()) { readScope.controller?.abort(); readScope.busy = false; void fetchEntries(); }
     } catch {
       if (current()) {
-        writes.unconfirmed = true;
-        setWriteError(original ? ('method' in original ? mutationMessage() : creationMessage()) : t('El cambio no está confirmado y puede haberse aplicado. Consulta el calendario antes de empezar otra operación; repetir un alta puede crear un duplicado.',
-          'The change is unconfirmed and may have been applied. Retrieve the calendar before starting another operation; repeating an addition may create a duplicate.'));
+        writes.unconfirmed = !!original || dispatched;
+        setWriteError(original ? ('method' in original ? mutationMessage() : creationMessage())
+          : t('No se pudo iniciar el cambio. Revisa los campos y el tamaño de la entrada.',
+            'The change could not be started. Check the entry fields and size.'));
       }
     } finally {
-      clearTimeout(deadline); controller.signal.removeEventListener('abort', abort);
-      writes.busy = false; if (writes.controller === controller) writes.controller = null;
+      clearTimeout(timer); controller.signal.removeEventListener('abort', abort);
       if (current()) { setSaving(false); setAddingSuggestion(null); }
+      writes.busy = false; if (writes.controller === controller) writes.controller = null;
     }
   }
 
@@ -423,27 +402,13 @@ export default function CalendarPage() {
   async function retryCalendarCreation() {
     const original = offeredCreation;
     if (!original) return;
-    const fields = JSON.parse(original.body);
     return writeCalendar('/api/calendar', { method: 'POST' },
-      json => confirmsEntry(json, { ...fields, description: fields.description || null, color: null }),
       () => { if (original.scope === readScope) original.done?.(); }, null, original);
-  }
-
-  function confirmsMutation(json: unknown, original: Mutation) {
-    const result = json as { originalMutation?: boolean; ok?: boolean; id?: string; entry?: Entry };
-    if (result?.originalMutation !== true) return false;
-    if (original.method === 'DELETE') return result.ok === true && result.id === original.id;
-    const { expected, id, ...changes } = JSON.parse(original.body);
-    const normalized = { ...changes,
-      ...(Object.hasOwn(changes, 'description') ? { description: changes.description?.trim() || null } : {}),
-      ...(Object.hasOwn(changes, 'color') ? { color: changes.color?.trim() || null } : {}),
-      ...(Object.hasOwn(changes, 'title') ? { title: changes.title.trim() } : {}) };
-    return confirmsEntry(result, { ...expected, ...normalized, id });
   }
   async function retryCalendarMutation() {
     const original = offeredMutation;
     if (!original) return;
-    return writeCalendar(original.url, { method: original.method }, json => confirmsMutation(json, original),
+    return writeCalendar(original.url, { method: original.method },
       () => { if (original.scope === readScope) original.done?.(); }, null, original);
   }
 
@@ -453,14 +418,13 @@ export default function CalendarPage() {
     const editing = modal.mode === 'edit' && modal.entry;
     return writeCalendar('/api/calendar', { method: editing ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing ? { id: editing.id, ...values, expected: snapshot(editing) } : values) },
-      json => confirmsEntry(json, { ...values, description: values.description || null, ...(editing ? { id: editing.id } : {}) }),
       () => { modalIdentity.current = null; setModal(null); });
   }
 
   async function deleteEntry() {
     if (!modal?.entry || modalScope.current !== readScope || modalIdentity.current !== modal.identity) return;
     return writeCalendar(`/api/calendar?id=${encodeURIComponent(modal.entry.id)}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expected: snapshot(modal.entry) }) },
-      json => json?.ok === true, () => { modalIdentity.current = null; setModal(null); });
+      () => { modalIdentity.current = null; setModal(null); });
   }
 
   async function fetchSuggestions() {
@@ -557,7 +521,7 @@ export default function CalendarPage() {
     const values = { title: s.title.trim(), description: `${s.description}\n\n⏰ ${t('Hora sugerida', 'Suggested time')}: ${s.hour}:00 UTC\n💡 ${s.reason}`.trim(),
       date: s.date, status: 'idea' };
     return writeCalendar('/api/calendar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) },
-      json => confirmsEntry(json, values), () => {
+      () => {
         currentSuggestions.current = currentSuggestions.current.filter(item => item !== s);
         setSuggestions(currentSuggestions.current);
       }, idx);
@@ -568,7 +532,7 @@ export default function CalendarPage() {
     const nextIdx = (order.indexOf(entry.status) + 1) % order.length;
     const newStatus = order[nextIdx];
     return writeCalendar('/api/calendar', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: entry.id, status: newStatus, expected: snapshot(entry) }) }, json => confirmsEntry(json, { id: entry.id, status: newStatus }), () => {});
+      body: JSON.stringify({ id: entry.id, status: newStatus, expected: snapshot(entry) }) }, () => {});
   }
 
   function closeModal() {

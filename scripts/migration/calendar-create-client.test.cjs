@@ -1,9 +1,9 @@
 'use strict';
 const assert=require('node:assert/strict');
-const {harness,success}=require('./calendar-client-retry.test.cjs');
+const {harness,success,writeSuccess}=require('./calendar-client-retry.test.cjs');
 const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 const draft=async(h,title='Original addition')=>{h.render();await flush();h.open();h.field('title',title);};
-const ack=h=>async(url,init)=>({ok:true,json:async()=>({entry:{...JSON.parse(init.body),id:'original-entry',userId:h.state.user,color:null,description:JSON.parse(init.body).description||null}})});
+const ack=writeSuccess;
 const retry=h=>h.button('retryCalendarCreation');
 const results=[];const test=async(name,run)=>{await run();results.push({name,status:'PASS'});};
 (async()=>{
@@ -33,7 +33,7 @@ const results=[];const test=async(name,run)=>{await run();results.push({name,sta
   const h=harness();h.state.storageDenied=true;await draft(h);h.state.write=async()=>({ok:false});await h.button('saveEntry')();assert.match(h.text(),/recargar puede perderla/);h.state.write=ack(h);await retry(h)();assert.equal(h.writeRequests[0].body,h.writeRequests[1].body);assert.equal(h.writeRequests[0].headers['Idempotency-Key'],h.writeRequests[1].headers['Idempotency-Key']);
  });
  for(const stage of ['fetch','json'])await test(stage+' timeout keeps identity, blocks duplicate retry and ignores late success',async()=>{
-  const h=harness();await draft(h);let release;const held=new Promise(r=>release=r);h.state.write=stage==='fetch'?()=>held:async()=>({ok:true,json:()=>held});const pending=h.button('saveEntry')();await flush();h.advance(30000);await pending;assert.ok(retry(h));
+  const h=harness();await draft(h);let release;const held=new Promise(r=>release=r);h.state.write=stage==='fetch'?()=>held:async()=>({ok:true,status:201,json:()=>held});const pending=h.button('saveEntry')();await flush();h.advance(30000);await pending;assert.ok(retry(h));
   let nextRelease;h.state.write=()=>new Promise(r=>nextRelease=r);const action=retry(h),discard=h.button('discardUnconfirmedWrite');const next=action();await action();discard();assert.equal(h.writeRequests.length,2);nextRelease({ok:false});await next;const res=await ack(h)('',h.writeRequests[0]);release(stage==='fetch'?res:await res.json());await flush();assert.ok(retry(h));assert.equal(h.listRequests.length,1);assert.equal(h.timers.size,0);
  });
  await test('explicit discard never cancels server work and the next creation has a distinct key',async()=>{

@@ -129,6 +129,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  await runContract('./calendar-post-server-database.cjs',prisma,results);
  await runContract('./calendar-capacity-database.cjs',prisma,results);
  await runContract('./calendar-create-keyed-database.cjs',prisma,results);
+  await runContract('./calendar-write-client-database.cjs',prisma,results);
   await runContract('./calendar-create-client-database.cjs',prisma,results);
   await runContract('./calendar-mutations-server-database.cjs',prisma,results);
   await runContract('./calendar-mutation-keyed-database.cjs',prisma,results);

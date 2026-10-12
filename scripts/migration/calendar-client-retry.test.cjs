@@ -4,7 +4,7 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const ts = require('typescript');
 const { createRetryOperation } = require('../../lib/ai/retry-operation.cjs');
 const {load}=require('./route-harness.cjs');
-const readContract=load('lib/calendar-read-contract.ts');
+const readContract=load('lib/calendar-read-contract.ts'),writeContract=load('lib/calendar-write-contract.ts');
 function readSuccess(h, entries=[], url=h.listRequests.at(-1).url, owner={id:h.state.user,email:h.state.email}) {
  const params=new URL('https://example.invalid'+url).searchParams;
  const body={owner:{...owner},range:{from:params.get('from'),to:params.get('to')},coverage:{complete:true,count:entries.length,limit:200},entries:entries.map(e=>({userId:owner.id,createdAt:'2026-10-01T00:00:00.000Z',updatedAt:'2026-10-01T00:00:00.000Z',...e}))};
@@ -39,6 +39,7 @@ function harness(storage = new Map()) {
   '@/components/DashboardShell': { default: 'shell' }, '@/components/ToolLoginGate': { default: 'login' },
   '@/lib/ai/retry-operation.cjs': { createRetryOperation },
   '@/lib/calendar-read-contract': readContract,
+  '@/lib/calendar-write-contract': writeContract,
  };
  vm.runInNewContext(compiled, { module: entry, exports: entry.exports,
   require(name) { assert.ok(Object.hasOwn(mocks, name), name); return mocks[name]; },
@@ -82,9 +83,11 @@ const suggestion = { title: 'Synthetic topic', date: '2026-10-08', hour: 0, reas
 const success = async () => ({ ok: true, json: async () => ({ suggestions: [suggestion] }) });
 const key = request => request.headers['Idempotency-Key'];
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
-const writeSuccess = h => async (_url, init) => ({ ok: true, json: async () => init.method === 'DELETE' ? { ok: true, id: decodeURIComponent(_url.split('id=')[1]), originalMutation: true }
- : { entry: { ...JSON.parse(init.body), id: JSON.parse(init.body).id || 'synthetic-created', userId: h.state.user, color: null,
-  description: JSON.parse(init.body).description?.trim() || null }, ...(init.method === 'PUT' ? { originalMutation: true } : {}) } });
+const writeSuccess = h => async (url, init) => {
+ const b=JSON.parse(init.body),input=init.method==='POST'?writeContract.parseCalendarCreation(init.body):writeContract.parseCalendarMutation(init.body,init.method,init.method==='PUT'?b.id:decodeURIComponent(url.split('id=')[1]));
+ const value=init.method==='DELETE'?{ok:true,id:input.id,originalMutation:true}:{entry:{id:input.id||'synthetic-created',userId:h.state.user,...input.fields,createdAt:'2026-10-01T00:00:00.000Z',updatedAt:'2026-10-01T00:00:00.000Z'},...(init.method==='PUT'?{originalMutation:true}:{})};
+ return {ok:true,status:init.method==='POST'?201:200,json:async()=>value};
+};
 async function draft(h, title = 'Synthetic draft') { h.render(); await flush(); h.open(); h.field('title', title); }
 const results = [];
 async function test(name, run) { await run(); results.push({ name, status: 'PASS' }); }
@@ -376,4 +379,4 @@ if (require.main === module) (async () => {
  });
  console.log(JSON.stringify({ scope: 'actual calendar component, synthetic hooks/HTTP; no network, models or operational calendar writes', results }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
-module.exports = { harness, success, suggestion, readSuccess };
+module.exports = { harness, success, suggestion, readSuccess, writeSuccess };
