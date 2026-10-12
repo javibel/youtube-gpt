@@ -328,10 +328,10 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   await actualStore('activator').publish(config,{actor:'test-admin'});await actualStore('activator').activate(config.revision,{expectedRevision:previous,actor:'test-admin',reason:'synthetic calendar retry'});
   const budgetId=await budget('calendar-client'),runtime=load('lib/ai/task-runtime.ts');
   runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'calendar.suggestions':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:1200,deadlineMs:3000}}},authorize:async({userId,taskType})=>userId==='synthetic'&&taskType==='calendar.suggestions'?{budgetId}:null}));
-  let wallEpoch=Date.parse('2026-10-07T12:00:00.000Z');
+  let wallEpoch=Date.parse('2026-10-07T12:00:00.000Z'),analyzedAt=null;
   const FixedDate=class extends Date {constructor(...args){super(...(args.length?args:[wallEpoch]));}static now(){return wallEpoch;}};
   const route=load('app/api/calendar/suggest/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:'synthetic',email:'synthetic@example.invalid'}})},'@/lib/plans':load('lib/plans.ts',{'@/lib/prisma':{prisma:{}}},{Date:FixedDate}),'@/lib/ai/task-runtime':runtime,
-   '@/lib/prisma':{prisma:{$transaction:async(fn)=>fn({user:{findUnique:async()=>({id:'synthetic',email:'synthetic@example.invalid'})},subscription:{findUnique:async()=>({userId:'synthetic',status:'active',plan:'pro',stripeCustomerId:'synthetic',currentPeriodEnd:null})},bestTimeAnalysis:{findUnique:async()=>null},trendAlert:{findMany:async()=>[]},trackedCompetitor:{findMany:async()=>[]},calendarEntry:{findMany:async()=>changedContext?[{id:'changed-context-row',userId:'synthetic',createdAt:new FixedDate(),date:'2026-10-08',title:'Changed synthetic context',status:'idea'}]:[]},youtubeToken:{findUnique:async()=>null}})}}}, {Date:FixedDate});
+   '@/lib/prisma':{prisma:{$transaction:async(fn)=>fn({user:{findUnique:async()=>({id:'synthetic',email:'synthetic@example.invalid'})},subscription:{findUnique:async()=>({userId:'synthetic',status:'active',plan:'pro',stripeCustomerId:'synthetic',currentPeriodEnd:null})},bestTimeAnalysis:{findUnique:async()=>analyzedAt===null?null:{userId:'synthetic',topSlots:[],analyzedAt:new FixedDate(analyzedAt)}},trendAlert:{findMany:async()=>[]},trackedCompetitor:{findMany:async()=>[]},calendarEntry:{findMany:async()=>changedContext?[{id:'changed-context-row',userId:'synthetic',createdAt:new FixedDate(),date:'2026-10-08',title:'Changed synthetic context',status:'idea'}]:[]},youtubeToken:{findUnique:async()=>null}})}}}, {Date:FixedDate});
   const {harness}=require('./calendar-client-retry.test.cjs');
   const invoke=init=>route.POST(new Request('https://example.invalid/api/calendar/suggest',{method:'POST',headers:init.headers,body:init.body}));
   const missing=harness();missing.state.user='synthetic';missing.state.key=prefix+'_calendar_missing';
@@ -378,6 +378,16 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   changedContext=true;const conflict=await invoke(browser.requests[1]);
   assert.equal(conflict.status,409);assert.deepEqual(await conflict.json(),{error:'operation_input_changed',retryMayConsume:false});assert.equal(calls,3);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),21);
+  await test('calendar original capture differs by one millisecond in same civil day; no retained adoption or redispatch',async()=>{
+   changedContext=false;wallEpoch+=1;
+   try{const r=await invoke(browser.requests[1]);assert.equal(r.status,409);assert.deepEqual(await r.json(),{error:'operation_input_changed',retryMayConsume:false});assert.equal(calls,3);assert.equal(Number((await stats(budgetId)).settled_micros),21);assert.equal(Number((await stats(budgetId)).reserved_micros),0);}
+   finally{wallEpoch-=1;}
+  });
+  await test('calendar declared analysis selection changes with same empty textual summary; no metadata recovery',async()=>{
+   changedContext=false;analyzedAt='2000-01-01T00:00:00.000Z';
+   try{const r=await invoke(browser.requests[1]);assert.equal(r.status,409);assert.deepEqual(await r.json(),{error:'operation_input_changed',retryMayConsume:false});assert.equal(calls,3);assert.equal(Number((await stats(budgetId)).settled_micros),21);assert.equal(Number((await stats(budgetId)).reserved_micros),0);}
+   finally{analyzedAt=null;}
+  });
   await test('calendar original retained receipt conflicts after day change without renewal or redispatch',async()=>{
    changedContext=false;wallEpoch+=86400000;
    const response=await invoke(browser.requests[1]);

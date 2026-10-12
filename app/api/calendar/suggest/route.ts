@@ -277,6 +277,10 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
   });
   // This is an acknowledgment of captured input only. It grants no authority to
   // recover another task, renew declared dates or accept an operational migration.
+  // Bind all copied facts and selection descriptors to the original facade input.
+  // A later HTTP capture may conflict; the acknowledgment cannot rebuild it.
+  const originalInput = Object.freeze({ userId, operationKey, input, selection,
+    context: permission.context!, competitorSearch, ownSearch });
   const ack = Object.freeze({
     version: 1, userId, operationKey, method: recovery === null ? 'create' : 'retrieve',
     input, horizon: Object.freeze({ baseDay: selection.baseDay, next14 }),
@@ -322,7 +326,10 @@ Recent competitor uploads:
 ${competitorUploads}
 
 Already scheduled:
-${existingInfo}`,
+${existingInfo}
+
+Original captured selection (input binding only; declared dates do not establish operational provenance, consent or freshness):
+${JSON.stringify(originalInput)}`,
         }],
     };
     if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });

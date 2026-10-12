@@ -93,6 +93,22 @@ const wire=(chunks,track={})=>({body:{getReader:()=>({read:async()=>chunks.lengt
  await test('no configured transport is acknowledged as not requested rather than selected empty',async()=>{
   const h=harness(),a=(await(await h.original).json()).ack;assert.equal(a.context.ownSearch.status,'not_requested');assert.equal(a.context.competitorSearch.status,'not_requested');assert.equal(h.captures.filter(c=>c.url).length,0);
  });
+ await test('copied selection descriptors enter original parameters even when textual summaries match',async()=>{
+  const h=begin({bestTime:{userId:'synthetic-suggest-owner',topSlots:[],analyzedAt:new Date('2000-01-01')}});
+  const b=await(await h.original).json(),prompt=h.captures.find(c=>c.method).parameters.messages[0].content;
+  const marker='Original captured selection (input binding only; declared dates do not establish operational provenance, consent or freshness):\n';
+  const captured=JSON.parse(prompt.slice(prompt.indexOf(marker)+marker.length));
+  assert.equal(captured.context.bestTime.analyzedAt,b.ack.context.bestTimeAnalyzedAt);assert.equal(captured.selection.publishedThrough,b.ack.context.ownSearch.publishedThrough);
+  assert.equal(captured.userId,b.ack.userId);assert.equal(captured.operationKey,b.ack.operationKey);
+  assert.equal(Object.hasOwn(captured,'method'),false);assert.equal(captured.context.coverage.calendarComplete,true);
+ });
+ await test('create and retained retrieval of identical capture use identical parameters; different capture cannot match',async()=>{
+  const fresh=begin(),retained=begin({}, {recovery:true});await fresh.original;await retained.original;
+  const parameters=h=>JSON.stringify(h.captures.find(c=>c.method).parameters);
+  assert.equal(parameters(fresh),parameters(retained));
+  const changed=begin({}, {wall:Date.parse('2026-10-07T12:00:00.001Z')});await changed.original;
+  assert.notEqual(parameters(changed),parameters(fresh));
+ });
  const report={scope:'Actual suggestion route/search capture; synthetic transport, clocks and task only. ACK is input binding, not admission/recovery/provenance/consent/freshness or operational acceptance.',status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',results};
  console.log(JSON.stringify(report,null,2));if(report.status!=='PASS')process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1;});
