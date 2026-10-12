@@ -7,14 +7,14 @@ const source=()=>{const dates=['2026-10-11T12:00:00Z','2026-10-08T12:00:00Z','20
  return {search:{available:true,complete:true,items:dates.map((publishedAt,i)=>({id:{kind:'youtube#video',videoId:ids[i]},snippet:{channelId,publishedAt}}))},
  details:{available:true,complete:true,items:dates.map((publishedAt,i)=>({id:ids[i],snippet:{channelId,publishedAt},statistics:{viewCount:['300','200','300'][i]}})).reverse()}};};
 function harness(options={}){
- let now=0,next=0,retired=false,checks=0;const timers=new Map(),calls=[],gates={},signal=new AbortController();
+ let now=0,next=0,retired=false,checks=0,completedChecks=0,read;const timers=new Map(),calls=[],gates={},signal=new AbortController();
  const selection={owner:{...owner},channelId,referenceAt,...options.selection},raw=source();
  const envelope=collection=>({owner:{...owner},channelId,referenceAt,collection});
  const search=envelope(raw.search),details=envelope(raw.details);options.change?.({search,details,selection});
  const step=async(stage,body,own,ids,check)=>{calls.push({stage,owner:{...own.owner},channelId:own.channelId,referenceAt:own.referenceAt,ids:ids&&[...ids],frozen:Object.isFrozen(own)&&Object.isFrozen(own.owner)&&(!ids||Object.isFrozen(ids))});if(options.fail===stage)throw Error('private synthetic diagnostic');if(options.held===stage){gates[stage]=deferred();await gates[stage].promise;}check();return body;};
  const sources={search:(own,check)=>step('search',search,own,null,check),details:(own,ids,check)=>step('details',details,own,ids,check)};
  const api=load('lib/best-time-source-reader.ts',{'./best-time-analysis':load('lib/best-time-analysis.ts')},{performance:{now:()=>now},setTimeout(fn,ms){assert.ok(ms>=0&&ms<=25000);const id=++next;timers.set(id,{fn,at:now+ms});return id;},clearTimeout(id){timers.delete(id);}});
- if(options.aborted)signal.abort();const read=api.readDeclaredBestTime(selection,sources,()=>{checks++;if(options.advanceAt===checks)now+=25000;if(retired||options.stopAt===checks)throw Error('Original retired');},signal.signal);
+ if(options.aborted)signal.abort();read=api.readDeclaredBestTime(selection,sources,()=>{checks++;if(options.advanceAt===checks)now+=25000;if(options.stopAtDelivery&&read?.pending===false&&++completedChecks===2)throw Error('Original retired at delivery');if(retired||options.stopAt===checks)throw Error('Original retired');},signal.signal);
  return {read,calls,gates,timers,signal,selection,sources,search,details,get checks(){return checks;},retire(){retired=true;},advance(ms,fire=true){now+=ms;if(fire)for(const [id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
 }
 const results=[];async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}}
@@ -44,7 +44,7 @@ async function run(){
  await test('already aborted signal dispatches nothing',async()=>{const h=harness({aborted:true});await unknown(h);assert.equal(h.calls.length,0);assert.equal(h.timers.size,0);});
  await test('original inherited retirement does not reopen after the parent stops throwing',async()=>{const h=harness({stopAt:1});await unknown(h);assert.equal(h.calls.length,0);assert.equal(h.checks,1);});
  await test('one budget spans search and details rather than restarting between them',async()=>{const h=harness({held:'details'});h.advance(24000,false);await flush();assert.equal(h.calls.length,2);h.advance(1000);await unknown(h);assert.equal(h.read.pending,true);h.gates.details.resolve();await h.read.original;assert.equal(h.calls.length,2);});
- await test('parent retirement between original completion and waiter delivery cannot adopt a late calculation',async()=>{const h=harness();assert.equal((await h.read.original).status,'calculated');h.retire();await unknown(h);assert.equal(h.calls.length,2);});
+ await test('parent retirement between original completion and waiter delivery cannot adopt a late calculation',async()=>{const h=harness({stopAtDelivery:true});assert.equal((await h.read.original).status,'calculated');await unknown(h);assert.equal(h.calls.length,2);});
  await test('parent check crossing the deadline dispatches no sources even if timer has not fired',async()=>{const h=harness({advanceAt:1});await unknown(h);assert.equal(h.calls.length,0);assert.equal(h.timers.size,0);});
  await test('serialization clones never acquire write/admission or restart callbacks',async()=>{const h=harness(),r=await h.read.waiter,c=clone(r);assert.equal(c.writeAuthorized,undefined);assert.equal(c.reservation,undefined);assert.equal(c.operationKey,undefined);assert.equal(c.original,undefined);assert.equal(h.calls.length,2);});
  return {status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',scope:'Declared-source callback coordination only, synthetic clock and retained parent check. No HTTP/OAuth/model/SQL/quota/writer or recovery/operational authority.',results};
