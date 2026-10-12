@@ -5,20 +5,21 @@ const event=()=>({id:'evt_synthetic',object:'event',type:'checkout.session.compl
 const subscription=()=>({id:'sub_synthetic',status:'trialing',cancel_at_period_end:false,items:{data:[{price:{id:'price_synthetic'}}]}});
 const flush=async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
 function harness(options={}) {
- let clock=0,id=0;const timers=new Map(),calls={verify:[],retrieve:[],customer:[],preflight:[],upsert:[],other:[]};
+ let clock=0,id=0;const timers=new Map(),calls={verify:[],retrieve:[],customer:[],invoice:[],preflight:[],upsert:[],other:[]};
  const logs=[]; const globals={console:{log(){},warn(){},error:(...args)=>logs.push(args)},performance:{now:()=>clock},setTimeout:(fn,ms)=>{const key=++id;timers.set(key,{fn,at:clock+ms});return key;},clearTimeout:key=>timers.delete(key),process:{env:{STRIPE_WEBHOOK_SECRET:'synthetic-configured-secret',STRIPE_PRO_PRICE_ID:'price_pro_month',STRIPE_PRO_YEARLY_PRICE_ID:'price_pro_year',STRIPE_BUSINESS_PRICE_ID:'price_business_month',STRIPE_BUSINESS_YEARLY_PRICE_ID:'price_business_year'}}};
  const contract=load('lib/stripe-webhook-contract.ts',{},globals);
  const intake=load('lib/stripe-webhook-intake.ts',{'@/lib/stripe-webhook-contract':contract},globals);
  const current=options.event||event();
  const forbidden=name=>(...args)=>{calls.other.push(name);throw Error('Unexpected effect: '+name);};
  const prisma=options.prisma||{$transaction:async()=>{throw new contract.WebhookInputError(503,'Synthetic admission unavailable');},subscription:{upsert:async data=>{calls.upsert.push(data);return data;},findFirst:forbidden('findFirst'),updateMany:forbidden('updateMany')},user:{findUnique:forbidden('user')}};
- const stripe={webhooks:{constructEvent:(...args)=>{calls.verify.push(args);if(options.verify)return options.verify(...args);return current;}},subscriptions:{retrieve:async key=>{calls.retrieve.push(key);return options.retrieve?options.retrieve(key):subscription();}},customers:{retrieve:async key=>{calls.customer.push(key);if(options.customer)return options.customer(key);return{object:'customer',id:key,email:'synthetic@example.invalid',metadata:{userId:'synthetic_user'}};}}};
+ const stripe={webhooks:{constructEvent:(...args)=>{calls.verify.push(args);if(options.verify)return options.verify(...args);return current;}},invoices:{retrieve:async key=>{calls.invoice.push(key);if(options.invoice)return options.invoice(key);throw Error("Unexpected invoice lookup");}},subscriptions:{retrieve:async key=>{calls.retrieve.push(key);return options.retrieve?options.retrieve(key):subscription();}},customers:{retrieve:async key=>{calls.customer.push(key);if(options.customer)return options.customer(key);return{object:'customer',id:key,email:'synthetic@example.invalid',metadata:{userId:'synthetic_user'}};}}};
  const business=load('lib/checkout-webhook-business.ts',{'@/lib/prisma':{prisma},'@/lib/stripe-webhook-contract':contract},globals);
  const preflight=(...args)=>{calls.preflight.push(args);return options.preflight?options.preflight(...args):{writeAuthorized:false};};
  const invoiceBusiness=load('lib/invoice-webhook-business.ts',{'@/lib/checkout-webhook-business':business,'@/lib/stripe-webhook-contract':contract},globals);
  const subscriptionBusiness=load('lib/subscription-webhook-business.ts',{'@/lib/checkout-webhook-business':business,'@/lib/stripe-webhook-contract':contract},globals);
  const failedInvoiceBusiness=load('lib/failed-invoice-webhook-business.ts',{'@/lib/checkout-webhook-business':business,'@/lib/stripe-webhook-contract':contract},globals);
- const original=load('lib/webhook-original.ts',{'@/lib/failed-invoice-webhook-business':failedInvoiceBusiness,'@/lib/subscription-webhook-business':subscriptionBusiness,'@/lib/invoice-webhook-business':invoiceBusiness,'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma},'@/lib/stripe':{stripe},'@/lib/stripe-webhook-contract':contract,'@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight}},globals);
+ const refundBusiness=load('lib/refund-webhook-business.ts',{'@/lib/prisma':{prisma},'@/lib/checkout-webhook-business':business,'@/lib/stripe-webhook-contract':contract},globals);
+ const original=load('lib/webhook-original.ts',{'@/lib/refund-webhook-business':refundBusiness,'@/lib/failed-invoice-webhook-business':failedInvoiceBusiness,'@/lib/subscription-webhook-business':subscriptionBusiness,'@/lib/invoice-webhook-business':invoiceBusiness,'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma},'@/lib/stripe':{stripe},'@/lib/stripe-webhook-contract':contract,'@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight}},globals);
  const route=load('app/api/stripe/webhook/route.ts',{
   '@/lib/webhook-original':original,'@/lib/checkout-webhook-business':{...business,preflightCheckoutBusiness:preflight},'next/server':{NextResponse:Response},'@/lib/stripe-webhook-contract':contract,'@/lib/stripe-webhook-intake':intake,'@/lib/prisma':{prisma},
   '@/lib/stripe':{stripe,subscriptionPeriod:()=>({start:new Date('2000-01-01'),end:new Date('2000-01-02')}),createBillingPortalUrl:forbidden('portal')},
@@ -26,7 +27,7 @@ function harness(options={}) {
   '@/lib/affiliate':{accrueAffiliateCommission:forbidden('commission'),reverseAffiliateCommissionForInvoice:forbidden('reverse')},
  },globals);
  const request=(body=' \n{"unparsed":true}\n',headers={'stripe-signature':' synthetic-signature '},signal)=>new Request('https://example.invalid/api/stripe/webhook',{method:'POST',body,headers,signal,duplex:'half'});
- return{calls,logs,current,original,prisma,contract,intake,globals,timers,request,post:r=>route.POST(r||request()),advance(ms,fire=true){clock+=ms;if(fire)for(const[key,t]of [...timers])if(t.at<=clock){timers.delete(key);t.fn();}}};
+ return{calls,logs,current,original,stripe,prisma,contract,intake,globals,timers,request,post:r=>route.POST(r||request()),advance(ms,fire=true){clock+=ms;if(fire)for(const[key,t]of [...timers])if(t.at<=clock){timers.delete(key);t.fn();}}};
 }
 async function run(){
  const results=[];async function test(name,fn){await fn();results.push(name);}

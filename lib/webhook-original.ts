@@ -6,6 +6,7 @@ import { captureCheckoutPrices, captureCheckoutSubscription, captureCheckoutCust
 
 import { invoiceEventProjection, preflightInvoiceBusiness } from '@/lib/invoice-webhook-business';
 import { failedInvoiceEventProjection, preflightFailedInvoiceBusiness } from '@/lib/failed-invoice-webhook-business';
+import { refundEventProjection, refundInvoiceProjection, preflightRefundBusiness } from '@/lib/refund-webhook-business';
 
 import { subscriptionEventProjection, preflightSubscriptionBusiness } from '@/lib/subscription-webhook-business';
 
@@ -214,6 +215,31 @@ export async function preflightFailedInvoiceOriginal(value: unknown) {
     const result = await preflightFailedInvoiceBusiness(invoice, subscription, customer, original.prices, check);
     check();
     return result; // No notice/portal admission, entitlement or billing retirement.
+  } catch(error) {
+    original.retired = true;
+    throw error;
+  }
+}
+
+export async function preflightRefundOriginal(value: unknown) {
+  const original = owned(value);
+  if (original.claimed) throw new WebhookInputError(503, 'Preflight original consumido');
+  original.claimed = true;
+  const check = () => { if (original.retired) throw new WebhookInputError(503, 'Original de webhook retirado'); try { original.check(); } catch(error) { original.retired = true; throw error; } };
+  try {
+    check();
+    const charge = refundEventProjection(original.event, check);
+    if (!charge) return null;
+    if (!original.prices || typeof stripe.invoices.retrieve !== 'function') throw new WebhookInputError(503, 'Lectura original de factura no disponible');
+    const invoice = refundInvoiceProjection(charge, await stripe.invoices.retrieve(charge.invoiceId), check);
+    check();
+    const subscription = captureCheckoutSubscription(await stripe.subscriptions.retrieve(invoice.subscriptionId), check);
+    check();
+    const customer = captureCheckoutCustomer(await stripe.customers.retrieve(invoice.customerId), check);
+    check();
+    const result = await preflightRefundBusiness(invoice, subscription, customer, original.prices, check);
+    check();
+    return result; // Read-only only. No reversal, payout, clawback, entitlement or recovery.
   } catch(error) {
     original.retired = true;
     throw error;

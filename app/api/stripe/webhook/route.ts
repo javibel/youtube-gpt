@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, preflightFailedInvoiceOriginal, preflightSubscriptionOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
+import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, preflightFailedInvoiceOriginal, preflightRefundOriginal, preflightSubscriptionOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
 import { checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { readWebhookBody, webhookWait, WebhookWaitRetired } from '@/lib/stripe-webhook-intake';
-import { reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -63,16 +62,9 @@ export async function POST(request: Request) {
         break;
       }
 
-      // Refund (garantía 30d u otro) — revertir la comisión de afiliado de esa
-      // factura si existía. No toca el plan del usuario: eso ya lo gestiona
-      // customer.subscription.deleted cuando Javier cancela tras el refund
-      // (ver runbook en docs/trial-stripe-hardening-2026-07-09.md).
       case 'charge.refunded': {
-        const charge = event.data.object as Stripe.Charge;
-        const invoiceId = typeof charge.invoice === 'string' ? charge.invoice : charge.invoice?.id;
-        if (invoiceId) {
-          await wait.run(() => reverseAffiliateCommissionForInvoice(invoiceId));
-        }
+        const projected = await wait.run(() => preflightRefundOriginal(original));
+        if (projected) throw new WebhookInputError(503, 'Reversión pendiente de admisión original');
         break;
       }
 
