@@ -1,28 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
-import { useRouter } from 'next/navigation';
+import { beginBestTimeRead, beginBestTimeAnalysis, pendingBestTimeAnalysis, type BestTimeRead, type BestTimeData } from '@/lib/best-time-client';
 import { useLang } from '@/components/LangProvider';
 import ToolLoginGate from '@/components/ToolLoginGate';
 
 type Lang = 'es' | 'en';
-
-interface TopSlot {
-  day: number;
-  hour: number;
-  score: number;
-  videoCount: number;
-}
-
-interface AnalysisData {
-  heatmap: number[][];
-  topSlots: TopSlot[];
-  videoCount: number;
-  aiTip: { es: string; en: string } | null;
-  analyzedAt: string;
-}
 
 const DAY_LABELS: Record<Lang, string[]> = {
   es: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
@@ -45,51 +30,107 @@ function cellColor(val: number): string {
 
 export default function BestTimePage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const lang = useLang();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [data, setData] = useState<AnalysisData | null>(null);
-  const [hoveredCell, setHoveredCell] = useState<{ day: number; hour: number } | null>(null);
-
-  const t = (es: string, en: string) => lang === 'en' ? en : es;
-
-  // Load cached data on mount
-  useEffect(() => {
-    if (status !== 'authenticated') return;
-    fetch('/api/youtube/best-time')
-      .then(r => r.json())
-      .then(res => { if (res.data) setData(res.data); })
-      .catch(() => {});
-  }, [status]);
-
-  async function analyze() {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('/api/youtube/best-time', { method: 'POST' });
-      const json = await res.json();
-      if (!res.ok) {
-        if (json.error === 'pro_required') {
-          setError(t('Necesitas el plan Pro para usar esta función.', 'You need the Pro plan to use this feature.'));
-        } else if (json.error === 'youtube_not_connected') {
-          setError(t('Conecta tu canal de YouTube primero desde el panel.', 'Connect your YouTube channel first from the dashboard.'));
-        } else if (json.error === 'no_videos') {
-          setError(t('No se encontraron vídeos en tu canal.', 'No videos found on your channel.'));
-        } else if (json.error === 'not_enough_videos') {
-          setError(t(`Necesitas al menos 3 vídeos para analizar (tienes ${json.videoCount}).`, `You need at least 3 videos to analyze (you have ${json.videoCount}).`));
-        } else {
-          setError(json.error || t('Error de conexión', 'Connection error'));
-        }
-        return;
-      }
-      setData(json.data);
-    } catch {
-      setError(t('Error de conexión', 'Connection error'));
-    } finally {
-      setLoading(false);
-    }
+  const id = session?.user?.id, email = session?.user?.email;
+  const owner = status === 'authenticated' && typeof id === 'string' && !!id && typeof email === 'string' && !!email
+    ? { id, email } : null;
+  const scopeKey = JSON.stringify([status, id, email, lang]);
+  const current = useRef({ key: scopeKey, retired: false });
+  if (current.current.key !== scopeKey) {
+    current.current.retired = true;
+    current.current = { key: scopeKey, retired: false };
   }
+  const scope = current.current;
+  const mounted = useRef(false);
+  const [view, setView] = useState<{ scope: typeof scope; read: BestTimeRead | null; data: BestTimeData | null;
+    cache: 'loading' | 'ready' | 'error' | 'blocked'; loading: boolean; error: string;
+    hovered: { day: number; hour: number } | null }>({
+      scope, read: null, data: null, cache: 'loading', loading: false, error: '', hovered: null,
+    });
+  const own = view.scope === scope ? view : null;
+  const data = own?.data ?? null, loading = own?.loading ?? false, error = own?.error ?? '', hoveredCell = own?.hovered ?? null;
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const live = () => mounted.current && current.current === scope && !scope.retired && owner !== null;
+  const patch = (change: Partial<typeof view>) => {
+    if (live()) setView(v => v.scope === scope ? { ...v, ...change } : v);
+  };
+  const observe = (read: BestTimeRead) => {
+    void read.waiter.then(outcome => {
+      if (!live() || read.superseded) return;
+      setView(v => v.scope !== scope || v.read !== read ? v : {
+        ...v, cache: outcome.status === 'ready' ? 'ready' : 'error',
+        data: outcome.status === 'ready' ? outcome.data : null, hovered: null,
+      });
+    });
+    void read.original.then(() => {
+      // Transport completion only enables an explicit retry; it never adopts a late result.
+      if (live()) setView(v => v.scope === scope && v.read === read ? { ...v } : v);
+    });
+  };
+  useEffect(() => {
+    let attached = true;
+    mounted.current = true;
+    const read = owner ? beginBestTimeRead(owner) : null;
+    const activeAnalysis = owner ? pendingBestTimeAnalysis(owner) : undefined;
+    setView({ scope, read, data: null, cache: read ? (read.superseded ? 'error' : 'loading') : 'blocked',
+      loading: !!activeAnalysis?.pending, error: '', hovered: null });
+    if (read) {
+      void read.waiter.then(outcome => {
+        if (!attached || !live() || read.superseded) return;
+        setView(v => v.scope !== scope || v.read !== read ? v : { ...v,
+          cache: outcome.status === 'ready' ? 'ready' : 'error',
+          data: outcome.status === 'ready' ? outcome.data : null, hovered: null });
+      });
+      void read.original.then(() => {
+        if (attached && live()) setView(v => v.scope === scope && v.read === read ? { ...v } : v);
+      });
+    }
+    if (activeAnalysis?.pending) void activeAnalysis.waiter.then(outcome => {
+      if (attached && live()) patch({ loading: false, cache: 'error', error: outcome.status === 'error' && outcome.code === 'unconfirmed'
+        ? t('El resultado del análisis sigue sin confirmar.', 'The analysis outcome remains unconfirmed.') : '' });
+    });
+    if (activeAnalysis?.pending) void activeAnalysis.original.then(() => {
+      if (attached && live()) patch({ loading: false, cache: 'error' });
+    });
+    return () => { attached = false; mounted.current = false; };
+    // Scalar scope changes retire callbacks during render; Strict setup reattaches the same original.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey]);
+
+  function retryCache() {
+    if (!live() || !own || loading || own.read?.pending) return;
+    const read = beginBestTimeRead(owner!, true);
+    if (!read || read.superseded) return;
+    patch({ read, cache: 'loading', data: null, error: '', hovered: null });
+    observe(read);
+  }
+  async function analyze() {
+    if (!live()) return;
+    const ticket = beginBestTimeAnalysis(owner!);
+    if (!ticket) return;
+    patch({ data: null, read: null, cache: 'blocked', loading: true, error: '', hovered: null });
+    const outcome = await ticket.waiter;
+    if (!live()) return;
+    patch({ loading: false });
+    if (outcome.status === 'posted') {
+      // GET alone supplies validated cached facts; POST JSON never supplies rendered data.
+      const read = beginBestTimeRead(owner!, true);
+      if (read) { patch({ read, cache: read.superseded ? 'error' : 'loading' }); observe(read); }
+      else patch({ cache: 'error' });
+      return;
+    }
+    const messages: Record<string, string> = {
+      pro_required: t('Necesitas el plan Pro para usar esta función.', 'You need the Pro plan to use this feature.'),
+      youtube_not_connected: t('Conecta tu canal de YouTube primero desde el panel.', 'Connect your YouTube channel first from the dashboard.'),
+      no_videos: t('No se encontraron vídeos en tu canal.', 'No videos found on your channel.'),
+      not_enough_videos: t('Necesitas al menos 3 vídeos para analizar.', 'You need at least 3 videos to analyze.'),
+    };
+    patch({ cache: 'error', error: messages[outcome.code] ?? t(
+      'No se pudo confirmar el análisis. Consulta los datos guardados; el resultado del análisis sigue sin confirmar.',
+      'The analysis could not be confirmed. Check the saved data; the analysis outcome remains unconfirmed.') });
+  }
+  const analysisGate = owner ? pendingBestTimeAnalysis(owner) : undefined;
+  const setHoveredCell = (hovered: { day: number; hour: number } | null) => patch({ hovered });
 
   if (status === 'loading') {
     return (
@@ -145,7 +186,7 @@ export default function BestTimePage() {
         <div className="mb-10">
           <button
             onClick={analyze}
-            disabled={loading}
+            disabled={!owner || loading || !!analysisGate?.pending || !!analysisGate?.uncertain}
             className="btn-offset inline-flex items-center gap-2 px-8 py-3 text-sm font-display disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
@@ -168,6 +209,20 @@ export default function BestTimePage() {
               {' · '}
               {new Date(data.analyzedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
+          )}
+        </div>
+
+        <div className="mb-6" role="status">
+          {own?.cache === 'loading' && <p>{t('Cargando análisis guardado...', 'Loading saved analysis...')}</p>}
+          {own?.cache === 'ready' && !data && <p>{t('No hay un análisis guardado para esta cuenta.', 'There is no saved analysis for this account.')}</p>}
+          {(own?.cache === 'error' || (own?.cache === 'blocked' && !loading)) && (
+            <>
+              <p>{t('No se pudo cargar el análisis guardado.', 'The saved analysis could not be loaded.')}</p>
+              {(own?.read?.pending || analysisGate?.pending) && <p>{t('La consulta original sigue pendiente.', 'The original request is still pending.')}</p>}
+              <button type="button" onClick={retryCache} disabled={!owner || loading || !!own?.read?.pending || !!analysisGate?.pending}>
+                {t('Consultar análisis guardado', 'Check saved analysis')}
+              </button>
+            </>
           )}
         </div>
 
@@ -201,8 +256,8 @@ export default function BestTimePage() {
 
                   {/* Data rows */}
                   {data.heatmap.map((row, di) => (
-                    <>
-                      <div key={`label-${di}`} className="font-mono-jb text-[13px] pr-2 flex items-center justify-end" style={{ color: 'var(--yv-text-3)' }}>
+                    <Fragment key={di}>
+                      <div className="font-mono-jb text-[13px] pr-2 flex items-center justify-end" style={{ color: 'var(--yv-text-3)' }}>
                         {DAY_LABELS[lang][di]}
                       </div>
                       {row.map((val, hi) => {
@@ -226,7 +281,7 @@ export default function BestTimePage() {
                           />
                         );
                       })}
-                    </>
+                    </Fragment>
                   ))}
                 </div>
               </div>
