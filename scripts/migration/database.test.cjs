@@ -109,6 +109,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await runContract('./password-change-client-database.cjs',prisma,results);
   await runContract('./profile-checkout-client-database.cjs',prisma,results);
   await runContract('./checkout-server-database.cjs',prisma,results);
+  await runContract('./stripe-webhook-intake-database.cjs',prisma,results);
   await runContract('./cancellation-server-database.cjs',prisma,results);
   await runContract('./downgrade-server-database.cjs',prisma,results);
   await runContract('./sync-server-database.cjs',prisma,results);

@@ -1,11 +1,14 @@
 import { stripe, subscriptionPeriod, createBillingPortalUrl } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
+import { captureWebhookEvent, checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
+import { readWebhookBody, webhookWait, WebhookWaitRetired, type WebhookWait } from '@/lib/stripe-webhook-intake';
 import { triggerTrialEndingEmail, triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
 import { accrueAffiliateCommission, reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const BUSINESS_PRICE_IDS = new Set(
   [process.env.STRIPE_BUSINESS_PRICE_ID, process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID]
@@ -20,12 +23,12 @@ function detectPlan(priceId: string): string {
 // Mismo fallback que invoice.payment_succeeded (nuestra Subscription por customerId,
 // si no existe busca por email del customer en Stripe) — factorizado porque los
 // dos handlers nuevos de abajo lo necesitan igual.
-async function resolveUserIdByCustomer(customerId: string): Promise<string | null> {
-  const sub = await prisma.subscription.findFirst({ where: { stripeCustomerId: customerId } });
+async function resolveUserIdByCustomer(customerId: string, wait: WebhookWait): Promise<string | null> {
+  const sub = await wait.run(() => prisma.subscription.findFirst({ where: { stripeCustomerId: customerId } }));
   if (sub) return sub.userId;
-  const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+  const customer = await wait.run(() => stripe.customers.retrieve(customerId)) as Stripe.Customer;
   if (customer.email) {
-    const user = await prisma.user.findUnique({ where: { email: customer.email } });
+    const user = await wait.run(() => prisma.user.findUnique({ where: { email: customer.email! } }));
     if (user) return user.id;
   }
   return null;
@@ -34,12 +37,13 @@ async function resolveUserIdByCustomer(customerId: string): Promise<string | nul
 async function upsertSubscription(
   userId: string,
   customerId: string,
-  subscription: Stripe.Subscription
+  subscription: Stripe.Subscription,
+  wait: WebhookWait
 ) {
   const item = subscription.items.data[0];
   const plan = detectPlan(item.price.id);
   const period = subscriptionPeriod(subscription);
-  await prisma.subscription.upsert({
+  await wait.run(() => { const data = {
     where: { userId },
     create: {
       userId,
@@ -60,43 +64,40 @@ async function upsertSubscription(
       currentPeriodStart: period.start,
       currentPeriodEnd: period.end,
     },
-  });
+  }; wait.check(); return prisma.subscription.upsert(data); });
 }
 
+function reply(data: object, status = 200) {
+  return NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
+}
 export async function POST(request: Request) {
-  const body = await request.text();
-  const signature = request.headers.get('stripe-signature');
-
-  if (!signature) {
-    return NextResponse.json({ error: 'Sin firma' }, { status: 400 });
-  }
-
-  let event: Stripe.Event;
-
+  const wait = webhookWait(request.signal);
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err);
-    return NextResponse.json({ error: 'Firma inválida' }, { status: 400 });
-  }
-
-  try {
+    wait.check();
+    // Capture header and configured secret before waiting for the original raw body.
+    const signature = request.headers.get('stripe-signature');
+    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!signature || !signature.trim() || signature.length > 4096) throw new WebhookInputError(400, 'Firma inválida');
+    if (!secret || secret.length > 4096) return reply({ error: 'Webhook no configurado' }, 503);
+    const body = await readWebhookBody(request, wait);
+    let verified: unknown;
+    try {
+      wait.check();
+      verified = stripe.webhooks.constructEvent(body, signature, secret);
+      wait.check();
+    } catch (error) {
+      if (error instanceof WebhookWaitRetired) throw error;
+      console.error('Webhook signature verification failed');
+      return reply({ error: 'Firma inválida' }, 400);
+    }
+    // Snapshot the verified SDK result before any downstream await; no authority is inferred here.
+    const event = captureWebhookEvent(verified, wait.check) as Stripe.Event;
+    const checkout = checkoutEventProjection(event);
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        if (session.mode === 'subscription' && session.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-          const userId = session.metadata?.userId;
-          if (!userId) {
-            console.error('checkout.session.completed: missing userId in metadata');
-            break;
-          }
-          await upsertSubscription(userId, session.customer as string, subscription);
-          console.log(`checkout.session.completed: activated Pro for userId=${userId}`);
+        if (checkout) {
+          const subscription = await wait.run(() => stripe.subscriptions.retrieve(checkout.subscriptionId));
+          await upsertSubscription(checkout.userId, checkout.customerId, subscription, wait);
         }
         break;
       }
@@ -105,16 +106,15 @@ export async function POST(request: Request) {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
         if ((invoice as any).subscription) {
-          const subscription = await stripe.subscriptions.retrieve((invoice as any).subscription as string);
+          const subscription = await wait.run(() => stripe.subscriptions.retrieve((invoice as any).subscription as string));
           const customerId = invoice.customer as string;
-          const userId = await resolveUserIdByCustomer(customerId);
+          const userId = await resolveUserIdByCustomer(customerId, wait);
 
           if (userId) {
-            await upsertSubscription(userId, customerId, subscription);
-            console.log(`invoice.payment_succeeded: synced Pro for customerId=${customerId}`);
+            await upsertSubscription(userId, customerId, subscription, wait);
             // Devengo de comisión de afiliado — solo facturas realmente pagadas,
             // nunca en el alta del trial (que no genera invoice.payment_succeeded).
-            await accrueAffiliateCommission(userId, invoice);
+            await wait.run(() => accrueAffiliateCommission(userId, invoice));
           }
         }
         break;
@@ -124,18 +124,18 @@ export async function POST(request: Request) {
       case 'customer.subscription.trial_will_end': {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
-        const userId = await resolveUserIdByCustomer(customerId);
+        const userId = await resolveUserIdByCustomer(customerId, wait);
         // Si ya canceló durante el trial, NO avisar de un cobro que no va a
         // producirse — sería confuso/alarmante para alguien que ya decidió irse.
         if (userId && subscription.trial_end && !subscription.cancel_at_period_end) {
           const item = subscription.items.data[0];
-          const manageUrl = (await createBillingPortalUrl(customerId)) ?? 'https://ytubviral.com/profile';
-          await triggerTrialEndingEmail(userId, subscription.id, {
+          const manageUrl = (await wait.run(() => createBillingPortalUrl(customerId))) ?? 'https://ytubviral.com/profile';
+          await wait.run(() => triggerTrialEndingEmail(userId, subscription.id, {
             trialEndTs: subscription.trial_end,
             amountCents: item?.price?.unit_amount ?? 0,
             currency: (item?.price?.currency || 'eur').toUpperCase(),
             manageUrl,
-          });
+          }));
         }
         break;
       }
@@ -148,14 +148,14 @@ export async function POST(request: Request) {
         // factura suelta no debe disparar un email que habla de "tu suscripción".
         if (!(invoice as any).subscription) break;
         const customerId = invoice.customer as string;
-        const userId = await resolveUserIdByCustomer(customerId);
+        const userId = await resolveUserIdByCustomer(customerId, wait);
         if (userId) {
-          const manageUrl = (await createBillingPortalUrl(customerId)) ?? 'https://ytubviral.com/profile';
-          await triggerPaymentFailedEmail(userId, invoice.id, {
+          const manageUrl = (await wait.run(() => createBillingPortalUrl(customerId))) ?? 'https://ytubviral.com/profile';
+          await wait.run(() => triggerPaymentFailedEmail(userId, invoice.id, {
             amountCents: invoice.amount_due ?? 0,
             currency: (invoice.currency || 'eur').toUpperCase(),
             manageUrl,
-          });
+          }));
         }
         break;
       }
@@ -168,8 +168,7 @@ export async function POST(request: Request) {
         const charge = event.data.object as Stripe.Charge;
         const invoiceId = typeof charge.invoice === 'string' ? charge.invoice : charge.invoice?.id;
         if (invoiceId) {
-          await reverseAffiliateCommissionForInvoice(invoiceId);
-          console.log(`charge.refunded: comisión revertida (si existía) para invoice=${invoiceId}`);
+          await wait.run(() => reverseAffiliateCommissionForInvoice(invoiceId));
         }
         break;
       }
@@ -182,7 +181,7 @@ export async function POST(request: Request) {
 
         const plan = item?.price?.id ? detectPlan(item.price.id) : undefined;
         const period = subscriptionPeriod(subscription);
-        await prisma.subscription.updateMany({
+        await wait.run(() => { const data = {
           where: { stripeCustomerId: customerId },
           data: {
             status: subscription.status,
@@ -192,19 +191,17 @@ export async function POST(request: Request) {
             currentPeriodStart: period.start,
             currentPeriodEnd: period.end,
           },
-        });
-        console.log(`${event.type}: updated subscription for customerId=${customerId}, status=${subscription.status}`);
+        }; wait.check(); return prisma.subscription.updateMany(data); });
         break;
       }
     }
-  } catch (err) {
-    console.error(`Error processing webhook event ${event.type}:`, err);
-    // 500 para que Stripe reintente (hasta 3 días, backoff) — los upserts y los
-    // triggers de email de arriba son idempotentes, así que reintentar es seguro.
-    // Antes esto devolvía 200 y un error transitorio (p.ej. un hipo de la BD)
-    // perdía el evento para siempre sin que nadie se enterara.
-    return NextResponse.json({ error: 'Error interno procesando el webhook' }, { status: 500 });
-  }
-
-  return NextResponse.json({ received: true });
+    wait.check();
+    return reply({ received: true });
+  } catch (error) {
+    if (error instanceof WebhookWaitRetired) return reply({ error: 'Espera del webhook finalizada' }, 503);
+    if (error instanceof WebhookInputError) return reply({ error: error.message }, error.status);
+    console.error('Webhook processing failed');
+    // A failed or uncertain wait is not acknowledged. Durable delivery ownership is still pending.
+    return reply({ error: 'Error interno procesando el webhook' }, 500);
+  } finally { wait.close(); }
 }

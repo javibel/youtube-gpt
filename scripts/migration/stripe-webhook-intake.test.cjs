@@ -1,0 +1,68 @@
+'use strict';
+const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs');
+const offline=require('../../lib/migration-payments.cjs');
+const event=()=>({id:'evt_synthetic',object:'event',type:'checkout.session.completed',created:946684800,livemode:false,api_version:'2024-06-20',data:{object:{id:'cs_synthetic',object:'checkout.session',mode:'subscription',payment_status:'no_payment_required',customer:'cus_synthetic',subscription:'sub_synthetic',metadata:{userId:'synthetic_user'}}}});
+const subscription=()=>({id:'sub_synthetic',status:'trialing',cancel_at_period_end:false,items:{data:[{price:{id:'price_synthetic'}}]}});
+const flush=async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
+function harness(options={}) {
+ let clock=0,id=0;const timers=new Map(),calls={verify:[],retrieve:[],upsert:[],other:[]};
+ const logs=[]; const globals={console:{log(){},warn(){},error:(...args)=>logs.push(args)},performance:{now:()=>clock},setTimeout:(fn,ms)=>{const key=++id;timers.set(key,{fn,at:clock+ms});return key;},clearTimeout:key=>timers.delete(key),process:{env:{STRIPE_WEBHOOK_SECRET:'synthetic-configured-secret'}}};
+ const contract=load('lib/stripe-webhook-contract.ts',{},globals);
+ const intake=load('lib/stripe-webhook-intake.ts',{'@/lib/stripe-webhook-contract':contract},globals);
+ const current=options.event||event();
+ const forbidden=name=>(...args)=>{calls.other.push(name);throw Error('Unexpected effect: '+name);};
+ const prisma=options.prisma||{subscription:{upsert:async data=>{calls.upsert.push(data);return data;},findFirst:forbidden('findFirst'),updateMany:forbidden('updateMany')},user:{findUnique:forbidden('user')}};
+ const stripe={webhooks:{constructEvent:(...args)=>{calls.verify.push(args);if(options.verify)return options.verify(...args);return current;}},subscriptions:{retrieve:async key=>{calls.retrieve.push(key);return options.retrieve?options.retrieve(key):subscription();}},customers:{retrieve:forbidden('customer')}};
+ const route=load('app/api/stripe/webhook/route.ts',{
+  'next/server':{NextResponse:Response},'@/lib/stripe-webhook-contract':contract,'@/lib/stripe-webhook-intake':intake,'@/lib/prisma':{prisma},
+  '@/lib/stripe':{stripe,subscriptionPeriod:()=>({start:new Date('2000-01-01'),end:new Date('2000-01-02')}),createBillingPortalUrl:forbidden('portal')},
+  '@/lib/lifecycle-trigger':{triggerTrialEndingEmail:forbidden('trial email'),triggerPaymentFailedEmail:forbidden('failed email')},
+  '@/lib/affiliate':{accrueAffiliateCommission:forbidden('commission'),reverseAffiliateCommissionForInvoice:forbidden('reverse')},
+ },globals);
+ const request=(body=' \n{"unparsed":true}\n',headers={'stripe-signature':' synthetic-signature '},signal)=>new Request('https://example.invalid/api/stripe/webhook',{method:'POST',body,headers,signal,duplex:'half'});
+ return{calls,logs,current,prisma,contract,intake,globals,timers,request,post:r=>route.POST(r||request()),advance(ms,fire=true){clock+=ms;if(fire)for(const[key,t]of [...timers])if(t.at<=clock){timers.delete(key);t.fn();}}};
+}
+async function run(){
+ const results=[];async function test(name,fn){await fn();results.push(name);}
+ const deny=async(mutator,status=400)=>{const h=harness();mutator(h.current);const r=await h.post();assert.equal(r.status,status);assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(h.calls.retrieve.length,0);assert.equal(h.calls.upsert.length,0);assert.equal(h.calls.other.length,0);assert.equal(h.timers.size,0);};
+ await test('raw UTF8 including BOM whitespace and newline reaches verifier unchanged',async()=>{const h=harness();const raw='\ufeff \r\n{"x":"ñ😀"}\n';const r=await h.post(h.request(raw));assert.equal(r.status,200);assert.deepEqual(h.calls.verify[0],[raw,'synthetic-signature','synthetic-configured-secret']);assert.equal(h.calls.upsert.length,1);assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(h.timers.size,0);});
+ await test('SDK failure never logs supplied secrets or raw SDK errors',async()=>{const h=harness({verify(){throw Error('secret signature body');}});const r=await h.post();assert.equal(r.status,400);assert.equal(h.calls.retrieve.length,0);assert.equal(h.calls.other.length,0);assert.deepEqual(h.logs,[['Webhook signature verification failed']]);assert.equal(h.timers.size,0);});
+ await test('unchanged application isolation guard denies fabricated webhook',async()=>{const h=harness({verify:offline.stripe.webhooks.constructEvent});assert.equal((await h.post()).status,400);assert.equal(h.calls.retrieve.length,0);assert.equal(h.calls.upsert.length,0);});
+ for(const signature of [null,'','  ','x'.repeat(4097)])await test('signature admission '+String(signature?.length),async()=>{const h=harness();const headers={};if(signature!==null)headers['stripe-signature']=signature;assert.equal((await h.post(h.request('{}',headers))).status,400);assert.equal(h.calls.verify.length,0);});
+ await test('missing configuration before body reading',async()=>{const h=harness();delete h.globals.process.env.STRIPE_WEBHOOK_SECRET;assert.equal((await h.post()).status,503);assert.equal(h.calls.verify.length,0);});
+ await test('invalid UTF8 before SDK',async()=>{const h=harness();assert.equal((await h.post(h.request(new Uint8Array([0xc3,0x28])))).status,400);assert.equal(h.calls.verify.length,0);});
+ await test('empty original body before SDK',async()=>{const h=harness();assert.equal((await h.post(h.request(''))).status,400);assert.equal(h.calls.verify.length,0);});
+ await test('actual body cap independent of declared content-length',async()=>{const h=harness();assert.equal((await h.post(h.request('x'.repeat(262145),{'stripe-signature':'synthetic','content-length':'1'}))).status,413);assert.equal(h.calls.verify.length,0);});
+ await test('header and secret captured before body wait',async()=>{let finish;const stream=new ReadableStream({start(c){finish=()=>{c.enqueue(new TextEncoder().encode('{}'));c.close();};}}),h=harness(),r=h.request(stream);const p=h.post(r);r.headers.set('stripe-signature','changed');h.globals.process.env.STRIPE_WEBHOOK_SECRET='changed';finish();assert.equal((await p).status,200);assert.deepEqual(h.calls.verify[0],['{}','synthetic-signature','synthetic-configured-secret']);});
+ const invalid=[
+ ['event id',e=>e.id='other'],['event type',e=>e.type='checkout/session'],['event object',e=>e.object='customer'],
+ ['created omitted',e=>delete e.created],['created fractional',e=>e.created=1.1],['created nonfinite',e=>e.created=Infinity],['created future invalid',e=>e.created=253402300800],
+ ['livemode missing',e=>delete e.livemode],['API version malformed',e=>e.api_version={}],['data array',e=>e.data=[]],
+ ['session id',e=>e.data.object.id='cs_'],['session object',e=>e.data.object.object='subscription'],['mode',e=>e.data.object.mode='invalid'],
+ ['payment status',e=>e.data.object.payment_status='pending'],['user missing',e=>delete e.data.object.metadata],['user object',e=>e.data.object.metadata.userId={}],
+ ['user whitespace',e=>e.data.object.metadata.userId=' owner '],['customer missing',e=>e.data.object.customer=null],
+ ['customer wrong expanded object',e=>e.data.object.customer={id:'cus_synthetic',object:'subscription'}],['customer deleted',e=>e.data.object.customer={id:'cus_synthetic',object:'customer',deleted:true}],
+ ['subscription wrong prefix',e=>e.data.object.subscription='cus_synthetic'],['subscription malformed expanded',e=>e.data.object.subscription={id:'sub_synthetic'}],
+ ['cycle',e=>e.data.cycle=e],['getter',e=>Object.defineProperty(e.data,'trap',{enumerable:true,get(){throw Error('getter must not run');}})],
+ ['sparse array',e=>e.data.extra=new Array(100)],['symbol accessor',e=>Object.defineProperty(e.data,Symbol.toStringTag,{get(){throw Error('Symbol accessor must not run');}})],
+ ['nonJSON Date',e=>e.data.date=new Date()],['undefined',e=>e.data.extra=undefined],['huge string',e=>e.data.extra='x'.repeat(262145)],
+ ['deep object',e=>{let v=e.data;for(let i=0;i<40;i++)v=v.next={};}],['too many values',e=>e.data.extra=Array.from({length:12001},()=>null)]
+ ];
+ for(const[name,mutator]of invalid)await test('deny '+name,()=>deny(mutator));
+ await test('expanded typed references preserve exact IDs',async()=>{const h=harness();h.current.data.object.customer={id:'cus_synthetic',object:'customer'};h.current.data.object.subscription={id:'sub_synthetic',object:'subscription'};assert.equal((await h.post()).status,200);assert.deepEqual(h.calls.retrieve,['sub_synthetic']);assert.equal(h.calls.upsert[0].create.stripeCustomerId,'cus_synthetic');});
+ for(const mode of ['payment','setup'])await test(mode+' sessions have no subscription effects',async()=>{const h=harness();h.current.data.object.mode=mode;assert.equal((await h.post()).status,200);assert.equal(h.calls.retrieve.length,0);});
+ await test('declared historical timestamp retained without synthetic freshness claim',async()=>{const h=harness();const captured=h.contract.captureWebhookEvent(h.current,()=>{});assert.equal(captured.created,946684800);assert(Object.isFrozen(captured));assert(Object.isFrozen(captured.data.object.metadata));assert.equal(h.current.created,946684800);});
+ await test('immutable checkout survives original event mutation during retrieve',async()=>{let release,start;const gate=new Promise(r=>release=r),started=new Promise(r=>start=r);const h=harness({retrieve:async()=>{start();await gate;return subscription();}});const p=h.post();await started;h.current.data.object.metadata.userId='foreign';h.current.data.object.customer='cus_foreign';h.current.data.object.subscription='sub_foreign';h.current.type='customer.subscription.deleted';release();assert.equal((await p).status,200);assert.deepEqual(h.calls.retrieve,['sub_synthetic']);assert.equal(h.calls.upsert[0].where.userId,'synthetic_user');assert.equal(h.calls.upsert[0].create.stripeCustomerId,'cus_synthetic');assert.equal(h.calls.other.length,0);});
+ await test('aborted request before reading has no verifier or API',async()=>{const h=harness(),c=new AbortController();c.abort();assert.equal((await h.post(h.request('{}',undefined,c.signal))).status,503);assert.equal(h.calls.verify.length,0);assert.equal(h.timers.size,0);});
+ await test('hung original body ends wait and cancels only its reader',async()=>{let cancelled=0;const h=harness(),stream=new ReadableStream({cancel(){cancelled++;}});const p=h.post(h.request(stream));await flush();h.advance(55000);assert.equal((await p).status,503);assert.equal(cancelled,1);assert.equal(h.calls.verify.length,0);assert.equal(h.timers.size,0);});
+ await test('deadline observed even if timer callback has not fired at SDK return',async()=>{let h;h=harness({verify(){h.advance(55000,false);return event();}});assert.equal((await h.post()).status,503);assert.equal(h.calls.retrieve.length,0);assert.equal(h.timers.size,0);});
+ await test('capture checks same monotonic budget',async()=>{const h=harness();let n=0;assert.throws(()=>h.contract.captureWebhookEvent(h.current,()=>{if(++n===8)throw new h.intake.WebhookWaitRetired();}),h.intake.WebhookWaitRetired);assert.equal(h.calls.upsert.length,0);});
+ await test('hung retrieval retires without starting SQL or accepting late result',async()=>{let release,start;const gate=new Promise(r=>release=r),started=new Promise(r=>start=r),h=harness({retrieve:async()=>{start();return gate;}});const p=h.post();await started;h.advance(55000);assert.equal((await p).status,503);release(subscription());await flush();assert.equal(h.calls.upsert.length,0);assert.equal(h.calls.other.length,0);assert.equal(h.timers.size,0);});
+ await test('abort during original retrieval has no late SQL or second API',async()=>{let release,start;const gate=new Promise(r=>release=r),started=new Promise(r=>start=r),c=new AbortController(),h=harness({retrieve:async()=>{start();return gate;}});const p=h.post(h.request('{}',undefined,c.signal));await started;c.abort();assert.equal((await p).status,503);release(subscription());await flush();assert.equal(h.calls.upsert.length,0);assert.equal(h.timers.size,0);});
+ await test('late SQL result cannot become 2xx or trigger more effects',async()=>{let release,start;const gate=new Promise(r=>release=r),started=new Promise(r=>start=r),h=harness({prisma:{subscription:{upsert:async()=>{start();return gate;}}}});const p=h.post();await started;h.advance(55000);assert.equal((await p).status,503);release({});await flush();assert.equal(h.calls.retrieve.length,1);assert.equal(h.calls.other.length,0);assert.equal(h.timers.size,0);});
+ await test('SQL argument assembly cannot cross deadline unnoticed',async()=>{let h;h=harness({retrieve:async()=>{const s=subscription();Object.defineProperty(s,'status',{get(){h.advance(55000,false);return 'trialing';}});return s;}});assert.equal((await h.post()).status,503);assert.equal(h.calls.upsert.length,0);});
+ await test('unknown event safe acknowledgment has no effects',async()=>{const h=harness();h.current.type='customer.created';h.current.data.object={object:'customer',id:'cus_synthetic'};assert.equal((await h.post()).status,200);assert.equal(h.calls.other.length,0);assert.equal(h.calls.retrieve.length,0);});
+ console.log(JSON.stringify({status:'PASS',scope:'local injected verifier shape/wait controls; application ingestion remains blocked; no operational signature, provenance or acceptance',results},null,2));return results;
+}
+if(require.main===module)run().catch(e=>{console.error(e);process.exitCode=1;});
+module.exports={harness,event,subscription,flush,run};
