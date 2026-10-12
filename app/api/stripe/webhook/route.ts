@@ -127,11 +127,12 @@ export async function POST(request: Request) {
         const userId = await resolveUserIdByCustomer(customerId, wait);
         // Si ya canceló durante el trial, NO avisar de un cobro que no va a
         // producirse — sería confuso/alarmante para alguien que ya decidió irse.
-        if (userId && subscription.trial_end && !subscription.cancel_at_period_end) {
+        const trialEndTs = subscription.trial_end;
+        if (userId && trialEndTs && !subscription.cancel_at_period_end) {
           const item = subscription.items.data[0];
           const manageUrl = (await wait.run(() => createBillingPortalUrl(customerId))) ?? 'https://ytubviral.com/profile';
           await wait.run(() => triggerTrialEndingEmail(userId, subscription.id, {
-            trialEndTs: subscription.trial_end,
+            trialEndTs,
             amountCents: item?.price?.unit_amount ?? 0,
             currency: (item?.price?.currency || 'eur').toUpperCase(),
             manageUrl,
