@@ -2,11 +2,11 @@ import { stripe, subscriptionPeriod, createBillingPortalUrl } from '@/lib/stripe
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
+import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
 import { checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { readWebhookBody, webhookWait, WebhookWaitRetired, type WebhookWait } from '@/lib/stripe-webhook-intake';
 import { triggerTrialEndingEmail, triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
-import { accrueAffiliateCommission, reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
+import { reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -21,9 +21,8 @@ function detectPlan(priceId: string): string {
   return BUSINESS_PRICE_IDS.has(priceId) ? 'business' : 'pro';
 }
 
-// Mismo fallback que invoice.payment_succeeded (nuestra Subscription por customerId,
-// si no existe busca por email del customer en Stripe) — factorizado porque los
-// dos handlers nuevos de abajo lo necesitan igual.
+// Resolución histórica de dueño para avisos: vínculo por customerId y fallback por email.
+// Su contrato, admisión y efectos de notificación siguen pendientes.
 async function resolveUserIdByCustomer(customerId: string, wait: WebhookWait): Promise<string | null> {
   const sub = await wait.run(() => prisma.subscription.findFirst({ where: { stripeCustomerId: customerId } }));
   if (sub) return sub.userId;
@@ -33,39 +32,6 @@ async function resolveUserIdByCustomer(customerId: string, wait: WebhookWait): P
     if (user) return user.id;
   }
   return null;
-}
-
-async function upsertSubscription(
-  userId: string,
-  customerId: string,
-  subscription: Stripe.Subscription,
-  wait: WebhookWait
-) {
-  const item = subscription.items.data[0];
-  const plan = detectPlan(item.price.id);
-  const period = subscriptionPeriod(subscription);
-  await wait.run(() => { const data = {
-    where: { userId },
-    create: {
-      userId,
-      stripeCustomerId: customerId,
-      stripePriceId: item.price.id,
-      plan,
-      status: subscription.status,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodStart: period.start,
-      currentPeriodEnd: period.end,
-    },
-    update: {
-      stripeCustomerId: customerId,
-      stripePriceId: item.price.id,
-      plan,
-      status: subscription.status,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodStart: period.start,
-      currentPeriodEnd: period.end,
-    },
-  }; wait.check(); return prisma.subscription.upsert(data); });
 }
 
 function reply(data: object, status = 200) {
@@ -105,21 +71,9 @@ export async function POST(request: Request) {
         break;
       }
 
-      // Fallback: fires on every successful payment, including subscription renewals
       case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice;
-        if ((invoice as any).subscription) {
-          const subscription = await wait.run(() => stripe.subscriptions.retrieve((invoice as any).subscription as string));
-          const customerId = invoice.customer as string;
-          const userId = await resolveUserIdByCustomer(customerId, wait);
-
-          if (userId) {
-            await upsertSubscription(userId, customerId, subscription, wait);
-            // Devengo de comisión de afiliado — solo facturas realmente pagadas,
-            // nunca en el alta del trial (que no genera invoice.payment_succeeded).
-            await wait.run(() => accrueAffiliateCommission(userId, invoice));
-          }
-        }
+        const projected = await wait.run(() => preflightInvoiceOriginal(original));
+        if (projected) throw new WebhookInputError(503, 'Factura pendiente de conciliación original');
         break;
       }
 

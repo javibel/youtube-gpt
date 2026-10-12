@@ -86,7 +86,14 @@ export function projectCheckoutBusiness(checkout: any, subscription: any, custom
 export async function preflightCheckoutBusiness(checkout: any, subscription: any, customer: any, prices: Catalog | null, check: () => void) {
   const original = projectCheckoutBusiness(checkout, subscription, customer, prices, check);
   // Only read linked SQL data. No row/key/snapshot supplies admission, entitlement or recovery authority.
-  const owner = await prisma.$transaction(async tx => {
+  const owner = await preflightBillingLink(original, check);
+  check();
+  return Object.freeze({ ...original, linkedRowId: owner.rowId, writeAuthorized: false as const });
+}
+
+// Linked owner snapshot only; never admission, bootstrap, entitlement or recovery.
+export async function preflightBillingLink(original: Readonly<{userId: string; email: string; customerId: string}>, check: () => void) {
+  return await prisma.$transaction(async tx => {
     check();
     const user = await tx.user.findUnique({ where: { id: original.userId }, include: { subscription: true } });
     check();
@@ -102,6 +109,4 @@ export async function preflightCheckoutBusiness(checkout: any, subscription: any
         linked[0].stripeCustomerId !== captured.customerId) throw new WebhookInputError(503, 'Vínculo de checkout ambiguo');
     return captured;
   }, { isolationLevel: 'RepeatableRead', maxWait: 5000, timeout: 10000 });
-  check();
-  return Object.freeze({ ...original, linkedRowId: owner.rowId, writeAuthorized: false as const });
 }

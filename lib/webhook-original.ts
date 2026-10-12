@@ -4,6 +4,8 @@ import { stripe } from '@/lib/stripe';
 import { captureWebhookEvent, checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { captureCheckoutPrices, captureCheckoutSubscription, captureCheckoutCustomer, preflightCheckoutBusiness } from '@/lib/checkout-webhook-business';
 
+import { invoiceEventProjection, preflightInvoiceBusiness } from '@/lib/invoice-webhook-business';
+
 export class WebhookSignatureFailure extends Error {}
 type Prices = ReturnType<typeof captureCheckoutPrices>;
 type Original = { event: any; prices: Prices; check: () => void; claimed: boolean; retired: boolean };
@@ -148,3 +150,26 @@ async function denyCheckout(original: Original, result: Awaited<ReturnType<typeo
 
 export const preflightCheckoutOriginal = (value: unknown) => consumeCheckoutOriginal(value, false);
 export const admitCheckoutOriginal = (value: unknown) => consumeCheckoutOriginal(value, true);
+
+export async function preflightInvoiceOriginal(value: unknown) {
+  const original = owned(value);
+  if (original.claimed) throw new WebhookInputError(503, 'Preflight original consumido');
+  original.claimed = true;
+  const check = () => { if (original.retired) throw new WebhookInputError(503, 'Original de webhook retirado'); try { original.check(); } catch(error) { original.retired = true; throw error; } };
+  try {
+    check();
+    const invoice = invoiceEventProjection(original.event, check);
+    if (!invoice) return null;
+    if (!original.prices) throw new WebhookInputError(503, 'Precios de factura no configurados');
+    const subscription = captureCheckoutSubscription(await stripe.subscriptions.retrieve(invoice.subscriptionId), check);
+    check();
+    const customer = captureCheckoutCustomer(await stripe.customers.retrieve(invoice.customerId), check);
+    check();
+    const result = await preflightInvoiceBusiness(invoice, subscription, customer, original.prices, check);
+    check();
+    return result; // Read-only only. Invoice admission, commission and writer remain pending.
+  } catch(error) {
+    original.retired = true;
+    throw error;
+  }
+}
