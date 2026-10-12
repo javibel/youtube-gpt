@@ -84,13 +84,14 @@ export function runDeterministicBestTimeOriginal(request: Request, sources: Best
         const prior = await step(() => tx.bestTimeAnalysisAttempt.findUnique({ where: { userId: owner.id } }));
         if (prior) throw Error('Best time original retained');
         if (!declaredReference) throw Error('Best time reference unavailable');
-        const row = await step(() => tx.bestTimeAnalysisAttempt.create({ data: { id, userId: owner.id, email: owner.email, channelId, referenceAt: new Date(declaredReference), state: 'pending' } }));
+        const sourceReference = declaredReference;
+        const row = await step(() => tx.bestTimeAnalysisAttempt.create({ data: { id, userId: owner.id, email: owner.email, channelId, referenceAt: new Date(sourceReference), state: 'pending' } }));
         if (row.id !== id || row.userId !== owner.id || row.email !== owner.email || row.channelId !== channelId || row.state !== 'pending') throw Error('Best time native admission unavailable');
         const createdAt = Date.prototype.toISOString.call(row.createdAt);
-        if (Date.prototype.toISOString.call(row.referenceAt) !== new Date(declaredReference).toISOString()
-          || new Date(declaredReference).getTime() > new Date(createdAt).getTime()) throw Error('Best time declared reference unavailable');
+        if (Date.prototype.toISOString.call(row.referenceAt) !== new Date(sourceReference).toISOString()
+          || new Date(sourceReference).getTime() > new Date(createdAt).getTime()) throw Error('Best time declared reference unavailable');
         check();
-        return Object.freeze({ plan, channelId, createdAt, referenceAt: declaredReference });
+        return Object.freeze({ plan, channelId, createdAt, referenceAt: sourceReference });
       }, { isolationLevel: 'RepeatableRead', maxWait: 5000, timeout: 15000 }));
       // Only the fresh native transaction ACK above enables this live closure.
       // No later row/read/JSON can enter this branch or repeat a source callback.
