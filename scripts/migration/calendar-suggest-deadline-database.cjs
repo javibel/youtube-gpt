@@ -12,19 +12,19 @@ module.exports=async(prisma,results)=>{
   await prisma.calendarEntry.createMany({data:[{userId:owner,title:'Native owner context',date:fixtureDay,status:'idea'},{userId:neighbor,title:'Native neighboring context',date:fixtureDay,status:'idea'}]});
   for(const reason of ['deadline','abort']){
    const selected=deferred(),ack=deferred(),finished=deferred(),controller=new AbortController(),timers=new Map();let elapsed=0,creates=0,retrieves=0,queries=0,factories=0;
-   const db={$transaction:(fn,options)=>prisma.$transaction(fn,options),bestTimeAnalysis:prisma.bestTimeAnalysis,trendAlert:prisma.trendAlert,trackedCompetitor:prisma.trackedCompetitor,youtubeToken:prisma.youtubeToken,calendarEntry:{findMany:async input=>{queries++;const rows=await prisma.calendarEntry.findMany(input);assert.equal(rows.length,1);assert.equal(rows[0].userId,owner);selected.resolve(rows);await ack.promise;finished.resolve();return rows;}}};
+   const queryDone=deferred();const db={$transaction:async(fn,options)=>{try{return await prisma.$transaction(tx=>fn({...tx,calendarEntry:{findMany:async input=>{queries++;const rows=await tx.calendarEntry.findMany(input);assert.equal(rows.length,1);assert.equal(rows[0].userId,owner);selected.resolve(rows);await ack.promise;finished.resolve();return rows;}}}),options);}finally{queryDone.resolve();}}};
    const route=load('app/api/calendar/suggest/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner,email:users[0].email}})},'@/lib/plans':plans,'@/lib/prisma':{prisma:db},'@/lib/ai/task-runtime':{getMessagesTask:async()=>{factories++;return {create:async()=>{creates++;throw Error('Retired context must not dispatch');},retrieve:async()=>{retrieves++;throw Error('Retired context must not retrieve');}};}}},{performance:{now:()=>elapsed},setTimeout(fn){timers.set(1,fn);return 1;},clearTimeout:id=>timers.delete(id)});
    const before=await snapshot(),original=route.POST(req(controller.signal));await Promise.race([selected.promise,original.then(()=>{throw Error('Original HTTP finished before expected native context SELECT');})]);
    if(reason==='abort')controller.abort();else{elapsed=55000;for(const fn of [...timers.values()])fn();}
    const response=await original;assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:'suggestions_unconfirmed',retryMayConsume:false});assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(timers.size,0);
-   ack.resolve();await finished.promise;await flush();assert.equal(creates,0);assert.equal(retrieves,0);assert.equal(queries,1);assert.equal(factories,1);assert.deepEqual(await snapshot(),before);
+   ack.resolve();await finished.promise;await queryDone.promise;await flush();assert.equal(creates,0);assert.equal(retrieves,0);assert.equal(queries,1);assert.equal(factories,0);assert.deepEqual(await snapshot(),before);
    results.push('calendar suggestions '+reason+' after actual owner-scoped PostgreSQL SELECT retires HTTP; late context never invokes synthetic task create/retrieve, all owner and neighboring business rows unchanged (task runtime mocked; no native AI admission claim)');
   }
   {
    const body=deferred(),started=deferred(),controller=new AbortController();let factories=0;
    const route=load('app/api/calendar/suggest/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner,email:users[0].email}})},'@/lib/plans':plans,'@/lib/prisma':{prisma},'@/lib/ai/task-runtime':{getMessagesTask:async()=>{factories++;throw Error('Late body must not construct task');}}});
    const request=req(controller.signal);request.json=()=>{started.resolve();return body.promise;};const before=await snapshot(),original=route.POST(request);await started.promise;controller.abort();assert.equal((await original).status,503);body.resolve({lang:'es'});await flush();assert.equal(factories,0);assert.deepEqual(await snapshot(),before);
-   results.push('calendar suggestions original body abort after stored-Pro PostgreSQL authorization prevents a late body from constructing a task and leaves native business rows unchanged');
+   results.push('calendar suggestions original body abort before PostgreSQL owner/context authorization prevents a late body from constructing a task and leaves native business rows unchanged');
   }
  }finally{await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});}
 };

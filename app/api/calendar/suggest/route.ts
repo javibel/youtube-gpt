@@ -1,3 +1,5 @@
+import { captureSuggestionTimes, captureSuggestionTrends, captureSuggestionCompetitors,
+  captureSuggestionCalendar, captureSuggestionChannel } from '@/lib/calendar-suggestion-context';
 import { decodeCalendarSuggestions } from '@/lib/calendar-suggestion-contract';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
@@ -80,23 +82,42 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
     return NextResponse.json({error:'invalid_recovery'},{status:400});
   }
 
+  const body = await wait.run(() => request.json().catch(() => null));
+  wait.check();
+  if (!body || typeof body !== 'object' || Array.isArray(body)
+    || Object.keys(body).some(key => key !== 'lang'))
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  const language = body.lang;
+  wait.check();
+  if (language !== undefined && language !== 'es' && language !== 'en')
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  const input = Object.freeze({ lang: language === undefined ? 'es' : language });
+  const lang = input.lang;
+
+
   // Identity and declared permission come from the same own SQL snapshot.
   // This read neither admits a task nor reconstructs an original producer.
+  let originalSnapshot: unknown;
+  let queryEntered = false;
   const permission = await wait.run(() => prisma.$transaction(async tx => {
+    wait.check();
+    if (queryEntered) throw Error('Duplicate context producer');
+    queryEntered = true;
+    const original = await (async () => {
     wait.check();
     const user = await tx.user.findUnique({
       where: { email: owner.email }, select: { id: true, email: true },
     });
     wait.check();
-    if (!user) return { status: 404, access: null };
+    if (!user) return { status: 404, access: null, context: null };
     if (user.id !== owner.id || user.email !== owner.email)
-      return { status: 401, access: null };
+      return { status: 401, access: null, context: null };
     const subscription = await tx.subscription.findUnique({
       where: { userId: owner.id },
       select: { userId: true, status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true },
     });
     wait.check();
-    if (subscription === null) return { status: 403, access: null };
+    if (subscription === null) return { status: 403, access: null, context: null };
     const { userId: planOwner, status, plan, stripeCustomerId, currentPeriodEnd } = subscription;
     if (planOwner !== owner.id || typeof status !== 'string' || !status
       || !['free', 'pro', 'business'].includes(plan)
@@ -109,9 +130,47 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
       status, stripeCustomerId, currentPeriodEnd: expiry === null ? null : new Date(expiry),
     });
     wait.check();
-    return { status: paid ? 200 : 403, access: paid ? access : null };
+    if (!paid) return { status: 403, access: null, context: null };
+    // Copy each selection before the next await, inside the same owner/permission
+    // snapshot. The extra calendar/watchlist row detects incomplete coverage.
+    wait.check();
+    const bestTime = captureSuggestionTimes(await tx.bestTimeAnalysis.findUnique({
+      where: { userId }, select: { userId: true, topSlots: true, analyzedAt: true },
+    }), userId, wait.check);
+    wait.check();
+    const trendAlerts = captureSuggestionTrends(await tx.trendAlert.findMany({
+      where: { userId, relevance: { gte: 60 } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], take: 10,
+      select: { id: true, userId: true, title: true, category: true, relevance: true, createdAt: true },
+    }), userId, wait.check);
+    wait.check();
+    const competitors = captureSuggestionCompetitors(await tx.trackedCompetitor.findMany({
+      where: { userId }, orderBy: [{ addedAt: 'asc' }, { id: 'asc' }], take: 21,
+      select: { id: true, userId: true, channelId: true, channelName: true, addedAt: true },
+    }), userId, wait.check);
+    wait.check();
+    const existingEntries = captureSuggestionCalendar(await tx.calendarEntry.findMany({
+      where: { userId, date: { gte: selection.baseDay } },
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], take: 201,
+      select: { id: true, userId: true, title: true, date: true, status: true, createdAt: true },
+    }), userId, selection.baseDay, wait.check);
+    wait.check();
+    const ytToken = captureSuggestionChannel(await tx.youtubeToken.findUnique({
+      where: { userId }, select: { userId: true, channelId: true, channelName: true },
+    }), userId, wait.check);
+    const context = Object.freeze({ bestTime, trendAlerts, competitors, existingEntries, ytToken,
+      coverage: Object.freeze({ calendarComplete: true, calendarCount: existingEntries.length, calendarLimit: 200,
+        watchlistComplete: true, watchlistCount: competitors.length, watchlistLimit: 20,
+        trendSelectionLimit: 10, trendSelectionCount: trendAlerts.length }) });
+    wait.check();
+    return { status: 200, access, context };
+    })();
+    wait.check();
+    originalSnapshot = Object.freeze(original);
+    return original;
   }, { isolationLevel: 'RepeatableRead', maxWait: 55_000, timeout: 55_000 }));
   wait.check();
+  if (permission !== originalSnapshot) throw Error('Unconfirmed original snapshot');
   if (permission.status !== 200)
     return NextResponse.json({ error: permission.status === 404 ? 'owner_not_found'
       : permission.status === 401 ? 'unauthorized' : 'pro_required' }, { status: permission.status });
@@ -122,17 +181,7 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
       currentPeriodEnd: access.expiry === null ? null : new Date(access.expiry) });
   };
 
-  const body = await wait.run(() => request.json().catch(() => null));
-  wait.check();
-  if (!body || typeof body !== 'object' || Array.isArray(body)
-    || Object.keys(body).some(key => key !== 'lang'))
-    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
-  const language = body.lang;
-  wait.check();
-  if (language !== undefined && language !== 'es' && language !== 'en')
-    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
-  const input = Object.freeze({ lang: language === undefined ? 'es' : language });
-  const lang = input.lang;
+
   if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
 
   let task;
@@ -144,33 +193,12 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
 
   if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
 
-  // Gather data in parallel
-  const [bestTime, trendAlerts, competitors, existingEntries, ytToken] = await wait.run(() => Promise.all([
-    prisma.bestTimeAnalysis.findUnique({ where: { userId } }),
-    prisma.trendAlert.findMany({
-      where: { userId, relevance: { gte: 60 } },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    }),
-    prisma.trackedCompetitor.findMany({
-      where: { userId },
-      select: { channelId: true, channelName: true },
-      take: 10,
-    }),
-    prisma.calendarEntry.findMany({
-      where: { userId, date: { gte: selection.baseDay } },
-      orderBy: { date: 'asc' },
-      take: 30,
-    }),
-    prisma.youtubeToken.findUnique({ where: { userId }, select: { channelId: true, channelName: true } }),
-  ]));
-
-  if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+  const { bestTime, trendAlerts, competitors, existingEntries, ytToken } = permission.context!;
 
   // Best time slots
   let bestTimeInfo = 'No best time analysis available.';
-  if (bestTime?.topSlots) {
-    const slots = bestTime.topSlots as { day: number; hour: number; score: number }[];
+  if (bestTime?.topSlots.length) {
+    const slots = bestTime.topSlots;
     bestTimeInfo = slots
       .map((s, i) => `${i + 1}. ${DAY_NAMES_EN[s.day]} at ${s.hour}:00 UTC (score: ${s.score})`)
       .join('\n');
@@ -216,7 +244,7 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
 
   // Existing calendar entries
   const existingInfo = existingEntries.length > 0
-    ? existingEntries.slice(0, 15).map(e => `- ${e.date}: "${e.title}" (${e.status})`).join('\n')
+    ? existingEntries.map(e => `- ${e.date}: "${e.title}" (${e.status})`).join('\n')
     : 'No upcoming entries.';
 
 
@@ -255,6 +283,8 @@ ${existingInfo}`,
         }],
     };
     if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
+    Object.freeze(parameters.messages[0]); Object.freeze(parameters.messages); Object.freeze(parameters);
+    wait.check();
     const data = await wait.run(() => recovery !== null
       ? Promise.resolve(task.retrieve?.(parameters, { signal: request.signal }))
       : task.create(parameters, { signal: request.signal }));

@@ -46,13 +46,13 @@ const contextCalls=h=>h.calls.filter(x=>['bestTime','trends','competitors','entr
   await test('captured manual expiry at '+stage+' never renews or admits a later task',async()=>{
    const h=harness({held:['auth',stage],recovery:stage==='retrieve'});h.state.subscription.stripeCustomerId='manual_admin';h.state.subscription.currentPeriodEnd=new Date('2026-10-07T12:00:01Z');h.gates.auth.resolve(h.state.auth);await h.started[stage].promise;
    h.state.subscription.currentPeriodEnd.setUTCFullYear(2099);h.wallAdvance(1001);h.gates[stage].resolve(h.state[stage]);const r=await h.original;assert.equal(r.status,403);assert.deepEqual(await r.json(),{error:'pro_required'});
-   assert.equal(h.captures.filter(c=>c.method).length,stage==='create'||stage==='retrieve'?1:0);assert.equal(h.timers.size,0);
+   assert.equal(h.captures.filter(c=>c.method).length,stage==='create'||stage==='retrieve'?1:0);if(stage==='transaction'||stage==='entries')assert.equal(h.calls.includes('factory'),false);assert.equal(h.timers.size,0);
   });
  await test('owner/subscription transaction uses RepeatableRead and retains one shared wait',async()=>{
   const h=harness();assert.equal((await h.original).status,200);assert.deepEqual(JSON.parse(JSON.stringify(h.captures.find(c=>c.transactionOptions).transactionOptions)), {isolationLevel:'RepeatableRead',maxWait:55000,timeout:55000});assert.equal(h.captures.filter(c=>c.transactionOptions).length,1);assert.equal(h.timers.size,0);
  });
  await test('abort after own SQL selection never constructs a task when late ACK arrives',async()=>{
-  const h=harness({held:'transaction'});await h.started.transaction.promise;h.controller.abort();assert.equal((await h.original).status,503);h.gates.transaction.resolve(h.state.transaction);await flush();assert.equal(h.calls.includes('factory'),false);assert.equal(h.calls.includes('body'),false);
+  const h=harness({held:'transaction'});await h.started.transaction.promise;h.controller.abort();assert.equal((await h.original).status,503);h.gates.transaction.resolve(h.state.transaction);await flush();assert.equal(h.calls.includes('factory'),false);assert.equal(h.calls.includes('body'),true);
  });
  console.log(JSON.stringify({scope:'actual calendar suggestions owner/input/permission prelude; synthetic clock/auth/SQL/AI, no operational acceptance or native context claim',status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',results},null,2));
  if(results.some(r=>r.status!=='PASS'))process.exitCode=1;
