@@ -21,7 +21,8 @@ function harness(options={}){
   if(u.pathname==='/youtube/v3/search')return Response.json({items:options.noVideos?[]:(options.videos??sample).map((_,i)=>({id:{videoId:'synthetic-'+i}}))},{status:options.searchStatus??200});
   assert.equal(u.pathname,'/youtube/v3/videos');return Response.json({items:options.videos??sample},{status:options.videoStatus??200});
  }});
- async function run(method='POST'){const r=await route[method]();return {status:r.status,body:await r.json()};}
+ const legacy=load('lib/best-time-producer-legacy.ts',{'next/server':{NextResponse:Response},'@/lib/ai/task-runtime':runtime,'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic',email:'synthetic@example.invalid'}}},'@/lib/plans':{getUserPlan:async()=>options.free?'free':'pro',isPaid:plan=>plan!=='free'},'@/lib/youtube-auth':{getAccessToken:async()=>options.noToken?null:'synthetic-token'},'@/lib/prisma':{prisma}},{Date:FixedDate,Error,fetch:async(url,init)=>{requests.push(url);assert.equal(init.headers.Authorization,'Bearer synthetic-token');const u=new URL(url);assert.equal(u.hostname,'www.googleapis.com');if(u.pathname==='/youtube/v3/search')return Response.json({items:options.noVideos?[]:(options.videos??sample).map((_,i)=>({id:{videoId:'synthetic-'+i}}))},{status:options.searchStatus??200});assert.equal(u.pathname,'/youtube/v3/videos');return Response.json({items:options.videos??sample},{status:options.videoStatus??200});}});
+ async function run(method='POST'){const r=await (method==='POST'?legacy.legacyBestTimeProducer():route[method]());return {status:r.status,body:await r.json()};}
  return {run,calls,requests,saved,reads};
 }
 const results=[];
@@ -48,5 +49,5 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  await test('wrong JSON type discarded without losing matrix',async()=>{const out=await harness({text:'7'}).run();assert.equal(out.body.data.aiTip,null);assert.equal(out.body.data.heatmap.length,7);});
  await test('truncated tip discarded',async()=>{assert.equal((await harness({stopReason:'max_tokens'}).run()).body.data.aiTip,null);});
  await test('unavailable AI control preserves non-AI analysis',async()=>{const out=await harness({controlUnavailable:true}).run();assert.equal(out.status,200);assert.equal(out.body.data.aiTip,null);assert.equal(out.body.data.videoCount,3);});
- console.log(JSON.stringify({scope:'migrated best-time route through real contract runner and adapter; synthetic YouTube, store, transport and clock',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
+ console.log(JSON.stringify({scope:'Historical relocated producer helper only for offline regression; real GET/cache remains tested separately. This is not POST HTTP admission or operational acceptance; YouTube/store/model transport fictitious',results},null,2));if(results.some(r=>r.status==='FAIL'))process.exitCode=1;
 })();
