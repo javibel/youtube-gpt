@@ -10,10 +10,12 @@ function harness(options={}){
  const requests=[],saved=[],reads=[];
  const runtime=taskFixture({taskType:'youtube.best-time-tip',controlUnavailable:options.controlUnavailable,respond:async()=>{if(options.aiError)throw Error('Synthetic AI failure');return {content:[{type:'text',text:options.text??'{"es":"Consejo sintético","en":"Synthetic tip"}'}],stop_reason:options.stopReason??'end_turn'};}});
  const calls=runtime.calls;
+ const store={findUnique:async query=>{reads.push(query);return options.cached??null;},upsert:async query=>{if(options.saveError)throw Error('Synthetic storage failure');saved.push(query);return query.create;}};
+ const prisma={bestTimeAnalysis:store,$transaction:async fn=>fn({$executeRawUnsafe:async sql=>{assert.equal(sql,'SET TRANSACTION READ ONLY');return 0;},user:{findUnique:async()=>({id:'synthetic',email:'synthetic@example.invalid'})},bestTimeAnalysis:store})};
  const route=load('app/api/youtube/best-time/route.ts',{
-  'next/server':{NextResponse:Response},'@/lib/ai/task-runtime':runtime,'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic'}}},
+  'next/server':{NextResponse:Response},'@/lib/ai/task-runtime':runtime,'@/auth':{auth:async()=>options.anonymous?null:{user:{id:'synthetic',email:'synthetic@example.invalid'}}},
   '@/lib/plans':{getUserPlan:async()=>options.free?'free':'pro',isPaid:plan=>plan!=='free'},'@/lib/youtube-auth':{getAccessToken:async()=>options.noToken?null:'synthetic-token'},
-  '@/lib/prisma':{prisma:{bestTimeAnalysis:{findUnique:async query=>{reads.push(query);return options.cached??null;},upsert:async query=>{if(options.saveError)throw Error('Synthetic storage failure');saved.push(query);return query.create;}}}},
+  '@/lib/prisma':{prisma},
  },{Date:FixedDate,Error,process:{env:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}},fetch:async(url,init)=>{
   requests.push(url);assert.equal(init.headers.Authorization,'Bearer synthetic-token');const u=new URL(url);assert.equal(u.hostname,'www.googleapis.com');
   if(u.pathname==='/youtube/v3/search')return Response.json({items:options.noVideos?[]:(options.videos??sample).map((_,i)=>({id:{videoId:'synthetic-'+i}}))},{status:options.searchStatus??200});
@@ -27,8 +29,8 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
 (async()=>{
  for(const [name,options,status] of [['anonymous blocked',{anonymous:true},401],['free POST blocked',{free:true},403],['no token blocked',{noToken:true},400]])await test(name,async()=>{const h=harness(options);assert.equal((await h.run()).status,status);assert.equal(h.requests.length,0);assert.equal(h.calls.length,0);});
  await test('anonymous cache access blocked',async()=>{const h=harness({anonymous:true});assert.equal((await h.run('GET')).status,401);assert.equal(h.reads.length,0);});
- await test('missing cache contract',async()=>{const h=harness();assert.deepEqual(await h.run('GET'),{status:200,body:{data:null}});assert.equal(h.reads[0].where.userId,'synthetic');});
- await test('cached response remains readable',async()=>{const cached={heatmap:[],topSlots:[],videoCount:3,aiTip:null,analyzedAt:new Date(epoch)};assert.equal((await harness({cached}).run('GET')).body.data.analyzedAt,'2026-09-14T12:00:00.000Z');});
+ await test('missing cache contract',async()=>{const h=harness();assert.deepEqual(await h.run('GET'),{status:200,body:{owner:{id:'synthetic',email:'synthetic@example.invalid'},data:null}});assert.equal(h.reads[0].where.userId,'synthetic');});
+ await test('cached response remains readable',async()=>{const cached={userId:'synthetic',heatmap:Array.from({length:7},()=>Array(24).fill(0)),topSlots:[],videoCount:3,aiTip:null,analyzedAt:new Date(epoch)};assert.equal((await harness({cached}).run('GET')).body.data.analyzedAt,'2026-09-14T12:00:00.000Z');});
  await test('no videos blocks analysis',async()=>{const h=harness({noVideos:true});assert.equal((await h.run()).body.error,'no_videos');assert.equal(h.calls.length,0);});
  await test('fewer than three points blocks analysis',async()=>{const h=harness({videos:sample.slice(0,2)});assert.equal((await h.run()).body.error,'not_enough_videos');assert.equal(h.calls.length,0);});
  await test('older than twelve months excluded',async()=>{const h=harness({videos:[...sample.slice(0,2),video('2025-01-01T12:00:00Z')]});assert.equal((await h.run()).body.videoCount,2);});
