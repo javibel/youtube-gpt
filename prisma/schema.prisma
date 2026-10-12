@@ -59,6 +59,7 @@ model User {
   videoPreviews   VideoPreview[]
   videoSeoScores    VideoSeoScore[]
   bestTimeAnalysis  BestTimeAnalysis?
+  bestTimeAnalysisAttempt BestTimeAnalysisAttempt?
   channelSnapshots  ChannelSnapshot[]
   dailyIdeas           DailyIdea[]
   trackedCompetitors   TrackedCompetitor[]
@@ -423,6 +424,19 @@ model BestTimeAnalysis {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("best_time_analyses")
+}
+
+// Excludes another fresh statistical analysis; never an AI credit or recovery permission.
+model BestTimeAnalysisAttempt {
+  id        String @id
+  userId    String @unique
+  email     String
+  channelId String
+  referenceAt DateTime?
+  state     String @default("pending")
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("best_time_analysis_attempts")
 }
 
 model Team {
