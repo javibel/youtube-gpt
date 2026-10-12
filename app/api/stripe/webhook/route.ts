@@ -1,8 +1,8 @@
-import { stripe, subscriptionPeriod, createBillingPortalUrl } from '@/lib/stripe';
+import { stripe, createBillingPortalUrl } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
+import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, preflightSubscriptionOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
 import { checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { readWebhookBody, webhookWait, WebhookWaitRetired, type WebhookWait } from '@/lib/stripe-webhook-intake';
 import { triggerTrialEndingEmail, triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
@@ -10,16 +10,6 @@ import { reverseAffiliateCommissionForInvoice } from '@/lib/affiliate';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-const BUSINESS_PRICE_IDS = new Set(
-  [process.env.STRIPE_BUSINESS_PRICE_ID, process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID]
-    .filter(Boolean)
-    .map(id => id!.trim())
-);
-
-function detectPlan(priceId: string): string {
-  return BUSINESS_PRICE_IDS.has(priceId) ? 'business' : 'pro';
-}
 
 // Resolución histórica de dueño para avisos: vínculo por customerId y fallback por email.
 // Su contrato, admisión y efectos de notificación siguen pendientes.
@@ -133,25 +123,10 @@ export async function POST(request: Request) {
 
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-        const item = subscription.items.data[0];
-
-        const plan = item?.price?.id ? detectPlan(item.price.id) : undefined;
-        const period = subscriptionPeriod(subscription);
-        await wait.run(() => { const data = {
-          where: { stripeCustomerId: customerId },
-          data: {
-            status: subscription.status,
-            cancelAtPeriodEnd: subscription.cancel_at_period_end,
-            stripePriceId: item?.price?.id,
-            ...(plan ? { plan } : {}),
-            currentPeriodStart: period.start,
-            currentPeriodEnd: period.end,
-          },
-        }; wait.check(); return prisma.subscription.updateMany(data); });
-        break;
+        await wait.run(() => preflightSubscriptionOriginal(original));
+        throw new WebhookInputError(503, 'Suscripción pendiente de conciliación original');
       }
+
     }
     wait.check();
     return reply({ received: true });

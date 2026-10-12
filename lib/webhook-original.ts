@@ -6,6 +6,8 @@ import { captureCheckoutPrices, captureCheckoutSubscription, captureCheckoutCust
 
 import { invoiceEventProjection, preflightInvoiceBusiness } from '@/lib/invoice-webhook-business';
 
+import { subscriptionEventProjection, preflightSubscriptionBusiness } from '@/lib/subscription-webhook-business';
+
 export class WebhookSignatureFailure extends Error {}
 type Prices = ReturnType<typeof captureCheckoutPrices>;
 type Original = { event: any; prices: Prices; check: () => void; claimed: boolean; retired: boolean };
@@ -168,6 +170,26 @@ export async function preflightInvoiceOriginal(value: unknown) {
     const result = await preflightInvoiceBusiness(invoice, subscription, customer, original.prices, check);
     check();
     return result; // Read-only only. Invoice admission, commission and writer remain pending.
+  } catch(error) {
+    original.retired = true;
+    throw error;
+  }
+}
+
+export async function preflightSubscriptionOriginal(value: unknown) {
+  const original = owned(value);
+  if (original.claimed) throw new WebhookInputError(503, 'Preflight original consumido');
+  original.claimed = true;
+  const check = () => { if (original.retired) throw new WebhookInputError(503, 'Original de webhook retirado'); try { original.check(); } catch(error) { original.retired = true; throw error; } };
+  try {
+    check();
+    const projected = subscriptionEventProjection(original.event, original.prices, check);
+    // Event snapshot stays immutable; a provider lookup cannot renew its dates.
+    const customer = captureCheckoutCustomer(await stripe.customers.retrieve(projected.customerId), check);
+    check();
+    const result = await preflightSubscriptionBusiness(projected, customer, check);
+    check();
+    return result; // Never admission, billing retirement, entitlement or writer permission.
   } catch(error) {
     original.retired = true;
     throw error;
