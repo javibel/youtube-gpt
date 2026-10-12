@@ -24,6 +24,14 @@ export function paidInvoiceProjection(input: unknown, check: () => void) {
       !['eur','usd'].includes(invoice.currency) || !amount(invoice.amount_paid) ||
       !amount(invoice.amount_due) || invoice.amount_remaining !== 0) return invalid();
   if (invoice.subscription === null) return null;
+  return Object.freeze({ ...subscriptionInvoiceLinesProjection(invoice, check),
+    amountPaidCents: invoice.amount_paid, amountDueCents: invoice.amount_due, writeAuthorized: false as const });
+}
+// Common subscription lines only. A paid or failed header must be validated by
+// its own consumer; this projection never changes status or manufactures an event.
+export function subscriptionInvoiceLinesProjection(input: unknown, check: () => void) {
+  const invoice = captureWebhookData(input, check);
+  if (!invoice || invoice.object !== 'invoice' || !id(invoice.id,'in') || !['eur','usd'].includes(invoice.currency)) return invalid();
   const subscriptionId = reference(invoice.subscription,'sub','subscription'),
     customerId = reference(invoice.customer,'cus','customer');
   if (!['subscription_create','subscription_cycle','subscription_update'].includes(invoice.billing_reason))
@@ -64,7 +72,7 @@ export function paidInvoiceProjection(input: unknown, check: () => void) {
   return Object.freeze({ invoiceId: invoice.id, customerId, subscriptionId, itemId: line.itemId,
     priceId: line.priceId, interval: line.interval, currency: invoice.currency,
     billingReason: invoice.billing_reason, prorated,
-    amountPaidCents: invoice.amount_paid, amountDueCents: invoice.amount_due, ...detail,
+    ...detail,
     periodStartSeconds: line.periodStartSeconds, periodEndSeconds: line.periodEndSeconds, writeAuthorized: false as const });
 }
 export async function preflightInvoiceBusiness(invoice: NonNullable<ReturnType<typeof invoiceEventProjection>>,
