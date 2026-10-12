@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { captureWebhookEvent, checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { captureCheckoutPrices, captureCheckoutSubscription, captureCheckoutCustomer, preflightCheckoutBusiness } from '@/lib/checkout-webhook-business';
@@ -55,7 +57,7 @@ export function prepareWebhookVerification(check: () => void) {
     },
   });
 }
-export async function preflightCheckoutOriginal(value: unknown) {
+async function consumeCheckoutOriginal(value: unknown, durable: boolean) {
   const original = owned(value);
   if (original.claimed) throw new WebhookInputError(503, 'Preflight original consumido');
   original.claimed = true; // Single live invocation, never lookup/retry by serialized event or selector.
@@ -71,9 +73,78 @@ export async function preflightCheckoutOriginal(value: unknown) {
     check();
     const result = await preflightCheckoutBusiness(checkout, subscription, customer, original.prices, check);
     check();
-    return result; // Always writeAuthorized:false. Native durable denial/admission is still pending.
+    const outcome = durable ? await denyCheckout(original, result, check) : result;
+    check();
+    return outcome; // Never write permission.
   } catch(error) {
     original.retired = true;
     throw error;
   }
 }
+
+async function denyCheckout(original: Original, result: Awaited<ReturnType<typeof preflightCheckoutBusiness>>, check: () => void) {
+  // This transaction only records permanent denial. Native ACK is retained by
+  // this invocation; a later row read cannot recover it or authorize a writer.
+  const checkout = checkoutEventProjection(original.event)!;
+  if (!result || result.writeAuthorized !== false || [result.userId,result.email,result.customerId,result.subscriptionId,result.linkedRowId].some(v => typeof v !== "string" || !v))
+    throw new WebhookInputError(503, "Preflight no confirmado");
+  const captured = Object.freeze({ id: randomUUID(), userId: result.userId, email: result.email,
+    eventId: original.event.id as string, sessionId: checkout.sessionId,
+    customerId: result.customerId, stripeSubscriptionId: result.subscriptionId,
+    linkedSubscriptionId: result.linkedRowId, state: 'pending' });
+  const row = await prisma.$transaction(async tx => {
+    check();
+    const users = await tx.$queryRawUnsafe<Array<{id: string; email: string}>>(
+      'SELECT id,email FROM users WHERE id=$1 FOR UPDATE', result.userId);
+    check();
+    if (users.length !== 1 || users[0].id !== result.userId || users[0].email !== result.email)
+      throw new WebhookInputError(503, 'Vínculo de checkout no confirmado');
+    const rows = await tx.$queryRawUnsafe<Array<{id: string}>>(
+      'SELECT id FROM subscriptions WHERE "userId"=$1 FOR UPDATE', result.userId);
+    check();
+    if (rows.length !== 1 || rows[0].id !== result.linkedRowId)
+      throw new WebhookInputError(503, 'Vínculo de checkout no confirmado');
+    const latest = await tx.user.findUnique({ where: { id: result.userId }, include: { subscription: true } });
+    check();
+    if (!latest || latest.id !== result.userId || latest.email !== result.email ||
+        latest.subscription?.id !== result.linkedRowId || latest.subscription.userId !== result.userId ||
+        latest.subscription.stripeCustomerId !== result.customerId)
+      throw new WebhookInputError(503, 'Vínculo de checkout no confirmado');
+    const linked = await tx.subscription.findMany({ where: { stripeCustomerId: result.customerId },
+      select: { id: true, userId: true, stripeCustomerId: true }, orderBy: { id: 'asc' }, take: 2 });
+    check();
+    if (linked.length !== 1 || linked[0].id !== result.linkedRowId ||
+        linked[0].userId !== result.userId || linked[0].stripeCustomerId !== result.customerId)
+      throw new WebhookInputError(503, 'Vínculo de checkout ambiguo');
+    // All states deny. A complete checkout is not permission to retire its
+    // original, associate a new customer, or activate subscription entitlement.
+    for (const read of [
+      () => tx.checkoutAttempt.findUnique({ where: { userId: result.userId } }),
+      () => tx.subscriptionCancellationAttempt.findUnique({ where: { userId: result.userId } }),
+      () => tx.subscriptionDowngradeAttempt.findUnique({ where: { userId: result.userId } }),
+      () => tx.subscriptionSyncAttempt.findUnique({ where: { userId: result.userId } }),
+    ]) {
+      const prior = await read();
+      check();
+      if (prior) throw new WebhookInputError(503, 'Admisión de billing pendiente');
+    }
+    const prior = await tx.checkoutWebhookDenial.findFirst({ where: { OR: [
+      { userId: captured.userId }, { eventId: captured.eventId }, { sessionId: captured.sessionId },
+      { customerId: captured.customerId },
+    ] } });
+    check();
+    if (prior) throw new WebhookInputError(503, 'Webhook pendiente de conciliación original');
+    const created = await tx.checkoutWebhookDenial.create({ data: captured });
+    // Capture native return before commit/next await; no read-back fallback.
+    check();
+    if (!created || !Object.entries(captured).every(([k,v]) => (created as Record<string,unknown>)[k] === v))
+      throw new WebhookInputError(503, 'Acuse de negación no confirmado');
+    return true;
+  }, { maxWait: 5000, timeout: 10000 });
+  check();
+  if (row !== true) throw new WebhookInputError(503, 'Acuse de negación no confirmado');
+  return Object.freeze({ ...result, denialAcknowledged: true as const, writeAuthorized: false as const });
+}
+
+export const preflightCheckoutOriginal = (value: unknown) => consumeCheckoutOriginal(value, false);
+export const admitCheckoutOriginal = (value: unknown) => consumeCheckoutOriginal(value, true);

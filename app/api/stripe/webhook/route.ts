@@ -2,7 +2,7 @@ import { stripe, subscriptionPeriod, createBillingPortalUrl } from '@/lib/stripe
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { prepareWebhookVerification, snapshotWebhookOriginal, preflightCheckoutOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
+import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
 import { checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { readWebhookBody, webhookWait, WebhookWaitRetired, type WebhookWait } from '@/lib/stripe-webhook-intake';
 import { triggerTrialEndingEmail, triggerPaymentFailedEmail } from '@/lib/lifecycle-trigger';
@@ -98,9 +98,9 @@ export async function POST(request: Request) {
     switch (event.type) {
       case 'checkout.session.completed': {
         if (checkout) {
-          await wait.run(() => preflightCheckoutOriginal(original));
-          // Matching data is not a live durable admission capability. Never upsert from this projection.
-          throw new WebhookInputError(503, 'Evento pendiente de admisión original');
+          await wait.run(() => admitCheckoutOriginal(original));
+          // This native ACK records denial only; entitlement and original reconciliation remain pending.
+          throw new WebhookInputError(503, 'Evento pendiente de conciliación original');
         }
         break;
       }

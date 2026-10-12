@@ -68,6 +68,8 @@ export async function syncSubscriptionOriginal(owner: Owner, input: Input, key: 
     const matches = (r:Record<string,unknown>|null)=>!!r && r.state==='pending' && Object.entries(captured).every(([k,v])=>r[k]===v);
     const admission = await prisma.$transaction(async tx=>{
       await lock(tx);
+      const webhook = await tx.checkoutWebhookDenial.findUnique({ where: { userId: own.userId } });
+      check(); if (webhook) throw Error("Webhook original reconciliation pending");
       const downgrade = await tx.subscriptionDowngradeAttempt.findUnique({where:{userId:own.userId}}); check(); if(downgrade)return null;
       const cancellation = await tx.subscriptionCancellationAttempt.findUnique({where:{userId:own.userId}}); check(); if(cancellation)return null;
       const checkout = await tx.checkoutAttempt.findUnique({where:{userId:own.userId}}); check(); if(checkout && checkout.state!=='complete')return null;
@@ -76,7 +78,10 @@ export async function syncSubscriptionOriginal(owner: Owner, input: Input, key: 
     },{maxWait:10_000,timeout:15_000});
     check(); if(!matches(admission))return unconfirmed();
     const result = await prisma.$transaction(async tx=>{
-      await lock(tx); const attempt=await tx.subscriptionSyncAttempt.findUnique({where:{userId:own.userId}}); check();
+      await lock(tx);
+      const webhook = await tx.checkoutWebhookDenial.findUnique({ where: { userId: own.userId } });
+      check(); if (webhook) throw Error("Webhook original reconciliation pending");
+      const attempt=await tx.subscriptionSyncAttempt.findUnique({where:{userId:own.userId}}); check();
       if(!matches(attempt))throw Error('Sync unconfirmed');
       const customers = await stripe.customers.list({email:own.email,limit:5}); check();
       if(!customers || customers.has_more!==false || !Array.isArray(customers.data) || customers.data.length>1)throw Error('Sync unconfirmed');

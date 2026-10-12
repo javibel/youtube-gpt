@@ -85,6 +85,7 @@ model User {
   profileUpdates ProfileUpdateAttempt[]
   passwordChanges PasswordChangeAttempt[]
   checkoutAttempts CheckoutAttempt[]
+  checkoutWebhookDenials CheckoutWebhookDenial[]
   subscriptionCancellations SubscriptionCancellationAttempt[]
   subscriptionDowngrades SubscriptionDowngradeAttempt[]
   subscriptionSyncs SubscriptionSyncAttempt[]
@@ -1274,4 +1275,20 @@ model SubscriptionSyncAttempt {
   state String @default("pending")
   createdAt DateTime @default(now())
   @@map("subscription_sync_attempts")
+}
+
+// Permanent denial only; neither a row nor its native acknowledgement authorizes entitlement.
+model CheckoutWebhookDenial {
+  id String @id
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  email String
+  eventId String @unique
+  sessionId String @unique
+  customerId String @unique
+  stripeSubscriptionId String
+  linkedSubscriptionId String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  @@map("checkout_webhook_denials")
 }

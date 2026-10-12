@@ -109,6 +109,8 @@ export async function checkoutOriginal(owner: Owner, input: unknown, key: string
       && Object.entries(captured).every(([k,v]) => r[k] === v);
     const admission = await prisma.$transaction(async tx => {
       await lock(tx);
+      const webhook = await tx.checkoutWebhookDenial.findUnique({ where: { userId: own.userId } });
+      check(); if (webhook) throw Error("Webhook original reconciliation pending");
       const sync = await tx.subscriptionSyncAttempt.findUnique({ where: { userId: own.userId } });
       check(); if (sync) return null;
       const downgrade = await tx.subscriptionDowngradeAttempt.findUnique({ where: { userId: own.userId } });
@@ -125,6 +127,8 @@ export async function checkoutOriginal(owner: Owner, input: unknown, key: string
     // acknowledgement ends here; a later SQL read never resumes the provider.
     const url = await prisma.$transaction(async tx => {
       await lock(tx);
+      const webhook = await tx.checkoutWebhookDenial.findUnique({ where: { userId: own.userId } });
+      check(); if (webhook) throw Error("Webhook original reconciliation pending");
       const row = await tx.checkoutAttempt.findUnique({ where: { userId: own.userId } });
       check(); if (!matches(row)) throw Error('Checkout unconfirmed');
       let customerId = selection.customerId;
