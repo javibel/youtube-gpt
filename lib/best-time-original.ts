@@ -28,8 +28,8 @@ export function runYouTubeBestTimeOriginal(request: Request, referenceAt: string
 // Trusted fixture bootstrap binds a data scope, never admission/recovery.
 // Auth, native business admission and all writer checks still run normally.
 export function runBoundBestTimeOriginal(request: Request, sources: BestTimeOriginalSources,
-  expectedOwner: Readonly<{ id: string; email: string }>) {
-  return runOriginal(request, sources, false, expectedOwner);
+  expectedOwner: Readonly<{ id: string; email: string }>, withTip = false) {
+  return runOriginal(request, sources, withTip, expectedOwner);
 }
 
 function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip: boolean, expectedOwner?: Readonly<{ id: string; email: string }>) {

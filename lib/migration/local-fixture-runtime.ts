@@ -17,7 +17,7 @@ export function installLocalFixture(): Promise<void> {
       const owner = Object.freeze({ id: bestTimeFixture.userId, email: bestTimeFixture.email });
       const transport = createBestTimeFixtureTransport();
       installBestTimeFixtureEntry(request => runBoundBestTimeOriginal(request,
-        createBestTimeYouTubeSources(bestTimeFixture.referenceAt, request.signal, transport), owner));
+        createBestTimeYouTubeSources(bestTimeFixture.referenceAt, request.signal, transport), owner, true));
       process.once('SIGTERM', () => { void composition.close(); });
       process.once('SIGINT', () => { void composition.close(); });
     } catch (error) { await composition.close(); throw error; }
