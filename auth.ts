@@ -9,6 +9,7 @@ import { ADMIN_EMAIL } from "@/lib/admin-email";
 import { authenticator } from "otplib";
 import { rateLimitDb } from "@/lib/rate-limit-db";
 import { AFFILIATES_DORMANT } from "@/lib/features";
+import { fixtureAuthRedirect } from "./lib/migration/local-auth-redirect.cjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -79,6 +80,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    // Auth.js derives localhost from NextURL even when AUTH_URL uses 127.0.0.1.
+    // Fix the JSON callback URL at its source, only inside the guarded fixture.
+    ...(process.env.YTV_MIGRATION_WEB_TEST === '1'
+      && (globalThis as typeof globalThis & { __ytvRuntimeGuard?: boolean }).__ytvRuntimeGuard === true
+      ? { redirect: fixtureAuthRedirect }
+      : {}),
     async signIn({ user, account }) {
       // Google OAuth: create or link user in DB
       if (account?.provider === 'google' && user.email) {
