@@ -27,13 +27,15 @@ export function runYouTubeBestTimeOriginal(request: Request, referenceAt: string
 
 function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip: boolean) {
   let pending = true, retired = false, timer: ReturnType<typeof setTimeout> | undefined;
+  let liveAccess: Parameters<typeof hasPaidAccess>[0] | undefined;
   const deadline = performance.now() + 65_000;
   const uncertain = () => Object.freeze({ status: 503, body: { error: 'best_time_analysis_unconfirmed' } });
   type Outcome = { status: number; body: Record<string, unknown> };
   let finish!: (value: Outcome) => void;
   const stopped = new Promise<Outcome>(resolve => { finish = resolve; });
   const retire = () => { retired = true; finish(uncertain()); if (timer !== undefined) clearTimeout(timer); };
-  const check = () => { if (retired || request.signal.aborted || performance.now() >= deadline) { retired = true; throw Error('Best time original ended'); } };
+  const check = () => { if (retired || request.signal.aborted || performance.now() >= deadline
+    || (liveAccess && !hasPaidAccess(liveAccess))) { retired = true; throw Error('Best time original ended'); } };
   const step = async <T>(run: () => PromiseLike<T>) => { check(); const result = await run(); check(); return result; };
   request.signal.addEventListener('abort', retire, { once: true });
   let capturedSources: BestTimeSources | undefined, declaredReference: string | undefined;
@@ -110,6 +112,7 @@ function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip
       // Only the fresh native transaction ACK above enables this live closure.
       // No later row/read/JSON can enter this branch or repeat a source callback.
       if (!capturedSources || !hasPaidAccess(admission.plan.access)) throw Error('Best time original unavailable');
+      liveAccess = admission.plan.access;
       const read = readDeclaredBestTime({ owner, channelId: admission.channelId, referenceAt: admission.referenceAt }, capturedSources, check, request.signal);
       const produced = await step(() => read.original);
       if (produced.status === 'unconfirmed') return uncertain();
@@ -140,8 +143,9 @@ function runOriginal(request: Request, sources: BestTimeOriginalSources, withTip
           || Date.prototype.toISOString.call(row.referenceAt) !== new Date(admission.referenceAt).toISOString()) throw Error('Best time original changed');
       };
       const analysis = produced.analysis;
-      if (withTip) await step(() => prisma.$transaction(revalidate, { isolationLevel: 'RepeatableRead', maxWait: 5000, timeout: 15000 }));
-      const aiTip = withTip ? await step(() => generateBestTimeTip(owner, id, analysis, check, request.signal)) : null;
+      const reviewTip = () => step(() => prisma.$transaction(revalidate, { isolationLevel: 'RepeatableRead', maxWait: 5000, timeout: 15000 }));
+      if (withTip) await reviewTip();
+      const aiTip = withTip ? await step(() => generateBestTimeTip(owner, id, analysis, check, request.signal, reviewTip)) : null;
       const data = bestTimeCache({ userId: owner.id, heatmap: analysis.heatmap, topSlots: analysis.topSlots,
         videoCount: analysis.videoCount, aiTip, analyzedAt: new Date(admission.referenceAt) }, owner.id);
       const saved = await step(() => prisma.$transaction(async tx => {

@@ -5,12 +5,17 @@ import type { BestTimeAnalysis } from './best-time-analysis';
 // directly, without retrieve, retries or a replacement promise. Policy, model,
 // credentials, accounting and budget remain in the installed common runtime.
 export async function generateBestTimeTip(owner: Readonly<{ id: string; email: string }>, operationKey: string,
-  analysis: Extract<BestTimeAnalysis, { status: 'ready' }>, check: () => void, signal: AbortSignal): Promise<Readonly<{ es: string; en: string }> | null> {
+  analysis: Extract<BestTimeAnalysis, { status: 'ready' }>, check: () => void, signal: AbortSignal,
+  beforeDispatch: () => Promise<void>): Promise<Readonly<{ es: string; en: string }> | null> {
   check();
   const slots = analysis.topSlots.map(s => ({ day: s.day, hour: s.hour, score: s.score, videoCount: s.videoCount }));
   const task = await getMessagesTask({ operationKey, taskType: 'youtube.best-time-tip', userId: owner.id, language: 'es,en',
     instructionsVersion: 'best-time-tip-v1', incompletePolicy: 'reject',
     outputSchema: { type: 'object', properties: { es: { type: 'string', minLength: 1, maxLength: 4096 }, en: { type: 'string', minLength: 1, maxLength: 4096 } }, required: ['es', 'en'], additionalProperties: false } });
+  check();
+  // The awaited factory may take time. Only the same admitted coordinator can
+  // revalidate its business state and receive this native ACK before dispatch.
+  await beforeDispatch();
   check();
   const result = await task.create({ max_tokens: 200, messages: [{ role: 'user', content:
     `Publishing-time statistics from ${analysis.videoCount} videos. Days are UTC, Monday=0, Sunday=6. Selected slots: ${JSON.stringify(slots)}. `
