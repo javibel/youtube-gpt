@@ -21,16 +21,18 @@ export function invoiceEventProjection(event: any, check: () => void) {
   if (invoice.subscription === null) return null;
   const subscriptionId = reference(invoice.subscription,'sub','subscription'),
     customerId = reference(invoice.customer,'cus','customer');
-  if (!['subscription_create','subscription_cycle'].includes(invoice.billing_reason))
+  if (!['subscription_create','subscription_cycle','subscription_update'].includes(invoice.billing_reason))
     throw new WebhookInputError(503, 'Factura pendiente de conciliación original');
   const lines = invoice.lines;
   if (!lines || lines.object !== 'list' || lines.has_more !== false ||
       !Array.isArray(lines.data) || lines.data.length !== 1)
     throw new WebhookInputError(503, 'Líneas de factura no confirmadas');
-  const line = lines.data[0], price = line?.price;
+  const line = lines.data[0], price = line?.price, prorated = invoice.billing_reason === 'subscription_update';
+  if (prorated && line?.proration === false) throw new WebhookInputError(503, 'Variante de actualización no confirmada');
   if (!line || !id(line.id,'il') || line.object !== 'line_item' || line.type !== 'subscription' ||
-      line.proration !== false || line.quantity !== 1 || line.currency !== invoice.currency ||
-      (line.invoice != null && line.invoice !== invoice.id) || !amount(line.amount) ||
+      line.proration !== prorated || line.quantity !== 1 || line.currency !== invoice.currency ||
+      (line.invoice != null && line.invoice !== invoice.id) ||
+      !(prorated ? Number.isSafeInteger(line.amount) : amount(line.amount)) ||
       reference(line.subscription,'sub','subscription') !== subscriptionId ||
       !price || price.object !== 'price' || !id(price.id,'price') || price.currency !== invoice.currency ||
       !['month','year'].includes(price.recurring?.interval) || price.recurring?.interval_count !== 1 ||
@@ -39,6 +41,7 @@ export function invoiceEventProjection(event: any, check: () => void) {
   check();
   return Object.freeze({ invoiceId: invoice.id, customerId, subscriptionId, itemId,
     priceId: price.id, interval: price.recurring.interval, currency: invoice.currency,
+    billingReason: invoice.billing_reason, prorated,
     amountPaidCents: invoice.amount_paid, amountDueCents: invoice.amount_due, lineAmountCents: line.amount,
     periodStartSeconds: line.period.start, periodEndSeconds: line.period.end, writeAuthorized: false as const });
 }
@@ -49,11 +52,15 @@ export async function preflightInvoiceBusiness(invoice: NonNullable<ReturnType<t
   const projected = projectCheckoutBusiness({ userId: sub.metadata?.userId, customerId: invoice.customerId,
     subscriptionId: invoice.subscriptionId, paymentStatus: 'paid' }, sub, ownCustomer, prices, check);
   const item = sub.items.data[0];
+  // Preserve the declared partial span; never compute a time ratio or renew dates.
+  const periodMatches = invoice.prorated
+    ? invoice.periodStartSeconds >= projected.periodStartSeconds && invoice.periodEndSeconds === projected.periodEndSeconds
+    : invoice.periodStartSeconds === projected.periodStartSeconds && invoice.periodEndSeconds === projected.periodEndSeconds;
   if (item.id !== invoice.itemId || projected.priceId !== invoice.priceId ||
       projected.currency !== invoice.currency || item.price.recurring.interval !== invoice.interval ||
-      projected.periodStartSeconds !== invoice.periodStartSeconds ||
-      projected.periodEndSeconds !== invoice.periodEndSeconds) return invalid();
+      !periodMatches) return invalid();
   const owner = await preflightBillingLink(projected, check);
   check();
-  return Object.freeze({ ...projected, ...invoice, linkedRowId: owner.rowId, writeAuthorized: false as const });
+  return Object.freeze({ ...projected, ...invoice, subscriptionPeriodStartSeconds: projected.periodStartSeconds,
+    subscriptionPeriodEndSeconds: projected.periodEndSeconds, linkedRowId: owner.rowId, writeAuthorized: false as const });
 }
