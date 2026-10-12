@@ -57,7 +57,7 @@ const output=value=>({content:[{type:'text',text:JSON.stringify(value)}]});
   const r=await h.original;assert.equal(r.status,200);assert.equal((await r.json()).suggestions[0].date,'2026-10-08');
   assert.equal(h.captures.find(c=>c.entriesQuery).entriesQuery.where.date.gte,'2026-10-07');
   assert.match(h.captures.find(c=>c.method).parameters.messages[0].content,/Pick dates from: 2026-10-08,/);
-  assert.match(h.captures.find(c=>c.url).url,/publishedAfter=2026-09-30T23:59:59.000Z/);
+  assert.equal(new URL(h.captures.find(c=>c.url).url).searchParams.get('publishedAfter'),'2026-09-30T23:59:59.000Z');
  });
  await test('a changed wall date does not replace the submitted invalid date',async()=>{
   const h=harness({held:'create'});await h.started.create.promise;h.wallAdvance(86400000);

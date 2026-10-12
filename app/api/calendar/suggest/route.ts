@@ -1,3 +1,4 @@
+import { captureSuggestionSearch, type SearchSelection } from '@/lib/calendar-suggestion-search';
 import { captureSuggestionTimes, captureSuggestionTrends, captureSuggestionCompetitors,
   captureSuggestionCalendar, captureSuggestionChannel } from '@/lib/calendar-suggestion-context';
 import { decodeCalendarSuggestions } from '@/lib/calendar-suggestion-contract';
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
   const baseDay = new Date(baseInstant).toISOString().slice(0, 10);
   const next14 = Object.freeze(Array.from({ length: 14 }, (_, i) =>
     new Date(baseInstant + (i + 1) * 86400000).toISOString().slice(0, 10)));
-  const selection = Object.freeze({ baseDay, publishedAfter: new Date(baseInstant - 7 * 86400000).toISOString(), next14 });
+  const selection = Object.freeze({ baseDay, publishedThrough: new Date(baseInstant).toISOString(), publishedAfter: new Date(baseInstant - 7 * 86400000).toISOString(), next14 });
   try {
     const response = await suggest(request, wait, selection);
     wait.check();
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
 }
 
 async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpWait>,
-  selection: Readonly<{ baseDay: string; publishedAfter: string; next14: readonly string[] }>) {
+  selection: Readonly<{ baseDay: string; publishedThrough: string; publishedAfter: string; next14: readonly string[] }>) {
   const next14 = selection.next14;
   const session = await wait.run(() => auth());
   const selectedUser = session?.user;
@@ -209,38 +210,80 @@ async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpW
     ? trendAlerts.map(t => `- ${t.title} (relevance: ${t.relevance}, category: ${t.category})`).join('\n')
     : 'No trend alerts available.';
 
-  // Competitor recent uploads (last 7 days)
-  let competitorUploads = 'No competitor data.';
-  if (competitors.length > 0 && YT_API_KEY) {
+  // The public search is optional and bounded. A failed/malformed selection is
+  // explicitly unconfirmed, never a fabricated empty result or a complete channel.
+  const unavailable = (channelId: string | null, limit: 5 | 10, publishedAfter: string | null): SearchSelection =>
+    Object.freeze({ channelId, limit, publishedAfter, publishedThrough: selection.publishedThrough,
+      status: channelId && YT_API_KEY ? 'unconfirmed' as const : 'not_requested' as const, videos: Object.freeze([]) });
+  async function uploads(original: SearchSelection): Promise<SearchSelection> {
+    wait.check();
+    if (original.status === 'not_requested') return original;
     try {
-      const res = await wait.run(() => fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${competitors[0].channelId}&type=video&order=date&maxResults=5&publishedAfter=${selection.publishedAfter}&key=${YT_API_KEY}`,
-        { signal: request.signal }
-      ));
-      if (res.ok) {
-        const data = await wait.run(() => res.json());
-        const titles = (data.items || []).map((i: { snippet: { title: string; channelTitle: string } }) =>
-          `- ${i.snippet.channelTitle}: "${i.snippet.title}"`
-        );
-        if (titles.length > 0) competitorUploads = titles.join('\n');
+      const query = new URLSearchParams({ part: 'snippet', channelId: original.channelId!, type: 'video',
+        order: 'date', maxResults: String(original.limit), key: YT_API_KEY! });
+      if (original.publishedAfter !== null) query.set('publishedAfter', original.publishedAfter);
+      // The upper bound is the original capture, never the later response time.
+      query.set('publishedBefore', original.publishedThrough);
+      const url = 'https://www.googleapis.com/youtube/v3/search?' + query.toString();
+      const res = await wait.run(() => fetch(url, { signal: request.signal, redirect: 'error', cache: 'no-store' }));
+      wait.check();
+      const status = res.status, redirected = res.redirected, contentType = res.headers.get('content-type');
+      wait.check();
+      if (status !== 200 || redirected || contentType?.split(';')[0].trim().toLowerCase() !== 'application/json')
+        return original;
+      const reader = res.body?.getReader();
+      if (!reader) return original;
+      let complete = false, size = 0, text = '';
+      const decoder = new TextDecoder('utf-8', { fatal: true });
+      try {
+        while (true) {
+          const chunk = await wait.run(() => reader.read());
+          wait.check();
+          if (chunk.done) { complete = true; break; }
+          if (!(chunk.value instanceof Uint8Array) || (size += chunk.value.byteLength) > 65_536)
+            throw Error('Oversized optional search body');
+          text += decoder.decode(chunk.value, { stream: true });
+          wait.check();
+        }
+        text += decoder.decode();
+        wait.check();
+        const data: unknown = JSON.parse(text);
+        wait.check();
+        return captureSuggestionSearch(data, original, wait.check);
+      } finally {
+        // Only this response reader is retired; no task producer is cancelled.
+        if (!complete) void reader.cancel().catch(() => {});
+        reader.releaseLock();
       }
-    } catch { wait.check(); }
+    } catch { wait.check(); return original; }
   }
-
-  // User's recent videos
-  let recentTitles: string[] = [];
-  if (ytToken?.channelId && YT_API_KEY) {
-    try {
-      const res = await wait.run(() => fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${ytToken.channelId}&type=video&order=date&maxResults=10&key=${YT_API_KEY}`,
-        { signal: request.signal }
-      ));
-      if (res.ok) {
-        const data = await wait.run(() => res.json());
-        recentTitles = (data.items || []).map((i: { snippet: { title: string } }) => i.snippet.title).filter(Boolean);
-      }
-    } catch { wait.check(); }
-  }
+  // Copy the first response completely before starting the second optional await.
+  const competitorSearch = await uploads(unavailable(competitors[0]?.channelId ?? null, 5, selection.publishedAfter));
+  wait.check();
+  const ownSearch = await uploads(unavailable(ytToken?.channelId ?? null, 10, null));
+  wait.check();
+  const competitorUploads = competitorSearch.status === 'selected'
+    ? competitorSearch.videos.map(v => '- ' + v.channelTitle + ': "' + v.title + '"').join('\n') || 'Selected search returned no uploads.'
+    : 'No confirmed competitor search data.';
+  const recentTitles = ownSearch.videos.map(v => v.title);
+  const recentInfo = ownSearch.status === 'selected'
+    ? recentTitles.join(', ') || 'Selected search returned no uploads.'
+    : 'No confirmed recent search data.';
+  const searchAck = (captured: SearchSelection) => Object.freeze({
+    channelId: captured.channelId, status: captured.status, selectionLimit: captured.limit,
+    selectedCount: captured.videos.length, publishedAfter: captured.publishedAfter,
+    publishedThrough: captured.publishedThrough,
+    videos: Object.freeze(captured.videos.map(v => Object.freeze({ videoId: v.videoId, publishedAt: v.publishedAt }))),
+  });
+  // This is an acknowledgment of captured input only. It grants no authority to
+  // recover another task, renew declared dates or accept an operational migration.
+  const ack = Object.freeze({
+    version: 1, userId, operationKey, method: recovery === null ? 'create' : 'retrieve',
+    input, horizon: Object.freeze({ baseDay: selection.baseDay, next14 }),
+    context: Object.freeze({ coverage: permission.context!.coverage,
+      bestTimeAnalyzedAt: bestTime?.analyzedAt ?? null,
+      competitorSearch: searchAck(competitorSearch), ownSearch: searchAck(ownSearch) }),
+  });
 
   // Existing calendar entries
   const existingInfo = existingEntries.length > 0
@@ -267,7 +310,7 @@ RULES:
 
 DATA:
 Channel: "${ytToken?.channelName || 'Unknown'}"
-Recent videos: ${recentTitles.slice(0, 8).join(', ') || 'none'}
+Recent videos: ${recentInfo}
 
 Best publish times:
 ${bestTimeInfo}
@@ -308,7 +351,7 @@ ${existingInfo}`,
     }
 
     if (!paid()) return NextResponse.json({ error: 'pro_required' }, { status: 403 });
-    return NextResponse.json({ suggestions });
+    return NextResponse.json({ suggestions, ack });
   } catch (e) {
     wait.check();
     if (recovery !== null) {
