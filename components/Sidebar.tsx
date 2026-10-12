@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import { useSignout } from '@/lib/use-signout';
 import { useLang } from './LangProvider';
 
 type Lang = 'es' | 'en';
@@ -121,8 +122,9 @@ function YvIcon({ name }: { name: string }) {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const lang = useLang();
+  const logout = useSignout({ userId: session?.user?.id ?? '', email: session?.user?.email ?? '' }, status, lang, session);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [usage, setUsage] = useState<{ used: number; limit: number; plan: string } | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
@@ -320,7 +322,9 @@ export default function Sidebar() {
             className="yv-sidebar__signout"
             aria-label={t('Cerrar sesión', 'Sign out')}
             title={t('Cerrar sesión', 'Sign out')}
-            onClick={() => signOut({ callbackUrl: '/' })}
+            onClick={logout.start}
+            disabled={!logout.canStart}
+            aria-busy={logout.waiting}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 14H3.5a1 1 0 01-1-1V3a1 1 0 011-1H6"/>
@@ -329,6 +333,14 @@ export default function Sidebar() {
             </svg>
           </button>
         </div>
+        {logout.waiting && <p role="status">{t('Cerrando sesión…', 'Signing out…')}</p>}
+        {!logout.waiting && (logout.outcome?.status === 'unconfirmed' || logout.blocked) && (
+          <div role="status">
+            <p>{t('Salida sin confirmar. La solicitud original puede seguir en curso.', 'Sign-out unconfirmed. The original request may still be running.')}</p>
+            {logout.canObserve && <button onClick={logout.observe}>{t('Consultar salida original', 'Observe original sign-out')}</button>}
+          </div>
+        )}
+        {logout.navigationFailed && <a href="/">{t('Ir a portada', 'Go to home page')}</a>}
       </div>
     </>
   );

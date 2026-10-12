@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import { useSignout } from '@/lib/use-signout';
 import { useRouter } from 'next/navigation';
 import { useLang, useSetLang } from '@/components/LangProvider';
 import { useProfileSettings } from '@/lib/use-profile-settings';
@@ -22,14 +23,19 @@ type Lang = 'es' | 'en';
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
+  const language = useLang();
+  const logout = useSignout({ userId: session?.user?.id ?? '', email: session?.user?.email ?? '' }, status, language, session);
   const scope = JSON.stringify([session?.user?.id, session?.user?.email, status]);
   const invocation = useMemo(() => ({}), [scope]);
   const current = useRef(invocation);
   current.current = invocation;
-  return <ProfileAccount key={scope} isCurrent={() => current.current === invocation} />;
+  return <>
+    <ProfileAccount key={scope} isCurrent={() => current.current === invocation} logout={logout} />
+    {logout.navigationFailed && <a href="/">{language === 'en' ? 'Go to home page' : 'Ir a portada'}</a>}
+  </>;
 }
 
-function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
+function ProfileAccount({ isCurrent, logout }: { isCurrent: () => boolean; logout: ReturnType<typeof useSignout> }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const lang = useLang();
@@ -423,10 +429,16 @@ function ProfileAccount({ isCurrent }: { isCurrent: () => boolean }) {
         {/* Danger zone */}
         <div className="yv-card" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
           <p className="font-mono-jb text-[13px] tracking-wider uppercase mb-4" style={{ color: '#ef4444' }}>{t('Zona peligrosa', 'Danger zone')}</p>
-          <button onClick={() => signOut({ callbackUrl: '/' })}
+          <button onClick={logout.start} disabled={!logout.canStart} aria-busy={logout.waiting}
+            aria-label={t('Cerrar esta sesión', 'Sign out of this session')}
             className="font-mono-jb text-[13px] hover:text-white transition" style={{ color: 'var(--yv-text-3)' }}>
-            {t('Cerrar sesión en todos los dispositivos', 'Sign out of all devices')}
+            {logout.waiting ? t('Cerrando sesión…', 'Signing out…') : t('Cerrar esta sesión', 'Sign out of this session')}
           </button>
+          <p>{t('Cierra la sesión en este navegador.', 'Signs out in this browser.')}</p>
+          {!logout.waiting && (logout.outcome?.status === 'unconfirmed' || logout.blocked) && <div role="status">
+            <p>{t('Salida sin confirmar. La solicitud original puede seguir en curso.', 'Sign-out unconfirmed. The original request may still be running.')}</p>
+            {logout.canObserve && <button onClick={logout.observe}>{t('Consultar salida original', 'Observe original sign-out')}</button>}
+          </div>}
         </div>
 
         {/* Footer links */}
