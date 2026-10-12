@@ -86,6 +86,7 @@ model User {
   passwordChanges PasswordChangeAttempt[]
   checkoutAttempts CheckoutAttempt[]
   checkoutWebhookDenials CheckoutWebhookDenial[]
+  billingWebhookDenials BillingWebhookDenial[]
   subscriptionCancellations SubscriptionCancellationAttempt[]
   subscriptionDowngrades SubscriptionDowngradeAttempt[]
   subscriptionSyncs SubscriptionSyncAttempt[]
@@ -1291,4 +1292,21 @@ model CheckoutWebhookDenial {
   state String @default("pending")
   createdAt DateTime @default(now())
   @@map("checkout_webhook_denials")
+}
+
+// Permanent negative gate for non-checkout webhooks. Never a lease or writer capability.
+model BillingWebhookDenial {
+  id String @id
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  email String
+  eventId String @unique
+  eventType String
+  objectId String @unique
+  customerId String @unique
+  stripeSubscriptionId String
+  linkedSubscriptionId String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  @@map("billing_webhook_denials")
 }

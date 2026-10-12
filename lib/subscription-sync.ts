@@ -68,6 +68,8 @@ export async function syncSubscriptionOriginal(owner: Owner, input: Input, key: 
     const matches = (r:Record<string,unknown>|null)=>!!r && r.state==='pending' && Object.entries(captured).every(([k,v])=>r[k]===v);
     const admission = await prisma.$transaction(async tx=>{
       await lock(tx);
+      const billingWebhook = await tx.billingWebhookDenial.findUnique({ where: { userId: own.userId } });
+      check(); if (billingWebhook) throw Error('Billing webhook original reconciliation pending');
       const webhook = await tx.checkoutWebhookDenial.findUnique({ where: { userId: own.userId } });
       check(); if (webhook) throw Error("Webhook original reconciliation pending");
       const downgrade = await tx.subscriptionDowngradeAttempt.findUnique({where:{userId:own.userId}}); check(); if(downgrade)return null;
@@ -79,6 +81,8 @@ export async function syncSubscriptionOriginal(owner: Owner, input: Input, key: 
     check(); if(!matches(admission))return unconfirmed();
     const result = await prisma.$transaction(async tx=>{
       await lock(tx);
+      const billingWebhook = await tx.billingWebhookDenial.findUnique({ where: { userId: own.userId } });
+      check(); if (billingWebhook) throw Error('Billing webhook original reconciliation pending');
       const webhook = await tx.checkoutWebhookDenial.findUnique({ where: { userId: own.userId } });
       check(); if (webhook) throw Error("Webhook original reconciliation pending");
       const attempt=await tx.subscriptionSyncAttempt.findUnique({where:{userId:own.userId}}); check();

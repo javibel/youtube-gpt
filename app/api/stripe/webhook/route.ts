@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, preflightInvoiceOriginal, preflightFailedInvoiceOriginal, preflightRefundOriginal, preflightSubscriptionOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
+import { prepareWebhookVerification, snapshotWebhookOriginal, admitCheckoutOriginal, admitInvoiceOriginal, admitFailedInvoiceOriginal, admitRefundOriginal, admitSubscriptionOriginal, WebhookSignatureFailure } from '@/lib/webhook-original';
 import { checkoutEventProjection, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { readWebhookBody, webhookWait, WebhookWaitRetired } from '@/lib/stripe-webhook-intake';
 
@@ -45,32 +45,32 @@ export async function POST(request: Request) {
       }
 
       case 'invoice.payment_succeeded': {
-        const projected = await wait.run(() => preflightInvoiceOriginal(original));
+        const projected = await wait.run(() => admitInvoiceOriginal(original));
         if (projected) throw new WebhookInputError(503, 'Factura pendiente de conciliación original');
         break;
       }
 
       case 'customer.subscription.trial_will_end': {
-        await wait.run(() => preflightSubscriptionOriginal(original));
+        await wait.run(() => admitSubscriptionOriginal(original));
         // No notice/portal is admitted by a read-only original projection.
         throw new WebhookInputError(503, 'Aviso de trial pendiente de admisión original');
       }
 
       case 'invoice.payment_failed': {
-        const projected = await wait.run(() => preflightFailedInvoiceOriginal(original));
+        const projected = await wait.run(() => admitFailedInvoiceOriginal(original));
         if (projected) throw new WebhookInputError(503, 'Aviso de factura fallida pendiente de admisión original');
         break;
       }
 
       case 'charge.refunded': {
-        const projected = await wait.run(() => preflightRefundOriginal(original));
+        const projected = await wait.run(() => admitRefundOriginal(original));
         if (projected) throw new WebhookInputError(503, 'Reversión pendiente de admisión original');
         break;
       }
 
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
-        await wait.run(() => preflightSubscriptionOriginal(original));
+        await wait.run(() => admitSubscriptionOriginal(original));
         throw new WebhookInputError(503, 'Suscripción pendiente de conciliación original');
       }
 
