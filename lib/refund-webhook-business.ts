@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { captureWebhookData, WebhookInputError } from '@/lib/stripe-webhook-contract';
 import { captureCheckoutPrices, captureCheckoutSubscription, captureCheckoutCustomer } from '@/lib/checkout-webhook-business';
+import { paidInvoiceProjection } from '@/lib/invoice-webhook-business';
 const id = (v: unknown, prefix: string): v is string => typeof v === 'string' && v.length <= 128 && new RegExp('^' + prefix + '_[A-Za-z0-9_]+$').test(v);
 const rowId = (v: unknown): v is string => typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v);
 const seconds = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= 253402300799;
@@ -58,21 +59,14 @@ export function refundInvoiceProjection(charge: NonNullable<ReturnType<typeof re
       invoice.created > charge.chargeCreatedSeconds || !amount(invoice.amount_paid) || !amount(invoice.amount_due) || invoice.amount_remaining !== 0) return invalid();
   if (invoice.amount_paid !== charge.amountCapturedCents) return pending(); // No guess for credits/multiple payments.
   if (invoice.subscription === null) return pending(); // An invoice charge is not proof of a subscription or commission.
-  const subscriptionId = reference(invoice.subscription,'sub','subscription');
-  if (!['subscription_create','subscription_cycle'].includes(invoice.billing_reason)) return pending();
-  const lines=invoice.lines;
-  if (!lines || lines.object !== 'list' || lines.has_more !== false || !Array.isArray(lines.data) || lines.data.length !== 1) return pending();
-  const line=lines.data[0],price=line?.price;
-  if (!line || line.object !== 'line_item' || !id(line.id,'il') || line.type !== 'subscription' || line.proration !== false ||
-      line.quantity !== 1 || line.currency !== charge.currency || (line.invoice != null && line.invoice !== charge.invoiceId) ||
-      reference(line.subscription,'sub','subscription') !== subscriptionId || !amount(line.amount) ||
-      !price || price.object !== 'price' || !id(price.id,'price') || price.currency !== charge.currency ||
-      !['month','year'].includes(price.recurring?.interval) || price.recurring?.interval_count !== 1 ||
-      !seconds(line.period?.start) || !seconds(line.period?.end) || line.period.start >= line.period.end) return invalid();
-  const itemId=reference(line.subscription_item,'si','subscription_item');check();
-  return Object.freeze({...charge,subscriptionId,itemId,priceId:price.id,interval:price.recurring.interval,
+  const paid = paidInvoiceProjection(invoice, check);
+  if (!paid) return pending();
+  const detail = paid.prorationLines ? { prorationLines: paid.prorationLines } : { lineAmountCents: paid.lineAmountCents };
+  check();
+  return Object.freeze({...charge,subscriptionId:paid.subscriptionId,itemId:paid.itemId,priceId:paid.priceId,interval:paid.interval,
+    billingReason:paid.billingReason,prorated:paid.prorated,...detail,
     invoiceCreatedSeconds:invoice.created,invoiceAmountPaidCents:invoice.amount_paid,invoiceAmountDueCents:invoice.amount_due,
-    lineAmountCents:line.amount,invoicePeriodStartSeconds:line.period.start,invoicePeriodEndSeconds:line.period.end,writeAuthorized:false as const});
+    invoicePeriodStartSeconds:paid.periodStartSeconds,invoicePeriodEndSeconds:paid.periodEndSeconds,writeAuthorized:false as const});
 }
 export async function preflightRefundBusiness(invoice: ReturnType<typeof refundInvoiceProjection>, subscription: unknown, customer: unknown,
     prices: ReturnType<typeof captureCheckoutPrices>, check: () => void) {
@@ -94,6 +88,10 @@ export async function preflightRefundBusiness(invoice: ReturnType<typeof refundI
       !['eur','usd'].includes(sub.currency) || price.currency !== sub.currency ||
       price.recurring?.interval !== selected.interval || price.recurring?.interval_count !== 1) return invalid();
   if (item.id !== invoice.itemId || selected.id !== invoice.priceId || sub.currency !== invoice.currency || selected.interval !== invoice.interval) return pending();
+  if (invoice.prorationLines) for (const line of invoice.prorationLines) {
+    check();
+    if (!prices.some(price => price.id === line.priceId && price.interval === line.interval)) return invalid();
+  }
   for (const ts of [sub.trial_start,sub.trial_end]) if (ts != null && !seconds(ts)) return invalid();
   let start=pair(sub.current_period_start,item.current_period_start),end=pair(sub.current_period_end,item.current_period_end);
   if (sub.status === 'trialing') { if (!seconds(sub.trial_end) || (end != null && end !== sub.trial_end)) return invalid();end=sub.trial_end;start ??= sub.trial_start; }

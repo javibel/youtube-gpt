@@ -13,7 +13,12 @@ function reference(v: any, prefix: string, object: string) {
 export function invoiceEventProjection(event: any, check: () => void) {
   event = captureWebhookData(event, check);
   if (!event || event.type !== 'invoice.payment_succeeded') return invalid();
-  const invoice = event.data?.object;
+  return paidInvoiceProjection(event.data?.object, check);
+}
+// Shared shape projection for an actual invoice read. No event, original token
+// or verification capability is fabricated when another consumer uses it.
+export function paidInvoiceProjection(input: unknown, check: () => void) {
+  const invoice = captureWebhookData(input, check);
   if (!invoice || invoice.object !== 'invoice' || !id(invoice.id,'in') ||
       invoice.status !== 'paid' || invoice.paid !== true ||
       !['eur','usd'].includes(invoice.currency) || !amount(invoice.amount_paid) ||
