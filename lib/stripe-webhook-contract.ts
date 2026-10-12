@@ -2,7 +2,7 @@
 export class WebhookInputError extends Error {
   constructor(public readonly status: number, message: string) { super(message); }
 }
-export function captureWebhookEvent(input: unknown, check: () => void) {
+export function captureWebhookData(input: unknown, check: () => void) {
   let nodes = 0;
   let characters = 0;
   const ancestors = new Set<object>();
@@ -34,7 +34,12 @@ export function captureWebhookEvent(input: unknown, check: () => void) {
     ancestors.delete(value);
     return Object.freeze(target);
   }
-  const event = copy(input, 0);
+  const captured = copy(input, 0);
+  check();
+  return captured;
+}
+export function captureWebhookEvent(input: unknown, check: () => void) {
+  const event = captureWebhookData(input, check);
   const record = (v: any) => v && typeof v === 'object' && !Array.isArray(v);
   if (!record(event) || event.object !== 'event' ||
       !validStripeId(event.id, 'evt') ||

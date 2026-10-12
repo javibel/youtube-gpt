@@ -20,7 +20,7 @@ module.exports=async(prisma,results)=>{
    let release,start,queries=0;const gate=new Promise(r=>release=r),started=new Promise(r=>start=r);
    // This physically retained read belongs only to this test. It does not recover, cancel or commit a business writer.
    const observed={subscription:{upsert:async()=>{queries++;const row=await prisma.subscription.findUnique({where:{userId:own.id}});start();await gate;return row;}}};
-   const h=harness({event:original(),prisma:observed}),p=h.post();await started;h.advance(55000);assert.equal((await p).status,503);release();await flush();assert.equal(queries,1);assert.equal(h.calls.other.length,0);assert.equal(h.timers.size,0);
+   const h=harness({event:original(),prisma,preflight:observed.subscription.upsert}),p=h.post();await started;h.advance(55000);assert.equal((await p).status,503);release();await flush();assert.equal(queries,1);assert.equal(h.calls.other.length,0);assert.equal(h.timers.size,0);
   });
  }finally{await prisma.user.delete({where:{id:own.id}});}
 };
