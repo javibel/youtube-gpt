@@ -8,7 +8,7 @@ function event(d=data(),full=true){return{id:'evt_refund',object:'event',type:'c
 function commission(d=data(),status='pending'){return{id:'commission_row',affiliateId:'affiliate_row',referredUserId:d.checkout.userId,stripeInvoiceId:'in_synthetic',invoiceAmountCents:900,commissionCents:270,status,paidAt:status==='paid'?new Date(0):null};}
 function fixture(d=data(),options={}){
  const calls=[],owner={id:d.checkout.userId,email:d.customer.email,subscription:{id:'linked_row',userId:d.checkout.userId,stripeCustomerId:d.checkout.customerId}};
- const db={$transaction:async(fn,settings)=>{calls.push('transaction');assert.deepEqual({...settings},{isolationLevel:'RepeatableRead',maxWait:5000,timeout:10000});return fn({
+ const db={$transaction:async(fn,settings)=>{calls.push('transaction');assert.deepEqual({...settings},settings.isolationLevel===undefined?{maxWait:5000,timeout:10000}:{isolationLevel:'RepeatableRead',maxWait:5000,timeout:10000});return fn({
  user:{findUnique:async q=>{calls.push('owner');assert.equal(q.where.id,d.checkout.userId);return Object.hasOwn(options,'owner')?options.owner:owner;}},
  subscription:{findMany:async q=>{calls.push('linked');assert.equal(q.where.stripeCustomerId,d.checkout.customerId);assert.equal(q.take,2);return options.linked||[{...owner.subscription}];}},
  affiliateCommission:{findUnique:async q=>{calls.push('commission');assert.equal(q.where.stripeInvoiceId,'in_synthetic');return Object.hasOwn(options,'commission')?options.commission:commission(d);},update:()=>{throw Error('No reversal allowed');}}
