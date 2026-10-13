@@ -52,7 +52,7 @@ function fixture({mode='inline',sourceOverrides={}}={}){
  const change=(value,at=0)=>{const input=nodes().filter(n=>n.type==='input'&&n.props.type==='email')[at];assert(input);input.props.onChange({target:{value}});view();};
  const submit=(at=0)=>{const form=nodes().filter(n=>n.type==='form')[at];assert(form);form.props.onSubmit({preventDefault(){}});};
  return{state,control,requests,events,storage,navigation,browser:globals,timers,load,view,nodes,change,submit,ready,advance,unmount,
-  text:()=>nodes().filter(n=>typeof n==='string').join(' '),
+  text:()=>nodes().filter(n=>typeof n==='string').join(' ').replace(/\s+/g,' ').trim(),
   strictEffects(){for(const c of contexts.values())for(const cell of c.cells)if(cell.fn){cell.cleanup?.();cell.cleanup=cell.fn();}},
   showPopup(){view();advance(5000);for(const fn of events.get('mouseleave')??[])fn({clientY:0});view();}
  };
