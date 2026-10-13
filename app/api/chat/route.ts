@@ -1,6 +1,6 @@
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { authorizeNativeChat, runNativeChat } from '@/lib/chat-native-authorization';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 const MAX_MESSAGE_LENGTH = 500;
@@ -13,6 +13,7 @@ export const maxDuration = 60;
 function chatSendWait(signal: AbortSignal) {
   const deadline = performance.now() + 55_000;
   let retired = false;
+  let nativeCheck: (() => void) | null = null;
   let rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
@@ -24,6 +25,7 @@ function chatSendWait(signal: AbortSignal) {
   const check = () => {
     if (signal.aborted || performance.now() >= deadline) retire();
     if (retired) throw new Error('Chat send unconfirmed');
+    nativeCheck?.();
   };
   return {
     async run<T>(operation: () => Promise<T>): Promise<T> {
@@ -34,6 +36,11 @@ function chatSendWait(signal: AbortSignal) {
       return result;
     },
     check,
+    bindNativeCheck(checkNative: () => void) {
+      if (nativeCheck) throw Error('Chat authentication already bound');
+      nativeCheck = checkNative;
+      check();
+    },
     close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
   };
 }
@@ -150,6 +157,7 @@ Rules:
 function chatHistoryWait(signal: AbortSignal) {
   const deadline = performance.now() + 30_000;
   let retired = false;
+  let nativeCheck: (() => void) | null = null;
   let rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
@@ -161,6 +169,7 @@ function chatHistoryWait(signal: AbortSignal) {
   const check = () => {
     if (signal.aborted || performance.now() >= deadline) retire();
     if (retired) throw new Error('Chat history unconfirmed');
+    nativeCheck?.();
   };
   return {
     async run<T>(operation: () => Promise<T>): Promise<T> {
@@ -171,6 +180,11 @@ function chatHistoryWait(signal: AbortSignal) {
       return result;
     },
     check,
+    bindNativeCheck(checkNative: () => void) {
+      if (nativeCheck) throw Error('Chat authentication already bound');
+      nativeCheck = checkNative;
+      check();
+    },
     close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
   };
 }
@@ -178,7 +192,14 @@ function chatHistoryWait(signal: AbortSignal) {
 export async function GET(request: Request) {
   const wait = chatHistoryWait(request.signal);
   try {
-    const response = await readChatHistory(wait);
+    const authorization = await wait.run(() => authorizeNativeChat('read'));
+    if (!authorization) return NextResponse.json({ error: 'No autorizado' }, {
+      status: 401, headers: { 'Cache-Control': 'no-store' },
+    });
+    const response = await wait.run(() => runNativeChat(authorization, 'read', async (owner, checkNative) => {
+      wait.bindNativeCheck(checkNative);
+      return readChatHistory(wait, owner);
+    }));
     wait.check();
     response.headers.set('Cache-Control', 'no-store');
     return response;
@@ -189,19 +210,17 @@ export async function GET(request: Request) {
   } finally { wait.close(); }
 }
 
-async function readChatHistory(wait: ReturnType<typeof chatHistoryWait>) {
-  const session = await wait.run(() => auth());
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
-  const email = session.user.email;
+async function readChatHistory(wait: ReturnType<typeof chatHistoryWait>, owner: Readonly<{ id: string; email: string }>) {
+  const email = owner.email;
   const user = await wait.run(() => prisma.user.findUnique({
     where: { email },
-    select: { id: true },
+    select: { id: true, email: true },
   }));
   if (!user) return NextResponse.json({ messages: [] });
 
-  const userId = user.id;
+  if (user.id !== owner.id || user.email !== owner.email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const userId = owner.id;
   const recentMessages = await wait.run(() => prisma.chatMessage.findMany({
     where: { userId },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -213,12 +232,24 @@ async function readChatHistory(wait: ReturnType<typeof chatHistoryWait>) {
 
 export async function POST(request: Request) {
   const wait = chatSendWait(request.signal);
+  let authenticated = false;
   try {
-    const response = await sendChat(request, wait);
+    const authorization = await wait.run(() => authorizeNativeChat('send'));
+    if (!authorization) return NextResponse.json({ error: 'No autorizado' }, {
+      status: 401, headers: { 'Cache-Control': 'no-store' },
+    });
+    const response = await wait.run(() => runNativeChat(authorization, 'send', async (owner, checkNative) => {
+      wait.bindNativeCheck(checkNative);
+      authenticated = true;
+      return sendChat(request, wait, owner);
+    }));
     wait.check();
     response.headers.set('Cache-Control', 'no-store');
     return response;
   } catch (err) {
+    if (!authenticated) return NextResponse.json({ error: 'chat_send_unconfirmed' }, {
+      status: 503, headers: { 'Cache-Control': 'no-store' },
+    });
     try { wait.check(); }
     catch {
       return NextResponse.json({ error: 'chat_send_unconfirmed' }, {
@@ -232,24 +263,21 @@ export async function POST(request: Request) {
   } finally { wait.close(); }
 }
 
-async function sendChat(request: Request, wait: ReturnType<typeof chatSendWait>) {
+async function sendChat(request: Request, wait: ReturnType<typeof chatSendWait>, owner: Readonly<{ id: string; email: string }>) {
   try {
-    const session = await wait.run(() => auth());
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const email = session.user.email;
+    const email = owner.email;
     const user = await wait.run(() => prisma.user.findUnique({
       where: { email },
-      select: { id: true, subscription: { select: { status: true } } },
+      select: { id: true, email: true, subscription: { select: { status: true } } },
     }));
 
     if (!user) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    const userId = user.id;
+    if (user.id !== owner.id || user.email !== owner.email)
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const userId = owner.id;
     const plan = await wait.run(() => getUserPlan(userId));
     const isPro = isPaid(plan);
     const dailyLimit = getLimits(plan).chatMessagesPerDay;

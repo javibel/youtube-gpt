@@ -5,12 +5,12 @@ const {taskFixture}=require('./task-fixture.cjs');
 function harness(options={}) {
  const requests=[],saved=[],reads=[],deleted=[];let queries=0;
  const runtime=taskFixture({taskType:'support.chat',controlUnavailable:options.noKey,respond:async payload=>{requests.push({body:runtime.calls.at(-1),payload});if(options.transportError)throw Error('Synthetic transport failure');if(options.providerStatus)throw {status:options.providerStatus};return options.reply??{content:[{type:'text',text:'Synthetic reply'}],stop_reason:'end_turn',usage:{output_tokens:4}};}});
- const prisma={user:{findUnique:async()=>options.missingUser?null:{id:'synthetic'}},
+ const prisma={user:{findUnique:async()=>options.missingUser?null:{id:'synthetic',email:'synthetic@example.invalid'}},
   $queryRaw:async()=>[{hits:++queries===1?(options.throttle??1):(options.daily??1)}],
   chatMessage:{findMany:async query=>{reads.push(query);if(query.skip&&options.pruneError)throw Error('Synthetic cleanup failure');if(options.fullHistory&&query.select?.createdAt){const ordered=[...options.fullHistory].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));return structuredClone(ordered.slice(0,query.take));}return structuredClone(query.skip?options.old??[]:options.history??[]);},createMany:async({data})=>{if(options.saveError)throw Error('Synthetic save failure');saved.push(...data);return {count:data.length};},deleteMany:async query=>{deleted.push(query);return {count:0};}}};
  const route=load('app/api/chat/route.ts',{
   '@/lib/ai/task-runtime':runtime,
-  'next/server':{NextResponse:Response},'@/auth':{auth:async()=>Object.hasOwn(options,'session')?options.session:{user:{email:'synthetic@example.invalid'}}},'@/lib/prisma':{prisma},
+  'next/server':{NextResponse:Response},'@/auth':{auth:async()=>Object.hasOwn(options,'session')?options.session:{user:{id:'synthetic',email:'synthetic@example.invalid'}}},'@/lib/prisma':{prisma},
   '@/lib/plans':{getUserPlan:async()=>options.plan??'free',getLimits:()=>({chatMessagesPerDay:options.limit??5}),isPaid:plan=>plan!=='free'},
  });
  async function run(body={message:'Synthetic question',lang:'es'},method='POST') {const r=method==='GET'?await route.GET(new Request('https://example.invalid/api/chat')):await route.POST(new Request('https://example.invalid/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
