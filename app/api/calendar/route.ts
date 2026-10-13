@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { authorizeNativeCalendar, runNativeCalendar } from '@/lib/calendar-native-authorization';
+import type { NativeCalendarPurpose } from '@/lib/calendar-native-authorization';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, hasPaidAccess, isPaid } from '@/lib/plans';
 
@@ -14,6 +15,7 @@ class CalendarCreationDenied extends Error {
 function calendarHttpWait(signal: AbortSignal, duration = 30_000) {
   const deadline = performance.now() + duration;
   let retired = false;
+  let nativeCheck: (() => void) | null = null;
   let rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
@@ -25,6 +27,7 @@ function calendarHttpWait(signal: AbortSignal, duration = 30_000) {
   const check = () => {
     if (signal.aborted || performance.now() >= deadline) retire();
     if (retired) throw new Error('Calendar HTTP unconfirmed');
+    nativeCheck?.();
   };
   return {
     async run<T>(operation: () => Promise<T>): Promise<T> {
@@ -35,11 +38,27 @@ function calendarHttpWait(signal: AbortSignal, duration = 30_000) {
       return result;
     },
     check,
+    bindNativeCheck(checkNative: () => void) {
+      if (nativeCheck) throw Error('Calendar authentication already bound');
+      nativeCheck = checkNative;
+      check();
+    },
     close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
   };
 }
 
 type CalendarHttpWait = ReturnType<typeof calendarHttpWait>;
+async function nativeCalendar(wait: CalendarHttpWait, purpose: NativeCalendarPurpose,
+  action: (owner: Readonly<{ id: string; email: string }>) => Promise<Response>) {
+  const original = await wait.run(() => authorizeNativeCalendar(purpose));
+  if (!original) return NextResponse.json({ error: 'unauthorized' }, {
+    status: 401, headers: { 'Cache-Control': 'no-store' },
+  });
+  return wait.run(() => runNativeCalendar(original, purpose, async (owner, checkNative) => {
+    wait.bindNativeCheck(checkNative);
+    return action(owner);
+  }));
+}
 async function boundedCalendarWrite(request: Request, handler: (wait: CalendarHttpWait) => Promise<Response>) {
   const wait = calendarHttpWait(request.signal);
   try {
@@ -63,92 +82,88 @@ export async function GET(request: Request) {
     return response;
   };
   try {
-    const session = await wait.run(() => auth());
-    if (typeof session?.user?.id !== 'string' || !session.user.id
-      || typeof session.user.email !== 'string' || !session.user.email) {
-      return reply({ error: 'unauthorized' }, 401);
-    }
-    const owner = Object.freeze({ id: session.user.id, email: session.user.email });
-    const params = new URL(request.url).searchParams;
-    const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
-      && value.slice(0, 4) !== '0000'
-      && new Date(value + 'T00:00:00.000Z').toISOString().slice(0, 10) === value;
-    const from = params.get('from'), to = params.get('to');
-    let validRange = true;
-    try {
-      validRange = [...params.keys()].every(key => key === 'from' || key === 'to')
-        && params.getAll('from').length <= 1 && params.getAll('to').length <= 1
-        && (from === null || validDate(from)) && (to === null || validDate(to))
-        && (from === null || to === null || from <= to);
-    } catch { validRange = false; }
-    if (!validRange) return reply({ error: 'invalid_range' }, 400);
-    const range = Object.freeze({ from, to });
-    const snapshot = await wait.run(() => prisma.$transaction(async tx => {
-      wait.check();
-      const selected = await tx.user.findUnique({
-        where: { email: owner.email }, select: { id: true, email: true },
-      });
-      wait.check();
-      if (!selected) return { status: 404, body: { error: 'owner_not_found' }, access: null };
-      if (selected.id !== owner.id || selected.email !== owner.email)
-        return { status: 401, body: { error: 'unauthorized' }, access: null };
-      const subscription = await tx.subscription.findUnique({
-        where: { userId: owner.id },
-        select: { userId: true, status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true },
-      });
-      wait.check();
-      if (subscription !== null && (subscription.userId !== owner.id
-        || typeof subscription.status !== 'string' || !subscription.status
-        || !['free', 'pro', 'business'].includes(subscription.plan)
-        || (subscription.stripeCustomerId !== null && typeof subscription.stripeCustomerId !== 'string')))
-        throw Error('Calendar read unconfirmed');
-      const access = subscription === null ? null : Object.freeze({
-        status: subscription.status, stripeCustomerId: subscription.stripeCustomerId,
-        currentPeriodEnd: subscription.currentPeriodEnd === null ? null
-          : new Date(Date.prototype.toISOString.call(subscription.currentPeriodEnd)),
-      });
-      if (subscription === null || !['pro', 'business'].includes(subscription.plan) || !hasPaidAccess(access))
-        return { status: 403, body: { error: 'pro_required' }, access: null };
-      // The extra row proves truncation. Never acknowledge a capped list as complete.
-      const rows = await tx.calendarEntry.findMany({
-        where: { userId: owner.id, ...((from !== null || to !== null) ? {
-          date: { ...(from !== null ? { gte: from } : {}), ...(to !== null ? { lte: to } : {}) },
-        } : {}) },
-        orderBy: [{ date: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], take: MAX_ENTRIES + 1,
-        select: { id: true, userId: true, title: true, description: true, date: true,
-          status: true, color: true, createdAt: true, updatedAt: true },
-      });
-      wait.check();
-      if (!Array.isArray(rows) || rows.length > MAX_ENTRIES) throw Error('Calendar read unconfirmed');
-      const ids = new Set<string>();
-      const entries = Array.from(rows, row => {
-        if (typeof row.id !== 'string' || !row.id || ids.has(row.id) || row.userId !== owner.id
-          || typeof row.title !== 'string' || !row.title.trim() || row.title.length > 200
-          || (row.description !== null && typeof row.description !== 'string')
-          || typeof row.date !== 'string' || !validDate(row.date)
-          || (from !== null && row.date < from) || (to !== null && row.date > to)
-          || typeof row.status !== 'string' || !VALID_STATUSES.includes(row.status)
-          || (row.color !== null && typeof row.color !== 'string')) throw Error('Calendar read unconfirmed');
-        ids.add(row.id);
-        return Object.freeze({ id: row.id, userId: owner.id, title: row.title,
-          description: row.description, date: row.date, status: row.status, color: row.color,
-          createdAt: Date.prototype.toISOString.call(row.createdAt),
-          updatedAt: Date.prototype.toISOString.call(row.updatedAt),
+    return await nativeCalendar(wait, 'read', async owner => {
+      const params = new URL(request.url).searchParams;
+      const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
+        && value.slice(0, 4) !== '0000'
+        && new Date(value + 'T00:00:00.000Z').toISOString().slice(0, 10) === value;
+      const from = params.get('from'), to = params.get('to');
+      let validRange = true;
+      try {
+        validRange = [...params.keys()].every(key => key === 'from' || key === 'to')
+          && params.getAll('from').length <= 1 && params.getAll('to').length <= 1
+          && (from === null || validDate(from)) && (to === null || validDate(to))
+          && (from === null || to === null || from <= to);
+      } catch { validRange = false; }
+      if (!validRange) return reply({ error: 'invalid_range' }, 400);
+      const range = Object.freeze({ from, to });
+      const snapshot = await wait.run(() => prisma.$transaction(async tx => {
+        wait.check();
+        const selected = await tx.user.findUnique({
+          where: { email: owner.email }, select: { id: true, email: true },
         });
-      });
-      for (let i = 1; i < entries.length; i++) {
-        const a = entries[i - 1], b = entries[i];
-        if (a.date > b.date || (a.date === b.date && (a.createdAt > b.createdAt
-          || (a.createdAt === b.createdAt && a.id > b.id)))) throw Error('Calendar read unconfirmed');
-      }
+        wait.check();
+        if (!selected) return { status: 404, body: { error: 'owner_not_found' }, access: null };
+        if (selected.id !== owner.id || selected.email !== owner.email)
+          return { status: 401, body: { error: 'unauthorized' }, access: null };
+        const subscription = await tx.subscription.findUnique({
+          where: { userId: owner.id },
+          select: { userId: true, status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true },
+        });
+        wait.check();
+        if (subscription !== null && (subscription.userId !== owner.id
+          || typeof subscription.status !== 'string' || !subscription.status
+          || !['free', 'pro', 'business'].includes(subscription.plan)
+          || (subscription.stripeCustomerId !== null && typeof subscription.stripeCustomerId !== 'string')))
+          throw Error('Calendar read unconfirmed');
+        const access = subscription === null ? null : Object.freeze({
+          status: subscription.status, stripeCustomerId: subscription.stripeCustomerId,
+          currentPeriodEnd: subscription.currentPeriodEnd === null ? null
+            : new Date(Date.prototype.toISOString.call(subscription.currentPeriodEnd)),
+        });
+        if (subscription === null || !['pro', 'business'].includes(subscription.plan) || !hasPaidAccess(access))
+          return { status: 403, body: { error: 'pro_required' }, access: null };
+        // The extra row proves truncation. Never acknowledge a capped list as complete.
+        const rows = await tx.calendarEntry.findMany({
+          where: { userId: owner.id, ...((from !== null || to !== null) ? {
+            date: { ...(from !== null ? { gte: from } : {}), ...(to !== null ? { lte: to } : {}) },
+          } : {}) },
+          orderBy: [{ date: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }], take: MAX_ENTRIES + 1,
+          select: { id: true, userId: true, title: true, description: true, date: true,
+            status: true, color: true, createdAt: true, updatedAt: true },
+        });
+        wait.check();
+        if (!Array.isArray(rows) || rows.length > MAX_ENTRIES) throw Error('Calendar read unconfirmed');
+        const ids = new Set<string>();
+        const entries = Array.from(rows, row => {
+          if (typeof row.id !== 'string' || !row.id || ids.has(row.id) || row.userId !== owner.id
+            || typeof row.title !== 'string' || !row.title.trim() || row.title.length > 200
+            || (row.description !== null && typeof row.description !== 'string')
+            || typeof row.date !== 'string' || !validDate(row.date)
+            || (from !== null && row.date < from) || (to !== null && row.date > to)
+            || typeof row.status !== 'string' || !VALID_STATUSES.includes(row.status)
+            || (row.color !== null && typeof row.color !== 'string')) throw Error('Calendar read unconfirmed');
+          ids.add(row.id);
+          return Object.freeze({ id: row.id, userId: owner.id, title: row.title,
+            description: row.description, date: row.date, status: row.status, color: row.color,
+            createdAt: Date.prototype.toISOString.call(row.createdAt),
+            updatedAt: Date.prototype.toISOString.call(row.updatedAt),
+          });
+        });
+        for (let i = 1; i < entries.length; i++) {
+          const a = entries[i - 1], b = entries[i];
+          if (a.date > b.date || (a.date === b.date && (a.createdAt > b.createdAt
+            || (a.createdAt === b.createdAt && a.id > b.id)))) throw Error('Calendar read unconfirmed');
+        }
+        wait.check();
+        return { status: 200, access, body: { owner, range,
+          coverage: { complete: true, count: entries.length, limit: MAX_ENTRIES }, entries } };
+      }, { isolationLevel: 'RepeatableRead', maxWait: 25_000, timeout: 25_000 }));
       wait.check();
-      return { status: 200, access, body: { owner, range,
-        coverage: { complete: true, count: entries.length, limit: MAX_ENTRIES }, entries } };
-    }, { isolationLevel: 'RepeatableRead', maxWait: 25_000, timeout: 25_000 }));
-    wait.check();
-    // A delayed transaction acknowledgement cannot renew declared manual access.
-    if (snapshot.status === 200 && !hasPaidAccess(snapshot.access)) return reply({ error: 'pro_required' }, 403);
-    return reply(snapshot.body, snapshot.status);
+      // A delayed transaction acknowledgement cannot renew declared manual access.
+      if (snapshot.status === 200 && !hasPaidAccess(snapshot.access)) return reply({ error: 'pro_required' }, 403);
+      return reply(snapshot.body, snapshot.status);
+    });
   } catch {
     return NextResponse.json({ error: 'calendar_read_unconfirmed' }, {
       status: 503, headers: { 'Cache-Control': 'no-store' },
@@ -158,13 +173,7 @@ export async function GET(request: Request) {
 
 // POST — create one entry under the captured owner and original input.
 export async function POST(request: Request) {
-  return boundedCalendarWrite(request, async wait => {
-    const session = await wait.run(() => auth());
-    if (typeof session?.user?.id !== 'string' || !session.user.id
-      || typeof session.user.email !== 'string' || !session.user.email) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    }
-    const owner = Object.freeze({ id: session.user.id, email: session.user.email });
+  return boundedCalendarWrite(request, wait => nativeCalendar(wait, 'create', async owner => {
     const userId = owner.id, key = request.headers.get('Idempotency-Key');
     const recovery = request.headers.get('X-Calendar-Write-Recovery');
     if ((key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))
@@ -284,7 +293,7 @@ export async function POST(request: Request) {
       if (error instanceof CalendarCreationConflict) return NextResponse.json({ error: error.message }, { status: 409 });
       return NextResponse.json({ error: 'calendar_write_unconfirmed' }, { status: 503 });
     }
-  });
+  }));
 }
 
 // PUT/DELETE — captured input under the original owner and paid SQL source.
@@ -310,13 +319,9 @@ function calendarSnapshot(value: unknown) {
 
 // A business receipt confirms only the original mutation. It never proves current
 // row state, cancellation, or authority to recover an executor or another write.
-async function calendarMutation(request: Request, method: 'PUT' | 'DELETE', wait: CalendarHttpWait) {
+async function calendarMutation(request: Request, method: 'PUT' | 'DELETE', wait: CalendarHttpWait,
+  owner: Readonly<{ id: string; email: string }>) {
   const invalid = () => NextResponse.json({ error: 'invalid mutation' }, { status: 400 });
-  const session = await wait.run(() => auth());
-  if (typeof session?.user?.id !== 'string' || !session.user.id
-    || typeof session.user.email !== 'string' || !session.user.email)
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  const owner = Object.freeze({ id: session.user.id, email: session.user.email });
   const key = request.headers.get('Idempotency-Key'), recovery = request.headers.get('X-Calendar-Write-Recovery');
   if ((key !== null && !/^[-A-Za-z0-9._:]{1,128}$/.test(key))
     || (recovery !== null && (recovery !== 'retained-only-v1' || !key))) return invalid();
@@ -448,8 +453,8 @@ async function calendarMutation(request: Request, method: 'PUT' | 'DELETE', wait
   }
 }
 export async function PUT(request: Request) {
-  return boundedCalendarWrite(request, wait => calendarMutation(request, 'PUT', wait));
+  return boundedCalendarWrite(request, wait => nativeCalendar(wait, 'update', owner => calendarMutation(request, 'PUT', wait, owner)));
 }
 export async function DELETE(request: Request) {
-  return boundedCalendarWrite(request, wait => calendarMutation(request, 'DELETE', wait));
+  return boundedCalendarWrite(request, wait => nativeCalendar(wait, 'delete', owner => calendarMutation(request, 'DELETE', wait, owner)));
 }
