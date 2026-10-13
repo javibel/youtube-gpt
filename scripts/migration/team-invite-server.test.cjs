@@ -13,8 +13,8 @@ function harness(options={}){
   teamInvitation:{findUnique:()=>step('existing'+i,()=>options.existing?{expiresAt:new Date(options.expired?'2000-01-01':'2099-01-01')}:null),count:()=>step('invites'+i,()=>0),create:q=>step('create',()=>invitation={...q.data})}
  });return step('ack'+i,()=>options.foreignAdmission&&i===1?{row:{...result.row,key:'foreign'}}:result);}};
  const globals={performance:{now:()=>now},setTimeout(fn,ms){const id=++serial;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),process:{env:{APP_PUBLIC_URL:'https://example.invalid'}}};
- const email=load('lib/team-invitation-email.ts',{resend:{Resend:class{constructor(){throw Error('Real email forbidden');}}}});
- const helper=load('lib/team-invitation.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma},'@/lib/team-invitation-email':{...email,sendInvitationEmail:(packet,originalId)=>step('send',()=>{queries.push({packet:copy(packet),originalId});assert(Object.isFrozen(packet));})}},globals);
+ const email=require('./direct-email-fixture.cjs').invitation({send:(packet,settings)=>step('send',()=>{queries.push({packet:copy(packet),originalId:settings.idempotencyKey});return Response.json({id:'synthetic-native-ack'});})});
+ const helper=load('lib/team-invitation.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma},'@/lib/team-invitation-email':email},globals);
  const route=load('app/api/team/invite/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:()=>step('auth',()=>state.user?{user:state.user}:null)},'@/lib/team-invitation':helper,'@/lib/team-invitation-revocation':{}},globals);
  if(options.preAborted)controller.abort();const original=route.POST({signal:controller.signal,headers:{get:()=>state.key},json:()=>step('body',()=>state.body)});
  return{original,state,calls,queries,entered,gates,timers,controller,pending:()=>pending,invitation:()=>invitation,advance(ms,fire=true){now+=ms;if(fire)for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}},async release(stage){gates[stage]?.resolve();await flush();}};
@@ -33,15 +33,15 @@ async function run(){const results=[],test=async(name,fn)=>{try{await fn();resul
  await test('pre-aborted observer skips auth/SQL/mail',async()=>{const h=harness({preAborted:true});await response(h,503);assert.equal(h.calls.length,0);});
  for(const stage of stages)await test('private '+stage+' failure sanitized and never retried',async()=>{const h=harness({fail:stage});await response(h,stage==='body'?400:503);assert.equal(h.calls.filter(c=>c===stage).length,1);});
  const input={email:'guest@example.invalid',teamName:'<img src=x>\r\nBCC:bad',inviter:'<script>"&',language:'en',token:'a'.repeat(64),expiresAt:'2026-10-18T00:00:00.000Z'};
- for(const origin of [undefined,'http://example.invalid','https://u:p@example.invalid','https://example.invalid/?x=1','https://example.invalid/#bad','https://example.invalid/other','javascript:alert(1)'])await test('unsafe origin fails pure preparation '+origin,async()=>{const m=load('lib/team-invitation-email.ts',{resend:{}});assert.throws(()=>m.prepareInvitationEmail(input,origin));});
- await test('HTML escaping, exact expiry, bilingual/plaintext and frozen packet',async()=>{const m=load('lib/team-invitation-email.ts',{resend:{}}),p=m.prepareInvitationEmail(input,'https://example.invalid');assert(Object.isFrozen(p));assert(!p.subject.includes('\n'));assert(!p.html.includes('<script>'));assert(!p.html.includes('<img'));assert(p.html.includes('&lt;script&gt;&quot;&amp;'));assert(p.html.includes(input.expiresAt));assert(p.text.includes(input.expiresAt));assert(m.prepareInvitationEmail({...input,language:'es'},'http://127.0.0.1:4300').subject.startsWith('Te han'));});
+ for(const origin of [undefined,'http://example.invalid','https://u:p@example.invalid','https://example.invalid/?x=1','https://example.invalid/#bad','https://example.invalid/other','javascript:alert(1)'])await test('unsafe origin fails pure preparation '+origin,async()=>{const m=require('./direct-email-fixture.cjs').invitation();assert.throws(()=>m.prepareInvitationEmail(input,origin));});
+ await test('HTML escaping, exact expiry, bilingual/plaintext and frozen packet',async()=>{const m=require('./direct-email-fixture.cjs').invitation(),p=m.prepareInvitationEmail(input,'https://example.invalid');assert(Object.isFrozen(p));assert(!p.subject.includes('\n'));assert(!p.html.includes('<script>'));assert(!p.html.includes('<img'));assert(p.html.includes('&lt;script&gt;&quot;&amp;'));assert(p.html.includes(input.expiresAt));assert(p.text.includes(input.expiresAt));assert(m.prepareInvitationEmail({...input,language:'es'},'http://127.0.0.1:4300').subject.startsWith('Te han'));});
  for(const variant of ['accepted','error','missing','empty','throw','config'])await test('real adapter contract '+variant+' one send, no Gmail/fallback, no delivery claim',async()=>{
   let sends=0;
-  class SyntheticResend { constructor(k){assert.equal(k,'synthetic');this.emails={send:async(p,o)=>{
+  const m=require('./direct-email-fixture.cjs').invitation({noProvider:variant==='config',send:async(p,o)=>{
    sends++;assert.equal(p.to,input.email);assert.equal(o.idempotencyKey,'private-original');if(variant==='throw')throw Error('secret');
-   return variant==='accepted'?{data:{id:'provider-id'},error:null}:variant==='error'?{data:{id:'id'},error:{message:'secret'}}:variant==='empty'?{data:{id:' '}}:{data:null};
-  }};} }
-  const m=load('lib/team-invitation-email.ts',{resend:{Resend:SyntheticResend}},{process:{env:variant==='config'?{}:{RESEND_API_KEY:'synthetic'}}});
+   return Response.json(variant==='accepted'?{id:'provider-id'}:variant==='error'?{id:'id',error:{message:'secret'}}:variant==='empty'?{id:' '}:null);
+  }});
+
   const p=m.prepareInvitationEmail(input,'https://example.invalid');if(variant==='accepted')await m.sendInvitationEmail(p,'private-original');else await assert.rejects(m.sendInvitationEmail(p,'private-original'));assert.equal(sends,variant==='config'?0:1);
  });
  return{status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',scope:'Actual POST/helper/email adapter; synthetic auth/SQL/provider, no real communications or recovery authority',results};

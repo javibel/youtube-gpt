@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import { prepareDomainEmailOriginal, dispatchDomainEmailOriginal, DomainEmailUnconfirmed } from '@/lib/send-email';
 
 export interface InvitationEmail { to: string; subject: string; html: string; text: string }
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -23,9 +23,9 @@ export function prepareInvitationEmail(input: { email: string; teamName: string;
 
 // One original transport invocation. A provider acknowledgement is not inbox
 // delivery or operational acceptance. Errors never fall back to Gmail/retry.
-export async function sendInvitationEmail(packet: Readonly<InvitationEmail>, originalId: string): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) throw Error('Invitation transport unavailable');
-  const result = await new Resend(apiKey).emails.send({ from: 'YTubViral <hello@ytubviral.com>', replyTo: 'support@ytubviral.com', ...packet }, { idempotencyKey: originalId });
-  if (result.error || !result.data || typeof result.data.id !== 'string' || !result.data.id.trim()) throw Error('Invitation transport unconfirmed');
+export async function sendInvitationEmail(packet: Readonly<InvitationEmail>, originalId: string, beforeDispatch?: () => void): Promise<void> {
+  if (typeof originalId !== 'string') throw new DomainEmailUnconfirmed('not-issued');
+  const original = prepareDomainEmailOriginal({ ...packet, isTransactional: true, idempotencyKey: originalId }, beforeDispatch);
+  const outcome = original ? await dispatchDomainEmailOriginal(original) : 'not-issued';
+  if (outcome !== 'provider-accepted') throw new DomainEmailUnconfirmed(outcome);
 }

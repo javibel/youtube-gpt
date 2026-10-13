@@ -25,8 +25,10 @@ function harness(options={}){
  const globals={performance:{now:()=>now},setTimeout(fn,ms){const id=++serial;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id)};
  const bcrypt={compare:(value,hash)=>step('compare',()=>value===oldInput&&hash===oldHash),hash:(value,rounds)=>step('hash',()=>{assert.equal(rounds,12);assert.equal(value,newInput);return options.badHash?'invalid':newHash;})};
  const helper=load('lib/password-change.ts',{'node:crypto':require('node:crypto'),'node:buffer':require('node:buffer'),'bcryptjs':bcrypt,'@/lib/prisma':{prisma:db},'@/lib/password':load('lib/password.ts')},globals);
- const notice=load('lib/password-change-notice.ts',{'resend':{Resend:class{constructor(){calls.push('sender');this.emails={send:(packet,settings)=>{packets.push({packet,settings});return step('mail',()=>options.mailAck??{data:{id:'synthetic-provider-ack'}});}};}}},
-  '@/lib/emails':{passwordChangedEmail:(name,lang)=>{calls.push('prepare');if(options.prepareFail)throw Error('PRIVATE_TEMPLATE');return load('lib/emails.ts').passwordChangedEmail(name,lang);}}},{...globals,process:{env:options.noProvider?{}:{RESEND_API_KEY:'SYNTHETIC_NOT_A_SECRET'}}});
+ const notice=require('./direct-email-fixture.cjs').password({noProvider:options.noProvider,
+  send:(packet,settings)=>{packets.push({packet,settings});return step('mail',()=>Response.json(options.mailAck?.data??{id:'synthetic-provider-ack'}));},
+  templates:{passwordChangedEmail:(name,lang)=>{calls.push('prepare');if(options.prepareFail)throw Error('PRIVATE_TEMPLATE');return load('lib/emails.ts').passwordChangedEmail(name,lang);}}});
+
  const route=load('app/api/user/change-password/route.ts',{'next/server':{NextResponse:Response},'node:crypto':require('node:crypto'),
   '@/auth':{auth:()=>step('auth',()=>state.owner?{user:state.owner}:null)},'@/lib/password-change':helper,'@/lib/password-change-notice':notice},globals);
  if(options.preAborted)controller.abort();

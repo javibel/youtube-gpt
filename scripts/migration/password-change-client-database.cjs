@@ -10,7 +10,9 @@ module.exports=async(prisma,results)=>{
     const common={'node:crypto':require('node:crypto'),'node:buffer':require('node:buffer'),'bcryptjs':bcrypt,'@/lib/password':load('lib/password.ts'),'@/lib/prisma':{prisma}};
     let db=prisma,transactions=0;
     if(options.lostAck)db={user:prisma.user,passwordChangeAttempt:prisma.passwordChangeAttempt,$transaction:async(...a)=>{const i=++transactions,result=await prisma.$transaction(...a);if(i===2)throw Error('PRIVATE_LOST_ACK');return result;}};
-    const helper=load('lib/password-change.ts',{...common,'@/lib/prisma':{prisma:db}}),notice=load('lib/password-change-notice.ts',{'resend':{Resend:class{constructor(){this.emails={send:async(packet,settings)=>{packets.push({packet,settings});if(options.notice==='unconfirmed')throw Error('PRIVATE_MOCK_FAILURE');return{data:{id:'synthetic-only-ack'}};}};}}},'@/lib/emails':{passwordChangedEmail:load('lib/emails.ts').passwordChangedEmail}},{process:{env:options.notice==='not_started'?{}:{RESEND_API_KEY:'SYNTHETIC_NOT_A_SECRET'}}});
+    const helper=load('lib/password-change.ts',{...common,'@/lib/prisma':{prisma:db}}),notice=require('./direct-email-fixture.cjs').password({noProvider:options.notice==='not_started',
+     send:async(packet,settings)=>{packets.push({packet,settings});if(options.notice==='unconfirmed')throw Error('PRIVATE_MOCK_FAILURE');return Response.json({id:'synthetic-only-ack'});}});
+
     const deps={'next/server':{NextResponse:Response},'node:crypto':require('node:crypto'),'@/auth':{auth:async()=>({user:{id:r.owner,email:r.email}})},'@/lib/prisma':{prisma},'@/lib/password-change':helper,'@/lib/password-change-notice':notice,
      '@/lib/plans':load('lib/plans.ts',{'@/lib/prisma':{prisma}}),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma)};
     const isPassword=r.url==='/api/user/change-password',route=load(isPassword?'app/api/user/change-password/route.ts':'app/api/user/stats/route.ts',deps);

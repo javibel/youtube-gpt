@@ -86,7 +86,7 @@ export async function inviteTeamOriginal(owner: TeamOwner, input: unknown, key: 
       beforeStep(); if (recipients.length > 1) throw Error('Ambiguous recipient');
       if (recipients[0]) { const member = await tx.teamMember.findFirst({ where: { userId: recipients[0].id } }); beforeStep(); if (member) throw Error('Recipient already joined'); }
       // Once invoked, completion belongs to this producer, even if HTTP retires.
-      await sendInvitationEmail(packet.prepared, captured.id);
+      await sendInvitationEmail(packet.prepared, captured.id, beforeStep);
       const marked = await tx.teamInvitationAttempt.updateMany({ where: { ...captured, state: 'pending' }, data: { state: 'complete' } });
       if (marked.count !== 1) throw Error('Invitation unconfirmed');
     }, settings);

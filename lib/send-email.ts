@@ -1,11 +1,11 @@
 /** Domain-only email transport. Provider acceptance is never delivery.
  * https://resend.com/docs/api-reference/emails/send-email
  */
-export type DomainEmailInput = Readonly<{ to: string; subject: string; html: string; isTransactional?: boolean }>;
+export type DomainEmailInput = Readonly<{ to: string; subject: string; html: string; text?: string; isTransactional?: boolean; idempotencyKey?: string }>;
 export type DomainEmailOriginal = Readonly<{ kind: 'domain-email-original' }>;
 export type DomainEmailOutcome = 'provider-accepted' | 'not-configured' | 'not-issued' | 'unconfirmed';
-type Captured = { to: string; subject: string; html: string; text: string; isTransactional: boolean };
-type Original = { captured: Captured | null; promise?: Promise<DomainEmailOutcome> };
+type Captured = { to: string; subject: string; html: string; text: string; isTransactional: boolean; idempotencyKey?: string };
+type Original = { captured: Captured | null; beforeDispatch?: () => void; promise?: Promise<DomainEmailOutcome> };
 const originals = new WeakMap<DomainEmailOriginal, Original>();
 const apiKey = process.env.RESEND_API_KEY?.trim();
 const endpoint = 'https://api.resend.com/emails';
@@ -22,17 +22,23 @@ function plainText(html: string) {
  * Business admission/consent remain the caller's responsibility; this transport
  * does not reconcile a lost business original or admit another delivery attempt.
  */
-export function prepareDomainEmailOriginal(input: DomainEmailInput): DomainEmailOriginal | undefined {
+export function prepareDomainEmailOriginal(input: DomainEmailInput, beforeDispatch?: () => void): DomainEmailOriginal | undefined {
   if (!input || typeof input !== 'object' || Array.isArray(input)
-    || Object.keys(input).some(key => !['to', 'subject', 'html', 'isTransactional'].includes(key))
+    || Object.keys(input).some(key => !['to', 'subject', 'html', 'text', 'isTransactional', 'idempotencyKey'].includes(key))
     || typeof input.to !== 'string' || typeof input.subject !== 'string' || typeof input.html !== 'string'
-    || input.isTransactional !== undefined && typeof input.isTransactional !== 'boolean') return;
+    || input.isTransactional !== undefined && typeof input.isTransactional !== 'boolean'
+    || input.text !== undefined && (typeof input.text !== 'string' || !input.text || input.text.length > 1048576)
+    || input.idempotencyKey !== undefined && (typeof input.idempotencyKey !== 'string' || !/^[\w-]{1,128}$/.test(input.idempotencyKey))
+    || beforeDispatch !== undefined && typeof beforeDispatch !== 'function') return;
   const to = input.to.trim().toLowerCase(), subject = input.subject.trim();
   if (to.length > 254 || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(to)
     || /[\u0000-\u001f\u007f]/.test(to) || !subject || subject.length > 200 || /[\u0000-\u001f\u007f]/.test(subject)
     || !input.html || input.html.length > 1048576) return;
   const original: DomainEmailOriginal = Object.freeze({ kind: 'domain-email-original' });
-  originals.set(original, { captured: { to, subject, html: input.html, text: plainText(input.html), isTransactional: input.isTransactional === true } });
+  // Provider deduplication is negative routing metadata, never business admission
+  // or permission to recover/replay an original. The live guard is kept privately.
+  originals.set(original, { captured: { to, subject, html: input.html, text: input.text ?? plainText(input.html),
+    isTransactional: input.isTransactional === true, idempotencyKey: input.idempotencyKey }, beforeDispatch });
   return original;
 }
 
@@ -45,17 +51,24 @@ export function dispatchDomainEmailOriginal(original: DomainEmailOriginal): Prom
   const own = originals.get(original); if (!own) return Promise.resolve('not-issued');
   if (own.promise) return own.promise;
   own.promise = Promise.resolve().then(async (): Promise<DomainEmailOutcome> => {
+    let issued = false;
     try {
       if (!apiKey) return 'not-configured';
       const message = own.captured!;
-      const response = await fetch(endpoint, {
+      const request: RequestInit = {
         method: 'POST', redirect: 'error', credentials: 'omit', cache: 'no-store',
-        headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json', Accept: 'application/json',
+          ...(message.idempotencyKey && { 'Idempotency-Key': message.idempotencyKey }) },
         body: JSON.stringify({ from: 'YTubViral <hello@ytubviral.com>', reply_to: 'hello@ytubviral.com',
           to: [message.to], subject: message.subject, html: message.html, text: message.text,
           ...(!message.isTransactional && { headers: { 'List-Unsubscribe': '<mailto:hello@ytubviral.com?subject=unsubscribe>' } }),
         }),
-      });
+      };
+      // No await between the caller's live check/dispatch marker and native fetch.
+      // A rejected pre-dispatch guard is known nonissuance, not a lost HTTP ACK.
+      own.beforeDispatch?.();
+      issued = true;
+      const response = await fetch(endpoint, request);
       if (response.status !== 200 || response.ok !== true || response.redirected
         || response.url && response.url !== endpoint
         || !response.headers.get('content-type')?.toLowerCase().includes('application/json') || !response.body) return 'unconfirmed';
@@ -67,8 +80,8 @@ export function dispatchDomainEmailOriginal(original: DomainEmailOriginal): Prom
       return receipt && typeof receipt === 'object' && !Array.isArray(receipt) && Object.keys(receipt).length === 1
         && 'id' in receipt && typeof receipt.id === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(receipt.id)
         ? 'provider-accepted' : 'unconfirmed';
-    } catch { return 'unconfirmed'; }
-    finally { own.captured = null; }
+    } catch { return issued ? 'unconfirmed' : 'not-issued'; }
+    finally { own.captured = null; own.beforeDispatch = undefined; }
   });
   return own.promise;
 }

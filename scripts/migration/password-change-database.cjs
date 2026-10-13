@@ -20,8 +20,9 @@ module.exports=async(prisma,results)=>{
   const realBcrypt={compare:(...a)=>stage('compare',()=>bcrypt.compare(...a)),hash:(...a)=>stage('hash',()=>bcrypt.hash(...a))};
   const globals={performance:{now:()=>now},setTimeout(fn,ms){const id=++serial;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id)};
   const helper=load('lib/password-change.ts',{'node:crypto':require('node:crypto'),'node:buffer':require('node:buffer'),'bcryptjs':realBcrypt,'@/lib/prisma':{prisma:db},'@/lib/password':load('lib/password.ts')},globals);
-  const notice=load('lib/password-change-notice.ts',{'resend':{Resend:class{constructor(){this.emails={send:(packet,settings)=>{packets.push({packet,settings});return stage('mail',async()=>({data:{id:'synthetic-only-ack'}}));}};}}},
-   '@/lib/emails':{passwordChangedEmail:load('lib/emails.ts').passwordChangedEmail}},{...globals,process:{env:options.noProvider?{}:{RESEND_API_KEY:'SYNTHETIC_NOT_A_SECRET'}}});
+  const notice=require('./direct-email-fixture.cjs').password({noProvider:options.noProvider,
+   send:(packet,settings)=>{packets.push({packet,settings});return stage('mail',async()=>Response.json({id:'synthetic-only-ack'}));}});
+
   const route=load('app/api/user/change-password/route.ts',{'next/server':{NextResponse:Response},'node:crypto':require('node:crypto'),'@/auth':{auth:async()=>({user:options.owner??{id:u.id,email:u.email}})},
    '@/lib/password-change':{...helper,changePasswordOriginal(...args){const p=helper.changePasswordOriginal(...args);effects.push(p);running.push(p);return p;}},'@/lib/password-change-notice':notice},globals);
   const headers={'content-type':'application/json',...(!options.legacy?{'Idempotency-Key':key}:{})};

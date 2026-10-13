@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import { prepareDomainEmailOriginal, dispatchDomainEmailOriginal, DomainEmailUnconfirmed } from '@/lib/send-email';
 import { passwordChangedEmail } from '@/lib/emails';
 export type PasswordChangeNotice = Readonly<{ to: string; subject: string; html: string; text: string }>;
 const escape = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -15,12 +15,9 @@ export function preparePasswordChangeNotice(email: string, name: string, lang: '
 export async function sendPasswordChangeNotice(packet: PasswordChangeNotice, originalId: string,
   beforeStep: () => void, onDispatch: () => void): Promise<void> {
   beforeStep();
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) throw Error('Password notice unavailable');
-  const sender = new Resend(apiKey);
-  beforeStep(); onDispatch();
-  const response = await sender.emails.send({ from: 'YTubViral <hello@ytubviral.com>',
-    replyTo: 'support@ytubviral.com', ...packet }, { idempotencyKey: originalId });
-  if (response.error || !response.data || typeof response.data.id !== 'string' || !response.data.id.trim())
-    throw Error('Password notice unconfirmed');
+  if (typeof originalId !== 'string') throw new DomainEmailUnconfirmed('not-issued');
+  const original = prepareDomainEmailOriginal({ ...packet, isTransactional: true, idempotencyKey: originalId },
+    () => { beforeStep(); onDispatch(); });
+  const outcome = original ? await dispatchDomainEmailOriginal(original) : 'not-issued';
+  if (outcome !== 'provider-accepted') throw new DomainEmailUnconfirmed(outcome);
 }
