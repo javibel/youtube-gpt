@@ -1,110 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { isDisposableEmail } from '@/lib/disposable-domains';
-import { sendTransactionalEmail } from '@/lib/send-email';
-import { ADMIN_EMAIL } from '@/lib/admin-email';
+import { NextResponse, after } from 'next/server';
 import { AFFILIATES_DORMANT } from '@/lib/features';
+import { rateLimitRequest, rateLimitDb } from '@/lib/rate-limit-db';
+import { parseAffiliateApplication, affiliateApplicationLimitEmail, prepareAffiliateApplicationJob, dispatchAffiliateApplication } from '@/lib/affiliate-application';
 
-// Genera un code corto y legible a partir del nombre ("Erika Goncalves" → "erika"),
-// con sufijo numérico si ya existe — el afiliado puede pedir cambiarlo, Javier lo
-// edita a mano al aprobar (no hay UI de auto-servicio para esto, v1 curada).
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '')
-    .slice(0, 20) || 'afiliado';
-}
-
-export async function POST(req: NextRequest) {
-  if (AFFILIATES_DORMANT) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-  const { name, email, channelInfo, lang } = await req.json().catch(() => ({}));
-  const isEn = lang === 'en';
-
-  // Rate limit: máx 3 solicitudes por IP por hora — POST público que crea filas
-  // y envía email a Javier; sin esto un bot le inunda el buzón. Mismo upsert
-  // atómico en BD que el signup (cross-instance safe).
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
-    ?? req.headers.get('x-real-ip')
-    ?? 'unknown';
-  const rlKey = `affapply:${ip}`;
-  const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
-    INSERT INTO rate_limits (key, hits, window_start)
-    VALUES (${rlKey}, 1, NOW())
-    ON CONFLICT (key) DO UPDATE
-    SET
-      hits = CASE
-        WHEN rate_limits.window_start < NOW() - INTERVAL '1 hour'
-        THEN 1
-        ELSE rate_limits.hits + 1
-      END,
-      window_start = CASE
-        WHEN rate_limits.window_start < NOW() - INTERVAL '1 hour'
-        THEN NOW()
-        ELSE rate_limits.window_start
-      END
-    RETURNING hits
-  `;
-  if (Number(rlResult[0].hits) > 3) {
-    return NextResponse.json(
-      { error: isEn ? 'Too many applications from this connection. Try again later.' : 'Demasiadas solicitudes desde esta conexión. Inténtalo más tarde.' },
-      { status: 429 },
-    );
-  }
-
-  if (typeof name !== 'string' || !name.trim() || typeof email !== 'string' || !email.trim()) {
-    return NextResponse.json(
-      { error: isEn ? 'Name and email are required.' : 'Nombre y email son obligatorios.' },
-      { status: 400 },
-    );
-  }
-  const normalizedEmail = email.toLowerCase().trim();
-  if (isDisposableEmail(normalizedEmail)) {
-    return NextResponse.json(
-      { error: isEn ? 'Please use a real, non-disposable email.' : 'Usa un email real, no desechable.' },
-      { status: 400 },
-    );
-  }
-
-  const existing = await prisma.affiliate.findFirst({ where: { email: normalizedEmail } });
-  if (existing) {
-    return NextResponse.json(
-      { error: isEn ? 'There is already an application with that email.' : 'Ya existe una solicitud con ese email.' },
-      { status: 400 },
-    );
-  }
-
-  let code = slugify(name);
-  let suffix = 0;
-  while (await prisma.affiliate.findUnique({ where: { code } })) {
-    suffix += 1;
-    code = `${slugify(name)}${suffix}`;
-  }
-
-  const affiliate = await prisma.affiliate.create({
-    data: {
-      code,
-      name: name.trim().slice(0, 100),
-      email: normalizedEmail,
-      channelInfo: typeof channelInfo === 'string' && channelInfo.trim() ? channelInfo.trim().slice(0, 2000) : undefined,
-      status: 'pending',
-    },
-  });
-
-  if (ADMIN_EMAIL) {
-    await sendTransactionalEmail({
-      to: ADMIN_EMAIL,
-      subject: `Nueva solicitud de afiliado: ${affiliate.name}`,
-      html: `<p>Nueva solicitud del programa de afiliados.</p>
-        <p><b>Nombre:</b> ${affiliate.name}<br/>
-        <b>Email:</b> ${affiliate.email}<br/>
-        <b>Código propuesto:</b> ${affiliate.code}</p>
-        <p><b>Canal/audiencia/cómo promociona:</b><br/>${(affiliate.channelInfo || '(no indicado)').replace(/\n/g, '<br/>')}</p>
-        <p>Aprobar/pausar en <a href="https://ytubviral.com/admin/affiliates">/admin/affiliates</a>.</p>`,
-      isTransactional: true,
-    }).catch((err) => console.error('[affiliates/apply] notify email error:', err));
-  }
-
-  return NextResponse.json({ ok: true }, { status: 201 });
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+const reply = (body: unknown, status: number) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+export async function POST(request: Request) {
+  // Remains dormant in this repository; even parsing/limiting/scheduling is closed.
+  if (AFFILIATES_DORMANT) return reply({ error: 'not_found' }, 404);
+  const deadline = performance.now()+25_000;
+  let retired = false, rejectWait!: (e: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; }); void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Application unconfirmed')); } };
+  const timer = setTimeout(retire, 25_000); request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now()>=deadline) retire(); if (retired) throw Error('Application unconfirmed'); };
+  const accepted = () => ({ body: { ok: true, status: 'accepted' }, status: 202 });
+  try {
+    const original = Promise.resolve().then(async () => {
+      check(); const allowed = await rateLimitRequest(request, 'affapply', 3, 60, true); check();
+      if (allowed !== true) return { body: { error: 'too_many_requests' }, status: 429 };
+      let value: unknown;
+      try { value = await request.json(); } catch { check(); return { body: { error: 'invalid_input' }, status: 400 }; }
+      check(); const input = parseAffiliateApplication(value); if (!input) return { body: { error: 'invalid_input' }, status: 400 };
+      const allowedEmail = await rateLimitDb('affapply:email:'+affiliateApplicationLimitEmail(input), 3, 60, true); check();
+      if (allowedEmail !== true) return accepted();
+      const job = prepareAffiliateApplicationJob(input); if (!job) return { body: { error: 'application_unconfirmed' }, status: 503 };
+      check(); after(async () => { await dispatchAffiliateApplication(job); }); return accepted();
+    });
+    const result = await Promise.race([original, stopped]); check(); return reply(result.body, result.status);
+  } catch { return reply({ error: 'application_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

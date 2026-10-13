@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { hasAcceptedAffiliateApplicationResponse } from '@/lib/affiliate-application-response';
 import { useLang } from '@/components/LangProvider';
 import { useCurrency } from '@/components/CurrencyProvider';
 import { PRICES, formatPrice } from '@/lib/pricing';
@@ -28,19 +29,18 @@ export default function AffiliatesClient() {
     setLoading(true);
     try {
       const res = await fetch('/api/affiliates/apply', {
-        method: 'POST',
+        method: 'POST', credentials: 'omit', redirect: 'error', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, channelInfo, lang }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setResult({ ok: false, text: data.error || t('Error al enviar la solicitud', 'Error submitting the application') });
+      if (!hasAcceptedAffiliateApplicationResponse(res.status, data)) {
+        setResult({ ok: false, text: t('Solicitud sin confirmar. Puede seguir pendiente.', 'Request unconfirmed. It may still be pending.') });
       } else {
-        setResult({ ok: true, text: t('Solicitud enviada. Te escribimos en 1-2 días con la decisión.', 'Application sent. We\'ll get back to you in 1-2 days.') });
-        setName(''); setEmail(''); setChannelInfo('');
+        setResult({ ok: true, text: t('Solicitud recibida. Esto no confirma aprobación ni entrega de un correo.', 'Request received. This does not confirm approval or email delivery.') });
       }
     } catch {
-      setResult({ ok: false, text: t('Error al enviar la solicitud', 'Error submitting the application') });
+      setResult({ ok: false, text: t('Solicitud sin confirmar. Puede seguir pendiente.', 'Request unconfirmed. It may still be pending.') });
     }
     setLoading(false);
   };
@@ -109,25 +109,25 @@ export default function AffiliatesClient() {
           <h2 className="font-display font-bold text-2xl text-white mb-4">{t('Solicitar acceso', 'Apply')}</h2>
           <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
             <div>
-              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nombre', 'Name')}</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
+              <label htmlFor="affiliate-name" className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nombre', 'Name')}</label>
+              <input id="affiliate-name" type="text" autoComplete="name" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} required
                 className="soft-field py-3 px-4 text-sm" placeholder={t('Tu nombre o el de tu canal', 'Your name or your channel\'s')} />
             </div>
             <div>
-              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+              <label htmlFor="affiliate-email" className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
+              <input id="affiliate-email" type="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} required
                 className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" />
             </div>
             <div>
-              <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
+              <label htmlFor="affiliate-channel" className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
                 {t('Tu canal/audiencia y cómo piensas promocionarlo', 'Your channel/audience and how you plan to promote it')}
               </label>
-              <textarea value={channelInfo} onChange={(e) => setChannelInfo(e.target.value)} rows={4}
+              <textarea id="affiliate-channel" maxLength={2000} value={channelInfo} onChange={(e) => setChannelInfo(e.target.value)} rows={4}
                 className="soft-field py-3 px-4 text-sm" placeholder={t('Link a tu canal, tamaño aproximado de audiencia, y si lo harías en vídeo, descripción, newsletter...', 'Link to your channel, rough audience size, and whether you\'d do it in a video, description, newsletter...')} />
             </div>
 
             {result && (
-              <div className="rounded-xl px-4 py-3 text-sm" style={{
+              <div role={result.ok ? "status" : "alert"} className="rounded-xl px-4 py-3 text-sm" style={{
                 background: result.ok ? 'rgba(34,197,94,0.08)' : 'rgba(232,77,91,0.08)',
                 border: `1px solid ${result.ok ? 'rgba(34,197,94,0.3)' : 'rgba(232,77,91,0.3)'}`,
                 color: result.ok ? '#4ade80' : '#f87171',

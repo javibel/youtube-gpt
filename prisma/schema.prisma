@@ -1043,6 +1043,7 @@ model Affiliate {
   user        User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
   clicks      AffiliateClick[]
   commissions AffiliateCommission[]
+  applicationAdmission AffiliateApplicationAdmission?
 
   @@map("affiliates")
 }
@@ -1378,4 +1379,17 @@ model WaitlistWelcomeAdmission {
   completedAt DateTime?
   registration LaunchWaitlist @relation(fields: [rowId], references: [id], onDelete: Restrict)
   @@map("waitlist_welcome_admissions")
+}
+
+// Permanent negative notice exclusion, never recovery authority.
+model AffiliateApplicationAdmission {
+  email String @id
+  noticeId String @unique
+  affiliateId String @unique
+  lang String
+  status String @default("pending")
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Restrict, map: "affiliate_application_affiliate_fkey")
+  @@map("affiliate_application_admissions")
 }
