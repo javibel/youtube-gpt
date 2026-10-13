@@ -152,6 +152,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, account, session }) {
       if (user) {
         token.id = user.id;
+        // Only Auth.js's native initial sign-in/sign-up event can mint this
+        // discriminator. Public update data never backfills or rotates it.
+        // It restricts a factor grant; it is not recovery/device authority.
+        if (trigger === 'signIn' || trigger === 'signUp') {
+          token.authSessionRef = crypto.randomUUID();
+        }
         // Google users are always email-verified
         if (account?.provider === 'google') {
           token.requiresVerification = false;
@@ -190,7 +196,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = token.email?.toLowerCase().trim();
         if (token.isAdmin === true && typeof token.id === 'string' && token.id
           && ADMIN_EMAIL && email === ADMIN_EMAIL && secret && /^\d{6}$/.test(code)
-          && expectedTotpAccountMatches(session, { id: token.id, email: token.email })) {
+          && expectedTotpAccountMatches(session, { id: token.id, email: token.email, authSessionRef: token.authSessionRef })) {
           try {
             const allowed = await rateLimitDb(`verify-totp-session:${token.id}`, 10, 15, true);
             if (allowed === true && authenticator.verify({ token: code, secret }) === true) {
@@ -205,6 +211,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     session({ session, token }) {
       if (token?.id) session.user.id = token.id as string;
+      (session.user as { authSessionRef?: string }).authSessionRef =
+        typeof token.authSessionRef === 'string' && token.authSessionRef ? token.authSessionRef : undefined;
       // Old JWTs don't have requiresVerification → default false (don't block legacy sessions)
       (session.user as { requiresVerification?: boolean }).requiresVerification =
         (token.requiresVerification as boolean | undefined) ?? false;

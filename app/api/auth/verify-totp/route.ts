@@ -11,7 +11,7 @@ import { expectedTotpAccountMatches } from '@/lib/totp-account';
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const principal = session?.user as { id?: string; email?: string | null; isAdmin?: boolean } | undefined;
+    const principal = session?.user as { id?: string; email?: string | null; isAdmin?: boolean; authSessionRef?: string } | undefined;
     const email = session?.user?.email?.toLowerCase().trim();
     if (typeof principal?.id !== 'string' || !principal.id || principal.isAdmin !== true || !email || !ADMIN_EMAIL || email !== ADMIN_EMAIL) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

@@ -8,13 +8,16 @@ import type { TotpAttempt, TotpOutcome } from '@/lib/totp-client-command';
 
 export default function VerifyTotpPage() {
   const { data: session } = useSession();
-  const scope = JSON.stringify([session?.user?.id, session?.user?.email]);
+  const ref = (session?.user as { authSessionRef?: unknown } | undefined)?.authSessionRef;
+  const scope = JSON.stringify([session?.user?.id, session?.user?.email, ref]);
   return <VerifyTotpAccount key={scope} />;
 }
 
 function VerifyTotpAccount() {
   const router = useRouter();
   const { data: session, update } = useSession();
+  const sessionRef = (session?.user as { authSessionRef?: unknown } | undefined)?.authSessionRef;
+  const canIdentify = typeof sessionRef === 'string' && !!sessionRef;
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
@@ -63,7 +66,7 @@ function VerifyTotpAccount() {
   }, []);
 
   function handleDigitChange(index: number, value: string) {
-    if (verifying || blocked || verified) return;
+    if (verifying || blocked || verified || !canIdentify) return;
     const digit = value.replace(/\D/g, '').slice(-1);
     const next = [...code];
     next[index] = digit;
@@ -82,7 +85,7 @@ function VerifyTotpAccount() {
 
   function handlePaste(e: React.ClipboardEvent) {
     e.preventDefault();
-    if (verifying || blocked || verified) return;
+    if (verifying || blocked || verified || !canIdentify) return;
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     if (pasted.length === 6) {
       setCode(pasted.split(''));
@@ -128,8 +131,8 @@ function VerifyTotpAccount() {
   function submitCode(fullCode: string) {
     if (verifying || verified || totpBlocked()) return;
     const owner = session?.user;
-    if (!owner?.id || !owner.email) return;
-    const command = beginTotp({ id: owner.id, email: owner.email }, context.current, fullCode, update, () => mounted.current);
+    if (!owner?.id || !owner.email || typeof sessionRef !== 'string' || !sessionRef) return;
+    const command = beginTotp({ id: owner.id, email: owner.email, authSessionRef: sessionRef }, context.current, fullCode, update, () => mounted.current);
     if (!command) return;
     attempt.current = command;
     waitFor(command);
@@ -196,7 +199,7 @@ function VerifyTotpAccount() {
                     onKeyDown={(e) => handleKeyDown(i, e)}
                     aria-label={t(`Dígito ${i + 1} del código`, `Code digit ${i + 1}`)}
                     autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                    disabled={verifying || blocked}
+                    disabled={verifying || blocked || !canIdentify}
                     className="yv-input w-12 h-14 text-center text-xl font-bold text-white disabled:opacity-50"
                     style={{ caretColor: 'var(--yv-brand)' }}
                   />
@@ -204,6 +207,10 @@ function VerifyTotpAccount() {
               </div>
 
               {error && <div role="alert" className="yv-note yv-note--error mb-4">{error}</div>}
+              {!canIdentify && <div role="status" className="text-zinc-400 text-sm mb-4">
+                <p>{t('Inicia sesión de nuevo para verificar esta sesión.', 'Sign in again to verify this session.')}</p>
+                <a href="/login" className="yv-btn mt-3 inline-block">{t('Volver a iniciar sesión', 'Sign in again')}</a>
+              </div>}
               {(blocked || ownOriginal) && !verifying && (
                 <div className="text-zinc-400 text-sm mb-4" role="status">
                   {blocked && <p>{t('Hay una verificación pendiente. Todavía no se puede enviar otro código.', 'A verification is pending. Another code cannot be sent yet.')}</p>}

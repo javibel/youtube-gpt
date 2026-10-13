@@ -23,6 +23,8 @@ export const authConfig: NextAuthConfig = {
     // token→session copying, no DB access, so it's Edge-safe to duplicate here.
     session({ session, token }) {
       if (token?.id) session.user.id = token.id as string;
+      (session.user as { authSessionRef?: string }).authSessionRef =
+        typeof token.authSessionRef === 'string' && token.authSessionRef ? token.authSessionRef : undefined;
       (session.user as { requiresVerification?: boolean }).requiresVerification =
         (token.requiresVerification as boolean | undefined) ?? false;
       (session.user as { isAdmin?: boolean }).isAdmin =

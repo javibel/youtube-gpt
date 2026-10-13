@@ -1,15 +1,16 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
 const {pathToFileURL}=require('node:url'),{authenticator}=require('otplib');
+const {webcrypto}=require('node:crypto');
 const root=path.resolve(__dirname,'../..'),fixedEpoch=Date.UTC(2026,9,13,0,0,0);
 const otp=authenticator.clone({epoch:fixedEpoch,window:0}),factorSecret='JBSWY3DPEHPK3PXP',validCode=otp.generate(factorSecret);
 const adminEmail='migration-admin-factor@example.invalid',jwtSecret='synthetic-native-session-secret-not-operational-authority',salt='authjs.session-token';
 function harness({configured=true,allowed=true,rateFailure=false,verifyFailure=false,nativeRate=false,sqlFailure=false,sqlHits=1}={}){
- let config;const calls={limits:[],factors:0,sql:[]};
+ let config,edgeConfig;const calls={limits:[],factors:0,sql:[],sessionRefs:[]};
  const requireSafe=id=>{
   if(id==='next-auth')return cfg=>{config=cfg;return{handlers:{},auth(){throw Error('No native HTTP authentication in this callback fixture');}};};
   if(id==='next-auth/providers/credentials'||id==='next-auth/providers/google')return value=>value;
-  if(id==='./auth.config'){const entry={exports:{}};const compiled=ts.transpileModule(fs.readFileSync(path.join(root,'auth.config.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(){throw Error('Unexpected auth config effect');}});return entry.exports;}
+  if(id==='./auth.config'){const entry={exports:{}};const compiled=ts.transpileModule(fs.readFileSync(path.join(root,'auth.config.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(){throw Error('Unexpected auth config effect');}});edgeConfig=entry.exports.authConfig;return entry.exports;}
   if(id==='@/lib/prisma')return{prisma:new Proxy({},{get(){throw Error('No database in native factor fixture');}})};
   if(id==='bcryptjs')return{compare(){throw Error('No credentials login');}};
   if(id==='next/headers')return{cookies(){throw Error('No operational cookies');}};
@@ -27,23 +28,23 @@ function harness({configured=true,allowed=true,rateFailure=false,verifyFailure=f
   throw Error('Unexpected auth import: '+id);
  };
  const entry={exports:{}},compiled=ts.transpileModule(fs.readFileSync(path.join(root,'auth.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
- vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require:requireSafe,process:{env:configured?{ADMIN_TOTP_SECRET:factorSecret}:{}},console:{error(){throw Error('No private logs');},warn(){throw Error('No private logs');}}},{filename:'auth.ts'});
- return{config,calls};
+ vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require:requireSafe,crypto:{randomUUID(){const value=webcrypto.randomUUID();calls.sessionRefs.push(value);return value;}},process:{env:configured?{ADMIN_TOTP_SECRET:factorSecret}:{}},console:{error(){throw Error('No private logs');},warn(){throw Error('No private logs');}}},{filename:'auth.ts'});
+ return{config,calls,edgeConfig};
 }
 async function run(){
  const jwt=await import('@auth/core/jwt'),native=await import(pathToFileURL(path.join(root,'node_modules/@auth/core/lib/actions/session.js')).href);
  const results=[];
- const base=()=>({id:'native-factor-admin',email:adminEmail,isAdmin:true,requiresTotp:true,requiresVerification:false});
- async function invoke(data,{token=base(),...options}={}){const h=harness(options);
+ const base=()=>({id:'native-factor-admin',email:adminEmail,isAdmin:true,requiresTotp:true,requiresVerification:false,authSessionRef:'native-fixture-session-one'});
+ async function invoke(data,{token=base(),isUpdate=true,...options}={}){const h=harness(options);
   const encoded=await jwt.encode({token,secret:jwtSecret,salt,maxAge:300});
   let emitted;const store={value:encoded,chunk(value,options){emitted=value;return[{name:salt,value,options}];},clean(){throw Error('Unexpected cookie clearing');}};
-  const response=await native.session({jwt:{encode:jwt.encode,decode:jwt.decode,secret:jwtSecret,maxAge:300},callbacks:h.config.callbacks,events:{session:async()=>{}},logger:{error(){throw Error('Native session failed');}},cookies:{sessionToken:{name:salt}},session:{strategy:'jwt',maxAge:300}},store,[],true,data);
+  const response=await native.session({jwt:{encode:jwt.encode,decode:jwt.decode,secret:jwtSecret,maxAge:300},callbacks:h.config.callbacks,events:{session:async()=>{}},logger:{error(){throw Error('Native session failed');}},cookies:{sessionToken:{name:salt}},session:{strategy:'jwt',maxAge:300}},store,[],isUpdate,data);
   assert(emitted);const updated=await jwt.decode({token:emitted,secret:jwtSecret,salt});
   assert.equal(updated.id,token.id);assert.equal(updated.email,token.email);
   return{response,updated,calls:h.calls};
  }
  async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}}
- const command=data=>({expectedUserId:'native-factor-admin',expectedEmail:adminEmail,...data});
+ const command=data=>({expectedUserId:'native-factor-admin',expectedEmail:adminEmail,expectedAuthSessionRef:'native-fixture-session-one',...data});
  for(const data of [{totpVerified:true},{totpVerified:1},{totpVerified:'true'},{requiresTotp:false,totpVerified:true,isAdmin:true},{totpVerified:true,token:base()},{totpVerified:true,verified:true,receipt:{verified:true}}])await test('client metadata cannot clear native gate: '+JSON.stringify(data),async()=>{const x=await invoke(data);assert.equal(x.updated.requiresTotp,true);assert.equal(x.response.body.user.requiresTotp,true);assert.equal(x.calls.factors,0);});
  for(const code of ['',123456,'00000','0000000','abcdef',' '+validCode.slice(0,5)])await test('malformed/non-string factor stays gated: '+JSON.stringify(code),async()=>{const x=await invoke({totpCode:code});assert.equal(x.updated.requiresTotp,true);assert.equal(x.calls.factors,0);});
  await test('wrong native OTP cannot clear gate even with positive client flags',async()=>{const wrong=(validCode[0]==='0'?'1':'0')+validCode.slice(1);const x=await invoke(command({totpCode:wrong,totpVerified:true}));assert.equal(x.updated.requiresTotp,true);assert.equal(x.calls.factors,1);});
@@ -58,6 +59,19 @@ async function run(){
  for(const expectation of [{},{expectedUserId:'native-factor-admin'},{expectedEmail:adminEmail},{expectedUserId:'other',expectedEmail:adminEmail},{expectedUserId:'native-factor-admin',expectedEmail:'other@example.invalid'},{expectedUserId:123,expectedEmail:adminEmail},{expectedUserId:'native-factor-admin',expectedEmail:true},{owner:base(),receipt:{verified:true}}])await test('account expectation only restricts; missing/foreign/serialized selector denies a valid OTP: '+JSON.stringify(expectation),async()=>{const x=await invoke({totpCode:validCode,...expectation});assert.equal(x.updated.requiresTotp,true);assert.equal(x.response.body.user.requiresTotp,true);assert.equal(x.calls.factors,0);assert.equal(x.calls.limits.length,0);});
  await test('account changes after capture: same admin email on another native ID stays gated',async()=>{const x=await invoke(command({totpCode:validCode}),{token:{...base(),id:'second-native-admin'}});assert.equal(x.updated.requiresTotp,true);assert.equal(x.calls.factors,0);assert.equal(x.calls.limits.length,0);});
  await test('canonical email selector still requires native admin and actual OTP',async()=>{const x=await invoke(command({totpCode:validCode,expectedEmail:' '+adminEmail.toUpperCase()+' '}));assert.equal(x.updated.requiresTotp,false);assert.equal(x.calls.factors,1);});
+ for(const ref of [undefined,'native-fixture-session-two',42,true,{receipt:'native-fixture-session-one'}])await test('missing/foreign/serialized instance selector cannot confirm another native session '+JSON.stringify(ref),async()=>{const x=await invoke(command({totpCode:validCode,expectedAuthSessionRef:ref}));assert.equal(x.updated.requiresTotp,true);assert.equal(x.calls.factors,0);assert.equal(x.calls.limits.length,0);assert.equal(x.updated.authSessionRef,'native-fixture-session-one');assert.equal(x.calls.sessionRefs.length,0);});
+ await test('new native session for the exact same account rejects the captured old reference',async()=>{const x=await invoke(command({totpCode:validCode}),{token:{...base(),authSessionRef:'native-fixture-session-two'}});assert.equal(x.updated.requiresTotp,true);assert.equal(x.calls.factors,0);assert.equal(x.calls.limits.length,0);assert.equal(x.updated.authSessionRef,'native-fixture-session-two');});
+ await test('legacy token cannot acquire a reference from update data or time',async()=>{const token=base();delete token.authSessionRef;const x=await invoke(command({totpCode:validCode,authSessionRef:'native-fixture-session-one',user:base(),trigger:'signIn'}),{token});assert.equal(x.updated.requiresTotp,true);assert.equal(x.updated.authSessionRef,undefined);assert.equal(x.calls.sessionRefs.length,0);});
+ await test('native session reissue preserves its original reference and projects it without backfill',async()=>{const x=await invoke(command({totpCode:validCode,authSessionRef:'forged-replacement',user:{...base(),authSessionRef:'forged-replacement'}}));assert.equal(x.updated.requiresTotp,false);assert.equal(x.updated.authSessionRef,'native-fixture-session-one');assert.equal(x.response.body.user.authSessionRef,'native-fixture-session-one');assert.equal(x.calls.sessionRefs.length,0);});
+ const nativeCallback=await import(pathToFileURL(path.join(root,'node_modules/@auth/core/lib/actions/callback/index.js')).href);
+ async function nativeSignin(){const h=harness(),body={fixtureCredential:'approved-fixture',authSessionRef:'body-forged-session',user:{id:'other',email:'other@example.invalid'}},user={id:'native-factor-admin',email:adminEmail,name:'Synthetic native issuer',emailVerified:new Date(fixedEpoch)};let emitted;
+  const store={value:undefined,chunk(value,options){emitted=value;return[{name:salt,value,options}];},clean(){throw Error('No cookie reset');}};
+  const response=await nativeCallback.callback({method:'POST',query:{},body,headers:{}},{provider:{id:'fixture-credentials',type:'credentials',authorize:async credentials=>{assert.equal(credentials.fixtureCredential,'approved-fixture');return user;}},url:new URL('http://127.0.0.1:4300/api/auth/callback/fixture-credentials'),callbackUrl:'http://127.0.0.1:4300/dashboard',jwt:{encode:jwt.encode,decode:jwt.decode,secret:jwtSecret,maxAge:300},callbacks:h.config.callbacks,events:{signIn:async()=>{}},logger:{debug(){},error(){throw Error('Native sign-in failed');}},cookies:{sessionToken:{name:salt}},session:{strategy:'jwt',maxAge:300}},store,[]);
+  assert(emitted);return{response,token:await jwt.decode({token:emitted,secret:jwtSecret,salt}),calls:h.calls};
+ }
+ await test('actual native credentials sign-in mints a fresh reference independent of request metadata',async()=>{const a=await nativeSignin(),b=await nativeSignin();assert.equal(a.token.id,b.token.id);assert.equal(a.token.email,b.token.email);assert.equal(a.calls.sessionRefs.length,1);assert.equal(b.calls.sessionRefs.length,1);assert.equal(a.token.authSessionRef,a.calls.sessionRefs[0]);assert.equal(b.token.authSessionRef,b.calls.sessionRefs[0]);assert.notEqual(a.token.authSessionRef,b.token.authSessionRef);assert.notEqual(a.token.authSessionRef,'body-forged-session');assert.equal(a.token.id,'native-factor-admin');});
+ await test('ordinary native refresh never mints or transplants a reference',async()=>{const x=await invoke({authSessionRef:'body-forged-session',user:base(),trigger:'signIn'},{isUpdate:false});assert.equal(x.updated.authSessionRef,'native-fixture-session-one');assert.equal(x.response.body.user.authSessionRef,'native-fixture-session-one');assert.equal(x.updated.requiresTotp,true);assert.equal(x.calls.sessionRefs.length,0);assert.equal(x.calls.factors,0);});
+ await test('proxy configuration only copies a native reference and never restores a missing claim',async()=>{const h=harness(),body={user:{authSessionRef:'body-forged-session'}};const out=h.edgeConfig.callbacks.session({session:body,token:base()});assert.equal(out.user.authSessionRef,'native-fixture-session-one');const legacy=base();delete legacy.authSessionRef;const absent=h.edgeConfig.callbacks.session({session:{user:{authSessionRef:'body-forged-session'}},token:legacy});assert.equal(absent.user.authSessionRef,undefined);assert.equal(h.calls.sessionRefs.length,0);});
  return{status:results.every(x=>x.status==='PASS')?'PASS':'FAIL',scope:'Actual auth.ts callbacks joined to installed Auth.js native session action/JWT decode+encode and native otplib with a fixed synthetic epoch. Cookie store, rate limiter and principal issuance are fixtures; no real HTTP/CSRF/OAuth/account, credentials or operational MFA acceptance.',results};
 }
 module.exports={run};if(require.main===module)run().then(x=>{console.log(JSON.stringify(x,null,2));if(x.status!=='PASS')process.exitCode=1;}).catch(e=>{console.error(e.message);process.exitCode=1;});

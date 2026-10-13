@@ -1,8 +1,8 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),{authenticator}=require('otplib');
 const root=path.resolve(__dirname,'../..'),epoch=Date.UTC(2026,9,13,0,0,0),secret='JBSWY3DPEHPK3PXP',otp=authenticator.clone({epoch,window:0}),code=otp.generate(secret),email='migration-admin-factor@example.invalid';
-const principal=()=>({id:'native-factor-admin',email,isAdmin:true,requiresTotp:true});
-const input=()=>({code,expectedUserId:'native-factor-admin',expectedEmail:email});
+const principal=()=>({id:'native-factor-admin',email,isAdmin:true,requiresTotp:true,authSessionRef:'native-fixture-session-one'});
+const input=()=>({code,expectedUserId:'native-factor-admin',expectedEmail:email,expectedAuthSessionRef:'native-fixture-session-one'});
 function harness({actor=principal(),configured=true,allowed=true,rateFailure=false,verifyFailure=false,authFailure=false}={}){
  const calls={limits:[],factors:0},cache=new Map();
  function load(name){if(cache.has(name))return cache.get(name);const entry={exports:{}};const compiled=ts.transpileModule(fs.readFileSync(path.join(root,name),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
@@ -29,6 +29,9 @@ async function run(){const results=[];
  await test('previous fixed-epoch OTP stays expired without renewing its date',async()=>{const previous=authenticator.clone({epoch:epoch-30000,window:0}).generate(secret);assert.notEqual(previous,code);const x=await invoke({...input(),code:previous});assert.equal(x.status,400);assert.equal(x.calls.factors,1);});
  for(const options of [{configured:false},{rateFailure:true},{verifyFailure:true},{authFailure:true}])await test('failed configuration/native stage is sanitized and never acknowledged '+JSON.stringify(options),async()=>{const x=await invoke(input(),options);assert.equal(x.status,503);assert(!JSON.stringify(x.body).includes('private'));assert.notDeepEqual(x.body,{verified:true});});
  for(const allowed of [false,'true',null])await test('limiter must explicitly allow, never truthy '+JSON.stringify(allowed),async()=>{const x=await invoke(input(),{allowed});assert.equal(x.status,429);assert.equal(x.calls.factors,0);});
+ for(const ref of [undefined,'native-fixture-session-two',42,{receipt:'native-fixture-session-one'}])await test('public instance selector mismatch denies precheck before native factor '+JSON.stringify(ref),async()=>{const x=await invoke({...input(),expectedAuthSessionRef:ref});assert.equal(x.status,409);assert.equal(x.calls.factors,0);assert.equal(x.calls.limits.length,0);});
+ await test('another native session of the same account cannot consume the old reference',async()=>{const x=await invoke(input(),{actor:{...principal(),authSessionRef:'native-fixture-session-two'}});assert.equal(x.status,409);assert.equal(x.calls.factors,0);assert.equal(x.calls.limits.length,0);});
+ await test('legacy native session without reference is not backfilled from public data',async()=>{const actor=principal();delete actor.authSessionRef;const x=await invoke({...input(),authSessionRef:'native-fixture-session-one',receipt:{authSessionRef:'native-fixture-session-one'}},{actor});assert.equal(x.status,409);assert.equal(actor.authSessionRef,undefined);assert.equal(x.calls.factors,0);});
  return{status:results.every(x=>x.status==='PASS')?'PASS':'FAIL',scope:'Actual precheck route and account restriction, native Request/Response and native OTP at fixed synthetic epoch; authentication, principal issuance and SQL accounting are fixtures. This route grants no JWT authority. No real HTTP/CSRF/OAuth/account or operational MFA acceptance.',results};
 }
 module.exports={run};if(require.main===module)run().then(x=>{console.log(JSON.stringify(x,null,2));if(x.status!=='PASS')process.exitCode=1;}).catch(e=>{console.error(e.message);process.exitCode=1;});

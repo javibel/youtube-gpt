@@ -1,7 +1,7 @@
 'use client';
 import type { TotpAccountExpectation } from '@/lib/totp-account';
 
-export type TotpOwner = Readonly<{ id: string; email: string }>;
+export type TotpOwner = Readonly<{ id: string; email: string; authSessionRef: string }>;
 export type TotpOutcome = Readonly<{ status: 'confirmed' | 'invalid' | 'rate-limited' | 'not-issued' | 'unconfirmed' }>;
 export type TotpAttempt = Readonly<{ owner: TotpOwner }>;
 type Original = {
@@ -31,11 +31,11 @@ export function retireTotpProgress(attempt: TotpAttempt) {
 
 export function beginTotp(owner: TotpOwner, context: object, code: string,
   update: (data: { totpCode: string } & TotpAccountExpectation) => Promise<unknown>, active: () => boolean): TotpAttempt | undefined {
-  if (totpBlocked() || !active() || !owner.id || !owner.email || !/^\d{6}$/.test(code)) return;
-  const attempt: TotpAttempt = Object.freeze({ owner: Object.freeze({ id: owner.id, email: owner.email }) });
+  if (totpBlocked() || !active() || !owner.id || !owner.email || typeof owner.authSessionRef !== 'string' || !owner.authSessionRef || !/^\d{6}$/.test(code)) return;
+  const attempt: TotpAttempt = Object.freeze({ owner: Object.freeze({ id: owner.id, email: owner.email, authSessionRef: owner.authSessionRef }) });
   const original: Original = { context, promise: Promise.resolve(unknown), allowUpdate: true, claimed: false };
   originals.set(attempt, original); retained = attempt;
-  const expectation: TotpAccountExpectation = Object.freeze({ expectedUserId: attempt.owner.id, expectedEmail: attempt.owner.email });
+  const expectation: TotpAccountExpectation = Object.freeze({ expectedUserId: attempt.owner.id, expectedEmail: attempt.owner.email, expectedAuthSessionRef: attempt.owner.authSessionRef });
   const settle = (status: TotpOutcome['status']) => {
     const outcome: TotpOutcome = Object.freeze({ status });
     original.outcome = outcome; notify(); return outcome;
@@ -60,9 +60,10 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
       if (!result || typeof result !== 'object' || Array.isArray(result)
         || Object.keys(result).some(key => key !== 'user' && key !== 'expires')
         || ('expires' in result && typeof result.expires !== 'string')) return settle('unconfirmed');
-      const principal = (result as { user?: { id?: unknown; email?: unknown; requiresTotp?: unknown; isAdmin?: unknown } } | null)?.user;
+      const principal = (result as { user?: { id?: unknown; email?: unknown; requiresTotp?: unknown; isAdmin?: unknown; authSessionRef?: unknown } } | null)?.user;
       if (!principal || typeof principal !== 'object' || Array.isArray(principal)
         || principal.id !== attempt.owner.id || principal.email !== attempt.owner.email
+        || principal.authSessionRef !== attempt.owner.authSessionRef
         || principal.requiresTotp !== false || principal.isAdmin !== true) return settle('unconfirmed');
       // This observes the installed SDK return, not its hidden CSRF/HTTP stages
       // or authenticated continuity after this JavaScript realm is lost.
