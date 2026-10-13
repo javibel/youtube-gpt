@@ -264,7 +264,7 @@ export default function SignupForm() {
             {signup.status === 'invalid' && <p role="alert">{t('Revisa los datos del registro.', 'Check the signup details.')}</p>}
             {signup.status === 'bot-denied' && <p role="alert">{t('La verificación no fue aceptada. Complétala de nuevo.', 'Verification was not accepted. Complete it again.')}</p>}
             {signup.status === 'rate-limited' && <p role="alert">{t('Demasiados intentos. Espera antes de volver a intentarlo.', 'Too many attempts. Wait before trying again.')}</p>}
-            {signup.status === 'not-issued' && <p role="status">{t('No se envió el registro. Puedes iniciar una nueva solicitud.', 'Signup was not sent. You can start a new request.')}</p>
+            {signup.status === 'not-issued' && <p role="status">{t('No se envió el registro. Puedes iniciar una nueva solicitud.', 'Signup was not sent. You can start a new request.')}</p>}
             {signup.blocked && !signup.own && !google.own && <p role="status">{t('Hay una operación pendiente. Espera a que termine.', 'An operation is pending. Wait for it to finish.')}</p>}
 
             {error && (
