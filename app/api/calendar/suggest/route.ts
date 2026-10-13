@@ -4,7 +4,7 @@ import { captureSuggestionTimes, captureSuggestionTrends, captureSuggestionCompe
 import { decodeCalendarSuggestions } from '@/lib/calendar-suggestion-contract';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { authorizeNativeCalendarSuggest, runNativeCalendarSuggest } from '@/lib/calendar-suggest-native-authorization';
 import { prisma } from '@/lib/prisma';
 import { hasPaidAccess } from '@/lib/plans';
 
@@ -14,6 +14,7 @@ export const maxDuration = 60;
 function suggestionHttpWait(signal: AbortSignal) {
   const deadline = performance.now() + 55_000;
   let retired = false;
+  let nativeCheck: (() => void) | null = null;
   let rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
@@ -25,6 +26,7 @@ function suggestionHttpWait(signal: AbortSignal) {
   const check = () => {
     if (signal.aborted || performance.now() >= deadline) retire();
     if (retired) throw new Error('Suggestions unconfirmed');
+    nativeCheck?.();
   };
   return {
     async run<T>(operation: () => Promise<T>): Promise<T> {
@@ -35,6 +37,11 @@ function suggestionHttpWait(signal: AbortSignal) {
       return result;
     },
     check,
+    bindNativeCheck(checkNative: () => void) {
+      if (nativeCheck) throw Error('Suggestion authentication already bound');
+      nativeCheck = checkNative;
+      check();
+    },
     close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
   };
 }
@@ -54,7 +61,14 @@ export async function POST(request: Request) {
     new Date(baseInstant + (i + 1) * 86400000).toISOString().slice(0, 10)));
   const selection = Object.freeze({ baseDay, publishedThrough: new Date(baseInstant).toISOString(), publishedAfter: new Date(baseInstant - 7 * 86400000).toISOString(), next14 });
   try {
-    const response = await suggest(request, wait, selection);
+    const authorization = await wait.run(() => authorizeNativeCalendarSuggest());
+    if (!authorization) return NextResponse.json({ error: 'unauthorized' }, {
+      status: 401, headers: { 'Cache-Control': 'no-store' },
+    });
+    const response = await wait.run(() => runNativeCalendarSuggest(authorization, async (owner, checkNative) => {
+      wait.bindNativeCheck(checkNative);
+      return suggest(request, wait, selection, owner);
+    }));
     wait.check();
     response.headers.set('Cache-Control', 'no-store');
     return response;
@@ -66,15 +80,9 @@ export async function POST(request: Request) {
 }
 
 async function suggest(request: Request, wait: ReturnType<typeof suggestionHttpWait>,
-  selection: Readonly<{ baseDay: string; publishedThrough: string; publishedAfter: string; next14: readonly string[] }>) {
+  selection: Readonly<{ baseDay: string; publishedThrough: string; publishedAfter: string; next14: readonly string[] }>,
+  owner: Readonly<{ id: string; email: string }>) {
   const next14 = selection.next14;
-  const session = await wait.run(() => auth());
-  const selectedUser = session?.user;
-  const id = selectedUser?.id, email = selectedUser?.email;
-  wait.check();
-  if (typeof id !== 'string' || !id || typeof email !== 'string' || !email)
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  const owner = Object.freeze({ id, email });
   const userId = owner.id;
   const operationKey=request.headers.get('idempotency-key');
   const recovery=request.headers.get('X-Calendar-Recovery');
