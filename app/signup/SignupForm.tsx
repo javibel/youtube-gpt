@@ -14,6 +14,7 @@ const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 type TurnstileGlobal = {
   render: (container: HTMLElement, opts: {
     sitekey: string;
+    action?: string;
     theme?: 'dark' | 'light';
     language?: string;
     callback?: (token: string) => void;
@@ -77,9 +78,8 @@ export default function SignupForm() {
     if (stored) setLang(stored);
   }, []);
 
-  // Turnstile anti-bot widget on signup (A8, 2026-07-05). No-op if the site key isn't
-  // configured (local dev) — signup works exactly as before in that case.
-  // Keys live in Vercel as NEXT_PUBLIC_TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY (production, 2026-07-11).
+  // The server requires its own Siteverify original, secret/hostname and signup
+  // action. Missing client configuration never bypasses that server guard.
   useEffect(() => {
     if (!TURNSTILE_SITE_KEY) return;
 
@@ -87,6 +87,7 @@ export default function SignupForm() {
       if (!turnstileRef.current || !window.turnstile) return;
       turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
         sitekey: TURNSTILE_SITE_KEY!,
+        action: 'signup',
         theme: 'dark',
         language: lang,
         callback: (token) => setTurnstileToken(token),

@@ -20,7 +20,7 @@ function fixture(options={}){
  };
  const prisma={$queryRawUnsafe:async(sql,...args)=>{calls.sql.push({sql,args});return options.sql?options.sql(sql,args,native):native(sql,...args);}};
  const mails=options.mail??(async()=> 'provider-accepted');
- const api=load('lib/email-verification-resend.ts',{'node:crypto':options.crypto??require('node:crypto'),'@/lib/prisma':{prisma},'@/lib/emails':load('lib/emails.ts'),'@/lib/send-email':{sendDomainEmailOriginal:async message=>{calls.mail.push(message);return mails(message);}}});
+ const api=load('lib/email-verification-resend.ts',{'bcryptjs':require('bcryptjs'),'@/lib/features':{AFFILIATES_DORMANT:true},'@/lib/signup-turnstile':{takeSignupTurnstilePermit(){throw Error('Signup must bind its own native permit');}},'node:crypto':options.crypto??require('node:crypto'),'@/lib/prisma':{prisma},'@/lib/emails':load('lib/emails.ts'),'@/lib/send-email':{sendDomainEmailOriginal:async message=>{calls.mail.push(message);return mails(message);}}});
  const postModule=load('app/api/auth/resend-verification/route.ts',{'next/server':{NextResponse:require('next/server').NextResponse,after:fn=>{if(options.afterError)throw Error('synthetic scheduler failure');calls.after.push(fn);}},'@/lib/email-verification-resend':api,'@/lib/rate-limit-db':{rateLimitRequest:async(...args)=>{calls.limits.push(args);if(options.limit)return options.limit(...args);return true;}}},{console:{info:(...args)=>calls.logs.push(args)}});
  const post=(body={email,lang:'es'},raw=false)=>postModule.POST(new Request('https://synthetic.invalid/api/auth/resend-verification',{method:'POST',body:raw?body:JSON.stringify(body)}));
  return{api,post,calls,store,prisma};

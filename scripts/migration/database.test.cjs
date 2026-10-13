@@ -26,6 +26,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
  results.push('isolated database identity');
  await runContract('./admin-totp-consumption-database.cjs',prisma,results);
  await runContract('./email-verification-resend-database.cjs',prisma,results);
+ await runContract('./signup-database.cjs',prisma,results);
  await runContract('./thumbnail-save-database.cjs',prisma,results);
  await runContract('./thumbnail-background-database.cjs',prisma,results);
  await runContract('./background-upload-database.cjs',prisma,results);

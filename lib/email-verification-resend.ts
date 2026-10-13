@@ -1,3 +1,7 @@
+import bcrypt from 'bcryptjs';
+import type { SignupInput } from '@/lib/signup-input';
+import { takeSignupTurnstilePermit, type SignupTurnstilePermit } from '@/lib/signup-turnstile';
+import { AFFILIATES_DORMANT } from '@/lib/features';
 import { randomInt, randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { verificationEmail } from '@/lib/emails';
@@ -129,4 +133,63 @@ export function dispatchVerificationResend(notice: VerificationNotice): Promise<
     }
   });
   return original.dispatch;
+}
+
+/** Consume the native Turnstile original once before account/hash writes.
+ * User, initial code and notice exclusion commit in one SQL statement.
+ */
+export async function createSignupAndNotice(input: SignupInput, permit: SignupTurnstilePermit):
+  Promise<{ status: 'created'; notice: VerificationNotice } | { status: 'exists' | 'blocked' | 'unconfirmed' }> {
+  if (!takeSignupTurnstilePermit(permit, input)) return { status: 'unconfirmed' };
+  try {
+    const passwordHash = await bcrypt.hash(input.password, 12);
+    const userId = randomUUID(), noticeId = randomUUID(), tokenId = randomUUID();
+    const code = String(randomInt(100000, 1000000));
+    const aff = !AFFILIATES_DORMANT && input.aff?.trim() ? input.aff.trim().toLowerCase() : null;
+    const rows = await prisma.$queryRawUnsafe<Receipt[]>(
+      `WITH inserted_user AS (
+         INSERT INTO users (id,email,password,name,lang,"utmSource","utmMedium","utmCampaign",
+           "signupReferrer","signupLandingPage","referredBy","referredByCode","referredAt","createdAt","updatedAt")
+         SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+           CASE WHEN $12::text IS NULL THEN NULL ELSE timezone('UTC',clock_timestamp()) END,
+           timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp())
+         WHERE NOT EXISTS (SELECT 1 FROM email_verification_resend_admissions WHERE email=$2)
+           AND NOT EXISTS (SELECT 1 FROM email_verification_tokens WHERE email=$2)
+         ON CONFLICT (email) DO NOTHING RETURNING id,email,name
+       ), admitted AS (
+         INSERT INTO email_verification_resend_admissions (email,"noticeId","userId","createdAt")
+         SELECT email,$13,id,timezone('UTC',clock_timestamp()) FROM inserted_user
+         RETURNING email,"noticeId","userId"
+       ), inserted_token AS (
+         INSERT INTO email_verification_tokens (id,email,token,expires,"createdAt")
+         SELECT $14,email,$15,timezone('UTC',clock_timestamp())+INTERVAL '15 minutes',
+           timezone('UTC',clock_timestamp()) FROM admitted RETURNING id,email,token
+       )
+       SELECT CASE WHEN EXISTS(SELECT 1 FROM inserted_token) THEN 'created'
+         WHEN EXISTS(SELECT 1 FROM users WHERE email=$2) THEN 'exists'
+         WHEN EXISTS(SELECT 1 FROM email_verification_resend_admissions WHERE email=$2)
+           OR EXISTS(SELECT 1 FROM email_verification_tokens WHERE email=$2) THEN 'blocked'
+         ELSE 'unconfirmed' END AS outcome,
+         (SELECT "noticeId" FROM admitted) AS "noticeId",
+         (SELECT id FROM inserted_token) AS "tokenId", (SELECT "userId" FROM admitted) AS "userId",
+         (SELECT email FROM inserted_token) AS email, (SELECT name FROM inserted_user) AS name,
+         (SELECT token FROM inserted_token) AS token`,
+      userId, input.email, passwordHash, input.name, input.lang,
+      input.utmSource ?? null, input.utmMedium ?? null, input.utmCampaign ?? null,
+      input.signupReferrer ?? null, input.signupLandingPage ?? null,
+      AFFILIATES_DORMANT ? null : (input.ref ?? null), aff, noticeId, tokenId, code,
+    );
+    if (!Array.isArray(rows) || rows.length !== 1) return { status: 'unconfirmed' };
+    const row = rows[0];
+    if (row.outcome === 'created' && row.noticeId === noticeId && row.tokenId === tokenId
+      && row.userId === userId && row.email === input.email && row.name === input.name && row.token === code) {
+      const notice: VerificationNotice = Object.freeze({ kind: 'email-resend-original' });
+      originals.set(notice, { record: { ...row }, lang: input.lang });
+      return { status: 'created', notice };
+    }
+    if ((row.outcome === 'exists' || row.outcome === 'blocked')
+      && row.noticeId === null && row.tokenId === null && row.userId === null
+      && row.email === null && row.name === null && row.token === null) return { status: row.outcome };
+  } catch { /* Unknown commit never creates a notice or adopts an account. */ }
+  return { status: 'unconfirmed' };
 }
