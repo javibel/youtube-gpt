@@ -30,7 +30,7 @@ module.exports=async function(prisma,results){
   assert.equal((await prisma.user.findUnique({where:{id:expired.id}})).emailVerified,null);
   assert.equal(await prisma.emailVerificationToken.count({where:{email:expired.email}}),0);
   results.push('declared expired fixture is consumed as expired without account grant, never refreshed');
-  const boundary=await fresh('boundary','913005');await prisma.$executeRawUnsafe('UPDATE email_verification_tokens SET expires = clock_timestamp() WHERE email = $1',boundary.email);
+  const boundary=await fresh('boundary','913005');await prisma.$executeRawUnsafe('UPDATE email_verification_tokens SET expires = timezone('UTC', clock_timestamp()) WHERE email = $1',boundary.email);
   assert.equal((await a.consumeEmailVerification(boundary.email,'913005')).status,'expired');
   assert.equal((await prisma.user.findUnique({where:{id:boundary.id}})).emailVerified,null);
   results.push('native database clock expiry boundary denies verification');
