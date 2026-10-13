@@ -232,7 +232,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(nativeAuthOptions);
 // Reuse the actual options after NextAuth has applied its native environment
 // defaults. This is a read-only encrypted cookie check, with no session refresh,
 // bearer fallback, minting or JSON-derived authentication/recovery authority.
-export async function readNativeSignoutCookie(request: Request) {
+export async function readNativeSessionCookie(request: Request) {
   if (nativeAuthOptions.adapter || nativeAuthOptions.session?.strategy === 'database')
     throw new Error('Native cookie check requires the configured JWT strategy');
   const secret = nativeAuthOptions.secret;
@@ -245,3 +245,4 @@ export async function readNativeSignoutCookie(request: Request) {
   return getToken({ req: { headers }, secret, secureCookie, cookieName,
     decode: nativeAuthOptions.jwt?.decode, logger: { debug() {}, warn() {}, error() {} } });
 }
+export const readNativeSignoutCookie = readNativeSessionCookie;

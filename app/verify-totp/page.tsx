@@ -15,7 +15,7 @@ export default function VerifyTotpPage() {
 
 function VerifyTotpAccount() {
   const router = useRouter();
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
   const sessionRef = (session?.user as { authSessionRef?: unknown } | undefined)?.authSessionRef;
   const canIdentify = typeof sessionRef === 'string' && !!sessionRef;
 
@@ -100,7 +100,7 @@ function VerifyTotpAccount() {
     if (outcome.status === 'confirmed' && claimTotpConfirmation(command, context.current, outcome)) {
       setVerified(true);
       navigationTimer.current = setTimeout(() => {
-        if (mounted.current) router.push('/dashboard');
+        if (mounted.current) window.location.href = '/dashboard';
       }, 1000);
     } else if (outcome.status === 'invalid' || outcome.status === 'rate-limited') {
       setError(outcome.status === 'rate-limited'
@@ -132,7 +132,7 @@ function VerifyTotpAccount() {
     if (verifying || verified || totpBlocked()) return;
     const owner = session?.user;
     if (!owner?.id || !owner.email || typeof sessionRef !== 'string' || !sessionRef) return;
-    const command = beginTotp({ id: owner.id, email: owner.email, authSessionRef: sessionRef }, context.current, fullCode, update, () => mounted.current);
+    const command = beginTotp({ id: owner.id, email: owner.email, authSessionRef: sessionRef }, context.current, fullCode, () => mounted.current);
     if (!command) return;
     attempt.current = command;
     waitFor(command);

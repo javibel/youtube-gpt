@@ -30,7 +30,7 @@ export function retireTotpProgress(attempt: TotpAttempt) {
 }
 
 export function beginTotp(owner: TotpOwner, context: object, code: string,
-  update: (data: { totpCode: string } & TotpAccountExpectation) => Promise<unknown>, active: () => boolean): TotpAttempt | undefined {
+  active: () => boolean): TotpAttempt | undefined {
   if (totpBlocked() || !active() || !owner.id || !owner.email || typeof owner.authSessionRef !== 'string' || !owner.authSessionRef || !/^\d{6}$/.test(code)) return;
   const attempt: TotpAttempt = Object.freeze({ owner: Object.freeze({ id: owner.id, email: owner.email, authSessionRef: owner.authSessionRef }) });
   const original: Original = { context, promise: Promise.resolve(unknown), allowUpdate: true, claimed: false };
@@ -43,8 +43,8 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
   original.promise = Promise.resolve().then(async () => {
     try {
       if (!original.allowUpdate || !active()) return settle('not-issued');
-      // Retain this exact HTTP/body/SDK chain. Ending a UI wait does not cancel
-      // server work, prove cookie state, or authorize a replacement SDK call.
+      // Retain this exact precheck/CSRF/session HTTP and body chain. Ending a UI
+      // wait cannot cancel server work, prove cookie state or authorize replacement.
       const response = await fetch('/api/auth/verify-totp', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, ...expectation }),
       });
@@ -56,7 +56,18 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
         || !('verified' in body) || body.verified !== true) return settle('unconfirmed');
       // A delayed precheck must never start the native mutation after retirement.
       if (!original.allowUpdate || !active()) return settle('not-issued');
-      const result = await update({ totpCode: code, ...expectation });
+      const csrfResponse = await fetch('/api/auth/csrf', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+      const csrf: unknown = await csrfResponse.json();
+      if (csrfResponse.status !== 200 || csrfResponse.ok !== true || !csrf || typeof csrf !== 'object'
+        || Array.isArray(csrf) || Object.keys(csrf).length !== 1 || !('csrfToken' in csrf)
+        || typeof csrf.csrfToken !== 'string' || !/^[a-f0-9]{64}$/.test(csrf.csrfToken)) return settle('unconfirmed');
+      if (!original.allowUpdate || !active()) return settle('not-issued');
+      const native = await fetch('/api/auth/session', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json',
+          'X-YTV-Totp-Expectation': encodeURIComponent(JSON.stringify(expectation)) },
+        body: JSON.stringify({ csrfToken: csrf.csrfToken, data: { totpCode: code, ...expectation } }) });
+      const result: unknown = await native.json();
+      if (native.status !== 200 || native.ok !== true) return settle('unconfirmed');
       if (!result || typeof result !== 'object' || Array.isArray(result)
         || Object.keys(result).some(key => key !== 'user' && key !== 'expires')
         || ('expires' in result && typeof result.expires !== 'string')) return settle('unconfirmed');
@@ -65,8 +76,9 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
         || principal.id !== attempt.owner.id || principal.email !== attempt.owner.email
         || principal.authSessionRef !== attempt.owner.authSessionRef
         || principal.requiresTotp !== false || principal.isAdmin !== true) return settle('unconfirmed');
-      // This observes the installed SDK return, not its hidden CSRF/HTTP stages
-      // or authenticated continuity after this JavaScript realm is lost.
+      // No SDK projection/broadcast/session refresh adds another cookie writer.
+      // This acknowledges the original response, not cross-device continuity or
+      // cancellation/serialization of late cookies after this realm is retired.
       return settle('confirmed');
     } catch { return settle('unconfirmed'); }
   });
