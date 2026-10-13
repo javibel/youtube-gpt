@@ -1,10 +1,5 @@
-import { prisma } from '@/lib/prisma';
-import { sendTransactionalEmail } from '@/lib/send-email';
-import { SEQUENCES } from '@/lib/lifecycle-emails';
-import { isInternalAccount } from '@/lib/internal-accounts';
 import { prepareLifecycleOriginal, dispatchLifecycleOriginal } from '@/lib/lifecycle-email-original';
 
-const LIVE = process.env.LIFECYCLE_EMAILS_LIVE === 'true';
 type ConvStep = 'c1' | 'c3';
 // Fire-and-forget business caller: failures do not break the user's operation.
 // Shared durable admission with cron; unknown acknowledgement never retries.
@@ -14,60 +9,18 @@ export async function triggerConversionEmail(userId: string, step: ConvStep,
   if (original) await dispatchLifecycleOriginal(original);
 }
 
-// Emails de facturación (trial ending, pago fallido) — transaccionales sobre el
-// estado de la cuenta, NO marketing: a diferencia de triggerConversionEmail,
-// deliberadamente NO gatean por marketingOptOut/emailVerified ni aplican cooldown
-// (isTransactional:true en sendTransactionalEmail omite el header de baja).
-// Idempotentes por EmailLog porque Stripe reintenta webhooks.
-//
-// A diferencia de triggerConversionEmail, estos SÍ propagan errores: su único
-// caller es el webhook de Stripe, que responde 500 en error para que Stripe
-// reintente — si nos tragáramos el fallo aquí, un error transitorio de envío
-// perdería el email para siempre. Única excepción: si el email YA salió y solo
-// falla el registro en EmailLog, no se relanza (relanzar duplicaría el envío
-// en el reintento).
-async function sendBillingEmail(
-  userId: string,
-  step: string,
-  tpl: (typeof SEQUENCES.billing)[keyof typeof SEQUENCES.billing],
-  extra: Record<string, string | number>,
-): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, lang: true } });
-  if (!user?.email || isInternalAccount(user.email)) return;
 
-  const already = await prisma.emailLog.findUnique({
-    where: { userId_sequence_step: { userId, sequence: 'billing', step } },
-  });
-  if (already) return;
-
-  const lang = (user.lang === 'en' ? 'en' : 'es') as 'es' | 'en';
-  const name = user.name?.split(' ')[0] || (lang === 'en' ? 'there' : 'crack');
-
-  if (!LIVE) {
-    console.log(`[lifecycle-trigger DRY_RUN] billing/${step} → ${user.email} (${lang})`);
-    return;
-  }
-
-  await sendTransactionalEmail({ to: user.email, subject: tpl.subject[lang], html: tpl.build(name, lang, userId, extra), isTransactional: true });
-  try {
-    await prisma.emailLog.create({ data: { userId, sequence: 'billing', step } });
-  } catch (e) {
-    console.error('[lifecycle-trigger] email sent but EmailLog failed', step, (e as Error).message);
-  }
+// Legacy public IDs and declared invoice/trial facts cannot mint billing notice
+// authority. Current webhook paths retain denial; a genuine admitted writer is
+// still required before either transactional notice can be enabled.
+export class BillingNoticeAdmissionRequired extends Error {
+  constructor() { super("Billing notice requires its admitted original"); this.name = "BillingNoticeAdmissionRequired"; }
 }
-
-export async function triggerTrialEndingEmail(
-  userId: string,
-  subscriptionId: string,
-  extra: { trialEndTs: number; amountCents: number; currency: string; manageUrl: string },
-): Promise<void> {
-  await sendBillingEmail(userId, `trial_ending_${subscriptionId}`, SEQUENCES.billing.trialEnding, extra);
+export async function triggerTrialEndingEmail(_userId: string, _subscriptionId: string,
+  _extra: { trialEndTs: number; amountCents: number; currency: string; manageUrl: string }): Promise<void> {
+  throw new BillingNoticeAdmissionRequired();
 }
-
-export async function triggerPaymentFailedEmail(
-  userId: string,
-  invoiceId: string,
-  extra: { amountCents: number; currency: string; manageUrl: string },
-): Promise<void> {
-  await sendBillingEmail(userId, `payment_failed_${invoiceId}`, SEQUENCES.billing.paymentFailed, extra);
+export async function triggerPaymentFailedEmail(_userId: string, _invoiceId: string,
+  _extra: { amountCents: number; currency: string; manageUrl: string }): Promise<void> {
+  throw new BillingNoticeAdmissionRequired();
 }

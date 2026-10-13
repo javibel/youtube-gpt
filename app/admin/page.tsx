@@ -119,7 +119,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/send-feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: feedbackEmail }) });
       const d = await res.json();
-      if (d.ok) { setFeedbackSendMsg({ ok: true, text: `Email enviado a ${d.email} (${d.lang.toUpperCase()})` }); setFeedbackEmail(''); }
+      if (res.status === 200 && d && !Array.isArray(d) && Object.keys(d).length === 2 && d.ok === true && d.status === 'provider-accepted') { setFeedbackSendMsg({ ok: true, text: 'Solicitud de feedback aceptada.' }); }
       else setFeedbackSendMsg({ ok: false, text: d.error ?? 'Error' });
     } catch { setFeedbackSendMsg({ ok: false, text: 'Error de conexión' }); }
     finally { setSendingFeedback(false); }
