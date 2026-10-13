@@ -9,6 +9,7 @@ datasource db {
 }
 
 model User {
+  achievementUnlockAdmissions AchievementUnlockAdmission[]
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
@@ -921,6 +922,20 @@ model ChatMessage {
 
   @@index([userId, createdAt])
   @@map("chat_messages")
+}
+
+model AchievementUnlockAdmission {
+  id String @id
+  userId String
+  key String
+  achievementId String @unique
+  state String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("achievement_unlock_admissions")
 }
 
 model Achievement {

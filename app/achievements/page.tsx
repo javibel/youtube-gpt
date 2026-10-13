@@ -58,7 +58,7 @@ export default function AchievementsPage() {
     fetch('/api/achievements')
       .then(r => r.json())
       .then(res => {
-        if (res.error) setError(res.error);
+        if (res.error) setError(t('No hemos podido confirmar tus logros.', 'We could not confirm your achievements.'));
         else setData(res);
       })
       .catch(() => setError(t('Error de conexión', 'Connection error')))
