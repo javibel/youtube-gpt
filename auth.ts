@@ -179,10 +179,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.requiresVerification = false;
         }
       }
-      // The client only sends totpVerified after /api/auth/verify-totp accepted the
-      // code for THIS session's own cookie — it can't be forged from another session.
-      if (trigger === 'update' && token.requiresTotp && (session as { totpVerified?: boolean } | undefined)?.totpVerified) {
-        token.requiresTotp = false;
+      // Auth.js supplies the decoded cookie token and untrusted client update data.
+      // A client boolean/receipt is never proof of the second factor. Verify the
+      // credential inside the callback that issues this session's new JWT.
+      if (trigger === 'update' && token.requiresTotp) {
+        const input = session as { totpCode?: unknown } | undefined;
+        const code = typeof input?.totpCode === 'string' ? input.totpCode.trim() : '';
+        const secret = process.env.ADMIN_TOTP_SECRET;
+        const email = token.email?.toLowerCase().trim();
+        if (token.isAdmin === true && typeof token.id === 'string' && token.id
+          && ADMIN_EMAIL && email === ADMIN_EMAIL && secret && /^\d{6}$/.test(code)) {
+          try {
+            const allowed = await rateLimitDb(`verify-totp-session:${token.id}`, 10, 15, true);
+            if (allowed === true && authenticator.verify({ token: code, secret }) === true) {
+              token.requiresTotp = false;
+            }
+          } catch {
+            // A limiter/verifier failure preserves the gate and the native session.
+          }
+        }
       }
       return token;
     },

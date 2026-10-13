@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 export default function VerifyTotpPage() {
+  const { data: session } = useSession();
+  const scope = JSON.stringify([session?.user?.id, session?.user?.email]);
+  return <VerifyTotpAccount key={scope} />;
+}
+
+function VerifyTotpAccount() {
   const router = useRouter();
   const { data: session, update } = useSession();
 
@@ -14,6 +20,15 @@ export default function VerifyTotpPage() {
   const [verified, setVerified] = useState(false);
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const mounted = useRef(true);
+  const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (navigationTimer.current !== null) clearTimeout(navigationTimer.current);
+    };
+  }, []);
 
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
 
@@ -69,8 +84,10 @@ export default function VerifyTotpPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: fullCode }),
       });
+      if (!mounted.current) return;
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (!mounted.current) return;
         setError(
           data.error === 'rate_limited'
             ? t('Demasiados intentos. Espera unos minutos.', 'Too many attempts. Wait a few minutes.')
@@ -80,13 +97,20 @@ export default function VerifyTotpPage() {
         inputRefs.current[0]?.focus();
         return;
       }
+      const expected = session?.user;
+      const confirmed = await update({ totpCode: fullCode });
+      if (!mounted.current) return;
+      const principal = confirmed?.user as { id?: string; email?: string | null; requiresTotp?: boolean; isAdmin?: boolean } | undefined;
+      if (!expected?.id || !expected.email || !principal || principal.id !== expected.id
+        || principal.email !== expected.email || principal.requiresTotp !== false || principal.isAdmin !== true) {
+        throw new Error('Second factor was not confirmed for this session');
+      }
       setVerified(true);
-      await update({ totpVerified: true });
-      setTimeout(() => router.push('/dashboard'), 1000);
+      navigationTimer.current = setTimeout(() => { if (mounted.current) router.push('/dashboard'); }, 1000);
     } catch {
-      setError(t('Error de conexión. Inténtalo de nuevo.', 'Connection error. Try again.'));
+      if (mounted.current) setError(t('No se ha confirmado la verificación. Inténtalo de nuevo.', 'Verification was not confirmed. Try again.'));
     } finally {
-      setVerifying(false);
+      if (mounted.current) setVerifying(false);
     }
   }
 
