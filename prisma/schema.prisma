@@ -68,6 +68,7 @@ model User {
   competitorDeletionAttempts CompetitorDeletionAttempt[]
   competitorCreationAttempts CompetitorCreationAttempt[]
   extensionTokens      ExtensionToken[]
+  extensionTokenIssuances ExtensionTokenIssuance[]
   extensionEvents      ExtensionEvent[]
   calendarEntries      CalendarEntry[]
   calendarCreationReceipts CalendarCreationReceipt[]
@@ -282,6 +283,19 @@ model YoutubeCache {
   expiresAt DateTime
 
   @@map("youtube_cache")
+}
+
+model ExtensionTokenIssuance {
+  id String @id
+  userId String
+  key String
+  tokenId String @unique
+  state String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId,key])
+  @@index([userId], map: "extension_token_issuances_user")
+  @@map("extension_token_issuances")
 }
 
 model ExtensionToken {

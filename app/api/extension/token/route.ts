@@ -1,50 +1,31 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
-import { randomBytes } from 'crypto';
-import { hasPaidAccess } from '@/lib/plans';
-
-// Session-based extension token mint. Lets the extension connect WITHOUT a password — works for
-// Google/OAuth users (who have no password and were locked out of the email+password login).
-// Called same-origin by detect.js on ytubviral.com, so the NextAuth session cookie is sent.
-const TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days, same as /api/extension/login
-
+import { authorizeNativeExtensionToken, mintNativeExtensionToken, checkNativeExtensionToken, validExtensionTokenKey } from '@/lib/extension-token-native-authorization';
 export const dynamic = 'force-dynamic';
-
-export async function GET() {
+export const maxDuration = 60;
+export async function GET(request: Request) {
+  const deadline = performance.now() + 55_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  let nativeCheck: (() => void) | undefined;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Extension token unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Extension token unconfirmed'); nativeCheck?.(); };
+  const run = async <T,>(operation: () => Promise<T>) => {
+    check(); const original = Promise.resolve().then(() => { check(); return operation(); });
+    const value = await Promise.race([original, stopped]); check(); return value;
+  };
+  const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
-    const session = await auth();
-    const email = session?.user?.email?.toLowerCase().trim();
-    if (!email) {
-      return NextResponse.json({ error: 'not_logged_in' }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return NextResponse.json({ error: 'not_logged_in' }, { status: 401 });
-    }
-    if (!user.emailVerified) {
-      return NextResponse.json({ error: 'email_not_verified' }, { status: 403 });
-    }
-
-    // Cleanup expired tokens for this user
-    await prisma.extensionToken.deleteMany({
-      where: { userId: user.id, expiresAt: { lt: new Date() } },
-    });
-
-    const token = randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
-    await prisma.extensionToken.create({ data: { userId: user.id, token, expiresAt } });
-
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId: user.id },
-      select: { status: true, stripeCustomerId: true, currentPeriodEnd: true },
-    });
-    const isPro = hasPaidAccess(subscription);
-
-    return NextResponse.json({ token, name: user.name, email: user.email, isPro });
-  } catch (err) {
-    console.error('[extension/token]', err);
-    return NextResponse.json({ error: 'internal' }, { status: 500 });
-  }
+    const original = await run(() => authorizeNativeExtensionToken());
+    if (!original) return json({ error: 'not_logged_in' }, 401);
+    nativeCheck = () => checkNativeExtensionToken(original);
+    check();
+    const key = request.headers.get('idempotency-key');
+    if (!validExtensionTokenKey(key)) return json({ error: 'invalid_operation_key' }, 400);
+    const result = await run(() => mintNativeExtensionToken(original, key, check));
+    check(); const response = json(result); check(); return response;
+  } catch { return json({ error: 'extension_token_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }
