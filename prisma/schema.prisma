@@ -69,6 +69,7 @@ model User {
   competitorCreationAttempts CompetitorCreationAttempt[]
   extensionTokens      ExtensionToken[]
   extensionTokenIssuances ExtensionTokenIssuance[]
+  extensionSeoOperations ExtensionSeoOperation[]
   extensionEvents      ExtensionEvent[]
   calendarEntries      CalendarEntry[]
   calendarCreationReceipts CalendarCreationReceipt[]
@@ -1421,4 +1422,17 @@ model AffiliateApplicationAdmission {
   completedAt DateTime?
   affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Restrict, map: "affiliate_application_affiliate_fkey")
   @@map("affiliate_application_admissions")
+}
+
+model ExtensionSeoOperation {
+  id String @id
+  userId String
+  key String
+  eventId String @unique
+  state String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId,key])
+  @@index([userId], map: "extension_seo_operations_user")
+  @@map("extension_seo_operations")
 }

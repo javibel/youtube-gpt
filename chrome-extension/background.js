@@ -234,7 +234,57 @@ async function getExtensionIdentity() {
   return original.wait;
 }
 
+const SEO_QUICK_PENDING = 'ytv_seo_quick_pending';
+let seoQuickOriginal = null;
+async function runSeoQuick(msg) {
+  if (seoQuickOriginal) throw Error('No se pudo confirmar el análisis SEO anterior.');
+  const original = {}; seoQuickOriginal = original;
+  const revision = identityRevision, deadline = performance.now() + 60_000;
+  const input = Object.freeze({ videoId: msg.videoId, lang: msg.lang });
+  let retired = false, rejectWait, attempted = false, closed = false;
+  const stopped = new Promise((_, reject) => { rejectWait = reject; });
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('No se pudo confirmar el análisis SEO.')); } };
+  const timer = setTimeout(retire, 60_000);
+  const check = () => { if (performance.now() >= deadline || revision !== identityRevision || passwordLoginOriginal || tokenMutationOriginal) retire(); if (retired || seoQuickOriginal !== original) throw Error('No se pudo confirmar el análisis SEO.'); };
+  const close = async key => {
+    const row = await chrome.storage.local.get(SEO_QUICK_PENDING);
+    if (seoQuickOriginal !== original || row[SEO_QUICK_PENDING]?.key !== key) throw Error('No se pudo confirmar el análisis SEO.');
+    await chrome.storage.local.remove(SEO_QUICK_PENDING); closed = true;
+  };
+  const producer = (async () => {
+    const stored = await chrome.storage.local.get(SEO_QUICK_PENDING); check();
+    if (Object.hasOwn(stored, SEO_QUICK_PENDING)) throw Error('Hay un análisis SEO pendiente de confirmar.');
+    const token = await getToken(); check();
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw Error('not_logged_in');
+    const lang = input.lang === undefined ? await getLang() : input.lang; check();
+    if (typeof input.videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(input.videoId) || !['es','en'].includes(lang)) throw Error('Datos de vídeo incorrectos.');
+    const key = crypto.randomUUID(); attempted = true;
+    await chrome.storage.local.set({ [SEO_QUICK_PENDING]: { key } }); check();
+    const { res, data } = await apiFetch(API_BASE + '/api/extension/seo-quick', {
+      method: 'POST', timeoutMs: 55_000, maxResponseBytes: 64*1024, cache: 'no-store', credentials: 'omit',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, 'Idempotency-Key': key },
+      body: JSON.stringify({ videoId: input.videoId, lang }),
+    }); check();
+    if (data?.operationKey !== key) throw Error('No se pudo confirmar el análisis SEO.');
+    const known = { invalid_video_input: 400, not_logged_in: 401, seo_configuration_unavailable: 503, video_not_found: 404 };
+    if (Object.hasOwn(known, data.code) && res.status === known[data.code]) {
+      await close(key); check(); throw Error(data.code === 'not_logged_in' ? 'not_logged_in' : data.code === 'video_not_found' ? 'Vídeo no encontrado.' : 'No se pudo analizar este vídeo.');
+    }
+    if (res.status !== 200 || data.videoId !== input.videoId || typeof data.title !== 'string'
+      || !Number.isSafeInteger(data.score) || data.score < 0 || data.score > 100 || !Array.isArray(data.checklist)
+      || !data.checklist.length || data.checklist.length > 50 || data.checklist.some(x => !x || typeof x.key !== 'string' || typeof x.label !== 'string'
+        || typeof x.detail !== 'string' || typeof x.passed !== 'boolean' || !Number.isSafeInteger(x.weight) || x.weight < 1 || x.weight > 100)) throw Error('No se pudo confirmar el análisis SEO.');
+    const weight = data.checklist.reduce((n,x)=>n+x.weight,0), passed = data.checklist.filter(x=>x.passed).reduce((n,x)=>n+x.weight,0);
+    if (Math.round(passed/weight*100) !== data.score) throw Error('No se pudo confirmar el análisis SEO.');
+    const current = await getToken(); check(); if (current !== token) throw Error('No se pudo confirmar el análisis SEO.');
+    await close(key); check(); return data;
+  })();
+  void producer.finally(() => { if (seoQuickOriginal === original && (!attempted || closed)) seoQuickOriginal = null; }).catch(() => {});
+  try { return await Promise.race([producer, stopped]); } finally { retired = true; clearTimeout(timer); }
+}
+
 async function handleMessage(msg) {
+  if (msg.type === 'SEO_QUICK') return runSeoQuick(msg);
   if (msg.type === 'GET_USER') return getExtensionIdentity();
   if (msg.type === 'STORE_TOKEN' || msg.type === 'LOGOUT') return mutateExtensionToken(msg);
   if (msg.type === 'LOGIN') return passwordLogin(msg);
@@ -328,22 +378,6 @@ async function handleMessage(msg) {
       })();
       attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);waitController.abort();attempt.flight=null;});
       return attempt.flight;
-    }
-
-    case 'SEO_QUICK': {
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/seo-quick`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ videoId: msg.videoId, lang: msg.lang || lang }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (res.status === 403 && data.error === 'pro_required') throw new Error(lang === 'en' ? 'Pro plan required. Upgrade at ytubviral.com' : 'Plan Pro requerido. Actualiza en ytubviral.com');
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'SEO analysis error' : 'Error al analizar SEO'));
-      return data;
     }
 
     case 'CHANNEL_STATS': {
