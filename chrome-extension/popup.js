@@ -123,11 +123,11 @@ async function loadDashboard() {
     const g = d?.growth;
     if (!g) return;
     popMomentum.innerHTML = `
-      <div class="pop-block-title">${t('Tu semana', 'Your week')}</div>
+      <div class="pop-block-title">${t('Semana histórica', 'Historical week')}</div>
       <div class="pop-momentum-row">
-        <span>${fmtNum(g.subs7d)} subs</span>
-        <span>${fmtNum(g.views7d)} ${t('vistas', 'views')}</span>
-        <span class="pop-dim">7${t('d', 'd')}</span>
+        <span>${d.dataQuality?.growth7dAvailable ? fmtNum(g.subs7d) : '—'} subs</span>
+        <span>${d.dataQuality?.growth7dAvailable ? fmtNum(g.views7d) : '—'} ${t('vistas', 'views')}</span>
+        <span class="pop-dim">${d.dataQuality?.metricsAsOf?.slice(0,10) || '—'} · ${t('actualidad sin confirmar', 'freshness unconfirmed')}</span>
       </div>`;
     popMomentum.classList.remove('hidden');
   }).catch((e) => {

@@ -1351,17 +1351,18 @@ function renderChannelStatsWidget(d) {
       </div>
       ${sparkSvg}
     </div>
+    <div class="ytv-cs-sub">${t('Datos guardados a', 'Saved data as of')} ${escapeHtml(d.dataQuality?.metricsAsOf?.slice(0,10) || '—')} · ${t('Actualidad sin confirmar', 'Freshness unconfirmed')}</div>
 
     <div class="ytv-cs-grid">
       <div class="ytv-cs-cell">
         <div class="ytv-cs-cell-val">${fmtNum(ch.subs)}</div>
         <div class="ytv-cs-cell-label">${t('Suscriptores', 'Subscribers')}</div>
-        <div class="ytv-cs-cell-delta">7d: ${delta(g.subs7d)} · 30d: ${delta(g.subs30d)}</div>
+        <div class="ytv-cs-cell-delta">7d: ${d.dataQuality?.growth7dAvailable ? delta(g.subs7d) : '—'} · 30d: ${d.dataQuality?.growth30dAvailable ? delta(g.subs30d) : '—'}</div>
       </div>
       <div class="ytv-cs-cell">
         <div class="ytv-cs-cell-val">${fmtNum(ch.totalViews)}</div>
         <div class="ytv-cs-cell-label">${t('Vistas', 'Views')}</div>
-        <div class="ytv-cs-cell-delta">7d: ${delta(g.views7d)} · 30d: ${delta(g.views30d)}</div>
+        <div class="ytv-cs-cell-delta">7d: ${d.dataQuality?.growth7dAvailable ? delta(g.views7d) : '—'} · 30d: ${d.dataQuality?.growth30dAvailable ? delta(g.views30d) : '—'}</div>
       </div>
       <div class="ytv-cs-cell">
         <div class="ytv-cs-cell-val">${ch.videoCount}</div>
@@ -1370,19 +1371,19 @@ function renderChannelStatsWidget(d) {
     </div>
 
     <div class="ytv-cs-monetization">
-      <div class="ytv-cs-mon-title">${t('Progreso monetización', 'Monetization progress')}</div>
+      <div class="ytv-cs-mon-title">${t('Estimación histórica · no acredita monetización', 'Historical estimate · does not establish monetization')}</div>
       <div class="ytv-cs-mon-row">
         <span class="ytv-cs-mon-label">${t('Subs', 'Subs')} ${fmtNum(ch.subs)}/1K</span>
         <div class="ytv-cs-bar"><div class="ytv-cs-bar-fill" style="width:${m.subsPct}%"></div></div>
         <span class="ytv-cs-mon-pct">${m.subsPct}%</span>
       </div>
       <div class="ytv-cs-mon-row">
-        <span class="ytv-cs-mon-label">${t('Horas', 'Hours')} ${fmtNum(m.estWatchHours)}/4K</span>
+        <span class="ytv-cs-mon-label">${t('Horas estimadas', 'Estimated hours')} ${fmtNum(m.estWatchHours)}/4K</span>
         <div class="ytv-cs-bar"><div class="ytv-cs-bar-fill ytv-cs-bar-yellow" style="width:${m.watchPct}%"></div></div>
         <span class="ytv-cs-mon-pct">${m.watchPct}%</span>
       </div>
       <div class="ytv-cs-mon-eta">
-        ${ch.subs >= 1000 ? `✅ ${t('Canal monetizable', 'Channel monetizable')}` : `⏳ ETA ${t('subs', 'subs')}: <b>${etaText}</b>`}
+        ${ch.subs >= 1000 ? `✅ ${t('Umbral orientativo de subs alcanzado', 'Indicative subscriber threshold reached')}` : `⏳ ETA ${t('subs', 'subs')}: <b>${etaText}</b>`}
       </div>
     </div>
     <a class="ytv-cta-link" href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=studio" target="_blank">${t('Ver dashboard completo →', 'View full dashboard →')}</a>

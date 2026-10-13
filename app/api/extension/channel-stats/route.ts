@@ -1,109 +1,32 @@
 import { NextResponse } from 'next/server';
-import { getExtensionUser } from '@/lib/extension-auth';
-import { prisma } from '@/lib/prisma';
-
+import { authorizeExtensionChannelStats, checkExtensionChannelStats, readExtensionChannelStats, validExtensionReadRef } from '@/lib/extension-channel-stats-native-authorization';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 export async function POST(request: Request) {
-  const extUser = await getExtensionUser(request);
-  if (!extUser) {
-    return NextResponse.json({ error: 'not_logged_in' }, { status: 401 });
-  }
-
-  // Get YouTube token info (cached channel data)
-  const yt = await prisma.youtubeToken.findUnique({
-    where: { userId: extUser.user.id },
-    select: {
-      channelId: true,
-      channelName: true,
-      channelThumb: true,
-      subscribers: true,
-      totalViews: true,
-      videoCount: true,
-    },
-  });
-
-  if (!yt?.channelId) {
-    return NextResponse.json({ error: 'youtube_not_connected' }, { status: 400 });
-  }
-
-  const subs = parseInt(yt.subscribers || '0', 10);
-  const totalViews = parseInt(yt.totalViews || '0', 10);
-  const videoCount = parseInt(yt.videoCount || '0', 10);
-
-  // Get last 30 snapshots for sparkline (daily snapshots)
-  const snapshots = await prisma.channelSnapshot.findMany({
-    where: { userId: extUser.user.id },
-    orderBy: { recordedAt: 'desc' },
-    take: 30,
-    select: {
-      subscribers: true,
-      totalViews: true,
-      videoCount: true,
-      recordedAt: true,
-    },
-  });
-
-  // Calculate growth deltas
-  const latest = snapshots[0];
-  const weekAgo = snapshots.find(s => {
-    const diff = Date.now() - s.recordedAt.getTime();
-    return diff >= 6 * 24 * 60 * 60 * 1000; // ~6 days
-  });
-  const monthAgo = snapshots.find(s => {
-    const diff = Date.now() - s.recordedAt.getTime();
-    return diff >= 27 * 24 * 60 * 60 * 1000; // ~27 days
-  });
-
-  const subsNow = latest?.subscribers ?? subs;
-  const growth7d = weekAgo ? subsNow - weekAgo.subscribers : 0;
-  const growth30d = monthAgo ? subsNow - monthAgo.subscribers : 0;
-
-  const viewsNow = latest ? Number(latest.totalViews) : totalViews;
-  const viewsGrowth7d = weekAgo ? viewsNow - Number(weekAgo.totalViews) : 0;
-  const viewsGrowth30d = monthAgo ? viewsNow - Number(monthAgo.totalViews) : 0;
-
-  // Monetization progress
-  // Requirements: 1000 subs + 4000 hours watch time (we approximate from views)
-  const subsPct = Math.min(100, Math.round((subsNow / 1000) * 100));
-  // Estimate watch hours from views (rough: avg 4 min per view = 0.067h)
-  const estWatchHours = Math.round(totalViews * 0.067);
-  const watchPct = Math.min(100, Math.round((estWatchHours / 4000) * 100));
-
-  // ETA calculation (days to reach 1000 subs based on 30d growth rate)
-  let subsEtaDays: number | null = null;
-  if (subsNow < 1000 && growth30d > 0) {
-    const remaining = 1000 - subsNow;
-    const dailyRate = growth30d / 30;
-    subsEtaDays = Math.ceil(remaining / dailyRate);
-  }
-
-  // Sparkline data (reversed to chronological order, subs only)
-  const sparkline = snapshots.map(s => ({
-    subs: s.subscribers,
-    views: Number(s.totalViews),
-    date: s.recordedAt.toISOString().slice(0, 10),
-  })).reverse();
-
-  return NextResponse.json({
-    channel: {
-      name: yt.channelName || '',
-      thumb: yt.channelThumb || '',
-      subs: subsNow,
-      totalViews: viewsNow,
-      videoCount,
-    },
-    growth: {
-      subs7d: growth7d,
-      subs30d: growth30d,
-      views7d: viewsGrowth7d,
-      views30d: viewsGrowth30d,
-    },
-    monetization: {
-      subsPct,
-      watchPct,
-      subsEtaDays,
-      estWatchHours,
-    },
-    sparkline,
-    isPro: extUser.isPro,
-  });
+  const deadline = performance.now() + 25_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  let nativeCheck: (() => void) | undefined;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Extension identity unconfirmed')); } };
+  const timer = setTimeout(retire, 25_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Extension identity unconfirmed'); nativeCheck?.(); };
+  const run = async <T,>(operation: () => Promise<T>) => {
+    check(); const original = Promise.resolve().then(() => { check(); return operation(); });
+    const value = await Promise.race([original, stopped]); check(); return value;
+  };
+  const readRef = request.headers.get('x-ytv-read-ref');
+  const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    if (!validExtensionReadRef(readRef)) return json({ code: 'invalid_read_ref' }, 400);
+    const original = await run(() => authorizeExtensionChannelStats(request));
+    if (!original) return json({ error:'not_logged_in',code:'not_logged_in', readRef }, 401);
+    nativeCheck = () => checkExtensionChannelStats(original);
+    check();
+    const result = await run(() => readExtensionChannelStats(original, readRef, check));
+    check(); if (!result) return json({error:'youtube_not_connected',code:'youtube_not_connected',readRef},400);
+    const response = json(result); check(); return response;
+  } catch { return json({ error:'channel_stats_unconfirmed',code:'channel_stats_unconfirmed', readRef }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

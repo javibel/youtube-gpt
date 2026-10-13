@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 // Bound the entire local wait and decoded response bytes, including ignored transport aborts.
 // A local abort never proves server cancellation, rollback or zero usage.
 async function apiFetch(url, opts = {}) {
-  const {timeoutMs=FETCH_TIMEOUT_MS,maxResponseBytes=1024*1024,signal:callerSignal,...fetchOpts}=opts;
+  const {timeoutMs=FETCH_TIMEOUT_MS,maxResponseBytes=1024*1024,signal:callerSignal,observeOriginal,...fetchOpts}=opts;
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>60000||!Number.isSafeInteger(maxResponseBytes)||maxResponseBytes<1||maxResponseBytes>1024*1024)throw Error('response_invalid');
   const target=new URL(url);if(target.origin!==API_BASE||!target.pathname.startsWith('/api/'))throw Error('response_invalid');
   if(callerSignal?.aborted)throw Error('timeout');
@@ -56,6 +56,7 @@ async function apiFetch(url, opts = {}) {
       try{data=JSON.parse(text+decoder.decode());}catch{/* Preserve the existing non-JSON error response behavior. */}
       return {res,data};
     })();
+    observeOriginal?.(work);
     return await Promise.race([work,interrupted]);
   }finally{stopped=true;clearTimeout(timer);callerSignal?.removeEventListener('abort',stop);controller.abort();cancel();}
 }
@@ -170,7 +171,7 @@ async function mutateExtensionToken(msg) {
 const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
-function retireExtensionIdentity() { identityReadOriginal?.retire(); }
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
@@ -283,7 +284,60 @@ async function runSeoQuick(msg) {
   try { return await Promise.race([producer, stopped]); } finally { retired = true; clearTimeout(timer); }
 }
 
+let channelStatsOriginal = null;
+async function getChannelStats() {
+  if (channelStatsOriginal) return channelStatsOriginal.wait;
+  const original = { revision:identityRevision, retire:null, wait:null };
+  channelStatsOriginal = original;
+  const deadline = performance.now() + 30_000;
+  let retired = false, rejectWait, httpOriginal = null;
+  const stopped = new Promise((_,reject)=>{rejectWait=reject;});
+  const retire = () => { if (!retired) { retired=true; rejectWait(Error('No se pudieron confirmar las estadísticas del canal.')); } };
+  original.retire=retire;
+  const timer=setTimeout(retire,30_000);
+  const check=()=>{if(performance.now()>=deadline || original.revision!==identityRevision || passwordLoginOriginal || tokenMutationOriginal || channelStatsOriginal!==original)retire();if(retired)throw Error('No se pudieron confirmar las estadísticas del canal.');};
+  const producer=(async()=>{
+    const pending=await chrome.storage.local.get([IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]);check();
+    if(Object.hasOwn(pending,IDENTITY_WRITE_PENDING)||Object.hasOwn(pending,PASSWORD_LOGIN_PENDING))throw Error('No se pudo confirmar la cuenta.');
+    const token=await getToken();check();if(typeof token!=='string'||! /^[a-f0-9]{64}$/.test(token))throw Error('not_logged_in');
+    const readRef=crypto.randomUUID();
+    const {res,data}=await apiFetch(API_BASE+'/api/extension/channel-stats',{
+      method:'POST',timeoutMs:25_000,maxResponseBytes:32*1024,credentials:'omit',cache:'no-store',observeOriginal:promise=>{httpOriginal=promise;},
+      headers:{Authorization:'Bearer '+token,'X-YTV-Read-Ref':readRef,'Content-Type':'application/json'},body:'{}',
+    });check();
+    if(data?.readRef!==readRef)throw Error('No se pudieron confirmar las estadísticas del canal.');
+    if(res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');
+    if(res.status===400&&data.code==='youtube_not_connected')throw Error('youtube_not_connected');
+    const c=data.channel,g=data.growth,m=data.monetization,q=data.dataQuality,points=data.sparkline;
+    const count=n=>Number.isSafeInteger(n)&&n>=0,percent=n=>count(n)&&n<=100;
+    const date=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v&&Date.parse(v)<=Date.now();
+    if(res.status!==200||!c||typeof c.name!=='string'||c.name.length>512||typeof c.thumb!=='string'||c.thumb.length>2048
+      || !['subs','totalViews','videoCount'].every(k=>count(c[k])) || !g || !['subs7d','subs30d','views7d','views30d'].every(k=>Number.isSafeInteger(g[k]))
+      || !m||!percent(m.subsPct)||!percent(m.watchPct)||!count(m.estWatchHours)||!(m.subsEtaDays===null||count(m.subsEtaDays))
+      || !q||q.source!=='cached-channel-history'||q.freshness!=='unconfirmed'||!date(q.cachedAt)||!date(q.metricsAsOf)
+      || typeof q.growth7dAvailable!=='boolean'||typeof q.growth30dAvailable!=='boolean'||q.watchHours!=='view-based-estimate'||q.eligibility!=='not-assessed'
+      || !(q.rateIntervalDays===null||Number.isFinite(q.rateIntervalDays)&&q.rateIntervalDays>=27&&q.rateIntervalDays<=33)
+      || !Array.isArray(points)||points.length>30||points.some(x=>!x||!count(x.subs)||!count(x.views)||typeof x.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||!date(x.date+'T00:00:00.000Z'))
+      || typeof data.isPro!=='boolean'||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now())throw Error('No se pudieron confirmar las estadísticas del canal.');
+    if(points.some((x,i)=>i>0&&x.date<points[i-1].date)||m.subsPct!==Math.min(100,Math.round(c.subs/1000*100))
+      ||m.estWatchHours!==Math.round(c.totalViews*.067)||m.watchPct!==Math.min(100,Math.round(m.estWatchHours/4000*100))
+      ||q.growth30dAvailable!==(q.rateIntervalDays!==null)||(!q.growth7dAvailable&&(g.subs7d!==0||g.views7d!==0))
+      ||(!q.growth30dAvailable&&(g.subs30d!==0||g.views30d!==0)))throw Error('No se pudieron confirmar las estadísticas del canal.');
+    const eta=c.subs<1000&&g.subs30d>0&&q.rateIntervalDays!==null?Math.ceil((1000-c.subs)*q.rateIntervalDays/g.subs30d):null;
+    if(m.subsEtaDays!==eta)throw Error('No se pudieron confirmar las estadísticas del canal.');
+    if(c.thumb){let url;try{url=new URL(c.thumb);}catch{throw Error('No se pudieron confirmar las estadísticas del canal.');}if(url.protocol!=='https:'||url.username||url.password||url.port||!['yt3.ggpht.com','yt3.googleusercontent.com','lh3.googleusercontent.com','i.ytimg.com'].includes(url.hostname))throw Error('No se pudieron confirmar las estadísticas del canal.');}
+    const current=await getToken();check();if(current!==token||data.expiresAt<=Date.now())throw Error('No se pudieron confirmar las estadísticas del canal.');
+    return data;
+  })();
+  // A retired local wait cannot replace its still-running original. Reads have
+  // no token/cache/event writes, no automatic retry and no stored authority.
+  void producer.finally(async()=>{if(httpOriginal)await Promise.allSettled([httpOriginal]);if(channelStatsOriginal===original)channelStatsOriginal=null;}).catch(()=>{});
+  original.wait=Promise.race([producer,stopped]).finally(()=>{retired=true;clearTimeout(timer);});
+  return original.wait;
+}
+
 async function handleMessage(msg) {
+  if (msg.type === 'CHANNEL_STATS') return getChannelStats();
   if (msg.type === 'SEO_QUICK') return runSeoQuick(msg);
   if (msg.type === 'GET_USER') return getExtensionIdentity();
   if (msg.type === 'STORE_TOKEN' || msg.type === 'LOGOUT') return mutateExtensionToken(msg);
@@ -378,21 +432,6 @@ async function handleMessage(msg) {
       })();
       attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);waitController.abort();attempt.flight=null;});
       return attempt.flight;
-    }
-
-    case 'CHANNEL_STATS': {
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/channel-stats`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: '{}',
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Stats error' : 'Error al cargar stats'));
-      return data;
     }
 
     case 'SCORECARD': {
