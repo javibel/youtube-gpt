@@ -1,132 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { sendTransactionalEmail } from '@/lib/send-email';
-import crypto from 'crypto';
+import { NextResponse, after } from 'next/server';
+import { rateLimitRequest, rateLimitDb } from '@/lib/rate-limit-db';
+import { parseForgotPasswordInput, forgotPasswordLimitEmail, prepareForgotPasswordJob, dispatchForgotPasswordJob } from '@/lib/forgot-password-server';
 
-export async function POST(request: NextRequest) {
-  // Rate limit: máx 5 intentos por IP cada 15 minutos — upsert atómico en BD (cross-instance safe)
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
-    ?? request.headers.get('x-real-ip')
-    ?? 'unknown';
-  const rlKey = `forgot-password:${ip}`;
-  const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
-    INSERT INTO rate_limits (key, hits, window_start)
-    VALUES (${rlKey}, 1, NOW())
-    ON CONFLICT (key) DO UPDATE
-    SET
-      hits = CASE
-        WHEN rate_limits.window_start < NOW() - INTERVAL '15 minutes'
-        THEN 1
-        ELSE rate_limits.hits + 1
-      END,
-      window_start = CASE
-        WHEN rate_limits.window_start < NOW() - INTERVAL '15 minutes'
-        THEN NOW()
-        ELSE rate_limits.window_start
-      END
-    RETURNING hits
-  `;
-  const { email: rawEmail, lang = 'es' } = await request.json();
-  const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
-  const isEn = emailLang === 'en';
-
-  if (Number(rlResult[0].hits) > 5) {
-    return NextResponse.json(
-      { error: isEn ? 'Too many attempts. Please wait a few minutes before trying again.' : 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' },
-      { status: 429 }
-    );
-  }
-
-  if (!rawEmail) {
-    return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
-  }
-  const email = String(rawEmail).toLowerCase().trim();
-
-  // Per-email rate limit: max 3 resets per email per hour
-  const emailRlKey = `forgot-password:email:${email}`;
-  const emailRl = await prisma.$queryRaw<{ hits: number }[]>`
-    INSERT INTO rate_limits (key, hits, window_start)
-    VALUES (${emailRlKey}, 1, NOW())
-    ON CONFLICT (key) DO UPDATE
-    SET
-      hits = CASE
-        WHEN rate_limits.window_start < NOW() - INTERVAL '1 hour'
-        THEN 1
-        ELSE rate_limits.hits + 1
-      END,
-      window_start = CASE
-        WHEN rate_limits.window_start < NOW() - INTERVAL '1 hour'
-        THEN NOW()
-        ELSE rate_limits.window_start
-      END
-    RETURNING hits
-  `;
-  if (Number(emailRl[0].hits) > 3) {
-    return NextResponse.json({ ok: true }); // Silent — don't reveal rate limit per email
-  }
-
-  const user = await prisma.user.findUnique({ where: { email } });
-
-  // Siempre devolvemos 200 para no revelar si el email existe
-  if (!user) {
-    return NextResponse.json({ ok: true });
-  }
-
-  // Eliminar tokens anteriores del mismo email
-  await prisma.passwordResetToken.deleteMany({ where: { email } });
-
-  const token = crypto.randomBytes(32).toString('hex');
-  const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
-
-  await prisma.passwordResetToken.create({
-    data: { email, token, expires },
-  });
-
-  const baseUrl = process.env.APP_PUBLIC_URL ?? 'https://ytubviral.com';
-  const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-
-  const subject = isEn ? 'Reset your password - YTubViral' : 'Restablecer contraseña - YTubViral';
-  const html = isEn ? `
-    <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head>
-    <body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:48px 0;">
-        <tr><td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
-            <tr><td style="padding:40px;">
-              <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">PASSWORD RESET</p>
-              <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">Reset your password</p>
-              <p style="margin:0 0 28px;font-size:15px;color:#71717a;line-height:1.7;">We received a request to reset your password. Click the button below — the link expires in 1 hour.</p>
-              <a href="${resetUrl}" style="display:inline-block;background:#e84d5b;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:6px;text-decoration:none;box-shadow:3px 3px 0 #000;">Reset password →</a>
-              <p style="margin:28px 0 0;font-size:12px;color:#52525b;">If you didn't request this, you can safely ignore this email.</p>
-            </td></tr>
-          </table>
-        </td></tr>
-      </table>
-    </body></html>
-  ` : `
-    <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"></head>
-    <body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:48px 0;">
-        <tr><td align="center">
-          <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
-            <tr><td style="padding:40px;">
-              <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">RESTABLECER CONTRASEÑA</p>
-              <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">Restablece tu contraseña</p>
-              <p style="margin:0 0 28px;font-size:15px;color:#71717a;line-height:1.7;">Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón — el enlace expira en 1 hora.</p>
-              <a href="${resetUrl}" style="display:inline-block;background:#e84d5b;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:6px;text-decoration:none;box-shadow:3px 3px 0 #000;">Restablecer contraseña →</a>
-              <p style="margin:28px 0 0;font-size:12px;color:#52525b;">Si no solicitaste esto, puedes ignorar este email.</p>
-            </td></tr>
-          </table>
-        </td></tr>
-      </table>
-    </body></html>
-  `;
-
+export const maxDuration = 60;
+export async function POST(request: Request) {
+  const deadline = performance.now() + 25_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; }); void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Forgot request unconfirmed')); } };
+  const timer = setTimeout(retire, 25_000); request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Forgot request unconfirmed'); };
+  const reply = (body: unknown, status: number) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  const accepted = () => ({ body: { ok: true, status: 'accepted' }, status: 202 });
   try {
-    await sendTransactionalEmail({ to: email, subject, html, isTransactional: true });
-  } catch (err) {
-    console.error('forgot-password email error:', err);
-  }
-
-  return NextResponse.json({ ok: true });
+    const original = Promise.resolve().then(async () => {
+      check();
+      const allowed = await rateLimitRequest(request, 'forgot-password', 5, 15, true); check();
+      if (allowed !== true) return { body: { error: 'too_many_requests' }, status: 429 };
+      let body: unknown;
+      try { body = await request.json(); } catch { check(); return { body: { error: 'invalid_input' }, status: 400 }; }
+      check(); const input = parseForgotPasswordInput(body);
+      if (!input) return { body: { error: 'invalid_input' }, status: 400 };
+      const email = forgotPasswordLimitEmail(input)!;
+      const emailAllowed = await rateLimitDb('forgot-password:email:' + email, 3, 60, true); check();
+      if (emailAllowed !== true) return accepted();
+      const job = prepareForgotPasswordJob(input, process.env.APP_PUBLIC_URL); check();
+      if (!job) return { body: { error: 'forgot_password_unconfirmed' }, status: 503 };
+      // Registration is uniform for every email, before any account lookup.
+      // after may still run if HTTP retires; only this private callback owns it.
+      after(async () => { await dispatchForgotPasswordJob(job); });
+      return accepted();
+    });
+    const result = await Promise.race([original, stopped]); check(); return reply(result.body, result.status);
+  } catch { return reply({ error: 'forgot_password_unconfirmed' }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

@@ -1343,3 +1343,14 @@ model EmailVerificationResendAdmission {
 
   @@map("email_verification_resend_admissions")
 }
+
+// Negative notice exclusion; no expiry/reset/SQL adoption after uncertainty.
+model PasswordResetRequestAdmission {
+  email String @id
+  noticeId String @unique
+  userId String
+  tokenId String @unique
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_request_admissions")
+}
