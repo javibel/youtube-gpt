@@ -28,7 +28,9 @@
     "migration:start:fixture": "node scripts/migration/start-local.cjs",
     "migration:test:best-time-original": "node scripts/migration/best-time-original-directed-native.cjs",
     "migration:test:email-verification-server": "node scripts/migration/email-verification-server.test.cjs",
-    "migration:test:email-verification:db": "node scripts/migration/email-verification-database.test.cjs"
+    "migration:test:email-verification:db": "node scripts/migration/email-verification-database.test.cjs",
+    "migration:test:email-verification-resend": "node scripts/migration/email-verification-resend.test.cjs",
+    "migration:test:email-resend:db": "node scripts/migration/email-resend-database.test.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",

@@ -1,0 +1,82 @@
+'use strict';
+const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
+const {load}=require('./route-harness.cjs'),{fixture}=require('./email-verification-resend.test.cjs');
+module.exports=async(prisma,results)=>{
+ const prefix='synthetic-resend-'+randomUUID(),emails=[],ids=[];
+ const before={tokens:await prisma.emailVerificationToken.count(),admissions:await prisma.emailVerificationResendAdmission.count()};
+ const account=async suffix=>{const email=prefix+'-'+suffix+'@example.invalid';const user=await prisma.user.create({data:{email,name:'Synthetic'},select:{id:true,email:true}});emails.push(email);ids.push(user.id);return user;};
+ const old=async(user,token)=>{assert.equal(await prisma.emailVerificationToken.count({where:{token}}),0);await prisma.emailVerificationToken.create({data:{email:user.email,token,expires:new Date(Date.now()+60000)}});};
+ const helper=(options={})=>fixture({sql:(...args)=>prisma.$queryRawUnsafe(...[args[0],...args[1]]),...options});
+ const verify=load('lib/email-verification-server.ts',{'@/lib/prisma':{prisma}});
+ const token=async email=>prisma.emailVerificationToken.findFirst({where:{email}});
+ try{
+  const one=await account('twenty');await old(one,'923001');
+  const a=helper(),b=helper(),preparations=await Promise.all(Array.from({length:20},(_,i)=>(i%2?a:b).api.prepareVerificationResend(one.email,'es')));
+  assert.equal(preparations.filter(x=>x.status==='prepared').length,1);assert.equal(preparations.filter(x=>x.status==='busy').length,19);
+  assert.equal(await prisma.emailVerificationToken.count({where:{email:one.email}}),1);assert.notEqual((await token(one.email)).token,'923001');
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:one.email}}),1);
+  const ownerIndex=preparations.findIndex(x=>x.status==='prepared'),owner=ownerIndex%2?a:b;
+  assert.equal(await owner.api.dispatchVerificationResend(preparations[ownerIndex].notice),'provider-accepted');
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:one.email}}),0);
+  assert.equal(owner.calls.mail.length,1);
+  results.push('twenty preparations in two independent modules admit one code replacement and one owned notice');
+  const held=await account('held'),d=(()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return{promise,resolve};})(),h=helper({mail:()=>d.promise}),p=await h.api.prepareVerificationResend(held.email,'en');
+  const dispatch=h.api.dispatchVerificationResend(p.notice);await new Promise(r=>setTimeout(r,25));
+  const heldCode=(await token(held.email)).token;assert.equal((await helper().api.prepareVerificationResend(held.email,'es')).status,'busy');assert.equal((await token(held.email)).token,heldCode);
+  d.resolve('unconfirmed');assert.equal(await dispatch,'unconfirmed');assert.equal(h.api.dispatchVerificationResend(p.notice),dispatch);assert.equal(h.calls.mail.length,1);
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:held.email}}),1);
+  results.push('uncertain original provider result retains durable pending exclusion, including another module');
+  assert.equal((await verify.consumeEmailVerification(held.email,heldCode)).status,'verified');
+  assert.equal((await helper().api.prepareVerificationResend(held.email,'es')).status,'not-required');
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:held.email}}),1);
+  results.push('native email factor may verify its account but never clears or recovers an uncertain mail notice');
+  const race=await account('race');await old(race,'923002');const r=helper();
+  const [rotate,consume]=await Promise.all([r.api.prepareVerificationResend(race.email,'es'),verify.consumeEmailVerification(race.email,'923002')]);
+  assert.ok((rotate.status==='prepared'&&consume.status==='invalid')||(rotate.status==='not-required'&&consume.status==='verified'),JSON.stringify({rotate:rotate.status,consume:consume.status}));
+  if(rotate.status==='prepared')assert.equal(await r.api.dispatchVerificationResend(rotate.notice),'provider-accepted');
+  results.push('native verify and resend share the account lock; old code cannot verify after acknowledged replacement');
+  const lost=await account('lost');let calls=0;
+  const uncertain=helper({sql:async(sql,args)=>{calls++;await prisma.$queryRawUnsafe(sql,...args);throw Error('synthetic lost original commit ACK');}});
+  assert.equal((await uncertain.api.prepareVerificationResend(lost.email,'en')).status,'unconfirmed');assert.equal(calls,1);assert.equal(uncertain.calls.mail.length,0);
+  assert.equal((await helper().api.prepareVerificationResend(lost.email,'es')).status,'busy');
+  const saved=await prisma.emailVerificationResendAdmission.findUnique({where:{email:lost.email}});
+  assert.equal(await helper().api.dispatchVerificationResend({...saved,kind:'email-resend-original'}),'not-issued');
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:lost.email}}),1);
+  results.push('lost SQL commit ACK cannot be adopted by JSON, a new module, marker lookup or another request');
+  const collision=await account('collision'),foreign=await account('foreign');await old(collision,'923003');await old(foreign,'923004');
+  let generated=0;const c=helper({crypto:{randomUUID,randomInt:(low,high)=>{assert.equal(low,100000);assert.equal(high,1000000);generated++;return 923004;}}});
+  assert.equal((await c.api.prepareVerificationResend(collision.email,'es')).status,'unconfirmed');assert.equal(generated,1);assert.equal((await token(collision.email)).token,'923003');assert.equal((await token(foreign.email)).token,'923004');
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:collision.email}}),0);assert.equal(c.calls.mail.length,0);
+  results.push('global code collision rolls back marker and old-code deletion atomically without generation retry');
+  const expired=await account('expired'),e=helper(),ep=await e.api.prepareVerificationResend(expired.email,'es');
+  const declaredExpired=new Date(Date.UTC(2026,9,13,0,0,0));await prisma.emailVerificationToken.updateMany({where:{email:expired.email},data:{expires:declaredExpired}});
+  assert.equal(await e.api.dispatchVerificationResend(ep.notice),'not-issued');assert.equal(e.calls.mail.length,0);assert.equal((await token(expired.email)).expires.getTime(),declaredExpired.getTime());
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:expired.email}}),0);
+  results.push('own unissued notice is denied after declared expiry without refreshing its date or adopting stored code');
+  const known=await account('verified-before-notice'),k=helper(),kp=await k.api.prepareVerificationResend(known.email,'es');
+  assert.equal((await verify.consumeEmailVerification(known.email,(await token(known.email)).token)).status,'verified');
+  assert.equal(await k.api.dispatchVerificationResend(kp.notice),'not-issued');assert.equal(k.calls.mail.length,0);
+  results.push('native account verified before after-callback prevents notice issuance');
+  const close=await account('lost-close'),cl=helper({sql:async(sql,args)=>{const rows=await prisma.$queryRawUnsafe(sql,...args);if(sql.startsWith('DELETE'))throw Error('synthetic lost close ACK');return rows;}}),clp=await cl.api.prepareVerificationResend(close.email,'es');
+  assert.equal(await cl.api.dispatchVerificationResend(clp.notice),'unconfirmed');assert.equal(cl.calls.mail.length,1);await cl.api.dispatchVerificationResend(clp.notice);assert.equal(cl.calls.mail.length,1);
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:close.email}}),0);
+  results.push('lost native close ACK stays uncertain and never repeats the original provider or close operation');
+  const notConfigured=await account('no-transport'),n=helper({mail:async()=> 'not-configured'}),np=await n.api.prepareVerificationResend(notConfigured.email,'es');
+  assert.equal(await n.api.dispatchVerificationResend(np.notice),'not-configured');
+  assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:notConfigured.email}}),0);
+  const explicit=await n.api.prepareVerificationResend(notConfigured.email,'es');assert.equal(explicit.status,'prepared');assert.equal(await n.api.dispatchVerificationResend(explicit.notice),'not-configured');
+  results.push('known unissued original permits a new explicit preparation; old original is never recovered');
+  const route=await account('route'),rh=helper(),reply=await rh.post({email:route.email,lang:'en'});
+  assert.equal(reply.status,200);assert.deepEqual(await reply.json(),{ok:true});assert.equal(rh.calls.mail.length,0);assert.equal(rh.calls.after.length,1);
+  await Promise.all([rh.calls.after[0](),rh.calls.after[0]()]);assert.equal(rh.calls.mail.length,1);
+  results.push('actual route acknowledgment precedes one provider invocation and duplicates join the same original');
+ }finally{
+  // Dedicated synthetic fixture teardown only, after every owned promise settles.
+  // This is never application recovery: no send/adoption/retry follows teardown,
+  // and inherited rows/markers/declared timestamps remain untouched.
+  await prisma.emailVerificationResendAdmission.deleteMany({where:{email:{in:emails}}});
+  await prisma.emailVerificationToken.deleteMany({where:{email:{in:emails}}});
+  await prisma.user.deleteMany({where:{id:{in:ids}}});
+  assert.equal(await prisma.emailVerificationToken.count(),before.tokens);assert.equal(await prisma.emailVerificationResendAdmission.count(),before.admissions);
+ }
+};

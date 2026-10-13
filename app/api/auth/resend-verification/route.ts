@@ -1,51 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { verificationEmail } from '@/lib/emails';
-import { sendTransactionalEmail } from '@/lib/send-email';
-import crypto from 'crypto';
+import { NextRequest, NextResponse, after } from 'next/server';
+import { prepareVerificationResend, dispatchVerificationResend } from '@/lib/email-verification-resend';
 import { rateLimitRequest } from '@/lib/rate-limit-db';
 
 export async function POST(request: NextRequest) {
-  // F2: throttle to prevent verification-email bombing / Resend quota abuse
-  if (!(await rateLimitRequest(request, 'resend-verif', 5, 60))) {
-    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  let allowed = false;
+  try { allowed = (await rateLimitRequest(request, 'resend-verif', 5, 60, true)) === true; } catch {}
+  if (!allowed) return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  let body: unknown;
+  try { body = await request.json(); } catch { return NextResponse.json({ error: 'invalid_request' }, { status: 400 }); }
+  if (!body || typeof body !== 'object' || Array.isArray(body) || !('email' in body)
+    || Object.keys(body).some(key => key !== 'email' && key !== 'lang')
+    || typeof body.email !== 'string' || ('lang' in body && body.lang !== 'es' && body.lang !== 'en')) {
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
-  const { email: rawEmail, lang = 'es' } = await request.json();
-  const emailLang: 'es' | 'en' = lang === 'en' ? 'en' : 'es';
-
-  if (!rawEmail) {
-    return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
+  const email = body.email.trim().toLowerCase();
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
-  const email = String(rawEmail).toLowerCase().trim();
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, name: true, emailVerified: true },
-  });
-
-  // Return ok regardless to not leak whether email exists
-  if (!user || user.emailVerified) {
-    return NextResponse.json({ ok: true });
+  const lang = 'lang' in body && body.lang === 'en' ? 'en' : 'es';
+  const result = await prepareVerificationResend(email, lang);
+  if (result.status === 'unconfirmed') return NextResponse.json({ error: 'resend_unconfirmed' }, { status: 503 });
+  if (result.status === 'prepared') {
+    try {
+      after(async () => {
+        const outcome = await dispatchVerificationResend(result.notice);
+        console.info('[resend-verification] Original notice:', outcome);
+      });
+    } catch {
+      // Scheduling uncertainty retains the pending marker, never a fresh send permission.
+      console.info('[resend-verification] Original notice: not-scheduled');
+    }
   }
-
-  // Delete old tokens and create a fresh 6-digit code
-  await prisma.emailVerificationToken.deleteMany({ where: { email } });
-  const code = String(crypto.randomInt(100000, 999999));
-  await prisma.emailVerificationToken.create({
-    data: { email, token: code, expires: new Date(Date.now() + 15 * 60 * 1000) },
-  });
-
-  const name = user.name ?? email;
-  const subject = emailLang === 'en'
-    ? `${code} — Verify your email - YTubViral`
-    : `${code} — Verifica tu email - YTubViral`;
-
-  await sendTransactionalEmail({
-    to: email,
-    subject,
-    html: verificationEmail(name, code, emailLang),
-    isTransactional: true,
-  }).catch((err) => console.error('Resend verification error:', err));
-
+  // Uniform request acceptance for missing/verified/busy accounts. This never
+  // claims that a code was rotated or that an email was sent/delivered.
   return NextResponse.json({ ok: true });
 }
