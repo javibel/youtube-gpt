@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { beginTotp, claimTotpConfirmation, currentTotpOriginal, observeTotpOriginal, ownsTotpOriginal, retireTotpProgress, subscribeTotp, totpBlocked } from '@/lib/totp-client-command';
+import type { TotpAttempt, TotpOutcome } from '@/lib/totp-client-command';
 
 export default function VerifyTotpPage() {
   const { data: session } = useSession();
@@ -22,10 +24,20 @@ function VerifyTotpAccount() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const mounted = useRef(true);
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const context = useRef({});
+  const attempt = useRef<TotpAttempt | null>(null);
+  const observer = useRef<ReturnType<typeof observeTotpOriginal> | null>(null);
+  const [, render] = useState(0);
+  const blocked = totpBlocked();
+  const original = currentTotpOriginal();
+  const ownOriginal = original && ownsTotpOriginal(original, context.current) ? original : undefined;
+  useEffect(() => subscribeTotp(() => render(value => value + 1)), []);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      observer.current?.retire();
+      if (attempt.current) retireTotpProgress(attempt.current);
       if (navigationTimer.current !== null) clearTimeout(navigationTimer.current);
     };
   }, []);
@@ -39,16 +51,19 @@ function VerifyTotpAccount() {
 
   // If the session is already clear (e.g. verified in another tab), leave.
   useEffect(() => {
-    if (session?.user && !(session.user as { requiresTotp?: boolean }).requiresTotp) {
+    if (!attempt.current && !blocked && session?.user
+      && (session.user as { requiresTotp?: boolean; isAdmin?: boolean }).requiresTotp === false
+      && (session.user as { isAdmin?: boolean }).isAdmin === true) {
       router.push('/dashboard');
     }
-  }, [session, router]);
+  }, [session, router, blocked]);
 
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
 
   function handleDigitChange(index: number, value: string) {
+    if (verifying || blocked || verified) return;
     const digit = value.replace(/\D/g, '').slice(-1);
     const next = [...code];
     next[index] = digit;
@@ -67,6 +82,7 @@ function VerifyTotpAccount() {
 
   function handlePaste(e: React.ClipboardEvent) {
     e.preventDefault();
+    if (verifying || blocked || verified) return;
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     if (pasted.length === 6) {
       setCode(pasted.split(''));
@@ -75,42 +91,54 @@ function VerifyTotpAccount() {
     }
   }
 
-  async function submitCode(fullCode: string) {
+  function showOutcome(outcome: TotpOutcome, command: TotpAttempt) {
+    if (!mounted.current || attempt.current !== command) return;
+    setVerifying(false);
+    if (outcome.status === 'confirmed' && claimTotpConfirmation(command, context.current, outcome)) {
+      setVerified(true);
+      navigationTimer.current = setTimeout(() => {
+        if (mounted.current) router.push('/dashboard');
+      }, 1000);
+    } else if (outcome.status === 'invalid' || outcome.status === 'rate-limited') {
+      setError(outcome.status === 'rate-limited'
+        ? t('Demasiados intentos. Espera unos minutos.', 'Too many attempts. Wait a few minutes.')
+        : t('Código incorrecto. Revísalo e inténtalo de nuevo.', 'Incorrect code. Check it and try again.'));
+      setCode(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } else if (outcome.status === 'not-issued') {
+      setError(t('La espera terminó antes de actualizar la sesión. Introduce un código nuevo.', 'The wait ended before updating the session. Enter a new code.'));
+      setCode(['', '', '', '', '', '']);
+    } else {
+      setError(t('No se ha confirmado la verificación. Consulta el resultado pendiente antes de enviar otro código.', 'Verification was not confirmed. Check the pending result before sending another code.'));
+    }
+  }
+
+  function waitFor(command: TotpAttempt) {
+    if (!mounted.current) return;
+    observer.current?.retire();
+    const wait = observeTotpOriginal(command, () => mounted.current);
+    observer.current = wait;
     setVerifying(true);
     setError('');
-    try {
-      const res = await fetch('/api/auth/verify-totp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: fullCode }),
-      });
-      if (!mounted.current) return;
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (!mounted.current) return;
-        setError(
-          data.error === 'rate_limited'
-            ? t('Demasiados intentos. Espera unos minutos.', 'Too many attempts. Wait a few minutes.')
-            : t('Código incorrecto. Revísalo e inténtalo de nuevo.', 'Incorrect code. Check it and try again.')
-        );
-        setCode(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-        return;
-      }
-      const expected = session?.user;
-      const confirmed = await update({ totpCode: fullCode });
-      if (!mounted.current) return;
-      const principal = confirmed?.user as { id?: string; email?: string | null; requiresTotp?: boolean; isAdmin?: boolean } | undefined;
-      if (!expected?.id || !expected.email || !principal || principal.id !== expected.id
-        || principal.email !== expected.email || principal.requiresTotp !== false || principal.isAdmin !== true) {
-        throw new Error('Second factor was not confirmed for this session');
-      }
-      setVerified(true);
-      navigationTimer.current = setTimeout(() => { if (mounted.current) router.push('/dashboard'); }, 1000);
-    } catch {
-      if (mounted.current) setError(t('No se ha confirmado la verificación. Inténtalo de nuevo.', 'Verification was not confirmed. Try again.'));
-    } finally {
-      if (mounted.current) setVerifying(false);
+    void wait.promise.then(outcome => {
+      if (observer.current === wait) showOutcome(outcome, command);
+    });
+  }
+
+  function submitCode(fullCode: string) {
+    if (verifying || verified || totpBlocked()) return;
+    const owner = session?.user;
+    if (!owner?.id || !owner.email) return;
+    const command = beginTotp({ id: owner.id, email: owner.email }, context.current, fullCode, update, () => mounted.current);
+    if (!command) return;
+    attempt.current = command;
+    waitFor(command);
+  }
+
+  function observe() {
+    if (!verifying && ownOriginal && mounted.current) {
+      attempt.current = ownOriginal;
+      waitFor(ownOriginal);
     }
   }
 
@@ -166,17 +194,27 @@ function VerifyTotpAccount() {
                     value={digit}
                     onChange={(e) => handleDigitChange(i, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(i, e)}
-                    disabled={verifying}
+                    aria-label={t(`Dígito ${i + 1} del código`, `Code digit ${i + 1}`)}
+                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                    disabled={verifying || blocked}
                     className="yv-input w-12 h-14 text-center text-xl font-bold text-white disabled:opacity-50"
                     style={{ caretColor: 'var(--yv-brand)' }}
                   />
                 ))}
               </div>
 
-              {error && <div className="yv-note yv-note--error mb-4">{error}</div>}
+              {error && <div role="alert" className="yv-note yv-note--error mb-4">{error}</div>}
+              {(blocked || ownOriginal) && !verifying && (
+                <div className="text-zinc-400 text-sm mb-4" role="status">
+                  {blocked && <p>{t('Hay una verificación pendiente. Todavía no se puede enviar otro código.', 'A verification is pending. Another code cannot be sent yet.')}</p>}
+                  {ownOriginal && <button type="button" className="yv-btn mt-3" onClick={observe}>
+                    {t('Consultar resultado pendiente', 'Check pending result')}
+                  </button>}
+                </div>
+              )}
 
               {verifying && (
-                <div className="flex items-center justify-center gap-2 text-zinc-400 text-sm mb-4">
+                <div role="status" className="flex items-center justify-center gap-2 text-zinc-400 text-sm mb-4">
                   <span className="w-4 h-4 border-2 border-zinc-400 border-t-transparent rounded-full spin-r" />
                   {t('Verificando...', 'Verifying...')}
                 </div>
