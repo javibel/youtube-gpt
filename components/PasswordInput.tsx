@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 interface PasswordInputProps {
+  id?: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
@@ -12,12 +13,13 @@ interface PasswordInputProps {
   style?: React.CSSProperties;
 }
 
-export default function PasswordInput({ value, onChange, placeholder = '••••••••', required, disabled = false, className = '', style }: PasswordInputProps) {
+export default function PasswordInput({ id, value, onChange, placeholder = '••••••••', required, disabled = false, className = '', style }: PasswordInputProps) {
   const [show, setShow] = useState(false);
 
   return (
     <div className="relative">
       <input
+        id={id}
         type={show ? 'text' : 'password'}
         value={value}
         onChange={onChange}

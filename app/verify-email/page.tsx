@@ -2,166 +2,97 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { signIn, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import PasswordInput from '@/components/PasswordInput';
+import { beginEmailCommand, claimEmailNavigation, emailVerificationBlocked, observeEmailOriginal, retireEmailProgress, type EmailAttempt, type EmailOutcome } from '@/lib/email-verification-client';
+import { subscribeSessionCookieWriter } from '@/lib/session-cookie-writer';
 
 function VerifyEmailContent() {
+
   const searchParams = useSearchParams();
-  const { data: session, update } = useSession();
-
+  const { data: session, status } = useSession();
   const emailFromUrl = searchParams.get('email') ?? '';
-
   const [email, setEmail] = useState(emailFromUrl);
   const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [verifying, setVerifying] = useState(false);
-  const [verified, setVerified] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [resent, setResent] = useState(false);
   const [lang, setLang] = useState<'es'|'en'>('es');
+  const [, repaint] = useState(0);
+  const [display, setDisplay] = useState<{ frame: object; kind: 'verify' | 'resend'; waiting: boolean; outcome?: EmailOutcome } | undefined>(undefined);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const mounted = useRef(true);
-  const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const attemptedActor = useRef<{ id: string; email: string; ref: unknown } | null>(null);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; if (navigationTimer.current !== null) clearTimeout(navigationTimer.current); }; }, []);
-
-  const t = (es: string, en: string) => lang === 'en' ? en : es;
-
+  const mounted = useRef(true), context = useRef({});
+  const selection = useRef({ email, password, lang, route: emailFromUrl, id: session?.user?.id ?? '', actorEmail: session?.user?.email ?? '', ref: (session?.user as { authSessionRef?: string } | undefined)?.authSessionRef ?? '' });
+  const fields = { email, password, lang, route: emailFromUrl, id: session?.user?.id ?? '', actorEmail: session?.user?.email ?? '', ref: (session?.user as { authSessionRef?: string } | undefined)?.authSessionRef ?? '' };
+  if (Object.keys(fields).some(key => fields[key as keyof typeof fields] !== selection.current[key as keyof typeof fields])) selection.current = fields;
+  const rendered = selection.current;
+  const command = useRef<{ attempt: EmailAttempt; frame: object } | undefined>(undefined);
+  const observer = useRef<ReturnType<typeof observeEmailOriginal> | undefined>(undefined);
+  const navigationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
-    const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
-    if (stored) setLang(stored);
+    mounted.current = true; const unsubscribe = subscribeSessionCookieWriter(() => repaint(n => n + 1));
+    return () => { mounted.current = false; unsubscribe(); observer.current?.retire(); if (command.current) retireEmailProgress(command.current.attempt); if (navigationTimer.current !== undefined) clearTimeout(navigationTimer.current); };
   }, []);
-
-  // Observe once per native actor. A GET does not refresh the verification
-  // claim from DB; the existing explicit sign-in flow remains necessary.
   useEffect(() => {
-    if (session?.user && typeof session.user.id === 'string' && session.user.id
-      && typeof session.user.email === 'string' && session.user.email
-      && (session.user as { requiresVerification?: boolean }).requiresVerification === true) {
-      const actor = { id: session.user.id, email: session.user.email!, ref: (session.user as { authSessionRef?: string }).authSessionRef };
-      const prior = attemptedActor.current;
-      if (prior && prior.id === actor.id && prior.email === actor.email && prior.ref === actor.ref) return;
-      attemptedActor.current = actor;
-      update().then((updated) => {
-        const user = updated?.user;
-        if (mounted.current && attemptedActor.current === actor && user && user.id === actor.id && user.email === actor.email
-          && (user as { authSessionRef?: string }).authSessionRef === actor.ref
-          && (user as { requiresVerification?: boolean }).requiresVerification === false) {
-          window.location.href = '/dashboard';
-        }
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, session?.user?.email, (session?.user as { authSessionRef?: string } | undefined)?.authSessionRef, (session?.user as { requiresVerification?: boolean } | undefined)?.requiresVerification]);
-
-  // Auto-focus first input
-  useEffect(() => {
-    if (emailFromUrl) inputRefs.current[0]?.focus();
-  }, [emailFromUrl]);
-
+    if (command.current && command.current.frame !== rendered) { observer.current?.retire(); retireEmailProgress(command.current.attempt); if (navigationTimer.current !== undefined) clearTimeout(navigationTimer.current); }
+  }, [rendered]);
+  useEffect(() => { const stored = localStorage.getItem('ytubviral_lang'); if (stored === 'es' || stored === 'en') setLang(stored); }, []);
+  useEffect(() => { if (emailFromUrl) { setEmail(emailFromUrl); inputRefs.current[0]?.focus(); } }, [emailFromUrl]);
+  const t = (es: string, en: string) => lang === 'en' ? en : es;
+  const current = display?.frame === rendered ? display : undefined;
+  const verifying = !!current?.waiting && current.kind === 'verify';
+  const resending = !!current?.waiting && current.kind === 'resend';
+  const verified = !!current?.outcome && ['verified-login', 'verified-signin-required', 'login-unconfirmed'].includes(current.outcome.status);
+  const resent = current?.outcome?.status === 'resend-accepted';
+  const blocked = emailVerificationBlocked() || status === 'loading';
+  const own = command.current?.frame === rendered;
+  const canEdit = () => mounted.current && selection.current === rendered && !emailVerificationBlocked() && status !== 'loading' && !verified;
+  const canObserve = !!own && !current?.waiting && ['unconfirmed', 'login-unconfirmed'].includes(current?.outcome?.status ?? '');
+  async function observeOwn() {
+    const ownCommand = command.current;
+    const active = () => mounted.current && command.current === ownCommand && selection.current === ownCommand?.frame;
+    if (!ownCommand || !active() || observer.current) return;
+    const view = observeEmailOriginal(ownCommand.attempt, context.current, active); observer.current = view;
+    setDisplay({ frame: ownCommand.frame, kind: ownCommand.attempt.kind, waiting: true });
+    const outcome = await view.promise;
+    if (observer.current !== view) return;
+    observer.current = undefined;
+    if (!active()) return;
+    setDisplay({ frame: ownCommand.frame, kind: ownCommand.attempt.kind, waiting: false, outcome });
+    if (outcome.status === 'invalid') setError(t('Código incorrecto. Puedes introducir otro.', 'Incorrect code. You can enter another.'));
+    else if (outcome.status === 'expired') setError(t('El código ha expirado. Solicita uno nuevo.', 'The code expired. Request another.'));
+    else if (outcome.status === 'rate-limited') setError(t('Demasiados intentos. Espera antes de enviar otra solicitud.', 'Too many attempts. Wait before sending another request.'));
+    else if (outcome.status === 'not-issued') setError(t('No se envió la solicitud. Puedes intentarlo de nuevo.', 'The request was not sent. You can try again.'));
+    else if (outcome.status === 'unconfirmed' || outcome.status === 'login-unconfirmed') setError(t('No se ha confirmado la solicitud. Consulta el intento pendiente.', 'The request was not confirmed. Check the pending attempt.'));
+    else setError('');
+    if (['invalid', 'expired', 'resend-accepted'].includes(outcome.status)) setCode(['', '', '', '', '', '']);
+    const target = claimEmailNavigation(ownCommand.attempt, context.current, outcome);
+    if (target) navigationTimer.current = setTimeout(() => { if (active()) window.location.href = target; }, target === '/dashboard' ? 1500 : 2000);
+  }
+  function submitCode(fullCode: string) {
+    if (!canEdit() || !/^\d{6}$/.test(fullCode)) return;
+    const captured = rendered, active = () => mounted.current && selection.current === captured;
+    const attempt = beginEmailCommand('verify', { email: captured.email, code: fullCode, password: captured.password, lang: captured.lang }, window.location.origin, context.current, active);
+    if (!attempt) return;
+    command.current = { attempt, frame: captured }; setError(''); void observeOwn();
+  }
   function handleDigitChange(index: number, value: string) {
-    // Only allow digits
-    const digit = value.replace(/\D/g, '').slice(-1);
-    const next = [...code];
-    next[index] = digit;
-    setCode(next);
-    setError('');
-
-    // Auto-advance to next input
-    if (digit && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit when all 6 digits entered
-    if (digit && index === 5 && next.every(d => d)) {
-      submitCode(next.join(''));
-    }
+    if (!canEdit()) return;
+    const digit = value.replace(/\D/g, '').slice(-1), next = [...code]; next[index] = digit; setCode(next); setError('');
+    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
+    if (digit && index === 5 && next.every(d => d)) submitCode(next.join(''));
   }
-
-  function handleKeyDown(index: number, e: React.KeyboardEvent) {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  }
-
+  function handleKeyDown(index: number, e: React.KeyboardEvent) { if (canEdit() && e.key === 'Backspace' && !code[index] && index > 0) inputRefs.current[index - 1]?.focus(); }
   function handlePaste(e: React.ClipboardEvent) {
-    e.preventDefault();
+    e.preventDefault(); if (!canEdit()) return;
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (pasted.length === 6) {
-      const digits = pasted.split('');
-      setCode(digits);
-      inputRefs.current[5]?.focus();
-      submitCode(pasted);
-    }
+    if (pasted.length === 6) { setCode(pasted.split('')); inputRefs.current[5]?.focus(); submitCode(pasted); }
   }
-
-  async function submitCode(fullCode: string) {
-    if (!email) return;
-    setVerifying(true);
-    setError('');
-
-    try {
-      const res = await fetch('/api/auth/verify-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: fullCode }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.error === 'invalid_code') {
-          setError(t('Código incorrecto. Revísalo e intenta de nuevo.', 'Incorrect code. Check it and try again.'));
-        } else if (data.error === 'expired_code') {
-          setError(t('El código ha expirado. Solicita uno nuevo.', 'Code has expired. Request a new one.'));
-        } else {
-          setError(t('Error al verificar. Intenta de nuevo.', 'Verification error. Try again.'));
-        }
-        setCode(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-        return;
-      }
-
-      setVerified(true);
-
-      // Auto-login: retrieve password from sessionStorage (set during signup)
-      const pw = sessionStorage.getItem('ytv_signup_pw');
-      if (pw) {
-        sessionStorage.removeItem('ytv_signup_pw');
-        const loginResult = await signIn('credentials', { email, password: pw, redirect: false });
-        if (loginResult?.ok === true && loginResult.status === 200 && !loginResult.error && mounted.current) {
-          const ownSession = await update();
-          if (mounted.current && ownSession?.user?.id && ownSession.user.email?.toLowerCase().trim() === email.toLowerCase().trim()
-            && (ownSession.user as { requiresVerification?: boolean }).requiresVerification === false) {
-            navigationTimer.current = setTimeout(() => { if (mounted.current) window.location.href = '/dashboard'; }, 1500);
-            return;
-          }
-        }
-      }
-      // Fallback: redirect to login with message
-      navigationTimer.current = setTimeout(() => { if (mounted.current) window.location.href = '/login?verified=1'; }, 2000);
-    } catch {
-      setError(t('Error de conexión. Intenta de nuevo.', 'Connection error. Try again.'));
-    } finally {
-      setVerifying(false);
-    }
-  }
-
-  async function handleResend() {
-    if (!email || resending) return;
-    setResending(true);
-    setResent(false);
-    try {
-      await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, lang }),
-      });
-      setResent(true);
-      setCode(['', '', '', '', '', '']);
-      setError('');
-      inputRefs.current[0]?.focus();
-    } finally {
-      setResending(false);
-    }
+  function handleResend() {
+    if (!canEdit()) return;
+    const captured = rendered, active = () => mounted.current && selection.current === captured;
+    const attempt = beginEmailCommand('resend', { email: captured.email, code: '', password: '', lang: captured.lang }, window.location.origin, context.current, active);
+    if (!attempt) return;
+    command.current = { attempt, frame: captured }; setError(''); void observeOwn();
   }
 
   return (
@@ -187,10 +118,10 @@ function VerifyEmailContent() {
                 {t('EMAIL VERIFICADO', 'EMAIL VERIFIED')}
               </p>
               <h1 className="font-display font-bold text-2xl text-white mb-3">
-                {t('¡Todo listo!', "You're all set!")}
+                {t('Email confirmado', 'Email confirmed')}
               </h1>
               <p className="text-zinc-400 text-sm">
-                {t('Redirigiendo...', 'Redirecting...')}
+                {current?.outcome?.status === 'login-unconfirmed' ? t('El acceso sigue sin confirmar.', 'Sign-in is still unconfirmed.') : t('Redirigiendo...', 'Redirecting...')}
               </p>
             </div>
           ) : (
@@ -214,14 +145,20 @@ function VerifyEmailContent() {
                 <div className="mb-4">
                   <input
                     type="email"
+                    disabled={blocked}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { if (canEdit()) setEmail(e.target.value); }}
                     placeholder={t('tu@email.com', 'your@email.com')}
                     required
                     className="yv-input text-white placeholder-zinc-600 text-sm"
                   />
                 </div>
               )}
+
+              <div className="mb-4">
+                <label htmlFor="email-signin-password" className="text-sm text-zinc-400">{t('Contraseña para entrar al verificar (opcional)', 'Password to sign in after verification (optional)')}</label>
+                <PasswordInput id="email-signin-password" disabled={blocked} value={password} onChange={(e) => { if (canEdit()) setPassword(e.target.value); }} />
+              </div>
 
               {/* 6-digit code input */}
               <div className="flex gap-2 justify-center mb-6" onPaste={handlePaste}>
@@ -235,18 +172,13 @@ function VerifyEmailContent() {
                     value={digit}
                     onChange={(e) => handleDigitChange(i, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(i, e)}
-                    disabled={verifying}
+                    disabled={blocked}
                     className="yv-input w-12 h-14 text-center text-xl font-bold text-white disabled:opacity-50"
                     style={{ caretColor: 'var(--yv-brand)' }}
                   />
                 ))}
               </div>
 
-              {error && (
-                <div className="yv-note yv-note--error mb-4">
-                  {error}
-                </div>
-              )}
 
               {verifying && (
                 <div className="flex items-center justify-center gap-2 text-zinc-400 text-sm mb-4">
@@ -257,14 +189,14 @@ function VerifyEmailContent() {
 
               {resent ? (
                 <p className="text-center text-sm text-zinc-400 mb-4">
-                  {t('Nuevo código enviado. Revisa tu bandeja.', 'New code sent. Check your inbox.')}
+                  {t('Solicitud de código aceptada. Revisa tu bandeja.', 'Code request accepted. Check your inbox.')}
                 </p>
               ) : (
                 <p className="text-center text-sm text-zinc-500 mb-4">
                   {t('¿No lo recibiste? ', "Didn't receive it? ")}
                   <button
                     onClick={handleResend}
-                    disabled={resending}
+                    disabled={blocked}
                     className="text-white hover:underline disabled:opacity-50"
                   >
                     {resending ? t('Enviando...', 'Sending...') : t('Reenviar código', 'Resend code')}
@@ -279,6 +211,9 @@ function VerifyEmailContent() {
               </div>
             </div>
           )}
+          {error && <div role="alert" className="yv-note yv-note--error mb-4">{error}</div>}
+          {canObserve && <button type="button" onClick={() => void observeOwn()}>{t('Consultar intento pendiente', 'Check pending attempt')}</button>}
+          {blocked && !own && <p role="status">{t('Hay una operación pendiente. Espera a que termine.', 'An operation is pending. Wait for it to finish.')}</p>}
         </div>
       </div>
     </div>

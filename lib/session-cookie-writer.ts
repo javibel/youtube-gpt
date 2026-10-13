@@ -1,7 +1,7 @@
 
 'use client';
 
-export type SessionCookieWriter = Readonly<{ kind: 'totp' | 'signout' | 'refresh' | 'credentials' | 'google' }>;
+export type SessionCookieWriter = Readonly<{ kind: 'totp' | 'signout' | 'refresh' | 'credentials' | 'google' | 'email' }>;
 const permits = new WeakMap<SessionCookieWriter, { postIssued: boolean; readIssued: boolean }>();
 let held: SessionCookieWriter | undefined;
 const listeners = new Set<() => void>();
@@ -13,7 +13,7 @@ export function sessionCookieWriterBusy() { return held !== undefined; }
 export function heldSessionCookieWriterKind() { return held?.kind; } // Negative UI hint, never a capability.
 
 export function admitSessionCookieWriter(kind: SessionCookieWriter['kind']): SessionCookieWriter | undefined {
-  if (held || (kind !== 'totp' && kind !== 'signout' && kind !== 'refresh' && kind !== 'credentials' && kind !== 'google')) return;
+  if (held || (kind !== 'totp' && kind !== 'signout' && kind !== 'refresh' && kind !== 'credentials' && kind !== 'google' && kind !== 'email')) return;
   const permit: SessionCookieWriter = Object.freeze({ kind });
   permits.set(permit, { postIssued: false, readIssued: false }); held = permit; notify(); return permit;
 }
@@ -35,6 +35,15 @@ export function releaseUnissuedSessionCookieWriter(permit: SessionCookieWriter) 
   const original = permits.get(permit);
   if (held !== permit || !original || original.postIssued || original.readIssued) return false;
   held = undefined; permits.delete(permit); notify(); return true;
+}
+
+// A completed native email verification can hand its own live, still unissued
+// cookie permit to the credentials child. This restricts admission only; the
+// native credentials issuer still requires the actual password. It cannot be
+// reconstructed by copying kind/email/JSON or used to release another owner.
+export function ownsUnissuedEmailCookiePermit(permit: SessionCookieWriter) {
+  const original = permits.get(permit);
+  return held === permit && permit.kind === 'email' && !!original && !original.postIssued && !original.readIssued;
 }
 
 // Native session GET also writes cookies. Only its genuine completed/observed

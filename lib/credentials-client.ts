@@ -1,5 +1,5 @@
 'use client';
-import { admitSessionCookieWriter, markSessionCookiePost, releaseUnissuedSessionCookieWriter, sessionCookieWriterBusy } from '@/lib/session-cookie-writer';
+import { admitSessionCookieWriter, markSessionCookiePost, ownsUnissuedEmailCookiePermit, releaseUnissuedSessionCookieWriter, sessionCookieWriterBusy, type SessionCookieWriter } from '@/lib/session-cookie-writer';
 
 export type CredentialsAttempt = Readonly<{ kind: 'credentials' }>;
 export type CredentialsOutcome = Readonly<{ status: 'confirmed' | 'denied' | 'not-issued' | 'unconfirmed' }>;
@@ -17,11 +17,23 @@ export function retireCredentialsProgress(attempt: CredentialsAttempt) { const o
 // this transport. Password/OTP never enter the public attempt or browser storage.
 export function beginCredentials(input: Readonly<{ email: string; password: string; totp: string }>,
   origin: string, context: object, active: () => boolean): CredentialsAttempt | undefined {
+  if (sessionCookieWriterBusy()) return;
+  return startCredentials(input, origin, context, active);
+}
+
+export function continueEmailCredentials(input: Readonly<{ email: string; password: string; totp: string }>,
+  origin: string, context: object, active: () => boolean, permit: SessionCookieWriter): CredentialsAttempt | undefined {
+  if (!ownsUnissuedEmailCookiePermit(permit)) return;
+  return startCredentials(input, origin, context, active, permit);
+}
+
+function startCredentials(input: Readonly<{ email: string; password: string; totp: string }>,
+  origin: string, context: object, active: () => boolean, emailPermit?: SessionCookieWriter): CredentialsAttempt | undefined {
   const prior = retained && originals.get(retained);
-  if (sessionCookieWriterBusy() || prior && prior.outcome?.status !== 'not-issued' || !active()
+  if (prior && prior.outcome?.status !== 'not-issued' || !active()
     || typeof input.email !== 'string' || !input.email.trim() || typeof input.password !== 'string' || !input.password
     || typeof input.totp !== 'string' || input.totp !== '' && !/^\d{6}$/.test(input.totp)) return;
-  const permit = admitSessionCookieWriter('credentials');
+  const permit = emailPermit ?? admitSessionCookieWriter('credentials');
   if (!permit) return;
   const captured = { email: input.email, password: input.password, totp: input.totp };
   const attempt: CredentialsAttempt = Object.freeze({ kind: 'credentials' });

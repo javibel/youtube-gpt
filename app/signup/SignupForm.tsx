@@ -193,8 +193,8 @@ export default function SignupForm() {
           setTurnstileToken('');
         }
       } else {
-        // Store password temporarily for auto-login after verification
-        sessionStorage.setItem('ytv_signup_pw', password);
+        // The verification page accepts an optional explicit password. No
+        // plaintext credential is stored or adopted through a browser slot.
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch {

@@ -221,7 +221,9 @@ function VerifyTotpAccount() {
                       ? t('Hay un cierre de sesión en curso. Espera antes de verificar.', 'A sign-out is in progress. Wait before verifying.')
                       : (otherCookieWriterKind === 'credentials' || otherCookieWriterKind === 'google')
                         ? t('Hay un inicio de sesión en curso. Espera antes de verificar.', 'Sign-in is in progress. Wait before verifying.')
-                        : t('Hay una actualización de sesión en curso. Espera antes de verificar.', 'A session refresh is in progress. Wait before verifying.')
+                        : otherCookieWriterKind === 'email'
+                          ? t('Hay una verificación de email en curso. Espera antes de verificar.', 'Email verification is in progress. Wait before verifying.')
+                          : t('Hay una actualización de sesión en curso. Espera antes de verificar.', 'A session refresh is in progress. Wait before verifying.')
                     : t('Hay una verificación pendiente. Todavía no se puede enviar otro código.', 'A verification is pending. Another code cannot be sent yet.')}</p>}
                   {ownOriginal && <button type="button" className="yv-btn mt-3" onClick={observe}>
                     {t('Consultar resultado pendiente', 'Check pending result')}
