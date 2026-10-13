@@ -1,4 +1,5 @@
 'use client';
+import { admitSessionCookieWriter, heldSessionCookieWriterKind, markSessionCookiePost, releaseUnissuedSessionCookieWriter, sessionCookieWriterBusy, subscribeSessionCookieWriter } from '@/lib/session-cookie-writer';
 export type SignoutOwner = { userId: string; email: string; authSessionRef?: string };
 export type SignoutOutcome = Readonly<{ status: 'confirmed' | 'unconfirmed' | 'not-started' }>;
 export type SignoutAttempt = Readonly<{ owner: Readonly<SignoutOwner> }>;
@@ -8,12 +9,14 @@ let retained: SignoutAttempt | undefined;
 const unknown: SignoutOutcome = Object.freeze({ status: 'unconfirmed' });
 const listeners = new Set<() => void>();
 function notify() { for (const listener of listeners) { try { listener(); } catch { /* A retired view cannot change the native result. */ } } }
+subscribeSessionCookieWriter(notify);
+export function signoutHeldByOtherCookieWriter() { return heldSessionCookieWriterKind() === 'totp'; }
 export function subscribeSignout(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 
 export function currentSignoutOriginal() { return retained; }
 export function trustedSignoutOutcome(attempt: SignoutAttempt) { return originals.get(attempt)?.outcome; }
 export function signoutBlocked() {
-  return !!retained && trustedSignoutOutcome(retained)?.status !== 'confirmed'
+  return sessionCookieWriterBusy() || !!retained && trustedSignoutOutcome(retained)?.status !== 'confirmed'
     && trustedSignoutOutcome(retained)?.status !== 'not-started';
 }
 export function sameSignoutOwner(attempt: SignoutAttempt, owner: SignoutOwner) {
@@ -28,6 +31,8 @@ export function signoutNeedsObservation(attempt: SignoutAttempt) {
 
 export function beginSignout(owner: SignoutOwner, origin: string, context: object, canStart: () => boolean): SignoutAttempt | undefined {
   if (signoutBlocked() || !canStart() || !owner.userId || !owner.email) return;
+  const permit = admitSessionCookieWriter('signout');
+  if (!permit) return;
   const captured = Object.freeze({ userId: owner.userId, email: owner.email, authSessionRef: owner.authSessionRef ?? '' });
   const attempt: SignoutAttempt = Object.freeze({ owner: captured });
   const original: Original = { context, promise: Promise.resolve(unknown), claimed: false, allowPost: true };
@@ -35,7 +40,9 @@ export function beginSignout(owner: SignoutOwner, origin: string, context: objec
   original.promise = Promise.resolve().then(async () => {
     if (!canStart()) {
       const outcome: SignoutOutcome = Object.freeze({ status: 'not-started' });
-      original.outcome = outcome; notify(); return outcome;
+      original.outcome = outcome;
+      releaseUnissuedSessionCookieWriter(permit);
+      notify(); return outcome;
     }
     try {
       const csrfResponse = await fetch('/api/auth/csrf', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
@@ -48,8 +55,11 @@ export function beginSignout(owner: SignoutOwner, origin: string, context: objec
       // It does not cancel an issued POST or prevent late browser cookie writes.
       if (!original.allowPost || !canStart()) {
         const outcome: SignoutOutcome = Object.freeze({ status: 'not-started' });
-        original.outcome = outcome; notify(); return outcome;
+        original.outcome = outcome;
+      if (outcome.status === 'not-started') releaseUnissuedSessionCookieWriter(permit);
+      notify(); return outcome;
       }
+      if (!markSessionCookiePost(permit)) { original.outcome = unknown; notify(); return unknown; }
       const response = await fetch('/api/auth/signout', { method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Auth-Return-Redirect': '1',
           'X-YTV-Signout-Expectation': encodeURIComponent(JSON.stringify(captured)) },
@@ -68,7 +78,9 @@ export function beginSignout(owner: SignoutOwner, origin: string, context: objec
       if (url.origin !== origin || url.pathname !== '/' || url.search || url.hash || url.username || url.password)
         { original.outcome = unknown; notify(); return unknown; }
       const outcome: SignoutOutcome = Object.freeze({ status: 'confirmed' });
-      original.outcome = outcome; notify(); return outcome;
+      original.outcome = outcome;
+      if (outcome.status === 'not-started') releaseUnissuedSessionCookieWriter(permit);
+      notify(); return outcome;
     } catch { original.outcome = unknown; notify(); return unknown; }
   });
   notify();

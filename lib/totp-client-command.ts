@@ -1,4 +1,5 @@
 'use client';
+import { admitSessionCookieWriter, heldSessionCookieWriterKind, markSessionCookiePost, releaseUnissuedSessionCookieWriter, sessionCookieWriterBusy, subscribeSessionCookieWriter } from '@/lib/session-cookie-writer';
 import type { TotpAccountExpectation } from '@/lib/totp-account';
 
 export type TotpOwner = Readonly<{ id: string; email: string; authSessionRef: string }>;
@@ -16,12 +17,14 @@ let retained: TotpAttempt | undefined;
 const unknown: TotpOutcome = Object.freeze({ status: 'unconfirmed' });
 const listeners = new Set<() => void>();
 function notify() { for (const listener of listeners) { try { listener(); } catch { /* Retired views do not control the original. */ } } }
+subscribeSessionCookieWriter(notify);
+export function totpHeldByOtherCookieWriter() { return heldSessionCookieWriterKind() === 'signout'; }
 export function subscribeTotp(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export function currentTotpOriginal() { return retained; }
 export function ownsTotpOriginal(attempt: TotpAttempt, context: object) { return originals.get(attempt)?.context === context; }
 export function totpBlocked() {
   const original = retained && originals.get(retained);
-  return !!original && (!original.outcome || original.outcome.status === 'unconfirmed'
+  return sessionCookieWriterBusy() || !!original && (!original.outcome || original.outcome.status === 'unconfirmed'
     || (original.outcome.status === 'confirmed' && !original.claimed));
 }
 export function retireTotpProgress(attempt: TotpAttempt) {
@@ -32,13 +35,17 @@ export function retireTotpProgress(attempt: TotpAttempt) {
 export function beginTotp(owner: TotpOwner, context: object, code: string,
   active: () => boolean): TotpAttempt | undefined {
   if (totpBlocked() || !active() || !owner.id || !owner.email || typeof owner.authSessionRef !== 'string' || !owner.authSessionRef || !/^\d{6}$/.test(code)) return;
+  const permit = admitSessionCookieWriter('totp');
+  if (!permit) return;
   const attempt: TotpAttempt = Object.freeze({ owner: Object.freeze({ id: owner.id, email: owner.email, authSessionRef: owner.authSessionRef }) });
   const original: Original = { context, promise: Promise.resolve(unknown), allowUpdate: true, claimed: false };
   originals.set(attempt, original); retained = attempt;
   const expectation: TotpAccountExpectation = Object.freeze({ expectedUserId: attempt.owner.id, expectedEmail: attempt.owner.email, expectedAuthSessionRef: attempt.owner.authSessionRef });
   const settle = (status: TotpOutcome['status']) => {
     const outcome: TotpOutcome = Object.freeze({ status });
-    original.outcome = outcome; notify(); return outcome;
+    original.outcome = outcome;
+    if (status === 'not-issued' || status === 'invalid' || status === 'rate-limited') releaseUnissuedSessionCookieWriter(permit);
+    notify(); return outcome;
   };
   original.promise = Promise.resolve().then(async () => {
     try {
@@ -62,6 +69,7 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
         || Array.isArray(csrf) || Object.keys(csrf).length !== 1 || !('csrfToken' in csrf)
         || typeof csrf.csrfToken !== 'string' || !/^[a-f0-9]{64}$/.test(csrf.csrfToken)) return settle('unconfirmed');
       if (!original.allowUpdate || !active()) return settle('not-issued');
+      if (!markSessionCookiePost(permit)) return settle('unconfirmed');
       const native = await fetch('/api/auth/session', { method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json',
           'X-YTV-Totp-Expectation': encodeURIComponent(JSON.stringify(expectation)) },

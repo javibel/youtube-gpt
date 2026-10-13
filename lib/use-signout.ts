@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { beginSignout, claimSignoutNavigation, currentSignoutOriginal, observeSignoutOriginal, sameSignoutContext, sameSignoutOwner, signoutBlocked, signoutNeedsObservation, subscribeSignout } from '@/lib/signout-client';
+import { beginSignout, claimSignoutNavigation, currentSignoutOriginal, observeSignoutOriginal, sameSignoutContext, sameSignoutOwner, signoutBlocked, signoutHeldByOtherCookieWriter, signoutNeedsObservation, subscribeSignout } from '@/lib/signout-client';
 import type { SignoutAttempt, SignoutOutcome, SignoutOwner } from '@/lib/signout-client';
 
 export function useSignout(owner: SignoutOwner, status: string, language: string, context: object | null | undefined) {
@@ -55,6 +55,6 @@ export function useSignout(owner: SignoutOwner, status: string, language: string
   }
   function observe() { if (active() && !shown?.waiting && ownOriginal) wait(ownOriginal); }
   return { start, observe, canStart: canStart(), waiting: !!shown?.waiting, outcome: shown?.outcome,
-    blocked: signoutBlocked(), canObserve: !!ownOriginal && !shown?.waiting,
+    blocked: signoutBlocked(), otherCookieWriter: signoutHeldByOtherCookieWriter(), canObserve: !!ownOriginal && !shown?.waiting,
     navigationFailed: !!shown?.navigationFailed };
 }
