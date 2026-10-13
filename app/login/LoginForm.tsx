@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import { useGoogleSignin } from '@/lib/use-google-signin';
 import { sessionCookieWriterBusy, subscribeSessionCookieWriter } from '@/lib/session-cookie-writer';
 import { beginCredentials, claimCredentialsNavigation, observeCredentialsOriginal, retireCredentialsProgress, type CredentialsAttempt, type CredentialsOutcome } from '@/lib/credentials-client';
 import PasswordInput from '@/components/PasswordInput';
@@ -26,6 +27,7 @@ export default function LoginForm() {
   const [showTotp, setShowTotp] = useState(false);
   if (selection.current.email !== email || selection.current.password !== password || selection.current.totp !== totp || selection.current.lang !== lang) selection.current = { email, password, totp, lang };
   const rendered = selection.current;
+  const google = useGoogleSignin(rendered, '/dashboard', !loading && status !== 'loading', () => mounted.current && selection.current === rendered && !loading);
   useEffect(() => { mounted.current = true; const unsubscribe = subscribeSessionCookieWriter(() => setCookieBusy(sessionCookieWriterBusy())); return () => { mounted.current = false; unsubscribe(); observer.current?.retire(); if (command.current) retireCredentialsProgress(command.current.attempt); }; }, []);
 
   useEffect(() => {
@@ -108,7 +110,7 @@ export default function LoginForm() {
         <div className="soft-card p-8">
           <button
             disabled={loading || cookieBusy || status === 'loading'}
-            onClick={() => { if (mounted.current && selection.current === rendered && !loading && status !== 'loading' && !sessionCookieWriterBusy()) void signIn('google', { callbackUrl: '/dashboard' }); }}
+            onClick={google.start}
             className="yv-btn yv-btn--ghost w-full py-3 px-4 text-sm font-medium text-white"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -119,6 +121,15 @@ export default function LoginForm() {
             </svg>
             {t('Continuar con Google', 'Continue with Google')}
           </button>
+
+
+          {google.waiting && <p role="status">{t('Preparando acceso con Google...', 'Preparing Google sign-in...')}</p>}
+          {google.status === 'unconfirmed' && <div role="alert">
+            <p>{t('No se ha confirmado el acceso con Google. La solicitud original puede seguir en curso.', 'Google sign-in was not confirmed. The original request may still be running.')}</p>
+            {google.canObserve && <button type="button" onClick={google.observe}>{t('Consultar acceso pendiente', 'Check pending Google sign-in')}</button>}
+          </div>}
+          {google.status === 'not-issued' && <p role="status">{t('No se envió el acceso con Google. Puedes intentarlo de nuevo.', 'Google sign-in was not sent. You can try again.')}</p>}
+          {google.blocked && !google.own && <p role="status">{t('Hay una operación de sesión pendiente. Espera a que termine.', 'A session operation is pending. Wait for it to finish.')}</p>}
 
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }}></div>

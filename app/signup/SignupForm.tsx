@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { useGoogleSignin } from '@/lib/use-google-signin';
+import { sessionCookieWriterBusy } from '@/lib/session-cookie-writer';
 import PasswordInput from '@/components/PasswordInput';
 import { hasTrackingConsent } from '@/components/CookieConsent';
 import { WarningIcon } from '@/components/icons';
@@ -28,6 +29,10 @@ declare global {
 
 export default function SignupForm() {
   const router = useRouter();
+  const mounted = useRef(true);
+  const signupInFlight = useRef(false);
+  const selection = useRef({ name: '', email: '', password: '', confirmPassword: '', lang: 'es', refCode: '', affTyped: '' });
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const searchParams = useSearchParams();
   // Afiliados/referidos hibernados (ver docs/hibernacion-afiliados-referidos-2026-07-11.md):
   // forzar vacío desactiva en cascada las cookies ytv_ref/ytv_aff, el callback
@@ -106,10 +111,15 @@ export default function SignupForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (selection.current.name !== name || selection.current.email !== email || selection.current.password !== password || selection.current.confirmPassword !== confirmPassword || selection.current.lang !== lang || selection.current.refCode !== refCode || selection.current.affTyped !== affTyped) selection.current = { name, email, password, confirmPassword, lang, refCode, affTyped };
+  const rendered = selection.current;
+  const googleCallback = /^[a-zA-Z0-9_-]{1,20}$/.test(refCode) ? '/dashboard?ref='+refCode : '/dashboard';
+  const google = useGoogleSignin(rendered, googleCallback, !loading, () => mounted.current && selection.current === rendered && !signupInFlight.current);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!mounted.current || selection.current !== rendered || signupInFlight.current || loading || sessionCookieWriterBusy()) return;
     setError('');
 
     if (password !== confirmPassword) {
@@ -168,7 +178,7 @@ export default function SignupForm() {
     }
     const aff = AFFILIATES_DORMANT ? undefined : (affTyped.trim() || affQueryCode || affCookie || undefined);
 
-    setLoading(true);
+    signupInFlight.current = true; setLoading(true);
     try {
       const res = await fetch('/api/signup', {
         method: 'POST',
@@ -190,7 +200,7 @@ export default function SignupForm() {
     } catch {
       setError(t('Error al crear cuenta', 'Error creating account'));
     }
-    setLoading(false);
+    signupInFlight.current = false; setLoading(false);
   };
 
   return (
@@ -203,7 +213,8 @@ export default function SignupForm() {
           <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
         </a>
         <button
-          onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
+          disabled={loading || google.blocked}
+          onClick={() => { if (signupInFlight.current || sessionCookieWriterBusy()) return; const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
           className="yv-chip flex items-center gap-1 font-mono-jb text-[13px] tracking-wider px-2 py-1"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
@@ -221,7 +232,8 @@ export default function SignupForm() {
 
         <div className="soft-card p-8">
           <button
-            onClick={() => signIn('google', { callbackUrl: refCode ? `/dashboard?ref=${refCode}` : '/dashboard' })}
+            disabled={loading || google.blocked}
+            onClick={google.start}
             className="yv-btn yv-btn--ghost w-full py-3 px-4 text-sm font-medium text-white"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -233,6 +245,15 @@ export default function SignupForm() {
             {t('Continuar con Google', 'Continue with Google')}
           </button>
 
+
+          {google.waiting && <p role="status">{t('Preparando acceso con Google...', 'Preparing Google sign-in...')}</p>}
+          {google.status === 'unconfirmed' && <div role="alert">
+            <p>{t('No se ha confirmado el acceso con Google. La solicitud original puede seguir en curso.', 'Google sign-in was not confirmed. The original request may still be running.')}</p>
+            {google.canObserve && <button type="button" onClick={google.observe}>{t('Consultar acceso pendiente', 'Check pending Google sign-in')}</button>}
+          </div>}
+          {google.status === 'not-issued' && <p role="status">{t('No se envió el acceso con Google. Puedes intentarlo de nuevo.', 'Google sign-in was not sent. You can try again.')}</p>}
+          {google.blocked && !google.own && <p role="status">{t('Hay una operación de sesión pendiente. Espera a que termine.', 'A session operation is pending. Wait for it to finish.')}</p>}
+
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }}></div>
             <span className="text-zinc-600 text-[13px] font-mono-jb">{t('o con email', 'or with email')}</span>
@@ -242,20 +263,20 @@ export default function SignupForm() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nombre', 'Name')}</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+              <input type="text" disabled={loading || google.blocked} value={name} onChange={(e) => setName(e.target.value)}
                 className="soft-field py-3 px-4 text-sm"
                 placeholder={t('Tu nombre', 'Your name')} required />
             </div>
 
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              <input type="email" disabled={loading || google.blocked} value={email} onChange={(e) => setEmail(e.target.value)}
                 className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" required />
             </div>
 
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Contraseña', 'Password')}</label>
-              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
+              <PasswordInput disabled={loading || google.blocked} value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm"
                 placeholder={t('Mínimo 8 caracteres', 'At least 8 characters')} required />
               <p className="font-mono-jb text-[11px] mt-1.5" style={{ color: 'var(--yv-text-4)' }}>
@@ -265,14 +286,14 @@ export default function SignupForm() {
 
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Confirmar contraseña', 'Confirm password')}</label>
-              <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+              <PasswordInput disabled={loading || google.blocked} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                 className="py-3 px-4 text-sm"
                 placeholder={t('Repite tu contraseña', 'Repeat your password')} required />
             </div>
 
             {!AFFILIATES_DORMANT && (
               !showAffInput ? (
-                <button type="button" onClick={() => setShowAffInput(true)}
+                <button type="button" disabled={loading || google.blocked} onClick={() => { if (!signupInFlight.current && !sessionCookieWriterBusy()) setShowAffInput(true); }}
                   className="font-mono-jb text-[12px] text-zinc-500 hover:text-zinc-300 transition underline">
                   {t('¿Te recomendó un creador? Añade su código', 'Did a creator recommend you? Add their code')}
                 </button>
@@ -281,7 +302,7 @@ export default function SignupForm() {
                   <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
                     {t('Código de afiliado (opcional)', 'Affiliate code (optional)')}
                   </label>
-                  <input type="text" value={affTyped} onChange={(e) => setAffTyped(e.target.value)}
+                  <input type="text" disabled={loading || google.blocked} value={affTyped} onChange={(e) => setAffTyped(e.target.value)}
                     className="soft-field py-3 px-4 text-sm" placeholder={t('ej. erika', 'e.g. erika')} />
                 </div>
               )
@@ -295,7 +316,7 @@ export default function SignupForm() {
               </div>
             )}
 
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || google.blocked}
               className="btn-offset w-full py-3.5 font-display font-bold text-[15px] disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? (
                 <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r" />{t('Creando cuenta...', 'Creating account...')}</>

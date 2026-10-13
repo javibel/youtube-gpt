@@ -443,7 +443,7 @@ function ProfileAccount({ isCurrent, logout }: { isCurrent: () => boolean; logou
             <p>{logout.otherCookieWriter
               ? logout.otherCookieWriterKind === 'totp'
                 ? t('Hay una verificación de sesión en curso. Espera antes de cerrar sesión.', 'A session verification is in progress. Wait before signing out.')
-                : logout.otherCookieWriterKind === 'credentials'
+                : (logout.otherCookieWriterKind === 'credentials' || logout.otherCookieWriterKind === 'google')
                   ? t('Hay un inicio de sesión en curso. Espera antes de cerrar sesión.', 'Sign-in is in progress. Wait before signing out.')
                   : t('Hay una actualización de sesión en curso. Espera antes de cerrar sesión.', 'A session refresh is in progress. Wait before signing out.')
               : t('Salida sin confirmar. La solicitud original puede seguir en curso.', 'Sign-out unconfirmed. The original request may still be running.')}</p>

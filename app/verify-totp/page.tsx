@@ -219,7 +219,7 @@ function VerifyTotpAccount() {
                   {blocked && <p>{otherCookieWriter
                     ? otherCookieWriterKind === 'signout'
                       ? t('Hay un cierre de sesión en curso. Espera antes de verificar.', 'A sign-out is in progress. Wait before verifying.')
-                      : otherCookieWriterKind === 'credentials'
+                      : (otherCookieWriterKind === 'credentials' || otherCookieWriterKind === 'google')
                         ? t('Hay un inicio de sesión en curso. Espera antes de verificar.', 'Sign-in is in progress. Wait before verifying.')
                         : t('Hay una actualización de sesión en curso. Espera antes de verificar.', 'A session refresh is in progress. Wait before verifying.')
                     : t('Hay una verificación pendiente. Todavía no se puede enviar otro código.', 'A verification is pending. Another code cannot be sent yet.')}</p>}
