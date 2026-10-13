@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client';
 
 declare const nativeTokenBrand: unique symbol;
 export type NativeExtensionToken = { readonly [nativeTokenBrand]: true };
-const originals = new WeakMap<object, { id: string; email: string; expires: number; used: boolean }>();
+const originals = new WeakMap<object, { id: string; email: string; expires: number; used: boolean; passwordHash?: string }>();
 const keyPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 export const validExtensionTokenKey = (key: unknown): key is string => typeof key === 'string' && keyPattern.test(key);
 const TTL = 90 * 24 * 60 * 60 * 1000;
@@ -15,6 +15,52 @@ export async function authorizeNativeExtensionToken(): Promise<NativeExtensionTo
   if (!principal) return null;
   const original = Object.freeze({}) as NativeExtensionToken;
   originals.set(original, { id: principal.id, email: principal.email, expires: principal.expires, used: false });
+  return original;
+}
+// This entry constructs authority only after the original password and, where
+// configured, the same account factor used by native credentials have succeeded.
+// No caller-provided id, role, expiry or stored issuance can construct a grant.
+export async function authorizeNativeExtensionPassword(input: unknown, beforeStep: () => void): Promise<NativeExtensionToken | 'invalid_credentials' | 'email_unverified'> {
+  const expires = Date.now() / 1000 + 55;
+  const check = () => { beforeStep(); if (Date.now() / 1000 >= expires) throw Error('Extension credentials unconfirmed'); };
+  check();
+  if (!input || typeof input !== 'object') return 'invalid_credentials';
+  const { email, password, totp } = input as Record<string, unknown>;
+  if (typeof email !== 'string' || email.length > 254 || typeof password !== 'string'
+    || !password || password.length > 1024) return 'invalid_credentials';
+  const normalized = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return 'invalid_credentials';
+  const user = await prisma.user.findUnique({ where: { email: normalized },
+    select: { id: true, email: true, password: true, emailVerified: true } });
+  check();
+  if (!user || typeof user.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(user.id)
+    || user.email !== normalized || typeof user.password !== 'string' || !user.password) return 'invalid_credentials';
+  const captured = Object.freeze({ id: user.id, email: user.email, passwordHash: user.password,
+    verifiedAt: user.emailVerified instanceof Date ? user.emailVerified.getTime() : NaN });
+  const { default: bcrypt } = await import('bcryptjs');
+  check();
+  const matched = await bcrypt.compare(password, captured.passwordHash);
+  check();
+  if (matched !== true) return 'invalid_credentials';
+  if (!Number.isFinite(captured.verifiedAt) || captured.verifiedAt > Date.now()) return 'email_unverified';
+  const secret = process.env.ADMIN_TOTP_SECRET;
+  const { ADMIN_EMAIL } = await import('@/lib/admin-email');
+  check();
+  if (ADMIN_EMAIL && captured.email === ADMIN_EMAIL && secret) {
+    if (typeof totp !== 'string' || !/^\d{6}$/.test(totp.trim())) return 'invalid_credentials';
+    const { rateLimitDb } = await import('@/lib/rate-limit-db');
+    const { consumeAdminTotp } = await import('@/lib/admin-totp-consumption');
+    check();
+    const allowed = await rateLimitDb(`admin-totp-factor:${captured.id}`, 10, 15, true);
+    check();
+    if (allowed !== true) return 'invalid_credentials';
+    const consumed = await consumeAdminTotp(captured.id, totp.trim(), secret);
+    check();
+    if (consumed !== true) return 'invalid_credentials';
+  }
+  check();
+  const original = Object.freeze({}) as NativeExtensionToken;
+  originals.set(original, { ...captured, expires, used: false });
   return original;
 }
 function retained(original: NativeExtensionToken) {
@@ -37,12 +83,14 @@ export async function mintNativeExtensionToken(original: NativeExtensionToken, k
   const prior = () => ({ userId: own.id, OR: [{ key }, { state: { not: 'complete' } }] });
   const lock = async (tx: Prisma.TransactionClient) => {
     check();
-    const rows = await tx.$queryRawUnsafe<Array<{ id: string; email: string; name: string | null; emailVerified: Date | null }>>(
-      'SELECT id,email,name,"emailVerified" FROM users WHERE id=$1 FOR UPDATE', own.id);
+    const rows = await tx.$queryRawUnsafe<Array<{ id: string; email: string; name: string | null; emailVerified: Date | null; password?: string }>>(
+      own.passwordHash === undefined ? 'SELECT id,email,name,"emailVerified" FROM users WHERE id=$1 FOR UPDATE'
+        : 'SELECT id,email,name,"emailVerified",password FROM users WHERE id=$1 FOR UPDATE', own.id);
     check();
     if (rows.length !== 1 || rows[0].id !== own.id || rows[0].email !== own.email
       || !(rows[0].emailVerified instanceof Date) || !Number.isFinite(rows[0].emailVerified.getTime())
-      || rows[0].emailVerified.getTime() > Date.now()) throw Error('Extension token account unavailable');
+      || rows[0].emailVerified.getTime() > Date.now()
+      || (own.passwordHash !== undefined && rows[0].password !== own.passwordHash)) throw Error('Extension token account unavailable');
     return rows[0];
   };
   const admission = await prisma.$transaction(async tx => {

@@ -5,6 +5,7 @@ const viewUser  = document.getElementById('view-user');
 const loginForm = document.getElementById('login-form');
 const inpEmail  = document.getElementById('inp-email');
 const inpPass   = document.getElementById('inp-password');
+const inpTotp   = document.getElementById('inp-totp');
 const loginErr  = document.getElementById('login-error');
 const btnLogin  = document.getElementById('btn-login');
 const btnLogout = document.getElementById('btn-logout');
@@ -45,6 +46,8 @@ function applyLang() {
     'Signed up with Google? <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=popup" target="_blank">Open ytubviral.com</a> and we connect you automatically (no password).'
   );
   inpPass.placeholder = t('Contraseña', 'Password');
+  inpTotp.placeholder = t('Código de 6 dígitos (si tu cuenta lo requiere)', '6-digit code (if required by your account)');
+  inpTotp.setAttribute('aria-label', t('Código de autenticación', 'Authentication code'));
   btnLogin.textContent = t('Iniciar sesión', 'Sign in');
   document.getElementById('signup-link').textContent = t(
     '¿No tienes cuenta? Regístrate gratis →',
@@ -205,7 +208,9 @@ loginForm.addEventListener('submit', async e => {
   btnLogin.disabled = true;
   btnLogin.textContent = t('Iniciando sesión...', 'Signing in...');
   try {
-    const user = await sendMsg({ type: 'LOGIN', email, password });
+    const user = await sendMsg({ type: 'LOGIN', email, password, totp: inpTotp.value.trim() });
+    inpPass.value = '';
+    inpTotp.value = '';
     showUserView(user);
   } catch (err) {
     showError(loginErrorMessage(err.message));

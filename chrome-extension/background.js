@@ -82,46 +82,94 @@ function connErrorMessage(err, lang, fallback) {
   return fallback;
 }
 
+// A marker is negative evidence only. Only this live service-worker producer may
+// submit credentials, store its result, and close its own acknowledged attempt.
+const PASSWORD_LOGIN_PENDING = 'ytv_password_login_pending';
+let passwordLoginOriginal = null;
+let tokenMutationOriginal = null;
+async function passwordLogin(msg) {
+  if (passwordLoginOriginal || tokenMutationOriginal) throw Error('Hay un acceso pendiente de confirmar.');
+  const original = {};
+  passwordLoginOriginal = original;
+  const deadline = performance.now() + 60_000;
+  let retired = false, rejectWait, markerAttempted = false, closed = false;
+  const stopped = new Promise((_, reject) => { rejectWait = reject; });
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('No se pudo confirmar el acceso. No se repetirá automáticamente.')); } };
+  const timer = setTimeout(retire, 60_000);
+  const check = () => { if (performance.now() >= deadline) retire(); if (retired || passwordLoginOriginal !== original) throw Error('No se pudo confirmar el acceso. No se repetirá automáticamente.'); };
+  const readPending = () => chrome.storage.local.get(PASSWORD_LOGIN_PENDING);
+  const close = async key => {
+    const row = await readPending();
+    if (passwordLoginOriginal !== original || row[PASSWORD_LOGIN_PENDING]?.key !== key) throw Error('Hay un acceso pendiente de confirmar.');
+    await chrome.storage.local.remove(PASSWORD_LOGIN_PENDING);
+    closed = true;
+  };
+  const producer = (async () => {
+    const lang = await getLang(); check();
+    const uncertain = lang === 'en' ? 'Sign-in could not be confirmed. It will not be repeated automatically.' : 'No se pudo confirmar el acceso. No se repetirá automáticamente.';
+    const pending = await readPending(); check();
+    if (Object.hasOwn(pending, PASSWORD_LOGIN_PENDING)) throw Error(lang === 'en' ? 'A previous sign-in still needs confirmation.' : 'Hay un acceso anterior pendiente de confirmar.');
+    if (typeof msg.email !== 'string' || typeof msg.password !== 'string' || !msg.password || msg.password.length > 1024) throw Error(lang === 'en' ? 'Email and password required' : 'Email y contraseña requeridos');
+    const email = msg.email.trim().toLowerCase();
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Error(lang === 'en' ? 'Incorrect credentials' : 'Credenciales incorrectas');
+    const key = crypto.randomUUID();
+    markerAttempted = true;
+    await chrome.storage.local.set({ [PASSWORD_LOGIN_PENDING]: { key } }); check();
+    let res, data;
+    try { ({ res, data } = await apiFetch(API_BASE + '/api/extension/login', {
+      method: 'POST', timeoutMs: 55_000, maxResponseBytes: 16*1024, credentials: 'omit', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+      body: JSON.stringify({ email, password: msg.password, ...(typeof msg.totp === 'string' ? { totp: msg.totp.trim() } : {}) }),
+    })); } catch { throw Error(uncertain); }
+    check();
+    const known = { invalid_operation_key: [400, 'Email y contraseña requeridos', 'Email and password required'],
+      invalid_credentials: [401, 'Credenciales incorrectas', 'Incorrect credentials'],
+      email_unverified: [403, 'Verifica tu email antes de usar la extensión', 'Verify your email before using the extension'],
+      login_rate_limited: [429, 'Demasiados intentos. Espera unos minutos.', 'Too many attempts. Wait a few minutes.'] };
+    const rejection = known[data?.code];
+    if (rejection && res.status === rejection[0]) {
+      await close(key); check(); throw Error(rejection[lang === 'en' ? 2 : 1]);
+    }
+    if (res.status !== 200 || data?.key !== key || typeof data.userId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(data.userId)
+      || data.email !== email || typeof data.token !== 'string' || !/^[a-f0-9]{64}$/.test(data.token)
+      || typeof data.isPro !== 'boolean' || !(data.name === null || typeof data.name === 'string')) throw Error(uncertain);
+    check();
+    const user = { name: data.name, email, isPro: data.isPro };
+    // The already-dispatched native storage producer keeps its own ACK even if
+    // the popup wait retires; it never starts a second store or HTTP attempt.
+    await chrome.storage.local.set({ ytv_token: data.token, ytv_user: user });
+    await close(key); check(); return user;
+  })();
+  void producer.finally(() => { if (passwordLoginOriginal === original && (!markerAttempted || closed)) passwordLoginOriginal = null; }).catch(() => {});
+  try { return await Promise.race([producer, stopped]); }
+  finally { retired = true; clearTimeout(timer); }
+}
+
+async function mutateExtensionToken(msg) {
+  if (passwordLoginOriginal || tokenMutationOriginal) return msg.type === 'STORE_TOKEN' ? { ok: false } : Promise.reject(Error('Hay un acceso pendiente de confirmar.'));
+  const original = {}; tokenMutationOriginal = original;
+  try {
+    if (msg.type === 'LOGOUT') {
+      await chrome.storage.local.remove(['ytv_token', 'ytv_user']);
+      return { ok: true };
+    }
+    // Automatic web connection cannot override a retained password attempt.
+    if (Object.hasOwn(await chrome.storage.local.get(PASSWORD_LOGIN_PENDING), PASSWORD_LOGIN_PENDING) || !msg.token) return { ok: false };
+    await chrome.storage.local.set({ ytv_token: msg.token, ...(msg.user ? { ytv_user: msg.user } : {}) });
+    return { ok: true };
+  } finally { if (tokenMutationOriginal === original) tokenMutationOriginal = null; }
+}
+
 async function handleMessage(msg) {
+  if (msg.type === 'STORE_TOKEN' || msg.type === 'LOGOUT') return mutateExtensionToken(msg);
+  if (msg.type === 'LOGIN') return passwordLogin(msg);
   const lang = await getLang();
 
   switch (msg.type) {
 
-    case 'LOGIN': {
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: msg.email, password: msg.password }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Login failed' : 'Error al iniciar sesión'));
-      await chrome.storage.local.set({
-        ytv_token: data.token,
-        ytv_user: { name: data.name, email: data.email, isPro: data.isPro },
-      });
-      return { name: data.name, email: data.email, isPro: data.isPro };
-    }
-
-    case 'LOGOUT': {
-      await chrome.storage.local.remove(['ytv_token', 'ytv_user']);
-      return { ok: true };
-    }
-
     case 'HAS_TOKEN': {
       const token = await getToken();
       return { hasToken: !!token };
-    }
-
-    case 'STORE_TOKEN': {
-      // Web auto-connect (detect.js on ytubviral.com) — store the session-minted token + user.
-      if (!msg.token) return { ok: false };
-      await chrome.storage.local.set({
-        ytv_token: msg.token,
-        ...(msg.user ? { ytv_user: msg.user } : {}),
-      });
-      return { ok: true };
     }
 
     case 'GET_USER': {
