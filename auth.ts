@@ -1,4 +1,6 @@
 import NextAuth from "next-auth";
+import type { NextAuthConfig } from "next-auth";
+import { getToken } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { authConfig } from "./auth.config";
@@ -12,7 +14,7 @@ import { expectedTotpAccountMatches } from "@/lib/totp-account";
 import { AFFILIATES_DORMANT } from "@/lib/features";
 import { fixtureAuthRedirect } from "./lib/migration/local-auth-redirect.cjs";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nativeAuthOptions: NextAuthConfig = {
   ...authConfig,
   providers: [
     Google({
@@ -224,4 +226,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-});
+};
+export const { handlers, auth, signIn, signOut } = NextAuth(nativeAuthOptions);
+
+// Reuse the actual options after NextAuth has applied its native environment
+// defaults. This is a read-only encrypted cookie check, with no session refresh,
+// bearer fallback, minting or JSON-derived authentication/recovery authority.
+export async function readNativeSignoutCookie(request: Request) {
+  if (nativeAuthOptions.adapter || nativeAuthOptions.session?.strategy === 'database')
+    throw new Error('Native cookie check requires the configured JWT strategy');
+  const secret = nativeAuthOptions.secret;
+  if (!secret) throw new Error('Native cookie configuration unavailable');
+  const url = new URL(process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? request.url);
+  const secureCookie = nativeAuthOptions.useSecureCookies ?? url.protocol === 'https:';
+  const cookieName = nativeAuthOptions.cookies?.sessionToken?.name
+    ?? (secureCookie ? '__Secure-authjs.session-token' : 'authjs.session-token');
+  const headers = new Headers({ cookie: request.headers.get('cookie') ?? '' });
+  return getToken({ req: { headers }, secret, secureCookie, cookieName,
+    decode: nativeAuthOptions.jwt?.decode, logger: { debug() {}, warn() {}, error() {} } });
+}

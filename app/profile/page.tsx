@@ -24,7 +24,8 @@ type Lang = 'es' | 'en';
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const language = useLang();
-  const logout = useSignout({ userId: session?.user?.id ?? '', email: session?.user?.email ?? '' }, status, language, session);
+  const logout = useSignout({ userId: session?.user?.id ?? '', email: session?.user?.email ?? '',
+    authSessionRef: (session?.user as { authSessionRef?: string } | undefined)?.authSessionRef }, status, language, session);
   const scope = JSON.stringify([session?.user?.id, session?.user?.email, status]);
   const invocation = useMemo(() => ({}), [scope]);
   const current = useRef(invocation);

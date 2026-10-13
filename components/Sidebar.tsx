@@ -124,7 +124,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const lang = useLang();
-  const logout = useSignout({ userId: session?.user?.id ?? '', email: session?.user?.email ?? '' }, status, lang, session);
+  const logout = useSignout({ userId: session?.user?.id ?? '', email: session?.user?.email ?? '',
+    authSessionRef: (session?.user as { authSessionRef?: string } | undefined)?.authSessionRef }, status, lang, session);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [usage, setUsage] = useState<{ used: number; limit: number; plan: string } | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});

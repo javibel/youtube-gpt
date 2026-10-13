@@ -49,6 +49,7 @@ function composition(marker,guard){
  const config={exports:{}};vm.runInNewContext(compile('auth.config.ts'),config);
  const sandbox={exports:{},process:{env:marker===undefined?{}:{YTV_MIGRATION_WEB_TEST:marker}},__ytvRuntimeGuard:guard,
   require(name){
+   if(name==='next-auth/jwt')return{};
    if(name==='next-auth')return value=>{options=value;return {handlers:{}};};
    if(name==='./auth.config')return config.exports;
    if(name==='./lib/migration/local-auth-redirect.cjs')return {fixtureAuthRedirect};

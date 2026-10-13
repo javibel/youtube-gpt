@@ -6,9 +6,10 @@ import type { SignoutAttempt, SignoutOutcome, SignoutOwner } from '@/lib/signout
 export function useSignout(owner: SignoutOwner, status: string, language: string, context: object | null | undefined) {
   const current = useRef({ owner, language, context, liveStatus: status, epoch: {}, attempt: null as SignoutAttempt | null });
   const state = current.current;
-  const changedOwner = status === 'authenticated' && (state.context !== context || state.owner.userId !== owner.userId || state.owner.email !== owner.email);
-  // Auth.js refreshes its session to null before resolving signOut(false). That
-  // expected transition may finish this same UI command; a foreign account cannot.
+  const changedOwner = status === 'authenticated' && (state.context !== context || state.owner.userId !== owner.userId
+    || state.owner.email !== owner.email || (state.owner.authSessionRef ?? '') !== (owner.authSessionRef ?? ''));
+  // An independently observed session→null transition may finish this same owned
+  // command; a changed native reference/account retires its view and future POST.
   if (changedOwner || state.language !== language || status === 'loading') {
     current.current = { owner, language, context, liveStatus: status, epoch: {}, attempt: null };
   } else if (status === 'authenticated') state.owner = owner;
@@ -47,7 +48,8 @@ export function useSignout(owner: SignoutOwner, status: string, language: string
   function start() {
     if (!canStart()) return;
     const attempt = beginSignout(owner, window.location.origin, context!, () => active() && current.current.liveStatus === 'authenticated'
-      && current.current.context === context && current.current.owner.userId === owner.userId && current.current.owner.email === owner.email);
+      && current.current.context === context && current.current.owner.userId === owner.userId && current.current.owner.email === owner.email
+      && (current.current.owner.authSessionRef ?? '') === (owner.authSessionRef ?? ''));
     if (attempt) wait(attempt); else render(value => value + 1);
   }
   function observe() { if (active() && !shown?.waiting && ownOriginal) wait(ownOriginal); }

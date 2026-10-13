@@ -1,10 +1,8 @@
 'use client';
-import { signOut } from 'next-auth/react';
-
-export type SignoutOwner = { userId: string; email: string };
+export type SignoutOwner = { userId: string; email: string; authSessionRef?: string };
 export type SignoutOutcome = Readonly<{ status: 'confirmed' | 'unconfirmed' | 'not-started' }>;
 export type SignoutAttempt = Readonly<{ owner: Readonly<SignoutOwner> }>;
-type Original = { context: object; promise: Promise<SignoutOutcome>; outcome?: SignoutOutcome; claimed: boolean };
+type Original = { context: object; promise: Promise<SignoutOutcome>; outcome?: SignoutOutcome; claimed: boolean; allowPost: boolean };
 const originals = new WeakMap<SignoutAttempt, Original>();
 let retained: SignoutAttempt | undefined;
 const unknown: SignoutOutcome = Object.freeze({ status: 'unconfirmed' });
@@ -19,7 +17,8 @@ export function signoutBlocked() {
     && trustedSignoutOutcome(retained)?.status !== 'not-started';
 }
 export function sameSignoutOwner(attempt: SignoutAttempt, owner: SignoutOwner) {
-  return originals.has(attempt) && attempt.owner.userId === owner.userId && attempt.owner.email === owner.email;
+  return originals.has(attempt) && attempt.owner.userId === owner.userId && attempt.owner.email === owner.email
+    && (attempt.owner.authSessionRef ?? '') === (owner.authSessionRef ?? '');
 }
 export function sameSignoutContext(attempt: SignoutAttempt, context: object) { return originals.get(attempt)?.context === context; }
 export function signoutNeedsObservation(attempt: SignoutAttempt) {
@@ -29,10 +28,9 @@ export function signoutNeedsObservation(attempt: SignoutAttempt) {
 
 export function beginSignout(owner: SignoutOwner, origin: string, context: object, canStart: () => boolean): SignoutAttempt | undefined {
   if (signoutBlocked() || !canStart() || !owner.userId || !owner.email) return;
-  const captured = Object.freeze({ userId: owner.userId, email: owner.email });
+  const captured = Object.freeze({ userId: owner.userId, email: owner.email, authSessionRef: owner.authSessionRef ?? '' });
   const attempt: SignoutAttempt = Object.freeze({ owner: captured });
-  const invoke = signOut;
-  const original: Original = { context, promise: Promise.resolve(unknown), claimed: false };
+  const original: Original = { context, promise: Promise.resolve(unknown), claimed: false, allowPost: true };
   originals.set(attempt, original); retained = attempt;
   original.promise = Promise.resolve().then(async () => {
     if (!canStart()) {
@@ -40,13 +38,27 @@ export function beginSignout(owner: SignoutOwner, origin: string, context: objec
       original.outcome = outcome; notify(); return outcome;
     }
     try {
-      // Observe this exact SDK call. Do not let the SDK navigate after a retired UI wait.
-      // This does not cancel or bind its internal CSRF/POST stages to an account,
-      // and does not prove revocation on other devices or after loss of this realm.
-      const result: unknown = await invoke({ redirect: false, callbackUrl: '/' });
-      // The installed SDK returns parsed JSON without exposing the HTTP status.
-      // Its expected result is only { url }; an error/negative or unknown shape
-      // must remain uncertain even when it also carries an allowed home URL.
+      const csrfResponse = await fetch('/api/auth/csrf', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+      const csrf: unknown = await csrfResponse.json();
+      if (csrfResponse.status !== 200 || csrfResponse.ok !== true || !csrf || typeof csrf !== 'object'
+        || Array.isArray(csrf) || Object.keys(csrf).length !== 1 || !('csrfToken' in csrf)
+        || typeof csrf.csrfToken !== 'string' || !/^[a-f0-9]{64}$/.test(csrf.csrfToken))
+        { original.outcome = unknown; notify(); return unknown; }
+      // Retirement prevents dispatch after the same CSRF/body original settles.
+      // It does not cancel an issued POST or prevent late browser cookie writes.
+      if (!original.allowPost || !canStart()) {
+        const outcome: SignoutOutcome = Object.freeze({ status: 'not-started' });
+        original.outcome = outcome; notify(); return outcome;
+      }
+      const response = await fetch('/api/auth/signout', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Auth-Return-Redirect': '1',
+          'X-YTV-Signout-Expectation': encodeURIComponent(JSON.stringify(captured)) },
+        body: new URLSearchParams({ csrfToken: csrf.csrfToken, callbackUrl: '/' }).toString() });
+      const result: unknown = await response.json();
+      // The original HTTP and its own body must both acknowledge this native POST.
+      // No SDK broadcast/refresh adds another session-cookie writer before navigation.
+      if (response.status !== 200 || response.ok !== true)
+        { original.outcome = unknown; notify(); return unknown; }
       if (!result || typeof result !== 'object' || Array.isArray(result))
         { original.outcome = unknown; notify(); return unknown; }
       const keys = Object.keys(result);
@@ -72,7 +84,7 @@ export function observeSignoutOriginal(attempt: SignoutAttempt, active: () => bo
     if (finished) return;
     finished = true; if (timer !== undefined) clearTimeout(timer); resolve(value);
   };
-  const retire = () => { retired = true; finish(unknown); };
+  const retire = () => { retired = true; if (original) original.allowPost = false; finish(unknown); };
   if (!original || !active()) retire();
   else {
     timer = setTimeout(retire, 30_000);

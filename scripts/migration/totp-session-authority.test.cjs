@@ -8,6 +8,7 @@ const adminEmail='migration-admin-factor@example.invalid',jwtSecret='synthetic-n
 function harness({configured=true,allowed=true,rateFailure=false,verifyFailure=false,nativeRate=false,sqlFailure=false,sqlHits=1}={}){
  let config,edgeConfig;const consumed=new Map();const calls={limits:[],factors:0,sql:[],sessionRefs:[],consumptions:[]};
  const requireSafe=id=>{
+  if(id==='next-auth/jwt')return{getToken(){throw Error('Native cookie reads are not exercised by this factor fixture');}};
   if(id==='next-auth')return cfg=>{config=cfg;return{handlers:{},auth(){throw Error('No native HTTP authentication in this callback fixture');}};};
   if(id==='next-auth/providers/credentials'||id==='next-auth/providers/google')return value=>value;
   if(id==='./auth.config'){const entry={exports:{}};const compiled=ts.transpileModule(fs.readFileSync(path.join(root,'auth.config.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;vm.runInNewContext(compiled,{module:entry,exports:entry.exports,require(){throw Error('Unexpected auth config effect');}});edgeConfig=entry.exports.authConfig;return entry.exports;}
