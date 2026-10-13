@@ -93,50 +93,12 @@ ${footer(isEn)}`;
 
 export function waitlistWelcomeEmail(lang: 'es' | 'en'): string {
   const isEn = lang === 'en';
-  return `${header(lang)}
-        <tr><td style="background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
-          <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">
-            ${isEn ? 'YOU\'RE ON THE LIST' : 'ESTÁS EN LA LISTA'}
-          </p>
-          <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">
-            ${isEn ? 'Welcome to the launch!' : '¡Bienvenido al lanzamiento!'}
-          </p>
-          <p style="margin:0 0 24px;font-size:15px;color:#71717a;line-height:1.7;">
-            ${isEn
-              ? 'Hey! I\'m Javier, the founder of YTubViral. I wanted to personally thank you for joining the waitlist — it means a lot, especially at this early stage.'
-              : '¡Hola! Soy Javier, el fundador de YTubViral. Quería agradecerte personalmente por unirte a la waitlist — significa mucho, especialmente en esta etapa inicial.'}
-          </p>
-          <p style="margin:0 0 24px;font-size:15px;color:#71717a;line-height:1.7;">
-            ${isEn
-              ? 'We\'re preparing something special for launch day — including an exclusive discount only for early supporters like you.'
-              : 'Estamos preparando algo especial para el día del lanzamiento — incluyendo un descuento exclusivo solo para early supporters como tú.'}
-          </p>
-          <div style="background:rgba(232,77,91,0.08);border:1px solid rgba(232,77,91,0.25);border-radius:8px;padding:20px;">
-            <p style="margin:0 0 8px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">
-              ${isEn ? 'WHAT TO EXPECT' : 'QUÉ ESPERAR'}
-            </p>
-            <p style="margin:0;font-size:14px;color:#a1a1aa;line-height:1.7;">
-              ${isEn
-                ? '&#10003; 50% off Pro &amp; Business plans for 1 year<br>&#10003; Exclusive coupon code on launch day<br>&#10003; Early access before anyone else'
-                : '&#10003; 50% de descuento en planes Pro y Business durante 1 año<br>&#10003; Cupón exclusivo el día del lanzamiento<br>&#10003; Acceso anticipado antes que nadie'}
-            </p>
-          </div>
-          <p style="margin:24px 0 0;font-size:15px;color:#71717a;line-height:1.7;">
-            ${isEn
-              ? 'In the meantime, you can already <a href="https://ytubviral.com/features/seo-score" style="color:#e84d5b;text-decoration:none;font-weight:600;">check your YouTube SEO Score for free</a> — paste any video URL and get a detailed analysis in seconds.'
-              : 'Mientras tanto, ya puedes <a href="https://ytubviral.com/features/seo-score" style="color:#e84d5b;text-decoration:none;font-weight:600;">analizar tu SEO Score de YouTube gratis</a> — pega cualquier URL de vídeo y obtén un análisis detallado en segundos.'}
-          </p>
-          <p style="margin:24px 0 0;font-size:15px;color:#71717a;line-height:1.7;">
-            ${isEn
-              ? 'Thanks again for your trust. I\'ll keep you posted!'
-              : '¡Gracias de nuevo por tu confianza! Te mantendré informado.'}
-          </p>
-          <p style="margin:20px 0 0;font-size:15px;color:#ffffff;line-height:1.7;">
-            Javier Jimeno<br>
-            <span style="color:#71717a;font-size:13px;">${isEn ? 'Founder' : 'Fundador'}, <a href="https://ytubviral.com" style="color:#e84d5b;text-decoration:none;">YTubViral.com</a></span>
-          </p>
-        </td></tr>
-${footer(isEn)}`;
+  return header(lang) + '<tr><td style="padding:32px;color:#ffffff">'
+    + '<h1>' + (isEn ? 'Your request has been received' : 'Hemos recibido tu solicitud') + '</h1>'
+    + '<p>' + (isEn ? 'Thank you for your interest in YTubViral.' : 'Gracias por tu interés en YTubViral.') + '</p>'
+    + '<p>' + (isEn ? 'This message does not confirm a discount, launch date or delivery of future emails.'
+      : 'Este mensaje no confirma descuentos, fecha de lanzamiento ni entrega de futuros correos.') + '</p>'
+    + '<a href="https://ytubviral.com">YTubViral</a></td></tr>' + footer(isEn);
 }
 
 // ── Launch day email ─────────────────────────────────────────────────────────

@@ -937,6 +937,7 @@ model Achievement {
 }
 
 model LaunchWaitlist {
+  welcomeAdmission WaitlistWelcomeAdmission?
   id        String   @id @default(cuid())
   email     String   @unique
   source    String   @default("launch-page") // launch-page, twitter, reddit, etc.
@@ -1365,4 +1366,16 @@ model LifecycleEmailAdmission {
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("lifecycle_email_admissions")
+}
+
+// Permanent negative custody. No TTL/reset/queue replay from a public row.
+model WaitlistWelcomeAdmission {
+  email String @id
+  noticeId String @unique
+  rowId String @unique
+  status String @default("pending")
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  registration LaunchWaitlist @relation(fields: [rowId], references: [id], onDelete: Restrict)
+  @@map("waitlist_welcome_admissions")
 }

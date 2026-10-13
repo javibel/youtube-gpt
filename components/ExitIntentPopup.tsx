@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { hasAcceptedWaitlistResponse } from '@/lib/waitlist-response';
 import { CheckIcon, RocketIcon } from '@/components/icons';
 
 export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
@@ -8,8 +9,7 @@ export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [email, setEmail] = useState('');
-  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'already' | 'error'>('idle');
-  const [position, setPosition] = useState(0);
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
 
   const handleMouseLeave = useCallback((e: MouseEvent) => {
     if (e.clientY <= 5 && !dismissed) {
@@ -52,14 +52,12 @@ export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
         referrer = params.get('utm_source') || document.referrer || null;
       } catch { /* noop */ }
       const res = await fetch('/api/waitlist', {
-        method: 'POST',
+        method: 'POST', credentials: 'omit', redirect: 'error', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, source, referrer, lang }),
       });
       const data = await res.json();
-      if (!res.ok) { setState('error'); return; }
-      if (data.alreadyJoined) { setState('already'); return; }
-      setPosition(data.position || 0);
+      if (!hasAcceptedWaitlistResponse(res.status, data)) { setState('error'); return; }
       setState('done');
     } catch {
       setState('error');
@@ -94,20 +92,10 @@ export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
           <>
             <span className="inline-flex items-center justify-center rounded-full mb-3" style={{ width: 56, height: 56, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}><CheckIcon size={26} /></span>
             <h3 className="font-display font-bold text-xl text-white mb-2">
-              {t(`¡Estás dentro! Eres el #${position}`, `You're in! You're #${position}`)}
+              {t('Solicitud recibida', 'Request received')}
             </h3>
             <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-              {t('Te avisaremos en el lanzamiento con tu descuento. Revisa tu email.', "We'll email you at launch with your discount. Check your inbox.")}
-            </p>
-          </>
-        ) : state === 'already' ? (
-          <>
-            <span className="inline-flex items-center justify-center rounded-full mb-3" style={{ width: 56, height: 56, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}><CheckIcon size={26} /></span>
-            <h3 className="font-display font-bold text-xl text-white mb-2">
-              {t('¡Ya estabas en la lista!', "You're already on the list!")}
-            </h3>
-            <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-              {t('Te avisaremos en el lanzamiento.', "We'll email you at launch.")}
+              {t('Esto confirma tu solicitud, no la entrega de un correo.', 'This confirms your request, not email delivery.')}
             </p>
           </>
         ) : (
@@ -134,6 +122,9 @@ export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               <input
                 type="email"
+                aria-label={t('Correo electrónico', 'Email')}
+                autoComplete="email"
+                maxLength={254}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('tu@email.com', 'your@email.com')}
@@ -152,7 +143,7 @@ export default function ExitIntentPopup({ lang }: { lang: 'es' | 'en' }) {
               </button>
               {state === 'error' && (
                 <p className="text-red-400 text-[13px]">
-                  {t('Algo falló. Inténtalo de nuevo.', 'Something went wrong. Try again.')}
+                  {t('Solicitud sin confirmar. Puede seguir pendiente.', 'Request unconfirmed. It may still be pending.')}
                 </p>
               )}
             </form>

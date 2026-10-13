@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { hasAcceptedWaitlistResponse } from '@/lib/waitlist-response';
 
 export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang: 'es' | 'en'; source?: string }) {
   const [email, setEmail] = useState('');
-  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'already' | 'error'>('idle');
-  const [position, setPosition] = useState(0);
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,14 +19,12 @@ export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang
         referrer = params.get('utm_source') || document.referrer || null;
       } catch { /* noop */ }
       const res = await fetch('/api/waitlist', {
-        method: 'POST',
+        method: 'POST', credentials: 'omit', redirect: 'error', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, source, referrer, lang }),
       });
       const data = await res.json();
-      if (!res.ok) { setState('error'); return; }
-      if (data.alreadyJoined) { setState('already'); return; }
-      setPosition(data.position || 0);
+      if (!hasAcceptedWaitlistResponse(res.status, data)) { setState('error'); return; }
       setState('done');
     } catch {
       setState('error');
@@ -39,24 +37,12 @@ export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang
         <div className="inline-flex items-center gap-3 bg-green-500/10 rounded-full px-6 py-3" style={{ boxShadow: 'inset 0 1px 0 rgba(34,197,94,.35)' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
           <span className="text-green-400 font-display font-bold">
-            {lang === 'en' ? `You're #${position} on the list!` : `¡Eres el #${position} en la lista!`}
+            {lang === 'en' ? 'Request received' : 'Solicitud recibida'}
           </span>
         </div>
         <p className="text-zinc-500 text-sm mt-3">
-          {lang === 'en' ? 'Check your inbox for a welcome email.' : 'Revisa tu bandeja para el email de bienvenida.'}
+          {lang === 'en' ? 'This confirms your request, not email delivery.' : 'Esto confirma tu solicitud, no la entrega de un correo.'}
         </p>
-      </div>
-    );
-  }
-
-  if (state === 'already') {
-    return (
-      <div className="mt-10 text-center">
-        <div className="inline-flex items-center gap-3 bg-yellow-500/10 rounded-full px-6 py-3" style={{ boxShadow: 'inset 0 1px 0 rgba(234,179,8,.35)' }}>
-          <span className="text-yellow-400 font-display font-bold">
-            {lang === 'en' ? 'You\'re already on the list!' : '¡Ya estás en la lista!'}
-          </span>
-        </div>
       </div>
     );
   }
@@ -65,6 +51,9 @@ export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang
     <form onSubmit={handleSubmit} className="mt-10 flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto">
       <input
         type="email"
+        aria-label={lang === 'en' ? 'Email' : 'Correo electrónico'}
+        autoComplete="email"
+        maxLength={254}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder={lang === 'en' ? 'your@email.com' : 'tu@email.com'}
@@ -82,7 +71,7 @@ export default function WaitlistInline({ lang, source = 'homepage-cta' }: { lang
       </button>
       {state === 'error' && (
         <p className="text-red-400 text-sm mt-2 sm:mt-0 sm:self-center">
-          {lang === 'en' ? 'Something went wrong. Try again.' : 'Algo falló. Inténtalo de nuevo.'}
+          {lang === 'en' ? 'Request unconfirmed. It may still be pending.' : 'Solicitud sin confirmar. Puede seguir pendiente.'}
         </p>
       )}
     </form>

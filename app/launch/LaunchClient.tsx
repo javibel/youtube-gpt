@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLang } from '@/components/LangProvider';
+import { hasAcceptedWaitlistResponse } from '@/lib/waitlist-response';
 
 type Lang = 'es' | 'en';
 
@@ -10,23 +11,23 @@ const COPY = {
     placeholder: 'tu@email.com',
     cta: 'Reservar mi plaza',
     sending: 'Apuntando...',
-    success: 'Estás dentro.',
-    successSub: 'Te avisaremos el día del lanzamiento. Comparte con otros creadores para subir de posición.',
+    success: 'Solicitud recibida.',
+    successSub: 'Esto confirma tu solicitud, no la entrega de un correo.',
     already: 'Ya estás apuntado. Te avisaremos el día del lanzamiento.',
     errorEmail: 'Introduce un email válido.',
-    errorServer: 'Error. Inténtalo de nuevo.',
-    spotsLabel: 'creadores en la lista',
+    errorServer: 'Solicitud sin confirmar. Puede seguir pendiente.',
+    spotsLabel: 'solicitudes registradas',
   },
   en: {
     placeholder: 'you@email.com',
     cta: 'Reserve my spot',
     sending: 'Joining...',
-    success: "You're in.",
-    successSub: "We'll notify you on launch day. Share with other creators to move up.",
+    success: 'Request received.',
+    successSub: 'This confirms your request, not email delivery.',
     already: "You're already on the list. We'll notify you on launch day.",
     errorEmail: 'Please enter a valid email.',
-    errorServer: 'Error. Please try again.',
-    spotsLabel: 'creators on the list',
+    errorServer: 'Request unconfirmed. It may still be pending.',
+    spotsLabel: 'registered requests',
   },
 };
 
@@ -34,12 +35,12 @@ export default function LaunchClient() {
   const serverLang = useLang();
   const [lang] = useState<Lang>(serverLang);
   const [email, setEmail] = useState('');
-  const [state, setState] = useState<'idle' | 'loading' | 'success' | 'already' | 'error'>('idle');
+  const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [count, setCount] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    fetch('/api/waitlist').then(r => r.json()).then(d => setCount(d.count)).catch(() => {});
+    fetch('/api/waitlist', { credentials: 'omit', redirect: 'error', cache: 'no-store' }).then(async r => { const d = await r.json(); if (r.status === 200 && d && !Array.isArray(d) && Object.keys(d).length === 1 && Number.isSafeInteger(d.count) && d.count >= 0) setCount(d.count); }).catch(() => {});
   }, []);
 
   const t = COPY[lang];
@@ -55,7 +56,7 @@ export default function LaunchClient() {
     try {
       const params = new URLSearchParams(window.location.search);
       const res = await fetch('/api/waitlist', {
-        method: 'POST',
+        method: 'POST', credentials: 'omit', redirect: 'error', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
@@ -65,13 +66,8 @@ export default function LaunchClient() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      if (data.alreadyJoined) {
-        setState('already');
-      } else {
-        setState('success');
-        setCount(data.position);
-      }
+      if (!hasAcceptedWaitlistResponse(res.status, data)) throw new Error('Request unconfirmed');
+      setState('success');
     } catch {
       setErrorMsg(t.errorServer);
       setState('error');
@@ -80,7 +76,7 @@ export default function LaunchClient() {
 
   return (
     <>
-      {state === 'success' || state === 'already' ? (
+      {state === 'success' ? (
         <div className="text-center bg-zinc-900/60 border border-zinc-800 rounded-2xl p-8 mb-12">
           <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -88,21 +84,21 @@ export default function LaunchClient() {
             </svg>
           </div>
           <h2 className="text-2xl font-bold mb-2">
-            {state === 'success' ? t.success : t.already}
+            {t.success}
           </h2>
           <p className="text-zinc-400">
-            {state === 'success' ? t.successSub : t.already}
+            {t.successSub}
           </p>
-          {count !== null && (
-            <p className="mt-4 text-sm text-zinc-500">
-              #{count} {t.spotsLabel}
-            </p>
-          )}
+
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mb-12">
           <input
             type="email"
+            aria-label={lang === 'en' ? 'Email' : 'Correo electrónico'}
+            autoComplete="email"
+            maxLength={254}
+            required
             value={email}
             onChange={e => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
             placeholder={t.placeholder}
@@ -122,7 +118,7 @@ export default function LaunchClient() {
         <p className="text-center text-red-400 text-sm -mt-8 mb-8">{errorMsg}</p>
       )}
 
-      {count !== null && state !== 'success' && state !== 'already' && (
+      {count !== null && state !== 'success' && (
         <p className="text-center text-sm text-zinc-500 -mt-8 mb-12">
           {count}+ {t.spotsLabel}
         </p>
