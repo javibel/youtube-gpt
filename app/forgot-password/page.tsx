@@ -1,32 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, Suspense } from 'react';
+import PasswordRecoveryForm from '@/components/PasswordRecoveryForm';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<'es'|'en'>('es');
 
   useEffect(() => {
-    const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
-    if (stored) setLang(stored);
+    try { const stored = localStorage.getItem('ytubviral_lang'); if (stored === 'es' || stored === 'en') setLang(stored); } catch {}
   }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, lang }),
-    });
-    setSent(true);
-    setLoading(false);
-  }
 
   return (
     <div className="min-h-screen grain grid-bg flex items-center justify-center p-4" style={{ background: 'var(--ink)' }}>
@@ -38,7 +22,7 @@ export default function ForgotPasswordPage() {
           <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--red)' }}>.</span>com</span>
         </a>
         <button
-          onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
+          onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); try { localStorage.setItem('ytubviral_lang', next); } catch {} document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
           className="yv-chip flex items-center gap-1 font-mono-jb text-[13px] tracking-wider px-2 py-1"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
@@ -53,46 +37,11 @@ export default function ForgotPasswordPage() {
           <h1 className="font-display font-bold text-3xl tracking-tight text-white mb-2">
             {t('¿Olvidaste tu contraseña?', 'Forgot your password?')}
           </h1>
-          {!sent && <p className="text-zinc-400 text-sm">{t('Te enviaremos un enlace para restablecerla.', "We'll send you a link to reset it.")}</p>}
+          <p className="text-zinc-400 text-sm">{t('Solicita un enlace para recuperar el acceso a tu cuenta.', 'Request a link to recover access to your account.')}</p>
         </div>
 
         <div className="soft-card p-8">
-          {sent ? (
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-xl flex items-center justify-center" style={{ background: 'rgba(232,77,91,0.15)', border: '1px solid rgba(232,77,91,0.3)' }}>
-                <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-              <p className="text-white font-semibold mb-2">{t('Email enviado', 'Email sent')}</p>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                {t('Si ese email está registrado, recibirás un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada.', 'If that email is registered, you will receive a link to reset your password. Check your inbox.')}
-              </p>
-              <Link href="/login" className="mt-6 inline-block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
-                ← {t('Volver al login', 'Back to sign in')}
-              </Link>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
-                <input type="email" required placeholder="you@email.com" value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="soft-field py-3 px-4 text-sm" />
-              </div>
-              <button type="submit" disabled={loading}
-                className="btn-offset w-full py-3.5 font-display font-bold text-[15px] disabled:opacity-60 flex items-center justify-center gap-2">
-                {loading ? (
-                  <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r" />{t('Enviando...', 'Sending...')}</>
-                ) : t('Enviar enlace →', 'Send link →')}
-              </button>
-              <div className="text-center">
-                <Link href="/login" className="font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 hover:text-white transition">
-                  ← {t('Volver al login', 'Back to sign in')}
-                </Link>
-              </div>
-            </form>
-          )}
+          <Suspense><PasswordRecoveryForm mode="forgot" lang={lang} /></Suspense>
         </div>
 
         <div className="mt-8 flex justify-center gap-5 text-[13px] text-zinc-600">

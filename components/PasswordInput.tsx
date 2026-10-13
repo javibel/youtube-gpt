@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 interface PasswordInputProps {
   id?: string;
+  autoComplete?: React.InputHTMLAttributes<HTMLInputElement>['autoComplete'];
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
@@ -13,13 +14,14 @@ interface PasswordInputProps {
   style?: React.CSSProperties;
 }
 
-export default function PasswordInput({ id, value, onChange, placeholder = '••••••••', required, disabled = false, className = '', style }: PasswordInputProps) {
+export default function PasswordInput({ id, autoComplete, value, onChange, placeholder = '••••••••', required, disabled = false, className = '', style }: PasswordInputProps) {
   const [show, setShow] = useState(false);
 
   return (
     <div className="relative">
       <input
         id={id}
+        autoComplete={autoComplete}
         type={show ? 'text' : 'password'}
         value={value}
         onChange={onChange}
