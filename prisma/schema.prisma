@@ -231,6 +231,15 @@ model RateLimit {
   @@map("rate_limits")
 }
 
+// Shared native admin second-factor replay denial, independent of session lifetime.
+model TotpConsumption {
+  key        String   @id
+  counter    BigInt
+  consumedAt DateTime @default(now()) @map("consumed_at")
+
+  @@map("totp_consumptions")
+}
+
 model YoutubeToken {
   id           String   @id @default(cuid())
   userId       String   @unique

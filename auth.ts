@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { ADMIN_EMAIL } from "@/lib/admin-email";
-import { authenticator } from "otplib";
+import { consumeAdminTotp } from "@/lib/admin-totp-consumption";
 import { rateLimitDb } from "@/lib/rate-limit-db";
 import { expectedTotpAccountMatches } from "@/lib/totp-account";
 import { AFFILIATES_DORMANT } from "@/lib/features";
@@ -25,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
         totp: { label: "2FA code", type: "text" },
       },
-      async authorize(credentials, request) {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         const email = String(credentials.email).toLowerCase().trim();
 
@@ -45,18 +45,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // A6 (2026-07-05): the admin account needs a second factor on top of the password.
         // Secret lives in an env var, never in the DB — with a single admin that's simpler
         // and means a read-only DB leak alone can't hand over the second factor. No-op for
-        // every other user, and a deliberate no-op for the admin too if the var isn't set
-        // (bootstrap window / recovery path is "delete the var, re-enroll").
+        // every other user, and for the admin when the variable is not configured.
+        // Absence is configuration, never recovery authority.
         const totpSecret = process.env.ADMIN_TOTP_SECRET;
         if (ADMIN_EMAIL && email === ADMIN_EMAIL && totpSecret) {
-          const ip = request?.headers?.get('x-forwarded-for')?.split(',')[0]?.trim()
-            ?? request?.headers?.get('x-real-ip')
-            ?? 'unknown';
-          const allowed = await rateLimitDb(`admin-totp:${ip}`, 10, 15);
-          if (!allowed) return null;
-
-          const totp = String(credentials.totp ?? '').trim();
-          if (!totp || !authenticator.verify({ token: totp, secret: totpSecret })) return null;
+          if (typeof user.id !== 'string' || !user.id) return null;
+          const totp = typeof credentials.totp === 'string' ? credentials.totp.trim() : '';
+          if (!/^\d{6}$/.test(totp)) return null;
+          try {
+            const allowed = await rateLimitDb(`admin-totp-factor:${user.id}`, 10, 15, true);
+            if (allowed !== true || await consumeAdminTotp(user.id, totp, totpSecret) !== true) return null;
+          } catch {
+            return null;
+          }
         }
 
         // Auto-verify legacy users created before email verification was added (pre-March 2026).
@@ -198,8 +199,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           && ADMIN_EMAIL && email === ADMIN_EMAIL && secret && /^\d{6}$/.test(code)
           && expectedTotpAccountMatches(session, { id: token.id, email: token.email, authSessionRef: token.authSessionRef })) {
           try {
-            const allowed = await rateLimitDb(`verify-totp-session:${token.id}`, 10, 15, true);
-            if (allowed === true && authenticator.verify({ token: code, secret }) === true) {
+            const allowed = await rateLimitDb(`admin-totp-factor:${token.id}`, 10, 15, true);
+            if (allowed === true && await consumeAdminTotp(token.id, code, secret) === true) {
               token.requiresTotp = false;
             }
           } catch {
