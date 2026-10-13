@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendTransactionalEmail } from '@/lib/send-email';
+import { prepareLifecycleOriginal, dispatchLifecycleOriginal, type LifecycleSequence } from '@/lib/lifecycle-email-original';
 import { SEQUENCES } from '@/lib/lifecycle-emails';
 import { isInternalAccount } from '@/lib/internal-accounts';
 import { hasPaidAccess } from '@/lib/plans';
@@ -18,7 +18,7 @@ function verifyCronSecret(request: Request): boolean {
 }
 
 type Lang = 'es' | 'en';
-type Candidate = { userId: string; email: string; name: string; lang: Lang; sequence: string; step: string; tpl: { subject: { es: string; en: string }; build: (n: string, l: Lang, u: string, e?: Record<string, string | number>) => string }; extra?: Record<string, string | number> };
+type Candidate = { userId: string; email: string; name: string; lang: Lang; sequence: LifecycleSequence; step: string; tpl: { subject: { es: string; en: string }; build: (n: string, l: Lang, u: string, e?: Record<string, string | number>) => string }; extra?: Record<string, string | number> };
 
 const DAY = 86400_000;
 
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     const inactiveDays = lastGenAt ? (now - lastGenAt) / DAY : ageDays;
 
     const has = (seq: string, step: string) => sentSteps.has(`${u.id}:${seq}:${step}`);
-    const push = (sequence: string, step: string, tpl: Candidate['tpl'], extra?: Record<string, string | number>) =>
+    const push = (sequence: LifecycleSequence, step: string, tpl: Candidate['tpl'], extra?: Record<string, string | number>) =>
       candidates.push({ userId: u.id, email: u.email, name, lang, sequence, step, tpl, extra });
 
     // ── A · Onboarding (skip-on-action) — solo cuentas recientes (≤21 días).
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
     // ── C · Conversión — C1/C3 son por evento (se registran en EmailLog desde
     //    el endpoint de límite y los paywalls). C2 sí es por cron: power user.
     if (!isPaid && genCount >= 16 && ageDays >= 60 && !has('conv', 'c2')) {
-      push('conv', 'c2', SEQUENCES.conversion.c2, { used: '8+' });
+      push('conv', 'c2', SEQUENCES.conversion.c2);
     }
   }
 
@@ -103,17 +103,15 @@ export async function GET(request: Request) {
   const final = [...byUser.values()];
 
   let sent = 0;
+  let unconfirmed = 0;
   const preview: string[] = [];
   for (const c of final) {
     preview.push(`${c.sequence}/${c.step} → ${c.email} (${c.lang})`);
     if (LIVE) {
-      try {
-        await sendTransactionalEmail({ to: c.email, subject: c.tpl.subject[c.lang], html: c.tpl.build(c.name, c.lang, c.userId, c.extra) });
-        await prisma.emailLog.create({ data: { userId: c.userId, sequence: c.sequence, step: c.step } });
-        sent++;
-      } catch (e) {
-        console.error('[lifecycle] send failed', c.email, (e as Error).message);
-      }
+      const original = prepareLifecycleOriginal(c.userId, c.sequence, c.step, c.extra);
+      const outcome = original ? await dispatchLifecycleOriginal(original) : 'not-issued';
+      if (outcome === 'provider-accepted') sent++;
+      if (outcome === 'unconfirmed') unconfirmed++;
     }
   }
 
@@ -122,6 +120,7 @@ export async function GET(request: Request) {
     eligibleUsers: users.length,
     candidates: final.length,
     sent: LIVE ? sent : 0,
+    unconfirmed,
     preview,
   });
 }

@@ -1,0 +1,7 @@
+CREATE TABLE lifecycle_email_admissions (
+ "userId" TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+ "noticeId" TEXT NOT NULL UNIQUE,
+ sequence TEXT NOT NULL,
+ step TEXT NOT NULL,
+ "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

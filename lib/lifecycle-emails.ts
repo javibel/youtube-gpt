@@ -141,10 +141,10 @@ export const C1_limitHit: Tpl = {
 };
 export const C2_powerUser: Tpl = {
   subject: { es: 'Usas YTubViral como un Pro (literalmente)', en: 'You use YTubViral like a Pro (literally)' },
-  build: (name, lang, uid, extra) => { const en = lang === 'en'; const used = extra?.used ?? ''; return shell(lang, uid, 'conv-c2',
+  build: (name, lang, uid, extra) => { const en = lang === 'en'; return shell(lang, uid, 'conv-c2',
     eyebrow(en ? 'HEADS UP' : 'AVISO') +
     h(en ? 'You\'re maxing out the free plan' : 'Estás apurando el plan gratis') +
-    p(en ? `You've been using ${used ? `${used} of 10` : 'almost all your'} free generations two months running. Pro gives you 200/month plus the AI Coach, A/B testing and the full toolset — €9.99, cancel anytime, 30-day guarantee.` : `Llevas dos meses usando ${used ? `${used} de 10` : 'casi todas tus'} generaciones gratis. Pro te da 200/mes más el AI Coach, A/B testing y todas las herramientas — 9,99 €, cancela cuando quieras, garantía de 30 días.`) +
+    p(en ? `You've been using the free plan. Pro gives you 200/month plus the AI Coach, A/B testing and the full toolset — €9.99, cancel anytime, 30-day guarantee.` : `Has estado usando el plan gratis. Pro te da 200/mes más el AI Coach, A/B testing y todas las herramientas — 9,99 €, cancela cuando quieras, garantía de 30 días.`) +
     button(utm('/pricing', 'conv-c2'), en ? 'Upgrade to Pro →' : 'Pasar a Pro →') +
     sign(en)); },
 };

@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{createHash}=require('node:crypto');
+const repo=path.resolve(__dirname,'../..'),root=path.dirname(repo),config=JSON.parse(fs.readFileSync(path.join(root,'migration-config.json'),'utf8'));
+const checked=require('./isolation.cjs').validate(config,{root,operationalRoots:['C:/Users/jimen/youtube-gpt/youtube-gpt','C:/Users/jimen/youtube-gpt/local-agent'],environment:process.env});
+const hash=f=>createHash('sha256').update(fs.readFileSync(f)).digest('hex');
+assert.equal(hash(path.join(repo,'prisma/schema.prisma')),hash(path.join(repo,'node_modules/.prisma/client/schema.prisma')));
+const {PrismaClient}=require('@prisma/client'),prisma=new PrismaClient({datasources:{db:{url:config.databaseUrl}}}),results=[];
+const timer=setTimeout(()=>{console.error('Missing lifecycle native PostgreSQL terminal');process.exit(1);},45000);
+(async()=>{try{const identity=(await prisma.$queryRawUnsafe("SELECT current_database() AS db,current_setting('data_directory') AS directory"))[0];
+ assert.equal(identity.db,'ytubviral_migration_test');assert.equal(path.resolve(identity.directory).toLowerCase(),path.resolve(checked.paths.database).toLowerCase());
+ const fixtures=await require('./lifecycle-database.cjs')(prisma,results);
+ console.log(JSON.stringify({status:'PASS',scope:'Identified synthetic local PostgreSQL only; actual lifecycle transactions/shared native mock HTTP. No operative consent/source/freshness/delivery acceptance.',identity,fixtures,results},null,2));
+}catch(error){console.error(error.stack);process.exitCode=1;}finally{await prisma.$disconnect();clearTimeout(timer);}})();

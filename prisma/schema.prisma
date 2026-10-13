@@ -53,6 +53,7 @@ model User {
   thumbnailSaveReceipts ThumbnailSaveReceipt[]
   generations     Generation[]
   emailLogs       EmailLog[]
+  lifecycleEmailAdmission LifecycleEmailAdmission?
   subscription    Subscription?
   review          Review?
   youtubeToken    YoutubeToken?
@@ -1353,4 +1354,15 @@ model PasswordResetRequestAdmission {
   createdAt DateTime @default(now())
 
   @@map("password_reset_request_admissions")
+}
+
+// Negative exclusion only. No TTL or recovery/adoption from this row.
+model LifecycleEmailAdmission {
+  userId String @id
+  noticeId String @unique
+  sequence String
+  step String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("lifecycle_email_admissions")
 }
