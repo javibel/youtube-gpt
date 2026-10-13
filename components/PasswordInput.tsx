@@ -7,11 +7,12 @@ interface PasswordInputProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
 
-export default function PasswordInput({ value, onChange, placeholder = '••••••••', required, className = '', style }: PasswordInputProps) {
+export default function PasswordInput({ value, onChange, placeholder = '••••••••', required, disabled = false, className = '', style }: PasswordInputProps) {
   const [show, setShow] = useState(false);
 
   return (
@@ -22,11 +23,13 @@ export default function PasswordInput({ value, onChange, placeholder = '••�
         onChange={onChange}
         placeholder={placeholder}
         required={required}
+        disabled={disabled}
         className={`soft-field pr-11 ${className}`}
         style={style}
       />
       <button
         type="button"
+        disabled={disabled}
         onClick={() => setShow(s => !s)}
         tabIndex={-1}
         className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 hover:text-zinc-300 transition"

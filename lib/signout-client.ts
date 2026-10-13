@@ -10,7 +10,8 @@ const unknown: SignoutOutcome = Object.freeze({ status: 'unconfirmed' });
 const listeners = new Set<() => void>();
 function notify() { for (const listener of listeners) { try { listener(); } catch { /* A retired view cannot change the native result. */ } } }
 subscribeSessionCookieWriter(notify);
-export function signoutHeldByOtherCookieWriter() { return heldSessionCookieWriterKind() === 'totp'; }
+export function signoutOtherCookieWriterKind() { const kind = heldSessionCookieWriterKind(); return kind === 'signout' ? undefined : kind; }
+export function signoutHeldByOtherCookieWriter() { return !!signoutOtherCookieWriterKind(); }
 export function subscribeSignout(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 
 export function currentSignoutOriginal() { return retained; }

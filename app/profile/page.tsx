@@ -441,7 +441,9 @@ function ProfileAccount({ isCurrent, logout }: { isCurrent: () => boolean; logou
           </p>}
           {!logout.waiting && (logout.outcome?.status === 'unconfirmed' || (logout.blocked && logout.outcome?.status !== 'confirmed')) && <div role="status">
             <p>{logout.otherCookieWriter
-              ? t('Hay una verificación de sesión en curso. Espera antes de cerrar sesión.', 'A session verification is in progress. Wait before signing out.')
+              ? logout.otherCookieWriterKind === 'totp'
+                ? t('Hay una verificación de sesión en curso. Espera antes de cerrar sesión.', 'A session verification is in progress. Wait before signing out.')
+                : t('Hay una actualización de sesión en curso. Espera antes de cerrar sesión.', 'A session refresh is in progress. Wait before signing out.')
               : t('Salida sin confirmar. La solicitud original puede seguir en curso.', 'Sign-out unconfirmed. The original request may still be running.')}</p>
             {logout.canObserve && <button onClick={logout.observe}>{t('Consultar salida original', 'Observe original sign-out')}</button>}
           </div>}

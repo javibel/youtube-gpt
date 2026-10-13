@@ -1,8 +1,8 @@
 
 'use client';
 
-export type SessionCookieWriter = Readonly<{ kind: 'totp' | 'signout' }>;
-const permits = new WeakMap<SessionCookieWriter, { postIssued: boolean }>();
+export type SessionCookieWriter = Readonly<{ kind: 'totp' | 'signout' | 'refresh' }>;
+const permits = new WeakMap<SessionCookieWriter, { postIssued: boolean; readIssued: boolean }>();
 let held: SessionCookieWriter | undefined;
 const listeners = new Set<() => void>();
 function notify() { for (const listener of listeners) { try { listener(); } catch { /* A view cannot release the live original. */ } } }
@@ -13,9 +13,9 @@ export function sessionCookieWriterBusy() { return held !== undefined; }
 export function heldSessionCookieWriterKind() { return held?.kind; } // Negative UI hint, never a capability.
 
 export function admitSessionCookieWriter(kind: SessionCookieWriter['kind']): SessionCookieWriter | undefined {
-  if (held || (kind !== 'totp' && kind !== 'signout')) return;
+  if (held || (kind !== 'totp' && kind !== 'signout' && kind !== 'refresh')) return;
   const permit: SessionCookieWriter = Object.freeze({ kind });
-  permits.set(permit, { postIssued: false }); held = permit; notify(); return permit;
+  permits.set(permit, { postIssued: false, readIssued: false }); held = permit; notify(); return permit;
 }
 
 // Called synchronously immediately before the one native POST. Once dispatched,
@@ -24,7 +24,7 @@ export function admitSessionCookieWriter(kind: SessionCookieWriter['kind']): Ses
 // and late cookies across a new instance still require separate coordination.
 export function markSessionCookiePost(permit: SessionCookieWriter) {
   const original = permits.get(permit);
-  if (held !== permit || !original || original.postIssued) return false;
+  if (held !== permit || !original || permit.kind === 'refresh' || original.postIssued || original.readIssued) return false;
   original.postIssued = true; return true;
 }
 
@@ -33,6 +33,19 @@ export function markSessionCookiePost(permit: SessionCookieWriter) {
 // pending CSRF/body/timeouts and uncertain responses never use this path.
 export function releaseUnissuedSessionCookieWriter(permit: SessionCookieWriter) {
   const original = permits.get(permit);
-  if (held !== permit || !original || original.postIssued) return false;
+  if (held !== permit || !original || original.postIssued || original.readIssued) return false;
+  held = undefined; permits.delete(permit); notify(); return true;
+}
+
+// Native session GET also writes cookies. Only its genuine completed/observed
+// original may release a read permit; these functions cannot release a POST.
+export function markSessionCookieRead(permit: SessionCookieWriter) {
+  const original = permits.get(permit);
+  if (!original || held !== permit || permit.kind !== 'refresh' || original.postIssued || original.readIssued) return false;
+  original.readIssued = true; return true;
+}
+export function releaseAcknowledgedSessionCookieRead(permit: SessionCookieWriter) {
+  const original = permits.get(permit);
+  if (!original || held !== permit || permit.kind !== 'refresh' || original.postIssued || !original.readIssued) return false;
   held = undefined; permits.delete(permit); notify(); return true;
 }

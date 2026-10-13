@@ -18,7 +18,8 @@ const unknown: TotpOutcome = Object.freeze({ status: 'unconfirmed' });
 const listeners = new Set<() => void>();
 function notify() { for (const listener of listeners) { try { listener(); } catch { /* Retired views do not control the original. */ } } }
 subscribeSessionCookieWriter(notify);
-export function totpHeldByOtherCookieWriter() { return heldSessionCookieWriterKind() === 'signout'; }
+export function totpOtherCookieWriterKind() { const kind = heldSessionCookieWriterKind(); return kind === 'totp' ? undefined : kind; }
+export function totpHeldByOtherCookieWriter() { return !!totpOtherCookieWriterKind(); }
 export function subscribeTotp(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export function currentTotpOriginal() { return retained; }
 export function ownsTotpOriginal(attempt: TotpAttempt, context: object) { return originals.get(attempt)?.context === context; }

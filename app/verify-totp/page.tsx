@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { beginTotp, claimTotpConfirmation, currentTotpOriginal, observeTotpOriginal, ownsTotpOriginal, retireTotpProgress, subscribeTotp, totpBlocked, totpHeldByOtherCookieWriter } from '@/lib/totp-client-command';
+import { beginTotp, claimTotpConfirmation, currentTotpOriginal, observeTotpOriginal, ownsTotpOriginal, retireTotpProgress, subscribeTotp, totpBlocked, totpHeldByOtherCookieWriter, totpOtherCookieWriterKind } from '@/lib/totp-client-command';
 import type { TotpAttempt, TotpOutcome } from '@/lib/totp-client-command';
 
 export default function VerifyTotpPage() {
@@ -15,7 +15,7 @@ export default function VerifyTotpPage() {
 
 function VerifyTotpAccount() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const sessionRef = (session?.user as { authSessionRef?: unknown } | undefined)?.authSessionRef;
   const canIdentify = typeof sessionRef === 'string' && !!sessionRef;
 
@@ -33,6 +33,7 @@ function VerifyTotpAccount() {
   const [, render] = useState(0);
   const blocked = totpBlocked();
   const otherCookieWriter = totpHeldByOtherCookieWriter();
+  const otherCookieWriterKind = totpOtherCookieWriterKind();
   const original = currentTotpOriginal();
   const ownOriginal = original && ownsTotpOriginal(original, context.current) ? original : undefined;
   useEffect(() => subscribeTotp(() => render(value => value + 1)), []);
@@ -208,14 +209,17 @@ function VerifyTotpAccount() {
               </div>
 
               {error && <div role="alert" className="yv-note yv-note--error mb-4">{error}</div>}
-              {!canIdentify && <div role="status" className="text-zinc-400 text-sm mb-4">
+              {status === 'loading' && <p role="status">{t('Cargando sesión…', 'Loading session…')}</p>}
+              {!canIdentify && status !== 'loading' && <div role="status" className="text-zinc-400 text-sm mb-4">
                 <p>{t('Inicia sesión de nuevo para verificar esta sesión.', 'Sign in again to verify this session.')}</p>
                 <a href="/login" className="yv-btn mt-3 inline-block">{t('Volver a iniciar sesión', 'Sign in again')}</a>
               </div>}
               {(blocked || ownOriginal) && !verifying && (
                 <div className="text-zinc-400 text-sm mb-4" role="status">
                   {blocked && <p>{otherCookieWriter
-                    ? t('Hay un cierre de sesión en curso. Espera antes de verificar.', 'A sign-out is in progress. Wait before verifying.')
+                    ? otherCookieWriterKind === 'signout'
+                      ? t('Hay un cierre de sesión en curso. Espera antes de verificar.', 'A sign-out is in progress. Wait before verifying.')
+                      : t('Hay una actualización de sesión en curso. Espera antes de verificar.', 'A session refresh is in progress. Wait before verifying.')
                     : t('Hay una verificación pendiente. Todavía no se puede enviar otro código.', 'A verification is pending. Another code cannot be sent yet.')}</p>}
                   {ownOriginal && <button type="button" className="yv-btn mt-3" onClick={observe}>
                     {t('Consultar resultado pendiente', 'Check pending result')}

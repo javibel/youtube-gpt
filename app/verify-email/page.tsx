@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { data: session, update } = useSession();
 
   const emailFromUrl = searchParams.get('email') ?? '';
@@ -20,6 +19,10 @@ function VerifyEmailContent() {
   const [resent, setResent] = useState(false);
   const [lang, setLang] = useState<'es'|'en'>('es');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const mounted = useRef(true);
+  const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attemptedActor = useRef<{ id: string; email: string; ref: unknown } | null>(null);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; if (navigationTimer.current !== null) clearTimeout(navigationTimer.current); }; }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
@@ -28,18 +31,23 @@ function VerifyEmailContent() {
     if (stored) setLang(stored);
   }, []);
 
-  // If user has a stale session (already verified in DB but JWT says requiresVerification),
-  // refresh the JWT from DB and redirect to dashboard
+  // Observe once per native actor. A GET does not refresh the verification
+  // claim from DB; the existing explicit sign-in flow remains necessary.
   useEffect(() => {
     if (session?.user && (session.user as { requiresVerification?: boolean }).requiresVerification) {
+      const actor = { id: session.user.id, email: session.user.email!, ref: (session.user as { authSessionRef?: string }).authSessionRef };
+      if (attemptedActor.current?.id === actor.id && attemptedActor.current.email === actor.email && attemptedActor.current.ref === actor.ref) return;
+      attemptedActor.current = actor;
       update().then((updated) => {
-        if (updated && !(updated.user as { requiresVerification?: boolean }).requiresVerification) {
-          router.push('/dashboard');
+        if (mounted.current && attemptedActor.current === actor && updated?.user?.id === session?.user?.id && updated.user.email === session?.user?.email
+          && (updated.user as { authSessionRef?: string }).authSessionRef === (session?.user as { authSessionRef?: string } | undefined)?.authSessionRef
+          && (updated.user as { requiresVerification?: boolean }).requiresVerification === false) {
+          window.location.href = '/dashboard';
         }
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [session?.user?.id, session?.user?.email, (session?.user as { authSessionRef?: string } | undefined)?.authSessionRef, (session?.user as { requiresVerification?: boolean } | undefined)?.requiresVerification]);
 
   // Auto-focus first input
   useEffect(() => {
@@ -114,14 +122,18 @@ function VerifyEmailContent() {
       const pw = sessionStorage.getItem('ytv_signup_pw');
       if (pw) {
         sessionStorage.removeItem('ytv_signup_pw');
-        const loginResult: any = await signIn('credentials', { email, password: pw, redirect: false });
-        if (!loginResult?.error) {
-          setTimeout(() => router.push('/dashboard'), 1500);
-          return;
+        const loginResult = await signIn('credentials', { email, password: pw, redirect: false });
+        if (loginResult?.ok === true && loginResult.status === 200 && !loginResult.error && mounted.current) {
+          const ownSession = await update();
+          if (mounted.current && ownSession?.user?.id && ownSession.user.email?.toLowerCase().trim() === email.toLowerCase().trim()
+            && (ownSession.user as { requiresVerification?: boolean }).requiresVerification === false) {
+            navigationTimer.current = setTimeout(() => { if (mounted.current) window.location.href = '/dashboard'; }, 1500);
+            return;
+          }
         }
       }
       // Fallback: redirect to login with message
-      setTimeout(() => router.push('/login?verified=1'), 2000);
+      navigationTimer.current = setTimeout(() => { if (mounted.current) window.location.href = '/login?verified=1'; }, 2000);
     } catch {
       setError(t('Error de conexión. Intenta de nuevo.', 'Connection error. Try again.'));
     } finally {

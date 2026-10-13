@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { sessionCookieWriterBusy } from '@/lib/session-cookie-writer';
 import PasswordInput from '@/components/PasswordInput';
 
 export default function LoginForm() {
-  const router = useRouter();
+  const { update, status } = useSession();
+  const mounted = useRef(true);
+  const selection = useRef({ email: '', password: '', totp: '', lang: 'es' });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,6 +17,9 @@ export default function LoginForm() {
   const [justVerified, setJustVerified] = useState(false);
   const [totp, setTotp] = useState('');
   const [showTotp, setShowTotp] = useState(false);
+  if (selection.current.email !== email || selection.current.password !== password || selection.current.totp !== totp || selection.current.lang !== lang) selection.current = { email, password, totp, lang };
+  const rendered = selection.current;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
@@ -24,44 +29,38 @@ export default function LoginForm() {
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    const captured = rendered;
+    const active = () => mounted.current && selection.current === captured;
+    if (!active() || loading || status === 'loading' || sessionCookieWriterBusy()) return;
+    setLoading(true); setError('');
     try {
-      const result: any = await signIn('credentials', { email, password, totp: totp || undefined, redirect: false });
+      const result = await signIn('credentials', { email: captured.email, password: captured.password, totp: captured.totp || undefined, redirect: false });
+      if (!active()) return;
       if (result?.error) {
-        if (!showTotp) {
-          // First failure: could be a wrong password, or an admin account missing its 2FA
-          // code — the message stays neutral either way so it doesn't reveal which account
-          // has 2FA enabled.
-          setShowTotp(true);
-          setError(t(
-            'Credenciales incorrectas. Si tu cuenta tiene verificación en dos pasos, introduce el código.',
-            'Incorrect credentials. If your account has two-step verification, enter the code.'
-          ));
-        } else {
-          setError(t('Email, contraseña o código incorrectos', 'Incorrect email, password, or code'));
-        }
-      } else {
-        // Check if the user needs verification (middleware would redirect anyway, but this is better UX)
-        const sess = await fetch('/api/auth/session').then(r => r.json());
-        if (sess?.user?.requiresVerification) {
-          // Send a fresh verification code
+        setShowTotp(true);
+        setError(showTotp
+          ? t('Email, contraseña o código incorrectos', 'Incorrect email, password, or code')
+          : t('Credenciales incorrectas. Si tu cuenta tiene verificación en dos pasos, introduce el código.', 'Incorrect credentials. If your account has two-step verification, enter the code.'));
+      } else if (result?.ok === true && result.status === 200) {
+        // The remaining SDK sign-in is not a reader/GET receipt. Observe the
+        // original native session read, then load the destination with its cookie.
+        const sess = await update();
+        if (!active()) return;
+        if (!sess?.user?.id || sess.user.email?.toLowerCase().trim() !== captured.email.toLowerCase().trim()) {
+          setError(t('No se ha confirmado la sesión. Consulta la solicitud pendiente.', 'The session was not confirmed. Check the pending request.'));
+        } else if (sess.user.requiresVerification) {
           fetch('/api/auth/resend-verification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, lang }),
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: captured.email, lang: captured.lang }),
           }).catch(() => {});
-          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-        } else {
-          router.push('/dashboard');
-        }
-      }
-    } catch {
-      setError(t('Error al ingresar', 'Sign in error'));
-    }
-    setLoading(false);
+          window.location.href = '/verify-email?email='+encodeURIComponent(captured.email);
+        } else window.location.href = '/dashboard';
+      } else setError(t('No se ha confirmado el inicio de sesión.', 'Sign-in was not confirmed.'));
+    } catch { if (active()) setError(t('Error al ingresar', 'Sign in error')); }
+    finally { if (active()) setLoading(false); }
   };
 
   return (
@@ -92,7 +91,8 @@ export default function LoginForm() {
 
         <div className="soft-card p-8">
           <button
-            onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+            disabled={loading || status === 'loading'}
+            onClick={() => { if (!sessionCookieWriterBusy()) void signIn('google', { callbackUrl: '/dashboard' }); }}
             className="yv-btn yv-btn--ghost w-full py-3 px-4 text-sm font-medium text-white"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -113,7 +113,7 @@ export default function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              <input type="email" disabled={loading || status === 'loading'} value={email} onChange={(e) => setEmail(e.target.value)}
                 className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" required />
             </div>
 
@@ -124,7 +124,7 @@ export default function LoginForm() {
                   {t('¿Olvidaste la contraseña?', 'Forgot password?')}
                 </a>
               </div>
-              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
+              <PasswordInput disabled={loading || status === 'loading'} value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm" required />
             </div>
 
@@ -133,7 +133,7 @@ export default function LoginForm() {
                 <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
                   {t('Código de verificación', 'Verification code')}
                 </label>
-                <input type="text" inputMode="numeric" autoComplete="one-time-code" value={totp}
+                <input type="text" disabled={loading || status === 'loading'} inputMode="numeric" autoComplete="one-time-code" value={totp}
                   onChange={(e) => setTotp(e.target.value)}
                   className="soft-field py-3 px-4 text-sm" placeholder="123456" maxLength={6} />
               </div>
@@ -146,12 +146,12 @@ export default function LoginForm() {
             )}
 
             {error && (
-              <div className="yv-note yv-note--error">
+              <div role="alert" className="yv-note yv-note--error">
                 {error}
               </div>
             )}
 
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || status === 'loading'}
               className="btn-offset w-full py-3.5 font-display font-bold text-[15px] disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? (
                 <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r" />{t('Ingresando...', 'Signing in...')}</>
