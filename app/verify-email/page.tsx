@@ -34,14 +34,18 @@ function VerifyEmailContent() {
   // Observe once per native actor. A GET does not refresh the verification
   // claim from DB; the existing explicit sign-in flow remains necessary.
   useEffect(() => {
-    if (session?.user && (session.user as { requiresVerification?: boolean }).requiresVerification) {
+    if (session?.user && typeof session.user.id === 'string' && session.user.id
+      && typeof session.user.email === 'string' && session.user.email
+      && (session.user as { requiresVerification?: boolean }).requiresVerification === true) {
       const actor = { id: session.user.id, email: session.user.email!, ref: (session.user as { authSessionRef?: string }).authSessionRef };
-      if (attemptedActor.current?.id === actor.id && attemptedActor.current.email === actor.email && attemptedActor.current.ref === actor.ref) return;
+      const prior = attemptedActor.current;
+      if (prior && prior.id === actor.id && prior.email === actor.email && prior.ref === actor.ref) return;
       attemptedActor.current = actor;
       update().then((updated) => {
-        if (mounted.current && attemptedActor.current === actor && updated?.user?.id === session?.user?.id && updated.user.email === session?.user?.email
-          && (updated.user as { authSessionRef?: string }).authSessionRef === (session?.user as { authSessionRef?: string } | undefined)?.authSessionRef
-          && (updated.user as { requiresVerification?: boolean }).requiresVerification === false) {
+        const user = updated?.user;
+        if (mounted.current && attemptedActor.current === actor && user && user.id === actor.id && user.email === actor.email
+          && (user as { authSessionRef?: string }).authSessionRef === actor.ref
+          && (user as { requiresVerification?: boolean }).requiresVerification === false) {
           window.location.href = '/dashboard';
         }
       });

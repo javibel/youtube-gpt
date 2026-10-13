@@ -51,7 +51,7 @@ export default function LoginForm() {
         if (!active()) return;
         if (!sess?.user?.id || sess.user.email?.toLowerCase().trim() !== captured.email.toLowerCase().trim()) {
           setError(t('No se ha confirmado la sesión. Consulta la solicitud pendiente.', 'The session was not confirmed. Check the pending request.'));
-        } else if (sess.user.requiresVerification) {
+        } else if ((sess.user as { requiresVerification?: boolean }).requiresVerification === true) {
           fetch('/api/auth/resend-verification', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: captured.email, lang: captured.lang }),
