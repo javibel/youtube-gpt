@@ -1,0 +1,4 @@
+'use strict';
+const fs=require('node:fs');
+const timer=setTimeout(()=>{console.error('Missing shared email scope terminal');process.exit(1);},30000);
+(async()=>{try{const shared=await require('./shared-email.test.cjs').run(),existing=await require('./email-verification-server.test.cjs').run({onlyTransport:true});const results=[...shared.results,...existing.results];console.log(JSON.stringify({status:shared.status==='PASS'&&existing.status==='PASS'?'PASS':'FAIL',scope:'Current shared native domain transport and changed prior transport cases only; unchanged SQL/auth/route suites not repeated. Closed synthetic provider/callers, not mail delivery or business recovery acceptance.',results},null,2));if(results.some(x=>x.status!=='PASS'))process.exitCode=1;}finally{clearTimeout(timer);}})().catch(e=>{clearTimeout(timer);console.error(e);process.exitCode=1;});
