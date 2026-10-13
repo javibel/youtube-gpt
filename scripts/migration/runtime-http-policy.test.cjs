@@ -55,6 +55,7 @@ function composition(marker,guard){
    if(name==='next-auth/providers/google'||name==='next-auth/providers/credentials')return value=>value;
    if(name==='@/lib/admin-email')return {ADMIN_EMAIL:'migration-admin@example.invalid'};
    if(name==='@/lib/features')return {AFFILIATES_DORMANT:true};
+   if(name==='@/lib/totp-account'){const module={exports:{}};vm.runInNewContext(compile('lib/totp-account.ts'),{module,exports:module.exports});return module.exports;}
    if(['@/lib/prisma','bcryptjs','next/headers','otplib','@/lib/rate-limit-db'].includes(name))return {};
    throw Error('Unexpected auth dependency in inert composition: '+name);
   }};
