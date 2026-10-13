@@ -335,6 +335,9 @@ export default function Sidebar() {
           </button>
         </div>
         {logout.waiting && <p role="status">{t('Cerrando sesión…', 'Signing out…')}</p>}
+        {!logout.waiting && logout.outcome?.status === 'not-started' && <p role="status">
+          {t('No se envió el cierre. Puedes pulsar Cerrar sesión para iniciar una nueva solicitud.', 'Sign-out was not sent. You can select Sign out to start a new request.')}
+        </p>}
         {!logout.waiting && (logout.outcome?.status === 'unconfirmed' || logout.blocked) && (
           <div role="status">
             <p>{t('Salida sin confirmar. La solicitud original puede seguir en curso.', 'Sign-out unconfirmed. The original request may still be running.')}</p>

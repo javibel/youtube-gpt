@@ -436,6 +436,9 @@ function ProfileAccount({ isCurrent, logout }: { isCurrent: () => boolean; logou
             {logout.waiting ? t('Cerrando sesión…', 'Signing out…') : t('Cerrar esta sesión', 'Sign out of this session')}
           </button>
           <p>{t('Cierra la sesión en este navegador.', 'Signs out in this browser.')}</p>
+          {!logout.waiting && logout.outcome?.status === 'not-started' && <p role="status">
+            {t('No se envió el cierre. Puedes pulsar Cerrar esta sesión para iniciar una nueva solicitud.', 'Sign-out was not sent. You can select Sign out of this session to start a new request.')}
+          </p>}
           {!logout.waiting && (logout.outcome?.status === 'unconfirmed' || logout.blocked) && <div role="status">
             <p>{t('Salida sin confirmar. La solicitud original puede seguir en curso.', 'Sign-out unconfirmed. The original request may still be running.')}</p>
             {logout.canObserve && <button onClick={logout.observe}>{t('Consultar salida original', 'Observe original sign-out')}</button>}

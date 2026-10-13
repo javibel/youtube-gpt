@@ -28,7 +28,8 @@ export function useSignout(owner: SignoutOwner, status: string, language: string
   const original = currentSignoutOriginal();
   const ownOriginal = original && captured.context && sameSignoutContext(original, captured.context) && sameSignoutOwner(original, captured.owner) ? original : undefined;
   const canStart = () => active() && current.current.liveStatus === 'authenticated' && !!context && !!owner.userId && !!owner.email
-    && !signoutBlocked() && !shown?.attempt && (!ownOriginal || !signoutNeedsObservation(ownOriginal));
+    && !signoutBlocked() && (!shown?.attempt || shown.outcome?.status === 'not-started')
+    && (!ownOriginal || !signoutNeedsObservation(ownOriginal));
 
   function wait(attempt: SignoutAttempt) {
     if (!active()) return;
