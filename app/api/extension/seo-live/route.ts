@@ -1,55 +1,34 @@
 import { NextResponse } from 'next/server';
-import { getExtensionUser } from '@/lib/extension-auth';
-
-function checkTitle(title: string) {
-  const len = title.length;
-  return [
-    { key: 'title_length', ok: len >= 30 && len <= 70, w: 8 },
-    { key: 'title_number', ok: /\d/.test(title), w: 5 },
-    { key: 'title_caps', ok: title !== title.toUpperCase(), w: 4 },
-    { key: 'title_emoji', ok: /[\p{Emoji_Presentation}]/u.test(title), w: 3 },
-    { key: 'title_power', ok: /\b(cómo|how|best|mejor|secret|secreto|ultimate|top|hack|error|mistake)\b/i.test(title), w: 4 },
-  ];
-}
-
-function checkDesc(desc: string) {
-  const wc = desc.split(/\s+/).filter(Boolean).length;
-  return [
-    { key: 'desc_length', ok: wc >= 100, w: 10 },
-    { key: 'desc_links', ok: /https?:\/\//.test(desc), w: 5 },
-    { key: 'desc_timestamps', ok: /\d{1,2}:\d{2}/.test(desc), w: 7 },
-    { key: 'desc_hashtags', ok: /#\w+/.test(desc), w: 4 },
-    { key: 'desc_cta', ok: /suscri|subscribe|like|comenta|comment/i.test(desc), w: 3 },
-  ];
-}
-
-function checkTags(tags: string[]) {
-  return [
-    { key: 'tags_count', ok: tags.length >= 5 && tags.length <= 20, w: 8 },
-    { key: 'tags_long', ok: tags.some(t => t.split(/\s+/).length >= 3), w: 4 },
-  ];
-}
-
+import { authorizeExtensionSeoLive, checkExtensionSeoLive, analyzeExtensionSeoLive, validExtensionReadRef } from '@/lib/extension-seo-live-native-authorization';
+import { readSeoLiveInputBody } from '@/lib/extension-seo-live-input';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 export async function POST(request: Request) {
-  const extUser = await getExtensionUser(request);
-  if (!extUser) {
-    return NextResponse.json({ error: 'not_logged_in' }, { status: 401 });
-  }
-
-  const body = await request.json().catch(() => ({}));
-  const title = (body.title as string) || '';
-  const description = (body.description as string) || '';
-  const tags = Array.isArray(body.tags) ? body.tags : [];
-
-  const checks = [
-    ...checkTitle(title),
-    ...checkDesc(description),
-    ...checkTags(tags),
-  ];
-
-  const maxW = checks.reduce((s, c) => s + c.w, 0);
-  const rawW = checks.filter(c => c.ok).reduce((s, c) => s + c.w, 0);
-  const score = maxW > 0 ? Math.round((rawW / maxW) * 100) : 0;
-
-  return NextResponse.json({ score, checks, titleLength: title.length });
+  const deadline = performance.now() + 25_000;
+  let retired = false, rejectWait!: (error: Error) => void;
+  let nativeCheck: (() => void) | undefined;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
+  void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('Extension identity unconfirmed')); } };
+  const timer = setTimeout(retire, 25_000);
+  request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Extension identity unconfirmed'); nativeCheck?.(); };
+  const run = async <T,>(operation: () => Promise<T>) => {
+    check(); const original = Promise.resolve().then(() => { check(); return operation(); });
+    const value = await Promise.race([original, stopped]); check(); return value;
+  };
+  const readRef = request.headers.get('x-ytv-read-ref');
+  const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    if (!validExtensionReadRef(readRef)) return json({ code: 'invalid_read_ref' }, 400);
+    const original = await run(() => authorizeExtensionSeoLive(request));
+    if (!original) return json({ error:'not_logged_in',code:'not_logged_in', readRef }, 401);
+    nativeCheck = () => checkExtensionSeoLive(original);
+    check();
+    const input = await run(() => readSeoLiveInputBody(request,check));
+    if (!input) return json({error:'invalid_seo_live_input',code:'invalid_seo_live_input',readRef},400);
+    const result = await run(() => analyzeExtensionSeoLive(original,input,readRef,check));
+    check(); const response = json(result); check(); return response;
+  } catch { return json({ error:'seo_live_unconfirmed',code:'seo_live_unconfirmed', readRef }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

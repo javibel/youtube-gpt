@@ -1429,19 +1429,53 @@ function isStudioVideoEdit() {
 
 // ── Studio v2 helpers ──────────────────────────────────────────────
 
-function getStudioTitle() {
-  const el = document.querySelector(SELECTORS.studio.titleField);
+function getStudioTitle(scope = document) {
+  const el = scope.querySelector(SELECTORS.studio.titleField);
   return el ? el.textContent.trim() : '';
 }
 
-function getStudioDescription() {
-  const el = document.querySelector(SELECTORS.studio.descField);
+function getStudioDescription(scope = document) {
+  const el = scope.querySelector(SELECTORS.studio.descField);
   return el ? el.textContent.trim() : '';
 }
 
-function getStudioTags() {
-  const chips = document.querySelectorAll(SELECTORS.studio.tagChips);
+function getStudioTags(scope = document) {
+  const chips = scope.querySelectorAll(SELECTORS.studio.tagChips);
   return Array.from(chips).map(c => c.textContent.trim()).filter(Boolean);
+}
+
+let studioSeoSessionRevision = 0;
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))studioSeoSessionRevision++;});
+function createStudioSeoLiveUpdate(scope,panel,bodyEl) {
+  let revision=0;
+  return {
+    invalidate(){revision++;},
+    async run(){
+      const ownRevision=revision,sessionRevision=studioSeoSessionRevision,deadline=performance.now()+30000;
+      const titleEl=scope.querySelector(SELECTORS.studio.titleField),descEl=scope.querySelector(SELECTORS.studio.descField);
+      const chips=Array.from(scope.querySelectorAll(SELECTORS.studio.tagChips));
+      const title=getStudioTitle(scope),description=getStudioDescription(scope),tags=getStudioTags(scope);
+      if(!title&&!description)return;
+      const current=()=>{
+        const nowChips=Array.from(scope.querySelectorAll(SELECTORS.studio.tagChips));
+        return performance.now()<deadline&&revision===ownRevision&&studioSeoSessionRevision===sessionRevision
+          &&panel.isConnected&&panel.contains(bodyEl)&&scope.querySelector(SELECTORS.studio.titleField)===titleEl
+          &&scope.querySelector(SELECTORS.studio.descField)===descEl&&nowChips.length===chips.length&&nowChips.every((x,i)=>x===chips[i])
+          &&getStudioTitle(scope)===title&&getStudioDescription(scope)===description&&JSON.stringify(getStudioTags(scope))===JSON.stringify(tags);
+      };
+      if(!current())return;
+      let timer;
+      try {
+        // The actual Chrome message keeps its own completion after local wait
+        // retirement. Only this captured DOM/input revision may apply its score.
+        const original=sendMsg({type:'SEO_LIVE',title,description,tags});
+        const live=await Promise.race([original,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('SEO Live unconfirmed')),30000);})]);
+        if(!current())return;
+        bodyEl.innerHTML=renderStudioScore(live.score,live.checks,live.titleLength);
+      } catch { /* Preserve the previous score; never retry or apply late output. */ }
+      finally { clearTimeout(timer); }
+    },
+  };
 }
 
 function setStudioField(selector, text) {
@@ -1757,25 +1791,16 @@ async function injectStudioEditor() {
     });
 
     // ─ Live SEO: observe title/description edits ─
+    const liveUpdate=createStudioSeoLiveUpdate(document,panel,bodyEl);
     let liveTimer = null;
     function scheduleLiveUpdate() {
+      liveUpdate.invalidate();
       // SERP title: instantáneo, sin red (solo texto que ya tenemos en el DOM) — no
       // hace falta esperar el debounce de 1.5s que sí protege la llamada a SEO_LIVE.
       const serpTitleEl = panel.querySelector('#ytv-serp-title');
       if (serpTitleEl) { const liveTitle = getStudioTitle(); if (liveTitle) serpTitleEl.textContent = liveTitle; }
       if (liveTimer) clearTimeout(liveTimer);
-      liveTimer = setTimeout(async () => {
-        const title = getStudioTitle();
-        const desc = getStudioDescription();
-        const tags = getStudioTags();
-        if (!title && !desc) return;
-        try {
-          const live = await sendMsg({ type: 'SEO_LIVE', title, description: desc, tags });
-          bodyEl.innerHTML = renderStudioScore(live.score, live.checks, live.titleLength || title.length);
-        } catch {
-          // silent — keep showing last score
-        }
-      }, 1500);
+      liveTimer=setTimeout(()=>liveUpdate.run(),1500);
     }
 
     // Observe title and description contenteditable fields
@@ -1788,6 +1813,7 @@ async function injectStudioEditor() {
     };
     observeField(SELECTORS.studio.titleField);
     observeField(SELECTORS.studio.descField);
+    observeField('ytcp-chip-bar');
 
     // ─ P7: deep-link al generador de miniaturas (Ideogram) con el título ya rellenado.
     // No genera nada dentro de la extensión — el tool completo (estilos, competidores,
@@ -1897,18 +1923,10 @@ async function injectStudioUploadPanel(dialog) {
       if (html) panel.querySelector('#ytv-up-besttime').innerHTML = html;
     });
 
-    let liveTimer = null;
-    async function runLive() {
-      const title = getStudioTitle();
-      const desc = getStudioDescription();
-      const tags = getStudioTags();
-      if (!title && !desc) return;
-      try {
-        const live = await sendMsg({ type: 'SEO_LIVE', title, description: desc, tags });
-        bodyEl.innerHTML = renderStudioScore(live.score, live.checks, live.titleLength || title.length);
-      } catch { /* keep last */ }
-    }
-    function scheduleLiveUpdate() { if (liveTimer) clearTimeout(liveTimer); liveTimer = setTimeout(runLive, 1500); }
+    const liveUpdate=createStudioSeoLiveUpdate(dialog,panel,bodyEl);
+    let liveTimer=null;
+    function runLive(){return liveUpdate.run();}
+    function scheduleLiveUpdate(){liveUpdate.invalidate();if(liveTimer)clearTimeout(liveTimer);liveTimer=setTimeout(runLive,1500);}
 
     const observeField = (selector) => {
       const el = dialog.querySelector(selector);
@@ -1919,6 +1937,7 @@ async function injectStudioUploadPanel(dialog) {
     };
     observeField(SELECTORS.studio.titleField);
     observeField(SELECTORS.studio.descField);
+    observeField('ytcp-chip-bar');
     runLive(); // title may be prefilled from the filename
 
     // ─ AI Buttons (shared wiring — B1) ─
