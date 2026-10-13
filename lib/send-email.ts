@@ -72,3 +72,23 @@ export async function sendTransactionalEmail({
   await sendEmailTo(to, subject, text);
   console.log(`[send-email] Sent via Gmail fallback to ${to}: "${subject}"`);
 }
+
+/** One domain-only provider invocation. An acknowledgment is provider acceptance,
+ * never delivery. A failed/lost acknowledgment never invokes a fallback/retry.
+ */
+export async function sendDomainEmailOriginal(input: {
+  to: string; subject: string; html: string;
+}): Promise<'provider-accepted' | 'not-configured' | 'unconfirmed'> {
+  if (!resend) return 'not-configured';
+  try {
+    const result = await resend.emails.send({
+      from: 'YTubViral <hello@ytubviral.com>',
+      replyTo: 'hello@ytubviral.com',
+      to: input.to, subject: input.subject, html: input.html,
+    });
+    return result.error === null && typeof result.data?.id === 'string' && result.data.id.length > 0
+      ? 'provider-accepted' : 'unconfirmed';
+  } catch {
+    return 'unconfirmed';
+  }
+}

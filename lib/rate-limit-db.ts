@@ -20,8 +20,9 @@ export async function rateLimitDb(key: string, limit: number, windowMinutes: num
        RETURNING hits`,
       key,
     );
+    if (failClosed && (!Array.isArray(rows) || rows.length !== 1
+      || typeof rows[0]?.hits !== 'number' || !Number.isSafeInteger(rows[0].hits) || rows[0].hits < 1)) return false;
     const hits = Number(rows[0]?.hits ?? 0);
-    if (failClosed && (!Number.isSafeInteger(hits) || hits < 1)) return false;
     return hits <= limit;
   } catch {
     return !failClosed; // Legacy callers retain fail-open; billed image transport opts out.
@@ -29,9 +30,9 @@ export async function rateLimitDb(key: string, limit: number, windowMinutes: num
 }
 
 /** Convenience: rate-limit by the requester's IP. Returns true if allowed. */
-export async function rateLimitRequest(request: Request, prefix: string, limit: number, windowMinutes: number): Promise<boolean> {
+export async function rateLimitRequest(request: Request, prefix: string, limit: number, windowMinutes: number, failClosed = false): Promise<boolean> {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
     ?? request.headers.get('x-real-ip')
     ?? 'unknown';
-  return rateLimitDb(`${prefix}:${ip}`, limit, windowMinutes);
+  return rateLimitDb(`${prefix}:${ip}`, limit, windowMinutes, failClosed);
 }
