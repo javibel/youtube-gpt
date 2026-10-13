@@ -13,7 +13,9 @@ function harness(options={}){
  });return step('ack'+i,()=>options.foreignAdmission&&i===1?{...r,row:{...r.row,email:'foreign@example.invalid'}}:r);}};
  const globals={performance:{now:()=>now},setTimeout(fn,ms){const id=++serial;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id)};
  const helper=load('lib/profile-update.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma}},globals);
- const route=load('app/api/user/profile/route.ts',{'next/server':{NextResponse:Response},'@/auth':{auth:()=>step('auth',()=>state.user?{user:state.user}:null)},'@/lib/profile-update':helper},globals);
+ const authorities=new WeakMap();
+ const profileAuth={authorizeNativeProfile:()=>step('auth',()=>{if(!state.user)return null;const original=Object.freeze({});authorities.set(original,{owner:Object.freeze({userId:state.user.id,email:state.user.email}),used:false});return original;}),checkNativeProfile(original){assert(authorities.has(original));},dispatchNativeProfile(original,body,key,check){const own=authorities.get(original);assert(own&&!own.used);own.used=true;return helper.updateProfileOriginal(own.owner,body,key,check);}};
+ const route=load('app/api/user/profile/route.ts',{'next/server':{NextResponse:Response},'@/lib/profile-native-authorization':profileAuth,'@/lib/profile-update':helper},globals);
  if(options.preAborted)controller.abort();const original=route.PATCH({signal:controller.signal,headers:{get:()=>state.key},json:()=>step('body',()=>state.body)});
  return{original,state,calls,queries,entered,gates,timers,controller,pending:()=>pending,advance(ms,fire=true){now+=ms;if(fire)for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}},async release(stage){gates[stage]?.resolve();await flush();}};
 }
@@ -34,6 +36,6 @@ async function run(){const results=[],test=async(name,fn)=>{try{await fn();resul
  await test('pre-aborted no auth or SQL',async()=>{const h=harness({preAborted:true});await response(h,503);assert.equal(h.calls.length,0);});
  await test('malformed JSON400 no SQL',async()=>{const h=harness({fail:'body'});await response(h,400);assert(!h.calls.includes('admit'));});
  await test('auth/body share55s budget without fresh wait',async()=>{const h=harness({held:['auth','body']});await reach(h,'auth');h.advance(30000);await h.release('auth');await reach(h,'body');h.advance(25000);await response(h,503);await h.release('body');assert(!h.calls.includes('admit'));});
- return{status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',scope:'Current profile HTTP/helper; synthetic auth/SQL/clock only, native rollback separately',results};
+ return{status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',scope:'Current profile HTTP/helper with explicit synthetic authorization capability stub/SQL/clock only. Native cookie issuance/authorization is tested separately; native rollback receipts remain historical unless rerun.',results};
 }
 module.exports={run,harness};if(require.main===module){const timer=setTimeout(()=>{console.error('Profile fixture missing terminal');process.exit(1);},30000);run().then(r=>{console.log(JSON.stringify(r,null,2));if(r.status!=='PASS')process.exitCode=1;}).catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>clearTimeout(timer));}
