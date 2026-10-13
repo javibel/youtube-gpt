@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
 const {load}=require('./route-harness.cjs'),{fixture}=require('./email-verification-resend.test.cjs');
 module.exports=async(prisma,results)=>{
- const prefix='synthetic-resend-'+randomUUID(),emails=[],ids=[];
+ const prefix='synthetic-resend-'+randomUUID(),emails=[],ids=[],ownedPromises=[],releaseHeld=[];
  const before={tokens:await prisma.emailVerificationToken.count(),admissions:await prisma.emailVerificationResendAdmission.count()};
  const account=async suffix=>{const email=prefix+'-'+suffix+'@example.invalid';const user=await prisma.user.create({data:{email,name:'Synthetic'},select:{id:true,email:true}});emails.push(email);ids.push(user.id);return user;};
  const old=async(user,token)=>{assert.equal(await prisma.emailVerificationToken.count({where:{token}}),0);await prisma.emailVerificationToken.create({data:{email:user.email,token,expires:new Date(Date.now()+60000)}});};
@@ -21,7 +21,7 @@ module.exports=async(prisma,results)=>{
   assert.equal(owner.calls.mail.length,1);
   results.push('twenty preparations in two independent modules admit one code replacement and one owned notice');
   const held=await account('held'),d=(()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return{promise,resolve};})(),h=helper({mail:()=>d.promise}),p=await h.api.prepareVerificationResend(held.email,'en');
-  const dispatch=h.api.dispatchVerificationResend(p.notice);await new Promise(r=>setTimeout(r,25));
+  const dispatch=h.api.dispatchVerificationResend(p.notice);ownedPromises.push(dispatch);releaseHeld.push(d.resolve);await new Promise(r=>setTimeout(r,25));
   const heldCode=(await token(held.email)).token;assert.equal((await helper().api.prepareVerificationResend(held.email,'es')).status,'busy');assert.equal((await token(held.email)).token,heldCode);
   d.resolve('unconfirmed');assert.equal(await dispatch,'unconfirmed');assert.equal(h.api.dispatchVerificationResend(p.notice),dispatch);assert.equal(h.calls.mail.length,1);
   assert.equal(await prisma.emailVerificationResendAdmission.count({where:{email:held.email}}),1);
@@ -71,6 +71,8 @@ module.exports=async(prisma,results)=>{
   await Promise.all([rh.calls.after[0](),rh.calls.after[0]()]);assert.equal(rh.calls.mail.length,1);
   results.push('actual route acknowledgment precedes one provider invocation and duplicates join the same original');
  }finally{
+  for(const resolve of releaseHeld)resolve('unconfirmed');
+  await Promise.allSettled(ownedPromises);
   // Dedicated synthetic fixture teardown only, after every owned promise settles.
   // This is never application recovery: no send/adoption/retry follows teardown,
   // and inherited rows/markers/declared timestamps remain untouched.
