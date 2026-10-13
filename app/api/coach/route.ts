@@ -1,10 +1,9 @@
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { authorizeNativeCoach, runNativeCoach } from '@/lib/coach-native-authorization';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
-import { getExtensionUser } from '@/lib/extension-auth';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
 
 export const maxDuration = 60;
@@ -16,6 +15,7 @@ const MAX_CONTEXT = 10;
 function coachSendWait(signal: AbortSignal) {
   const deadline = performance.now() + 55_000;
   let retired = false;
+  let nativeCheck: (() => void) | null = null;
   let rejectWait!: (error: Error) => void;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
@@ -27,6 +27,7 @@ function coachSendWait(signal: AbortSignal) {
   const check = () => {
     if (signal.aborted || performance.now() >= deadline) retire();
     if (retired) throw new Error('Coach send unconfirmed');
+    nativeCheck?.();
   };
   return {
     async run<T>(operation: () => Promise<T>): Promise<T> {
@@ -37,6 +38,11 @@ function coachSendWait(signal: AbortSignal) {
       return result;
     },
     check,
+    bindNativeCheck(checkNative: () => void) {
+      if (nativeCheck) throw Error('Coach authentication already bound');
+      nativeCheck = checkNative;
+      check();
+    },
     close() { clearTimeout(timer); signal.removeEventListener('abort', retire); },
   };
 }
@@ -44,7 +50,14 @@ function coachSendWait(signal: AbortSignal) {
 export async function POST(request: Request) {
   const wait = coachSendWait(request.signal);
   try {
-    const response = await sendCoach(request, wait);
+    const authorization = await wait.run(() => authorizeNativeCoach(request));
+    if (!authorization) return NextResponse.json({ error: 'unauthorized' }, {
+      status: 401, headers: { 'Cache-Control': 'no-store' },
+    });
+    const response = await wait.run(() => runNativeCoach(authorization, async (owner, checkNative) => {
+      wait.bindNativeCheck(checkNative);
+      return sendCoach(request, wait, owner);
+    }));
     wait.check();
     response.headers.set('Cache-Control', 'no-store');
     return response;
@@ -61,16 +74,9 @@ export async function POST(request: Request) {
   } finally { wait.close(); }
 }
 
-async function sendCoach(request: Request, wait: ReturnType<typeof coachSendWait>) {
-  // Web uses the NextAuth session; the Chrome extension (P5 — Coach tab) sends a Bearer token.
-  const session = await wait.run(() => auth());
-  const extUser = !session?.user?.id ? await wait.run(() => getExtensionUser(request)) : null;
-  const userId = session?.user?.id || extUser?.user.id || null;
-  if (!userId) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const isProUser = extUser ? extUser.isPro : isPaid(await wait.run(() => getUserPlan(userId)));
+async function sendCoach(request: Request, wait: ReturnType<typeof coachSendWait>, owner: Readonly<{ id: string; email: string }> & (Readonly<{ source: 'web' }> | Readonly<{ source: 'extension'; isPro: boolean }>)) {
+  const userId = owner.id;
+  const isProUser = owner.source === 'extension' ? owner.isPro : isPaid(await wait.run(() => getUserPlan(userId)));
   if (!isProUser) {
     // C3: tocó el paywall del Coach — email explicativo (idempotente, DRY_RUN por defecto)
     await wait.run(() => triggerConversionEmail(userId, 'c3', undefined, wait.check));
