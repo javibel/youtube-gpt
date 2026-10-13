@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import { ADMIN_EMAIL } from "@/lib/admin-email";
 import { authenticator } from "otplib";
 import { rateLimitDb } from "@/lib/rate-limit-db";
+import { expectedTotpAccountMatches } from "@/lib/totp-account";
 import { AFFILIATES_DORMANT } from "@/lib/features";
 import { fixtureAuthRedirect } from "./lib/migration/local-auth-redirect.cjs";
 
@@ -188,7 +189,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const secret = process.env.ADMIN_TOTP_SECRET;
         const email = token.email?.toLowerCase().trim();
         if (token.isAdmin === true && typeof token.id === 'string' && token.id
-          && ADMIN_EMAIL && email === ADMIN_EMAIL && secret && /^\d{6}$/.test(code)) {
+          && ADMIN_EMAIL && email === ADMIN_EMAIL && secret && /^\d{6}$/.test(code)
+          && expectedTotpAccountMatches(session, { id: token.id, email: token.email })) {
           try {
             const allowed = await rateLimitDb(`verify-totp-session:${token.id}`, 10, 15, true);
             if (allowed === true && authenticator.verify({ token: code, secret }) === true) {

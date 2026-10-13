@@ -1,4 +1,5 @@
 'use client';
+import type { TotpAccountExpectation } from '@/lib/totp-account';
 
 export type TotpOwner = Readonly<{ id: string; email: string }>;
 export type TotpOutcome = Readonly<{ status: 'confirmed' | 'invalid' | 'rate-limited' | 'not-issued' | 'unconfirmed' }>;
@@ -29,11 +30,12 @@ export function retireTotpProgress(attempt: TotpAttempt) {
 }
 
 export function beginTotp(owner: TotpOwner, context: object, code: string,
-  update: (data: { totpCode: string }) => Promise<unknown>, active: () => boolean): TotpAttempt | undefined {
+  update: (data: { totpCode: string } & TotpAccountExpectation) => Promise<unknown>, active: () => boolean): TotpAttempt | undefined {
   if (totpBlocked() || !active() || !owner.id || !owner.email || !/^\d{6}$/.test(code)) return;
   const attempt: TotpAttempt = Object.freeze({ owner: Object.freeze({ id: owner.id, email: owner.email }) });
   const original: Original = { context, promise: Promise.resolve(unknown), allowUpdate: true, claimed: false };
   originals.set(attempt, original); retained = attempt;
+  const expectation: TotpAccountExpectation = Object.freeze({ expectedUserId: attempt.owner.id, expectedEmail: attempt.owner.email });
   const settle = (status: TotpOutcome['status']) => {
     const outcome: TotpOutcome = Object.freeze({ status });
     original.outcome = outcome; notify(); return outcome;
@@ -44,7 +46,7 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
       // Retain this exact HTTP/body/SDK chain. Ending a UI wait does not cancel
       // server work, prove cookie state, or authorize a replacement SDK call.
       const response = await fetch('/api/auth/verify-totp', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, ...expectation }),
       });
       const body: unknown = await response.json();
       if (!body || typeof body !== 'object' || Array.isArray(body)) return settle('unconfirmed');
@@ -54,7 +56,7 @@ export function beginTotp(owner: TotpOwner, context: object, code: string,
         || !('verified' in body) || body.verified !== true) return settle('unconfirmed');
       // A delayed precheck must never start the native mutation after retirement.
       if (!original.allowUpdate || !active()) return settle('not-issued');
-      const result = await update({ totpCode: code });
+      const result = await update({ totpCode: code, ...expectation });
       if (!result || typeof result !== 'object' || Array.isArray(result)
         || Object.keys(result).some(key => key !== 'user' && key !== 'expires')
         || ('expires' in result && typeof result.expires !== 'string')) return settle('unconfirmed');
