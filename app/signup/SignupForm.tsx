@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useSignupCommand } from '@/lib/use-signup-command';
+import { useSignupChallenge } from '@/lib/use-signup-challenge';
+import { signupPending } from '@/lib/signup-client';
 import { useGoogleSignin } from '@/lib/use-google-signin';
 import { sessionCookieWriterBusy } from '@/lib/session-cookie-writer';
 import PasswordInput from '@/components/PasswordInput';
@@ -11,30 +14,12 @@ import { AFFILIATES_DORMANT } from '@/lib/features';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-type TurnstileGlobal = {
-  render: (container: HTMLElement, opts: {
-    sitekey: string;
-    action?: string;
-    theme?: 'dark' | 'light';
-    language?: string;
-    callback?: (token: string) => void;
-    'expired-callback'?: () => void;
-    'error-callback'?: () => void;
-  }) => string;
-  reset: (widgetId?: string) => void;
-};
-
-declare global {
-  interface Window { turnstile?: TurnstileGlobal }
-}
-
 export default function SignupForm() {
-  const router = useRouter();
   const mounted = useRef(true);
-  const signupInFlight = useRef(false);
-  const selection = useRef({ name: '', email: '', password: '', confirmPassword: '', lang: 'es', refCode: '', affTyped: '' });
+  const selection = useRef({ name: '', email: '', password: '', confirmPassword: '', lang: 'es', refCode: '', affTyped: '', route: '' });
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const searchParams = useSearchParams();
+  const route = usePathname() + '?' + searchParams.toString();
   // Afiliados/referidos hibernados (ver docs/hibernacion-afiliados-referidos-2026-07-11.md):
   // forzar vacío desactiva en cascada las cookies ytv_ref/ytv_aff, el callback
   // de Google OAuth y el envío de ref/aff al signup, sin tocar cada punto por separado.
@@ -67,65 +52,35 @@ export default function SignupForm() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<'es'|'en'>('es');
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const turnstileWidgetId = useRef<string | undefined>(undefined);
+  const challenge = useSignupChallenge(TURNSTILE_SITE_KEY, lang);
 
   useEffect(() => {
-    const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
-    if (stored) setLang(stored);
+    try { const stored = localStorage.getItem('ytubviral_lang'); if (stored === 'es' || stored === 'en') setLang(stored); } catch {}
   }, []);
 
-  // The server requires its own Siteverify original, secret/hostname and signup
-  // action. Missing client configuration never bypasses that server guard.
-  useEffect(() => {
-    if (!TURNSTILE_SITE_KEY) return;
-
-    function renderWidget() {
-      if (!turnstileRef.current || !window.turnstile) return;
-      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
-        sitekey: TURNSTILE_SITE_KEY!,
-        action: 'signup',
-        theme: 'dark',
-        language: lang,
-        callback: (token) => setTurnstileToken(token),
-        'expired-callback': () => setTurnstileToken(''),
-        'error-callback': () => setTurnstileToken(''),
-      });
-    }
-
-    if (window.turnstile) {
-      renderWidget();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-    script.async = true;
-    script.defer = true;
-    script.onload = renderWidget;
-    document.head.appendChild(script);
-
-    return () => { document.head.removeChild(script); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (selection.current.name !== name || selection.current.email !== email || selection.current.password !== password || selection.current.confirmPassword !== confirmPassword || selection.current.lang !== lang || selection.current.refCode !== refCode || selection.current.affTyped !== affTyped) selection.current = { name, email, password, confirmPassword, lang, refCode, affTyped };
+  if (selection.current.name !== name || selection.current.email !== email || selection.current.password !== password || selection.current.confirmPassword !== confirmPassword || selection.current.lang !== lang || selection.current.refCode !== refCode || selection.current.affTyped !== affTyped || selection.current.route !== route) selection.current = { name, email, password, confirmPassword, lang, refCode, affTyped, route };
   const rendered = selection.current;
   const googleCallback = /^[a-zA-Z0-9_-]{1,20}$/.test(refCode) ? '/dashboard?ref='+refCode : '/dashboard';
-  const google = useGoogleSignin(rendered, googleCallback, !loading, () => mounted.current && selection.current === rendered && !signupInFlight.current);
+  const signup = useSignupCommand(rendered);
+  const loading = signup.waiting;
+  const google = useGoogleSignin(rendered, googleCallback, !signup.pending, () => mounted.current && selection.current === rendered && !signupPending());
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mounted.current || selection.current !== rendered || signupInFlight.current || loading || sessionCookieWriterBusy()) return;
+    if (!mounted.current || selection.current !== rendered || signupPending() || loading || sessionCookieWriterBusy()) return;
     setError('');
 
     if (password !== confirmPassword) {
       setError(t('Las contraseñas no coinciden', 'Passwords do not match'));
       return;
+    }
+    if (!name.trim() || name.trim().length > 100 || email.trim().length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError(t('Revisa el nombre y el email del registro.', 'Check the signup name and email')); return;
+    }
+    if (new TextEncoder().encode(password).length > 72) {
+      setError(t('La contraseña es demasiado larga.', 'The password is too long.')); return;
     }
     if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
       setError(t(
@@ -133,6 +88,10 @@ export default function SignupForm() {
         'At least 8 characters, with at least 1 letter and 1 number'
       ));
       return;
+    }
+
+    if (!challenge.challenge || challenge.status !== 'ready') {
+      setError(t('Completa la verificación antes de crear tu cuenta.', 'Complete the verification before creating your account.')); return;
     }
 
     // Attribution is resolved HERE, not at mount: LandingCapture writes these from an
@@ -160,9 +119,9 @@ export default function SignupForm() {
       const utmCookie = document.cookie.split('; ').find(r => r.startsWith('ytv_utm='));
       if (utmCookie) {
         const parsed = JSON.parse(decodeURIComponent(utmCookie.split('=').slice(1).join('=')));
-        utmSource = parsed.source ?? undefined;
-        utmMedium = parsed.medium ?? undefined;
-        utmCampaign = parsed.campaign ?? undefined;
+        utmSource = typeof parsed.source === 'string' ? parsed.source.slice(0, 100) : undefined;
+        utmMedium = typeof parsed.medium === 'string' ? parsed.medium.slice(0, 100) : undefined;
+        utmCampaign = typeof parsed.campaign === 'string' ? parsed.campaign.slice(0, 100) : undefined;
       }
     } catch {}
 
@@ -179,29 +138,11 @@ export default function SignupForm() {
     }
     const aff = AFFILIATES_DORMANT ? undefined : (affTyped.trim() || affQueryCode || affCookie || undefined);
 
-    signupInFlight.current = true; setLoading(true);
-    try {
-      const res = await fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, lang, utmSource, utmMedium, utmCampaign, ref: refCode || undefined, aff, signupReferrer: signupReferrer || undefined, signupLandingPage: signupLandingPage || undefined, turnstileToken: turnstileToken || undefined }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || t('Error al crear cuenta', 'Error creating account'));
-        if (TURNSTILE_SITE_KEY && window.turnstile) {
-          window.turnstile.reset(turnstileWidgetId.current);
-          setTurnstileToken('');
-        }
-      } else {
-        // The verification page accepts an optional explicit password. No
-        // plaintext credential is stored or adopted through a browser slot.
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-      }
-    } catch {
-      setError(t('Error al crear cuenta', 'Error creating account'));
+    if (!signup.start({ name, email, password, lang, utmSource, utmMedium, utmCampaign,
+      ref: refCode || undefined, aff, signupReferrer: signupReferrer.slice(0, 500) || undefined,
+      signupLandingPage: signupLandingPage.slice(0, 500) || undefined }, challenge.challenge)) {
+      setError(t('La verificación ya no está disponible. Complétala de nuevo.', 'The verification is no longer available. Complete it again.'));
     }
-    signupInFlight.current = false; setLoading(false);
   };
 
   return (
@@ -214,8 +155,8 @@ export default function SignupForm() {
           <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
         </a>
         <button
-          disabled={loading || google.blocked}
-          onClick={() => { if (signupInFlight.current || sessionCookieWriterBusy()) return; const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
+          disabled={signup.blocked || google.blocked}
+          onClick={() => { if (signupPending() || sessionCookieWriterBusy()) return; const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
           className="yv-chip flex items-center gap-1 font-mono-jb text-[13px] tracking-wider px-2 py-1"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
@@ -233,7 +174,7 @@ export default function SignupForm() {
 
         <div className="soft-card p-8">
           <button
-            disabled={loading || google.blocked}
+            disabled={signup.blocked || google.blocked}
             onClick={google.start}
             className="yv-btn yv-btn--ghost w-full py-3 px-4 text-sm font-medium text-white"
           >
@@ -264,20 +205,20 @@ export default function SignupForm() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nombre', 'Name')}</label>
-              <input type="text" disabled={loading || google.blocked} value={name} onChange={(e) => setName(e.target.value)}
+              <input type="text" maxLength={100} disabled={signup.blocked || google.blocked} value={name} onChange={(e) => setName(e.target.value)}
                 className="soft-field py-3 px-4 text-sm"
                 placeholder={t('Tu nombre', 'Your name')} required />
             </div>
 
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
-              <input type="email" disabled={loading || google.blocked} value={email} onChange={(e) => setEmail(e.target.value)}
+              <input type="email" maxLength={254} disabled={signup.blocked || google.blocked} value={email} onChange={(e) => setEmail(e.target.value)}
                 className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" required />
             </div>
 
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Contraseña', 'Password')}</label>
-              <PasswordInput disabled={loading || google.blocked} value={password} onChange={(e) => setPassword(e.target.value)}
+              <PasswordInput disabled={signup.blocked || google.blocked} value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm"
                 placeholder={t('Mínimo 8 caracteres', 'At least 8 characters')} required />
               <p className="font-mono-jb text-[11px] mt-1.5" style={{ color: 'var(--yv-text-4)' }}>
@@ -287,14 +228,14 @@ export default function SignupForm() {
 
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Confirmar contraseña', 'Confirm password')}</label>
-              <PasswordInput disabled={loading || google.blocked} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+              <PasswordInput disabled={signup.blocked || google.blocked} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                 className="py-3 px-4 text-sm"
                 placeholder={t('Repite tu contraseña', 'Repeat your password')} required />
             </div>
 
             {!AFFILIATES_DORMANT && (
               !showAffInput ? (
-                <button type="button" disabled={loading || google.blocked} onClick={() => { if (!signupInFlight.current && !sessionCookieWriterBusy()) setShowAffInput(true); }}
+                <button type="button" disabled={signup.blocked || google.blocked} onClick={() => { if (!signupPending() && !sessionCookieWriterBusy()) setShowAffInput(true); }}
                   className="font-mono-jb text-[12px] text-zinc-500 hover:text-zinc-300 transition underline">
                   {t('¿Te recomendó un creador? Añade su código', 'Did a creator recommend you? Add their code')}
                 </button>
@@ -303,13 +244,28 @@ export default function SignupForm() {
                   <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
                     {t('Código de afiliado (opcional)', 'Affiliate code (optional)')}
                   </label>
-                  <input type="text" disabled={loading || google.blocked} value={affTyped} onChange={(e) => setAffTyped(e.target.value)}
+                  <input type="text" disabled={signup.blocked || google.blocked} value={affTyped} onChange={(e) => setAffTyped(e.target.value)}
                     className="soft-field py-3 px-4 text-sm" placeholder={t('ej. erika', 'e.g. erika')} />
                 </div>
               )
             )}
 
-            {TURNSTILE_SITE_KEY && <div ref={turnstileRef} />}
+            {TURNSTILE_SITE_KEY && <div ref={challenge.container} />}
+            {challenge.status !== 'ready' && <p role="status">{challenge.status === 'unavailable'
+              ? t('La verificación no está disponible. El registro por email no puede continuar.', 'Verification is unavailable. Email signup cannot continue.')
+              : challenge.status === 'expired' ? t('La verificación ha caducado. Complétala de nuevo.', 'Verification expired. Complete it again.')
+              : t('Completa la verificación de seguridad.', 'Complete the security verification.')}</p>}
+            {!signup.blocked && TURNSTILE_SITE_KEY && (challenge.status === 'expired' || challenge.status === 'unavailable' || ['invalid', 'exists', 'bot-denied', 'rate-limited', 'not-issued'].includes(signup.status ?? '')) &&
+              <button type="button" onClick={() => { if (!signupPending() && !sessionCookieWriterBusy()) challenge.restart(); }}>{t('Rehacer verificación', 'Redo verification')}</button>}
+            {signup.status === 'unconfirmed' && <div role="alert"><p>{t('No se ha confirmado el registro. La solicitud puede seguir en curso; comprueba tu correo antes de volver a registrarte.', 'Signup was not confirmed. The request may still be running; check your email before signing up again.')}</p>
+              {signup.canObserve && <button type="button" onClick={signup.observe}>{t('Consultar registro pendiente', 'Check pending signup')}</button>}</div>}
+            {signup.status === 'created' && <p role="status">{t('Cuenta creada. Comprueba tu correo para verificarla.', 'Account created. Check your email to verify it.')}</p>}
+            {signup.status === 'exists' && <p role="alert">{t('Ya existe una cuenta con este email. Inicia sesión o verifica tu correo.', 'An account with this email already exists. Sign in or verify your email.')}</p>}
+            {signup.status === 'invalid' && <p role="alert">{t('Revisa los datos del registro.', 'Check the signup details.')}</p>}
+            {signup.status === 'bot-denied' && <p role="alert">{t('La verificación no fue aceptada. Complétala de nuevo.', 'Verification was not accepted. Complete it again.')}</p>}
+            {signup.status === 'rate-limited' && <p role="alert">{t('Demasiados intentos. Espera antes de volver a intentarlo.', 'Too many attempts. Wait before trying again.')}</p>}
+            {signup.status === 'not-issued' && <p role="status">{t('No se envió el registro. Puedes iniciar una nueva solicitud.', 'Signup was not sent. You can start a new request.')}</p>
+            {signup.blocked && !signup.own && !google.own && <p role="status">{t('Hay una operación pendiente. Espera a que termine.', 'An operation is pending. Wait for it to finish.')}</p>}
 
             {error && (
               <div className="yv-note yv-note--error">
@@ -317,7 +273,7 @@ export default function SignupForm() {
               </div>
             )}
 
-            <button type="submit" disabled={loading || google.blocked}
+            <button type="submit" disabled={signup.blocked || google.blocked}
               className="btn-offset w-full py-3.5 font-display font-bold text-[15px] disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? (
                 <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r" />{t('Creando cuenta...', 'Creating account...')}</>

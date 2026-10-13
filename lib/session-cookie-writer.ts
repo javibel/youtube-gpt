@@ -1,7 +1,7 @@
 
 'use client';
 
-export type SessionCookieWriter = Readonly<{ kind: 'totp' | 'signout' | 'refresh' | 'credentials' | 'google' | 'email' }>;
+export type SessionCookieWriter = Readonly<{ kind: 'totp' | 'signout' | 'refresh' | 'credentials' | 'google' | 'email' | 'signup' }>;
 const permits = new WeakMap<SessionCookieWriter, { postIssued: boolean; readIssued: boolean }>();
 let held: SessionCookieWriter | undefined;
 const listeners = new Set<() => void>();
@@ -13,7 +13,7 @@ export function sessionCookieWriterBusy() { return held !== undefined; }
 export function heldSessionCookieWriterKind() { return held?.kind; } // Negative UI hint, never a capability.
 
 export function admitSessionCookieWriter(kind: SessionCookieWriter['kind']): SessionCookieWriter | undefined {
-  if (held || (kind !== 'totp' && kind !== 'signout' && kind !== 'refresh' && kind !== 'credentials' && kind !== 'google' && kind !== 'email')) return;
+  if (held || (kind !== 'totp' && kind !== 'signout' && kind !== 'refresh' && kind !== 'credentials' && kind !== 'google' && kind !== 'email' && kind !== 'signup')) return;
   const permit: SessionCookieWriter = Object.freeze({ kind });
   permits.set(permit, { postIssued: false, readIssued: false }); held = permit; notify(); return permit;
 }
@@ -24,7 +24,7 @@ export function admitSessionCookieWriter(kind: SessionCookieWriter['kind']): Ses
 // and late cookies across a new instance still require separate coordination.
 export function markSessionCookiePost(permit: SessionCookieWriter) {
   const original = permits.get(permit);
-  if (held !== permit || !original || permit.kind === 'refresh' || original.postIssued || original.readIssued) return false;
+  if (held !== permit || !original || permit.kind === 'refresh' || permit.kind === 'signup' || original.postIssued || original.readIssued) return false;
   original.postIssued = true; return true;
 }
 
