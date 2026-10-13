@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { hasAcceptedAffiliateApplicationResponse } from '@/lib/affiliate-application-response';
+import AffiliateApplicationForm from '@/components/AffiliateApplicationForm';
 import { useLang } from '@/components/LangProvider';
 import { useCurrency } from '@/components/CurrencyProvider';
 import { PRICES, formatPrice } from '@/lib/pricing';
@@ -16,34 +15,6 @@ export default function AffiliatesClient() {
   const commissionMonthly = formatPrice(Math.round(PRICES.pro.monthly.eur * 10 * 0.3), currency, lang);
   const commissionYear = formatPrice(Math.round(PRICES.pro.monthly.eur * 10 * 0.3 * 12), currency, lang);
   const t = (es: string, en: string) => (lang === 'en' ? en : es);
-
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [channelInfo, setChannelInfo] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResult(null);
-    setLoading(true);
-    try {
-      const res = await fetch('/api/affiliates/apply', {
-        method: 'POST', credentials: 'omit', redirect: 'error', cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, channelInfo, lang }),
-      });
-      const data = await res.json();
-      if (!hasAcceptedAffiliateApplicationResponse(res.status, data)) {
-        setResult({ ok: false, text: t('Solicitud sin confirmar. Puede seguir pendiente.', 'Request unconfirmed. It may still be pending.') });
-      } else {
-        setResult({ ok: true, text: t('Solicitud recibida. Esto no confirma aprobación ni entrega de un correo.', 'Request received. This does not confirm approval or email delivery.') });
-      }
-    } catch {
-      setResult({ ok: false, text: t('Solicitud sin confirmar. Puede seguir pendiente.', 'Request unconfirmed. It may still be pending.') });
-    }
-    setLoading(false);
-  };
 
   return (
     <div className="min-h-screen grain" style={{ background: 'var(--ink)', color: 'var(--text)' }}>
@@ -107,40 +78,7 @@ export default function AffiliatesClient() {
 
         <section className="mb-12">
           <h2 className="font-display font-bold text-2xl text-white mb-4">{t('Solicitar acceso', 'Apply')}</h2>
-          <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
-            <div>
-              <label htmlFor="affiliate-name" className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">{t('Nombre', 'Name')}</label>
-              <input id="affiliate-name" type="text" autoComplete="name" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} required
-                className="soft-field py-3 px-4 text-sm" placeholder={t('Tu nombre o el de tu canal', 'Your name or your channel\'s')} />
-            </div>
-            <div>
-              <label htmlFor="affiliate-email" className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
-              <input id="affiliate-email" type="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} required
-                className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" />
-            </div>
-            <div>
-              <label htmlFor="affiliate-channel" className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
-                {t('Tu canal/audiencia y cómo piensas promocionarlo', 'Your channel/audience and how you plan to promote it')}
-              </label>
-              <textarea id="affiliate-channel" maxLength={2000} value={channelInfo} onChange={(e) => setChannelInfo(e.target.value)} rows={4}
-                className="soft-field py-3 px-4 text-sm" placeholder={t('Link a tu canal, tamaño aproximado de audiencia, y si lo harías en vídeo, descripción, newsletter...', 'Link to your channel, rough audience size, and whether you\'d do it in a video, description, newsletter...')} />
-            </div>
-
-            {result && (
-              <div role={result.ok ? "status" : "alert"} className="rounded-xl px-4 py-3 text-sm" style={{
-                background: result.ok ? 'rgba(34,197,94,0.08)' : 'rgba(232,77,91,0.08)',
-                border: `1px solid ${result.ok ? 'rgba(34,197,94,0.3)' : 'rgba(232,77,91,0.3)'}`,
-                color: result.ok ? '#4ade80' : '#f87171',
-              }}>
-                {result.text}
-              </div>
-            )}
-
-            <button type="submit" disabled={loading}
-              className="btn-offset py-3.5 px-7 font-display font-bold text-[15px] disabled:opacity-60">
-              {loading ? t('Enviando...', 'Sending...') : t('Enviar solicitud →', 'Submit application →')}
-            </button>
-          </form>
+          <AffiliateApplicationForm lang={lang} />
           <p className="font-mono-jb text-[12px] mt-4" style={{ color: 'var(--yv-text-4)' }}>
             {t('Todas las solicitudes se revisan a mano. Sin aprobación automática.', 'All applications are reviewed by hand. No automatic approval.')}
             {' '}
