@@ -9,7 +9,7 @@ function syncGenerationContext(token){
   return generationContext;
 }
 chrome.storage.onChanged.addListener((changes,area)=>{
-  if(area==='local'&&Object.hasOwn(changes,'ytv_token'))generationContext=null;
+  if(area==='local'&&Object.hasOwn(changes,'ytv_token')) { generationContext=null; identityRevision++; retireExtensionIdentity(); }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -89,6 +89,7 @@ let passwordLoginOriginal = null;
 let tokenMutationOriginal = null;
 async function passwordLogin(msg) {
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('Hay un acceso pendiente de confirmar.');
+  retireExtensionIdentity();
   const original = {};
   passwordLoginOriginal = original;
   const deadline = performance.now() + 60_000;
@@ -106,6 +107,8 @@ async function passwordLogin(msg) {
   };
   const producer = (async () => {
     const lang = await getLang(); check();
+    if (Object.hasOwn(await chrome.storage.local.get(IDENTITY_WRITE_PENDING), IDENTITY_WRITE_PENDING)) throw Error('No se pudo confirmar la cuenta.');
+    check();
     const uncertain = lang === 'en' ? 'Sign-in could not be confirmed. It will not be repeated automatically.' : 'No se pudo confirmar el acceso. No se repetirá automáticamente.';
     const pending = await readPending(); check();
     if (Object.hasOwn(pending, PASSWORD_LOGIN_PENDING)) throw Error(lang === 'en' ? 'A previous sign-in still needs confirmation.' : 'Hay un acceso anterior pendiente de confirmar.');
@@ -147,8 +150,10 @@ async function passwordLogin(msg) {
 
 async function mutateExtensionToken(msg) {
   if (passwordLoginOriginal || tokenMutationOriginal) return msg.type === 'STORE_TOKEN' ? { ok: false } : Promise.reject(Error('Hay un acceso pendiente de confirmar.'));
+  retireExtensionIdentity();
   const original = {}; tokenMutationOriginal = original;
   try {
+    if (Object.hasOwn(await chrome.storage.local.get(IDENTITY_WRITE_PENDING), IDENTITY_WRITE_PENDING)) return msg.type === 'STORE_TOKEN' ? { ok: false } : Promise.reject(Error('No se pudo confirmar la cuenta.'));
     if (msg.type === 'LOGOUT') {
       await chrome.storage.local.remove(['ytv_token', 'ytv_user']);
       return { ok: true };
@@ -160,7 +165,77 @@ async function mutateExtensionToken(msg) {
   } finally { if (tokenMutationOriginal === original) tokenMutationOriginal = null; }
 }
 
+// A stored cache is display data, never authority to accept an account. A read
+// shares only its live original promise. Token changes retire even an ABA value.
+const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
+let identityReadOriginal = null;
+let identityRevision = 0;
+function retireExtensionIdentity() { identityReadOriginal?.retire(); }
+async function getExtensionIdentity() {
+  if (identityReadOriginal) return identityReadOriginal.wait;
+  if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
+  const original = { revision: identityRevision, retire: null, wait: null };
+  identityReadOriginal = original;
+  const deadline = performance.now() + 30_000;
+  let retired = false, rejectWait, writer = null;
+  const stopped = new Promise((_, reject) => { rejectWait = reject; });
+  const retire = () => { if (!retired) { retired = true; rejectWait(Error('No se pudo confirmar la cuenta.')); } };
+  original.retire = retire;
+  const timer = setTimeout(retire, 30_000);
+  const check = () => {
+    if (performance.now() >= deadline || original.revision !== identityRevision
+      || identityReadOriginal !== original || passwordLoginOriginal
+      || (tokenMutationOriginal && tokenMutationOriginal !== writer)) retire();
+    if (retired) throw Error('No se pudo confirmar la cuenta.');
+  };
+  const producer = (async () => {
+    const prior = await chrome.storage.local.get(IDENTITY_WRITE_PENDING); check();
+    if (Object.hasOwn(prior, IDENTITY_WRITE_PENDING)) throw Error('No se pudo confirmar la cuenta.');
+    const token = await getToken(); check();
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return null;
+    const readRef = crypto.randomUUID();
+    const { res, data } = await apiFetch(API_BASE + '/api/extension/me', {
+      timeoutMs: 25_000, maxResponseBytes: 16*1024, credentials: 'omit', cache: 'no-store',
+      headers: { Authorization: 'Bearer ' + token, 'X-YTV-Read-Ref': readRef },
+    });
+    check();
+    const denied = res.status === 401 && data?.code === 'extension_unauthorized' && data.readRef === readRef;
+    if (!denied && (res.status !== 200 || data?.readRef !== readRef || typeof data.userId !== 'string'
+      || !/^[A-Za-z0-9_-]{1,128}$/.test(data.userId) || typeof data.email !== 'string' || data.email.length > 254
+      || data.email !== data.email.trim().toLowerCase() || !/^[^\s@,;<>"\x00-\x1f\x7f]+@[^\s@,;<>"\x00-\x1f\x7f]+\.[^\s@,;<>"\x00-\x1f\x7f]+$/.test(data.email)
+      || typeof data.isPro !== 'boolean' || !(data.name === null || typeof data.name === 'string')
+      || !Number.isSafeInteger(data.expiresAt) || data.expiresAt <= Date.now())) throw Error('No se pudo confirmar la cuenta.');
+    // Native re-read and event revision can only deny this captured credential.
+    // They cannot adopt an old cache, token value, receipt or replacement reader.
+    const current = await getToken(); check();
+    if (current !== token) throw Error('No se pudo confirmar la cuenta.');
+    writer = {}; tokenMutationOriginal = writer;
+    const key = crypto.randomUUID(); let closed = false;
+    const close = async () => {
+      const row = await chrome.storage.local.get(IDENTITY_WRITE_PENDING);
+      if (tokenMutationOriginal !== writer || row[IDENTITY_WRITE_PENDING]?.key !== key) throw Error('No se pudo confirmar la cuenta.');
+      await chrome.storage.local.remove(IDENTITY_WRITE_PENDING); closed = true;
+    };
+    try {
+      await chrome.storage.local.set({ [IDENTITY_WRITE_PENDING]: { key } });
+      check();
+      if (denied) { await chrome.storage.local.remove(['ytv_token', 'ytv_user']); await close(); return null; }
+      const user = { id: data.userId, name: data.name, email: data.email, isPro: data.isPro };
+      await chrome.storage.local.set({ ytv_user: user });
+      await close(); check();
+      if (data.expiresAt <= Date.now()) throw Error('No se pudo confirmar la cuenta.');
+      return user;
+    } finally { if (closed && tokenMutationOriginal === writer) tokenMutationOriginal = null; }
+  })();
+  // A cache mutation already dispatched keeps its own storage ACK and exclusion
+  // after timeout. No replacement writer runs until that original settles.
+  void producer.finally(() => { if (identityReadOriginal === original) identityReadOriginal = null; }).catch(() => {});
+  original.wait = Promise.race([producer, stopped]).finally(() => { retired = true; clearTimeout(timer); });
+  return original.wait;
+}
+
 async function handleMessage(msg) {
+  if (msg.type === 'GET_USER') return getExtensionIdentity();
   if (msg.type === 'STORE_TOKEN' || msg.type === 'LOGOUT') return mutateExtensionToken(msg);
   if (msg.type === 'LOGIN') return passwordLogin(msg);
   const lang = await getLang();
@@ -170,46 +245,6 @@ async function handleMessage(msg) {
     case 'HAS_TOKEN': {
       const token = await getToken();
       return { hasToken: !!token };
-    }
-
-    case 'GET_USER': {
-      const token = await getToken();
-      if (!token) return null;
-      // Return cached user instantly if available
-      const cached = await new Promise(resolve => {
-        chrome.storage.local.get('ytv_user', data => resolve(data.ytv_user || null));
-      });
-      if (cached) {
-        // Refresh in background (don't await — caller gets instant response)
-        apiFetch(`${API_BASE}/api/extension/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }).then(async ({ res, data }) => {
-          if (res.status === 401) {
-            // Token expired/revoked — clear it so the UI reflects logged-out next time
-            await chrome.storage.local.remove(['ytv_token', 'ytv_user']);
-          } else if (res.ok && data && data.email) {
-            // data.email guard: a 200 with a non-JSON body (proxy error page) leaves data={}
-            // — don't overwrite a good cached user with an empty object
-            await chrome.storage.local.set({ ytv_user: data });
-          }
-        }).catch(() => {});
-        return cached;
-      }
-      // No cache — must fetch (first load after login on new page)
-      try {
-        const { res, data } = await apiFetch(`${API_BASE}/api/extension/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (res.status === 401) {
-          await chrome.storage.local.remove(['ytv_token', 'ytv_user']);
-          return null;
-        }
-        if (!res.ok || !data || !data.email) return null; // data.email: see guard note above
-        await chrome.storage.local.set({ ytv_user: data });
-        return data;
-      } catch {
-        return null;
-      }
     }
 
     case 'SET_LANG': {
