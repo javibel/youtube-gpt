@@ -2,11 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { signIn, useSession } from 'next-auth/react';
-import { sessionCookieWriterBusy } from '@/lib/session-cookie-writer';
+import { sessionCookieWriterBusy, subscribeSessionCookieWriter } from '@/lib/session-cookie-writer';
+import { beginCredentials, claimCredentialsNavigation, observeCredentialsOriginal, retireCredentialsProgress, type CredentialsAttempt, type CredentialsOutcome } from '@/lib/credentials-client';
 import PasswordInput from '@/components/PasswordInput';
 
 export default function LoginForm() {
-  const { update, status } = useSession();
+  const { status } = useSession();
+  const context = useRef({});
+  const command = useRef<{ attempt: CredentialsAttempt; frame: object } | undefined>(undefined);
+  const observer = useRef<ReturnType<typeof observeCredentialsOriginal> | undefined>(undefined);
+  const [cookieBusy, setCookieBusy] = useState(sessionCookieWriterBusy);
+  const [pending, setPending] = useState(false);
+  const [denied, setDenied] = useState(false);
   const mounted = useRef(true);
   const selection = useRef({ email: '', password: '', totp: '', lang: 'es' });
   const [email, setEmail] = useState('');
@@ -19,48 +26,56 @@ export default function LoginForm() {
   const [showTotp, setShowTotp] = useState(false);
   if (selection.current.email !== email || selection.current.password !== password || selection.current.totp !== totp || selection.current.lang !== lang) selection.current = { email, password, totp, lang };
   const rendered = selection.current;
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { mounted.current = true; const unsubscribe = subscribeSessionCookieWriter(() => setCookieBusy(sessionCookieWriterBusy())); return () => { mounted.current = false; unsubscribe(); observer.current?.retire(); if (command.current) retireCredentialsProgress(command.current.attempt); }; }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem('ytubviral_lang') as 'es'|'en' | null;
     if (stored) setLang(stored);
     if (new URLSearchParams(window.location.search).get('verified') === '1') setJustVerified(true);
+    if (new URLSearchParams(window.location.search).get('credentials') === '1') { setShowTotp(true); setError(stored === 'en' ? 'Incorrect email, password, or code.' : 'Email, contraseña o código incorrectos.'); }
   }, []);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
 
+  const applyOutcome = (attempt: CredentialsAttempt, outcome: CredentialsOutcome) => {
+    const target = claimCredentialsNavigation(attempt, context.current, outcome);
+    if (target === '/dashboard') window.location.href = target;
+    else if (target) {
+      setDenied(true); setPending(false); setShowTotp(true);
+      setError(t('Email, contraseña o código incorrectos. Vuelve a abrir el formulario para intentarlo de nuevo.', 'Incorrect email, password, or code. Reopen the form to try again.'));
+    } else if (outcome.status === 'not-issued') {
+      command.current = undefined; setPending(false);
+      setError(t('No se envió el inicio de sesión. Puedes intentarlo de nuevo.', 'Sign-in was not sent. You can try again.'));
+    } else {
+      setPending(true);
+      setError(t('No se ha confirmado el inicio de sesión. Consulta la solicitud pendiente.', 'Sign-in was not confirmed. Check the pending request.'));
+    }
+  };
+  const observeOwn = async () => {
+    const own = command.current;
+    const active = () => mounted.current && command.current === own && selection.current === own?.frame;
+    if (!own || !active() || loading) return;
+    setLoading(true);
+    const view = observeCredentialsOriginal(own.attempt, context.current, active); observer.current = view;
+    const outcome = await view.promise;
+    if (observer.current !== view || !active()) return;
+    observer.current = undefined; applyOutcome(own.attempt, outcome); setLoading(false);
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const captured = rendered;
     const active = () => mounted.current && selection.current === captured;
     if (!active() || loading || status === 'loading' || sessionCookieWriterBusy()) return;
-    setLoading(true); setError('');
-    try {
-      const result = await signIn('credentials', { email: captured.email, password: captured.password, totp: captured.totp || undefined, redirect: false });
-      if (!active()) return;
-      if (result?.error) {
-        setShowTotp(true);
-        setError(showTotp
-          ? t('Email, contraseña o código incorrectos', 'Incorrect email, password, or code')
-          : t('Credenciales incorrectas. Si tu cuenta tiene verificación en dos pasos, introduce el código.', 'Incorrect credentials. If your account has two-step verification, enter the code.'));
-      } else if (result?.ok === true && result.status === 200) {
-        // The remaining SDK sign-in is not a reader/GET receipt. Observe the
-        // original native session read, then load the destination with its cookie.
-        const sess = await update();
-        if (!active()) return;
-        if (!sess?.user?.id || sess.user.email?.toLowerCase().trim() !== captured.email.toLowerCase().trim()) {
-          setError(t('No se ha confirmado la sesión. Consulta la solicitud pendiente.', 'The session was not confirmed. Check the pending request.'));
-        } else if ((sess.user as { requiresVerification?: boolean }).requiresVerification === true) {
-          fetch('/api/auth/resend-verification', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: captured.email, lang: captured.lang }),
-          }).catch(() => {});
-          window.location.href = '/verify-email?email='+encodeURIComponent(captured.email);
-        } else window.location.href = '/dashboard';
-      } else setError(t('No se ha confirmado el inicio de sesión.', 'Sign-in was not confirmed.'));
-    } catch { if (active()) setError(t('Error al ingresar', 'Sign in error')); }
-    finally { if (active()) setLoading(false); }
+    const attempt = beginCredentials(captured, window.location.origin, context.current, active);
+    if (!attempt) {
+      setError(t('Revisa el email, la contraseña y el código de seis dígitos.', 'Check your email, password and six-digit code.')); return;
+    }
+    command.current = { attempt, frame: captured }; setLoading(true); setError('');
+    const view = observeCredentialsOriginal(attempt, context.current, active); observer.current = view;
+    const outcome = await view.promise;
+    if (observer.current !== view || !active()) return;
+    observer.current = undefined; applyOutcome(attempt, outcome); setLoading(false);
   };
 
   return (
@@ -73,7 +88,8 @@ export default function LoginForm() {
           <span className="font-display font-bold text-[15px] tracking-tight text-white">YTubViral<span style={{ color: 'var(--yv-brand)' }}>.</span>com</span>
         </a>
         <button
-          onClick={() => { const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
+          disabled={loading || cookieBusy}
+          onClick={() => { if (loading || sessionCookieWriterBusy()) return; const next = lang === 'es' ? 'en' : 'es'; setLang(next); localStorage.setItem('ytubviral_lang', next); document.cookie = `ytubviral_lang=${next};path=/;max-age=31536000;samesite=lax`; }}
           className="yv-chip flex items-center gap-1 font-mono-jb text-[13px] tracking-wider px-2 py-1"
         >
           <span style={{ color: lang === 'es' ? 'white' : '#52525b', fontWeight: lang === 'es' ? 700 : 400 }}>ES</span>
@@ -91,8 +107,8 @@ export default function LoginForm() {
 
         <div className="soft-card p-8">
           <button
-            disabled={loading || status === 'loading'}
-            onClick={() => { if (!sessionCookieWriterBusy()) void signIn('google', { callbackUrl: '/dashboard' }); }}
+            disabled={loading || cookieBusy || status === 'loading'}
+            onClick={() => { if (mounted.current && selection.current === rendered && !loading && status !== 'loading' && !sessionCookieWriterBusy()) void signIn('google', { callbackUrl: '/dashboard' }); }}
             className="yv-btn yv-btn--ghost w-full py-3 px-4 text-sm font-medium text-white"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -113,7 +129,7 @@ export default function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">Email</label>
-              <input type="email" disabled={loading || status === 'loading'} value={email} onChange={(e) => setEmail(e.target.value)}
+              <input type="email" disabled={loading || cookieBusy || status === 'loading'} value={email} onChange={(e) => setEmail(e.target.value)}
                 className="soft-field py-3 px-4 text-sm" placeholder="you@email.com" required />
             </div>
 
@@ -124,7 +140,7 @@ export default function LoginForm() {
                   {t('¿Olvidaste la contraseña?', 'Forgot password?')}
                 </a>
               </div>
-              <PasswordInput disabled={loading || status === 'loading'} value={password} onChange={(e) => setPassword(e.target.value)}
+              <PasswordInput disabled={loading || cookieBusy || status === 'loading'} value={password} onChange={(e) => setPassword(e.target.value)}
                 className="py-3 px-4 text-sm" required />
             </div>
 
@@ -133,7 +149,7 @@ export default function LoginForm() {
                 <label className="block font-mono-jb text-[13px] tracking-wider uppercase text-zinc-500 mb-2">
                   {t('Código de verificación', 'Verification code')}
                 </label>
-                <input type="text" disabled={loading || status === 'loading'} inputMode="numeric" autoComplete="one-time-code" value={totp}
+                <input type="text" disabled={loading || cookieBusy || status === 'loading'} inputMode="numeric" autoComplete="one-time-code" value={totp}
                   onChange={(e) => setTotp(e.target.value)}
                   className="soft-field py-3 px-4 text-sm" placeholder="123456" maxLength={6} />
               </div>
@@ -145,13 +161,17 @@ export default function LoginForm() {
               </div>
             )}
 
+            {cookieBusy && !loading && !pending && !denied && <p role="status">{t('Hay una operación de sesión pendiente. Espera a que termine.', 'A session operation is pending. Wait for it to finish.')}</p>}
+
             {error && (
               <div role="alert" className="yv-note yv-note--error">
                 {error}
+                {pending && command.current?.frame === rendered && <button type="button" disabled={loading} onClick={() => void observeOwn()}>{t('Consultar solicitud pendiente', 'Check pending request')}</button>}
+                {denied && <button type="button" onClick={() => { if (mounted.current) window.location.href = '/login?credentials=1'; }}>{t('Volver a abrir el formulario', 'Reopen form')}</button>}
               </div>
             )}
 
-            <button type="submit" disabled={loading || status === 'loading'}
+            <button type="submit" disabled={loading || cookieBusy || status === 'loading'}
               className="btn-offset w-full py-3.5 font-display font-bold text-[15px] disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? (
                 <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full spin-r" />{t('Ingresando...', 'Signing in...')}</>

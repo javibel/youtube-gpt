@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=r
 const {deferred,flush,reply}=require('./chat-widget-harness.cjs');
 const root=path.resolve(__dirname,'../..'),parentRoot=path.resolve(root,'../../outputs/inventario-v1.1/native-session-read-candidate-2026-10-13/parent');
 const session=()=>({user:{id:'fixture-one',email:'fixture-one@example.invalid',name:'Fixture',isAdmin:true,requiresTotp:false,requiresVerification:false,authSessionRef:'fixture-session-one'},expires:'2026-11-12T00:00:00.000Z'});
-function fixture({mode='provider',parent=false}={}){
+function fixture({mode='provider',parent=false,sourceOverrides={}}={}){
  const contexts=new Map(),cache=new Map(),requests=[],timers=new Map(),events=new Map(),channels=[],storage=new Map(),navigation=[],control={};let current,index=0,serial=0,now=0,dirty=false,live=new Set(),effects=[];
  const state={sessionValue:{data:session(),status:'authenticated',update:async()=>session()},sdkCalls:0,updates:0};
  const hooks={
@@ -35,7 +35,7 @@ function fixture({mode='provider',parent=false}={}){
   if(name==='sdk')file=path.join(root,'node_modules/next-auth/react.js');
   else if(name==='auth-errors')file=path.join(root,'node_modules/@auth/core/errors.js');
   else if(name==='sdk-client')file=path.join(root,'node_modules/next-auth/lib/client.js');
-  else file=parent&&['components/SessionProviderWrapper.tsx','app/login/LoginForm.tsx','app/verify-email/page.tsx'].includes(name)?path.join(parentRoot,name):path.join(root,name);
+  else file=sourceOverrides[name]??(parent&&['components/SessionProviderWrapper.tsx','app/login/LoginForm.tsx','app/verify-email/page.tsx'].includes(name)?path.join(parentRoot,name):path.join(root,name));
   const entry={exports:{}};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:entry,exports:entry.exports,require:id=>{
    if(id==='react')return hooks;if(id==='react/jsx-runtime')return{jsx:(type,props,key)=>({type,props,key}),jsxs:(type,props,key)=>({type,props,key}),Fragment:'fragment'};
