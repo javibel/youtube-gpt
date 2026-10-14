@@ -33,7 +33,7 @@ export async function getChannelContext(userId: string, options?: { client?: typ
       const searchRes = await step(() => fetch(
         `https://www.googleapis.com/youtube/v3/search?part=id&forMine=true&type=video&order=date&maxResults=10`,
         { headers: { Authorization: `Bearer ${token}` }, ...(options?.signal ? { signal: options.signal } : {}) },
-      );
+      ));
       if (searchRes.ok) {
         const searchData = await step(() => searchRes.json());
         const ids = (searchData.items || []).map((i: { id: { videoId: string } }) => i.id.videoId).join(',');
@@ -41,7 +41,7 @@ export async function getChannelContext(userId: string, options?: { client?: typ
           const vidsRes = await step(() => fetch(
             `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids}`,
             { headers: { Authorization: `Bearer ${token}` }, ...(options?.signal ? { signal: options.signal } : {}) },
-          );
+          ));
           if (vidsRes.ok) {
             const vidsData = await step(() => vidsRes.json());
             recentVideos = (vidsData.items || []).map((v: { snippet: { title: string; publishedAt: string }; statistics: { viewCount: string } }) => ({
