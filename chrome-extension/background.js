@@ -171,7 +171,7 @@ async function mutateExtensionToken(msg) {
 const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
-function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); }
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
@@ -466,6 +466,44 @@ function runScorecard(msg) {
  original.wait=Promise.race([producer,stopped]).finally(()=>{original.retired=true;clearTimeout(timer);if(scorecardLive.get(videoId)===original)scorecardLive.delete(videoId);});scorecardLive.set(videoId,original);return original.wait;
 }
 
+let bestTimeOriginal = null;
+function validBestTimeResult(d,ref,startedAt) {
+ const date=s=>typeof s==='string'&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
+ if(!d||d.readRef!==ref||!date(d.observedAt)||Date.parse(d.observedAt)<startedAt||Date.parse(d.observedAt)>Date.now()||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now()||d.expiresAt>Date.parse(d.observedAt)+25000)return false;
+ const q=d.dataQuality;if(!q||q.source!=='stored-best-time-analysis'||q.freshness!=='unconfirmed'||q.provenance!=='unconfirmed'||q.recommendation!=='unconfirmed')return false;
+ if(d.data===null)return q.analysisState==='absent'&&q.analysisExpiresAt===null;
+ const data=d.data;if(!data||!date(data.analyzedAt)||Date.parse(data.analyzedAt)<0||Date.parse(data.analyzedAt)>Date.parse(d.observedAt)||!Number.isSafeInteger(data.videoCount)||data.videoCount<3||data.videoCount>50||!Array.isArray(data.topSlots)||data.topSlots.length>3)return false;
+ const exp=Date.parse(data.analyzedAt)+30*86400000;if(q.analysisExpiresAt!==exp||!['historical','expired'].includes(q.analysisState)||q.analysisState==='expired'&&exp>Date.now()||q.analysisState==='historical'&&exp<=Date.parse(d.observedAt))return false;
+ const cells=new Set();let videos=0;
+ for(const s of data.topSlots){if(!s||Object.keys(s).length!==4||!['day','hour','score','videoCount'].every(k=>Number.isSafeInteger(s[k]))||s.day<0||s.day>6||s.hour<0||s.hour>23||s.score<1||s.score>100||s.videoCount<1||s.videoCount>data.videoCount||cells.has(s.day+':'+s.hour))return false;cells.add(s.day+':'+s.hour);videos+=s.videoCount;}
+ if(videos>data.videoCount)return false;
+ const tip=data.aiTip;return tip===null||!!tip&&typeof tip==='object'&&!Array.isArray(tip)&&Object.keys(tip).length===2&&['es','en'].every(k=>typeof tip[k]==='string'&&tip[k].length<=4096);
+}
+function projectBestTimeResult(d) {
+ const data=d.data===null?null:Object.freeze({topSlots:Object.freeze(d.data.topSlots.map(({day,hour,score,videoCount})=>Object.freeze({day,hour,score,videoCount}))),aiTip:d.data.aiTip===null?null:Object.freeze({es:d.data.aiTip.es,en:d.data.aiTip.en}),videoCount:d.data.videoCount,analyzedAt:d.data.analyzedAt});
+ return Object.freeze({readRef:d.readRef,observedAt:d.observedAt,expiresAt:d.expiresAt,data,dataQuality:Object.freeze({source:'stored-best-time-analysis',freshness:'unconfirmed',provenance:'unconfirmed',recommendation:'unconfirmed',analysisState:data===null?'absent':d.dataQuality.analysisExpiresAt<=Date.now()?'expired':'historical',analysisExpiresAt:d.dataQuality.analysisExpiresAt})});
+}
+async function getBestTime() {
+ if(bestTimeOriginal){if(!bestTimeOriginal.retired&&bestTimeOriginal.revision===identityRevision)return bestTimeOriginal.wait;throw Error('No se pudo confirmar la lectura anterior.');}
+ const original={revision:identityRevision,startedAt:Date.now(),deadline:performance.now()+30000,retired:false,http:null,retire:null,wait:null};bestTimeOriginal=original;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ const retire=()=>{if(!original.retired){original.retired=true;rejectWait(Error('No se pudo confirmar el análisis guardado.'));}};original.retire=retire;
+ const timer=setTimeout(retire,30000),check=()=>{if(performance.now()>=original.deadline||original.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||bestTimeOriginal!==original)retire();if(original.retired)throw Error('No se pudo confirmar el análisis guardado.');};
+ const producer=(async()=>{
+  for(const marker of [IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]){const row=await chrome.storage.local.get(marker);check();if(Object.hasOwn(row,marker))throw Error('No se pudo confirmar la cuenta.');}
+  const row=await chrome.storage.local.get('ytv_token'),token=row.ytv_token;check();if(typeof token!=='string'||!/^[a-f0-9]{64}$/.test(token))throw Error('not_logged_in');
+  const ref=crypto.randomUUID(),{res,data}=await apiFetch(API_BASE+'/api/extension/best-time',{method:'GET',timeoutMs:Math.min(25000,Math.max(1,Math.floor(original.deadline-performance.now()))),maxResponseBytes:64*1024,credentials:'omit',cache:'no-store',observeOriginal:p=>{original.http=p;},headers:{Authorization:'Bearer '+token,'X-YTV-Read-Ref':ref}});check();
+  if(data?.readRef!==ref)throw Error('No se pudo confirmar el análisis guardado.');
+  if(res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');
+  if(res.status!==200||!validBestTimeResult(data,ref,original.startedAt))throw Error('No se pudo confirmar el análisis guardado.');
+  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==token||data.expiresAt<=Date.now())throw Error('No se pudo confirmar el análisis guardado.');return projectBestTimeResult(data);
+ })();
+ // Read-only: no durable effect or journal to replay. The original HTTP promise
+ // must actually settle before another explicitly requested read may start.
+ void producer.finally(async()=>{if(original.http)await Promise.allSettled([original.http]);if(bestTimeOriginal===original)bestTimeOriginal=null;}).catch(()=>{});
+ original.wait=Promise.race([producer,stopped]).finally(()=>{original.retired=true;clearTimeout(timer);});return original.wait;
+}
+
 let channelStatsOriginal = null;
 async function getChannelStats() {
   if (channelStatsOriginal) return channelStatsOriginal.wait;
@@ -597,6 +635,7 @@ async function readDailyIdeas() {
 }
 
 async function handleMessage(msg) {
+  if (msg.type === 'BEST_TIME') return getBestTime();
   if (msg.type === 'DAILY_IDEAS') return readDailyIdeas();
   if (msg.type === 'SEO_LIVE') return runSeoLive(msg);
   if (msg.type === 'CHANNEL_STATS') return getChannelStats();
@@ -697,19 +736,6 @@ async function handleMessage(msg) {
       })();
       attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);waitController.abort();attempt.flight=null;});
       return attempt.flight;
-    }
-
-    case 'BEST_TIME': {
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/best-time`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Best time error' : 'Error al cargar best time'));
-      return data;
     }
 
     case 'AB_CREATE': {

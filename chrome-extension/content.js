@@ -521,9 +521,7 @@ function wireShellScorecard(root, scorecardData, videoId, loggedIn) {
 
   const bestTimeArea = detail.querySelector('#ytv-sc-besttime-area');
   if (bestTimeArea) {
-    sendMsg({ type: 'BEST_TIME' })
-      .then((res) => { bestTimeArea.innerHTML = renderBestTime(res?.data || null); })
-      .catch(() => { bestTimeArea.innerHTML = renderBestTime(null); });
+    void loadBestTimeView(bestTimeArea,false,()=>scorecardViewCurrent(scorecardData));
   }
 
   const actionResults = detail.querySelector('#ytv-sc-action-results');
@@ -1024,10 +1022,43 @@ function renderQuickWins(checks) {
 
 // ── Best Time to Post ──────────────────────────────────────────────
 
-function renderBestTime(data) {
-  if (!data) {
-    return `<div class="ytv-besttime-empty">${t('Ejecuta el análisis en', 'Run the analysis at')} <a href="https://ytubviral.com/best-time?utm_source=extension&utm_medium=panel" target="_blank" class="ytv-cta-link">ytubviral.com →</a></div>`;
-  }
+const bestTimeDisplays=new Map(),bestTimeViewReceipts=new WeakMap(),bestTimeViewSlots=new WeakMap(),bestTimeViewErrors=new WeakMap();
+let bestTimeViewRevision=0;
+function retireBestTimeViews(){bestTimeViewRevision++;for(const own of [...bestTimeDisplays.values()])own.retire();}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))retireBestTimeViews();});
+document.addEventListener('yt-navigate-finish',retireBestTimeViews);
+async function readBestTimeView(owner,extraCheck=()=>true){
+ bestTimeDisplays.get(owner)?.retire();const own={owner,slot:{},href:location.href,revision:bestTimeViewRevision,deadline:performance.now()+30000,retired:false,nodes:[],observer:null,data:null,message:null};
+ bestTimeDisplays.set(owner,own);bestTimeViewSlots.set(owner,own.slot);bestTimeViewErrors.delete(owner);let rejectWait,timer;
+ const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>owner.isConnected&&bestTimeViewSlots.get(owner)===own.slot&&location.href===own.href&&bestTimeViewRevision===own.revision&&extraCheck();
+ own.retire=()=>{if(!own.retired){own.retired=true;rejectWait(Error('No se pudo confirmar el análisis guardado.'));}clearTimeout(timer);own.observer?.disconnect();for(const n of own.nodes)if(n.isConnected&&owner.contains(n))n.remove();if(bestTimeDisplays.get(owner)===own)bestTimeDisplays.delete(owner);};
+ own.check=()=>{if(own.retired||!own.scope()||performance.now()>=own.deadline||own.data&&own.data.expiresAt<=Date.now()||own.data?.dataQuality.analysisState==='historical'&&own.data.dataQuality.analysisExpiresAt<=Date.now()){own.retire();throw Error('No se pudo confirmar el análisis guardado.');}};
+ timer=setTimeout(own.retire,30000);
+ try{
+  own.check();own.message=sendMsg({type:'BEST_TIME'});const d=await Promise.race([own.message,stopped]);own.check();
+  if(!d||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now()||typeof d.readRef!=='string'||!d.dataQuality||d.dataQuality.source!=='stored-best-time-analysis'||d.dataQuality.freshness!=='unconfirmed'||d.dataQuality.provenance!=='unconfirmed'||d.dataQuality.recommendation!=='unconfirmed'||!['absent','historical','expired'].includes(d.dataQuality.analysisState))throw Error('No se pudo confirmar el análisis guardado.');
+  if(d.data!==null&&(!d.data||!Array.isArray(d.data.topSlots)||d.data.topSlots.length>3||d.data.topSlots.some(s=>!s||!['day','hour','score','videoCount'].every(k=>Number.isSafeInteger(s[k]))||s.day<0||s.day>6||s.hour<0||s.hour>23||s.score<1||s.score>100)||typeof d.data.analyzedAt!=='string'))throw Error('No se pudo confirmar el análisis guardado.');
+  const result=Object.freeze({...d,data:d.data===null?null:Object.freeze({...d.data,topSlots:Object.freeze(d.data.topSlots.map(s=>Object.freeze({...s}))),aiTip:d.data.aiTip===null?null:Object.freeze({...d.data.aiTip})}),dataQuality:Object.freeze({...d.dataQuality})});
+  own.data=result;bestTimeViewReceipts.set(result,own);own.check();clearTimeout(timer);
+  const horizon=result.dataQuality.analysisState==='historical'?Math.min(result.expiresAt,result.dataQuality.analysisExpiresAt):result.expiresAt;
+  timer=setTimeout(own.retire,Math.max(1,Math.min(horizon-Date.now(),own.deadline-performance.now())));
+  own.observer=new MutationObserver(()=>{try{own.check();}catch{}});own.observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['href']});return result;
+ }catch(e){bestTimeViewErrors.set(owner,own);own.retire();throw e;}
+}
+function bestTimeViewCurrent(d){const own=d&&bestTimeViewReceipts.get(d);if(!own||own.data!==d)return false;try{own.check();return true;}catch{return false;}}
+async function loadBestTimeView(owner,hint=false,extraCheck=()=>true){
+ if(!owner)return;owner.innerHTML=renderLoading(t('Leyendo análisis guardado...','Reading stored analysis...'));
+ try{const d=await readBestTimeView(owner,extraCheck);if(!bestTimeViewCurrent(d))return;owner.innerHTML=`<div class="ytv-besttime-original">${hint?renderBestTimeHint(d):renderBestTime(d)}</div>`;const own=bestTimeViewReceipts.get(d),node=owner.querySelector('.ytv-besttime-original');if(node&&node.isConnected&&owner.contains(node))own.nodes.push(node);}
+ catch(e){if(bestTimeViewErrors.get(owner)?.scope())owner.innerHTML=renderError(e.message);}
+}
+function bestTimeDate(d){return escapeHtml(d.data.analyzedAt);}
+function renderBestTime(d) {
+  if(!bestTimeViewCurrent(d))return renderError(t('Lectura sin confirmar.','Read unconfirmed.'));
+  const data=d.data;
+  const link=`<a href="https://ytubviral.com/best-time?utm_source=extension&utm_medium=panel" target="_blank" class="ytv-cta-link">${t('Consultar análisis →','View analysis →')}</a>`;
+  if(data===null)return `<div class="ytv-besttime-empty">${t('No hay análisis guardado en esta lectura.','No stored analysis in this read.')}</div>${link}`;
+  if(d.dataQuality.analysisState==='expired')return `<div class="ytv-besttime-empty">${t('Análisis caducado del','Expired analysis from')} ${bestTimeDate(d)}. ${t('No es una recomendación actual.','Not a current recommendation.')}</div>${link}`;
 
   const DAY_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   const DAY_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -1047,26 +1078,23 @@ function renderBestTime(data) {
   `).join('');
 
   return `
+    <div class="ytv-hint">${t('Análisis guardado del','Stored analysis from')} ${bestTimeDate(d)} · ${t('procedencia y frescura sin confirmar','provenance and freshness unconfirmed')}</div>
     <div class="ytv-besttime-slots">${slotsHtml}</div>
-    ${aiTip ? `<div class="ytv-besttime-tip">${escapeHtml(aiTip)}</div>` : ''}
-    <a class="ytv-cta-link" href="https://ytubviral.com/best-time?utm_source=extension&utm_medium=panel" target="_blank">${t('Actualizar análisis →', 'Update analysis →')}</a>
+    ${aiTip ? `<div class="ytv-besttime-tip">${t('Consejo guardado; sin confirmar:','Stored tip; unconfirmed:')} ${escapeHtml(aiTip)}</div>` : ''}
+    ${link}
   `;
 }
 
-// One-line best-time hint reused by the Studio editor and upload panels (v2.5.0 Tier 1 #3):
-// fetch the user's #1 slot once and show it inline, right where they're about to publish.
-async function renderBestTimeHint() {
-  try {
-    const res = await sendMsg({ type: 'BEST_TIME' });
-    const top = res?.data?.topSlots?.[0];
-    if (!top) return '';
+// Studio reads share only a live native background request; no stored authority.
+function renderBestTimeHint(d) {
+    if(!bestTimeViewCurrent(d))return '';
+    if(d.data===null||d.dataQuality.analysisState==='expired')return renderBestTime(d);
+    const top=d.data.topSlots[0];
+    if(!top)return `<div class="ytv-hint">${t('Análisis guardado sin franjas:','Stored analysis without slots:')} ${bestTimeDate(d)}</div>`;
     const DAY_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
     const DAY_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const dayName = (_lang === 'en' ? DAY_EN : DAY_ES)[top.day] || '';
-    return `<div class="ytv-besttime-hint">🥇 ${t('Tu mejor hora', 'Your best time')}: <b>${dayName} ${String(top.hour).padStart(2, '0')}:00 UTC</b></div>`;
-  } catch {
-    return ''; // not connected / no data yet — say nothing rather than show an error here
-  }
+    return `<div class="ytv-besttime-hint">${t('Franja del análisis guardado','Slot from stored analysis')} (${bestTimeDate(d)}): <b>${dayName} ${String(top.hour).padStart(2, '0')}:00 UTC</b> · ${t('frescura sin confirmar','freshness unconfirmed')}</div>`;
 }
 
 // ── Scorecard renderer ──────────────────────────────────────────────
@@ -1885,9 +1913,7 @@ async function injectStudioEditor() {
     });
 
     // ─ Best Time hint (v2.5.0 Tier 1 #3) — non-blocking, appears once resolved ─
-    renderBestTimeHint().then(html => {
-      if (html) panel.querySelector('#ytv-studio-besttime').innerHTML = html;
-    });
+    void loadBestTimeView(panel.querySelector('#ytv-studio-besttime'),true,()=>panel.isConnected&&getStudioVideoId()===videoId);
 
     // ─ Live SEO: observe title/description edits ─
     const liveUpdate=createStudioSeoLiveUpdate(document,panel,bodyEl);
@@ -2019,9 +2045,7 @@ async function injectStudioUploadPanel(dialog) {
     const aiResults = panel.querySelector('#ytv-up-ai-results');
 
     // ─ Best Time hint (v2.5.0 Tier 1 #3) ─
-    renderBestTimeHint().then(html => {
-      if (html) panel.querySelector('#ytv-up-besttime').innerHTML = html;
-    });
+    void loadBestTimeView(panel.querySelector('#ytv-up-besttime'),true,()=>panel.isConnected&&dialog.isConnected);
 
     const liveUpdate=createStudioSeoLiveUpdate(dialog,panel,bodyEl);
     let liveTimer=null;
