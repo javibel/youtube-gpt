@@ -6,7 +6,7 @@ type KeywordsOriginal = { readonly [keywordsBrand]: true };
 type Own = { token: string; tokenId: string; userId: string; email: string; verifiedAt: number;
   tokenExpires: number; capturedAt: number; expiresAt: number; readRef: string; request: Request; used: boolean };
 const originals = new WeakMap<object, Own>();
-declare const keywordContextBrand: unique symbol;
+const keywordContextBrand = Symbol('keyword-context-original');
 const contexts = new WeakMap<object, { cap: KeywordsOriginal; check: () => void; value: ExtensionKeywordContext; used: boolean }>();
 const lookup = (token: string) => prisma.extensionToken.findUnique({ where: { token },
   include: { user: { select: { id: true, email: true, emailVerified: true } } } });
@@ -89,7 +89,7 @@ export async function handleExtensionKeywords(request: Request, analyze: (contex
       if (cacheExpiresAt && (!(cacheExpiresAt instanceof Date) || !Number.isFinite(cacheExpiresAt.getTime()) || cacheExpiresAt.getTime() <= Date.now())) throw Error('Keyword cache expired');
       const result = json({ ...owner, keyword, language, sourceStatus: cacheExpiresAt ? 'cached-unconfirmed' : 'collected-unconfirmed',
         cacheExpiresAt: cacheExpiresAt?.toISOString() ?? null, data }, 200); check(); return result; };
-    const context = Object.freeze({ keyword, language, step, reply }) as ExtensionKeywordContext;
+    const context = Object.freeze({ [keywordContextBrand]: true as const, keyword, language, step, reply });
     contexts.set(context, { cap, check, value: context, used: false });
     const response = await run(() => analyze(context)); check(); return response;
   } catch { retire(); return json({ error: 'keywords_unconfirmed' }, 503); }
