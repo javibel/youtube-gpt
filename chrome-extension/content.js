@@ -388,7 +388,7 @@ async function renderShellPageTab(body) {
     const q = getSearchQuery();
     if (!q) { body.innerHTML = `<div class="ytv-shell-note">${t('Escribe una búsqueda para ver el análisis de la keyword.', 'Type a search to see keyword analysis.')}</div>`; return; }
     body.innerHTML = `<div class="ytv-section-label">${escapeHtml(q)}</div><div id="ytv-shell-kw"></div>`;
-    return runKeywords(body.querySelector('#ytv-shell-kw'), q);
+    return runKeywords(body.querySelector('#ytv-shell-kw'), q, ()=>getPageType()==='search'&&getSearchQuery()===q);
   }
   if (type === 'channel') {
     body.innerHTML = `<button class="ytv-btn ytv-btn-red ytv-btn-full" id="ytv-shell-analyze-ch">📊 ${t('Analizar este canal', 'Analyze this channel')}</button><div id="ytv-shell-ch"></div>`;
@@ -910,7 +910,9 @@ function renderTrendingNow(items) {
   return `<div class="ytv-section-label">${t('Vídeos calientes ahora', 'Trending right now')}</div><div class="ytv-topvids">${rows}</div>`;
 }
 
-function renderKeywords(data) {
+function renderKeywords(result) {
+  if(!keywordsViewCurrent(result)||result.outcome!=='analysis')return '';
+  const data=result.data;
   const levels = _lang === 'en'
     ? { low: '🟢 Low', medium: '🟡 Medium', high: '🔴 High' }
     : { low: '🟢 Baja', medium: '🟡 Media', high: '🔴 Alta' };
@@ -921,11 +923,16 @@ function renderKeywords(data) {
   return `
     <div class="ytv-grid4">
       <div class="ytv-stat"><b>${levels[data.competition] || '-'}</b><span>${t('Competencia', 'Competition')}</span></div>
-      <div class="ytv-stat ytv-opp-${data.competition}"><b>${data.opportunityScore}/100</b><span>${t('Oportunidad', 'Opportunity')}</span></div>
+      <div class="ytv-stat ytv-opp-${data.competition}"><b>${data.opportunityScore===null?t('No disponible','Unavailable'):data.opportunityScore+'/100'}</b><span>${t('Oportunidad', 'Opportunity')}</span></div>
       <div class="ytv-stat"><b>${fmtNum(data.totalResults)}</b><span>${t('Resultados', 'Results')}</span></div>
-      <div class="ytv-stat"><b>${fmtNum(data.avgViews)}</b><span>${t('Vistas prom.', 'Avg views')}</span></div>
+      <div class="ytv-stat"><b>${data.avgViews===null?t('No disponible','Unavailable'):fmtNum(data.avgViews)}</b><span>${t('Vistas prom.', 'Avg views')}</span></div>
     </div>
-    ${renderTrendingNow(data.trendingNow)}
+    
+    <div class="ytv-hint">${t('Procedencia, consentimiento y frescura sin confirmar.','Provenance, consent and freshness unconfirmed.')} ${data.sourceStatus==='cached-unconfirmed'?t('Caché recogida: ','Cached collection: '):t('Recogido: ','Collected: ')}${escapeHtml(data.collectedAt)}${data.cacheExpiresAt?' · '+t('Caduca: ','Expires: ')+escapeHtml(data.cacheExpiresAt):''}</div>
+    <div class="ytv-hint">${data.collectionStatus==='partial'?t('Cobertura parcial. ','Partial coverage. '):''}${data.estimateStatus.startsWith('heuristic')?t('Estimación heurística sin confirmar.','Unconfirmed heuristic estimate.'):t('Datos insuficientes para estimar oportunidad.','Insufficient data to estimate opportunity.')}</div>
+    ${data.trendingNow.length?'<div class="ytv-section-label">'+t('Vistas por hora al recoger la muestra','Views per hour when the sample was collected')+'</div>':''}
+    ${data.trendingNow.map(v=>'<a class="ytv-topvid-row" href="https://www.youtube.com/watch?v='+encodeURIComponent(v.videoId)+'" target="_blank"><div class="ytv-topvid-meta"><div class="ytv-topvid-title">'+escapeHtml(v.title)+'</div><div class="ytv-topvid-stats">'+v.vph+' VPH · '+fmtNum(v.views)+' '+t('vistas','views')+' · '+escapeHtml(v.publishedAt)+'</div></div></a>').join('')}
+
     ${related ? `<div class="ytv-section-label">${t('Búsquedas relacionadas', 'Related searches')}</div><div class="ytv-tags">${related}</div>` : ''}
     <a class="ytv-cta-link" href="https://ytubviral.com/research?utm_source=extension&utm_medium=panel" target="_blank">${t('Explorar más keywords →', 'Explore more keywords →')}</a>
   `;
@@ -1296,20 +1303,35 @@ async function runCompetitor(resultsEl,url,extraCheck=()=>true){
  }catch(e){own.retire();if(own.scope())paint(competitorViewError(e.message==='not_logged_in'?'not_logged_in':'competitor_unconfirmed'));}})();own.wait=producer;return producer;
 }
 
-async function runKeywords(resultsEl, keyword) {
-  resultsEl.innerHTML = renderLoading(t('Analizando keyword...', 'Analyzing keyword...'));
-  try {
-    const data = await sendMsg({ type: 'KEYWORDS', keyword });
-    resultsEl.innerHTML = renderKeywords(data);
-    resultsEl.querySelectorAll('.ytv-tag-search[data-q]').forEach(tag => {
-      tag.addEventListener('click', () => {
-        window.location.href = `https://www.youtube.com/results?search_query=${tag.dataset.q}`;
-      });
-    });
-  } catch (e) {
-    resultsEl.innerHTML = renderError(e.message);
-  }
+function keywordsViewFreeze(v){if(v&&typeof v==='object'){for(const x of Object.values(v))keywordsViewFreeze(x);Object.freeze(v);}return v;}
+const keywordsViewDisplays=new Map(),keywordsViewReceipts=new WeakMap();let keywordsViewRevision=0;
+function retireKeywordsViews(){keywordsViewRevision++;for(const own of [...keywordsViewDisplays.values()])own.retire();}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang')))retireKeywordsViews();});
+document.addEventListener('yt-navigate-finish',retireKeywordsViews);
+function keywordsViewCurrent(result){const own=result&&keywordsViewReceipts.get(result);if(!own||own.data!==result)return false;try{own.check();return true;}catch{return false;}}
+function keywordsViewError(code){return renderError(code==='not_logged_in'?t('Inicia sesión en la extensión.','Sign in to the extension.'):code==='invalid_keyword'?t('No se pudo confirmar la búsqueda seleccionada.','Could not confirm the selected search.'):t('El análisis no está confirmado. No se repetirá automáticamente.','Analysis is unconfirmed. It will not be retried automatically.'));}
+async function runKeywords(resultsEl,keyword,extraCheck=()=>true){
+ if(!resultsEl)return;const input=typeof keyword==='string'?keyword.trim():keyword,language=_lang;
+ const previous=keywordsViewDisplays.get(resultsEl);if(previous&&!previous.closed){if(previous.input===input&&previous.language===language&&previous.scope())return previous.wait;return;}
+ previous?.retire();if(keywordsViewDisplays.size>=32)return;
+ const own={owner:resultsEl,input,language,href:location.href,revision:keywordsViewRevision,viewRef:crypto.randomUUID(),startedAt:Date.now(),deadline:performance.now()+60000,retired:false,closed:false,data:null,nodes:[]};keywordsViewDisplays.set(resultsEl,own);
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>resultsEl.isConnected&&location.href===own.href&&_lang===own.language&&own.revision===keywordsViewRevision&&keywordsViewDisplays.get(resultsEl)===own&&extraCheck()&&own.nodes.every(n=>n.isConnected&&resultsEl.contains(n));
+ own.retire=()=>{if(!own.retired){own.retired=true;void sendMsg({type:'KEYWORDS_RETIRE',viewRef:own.viewRef}).catch(()=>{});rejectWait(Error('keywords_unconfirmed'));}clearTimeout(own.timer);own.observer?.disconnect();for(const node of own.nodes.splice(0))if(node.isConnected&&resultsEl.contains(node))node.remove();if(!resultsEl.isConnected||own.revision!==keywordsViewRevision||location.href!==own.href)if(keywordsViewDisplays.get(resultsEl)===own)keywordsViewDisplays.delete(resultsEl);};
+ own.check=()=>{if(!own.scope()||own.retired||performance.now()>=own.deadline||Date.now()<own.startedAt||own.data&&own.data.expiresAt<=Date.now()){own.retire();throw Error('keywords_unconfirmed');}};
+ const paint=html=>{resultsEl.innerHTML='<div class="ytv-keywords-original">'+html+'</div>';const node=resultsEl.querySelector('.ytv-keywords-original');if(node&&resultsEl.contains(node))own.nodes.push(node);};
+ own.timer=setTimeout(own.retire,60000);own.observer=new MutationObserver(()=>{try{own.check();}catch{}});own.observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['href']});resultsEl.innerHTML=renderLoading(t('Analizando keyword...','Analyzing keyword...'));
+ const producer=(async()=>{try{
+  own.check();const data=await Promise.race([sendMsg({type:'KEYWORDS',keyword:input,lang:language,viewRef:own.viewRef}),stopped]);own.check();
+  if(!data||data.viewRef!==own.viewRef||typeof data.readRef!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(data.readRef)||data.input!==input||data.language!==language||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>Date.now()+60000||!['analysis','rejected'].includes(data.outcome)||data.outcome==='analysis'&&(!data.data||typeof data.data.keyword!=='string'||data.data.keyword.toLowerCase()!==input.toLowerCase()||data.data.profile!=='keywords-native-v1'||!['cached-unconfirmed','collected-unconfirmed'].includes(data.data.sourceStatus)||data.data.language!==language||!Array.isArray(data.data.topVideos))||data.outcome==='rejected'&&!['not_logged_in','invalid_keyword'].includes(data.code))throw Error('keywords_unconfirmed');
+  keywordsViewFreeze(data);own.data=data;own.check();const ack=await Promise.race([sendMsg({type:'KEYWORDS_ACK',readRef:data.readRef,viewRef:own.viewRef}),stopped]);own.check();if(!ack||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef||ack.closed!==true)throw Error('keywords_unconfirmed');
+  const analysis=data.outcome==='analysis'?data.data:undefined;
+  const result=Object.freeze({...data,...(analysis?{data:analysis}:{})});own.data=result;own.closed=true;keywordsViewReceipts.set(result,own);own.check();paint(result.outcome==='analysis'?renderKeywords(result):keywordsViewError(result.code));
+  if(result.outcome==='analysis')resultsEl.querySelectorAll('.ytv-tag-search[data-q]').forEach(tag=>tag.addEventListener('click',()=>{if(keywordsViewCurrent(result)&&resultsEl.contains(tag))location.href='https://www.youtube.com/results?search_query='+tag.dataset.q;}));
+  clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),result.expiresAt-Date.now())));return result;
+ }catch(e){own.retire();if(own.scope())paint(keywordsViewError(e.message==='not_logged_in'?'not_logged_in':'keywords_unconfirmed'));}})();own.wait=producer;return producer;
 }
+
 
 async function runGenerate(resultsEl, videoTitle) {
   resultsEl.innerHTML = renderLoading(t('Generando títulos con IA...', 'Generating titles with AI...'));

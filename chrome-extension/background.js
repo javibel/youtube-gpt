@@ -10,6 +10,7 @@ function syncGenerationContext(token){
 }
 chrome.storage.onChanged.addListener((changes,area)=>{
   if(area==='local'&&Object.hasOwn(changes,'ytv_token')) { generationContext=null; identityRevision++; retireExtensionIdentity(); }
+  if(area==='local'&&Object.hasOwn(changes,'ytv_lang'))keywordsOriginal?.retire();
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -172,7 +173,7 @@ const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
 const identityReadReceipts = new WeakMap();
-function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); competitorOriginal?.retire(); }
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); competitorOriginal?.retire(); keywordsOriginal?.retire(); }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
@@ -801,7 +802,161 @@ async function acknowledgeCompetitor(msg,sender){
  own.acknowledging=(async()=>{const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('competitor_unconfirmed');const row=await chrome.storage.local.get(COMPETITOR_PENDING);check();if(row[COMPETITOR_PENDING]?.readRef!==own.readRef||row[COMPETITOR_PENDING]?.viewRef!==own.viewRef||row[COMPETITOR_PENDING]?.input!==own.input||row[COMPETITOR_PENDING]?.lang!==own.lang)throw Error('competitor_unconfirmed');await chrome.storage.local.remove(COMPETITOR_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('competitor_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();clearTimeout(own.timer);competitorOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,closed:true});})().catch(error=>{own.retire();clearTimeout(own.timer);throw error;});return own.acknowledging;
 }
 
+
+const KEYWORDS_PENDING='ytv_keywords_pending';let keywordsOriginal=null;
+function keywordsSelection(v){return typeof v==='string'&&v.length>0&&v.length<=200&&v===v.trim()&&!/[\x00-\x1f\x7f]/.test(v);}
+function keywordsFreeze(v){if(v&&typeof v==='object'){for(const x of Object.values(v))keywordsFreeze(x);Object.freeze(v);}return v;}
+function keywordsPayloadProjection(value,keyword,language){
+ // A bounded recipe is not authority. Only the original native ME/HTTP below can
+ // supply a provisional result; copies of this projected data cannot close it.
+const fail = () => { throw Error('Keyword payload unavailable'); };
+const record = (v) => v && typeof v === 'object' && !Array.isArray(v) ? v : fail();
+function boundedKeywordJSON(v, limit = 131072) {
+    const raw = JSON.stringify(v);
+    if (!raw || new TextEncoder().encode(raw).length > limit)
+        fail();
+    return v;
+}
+const count = (v) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? v : fail();
+const text = (v, max) => typeof v === 'string' && v.length <= max && !/[\x00-\x1f\x7f]/.test(v) ? v : fail();
+const id = (v) => typeof v === 'string' && /^[\w-]{11}$/.test(v) ? v : fail();
+const list = (v, max) => Array.isArray(v) && v.length <= max ? v : fail();
+function keywordDate(v, before = Date.now()) {
+    const s = text(v, 64), at = Date.parse(s);
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(s) || !Number.isFinite(at) || at < 0 || at > before)
+        fail();
+    const [y, m, d] = s.slice(0, 10).split('-').map(Number), date = new Date(Date.UTC(y, m - 1, d));
+    if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d || Number(s.slice(11, 13)) > 23 || Number(s.slice(14, 16)) > 59 || Number(s.slice(17, 19)) > 59)
+        fail();
+    return s;
+}
+const iso = (v, before = Date.now()) => { const s = keywordDate(v, before); if (new Date(s).toISOString() !== s)
+    fail(); return s; };
+const thumbnail = (v) => { const s = text(v, 2048); if (!s)
+    return s; let u; try {
+    u = new URL(s);
+}
+catch {
+    return fail();
+} if (u.protocol !== 'https:' || u.username || u.password || u.port)
+    fail(); return s; };
+const buckets = [
+    [80, 'Muy Alto', 'Very High', '100K+ busq/mes', '100K+ searches/mo'],
+    [60, 'Alto', 'High', '10K-100K busq/mes', '10K-100K searches/mo'],
+    [40, 'Medio', 'Medium', '1K-10K busq/mes', '1K-10K searches/mo'],
+    [20, 'Bajo', 'Low', '100-1K busq/mes', '100-1K searches/mo'],
+    [0, 'Muy Bajo', 'Very Low', '<100 busq/mes', '<100 searches/mo'],
+];
+const norm = (v) => v > 0 ? Math.min(100, Math.max(0, Math.log10(v) / 7 * 100)) : 0;
+function projectedVideo(v, before) {
+    const r = record(v);
+    return { videoId: id(r.videoId), title: text(r.title, 1000), channelName: text(r.channelName, 1000),
+        thumbnail: thumbnail(r.thumbnail), publishedAt: keywordDate(r.publishedAt, before), views: count(r.views), likes: r.likes === null ? null : count(r.likes) };
+}
+function coverage(v, max, videos) {
+    const r = record(v), requestedIds = list(r.requestedIds, max).map(id), unavailableIds = list(r.unavailableIds, max).map(id);
+    if (new Set(requestedIds).size !== requestedIds.length || new Set(unavailableIds).size !== unavailableIds.length
+        || videos.some(x => !requestedIds.includes(x.videoId) || unavailableIds.includes(x.videoId))
+        || new Set(videos.map(x => x.videoId)).size !== videos.length || unavailableIds.some(x => !requestedIds.includes(x))
+        || videos.length + unavailableIds.length !== requestedIds.length)
+        fail();
+    return { requestedIds, unavailableIds };
+}
+function deriveKeywordPayload(value, keyword, language) {
+    const r = record(value);
+    boundedKeywordJSON(r);
+    if (r.profile !== 'keywords-native-v1' || typeof r.keyword !== 'string' || r.keyword !== r.keyword.trim() || !r.keyword || r.keyword.length > 200
+        || /[\x00-\x1f\x7f]/.test(r.keyword) || r.keyword.toLowerCase() !== keyword.toLowerCase() || r.language !== language || !['en', 'es'].includes(language))
+        fail();
+    const collectedAt = iso(r.collectedAt), at = Date.parse(collectedAt), trendsCollectedAt = iso(r.trendsCollectedAt, at);
+    const topVideos = list(r.topVideos, 5).map(x => projectedVideo(x, at)), recentVideos = list(r.recentVideos, 15).map(x => projectedVideo(x, at));
+    const cov = record(r.coverage), top = coverage(cov.top, 5, topVideos), recent = coverage(cov.recent, 15, recentVideos);
+    const totalResults = count(r.totalResults);
+    if (!top.requestedIds.length && totalResults !== 0)
+        fail();
+    if (topVideos.some((v, i) => i > 0 && v.views > topVideos[i - 1].views))
+        fail();
+    const relatedKeywords = list(r.relatedKeywords, 8).map(x => { const s = text(x, 200); if (!s || s !== s.trim())
+        fail(); return s; });
+    if (new Set(relatedKeywords).size !== relatedKeywords.length)
+        fail();
+    const trendsScore = r.trendsScore;
+    if (trendsScore !== null && (!Number.isSafeInteger(trendsScore) || trendsScore < 0 || trendsScore > 100))
+        fail();
+    const ac = r.autocompleteScore;
+    if (typeof ac !== 'number' || !Number.isFinite(ac) || ac < 0 || ac > 100)
+        fail();
+    const total = topVideos.reduce((n, v) => n + BigInt(v.views), BigInt(0)), avgViews = topVideos.length ? Number((total + BigInt(Math.floor(topVideos.length / 2))) / BigInt(topVideos.length)) : top.unavailableIds.length ? null : 0;
+    const ready = topVideos.length > 0 && top.unavailableIds.length === 0;
+    let competition = 'unavailable', competitionScore = null, opportunityScore = null;
+    let volumeEstimate = null;
+    if (ready && avgViews !== null) {
+        competition = avgViews > 1000000 || totalResults > 5000000 ? 'high' : avgViews > 100000 || totalResults > 500000 ? 'medium' : 'low';
+        competitionScore = competition === 'high' ? Math.min(95, 72 + Math.floor(avgViews / 2000000) * 3) : competition === 'medium' ? Math.min(71, 42 + Math.floor(avgViews / 100000) * 4) : Math.min(41, Math.max(8, Math.floor(avgViews / 5000)));
+        opportunityScore = Math.max(5, Math.min(98, 100 - competitionScore + (topVideos[0].views > 500000 ? 12 : topVideos[0].views > 100000 ? 6 : 0)));
+        const raw = trendsScore === null ? .50 * norm(avgViews) + .28 * norm(totalResults) + .22 * ac : .35 * norm(avgViews) + .30 * trendsScore + .20 * norm(totalResults) + .15 * ac;
+        const score = Math.round(Math.max(0, Math.min(100, raw))), b = buckets.find(x => score >= x[0]);
+        volumeEstimate = { score, label: b[1], labelEn: b[2], range: b[3], rangeEn: b[4] };
+    }
+    const trendingNow = recentVideos.map(v => { const age = Math.max(1, (at - Date.parse(v.publishedAt)) / 3600000); return { ...v, ageHours: Math.round(age), vph: Math.round(v.views / age * 10) / 10 }; }).filter(v => v.ageHours <= 720).sort((a, b) => b.vph - a.vph).slice(0, 6);
+    return { profile: 'keywords-native-v1', keyword: r.keyword, language, collectedAt, totalResults, topVideos, recentVideos, trendingNow,
+        relatedKeywords, trendsScore: trendsScore, trendsCollectedAt, autocompleteScore: ac, coverage: { top, recent },
+        collectionStatus: top.unavailableIds.length || recent.unavailableIds.length ? 'partial' : 'complete', avgViews, competition, competitionScore, opportunityScore, volumeEstimate,
+        estimateStatus: !ready ? top.unavailableIds.length ? 'unavailable-partial' : 'unavailable-no-videos' : trendsScore === null ? 'heuristic-partial-unconfirmed' : 'heuristic-unconfirmed' };
+}
+function projectKeywordPayload(value, keyword, language) {
+    const data = deriveKeywordPayload(value, keyword, language), r = record(value);
+    if (Object.keys(r).length !== Object.keys(data).length || Object.keys(data).some(k => !Object.hasOwn(r, k)))
+        fail();
+    for (const k of ['trendingNow', 'collectionStatus', 'avgViews', 'competition', 'competitionScore', 'opportunityScore', 'volumeEstimate', 'estimateStatus'])
+        if (JSON.stringify(r[k]) !== JSON.stringify(data[k]))
+            fail();
+    return data;
+}
+
+ return projectKeywordPayload(value,keyword,language);
+}
+function keywordsProjection(d,own){
+ const fail=()=>{throw Error('keywords_unconfirmed');};
+ if(!d||Object.keys(d).length!==9||d.readRef!==own.readRef||d.userId!==own.identity.id||d.language!==own.lang||d.keyword!==own.input||typeof d.observedAt!=='string'||!Number.isFinite(Date.parse(d.observedAt))||new Date(d.observedAt).toISOString()!==d.observedAt||Date.parse(d.observedAt)<own.startedAt||Date.parse(d.observedAt)>Date.now()||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now()||d.expiresAt>Date.parse(d.observedAt)+25000||d.expiresAt>own.identityReceipt.expiresAt)fail();
+ const payload=keywordsPayloadProjection(d.data,own.input,own.lang),at=Date.parse(payload.collectedAt);
+ if(d.sourceStatus==='cached-unconfirmed'){const exp=Date.parse(d.cacheExpiresAt);if(typeof d.cacheExpiresAt!=='string'||!Number.isFinite(exp)||new Date(exp).toISOString()!==d.cacheExpiresAt||exp<=Date.now()||exp>at+86400000||at>Date.parse(d.observedAt))fail();own.expiresAt=Math.min(own.expiresAt,exp);}
+ else if(d.sourceStatus!=='collected-unconfirmed'||d.cacheExpiresAt!==null)fail();
+ return keywordsFreeze({...payload,sourceStatus:d.sourceStatus,cacheExpiresAt:d.cacheExpiresAt});
+}
+function retireKeywordsFromView(msg,sender){const own=keywordsOriginal;if(own&&bestTimeCaller(sender)&&JSON.stringify([sender.tab.id,sender.frameId,sender.documentId])===own.documentScope&&msg.viewRef===own.viewRef)own.retire();return {retired:!!own?.retired};}
+function keywordsCheck(own){
+ if(keywordsOriginal!==own||own.retired||own.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||own.identity&&identityReadReceipts.get(own.identity)!==own.identityReceipt){own.retire();throw Error('keywords_unconfirmed');}
+}
+async function readKeywordsFromView(msg,sender){
+ const scope=bestTimeCaller(sender);if(!scope||!keywordsSelection(msg.keyword)||!['en','es'].includes(msg.lang)||!abUuid(msg.viewRef))throw Error('keywords_unconfirmed');
+ const snapshot=JSON.stringify([msg.keyword,msg.lang]);
+ if(keywordsOriginal){const own=keywordsOriginal;if(!own.retired&&own.scope===scope&&own.viewRef===msg.viewRef&&own.snapshot===snapshot&&own.revision===identityRevision){keywordsCheck(own);return own.wait;}throw Error('keywords_unconfirmed');}
+ if(passwordLoginOriginal||tokenMutationOriginal)throw Error('keywords_unconfirmed');
+ const own={scope,documentScope:JSON.stringify([sender.tab.id,sender.frameId,sender.documentId]),controller:new AbortController(),input:msg.keyword,lang:msg.lang,viewRef:msg.viewRef,snapshot,readRef:crypto.randomUUID(),revision:identityRevision,startedAt:Date.now(),deadline:performance.now()+60000,expiresAt:Date.now()+60000,retired:false,attempted:false,ready:false,http:null,identity:null};keywordsOriginal=own;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});own.retire=()=>{if(!own.retired){own.retired=true;own.controller.abort();rejectWait(Error('keywords_unconfirmed'));}};own.timer=setTimeout(own.retire,60000);const check=()=>keywordsCheck(own);
+ const producer=(async()=>{
+  const prior=await chrome.storage.local.get(KEYWORDS_PENDING);check();if(Object.hasOwn(prior,KEYWORDS_PENDING))throw Error('keywords_unconfirmed');
+  const identity=await getExtensionIdentity();check();const receipt=identity&&identityReadReceipts.get(identity);if(!identity||!receipt||receipt.revision!==own.revision)throw Error('not_logged_in');own.identity=identity;own.identityReceipt=receipt;own.expiresAt=Math.min(own.expiresAt,receipt.expiresAt);check();
+  const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==receipt.token)throw Error('keywords_unconfirmed');
+  own.attempted=true;await chrome.storage.local.set({[KEYWORDS_PENDING]:{readRef:own.readRef,viewRef:own.viewRef,input:own.input,lang:own.lang}});check();
+  const row=await chrome.storage.local.get(KEYWORDS_PENDING);check();if(row[KEYWORDS_PENDING]?.readRef!==own.readRef||row[KEYWORDS_PENDING]?.viewRef!==own.viewRef||row[KEYWORDS_PENDING]?.input!==own.input||row[KEYWORDS_PENDING]?.lang!==own.lang)throw Error('keywords_unconfirmed');
+  const {res,data}=await apiFetch(API_BASE+'/api/research/keywords',{method:'POST',signal:own.controller.signal,credentials:'omit',cache:'no-store',timeoutMs:Math.min(25000,Math.max(1,Math.floor(own.deadline-performance.now()))),maxResponseBytes:256*1024,observeOriginal:p=>{own.http=p;},headers:{Authorization:'Bearer '+receipt.token,'X-YTV-Read-Ref':own.readRef,'Content-Type':'application/json'},body:JSON.stringify({keyword:own.input,lang:own.lang})});check();
+  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('keywords_unconfirmed');
+  let result;if(res.status===200){result={outcome:'analysis',data:keywordsProjection(data,own)};own.expiresAt=Math.min(own.expiresAt,data.expiresAt);}else{const known={Unauthorized:401,invalid_keyword:400};if(!data||known[data.error]!==res.status)throw Error('keywords_unconfirmed');result={outcome:'rejected',code:data.error==='Unauthorized'?'not_logged_in':data.error};}
+  own.data=Object.freeze({readRef:own.readRef,viewRef:own.viewRef,input:own.input,language:own.lang,expiresAt:own.expiresAt,...result});own.ready=true;check();return own.data;
+ })();
+ void producer.catch(()=>{own.retire();clearTimeout(own.timer);}).finally(async()=>{if(own.http)await Promise.allSettled([own.http]);if(keywordsOriginal===own&&!own.attempted){keywordsOriginal=null;clearTimeout(own.timer);}}).catch(()=>{});own.wait=Promise.race([producer,stopped]);return own.wait;
+}
+async function acknowledgeKeywords(msg,sender){
+ const own=keywordsOriginal;if(!own||!own.ready||bestTimeCaller(sender)!==own.scope||msg.readRef!==own.readRef||msg.viewRef!==own.viewRef)throw Error('keywords_unconfirmed');const check=()=>keywordsCheck(own);check();if(own.acknowledging)return own.acknowledging;
+ own.acknowledging=(async()=>{const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('keywords_unconfirmed');const row=await chrome.storage.local.get(KEYWORDS_PENDING);check();if(row[KEYWORDS_PENDING]?.readRef!==own.readRef||row[KEYWORDS_PENDING]?.viewRef!==own.viewRef||row[KEYWORDS_PENDING]?.input!==own.input||row[KEYWORDS_PENDING]?.lang!==own.lang)throw Error('keywords_unconfirmed');await chrome.storage.local.remove(KEYWORDS_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('keywords_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();clearTimeout(own.timer);keywordsOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,closed:true});})().catch(error=>{own.retire();clearTimeout(own.timer);throw error;});return own.acknowledging;
+}
+
 async function handleMessage(msg,sender) {
+  if (msg.type === 'KEYWORDS') return readKeywordsFromView(msg,sender);
+  if (msg.type === 'KEYWORDS_ACK') return acknowledgeKeywords(msg,sender);
+  if (msg.type === 'KEYWORDS_RETIRE') return retireKeywordsFromView(msg,sender);
   if (msg.type === 'COMPETITOR') return readCompetitorFromView(msg,sender);
   if (msg.type === 'COMPETITOR_ACK') return acknowledgeCompetitor(msg,sender);
   if (msg.type === 'AB_CREATE') return createAbFromView(msg,sender);
@@ -835,26 +990,6 @@ async function handleMessage(msg,sender) {
 
     case 'GET_LANG': {
       return { lang };
-    }
-
-    case 'KEYWORDS': {
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/research/keywords`, {
-          method: 'POST',
-          // P8 añadió una segunda ronda de llamadas a la API de YouTube (trending ahora) —
-          // el caché de 24h absorbe la mayoría de las peticiones, pero la primera para una
-          // keyword nueva puede pasar de los 15s por defecto.
-          timeoutMs: 30000,
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ keyword: msg.keyword }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (res.status === 403 && data.error === 'pro_required') throw new Error(lang === 'en' ? 'Pro plan required. Upgrade at ytubviral.com' : 'Plan Pro requerido. Actualiza en ytubviral.com');
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Keyword search error' : 'Error al buscar keywords'));
-      return data;
     }
 
     case 'GENERATION_CONTEXT': {
