@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { handleExtensionKeywords, type ExtensionKeywordContext } from '@/lib/extension-keywords-native-authorization';
+import { analyzeExtensionKeywords } from '@/lib/extension-keywords-analysis';
 import { fetchGoogleTrends, estimateSearchVolume } from '@/lib/volume-estimate';
 import { getUserPlan, isPaid } from '@/lib/plans';
 
@@ -30,7 +31,7 @@ interface TrendingItem {
 }
 
 export async function POST(request: Request) {
-  if (request.headers.has('authorization')) return handleExtensionKeywords(request, context => analyzeKeywords(context.keyword, context));
+  if (request.headers.has('authorization')) return handleExtensionKeywords(request, analyzeExtensionKeywords);
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
