@@ -1,7 +1,7 @@
 'use strict';
-const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs'),{flush,deferred}=require('./chat-widget-harness.cjs'),{harness,response,channelId}=require('./competitor-analysis-deadline.test.cjs');
+const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),crypto=require('node:crypto'),bcrypt=require('bcryptjs'),{load}=require('./route-harness.cjs'),{flush,deferred}=require('./chat-widget-harness.cjs'),{harness,response,channelId}=require('./competitor-analysis-deadline.test.cjs');
 module.exports=async(prisma,results)=>{
- const users=[],newOwner=async paid=>{const u=await prisma.user.create({data:{email:'analysis-native-'+randomUUID()+'@example.invalid'}});users.push(u.id);if(paid)await prisma.subscription.create({data:{userId:u.id,plan:'pro',status:'active'}});return u;};
+ const password='closed-native-competitor-pg-password',users=[],newOwner=async paid=>{const u=await prisma.user.create({data:{email:'analysis-native-'+randomUUID()+'@example.invalid',emailVerified:new Date(),password:await bcrypt.hash(password,8)}});users.push(u.id);if(paid)await prisma.subscription.create({data:{userId:u.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}});return u;};
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),options=u=>({userId:u.id,email:u.email,userReader:q=>prisma.user.findUnique(q),planReader:id=>plans.getUserPlan(id)});
  const rows=()=>prisma.trackedCompetitor.findMany({where:{userId:{in:users}},include:{snapshots:true},orderBy:{id:'asc'}}),admissions=()=>prisma.competitorCreationAttempt.findMany({where:{userId:{in:users}},orderBy:{id:'asc'}});
  try{
@@ -24,21 +24,23 @@ module.exports=async(prisma,results)=>{
    const gate=deferred(),entered=deferred(),owned=[];const h=harness({...options(owner),planReader:id=>{const p=(async()=>{const plan=await plans.getUserPlan(id);entered.resolve();await gate.promise;return plan;})();owned.push(p);return p;}});await entered.promise;h.state.auth.user.id=neighbor.id;h.state.auth.user.email=neighbor.email;gate.resolve();await Promise.all(owned);const b=await response(h,200);assert.equal(b.userId,owner.id);assert.deepEqual(h.plans,[owner.id]);assert.equal(h.queries[0].where.email,owner.email);results.push('Analysis server native account capture: auth mutation during original stored-plan wait cannot redirect email/identity or disclose neighbor result');
   }
   for(const mode of ['paid','free','expired']){
-   const u=mode==='free'?free:owner,token='synthetic-extension-'+randomUUID();await prisma.extensionToken.create({data:{userId:u.id,token,expiresAt:new Date(Date.now()+(mode==='expired'?-60000:3600000))}});
-   const extension=load('lib/extension-auth.ts',{'./prisma':{prisma},'./plans':plans}),beforeEvents=await prisma.extensionEvent.count({where:{userId:u.id}});
-   const actual=harness({...options(u),extensionMode:true,authorization:'Bearer '+token,held:'auth',extensionReader:r=>extension.getExtensionUser(r)});
+   const u=mode==='free'?free:owner;
+   const issuer=load('lib/extension-token-native-authorization.ts',{'node:crypto':crypto,'@/lib/prisma':{prisma},'@/lib/native-user-session':{readNativeVerifiedUser(){throw Error('No cookie recovery');}},'@/lib/plans':plans,bcryptjs:bcrypt,'@/lib/admin-email':{ADMIN_EMAIL:'other-admin@example.invalid'}},{Date});
+   const credential=await issuer.authorizeNativeExtensionPassword({email:u.email,password},()=>{}),minted=await issuer.mintNativeExtensionToken(credential,randomUUID(),()=>{}),token=minted.token;
+   if(mode==='expired')await prisma.extensionToken.update({where:{token},data:{expiresAt:new Date(0)}});
+   const nativeExtension=load('lib/extension-competitor-native-authorization.ts',{'@/lib/prisma':{prisma},'@/lib/plans':plans},{Date}),beforeEvents=await prisma.extensionEvent.count({where:{userId:u.id}});
+   const actual=harness({...options(u),extensionMode:true,authorization:'Bearer '+token,held:'auth',nativeExtension});
    actual.request.headers.set('authorization','Bearer foreign-token');actual.request.url='https://example.invalid/foreign';actual.gates.auth.resolve();
    const b=await response(actual,mode==='paid'?200:mode==='free'?403:401);
    if(mode==='paid'){assert.equal(b.userId,u.id);assert.equal(b.channel.id,channelId);}else assert.equal(actual.transports.length,0);
    assert.equal(actual.extensions[0].headers.get('authorization'),'Bearer '+token);assert.equal(actual.extensions[0].url,'https://example.invalid/api/youtube/competitor');
-   assert.equal(await prisma.extensionEvent.count({where:{userId:u.id}}),beforeEvents+(mode==='expired'?0:1));
-   if(mode!=='expired'){const events=await prisma.extensionEvent.findMany({where:{userId:u.id},orderBy:{createdAt:'desc'}});assert.equal(events[0].action,'/api/youtube/competitor');}
-   results.push('Analysis server native extension '+mode+': actual token/expiry/subscription/auth helper and captured bearer/URL; only original synthetic retention event, no changed-token authority or real OAuth');
+   assert.equal(await prisma.extensionEvent.count({where:{userId:u.id}}),beforeEvents);
+   results.push('Analysis native extension '+mode+': actual native password/crypto issuer and single-use competitor purpose; token/verified owner/paid plan original, no retention/auth writer or real Google/OAuth.');
   }
   {
    const h=harness({...options(owner),held:'playlistJSON'});await h.entered.playlistJSON.promise;h.advance(25000);await response(h,503);const before=h.transports.length;h.gates.playlistJSON.resolve();await flush();assert.equal(h.transports.length,before);results.push('Analysis server native plan plus original Google body: late playlist starts no video statistics successor and does not renew25s budget');
   }
   assert.deepEqual(await rows(),beforeRows);assert.deepEqual(await admissions(),beforeAdmissions);assert.deepEqual(await prisma.user.findMany({where:{id:{in:users}},orderBy:{id:'asc'}}),beforeUsers);assert.deepEqual(await prisma.subscription.findMany({where:{userId:{in:users}},orderBy:{id:'asc'}}),beforeSubscriptions);assert.equal(await prisma.competitorDeletionAttempt.count({where:{userId:{in:users}}}),0);assert.equal(await prisma.extensionEvent.count({where:{userId:neighbor.id}}),0);
   results.push('Analysis server native preservation: accounts/subscriptions/competitors/snapshots/creation/deletion admissions unchanged; neighbor has no retention event; only authorized synthetic auth fixtures');
- }finally{await prisma.user.deleteMany({where:{id:{in:users}}});}
+ }finally{results.push('Native analysis fixtures retained without deletion: '+users.join(','));}
 };

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getExtensionUser } from '@/lib/extension-auth';
+import { authorizeExtensionCompetitorAnalysis, readExtensionCompetitorOwner, recheckExtensionCompetitorAnalysis, checkExtensionCompetitorAnalysis, type ExtensionCompetitorAnalysis } from '@/lib/extension-competitor-native-authorization';
 import { getUserPlan, isPaid } from '@/lib/plans';
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY?.trim();
@@ -114,17 +114,19 @@ function selection(input: string): Selection | null {
 export async function POST(request: Request) {
   const deadline = performance.now() + 25_000, observedTime = Date.now();
   let retired = false, rejectWait!: (error: Error) => void;
+  let extensionOriginal: ExtensionCompetitorAnalysis | undefined;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
   const retire = () => { if (!retired) { retired = true; rejectWait(Error('Analysis unavailable')); } };
   const timer = setTimeout(retire, 25_000);
   request.signal.addEventListener('abort', retire, { once: true });
-  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Analysis unavailable'); };
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Analysis unavailable'); if (extensionOriginal) checkExtensionCompetitorAnalysis(extensionOriginal); };
+  const recheck = async () => { check(); if (extensionOriginal) await recheckExtensionCompetitorAnalysis(extensionOriginal, check); check(); };
   const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
     // Extension auth reads only URL and headers. Capture those without consuming
     // or transferring the original body, before awaiting session authentication.
-    const extensionRequest = new Request(request.url, { method: 'POST', headers: request.headers });
+    const extensionRequest = new Request(request.url, { method: 'POST', headers: request.headers, signal: request.signal });
     const original = Promise.resolve().then(async () => {
       check(); const session = await auth(); check();
       let userId: string;
@@ -140,10 +142,12 @@ export async function POST(request: Request) {
         const plan = await getUserPlan(userId); check();
         if (!isPaid(plan)) return reply({ error: 'pro_required' }, 403);
       } else {
-        const extension = await getExtensionUser(extensionRequest); check();
-        if (!extension || typeof extension.user?.id !== 'string' || !extension.user.id || extension.user.id.length > 512) return reply({ error: 'Unauthorized' }, 401);
-        userId = extension.user.id;
-        if (extension.isPro !== true) return reply({ error: 'pro_required' }, 403);
+        const original = await authorizeExtensionCompetitorAnalysis(extensionRequest); check();
+        if (!original) return reply({ error: 'Unauthorized' }, 401);
+        extensionOriginal = original;
+        const owner = await readExtensionCompetitorOwner(original, check); check();
+        if (!owner) return reply({ error: 'pro_required' }, 403);
+        userId = owner.userId;
       }
       if (!YT_API_KEY) return reply({ error: 'no_api_key' }, 503);
       const body: unknown = await request.json(); check();
@@ -151,9 +155,9 @@ export async function POST(request: Request) {
       const input = body.url.trim(), language = body.lang === undefined ? 'es' : body.lang, selected = selection(input);
       if (!selected || !['es', 'en'].includes(language as string)) return reply({ error: 'invalid_selection' }, 400);
       const google = async (route: string, max: number) => {
-        check(); const res = await fetch(`${YT_BASE}/${route}&key=${encodeURIComponent(YT_API_KEY)}`, { cache: 'no-store' }); check();
+        await recheck(); const res = await fetch(`${YT_BASE}/${route}&key=${encodeURIComponent(YT_API_KEY)}`, { cache: 'no-store' }); await recheck();
         if (!res.ok || res.status !== 200) throw Error('Analysis unavailable');
-        const data: unknown = await res.json(); check();
+        const data: unknown = await res.json(); await recheck();
         if (!object(data) || !Array.isArray(data.items) || data.items.length > max || data.items.some(v => !object(v))) throw Error('Analysis unavailable');
         return data.items as Record<string, unknown>[];
       };
@@ -202,8 +206,9 @@ export async function POST(request: Request) {
       const totalViews = topVideos.reduce((n, v) => n + BigInt(v.views), BigInt(0));
       const avgViews = topVideos.length ? Number((totalViews + BigInt(Math.floor(topVideos.length / 2))) / BigInt(topVideos.length)) : 0;
       if (!Number.isSafeInteger(avgViews) || avgViews < 0) throw Error('Analysis unavailable');
-      check(); return reply({ userId, language, input, channel, topVideos, keywords, uploadFrequency, avgViews,
+      await recheck(); const result = reply({ userId, language, input, channel, topVideos, keywords, uploadFrequency, avgViews,
         collectionStatus: unavailableVideoIds.length ? 'partial' : 'complete', unavailableVideoIds, totalVideosRequested: entries.length, totalVideosAvailable: videos.length });
+      check(); return result;
     });
     const response = await Promise.race([original, stopped]); check(); return response;
   } catch { return reply({ error: 'competitor_analysis_unavailable' }, 503); }
