@@ -1235,10 +1235,29 @@ async function runGenerate(resultsEl, videoTitle) {
 
 // ── Comments Intelligence ─────────────────────────────────────────
 
+const commentsDisplays = new Map();
+function retireCommentsDisplays() {
+  for (const [container, original] of commentsDisplays) { original.retire(); if (container.isConnected) container.innerHTML=''; }
+  commentsDisplays.clear();
+}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))retireCommentsDisplays();});
+document.addEventListener('yt-navigate-finish',()=>{for(const [container,original] of commentsDisplays)if(!container.isConnected||original.href!==location.href){original.retire();if(container.isConnected)container.innerHTML='';commentsDisplays.delete(container);}});
+
 async function loadComments(container, videoId) {
+  commentsDisplays.get(container)?.retire();
+  for (const [node, old] of commentsDisplays) if (!node.isConnected) { old.retire(); commentsDisplays.delete(node); }
+  const original = { href:location.href }, revision = studioSeoSessionRevision, deadline = performance.now()+60_000;
+  let retired=false, rejectWait, data;
+  const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+  original.retire=()=>{if(!retired){retired=true;rejectWait(Error('No se pudo confirmar el análisis de comentarios.'));}};
+  commentsDisplays.set(container,original);
+  const current=()=>commentsDisplays.get(container)===original && container.isConnected && location.href===original.href && studioSeoSessionRevision===revision;
+  const check=()=>{if(!current()||performance.now()>=deadline)original.retire();if(retired||data&&data.expiresAt<=Date.now())throw Error('No se pudo confirmar el análisis de comentarios.');};
+  const timer=setTimeout(original.retire,60_000);
   container.innerHTML = renderLoading(t('Cargando comentarios...', 'Loading comments...'));
   try {
-    const data = await sendMsg({ type: 'COMMENTS', videoId });
+    check(); data = await Promise.race([sendMsg({ type: 'COMMENTS', videoId }),stopped]); check();
+    if(data.videoId!==videoId || !Number.isSafeInteger(data.expiresAt) || data.expiresAt<=Date.now())throw Error('No se pudo confirmar el análisis de comentarios.');
 
     if (data.commentsDisabled) {
       container.innerHTML = `<div class="ytv-hint" style="padding:8px">${t('Comentarios desactivados', 'Comments disabled')}</div>`;
@@ -1246,7 +1265,7 @@ async function loadComments(container, videoId) {
     }
 
     if (data.totalComments === 0) {
-      container.innerHTML = `<div class="ytv-hint" style="padding:8px">${t('Sin comentarios', 'No comments')}</div>`;
+      container.innerHTML = `<div class="ytv-hint" style="padding:8px">${t('Sin comentarios en la muestra', 'No comments in this sample')}</div>`;
       return;
     }
 
@@ -1289,7 +1308,8 @@ async function loadComments(container, videoId) {
 
     container.innerHTML = `
       <div class="ytv-comments-section">
-        <div class="ytv-sc-section-title">${t('Sentimiento', 'Sentiment')} <span class="ytv-hint">(${data.totalComments} ${t('analizados', 'analyzed')})</span></div>
+        <div class="ytv-sc-section-title">${t('Sentimiento por palabras clave', 'Keyword sentiment')} <span class="ytv-hint">(${data.totalComments} ${t('analizados', 'analyzed')})</span></div>
+        <div class="ytv-hint">${t('Muestra de hasta 100 comentarios por relevancia. Actualidad sin confirmar.', 'Sample of up to 100 comments by relevance. Freshness unconfirmed.')}</div>
         ${sentimentHtml}
 
         ${topHtml ? `<div class="ytv-sc-section-title" style="margin-top:12px">${t('Top comentarios', 'Top comments')}</div>${topHtml}` : ''}
@@ -1302,6 +1322,7 @@ async function loadComments(container, videoId) {
     container.querySelectorAll('.ytv-btn-reply').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
+        if(!current()||retired||data.expiresAt<=Date.now())return;
         const replyArea = btn.nextElementSibling;
         replyArea.innerHTML = renderLoading(t('Generando...', 'Generating...'));
         try {
@@ -1311,6 +1332,7 @@ async function loadComments(container, videoId) {
             template: 'reply',
             inputs: { comment: btn.dataset.comment, videoTitle: title },
           });
+          check();
           const replyText = data.text || data.content || data.result || '';
           replyArea.innerHTML = `<div class="ytv-reply-text">${escapeHtml(replyText)}</div><button class="ytv-btn ytv-btn-sm ytv-btn-copy">${t('📋 Copiar', '📋 Copy')}</button>`;
           replyArea.querySelector('.ytv-btn-copy').addEventListener('click', (ev) => {
@@ -1324,8 +1346,8 @@ async function loadComments(container, videoId) {
       });
     });
   } catch (e) {
-    container.innerHTML = renderError(e.message);
-  }
+    if(current())container.innerHTML = renderError(e.message);
+  } finally {clearTimeout(timer);}
 }
 
 

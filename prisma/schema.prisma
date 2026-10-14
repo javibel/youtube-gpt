@@ -70,6 +70,7 @@ model User {
   extensionTokens      ExtensionToken[]
   extensionTokenIssuances ExtensionTokenIssuance[]
   extensionSeoOperations ExtensionSeoOperation[]
+  extensionCommentsOperations ExtensionCommentsOperation[]
   extensionEvents      ExtensionEvent[]
   calendarEntries      CalendarEntry[]
   calendarCreationReceipts CalendarCreationReceipt[]
@@ -1435,4 +1436,17 @@ model ExtensionSeoOperation {
   @@unique([userId,key])
   @@index([userId], map: "extension_seo_operations_user")
   @@map("extension_seo_operations")
+}
+
+model ExtensionCommentsOperation {
+  id String @id
+  userId String
+  key String
+  eventId String @unique
+  state String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId,key])
+  @@index([userId], map: "extension_comments_operations_user")
+  @@map("extension_comments_operations")
 }

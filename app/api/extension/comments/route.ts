@@ -1,87 +1,37 @@
 import { NextResponse } from 'next/server';
-import { getExtensionUser } from '@/lib/extension-auth';
-
-const POSITIVE = /\b(love|great|amazing|awesome|excellent|fantastic|perfect|best|helpful|incredible|thank|genial|increíble|excelente|fantástico|gracias|perfecto|mejor|útil|maravilloso)\b/i;
-const NEGATIVE = /\b(bad|terrible|hate|horrible|worst|awful|useless|boring|waste|disappointing|malo|terrible|odio|horrible|peor|inútil|aburrido|decepcionante)\b/i;
-
-interface Comment {
-  author: string;
-  text: string;
-  likes: number;
-  replies: number;
-  publishedAt: string;
-}
-
+import { authorizeExtensionComments, checkExtensionComments, runExtensionComments, validCommentsKey, extensionCommentsExpiry } from '@/lib/extension-comments-native-authorization';
+import { readCommentsYoutube, readCommentsInputBody } from '@/lib/extension-comments-youtube';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 export async function POST(request: Request) {
-  const extUser = await getExtensionUser(request);
-  if (!extUser) {
-    return NextResponse.json({ error: 'not_logged_in' }, { status: 401 });
-  }
-
-  const body = await request.json().catch(() => ({}));
-  const videoId = body.videoId as string | undefined;
-  if (!videoId) {
-    return NextResponse.json({ error: 'videoId required' }, { status: 400 });
-  }
-
-  const apiKey = process.env.YOUTUBE_API_KEY?.trim();
-  if (!apiKey) {
-    return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
-  }
-
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${encodeURIComponent(videoId)}&maxResults=100&order=relevance&key=${apiKey}`,
-  );
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    if (errData?.error?.errors?.[0]?.reason === 'commentsDisabled') {
-      return NextResponse.json({ commentsDisabled: true, totalComments: 0, topByLikes: [], questions: [], sentiment: { positive: 0, negative: 0, neutral: 1 } });
-    }
-    return NextResponse.json({ error: 'YouTube API error' }, { status: 500 });
-  }
-
-  const data = await res.json();
-  const threads = data.items || [];
-
-  const comments: Comment[] = threads.map((t: Record<string, unknown>) => {
-    const s = (t.snippet as Record<string, unknown>)?.topLevelComment as Record<string, unknown>;
-    const snip = (s?.snippet || {}) as Record<string, unknown>;
-    return {
-      author: (snip.authorDisplayName as string) || '',
-      text: (snip.textDisplay as string) || '',
-      likes: (snip.likeCount as number) || 0,
-      replies: ((t.snippet as Record<string, unknown>)?.totalReplyCount as number) || 0,
-      publishedAt: (snip.publishedAt as string) || '',
-    };
-  });
-
-  // Top by likes
-  const topByLikes = [...comments].sort((a, b) => b.likes - a.likes).slice(0, 5);
-
-  // Questions
-  const questions = comments.filter(c => c.text.includes('?')).sort((a, b) => b.likes - a.likes).slice(0, 10);
-
-  // Sentiment
-  let pos = 0, neg = 0, neu = 0;
-  for (const c of comments) {
-    const isPos = POSITIVE.test(c.text);
-    const isNeg = NEGATIVE.test(c.text);
-    if (isPos && !isNeg) pos++;
-    else if (isNeg && !isPos) neg++;
-    else neu++;
-  }
-  const total = comments.length || 1;
-
-  return NextResponse.json({
-    commentsDisabled: false,
-    totalComments: comments.length,
-    topByLikes,
-    questions,
-    sentiment: {
-      positive: Math.round((pos / total) * 100) / 100,
-      negative: Math.round((neg / total) * 100) / 100,
-      neutral: Math.round((neu / total) * 100) / 100,
-    },
-  });
+  const capturedAt = Date.now(), deadline = performance.now() + 55_000, transport = new AbortController();
+  let retired = false, rejectWait!: (e: Error) => void, nativeCheck: (() => void) | undefined;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; }); void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; transport.abort(); rejectWait(Error('Comments unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000); request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Comments unconfirmed'); nativeCheck?.(); };
+  const run = async <T,>(operation: () => Promise<T>) => { check(); const producer = Promise.resolve().then(() => { check(); return operation(); }); const result = await Promise.race([producer, stopped]); check(); return result; };
+  const key = request.headers.get('idempotency-key');
+  const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    if (!validCommentsKey(key)) return json({ code: 'invalid_operation_key', operationKey: key }, 400);
+    const original = await run(() => authorizeExtensionComments(request));
+    if (!original) return json({ code: 'not_logged_in', operationKey: key }, 401);
+    nativeCheck = () => checkExtensionComments(original); check();
+    const body: unknown = await run(() => readCommentsInputBody(request, check));
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ code: 'invalid_video_input', operationKey: key }, 400);
+    const { videoId } = body as Record<string, unknown>;
+    if (typeof videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return json({ code: 'invalid_video_input', operationKey: key }, 400);
+    const apiKey = process.env.YOUTUBE_API_KEY?.trim();
+    if (!apiKey) return json({ code: 'comments_configuration_unavailable', operationKey: key }, 503);
+    const result = await run(() => runExtensionComments(original, key, check, async ownCheck => {
+      ownCheck();
+      const result = await readCommentsYoutube(videoId, apiKey, capturedAt, ownCheck, transport.signal);
+      ownCheck(); return result;
+    }));
+    check();
+    const response = json({ ...result, videoId, operationKey: key, expiresAt: Math.min(capturedAt + 55_000, extensionCommentsExpiry(original)), observedAt: new Date(capturedAt).toISOString(), dataQuality: { source: 'youtube-comment-sample', sampleLimit: 100, order: 'relevance', sentiment: 'keyword-heuristic', freshness: 'unconfirmed' } });
+    check(); return response;
+  } catch { return json({ code: 'comments_unconfirmed', operationKey: key }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

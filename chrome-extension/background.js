@@ -284,6 +284,71 @@ async function runSeoQuick(msg) {
   try { return await Promise.race([producer, stopped]); } finally { retired = true; clearTimeout(timer); }
 }
 
+const COMMENTS_PENDING = 'ytv_comments_pending';
+let commentsOriginal = null;
+function validCommentsResult(data, key, videoId, startedAt) {
+  if (!data || data.operationKey !== key || data.videoId !== videoId || typeof data.commentsDisabled !== 'boolean'
+    || !Number.isSafeInteger(data.totalComments) || data.totalComments < 0 || data.totalComments > 100
+    || !Number.isSafeInteger(data.expiresAt) || data.expiresAt <= Date.now() || data.expiresAt > Date.parse(data.observedAt) + 55_000
+    || typeof data.observedAt !== 'string' || !Number.isFinite(Date.parse(data.observedAt)) || Date.parse(data.observedAt) < startedAt || Date.parse(data.observedAt) > Date.now()
+    || !data.dataQuality || data.dataQuality.source !== 'youtube-comment-sample' || data.dataQuality.sampleLimit !== 100 || data.dataQuality.order !== 'relevance'
+    || data.dataQuality.sentiment !== 'keyword-heuristic' || data.dataQuality.freshness !== 'unconfirmed') return false;
+  const valid = (list, limit, questions) => Array.isArray(list) && list.length <= Math.min(limit, data.totalComments) && list.every((c, i) =>
+    c && typeof c.author === 'string' && c.author.length <= 200 && typeof c.text === 'string' && c.text.length <= 10_000
+    && Number.isSafeInteger(c.likes) && c.likes >= 0 && Number.isSafeInteger(c.replies) && c.replies >= 0
+    && typeof c.publishedAt === 'string' && Number.isFinite(Date.parse(c.publishedAt)) && Date.parse(c.publishedAt) >= 0 && Date.parse(c.publishedAt) <= Date.parse(data.observedAt)
+    && (!questions || c.text.includes('?')) && (i === 0 || list[i-1].likes >= c.likes));
+  if (data.topByLikes?.length !== Math.min(5,data.totalComments) || !valid(data.topByLikes, 5, false) || !valid(data.questions, 10, true) || !data.sentiment) return false;
+  const values = ['positive','negative','neutral'].map(k=>data.sentiment[k]);
+  if (values.some(v=>typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1 || Math.abs(Math.round(v*100)-v*100)>1e-8)) return false;
+  if (data.commentsDisabled) return data.totalComments === 0 && values[0] === 0 && values[1] === 0 && values[2] === 1;
+  return data.totalComments === 0 ? values.every(v=>v===0) : Math.abs(values.reduce((n,v)=>n+v,0)-1) <= 0.015;
+}
+async function runComments(msg) {
+  if (commentsOriginal) throw Error('No se pudo confirmar el análisis de comentarios anterior.');
+  const original = {}; commentsOriginal = original;
+  const revision = identityRevision, deadline = performance.now() + 60_000, startedAt = Date.now();
+  const videoId = msg.videoId;
+  let retired = false, rejectWait, attempted = false, closed = false;
+  const stopped = new Promise((_,reject)=>{rejectWait=reject;});
+  const retire = () => { if (!retired) { retired=true; rejectWait(Error('No se pudo confirmar el análisis de comentarios.')); } };
+  const timer = setTimeout(retire,60_000);
+  const check = () => { if (performance.now() >= deadline || identityRevision !== revision || passwordLoginOriginal || tokenMutationOriginal) retire(); if (retired || commentsOriginal !== original) throw Error('No se pudo confirmar el análisis de comentarios.'); };
+  const close = async key => {
+    const row = await chrome.storage.local.get(COMMENTS_PENDING);
+    if (commentsOriginal !== original || row[COMMENTS_PENDING]?.key !== key) throw Error('No se pudo confirmar el análisis de comentarios.');
+    await chrome.storage.local.remove(COMMENTS_PENDING); closed=true;
+  };
+  const producer = (async()=>{
+    for (const marker of [COMMENTS_PENDING, IDENTITY_WRITE_PENDING, PASSWORD_LOGIN_PENDING]) {
+      const row = await chrome.storage.local.get(marker); check();
+      if (Object.hasOwn(row,marker)) throw Error('Hay una operación pendiente de confirmar.');
+    }
+    const token = await getToken(); check();
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw Error('not_logged_in');
+    if (typeof videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) throw Error('Datos de vídeo incorrectos.');
+    const key = crypto.randomUUID(); attempted=true;
+    await chrome.storage.local.set({[COMMENTS_PENDING]:{key}}); check();
+    const {res,data} = await apiFetch(API_BASE+'/api/extension/comments',{
+      method:'POST',timeoutMs:55_000,maxResponseBytes:512*1024,cache:'no-store',credentials:'omit',observeOriginal:promise=>{original.http=promise;},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'Idempotency-Key':key},body:JSON.stringify({videoId}),
+    }); check();
+    if (data?.operationKey !== key) throw Error('No se pudo confirmar el análisis de comentarios.');
+    const known = {invalid_video_input:400,not_logged_in:401,comments_configuration_unavailable:503};
+    if (Object.hasOwn(known,data.code) && res.status === known[data.code]) {
+      await close(key); check(); throw Error(data.code==='not_logged_in'?'not_logged_in':'No se pudieron consultar los comentarios.');
+    }
+    if (res.status !== 200 || !validCommentsResult(data,key,videoId,startedAt)) throw Error('No se pudo confirmar el análisis de comentarios.');
+    const current = await getToken(); check();
+    if (current !== token || data.expiresAt <= Date.now()) throw Error('No se pudo confirmar el análisis de comentarios.');
+    await close(key); check();
+    if (data.expiresAt <= Date.now()) throw Error('No se pudo confirmar el análisis de comentarios.');
+    return data;
+  })();
+  void producer.finally(async()=>{ await Promise.allSettled(original.http?[original.http]:[]); if (commentsOriginal===original && (!attempted || closed)) commentsOriginal=null; }).catch(()=>{});
+  try { return await Promise.race([producer,stopped]); } finally { retired=true; clearTimeout(timer); }
+}
+
 let channelStatsOriginal = null;
 async function getChannelStats() {
   if (channelStatsOriginal) return channelStatsOriginal.wait;
@@ -419,6 +484,7 @@ async function handleMessage(msg) {
   if (msg.type === 'SEO_LIVE') return runSeoLive(msg);
   if (msg.type === 'CHANNEL_STATS') return getChannelStats();
   if (msg.type === 'SEO_QUICK') return runSeoQuick(msg);
+  if (msg.type === 'COMMENTS') return runComments(msg);
   if (msg.type === 'GET_USER') return getExtensionIdentity();
   if (msg.type === 'STORE_TOKEN' || msg.type === 'LOGOUT') return mutateExtensionToken(msg);
   if (msg.type === 'LOGIN') return passwordLogin(msg);
@@ -531,21 +597,6 @@ async function handleMessage(msg) {
       } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (res.status === 429) throw new Error('rate_limited');
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Scorecard error' : 'Error al cargar scorecard'));
-      return data;
-    }
-
-    case 'COMMENTS': {
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/comments`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ videoId: msg.videoId }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Comments error' : 'Error al cargar comentarios'));
       return data;
     }
 
