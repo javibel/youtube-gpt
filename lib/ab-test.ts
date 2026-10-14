@@ -201,6 +201,11 @@ export async function createAbTest(
       if (owner.length !== 1 || owner[0].id !== userId) throw Error('Completion unavailable');
       const pending = await tx.abTestCreationAttempt.findUnique({ where: { id } });
       if (!pending || pending.userId !== userId || pending.videoId !== videoId || pending.state !== 'pending') throw Error('Completion unavailable');
+      // A native extension original checks its response against the Node clock.
+      // PostgreSQL's clock can be a few milliseconds ahead even on this host.
+      // Capture a date only for this new row, in the original title producer;
+      // never redate an existing test or derive execution rights from a date.
+      const startedAt = nativeGuard ? new Date(Date.now()) : undefined;
       const created = await tx.abTest.create({
         data: {
           userId,
@@ -211,8 +216,12 @@ export async function createAbTest(
           variantB,
           hoursPerVariant: hours,
           initialViews,
+          ...(startedAt ? { startedAt } : {}),
         },
       });
+      if (startedAt && (!(created.startedAt instanceof Date) || created.startedAt.getTime() !== startedAt.getTime())) {
+        throw Error('Completion date ACK unavailable');
+      }
       const completed = await tx.abTestCreationAttempt.updateMany({ where: { id, userId, videoId, state: 'pending' }, data: { state: 'complete', testId: created.id } });
       if (completed.count !== 1) throw Error('Completion unavailable');
       return created;
