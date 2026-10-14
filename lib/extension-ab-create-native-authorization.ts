@@ -71,7 +71,7 @@ export async function createExtensionAbOriginal(original: ExtensionAbCreation, k
     const pending = await tx.abTestCreationAttempt.findFirst({ where: { userId: own.userId, state: { not: 'complete' }, ...(own.admitted ? { id: { not: key } } : {}) } }); check();
     if (pending) throw Error('AB predecessor unconfirmed');
     const sub = await tx.subscription.findUnique({ where: { userId: own.userId }, select: { userId: true, status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true } }); check();
-    if (!sub || sub.userId !== own.userId || !hasPaidAccess(sub) || typeof sub.stripeCustomerId !== 'string' || !sub.stripeCustomerId
+    if (!sub || sub.userId !== own.userId || (sub.plan !== 'pro' && sub.plan !== 'business') || !hasPaidAccess(sub) || typeof sub.stripeCustomerId !== 'string' || !sub.stripeCustomerId
       || !(sub.currentPeriodEnd instanceof Date) || !Number.isFinite(sub.currentPeriodEnd.getTime())
       || plan !== (sub.plan === 'business' ? 'business' : 'pro')) throw Error('AB plan changed');
     const subscription = JSON.stringify([sub.status, sub.plan, sub.stripeCustomerId, sub.currentPeriodEnd.getTime()]);
