@@ -36,7 +36,7 @@ module.exports=function fixture(prisma,owner,options={}){
  const ownAdmission=p=>track(p.then(a=>a.ok?{...a,complete:(...args)=>track(a.complete(...args))}:a));
  const helper={...originalHelper,createAbTest:(...args)=>track(originalHelper.createAbTest(...args)),beginAbTestMutation:(...args)=>ownAdmission(originalHelper.beginAbTestMutation(...args)),beginAbTestTransition:(...args)=>ownAdmission(originalHelper.beginAbTestTransition(...args))};
  const route=load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},globals);
- const extension=load('app/api/extension/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/lib/extension-auth':{getExtensionUser:async()=>({user:{id:owner.id}})},'@/lib/ab-test':helper},globals);
+ const extension=load('app/api/extension/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/lib/extension-auth':{getExtensionUser:async()=>({user:{id:owner.id}})},'@/lib/extension-ab-read-native-authorization':{authorizeExtensionAbRead(){throw Error('This fixture admits only the original POST');}},'@/lib/ab-test':helper},globals);
  const input=videoId=>({videoId,variantA:'A synthetic',variantB:'B synthetic',hoursPerVariant:48});
  return{helper,route,extension,db,globals,youtube,puts,entered,release:()=>gate.resolve(),async settled(){for(let i=0;i<6;i++){const n=producers.length;await Promise.allSettled([...producers]);for(let j=0;j<40;j++)await Promise.resolve();if(n===producers.length)break;}},timers,input,
   create:videoId=>helper.createAbTest(owner.id,input(videoId)),
