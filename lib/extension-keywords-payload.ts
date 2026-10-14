@@ -109,10 +109,20 @@ export function deriveKeywordPayload(value: unknown, keyword: string, language: 
     collectionStatus: top.unavailableIds.length || recent.unavailableIds.length ? 'partial' : 'complete', avgViews, competition, competitionScore, opportunityScore, volumeEstimate,
     estimateStatus: !ready ? top.unavailableIds.length ? 'unavailable-partial' : 'unavailable-no-videos' : trendsScore === null ? 'heuristic-partial-unconfirmed' : 'heuristic-unconfirmed' };
 }
+// JSONB preserves values and array order, but not object member order. This is
+// strict negative recipe comparison; it never grants a credential or context.
+function sameKeywordValue(actual: unknown, expected: unknown): boolean {
+  if (actual === expected) return true;
+  if (!actual || !expected || typeof actual !== 'object' || typeof expected !== 'object') return false;
+  if (Array.isArray(expected)) return Array.isArray(actual) && actual.length === expected.length && expected.every((v, i) => sameKeywordValue(actual[i], v));
+  if (Array.isArray(actual)) return false;
+  const a = actual as Record<string, unknown>, e = expected as Record<string, unknown>, keys = Object.keys(e);
+  return Object.keys(a).length === keys.length && keys.every(k => Object.hasOwn(a, k) && sameKeywordValue(a[k], e[k]));
+}
 export function projectKeywordPayload(value: unknown, keyword: string, language: string) {
   const data = deriveKeywordPayload(value, keyword, language), r = record(value);
   if (Object.keys(r).length !== Object.keys(data).length || Object.keys(data).some(k => !Object.hasOwn(r, k))) fail();
   for (const k of ['trendingNow', 'collectionStatus', 'avgViews', 'competition', 'competitionScore', 'opportunityScore', 'volumeEstimate', 'estimateStatus'])
-    if (JSON.stringify(r[k]) !== JSON.stringify(data[k as keyof typeof data])) fail();
+    if (!sameKeywordValue(r[k], data[k as keyof typeof data])) fail();
   return data;
 }

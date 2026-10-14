@@ -807,8 +807,7 @@ const KEYWORDS_PENDING='ytv_keywords_pending';let keywordsOriginal=null;
 function keywordsSelection(v){return typeof v==='string'&&v.length>0&&v.length<=200&&v===v.trim()&&!/[\x00-\x1f\x7f]/.test(v);}
 function keywordsFreeze(v){if(v&&typeof v==='object'){for(const x of Object.values(v))keywordsFreeze(x);Object.freeze(v);}return v;}
 function keywordsPayloadProjection(value,keyword,language){
- // A bounded recipe is not authority. Only the original native ME/HTTP below can
- // supply a provisional result; copies of this projected data cannot close it.
+ // Negative recipe validation only: original private ME/HTTP/document ACK remain authority.
 const fail = () => { throw Error('Keyword payload unavailable'); };
 const record = (v) => v && typeof v === 'object' && !Array.isArray(v) ? v : fail();
 function boundedKeywordJSON(v, limit = 131072) {
@@ -904,12 +903,24 @@ function deriveKeywordPayload(value, keyword, language) {
         collectionStatus: top.unavailableIds.length || recent.unavailableIds.length ? 'partial' : 'complete', avgViews, competition, competitionScore, opportunityScore, volumeEstimate,
         estimateStatus: !ready ? top.unavailableIds.length ? 'unavailable-partial' : 'unavailable-no-videos' : trendsScore === null ? 'heuristic-partial-unconfirmed' : 'heuristic-unconfirmed' };
 }
+function sameKeywordValue(actual, expected) {
+    if (actual === expected)
+        return true;
+    if (!actual || !expected || typeof actual !== 'object' || typeof expected !== 'object')
+        return false;
+    if (Array.isArray(expected))
+        return Array.isArray(actual) && actual.length === expected.length && expected.every((v, i) => sameKeywordValue(actual[i], v));
+    if (Array.isArray(actual))
+        return false;
+    const a = actual, e = expected, keys = Object.keys(e);
+    return Object.keys(a).length === keys.length && keys.every(k => Object.hasOwn(a, k) && sameKeywordValue(a[k], e[k]));
+}
 function projectKeywordPayload(value, keyword, language) {
     const data = deriveKeywordPayload(value, keyword, language), r = record(value);
     if (Object.keys(r).length !== Object.keys(data).length || Object.keys(data).some(k => !Object.hasOwn(r, k)))
         fail();
     for (const k of ['trendingNow', 'collectionStatus', 'avgViews', 'competition', 'competitionScore', 'opportunityScore', 'volumeEstimate', 'estimateStatus'])
-        if (JSON.stringify(r[k]) !== JSON.stringify(data[k]))
+        if (!sameKeywordValue(r[k], data[k]))
             fail();
     return data;
 }
