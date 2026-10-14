@@ -2,7 +2,7 @@ import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { TEMPLATES } from '@/utils/prompts';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { getExtensionUser } from '@/lib/extension-auth';
+import { handleExtensionGenerate, consumeExtensionGenerateContext, extensionGenerateClient, type ExtensionGenerateContext } from '@/lib/extension-generate-native-authorization';
 import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
 import { triggerConversionEmail } from '@/lib/lifecycle-trigger';
@@ -21,10 +21,18 @@ function getIp(request: Request): string | null {
 }
 
 export async function POST(request: Request) {
+  if (request.headers.has('authorization')) return handleExtensionGenerate(request, context => generateOriginal(context.request, context));
+  return generateOriginal(request);
+}
+
+async function generateOriginal(request: Request, context?: ExtensionGenerateContext) {
   try {
     // Require authentication — unauthenticated calls would bypass all limits and incur API cost
-    const session = await auth();
-    const extAuth = !session?.user?.id ? await getExtensionUser(request) : null;
+    const native = context ? consumeExtensionGenerateContext(context) : null;
+    const client = native ? extensionGenerateClient(native) : prisma;
+    const step = native?.step ?? (<T,>(action: () => Promise<T>) => action());
+    const session = native ? null : await auth();
+    const extAuth = native ? { user: native.owner, isPro: native.owner.isPro } : null;
     if (!session?.user?.id && !extAuth) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -38,16 +46,16 @@ export async function POST(request: Request) {
     // for the very users it was written for. Free users now go through the same monthly quota
     // and proOnly checks as the web, so cost stays bounded by generationsPerMonth.
 
-    const operationKey = request.headers.get('idempotency-key');
+    const operationKey = native ? native.operationKey : request.headers.get('idempotency-key');
     if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) {
       return Response.json({ error: 'Invalid operation key' }, { status: 400 });
     }
-    const recovery = request.headers.get('X-Generation-Recovery');
+    const recovery = native ? native.recovery : request.headers.get('X-Generation-Recovery');
     if (recovery !== null && (recovery !== 'retained-only-v1' || operationKey === null)) {
       return Response.json({ error: 'Invalid recovery mode' }, { status: 400 });
     }
     let body;
-    try { body = await request.json(); }
+    try { body = native ? native.body : await request.json(); }
     catch { return Response.json({ error: 'Invalid body' }, { status: 400 }); }
     if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.template !== 'string'
       || !body.inputs || typeof body.inputs !== 'object' || Array.isArray(body.inputs)
@@ -99,7 +107,7 @@ export async function POST(request: Request) {
 
     // Authenticate the owner before reading any retained generation. A history ID
     // is a business replay key, never authority to recover a lost coordinator.
-    const authenticatedUser = extAuth ? extAuth.user : await prisma.user.findUnique({
+    const authenticatedUser = extAuth ? extAuth.user : await client.user.findUnique({
       where: { email: session!.user!.email! }, select: { id: true },
     });
     if (!authenticatedUser || typeof authenticatedUser.id !== 'string' || !authenticatedUser.id
@@ -113,7 +121,7 @@ export async function POST(request: Request) {
       Object.keys(inputs).sort().map(key => [key,inputs[key]]),lang])).digest('hex');
     async function savedResponse() {
       if (!generationId) return null;
-      const saved = await prisma.generation.findUnique({ where: { id: generationId } });
+      const saved = await client.generation.findUnique({ where: { id: generationId } });
       if (!saved) return null;
       const stored = saved.inputs;
       const meta = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored._migrationRetry : null;
@@ -136,7 +144,7 @@ export async function POST(request: Request) {
         // Extension Bearer token auth
         userId = extAuth.user.id;
         isPro = extAuth.isPro;
-        const extPlan = await getUserPlan(userId);
+        const extPlan = await getUserPlan(userId, client);
         const limit = getLimits(extPlan).generationsPerMonth;
 
         const startOfMonth = new Date();
@@ -144,10 +152,10 @@ export async function POST(request: Request) {
         startOfMonth.setHours(0, 0, 0, 0);
 
         let usedThisMonth: number;
-        try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
+        try { usedThisMonth = await readGenerationQuota(userId,startOfMonth, client); }
         catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
         if (usedThisMonth >= limit) {
-          if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
+          if (!isPro) await step(() => triggerConversionEmail(userId!, 'c1', { resetDay: 1 }));
           // `code` is for the extension: it renders a different card for "free quota spent"
           // (upgrade prompt) vs "Pro quota spent" (no upsell — they already pay).
           return Response.json(
@@ -162,7 +170,7 @@ export async function POST(request: Request) {
         }
 
         if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
-          await triggerConversionEmail(userId, 'c3');
+          await step(() => triggerConversionEmail(userId!, 'c3'));
           return Response.json(
             { error: 'Este template es exclusivo del plan Pro', code: 'pro_required', limitReached: true },
             { status: 403 }
@@ -170,7 +178,7 @@ export async function POST(request: Request) {
         }
 
         const rlKey = `generate:${userId}`;
-        const rlResult = await prisma.$queryRaw<{ hits: number }[]>`
+        const rlResult = await client.$queryRaw<{ hits: number }[]>`
           INSERT INTO rate_limits (key, hits, window_start)
           VALUES (${rlKey}, 1, NOW())
           ON CONFLICT (key) DO UPDATE
@@ -201,7 +209,7 @@ export async function POST(request: Request) {
         if (!isPro) {
           const ip = getIp(request);
           if (ip) {
-            const ipUsageThisMonth = await prisma.generation.count({
+            const ipUsageThisMonth = await client.generation.count({
               where: { ipAddress: ip, createdAt: { gte: startOfMonth } },
             });
             if (ipUsageThisMonth >= IP_FREE_LIMIT) {
@@ -221,7 +229,7 @@ export async function POST(request: Request) {
         if (user) {
           userId = user.id;
 
-          const plan = await getUserPlan(user.id);
+          const plan = await getUserPlan(user.id, client);
           isPro = isPaid(plan);
           const limit = getLimits(plan).generationsPerMonth;
 
@@ -231,11 +239,11 @@ export async function POST(request: Request) {
 
           // Verificar límite por cuenta
           let usedThisMonth: number;
-          try { usedThisMonth = await readGenerationQuota(userId,startOfMonth); }
+          try { usedThisMonth = await readGenerationQuota(userId,startOfMonth, client); }
           catch { return Response.json({ error: 'Generation quota unavailable' }, { status: 503 }); }
 
           if (usedThisMonth >= limit) {
-            if (!isPro) await triggerConversionEmail(userId, 'c1', { resetDay: 1 });
+            if (!isPro) await step(() => triggerConversionEmail(userId!, 'c1', { resetDay: 1 }));
             return Response.json(
               { error: isPro ? 'Límite del plan Pro alcanzado' : 'Límite del plan gratuito alcanzado', limitReached: true },
               { status: 429 }
@@ -244,7 +252,7 @@ export async function POST(request: Request) {
 
           // Bloquear templates Pro para usuarios free
           if (!isPro && (templateData as { proOnly?: boolean }).proOnly) {
-            await triggerConversionEmail(userId, 'c3');
+            await step(() => triggerConversionEmail(userId!, 'c3'));
             return Response.json(
               { error: 'Este template es exclusivo del plan Pro', limitReached: true },
               { status: 403 }
@@ -254,7 +262,7 @@ export async function POST(request: Request) {
           // Rate limit por minuto: máx 5 generaciones/minuto por usuario (anti-abuso)
           // Upsert atómico en BD: una sola operación SQL sin race condition
           const rlKey = `generate:${userId}`;
-          const result = await prisma.$queryRaw<{ hits: number }[]>`
+          const result = await client.$queryRaw<{ hits: number }[]>`
             INSERT INTO rate_limits (key, hits, window_start)
             VALUES (${rlKey}, 1, NOW())
             ON CONFLICT (key) DO UPDATE
@@ -282,7 +290,7 @@ export async function POST(request: Request) {
           if (!isPro) {
             const ip = getIp(request);
             if (ip) {
-              const ipUsageThisMonth = await prisma.generation.count({
+              const ipUsageThisMonth = await client.generation.count({
                 where: { ipAddress: ip, createdAt: { gte: startOfMonth } },
               });
               if (ipUsageThisMonth >= IP_FREE_LIMIT) {
@@ -312,7 +320,7 @@ export async function POST(request: Request) {
     const CONTEXT_TEMPLATES = new Set(['title', 'description', 'script', 'caption', 'shorts_hook', 'series', 'niche_analysis', 'next_video']);
     if (userId && CONTEXT_TEMPLATES.has(template)) {
       try {
-        const ctx = await getChannelContext(userId);
+        const ctx = await getChannelContext(userId, native ? { client, step, check: native.check, signal: native.signal } : undefined);
         if (ctx) {
           inputs._channelContext = ctx.summary;
         }
@@ -345,11 +353,11 @@ export async function POST(request: Request) {
     const execute = async (readOnly = false) => {
       let task;
       try {
-        task = await getMessagesTask({
+        task = await step(() => getMessagesTask({
           operationKey: operationKey ?? undefined,
           taskType: 'content.generate', userId: ownerId, language: lang === 'en' ? 'en' : 'es',
           instructionsVersion: 'generation-templates-v1', incompletePolicy: 'expose-text',
-        });
+        }));
       } catch {
         return Response.json({ error: 'Servicio no disponible temporalmente' }, { status: 503 });
       }
@@ -359,10 +367,10 @@ export async function POST(request: Request) {
         if (readOnly) {
           if (!task.retrieve) return Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
             retryMayConsume: false }, { status: 503 });
-          data = await task.retrieve(parameters, { signal: request.signal });
+          data = await step(() => task.retrieve!(parameters, { signal: request.signal }));
           if (!data) return Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
             retryMayConsume: false }, { status: 503 });
-        } else data = await task.create(parameters, { signal: request.signal });
+        } else data = await step(() => task.create(parameters, { signal: request.signal }));
       } catch (error) {
         if (!readOnly) throw error;
         const code = error && typeof error === 'object' && 'code' in error ? error.code : null;
@@ -383,9 +391,9 @@ export async function POST(request: Request) {
         inputs: { ...inputs, ...(generationId ? { _migrationRetry: { inputDigest, content, truncated } } : {}) },
         output: isContinuation ? previousContent + content : content, tokensUsed, ipAddress: getIp(request) } };
     };
-    if (operationKey === null) return unkeyedTextGeneration(ownerId, request.signal, () => execute());
-    if (recovery !== null) return retrieveKeyedTextGeneration(ownerId, generationId!, request.signal, () => execute(true));
-    return keyedTextGeneration(ownerId, generationId!, request.signal, preflight, () => execute(), () => execute(true));
+    if (operationKey === null) return unkeyedTextGeneration(ownerId, request.signal, () => execute(), client);
+    if (recovery !== null) return retrieveKeyedTextGeneration(ownerId, generationId!, request.signal, () => execute(true), client);
+    return keyedTextGeneration(ownerId, generationId!, request.signal, preflight, () => execute(), () => execute(true), client);
   } catch (error) {
     console.error('API Error:', error);
     const code = error && typeof error === 'object' && 'code' in error ? error.code : null;

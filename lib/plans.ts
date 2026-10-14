@@ -60,8 +60,8 @@ export function hasPaidAccess(subscription: {
   return !!subscription.currentPeriodEnd && subscription.currentPeriodEnd > now;
 }
 
-export async function getUserPlan(userId: string): Promise<PlanType> {
-  const sub = await prisma.subscription.findUnique({
+export async function getUserPlan(userId: string, client = prisma): Promise<PlanType> {
+  const sub = await client.subscription.findUnique({
     where: { userId },
     select: { status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true },
   });

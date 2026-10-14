@@ -6,17 +6,26 @@ const {TEMPLATES}=load('utils/prompts.js');
 const proTemplate=Object.keys(TEMPLATES).find(key=>TEMPLATES[key].proOnly);
 function harness(options={}){
  const requests=[],saved=[],emails=[];
- const runtime=taskFixture({taskType:'content.generate',controlUnavailable:options.noKey,respond:async()=>{requests.push({body:runtime.calls.at(-1)});if(options.pause)await options.pause;if(options.transportError)throw Error('Synthetic transport failure');if(options.providerStatus)throw {status:options.providerStatus};return options.reply??{content:[{type:'text',text:'Synthetic output'}],usage:{output_tokens:8},stop_reason:'end_turn'};}});
+ const runtime=taskFixture({taskType:'content.generate',userId:options.nativeRecord?.userId??options.extension?.user?.id??'synthetic',controlUnavailable:options.noKey,respond:async()=>{requests.push({body:runtime.calls.at(-1)});if(options.pause)await options.pause;if(options.transportError)throw Error('Synthetic transport failure');if(options.providerStatus)throw {status:options.providerStatus};const output=options.reply??{content:[{type:'text',text:'Synthetic output'}],usage:{output_tokens:8},stop_reason:'end_turn'};return options.nativeStep?options.nativeStep('model',()=>output):output;}});
  const session=Object.hasOwn(options,'session')?options.session:{user:{id:'synthetic',email:'synthetic@example.invalid'}};
  const counts=[];
  const prisma={user:{findUnique:async()=>options.missingUser?null:{id:options.userId??'synthetic'}},generation:{findUnique:async({where})=>{if(options.readError)throw Error('Private storage error');return options.savedRow??saved.find(row=>row.id===where.id)??null;},count:async({where})=>{counts.push(where);return where.ipAddress?(options.ipUsage??0):(options.used??0);},create:async({data})=>{if(options.saveError)throw Error('Synthetic save failure');if(data.id&&saved.some(row=>row.id===data.id))throw {code:'P2002'};saved.push(data);if(options.lostSaveAck)throw Error('Synthetic acknowledgement lost after commit');return data;}},$queryRaw:async()=>[{hits:options.hits??1}]};
  let transactionTail=Promise.resolve();
  prisma.$transaction=fn=>{const run=transactionTail.then(()=>transaction(fn));transactionTail=run.catch(()=>{});return run;};
- const transaction=async fn=>{if(options.quotaFailure)throw Error('Private quota failure');let completed=false;const result=await fn({...prisma,generation:{...prisma.generation,create:async args=>{const old=options.lostSaveAck;options.lostSaveAck=false;try{const row=await prisma.generation.create(args);completed=old;return row;}finally{options.lostSaveAck=old;}}},$queryRaw:async()=>[{retained:0}],$queryRawUnsafe:async()=>options.noQuotaOwner?[]:[{id:'synthetic'}],legacyThumbnailAttempt:{count:async()=>options.reserved??0}});if(completed)throw Error('Synthetic lost transaction acknowledgement after commit');return result;};
+ const transaction=async fn=>{if(options.quotaFailure)throw Error('Private quota failure');let completed=false;const result=await fn({...prisma,generation:{...prisma.generation,create:async args=>{const old=options.lostSaveAck;options.lostSaveAck=false;try{const row=await prisma.generation.create(args);completed=old;return row;}finally{options.lostSaveAck=old;}}},$queryRaw:async()=>[{retained:0}],$queryRawUnsafe:async()=>options.noQuotaOwner?[]:[{id:options.nativeRecord?.userId??options.extension?.user?.id??'synthetic'}],legacyThumbnailAttempt:{count:async()=>options.reserved??0}});if(completed)throw Error('Synthetic lost transaction acknowledgement after commit');return result;};
  const rows=new Map();
  prisma.textGenerationAttempt={count:async()=>Array.from(rows.values()).filter(r=>r.state!=='complete').length,findUnique:async({where})=>rows.get(where.id)||null,create:async({data})=>{const row={...data,createdAt:new Date()};rows.set(data.id,row);return row;},updateMany:async({where,data})=>{const row=rows.get(where.id);if(!row||row.state!==where.state)return{count:0};rows.set(where.id,{...row,...data});return{count:1};}};
  const planMock={getUserPlan:async()=>options.plan??'free',getLimits:()=>({generationsPerMonth:options.limit??10}),isPaid:plan=>plan!=='free'};
+ const ownerId=()=>options.nativeRecord?.userId??options.extension?.user?.id??options.userId??'synthetic';
+ const extensionFixture=options.extension?{id:'synthetic-extension-token',token:'a'.repeat(64),userId:ownerId(),user:{id:ownerId(),email:'synthetic@example.invalid',emailVerified:new Date(Date.now()-1000)},expiresAt:new Date(Date.now()+86400000)}:null;
+ prisma.extensionToken={findUnique:async()=>structuredClone(options.nativeRecord??extensionFixture)};
+ prisma.subscription={findUnique:async()=>structuredClone(Object.hasOwn(options,'nativePlanRow')?options.nativePlanRow:(options.plan??(options.extension?.isPro?'pro':'free'))==='free'?null:{plan:options.plan??'pro',status:'active',stripeCustomerId:'closed-test',currentPeriodEnd:null})};
+ for(const[name,model]of Object.entries(prisma))if(model&&typeof model==='object')for(const[method,fn]of Object.entries(model))if(typeof fn==='function')model[method]=(...args)=>options.nativeStep?options.nativeStep(name+'.'+method,()=>fn(...args)):fn(...args);
+ const native=load('lib/extension-generate-native-authorization.ts',{'@/lib/prisma':{prisma}},{Date,Headers,TextEncoder,AbortController,...options.nativeGlobals});
+ const originalFactory=runtime.getMessagesTask.bind(runtime);runtime.getMessagesTask=(...args)=>options.nativeStep?options.nativeStep('factory',()=>originalFactory(...args)):originalFactory(...args);
  const route=load('app/api/generate/route.ts',{
+
+  '@/lib/extension-generate-native-authorization':native,
   '@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(prisma,planMock),
   '@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),
   'node:crypto':require('node:crypto'),
@@ -27,12 +36,13 @@ function harness(options={}){
   '@/lib/channel-context':{getChannelContext:async()=>options.context?{summary:options.context}:null},
   '@/lib/lifecycle-trigger':{triggerConversionEmail:async(...args)=>{emails.push(args);}},
  });
- async function run(body={template:'title',inputs:{tema:'Synthetic topic'},lang:'es'},headers={}){const response=await route.POST(new Request('https://example.invalid/api/generate',{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)}));return {status:response.status,body:await response.json()};}
- return {run,requests,saved,emails,counts,rows};
+ async function run(body={template:'title',inputs:{tema:'Synthetic topic'},lang:'es'},headers={}){const response=await route.POST(new Request('https://example.invalid/api/generate',{method:'POST',headers:{'content-type':'application/json',...(options.extension||options.nativeRecord?{Authorization:'Bearer '+(options.nativeRecord?.token??'a'.repeat(64))}:{}),...headers},body:JSON.stringify(body)}));return {status:response.status,body:await response.json()};}
+ return {run,requests,saved,emails,counts,rows,prisma,route,runtime,native};
 }
+module.exports={harness};
 const results=[];
 async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(error){results.push({name,status:'FAIL',error:error.message});}}
-(async()=>{
+if(require.main===module)(async()=>{
  await test('retained-only absent operation cannot admit or infer even when capacity is available',async()=>{for(const options of [{},{used:10,hits:99}]){const h=harness(options),r=await h.run(undefined,{'Idempotency-Key':'never-admitted','X-Generation-Recovery':'retained-only-v1'});assert.equal(r.status,503);assert.equal(r.body.code,'text_result_unconfirmed');assert.equal(r.body.retryMayConsume,false);assert.equal(h.requests.length,0);assert.equal(h.saved.length,0);assert.equal(h.rows.size,0);assert.equal(h.counts.length,0);assert.equal(h.emails.length,0);}});
  await test('retained-only saved replay binds input and does not recreate deleted history',async()=>{const options={},h=harness(options),headers={'Idempotency-Key':'readonly-saved'},first=await h.run(undefined,headers);options.used=10;options.hits=99;headers['X-Generation-Recovery']='retained-only-v1';assert.deepEqual(await h.run(undefined,headers),first);assert.equal((await h.run({template:'title',inputs:{tema:'Changed input'},lang:'es'},headers)).status,409);h.saved.length=0;assert.equal((await h.run(undefined,headers)).status,503);assert.equal(h.requests.length,1);assert.equal(h.saved.length,0);assert.equal(h.rows.size,1);});
  await test('retained-only pending result without trusted retrieval stays unconfirmed and cannot infer again',async()=>{const options={saveError:true},h=harness(options),headers={'Idempotency-Key':'readonly-settled'};assert.equal((await h.run(undefined,headers)).status,503);assert.equal(h.requests.length,1);assert.equal(h.rows.size,1);options.saveError=false;options.used=10;options.hits=99;headers['X-Generation-Recovery']='retained-only-v1';assert.equal((await h.run(undefined,headers)).status,503);assert.equal(h.requests.length,1);assert.equal(h.saved.length,0);assert.equal(h.rows.size,1);assert.equal([...h.rows.values()][0].state,'pending');});

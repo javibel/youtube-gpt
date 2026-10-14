@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+type AccessTokenOptions = { checkRefreshStep?: () => void; client?: typeof prisma; step?: <T>(action: () => Promise<T>) => Promise<T>; signal?: AbortSignal };
+
 
 /**
  * Get a valid YouTube OAuth access token for the given user.
@@ -6,9 +8,10 @@ import { prisma } from '@/lib/prisma';
  * An HTTP reader may opt into guards between refresh stages. Legacy callers
  * retain the already invoked refresh attempt and its original persistence.
  */
-export async function getAccessToken(userId: string, beforeStep?: () => void, options?: { checkRefreshStep?: () => void }): Promise<string | null> {
+export async function getAccessToken(userId: string, beforeStep?: () => void, options?: AccessTokenOptions): Promise<string | null> {
+  const client = options?.client ?? prisma, step = options?.step ?? (<T,>(action: () => Promise<T>) => action());
   beforeStep?.();
-  const yt = await prisma.youtubeToken.findUnique({ where: { userId } });
+  const yt = await client.youtubeToken.findUnique({ where: { userId } });
   beforeStep?.();
   if (!yt) return null;
 
@@ -23,15 +26,15 @@ export async function getAccessToken(userId: string, beforeStep?: () => void, op
 
   // Attempt refresh with retry (even if accessToken is empty)
   beforeStep?.();
-  const result = await attemptRefresh(userId, yt.refreshToken, options?.checkRefreshStep);
+  const result = await attemptRefresh(userId, yt.refreshToken, options?.checkRefreshStep, options);
   beforeStep?.();
   if (result) return result;
 
   // First attempt failed — wait briefly and retry once
   beforeStep?.();
-  await new Promise(r => setTimeout(r, 1000));
+  await step(() => new Promise<void>(r => setTimeout(r, 1000)));
   beforeStep?.();
-  const retry = await attemptRefresh(userId, yt.refreshToken, options?.checkRefreshStep);
+  const retry = await attemptRefresh(userId, yt.refreshToken, options?.checkRefreshStep, options);
   beforeStep?.();
   if (retry) return retry;
 
@@ -41,10 +44,12 @@ export async function getAccessToken(userId: string, beforeStep?: () => void, op
   return yt.accessToken || null;
 }
 
-async function attemptRefresh(userId: string, refreshToken: string, beforeStep?: () => void): Promise<string | null> {
+async function attemptRefresh(userId: string, refreshToken: string, beforeStep?: () => void, options?: AccessTokenOptions): Promise<string | null> {
+  const client = options?.client ?? prisma, step = options?.step ?? (<T,>(action: () => Promise<T>) => action());
   try {
     beforeStep?.();
-    const res = await fetch('https://oauth2.googleapis.com/token', {
+    const res = await step(() => fetch('https://oauth2.googleapis.com/token', {
+      signal: options?.signal,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -53,17 +58,17 @@ async function attemptRefresh(userId: string, refreshToken: string, beforeStep?:
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
       }),
-    });
+    }));
 
     beforeStep?.();
-    const data = await res.json();
+    const data = await step(() => res.json());
     beforeStep?.();
 
     // Permanent failure — user actually revoked access
     if (data.error === 'invalid_grant' && data.error_description?.includes('revoked')) {
       console.error(`[youtube-auth] Revoked for user ${userId}: ${data.error_description}`);
       beforeStep?.();
-      await prisma.youtubeToken.update({
+      await client.youtubeToken.update({
         where: { userId },
         data: { accessToken: '', refreshToken: '', expiresAt: new Date(0) },
       });
@@ -95,7 +100,7 @@ async function attemptRefresh(userId: string, refreshToken: string, beforeStep?:
     }
 
     beforeStep?.();
-    await prisma.youtubeToken.update({
+    await client.youtubeToken.update({
       where: { userId },
       data: updateData,
     });

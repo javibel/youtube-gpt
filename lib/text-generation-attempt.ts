@@ -11,50 +11,50 @@ export type TextGenerationResult = { content: string; truncated: boolean; histor
 // Every keyless HTTP call is a distinct operation. Only a fresh, acknowledged
 // admission permits this live closure to run. No lookup/reset/TTL can reclaim it.
 export async function unkeyedTextGeneration(userId: string, signal: AbortSignal,
-  execute: () => Promise<Response | TextGenerationResult>) {
-  return runTextGeneration(userId, 'text_generation_' + randomUUID(), signal, execute, false);
+  execute: () => Promise<Response | TextGenerationResult>, client = prisma) {
+  return runTextGeneration(userId, 'text_generation_' + randomUUID(), signal, execute, false, client);
 }
 
 // The prefix classifies freshly admitted Storyboard quota; it never grants
 // recovery authority. Every call creates a new random operation.
 export async function unkeyedStoryboardGeneration(userId: string, signal: AbortSignal,
-  execute: () => Promise<Response | TextGenerationResult>) {
-  return runTextGeneration(userId, 'storyboard_generation_' + randomUUID(), signal, execute, true);
+  execute: () => Promise<Response | TextGenerationResult>, client = prisma) {
+  return runTextGeneration(userId, 'storyboard_generation_' + randomUUID(), signal, execute, true, client);
 }
 
 // A retained business reservation permits only a read of the trusted runtime's
 // settled result. It never permits execution, release or takeover of a runner.
 export async function keyedTextGeneration(userId: string, id: string, signal: AbortSignal,
   preflight: () => Promise<Response | null>, execute: () => Promise<Response | TextGenerationResult>,
-  retrieve: () => Promise<Response | TextGenerationResult>) {
-  return runKeyedTextGeneration(userId, id, signal, preflight, execute, retrieve, false);
+  retrieve: () => Promise<Response | TextGenerationResult>, client = prisma) {
+  return runKeyedTextGeneration(userId, id, signal, preflight, execute, retrieve, false, true, client);
 }
 
 export async function keyedStoryboardGeneration(userId: string, id: string, signal: AbortSignal,
   preflight: () => Promise<Response | null>, execute: () => Promise<Response | TextGenerationResult>,
-  retrieve: () => Promise<Response | TextGenerationResult>) {
-  return runKeyedTextGeneration(userId, id, signal, preflight, execute, retrieve, true);
+  retrieve: () => Promise<Response | TextGenerationResult>, client = prisma) {
+  return runKeyedTextGeneration(userId, id, signal, preflight, execute, retrieve, true, true, client);
 }
 
 // A retained batch may read an admitted item, but may not admit a missing item.
 // Only the original fresh batch invocation is allowed to request new admission.
 export async function retrieveKeyedTextGeneration(userId: string, id: string, signal: AbortSignal,
-  retrieve: () => Promise<Response | TextGenerationResult>) {
+  retrieve: () => Promise<Response | TextGenerationResult>, client = prisma) {
   return runKeyedTextGeneration(userId, id, signal, async () => null,
-    async () => { throw Error('Read-only item cannot execute'); }, retrieve, false, false);
+    async () => { throw Error('Read-only item cannot execute'); }, retrieve, false, false, client);
 }
 
 // An explicit Storyboard recovery request may only inspect its retained slot.
 // The selector/key never permits admission, inference, release or takeover.
 export async function retrieveKeyedStoryboardGeneration(userId: string, id: string, signal: AbortSignal,
-  retrieve: () => Promise<Response | TextGenerationResult>) {
+  retrieve: () => Promise<Response | TextGenerationResult>, client = prisma) {
   return runKeyedTextGeneration(userId, id, signal, async () => null,
-    async () => { throw Error('Read-only Storyboard cannot execute'); }, retrieve, true, false);
+    async () => { throw Error('Read-only Storyboard cannot execute'); }, retrieve, true, false, client);
 }
 
 async function runKeyedTextGeneration(userId: string, id: string, signal: AbortSignal,
   preflight: () => Promise<Response | null>, execute: () => Promise<Response | TextGenerationResult>,
-  retrieve: () => Promise<Response | TextGenerationResult>, storyboard: boolean, allowFreshAdmission = true) {
+  retrieve: () => Promise<Response | TextGenerationResult>, storyboard: boolean, allowFreshAdmission = true, client = prisma) {
   const uncertain = (status = 503) => Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
     retryMayConsume: false }, { status, headers: { 'Cache-Control': 'no-store' } });
   let result: TextGenerationResult | null = null;
@@ -73,7 +73,7 @@ async function runKeyedTextGeneration(userId: string, id: string, signal: AbortS
   try {
     if (!(storyboard ? /^storyboard_[a-f0-9]{64}$/ : /^generate_[a-f0-9]{64}$/).test(id)
       || !userId || signal.aborted) return uncertain();
-    const inspect = () => prisma.$transaction(async tx => {
+    const inspect = () => client.$transaction(async tx => {
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       if (owner.length !== 1 || owner[0].id !== userId || signal.aborted) throw Error('Admission unavailable');
       const row = await tx.textGenerationAttempt.findUnique({ where: { id } });
@@ -88,7 +88,7 @@ async function runKeyedTextGeneration(userId: string, id: string, signal: AbortS
       // Preflight itself reads quota under an owner lock. Keep it outside this
       // transaction, then recheck the shared capacity at durable admission.
       const denied = await preflight();
-      const admission = await prisma.$transaction(async tx => {
+      const admission = await client.$transaction(async tx => {
         const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
         if (owner.length !== 1 || owner[0].id !== userId || signal.aborted) throw Error('Admission unavailable');
         const existing = await tx.textGenerationAttempt.findUnique({ where: { id } });
@@ -97,7 +97,7 @@ async function runKeyedTextGeneration(userId: string, id: string, signal: AbortS
           return { row: existing, fresh: false };
         }
         if (denied) return denied;
-        const plan = await getUserPlan(userId);
+        const plan = await getUserPlan(userId, client);
         const month = new Date(); month.setDate(1); month.setHours(0, 0, 0, 0);
         if ((await thumbnailQuota(tx, userId, month)).total >= getLimits(plan).generationsPerMonth) {
           return Response.json({ error: 'Límite del plan alcanzado', limitReached: true }, { status: 429 });
@@ -124,7 +124,7 @@ async function runKeyedTextGeneration(userId: string, id: string, signal: AbortS
       || (storyboard && (result.history.template !== 'video_preview' || result.truncated))
       || typeof result.history.output !== 'string' || !result.history.output.trim()
       || !Number.isSafeInteger(result.history.tokensUsed) || result.history.tokensUsed < 0 || signal.aborted) return uncertain();
-    await prisma.$transaction(async tx => {
+    await client.$transaction(async tx => {
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       const current = await tx.textGenerationAttempt.findUnique({ where: { id } });
       if (owner.length !== 1 || owner[0].id !== userId || !current || !valid(current)
@@ -144,8 +144,8 @@ async function runKeyedTextGeneration(userId: string, id: string, signal: AbortS
     // already committed completion, but cannot restart an unresolved effect.
     if (result && admittedAt && !signal.aborted) {
       try {
-        const [row, saved] = await Promise.all([prisma.textGenerationAttempt.findUnique({ where: { id } }),
-          prisma.generation.findUnique({ where: { id } })]);
+        const [row, saved] = await Promise.all([client.textGenerationAttempt.findUnique({ where: { id } }),
+          client.generation.findUnique({ where: { id } })]);
         if (row && valid(row) && row.state === 'complete' && saved && matches(saved)) return response();
       } catch { /* Leave the result unconfirmed. */ }
     }
@@ -155,17 +155,17 @@ async function runKeyedTextGeneration(userId: string, id: string, signal: AbortS
 }
 
 async function runTextGeneration(userId: string, id: string, signal: AbortSignal,
-  execute: () => Promise<Response | TextGenerationResult>, storyboard: boolean) {
+  execute: () => Promise<Response | TextGenerationResult>, storyboard: boolean, client = prisma) {
   const uncertain = (status = 503) => Response.json({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed',
     retryMayConsume: true }, { status, headers: { 'Cache-Control': 'no-store' } });
   let result: TextGenerationResult | null = null;
   let admittedAt: Date | null = null;
   try {
     if (signal.aborted) return uncertain();
-    const admission = await prisma.$transaction(async tx => {
+    const admission = await client.$transaction(async tx => {
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       if (owner.length !== 1 || owner[0].id !== userId || signal.aborted) throw Error('Admission unavailable');
-      const plan = await getUserPlan(userId);
+      const plan = await getUserPlan(userId, client);
       const month = new Date(); month.setDate(1); month.setHours(0, 0, 0, 0);
       const quota = await thumbnailQuota(tx, userId, month);
       if (quota.total >= getLimits(plan).generationsPerMonth) return null;
@@ -194,7 +194,7 @@ async function runTextGeneration(userId: string, id: string, signal: AbortSignal
       || !Number.isSafeInteger(result.history.tokensUsed) || result.history.tokensUsed < 0) return uncertain();
     if (signal.aborted) return uncertain();
     const history = result.history;
-    await prisma.$transaction(async tx => {
+    await client.$transaction(async tx => {
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       const row = await tx.textGenerationAttempt.findUnique({ where: { id } });
       if (owner.length !== 1 || owner[0].id !== userId || !row || row.userId !== userId || row.state !== 'pending'
@@ -210,7 +210,7 @@ async function runTextGeneration(userId: string, id: string, signal: AbortSignal
     if (result && admittedAt) {
       try {
         const [row, saved] = await Promise.all([
-          prisma.textGenerationAttempt.findUnique({ where: { id } }), prisma.generation.findUnique({ where: { id } }),
+          client.textGenerationAttempt.findUnique({ where: { id } }), client.generation.findUnique({ where: { id } }),
         ]);
         if (row?.userId === userId && row.state === 'complete' && saved?.userId === userId
           && saved.template === result.history.template && saved.output === result.history.output

@@ -19,30 +19,31 @@ export interface ChannelContext {
  * Extracted from the Coach route for reuse in AI Generator prompts.
  * Returns null if the user has no YouTube channel connected.
  */
-export async function getChannelContext(userId: string): Promise<ChannelContext | null> {
-  const yt = await prisma.youtubeToken.findUnique({ where: { userId } });
+export async function getChannelContext(userId: string, options?: { client?: typeof prisma; step?: <T>(action: () => Promise<T>) => Promise<T>; check?: () => void; signal?: AbortSignal }): Promise<ChannelContext | null> {
+  const client = options?.client ?? prisma, step = options?.step ?? (<T,>(action: () => Promise<T>) => action());
+  const yt = await client.youtubeToken.findUnique({ where: { userId } });
   if (!yt?.channelId) return null;
 
   // Fetch recent videos from YouTube API
-  const token = await getAccessToken(userId);
+  const token = await getAccessToken(userId, options?.check, { checkRefreshStep: options?.check, client, step, signal: options?.signal });
   let recentVideos: { title: string; views: string; publishedAt: string }[] = [];
 
   if (token) {
     try {
-      const searchRes = await fetch(
+      const searchRes = await step(() => fetch(
         `https://www.googleapis.com/youtube/v3/search?part=id&forMine=true&type=video&order=date&maxResults=10`,
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${token}` }, ...(options?.signal ? { signal: options.signal } : {}) },
       );
       if (searchRes.ok) {
-        const searchData = await searchRes.json();
+        const searchData = await step(() => searchRes.json());
         const ids = (searchData.items || []).map((i: { id: { videoId: string } }) => i.id.videoId).join(',');
         if (ids) {
-          const vidsRes = await fetch(
+          const vidsRes = await step(() => fetch(
             `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids}`,
-            { headers: { Authorization: `Bearer ${token}` } },
+            { headers: { Authorization: `Bearer ${token}` }, ...(options?.signal ? { signal: options.signal } : {}) },
           );
           if (vidsRes.ok) {
-            const vidsData = await vidsRes.json();
+            const vidsData = await step(() => vidsRes.json());
             recentVideos = (vidsData.items || []).map((v: { snippet: { title: string; publishedAt: string }; statistics: { viewCount: string } }) => ({
               title: v.snippet.title,
               views: v.statistics.viewCount,
@@ -55,7 +56,7 @@ export async function getChannelContext(userId: string): Promise<ChannelContext 
   }
 
   // SEO scores
-  const seoScores = await prisma.videoSeoScore.findMany({
+  const seoScores = await client.videoSeoScore.findMany({
     where: { userId },
     orderBy: { analyzedAt: 'desc' },
     take: 10,
@@ -67,7 +68,7 @@ export async function getChannelContext(userId: string): Promise<ChannelContext 
     : null;
 
   // Growth data
-  const snapshots = await prisma.channelSnapshot.findMany({
+  const snapshots = await client.channelSnapshot.findMany({
     where: { userId },
     orderBy: { recordedAt: 'desc' },
     take: 30,
@@ -79,7 +80,7 @@ export async function getChannelContext(userId: string): Promise<ChannelContext 
     : '';
 
   // Competitors
-  const competitors = await prisma.trackedCompetitor.findMany({
+  const competitors = await client.trackedCompetitor.findMany({
     where: { userId },
     select: { channelName: true, subscribers: true },
     take: 5,
