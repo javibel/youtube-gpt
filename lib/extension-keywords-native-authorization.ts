@@ -6,6 +6,8 @@ type KeywordsOriginal = { readonly [keywordsBrand]: true };
 type Own = { token: string; tokenId: string; userId: string; email: string; verifiedAt: number;
   tokenExpires: number; capturedAt: number; expiresAt: number; readRef: string; request: Request; used: boolean };
 const originals = new WeakMap<object, Own>();
+declare const keywordContextBrand: unique symbol;
+const contexts = new WeakMap<object, { cap: KeywordsOriginal; check: () => void; value: ExtensionKeywordContext; used: boolean }>();
 const lookup = (token: string) => prisma.extensionToken.findUnique({ where: { token },
   include: { user: { select: { id: true, email: true, emailVerified: true } } } });
 function eligible(row: Awaited<ReturnType<typeof lookup>>, token: string) {
@@ -49,10 +51,16 @@ export async function recheckExtensionKeywords(cap: KeywordsOriginal, check: () 
     || row.expiresAt.getTime() !== own.tokenExpires || row.user.emailVerified!.getTime() !== own.verifiedAt) throw Error('Keyword credential changed');
 }
 export type ExtensionKeywordContext = {
+  readonly [keywordContextBrand]: true;
   keyword: string; language: 'es' | 'en';
   step: <T>(operation: () => Promise<T>) => Promise<T>;
   reply: (data: unknown, cacheExpiresAt?: Date) => Promise<Response>;
 };
+export function consumeExtensionKeywordContext(context: ExtensionKeywordContext): ExtensionKeywordContext {
+  const own = context && typeof context === 'object' ? contexts.get(context) : undefined;
+  if (!own || own.used) throw Error('Keyword producer context unavailable');
+  retained(own.cap); own.check(); own.used = true; return own.value;
+}
 export async function handleExtensionKeywords(request: Request, analyze: (context: ExtensionKeywordContext) => Promise<Response>): Promise<Response> {
   const startedAt = Date.now(), deadline = performance.now() + 25000;
   const captured = new Request(request.url, { method: 'POST', headers: new Headers(request.headers), signal: request.signal });
@@ -81,7 +89,9 @@ export async function handleExtensionKeywords(request: Request, analyze: (contex
       if (cacheExpiresAt && (!(cacheExpiresAt instanceof Date) || !Number.isFinite(cacheExpiresAt.getTime()) || cacheExpiresAt.getTime() <= Date.now())) throw Error('Keyword cache expired');
       const result = json({ ...owner, keyword, language, sourceStatus: cacheExpiresAt ? 'cached-unconfirmed' : 'collected-unconfirmed',
         cacheExpiresAt: cacheExpiresAt?.toISOString() ?? null, data }, 200); check(); return result; };
-    const response = await run(() => analyze({ keyword, language, step, reply })); check(); return response;
+    const context = Object.freeze({ keyword, language, step, reply }) as ExtensionKeywordContext;
+    contexts.set(context, { cap, check, value: context, used: false });
+    const response = await run(() => analyze(context)); check(); return response;
   } catch { retire(); return json({ error: 'keywords_unconfirmed' }, 503); }
   finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

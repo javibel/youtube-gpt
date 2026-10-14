@@ -1,11 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
-import type { ExtensionKeywordContext } from '@/lib/extension-keywords-native-authorization';
+import { consumeExtensionKeywordContext, type ExtensionKeywordContext } from '@/lib/extension-keywords-native-authorization';
 import { boundedKeywordJSON, deriveKeywordPayload, projectKeywordPayload, keywordSearch, keywordStats, keywordSuggestions,
   keywordTrendPoints, keywordCacheDate, keywordVolumeCache, nativeKeywordCacheKey, nativeKeywordVolumeKey } from '@/lib/extension-keywords-payload';
 
 export async function analyzeExtensionKeywords(context: ExtensionKeywordContext): Promise<Response> {
-  const { keyword, language, step, reply } = context, key = process.env.YOUTUBE_API_KEY?.trim();
+  const { keyword, language, step, reply } = consumeExtensionKeywordContext(context), key = process.env.YOUTUBE_API_KEY?.trim();
   if (!key) throw Error('Keyword source unavailable');
   const cacheKey = nativeKeywordCacheKey(keyword, language), cached = await step(() => prisma.youtubeCache.findUnique({ where: { key: cacheKey } }));
   if (cached && keywordCacheDate(cached, cacheKey).getTime() > Date.now()) {
