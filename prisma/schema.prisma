@@ -1461,3 +1461,17 @@ model ExtensionBatchOperation {
   @@index([principal], map: "extension_batch_operations_principal")
   @@map("extension_batch_operations")
 }
+
+model ExtensionScorecardOperation {
+ id String @id
+ principal String
+ key String @unique
+ eventId String @unique
+ state String
+ createdAt DateTime @default(now())
+ videoId String?
+ viewCount BigInt?
+ capturedAt DateTime?
+ @@index([principal], map: "extension_scorecard_operations_principal")
+ @@map("extension_scorecard_operations")
+}
