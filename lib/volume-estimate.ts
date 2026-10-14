@@ -30,7 +30,9 @@ function logNorm(value: number): number {
 
 // ── Google Trends ────────────────────────────────────────────────────────────
 
-export async function fetchGoogleTrends(keyword: string): Promise<number | null> {
+type SourceStep = <T>(operation: () => Promise<T>) => Promise<T>;
+const sourceStep = <T,>(step: SourceStep | undefined, operation: () => Promise<T>) => step ? step(operation) : operation();
+export async function fetchGoogleTrends(keyword: string, step?: SourceStep): Promise<number | null> {
   try {
     const req = JSON.stringify({
       comparisonItem: [{ keyword, geo: 'ES', time: 'today 12-m' }],
@@ -38,7 +40,7 @@ export async function fetchGoogleTrends(keyword: string): Promise<number | null>
       property: 'youtube',
     });
 
-    const exploreRes = await fetch(
+    const exploreRes = await sourceStep(step, () => fetch(
       `https://trends.google.com/trends/api/explore?hl=es&tz=-60&req=${encodeURIComponent(req)}`,
       {
         headers: {
@@ -47,11 +49,11 @@ export async function fetchGoogleTrends(keyword: string): Promise<number | null>
         },
         signal: AbortSignal.timeout(5000),
       },
-    );
+    ));
 
     if (!exploreRes.ok) return null;
 
-    const exploreText = (await exploreRes.text()).replace(/^\)\]\}'/, '');
+    const exploreText = (await sourceStep(step, () => exploreRes.text())).replace(/^\)\]\}'/, '');
     const exploreData = JSON.parse(exploreText);
 
     const timelineWidget = exploreData.widgets?.find(
@@ -62,7 +64,7 @@ export async function fetchGoogleTrends(keyword: string): Promise<number | null>
     const token = timelineWidget.token;
     const widgetReq = encodeURIComponent(JSON.stringify(timelineWidget.request));
 
-    const tlRes = await fetch(
+    const tlRes = await sourceStep(step, () => fetch(
       `https://trends.google.com/trends/api/widgetdata/multiline?hl=es&tz=-60&req=${widgetReq}&token=${token}`,
       {
         headers: {
@@ -71,11 +73,11 @@ export async function fetchGoogleTrends(keyword: string): Promise<number | null>
         },
         signal: AbortSignal.timeout(5000),
       },
-    );
+    ));
 
     if (!tlRes.ok) return null;
 
-    const tlText = (await tlRes.text()).replace(/^\)\]\}'/, '');
+    const tlText = (await sourceStep(step, () => tlRes.text())).replace(/^\)\]\}'/, '');
     const tlData = JSON.parse(tlText);
 
     const points: { value: number[] }[] = tlData?.default?.timelineData ?? [];
@@ -93,6 +95,7 @@ export async function fetchGoogleTrends(keyword: string): Promise<number | null>
 export async function autocompleteScore(
   keyword: string,
   existingSuggestions: string[],
+  step?: SourceStep,
 ): Promise<number> {
   // Base score from number of suggestions the keyword generates
   const base = clamp((existingSuggestions.length / 8) * 40, 0, 40);
@@ -103,8 +106,8 @@ export async function autocompleteScore(
 
   try {
     const url = `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(prefix)}&hl=es`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
-    const text = await res.text();
+    const res = await sourceStep(step, () => fetch(url, { signal: AbortSignal.timeout(3000) }));
+    const text = await sourceStep(step, () => res.text());
     const match = text.match(/\["[^"]*",\s*\[([\s\S]*?)\]\s*\]/);
     if (!match) return base;
 
@@ -152,10 +155,10 @@ const BUCKETS: {
   { min: 0, label: 'Muy Bajo', labelEn: 'Very Low', range: '<100 busq/mes', rangeEn: '<100 searches/mo' },
 ];
 
-export async function estimateSearchVolume(input: VolumeInput): Promise<VolumeEstimate> {
+export async function estimateSearchVolume(input: VolumeInput, step?: SourceStep): Promise<VolumeEstimate> {
   const normTotal = logNorm(input.totalResults);
   const normViews = logNorm(input.avgViews);
-  const acScore = await autocompleteScore(input.keyword, input.relatedKeywords);
+  const acScore = await autocompleteScore(input.keyword, input.relatedKeywords, step);
 
   let rawScore: number;
 

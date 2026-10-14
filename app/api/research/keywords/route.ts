@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { getExtensionUser } from '@/lib/extension-auth';
+import { handleExtensionKeywords, type ExtensionKeywordContext } from '@/lib/extension-keywords-native-authorization';
 import { fetchGoogleTrends, estimateSearchVolume } from '@/lib/volume-estimate';
 import { getUserPlan, isPaid } from '@/lib/plans';
 
@@ -30,14 +30,14 @@ interface TrendingItem {
 }
 
 export async function POST(request: Request) {
+  if (request.headers.has('authorization')) return handleExtensionKeywords(request, context => analyzeKeywords(context.keyword, context));
   const session = await auth();
-  const extAuth = !session?.user ? await getExtensionUser(request) : null;
-  if (!session?.user && !extAuth) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Extension: keywords open to all users (no Claude API cost)
-  // Web: still requires Pro
+  // Native extension purpose is separate and remains available to Free users.
+  // The web branch keeps its existing session and Pro checks.
   if (session?.user?.email) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -64,28 +64,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Keyword too long (max 200 characters)' }, { status: 400 });
   }
 
+  return analyzeKeywords(keyword);
+}
+
+async function analyzeKeywords(keyword: string, native?: ExtensionKeywordContext) {
+  const step = <T,>(operation: () => Promise<T>): Promise<T> => native ? native.step(operation) : operation();
+  const reply = (data: unknown, expiresAt?: Date) => native ? native.reply(data, expiresAt) : Promise.resolve(NextResponse.json(data));
+  const fetchSource = (url: string, init?: RequestInit) => step(() => fetch(url, native ? { ...init, cache: 'no-store', redirect: 'error' } : init));
+  if (!YT_API_KEY) { if (native) throw Error('Keyword source unavailable'); return NextResponse.json({ error: 'no_api_key' }, { status: 503 }); }
   const kwNorm = keyword.trim().toLowerCase();
   const cacheKey = `kw:${kwNorm}`;
-  const cached = await prisma.youtubeCache.findUnique({ where: { key: cacheKey } });
+  const cached = await step(() => prisma.youtubeCache.findUnique({ where: { key: cacheKey } }));
   if (cached && cached.expiresAt > new Date()) {
-    return NextResponse.json(cached.data);
+    return reply(cached.data, cached.expiresAt);
   }
 
   try {
     // Start Google Trends fetch early (runs in parallel with YouTube calls)
     const volCacheKey = `vol:${kwNorm}`;
-    const volCached = await prisma.youtubeCache.findUnique({ where: { key: volCacheKey } });
+    const volCached = await step(() => prisma.youtubeCache.findUnique({ where: { key: volCacheKey } }));
     const trendsPromise = volCached && volCached.expiresAt > new Date()
       ? Promise.resolve((volCached.data as { trendsScore?: number })?.trendsScore ?? null)
-      : fetchGoogleTrends(keyword).catch(() => null);
+      : fetchGoogleTrends(keyword, native?.step).catch(() => null);
 
     // 1. Search top videos for keyword
-    const searchRes = await fetch(
+    const searchRes = await fetchSource(
       `${YT_BASE}/search?part=snippet&q=${encodeURIComponent(keyword)}&type=video&maxResults=5&order=viewCount&key=${YT_API_KEY}`
     );
-    const searchData = await searchRes.json();
+    const searchData = await step(() => searchRes.json());
 
     if (!searchRes.ok) {
+      if (native) throw Error('Keyword source unavailable');
       return NextResponse.json(
         { error: searchData.error?.message || 'YouTube API error' },
         { status: 500 }
@@ -99,10 +108,11 @@ export async function POST(request: Request) {
     // 2. Get video stats
     let topVideos: VideoItem[] = [];
     if (videoIds) {
-      const statsRes = await fetch(
+      const statsRes = await fetchSource(
         `${YT_BASE}/videos?part=statistics,snippet&id=${videoIds}&key=${YT_API_KEY}`
       );
-      const statsData = await statsRes.json();
+      const statsData = await step(() => statsRes.json());
+      if (native && !statsRes.ok) throw Error('Keyword source unavailable');
       topVideos = (statsData.items || []).map((v: {
         id: string;
         snippet: { title: string; channelTitle: string; thumbnails: { medium: { url: string } }; publishedAt: string };
@@ -126,18 +136,19 @@ export async function POST(request: Request) {
     // principal, no debe tumbar la respuesta si la API tropieza.
     let trendingNow: TrendingItem[] = [];
     try {
-      const recentRes = await fetch(
+      const recentRes = await fetchSource(
         `${YT_BASE}/search?part=snippet&q=${encodeURIComponent(keyword)}&type=video&maxResults=15&order=date&key=${YT_API_KEY}`
       );
-      const recentData = await recentRes.json();
+      const recentData = await step(() => recentRes.json());
       const recentIds = (recentData.items || [])
         .map((item: { id: { videoId: string } }) => item.id.videoId)
         .join(',');
       if (recentRes.ok && recentIds) {
-        const recentStatsRes = await fetch(
+        const recentStatsRes = await fetchSource(
           `${YT_BASE}/videos?part=statistics,snippet&id=${recentIds}&key=${YT_API_KEY}`
         );
-        const recentStatsData = await recentStatsRes.json();
+        const recentStatsData = await step(() => recentStatsRes.json());
+        if (native && !recentStatsRes.ok) throw Error('Keyword source unavailable');
         trendingNow = (recentStatsData.items || [])
           .map((v: {
             id: string;
@@ -193,11 +204,11 @@ export async function POST(request: Request) {
     // 5. Related keywords via YouTube autocomplete (no key needed)
     let relatedKeywords: string[] = [];
     try {
-      const autoRes = await fetch(
+      const autoRes = await fetchSource(
         `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(keyword)}&hl=es`,
         { headers: { 'User-Agent': 'Mozilla/5.0' } }
       );
-      const text = await autoRes.text();
+      const text = await step(() => autoRes.text());
       // Response format: window.google.ac.h(["keyword", [["suggestion", 0, [512,433]], ...], {...}])
       const pStart = text.indexOf('(');
       const pEnd = text.lastIndexOf(')');
@@ -211,23 +222,23 @@ export async function POST(request: Request) {
     }
 
     // 6. Search volume estimation
-    const trendsScore = await trendsPromise;
-    const volumeEstimate = await estimateSearchVolume({
+    const trendsScore = await step(() => trendsPromise);
+    const volumeEstimate = await step(() => estimateSearchVolume({
       keyword,
       totalResults,
       avgViews: Math.round(avgViews),
       relatedKeywords,
       trendsScore,
-    });
+    }, native?.step));
 
     // Cache volume estimate separately (7-day TTL — volume changes slowly)
     if (!volCached || volCached.expiresAt <= new Date()) {
       const volData = { ...volumeEstimate, trendsScore } as unknown as Prisma.InputJsonValue;
-      await prisma.youtubeCache.upsert({
+      await step(() => prisma.youtubeCache.upsert({
         where: { key: volCacheKey },
         create: { key: volCacheKey, data: volData, expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000) },
         update: { data: volData, expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000) },
-      });
+      }));
     }
 
     const result = {
@@ -245,14 +256,15 @@ export async function POST(request: Request) {
 
     // Cache for 24h (upsert so concurrent requests don't error)
     const cacheData = result as unknown as Prisma.InputJsonValue;
-    await prisma.youtubeCache.upsert({
+    await step(() => prisma.youtubeCache.upsert({
       where: { key: cacheKey },
       create: { key: cacheKey, data: cacheData, expiresAt: new Date(Date.now() + 24 * 3600 * 1000) },
       update: { data: cacheData, expiresAt: new Date(Date.now() + 24 * 3600 * 1000) },
-    });
+    }));
 
-    return NextResponse.json(result);
+    return reply(result);
   } catch (err) {
+    if (native) throw err;
     console.error('[research/keywords]', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
