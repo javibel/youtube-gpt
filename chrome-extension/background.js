@@ -172,7 +172,7 @@ const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
 const identityReadReceipts = new WeakMap();
-function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); }
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); competitorOriginal?.retire(); }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
@@ -750,7 +750,60 @@ async function readDailyIdeas() {
   original.wait=Promise.race([producer,stopped]).finally(()=>{retired=true;clearTimeout(timer);});return original.wait;
 }
 
+const COMPETITOR_PENDING='ytv_competitor_pending';let competitorOriginal=null;
+function competitorSelection(input){
+ if(typeof input!=='string'||!input||input!==input.trim()||input.length>2048||/[\x00-\x1f\x7f]/.test(input))return null;
+ if(/^UC[\w-]{22}$/.test(input))return{kind:'id',value:input};
+ let path=input;try{if(!input.startsWith('@')){const u=new URL(input);if(u.protocol!=='https:'||!['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname)||u.port||u.username||u.password)return null;path=decodeURIComponent(u.pathname).replace(/\/$/,'');}}catch{return null;}
+ if(/[\x00-\x1f\x7f]/.test(path))return null;
+ const id=path.match(/^\/channel\/(UC[\w-]{22})$/);if(id)return{kind:'id',value:id[1]};
+ const handle=path.match(/^\/?@([^/?#\s]{1,100})$/);if(handle)return{kind:'handle',value:handle[1]};
+ const name=path.match(/^\/(?:c|user)\/([^/?#\s]{1,100})$/);return name?{kind:'name',value:name[1]}:null;
+}
+function competitorProjection(d,own){
+ const fail=()=>{throw Error('competitor_unconfirmed');},count=n=>Number.isSafeInteger(n)&&n>=0,text=(v,n)=>typeof v==='string'&&v.length<=n;
+ const date=v=>{if(!text(v,64)||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(v)||!Number.isFinite(Date.parse(v))||Date.parse(v)<0||Date.parse(v)>Date.parse(d.observedAt))return false;const [y,m,day]=v.slice(0,10).split('-').map(Number),at=new Date(Date.UTC(y,m-1,day));return at.getUTCFullYear()===y&&at.getUTCMonth()===m-1&&at.getUTCDate()===day;};
+ const thumb=v=>{if(v==='')return true;if(!text(v,2048))return false;try{const u=new URL(v);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port;}catch{return false;}};
+ if(!d||Object.keys(d).length!==15||d.readRef!==own.readRef||d.userId!==own.identity.id||d.language!==own.lang||d.input!==own.input||!text(d.observedAt,64)||!Number.isFinite(Date.parse(d.observedAt))||new Date(d.observedAt).toISOString()!==d.observedAt||Date.parse(d.observedAt)<own.startedAt||Date.parse(d.observedAt)>Date.now()||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now()||d.expiresAt>Date.parse(d.observedAt)+25000||d.expiresAt>own.identityReceipt.expiresAt)fail();
+ const c=d.channel;if(!c||!/^UC[\w-]{22}$/.test(c.id)||own.selected.kind==='id'&&c.id!==own.selected.value||!text(c.name,1000)||!text(c.description,200)||!thumb(c.thumbnail)||!(c.country===null||typeof c.country==='string'&&/^[A-Z]{2}$/.test(c.country))||!['subscribers','totalViews','videoCount'].every(k=>count(c[k])))fail();
+ if(!Array.isArray(d.topVideos)||d.topVideos.length>10||!Array.isArray(d.keywords)||d.keywords.length>12||d.keywords.some(x=>!text(x,2048))||!text(d.uploadFrequency,128)||!count(d.avgViews)||!count(d.totalVideosRequested)||d.totalVideosRequested>50||!count(d.totalVideosAvailable)||d.totalVideosAvailable>d.totalVideosRequested||d.topVideos.length> d.totalVideosAvailable||d.topVideos.length!==Math.min(10,d.totalVideosAvailable)||!Array.isArray(d.unavailableVideoIds)||d.unavailableVideoIds.length!==d.totalVideosRequested-d.totalVideosAvailable||!['complete','partial'].includes(d.collectionStatus)||d.collectionStatus!==(d.unavailableVideoIds.length?'partial':'complete'))fail();
+ const ids=new Set();for(const v of d.topVideos){if(!v||!text(v.videoId,128)||!/^[\w-]{1,128}$/.test(v.videoId)||ids.has(v.videoId)||!text(v.title,1000)||!thumb(v.thumbnail)||!date(v.publishedAt)||!count(v.views)||!count(v.likes))fail();ids.add(v.videoId);}
+ for(const id of d.unavailableVideoIds){if(typeof id!=='string'||!/^[\w-]{1,128}$/.test(id)||ids.has(id))fail();ids.add(id);}
+ if(d.topVideos.some((v,i)=>i>0&&v.views>d.topVideos[i-1].views))fail();
+ const total=d.topVideos.reduce((n,v)=>n+BigInt(v.views),0n),avg=d.topVideos.length?Number((total+BigInt(Math.floor(d.topVideos.length/2)))/BigInt(d.topVideos.length)):0;if(d.avgViews!==avg)fail();
+ return Object.freeze({language:d.language,input:d.input,channel:Object.freeze({id:c.id,name:c.name,description:c.description,thumbnail:c.thumbnail,country:c.country,subscribers:c.subscribers,totalViews:c.totalViews,videoCount:c.videoCount}),topVideos:Object.freeze(d.topVideos.map(v=>Object.freeze({videoId:v.videoId,title:v.title,thumbnail:v.thumbnail,publishedAt:v.publishedAt,views:v.views,likes:v.likes}))),keywords:Object.freeze([...d.keywords]),uploadFrequency:d.uploadFrequency,avgViews:d.avgViews,collectionStatus:d.collectionStatus,unavailableVideoIds:Object.freeze([...d.unavailableVideoIds]),totalVideosRequested:d.totalVideosRequested,totalVideosAvailable:d.totalVideosAvailable,observedAt:d.observedAt});
+}
+function competitorCheck(own){
+ if(competitorOriginal!==own||own.retired||own.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||own.identity&&identityReadReceipts.get(own.identity)!==own.identityReceipt){own.retire();throw Error('competitor_unconfirmed');}
+}
+async function readCompetitorFromView(msg,sender){
+ const scope=bestTimeCaller(sender),selected=competitorSelection(msg.url);if(!scope||!selected||!['en','es'].includes(msg.lang)||!abUuid(msg.viewRef))throw Error('competitor_unconfirmed');
+ const snapshot=JSON.stringify([msg.url,msg.lang]);
+ if(competitorOriginal){const own=competitorOriginal;if(!own.retired&&own.scope===scope&&own.viewRef===msg.viewRef&&own.snapshot===snapshot&&own.revision===identityRevision)return own.wait;throw Error('competitor_unconfirmed');}
+ if(passwordLoginOriginal||tokenMutationOriginal)throw Error('competitor_unconfirmed');
+ const own={scope,selected,input:msg.url,lang:msg.lang,viewRef:msg.viewRef,snapshot,readRef:crypto.randomUUID(),revision:identityRevision,startedAt:Date.now(),deadline:performance.now()+60000,expiresAt:Date.now()+60000,retired:false,attempted:false,ready:false,http:null,identity:null};competitorOriginal=own;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});own.retire=()=>{if(!own.retired){own.retired=true;rejectWait(Error('competitor_unconfirmed'));}};own.timer=setTimeout(own.retire,60000);const check=()=>competitorCheck(own);
+ const producer=(async()=>{
+  const prior=await chrome.storage.local.get(COMPETITOR_PENDING);check();if(Object.hasOwn(prior,COMPETITOR_PENDING))throw Error('competitor_unconfirmed');
+  const identity=await getExtensionIdentity();check();const receipt=identity&&identityReadReceipts.get(identity);if(!identity||!receipt||receipt.revision!==own.revision)throw Error('not_logged_in');own.identity=identity;own.identityReceipt=receipt;own.expiresAt=Math.min(own.expiresAt,receipt.expiresAt);check();
+  const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==receipt.token)throw Error('competitor_unconfirmed');
+  own.attempted=true;await chrome.storage.local.set({[COMPETITOR_PENDING]:{readRef:own.readRef,viewRef:own.viewRef,input:own.input,lang:own.lang}});check();
+  const row=await chrome.storage.local.get(COMPETITOR_PENDING);check();if(row[COMPETITOR_PENDING]?.readRef!==own.readRef||row[COMPETITOR_PENDING]?.viewRef!==own.viewRef||row[COMPETITOR_PENDING]?.input!==own.input||row[COMPETITOR_PENDING]?.lang!==own.lang)throw Error('competitor_unconfirmed');
+  const {res,data}=await apiFetch(API_BASE+'/api/youtube/competitor',{method:'POST',credentials:'omit',cache:'no-store',timeoutMs:Math.min(25000,Math.max(1,Math.floor(own.deadline-performance.now()))),maxResponseBytes:256*1024,observeOriginal:p=>{own.http=p;},headers:{Authorization:'Bearer '+receipt.token,'X-YTV-Read-Ref':own.readRef,'Content-Type':'application/json'},body:JSON.stringify({url:own.input,lang:own.lang})});check();
+  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('competitor_unconfirmed');
+  let result;if(res.status===200){result={outcome:'analysis',data:competitorProjection(data,own)};own.expiresAt=Math.min(own.expiresAt,data.expiresAt);}else{const known={pro_required:403,Unauthorized:401,invalid_selection:400,'Missing URL':400,channel_not_found:404};if(!data||known[data.error]!==res.status)throw Error('competitor_unconfirmed');result={outcome:'rejected',code:data.error==='Unauthorized'?'not_logged_in':data.error==='Missing URL'?'invalid_selection':data.error};}
+  own.data=Object.freeze({readRef:own.readRef,viewRef:own.viewRef,input:own.input,language:own.lang,expiresAt:own.expiresAt,...result});own.ready=true;check();return own.data;
+ })();
+ void producer.catch(()=>{own.retire();clearTimeout(own.timer);}).finally(async()=>{if(own.http)await Promise.allSettled([own.http]);if(competitorOriginal===own&&!own.attempted){competitorOriginal=null;clearTimeout(own.timer);}}).catch(()=>{});own.wait=Promise.race([producer,stopped]);return own.wait;
+}
+async function acknowledgeCompetitor(msg,sender){
+ const own=competitorOriginal;if(!own||!own.ready||bestTimeCaller(sender)!==own.scope||msg.readRef!==own.readRef||msg.viewRef!==own.viewRef)throw Error('competitor_unconfirmed');const check=()=>competitorCheck(own);check();if(own.acknowledging)return own.acknowledging;
+ own.acknowledging=(async()=>{const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('competitor_unconfirmed');const row=await chrome.storage.local.get(COMPETITOR_PENDING);check();if(row[COMPETITOR_PENDING]?.readRef!==own.readRef||row[COMPETITOR_PENDING]?.viewRef!==own.viewRef||row[COMPETITOR_PENDING]?.input!==own.input||row[COMPETITOR_PENDING]?.lang!==own.lang)throw Error('competitor_unconfirmed');await chrome.storage.local.remove(COMPETITOR_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('competitor_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();clearTimeout(own.timer);competitorOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,closed:true});})();return own.acknowledging;
+}
+
 async function handleMessage(msg,sender) {
+  if (msg.type === 'COMPETITOR') return readCompetitorFromView(msg,sender);
+  if (msg.type === 'COMPETITOR_ACK') return acknowledgeCompetitor(msg,sender);
   if (msg.type === 'AB_CREATE') return createAbFromView(msg,sender);
   if (msg.type === 'AB_CREATE_ACK') return acknowledgeAbCreate(msg,sender);
   if (msg.type === 'BEST_TIME') return getBestTime(msg,sender);
@@ -782,22 +835,6 @@ async function handleMessage(msg,sender) {
 
     case 'GET_LANG': {
       return { lang };
-    }
-
-    case 'COMPETITOR': {
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/youtube/competitor`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ url: msg.url, lang: msg.lang || lang }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (res.status === 403 && data.error === 'pro_required') throw new Error(lang === 'en' ? 'Pro plan required. Upgrade at ytubviral.com' : 'Plan Pro requerido. Actualiza en ytubviral.com');
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Channel analysis error' : 'Error al analizar canal'));
-      return data;
     }
 
     case 'KEYWORDS': {

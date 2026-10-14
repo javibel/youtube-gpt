@@ -531,7 +531,8 @@ function wireShellScorecard(root, scorecardData, videoId, loggedIn) {
     btnComp.addEventListener('click', async (e) => {
       e.stopPropagation();
       const { channelUrl } = getVideoInfo();
-      await runCompetitor(actionResults, channelUrl || window.location.href);
+      const selection = channelUrl || window.location.href;
+      await runCompetitor(actionResults, selection, () => scorecardViewCurrent(scorecardData) && (getVideoInfo().channelUrl || window.location.href) === selection);
     });
   }
   if (btnTitles) {
@@ -862,12 +863,15 @@ function renderTopVideos(topVideos, avgViews) {
 }
 
 function renderCompetitor(data) {
+  if (!competitorViewCurrent(data) || data.outcome !== 'analysis') return '';
+  data = data.data;
   const { channel, keywords, avgViews, uploadFrequency, topVideos } = data;
   const kwTags = (keywords || []).slice(0, 10).map(k =>
     `<span class="ytv-tag" data-kw="${escapeHtml(k)}">${escapeHtml(k)}</span>`
   ).join('');
 
   return `
+    <div class="ytv-hint">${t('Procedencia y actualidad sin confirmar', 'Provenance and freshness unconfirmed')} · ${data.collectionStatus === 'partial' ? t('Cobertura parcial', 'Partial coverage') : t('Cobertura del lote', 'Batch coverage')}: ${data.totalVideosAvailable}/${data.totalVideosRequested}</div>
     <div class="ytv-ch-row">
       ${channel.thumbnail ? `<img class="ytv-ch-thumb" src="${escapeHtml(channel.thumbnail)}" alt="">` : ''}
       <div class="ytv-ch-meta">
@@ -1261,49 +1265,35 @@ function renderScorecardExpanded(d) {
 // API actions
 // ============================================================
 
-async function runCompetitor(resultsEl, url) {
-  resultsEl.innerHTML = renderLoading(t('Analizando canal...', 'Analyzing channel...'));
-  try {
-    const data = await sendMsg({ type: 'COMPETITOR', url });
-    resultsEl.innerHTML = renderCompetitor(data);
-    resultsEl.querySelectorAll('.ytv-tag[data-kw]').forEach(tag => {
-      tag.addEventListener('click', () => {
-        const q = encodeURIComponent(tag.dataset.kw);
-        window.open(`https://www.youtube.com/results?search_query=${q}`, '_blank');
-      });
-    });
-
-    // "Por qué funciona" (P4) — Claude reasons over the topVideos/keywords the endpoint above
-    // already computed for free; this is the one call that actually costs anything, so it's
-    // opt-in (button) rather than automatic, and it spends the user's normal generation quota.
-    const insightBtn = resultsEl.querySelector('#ytv-ch-insight-btn');
-    const insightResult = resultsEl.querySelector('#ytv-ch-insight-result');
-    if (insightBtn && insightResult) {
-      insightBtn.addEventListener('click', async () => {
-        insightResult.innerHTML = renderLoading(t('Analizando patrón...', 'Analyzing pattern...'));
-        try {
-          const topTitles = (data.topVideos || []).slice(0, 5).map(v => `- ${v.title}`).join('\n');
-          if (!topTitles) { insightResult.innerHTML = renderError(t('Sin vídeos suficientes para analizar', 'Not enough videos to analyze')); return; }
-          const gen = await sendMsg({
-            type: 'GENERATE',
-            template: 'channel_insight',
-            inputs: {
-              channelName: data.channel.name,
-              topTitles,
-              keywords: (data.keywords || []).slice(0, 8).join(', '),
-            },
-          });
-          const text = gen.content || gen.text || gen.result || '';
-          const html = escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-          insightResult.innerHTML = `<div class="ytv-ch-insight">${html}</div>`;
-        } catch (e) {
-          insightResult.innerHTML = renderError(e.message);
-        }
-      });
-    }
-  } catch (e) {
-    resultsEl.innerHTML = renderError(e.message);
+const competitorViewDisplays=new Map(),competitorViewReceipts=new WeakMap();let competitorViewRevision=0;
+function retireCompetitorViews(){competitorViewRevision++;for(const own of [...competitorViewDisplays.values()])own.retire();}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang')))retireCompetitorViews();});
+document.addEventListener('yt-navigate-finish',retireCompetitorViews);
+function competitorViewCurrent(result){const own=result&&competitorViewReceipts.get(result);if(!own||own.data!==result)return false;try{own.check();return true;}catch{return false;}}
+function competitorViewError(code){return renderError(code==='pro_required'?t('Plan Pro requerido. Actualiza en ytubviral.com','Pro plan required. Upgrade at ytubviral.com'):code==='not_logged_in'?t('Inicia sesión en la extensión.','Sign in to the extension.'):code==='channel_not_found'?t('No se encontró el canal.','Channel not found.'):code==='invalid_selection'?t('No se pudo confirmar el canal seleccionado.','Could not confirm the selected channel.'):t('El análisis no está confirmado. No se repetirá automáticamente.','Analysis is unconfirmed. It will not be retried automatically.'));}
+async function runCompetitor(resultsEl,url,extraCheck=()=>true){
+ if(!resultsEl)return;const input=typeof url==='string'?url.trim():url,language=_lang;
+ const previous=competitorViewDisplays.get(resultsEl);if(previous&&!previous.closed){if(previous.input===input&&previous.language===language&&previous.scope())return previous.wait;return;}
+ previous?.retire();if(competitorViewDisplays.size>=32)return;
+ const own={owner:resultsEl,input,language,href:location.href,revision:competitorViewRevision,viewRef:crypto.randomUUID(),startedAt:Date.now(),deadline:performance.now()+60000,retired:false,closed:false,data:null,nodes:[]};competitorViewDisplays.set(resultsEl,own);
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>resultsEl.isConnected&&location.href===own.href&&_lang===own.language&&own.revision===competitorViewRevision&&competitorViewDisplays.get(resultsEl)===own&&extraCheck()&&own.nodes.every(n=>n.isConnected&&resultsEl.contains(n));
+ own.retire=()=>{if(!own.retired){own.retired=true;rejectWait(Error('competitor_unconfirmed'));}clearTimeout(own.timer);own.observer?.disconnect();for(const node of own.nodes.splice(0))if(node.isConnected&&resultsEl.contains(node))node.remove();if(!resultsEl.isConnected||own.revision!==competitorViewRevision||location.href!==own.href)if(competitorViewDisplays.get(resultsEl)===own)competitorViewDisplays.delete(resultsEl);};
+ own.check=()=>{if(!own.scope()||own.retired||performance.now()>=own.deadline||Date.now()<own.startedAt||own.data&&own.data.expiresAt<=Date.now()){own.retire();throw Error('competitor_unconfirmed');}};
+ const paint=html=>{resultsEl.innerHTML='<div class="ytv-competitor-original">'+html+'</div>';const node=resultsEl.querySelector('.ytv-competitor-original');if(node&&resultsEl.contains(node))own.nodes.push(node);};
+ own.timer=setTimeout(own.retire,60000);own.observer=new MutationObserver(()=>{try{own.check();}catch{}});own.observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['href']});resultsEl.innerHTML=renderLoading(t('Analizando canal...','Analyzing channel...'));
+ const producer=(async()=>{try{
+  own.check();const data=await Promise.race([sendMsg({type:'COMPETITOR',url:input,lang:language,viewRef:own.viewRef}),stopped]);own.check();
+  if(!data||data.viewRef!==own.viewRef||typeof data.readRef!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(data.readRef)||data.input!==input||data.language!==language||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>Date.now()+60000||!['analysis','rejected'].includes(data.outcome)||data.outcome==='analysis'&&(!data.data||data.data.input!==input||data.data.language!==language||!Array.isArray(data.data.topVideos))||data.outcome==='rejected'&&!['pro_required','not_logged_in','invalid_selection','channel_not_found'].includes(data.code))throw Error('competitor_unconfirmed');
+  own.data=data;own.check();const ack=await Promise.race([sendMsg({type:'COMPETITOR_ACK',readRef:data.readRef,viewRef:own.viewRef}),stopped]);own.check();if(!ack||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef||ack.closed!==true)throw Error('competitor_unconfirmed');
+  const analysis=data.outcome==='analysis'?Object.freeze({...data.data,channel:Object.freeze({...data.data.channel}),topVideos:Object.freeze(data.data.topVideos.map(v=>Object.freeze({...v}))),keywords:Object.freeze([...data.data.keywords]),unavailableVideoIds:Object.freeze([...data.data.unavailableVideoIds])}):undefined;
+  const result=Object.freeze({...data,...(analysis?{data:analysis}:{})});own.data=result;own.closed=true;competitorViewReceipts.set(result,own);own.check();paint(result.outcome==='analysis'?renderCompetitor(result):competitorViewError(result.code));
+  if(result.outcome==='analysis'){
+   resultsEl.querySelectorAll('.ytv-tag[data-kw]').forEach(tag=>tag.addEventListener('click',()=>{if(competitorViewCurrent(result))window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(tag.dataset.kw),'_blank');}));
+   const insightBtn=resultsEl.querySelector('#ytv-ch-insight-btn'),insightResult=resultsEl.querySelector('#ytv-ch-insight-result');if(insightBtn&&insightResult)insightBtn.addEventListener('click',async()=>{if(!competitorViewCurrent(result)||!resultsEl.contains(insightBtn)||!resultsEl.contains(insightResult))return;const topTitles=analysis.topVideos.slice(0,5).map(v=>'- '+v.title).join('\n');if(!topTitles){insightResult.innerHTML=renderError(t('Sin vídeos suficientes para analizar','Not enough videos to analyze'));return;}insightResult.innerHTML=renderLoading(t('Analizando patrón...','Analyzing pattern...'));try{const gen=await sendMsg({type:'GENERATE',template:'channel_insight',lang:language,inputs:{channelName:analysis.channel.name,topTitles,keywords:analysis.keywords.slice(0,8).join(', ')}});if(!competitorViewCurrent(result)||!resultsEl.contains(insightResult))return;const text=gen.content||gen.text||gen.result||'';insightResult.innerHTML='<div class="ytv-ch-insight">'+escapeHtml(text).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</div>';}catch(e){if(competitorViewCurrent(result)&&resultsEl.contains(insightResult))insightResult.innerHTML=renderError(e.message);}});
   }
+  clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),result.expiresAt-Date.now())));return result;
+ }catch(e){own.retire();if(own.scope())paint(competitorViewError(e.message==='not_logged_in'?'not_logged_in':'competitor_unconfirmed'));}})();own.wait=producer;return producer;
 }
 
 async function runKeywords(resultsEl, keyword) {

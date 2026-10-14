@@ -115,6 +115,7 @@ export async function POST(request: Request) {
   const deadline = performance.now() + 25_000, observedTime = Date.now();
   let retired = false, rejectWait!: (error: Error) => void;
   let extensionOriginal: ExtensionCompetitorAnalysis | undefined;
+  let extensionBinding: { readRef: string; observedAt: string; expiresAt: number } | undefined;
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; });
   void stopped.catch(() => {});
   const retire = () => { if (!retired) { retired = true; rejectWait(Error('Analysis unavailable')); } };
@@ -148,6 +149,7 @@ export async function POST(request: Request) {
         const owner = await readExtensionCompetitorOwner(original, check); check();
         if (!owner) return reply({ error: 'pro_required' }, 403);
         userId = owner.userId;
+        extensionBinding = { readRef: owner.readRef, observedAt: owner.observedAt, expiresAt: owner.expiresAt };
       }
       if (!YT_API_KEY) return reply({ error: 'no_api_key' }, 503);
       const body: unknown = await request.json(); check();
@@ -207,7 +209,8 @@ export async function POST(request: Request) {
       const avgViews = topVideos.length ? Number((totalViews + BigInt(Math.floor(topVideos.length / 2))) / BigInt(topVideos.length)) : 0;
       if (!Number.isSafeInteger(avgViews) || avgViews < 0) throw Error('Analysis unavailable');
       await recheck(); const result = reply({ userId, language, input, channel, topVideos, keywords, uploadFrequency, avgViews,
-        collectionStatus: unavailableVideoIds.length ? 'partial' : 'complete', unavailableVideoIds, totalVideosRequested: entries.length, totalVideosAvailable: videos.length });
+        collectionStatus: unavailableVideoIds.length ? 'partial' : 'complete', unavailableVideoIds, totalVideosRequested: entries.length, totalVideosAvailable: videos.length,
+        ...(extensionBinding ?? {}) });
       check(); return result;
     });
     const response = await Promise.race([original, stopped]); check(); return response;

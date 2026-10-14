@@ -3,7 +3,7 @@ import { hasPaidAccess } from '@/lib/plans';
 
 declare const extensionCompetitorBrand: unique symbol;
 export type ExtensionCompetitorAnalysis = { readonly [extensionCompetitorBrand]: true };
-type Original = { token: string; tokenId: string; userId: string; email: string; verifiedAt: number;
+type Original = { token: string; tokenId: string; userId: string; email: string; verifiedAt: number; readRef: string;
   tokenExpires: number; capturedAt: number; expires: number; request: Request; used: boolean; subscription?: string };
 const originals = new WeakMap<object, Original>();
 const lookup = (token: string) => prisma.extensionToken.findUnique({ where: { token },
@@ -18,14 +18,15 @@ function eligible(row: Awaited<ReturnType<typeof lookup>>, token: string) {
     && row.user.emailVerified instanceof Date && Number.isFinite(row.user.emailVerified.getTime()) && row.user.emailVerified.getTime() <= now;
 }
 export async function authorizeExtensionCompetitorAnalysis(request: Request): Promise<ExtensionCompetitorAnalysis | null> {
-  const capturedAt = Date.now(), header = request.headers.get('Authorization');
-  if (request.signal.aborted || !Number.isSafeInteger(capturedAt) || capturedAt < 0 || !header || !/^Bearer [a-f0-9]{64}$/.test(header)) return null;
+  const capturedAt = Date.now(), header = request.headers.get('Authorization'), readRef = request.headers.get('x-ytv-read-ref');
+  if (request.signal.aborted || !Number.isSafeInteger(capturedAt) || capturedAt < 0 || !header || !/^Bearer [a-f0-9]{64}$/.test(header)
+    || !readRef || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(readRef)) return null;
   const token = header.slice(7), row = await lookup(token);
   if (!eligible(row, token) || !row || !row.user.email) return null;
   const tokenExpires = row.expiresAt.getTime(), expires = Math.min(tokenExpires, capturedAt + 25000);
   if (request.signal.aborted || Date.now() < capturedAt || expires <= Date.now()) return null;
   const original = Object.freeze({}) as ExtensionCompetitorAnalysis;
-  originals.set(original, { token, tokenId: row.id, userId: row.user.id, email: row.user.email,
+  originals.set(original, { token, tokenId: row.id, userId: row.user.id, email: row.user.email, readRef,
     verifiedAt: row.user.emailVerified!.getTime(), tokenExpires, capturedAt, expires, request, used: false });
   return original;
 }
@@ -59,7 +60,7 @@ export async function readExtensionCompetitorOwner(original: ExtensionCompetitor
   const snapshot = paidSnapshot(sub, own.userId); check();
   if (snapshot === null) return null;
   own.subscription = snapshot;
-  return Object.freeze({ userId: own.userId });
+  return Object.freeze({ userId: own.userId, readRef: own.readRef, observedAt: new Date(own.capturedAt).toISOString(), expiresAt: own.expires });
 }
 export async function recheckExtensionCompetitorAnalysis(original: ExtensionCompetitorAnalysis, beforeStep: () => void): Promise<void> {
   const own = retained(original); if (!own.used || own.subscription === undefined) throw Error('Competitor extension purpose unavailable');

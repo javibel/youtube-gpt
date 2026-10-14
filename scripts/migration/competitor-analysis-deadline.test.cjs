@@ -26,7 +26,7 @@ function harness(options={}){
   const prefix=u.searchParams.has('forHandle')||u.pathname.endsWith('/search')?'resolve':u.pathname.endsWith('/channels')?'channel':u.pathname.endsWith('/playlistItems')?'playlist':'stats';
   return step(prefix+'Headers',()=>({ok:options.googleFail!==prefix,status:options.googleFail===prefix?503:200,json:()=>step(prefix+'JSON',()=>options.dataEdit?options.dataEdit(source(prefix),prefix):source(prefix))}));
  }});
- const request={url:'https://example.invalid/api/youtube/competitor',headers:new Headers({Authorization:options.authorization??'Bearer original-token'}),signal:controller.signal,json:()=>step('body',()=>state.body)};
+ const request={url:'https://example.invalid/api/youtube/competitor',headers:new Headers({Authorization:options.authorization??'Bearer original-token','X-YTV-Read-Ref':require('node:crypto').randomUUID()}),signal:controller.signal,json:()=>step('body',()=>state.body)};
  if(options.preAborted)controller.abort();const original=route.POST(request);
  return{state,calls,queries,plans,transports,extensions,owned,timers,gates,entered,controller,request,original,advance(ms,fire=true){now+=ms;if(fire)for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};
 }
