@@ -91,7 +91,7 @@ export function deriveKeywordPayload(value: unknown, keyword: string, language: 
   const relatedKeywords = list(r.relatedKeywords, 8).map(x => { const s = text(x, 200); if (!s || s !== s.trim()) fail(); return s; }); if (new Set(relatedKeywords).size !== relatedKeywords.length) fail();
   const trendsScore = r.trendsScore; if (trendsScore !== null && (!Number.isSafeInteger(trendsScore) || trendsScore < 0 || trendsScore > 100)) fail();
   const ac = r.autocompleteScore; if (typeof ac !== 'number' || !Number.isFinite(ac) || ac < 0 || ac > 100) fail();
-  const total = topVideos.reduce((n, v) => n + BigInt(v.views), 0n), avgViews = topVideos.length ? Number((total + BigInt(Math.floor(topVideos.length / 2))) / BigInt(topVideos.length)) : top.unavailableIds.length ? null : 0;
+  const total = topVideos.reduce((n, v) => n + BigInt(v.views), BigInt(0)), avgViews = topVideos.length ? Number((total + BigInt(Math.floor(topVideos.length / 2))) / BigInt(topVideos.length)) : top.unavailableIds.length ? null : 0;
   const ready = topVideos.length > 0 && top.unavailableIds.length === 0;
   let competition: 'low' | 'medium' | 'high' | 'unavailable' = 'unavailable', competitionScore: number | null = null, opportunityScore: number | null = null;
   let volumeEstimate: { score: number; label: string; labelEn: string; range: string; rangeEn: string } | null = null;
