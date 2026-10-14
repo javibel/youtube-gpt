@@ -1,90 +1,39 @@
 import { NextResponse } from 'next/server';
-import { getExtensionUser } from '@/lib/extension-auth';
-import { rateLimitRequest } from '@/lib/rate-limit-db';
-
+import { authorizeExtensionBatch, checkExtensionBatch, runExtensionBatch, validBatchKey, extensionBatchMeta } from '@/lib/extension-video-batch-native-authorization';
+import { readBatchYoutube, readBatchInputBody } from '@/lib/extension-video-batch-youtube';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 export async function POST(request: Request) {
-  // v2.7: open without login (VPH badges = ambient value at second 1, like vidIQ). This route
-  // only touches the public YouTube Data API — no user data. Anonymous callers are rate-limited
-  // by IP; authenticated callers pass through freely.
-  const extUser = await getExtensionUser(request);
-  if (!extUser) {
-    const ok = await rateLimitRequest(request, 'ext-pub-batch', 300, 10);
-    if (!ok) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-
-  const body = await request.json().catch(() => ({}));
-  const videoIds = body.videoIds as string[] | undefined;
-  if (!videoIds || !Array.isArray(videoIds) || videoIds.length === 0) {
-    return NextResponse.json({ error: 'videoIds required (array)' }, { status: 400 });
-  }
-
-  // Cap at 50
-  const ids = videoIds.slice(0, 50).filter(id => /^[a-zA-Z0-9_-]{11}$/.test(id));
-  if (ids.length === 0) {
-    return NextResponse.json({ error: 'no valid video IDs' }, { status: 400 });
-  }
-
-  const apiKey = process.env.YOUTUBE_API_KEY?.trim();
-  if (!apiKey) {
-    return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
-  }
-
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids.join(',')}&key=${apiKey}`,
-  );
-  if (!res.ok) {
-    return NextResponse.json({ error: 'YouTube API error' }, { status: 500 });
-  }
-
-  const data = await res.json();
-  const items = (data.items || []) as Record<string, unknown>[];
-
-  // P3 (hover stats bar, 2026-09): one extra channels.list call for the whole batch — cheap
-  // (channelId list is at most as long as `ids`, deduped, same 50 cap) — so hovering a thumbnail
-  // shows subscriber count too, alongside data already fetched for the VPH badge. No per-hover
-  // request: the client reads this from the same cache the badge used.
-  const channelIds = [...new Set(items.map(v => (v.snippet as Record<string, unknown>)?.channelId as string).filter(Boolean))];
-  const subsByChannel = new Map<string, number>();
-  if (channelIds.length > 0) {
-    try {
-      const chRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelIds.join(',')}&key=${apiKey}`,
-      );
-      if (chRes.ok) {
-        const chData = await chRes.json();
-        for (const c of chData.items || []) {
-          subsByChannel.set(c.id, parseInt(c.statistics?.subscriberCount || '0', 10));
-        }
-      }
-    } catch { /* subs are a hover nicety, not worth failing the batch over */ }
-  }
-
-  const videos = items.map((v: Record<string, unknown>) => {
-    const snippet = v.snippet as Record<string, unknown>;
-    const stats = (v.statistics || {}) as Record<string, unknown>;
-    const views = parseInt((stats.viewCount as string) || '0', 10);
-    const likes = parseInt((stats.likeCount as string) || '0', 10);
-    const comments = parseInt((stats.commentCount as string) || '0', 10);
-    const publishedAt = snippet.publishedAt ? new Date(snippet.publishedAt as string) : new Date();
-    const ageHours = Math.max(1, (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60));
-    const vph = Math.round((views / ageHours) * 10) / 10;
-    const ageDays = Math.floor(ageHours / 24);
-    const engagement = views > 0 ? Math.round(((likes + comments) / views) * 1000) / 10 : 0;
-
-    return {
-      videoId: v.id as string,
-      title: (snippet.title as string) || '',
-      views,
-      likes,
-      comments,
-      engagement,
-      vph,
-      ageDays,
-      ageHours: Math.round(ageHours),
-      channelTitle: (snippet.channelTitle as string) || '',
-      subscribers: subsByChannel.get(snippet.channelId as string) ?? null,
-    };
-  });
-
-  return NextResponse.json({ videos });
+  const capturedAt = Date.now(), deadline = performance.now() + 55_000, transport = new AbortController();
+  let retired = false, rejectWait!: (e: Error) => void, nativeCheck: (() => void) | undefined;
+  const stopped = new Promise<never>((_, reject) => { rejectWait = reject; }); void stopped.catch(() => {});
+  const retire = () => { if (!retired) { retired = true; transport.abort(); rejectWait(Error('Batch unconfirmed')); } };
+  const timer = setTimeout(retire, 55_000); request.signal.addEventListener('abort', retire, { once: true });
+  const check = () => { if (request.signal.aborted || performance.now() >= deadline) retire(); if (retired) throw Error('Batch unconfirmed'); nativeCheck?.(); };
+  const run = async <T,>(operation: () => Promise<T>) => { check(); const producer = Promise.resolve().then(() => { check(); return operation(); }); const result = await Promise.race([producer, stopped]); check(); return result; };
+  const key = request.headers.get('idempotency-key');
+  const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  try {
+    if (!validBatchKey(key)) return json({ code: 'invalid_operation_key', operationKey: key }, 400);
+    const original = await run(() => authorizeExtensionBatch(request));
+    if (!original) return json({ code: 'not_logged_in', operationKey: key }, 401);
+    nativeCheck = () => checkExtensionBatch(original); check();
+    const body: unknown = await run(() => readBatchInputBody(request, check));
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ code: 'invalid_video_input', operationKey: key }, 400);
+    const { videoIds } = body as Record<string, unknown>;
+    if (!Array.isArray(videoIds) || videoIds.length<1 || videoIds.length>50 || videoIds.some(id=>typeof id!=='string'||!/^[A-Za-z0-9_-]{11}$/.test(id)) || new Set(videoIds).size!==videoIds.length) return json({ code: 'invalid_video_input', operationKey: key }, 400);
+    const ids=Object.freeze([...videoIds]) as readonly string[];
+    const apiKey = process.env.YOUTUBE_API_KEY?.trim();
+    if (!apiKey) return json({ code: 'batch_configuration_unavailable', operationKey: key }, 503);
+    const result = await run(() => runExtensionBatch(original, key, check, async ownCheck => {
+      ownCheck();
+      const result = await readBatchYoutube(ids, apiKey, capturedAt, ownCheck, transport.signal);
+      ownCheck(); return result;
+    }));
+    check();
+    const meta=extensionBatchMeta(original);
+    const response = result===null ? json({code:'rate_limited',operationKey:key},429) : json({videos:result.videos,missingVideoIds:result.missingVideoIds,requestedVideoIds:ids,operationKey:key,expiresAt:Math.min(capturedAt+55_000,meta.expires),observedAt:new Date(capturedAt).toISOString(),mode:meta.mode,dataQuality:{source:'youtube-batch-response',freshness:'unconfirmed',velocity:'lifetime-average',subscriberEnrichment:result.subscriberEnrichment}});
+    check(); return response;
+  } catch { return json({ code: 'batch_unconfirmed', operationKey: key }, 503); }
+  finally { clearTimeout(timer); request.signal.removeEventListener('abort', retire); }
 }

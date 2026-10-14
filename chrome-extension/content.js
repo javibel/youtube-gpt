@@ -2080,6 +2080,46 @@ async function injectStudioVideoList() {
 // ============================================================
 
 const vphCache = new Map();
+const batchViewReceipts = new WeakMap();
+let batchViewRevision = 0, badgeBatchOriginal = null;
+function readVphCache(id) {
+ const data=vphCache.get(id),own=data&&batchViewReceipts.get(data);
+ if(!own||own.revision!==batchViewRevision||own.href!==location.href||own.expiresAt<=Date.now()||performance.now()>=own.deadline)return null;
+ return data;
+}
+function retireBatchViews() {
+ batchViewRevision++;badgeBatchOriginal?.retire();vphCache.clear();hideHoverCard();
+ document.querySelectorAll('.ytv-thumb-badge').forEach(node=>node.remove());
+}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))retireBatchViews();});
+document.addEventListener('yt-navigate-finish',retireBatchViews);
+async function readBadgeBatches(videoIds) {
+ if(badgeBatchOriginal)throw Error('No se pudo confirmar el lote anterior.');
+ const ids=Object.freeze([...new Set(videoIds)]);
+ if(!ids.length||ids.length>500||ids.some(id=>typeof id!=='string'||!/^[A-Za-z0-9_-]{11}$/.test(id)))throw Error('Datos de vídeo incorrectos.');
+ const original={},revision=batchViewRevision,href=location.href,deadline=performance.now()+60000;badgeBatchOriginal=original;
+ let retired=false,rejectWait;
+ const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ original.retire=()=>{if(!retired){retired=true;rejectWait(Error('No se pudo confirmar el lote.'));}};
+ const check=()=>{if(performance.now()>=deadline||revision!==batchViewRevision||href!==location.href||badgeBatchOriginal!==original)original.retire();if(retired)throw Error('No se pudo confirmar el lote.');};
+ const timer=setTimeout(original.retire,60000);
+ const producer=(async()=>{
+  for(let start=0;start<ids.length;start+=50){
+   check();const requested=ids.slice(start,start+50),nativeMessage=sendMsg({type:'VIDEO_BATCH',videoIds:requested});original.message=nativeMessage;
+   const data=await nativeMessage;check();
+   if(!data||JSON.stringify(data.requestedVideoIds)!==JSON.stringify(requested)||!Array.isArray(data.videos)||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.dataQuality?.freshness!=='unconfirmed')throw Error('No se pudo confirmar el lote.');
+   for(const value of data.videos){
+    check();if(!requested.includes(value.videoId)||data.expiresAt<=Date.now())throw Error('No se pudo confirmar el lote.');
+    const copy=Object.freeze({...value}),own={revision,href,deadline,expiresAt:data.expiresAt};batchViewReceipts.set(copy,own);vphCache.set(copy.videoId,copy);
+    setTimeout(()=>{if(vphCache.get(copy.videoId)===copy){vphCache.delete(copy.videoId);document.querySelectorAll('.ytv-thumb-badge').forEach(node=>node.remove());hideHoverCard();}},Math.max(1,Math.min(55000,data.expiresAt-Date.now())));
+   }
+   while(vphCache.size>500)vphCache.delete(vphCache.keys().next().value);
+  }
+ })();
+ void producer.finally(()=>{if(badgeBatchOriginal===original)badgeBatchOriginal=null;}).catch(()=>{});
+ try{await Promise.race([producer,stopped]);}finally{retired=true;clearTimeout(timer);}
+}
+
 let badgeObserver = null;
 let badgeIO = null; // IntersectionObserver — kept in module scope so it can be disconnected on each
                     // navigation (previously a new IO leaked on every SPA navigation)
@@ -2099,33 +2139,19 @@ function extractVideoIdFromThumb(el) {
 }
 
 function renderVphBadge(vph) {
-  const hot = vph >= 1000;
+  const hot = vph !== null && vph >= 1000;
   const cls = hot ? 'ytv-thumb-badge ytv-thumb-hot' : 'ytv-thumb-badge';
-  const label = vph >= 1000 ? fmtNum(Math.round(vph)) : vph.toFixed(1);
-  return `<div class="${cls}">${hot ? '🔥 ' : ''}${label} VPH</div>`;
+  const label = vph === null ? '—' : vph >= 1000 ? fmtNum(Math.round(vph)) : vph.toFixed(1);
+  return `<div class="${cls}">${hot ? '🔥 ' : ''}${label} ${t('VPH media','Avg VPH')}</div>`;
 }
 
 async function processBadgeBatch(videoIds) {
-  // Filter out already cached
-  const toFetch = videoIds.filter(id => !vphCache.has(id));
-  if (toFetch.length > 0) {
-    try {
-      const data = await sendMsg({ type: 'VIDEO_BATCH', videoIds: toFetch });
-      (data.videos || []).forEach(v => vphCache.set(v.videoId, v));
-      // Simple size cap — a very long browsing session shouldn't grow this map unbounded
-      if (vphCache.size > 500) {
-        const excess = vphCache.size - 500;
-        const keys = vphCache.keys();
-        for (let i = 0; i < excess; i++) vphCache.delete(keys.next().value);
-      }
-    } catch (err) {
-      console.log('[YTV] VIDEO_BATCH error:', err.message);
-    }
-  }
-
+ const ids=[...new Set(videoIds)].filter(id=>typeof id==='string'&&/^[A-Za-z0-9_-]{11}$/.test(id));
+ const toFetch=ids.filter(id=>!readVphCache(id));
+ if(toFetch.length){try{await readBadgeBatches(toFetch);}catch(err){console.log('[YTV] VIDEO_BATCH error:',err.message);}}
   // Apply badges to thumbnails
-  videoIds.forEach(id => {
-    const cached = vphCache.get(id);
+  ids.forEach(id => {
+    const cached = readVphCache(id);
     if (!cached) return;
     // Find thumbnail containers — support both old (ytd-thumbnail) and new (yt-lockup-view-model) YouTube DOM
     const containers = new Set();
@@ -2148,6 +2174,7 @@ async function processBadgeBatch(videoIds) {
       });
     }
     containers.forEach(thumb => {
+      if(!thumb.isConnected||extractVideoIdFromThumb(thumb)!==id)return;
       wireThumbHoverCard(thumb, id); // wired once even if the badge itself was already there
       if (thumb.querySelector('.ytv-thumb-badge')) return;
       thumb.style.position = 'relative';
@@ -2173,18 +2200,19 @@ function hideHoverCard() {
 
 function renderHoverCard(d) {
   const engColor = d.engagement >= 5 ? '#22c55e' : d.engagement >= 2 ? '#eab308' : '#ef4444';
-  const vphStr = d.vph >= 1000 ? fmtNum(Math.round(d.vph)) : d.vph.toFixed(1);
+  const vphStr = d.vph === null ? '—' : d.vph >= 1000 ? fmtNum(Math.round(d.vph)) : d.vph.toFixed(1);
   return `
     <div class="ytv-hover-title">${escapeHtml(d.title || '')}</div>
     <div class="ytv-hover-grid">
-      <div><b>${fmtNum(d.views)}</b><span>${t('Vistas', 'Views')}</span></div>
-      <div><b>${fmtNum(d.likes || 0)}</b><span>Likes</span></div>
-      <div><b>${fmtNum(d.comments || 0)}</b><span>${t('Coment.', 'Comments')}</span></div>
-      <div><b style="color:${engColor}">${d.engagement || 0}%</b><span>Eng</span></div>
+      <div><b>${d.views===null?'—':fmtNum(d.views)}</b><span>${t('Vistas', 'Views')}</span></div>
+      <div><b>${d.likes===null?'—':fmtNum(d.likes)}</b><span>Likes</span></div>
+      <div><b>${d.comments===null?'—':fmtNum(d.comments)}</b><span>${t('Coment.', 'Comments')}</span></div>
+      <div><b style="color:${engColor}">${d.engagement===null?'—':d.engagement+'%'}</b><span>Eng</span></div>
       <div><b>${d.subscribers != null ? fmtNum(d.subscribers) : '—'}</b><span>${t('Subs canal', 'Ch. subs')}</span></div>
       <div><b>${fmtAge(d.ageDays, d.ageHours || d.ageDays * 24)}</b><span>${t('Edad', 'Age')}</span></div>
     </div>
-    <div class="ytv-hover-vph">⚡ ${vphStr} VPH${d.channelTitle ? ' · ' + escapeHtml(d.channelTitle) : ''}</div>
+    <div class="ytv-hover-vph">⚡ ${vphStr} ${t('VPH media','Avg VPH')}${d.channelTitle ? ' · ' + escapeHtml(d.channelTitle) : ''}</div>
+    <div class="ytv-hint">${t('Media de vida del vídeo. Actualidad sin confirmar.', 'Lifetime average. Freshness unconfirmed.')}</div>
   `;
 }
 
@@ -2207,13 +2235,13 @@ function showHoverCard(thumb, d) {
 }
 
 function wireThumbHoverCard(thumb, videoId) {
-  if (thumb.dataset.ytvHoverWired) return;
-  thumb.dataset.ytvHoverWired = '1';
+  if (thumb.dataset.ytvHoverWired === videoId) return;
+  thumb.dataset.ytvHoverWired = videoId;
   thumb.addEventListener('mouseenter', () => {
     if (hoverCardTimer) clearTimeout(hoverCardTimer);
     hoverCardTimer = setTimeout(() => {
-      const d = vphCache.get(videoId); // re-read: may have been enriched since this listener was wired
-      if (d) showHoverCard(thumb, d);
+      const d = readVphCache(videoId); // re-read: may have been enriched since this listener was wired
+      if (d && thumb.isConnected && extractVideoIdFromThumb(thumb)===videoId) showHoverCard(thumb, d);
     }, 250); // short delay so a fast scroll-by doesn't spam cards
   });
   thumb.addEventListener('mouseleave', hideHoverCard);
@@ -2244,10 +2272,10 @@ function injectVelocityBadges() {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
       const id = extractVideoIdFromThumb(entry.target);
-      if (id && !vphCache.has(id)) {
+      if (id && !readVphCache(id)) {
         pendingIds.add(id);
         scheduleBatch();
-      } else if (id && vphCache.has(id)) {
+      } else if (id && readVphCache(id)) {
         // Already cached — inject badge directly
         processBadgeBatch([id]);
       }

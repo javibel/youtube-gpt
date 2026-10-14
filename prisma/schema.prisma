@@ -1450,3 +1450,14 @@ model ExtensionCommentsOperation {
   @@index([userId], map: "extension_comments_operations_user")
   @@map("extension_comments_operations")
 }
+
+model ExtensionBatchOperation {
+  id String @id
+  principal String
+  key String @unique
+  eventId String @unique
+  state String
+  createdAt DateTime @default(now())
+  @@index([principal], map: "extension_batch_operations_principal")
+  @@map("extension_batch_operations")
+}

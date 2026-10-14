@@ -349,6 +349,69 @@ async function runComments(msg) {
   try { return await Promise.race([producer,stopped]); } finally { retired=true; clearTimeout(timer); }
 }
 
+const VIDEO_BATCH_PENDING = 'ytv_video_batch_pending';
+let videoBatchOriginal = null;
+function validVideoBatchResult(data,key,ids,startedAt,token) {
+ if(!data||data.operationKey!==key||JSON.stringify(data.requestedVideoIds)!==JSON.stringify(ids)||data.mode!==(token?'authenticated':'public')
+  ||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||typeof data.observedAt!=='string'||!Number.isFinite(Date.parse(data.observedAt))||Date.parse(data.observedAt)<startedAt||Date.parse(data.observedAt)>Date.now()||data.expiresAt>Date.parse(data.observedAt)+55_000
+  ||!data.dataQuality||data.dataQuality.source!=='youtube-batch-response'||data.dataQuality.freshness!=='unconfirmed'||data.dataQuality.velocity!=='lifetime-average'||!['available','unconfirmed'].includes(data.dataQuality.subscriberEnrichment)
+  ||!Array.isArray(data.videos)||!Array.isArray(data.missingVideoIds)||data.videos.length+data.missingVideoIds.length!==ids.length)return false;
+ const seen=new Set(),count=n=>n===null||Number.isSafeInteger(n)&&n>=0;
+ for(const v of data.videos){
+  if(!v||!ids.includes(v.videoId)||seen.has(v.videoId)||typeof v.title!=='string'||v.title.length>200||typeof v.channelTitle!=='string'||v.channelTitle.length>200||typeof v.channelId!=='string'||!/^UC[A-Za-z0-9_-]{22}$/.test(v.channelId)||!count(v.views)||!count(v.likes)||!count(v.comments)||!count(v.subscribers)
+   ||typeof v.publishedAt!=='string'||!Number.isFinite(Date.parse(v.publishedAt))||Date.parse(v.publishedAt)<0||Date.parse(v.publishedAt)>Date.parse(data.observedAt)||!['available','hidden','unconfirmed'].includes(v.subscriberState)||v.subscriberState==='available'&&v.subscribers===null||v.subscriberState!=='available'&&v.subscribers!==null)return false;
+  const age=Math.max(1,(Date.parse(data.observedAt)-Date.parse(v.publishedAt))/3600000),vph=v.views===null?null:Math.round(v.views/age*10)/10,engagement=v.views===null||v.likes===null||v.comments===null?null:v.views>0?Math.round((v.likes+v.comments)/v.views*1000)/10:0;
+  if(v.likes!==null&&v.comments!==null&&!Number.isSafeInteger(v.likes+v.comments)||v.ageDays!==Math.floor(age/24)||v.ageHours!==Math.round(age)||v.vph!==vph||v.engagement!==engagement||[v.vph,v.engagement].some(n=>n!==null&&(!Number.isFinite(n)||!Number.isSafeInteger(Math.round(n*10))||n<0)))return false;
+  seen.add(v.videoId);
+ }
+ for(const id of data.missingVideoIds){if(!ids.includes(id)||seen.has(id))return false;seen.add(id);}
+ return seen.size===ids.length && (data.dataQuality.subscriberEnrichment==='available'?data.videos.every(v=>v.subscriberState!=='unconfirmed'):true);
+}
+async function runVideoBatch(msg) {
+  if (videoBatchOriginal) throw Error('No se pudo confirmar el análisis de vídeos anterior.');
+  const original = {}; videoBatchOriginal = original;
+  const revision = identityRevision, deadline = performance.now() + 60_000, startedAt = Date.now();
+  const videoIds = Array.isArray(msg.videoIds) ? Object.freeze([...msg.videoIds]) : null;
+  let retired = false, rejectWait, attempted = false, closed = false;
+  const stopped = new Promise((_,reject)=>{rejectWait=reject;});
+  const retire = () => { if (!retired) { retired=true; rejectWait(Error('No se pudo confirmar el análisis de vídeos.')); } };
+  const timer = setTimeout(retire,60_000);
+  const check = () => { if (performance.now() >= deadline || identityRevision !== revision || passwordLoginOriginal || tokenMutationOriginal) retire(); if (retired || videoBatchOriginal !== original) throw Error('No se pudo confirmar el análisis de vídeos.'); };
+  const close = async key => {
+    const row = await chrome.storage.local.get(VIDEO_BATCH_PENDING);
+    if (videoBatchOriginal !== original || row[VIDEO_BATCH_PENDING]?.key !== key) throw Error('No se pudo confirmar el análisis de vídeos.');
+    await chrome.storage.local.remove(VIDEO_BATCH_PENDING); closed=true;
+  };
+  const producer = (async()=>{
+    for (const marker of [VIDEO_BATCH_PENDING, IDENTITY_WRITE_PENDING, PASSWORD_LOGIN_PENDING]) {
+      const row = await chrome.storage.local.get(marker); check();
+      if (Object.hasOwn(row,marker)) throw Error('Hay una operación pendiente de confirmar.');
+    }
+    const token = await getToken(); check();
+    if (token!==null && (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token))) throw Error('not_logged_in');
+    if (!videoIds || videoIds.length<1 || videoIds.length>50 || videoIds.some(id=>typeof id!=='string'||!/^[A-Za-z0-9_-]{11}$/.test(id)) || new Set(videoIds).size!==videoIds.length) throw Error('Datos de vídeo incorrectos.');
+    const key = crypto.randomUUID(); attempted=true;
+    await chrome.storage.local.set({[VIDEO_BATCH_PENDING]:{key}}); check();
+    const {res,data} = await apiFetch(API_BASE+'/api/extension/video-batch',{
+      method:'POST',timeoutMs:55_000,maxResponseBytes:512*1024,cache:'no-store',credentials:'omit',observeOriginal:promise=>{original.http=promise;},
+      headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),'Idempotency-Key':key},body:JSON.stringify({videoIds}),
+    }); check();
+    if (data?.operationKey !== key) throw Error('No se pudo confirmar el análisis de vídeos.');
+    const known = {invalid_video_input:400,not_logged_in:401,batch_configuration_unavailable:503,rate_limited:429};
+    if (Object.hasOwn(known,data.code) && res.status === known[data.code]) {
+      await close(key); check(); throw Error(data.code==='not_logged_in'?'not_logged_in':'No se pudieron consultar los vídeos.');
+    }
+    if (res.status !== 200 || !validVideoBatchResult(data,key,videoIds,startedAt,token)) throw Error('No se pudo confirmar el análisis de vídeos.');
+    const current = await getToken(); check();
+    if (current !== token || data.expiresAt <= Date.now()) throw Error('No se pudo confirmar el análisis de vídeos.');
+    await close(key); check();
+    if (data.expiresAt <= Date.now()) throw Error('No se pudo confirmar el análisis de vídeos.');
+    return data;
+  })();
+  void producer.finally(async()=>{ await Promise.allSettled(original.http?[original.http]:[]); if (videoBatchOriginal===original && (!attempted || closed)) videoBatchOriginal=null; }).catch(()=>{});
+  try { return await Promise.race([producer,stopped]); } finally { retired=true; clearTimeout(timer); }
+}
+
 let channelStatsOriginal = null;
 async function getChannelStats() {
   if (channelStatsOriginal) return channelStatsOriginal.wait;
@@ -485,6 +548,7 @@ async function handleMessage(msg) {
   if (msg.type === 'CHANNEL_STATS') return getChannelStats();
   if (msg.type === 'SEO_QUICK') return runSeoQuick(msg);
   if (msg.type === 'COMMENTS') return runComments(msg);
+  if (msg.type === 'VIDEO_BATCH') return runVideoBatch(msg);
   if (msg.type === 'GET_USER') return getExtensionIdentity();
   if (msg.type === 'STORE_TOKEN' || msg.type === 'LOGOUT') return mutateExtensionToken(msg);
   if (msg.type === 'LOGIN') return passwordLogin(msg);
@@ -597,25 +661,6 @@ async function handleMessage(msg) {
       } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
       if (res.status === 429) throw new Error('rate_limited');
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Scorecard error' : 'Error al cargar scorecard'));
-      return data;
-    }
-
-    case 'VIDEO_BATCH': {
-      // v2.7: works without login (VPH badges = ambient value at second 1). Token is optional.
-      const token = await getToken();
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/video-batch`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ videoIds: msg.videoIds }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (res.status === 429) throw new Error('rate_limited');
-      if (!res.ok) throw new Error(data.error || 'Batch error');
       return data;
     }
 
