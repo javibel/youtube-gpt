@@ -171,7 +171,7 @@ async function mutateExtensionToken(msg) {
 const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
-function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); }
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
@@ -375,7 +375,47 @@ async function runSeoLive(msg) {
   original.wait=Promise.race([producer,stopped]).finally(()=>{retired=true;clearTimeout(timer);});return original.wait;
 }
 
+let dailyIdeasOriginal = null;
+async function readDailyIdeas() {
+  if(dailyIdeasOriginal)return dailyIdeasOriginal.wait;
+  const day=new Date(Date.now()).toISOString().slice(0,10),original={revision:identityRevision,retire:null,wait:null};dailyIdeasOriginal=original;
+  const deadline=performance.now()+30000;let retired=false,rejectWait,httpOriginal=null;
+  const stopped=new Promise((_,reject)=>{rejectWait=reject;});
+  const retire=()=>{if(!retired){retired=true;rejectWait(Error('No se pudieron confirmar las ideas diarias.'));}};original.retire=retire;
+  const timer=setTimeout(retire,30000);
+  const check=()=>{if(performance.now()>=deadline||new Date(Date.now()).toISOString().slice(0,10)!==day||original.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||dailyIdeasOriginal!==original)retire();if(retired)throw Error('No se pudieron confirmar las ideas diarias.');};
+  const producer=(async()=>{
+    const pending=await chrome.storage.local.get([IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]);check();
+    if(Object.hasOwn(pending,IDENTITY_WRITE_PENDING)||Object.hasOwn(pending,PASSWORD_LOGIN_PENDING))throw Error('No se pudo confirmar la cuenta.');
+    const token=await getToken();check();if(typeof token!=='string'||! /^[a-f0-9]{64}$/.test(token))throw Error('not_logged_in');
+    const readRef=crypto.randomUUID();
+    const {res,data}=await apiFetch(API_BASE+'/api/extension/daily-ideas',{
+      timeoutMs:25000,maxResponseBytes:64*1024,credentials:'omit',cache:'no-store',observeOriginal:promise=>{httpOriginal=promise;},
+      headers:{Authorization:'Bearer '+token,'X-YTV-Read-Ref':readRef},
+    });check();
+    if(data?.readRef!==readRef)throw Error('No se pudieron confirmar las ideas diarias.');
+    if(res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');
+    const q=data.dataQuality;
+    if(res.status!==200||data.requestedDate!==day||typeof data.channelConnected!=='boolean'||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()
+      ||!q||q.source!=='stored-daily-ideas'||q.freshness!=='unconfirmed'||q.connection!=='stored-channel-reference')throw Error('No se pudieron confirmar las ideas diarias.');
+    if(data.ideas===null){if(data.date!==null||q.savedAt!==null||data.batchState!==(data.channelConnected?'pending':'not-connected'))throw Error('No se pudieron confirmar las ideas diarias.');}
+    else {
+      const date=typeof q.savedAt==='string'?new Date(q.savedAt):null;
+      if(!data.channelConnected||data.batchState!=='available'||data.date!==day||!date||!Number.isFinite(date.getTime())||date.getTime()>Date.now()||date.toISOString()!==q.savedAt||q.savedAt.slice(0,10)!==day
+        ||!Array.isArray(data.ideas)||data.ideas.length<1||data.ideas.length>5||data.ideas.some(x=>!x||typeof x!=='object'||Array.isArray(x)
+          ||!['title_es','title_en','idea_es','idea_en'].every(k=>typeof x[k]==='string'&&x[k].trim()&&x[k].length<=(k.startsWith('title')?200:4000)))
+        ||new TextEncoder().encode(JSON.stringify(data.ideas)).byteLength>48*1024)throw Error('No se pudieron confirmar las ideas diarias.');
+    }
+    const current=await getToken();check();if(current!==token||data.expiresAt<=Date.now())throw Error('No se pudieron confirmar las ideas diarias.');return data;
+  })();
+  // A public per-day cache is not authority for this account. No reads, writes,
+  // deletions or reset of historical cache keys/preferences take place here.
+  void producer.finally(async()=>{if(httpOriginal)await Promise.allSettled([httpOriginal]);if(dailyIdeasOriginal===original)dailyIdeasOriginal=null;}).catch(()=>{});
+  original.wait=Promise.race([producer,stopped]).finally(()=>{retired=true;clearTimeout(timer);});return original.wait;
+}
+
 async function handleMessage(msg) {
+  if (msg.type === 'DAILY_IDEAS') return readDailyIdeas();
   if (msg.type === 'SEO_LIVE') return runSeoLive(msg);
   if (msg.type === 'CHANNEL_STATS') return getChannelStats();
   if (msg.type === 'SEO_QUICK') return runSeoQuick(msg);
@@ -615,48 +655,6 @@ async function handleMessage(msg) {
       if (res.status === 403 && data.error === 'pro_required') throw new Error('pro_required');
       if (res.status === 429) throw new Error('throttled');
       if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Coach error' : 'Error del Coach'));
-      return data;
-    }
-
-    case 'DAILY_IDEAS': {
-      const token = await getToken();
-      if (!token) return { ideas: null };
-
-      // Cache 1 fetch/día: la homepage se visita muchas veces y las ideas no
-      // cambian en el día. Limpia claves de días anteriores al escribir la nueva.
-      const today = new Date().toISOString().slice(0, 10);
-      const cacheKey = `ytv_ideas_${today}`;
-      const cached = await new Promise(resolve => {
-        chrome.storage.local.get(cacheKey, data => resolve(data[cacheKey]));
-      });
-      // Only trust a cache that actually has ideas — a previously cached `{ideas:null}`
-      // (e.g. checked before the morning cron ran) must not stick for the rest of the day.
-      if (cached && Array.isArray(cached.ideas) && cached.ideas.length) return cached;
-
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/daily-ideas`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }));
-      } catch {
-        return { ideas: null }; // panel de homepage: fallar en silencio, no molestar
-      }
-      if (!res.ok) return { ideas: null };
-
-      // Solo cachear cuando REALMENTE hay ideas — si hoy aún no están generadas
-      // (el cron corre ~06:00 UTC), cachear `{ideas:null}` dejaría al usuario sin
-      // ideas el resto del día aunque aparezcan más tarde.
-      if (!data || !Array.isArray(data.ideas) || !data.ideas.length) return data || { ideas: null };
-
-      // Solo las claves de CACHÉ por fecha (ytv_ideas_YYYY-MM-DD), NO las de
-      // preferencias que comparten prefijo: ytv_ideas_dismissed_<fecha>,
-      // ytv_ideas_collapsed, ytv_ideas_upsell_last. Un `startsWith('ytv_ideas_')`
-      // las borraba todas en el primer fetch de cada día — reseteaba el estado
-      // colapsado a diario y rompía el throttle semanal del upsell.
-      const allKeys = await new Promise(resolve => chrome.storage.local.get(null, resolve));
-      const staleKeys = Object.keys(allKeys).filter(k => /^ytv_ideas_\d{4}-\d{2}-\d{2}$/.test(k) && k !== cacheKey);
-      if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
-      await chrome.storage.local.set({ [cacheKey]: data });
       return data;
     }
 

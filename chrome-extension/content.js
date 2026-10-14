@@ -353,7 +353,7 @@ async function renderShellTab() {
   } else if (shellState.tab === 'channel') {
     if (!shellRendered.channel) renderShellChannelTab(pane); // sets the flag on success
   } else if (shellState.tab === 'ideas') {
-    if (!shellRendered.ideas) renderShellIdeasTab(pane);
+    renderShellIdeasTab(pane); // each foreground intent performs a native read
   } else if (shellState.tab === 'coach') {
     if (!shellRendered.coach) renderShellCoachTab(pane);
   }
@@ -500,6 +500,28 @@ function wireShellScorecard(root, scorecardData, videoId, loggedIn) {
   }
 }
 
+function retireDailyIdeasDisplay() {
+  const root=document.getElementById('ytv-shell'),pane=root?.querySelector('.ytv-shell-pane[data-pane="ideas"]');
+  if(pane)pane.innerHTML='';
+  document.querySelectorAll('.ytv-cs-ideas').forEach(node=>node.remove());
+  shellRendered.ideas=false;
+}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))retireDailyIdeasDisplay();});
+async function requestDailyIdeasForDisplay() {
+  const revision=studioSeoSessionRevision,day=new Date(Date.now()).toISOString().slice(0,10),deadline=performance.now()+30000;
+  let timer;
+  try {
+    const original=sendMsg({type:'DAILY_IDEAS'});
+    const data=await Promise.race([original,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Ideas unconfirmed')),30000);})]);
+    if(revision!==studioSeoSessionRevision||performance.now()>=deadline||new Date(Date.now()).toISOString().slice(0,10)!==day
+      ||data?.requestedDate!==day||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now())throw Error('Ideas unconfirmed');
+    return data;
+  } finally { clearTimeout(timer); }
+}
+function renderDailyIdeasMeta(data) {
+  return `<div class="ytv-hint">${t('Lote guardado', 'Stored batch')} ${escapeHtml(data.date || data.requestedDate)} UTC · ${t('Actualidad sin confirmar', 'Freshness unconfirmed')}</div>`;
+}
+
 // ── "Tu canal" tab ───────────────────────────────────────────────
 async function renderShellChannelTab(body) {
   body.innerHTML = renderLoading(t('Cargando stats...', 'Loading stats...'));
@@ -520,8 +542,8 @@ async function renderShellChannelTab(body) {
   }
   body.innerHTML = renderChannelStatsWidget(data);
   shellRendered.channel = true; // cache only a successful render
-  sendMsg({ type: 'DAILY_IDEAS' }).then((ideaData) => {
-    if (ideaData?.ideas?.length) body.insertAdjacentHTML('beforeend', renderDailyIdeasMini(ideaData.ideas));
+  requestDailyIdeasForDisplay().then((ideaData) => {
+    if (body.isConnected && ideaData?.ideas?.length) body.insertAdjacentHTML('beforeend', renderDailyIdeasMeta(ideaData)+renderDailyIdeasMini(ideaData.ideas));
   }).catch(() => {});
 }
 
@@ -539,10 +561,13 @@ async function renderShellIdeasTab(body) {
 
   let data;
   try {
-    data = await sendMsg({ type: 'DAILY_IDEAS' });
+    data = await requestDailyIdeasForDisplay();
   } catch {
-    data = null;
+    if(body.isConnected)body.innerHTML=renderError(t('No se pudieron confirmar tus ideas.','Your ideas could not be confirmed.'));
+    return;
   }
+
+  if(!body.isConnected)return;
 
   if (!data || !data.ideas || !data.ideas.length) {
     // channelConnected === false → really needs to connect. Otherwise (connected,
@@ -561,7 +586,7 @@ async function renderShellIdeasTab(body) {
   shellRendered.ideas = true;
   sendMsg({ type: 'CLEAR_IDEAS_BADGE' }).catch(() => {}); // they're looking at the ideas now
   const ideas = data.ideas.slice(0, 5);
-  body.innerHTML = `<div class="ytv-ideas-body" style="max-height:none">${ideas.map((idea) => {
+  body.innerHTML = renderDailyIdeasMeta(data)+`<div class="ytv-ideas-body" style="max-height:none">${ideas.map((idea) => {
     const title = t(idea.title_es, idea.title_en) || '';
     const desc = t(idea.idea_es, idea.idea_en) || '';
     const topic = encodeURIComponent(title);
@@ -1394,7 +1419,7 @@ function renderDailyIdeasMini(ideas) {
   const top = ideas.slice(0, 3);
   return `
     <div class="ytv-cs-ideas">
-      <div class="ytv-cs-ideas-title">💡 ${t('Qué grabar hoy', 'What to film today')}</div>
+      <div class="ytv-cs-ideas-title">💡 ${t('Ideas guardadas', 'Stored ideas')}</div>
       ${top.map((idea) => {
         const title = t(idea.title_es, idea.title_en) || '';
         const topic = encodeURIComponent(title);
@@ -2333,7 +2358,7 @@ async function maybePokeIdeasBadge() {
   if (ideasBadgeChecked) return;
   ideasBadgeChecked = true;
   try {
-    const d = await sendMsg({ type: 'DAILY_IDEAS' }); // cached per-day in background — cheap
+    const d = await requestDailyIdeasForDisplay(); // native read, never a per-day public cache
     if (Array.isArray(d?.ideas) && d.ideas.length) sendMsg({ type: 'IDEAS_BADGE' }).catch(() => {});
   } catch { /* not logged in / no ideas — nothing to badge */ }
 }

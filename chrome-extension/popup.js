@@ -1,3 +1,6 @@
+let popupIdeasRevision=0;
+const popupIdeasSessionObserved=typeof chrome.storage?.onChanged?.addListener==='function';
+if(popupIdeasSessionObserved)chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token')){popupIdeasRevision++;popIdeas.classList.add('hidden');popIdeas.innerHTML='';}});
 'use strict';
 
 const viewLogin = document.getElementById('view-login');
@@ -138,11 +141,14 @@ async function loadDashboard() {
     }
   });
 
+  const ideasDay=new Date(Date.now()).toISOString().slice(0,10),ideasRevision=popupIdeasRevision,ideasDeadline=popupIdeasSessionObserved?performance.now()+30000:0;
   sendMsg({ type: 'DAILY_IDEAS' }).then((d) => {
+    if(!popupIdeasSessionObserved||ideasRevision!==popupIdeasRevision||performance.now()>=ideasDeadline||d?.requestedDate!==ideasDay||new Date(Date.now()).toISOString().slice(0,10)!==ideasDay||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now())return;
     const n = Array.isArray(d?.ideas) ? d.ideas.length : 0;
     if (!n) return;
     popIdeas.innerHTML = `
-      <div class="pop-block-title">💡 ${t(`${n} ideas para hoy`, `${n} ideas for today`)}</div>
+      <div class="pop-block-title">💡 ${t(`${n} ideas guardadas`, `${n} stored ideas`)}</div>
+      <div class="pop-dim">${d.date} UTC · ${t('actualidad sin confirmar','freshness unconfirmed')}</div>
       <button class="btn btn-outline btn-sm" id="pop-ideas-open">${t('Verlas en YouTube', 'Open them on YouTube')}</button>`;
     popIdeas.classList.remove('hidden');
     document.getElementById('pop-ideas-open').addEventListener('click', () => {
