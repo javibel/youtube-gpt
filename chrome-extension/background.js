@@ -171,11 +171,12 @@ async function mutateExtensionToken(msg) {
 const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
-function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); }
+const identityReadReceipts = new WeakMap();
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
-  const original = { revision: identityRevision, retire: null, wait: null };
+  const original = { revision: identityRevision, retire: null, wait: null, http: null };
   identityReadOriginal = original;
   const deadline = performance.now() + 30_000;
   let retired = false, rejectWait, writer = null;
@@ -197,6 +198,7 @@ async function getExtensionIdentity() {
     const readRef = crypto.randomUUID();
     const { res, data } = await apiFetch(API_BASE + '/api/extension/me', {
       timeoutMs: 25_000, maxResponseBytes: 16*1024, credentials: 'omit', cache: 'no-store',
+      observeOriginal: promise => { original.http = promise; },
       headers: { Authorization: 'Bearer ' + token, 'X-YTV-Read-Ref': readRef },
     });
     check();
@@ -221,16 +223,17 @@ async function getExtensionIdentity() {
       await chrome.storage.local.set({ [IDENTITY_WRITE_PENDING]: { key } });
       check();
       if (denied) { await chrome.storage.local.remove(['ytv_token', 'ytv_user']); await close(); return null; }
-      const user = { id: data.userId, name: data.name, email: data.email, isPro: data.isPro };
+      const user = Object.freeze({ id: data.userId, name: data.name, email: data.email, isPro: data.isPro });
       await chrome.storage.local.set({ ytv_user: user });
       await close(); check();
       if (data.expiresAt <= Date.now()) throw Error('No se pudo confirmar la cuenta.');
+      identityReadReceipts.set(user, { token, revision: original.revision, expiresAt: data.expiresAt });
       return user;
     } finally { if (closed && tokenMutationOriginal === writer) tokenMutationOriginal = null; }
   })();
   // A cache mutation already dispatched keeps its own storage ACK and exclusion
   // after timeout. No replacement writer runs until that original settles.
-  void producer.finally(() => { if (identityReadOriginal === original) identityReadOriginal = null; }).catch(() => {});
+  void producer.finally(async () => { if (original.http) await Promise.allSettled([original.http]); if (identityReadOriginal === original) identityReadOriginal = null; }).catch(() => {});
   original.wait = Promise.race([producer, stopped]).finally(() => { retired = true; clearTimeout(timer); });
   return original.wait;
 }
@@ -559,6 +562,64 @@ async function acknowledgeBestTimeUse(msg,sender){
  })();void original.acknowledging.catch(()=>{original.retire();clearTimeout(original.timer);});return original.acknowledging;
 }
 
+const AB_CREATE_PENDING='ytv_ab_create_pending';
+let abCreateOriginal=null;
+const abUuid=v=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(v);
+function abCaller(sender,videoId){
+ const scope=bestTimeCaller(sender);if(!scope)return null;
+ const u=new URL(sender.url),id=u.origin==='https://studio.youtube.com'?u.pathname.match(/^\/video\/([A-Za-z0-9_-]{11})\/edit\/?$/)?.[1]:u.pathname==='/watch'?u.searchParams.get('v'):u.pathname.match(/^\/shorts\/([A-Za-z0-9_-]{11})\/?$/)?.[1];
+ return id===videoId?scope:null;
+}
+function abInput(msg){
+ const title=v=>typeof v==='string'&&v===v.trim()&&v.length>0&&[...v].length<=100&&!/[\x00-\x1f\x7f]/.test(v);
+ if(typeof msg.videoId!=='string'||!/^[A-Za-z0-9_-]{11}$/.test(msg.videoId)||!title(msg.variantA)||!title(msg.variantB)||msg.hoursPerVariant!==undefined&&(!Number.isInteger(msg.hoursPerVariant)||msg.hoursPerVariant<12||msg.hoursPerVariant>168))return null;
+ return Object.freeze({videoId:msg.videoId,variantA:msg.variantA,variantB:msg.variantB,hoursPerVariant:msg.hoursPerVariant??48});
+}
+function abCreateCheck(own){
+ if(abCreateOriginal!==own||own.retired||own.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||own.identity&&identityReadReceipts.get(own.identity)!==own.identityReceipt){own.retire();throw Error('ab_creation_unconfirmed');}
+}
+function abTestProjection(d,key,input,identity,startedAt){
+ const t=d?.test,date=t?.startedAt;
+ if(!d||Object.keys(d).length!==2||d.operationKey!==key||!t||typeof t.id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(t.id)||t.userId!==identity.id||t.videoId!==input.videoId||t.variantA!==input.variantA||t.variantB!==input.variantB||t.hoursPerVariant!==input.hoursPerVariant||t.status!=='variant_a'||typeof date!=='string'||!Number.isFinite(Date.parse(date))||new Date(date).toISOString()!==date||Date.parse(date)<startedAt||Date.parse(date)>Date.now())throw Error('ab_creation_unconfirmed');
+ return Object.freeze({id:t.id,videoId:t.videoId,variantA:t.variantA,variantB:t.variantB,hoursPerVariant:t.hoursPerVariant,status:t.status,startedAt:date});
+}
+async function createAbFromView(msg,sender){
+ const input=abInput(msg),scope=input&&abCaller(sender,input.videoId);if(!input||!scope||!abUuid(msg.viewRef))throw Error('invalid_input');
+ const snapshot=JSON.stringify(input);
+ if(abCreateOriginal){const own=abCreateOriginal;if(!own.retired&&own.scope===scope&&own.viewRef===msg.viewRef&&own.snapshot===snapshot&&own.revision===identityRevision)return own.wait;throw Error('ab_creation_unconfirmed');}
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ const own={input,scope,snapshot,viewRef:msg.viewRef,revision:identityRevision,startedAt:Date.now(),expiresAt:Date.now()+60000,deadline:performance.now()+60000,retired:false,http:null,attempted:false,ready:false,key:null,identity:null,closed:false};abCreateOriginal=own;
+ own.retire=()=>{if(!own.retired){own.retired=true;rejectWait(Error('ab_creation_unconfirmed'));}};own.timer=setTimeout(own.retire,60000);const check=()=>abCreateCheck(own);
+ const producer=(async()=>{
+  for(const marker of [AB_CREATE_PENDING,IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]){const row=await chrome.storage.local.get(marker);check();if(Object.hasOwn(row,marker))throw Error('ab_creation_unconfirmed');}
+  const identity=await getExtensionIdentity();check();const receipt=identity&&identityReadReceipts.get(identity);if(!identity||!receipt||receipt.revision!==own.revision)throw Error('not_logged_in');
+  own.identity=identity;own.identityReceipt=receipt;own.expiresAt=Math.min(own.expiresAt,receipt.expiresAt);check();
+  const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==receipt.token)throw Error('ab_creation_unconfirmed');
+  own.key=crypto.randomUUID();own.attempted=true;await chrome.storage.local.set({[AB_CREATE_PENDING]:{key:own.key,viewRef:own.viewRef,videoId:input.videoId}});check();
+  const journal=await chrome.storage.local.get(AB_CREATE_PENDING);check();if(journal[AB_CREATE_PENDING]?.key!==own.key||journal[AB_CREATE_PENDING]?.viewRef!==own.viewRef||journal[AB_CREATE_PENDING]?.videoId!==input.videoId)throw Error('ab_creation_unconfirmed');
+  const {res,data}=await apiFetch(API_BASE+'/api/extension/ab-test',{method:'POST',credentials:'omit',cache:'no-store',timeoutMs:Math.min(55000,Math.max(1,Math.floor(own.deadline-performance.now()))),maxResponseBytes:16*1024,observeOriginal:p=>{own.http=p;},headers:{Authorization:'Bearer '+receipt.token,'Content-Type':'application/json','Idempotency-Key':own.key},body:JSON.stringify(input)});check();
+  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('ab_creation_unconfirmed');
+  const known={pro_required:403,active_test_exists:400,max_active_tests:400,youtube_not_connected:400,video_not_found:404,invalid_input:400,invalid_operation_key:400,not_logged_in:401};
+  let result;
+  if(res.status===201)result={outcome:'created',test:abTestProjection(data,own.key,input,identity,own.startedAt)};
+  else if(data&&known[data.error]===res.status&&(data.error!=='max_active_tests'||Number.isSafeInteger(data.limit)&&data.limit>=1&&data.limit<=10))result={outcome:'rejected',code:data.error,...(data.error==='max_active_tests'?{limit:data.limit}:{})};
+  else throw Error('ab_creation_unconfirmed');
+  own.data=Object.freeze({key:own.key,viewRef:own.viewRef,videoId:input.videoId,expiresAt:own.expiresAt,...result});own.ready=true;check();return own.data;
+ })();
+ void producer.catch(()=>{own.retire();clearTimeout(own.timer);}).finally(async()=>{if(own.http)await Promise.allSettled([own.http]);if(abCreateOriginal===own&&!own.attempted){abCreateOriginal=null;clearTimeout(own.timer);}}).catch(()=>{});
+ own.wait=Promise.race([producer,stopped]);return own.wait;
+}
+async function acknowledgeAbCreate(msg,sender){
+ const own=abCreateOriginal;if(!own||!own.ready||abCaller(sender,own.input.videoId)!==own.scope||msg.key!==own.key||msg.viewRef!==own.viewRef)throw Error('ab_creation_unconfirmed');
+ const check=()=>abCreateCheck(own);check();if(own.acknowledging)return own.acknowledging;
+ own.acknowledging=(async()=>{
+  const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('ab_creation_unconfirmed');
+  const row=await chrome.storage.local.get(AB_CREATE_PENDING);check();if(row[AB_CREATE_PENDING]?.key!==own.key||row[AB_CREATE_PENDING]?.viewRef!==own.viewRef||row[AB_CREATE_PENDING]?.videoId!==own.input.videoId)throw Error('ab_creation_unconfirmed');
+  await chrome.storage.local.remove(AB_CREATE_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('ab_creation_unconfirmed');
+  if(own.http)await Promise.allSettled([own.http]);check();own.closed=true;clearTimeout(own.timer);abCreateOriginal=null;return Object.freeze({key:own.key,viewRef:own.viewRef,closed:true});
+ })();void own.acknowledging.catch(()=>{own.retire();clearTimeout(own.timer);});return own.acknowledging;
+}
+
 let channelStatsOriginal = null;
 async function getChannelStats() {
   if (channelStatsOriginal) return channelStatsOriginal.wait;
@@ -690,6 +751,8 @@ async function readDailyIdeas() {
 }
 
 async function handleMessage(msg,sender) {
+  if (msg.type === 'AB_CREATE') return createAbFromView(msg,sender);
+  if (msg.type === 'AB_CREATE_ACK') return acknowledgeAbCreate(msg,sender);
   if (msg.type === 'BEST_TIME') return getBestTime(msg,sender);
   if (msg.type === 'BEST_TIME_USE') return getBestTimeUse(msg,sender);
   if (msg.type === 'BEST_TIME_USE_ACK') return acknowledgeBestTimeUse(msg,sender);
@@ -793,34 +856,6 @@ async function handleMessage(msg,sender) {
       })();
       attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);waitController.abort();attempt.flight=null;});
       return attempt.flight;
-    }
-
-    case 'AB_CREATE': {
-      // A diferencia del resto de handlers, aquí NO se traduce el error a un
-      // mensaje bonito — content.js necesita el código crudo (pro_required,
-      // active_test_exists, max_active_tests, youtube_not_connected,
-      // youtube_reconnect_required) para pintar una tarjeta distinta por caso
-      // (la de pro_required es el momento de conversión de la release).
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/ab-test`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            videoId: msg.videoId,
-            variantA: msg.variantA,
-            variantB: msg.variantB,
-          }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (!res.ok) {
-        const e = new Error(data.error || 'ab_test_error');
-        e.limit = data.limit; // solo presente en max_active_tests
-        throw e;
-      }
-      return data;
     }
 
     case 'IDEAS_BADGE': {

@@ -1711,6 +1711,7 @@ function renderStudioScore(score, checks, titleLen) {
 // conversión de la release, el resto son estados normales de uso).
 function renderAbTestOutcome(err, limit) {
   const code = err?.message || '';
+  if (code === 'ab_creation_unconfirmed') return renderError(t('El test no está confirmado. No se repetirá automáticamente.','The test is unconfirmed. It will not be repeated automatically.'));
   if (code === 'pro_required') {
     return `<div class="ytv-ab-upsell">
       <strong>${t('La rotación automática A/B es Pro', 'Automatic A/B rotation is Pro')}</strong>
@@ -1732,6 +1733,45 @@ function renderAbTestOutcome(err, limit) {
     return `<div class="ytv-error">⚠ ${t('Conecta (o reconecta) tu canal de YouTube en YTubViral. ', 'Connect (or reconnect) your YouTube channel on YTubViral. ')}<a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=abtest" target="_blank">${t('Ir al dashboard →', 'Go to dashboard →')}</a></div>`;
   }
   return renderError(code || t('Error al crear el test', 'Error creating the test'));
+}
+
+const abCreateViewDisplays=new Map(),abCreateViewReceipts=new WeakMap();let abCreateViewRevision=0;
+function retireAbCreateViews(){abCreateViewRevision++;for(const own of [...abCreateViewDisplays.values()])own.retire();}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))retireAbCreateViews();});
+document.addEventListener('yt-navigate-finish',retireAbCreateViews);
+function abCreateViewCurrent(result){const own=result&&abCreateViewReceipts.get(result);if(!own||own.data!==result)return false;try{own.check();return true;}catch{return false;}}
+function renderAbCreated(result){
+ if(!abCreateViewCurrent(result)||result.outcome!=='created')return '';
+ return `<div class="ytv-ab-success">✓ ${t('Test creado. ','Test created. ')}<a href="https://ytubviral.com/ab-test?utm_source=extension&utm_medium=abtest" target="_blank">${t('Verlo →','View it →')}</a></div>`;
+}
+async function createAbView(button,owner,input,extraCheck=()=>true){
+ if(!button||!owner)return;
+ const previous=abCreateViewDisplays.get(owner);if(previous&&!previous.closed){if(previous.snapshot===JSON.stringify(input)&&previous.scope())return previous.wait;return;}
+ previous?.retire();
+ const own={button,owner,snapshot:JSON.stringify(input),href:location.href,revision:abCreateViewRevision,viewRef:crypto.randomUUID(),startedAt:Date.now(),deadline:performance.now()+60000,retired:false,closed:false,nodes:[],observer:null,data:null};
+ if(abCreateViewDisplays.size>=32)return;abCreateViewDisplays.set(owner,own);
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>owner.isConnected&&button.isConnected&&location.href===own.href&&own.revision===abCreateViewRevision&&abCreateViewDisplays.get(owner)===own&&extraCheck();
+ own.retire=()=>{if(!own.retired){own.retired=true;rejectWait(Error('ab_creation_unconfirmed'));}clearTimeout(own.timer);own.observer?.disconnect();for(const node of own.nodes.splice(0))if(node.isConnected&&owner.contains(node))node.remove();if(!owner.isConnected||own.revision!==abCreateViewRevision||location.href!==own.href)if(abCreateViewDisplays.get(owner)===own)abCreateViewDisplays.delete(owner);};
+ own.check=()=>{if(!own.scope()||own.retired||performance.now()>=own.deadline||Date.now()<own.startedAt||own.data&&own.data.expiresAt<=Date.now()){own.retire();throw Error('ab_creation_unconfirmed');}};
+ const paint=html=>{owner.innerHTML='<div class="ytv-ab-original">'+html+'</div>';const node=owner.querySelector('.ytv-ab-original');if(node&&owner.contains(node))own.nodes.push(node);};
+ own.timer=setTimeout(own.retire,60000);own.observer=new MutationObserver(()=>{try{own.check();}catch{}});own.observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['href']});button.disabled=true;owner.innerHTML=renderLoading(t('Creando test...','Creating test...'));
+ const producer=(async()=>{
+  try{
+   own.check();const data=await Promise.race([sendMsg({type:'AB_CREATE',...input,viewRef:own.viewRef}),stopped]);own.check();
+   const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(v);
+   if(!data||data.viewRef!==own.viewRef||!uuid(data.key)||data.videoId!==input.videoId||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>Date.now()+60000||!['created','rejected'].includes(data.outcome))throw Error('ab_creation_unconfirmed');
+   if(data.outcome==='created'&&(!data.test||data.test.videoId!==input.videoId||data.test.variantA!==input.variantA||data.test.variantB!==input.variantB||data.test.hoursPerVariant!==(input.hoursPerVariant??48)||data.test.status!=='variant_a'||typeof data.test.id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(data.test.id)||typeof data.test.startedAt!=='string'||!Number.isFinite(Date.parse(data.test.startedAt))||new Date(data.test.startedAt).toISOString()!==data.test.startedAt||Date.parse(data.test.startedAt)<own.startedAt||Date.parse(data.test.startedAt)>Date.now()))throw Error('ab_creation_unconfirmed');
+   if(data.outcome==='rejected'&&(!['pro_required','active_test_exists','max_active_tests','youtube_not_connected','video_not_found','invalid_input','invalid_operation_key','not_logged_in'].includes(data.code)||data.code==='max_active_tests'&&(!Number.isSafeInteger(data.limit)||data.limit<1||data.limit>10)))throw Error('ab_creation_unconfirmed');
+   own.data=data;own.check();
+   const ack=await Promise.race([sendMsg({type:'AB_CREATE_ACK',key:data.key,viewRef:own.viewRef}),stopped]);own.check();
+   if(!ack||ack.key!==data.key||ack.viewRef!==own.viewRef||ack.closed!==true)throw Error('ab_creation_unconfirmed');
+   const result=Object.freeze({...data,...(data.test?{test:Object.freeze({...data.test})}:{})});own.data=result;own.closed=true;abCreateViewReceipts.set(result,own);own.check();
+   paint(result.outcome==='created'?renderAbCreated(result):renderAbTestOutcome({message:result.code},result.limit));
+   if(result.outcome==='rejected')button.disabled=false;
+   clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),result.expiresAt-Date.now())));return result;
+  }catch{own.retire();if(own.scope())paint(renderAbTestOutcome({message:'ab_creation_unconfirmed'}));}
+ })();own.wait=producer;return producer;
 }
 
 // No isPro parameter any more: generation is not Pro-gated (Free has a monthly quota, same as
@@ -1772,15 +1812,7 @@ function wireGenTitlesButton(btn, aiResults, titleFieldSelector, videoId) {
             // variantA = título actual del campo AHORA (no cacheado — el usuario
             // puede haberlo editado desde que se generaron las sugerencias).
             const variantA = getStudioTitle();
-            abBtn.disabled = true;
-            resultEl.innerHTML = renderLoading(t('Creando test...', 'Creating test...'));
-            try {
-              await sendMsg({ type: 'AB_CREATE', videoId, variantA, variantB });
-              resultEl.innerHTML = `<div class="ytv-ab-success">✓ ${t('Test creado. ', 'Test created. ')}<a href="https://ytubviral.com/ab-test?utm_source=extension&utm_medium=abtest" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
-            } catch (e) {
-              resultEl.innerHTML = renderAbTestOutcome(e, e.limit);
-              abBtn.disabled = false;
-            }
+            await createAbView(abBtn,resultEl,{videoId,variantA,variantB},()=>aiResults.isConnected&&getStudioVideoId()===videoId&&getStudioTitle()===variantA);
           });
         });
       }
@@ -1915,15 +1947,7 @@ async function injectStudioEditor() {
         const variantB = bInput.value.trim();
         const variantA = getStudioTitle(); // fresco, no cacheado
         if (!variantB || variantB.length < 5) { resultEl.innerHTML = renderError(t('Escribe una variante B (mín. 5 caracteres)', 'Type a variant B (min. 5 chars)')); return; }
-        submitBtn.disabled = true;
-        resultEl.innerHTML = renderLoading(t('Creando test...', 'Creating test...'));
-        try {
-          await sendMsg({ type: 'AB_CREATE', videoId, variantA, variantB });
-          resultEl.innerHTML = `<div class="ytv-ab-success">✓ ${t('Test creado. ', 'Test created. ')}<a href="https://ytubviral.com/ab-test?utm_source=extension&utm_medium=abtest" target="_blank">${t('Verlo →', 'View it →')}</a></div>`;
-        } catch (e) {
-          resultEl.innerHTML = renderAbTestOutcome(e, e.limit);
-          submitBtn.disabled = false;
-        }
+        await createAbView(submitBtn,resultEl,{videoId,variantA,variantB},()=>panel.isConnected&&getStudioVideoId()===videoId&&getStudioTitle()===variantA&&bInput.value.trim()===variantB);
       });
     });
 
