@@ -466,7 +466,7 @@ async function renderShellScorecard(body) {
   body.innerHTML = renderLoading(t('Analizando vídeo...', 'Analyzing video...'));
   let d;
   try {
-    d = await readScorecardView(videoId,body);
+    d = await readScorecardView(videoId,body,()=>getPageType()===(isShorts?'shorts':'video')&&(isShorts?getShortsVideoId():getVideoId())===videoId);
   } catch (e) {
     if(scorecardFailureCurrent(body))body.innerHTML=renderError(e.message);
     return;
@@ -482,6 +482,7 @@ async function renderShellScorecard(body) {
     ${loggedIn ? '' : shellLoggedOutCta()}
   `;
   mountScorecardView(d,body,[body.querySelector('.ytv-shell-scorecard')]);
+  observeScorecardScope(d,document.body);
   wireShellScorecard(body, d, videoId, loggedIn);
   if (loggedIn) maybeShowReviewPrompt(body);
 }
