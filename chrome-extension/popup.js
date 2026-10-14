@@ -1,7 +1,7 @@
+'use strict';
 let popupIdeasRevision=0;
 const popupIdeasSessionObserved=typeof chrome.storage?.onChanged?.addListener==='function';
 if(popupIdeasSessionObserved)chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token')){popupIdeasRevision++;popIdeas.classList.add('hidden');popIdeas.innerHTML='';}});
-'use strict';
 
 const viewLogin = document.getElementById('view-login');
 const viewUser  = document.getElementById('view-user');
