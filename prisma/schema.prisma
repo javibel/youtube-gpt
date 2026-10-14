@@ -1475,3 +1475,19 @@ model ExtensionScorecardOperation {
  @@index([principal], map: "extension_scorecard_operations_principal")
  @@map("extension_scorecard_operations")
 }
+
+// BEST_TIME usage has its own negative admission ledger. Complete persisted
+// rows never reconstruct this purpose's original terminal ACK after reload.
+model ExtensionBestTimeUseAttempt {
+ id String @id
+ key String @unique
+ userId String
+ email String
+ tokenId String
+ eventId String @unique
+ state String
+ createdAt DateTime
+ eventAt DateTime?
+ @@index([userId], map: "extension_best_time_use_attempts_owner")
+ @@map("extension_best_time_use_attempts")
+}
