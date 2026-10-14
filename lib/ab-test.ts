@@ -1,6 +1,7 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
-import { getUserPlan, getLimits, isPaid } from '@/lib/plans';
+import { getUserPlan, getLimits, isPaid, type PlanType } from '@/lib/plans';
 import { randomUUID } from 'node:crypto';
 
 // Extraída de app/api/youtube/ab-test/route.ts (POST) para que la ruta web
@@ -51,10 +52,19 @@ type CreationAdmission =
   | { denied: 'active_test_exists' | 'max_active_tests' | 'uncertain' }
   | { row: Awaited<ReturnType<typeof prisma.abTestCreationAttempt.create>> };
 
+// Optional native extension checks supplement the common producer. The key
+// is negative exclusion only; neither it nor an attempt row grants execution.
+export type AbCreationNativeGuard = {
+  attemptId: string;
+  check: (tx: Prisma.TransactionClient, plan: PlanType, youtubeToken?: string) => Promise<void>;
+  admitted: () => void;
+};
+
 export async function createAbTest(
   userId: string,
   input: { videoId?: string; variantA?: string; variantB?: string; hoursPerVariant?: number },
   beforeStep?: () => void,
+  nativeGuard?: AbCreationNativeGuard,
 ): Promise<CreateAbTestResult> {
   const uncertain = (): CreateAbTestResult => ({ ok: false, status: 503, error: 'ab_creation_unconfirmed' });
   try {
@@ -66,6 +76,9 @@ export async function createAbTest(
     if (!isPaid(plan)) {
       return { ok: false, status: 403, error: 'pro_required' };
     }
+
+    if (nativeGuard) await prisma.$transaction(tx => nativeGuard.check(tx, plan), { maxWait: 10_000, timeout: 15_000 });
+    beforeStep?.();
 
     const token = await getAccessToken(userId, beforeStep);
     beforeStep?.();
@@ -114,13 +127,20 @@ export async function createAbTest(
     // reserves capacity under the owner lock before any title write can start.
     // Only this live invocation may use its acknowledgement; a row/id/clock
     // never authorizes execution, takeover, retry or release after uncertainty.
-    const id = randomUUID();
+    const id = nativeGuard?.attemptId ?? randomUUID();
     beforeStep?.();
     const admission = await prisma.$transaction(async (tx): Promise<CreationAdmission> => {
       beforeStep?.();
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       beforeStep?.();
       if (owner.length !== 1 || owner[0].id !== userId) throw Error('Admission unavailable');
+      if (nativeGuard) {
+        await nativeGuard.check(tx, plan, token);
+        beforeStep?.();
+        const duplicate = await tx.abTestCreationAttempt.findUnique({ where: { id } });
+        beforeStep?.();
+        if (duplicate) return { denied: 'uncertain' as const };
+      }
       const existing = await tx.abTest.findFirst({ where: { userId, videoId, status: { in: ['variant_a', 'variant_b'] } } });
       beforeStep?.();
       if (existing) return { denied: 'active_test_exists' as const };
@@ -148,8 +168,21 @@ export async function createAbTest(
       return { ok: false, status: 400, error: admission.denied, ...(admission.denied === 'max_active_tests' ? { limit: maxTests } : {}) };
     }
     if (admission.row.id !== id || admission.row.userId !== userId || admission.row.videoId !== videoId || admission.row.state !== 'pending') return uncertain();
+    nativeGuard?.admitted();
 
     beforeStep?.();
+    if (nativeGuard) {
+      // Recheck the same credential/plan/channel immediately before dispatch.
+      // This acknowledged transaction cannot recover another title producer.
+      await prisma.$transaction(async tx => {
+        const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
+        beforeStep?.();
+        if (owner.length !== 1 || owner[0].id !== userId) throw Error('Dispatch unavailable');
+        await nativeGuard.check(tx, plan, token);
+        beforeStep?.();
+      }, { maxWait: 10_000, timeout: 15_000 });
+      beforeStep?.();
+    }
     // Once the original title write starts, its SQL record and result remain
     // part of that producer, even if the HTTP waiter retires in the meantime.
     const result = await updateVideoTitle(token, videoId, variantA, categoryId);

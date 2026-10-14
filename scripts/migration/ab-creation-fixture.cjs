@@ -36,12 +36,14 @@ module.exports=function fixture(prisma,owner,options={}){
  const ownAdmission=p=>track(p.then(a=>a.ok?{...a,complete:(...args)=>track(a.complete(...args))}:a));
  const helper={...originalHelper,createAbTest:(...args)=>track(originalHelper.createAbTest(...args)),beginAbTestMutation:(...args)=>ownAdmission(originalHelper.beginAbTestMutation(...args)),beginAbTestTransition:(...args)=>ownAdmission(originalHelper.beginAbTestTransition(...args))};
  const route=load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},globals);
- const extension=load('app/api/extension/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/lib/extension-auth':{getExtensionUser:async()=>({user:{id:owner.id}})},'@/lib/extension-ab-read-native-authorization':{authorizeExtensionAbRead(){throw Error('This fixture admits only the original POST');}},'@/lib/ab-test':helper},globals);
+ // This legacy SQL-helper fixture has an explicit closed authorization boundary;
+ // native extension credential/plan checks are exercised by their own suite.
+ const extension=load('app/api/extension/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/lib/extension-ab-create-native-authorization':{validExtensionAbKey:()=>true,authorizeExtensionAbCreation:async()=>Object.freeze({}),checkExtensionAbCreation(){},extensionAbInput:v=>v,createExtensionAbOriginal:(_original,_key,input,check)=>helper.createAbTest(owner.id,input,check)},'@/lib/extension-ab-read-native-authorization':{authorizeExtensionAbRead(){throw Error('This fixture admits only the original POST');}}},globals);
  const input=videoId=>({videoId,variantA:'A synthetic',variantB:'B synthetic',hoursPerVariant:48});
  return{helper,route,extension,db,globals,youtube,puts,entered,release:()=>gate.resolve(),async settled(){for(let i=0;i<6;i++){const n=producers.length;await Promise.allSettled([...producers]);for(let j=0;j<40;j++)await Promise.resolve();if(n===producers.length)break;}},timers,input,
   create:videoId=>helper.createAbTest(owner.id,input(videoId)),
   web:(videoId,signal)=>route.POST(new Request('https://example.invalid/api/youtube/ab-test',{method:'POST',body:JSON.stringify(input(videoId)),signal})),
-  extensionCreate:videoId=>extension.POST({json:async()=>input(videoId)}),
+  extensionCreate:videoId=>extension.POST(new Request('https://example.invalid/api/extension/ab-test',{method:'POST',headers:{'idempotency-key':require('node:crypto').randomUUID()},body:JSON.stringify(input(videoId))})),
   mutate:(testId,action,signal)=>route.PATCH(new Request('https://example.invalid/api/youtube/ab-test',{method:'PATCH',body:JSON.stringify({testId,action}),signal})),
   expire(){now+=55000;for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}},
  };
