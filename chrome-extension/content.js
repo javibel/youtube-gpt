@@ -1036,10 +1036,19 @@ async function readBestTimeView(owner,extraCheck=()=>true){
  own.check=()=>{if(own.retired||!own.scope()||performance.now()>=own.deadline||own.data&&own.data.expiresAt<=Date.now()||own.data?.dataQuality.analysisState==='historical'&&own.data.dataQuality.analysisExpiresAt<=Date.now()){own.retire();throw Error('No se pudo confirmar el análisis guardado.');}};
  timer=setTimeout(own.retire,30000);
  try{
-  own.check();own.message=sendMsg({type:'BEST_TIME'});const d=await Promise.race([own.message,stopped]);own.check();
+  own.check();own.message=sendMsg({type:'BEST_TIME',trackUse:true});const d=await Promise.race([own.message,stopped]);own.check();
   if(!d||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now()||typeof d.readRef!=='string'||!d.dataQuality||d.dataQuality.source!=='stored-best-time-analysis'||d.dataQuality.freshness!=='unconfirmed'||d.dataQuality.provenance!=='unconfirmed'||d.dataQuality.recommendation!=='unconfirmed'||!['absent','historical','expired'].includes(d.dataQuality.analysisState))throw Error('No se pudo confirmar el análisis guardado.');
   if(d.data!==null&&(!d.data||!Array.isArray(d.data.topSlots)||d.data.topSlots.length>3||d.data.topSlots.some(s=>!s||!['day','hour','score','videoCount'].every(k=>Number.isSafeInteger(s[k]))||s.day<0||s.day>6||s.hour<0||s.hour>23||s.score<1||s.score>100)||typeof d.data.analyzedAt!=='string'))throw Error('No se pudo confirmar el análisis guardado.');
-  const result=Object.freeze({...d,data:d.data===null?null:Object.freeze({...d.data,topSlots:Object.freeze(d.data.topSlots.map(s=>Object.freeze({...s}))),aiTip:d.data.aiTip===null?null:Object.freeze({...d.data.aiTip})}),dataQuality:Object.freeze({...d.dataQuality})});
+  own.data=d;own.check();let activity=Object.freeze({usage:'unconfirmed',eventAt:null});
+  try{
+   const use=await Promise.race([sendMsg({type:'BEST_TIME_USE',readRef:d.readRef}),stopped]);own.check();
+   const date=s=>typeof s==='string'&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
+   if(!use||use.readRef!==d.readRef||typeof use.key!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(use.key)||!date(use.observedAt)||Date.parse(use.observedAt)<Date.parse(d.observedAt)||Date.parse(use.observedAt)>Date.now()||!Number.isSafeInteger(use.expiresAt)||use.expiresAt<=Date.now()||use.expiresAt>Date.parse(use.observedAt)+25000||!(use.usage==='recorded'&&use.eventAt===use.observedAt||use.usage==='throttled'&&use.eventAt===null))throw Error('Actividad sin confirmar.');
+   const ack=await Promise.race([sendMsg({type:'BEST_TIME_USE_ACK',readRef:d.readRef,key:use.key}),stopped]);own.check();
+   if(!ack||ack.key!==use.key||ack.readRef!==d.readRef||ack.closed!==true||use.expiresAt<=Date.now())throw Error('Actividad sin confirmar.');
+   activity=Object.freeze({usage:use.usage,eventAt:use.eventAt});
+  }catch{own.check();}
+  const result=Object.freeze({...d,activity,data:d.data===null?null:Object.freeze({...d.data,topSlots:Object.freeze(d.data.topSlots.map(s=>Object.freeze({...s}))),aiTip:d.data.aiTip===null?null:Object.freeze({...d.data.aiTip})}),dataQuality:Object.freeze({...d.dataQuality})});
   own.data=result;bestTimeViewReceipts.set(result,own);own.check();clearTimeout(timer);
   const horizon=result.dataQuality.analysisState==='historical'?Math.min(result.expiresAt,result.dataQuality.analysisExpiresAt):result.expiresAt;
   timer=setTimeout(own.retire,Math.max(1,Math.min(horizon-Date.now(),own.deadline-performance.now())));
@@ -1049,10 +1058,16 @@ async function readBestTimeView(owner,extraCheck=()=>true){
 function bestTimeViewCurrent(d){const own=d&&bestTimeViewReceipts.get(d);if(!own||own.data!==d)return false;try{own.check();return true;}catch{return false;}}
 async function loadBestTimeView(owner,hint=false,extraCheck=()=>true){
  if(!owner)return;owner.innerHTML=renderLoading(t('Leyendo análisis guardado...','Reading stored analysis...'));
- try{const d=await readBestTimeView(owner,extraCheck);if(!bestTimeViewCurrent(d))return;owner.innerHTML=`<div class="ytv-besttime-original">${hint?renderBestTimeHint(d):renderBestTime(d)}</div>`;const own=bestTimeViewReceipts.get(d),node=owner.querySelector('.ytv-besttime-original');if(node&&node.isConnected&&owner.contains(node))own.nodes.push(node);}
+ try{const d=await readBestTimeView(owner,extraCheck);if(!bestTimeViewCurrent(d))return;owner.innerHTML=`<div class="ytv-besttime-original">${hint?renderBestTimeHint(d):renderBestTime(d)}${renderBestTimeActivity(d)}</div>`;const own=bestTimeViewReceipts.get(d),node=owner.querySelector('.ytv-besttime-original');if(node&&node.isConnected&&owner.contains(node))own.nodes.push(node);}
  catch(e){if(bestTimeViewErrors.get(owner)?.scope())owner.innerHTML=renderError(e.message);}
 }
 function bestTimeDate(d){return escapeHtml(d.data.analyzedAt);}
+function renderBestTimeActivity(d){
+ if(!bestTimeViewCurrent(d))return '';
+ const a=d.activity;if(a?.usage==='recorded')return `<div class="ytv-hint">${t('Uso registrado:','Use recorded:')} ${escapeHtml(a.eventAt)}</div>`;
+ if(a?.usage==='throttled')return `<div class="ytv-hint">${t('Uso confirmado; ya registrado en este intervalo.','Use confirmed; already recorded in this interval.')}</div>`;
+ return `<div class="ytv-hint">${t('Registro de uso sin confirmar.','Use record unconfirmed.')}</div>`;
+}
 function renderBestTime(d) {
   if(!bestTimeViewCurrent(d))return renderError(t('Lectura sin confirmar.','Read unconfirmed.'));
   const data=d.data;

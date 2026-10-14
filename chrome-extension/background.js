@@ -13,7 +13,7 @@ chrome.storage.onChanged.addListener((changes,area)=>{
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  handleMessage(msg)
+  handleMessage(msg, _sender)
     .then(sendResponse)
     .catch(err => sendResponse({ error: err.message || 'Unknown error', limit: err.limit }));
   return true; // keep channel open for async response
@@ -171,7 +171,7 @@ async function mutateExtensionToken(msg) {
 const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
-function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); }
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
@@ -467,6 +467,12 @@ function runScorecard(msg) {
 }
 
 let bestTimeOriginal = null;
+const BEST_TIME_USE_PENDING='ytv_best_time_use_pending';
+const bestTimeReadReceipts=new WeakMap(),bestTimeUseBindings=new Map();
+let bestTimeUseOriginal=null;
+function bestTimeCaller(sender){
+ try{const url=new URL(sender?.url);if(!['https://www.youtube.com','https://studio.youtube.com'].includes(url.origin)||!Number.isSafeInteger(sender?.tab?.id)||sender.tab.id<0||!Number.isSafeInteger(sender.frameId)||sender.frameId<0||typeof sender.documentId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(sender.documentId))return null;return sender.tab.id+':'+sender.frameId+':'+sender.documentId+':'+url.href;}catch{return null;}
+}
 function validBestTimeResult(d,ref,startedAt) {
  const date=s=>typeof s==='string'&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
  if(!d||d.readRef!==ref||!date(d.observedAt)||Date.parse(d.observedAt)<startedAt||Date.parse(d.observedAt)>Date.now()||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now()||d.expiresAt>Date.parse(d.observedAt)+25000)return false;
@@ -483,7 +489,7 @@ function projectBestTimeResult(d) {
  const data=d.data===null?null:Object.freeze({topSlots:Object.freeze(d.data.topSlots.map(({day,hour,score,videoCount})=>Object.freeze({day,hour,score,videoCount}))),aiTip:d.data.aiTip===null?null:Object.freeze({es:d.data.aiTip.es,en:d.data.aiTip.en}),videoCount:d.data.videoCount,analyzedAt:d.data.analyzedAt});
  return Object.freeze({readRef:d.readRef,observedAt:d.observedAt,expiresAt:d.expiresAt,data,dataQuality:Object.freeze({source:'stored-best-time-analysis',freshness:'unconfirmed',provenance:'unconfirmed',recommendation:'unconfirmed',analysisState:data===null?'absent':d.dataQuality.analysisExpiresAt<=Date.now()?'expired':'historical',analysisExpiresAt:d.dataQuality.analysisExpiresAt})});
 }
-async function getBestTime() {
+async function getBestTimeRead() {
  if(bestTimeOriginal){if(!bestTimeOriginal.retired&&bestTimeOriginal.revision===identityRevision)return bestTimeOriginal.wait;throw Error('No se pudo confirmar la lectura anterior.');}
  const original={revision:identityRevision,startedAt:Date.now(),deadline:performance.now()+30000,retired:false,http:null,retire:null,wait:null};bestTimeOriginal=original;
  let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
@@ -496,12 +502,61 @@ async function getBestTime() {
   if(data?.readRef!==ref)throw Error('No se pudo confirmar el análisis guardado.');
   if(res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');
   if(res.status!==200||!validBestTimeResult(data,ref,original.startedAt))throw Error('No se pudo confirmar el análisis guardado.');
-  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==token||data.expiresAt<=Date.now())throw Error('No se pudo confirmar el análisis guardado.');return projectBestTimeResult(data);
+  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==token||data.expiresAt<=Date.now())throw Error('No se pudo confirmar el análisis guardado.');const result=projectBestTimeResult(data);bestTimeReadReceipts.set(result,{token,revision:original.revision,deadline:original.deadline});return result;
  })();
  // Read-only: no durable effect or journal to replay. The original HTTP promise
  // must actually settle before another explicitly requested read may start.
  void producer.finally(async()=>{if(original.http)await Promise.allSettled([original.http]);if(bestTimeOriginal===original)bestTimeOriginal=null;}).catch(()=>{});
  original.wait=Promise.race([producer,stopped]).finally(()=>{original.retired=true;clearTimeout(timer);});return original.wait;
+}
+async function getBestTime(msg={},sender){
+ const scope=msg.trackUse===true?bestTimeCaller(sender):null;if(msg.trackUse===true&&!scope)throw Error('No se pudo confirmar la vista.');
+ const result=await getBestTimeRead();
+ if(scope){const receipt=bestTimeReadReceipts.get(result);if(!receipt||receipt.revision!==identityRevision||receipt.deadline<=performance.now()||result.expiresAt<=Date.now())throw Error('No se pudo confirmar la vista.');
+  for(const[k,b]of bestTimeUseBindings)if(b.receipt.deadline<=performance.now()||b.result.expiresAt<=Date.now())bestTimeUseBindings.delete(k);
+  if(!bestTimeUseBindings.has(scope)&&bestTimeUseBindings.size>=32)throw Error('No se pudo confirmar la vista.');
+  if(bestTimeUseBindings.get(scope)?.result!==result)bestTimeUseBindings.set(scope,{scope,result,receipt,used:false});
+ }return result;
+}
+function validBestTimeUseResult(d,key,startedAt){
+ const date=s=>typeof s==='string'&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
+ return !!d&&Object.keys(d).length===5&&d.key===key&&date(d.observedAt)&&Date.parse(d.observedAt)>=startedAt&&Date.parse(d.observedAt)<=Date.now()&&Number.isSafeInteger(d.expiresAt)&&d.expiresAt>Date.now()&&d.expiresAt<=Date.parse(d.observedAt)+25000
+  &&(d.usage==='recorded'&&d.eventAt===d.observedAt||d.usage==='throttled'&&d.eventAt===null);
+}
+function bestTimeUseCheck(original){
+ if(original.retired||bestTimeUseOriginal!==original||performance.now()>=original.deadline||original.binding.receipt.revision!==identityRevision||original.binding.result.expiresAt<=Date.now()||passwordLoginOriginal||tokenMutationOriginal||bestTimeUseBindings.get(original.binding.scope)!==original.binding){original.retire();throw Error('Actividad sin confirmar.');}
+}
+async function getBestTimeUse(msg,sender){
+ const scope=bestTimeCaller(sender),binding=scope&&bestTimeUseBindings.get(scope);
+ if(!binding||binding.result.readRef!==msg.readRef)throw Error('Actividad sin confirmar.');
+ if(bestTimeUseOriginal){if(bestTimeUseOriginal.binding===binding&&!bestTimeUseOriginal.retired)return bestTimeUseOriginal.wait;throw Error('Actividad anterior sin confirmar.');}
+ if(binding.used)throw Error('Actividad anterior sin confirmar.');binding.used=true;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ const original={binding,startedAt:Date.now(),deadline:Math.min(binding.receipt.deadline,performance.now()+25000,performance.now()+binding.result.expiresAt-Date.now()),retired:false,http:null,attempted:false,closed:false,ready:false,key:null,wait:null,timer:null};bestTimeUseOriginal=original;
+ original.retire=()=>{if(!original.retired){original.retired=true;rejectWait(Error('Actividad sin confirmar.'));}};original.timer=setTimeout(original.retire,Math.max(1,original.deadline-performance.now()));const check=()=>bestTimeUseCheck(original);
+ const producer=(async()=>{
+  check();for(const marker of [BEST_TIME_USE_PENDING,IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]){const row=await chrome.storage.local.get(marker);check();if(Object.hasOwn(row,marker))throw Error('Actividad anterior sin confirmar.');}
+  const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==binding.receipt.token)throw Error('Actividad sin confirmar.');
+  original.key=crypto.randomUUID();original.attempted=true;await chrome.storage.local.set({[BEST_TIME_USE_PENDING]:{key:original.key,readRef:binding.result.readRef}});check();
+  const journal=await chrome.storage.local.get(BEST_TIME_USE_PENDING);check();if(journal[BEST_TIME_USE_PENDING]?.key!==original.key||journal[BEST_TIME_USE_PENDING]?.readRef!==binding.result.readRef)throw Error('Actividad sin confirmar.');
+  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==binding.receipt.token)throw Error('Actividad sin confirmar.');
+  const {res,data}=await apiFetch(API_BASE+'/api/extension/best-time/use',{method:'POST',timeoutMs:Math.max(1,Math.floor(original.deadline-performance.now())),maxResponseBytes:4096,credentials:'omit',cache:'no-store',observeOriginal:p=>{original.http=p;},headers:{Authorization:'Bearer '+binding.receipt.token,'Idempotency-Key':original.key}});check();
+  if(res.status!==200||!validBestTimeUseResult(data,original.key,original.startedAt))throw Error('Actividad sin confirmar.');
+  const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==binding.receipt.token||data.expiresAt<=Date.now())throw Error('Actividad sin confirmar.');
+  original.data=Object.freeze({key:data.key,readRef:binding.result.readRef,observedAt:data.observedAt,expiresAt:data.expiresAt,usage:data.usage,eventAt:data.eventAt});original.ready=true;return original.data;
+ })();
+ void producer.catch(()=>{original.retire();clearTimeout(original.timer);}).finally(async()=>{if(original.http)await Promise.allSettled([original.http]);if(bestTimeUseOriginal===original&&!original.attempted)bestTimeUseOriginal=null;}).catch(()=>{});
+ original.wait=Promise.race([producer,stopped]);return original.wait;
+}
+async function acknowledgeBestTimeUse(msg,sender){
+ const original=bestTimeUseOriginal;if(!original||!original.ready||bestTimeCaller(sender)!==original.binding.scope||msg.key!==original.key||msg.readRef!==original.binding.result.readRef)throw Error('Actividad sin confirmar.');
+ const check=()=>bestTimeUseCheck(original);check();if(original.acknowledging)return original.acknowledging;
+ original.acknowledging=(async()=>{
+  const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==original.binding.receipt.token||original.data.expiresAt<=Date.now())throw Error('Actividad sin confirmar.');
+  const row=await chrome.storage.local.get(BEST_TIME_USE_PENDING);check();if(row[BEST_TIME_USE_PENDING]?.key!==original.key||row[BEST_TIME_USE_PENDING]?.readRef!==msg.readRef)throw Error('Actividad sin confirmar.');
+  await chrome.storage.local.remove(BEST_TIME_USE_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==original.binding.receipt.token||original.data.expiresAt<=Date.now())throw Error('Actividad sin confirmar.');
+  original.closed=true;clearTimeout(original.timer);if(original.http)await Promise.allSettled([original.http]);check();bestTimeUseOriginal=null;return Object.freeze({key:original.key,readRef:msg.readRef,closed:true});
+ })();void original.acknowledging.catch(()=>{original.retire();clearTimeout(original.timer);});return original.acknowledging;
 }
 
 let channelStatsOriginal = null;
@@ -634,8 +689,10 @@ async function readDailyIdeas() {
   original.wait=Promise.race([producer,stopped]).finally(()=>{retired=true;clearTimeout(timer);});return original.wait;
 }
 
-async function handleMessage(msg) {
-  if (msg.type === 'BEST_TIME') return getBestTime();
+async function handleMessage(msg,sender) {
+  if (msg.type === 'BEST_TIME') return getBestTime(msg,sender);
+  if (msg.type === 'BEST_TIME_USE') return getBestTimeUse(msg,sender);
+  if (msg.type === 'BEST_TIME_USE_ACK') return acknowledgeBestTimeUse(msg,sender);
   if (msg.type === 'DAILY_IDEAS') return readDailyIdeas();
   if (msg.type === 'SEO_LIVE') return runSeoLive(msg);
   if (msg.type === 'CHANNEL_STATS') return getChannelStats();
