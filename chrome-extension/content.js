@@ -400,6 +400,64 @@ async function renderShellPageTab(body) {
   body.innerHTML = `<div class="ytv-shell-note">${t('Abre un vídeo, una búsqueda o un canal para ver el análisis aquí. Mientras, echa un vistazo a la pestaña Ideas.', 'Open a video, a search or a channel to see analysis here. Meanwhile, check the Ideas tab.')}</div>`;
 }
 
+const scorecardDisplays = new Map(), scorecardViewReceipts = new WeakMap(), scorecardViewSlots = new WeakMap(), scorecardViewErrors = new WeakMap();
+let scorecardViewRevision = 0;
+function retireScorecardViews() {
+ scorecardViewRevision++;for(const own of [...scorecardDisplays.values()])own.retire();
+}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))retireScorecardViews();});
+document.addEventListener('yt-navigate-finish',retireScorecardViews);
+async function readScorecardView(videoId,owner,extraCheck=()=>true) {
+ scorecardDisplays.get(owner)?.retire();
+ const own={owner,videoId,href:location.href,revision:scorecardViewRevision,slot:{},deadline:performance.now()+60000,mounts:[],observers:[],retired:false};
+ scorecardViewSlots.set(owner,own.slot);scorecardViewErrors.delete(owner);scorecardDisplays.set(owner,own);
+ let rejectWait,data,timer;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>owner.isConnected&&location.href===own.href&&scorecardViewRevision===own.revision&&scorecardViewSlots.get(owner)===own.slot&&extraCheck();
+ own.retire=()=>{if(!own.retired){own.retired=true;rejectWait(Error('No se pudo confirmar el análisis del vídeo.'));}clearTimeout(timer);for(const observer of own.observers)observer.disconnect();for(const node of own.mounts)if(node.isConnected&&owner.contains(node))node.remove();if(scorecardDisplays.get(owner)===own)scorecardDisplays.delete(owner);};
+ own.check=()=>{if(own.retired||!own.scope()||performance.now()>=own.deadline||data&&data.expiresAt<=Date.now()){own.retire();throw Error('No se pudo confirmar el análisis del vídeo.');}};
+ timer=setTimeout(own.retire,60000);
+ try{
+  own.check();own.message=sendMsg({type:'SCORECARD',videoId});data=await Promise.race([own.message,stopped]);own.check();
+  if(!data||data.videoId!==videoId||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||!Array.isArray(data.checks)||data.checks.length!==16||!Array.isArray(data.tags)||data.dataQuality?.source!=='youtube-scorecard-response'||data.dataQuality.freshness!=='unconfirmed'||!['public','authenticated'].includes(data.mode)||typeof data.isPro!=='boolean')throw Error('No se pudo confirmar el análisis del vídeo.');
+  const result=Object.freeze({...data,tags:Object.freeze([...data.tags]),checks:Object.freeze(data.checks.map(c=>Object.freeze({...c}))),dataQuality:Object.freeze({...data.dataQuality}),velocityInterval:data.velocityInterval?Object.freeze({...data.velocityInterval}):null});
+  own.data=result;scorecardViewReceipts.set(result,own);clearTimeout(timer);timer=setTimeout(own.retire,Math.max(1,Math.min(data.expiresAt-Date.now(),own.deadline-performance.now())));own.check();return result;
+ }catch(e){scorecardViewErrors.set(owner,own);own.retire();throw e;}
+}
+function scorecardViewCurrent(data) {const own=data&&scorecardViewReceipts.get(data);if(!own||own.data!==data)return false;try{own.check();return true;}catch{return false;}}
+function mountScorecardView(data,owner,nodes) {const own=scorecardViewReceipts.get(data);if(!own||own.owner!==owner||!scorecardViewCurrent(data))throw Error('No se pudo confirmar el análisis del vídeo.');for(const node of nodes)if(node&&node.isConnected&&owner.contains(node))own.mounts.push(node);}
+function scorecardFailureCurrent(owner) {return scorecardViewErrors.get(owner)?.scope()===true;}
+function retireScorecardOwner(owner) {scorecardDisplays.get(owner)?.retire();}
+function observeScorecardScope(data,target) {
+ const own=scorecardViewReceipts.get(data);if(!own||!scorecardViewCurrent(data))return;
+ const observer=new MutationObserver(()=>{scorecardViewCurrent(data);});
+ observer.observe(target,{childList:true,subtree:true,attributes:true,attributeFilter:['href']});
+ own.observers.push(observer);
+}
+function scorecardOutlierTooltip() {return t('Ratio frente a la media total del canal; no mide percentiles.','Ratio against the lifetime channel average; not a measured percentile.');}
+function scorecardQualityNote() {return t('SEO heurístico · actualidad de los datos sin confirmar','Heuristic SEO · data freshness unconfirmed');}
+async function renderStudioScorecardSnapshot(videoId,panel,bodyEl,serpEl) {
+ const signature=()=>JSON.stringify([getStudioTitle(),getStudioDescription(),getStudioTags()]);
+ const initial=signature();
+ try{
+  const data=await readScorecardView(videoId,panel,()=>getStudioVideoId()===videoId&&signature()===initial);
+  if(!scorecardViewCurrent(data))return;
+  bodyEl.innerHTML=`<div class="ytv-studio-scorecard-snapshot">${renderStudioScore(data.score,data.checks,data.title.length)}<div class="ytv-hint">${scorecardQualityNote()}</div></div>`;
+  serpEl.innerHTML=renderSerpPreview(videoId,getStudioTitle()||data.title,data.channelTitle,data.views,data.ageDays);
+  mountScorecardView(data,panel,[bodyEl.querySelector('.ytv-studio-scorecard-snapshot'),serpEl.querySelector('.ytv-serp')]);
+ }catch(e){if(scorecardFailureCurrent(panel))bodyEl.innerHTML=renderError(e.message);}
+}
+async function renderStudioScorecardBadge(vid,badge,cell,row) {
+ const currentRow=()=>cell.contains(badge)&&row.querySelector(SELECTORS.studio.videoRowTitle)?.href.match(/\/video\/([a-zA-Z0-9_-]{11})/)?.[1]===vid;
+ try{
+  const data=await readScorecardView(vid,badge,currentRow);if(!scorecardViewCurrent(data))return;
+  const color=data.score===null?'#777':scoreColor(data.score);
+  const outlier=data.outlierMultiplier>=2?`<span class="ytv-outlier-mini ${data.outlierMultiplier>=5?'ytv-outlier-green':'ytv-outlier-yellow'}" title="${escapeHtml(scorecardOutlierTooltip())}">×${data.outlierMultiplier}</span>`:'';
+  badge.innerHTML=`<span class="ytv-studio-score" style="border-color:${color};color:${color}" role="button" tabindex="0" title="${escapeHtml(scorecardQualityNote())}">${data.score===null?'—':data.score}</span>${outlier}`;
+  mountScorecardView(data,badge,[...badge.children]);observeScorecardScope(data,row);
+  badge.querySelector('.ytv-studio-score').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();window.open(`https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio`,'_blank');});
+ }catch{if(scorecardFailureCurrent(badge))badge.innerHTML='<span class="ytv-studio-score" style="border-color:#555;color:#777">?</span>';}
+}
+
 async function renderShellScorecard(body) {
   const isShorts = getPageType() === 'shorts';
   const videoId = isShorts ? getShortsVideoId() : getVideoId();
@@ -408,28 +466,24 @@ async function renderShellScorecard(body) {
   body.innerHTML = renderLoading(t('Analizando vídeo...', 'Analyzing video...'));
   let d;
   try {
-    d = await sendMsg({ type: 'SCORECARD', videoId });
+    d = await readScorecardView(videoId,body);
   } catch (e) {
-    if (e.message === 'rate_limited') { body.innerHTML = renderError('rate_limited'); return; }
-    const { title } = getVideoInfo();
-    body.innerHTML = title
-      ? `<div style="padding:2px">${renderLoggedOutScore(title)}</div>` + shellLoggedOutCta(
-          'Inicia sesión para el SEO Score completo (0-100): keywords, tags, miniatura, retención y más.',
-          'Sign in for the full SEO Score (0-100): keywords, tags, thumbnail, retention and more.')
-      : renderError(e.message);
+    if(scorecardFailureCurrent(body))body.innerHTML=renderError(e.message);
     return;
   }
 
-  const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
+  if(!scorecardViewCurrent(d))return;
+  const loggedIn=d.mode==='authenticated';
   body.innerHTML = `
     <div class="ytv-scorecard ytv-shell-scorecard">
       <div class="ytv-sc-pill ytv-sc-pill-static"><div class="ytv-sc-pill-logo">YTV</div>${renderScorecard(d)}</div>
       <div class="ytv-sc-detail" style="display:block">${renderScorecardExpanded(d)}</div>
     </div>
-    ${user ? '' : shellLoggedOutCta()}
+    ${loggedIn ? '' : shellLoggedOutCta()}
   `;
-  wireShellScorecard(body, d, videoId, !!user);
-  if (user) maybeShowReviewPrompt(body);
+  mountScorecardView(d,body,[body.querySelector('.ytv-shell-scorecard')]);
+  wireShellScorecard(body, d, videoId, loggedIn);
+  if (loggedIn) maybeShowReviewPrompt(body);
 }
 
 // Extracted from the old injectVideoPanel pill-click handler — wires the expanded scorecard.
@@ -950,12 +1004,12 @@ function renderQuickWins(checks) {
   };
 
   const wins = (checks || [])
-    .filter(c => !c.ok && WIN_MAP[c.key])
+    .filter(c => c.available!==false && c.ok===false && WIN_MAP[c.key])
     .slice(0, 3)
-    .map(c => ({ ...WIN_MAP[c.key] }));
+    .map(c => ({ ...WIN_MAP[c.key], pts:c.w }));
 
   if (!wins.length) {
-    return `<div class="ytv-wins-perfect">✅ ${t('SEO perfecto — sin mejoras pendientes', 'Perfect SEO — nothing left to improve')}</div>`;
+    return `<div class="ytv-wins-perfect">${t('Sin mejoras confirmadas en estos criterios.','No confirmed improvements in these criteria.')}</div>`;
   }
 
   const pts = wins.reduce((a, w) => a + w.pts, 0);
@@ -1017,32 +1071,33 @@ async function renderBestTimeHint() {
 // ── Scorecard renderer ──────────────────────────────────────────────
 
 function renderScorecard(d) {
-  const color = scoreColor(d.score);
-  const engColor = d.engagement >= 5 ? '#22c55e' : d.engagement >= 2 ? '#eab308' : '#ef4444';
-  const vphStr = d.vph >= 1000 ? fmtNum(Math.round(d.vph)) : d.vph.toFixed(1);
+  if(!scorecardViewCurrent(d))return renderError(t('Datos sin confirmar.','Data unconfirmed.'));
+  const color = d.score===null?'#777':scoreColor(d.score);
+  const engColor = d.engagement===null?'#777':d.engagement >= 5 ? '#22c55e' : d.engagement >= 2 ? '#eab308' : '#ef4444';
+  const vphStr = d.vph===null?'—':d.vph >= 1000 ? fmtNum(Math.round(d.vph)) : d.vph.toFixed(1);
 
   const outlierBadge = d.outlierMultiplier > 0
-    ? `<span class="ytv-outlier-badge ${d.outlierMultiplier >= 5 ? 'ytv-outlier-green' : d.outlierMultiplier >= 2 ? 'ytv-outlier-yellow' : 'ytv-outlier-gray'}" title="${escapeHtml(outlierTooltip(d.outlierMultiplier))}">×${d.outlierMultiplier}</span>`
+    ? `<span class="ytv-outlier-badge ${d.outlierMultiplier >= 5 ? 'ytv-outlier-green' : d.outlierMultiplier >= 2 ? 'ytv-outlier-yellow' : 'ytv-outlier-gray'}" title="${escapeHtml(scorecardOutlierTooltip())}">×${d.outlierMultiplier}</span>`
     : '';
 
   return `
-    <div class="ytv-sc-ring" style="--score-color: ${color}; --score-pct: ${d.score}">
-      <span class="ytv-sc-ring-num">${d.score}</span>
+    <div class="ytv-sc-ring" style="--score-color: ${color}; --score-pct: ${d.score??0}">
+      <span class="ytv-sc-ring-num">${d.score??'—'}</span>
     </div>
     ${outlierBadge}
     <div class="ytv-sc-metrics">
-      <div class="ytv-sc-metric" title="${d.vphRecent ? t('Velocidad reciente (vistas/hora ahora mismo)', 'Recent velocity (views/hour right now)') : t('Media de toda la vida del vídeo', 'Lifetime average')}">
+      <div class="ytv-sc-metric" title="${escapeHtml(d.vphRecent?t('Media del intervalo','Interval average')+': '+d.velocityInterval.from+' → '+d.velocityInterval.to:t('Media de toda la vida del vídeo','Lifetime average'))}">
         <span class="ytv-sc-val">${vphStr}</span>
-        <span class="ytv-sc-label">${d.vphRecent ? 'VPH ⚡' : 'VPH'}</span>
+        <span class="ytv-sc-label">${d.vphRecent?t('VPH intervalo','Interval VPH'):t('VPH media','Average VPH')}</span>
       </div>
       <div class="ytv-sc-sep"></div>
       <div class="ytv-sc-metric">
-        <span class="ytv-sc-val" style="color:${engColor}">${d.engagement}%</span>
+        <span class="ytv-sc-val" style="color:${engColor}">${d.engagement===null?'—':d.engagement+'%'}</span>
         <span class="ytv-sc-label">Eng</span>
       </div>
       <div class="ytv-sc-sep"></div>
       <div class="ytv-sc-metric">
-        <span class="ytv-sc-val">${d.likesRatio}%</span>
+        <span class="ytv-sc-val">${d.likesRatio===null?'—':d.likesRatio+'%'}</span>
         <span class="ytv-sc-label">Likes</span>
       </div>
       <div class="ytv-sc-sep"></div>
@@ -1051,22 +1106,24 @@ function renderScorecard(d) {
         <span class="ytv-sc-label">${t('Edad', 'Age')}</span>
       </div>
     </div>
+    <div class="ytv-hint">${scorecardQualityNote()}</div>
     <div class="ytv-sc-expand-icon" title="${t('Expandir', 'Expand')}">▼</div>
   `;
 }
 
 function renderScorecardExpanded(d) {
-  const color = scoreColor(d.score);
+  if(!scorecardViewCurrent(d))return renderError(t('Datos sin confirmar.','Data unconfirmed.'));
+  const color = d.score===null?'#777':scoreColor(d.score);
 
   // Stats grid
   const statsHtml = `
     <div class="ytv-sc-stats">
-      <div class="ytv-sc-stat-item"><b>${fmtNum(d.views)}</b><span>${t('Vistas', 'Views')}</span></div>
-      <div class="ytv-sc-stat-item"><b>${fmtNum(d.likes)}</b><span>Likes</span></div>
-      <div class="ytv-sc-stat-item"><b>${fmtNum(d.comments)}</b><span>${t('Comentarios', 'Comments')}</span></div>
-      <div class="ytv-sc-stat-item"><b>${fmtDuration(d.durationSec)}</b><span>${t('Duración', 'Duration')}</span></div>
-      ${d.channelAvgViews > 0 ? `<div class="ytv-sc-stat-item"><b>${fmtNum(d.channelAvgViews)}</b><span>${t('Avg canal', 'Ch. Avg')}</span></div>` : ''}
-      ${d.outlierMultiplier > 0 ? `<div class="ytv-sc-stat-item ytv-sc-stat-outlier"><b>×${d.outlierMultiplier}</b><span>${outlierToPercentile(d.outlierMultiplier)}</span></div>` : ''}
+      <div class="ytv-sc-stat-item"><b>${d.views===null?'—':fmtNum(d.views)}</b><span>${t('Vistas', 'Views')}</span></div>
+      <div class="ytv-sc-stat-item"><b>${d.likes===null?'—':fmtNum(d.likes)}</b><span>Likes</span></div>
+      <div class="ytv-sc-stat-item"><b>${d.comments===null?'—':fmtNum(d.comments)}</b><span>${t('Comentarios', 'Comments')}</span></div>
+      <div class="ytv-sc-stat-item"><b>${d.durationSec===null?'—':fmtDuration(d.durationSec)}</b><span>${t('Duración', 'Duration')}</span></div>
+      <div class="ytv-sc-stat-item"><b>${d.channelAvgViews===null?'—':fmtNum(d.channelAvgViews)}</b><span>${t('Media total del canal', 'Lifetime channel average')}</span></div>
+      ${d.outlierMultiplier > 0 ? `<div class="ytv-sc-stat-item ytv-sc-stat-outlier"><b>×${d.outlierMultiplier}</b><span>${t('Ratio frente a la media','Ratio against average')}</span></div>` : ''}
     </div>
   `;
 
@@ -1091,9 +1148,9 @@ function renderScorecardExpanded(d) {
   };
 
   const checksHtml = (d.checks || []).map(c => {
-    const icon = c.ok ? '✅' : '❌';
+    const icon = c.available===false ? '❔' : c.ok ? '✅' : '❌';
     const label = checkLabels[c.key] || c.key;
-    return `<span class="ytv-sc-check-pill ${c.ok ? 'ytv-sc-check-pass' : 'ytv-sc-check-fail'}">${icon} ${escapeHtml(label)}</span>`;
+    return `<span class="ytv-sc-check-pill ${c.available===false?'':c.ok?'ytv-sc-check-pass':'ytv-sc-check-fail'}">${icon} ${escapeHtml(label)}${c.available===false?' · '+t('sin confirmar','unconfirmed'):''}</span>`;
   }).join('');
 
   // Tags
@@ -1117,7 +1174,8 @@ function renderScorecardExpanded(d) {
 
       <div class="ytv-sc-tabpanel" data-scpanel="resumen">
         <div class="ytv-sc-section">
-          <div class="ytv-sc-section-title">SEO Score <span style="color:${color};font-weight:800">${d.score}/100</span></div>
+          <div class="ytv-sc-section-title">SEO Score <span style="color:${color};font-weight:800">${d.score===null?'—':d.score}/100</span></div>
+          <div class="ytv-hint">${scorecardQualityNote()}</div>
           <div class="ytv-sc-checks-grid">${checksHtml}</div>
         </div>
         ${renderQuickWins(d.checks)}
@@ -1129,7 +1187,7 @@ function renderScorecardExpanded(d) {
             <div class="ytv-sc-section-title">Tags <span class="ytv-hint">(${d.tags.length})</span> <button class="ytv-btn ytv-btn-sm ytv-btn-dark ytv-copy-tags-btn" style="margin-left:auto">📋 ${t('Copiar todo', 'Copy all')}</button></div>
             <div class="ytv-tags">${tagsHtml}</div>
           </div>
-        ` : `<div class="ytv-hint" style="padding:4px 0">${t('Sin tags.', 'No tags.')}</div>`}
+        ` : `<div class="ytv-hint" style="padding:4px 0">${d.dataQuality.tags==='unconfirmed'?t('Tags sin confirmar.','Tags unconfirmed.'):t('Sin tags.', 'No tags.')}</div>`}
         <div class="ytv-sc-section">
           <div class="ytv-sc-section-title">${t('Mejor hora de publicar', 'Best Time to Post')}</div>
           <div id="ytv-sc-besttime-area">${renderLoading(t('Cargando...', 'Loading...'))}</div>
@@ -1552,10 +1610,10 @@ const STUDIO_CHECK_LABELS = {
 
 function renderStudioChecks(checks) {
   return (checks || []).map(c => {
-    const icon = c.ok ? '✅' : '❌';
+    const icon = c.available===false ? '❔' : c.ok ? '✅' : '❌';
     const labelFn = STUDIO_CHECK_LABELS[c.key];
     const label = labelFn ? labelFn() : c.key;
-    return `<span class="ytv-sc-check-pill ${c.ok ? 'ytv-sc-check-pass' : 'ytv-sc-check-fail'}">${icon} ${escapeHtml(label)}</span>`;
+    return `<span class="ytv-sc-check-pill ${c.available===false?'':c.ok?'ytv-sc-check-pass':'ytv-sc-check-fail'}">${icon} ${escapeHtml(label)}${c.available===false?' · '+t('sin confirmar','unconfirmed'):''}</span>`;
   }).join('');
 }
 
@@ -1573,7 +1631,7 @@ function renderSerpPreview(videoId, title, channelTitle, views, ageDays) {
         <img class="ytv-serp-thumb" src="${thumbUrl}" alt="" onerror="this.style.visibility='hidden'">
         <div class="ytv-serp-meta">
           <div class="ytv-serp-title" id="ytv-serp-title">${escapeHtml(title)}</div>
-          <div class="ytv-serp-sub">${escapeHtml(channelTitle || '')}${channelTitle ? ' · ' : ''}${fmtNum(views)} ${t('vistas', 'views')} · ${fmtAge(ageDays, ageDays * 24)}</div>
+          <div class="ytv-serp-sub">${escapeHtml(channelTitle || '')}${channelTitle ? ' · ' : ''}${views===null?'—':fmtNum(views)} ${t('vistas', 'views')} · ${fmtAge(ageDays, ageDays * 24)}</div>
         </div>
       </div>
     </div>
@@ -1581,16 +1639,16 @@ function renderSerpPreview(videoId, title, channelTitle, views, ageDays) {
 }
 
 function renderStudioScore(score, checks, titleLen) {
-  const color = scoreColor(score);
+  const color = score===null?'#777':scoreColor(score);
   const titleLenColor = titleLen >= 30 && titleLen <= 70 ? '#22c55e' : titleLen > 70 ? '#ef4444' : '#eab308';
   return `
     <div class="ytv-studio-score-row">
-      <div class="ytv-seo-ring" style="--score-color: ${color}; --score-pct: ${score}">
-        <span class="ytv-seo-num">${score}</span>
+      <div class="ytv-seo-ring" style="--score-color: ${color}; --score-pct: ${score===null?0:score}">
+        <span class="ytv-seo-num">${score===null?'—':score}</span>
       </div>
       <div class="ytv-seo-info">
         <div class="ytv-seo-title">SEO Score</div>
-        <div class="ytv-seo-sub">${score >= 70 ? t('Buen SEO', 'Good SEO') : score >= 40 ? t('SEO mejorable', 'Needs work') : t('SEO débil', 'Weak SEO')}</div>
+        <div class="ytv-seo-sub">${score===null?t('Sin confirmar','Unconfirmed'):score >= 70 ? t('Buen SEO', 'Good SEO') : score >= 40 ? t('SEO mejorable', 'Needs work') : t('SEO débil', 'Weak SEO')}</div>
       </div>
       <span class="ytv-studio-char-count" style="color:${titleLenColor}">${titleLen} ${t('caracteres', 'chars')}</span>
     </div>
@@ -1785,14 +1843,7 @@ async function injectStudioEditor() {
     const serpEl = panel.querySelector('#ytv-studio-serp');
 
     // ─ Initial score from SCORECARD (YouTube API data) ─
-    try {
-      const data = await sendMsg({ type: 'SCORECARD', videoId });
-      bodyEl.innerHTML = renderStudioScore(data.score, data.checks, (data.title || '').length);
-      // P7 — SERP preview seeded with the same call, no extra request.
-      serpEl.innerHTML = renderSerpPreview(videoId, getStudioTitle() || data.title, data.channelTitle, data.views, data.ageDays);
-    } catch (e) {
-      bodyEl.innerHTML = renderError(e.message);
-    }
+    await renderStudioScorecardSnapshot(videoId,panel,bodyEl,serpEl);
 
     // ─ P7: botón "🆚 Crear test A/B" siempre visible — antes el A/B solo aparecía
     // pegado a una sugerencia de título tras pulsar "Generar títulos" (fácil de no ver
@@ -1841,6 +1892,7 @@ async function injectStudioEditor() {
     const liveUpdate=createStudioSeoLiveUpdate(document,panel,bodyEl);
     let liveTimer = null;
     function scheduleLiveUpdate() {
+      retireScorecardOwner(panel);
       liveUpdate.invalidate();
       // SERP title: instantáneo, sin red (solo texto que ya tenemos en el DOM) — no
       // hace falta esperar el debounce de 1.5s que sí protege la llamada a SEO_LIVE.
@@ -2015,6 +2067,7 @@ async function injectStudioVideoList() {
 
     const videoIds = [];
     const cellMap = new Map();   // videoId -> the checkbox cell, to anchor the badge in
+    const rowMap = new Map();
 
     rows.forEach(row => {
       const titleA = row.querySelector(SELECTORS.studio.videoRowTitle);
@@ -2025,12 +2078,11 @@ async function injectStudioVideoList() {
       if (!cell) return;
       videoIds.push(m[1]);
       cellMap.set(m[1], cell);
+      rowMap.set(m[1], row);
     });
 
-    // v2.5.0 (A1 fix): these used to be fetched one-by-one with an `await` inside the loop —
-    // up to 10 sequential round-trips (10-20s before the last badge appeared). Placeholders
-    // are inserted for all rows up front, then every SCORECARD call fires in parallel, so
-    // total wait time is roughly the slowest single call instead of the sum of all ten.
+    // Placeholders appear together; the background serializes distinct native operations.
+    // Each view keeps its own row, session and deadline even while waiting in that queue.
     const toFetch = videoIds.slice(0, 10);
     const badgeFor = new Map();
 
@@ -2047,27 +2099,12 @@ async function injectStudioVideoList() {
     await Promise.allSettled(toFetch.map(async vid => {
       const badge = badgeFor.get(vid);
       if (!badge) return;
-      try {
-        const data = await sendMsg({ type: 'SCORECARD', videoId: vid });
-        const color = scoreColor(data.score);
-        const outlierHtml = data.outlierMultiplier >= 2
-          ? `<span class="ytv-outlier-mini ${data.outlierMultiplier >= 5 ? 'ytv-outlier-green' : 'ytv-outlier-yellow'}" title="${escapeHtml(outlierTooltip(data.outlierMultiplier))}">×${data.outlierMultiplier}</span>`
-          : '';
-        badge.innerHTML =
-          `<span class="ytv-studio-score" style="border-color:${color};color:${color}" role="button" tabindex="0" title="${t('SEO Score — optimizar en YTubViral', 'SEO Score — optimize on YTubViral')}">${data.score}</span>`
-          + outlierHtml;
-        badge.querySelector('.ytv-studio-score').addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          window.open(`https://ytubviral.com/optimize?v=${vid}&utm_source=extension&utm_medium=studio`, '_blank');
-        });
-      } catch {
-        badge.innerHTML = `<span class="ytv-studio-score" style="border-color:#555;color:#777">?</span>`;
-      }
+      await renderStudioScorecardBadge(vid,badge,cellMap.get(vid),rowMap.get(vid));
     }));
 
     // Safety net: kill any badge still showing a spinner (a row we created a placeholder
     // for but never resolved — e.g. a duplicate id, or a row that fell outside toFetch).
-    document.querySelectorAll('.ytv-studio-badge').forEach(b => {
+    badgeFor.forEach(b => {
       if (b.querySelector('.ytv-spinner-sm')) b.remove();
     });
   } catch (e) {

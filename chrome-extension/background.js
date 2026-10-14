@@ -412,6 +412,60 @@ async function runVideoBatch(msg) {
   try { return await Promise.race([producer,stopped]); } finally { retired=true; clearTimeout(timer); }
 }
 
+const SCORECARD_PENDING = 'ytv_scorecard_pending';
+let scorecardOriginal = null, scorecardQueue = Promise.resolve();
+const scorecardLive = new Map();
+async function readScorecardToken() {const row=await chrome.storage.local.get('ytv_token');return Object.hasOwn(row,'ytv_token')?row.ytv_token:null;}
+function validScorecardResult(d,key,id,startedAt,token) {
+ const date=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().replace('.000Z','Z')===s.replace('.000Z','Z');
+ const count=n=>n===null||Number.isSafeInteger(n)&&n>=0,ratio=n=>n===null||typeof n==='number'&&Number.isFinite(n)&&n>=0&&Number.isSafeInteger(Math.round(n*10))&&n===Math.round(n*10)/10;
+ if(!d||d.operationKey!==key||d.videoId!==id||d.mode!==(token?'authenticated':'public')||typeof d.isPro!=='boolean'||!token&&d.isPro
+  ||!date(d.observedAt)||Date.parse(d.observedAt)<startedAt||Date.parse(d.observedAt)>Date.now()||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now()||d.expiresAt>Date.parse(d.observedAt)+55000
+  ||!date(d.publishedAt)||Date.parse(d.publishedAt)<0||Date.parse(d.publishedAt)>Date.parse(d.observedAt)||typeof d.title!=='string'||d.title.length>200||typeof d.channelTitle!=='string'||d.channelTitle.length>200||typeof d.channelId!=='string'||!/^UC[A-Za-z0-9_-]{22}$/.test(d.channelId)
+  ||!Array.isArray(d.tags)||d.tags.length>100||d.tags.some(x=>typeof x!=='string'||x.length>500)||![d.views,d.likes,d.comments,d.durationSec,d.channelAvgViews].every(count)||![d.vph,d.vphLifetime,d.engagement,d.likesRatio,d.outlierMultiplier].every(ratio)||typeof d.vphRecent!=='boolean')return false;
+ const q=d.dataQuality;if(!q||q.source!=='youtube-scorecard-response'||q.freshness!=='unconfirmed'||!['available','unconfirmed'].includes(q.tags)||!['available','unconfirmed'].includes(q.outlier)||!['original-acknowledged','not-recorded','unconfirmed'].includes(q.snapshot))return false;
+ const age=Math.max(1,(Date.parse(d.observedAt)-Date.parse(d.publishedAt))/3600000);
+ if(d.ageDays!==Math.floor(age/24)||d.ageHours!==Math.round(age)||d.likes!==null&&d.comments!==null&&!Number.isSafeInteger(d.likes+d.comments))return false;
+ const average=d.views===null?null:Math.round(d.views/age*10)/10,eng=d.views===null||d.likes===null||d.comments===null?null:d.views>0?Math.round((d.likes+d.comments)/d.views*1000)/10:0,likes=d.views===null||d.likes===null?null:d.views>0?Math.round(d.likes/d.views*1000)/10:0;
+ if(d.vphLifetime!==average||d.engagement!==eng||d.likesRatio!==likes||q.outlier!==(d.channelAvgViews===null?'unconfirmed':'available')||d.outlierMultiplier!==(d.views===null||!d.channelAvgViews?null:Math.round(d.views/d.channelAvgViews*10)/10))return false;
+ if(d.vphRecent){const i=d.velocityInterval;if(!i||!date(i.from)||!date(i.to)||i.to!==d.observedAt||Date.parse(i.from)<0||!count(i.fromViews)||i.fromViews===null||i.toViews!==d.views||d.views===null||i.fromViews>d.views||q.velocity!=='interval-average'||q.snapshot!=='original-acknowledged')return false;const hours=(Date.parse(i.to)-Date.parse(i.from))/3600000;if(hours<.5||hours>720||d.vph!==Math.round((i.toViews-i.fromViews)/hours*10)/10)return false;}
+ else if(d.velocityInterval!==null||d.vph!==average||q.velocity!=='lifetime-average')return false;
+ const weights=[['title_length',8],['title_number',5],['title_caps',4],['title_emoji',3],['title_power',4],['desc_length',10],['desc_links',5],['desc_timestamps',7],['desc_hashtags',4],['desc_cta',3],['tags_count',8],['tags_long',4],['thumbnail',8],['captions',6],['engagement',7],['duration',5]];
+ if(!Array.isArray(d.checks)||d.checks.length!==16||d.checks.some((c,n)=>!c||c.key!==weights[n][0]||c.w!==weights[n][1]||typeof c.available!=='boolean'||(c.available?typeof c.ok!=='boolean':c.ok!==null)))return false;
+ if(q.tags==='unconfirmed'&&d.tags.length)return false;
+ for(const c of d.checks){const available=c.key.startsWith('tags_')?q.tags==='available':c.key==='duration'?d.durationSec!==null:c.key==='engagement'?eng!==null:['thumbnail','captions'].includes(c.key)?c.available:true;if(c.available!==available)return false;if(c.available&&c.key==='duration'&&c.ok!==(d.durationSec>=480&&d.durationSec<=1200))return false;if(c.available&&c.key==='engagement'&&c.ok!==(d.views>0&&(d.likes+d.comments)/d.views>.03))return false;}
+ const score=d.checks.every(c=>c.available)?Math.round(d.checks.filter(c=>c.ok).reduce((n,c)=>n+c.w,0)/d.checks.reduce((n,c)=>n+c.w,0)*100):null;
+ return d.score===score&&q.score===(score===null?'unconfirmed':'heuristic')&&(d.views!==null||q.snapshot==='not-recorded');
+}
+function projectScorecardResult(d) {
+ const out={};for(const k of ['videoId','title','channelId','channelTitle','publishedAt','views','likes','comments','vph','vphLifetime','vphRecent','engagement','likesRatio','ageDays','ageHours','durationSec','score','channelAvgViews','outlierMultiplier','isPro','mode','operationKey','observedAt','expiresAt'])out[k]=d[k];
+ out.tags=Object.freeze([...d.tags]);out.checks=Object.freeze(d.checks.map(({key,ok,w,available})=>Object.freeze({key,ok,w,available})));out.dataQuality=Object.freeze({...d.dataQuality});out.velocityInterval=d.velocityInterval?Object.freeze({...d.velocityInterval}):null;return Object.freeze(out);
+}
+function runScorecard(msg) {
+ const videoId=msg.videoId;if(typeof videoId!=='string'||!/^[A-Za-z0-9_-]{11}$/.test(videoId))return Promise.reject(Error('Datos de vídeo incorrectos.'));
+ const existing=scorecardLive.get(videoId);if(existing&&existing.revision===identityRevision&&!existing.retired&&performance.now()<existing.deadline)return existing.wait;
+ if(scorecardLive.size>=20)return Promise.reject(Error('No se pudo confirmar el análisis del vídeo.'));
+ const original={videoId,revision:identityRevision,deadline:performance.now()+60000,startedAt:Date.now(),retired:false};let rejectWait,attempted=false,closed=false;
+ const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ const retire=()=>{if(!original.retired){original.retired=true;rejectWait(Error('No se pudo confirmar el análisis del vídeo.'));}};
+ const timer=setTimeout(retire,60000),check=()=>{if(original.retired||performance.now()>=original.deadline||identityRevision!==original.revision||passwordLoginOriginal||tokenMutationOriginal)retire();if(original.retired)throw Error('No se pudo confirmar el análisis del vídeo.');};
+ const producer=scorecardQueue.catch(()=>{}).then(async()=>{
+  check();if(scorecardOriginal)throw Error('Hay un análisis de vídeo pendiente de confirmar.');scorecardOriginal=original;
+  const close=async key=>{check();const row=await chrome.storage.local.get(SCORECARD_PENDING);check();if(row[SCORECARD_PENDING]?.key!==key)throw Error('No se pudo confirmar el análisis del vídeo.');await chrome.storage.local.remove(SCORECARD_PENDING);closed=true;check();};
+  for(const marker of [SCORECARD_PENDING,IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]){const row=await chrome.storage.local.get(marker);check();if(Object.hasOwn(row,marker))throw Error('Hay una operación pendiente de confirmar.');}
+  const token=await readScorecardToken();check();if(token!==null&&(typeof token!=='string'||!/^[a-f0-9]{64}$/.test(token)))throw Error('not_logged_in');
+  const key=crypto.randomUUID();attempted=true;await chrome.storage.local.set({[SCORECARD_PENDING]:{key}});check();
+  const {res,data}=await apiFetch(API_BASE+'/api/extension/video-scorecard',{method:'POST',timeoutMs:Math.min(55000,Math.max(1,Math.floor(original.deadline-performance.now()))),maxResponseBytes:256*1024,cache:'no-store',credentials:'omit',observeOriginal:p=>{original.http=p;},headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),'Idempotency-Key':key},body:JSON.stringify({videoId})});check();
+  if(data?.operationKey!==key)throw Error('No se pudo confirmar el análisis del vídeo.');
+  const known={invalid_video_input:400,not_logged_in:401,scorecard_configuration_unavailable:503,rate_limited:429,video_not_found:404};
+  if(Object.hasOwn(known,data.code)&&res.status===known[data.code]){const current=await readScorecardToken();check();if(current!==token)throw Error('No se pudo confirmar el análisis del vídeo.');await close(key);throw Error(data.code==='not_logged_in'?'not_logged_in':data.code==='rate_limited'?'rate_limited':'No se pudo consultar este vídeo.');}
+  if(res.status!==200||!validScorecardResult(data,key,videoId,original.startedAt,token))throw Error('No se pudo confirmar el análisis del vídeo.');
+  const projected=projectScorecardResult(data),current=await readScorecardToken();check();if(current!==token||projected.expiresAt<=Date.now())throw Error('No se pudo confirmar el análisis del vídeo.');await close(key);const finalToken=await readScorecardToken();check();if(finalToken!==token||projected.expiresAt<=Date.now())throw Error('No se pudo confirmar el análisis del vídeo.');return projected;
+ });
+ scorecardQueue=producer.finally(async()=>{if(original.http)await Promise.allSettled([original.http]);if(scorecardOriginal===original&&(!attempted||closed))scorecardOriginal=null;});void scorecardQueue.catch(()=>{});
+ original.wait=Promise.race([producer,stopped]).finally(()=>{original.retired=true;clearTimeout(timer);if(scorecardLive.get(videoId)===original)scorecardLive.delete(videoId);});scorecardLive.set(videoId,original);return original.wait;
+}
+
 let channelStatsOriginal = null;
 async function getChannelStats() {
   if (channelStatsOriginal) return channelStatsOriginal.wait;
@@ -549,6 +603,7 @@ async function handleMessage(msg) {
   if (msg.type === 'SEO_QUICK') return runSeoQuick(msg);
   if (msg.type === 'COMMENTS') return runComments(msg);
   if (msg.type === 'VIDEO_BATCH') return runVideoBatch(msg);
+  if (msg.type === 'SCORECARD') return runScorecard(msg);
   if (msg.type === 'GET_USER') return getExtensionIdentity();
   if (msg.type === 'STORE_TOKEN' || msg.type === 'LOGOUT') return mutateExtensionToken(msg);
   if (msg.type === 'LOGIN') return passwordLogin(msg);
@@ -642,26 +697,6 @@ async function handleMessage(msg) {
       })();
       attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);waitController.abort();attempt.flight=null;});
       return attempt.flight;
-    }
-
-    case 'SCORECARD': {
-      // v2.7: works without login — the scorecard endpoint now serves public YouTube data to
-      // anonymous callers (rate-limited by IP). Send the token only if we have one.
-      const token = await getToken();
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/extension/video-scorecard`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ videoId: msg.videoId }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (res.status === 429) throw new Error('rate_limited');
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Scorecard error' : 'Error al cargar scorecard'));
-      return data;
     }
 
     case 'BEST_TIME': {
