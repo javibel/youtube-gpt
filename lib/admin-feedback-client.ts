@@ -23,7 +23,8 @@ function decode(value:unknown):AdminFeedbackData{
     ||new Set(rows.map(row=>row.id)).size!==rows.length||rows.some((row,n)=>n>0&&Date.parse(row.submittedAt)>Date.parse(rows[n-1].submittedAt)))throw Error('Unconfirmed admin feedback');
   // Keep the submitted window and the separate pending count distinct. Neither
   // this snapshot nor its native correlation receipt asserts operative freshness.
-  return frozen({feedbacks:rows,pending:value.pending,dataQuality:quality} as AdminFeedbackData);
+  const data:AdminFeedbackData={feedbacks:rows,pending:value.pending,dataQuality:{source:quality.source,window:quality.window,freshness:quality.freshness,consistency:quality.consistency}};
+  return frozen(data);
 }
 // Public session metadata and current() can only deny a display. Authentication
 // stays at the native server purpose. No DTO, decoder or caller-selected fetch
