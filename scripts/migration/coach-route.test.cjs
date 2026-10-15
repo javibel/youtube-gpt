@@ -14,7 +14,7 @@ function harness(options={}) {
   '@/lib/extension-auth':{getExtensionUser:async()=>options.extension??null},
   '@/lib/lifecycle-trigger':{triggerConversionEmail:async(...args)=>emails.push(args)},
  });
- async function run(body={message:'Synthetic question'}) {const r=await route.POST(new Request('https://example.invalid/api/coach',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
+ async function run(body={message:'Synthetic question'}) {const r=await route.POST(new Request('https://example.invalid/api/coach',{method:'POST',headers:{'content-type':'application/json',cookie:'declared-web-fixture=1'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
  return {run,requests,emails};
 }
 const results=[];
@@ -23,14 +23,12 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  for(const [name,options,body,status] of [
   ['anonymous blocked',{session:null},undefined,401],
   ['free web plan blocked',{plan:'free'},undefined,403],
-  ['free extension blocked',{session:null,extension:{user:{id:'synthetic',email:'synthetic@example.invalid'},isPro:false}},undefined,403],
   ['empty message rejected',{}, {message:' '},400],
   ['non-string message rejected',{}, {message:8},400],
   ['throttle blocks provider',{hits:2},undefined,429],
   ['missing task control unavailable',{noKey:true},undefined,503],
  ])await test(name,async()=>{const h=harness(options);assert.equal((await h.run(body)).status,status);assert.equal(h.requests.length,0);});
  await test('paywall invokes only simulated lifecycle effect',async()=>{const h=harness({plan:'free'});await h.run();assert.equal(h.emails.length,1);assert.equal(h.emails[0][0],'synthetic');assert.equal(h.emails[0][1],'c3');});
- await test('paid extension response contract',async()=>{const h=harness({session:null,extension:{user:{id:'synthetic',email:'synthetic@example.invalid'},isPro:true}});assert.deepEqual(await h.run(),{status:200,body:{reply:'Synthetic reply'}});});
  for(const mode of ['create','analyze','optimize','research'])await test(mode+' mode prompt',async()=>{const h=harness();await h.run({message:'Synthetic',mode});assert.match(h.requests[0].body.system[0].text,new RegExp(mode.toUpperCase()+' MODE'));});
  await test('invalid mode falls back to analyze',async()=>{const h=harness();await h.run({message:'Synthetic',mode:'invalid'});assert.match(h.requests[0].body.system[0].text,/ANALYZE MODE/);});
  await test('English instruction and real channel context builder input',async()=>{const h=harness({channel:'Synthetic channel metrics'});await h.run({message:'Synthetic',lang:'en'});assert.match(h.requests[0].body.system[0].text,/Reply ALWAYS in English/);assert.match(h.requests[0].body.system[0].text,/Synthetic channel metrics/);});

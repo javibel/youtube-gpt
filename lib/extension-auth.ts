@@ -41,57 +41,8 @@ export async function getExtensionUser(request: Request): Promise<ExtensionUser 
   };
 }
 
-declare const extensionCoachBrand: unique symbol;
-export type ExtensionCoachSession = { readonly [extensionCoachBrand]: true };
-type CoachOwner = Readonly<{ id: string; email: string; isPro: boolean }>;
-const coachOriginals = new WeakMap<object, { owner: CoachOwner; expires: number; request: Request; used: boolean }>();
-
-// A current incoming extension credential is checked against its own token and
-// account. Neither a returned user row nor a receipt can construct this permit.
-export async function authorizeExtensionCoach(request: Request): Promise<ExtensionCoachSession | null> {
-  const header = request.headers.get('Authorization');
-  if (!header || !/^Bearer [a-f0-9]{64}$/.test(header)) return null;
-  const token = header.slice(7);
-  const ext = await prisma.extensionToken.findUnique({
-    where: { token },
-    include: { user: { select: {
-      id: true, email: true, emailVerified: true,
-      subscription: { select: { status: true, stripeCustomerId: true, currentPeriodEnd: true } },
-    } } },
-  });
-  const now = Date.now();
-  if (!ext || !ext.user || ext.token !== token || ext.userId !== ext.user.id
-    || typeof ext.user.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(ext.user.id)
-    || typeof ext.user.email !== 'string' || ext.user.email.length > 254
-    || ext.user.email !== ext.user.email.trim().toLowerCase()
-    || !/^[^\s@,;<>"\x00-\x1f\x7f]+@[^\s@,;<>"\x00-\x1f\x7f]+\.[^\s@,;<>"\x00-\x1f\x7f]+$/.test(ext.user.email)
-    || !(ext.expiresAt instanceof Date) || !Number.isFinite(ext.expiresAt.getTime()) || ext.expiresAt.getTime() <= now
-    || !(ext.user.emailVerified instanceof Date) || !Number.isFinite(ext.user.emailVerified.getTime()) || ext.user.emailVerified.getTime() > now) return null;
-  const original = Object.freeze({}) as ExtensionCoachSession;
-  coachOriginals.set(original, { owner: Object.freeze({ id: ext.user.id, email: ext.user.email, isPro: hasPaidAccess(ext.user.subscription) }), expires: ext.expiresAt.getTime(), request, used: false });
-  return original;
-}
-function retainedCoach(original: ExtensionCoachSession) {
-  const own = original && typeof original === 'object' ? coachOriginals.get(original) : undefined;
-  if (!own || own.expires <= Date.now()) throw Error('Coach extension authentication unavailable');
-  return own;
-}
-export async function runExtensionCoach<T>(original: ExtensionCoachSession, action: (owner: CoachOwner, check: () => void) => Promise<T>): Promise<T> {
-  const own = retainedCoach(original);
-  if (own.used) throw Error('Coach extension authentication unavailable');
-  own.used = true;
-  await recordExtensionUse(own.owner.id, own.request);
-  retainedCoach(original);
-  const result = await action(own.owner, () => { retainedCoach(original); });
-  retainedCoach(original);
-  return result;
-}
-
-// Señal de retención: registra que el usuario ha usado la extensión.
-// Throttle en memoria (por instancia) para no anotar cada poll: 1 evento / usuario / 10 min.
-// Nunca lanza — un fallo aquí no debe tumbar la autenticación de la extensión.
-const lastSeen = new Map<string, number>();
 const THROTTLE_MS = 10 * 60 * 1000;
+const lastSeen = new Map<string, number>();
 
 async function recordExtensionUse(userId: string, request: Request): Promise<void> {
   try {

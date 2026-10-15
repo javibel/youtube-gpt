@@ -1,6 +1,7 @@
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { authorizeNativeCoach, runNativeCoach } from '@/lib/coach-native-authorization';
+import { handleExtensionCoach, consumeExtensionCoachContext, extensionCoachClient, type ExtensionCoachContext } from '@/lib/extension-coach-native-authorization';
 import { prisma } from '@/lib/prisma';
 import { getUserPlan, isPaid } from '@/lib/plans';
 import { getChannelContext } from '@/lib/channel-context';
@@ -48,6 +49,10 @@ function coachSendWait(signal: AbortSignal) {
 }
 
 export async function POST(request: Request) {
+  if (!request.headers.get('cookie')) return handleExtensionCoach(request, async original => {
+    const context = consumeExtensionCoachContext(original);
+    return sendCoach(context.request, { run: context.step, check: context.check }, context.owner, context);
+  });
   const wait = coachSendWait(request.signal);
   try {
     const authorization = await wait.run(() => authorizeNativeCoach(request));
@@ -74,7 +79,8 @@ export async function POST(request: Request) {
   } finally { wait.close(); }
 }
 
-async function sendCoach(request: Request, wait: ReturnType<typeof coachSendWait>, owner: Readonly<{ id: string; email: string }> & (Readonly<{ source: 'web' }> | Readonly<{ source: 'extension'; isPro: boolean }>)) {
+async function sendCoach(request: Request, wait: Pick<ReturnType<typeof coachSendWait>, 'run' | 'check'>, owner: Readonly<{ id: string; email: string }> & (Readonly<{ source: 'web' }> | Readonly<{ source: 'extension'; isPro: boolean }>), native?: ExtensionCoachContext) {
+  const client = native ? extensionCoachClient(native) : prisma;
   const userId = owner.id;
   const isProUser = owner.source === 'extension' ? owner.isPro : isPaid(await wait.run(() => getUserPlan(userId)));
   if (!isProUser) {
@@ -84,7 +90,7 @@ async function sendCoach(request: Request, wait: ReturnType<typeof coachSendWait
   }
 
   let body;
-  try { body = await wait.run(() => request.json()); }
+  try { body = native ? native.body : await wait.run(() => request.json()); }
   catch { wait.check(); body = null; }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   const { message, context, mode, lang: clientLang, pageContext } = body;
@@ -97,7 +103,7 @@ async function sendCoach(request: Request, wait: ReturnType<typeof coachSendWait
 
   // Rate limit: 1 message per 5 seconds
   const throttleKey = `coach_throttle:${userId}`;
-  const throttleResult = await wait.run(() => prisma.$queryRaw<{ hits: number }[]>`
+  const throttleResult = await wait.run(() => client.$queryRaw<{ hits: number }[]>`
     INSERT INTO rate_limits (key, hits, window_start)
     VALUES (${throttleKey}, 1, NOW())
     ON CONFLICT (key) DO UPDATE
@@ -111,7 +117,7 @@ async function sendCoach(request: Request, wait: ReturnType<typeof coachSendWait
   }
 
   // Build channel context (shared with AI Generator)
-  const ctx = await wait.run(() => getChannelContext(userId));
+  const ctx = await wait.run(() => getChannelContext(userId, native ? { client, step: native.step, check: native.check, signal: native.signal } : undefined));
   const channelContext = ctx?.summary || 'No YouTube channel connected.';
 
   const MODE_PROMPTS: Record<string, string> = {
@@ -220,12 +226,17 @@ RULES:
     task = await wait.run(() => getMessagesTask({
       taskType: 'channel.coach', userId, language: lang, instructionsVersion: 'coach-modes-v1',
       requiredCapabilities: ['prompt_cache'],
-    }));
+    }, native ? { signal: native.signal } : undefined));
   } catch {
     wait.check();
     return NextResponse.json({ error: 'service unavailable' }, { status: 503 });
   }
   try {
+    if (native) {
+      const data = await wait.run(() => task.create({ max_tokens: 4096, system: systemPrompt, messages }, { signal: native.signal }));
+      if (data.incomplete) throw Error('Coach result incomplete');
+      return await wait.run(async () => NextResponse.json({ reply: data.content[0].text }));
+    }
     // Keep the original task and result reader together after dispatch. Coach
     // has no persisted history: a retired HTTP response cannot expose this
     // late result, and losing the process cannot recover it.
