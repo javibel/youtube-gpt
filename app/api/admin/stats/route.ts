@@ -131,7 +131,7 @@ async function readAdminStats(context: AdminStatsRead, yearlyPriceId: string | u
     if (key in dailyMap) dailyMap[key]++;
   }
 
-  const yearlyPriceId = process.env.STRIPE_PRO_YEARLY_PRICE_ID;
+
   const activeProSubscriptions = proSubscriptions.filter((s) => hasPaidAccess(s));
   const proUsers = activeProSubscriptions.length;
   const mrr = activeProSubscriptions.filter((s) => s.stripeCustomerId !== 'manual_admin').reduce((sum, s) => {
