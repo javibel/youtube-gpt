@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAdminStats } from '@/lib/use-admin-stats';
 import { useAdminReviews } from '@/lib/use-admin-reviews';
+import { useAdminFeedback } from '@/lib/use-admin-feedback';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos', description: 'Descripciones', caption: 'Captions',
@@ -14,12 +15,6 @@ const TEMPLATE_LABELS: Record<string, string> = {
 const TEMPLATE_COLORS: Record<string, string> = {
   title: '#a855f7', description: '#3b82f6', caption: '#eab308',
   thumbnail: '#ec4899', script: '#22c55e',
-};
-
-type FeedbackItem = {
-  id: string; token: string; lang: string; rating: number | null; comment: string | null;
-  submittedAt: string | null; createdAt: string;
-  user: { email: string; name: string | null };
 };
 
 function Trend({ current, previous }: { current: number; previous: number }) {
@@ -58,9 +53,9 @@ export default function AdminPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [moderating, setModerating] = useState<string | null>(null);
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
-  const [feedbackPending, setFeedbackPending] = useState(0);
-  const [feedbacksLoading, setFeedbacksLoading] = useState(true);
+  const feedbackRead=useAdminFeedback(session,status);
+  const feedbacks=feedbackRead.data?.feedbacks??[];
+  const feedbacksLoading=feedbackRead.loading;
   const [createEmail, setCreateEmail] = useState('');
   const [createName, setCreateName] = useState('');
   const [createPassword, setCreatePassword] = useState('');
@@ -78,13 +73,6 @@ export default function AdminPage() {
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated' && !(session?.user as { isAdmin?: boolean })?.isAdmin) { router.push('/dashboard'); return; }
-    if (status === 'authenticated') {
-      fetch('/api/admin/feedback')
-        .then(r => r.json())
-        .then(d => { if (d.feedbacks) { setFeedbacks(d.feedbacks); setFeedbackPending(d.pending ?? 0); } })
-        .catch(() => {})
-        .finally(() => setFeedbacksLoading(false));
-    }
   }, [status, session, router]);
 
   async function handleCreateUser(e: React.FormEvent) {
@@ -162,7 +150,8 @@ export default function AdminPage() {
   const { overview, thisMonth, templateBreakdown, daily, recentUsers, recentGenerations } = data;
   const maxDaily = Math.max(...daily.map(d => d.count), 1);
   const totalTemplates = templateBreakdown.reduce((s, t) => s + t.count, 0);
-  const avgRating = feedbacks.length > 0 ? feedbacks.reduce((s, f) => s + (f.rating ?? 0), 0) / feedbacks.length : 0;
+  const ratings=feedbacks.flatMap(f=>f.rating===null?[]:[f.rating]);
+  const avgRating=ratings.length>0?ratings.reduce((sum,rating)=>sum+rating,0)/ratings.length:null;
 
   return (
     <DashboardShell>
@@ -347,23 +336,27 @@ export default function AdminPage() {
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div>
               <p className="text-sm font-display font-semibold">Feedback de usuarios</p>
-              <p className="text-[13px] font-mono-jb mt-0.5" style={{ color: 'var(--text-faint)' }}>Valoraciones post-registro (3 días)</p>
+              <p className="text-[13px] font-mono-jb mt-0.5" style={{ color: 'var(--text-faint)' }}>Hasta 50 respuestas enviadas. Frescura sin confirmar; pendientes consultados por separado.</p>
             </div>
             <div className="flex items-center gap-4 text-[13px] font-mono-jb">
-              {avgRating > 0 && <span style={{ color: 'var(--text-dim)' }}>{avgRating.toFixed(1)} media · {feedbacks.length} recibidos</span>}
-              <span style={{ color: '#fbbf24' }}>{feedbackPending} pendientes</span>
+              <button type="button" onClick={feedbackRead.refresh} disabled={feedbacksLoading}
+                className="text-[13px] px-3 py-1.5 rounded-lg disabled:opacity-50">Actualizar feedback</button>
+              {feedbackRead.data && <span style={{ color: 'var(--text-dim)' }}>{feedbacks.length} respuestas · {feedbackRead.data.pending} pendientes</span>}
+              {avgRating!==null && <span style={{ color: 'var(--text-dim)' }}>{avgRating.toFixed(1)} media · {ratings.length} valoraciones</span>}
             </div>
           </div>
           {feedbacksLoading ? (
             <p className="text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>Cargando...</p>
+          ) : feedbackRead.error ? (
+            <p role="alert" className="text-sm" style={{ color: 'var(--text-faint)' }}>{feedbackRead.error}</p>
           ) : feedbacks.length === 0 ? (
-            <p className="text-sm" style={{ color: 'var(--text-faint)' }}>Aún no hay feedback. Los emails se envían a las 19:00 UTC a usuarios con 3+ días.</p>
+            <p className="text-sm" style={{ color: 'var(--text-faint)' }}>No hay respuestas enviadas en esta consulta.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {feedbacks.map(f => (
                 <div key={f.id} className="rounded-xl p-4" style={{ background: 'var(--ink-3)', border: '1px solid var(--line)' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <Stars rating={f.rating ?? 0} />
+                    {f.rating===null ? <span className="text-[13px]" style={{ color: 'var(--text-faint)' }}>Sin valoración</span> : <Stars rating={f.rating} />}
                     <span className="text-[13px] font-mono-jb uppercase" style={{ color: 'var(--text-faint)' }}>{f.lang}</span>
                   </div>
                   <p className="text-[13px] leading-relaxed mb-2 min-h-[2rem]" style={{ color: f.comment ? 'var(--text-dim)' : 'var(--text-faint)' }}>
