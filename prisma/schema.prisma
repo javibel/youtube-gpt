@@ -211,6 +211,21 @@ model AdminReviewModerationAttempt {
   @@map("admin_review_moderation_attempts")
 }
 
+// Own permanent command/canonical-email denial ledger. No credentials, foreign
+// keys, cascades or TTL: no stored row can reconstruct a creation original.
+model AdminUserCreationAttempt {
+  id String @id
+  userId String
+  email String
+  sessionRef String
+  targetUserId String @unique
+  targetEmail String @unique
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  @@map("admin_user_creation_attempts")
+}
+
 model Review {
   id        String   @id @default(cuid())
   userId    String   @unique

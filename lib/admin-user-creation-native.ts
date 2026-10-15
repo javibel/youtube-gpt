@@ -11,11 +11,12 @@ type AdminRow = { id: string; email: string | null; emailVerified: Date | null }
 type Original = { id: string; email: string; sessionRef: string; verifiedAt: number;
   targetEmail: string; targetName: string | null; targetId: string; password: string | null; commandRef: string;
   startedAt: number; deadline: number; expiresAt: number; origin: string; signal: AbortSignal;
-  used: boolean; closed: boolean; createEntered: boolean; databaseAcknowledged: boolean;
-  phase: 'new' | 'hashing' | 'transaction' | 'duplicate' | 'database-ack' | 'response-created' | 'uncertain' };
+  used: boolean; closed: boolean; admitted: boolean; createEntered: boolean; databaseAcknowledged: boolean;
+  phase: 'new' | 'hashing' | 'admission' | 'transaction' | 'duplicate' | 'database-ack' | 'response-created' | 'uncertain' };
 const originals = new WeakMap<object, Original>();
-// Negative process-local fences only: no TTL/reset/recovery. Durable command and
-// target coordination across workers/restarts remains required before activation.
+// Fast negative fences only. The purpose's unique durable command AND canonical
+// email fences remain after pending/completed/rejected outcomes. Neither a row
+// nor a matching DTO can originate, adopt or resume this private invocation.
 const commands = new Map<string, Original>(), targets = new Map<string, Original>();
 const uuid = (value: unknown): value is string => typeof value === 'string'
   && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
@@ -70,7 +71,7 @@ export async function authorizeNativeAdminUserCreation(request: Request, input: 
   const targetId = crypto.randomUUID(); if (!uuid(targetId)) return null;
   const own: Original = { id, email, sessionRef: authSessionRef, verifiedAt: 0, targetEmail: command.email, targetName: command.name,
     targetId, password: command.password, commandRef, startedAt, deadline, expiresAt: Math.min(startedAt + 25_000, exp * 1000),
-    origin, signal, used: false, closed: false, createEntered: false, databaseAcknowledged: false, phase: 'new' };
+    origin, signal, used: false, closed: false, admitted: false, createEntered: false, databaseAcknowledged: false, phase: 'new' };
   check(own); const row = await account(id); check(own);
   if (!eligible(row, id, email) || !row) { own.password = null; return null; }
   own.verifiedAt = row.emailVerified!.getTime();
@@ -92,17 +93,50 @@ export async function applyNativeAdminUserCreation(original: NativeAdminUserCrea
     if (!password) throw Error('Admin user creation unconfirmed');
     const hashedPassword = await bcrypt.hash(password, 12); retained(original);
     if (typeof hashedPassword !== 'string' || !/^\$2[aby]\$12\$[./A-Za-z0-9]{53}$/.test(hashedPassword)) throw Error('Admin user creation unconfirmed');
-    own.phase = 'transaction';
-    const created = await prisma.$transaction(async tx => {
+    const fence = { id: own.commandRef, userId: own.id, email: own.email, sessionRef: own.sessionRef,
+      targetUserId: own.targetId, targetEmail: own.targetEmail, state: 'pending', createdAt: new Date(own.startedAt) };
+    const matches = (row: { id: string; userId: string; email: string; sessionRef: string; targetUserId: string;
+      targetEmail: string; state: string; createdAt: Date; completedAt: Date | null } | null) => !!row
+      && row.id === fence.id && row.userId === fence.userId && row.email === fence.email && row.sessionRef === fence.sessionRef
+      && row.targetUserId === fence.targetUserId && row.targetEmail === fence.targetEmail && row.state === 'pending'
+      && row.createdAt instanceof Date && row.createdAt.getTime() === own.startedAt && row.completedAt === null;
+    own.phase = 'admission';
+    const admitted = await prisma.$transaction(async tx => {
       retained(original);
       const rows = await tx.$queryRaw<AdminRow[]>`SELECT id,email,"emailVerified" FROM users WHERE id=${own.id} FOR UPDATE`;
       retained(original); const row = rows[0];
       if (rows.length !== 1 || !row || !eligible(row, own.id, own.email) || row.emailVerified?.getTime() !== own.verifiedAt) throw Error('Admin user creation unconfirmed');
+      // This commit is independent of the business effect. No password/hash or
+      // caller callback is persisted. Unique violations never trigger a read,
+      // upsert, retry or adoption of a different original.
+      const created = await tx.adminUserCreationAttempt.create({ data: fence });
+      retained(original); if (!matches(created)) throw Error('Admin user creation unconfirmed');
+      return true;
+    }, { maxWait: 5000, timeout: 15000 });
+    retained(original); if (admitted !== true) throw Error('Admin user creation unconfirmed');
+    own.admitted = true;
+    own.phase = 'transaction';
+    const created = await prisma.$transaction(async tx => {
+      retained(original); if (!own.admitted) throw Error('Admin user creation unconfirmed');
+      const rows = await tx.$queryRaw<AdminRow[]>`SELECT id,email,"emailVerified" FROM users WHERE id=${own.id} FOR UPDATE`;
+      retained(original); const row = rows[0];
+      if (rows.length !== 1 || !row || !eligible(row, own.id, own.email) || row.emailVerified?.getTime() !== own.verifiedAt) throw Error('Admin user creation unconfirmed');
+      const pending = await tx.adminUserCreationAttempt.findUnique({ where: { id: own.commandRef } });
+      retained(original); if (!matches(pending)) throw Error('Admin user creation unconfirmed');
       const existing = await tx.user.findUnique({ where: { email: own.targetEmail }, select: { id: true } });
-      retained(original); if (existing) return null; // denial only, never adoption
+      retained(original);
+      if (existing) {
+        // A known duplicate is a negative terminal decision, never adoption of
+        // that account or confirmation of any previous creation.
+        const rejected = await tx.adminUserCreationAttempt.updateMany({ where: fence, data: { state: 'rejected', completedAt: new Date() } });
+        if (rejected.count !== 1) throw Error('Admin user creation unconfirmed');
+        return null;
+      }
       own.createEntered = true;
       const value = await tx.user.create({ data: { id: own.targetId, email: own.targetEmail, name: own.targetName, password: hashedPassword }, select: { id: true, email: true, name: true } });
       if (!value || value.id !== own.targetId || value.email !== own.targetEmail || value.name !== own.targetName) throw Error('Admin user creation unconfirmed');
+      const completed = await tx.adminUserCreationAttempt.updateMany({ where: fence, data: { state: 'completed', completedAt: new Date() } });
+      if (completed.count !== 1) throw Error('Admin user creation unconfirmed');
       // This same producer completes after dispatch even if HTTP retires.
       // No dependent business action or late session refresh follows create.
       return { id: value.id, email: value.email, name: value.name };
