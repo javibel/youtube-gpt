@@ -34,4 +34,18 @@ for(const version of ['16.3.3','16.3.7','16.3.6-canary.1'])test('unreviewed comp
 for(const file of Object.keys(policy.files))test('tampered pinned configuration/compiler blocked '+file,()=>assert.throws(()=>planner({tamper:file}).plan({}),/compile configuration changed/));
 for(const args of [['--experimental-build-mode','generate'],['--webpack'],['--help']])test('mode override blocked '+args.join(' '),()=>assert.throws(()=>planner().plan({},args),/accepts no mode overrides/));
 test('redirected build output is blocked',()=>assert.throws(()=>planner({redirect:true}).plan({}),/redirected build output/));
+test('only the isolated compiler selects the guarded PostCSS worker backend',()=>{
+ const ts=require('typescript');
+ const javascript=ts.transpileModule(fs.readFileSync(path.join(repo,'next.config.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+ for(const value of [undefined,'0','true','1']){
+  const module={exports:{}},environment=value===undefined?{}:{YTV_MIGRATION_COMPILE:value};
+  vm.runInNewContext(javascript,{module,exports:module.exports,process:{env:environment}},{filename:'next.config.ts'});
+  const config=module.exports.default;
+  if(value==='1'){
+   assert.equal(config.experimental.workerThreads,true);
+   assert.equal(config.experimental.useTypeScriptCli,false);
+   assert.equal(config.experimental.turbopackPluginRuntimeStrategy,'workerThreads');
+  }else assert.equal(config.experimental,undefined);
+ }
+});
 console.log('PASS: '+passed+' compile policy checks; no compiler, network or application execution');
