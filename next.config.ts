@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   // The native child-process pool has failed before connecting its IPC socket.
   // Normal application configuration and startup remain unchanged.
   ...(process.env.YTV_MIGRATION_COMPILE === '1'
-    ? { experimental: { workerThreads: true, useTypeScriptCli: false, turbopackPluginRuntimeStrategy: 'workerThreads' as const } }
+    ? { experimental: { workerThreads: true, cpus: 1, useTypeScriptCli: false, turbopackPluginRuntimeStrategy: 'workerThreads' as const } }
     : {}),
   async redirects() {
     return [

@@ -43,6 +43,7 @@ test('only the isolated compiler selects the guarded PostCSS worker backend',()=
   const config=module.exports.default;
   if(value==='1'){
    assert.equal(config.experimental.workerThreads,true);
+   assert.equal(config.experimental.cpus,1);
    assert.equal(config.experimental.useTypeScriptCli,false);
    assert.equal(config.experimental.turbopackPluginRuntimeStrategy,'workerThreads');
   }else assert.equal(config.experimental,undefined);
