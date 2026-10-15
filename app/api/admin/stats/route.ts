@@ -11,6 +11,8 @@ export async function GET(request: Request) {
   const startedAt=Date.now(),deadline=performance.now()+25000,signal=request.signal,controller=new AbortController();
   const cookie=request.headers.get('cookie'),captured={signal:controller.signal,headers:new Headers(cookie?{cookie}:{})} as Request;
   const yearlyPriceId=process.env.STRIPE_PRO_YEARLY_PRICE_ID;
+  // Correlation only: this caller value never originates an admin grant.
+  const readRef=request.headers.get('X-YTV-Read-Ref');
   let retired=false,rejectWait!:(error:Error)=>void,original:NativeAdminStats|null=null;
   const stopped=new Promise<never>((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
   const retire=()=>{if(!retired){retired=true;controller.abort();rejectWait(Error('Admin statistics unconfirmed'));}};
@@ -19,9 +21,13 @@ export async function GET(request: Request) {
   const run=async<T,>(operation:()=>Promise<T>)=>{check();const pending=Promise.resolve().then(()=>{check();return operation();});void pending.catch(()=>{});const value=await Promise.race([pending,stopped]);check();return value;};
   const json=(value:unknown,status=200)=>NextResponse.json(value,{status,headers:{'Cache-Control':'no-store'}});
   try{
+    if(readRef!==null&&!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(readRef))throw Error('Admin statistics unconfirmed');
     const gate=await run(()=>requireAdmin());if(!gate.ok)return gate.response;
     original=await run(()=>authorizeNativeAdminStats(captured));if(!original)return json({error:'No autorizado'},403);
-    const result=await run(()=>runNativeAdminStats(original!,context=>readAdminStats(context,yearlyPriceId)));
+    const result=await run(()=>runNativeAdminStats(original!,async context=>{
+      const value=await readAdminStats(context,yearlyPriceId);
+      return readRef===null?value:{...value,adminStatsRead:{readRef,userId:context.userId,asOf:context.asOf,expiresAt:context.expiresAt}};
+    }));
     check();const response=json(result);check();return response;
   }catch{return json({error:'admin_stats_unconfirmed'},503);}
   finally{clearTimeout(timer);signal.removeEventListener('abort',retire);if(original)closeNativeAdminStats(original);controller.abort();}

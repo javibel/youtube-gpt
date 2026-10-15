@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useAdminStats } from '@/lib/use-admin-stats';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos', description: 'Descripciones', caption: 'Captions',
@@ -14,14 +15,6 @@ const TEMPLATE_COLORS: Record<string, string> = {
   thumbnail: '#ec4899', script: '#22c55e',
 };
 
-type AdminData = {
-  overview: { totalUsers: number; proUsers: number; freeUsers: number; mrr: number; conversionRate: number; totalGenerations: number };
-  thisMonth: { newUsers: number; newUsersLastMonth: number; generations: number; generationsLastMonth: number };
-  templateBreakdown: { template: string; count: number }[];
-  daily: { date: string; count: number }[];
-  recentUsers: { id: string; email: string; name: string | null; createdAt: string; isPro: boolean; plan: string; generationCount: number }[];
-  recentGenerations: { id: string; template: string; createdAt: string; tokensUsed: number | null; userEmail: string }[];
-};
 type FeedbackItem = {
   id: string; token: string; lang: string; rating: number | null; comment: string | null;
   submittedAt: string | null; createdAt: string;
@@ -56,9 +49,8 @@ function StatCard({ label, value, sub, color = 'var(--yv-brand)' }: { label: str
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [data, setData] = useState<AdminData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const stats=useAdminStats(session,status);
+  const {data,loading,error}=stats;
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [reviews, setReviews] = useState<{ id: string; rating: number; text: string; status: string; createdAt: string; user: { email: string; name: string | null } }[]>([]);
@@ -85,11 +77,6 @@ export default function AdminPage() {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated' && !(session?.user as { isAdmin?: boolean })?.isAdmin) { router.push('/dashboard'); return; }
     if (status === 'authenticated') {
-      fetch('/api/admin/stats')
-        .then(r => r.json())
-        .then(d => { if (d.error) setError(d.error); else setData(d); })
-        .catch(e => setError(String(e)))
-        .finally(() => setLoading(false));
       fetch('/api/admin/reviews')
         .then(r => r.json())
         .then(d => { if (d.reviews) setReviews(d.reviews); })
@@ -108,7 +95,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/create-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: createEmail, name: createName, password: createPassword }) });
       const d = await res.json();
-      if (d.ok) { setCreateMsg({ ok: true, text: `Usuario ${d.user.email} creado.` }); setCreateEmail(''); setCreateName(''); setCreatePassword(''); fetch('/api/admin/stats').then(r => r.json()).then(d => { if (!d.error) setData(d); }); }
+      if (d.ok) { setCreateMsg({ ok: true, text: `Usuario ${d.user.email} creado.` }); setCreateEmail(''); setCreateName(''); setCreatePassword(''); stats.refresh(); }
       else setCreateMsg({ ok: false, text: d.error ?? 'Error' });
     } catch { setCreateMsg({ ok: false, text: 'Error de conexión' }); }
     finally { setCreating(false); }
@@ -134,7 +121,7 @@ export default function AdminPage() {
         const labels: Record<string, string> = { free: 'Free', pro: 'Pro', business: 'Business' };
         setGrantMsg({ ok: true, text: `${labels[d.plan]} activado para ${grantEmail}${d.currentPeriodEnd ? ` hasta ${new Date(d.currentPeriodEnd).toLocaleDateString('es-ES')}` : ''}.` });
         setGrantEmail('');
-        fetch('/api/admin/stats').then(r => r.json()).then(d => { if (!d.error) setData(d); });
+        stats.refresh();
       }
       else setGrantMsg({ ok: false, text: d.error ?? 'Error' });
     } catch { setGrantMsg({ ok: false, text: 'Error de conexión' }); }
@@ -156,7 +143,7 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/delete-user', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
       const result = await res.json();
       if (result.error) { alert(result.error); return; }
-      setData(prev => prev ? { ...prev, recentUsers: prev.recentUsers.filter(u => u.id !== userId), overview: { ...prev.overview, totalUsers: prev.overview.totalUsers - 1 } } : prev);
+      stats.refresh();
     } catch { alert('Error al eliminar'); }
     finally { setDeleting(null); setConfirmDeleteId(null); }
   }
@@ -172,7 +159,7 @@ export default function AdminPage() {
     );
   }
 
-  if (error) return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--ink)' }}><p className="text-sm" style={{ color: '#f87171' }}>{error}</p></div>;
+  if (error) return <DashboardShell><div role="alert" className="p-6"><p>{error}</p><button type="button" onClick={stats.refresh}>Actualizar estadísticas</button></div></DashboardShell>;
   if (!data) return null;
 
   const { overview, thisMonth, templateBreakdown, daily, recentUsers, recentGenerations } = data;
@@ -193,7 +180,7 @@ export default function AdminPage() {
         <div className="yv-page-header">
           <div className="yv-page-header__left">
             <h1 className="yv-page-header__title">Panel de administración</h1>
-            <p className="yv-page-header__desc">Métricas en tiempo real de YTubViral</p>
+            <p className="yv-page-header__desc">Agregados almacenados. Frescura sin confirmar; conciliación no evaluada.</p>
           </div>
           <div className="yv-page-header__actions flex-wrap">
             <a href="/admin/ai-configuration" className="rounded-lg border px-4 py-2 text-sm">Perfiles de IA</a>
@@ -211,10 +198,12 @@ export default function AdminPage() {
           </div>
         </div>
 
+        <button type="button" onClick={stats.refresh}>Actualizar estadísticas</button>
+
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Usuarios totales" value={overview.totalUsers} sub={`${overview.freeUsers} free · ${overview.proUsers} pro`} />
-          <StatCard label="MRR" value={`${overview.mrr.toFixed(2).replace('.', ',')}€`} sub={`${overview.proUsers} Pro activos`} color="#fbbf24" />
+          <StatCard label="MRR estimado" value={`${overview.mrr.toFixed(2).replace('.', ',')}€`} sub="Estimación con precios fijos; sin conciliación de cobros" color="#fbbf24" />
           <StatCard label="Conversión Free→Pro" value={`${overview.conversionRate.toFixed(1)}%`} color="#a855f7" />
           <StatCard label="Generaciones totales" value={overview.totalGenerations.toLocaleString('es-ES')} sub={`${thisMonth.generations} este mes`} color="#22c55e" />
         </div>
