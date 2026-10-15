@@ -1,5 +1,14 @@
 # Anthropic protocol preparation
 
+2026-10-15: the explicit HTTP/HTTPS transport and adapter composition are now
+implemented in `anthropic-http.cjs`, `anthropic-https.cjs` and
+`anthropic-transport.cjs`; see [their scope](anthropic-transport.md). Both original
+provider adapters can join the shared server runtime. The guarded fixture uses
+that shared runtime with mock transports. Historical statements below about a
+future transport/bootstrap describe the earlier implementation. Real provider,
+TLS, account/catalog/pricing, quality and operational acceptance remain pending;
+ordinary startup is still disabled.
+
 `anthropic.cjs` translates the portable contract through an injected transport. It neither imports the SDK nor reads secrets nor chooses a default model. Tests inject synthetic messages and a synthetic tariff; no provider requests run.
 
 The installed SDK 0.92.0 declarations were checked for message blocks, stop reasons, URL images, web search and per-request `maxRetries`, `timeout` and `signal`. Official documentation checked on 2026-09-14:
