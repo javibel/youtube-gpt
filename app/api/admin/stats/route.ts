@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     original=await run(()=>authorizeNativeAdminStats(captured));if(!original)return json({error:'No autorizado'},403);
     const result=await run(()=>runNativeAdminStats(original!,async context=>{
       const value=await readAdminStats(context,yearlyPriceId);
-      return readRef===null?value:{...value,adminStatsRead:{readRef,userId:context.userId,asOf:context.asOf,expiresAt:context.expiresAt}};
+      return readRef===null?value:{...value,adminStatsRead:{readRef,userId:context.userId,email:context.email,asOf:context.asOf,expiresAt:context.expiresAt}};
     }));
     check();const response=json(result);check();return response;
   }catch{return json({error:'admin_stats_unconfirmed'},503);}

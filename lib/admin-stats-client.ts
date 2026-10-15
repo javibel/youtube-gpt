@@ -56,7 +56,7 @@ export function beginAdminStatsRead(owner:AdminStatsOwner,current:()=>boolean,on
     const body=await wait(()=>response.text());if(body.length>1024*1024)throw Error('Unconfirmed admin statistics');
     const parsed:unknown=JSON.parse(body);check();if(!object(parsed,['overview','thisMonth','templateBreakdown','daily','recentUsers','recentGenerations','dataQuality','adminStatsRead']))throw Error('Unconfirmed admin statistics');
     const receipt=parsed.adminStatsRead;
-    if(!object(receipt,['readRef','userId','asOf','expiresAt'])||receipt.readRef!==readRef||receipt.userId!==captured.id
+    if(!object(receipt,['readRef','userId','email','asOf','expiresAt'])||receipt.readRef!==readRef||receipt.userId!==captured.id||receipt.email!==captured.email
       ||!count(receipt.asOf)||receipt.asOf<startedAt||receipt.asOf>Date.now()||!count(receipt.expiresAt)||receipt.expiresAt<=receipt.asOf||receipt.expiresAt-receipt.asOf>25000)throw Error('Unconfirmed admin statistics');
     expiresAt=Math.min(expiresAt,receipt.expiresAt);check();clearTimeout(timer);timer=setTimeout(retire,Math.max(0,expiresAt-Date.now()));
     const data=decode(parsed);check();const result=Object.freeze({}) as AdminStatsDisplay;displays.set(result,{owner:own,data});return result;

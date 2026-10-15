@@ -4,7 +4,7 @@ import { ADMIN_EMAIL } from '@/lib/admin-email';
 
 declare const adminStatsBrand: unique symbol;
 export type NativeAdminStats = { readonly [adminStatsBrand]: true };
-export type AdminStatsRead = Readonly<{ userId: string; asOf: number; expiresAt: number; step: <T>(operation: () => Promise<T>) => Promise<T> }>;
+export type AdminStatsRead = Readonly<{ userId: string; email: string; asOf: number; expiresAt: number; step: <T>(operation: () => Promise<T>) => Promise<T> }>;
 type Original = { id: string; email: string; sessionRef: string; issuedAt: number; tokenExpires: number;
   verifiedAt: number; startedAt: number; deadline: number; expiresAt: number; signal: AbortSignal; origin: string; used: boolean };
 const originals = new WeakMap<object, Original>();
@@ -61,7 +61,7 @@ export async function runNativeAdminStats(original: NativeAdminStats, read: (con
     if (!eligible(row, own.id, own.email) || row?.emailVerified?.getTime() !== own.verifiedAt) throw Error('Admin statistics unconfirmed');
   };
   await recheck();
-  const context: AdminStatsRead = Object.freeze({ userId: own.id, asOf: own.startedAt, expiresAt: own.expiresAt, async step<T>(operation: () => Promise<T>) {
+  const context: AdminStatsRead = Object.freeze({ userId: own.id, email: own.email, asOf: own.startedAt, expiresAt: own.expiresAt, async step<T>(operation: () => Promise<T>) {
     retained(original);
     const pending = Promise.resolve().then(() => { retained(original); return operation(); });
     void pending.catch(() => {});
