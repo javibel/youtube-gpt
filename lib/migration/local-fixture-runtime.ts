@@ -1,7 +1,6 @@
 import 'server-only';
 import { connectLocalFixture } from './local-fixture.cjs';
-import { installTaskRuntime } from '@/lib/ai/task-runtime';
-import { installConfigurationRuntime } from '@/lib/ai/configuration-runtime';
+import { installSharedRuntime } from '@/lib/ai/shared-runtime';
 import { installBestTimeFixtureEntry } from './best-time-entry';
 import { bestTimeFixture, createBestTimeFixtureTransport } from './best-time-fixture.cjs';
 import { createBestTimeYouTubeSources } from '@/lib/best-time-youtube-sources';
@@ -15,8 +14,8 @@ export function installLocalFixture(): Promise<void> {
     const composition = await lifecycle.openResource(() => connectLocalFixture());
     try {
       lifecycle.check();
-      installTaskRuntime(composition.taskFactory);
-      installConfigurationRuntime(composition.configurationDependencies);
+      await lifecycle.runWork(() => installSharedRuntime(composition.runtimeDependencies, {checkBeforeInstall:lifecycle.check}));
+      lifecycle.check();
       const owner = Object.freeze({ id: bestTimeFixture.userId, email: bestTimeFixture.email });
       const transport = createBestTimeFixtureTransport();
       installBestTimeFixtureEntry(request => lifecycle.runOriginal(() => runBoundBestTimeOriginal(request,

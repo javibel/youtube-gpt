@@ -16,18 +16,19 @@ export type TaskIdentity = ({ userId: string; serviceId?: never } | { serviceId:
 };
 type TaskFactory = (identity: TaskIdentity) => Promise<MessagesTask>;
 const runtimeKey = Symbol.for('ytubviral.ai.task-runtime.v1');
-const shared = globalThis as typeof globalThis & { [runtimeKey]?: TaskFactory };
+const bundleKey = Symbol.for('ytubviral.ai.shared-runtime.v1');
+const shared = globalThis as typeof globalThis & { [runtimeKey]?: TaskFactory; [bundleKey]?: Readonly<{factory:TaskFactory}> };
 
 // Trusted server bootstrap owns the factory, authenticated budget mapping and
 // durable store. This module has no public configuration endpoint or SDK fallback.
 export function installTaskRuntime(candidate: TaskFactory): void {
   if (typeof candidate !== 'function') throw new Error('A trusted task factory is required');
-  if (shared[runtimeKey]) throw new Error('Task runtime is already installed');
+  if (shared[runtimeKey] || shared[bundleKey]) throw new Error('Task runtime is already installed');
   Object.defineProperty(shared, runtimeKey, { value: candidate, writable: false, configurable: false });
 }
 
 export async function getMessagesTask(identity: TaskIdentity, options: { signal?: AbortSignal } = {}): Promise<MessagesTask> {
-  const factory = shared[runtimeKey];
+  const factory = shared[bundleKey]?.factory ?? shared[runtimeKey];
   if (!factory) throw new Error('Task control is unavailable');
   if (options.signal?.aborted) throw new Error('Task control was cancelled');
   if (!options.signal) return factory(identity);
