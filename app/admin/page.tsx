@@ -8,6 +8,7 @@ import { useAdminStats } from '@/lib/use-admin-stats';
 import { useAdminReviews } from '@/lib/use-admin-reviews';
 import { useAdminFeedback } from '@/lib/use-admin-feedback';
 import { useAdminReviewModeration } from '@/lib/use-admin-review-moderation';
+import { useAdminUserCreation } from '@/lib/use-admin-user-creation';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos', description: 'Descripciones', caption: 'Captions',
@@ -57,11 +58,7 @@ export default function AdminPage() {
   const feedbackRead=useAdminFeedback(session,status);
   const feedbacks=feedbackRead.data?.feedbacks??[];
   const feedbacksLoading=feedbackRead.loading;
-  const [createEmail, setCreateEmail] = useState('');
-  const [createName, setCreateName] = useState('');
-  const [createPassword, setCreatePassword] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const userCreation=useAdminUserCreation(session,status,data,stats.refresh);
   const [grantEmail, setGrantEmail] = useState('');
   const [grantPlan, setGrantPlan] = useState<'pro' | 'business' | 'free'>('pro');
   const [grantDays, setGrantDays] = useState(60);
@@ -76,16 +73,7 @@ export default function AdminPage() {
     if (status === 'authenticated' && !(session?.user as { isAdmin?: boolean })?.isAdmin) { router.push('/dashboard'); return; }
   }, [status, session, router]);
 
-  async function handleCreateUser(e: React.FormEvent) {
-    e.preventDefault(); setCreating(true); setCreateMsg(null);
-    try {
-      const res = await fetch('/api/admin/create-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: createEmail, name: createName, password: createPassword }) });
-      const d = await res.json();
-      if (d.ok) { setCreateMsg({ ok: true, text: `Usuario ${d.user.email} creado.` }); setCreateEmail(''); setCreateName(''); setCreatePassword(''); stats.refresh(); }
-      else setCreateMsg({ ok: false, text: d.error ?? 'Error' });
-    } catch { setCreateMsg({ ok: false, text: 'Error de conexión' }); }
-    finally { setCreating(false); }
-  }
+  function handleCreateUser(e:React.FormEvent){e.preventDefault();userCreation.create();}
 
   async function handleSendFeedback(e: React.FormEvent) {
     e.preventDefault(); setSendingFeedback(true); setFeedbackSendMsg(null);
@@ -419,14 +407,14 @@ export default function AdminPage() {
           <div className="yv-card p-5">
             <p className="text-sm font-display font-semibold mb-1">Crear usuario</p>
             <p className="text-[13px] mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Registra manualmente una cuenta nueva.</p>
-            <form onSubmit={handleCreateUser} className="space-y-3">
-              <input type="email" required placeholder="Email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} className="soft-field" />
-              <input type="text" placeholder="Nombre (opcional)" value={createName} onChange={e => setCreateName(e.target.value)} className="soft-field" />
-              <input type="password" required placeholder="Contraseña" value={createPassword} onChange={e => setCreatePassword(e.target.value)} className="soft-field" />
-              <button type="submit" disabled={creating} className="btn-offset w-full py-2.5 text-sm rounded-xl">
-                {creating ? 'Creando...' : 'Crear usuario'}
+            <form onSubmit={handleCreateUser} className="space-y-3" aria-busy={userCreation.creating}>
+              <input type="email" required placeholder="Email" maxLength={254} value={userCreation.form.email} onChange={e => userCreation.change('email',e.target.value)} className="soft-field" />
+              <input type="text" placeholder="Nombre (opcional)" maxLength={200} value={userCreation.form.name} onChange={e => userCreation.change('name',e.target.value)} className="soft-field" />
+              <input type="password" required placeholder="Contraseña" autoComplete="new-password" minLength={8} value={userCreation.form.password} onChange={e => userCreation.change('password',e.target.value)} className="soft-field" />
+              <button type="submit" disabled={!userCreation.canCreate} className="btn-offset w-full py-2.5 text-sm rounded-xl">
+                {userCreation.creating ? 'Creando...' : 'Crear usuario'}
               </button>
-              {createMsg && <p className="text-[13px] font-mono-jb" style={{ color: createMsg.ok ? '#22c55e' : '#f87171' }}>{createMsg.text}</p>}
+              {userCreation.message && <p role="status" className="text-[13px] font-mono-jb" style={{ color: userCreation.confirmed ? '#22c55e' : '#f87171' }}>{userCreation.message}</p>}
             </form>
           </div>
 
