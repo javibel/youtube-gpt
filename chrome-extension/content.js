@@ -541,27 +541,27 @@ function wireShellScorecard(root, scorecardData, videoId, loggedIn) {
   }
 }
 
-function retireDailyIdeasDisplay() {
-  const root=document.getElementById('ytv-shell'),pane=root?.querySelector('.ytv-shell-pane[data-pane="ideas"]');
-  if(pane)pane.innerHTML='';
-  document.querySelectorAll('.ytv-cs-ideas').forEach(node=>node.remove());
-  shellRendered.ideas=false;
+// Stored daily batches are private to an original document/account/day/view.
+const dailyIdeasDisplays=new Map(),dailyIdeasReceipts=new WeakMap();let dailyIdeasRevision=0;
+function dailyIdeasViewCurrent(data,owner){const own=data&&dailyIdeasReceipts.get(data);if(!own||owner&&own.owner!==owner||!own.closed)return false;try{own.check();return true;}catch{return false;}}
+function retireDailyIdeasDisplay(){dailyIdeasRevision++;for(const own of dailyIdeasDisplays.values())own.retire();shellRendered.ideas=false;}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang')))retireDailyIdeasDisplay();});
+document.addEventListener('yt-navigate-finish',()=>{for(const own of dailyIdeasDisplays.values())if(!own.scope())own.retire();});
+function freezeDailyIdeas(value){if(value&&typeof value==='object'){for(const x of Object.values(value))freezeDailyIdeas(x);Object.freeze(value);}return value;}
+function paintDailyIdeasForView(owner,data,html,append=false){const own=data&&dailyIdeasReceipts.get(data);if(!dailyIdeasViewCurrent(data,owner)||typeof html!=='string')return false;const previous=new Set(owner.children);if(append)owner.insertAdjacentHTML('beforeend',html);else owner.innerHTML=html;own.nodes.push(...Array.from(owner.children).filter(n=>!previous.has(n)));own.painted=true;return true;}
+function requestDailyIdeasForDisplay(owner,surface='ideas',coherent=()=>true){
+ if(!owner?.isConnected||!['ideas','channel'].includes(surface))return Promise.reject(Error('daily_ideas_unconfirmed'));
+ const previous=dailyIdeasDisplays.get(owner),day=new Date(Date.now()).toISOString().slice(0,10),language=_lang;
+ if(previous&&!previous.retired&&!previous.closed&&previous.surface===surface&&previous.scope())return previous.wait;previous?.retire();
+ const own={owner,surface,day,language,viewRef:crypto.randomUUID(),href:location.href,revision:dailyIdeasRevision,startedAt:Date.now(),deadline:performance.now()+30000,expiresAt:Math.min(Date.now()+30000,Date.parse(day+'T00:00:00Z')+86400000),closed:false,retired:false,nodes:[],painted:false};dailyIdeasDisplays.set(owner,own);
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>dailyIdeasDisplays.get(owner)===own&&owner.isConnected&&own.revision===dailyIdeasRevision&&location.href===own.href&&_lang===language&&coherent();
+ own.retire=()=>{if(!own.retired){own.retired=true;void sendMsg({type:'DAILY_IDEAS_RETIRE',viewRef:own.viewRef}).catch(()=>{});clearTimeout(own.timer);own.observer?.disconnect();for(const node of own.nodes)node.remove();if(dailyIdeasDisplays.get(owner)===own)dailyIdeasDisplays.delete(owner);rejectWait(Error('daily_ideas_unconfirmed'));}};
+ own.check=()=>{if(own.retired||!own.scope()||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||new Date(Date.now()).toISOString().slice(0,10)!==day){own.retire();throw Error('daily_ideas_unconfirmed');}};
+ own.timer=setTimeout(own.retire,Math.max(1,Math.min(30000,own.expiresAt-Date.now())));own.observer=new MutationObserver(()=>{if(!own.scope()||own.painted&&own.nodes.some(n=>!owner.contains(n)))own.retire();});own.observer.observe(document.body,{childList:true,subtree:true,attributes:true});
+ own.wait=(async()=>{try{own.check();const data=await Promise.race([sendMsg({type:'DAILY_IDEAS',viewRef:own.viewRef,surface,lang:language,day}),stopped]);own.check();if(!data||data.error||data.viewRef!==own.viewRef||!data.readRef||data.surface!==surface||data.language!==language||data.requestedDate!==day||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.startedAt+30000)throw Error(data?.error==='not_logged_in'?'not_logged_in':'daily_ideas_unconfirmed');own.expiresAt=Math.min(own.expiresAt,data.expiresAt);const result=freezeDailyIdeas(data);own.check();const ack=await Promise.race([sendMsg({type:'DAILY_IDEAS_ACK',readRef:data.readRef,viewRef:own.viewRef,surface}),stopped]);own.check();if(!ack||ack.closed!==true||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef||ack.surface!==surface)throw Error('daily_ideas_unconfirmed');own.closed=true;dailyIdeasReceipts.set(result,own);clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),own.expiresAt-Date.now())));return result;}catch(e){own.retire();throw e;}})();return own.wait;
 }
-chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))retireDailyIdeasDisplay();});
-async function requestDailyIdeasForDisplay() {
-  const revision=studioSeoSessionRevision,day=new Date(Date.now()).toISOString().slice(0,10),deadline=performance.now()+30000;
-  let timer;
-  try {
-    const original=sendMsg({type:'DAILY_IDEAS'});
-    const data=await Promise.race([original,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Ideas unconfirmed')),30000);})]);
-    if(revision!==studioSeoSessionRevision||performance.now()>=deadline||new Date(Date.now()).toISOString().slice(0,10)!==day
-      ||data?.requestedDate!==day||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now())throw Error('Ideas unconfirmed');
-    return data;
-  } finally { clearTimeout(timer); }
-}
-function renderDailyIdeasMeta(data) {
-  return `<div class="ytv-hint">${t('Lote guardado', 'Stored batch')} ${escapeHtml(data.date || data.requestedDate)} UTC · ${t('Actualidad sin confirmar', 'Freshness unconfirmed')}</div>`;
-}
+function renderDailyIdeasMeta(data){if(!dailyIdeasViewCurrent(data))return '';return '<div class="ytv-hint">'+t('Lote guardado','Stored batch')+' '+escapeHtml(data.date||data.requestedDate)+' UTC · '+t('Actualidad sin confirmar','Freshness unconfirmed')+'</div>';}
 
 // ── "Tu canal" tab ───────────────────────────────────────────────
 async function renderShellChannelTab(body) {
@@ -583,8 +583,8 @@ async function renderShellChannelTab(body) {
   }
   body.innerHTML = renderChannelStatsWidget(data);
   shellRendered.channel = true; // cache only a successful render
-  requestDailyIdeasForDisplay().then((ideaData) => {
-    if (body.isConnected && ideaData?.ideas?.length) body.insertAdjacentHTML('beforeend', renderDailyIdeasMeta(ideaData)+renderDailyIdeasMini(ideaData.ideas));
+  requestDailyIdeasForDisplay(body,'channel',()=>shellState.open&&shellState.tab==='channel').then((ideaData) => {
+    if (ideaData?.ideas?.length) paintDailyIdeasForView(body,ideaData,renderDailyIdeasMeta(ideaData)+renderDailyIdeasMini(ideaData),true);
   }).catch(() => {});
 }
 
@@ -592,28 +592,20 @@ async function renderShellChannelTab(body) {
 async function renderShellIdeasTab(body) {
   body.innerHTML = renderLoading(t('Cargando ideas...', 'Loading ideas...'));
 
-  const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
-  if (!user) {
-    body.innerHTML = shellLoggedOutCta(
-      'Crea una cuenta gratis y conecta tu canal para recibir 5 ideas de vídeo cada mañana.',
-      'Create a free account and connect your channel to get 5 video ideas every morning.');
-    return; // don't cache — retry after sign-in
-  }
-
   let data;
   try {
-    data = await requestDailyIdeasForDisplay();
-  } catch {
-    if(body.isConnected)body.innerHTML=renderError(t('No se pudieron confirmar tus ideas.','Your ideas could not be confirmed.'));
+    data = await requestDailyIdeasForDisplay(body,'ideas',()=>shellState.open&&shellState.tab==='ideas');
+  } catch (error) {
+    if(body.isConnected)body.innerHTML=error.message==='not_logged_in'?shellLoggedOutCta():renderError(t('No se pudieron confirmar tus ideas.','Your ideas could not be confirmed.'));
     return;
   }
 
-  if(!body.isConnected)return;
+  if(!dailyIdeasViewCurrent(data,body))return;
 
   if (!data || !data.ideas || !data.ideas.length) {
     // channelConnected === false → really needs to connect. Otherwise (connected,
     // or unknown) today's batch just isn't generated yet — don't tell them to connect.
-    body.innerHTML = data && data.channelConnected === false
+    const emptyHtml = data && data.channelConnected === false
       ? `<div class="ytv-shell-cta">
           <p>${t('Conecta tu canal en YTubViral y cada mañana tendrás aquí 5 ideas de vídeo personalizadas.', 'Connect your channel on YTubViral and every morning you\'ll get 5 personalized video ideas here.')}</p>
           <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=shellideas" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Conectar canal →', 'Connect channel →')}</a>
@@ -622,12 +614,12 @@ async function renderShellIdeasTab(body) {
           <p>${t('Tus ideas de hoy aún no están listas — se generan cada mañana (~06:00 UTC). Vuelve más tarde.', "Today's ideas aren't ready yet — they're generated every morning (~06:00 UTC). Check back later.")}</p>
           <a href="https://ytubviral.com/generate?utm_source=extension&utm_medium=shellideas" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Ir al generador →', 'Open the generator →')}</a>
         </div>`;
-    return; // don't cache — state may change (connect channel / batch generated later today)
+    paintDailyIdeasForView(body,data,emptyHtml);
+    return; // a later foreground intent performs a new read
   }
   shellRendered.ideas = true;
-  sendMsg({ type: 'CLEAR_IDEAS_BADGE' }).catch(() => {}); // they're looking at the ideas now
   const ideas = data.ideas.slice(0, 5);
-  body.innerHTML = renderDailyIdeasMeta(data)+`<div class="ytv-ideas-body" style="max-height:none">${ideas.map((idea) => {
+  const html = renderDailyIdeasMeta(data)+`<div class="ytv-ideas-body" style="max-height:none">${ideas.map((idea) => {
     const title = t(idea.title_es, idea.title_en) || '';
     const desc = t(idea.idea_es, idea.idea_en) || '';
     const topic = encodeURIComponent(title);
@@ -637,6 +629,7 @@ async function renderShellIdeasTab(body) {
       <a href="https://ytubviral.com/generate?topic=${topic}&utm_source=extension&utm_medium=ideas" target="_blank">${t('Desarrollar →', 'Develop →')}</a>
     </div>`;
   }).join('')}</div>`;
+  paintDailyIdeasForView(body,data,html);
 }
 
 // ── "Coach" tab (P5 of the vidIQ teardown, 2026-09) ─────────────────────────────
@@ -1496,8 +1489,9 @@ function renderChannelStatsWidget(d) {
   `;
 }
 
-function renderDailyIdeasMini(ideas) {
-  const top = ideas.slice(0, 3);
+function renderDailyIdeasMini(data) {
+  if(!dailyIdeasViewCurrent(data)||!data.ideas)return '';
+  const top = data.ideas.slice(0, 3);
   return `
     <div class="ytv-cs-ideas">
       <div class="ytv-cs-ideas-title">💡 ${t('Ideas guardadas', 'Stored ideas')}</div>
@@ -2462,16 +2456,6 @@ function renderLoggedOutScore(title) {
 let lastUrl = location.href;
 let navTimer = null;
 
-let ideasBadgeChecked = false;
-async function maybePokeIdeasBadge() {
-  if (ideasBadgeChecked) return;
-  ideasBadgeChecked = true;
-  try {
-    const d = await requestDailyIdeasForDisplay(); // native read, never a per-day public cache
-    if (Array.isArray(d?.ideas) && d.ideas.length) sendMsg({ type: 'IDEAS_BADGE' }).catch(() => {});
-  } catch { /* not logged in / no ideas — nothing to badge */ }
-}
-
 async function onPageChange() {
   // v2.7: one persistent shell on document.body — mounted once, refreshed on nav.
   // No per-page panels to clean up, and no early return for logged-out users
@@ -2479,7 +2463,6 @@ async function onPageChange() {
   mountShell();
   refreshShell();
   hideHoverCard(); // a hover card from the previous page would otherwise float over the new one
-  maybePokeIdeasBadge(); // P6 — dot on the toolbar icon if there are fresh ideas today
 
   // YouTube Studio — the inline SEO panel stays next to the metadata editor.
   if (location.hostname === 'studio.youtube.com') {

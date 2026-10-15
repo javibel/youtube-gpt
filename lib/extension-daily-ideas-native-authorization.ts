@@ -4,7 +4,7 @@ import { projectExtensionDailyIdeas } from '@/lib/extension-daily-ideas-projecti
 declare const extensionDailyIdeasBrand: unique symbol;
 export type ExtensionDailyIdeasSession = { readonly [extensionDailyIdeasBrand]: true };
 type Owner = Readonly<{ id: string; email: string; name: string | null }>;
-const originals = new WeakMap<object, { owner: Owner; token: string; tokenId: string; expires: number; day: string; used: boolean }>();
+const originals = new WeakMap<object, { owner: Owner; token: string; tokenId: string; expires: number; verifiedAt:number; startedAt:number; deadline:number; horizon:number; day: string; used: boolean }>();
 const emailPattern = /^[^\s@,;<>"\x00-\x1f\x7f]+@[^\s@,;<>"\x00-\x1f\x7f]+\.[^\s@,;<>"\x00-\x1f\x7f]+$/;
 export const validExtensionReadRef = (value: unknown): value is string => typeof value === 'string'
   && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
@@ -23,24 +23,26 @@ function eligible(row: Awaited<ReturnType<typeof lookup>>, token: string) {
 }
 const lookup = (token: string) => prisma.extensionToken.findUnique({ where: { token }, include: { user: { select: selectUser } } });
 export async function authorizeExtensionDailyIdeas(request: Request): Promise<ExtensionDailyIdeasSession | null> {
+  const startedAt=Date.now(),deadline=performance.now()+25_000;
   const header = request.headers.get('Authorization');
   if (!header || !/^Bearer [a-f0-9]{64}$/.test(header)) return null;
   const token=header.slice(7), day=new Date(Date.now()).toISOString().slice(0,10), row=await lookup(token);
-  if (!eligible(row, token) || !row || !row.user.email) return null;
+  if (!eligible(row, token) || !row || !row.user.email || Date.now()<startedAt || performance.now()>=deadline) return null;
   const original = Object.freeze({}) as ExtensionDailyIdeasSession;
   originals.set(original, { owner: Object.freeze({ id: row.user.id, email: row.user.email, name: row.user.name }),
-    token, tokenId: row.id, expires: row.expiresAt.getTime(), day, used: false });
+    token, tokenId: row.id, expires: row.expiresAt.getTime(), verifiedAt:row.user.emailVerified!.getTime(), startedAt,deadline,horizon:Math.min(row.expiresAt.getTime(),startedAt+25_000,Date.parse(day+'T00:00:00Z')+86400000),day,used:false });
   return original;
 }
 function retained(original: ExtensionDailyIdeasSession) {
   const own = original && typeof original === 'object' ? originals.get(original) : undefined;
-  if (!own || own.expires <= Date.now() || own.day !== new Date(Date.now()).toISOString().slice(0,10)) throw Error('Extension identity unconfirmed');
+  if (!own || Date.now()<own.startedAt || own.horizon<=Date.now() || performance.now()>=own.deadline || own.day !== new Date(Date.now()).toISOString().slice(0,10)) throw Error('Extension identity unconfirmed');
   return own;
 }
 export function checkExtensionDailyIdeas(original: ExtensionDailyIdeasSession): void { retained(original); }
-export async function readExtensionDailyIdeas(original: ExtensionDailyIdeasSession, readRef: string, beforeStep: () => void) {
+export async function readExtensionDailyIdeas(original: ExtensionDailyIdeasSession, readRef: string, beforeStep: () => void, view?:Readonly<{viewRef:string;language:'es'|'en';requestedDate:string}>) {
   const own = retained(original);
-  if (own.used || !validExtensionReadRef(readRef)) throw Error('Extension identity unconfirmed');
+  if (own.used || !validExtensionReadRef(readRef) || view&&(!validExtensionReadRef(view.viewRef)||!['es','en'].includes(view.language)||view.requestedDate!==own.day)) throw Error('Extension identity unconfirmed');
+  const binding=view&&Object.freeze({viewRef:view.viewRef,language:view.language,requestedDate:view.requestedDate});
   own.used = true;
   const check = () => { retained(original); beforeStep(); };
   check();
@@ -48,13 +50,15 @@ export async function readExtensionDailyIdeas(original: ExtensionDailyIdeasSessi
   check();
   const batch=channel?.channelId?await prisma.dailyIdea.findUnique({where:{userId_date:{userId:own.owner.id,date:own.day}},select:{userId:true,date:true,ideas:true,createdAt:true}}):null;
   check();
+  const projected=projectExtensionDailyIdeas(channel,batch,own.owner.id,own.day,Date.now());
+  const snapshot=Object.freeze({...projected,ideas:projected.ideas===null?null:Object.freeze(projected.ideas.map(x=>Object.freeze({...x}))),dataQuality:Object.freeze({...projected.dataQuality})});
   // This fresh read can only revoke the original grant, never select another
   // owner or renew the token horizon captured by the incoming credential.
   const current = await lookup(own.token);
   check();
   if (!eligible(current, own.token) || !current || current.id !== own.tokenId
     || current.userId !== own.owner.id || current.user.email !== own.owner.email
-    || current.expiresAt.getTime() !== own.expires) throw Error('Extension identity unconfirmed');
-  const result={...projectExtensionDailyIdeas(channel,batch,own.owner.id,own.day,Date.now()),readRef,expiresAt:own.expires};
+    || current.user.emailVerified?.getTime()!==own.verifiedAt || current.expiresAt.getTime() !== own.expires) throw Error('Extension identity unconfirmed');
+  const result={...snapshot,readRef,expiresAt:own.horizon,...(binding?{dailyIdeas:Object.freeze({readRef,...binding,userId:own.owner.id,expiresAt:own.horizon})}:{})};
   check(); return result;
 }

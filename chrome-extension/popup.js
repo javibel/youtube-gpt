@@ -1,7 +1,7 @@
 'use strict';
 let popupIdeasRevision=0;
 const popupIdeasSessionObserved=typeof chrome.storage?.onChanged?.addListener==='function';
-if(popupIdeasSessionObserved)chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token')){popupIdeasRevision++;popIdeas.classList.add('hidden');popIdeas.innerHTML='';}});
+if(popupIdeasSessionObserved)chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang'))){popupIdeasRevision++;popupIdeasOwn?.retire();}});
 
 const viewLogin = document.getElementById('view-login');
 const viewUser  = document.getElementById('view-user');
@@ -116,6 +116,23 @@ function showLoginView() {
   hideError();
 }
 
+// No public batch/date/actor can close or paint a popup view.
+let popupIdeasOwn=null;const popupIdeasReceipts=new WeakMap();
+function popupDailyIdeasCurrent(data){const own=data&&popupIdeasReceipts.get(data);if(!own||!own.closed)return false;try{own.check();return true;}catch{return false;}}
+async function loadPopupDailyIdeas(){
+ popupIdeasOwn?.retire();if(!popupIdeasSessionObserved)return;
+ const day=new Date(Date.now()).toISOString().slice(0,10),language=lang,own={viewRef:crypto.randomUUID(),day,language,revision:popupIdeasRevision,href:location.href,startedAt:Date.now(),deadline:performance.now()+30000,expiresAt:Math.min(Date.now()+30000,Date.parse(day+'T00:00:00Z')+86400000),retired:false,closed:false,nodes:[]};popupIdeasOwn=own;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.retire=()=>{if(!own.retired){own.retired=true;void sendMsg({type:'DAILY_IDEAS_RETIRE',viewRef:own.viewRef}).catch(()=>{});clearTimeout(own.timer);for(const n of own.nodes)n.remove();rejectWait(Error('daily_ideas_unconfirmed'));}};
+ own.check=()=>{if(own.retired||popupIdeasOwn!==own||own.revision!==popupIdeasRevision||!popIdeas.isConnected||location.href!==own.href||lang!==language||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||new Date(Date.now()).toISOString().slice(0,10)!==day){own.retire();throw Error('daily_ideas_unconfirmed');}};
+ own.timer=setTimeout(own.retire,Math.max(1,Math.min(30000,own.expiresAt-Date.now())));
+ try{own.check();const data=await Promise.race([sendMsg({type:'DAILY_IDEAS',viewRef:own.viewRef,surface:'popup',lang:language,day}),stopped]);own.check();if(!data||data.error||data.viewRef!==own.viewRef||!data.readRef||data.surface!=='popup'||data.language!==language||data.requestedDate!==day||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.startedAt+30000)throw Error('daily_ideas_unconfirmed');own.expiresAt=Math.min(own.expiresAt,data.expiresAt);Object.freeze(data);const ack=await Promise.race([sendMsg({type:'DAILY_IDEAS_ACK',readRef:data.readRef,viewRef:own.viewRef,surface:'popup'}),stopped]);own.check();if(!ack||ack.closed!==true||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef||ack.surface!=='popup')throw Error('daily_ideas_unconfirmed');own.closed=true;popupIdeasReceipts.set(data,own);clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),own.expiresAt-Date.now())));if(!popupDailyIdeasCurrent(data))throw Error('daily_ideas_unconfirmed');const n=data.ideas?.length??0;if(!n)return data;
+ popIdeas.innerHTML='<div class="pop-block-title">💡 '+t(n+' ideas guardadas',n+' stored ideas')+'</div><div class="pop-dim">'+data.date+' UTC · '+t('actualidad sin confirmar','freshness unconfirmed')+'</div><button class="btn btn-outline btn-sm" id="pop-ideas-open">'+t('Verlas en YouTube','Open them on YouTube')+'</button>';own.nodes.push(...popIdeas.children);popIdeas.classList.remove('hidden');
+ document.getElementById('pop-ideas-open').addEventListener('click',()=>{if(!popupDailyIdeasCurrent(data))return;chrome.tabs.query({active:true,currentWindow:true},tabs=>{if(!popupDailyIdeasCurrent(data))return;const id=tabs?.[0]?.id;if(id!=null)chrome.tabs.sendMessage(id,{type:'YTV_RECHECK_IDEAS'},()=>{void chrome.runtime.lastError;});window.close();});});return data;
+ }catch{own.retire();return undefined;}
+}
+window.addEventListener('pagehide',()=>popupIdeasOwn?.retire());
+
 // P6 — the popup as a command center, not just a login screen. Two live blocks for a
 // logged-in user: this week's channel momentum and today's ideas.
 async function loadDashboard() {
@@ -141,27 +158,7 @@ async function loadDashboard() {
     }
   });
 
-  const ideasDay=new Date(Date.now()).toISOString().slice(0,10),ideasRevision=popupIdeasRevision,ideasDeadline=popupIdeasSessionObserved?performance.now()+30000:0;
-  sendMsg({ type: 'DAILY_IDEAS' }).then((d) => {
-    if(!popupIdeasSessionObserved||ideasRevision!==popupIdeasRevision||performance.now()>=ideasDeadline||d?.requestedDate!==ideasDay||new Date(Date.now()).toISOString().slice(0,10)!==ideasDay||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now())return;
-    const n = Array.isArray(d?.ideas) ? d.ideas.length : 0;
-    if (!n) return;
-    popIdeas.innerHTML = `
-      <div class="pop-block-title">💡 ${t(`${n} ideas guardadas`, `${n} stored ideas`)}</div>
-      <div class="pop-dim">${d.date} UTC · ${t('actualidad sin confirmar','freshness unconfirmed')}</div>
-      <button class="btn btn-outline btn-sm" id="pop-ideas-open">${t('Verlas en YouTube', 'Open them on YouTube')}</button>`;
-    popIdeas.classList.remove('hidden');
-    document.getElementById('pop-ideas-open').addEventListener('click', () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tabId = tabs?.[0]?.id;
-        if (tabId != null) {
-          chrome.tabs.sendMessage(tabId, { type: 'YTV_RECHECK_IDEAS' }, () => { void chrome.runtime.lastError; });
-        }
-        window.close();
-      });
-    });
-    sendMsg({ type: 'CLEAR_IDEAS_BADGE' }).catch(() => {});
-  }).catch(() => {});
+  void loadPopupDailyIdeas();
 }
 
 async function checkVideoBanner() {

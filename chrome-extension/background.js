@@ -4,7 +4,7 @@ const API_BASE = 'https://ytubviral.com';
 const FETCH_TIMEOUT_MS = 15000;
 chrome.storage.onChanged.addListener((changes,area)=>{
   if(area==='local'&&Object.hasOwn(changes,'ytv_token')) { identityRevision++; retireExtensionIdentity(); }
-  if(area==='local'&&Object.hasOwn(changes,'ytv_lang')) { keywordsOriginal?.retire(); generationOriginal?.retire(); seoLiveOriginal?.retire(); coachOriginal?.retire(); coachConversation=null; }
+  if(area==='local'&&Object.hasOwn(changes,'ytv_lang')) { keywordsOriginal?.retire(); generationOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); coachOriginal?.retire(); coachConversation=null; }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -713,43 +713,40 @@ async function acknowledgeSeoLive(msg,sender){
  own.acknowledging=(async()=>{await seoLiveIdentityMarkers(check);const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('seo_live_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('seo_live_unconfirmed');await seoLiveIdentityMarkers(check);clearTimeout(own.timer);seoLiveOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,closed:true});})().catch(error=>{own.retire();throw error;});return own.acknowledging;
 }
 
-let dailyIdeasOriginal = null;
-async function readDailyIdeas() {
-  if(dailyIdeasOriginal)return dailyIdeasOriginal.wait;
-  const day=new Date(Date.now()).toISOString().slice(0,10),original={revision:identityRevision,retire:null,wait:null};dailyIdeasOriginal=original;
-  const deadline=performance.now()+30000;let retired=false,rejectWait,httpOriginal=null;
-  const stopped=new Promise((_,reject)=>{rejectWait=reject;});
-  const retire=()=>{if(!retired){retired=true;rejectWait(Error('No se pudieron confirmar las ideas diarias.'));}};original.retire=retire;
-  const timer=setTimeout(retire,30000);
-  const check=()=>{if(performance.now()>=deadline||new Date(Date.now()).toISOString().slice(0,10)!==day||original.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||dailyIdeasOriginal!==original)retire();if(retired)throw Error('No se pudieron confirmar las ideas diarias.');};
-  const producer=(async()=>{
-    const pending=await chrome.storage.local.get([IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]);check();
-    if(Object.hasOwn(pending,IDENTITY_WRITE_PENDING)||Object.hasOwn(pending,PASSWORD_LOGIN_PENDING))throw Error('No se pudo confirmar la cuenta.');
-    const token=await getToken();check();if(typeof token!=='string'||! /^[a-f0-9]{64}$/.test(token))throw Error('not_logged_in');
-    const readRef=crypto.randomUUID();
-    const {res,data}=await apiFetch(API_BASE+'/api/extension/daily-ideas',{
-      timeoutMs:25000,maxResponseBytes:64*1024,credentials:'omit',cache:'no-store',observeOriginal:promise=>{httpOriginal=promise;},
-      headers:{Authorization:'Bearer '+token,'X-YTV-Read-Ref':readRef},
-    });check();
-    if(data?.readRef!==readRef)throw Error('No se pudieron confirmar las ideas diarias.');
-    if(res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');
-    const q=data.dataQuality;
-    if(res.status!==200||data.requestedDate!==day||typeof data.channelConnected!=='boolean'||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()
-      ||!q||q.source!=='stored-daily-ideas'||q.freshness!=='unconfirmed'||q.connection!=='stored-channel-reference')throw Error('No se pudieron confirmar las ideas diarias.');
-    if(data.ideas===null){if(data.date!==null||q.savedAt!==null||data.batchState!==(data.channelConnected?'pending':'not-connected'))throw Error('No se pudieron confirmar las ideas diarias.');}
-    else {
-      const date=typeof q.savedAt==='string'?new Date(q.savedAt):null;
-      if(!data.channelConnected||data.batchState!=='available'||data.date!==day||!date||!Number.isFinite(date.getTime())||date.getTime()>Date.now()||date.toISOString()!==q.savedAt||q.savedAt.slice(0,10)!==day
-        ||!Array.isArray(data.ideas)||data.ideas.length<1||data.ideas.length>5||data.ideas.some(x=>!x||typeof x!=='object'||Array.isArray(x)
-          ||!['title_es','title_en','idea_es','idea_en'].every(k=>typeof x[k]==='string'&&x[k].trim()&&x[k].length<=(k.startsWith('title')?200:4000)))
-        ||new TextEncoder().encode(JSON.stringify(data.ideas)).byteLength>48*1024)throw Error('No se pudieron confirmar las ideas diarias.');
-    }
-    const current=await getToken();check();if(current!==token||data.expiresAt<=Date.now())throw Error('No se pudieron confirmar las ideas diarias.');return data;
-  })();
-  // A public per-day cache is not authority for this account. No reads, writes,
-  // deletions or reset of historical cache keys/preferences take place here.
-  void producer.finally(async()=>{if(httpOriginal)await Promise.allSettled([httpOriginal]);if(dailyIdeasOriginal===original)dailyIdeasOriginal=null;}).catch(()=>{});
-  original.wait=Promise.race([producer,stopped]).finally(()=>{retired=true;clearTimeout(timer);});return original.wait;
+let dailyIdeasOriginal=null;
+function dailyIdeasCaller(sender){
+ const content=bestTimeCaller(sender);if(content)return{scope:'content:'+content,document:JSON.stringify([sender.tab.id,sender.frameId,sender.documentId]),popup:false};
+ try{const id=chrome.runtime.id,url=chrome.runtime.getURL('popup.html');if(typeof id!=='string'||!/^[a-p]{32}$/.test(id)||sender?.id!==id||sender.url!==url||sender.tab!==undefined||sender.frameId!==undefined&&sender.frameId!==0||typeof sender.documentId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(sender.documentId))return null;return{scope:'popup:'+id+':'+sender.documentId+':'+url,document:JSON.stringify([id,sender.documentId]),popup:true};}catch{return null;}
+}
+function dailyIdeasCheck(own){if(dailyIdeasOriginal!==own||own.retired||own.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||new Date(Date.now()).toISOString().slice(0,10)!==own.day||own.identity&&identityReadReceipts.get(own.identity)!==own.identityReceipt){own.retire();throw Error('daily_ideas_unconfirmed');}}
+async function dailyIdeasIdentityMarkers(check){for(const key of[IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]){const row=await chrome.storage.local.get(key);check();if(Object.hasOwn(row,key))throw Error('daily_ideas_unconfirmed');}}
+function dailyIdeasProjection(d,own){
+ const fail=()=>{throw Error('daily_ideas_unconfirmed');},e=d?.dailyIdeas;
+ if(!d||Object.keys(d).length!==9||!e||Object.keys(e).length!==6||e.readRef!==own.readRef||e.viewRef!==own.viewRef||e.language!==own.lang||e.requestedDate!==own.day||e.userId!==own.identity.id||e.expiresAt!==d.expiresAt||d.readRef!==own.readRef||d.requestedDate!==own.day||!Number.isSafeInteger(d.expiresAt)||d.expiresAt<=Date.now()||d.expiresAt>own.identityReceipt.expiresAt||d.expiresAt>own.postStartedAt+30000||d.expiresAt>Date.now()+25000||d.expiresAt>own.dayEnd||typeof d.channelConnected!=='boolean')fail();
+ const q=d.dataQuality;if(!q||Object.keys(q).length!==4||q.source!=='stored-daily-ideas'||q.freshness!=='unconfirmed'||q.connection!=='stored-channel-reference')fail();
+ let ideas=null;if(d.ideas===null){if(d.date!==null||q.savedAt!==null||d.batchState!==(d.channelConnected?'pending':'not-connected'))fail();}
+ else{const at=typeof q.savedAt==='string'?Date.parse(q.savedAt):NaN;if(!d.channelConnected||d.batchState!=='available'||d.date!==own.day||!Number.isFinite(at)||at<0||at>Date.now()||new Date(at).toISOString()!==q.savedAt||q.savedAt.slice(0,10)!==own.day||!Array.isArray(d.ideas)||d.ideas.length<1||d.ideas.length>5||new TextEncoder().encode(JSON.stringify(d.ideas)).byteLength>48*1024)fail();ideas=Object.freeze(d.ideas.map(x=>{if(!x||typeof x!=='object'||Array.isArray(x)||Object.keys(x).length!==4||!['title_es','title_en','idea_es','idea_en'].every(k=>typeof x[k]==='string'&&x[k].trim()&&x[k].length<=(k.startsWith('title')?200:4000)))fail();return Object.freeze({title_es:x.title_es,title_en:x.title_en,idea_es:x.idea_es,idea_en:x.idea_en});}));}
+ return Object.freeze({requestedDate:own.day,date:d.date,channelConnected:d.channelConnected,batchState:d.batchState,ideas,dataQuality:Object.freeze({...q})});
+}
+function retireDailyIdeasFromView(msg,sender){const own=dailyIdeasOriginal,caller=dailyIdeasCaller(sender);if(own&&caller&&caller.document===own.document&&msg.viewRef===own.viewRef)own.retire();return{retired:!!own?.retired};}
+async function readDailyIdeas(msg,sender){
+ const caller=dailyIdeasCaller(sender),day=new Date(Date.now()).toISOString().slice(0,10);if(!caller||!abUuid(msg.viewRef)||!['es','en'].includes(msg.lang)||msg.day!==day||!['ideas','channel','popup'].includes(msg.surface)||caller.popup!==(msg.surface==='popup'))throw Error('daily_ideas_unconfirmed');
+ const snapshot=JSON.stringify([msg.lang,day,msg.surface]);if(dailyIdeasOriginal){const own=dailyIdeasOriginal;if(!own.retired&&own.scope===caller.scope&&own.snapshot===snapshot&&own.viewRef===msg.viewRef){dailyIdeasCheck(own);return own.wait;}throw Error('daily_ideas_unconfirmed');}
+ if(passwordLoginOriginal||tokenMutationOriginal)throw Error('daily_ideas_unconfirmed');
+ const dayEnd=Date.parse(day+'T00:00:00Z')+86400000,own={scope:caller.scope,document:caller.document,day,dayEnd,lang:msg.lang,surface:msg.surface,viewRef:msg.viewRef,snapshot,readRef:crypto.randomUUID(),revision:identityRevision,startedAt:Date.now(),deadline:performance.now()+30000,expiresAt:Math.min(Date.now()+30000,dayEnd),controller:new AbortController(),retired:false,ready:false,drained:false,http:null};dailyIdeasOriginal=own;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});const release=()=>{if(own.retired&&own.drained&&dailyIdeasOriginal===own){dailyIdeasOriginal=null;clearTimeout(own.timer);}};own.retire=()=>{if(!own.retired){own.retired=true;own.controller.abort();rejectWait(Error('daily_ideas_unconfirmed'));}release();};own.timer=setTimeout(own.retire,Math.max(1,Math.min(30000,dayEnd-Date.now())));const check=()=>dailyIdeasCheck(own);
+ const producer=(async()=>{
+  await dailyIdeasIdentityMarkers(check);const identity=await getExtensionIdentity();check();const receipt=identity&&identityReadReceipts.get(identity);if(!receipt||receipt.revision!==own.revision)throw Error('not_logged_in');own.identity=identity;own.identityReceipt=receipt;own.expiresAt=Math.min(own.expiresAt,receipt.expiresAt);check();const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==receipt.token)throw Error('daily_ideas_unconfirmed');
+  own.postStartedAt=Date.now();const{res,data}=await apiFetch(API_BASE+'/api/extension/daily-ideas',{method:'GET',signal:own.controller.signal,timeoutMs:Math.min(25000,Math.max(1,Math.floor(own.deadline-performance.now()))),maxResponseBytes:64*1024,credentials:'omit',cache:'no-store',observeOriginal:p=>{own.http=p;},headers:{Authorization:'Bearer '+receipt.token,'X-YTV-Read-Ref':own.readRef,'X-YTV-View-Ref':own.viewRef,'X-YTV-Language':own.lang,'X-YTV-Requested-Date':own.day}});check();if(res.status!==200){if(data?.readRef===own.readRef&&res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');throw Error('daily_ideas_unconfirmed');}
+  await dailyIdeasIdentityMarkers(check);const projected=dailyIdeasProjection(data,own);own.expiresAt=Math.min(own.expiresAt,data.expiresAt);const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('daily_ideas_unconfirmed');own.data=Object.freeze({readRef:own.readRef,viewRef:own.viewRef,language:own.lang,surface:own.surface,expiresAt:own.expiresAt,...projected});own.ready=true;check();return own.data;
+ })();
+ // Read-only purpose: no persistent journal or dated cache is authority. Only
+ // genuine producer+HTTP completion releases a retired original for a fresh read.
+ void producer.catch(()=>own.retire()).finally(async()=>{if(own.http)await Promise.allSettled([own.http]);own.drained=true;release();}).catch(()=>{});own.wait=Promise.race([producer,stopped]);return own.wait;
+}
+async function acknowledgeDailyIdeas(msg,sender){
+ const own=dailyIdeasOriginal,caller=dailyIdeasCaller(sender);if(!own||!own.ready||!caller||caller.scope!==own.scope||msg.readRef!==own.readRef||msg.viewRef!==own.viewRef||msg.surface!==own.surface)throw Error('daily_ideas_unconfirmed');const check=()=>dailyIdeasCheck(own);check();if(own.acknowledging)return own.acknowledging;
+ own.acknowledging=(async()=>{await dailyIdeasIdentityMarkers(check);const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('daily_ideas_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();const last=await chrome.storage.local.get('ytv_token');check();if(last.ytv_token!==own.identityReceipt.token)throw Error('daily_ideas_unconfirmed');await dailyIdeasIdentityMarkers(check);clearTimeout(own.timer);dailyIdeasOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,surface:own.surface,closed:true});})().catch(e=>{own.retire();throw e;});return own.acknowledging;
 }
 
 const COMPETITOR_PENDING='ytv_competitor_pending';let competitorOriginal=null;
@@ -1063,7 +1060,9 @@ async function handleMessage(msg,sender) {
   if (msg.type === 'BEST_TIME') return getBestTime(msg,sender);
   if (msg.type === 'BEST_TIME_USE') return getBestTimeUse(msg,sender);
   if (msg.type === 'BEST_TIME_USE_ACK') return acknowledgeBestTimeUse(msg,sender);
-  if (msg.type === 'DAILY_IDEAS') return readDailyIdeas();
+  if (msg.type === 'DAILY_IDEAS') return readDailyIdeas(msg,sender);
+  if (msg.type === 'DAILY_IDEAS_ACK') return acknowledgeDailyIdeas(msg,sender);
+  if (msg.type === 'DAILY_IDEAS_RETIRE') return retireDailyIdeasFromView(msg,sender);
   if (msg.type === 'SEO_LIVE') return runSeoLive(msg,sender);
   if (msg.type === 'SEO_LIVE_ACK') return acknowledgeSeoLive(msg,sender);
   if (msg.type === 'SEO_LIVE_RETIRE') return retireSeoLiveFromView(msg,sender);
@@ -1093,26 +1092,10 @@ async function handleMessage(msg,sender) {
       return { lang };
     }
 
-    case 'IDEAS_BADGE': {
-      // P6 — daily loop. A dot on the toolbar icon when there are fresh ideas today the
-      // user hasn't opened yet. No "alarms" permission: content.js pokes this when it sees
-      // ideas while the user browses YouTube (which extension users do daily).
-      const today = new Date().toISOString().slice(0, 10);
-      const seen = await new Promise(r => chrome.storage.local.get(`ytv_ideas_seen_${today}`, d => r(d[`ytv_ideas_seen_${today}`])));
-      if (!seen) {
-        chrome.action.setBadgeText({ text: '•' });
-        chrome.action.setBadgeBackgroundColor({ color: '#ff0000' });
-      }
-      return { ok: true };
-    }
-
-    case 'CLEAR_IDEAS_BADGE': {
-      const today = new Date().toISOString().slice(0, 10);
-      chrome.action.setBadgeText({ text: '' });
-      await chrome.storage.local.set({ [`ytv_ideas_seen_${today}`]: true });
-      return { ok: true };
-    }
-
+    // Reading a stored batch does not authorize badge/seen activity.
+    case 'IDEAS_BADGE':
+    case 'CLEAR_IDEAS_BADGE':
+      throw Error('ideas_activity_unconfirmed');
 
     default:
       throw new Error('Unknown message: ' + msg.type);
