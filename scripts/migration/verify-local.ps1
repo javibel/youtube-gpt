@@ -8,8 +8,11 @@ $kind = if ($repoName -eq 'migration-web') { 'web' } else { 'agent' }
 if ($WithDatabase -and $kind -ne 'web') { throw 'Database/build verification belongs to the isolated web copy' }
 $scripts = (Get-Content -LiteralPath (Join-Path $repo 'package.json') -Raw | ConvertFrom-Json).scripts
 $suites = @('migration:check','migration:test','migration:test:contracts','migration:test:adapters','migration:test:reference','migration:test:boundary','migration:test:configuration')
-$suites += if ($kind -eq 'web') { @('migration:test:routes','migration:test:startup') } else { 'migration:test:coding-workers' }
+$suites += if ($kind -eq 'web') { 'migration:test:routes' } else { 'migration:test:coding-workers' }
 if ($WithDatabase) { $suites += @('migration:test:database','migration:test:control','migration:build') }
+# The fixture startup policy consumes the real protected BUILD_ID. A previous
+# compile-only run intentionally leaves no such artifact, so build it first.
+if ($kind -eq 'web') { $suites += 'migration:test:startup' }
 $nodeExe = (Get-Command node -CommandType Application | Select-Object -First 1).Source
 $gitCommit = (& git -C $repo rev-parse --verify HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $gitCommit -notmatch '^[a-f0-9]{40}$') { throw 'Cannot identify local verification commit' }
