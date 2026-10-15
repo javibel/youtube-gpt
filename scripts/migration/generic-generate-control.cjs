@@ -10,7 +10,7 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
  const previous=(await store('reader').active()).revision,users=[];
  try {
   await store('activator').publish(selection,{actor:'test-admin'});await store('activator').activate(selection.revision,{expectedRevision:previous,actor:'test-admin',reason:'Synthetic generic generation business replay'});
-  for(const suffix of ['generic-first','generic-extension'])users.push(await prisma.user.create({data:{email:prefix+'_'+suffix+'@example.invalid',name:'Synthetic generation retry'}}));identity=users[0].id;
+  const accounts=await require('./native-generation-account-fixture.cjs')(prisma,'control-generic',2);users.push(...accounts.users);await accounts.issue();identity=users[0].id;
   const budgetId=await budget('generic-generate-retry',300),runtime=load('lib/ai/task-runtime.ts');
   runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry,store:store('executor')}),policies:{'content.generate':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:8192,deadlineMs:3000}}},authorize:async({userId,taskType})=>users.some(u=>u.id===userId)&&taskType==='content.generate'?{budgetId}:null}));
   const db=new Proxy(prisma,{get(target,key){
@@ -23,9 +23,9 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
   }});
   const {TEMPLATES}=load('utils/prompts.js');let context=null;
   const planMock={getUserPlan:async()=>'free',isPaid:()=>false,getLimits:()=>({generationsPerMonth:quotaLimit})};
-  const route=load('app/api/generate/route.ts',{'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(db,planMock),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'node:crypto':require('node:crypto'),'@/utils/prompts':{TEMPLATES},'@/auth':{auth:async()=>extension?null:{user:{id:identity,email:users.find(u=>u.id===identity).email}}},'@/lib/extension-auth':{getExtensionUser:async()=>extension?{user:{id:identity},isPro:false}:null},'@/lib/plans':planMock,'@/lib/channel-context':{getChannelContext:async()=>context?{summary:context}:null},'@/lib/lifecycle-trigger':{triggerConversionEmail:async()=>{}},'@/lib/prisma':{prisma:db},'@/lib/ai/task-runtime':runtime});
+  const route=load('app/api/generate/route.ts',{'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(db,planMock),'@/lib/generation-quota':require('./generation-quota-fixture.cjs')(prisma),'node:crypto':require('node:crypto'),'@/utils/prompts':{TEMPLATES},'@/auth':{auth:async()=>extension?null:{user:{id:identity,email:users.find(u=>u.id===identity).email}}},'@/lib/plans':planMock,'@/lib/channel-context':{getChannelContext:async()=>context?{summary:context}:null},'@/lib/lifecycle-trigger':{triggerConversionEmail:async()=>{}},'@/lib/prisma':{prisma:db},'@/lib/ai/task-runtime':runtime},{Date,Headers,TextEncoder,AbortController});
   const input={template:'title',inputs:{tema:'Synthetic generic topic'},lang:'es'},key='same-generic-operation';
-  const invoke=(body=input,operation=key,readOnly=false)=>route.POST(new Request('https://example.invalid/api/generate',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':operation,...(readOnly?{'X-Generation-Recovery':'retained-only-v1'}:{})},body:JSON.stringify(body)}));
+  const invoke=(body=input,operation=key,readOnly=false)=>{const request=new Request('https://example.invalid/api/generate',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':operation,...(readOnly?{'X-Generation-Recovery':'retained-only-v1'}:{})},body:JSON.stringify(body)});return route.POST(extension?accounts.request(users.find(u=>u.id===identity),request):request);};
   // A browser transport lost before admission cannot turn Retry into fresh inference.
   let unadmitted=require('./generic-generation-client.test.cjs').harness({user:identity,email:users[0].email,inputs:input.inputs,lang:input.lang,key:'never-admitted-ui'});
   try{
@@ -94,7 +94,9 @@ module.exports=async function({config,prefix,createRegistry,createControlStore,c
    assert.equal(calls,1);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(Number((await stats(budgetId)).settled_micros),7);assert.equal((await prisma.$queryRaw`SELECT hits FROM rate_limits WHERE key=${'generate:'+identity}`)[0].hits,99);
    assert.equal((await prisma.user.findUnique({where:{id:users[1].id}})).onboardingStep,0);
   } finally {welcome.unmount();}
-  identity=users[1].id;extension=true;context=null;assert.equal((await invoke()).status,200);assert.equal(calls,2);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(await prisma.generation.count({where:{userId:users[0].id}}),1);assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),14);
+  // Native extension retirement cannot recover the completion ACK discarded by
+  // this fixture's real transaction interceptor, even though SQL completed.
+  identity=users[1].id;extension=true;context=null;const extensionReply=await invoke();assert.equal(extensionReply.status,503);assert.equal((await extensionReply.json()).code,'text_result_unconfirmed');assert.equal(calls,2);assert.equal(await prisma.generation.count({where:{userId:identity}}),1);assert.equal(await prisma.generation.count({where:{userId:users[0].id}}),1);assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),14);
   // Long continuation through the original hook, API, runtime and real rows.
   identity=users[0].id;extension=false;quotaLimit=10;
   await prisma.$executeRaw`UPDATE rate_limits SET hits=0 WHERE key=${'generate:'+identity}`;
