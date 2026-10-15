@@ -5,22 +5,10 @@ import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
 import ToolLoginGate from '@/components/ToolLoginGate';
+import { useRetentionAnalysis } from '@/lib/use-retention-analysis';
+import type { RetentionVideo as VideoRetention } from '@/lib/retention-contract';
 
 type Lang = 'es' | 'en';
-
-interface DropOff { time: number; drop: number; retentionBefore: number; retentionAfter: number }
-interface DropOffReason { timestamp: string; reason: string }
-
-interface VideoRetention {
-  videoId: string;
-  title: string;
-  views: number;
-  duration: number;
-  retention: number[];
-  avgRetention: number;
-  hookScore: number;
-  dropOffPoints: DropOff[];
-}
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
@@ -30,17 +18,19 @@ function fmtNum(n: number): string {
 
 function fmtTime(sec: number): string {
   const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
+  const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function retentionColor(pct: number): string {
+function retentionColor(pct: number | null): string {
+  if (pct === null) return 'var(--yv-text-3)';
   if (pct >= 50) return '#22c55e';
   if (pct >= 30) return '#eab308';
   return '#ef4444';
 }
 
-function hookScoreLabel(score: number, lang: Lang): string {
+function hookScoreLabel(score: number | null, lang: Lang): string {
+  if (score === null) return lang === 'en' ? 'Not available' : 'No disponible';
   if (score >= 80) return lang === 'en' ? 'Excellent hook' : 'Hook excelente';
   if (score >= 60) return lang === 'en' ? 'Good hook' : 'Buen hook';
   if (score >= 40) return lang === 'en' ? 'Average hook' : 'Hook medio';
@@ -71,6 +61,7 @@ function InteractiveRetentionCurve({
   const padB = 25;
   const chartW = w - padL - padR;
   const chartH = h - padT - padB;
+  const maxRetention = Math.max(100, Math.ceil(Math.max(...videos.flatMap(v => v.retention)) / 25) * 25);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
@@ -82,18 +73,19 @@ function InteractiveRetentionCurve({
     const pct = xInChart / chartW;
 
     const values = (compareMode ? videos : videos.slice(0, 1)).map((v, i) => {
-      const idx = Math.min(Math.floor(pct * v.retention.length), v.retention.length - 1);
+      const idx = Math.max(0, Math.min(Math.ceil(pct * v.retention.length) - 1, v.retention.length - 1));
       return { title: v.title, ret: v.retention[idx], color: COMPARE_COLORS[i % COMPARE_COLORS.length] };
     });
 
-    setHover({ x: padL + pct * chartW, pct, values });
+    const end = Math.max(0.01, Math.ceil(pct * 100) / 100);
+    setHover({ x: padL + end * chartW, pct: end, values });
   }, [videos, compareMode, chartW, w]);
 
   const renderCurve = (retention: number[], color: string, fill: boolean) => {
     if (retention.length < 2) return null;
     const pts = retention.map((v, i) => {
-      const x = padL + (i / (retention.length - 1)) * chartW;
-      const y = padT + chartH - (v / 100) * chartH;
+      const x = padL + ((i + 1) / retention.length) * chartW;
+      const y = padT + chartH - (v / maxRetention) * chartH;
       return `${x},${y}`;
     }).join(' ');
 
@@ -126,8 +118,8 @@ function InteractiveRetentionCurve({
         onMouseLeave={() => setHover(null)}
       >
         {/* Grid lines + labels */}
-        {[0, 25, 50, 75, 100].map(pct => {
-          const y = padT + chartH - (pct / 100) * chartH;
+        {[0, 1, 2, 3, 4].map(step => step * maxRetention / 4).map(pct => {
+          const y = padT + chartH - (pct / maxRetention) * chartH;
           return (
             <g key={pct}>
               <line x1={padL} y1={y} x2={padL + chartW} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
@@ -137,7 +129,7 @@ function InteractiveRetentionCurve({
         })}
 
         {/* 50% reference dashed */}
-        <line x1={padL} y1={padT + chartH / 2} x2={padL + chartW} y2={padT + chartH / 2} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4,4" />
+        <line x1={padL} y1={padT + chartH - (50 / maxRetention) * chartH} x2={padL + chartW} y2={padT + chartH - (50 / maxRetention) * chartH} stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4,4" />
 
         {/* Curves */}
         {displayVideos.map((v, i) => (
@@ -156,7 +148,7 @@ function InteractiveRetentionCurve({
           <>
             <line x1={hover.x} y1={padT} x2={hover.x} y2={padT + chartH} stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="3,3" />
             {hover.values.map((v, i) => {
-              const y = padT + chartH - (v.ret / 100) * chartH;
+              const y = padT + chartH - (v.ret / maxRetention) * chartH;
               return <circle key={i} cx={hover.x} cy={y} r="4" fill={v.color} stroke="#111" strokeWidth="1.5" />;
             })}
           </>
@@ -207,50 +199,30 @@ function InteractiveRetentionCurve({
 export default function RetentionPage() {
   const { data: session, status } = useSession();
   const lang = useLang();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [videos, setVideos] = useState<VideoRetention[]>([]);
-  const [aiTips, setAiTips] = useState<string[]>([]);
-  const [dropOffReasons, setDropOffReasons] = useState<Record<string, DropOffReason[]>>({});
+  const analysis = useRetentionAnalysis(session, status, lang);
+  const { loading, analyze } = analysis;
+  const videos = analysis.data?.videos ?? [];
+  const aiTips = analysis.data?.aiTips ?? [];
+  const dropOffReasons = analysis.data?.dropOffReasons ?? {};
   const [selected, setSelected] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const t = (es: string, en: string) => lang === 'en' ? en : es;
-
-  async function analyze() {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('/api/youtube/retention', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lang }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        if (json.error === 'pro_required') setError(t('Plan Pro requerido.', 'Pro plan required.'));
-        else if (json.error === 'youtube_not_connected') setError(t('Conecta tu canal primero.', 'Connect your channel first.'));
-        else if (json.error === 'no_retention_data') setError(t('No hay datos de retención disponibles.', 'No retention data available.'));
-        else setError(json.error || 'Error');
-        return;
-      }
-      setVideos(json.videos || []);
-      setAiTips(json.aiTips || []);
-      setDropOffReasons(json.dropOffReasons || {});
-      if (json.videos?.length > 0) setSelected(json.videos[0].videoId);
-    } catch {
-      setError(t('Error de conexión', 'Connection error'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    if (status === 'authenticated') analyze();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+    setSelected(analysis.data?.videos[0]?.videoId ?? null);
+    setCompareMode(false); setCompareIds([]);
+  }, [analysis.data]);
 
-  const selectedVideo = videos.find(v => v.videoId === selected);
+  const errors: Record<string, string> = {
+    pro_required: t('Plan Pro requerido.', 'Pro plan required.'),
+    youtube_not_connected: t('Conecta tu canal primero.', 'Connect your channel first.'),
+    token_expired: t('Reconecta tu canal para autorizar una nueva consulta.', 'Reconnect your channel to authorize a new query.'),
+    no_videos: t('No hay vídeos disponibles.', 'No videos available.'),
+    no_retention_data: t('No hay una curva completa de retención disponible.', 'A complete retention curve is unavailable.'),
+  };
+  const error = analysis.error ? errors[analysis.error] ?? t('No se pudo confirmar el análisis. Puedes iniciar una consulta nueva.', 'The analysis could not be confirmed. You can start a new query.') : '';
+
+  const selectedVideo = videos.find(v => v.videoId === selected) ?? videos[0];
   const compareVideos = compareMode ? videos.filter(v => compareIds.includes(v.videoId)) : [];
 
   function toggleCompare(videoId: string) {
@@ -274,15 +246,15 @@ export default function RetentionPage() {
         title={{ es: 'Descubre dónde tu audiencia', en: 'Discover Where Your Audience' }}
         highlight={{ es: 'deja de ver tus vídeos', en: 'Stops Watching' }}
         description={{
-          es: 'La retención es el factor #1 del algoritmo de YouTube. Analiza tu curva, hook score y drop-offs con IA para multiplicar tu watch time.',
-          en: 'Retention is YouTube\'s #1 algorithm factor. Analyze your curve, hook score, and drop-offs with AI to multiply your watch time.',
+          es: 'Consulta curvas privadas de retención y compara descensos. La IA propone hipótesis que puedes investigar.',
+          en: 'Review private retention curves and compare drops. AI proposes hypotheses you can investigate.',
         }}
         color="#22c55e"
         featuresHref="/features/retention-analyzer"
         bullets={[
-          { icon: '/icons/bar-chart.webp', title: { es: 'Curva de retención', en: 'Retention curve' }, desc: { es: 'Ve exactamente dónde se va tu audiencia', en: 'See exactly where your audience leaves' } },
+          { icon: '/icons/bar-chart.webp', title: { es: 'Curva de retención', en: 'Retention curve' }, desc: { es: 'Compara intervalos de visionado', en: 'Compare viewing intervals' } },
           { icon: '/icons/spark.webp', title: { es: 'Hook Score', en: 'Hook Score' }, desc: { es: 'Puntúa el gancho de los primeros segundos', en: 'Scores the hook in your first few seconds' } },
-          { icon: '/icons/brain.webp', title: { es: 'Motivos con IA', en: 'AI reasons' }, desc: { es: 'La IA explica por qué se abandona cada punto', en: 'AI explains why viewers drop at each point' } },
+          { icon: '/icons/brain.webp', title: { es: 'Motivos con IA', en: 'AI reasons' }, desc: { es: 'Hipótesis a investigar, sin causas confirmadas', en: 'Hypotheses to investigate, without confirmed causes' } },
         ]}
       />
     );
@@ -302,6 +274,18 @@ export default function RetentionPage() {
             </p>
           </div>
         </header>
+        {!loading && !analysis.data && !error && (
+          <button onClick={analyze} disabled={!analysis.canAnalyze} className="btn-offset px-6 py-3 text-sm font-display">
+            {t('Analizar mis últimos vídeos', 'Analyze my latest videos')}
+          </button>
+        )}
+        {analysis.data && (
+          <p className="font-mono-jb text-[13px] mb-4" style={{ color: 'var(--yv-text-3)' }}>
+            {t('Intervalo solicitado:', 'Requested range:')} {analysis.data.retentionAnalysis.requestedStartDate} — {analysis.data.retentionAnalysis.requestedEndDate}.
+            {' '}{t('YouTube no informa aquí de la cobertura efectiva ni de la frescura. Las repeticiones pueden superar el 100%.', 'YouTube does not report actual coverage or freshness here. Rewatches can exceed 100%.')}
+            {analysis.data.tipsStatus === 'unavailable' && t(' Consejos de IA no disponibles.', ' AI tips unavailable.')}
+          </p>
+        )}
         {loading && (
           <div className="flex items-center gap-3 justify-center py-20">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -312,8 +296,8 @@ export default function RetentionPage() {
         {error && (
           <div className="text-center py-12">
             <p className="text-red-400 font-mono-jb text-sm">{error}</p>
-            <button onClick={analyze} className="btn-offset px-6 py-2 text-sm font-display mt-4">
-              {t('Reintentar', 'Retry')}
+            <button onClick={analyze} disabled={!analysis.canAnalyze} className="btn-offset px-6 py-2 text-sm font-display mt-4">
+              {t('Nueva consulta', 'New query')}
             </button>
           </div>
         )}
@@ -336,7 +320,7 @@ export default function RetentionPage() {
                   {/* Hook Score badge */}
                   <div className="flex items-center gap-2 mb-2">
                     <div className="font-display font-bold text-2xl" style={{ color: retentionColor(v.hookScore) }}>
-                      {v.hookScore}
+                      {v.hookScore ?? '—'}
                     </div>
                     <div className="font-mono-jb text-[13px] tracking-wider uppercase" style={{ color: 'var(--yv-text-4)' }}>Hook</div>
                   </div>
@@ -417,10 +401,10 @@ export default function RetentionPage() {
                       {/* Hook Score */}
                       <div className="text-center">
                         <div className="font-display font-bold text-3xl" style={{ color: retentionColor(selectedVideo.hookScore) }}>
-                          {selectedVideo.hookScore}%
+                          {selectedVideo.hookScore === null ? '—' : `${selectedVideo.hookScore}%`}
                         </div>
                         <div className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>
-                          {hookScoreLabel(selectedVideo.hookScore, lang)}
+                          {hookScoreLabel(selectedVideo.hookScore, lang)} · {fmtTime(selectedVideo.hookWindowSeconds)}
                         </div>
                       </div>
                       {/* Avg Retention */}
@@ -454,7 +438,7 @@ export default function RetentionPage() {
             {!compareMode && selectedVideo && selectedVideo.dropOffPoints.length > 0 && (
               <div className="yv-card p-6">
                 <h3 className="font-mono-jb text-[13px] tracking-[0.25em] uppercase mb-4" style={{ color: 'var(--yv-text-3)' }}>
-                  {t('PUNTOS DE ABANDONO', 'DROP-OFF POINTS')}
+                  {t('DESCENSOS ENTRE INTERVALOS · HIPÓTESIS DE IA', 'INTERVAL DROPS · AI HYPOTHESES')}
                 </h3>
                 <div className="space-y-3">
                   {selectedVideo.dropOffPoints.map((d, i) => {
@@ -478,7 +462,7 @@ export default function RetentionPage() {
                           </div>
                           {reason && (
                             <p className="text-[13px] mt-1.5 leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
-                              <span className="text-purple-400 font-mono-jb text-[13px] mr-1">AI:</span>
+                              <span className="text-purple-400 font-mono-jb text-[13px] mr-1">{t('Hipótesis:', 'Hypothesis:')}</span>
                               {reason.reason}
                             </p>
                           )}
