@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const stopped = new Promise<never>((_, reject) => { rejectWait = reject; }); void stopped.catch(() => {});
   const retire = () => { if (!retired) { retired = true; controller.abort(); rejectWait(Error('Admin reviews unconfirmed')); } };
   const timer = setTimeout(retire, 25_000); signal.addEventListener('abort', retire, { once: true });
-  const check = () => { if (signal.aborted || Date.now() < startedAt || performance.now() >= deadline) retire(); if (retired) throw Error('Admin reviews unconfirmed'); if (original) checkNativeAdminReviews(original); };
+  const check = () => { if (signal.aborted || Date.now() < startedAt || Date.now() >= startedAt + 25_000 || performance.now() >= deadline) retire(); if (retired) throw Error('Admin reviews unconfirmed'); if (original) checkNativeAdminReviews(original); };
   const run = async <T,>(operation: () => Promise<T>) => { check(); const pending = Promise.resolve().then(() => { check(); return operation(); }); void pending.catch(() => {}); const value = await Promise.race([pending, stopped]); check(); return value; };
   const json = (value: unknown, status = 200) => NextResponse.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
   try {
