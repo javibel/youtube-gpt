@@ -1,4 +1,6 @@
 'use strict';
+// Closed business contract with the existing declared-actor fixture. This cookie
+// only selects that fixture; it is not native Auth.js authentication evidence.
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs');
 const {create,posts,terminal}=require('./coach-send-client.test.cjs'),{ready,sendButton}=require('./coach-plan.test.cjs'),{deferred}=require('./chat-widget-harness.cjs');
 module.exports=async(prisma,results)=>{
@@ -15,7 +17,7 @@ module.exports=async(prisma,results)=>{
    h.state.send=async request=>{
     if(request.url==='/api/user/stats'){assert.equal(request.init.cache,'no-store');const original=(async()=>{const response=await stats.GET();const body=await response.json();return{ok:response.ok,status:response.status,json:async()=>body};})();reads.push(original);return original;}
     assert.equal(request.url,'/api/coach');assert.equal(request.owner,owner.id);assert.equal(request.init.signal,undefined);
-    const original=route.POST(new Request('https://example.invalid/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request.body)}));requests.push(original);
+    const original=route.POST(new Request('https://example.invalid/api/coach',{method:'POST',headers:{'Content-Type':'application/json',Cookie:'closed-coach-business-fixture'},body:JSON.stringify(request.body)}));requests.push(original);
     const response=await original;const body=await response.json();finished.resolve();
     if(held==='JSON')return{ok:response.ok,status:response.status,json:()=>{entered.resolve();return gate.promise.then(()=>body);}};
     return{ok:response.ok,status:response.status,json:async()=>body};
