@@ -2,15 +2,9 @@
 
 const API_BASE = 'https://ytubviral.com';
 const FETCH_TIMEOUT_MS = 15000;
-// Context binds retry keys to the current token; no token is exposed to content scripts.
-let generationContext=null;
-function syncGenerationContext(token){
-  if(!generationContext||generationContext.token!==token)generationContext={id:crypto.randomUUID(),token,attempts:new Map()};
-  return generationContext;
-}
 chrome.storage.onChanged.addListener((changes,area)=>{
-  if(area==='local'&&Object.hasOwn(changes,'ytv_token')) { generationContext=null; identityRevision++; retireExtensionIdentity(); }
-  if(area==='local'&&Object.hasOwn(changes,'ytv_lang'))keywordsOriginal?.retire();
+  if(area==='local'&&Object.hasOwn(changes,'ytv_token')) { identityRevision++; retireExtensionIdentity(); }
+  if(area==='local'&&Object.hasOwn(changes,'ytv_lang')) { keywordsOriginal?.retire(); generationOriginal?.retire(); }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -173,7 +167,7 @@ const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
 const identityReadReceipts = new WeakMap();
-function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); competitorOriginal?.retire(); keywordsOriginal?.retire(); }
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); competitorOriginal?.retire(); keywordsOriginal?.retire(); generationOriginal?.retire(); }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
@@ -964,7 +958,48 @@ async function acknowledgeKeywords(msg,sender){
  own.acknowledging=(async()=>{const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('keywords_unconfirmed');const row=await chrome.storage.local.get(KEYWORDS_PENDING);check();if(row[KEYWORDS_PENDING]?.readRef!==own.readRef||row[KEYWORDS_PENDING]?.viewRef!==own.viewRef||row[KEYWORDS_PENDING]?.input!==own.input||row[KEYWORDS_PENDING]?.lang!==own.lang)throw Error('keywords_unconfirmed');await chrome.storage.local.remove(KEYWORDS_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('keywords_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();clearTimeout(own.timer);keywordsOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,closed:true});})().catch(error=>{own.retire();clearTimeout(own.timer);throw error;});return own.acknowledging;
 }
 
+// A persisted marker denies a fresh dispatch. Only this live worker owns the
+// identity, HTTP original and matching native document acknowledgement.
+const GENERATION_PENDING='ytv_generation_pending';let generationOriginal=null;
+function generationInput(msg){
+ if(typeof msg.template!=='string'||!msg.template||msg.template.length>128||!['en','es'].includes(msg.lang)||!msg.inputs||typeof msg.inputs!=='object'||Array.isArray(msg.inputs)||Object.keys(msg.inputs).length>64||Object.entries(msg.inputs).some(([k,v])=>k.length>128||typeof v!=='string'||v.length>(k==='_previousContent'?32000:500)))throw Error('generation_input_changed');
+ const input=Object.freeze({template:msg.template,inputs:Object.freeze({...msg.inputs}),lang:msg.lang});const body=JSON.stringify(input);if(new TextEncoder().encode(body).length>131072)throw Error('generation_input_changed');return {input,body,snapshot:JSON.stringify([input.template,Object.keys(input.inputs).sort().map(k=>[k,input.inputs[k]]),input.lang])};
+}
+function generationCheck(own){
+ if(generationOriginal!==own||own.retired||own.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||own.identity&&identityReadReceipts.get(own.identity)!==own.identityReceipt){own.retire();throw Error('generation_unconfirmed');}
+}
+function retireGenerationFromView(msg,sender){const own=generationOriginal;if(own&&bestTimeCaller(sender)&&JSON.stringify([sender.tab.id,sender.frameId,sender.documentId])===own.documentScope&&msg.viewRef===own.viewRef)own.retire();return {retired:!!own?.retired};}
+async function generateFromDocument(msg,sender){
+ const scope=bestTimeCaller(sender);if(!scope||!abUuid(msg.viewRef))throw Error('generation_unconfirmed');const {input,body,snapshot}=generationInput(msg);
+ if(generationOriginal){const own=generationOriginal;if(!own.retired&&own.scope===scope&&own.viewRef===msg.viewRef&&own.snapshot===snapshot){generationCheck(own);return own.wait;}throw Error('generation_unconfirmed');}
+ if(passwordLoginOriginal||tokenMutationOriginal)throw Error('generation_unconfirmed');
+ const own={scope,documentScope:JSON.stringify([sender.tab.id,sender.frameId,sender.documentId]),input,body,snapshot,viewRef:msg.viewRef,readRef:crypto.randomUUID(),key:'ext-'+crypto.randomUUID(),revision:identityRevision,startedAt:Date.now(),deadline:performance.now()+60000,expiresAt:Date.now()+60000,controller:new AbortController(),retired:false,attempted:false,ready:false,http:null,identity:null};generationOriginal=own;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});own.retire=()=>{if(!own.retired){own.retired=true;own.controller.abort();rejectWait(Error('generation_unconfirmed'));}};own.timer=setTimeout(own.retire,60000);const check=()=>generationCheck(own),markerMatches=row=>row?.key===own.key&&row?.readRef===own.readRef&&row?.viewRef===own.viewRef;
+ own.markerMatches=markerMatches;
+ const producer=(async()=>{
+  const prior=await chrome.storage.local.get(GENERATION_PENDING);check();if(Object.hasOwn(prior,GENERATION_PENDING))throw Error('generation_unconfirmed');
+  const identity=await getExtensionIdentity();check();const receipt=identity&&identityReadReceipts.get(identity);if(!receipt||receipt.revision!==own.revision)throw Error('not_logged_in');own.identity=identity;own.identityReceipt=receipt;own.expiresAt=Math.min(own.expiresAt,receipt.expiresAt);check();
+  const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==receipt.token)throw Error('generation_unconfirmed');
+  own.attempted=true;await chrome.storage.local.set({[GENERATION_PENDING]:{key:own.key,readRef:own.readRef,viewRef:own.viewRef}});check();const row=await chrome.storage.local.get(GENERATION_PENDING);check();if(!markerMatches(row[GENERATION_PENDING]))throw Error('generation_unconfirmed');
+  const {res,data}=await apiFetch(API_BASE+'/api/generate',{method:'POST',credentials:'omit',cache:'no-store',signal:own.controller.signal,timeoutMs:Math.min(55000,Math.max(1,Math.floor(own.deadline-performance.now()))),maxResponseBytes:256*1024,observeOriginal:p=>{own.http=p;},headers:{'Content-Type':'application/json',Authorization:'Bearer '+receipt.token,'Idempotency-Key':own.key,'X-YTV-Read-Ref':own.readRef},body});check();
+  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('generation_unconfirmed');
+  const g=data?.generation;if(!g||g.readRef!==own.readRef||g.operationKey!==own.key||g.userId!==identity.id||g.template!==input.template||g.language!==input.lang||!Number.isSafeInteger(g.expiresAt)||g.expiresAt<=Date.now()||g.expiresAt>own.startedAt+60000||g.expiresAt>receipt.expiresAt)throw Error('generation_unconfirmed');
+  own.expiresAt=Math.min(own.expiresAt,g.expiresAt);let result;
+  if(res.status===200){if(typeof data.content!=='string'||!data.content.trim()||data.content.length>64000||typeof data.truncated!=='boolean')throw Error('generation_unconfirmed');result={outcome:'generated',content:data.content,truncated:data.truncated};}
+  else {const known={quota_free:429,quota_pro:429,pro_required:403};if(!Object.hasOwn(known,data.code)||known[data.code]!==res.status||data.limit!==undefined&&(!Number.isSafeInteger(data.limit)||data.limit<0))throw Error('generation_unconfirmed');result={outcome:'rejected',code:data.code,...(data.limit===undefined?{}:{limit:data.limit})};}
+  own.data=Object.freeze({key:own.key,readRef:own.readRef,viewRef:own.viewRef,template:input.template,language:input.lang,expiresAt:own.expiresAt,...result});own.ready=true;check();return own.data;
+ })();
+ void producer.catch(()=>{own.retire();clearTimeout(own.timer);}).finally(async()=>{if(own.http)await Promise.allSettled([own.http]);if(generationOriginal===own&&!own.attempted){generationOriginal=null;clearTimeout(own.timer);}}).catch(()=>{});own.wait=Promise.race([producer,stopped]);return own.wait;
+}
+async function acknowledgeGeneration(msg,sender){
+ const own=generationOriginal;if(!own||!own.ready||bestTimeCaller(sender)!==own.scope||msg.key!==own.key||msg.readRef!==own.readRef||msg.viewRef!==own.viewRef)throw Error('generation_unconfirmed');const check=()=>generationCheck(own);check();if(own.acknowledging)return own.acknowledging;
+ own.acknowledging=(async()=>{const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('generation_unconfirmed');const row=await chrome.storage.local.get(GENERATION_PENDING);check();if(!own.markerMatches(row[GENERATION_PENDING]))throw Error('generation_unconfirmed');await chrome.storage.local.remove(GENERATION_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('generation_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();clearTimeout(own.timer);generationOriginal=null;return Object.freeze({key:own.key,readRef:own.readRef,viewRef:own.viewRef,closed:true});})().catch(error=>{own.retire();clearTimeout(own.timer);throw error;});return own.acknowledging;
+}
+
 async function handleMessage(msg,sender) {
+  if (msg.type === 'GENERATE') return generateFromDocument(msg,sender);
+  if (msg.type === 'GENERATE_ACK') return acknowledgeGeneration(msg,sender);
+  if (msg.type === 'GENERATE_RETIRE') return retireGenerationFromView(msg,sender);
   if (msg.type === 'KEYWORDS') return readKeywordsFromView(msg,sender);
   if (msg.type === 'KEYWORDS_ACK') return acknowledgeKeywords(msg,sender);
   if (msg.type === 'KEYWORDS_RETIRE') return retireKeywordsFromView(msg,sender);
@@ -1001,44 +1036,6 @@ async function handleMessage(msg,sender) {
 
     case 'GET_LANG': {
       return { lang };
-    }
-
-    case 'GENERATION_CONTEXT': {
-      const token=await getToken();if(!token)throw Error('not_logged_in');
-      const context=syncGenerationContext(token);return {context:context.id};
-    }
-    case 'GENERATE': {
-      const token=await getToken();if(!token)throw Error('not_logged_in');
-      const context=syncGenerationContext(token);
-      if(msg.generationContext!==context.id)throw Error('generation_context_changed');
-      if(typeof msg.operationKey!=='string'||!/^ext-[a-f0-9-]{36}$/.test(msg.operationKey))throw Error('generation_input_changed');
-      if(typeof msg.template!=='string'||!msg.inputs||typeof msg.inputs!=='object'||Array.isArray(msg.inputs)||Object.values(msg.inputs).some(v=>typeof v!=='string')||!['en','es'].includes(msg.lang))throw Error('generation_input_changed');
-      const body=JSON.stringify({template:msg.template,inputs:msg.inputs,lang:msg.lang});
-      const identity=JSON.stringify([msg.template,Object.keys(msg.inputs).sort().map(k=>[k,msg.inputs[k]]),msg.lang]);
-      const known=context.attempts.get(msg.operationKey);
-      if(known&&known.identity!==identity)throw Error('generation_input_changed');
-      if(known?.flight)return known.flight;
-      if(!known&&context.attempts.size>=64){
-        const delivered=[...context.attempts].find(([,value])=>value.complete&&!value.flight);
-        if(delivered)context.attempts.delete(delivered[0]);else throw Error('generation_pending_limit');
-      }
-      const attempt=known||{identity,flight:null};context.attempts.set(msg.operationKey,attempt);
-      const waitController=new AbortController();let timer;const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('generation_unconfirmed')),55000);});
-      const work=(async()=>{
-        let res,data;
-        try{({res,data}=await apiFetch(API_BASE+'/api/generate',{method:'POST',timeoutMs:55000,maxResponseBytes:256*1024,signal:waitController.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'Idempotency-Key':msg.operationKey},body}));}
-        catch{throw Error('generation_unconfirmed');}
-        const currentToken=await getToken();
-        if(generationContext!==context||currentToken!==token)throw Error('generation_context_changed');
-        if(!res.ok){
-          if(data.code){const error=Error(data.code);error.limit=data.limit;throw error;}
-          throw Error('generation_unconfirmed');
-        }
-        if(!data||typeof data.content!=='string'||!data.content.trim()||data.content.length>64000||typeof data.truncated!=='boolean')throw Error('generation_unconfirmed');
-        attempt.complete=true;return data;
-      })();
-      attempt.flight=Promise.race([work,deadline]).finally(()=>{clearTimeout(timer);waitController.abort();attempt.flight=null;});
-      return attempt.flight;
     }
 
     case 'IDEAS_BADGE': {

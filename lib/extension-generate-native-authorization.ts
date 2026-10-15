@@ -86,7 +86,8 @@ export async function handleExtensionGenerate(request: Request, action: (context
       if (planSnapshot(await run(() => planLookup(ownerId))).value !== plan.value) throw Error('Generation plan changed'); check();
     };
     const step = async <T,>(operation: () => Promise<T>) => { try { await recheck(); const value = await run(operation); await recheck(); return value; } catch (e) { retire(); throw e; } };
-    const operationKey = headers.get('idempotency-key'), recovery = headers.get('x-generation-recovery');
+    const operationKey = headers.get('idempotency-key'), recovery = headers.get('x-generation-recovery'), readRef = headers.get('x-ytv-read-ref');
+    if (readRef !== null && (!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(readRef) || operationKey === null)) return reply({ error: 'Invalid generation reference' }, 400);
     if (operationKey !== null && !/^[A-Za-z0-9._:-]{1,128}$/.test(operationKey)) return reply({ error: 'Invalid operation key' }, 400);
     if (recovery !== null && (recovery !== 'retained-only-v1' || operationKey === null)) return reply({ error: 'Invalid recovery mode' }, 400);
     const raw = await step(readBody); if (new TextEncoder().encode(raw).length > 131072) return reply({ error: 'Invalid body' }, 400);
@@ -94,7 +95,8 @@ export async function handleExtensionGenerate(request: Request, action: (context
     if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.template !== 'string' || body.template.length > 128
       || !body.inputs || typeof body.inputs !== 'object' || Array.isArray(body.inputs) || Object.keys(body.inputs).length > 64
       || Object.entries(body.inputs).some(([k, v]) => k.length > 128 || typeof v !== 'string' || v.length > (k === '_previousContent' ? 32000 : 500))
-      || body.lang != null && typeof body.lang !== 'string') return reply({ error: 'Invalid body' }, 400);
+      || body.lang != null && typeof body.lang !== 'string'
+      || readRef !== null && !['en', 'es'].includes(body.lang)) return reply({ error: 'Invalid body' }, 400);
     const frozen = Object.freeze({ template: body.template, inputs: Object.freeze({ ...body.inputs }) as Readonly<Record<string, string>>, ...(body.lang == null ? {} : { lang: body.lang }) });
     const context = Object.freeze({ [contextBrand]: true as const, owner: Object.freeze({ id: ownerId, email, isPro: plan.isPro }), body: frozen,
       request: captured, operationKey, recovery, signal: controller.signal, check, step }); contexts.set(context, { value: context, used: false, check });
@@ -102,7 +104,14 @@ export async function handleExtensionGenerate(request: Request, action: (context
     if (!contexts.get(context)?.used || !(response instanceof Response) || response.headers.has('set-cookie')) throw Error('Generation response unavailable');
     const text = await step(() => response.text()); if (new TextEncoder().encode(text).length > 262144) throw Error('Generation response too large');
     let value; try { value = JSON.parse(text); } catch { throw Error('Generation response unavailable'); }
-    await recheck(); check(); return reply(value, response.status);
+    await recheck(); check();
+    // Correlation data is projected only from this consumed original. It cannot
+    // issue a context, resume admission, or authorize a later request.
+    if (readRef !== null) {
+      if (!value || typeof value !== 'object' || Array.isArray(value) || !['en', 'es'].includes(frozen.lang ?? '')) throw Error('Generation response unavailable');
+      value = { ...value, generation: { readRef, operationKey, userId: ownerId, template: frozen.template, language: frozen.lang, expiresAt } };
+    }
+    return reply(value, response.status);
   } catch { retire(); return reply({ error: 'Generation unconfirmed', code: 'text_result_unconfirmed', retryMayConsume: false }, 503); }
   finally { retire(); clearTimeout(timer); nativeSignal.removeEventListener('abort', retire); }
 }

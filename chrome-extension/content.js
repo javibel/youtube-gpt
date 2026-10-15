@@ -106,46 +106,34 @@ function sendRawMsg(msg) {
   });
 }
 
-// Business retry keys live only in this page; never authentication or recovery authority.
-const generationAttempts=new Map();
-function sendMsg(msg){return msg.type==='GENERATE'?sendGeneration(msg):sendRawMsg(msg);}
-function sendGeneration(msg){
-  if(typeof msg.template!=='string'||!msg.inputs||typeof msg.inputs!=='object'||Array.isArray(msg.inputs)||Object.values(msg.inputs).some(v=>typeof v!=='string'))return Promise.reject(Error('generation_input_changed'));
-  const snapshot={template:msg.template,inputs:{...msg.inputs},lang:msg.lang||_lang};
-  const identity=JSON.stringify([snapshot.template,Object.keys(snapshot.inputs).sort().map(k=>[k,snapshot.inputs[k]]),snapshot.lang]);
-  let slot=generationAttempts.get(snapshot.template);
-  if(slot&&slot.identity!==identity)return Promise.reject(Error('generation_input_changed'));
-  if(!slot){
-    if(generationAttempts.size>=16)return Promise.reject(Error('generation_pending_limit'));
-    slot={identity,snapshot,key:'ext-'+crypto.randomUUID(),context:null,flight:null};generationAttempts.set(snapshot.template,slot);
-  }
-  if(slot.flight)return slot.flight;
-  const current=slot;let timer;
-  const deadline=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('generation_unconfirmed')),65000);});
-  const work=(async()=>{
-    const context=await sendRawMsg({type:'GENERATION_CONTEXT'});
-    if(!context||typeof context.context!=='string'||!context.context)throw Error('generation_context_changed');
-    if(generationAttempts.get(snapshot.template)!==current)throw Error('generation_discarded');
-    if(current.context!==null&&current.context!==context.context)throw Error('generation_context_changed');
-    current.context=context.context;
-    const result=await sendRawMsg({type:'GENERATE',...current.snapshot,operationKey:current.key,generationContext:current.context});
-    const after=await sendRawMsg({type:'GENERATION_CONTEXT'});
-    if(after?.context!==current.context)throw Error('generation_context_changed');
-    return result;
-  })();
-  current.flight=Promise.race([work,deadline]).then(result=>{
-    if(generationAttempts.get(snapshot.template)!==current)throw Error('generation_discarded');
-    if(!result||typeof result.content!=='string'||!result.content.trim()||typeof result.truncated!=='boolean')throw Error('generation_unconfirmed');
-    generationAttempts.delete(snapshot.template);return result;
-  }).finally(()=>{clearTimeout(timer);current.flight=null;});
-  return current.flight;
+// Public data and business keys cannot rebuild an original view or retry a
+// generation. A lost HTTP/Chrome/storage acknowledgement keeps exclusion.
+function sendMsg(msg){return sendRawMsg(msg);}
+const generationViewDisplays=new Map(),generationViewReceipts=new WeakMap();let generationViewRevision=0;
+function generationViewCurrent(data){const own=data&&generationViewReceipts.get(data);if(!own)return false;try{own.check();return own.closed&&own.data===data;}catch{return false;}}
+function retireGenerationDisplays(){generationViewRevision++;for(const own of generationViewDisplays.values())own.retire();}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang')))retireGenerationDisplays();});
+document.addEventListener('yt-navigate-finish',()=>{for(const own of generationViewDisplays.values())if(!own.scope())own.retire();});
+for(const event of ['input','change'])document.addEventListener(event,()=>{for(const own of generationViewDisplays.values())if(!own.scope())own.retire();});
+function paintGeneration(owner,data,html){const own=data&&generationViewReceipts.get(data);if(!generationViewCurrent(data)||own.owner!==owner)return false;owner.innerHTML=html+(data.outcome==='generated'&&data.truncated?'<div class="ytv-hint">'+t('Resultado parcial. No se continuará automáticamente.','Partial result. It will not continue automatically.')+'</div>':'');own.nodes.push(...owner.children);return true;}
+function generateForView(owner,msg,coherent=()=>true){
+ const input={template:msg.template,inputs:{...msg.inputs},lang:msg.lang||_lang};
+ if(typeof input.template!=='string'||!input.template||!['en','es'].includes(input.lang)||!msg.inputs||typeof msg.inputs!=='object'||Array.isArray(msg.inputs)||Object.values(input.inputs).some(v=>typeof v!=='string'))return Promise.reject(Error('generation_input_changed'));
+ Object.freeze(input.inputs);Object.freeze(input);const snapshot=JSON.stringify([input.template,Object.keys(input.inputs).sort().map(k=>[k,input.inputs[k]]),input.lang]),old=generationViewDisplays.get(owner);
+ if(old&&!old.closed){if(old.snapshot===snapshot&&old.scope())return old.wait;return Promise.reject(Error('generation_unconfirmed'));}
+ old?.retire();const own={owner,input,snapshot,href:location.href,revision:generationViewRevision,viewRef:crypto.randomUUID(),startedAt:Date.now(),deadline:performance.now()+60000,retired:false,closed:false,data:null,nodes:[]};generationViewDisplays.set(owner,own);
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>generationViewDisplays.get(owner)===own&&owner.isConnected&&location.href===own.href&&own.revision===generationViewRevision&&_lang===input.lang&&coherent();
+ own.retire=()=>{if(!own.retired){own.retired=true;void sendMsg({type:'GENERATE_RETIRE',viewRef:own.viewRef}).catch(()=>{});rejectWait(Error('generation_unconfirmed'));}clearTimeout(own.timer);own.observer?.disconnect();for(const node of own.nodes.splice(0))if(node.isConnected&&owner.contains(node))node.remove();};
+ own.check=()=>{if(!own.scope()||performance.now()>=own.deadline||Date.now()<own.startedAt||own.data&&own.data.expiresAt<=Date.now())own.retire();if(own.retired)throw Error('generation_unconfirmed');};
+ own.timer=setTimeout(own.retire,60000);own.observer=new MutationObserver(()=>{try{own.check();}catch{}});own.observer.observe(document.body,{childList:true,subtree:true});
+ const producer=(async()=>{
+  own.check();const data=await Promise.race([sendMsg({type:'GENERATE',...input,viewRef:own.viewRef}),stopped]);own.check();
+  if(!data||data.viewRef!==own.viewRef||data.template!==input.template||data.language!==input.lang||typeof data.key!=='string'||!/^ext-[a-f0-9-]{36}$/.test(data.key)||typeof data.readRef!=='string'||!/^[a-f0-9-]{36}$/.test(data.readRef)||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.startedAt+60000||!['generated','rejected'].includes(data.outcome)||data.outcome==='generated'&&(typeof data.content!=='string'||!data.content.trim()||data.content.length>64000||typeof data.truncated!=='boolean')||data.outcome==='rejected'&&!['quota_free','quota_pro','pro_required'].includes(data.code))throw Error('generation_unconfirmed');
+  Object.freeze(data);own.data=data;own.check();const ack=await Promise.race([sendMsg({type:'GENERATE_ACK',key:data.key,readRef:data.readRef,viewRef:own.viewRef}),stopped]);own.check();if(!ack||ack.key!==data.key||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef||ack.closed!==true)throw Error('generation_unconfirmed');
+  own.closed=true;generationViewReceipts.set(data,own);clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),data.expiresAt-Date.now())));return data;
+ })();own.wait=producer.catch(e=>{own.retire();throw e;});return own.wait;
 }
-document.addEventListener('click',event=>{
-  const button=event.target.closest?.('[data-ytv-discard-generation]');
-  if(!button)return;
-  generationAttempts.clear();
-  button.closest('.ytv-error').textContent=t('Intento descartado. Una nueva generación puede consumir de nuevo.','Attempt discarded. A new generation may consume again.');
-});
 
 function waitForEl(selector, timeout = 6000) {
   return new Promise((resolve, reject) => {
@@ -785,7 +773,7 @@ function renderLoading(text) {
 
 function renderError(msg) {
   if(['generation_unconfirmed','generation_input_changed','generation_context_changed','generation_pending_limit','generation_discarded'].includes(msg)){
-    return '<div class="ytv-error">'+t('Resultado sin confirmar. Vuelve a pulsar el mismo botón con la entrada original. Si cambió la cuenta o se reinició la extensión, descarta el intento antes de empezar otro.','Result unconfirmed. Press the same button with the original input. If the account changed or the extension restarted, discard this attempt before starting another.')+'<br><button class="ytv-btn ytv-btn-sm" data-ytv-discard-generation>'+t('Descartar intento (puede haber consumo previo)','Discard attempt (earlier usage may apply)')+'</button></div>';
+    return '<div class="ytv-error">'+t('Resultado sin confirmar. Este intento queda pendiente y no se repetirá automáticamente.','Result unconfirmed. This attempt remains pending and will not be repeated automatically.')+'</div>';
   }
   if (msg === 'not_logged_in') {
     return `<div class="ytv-error">${t('Inicia sesión en el icono de la extensión para usar YTubViral.', 'Sign in via the extension icon to use YTubViral.')}</div>`;
@@ -1297,7 +1285,7 @@ async function runCompetitor(resultsEl,url,extraCheck=()=>true){
   const result=Object.freeze({...data,...(analysis?{data:analysis}:{})});own.data=result;own.closed=true;competitorViewReceipts.set(result,own);own.check();paint(result.outcome==='analysis'?renderCompetitor(result):competitorViewError(result.code));
   if(result.outcome==='analysis'){
    resultsEl.querySelectorAll('.ytv-tag[data-kw]').forEach(tag=>tag.addEventListener('click',()=>{if(competitorViewCurrent(result))window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(tag.dataset.kw),'_blank');}));
-   const insightBtn=resultsEl.querySelector('#ytv-ch-insight-btn'),insightResult=resultsEl.querySelector('#ytv-ch-insight-result');if(insightBtn&&insightResult)insightBtn.addEventListener('click',async()=>{if(!competitorViewCurrent(result)||!resultsEl.contains(insightBtn)||!resultsEl.contains(insightResult))return;const topTitles=analysis.topVideos.slice(0,5).map(v=>'- '+v.title).join('\n');if(!topTitles){insightResult.innerHTML=renderError(t('Sin vídeos suficientes para analizar','Not enough videos to analyze'));return;}insightResult.innerHTML=renderLoading(t('Analizando patrón...','Analyzing pattern...'));try{const gen=await sendMsg({type:'GENERATE',template:'channel_insight',lang:language,inputs:{channelName:analysis.channel.name,topTitles,keywords:analysis.keywords.slice(0,8).join(', ')}});if(!competitorViewCurrent(result)||!resultsEl.contains(insightResult))return;const text=gen.content||gen.text||gen.result||'';insightResult.innerHTML='<div class="ytv-ch-insight">'+escapeHtml(text).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</div>';}catch(e){if(competitorViewCurrent(result)&&resultsEl.contains(insightResult))insightResult.innerHTML=renderError(e.message);}});
+   const insightBtn=resultsEl.querySelector('#ytv-ch-insight-btn'),insightResult=resultsEl.querySelector('#ytv-ch-insight-result');if(insightBtn&&insightResult)insightBtn.addEventListener('click',async()=>{if(!competitorViewCurrent(result)||!resultsEl.contains(insightBtn)||!resultsEl.contains(insightResult))return;const topTitles=analysis.topVideos.slice(0,5).map(v=>'- '+v.title).join('\n');if(!topTitles){insightResult.innerHTML=renderError(t('Sin vídeos suficientes para analizar','Not enough videos to analyze'));return;}insightResult.innerHTML=renderLoading(t('Analizando patrón...','Analyzing pattern...'));try{const gen=await generateForView(insightResult,{template:'channel_insight',lang:language,inputs:{channelName:analysis.channel.name,topTitles,keywords:analysis.keywords.slice(0,8).join(', ')}},()=>competitorViewCurrent(result)&&resultsEl.contains(insightBtn)&&resultsEl.contains(insightResult));if(!generationViewCurrent(gen))return;const text=gen.content||'';paintGeneration(insightResult,gen,gen.outcome==='rejected'?renderError(gen.code):'<div class="ytv-ch-insight">'+escapeHtml(text).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</div>');}catch(e){if(competitorViewCurrent(result)&&resultsEl.contains(insightResult))insightResult.innerHTML=renderError(e.message);}});
   }
   clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),result.expiresAt-Date.now())));return result;
  }catch(e){own.retire();if(own.scope())paint(competitorViewError(e.message==='not_logged_in'?'not_logged_in':'competitor_unconfirmed'));}})();own.wait=producer;return producer;
@@ -1334,17 +1322,8 @@ async function runKeywords(resultsEl,keyword,extraCheck=()=>true){
 
 
 async function runGenerate(resultsEl, videoTitle) {
-  resultsEl.innerHTML = renderLoading(t('Generando títulos con IA...', 'Generating titles with AI...'));
-  try {
-    const data = await sendMsg({
-      type: 'GENERATE',
-      template: 'title',
-      inputs: { tema: videoTitle, tono: 'informativo', duracion: '10' },
-    });
-    resultsEl.innerHTML = renderTitles(data.content);
-  } catch (e) {
-    resultsEl.innerHTML = renderError(e.message);
-  }
+ resultsEl.innerHTML=renderLoading(t('Generando títulos con IA...','Generating titles with AI...'));
+ try{const data=await generateForView(resultsEl,{template:'title',inputs:{tema:videoTitle,tono:'informativo',duracion:'10'}},()=>getVideoInfo().title===videoTitle);paintGeneration(resultsEl,data,data.outcome==='rejected'?renderError(data.code):renderTitles(data.content));}catch(e){if(resultsEl.isConnected)resultsEl.innerHTML=renderError(e.message);}
 }
 
 // ── Comments Intelligence ─────────────────────────────────────────
@@ -1441,16 +1420,14 @@ async function loadComments(container, videoId) {
         replyArea.innerHTML = renderLoading(t('Generando...', 'Generating...'));
         try {
           const { title } = getVideoInfo();
-          const data = await sendMsg({
-            type: 'GENERATE',
-            template: 'reply',
-            inputs: { comment: btn.dataset.comment, videoTitle: title },
-          });
-          check();
-          const replyText = data.text || data.content || data.result || '';
-          replyArea.innerHTML = `<div class="ytv-reply-text">${escapeHtml(replyText)}</div><button class="ytv-btn ytv-btn-sm ytv-btn-copy">${t('📋 Copiar', '📋 Copy')}</button>`;
-          replyArea.querySelector('.ytv-btn-copy').addEventListener('click', (ev) => {
+          const comment=btn.dataset.comment;
+          const gen=await generateForView(replyArea,{template:'reply',inputs:{comment,videoTitle:title}},()=>current()&&!retired&&data.expiresAt>Date.now()&&container.contains(btn)&&btn.dataset.comment===comment&&getVideoInfo().title===title);
+          check();if(gen.outcome==='rejected'){paintGeneration(replyArea,gen,renderError(gen.code));return;}
+          const replyText=gen.content;
+          paintGeneration(replyArea,gen, `<div class="ytv-reply-text">${escapeHtml(replyText)}</div><button class="ytv-btn ytv-btn-sm ytv-btn-copy">${t('📋 Copiar', '📋 Copy')}</button>`);
+          if(!generationViewCurrent(gen))return;replyArea.querySelector('.ytv-btn-copy').addEventListener('click', (ev) => {
             ev.stopPropagation();
+            if(!generationViewCurrent(gen)||!replyArea.contains(ev.target))return;
             navigator.clipboard.writeText(replyText);
             ev.target.textContent = '✓';
           });
@@ -1796,21 +1773,22 @@ function wireGenTitlesButton(btn, aiResults, titleFieldSelector, videoId) {
     if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
     aiResults.innerHTML = renderLoading(t('Generando títulos...', 'Generating titles...'));
     try {
-      const data = await sendMsg({ type: 'GENERATE', template: 'title', inputs: { tema: title, tono: 'engaging', duracion: '10' } });
-      const text = data.content || data.text || data.result || '';
+      const data=await generateForView(aiResults,{template:'title',inputs:{tema:title,tono:'engaging',duracion:'10'}},()=>btn.isConnected&&getStudioTitle()===title&&(!videoId||getStudioVideoId()===videoId));
+      if(data.outcome==='rejected'){paintGeneration(aiResults,data,renderError(data.code));return;}const text=data.content;
       const titles = text.split('\n').filter(l => l.trim()).slice(0, 5).map(l => l.replace(/^\d+[\.\)]\s*/, '').trim());
       // Botón "A/B" solo en el editor de vídeos ya publicados (videoId presente) —
       // en el diálogo de subida el vídeo aún no existe públicamente, no se puede testear.
-      aiResults.innerHTML = titles.map((tt, i) =>
+      paintGeneration(aiResults,data,titles.map((tt, i) =>
         `<div class="ytv-studio-suggest">
           <span>${escapeHtml(tt)}</span>
           <button class="ytv-btn ytv-btn-sm ytv-btn-red ytv-btn-use" data-text="${escapeHtml(tt)}">${t('Usar', 'Use')}</button>
           ${videoId ? `<button class="ytv-btn ytv-btn-sm ytv-btn-dark ytv-btn-ab" data-idx="${i}">A/B</button>` : ''}
         </div>
         ${videoId ? `<div class="ytv-ab-result" id="ytv-ab-result-${i}"></div>` : ''}`
-      ).join('');
-      aiResults.querySelectorAll('.ytv-btn-use').forEach(useBtn => {
+      ).join(''));
+      if(!generationViewCurrent(data))return;aiResults.querySelectorAll('.ytv-btn-use').forEach(useBtn => {
         useBtn.addEventListener('click', () => {
+          if(!generationViewCurrent(data)||!aiResults.contains(useBtn))return;
           setStudioField(titleFieldSelector, useBtn.dataset.text);
           btn.dispatchEvent(new CustomEvent('ytv-field-applied'));
         });
@@ -1818,6 +1796,7 @@ function wireGenTitlesButton(btn, aiResults, titleFieldSelector, videoId) {
       if (videoId) {
         aiResults.querySelectorAll('.ytv-btn-ab').forEach(abBtn => {
           abBtn.addEventListener('click', async () => {
+            if(!generationViewCurrent(data)||!aiResults.contains(abBtn))return;
             const idx = abBtn.dataset.idx;
             const resultEl = aiResults.querySelector(`#ytv-ab-result-${idx}`);
             const variantB = titles[idx];
@@ -1872,10 +1851,11 @@ function wireGenDescButton(btn, aiResults, descFieldSelector) {
     if (!title) { aiResults.innerHTML = renderError(t('Escribe un título primero', 'Write a title first')); return; }
     aiResults.innerHTML = renderLoading(t('Generando descripción...', 'Generating description...'));
     try {
-      const data = await sendMsg({ type: 'GENERATE', template: 'description', inputs: { tema: title, duracion: '10', keywords: '' } });
-      const text = data.content || data.text || data.result || '';
-      aiResults.innerHTML = `<div class="ytv-studio-suggest"><div class="ytv-studio-desc-preview">${escapeHtml(text).replace(/\n/g, '<br>')}</div><button class="ytv-btn ytv-btn-sm ytv-btn-red" id="ytv-studio-use-desc">${t('📋 Insertar descripción', '📋 Insert description')}</button></div>`;
-      document.getElementById('ytv-studio-use-desc').addEventListener('click', () => {
+      const data=await generateForView(aiResults,{template:'description',inputs:{tema:title,duracion:'10',keywords:''}},()=>btn.isConnected&&getStudioTitle()===title);
+      if(data.outcome==='rejected'){paintGeneration(aiResults,data,renderError(data.code));return;}const text=data.content;
+      paintGeneration(aiResults,data, `<div class="ytv-studio-suggest"><div class="ytv-studio-desc-preview">${escapeHtml(text).replace(/\n/g, '<br>')}</div><button class="ytv-btn ytv-btn-sm ytv-btn-red" id="ytv-studio-use-desc">${t('📋 Insertar descripción', '📋 Insert description')}</button></div>`);
+      if(!generationViewCurrent(data))return;aiResults.querySelector('#ytv-studio-use-desc').addEventListener('click', () => {
+        if(!generationViewCurrent(data))return;
         setStudioField(descFieldSelector, text);
         btn.dispatchEvent(new CustomEvent('ytv-field-applied'));
       });
