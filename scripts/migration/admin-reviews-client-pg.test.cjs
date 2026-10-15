@@ -9,9 +9,9 @@ async function bound(o={}){
  if(o.clientOwner)h.state.id=o.clientOwner;
  if(o.clientEmail)h.state.email=o.clientEmail;
  h.state.send=r=>{
-  if(r.url!=='/api/admin/stats'){assert(['/api/admin/stats','/api/admin/feedback'].includes(r.url));assert.equal(r.init.method??'GET','GET');return closed({feedbacks:[],pending:0});}
+  if(r.url!=='/api/admin/reviews'){assert(['/api/admin/stats','/api/admin/feedback'].includes(r.url));assert.equal(r.init.method??'GET','GET');return closed({feedbacks:[],pending:0});}
   assert.equal(r.init.method,'GET');assert.equal(r.init.cache,'no-store');assert.equal(r.init.credentials,'same-origin');assert.equal(r.init.redirect,'error');assert.match(r.init.headers['X-YTV-Read-Ref'],/^[a-f0-9-]{36}$/);
-  const headers={cookie:b.request.headers.get('cookie')??'',...r.init.headers},request=new Request('http://127.0.0.1:4300/api/admin/stats',{headers,signal:r.init.signal});
+  const headers={cookie:b.request.headers.get('cookie')??'',...r.init.headers},request=new Request('http://127.0.0.1:4300/api/admin/reviews',{headers,signal:r.init.signal});
   const route=b.route.GET(request);b.responses.push(route);void route.catch(()=>{});
   const pending=(async()=>{const response=await route;assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(response.headers.getSetCookie().length,0);responses.push(response.status);entered.headers.resolve();if(o.heldHttp==='headers')await gate.promise;if(o.lostHttp==='headers')throw Error('PRIVATE_HTTP_HEADER_ACK');
    return{status:response.status,ok:response.ok,redirected:response.redirected,headers:response.headers,text(){const body=(async()=>{let text=await response.text();entered.text.resolve();if(o.heldHttp==='text')await gate.promise;if(o.lostHttp==='text')throw Error('PRIVATE_HTTP_TEXT_ACK');if(o.mutate&&response.status===200){const data=JSON.parse(text);o.mutate(data);text=JSON.stringify(data);}return text;})();bodies.push(body);void body.catch(()=>{});return body;}};
