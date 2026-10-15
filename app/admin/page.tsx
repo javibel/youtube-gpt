@@ -9,6 +9,7 @@ import { useAdminReviews } from '@/lib/use-admin-reviews';
 import { useAdminFeedback } from '@/lib/use-admin-feedback';
 import { useAdminReviewModeration } from '@/lib/use-admin-review-moderation';
 import { useAdminUserCreation } from '@/lib/use-admin-user-creation';
+import { useAdminManualGrant } from '@/lib/use-admin-manual-grant';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos', description: 'Descripciones', caption: 'Captions',
@@ -59,11 +60,7 @@ export default function AdminPage() {
   const feedbacks=feedbackRead.data?.feedbacks??[];
   const feedbacksLoading=feedbackRead.loading;
   const userCreation=useAdminUserCreation(session,status,data,stats.refresh);
-  const [grantEmail, setGrantEmail] = useState('');
-  const [grantPlan, setGrantPlan] = useState<'pro' | 'business' | 'free'>('pro');
-  const [grantDays, setGrantDays] = useState(60);
-  const [granting, setGranting] = useState(false);
-  const [grantMsg, setGrantMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const manualGrant=useAdminManualGrant(session,status,data,stats.refresh);
   const [feedbackEmail, setFeedbackEmail] = useState('');
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [feedbackSendMsg, setFeedbackSendMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -86,21 +83,7 @@ export default function AdminPage() {
     finally { setSendingFeedback(false); }
   }
 
-  async function handleGrantPlan(e: React.FormEvent) {
-    e.preventDefault(); setGranting(true); setGrantMsg(null);
-    try {
-      const res = await fetch('/api/admin/grant-pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: grantEmail, plan: grantPlan, ...(grantPlan === 'free' ? {} : { durationDays: grantDays }) }) });
-      const d = await res.json();
-      if (d.ok) {
-        const labels: Record<string, string> = { free: 'Free', pro: 'Pro', business: 'Business' };
-        setGrantMsg({ ok: true, text: `${labels[d.plan]} activado para ${grantEmail}${d.currentPeriodEnd ? ` hasta ${new Date(d.currentPeriodEnd).toLocaleDateString('es-ES')}` : ''}.` });
-        setGrantEmail('');
-        stats.refresh();
-      }
-      else setGrantMsg({ ok: false, text: d.error ?? 'Error' });
-    } catch { setGrantMsg({ ok: false, text: 'Error de conexión' }); }
-    finally { setGranting(false); }
-  }
+  function handleGrantPlan(e:React.FormEvent){e.preventDefault();manualGrant.grant();}
 
   async function handleDeleteUser(userId: string) {
     setDeleting(userId);
@@ -419,35 +402,34 @@ export default function AdminPage() {
           </div>
 
           <div className="yv-card p-5">
-            <p className="text-sm font-display font-semibold mb-1">Gestionar plan</p>
-            <p className="text-[13px] mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Asigna Free, Pro o Business manualmente.</p>
+            <p className="text-sm font-display font-semibold mb-1">Conceder plan</p>
+            <p className="text-[13px] mb-4 font-mono-jb" style={{ color: 'var(--text-faint)' }}>Concede Pro o Business a una cuenta sin suscripción existente.</p>
             <form onSubmit={handleGrantPlan} className="space-y-3">
-              <input type="email" required placeholder="Email del usuario" value={grantEmail} onChange={e => setGrantEmail(e.target.value)} className="soft-field" />
+              <input type="email" required placeholder="Email del usuario" value={manualGrant.form.email} onChange={e => manualGrant.change('email',e.target.value)} className="soft-field" />
               <div className="flex gap-2">
-                {(['free', 'pro', 'business'] as const).map(p => {
+                {(['pro', 'business'] as const).map(p => {
                   const colors: Record<string, { bg: string; border: string; color: string }> = {
-                    free: { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.12)', color: 'var(--text-dim)' },
                     pro: { bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)', color: '#fbbf24' },
                     business: { bg: 'rgba(0,229,255,0.1)', border: 'rgba(0,229,255,0.3)', color: '#00E5FF' },
                   };
-                  const c = grantPlan === p ? colors[p] : { bg: 'transparent', border: 'var(--line)', color: 'var(--text-faint)' };
+                  const c = manualGrant.form.plan === p ? colors[p] : { bg: 'transparent', border: 'var(--line)', color: 'var(--text-faint)' };
                   return (
-                    <button key={p} type="button" onClick={() => setGrantPlan(p)}
+                    <button key={p} type="button" onClick={() => manualGrant.change('plan',p)}
                       className="flex-1 text-[13px] font-mono-jb font-bold py-2 rounded-lg transition"
                       style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color }}>
-                      {p === 'free' ? 'Free' : p === 'pro' ? 'Pro' : 'Business'}
+                      {p === 'pro' ? 'Pro' : 'Business'}
                     </button>
                   );
                 })}
               </div>
-              {grantPlan !== 'free' && <label className="block text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>
+              <label className="block text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>
                 Duración en días (1–365)
-                <input type="number" required min={1} max={365} step={1} value={grantDays} onChange={e => setGrantDays(Number(e.target.value))} className="soft-field mt-1" />
-              </label>}
-              <button type="submit" disabled={granting} className="btn-offset w-full py-2.5 text-sm rounded-xl">
-                {granting ? 'Aplicando...' : grantPlan === 'free' ? 'Quitar plan pagado' : `Activar ${grantPlan === 'pro' ? 'Pro ★' : 'Business ◆'}`}
+                <input type="number" required min={1} max={365} step={1} value={manualGrant.form.durationDays} onChange={e => manualGrant.change('durationDays',Number(e.target.value))} className="soft-field mt-1" />
+              </label>
+              <button type="submit" disabled={!manualGrant.canGrant} className="btn-offset w-full py-2.5 text-sm rounded-xl">
+                {manualGrant.granting ? 'Aplicando...' : `Conceder ${manualGrant.form.plan === 'pro' ? 'Pro ★' : 'Business ◆'}`}
               </button>
-              {grantMsg && <p className="text-[13px] font-mono-jb" style={{ color: grantMsg.ok ? '#22c55e' : '#f87171' }}>{grantMsg.text}</p>}
+              {manualGrant.message && <p role="status" className="text-[13px] font-mono-jb" style={{ color: manualGrant.confirmed ? '#22c55e' : '#f87171' }}>{manualGrant.message}</p>}
             </form>
           </div>
 

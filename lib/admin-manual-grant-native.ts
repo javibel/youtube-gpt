@@ -9,12 +9,11 @@ type AdminRow = { id: string; email: string | null; emailVerified: Date | null }
 type TargetRow = { id: string; email: string | null };
 type Original = { id: string; email: string; sessionRef: string; verifiedAt: number; command: Command; commandRef: string;
   subscriptionId: string; targetId: string | null; startedAt: number; periodEnd: number; deadline: number; expiresAt: number;
-  origin: string; signal: AbortSignal; used: boolean; closed: boolean; createEntered: boolean; databaseAcknowledged: boolean;
-  phase: 'new' | 'transaction' | 'denied' | 'database-ack' | 'response-created' | 'uncertain' };
+  origin: string; signal: AbortSignal; used: boolean; closed: boolean; admitted: boolean; createEntered: boolean; databaseAcknowledged: boolean;
+  phase: 'new' | 'admission' | 'transaction' | 'denied' | 'database-ack' | 'response-created' | 'uncertain' };
 const originals = new WeakMap<object, Original>();
-// Negative process-local fences, never recovery authority. Subscription.userId
-// uniquely excludes a second committed grant. Durable command admission and
-// independent workers/restarts are separate pending migration contracts.
+// Fast negative fences only. The separate permanent command/target ledger also
+// denies independent workers/restarts. No stored row can originate or resume us.
 const commands = new Map<string, Original>(), targets = new Map<string, Original>();
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(v);
 const identifier = (v: unknown): v is string => typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v);
@@ -58,7 +57,7 @@ export async function authorizeNativeAdminManualGrant(request: Request, input: u
   const subscriptionId = crypto.randomUUID(); if (!uuid(subscriptionId)) return null;
   const own: Original = { id, email, sessionRef: authSessionRef, verifiedAt: 0, command, commandRef, subscriptionId, targetId: null,
     startedAt, periodEnd: startedAt + command.durationDays * 86400000, deadline, expiresAt: Math.min(startedAt + 25000, exp * 1000),
-    origin, signal, used: false, closed: false, createEntered: false, databaseAcknowledged: false, phase: 'new' };
+    origin, signal, used: false, closed: false, admitted: false, createEntered: false, databaseAcknowledged: false, phase: 'new' };
   // Capture is native and precedes the dependent lookup. Dates never come from
   // input/old subscription rows or a later retry/renewal clock.
   if (signal.aborted || Date.now() < startedAt || Date.now() >= own.expiresAt || performance.now() >= deadline) return null;
@@ -78,8 +77,10 @@ export async function applyNativeAdminManualGrant(original: NativeAdminManualGra
   if (commands.has(own.commandRef) || targets.has(own.command.email) || commands.size >= 10000) throw Error('Admin manual grant unconfirmed');
   commands.set(own.commandRef, own); targets.set(own.command.email, own);
   try {
-    own.phase = 'transaction';
-    const result = await prisma.$transaction(async tx => {
+    own.phase = 'admission';
+    // A separate COMMIT must acknowledge admission before subscription dispatch.
+    // Capture and lock the native target before persisting its negative fence.
+    const admitted = await prisma.$transaction(async tx => {
       retained(original);
       const admins = await tx.$queryRaw<AdminRow[]>`SELECT id,email,"emailVerified" FROM users WHERE id=${own.id} FOR UPDATE`;
       retained(original); const admin = admins[0];
@@ -96,7 +97,35 @@ export async function applyNativeAdminManualGrant(original: NativeAdminManualGra
       // manual_admin, canceled/expired rows and rows with matching dates/IDs.
       // There is no update/cancel/renew/upsert/delete/provider path here.
       if (existing) return { kind: 'exists' as const };
-      own.targetId = targetId; own.createEntered = true;
+      own.targetId = targetId;
+      const rows = await tx.$queryRaw<{ id: string }[]>`INSERT INTO admin_manual_grant_attempts
+        (id,"userId",email,"sessionRef","targetUserId","targetEmail","subscriptionId",plan,"durationDays","createdAt","periodEnd",state)
+        VALUES (${own.commandRef},${own.id},${own.email},${own.sessionRef},${targetId},${own.command.email},${own.subscriptionId},${own.command.plan},${own.command.durationDays},${new Date(own.startedAt)},${new Date(own.periodEnd)},'pending') RETURNING id`;
+      retained(original); if (rows.length !== 1 || rows[0].id !== own.commandRef) throw Error('Admin manual grant unconfirmed');
+      return { kind: 'admitted' as const };
+    }, { maxWait: 5000, timeout: 15000 });
+    retained(original);
+    if (admitted.kind !== 'admitted') { own.phase = 'denied'; return { ok: false as const, error: admitted.kind }; }
+    own.admitted = true; own.phase = 'transaction';
+    const targetId = own.targetId!;
+    const result = await prisma.$transaction(async tx => {
+      retained(original); if (!own.admitted) throw Error('Admin manual grant unconfirmed');
+      const admins = await tx.$queryRaw<AdminRow[]>`SELECT id,email,"emailVerified" FROM users WHERE id=${own.id} FOR UPDATE`;
+      retained(original); const admin = admins[0];
+      if (admins.length !== 1 || !admin || !eligible(admin, own.id, own.email) || admin.emailVerified?.getTime() !== own.verifiedAt) throw Error('Admin manual grant unconfirmed');
+      const locked = await tx.$queryRaw<TargetRow[]>`SELECT id,email FROM users WHERE id=${targetId} FOR UPDATE`;
+      retained(original); if (locked.length !== 1 || locked[0].id !== targetId || locked[0].email !== own.command.email) throw Error('Admin manual grant unconfirmed');
+      // This row only restricts the already retained original with its own ACK.
+      const pending = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM admin_manual_grant_attempts WHERE id=${own.commandRef}
+        AND "userId"=${own.id} AND email=${own.email} AND "sessionRef"=${own.sessionRef} AND "targetUserId"=${targetId}
+        AND "targetEmail"=${own.command.email} AND "subscriptionId"=${own.subscriptionId} AND plan=${own.command.plan}
+        AND "durationDays"=${own.command.durationDays} AND "createdAt"=${new Date(own.startedAt)} AND "periodEnd"=${new Date(own.periodEnd)}
+        AND state='pending' AND "completedAt" IS NULL FOR UPDATE`;
+      retained(original); if (pending.length !== 1 || pending[0].id !== own.commandRef) throw Error('Admin manual grant unconfirmed');
+      const existing = await tx.subscription.findUnique({ where: { userId: targetId }, select: { id: true } });
+      retained(original);
+      if (existing) return { kind: 'exists' as const }; // Keep the permanent pending fence.
+      own.createEntered = true;
       const value = await tx.subscription.create({ data: { id: own.subscriptionId, userId: targetId, stripeCustomerId: 'manual_admin', stripePriceId: 'manual_admin',
         status: 'active', plan: own.command.plan, cancelAtPeriodEnd: true, currentPeriodStart: new Date(own.startedAt), currentPeriodEnd: new Date(own.periodEnd) },
         select: { id: true, userId: true, stripeCustomerId: true, stripePriceId: true, status: true, plan: true, cancelAtPeriodEnd: true, currentPeriodStart: true, currentPeriodEnd: true } });
@@ -104,8 +133,14 @@ export async function applyNativeAdminManualGrant(original: NativeAdminManualGra
         || value.status !== 'active' || value.plan !== own.command.plan || value.cancelAtPeriodEnd !== true
         || !(value.currentPeriodStart instanceof Date) || value.currentPeriodStart.getTime() !== own.startedAt
         || !(value.currentPeriodEnd instanceof Date) || value.currentPeriodEnd.getTime() !== own.periodEnd) throw Error('Admin manual grant unconfirmed');
-      // Once dispatched, this same producer settles its own transaction even
-      // after HTTP retires. No later dependent effect or native session refresh.
+      // Completion is part of this same effect transaction, never a new effect
+      // or recovery after dispatch. Both changes roll back if its ACK mismatches.
+      const completed = await tx.$queryRaw<{ id: string }[]>`UPDATE admin_manual_grant_attempts SET state='completed',"completedAt"=CURRENT_TIMESTAMP
+        WHERE id=${own.commandRef} AND "userId"=${own.id} AND email=${own.email} AND "sessionRef"=${own.sessionRef}
+        AND "targetUserId"=${targetId} AND "targetEmail"=${own.command.email} AND "subscriptionId"=${own.subscriptionId}
+        AND plan=${own.command.plan} AND "durationDays"=${own.command.durationDays} AND "createdAt"=${new Date(own.startedAt)}
+        AND "periodEnd"=${new Date(own.periodEnd)} AND state='pending' AND "completedAt" IS NULL RETURNING id`;
+      if (completed.length !== 1 || completed[0].id !== own.commandRef) throw Error('Admin manual grant unconfirmed');
       return { kind: 'created' as const };
     }, { maxWait: 5000, timeout: 15000 });
     own.databaseAcknowledged = true; retained(original);
@@ -119,6 +154,6 @@ export async function applyNativeAdminManualGrant(original: NativeAdminManualGra
 }
 export function confirmNativeAdminManualGrant(original: NativeAdminManualGrant): void {
   const own = retained(original);
-  if (own.phase !== 'database-ack' || !own.createEntered || !own.databaseAcknowledged || commands.get(own.commandRef) !== own || targets.get(own.command.email) !== own) throw Error('Admin manual grant unconfirmed');
+  if (own.phase !== 'database-ack' || !own.admitted || !own.createEntered || !own.databaseAcknowledged || commands.get(own.commandRef) !== own || targets.get(own.command.email) !== own) throw Error('Admin manual grant unconfirmed');
   own.phase = 'response-created';
 }
