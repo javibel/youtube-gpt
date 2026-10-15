@@ -4,7 +4,7 @@ const origin='http://127.0.0.1:4300',bindings=[];
 async function bound(o={}){
  const base=await sql.bound(o),targetId=crypto.randomUUID(),targetEmail='grant-'+targetId+'@example.invalid';assert.equal(await sql.db.user.count({where:{id:targetId}}),0);sql.owners.push(targetId);await sql.db.user.create({data:{id:targetId,email:targetEmail,name:'Fresh synthetic grant target'}});
  const calls=[],pending=[],entered={},gate=deferred(),controller=new AbortController();let ordinal=0,offset=0,elapsed=0;
- const step=(name,fn)=>{const p=(async()=>{calls.push(name);const r=await fn();(entered[name]??=deferred()).resolve();if(o.held===name)await gate.promise;if(o.lost===name)throw Error('PRIVATE_GRANT_SQL_ACK');return r;})();pending.push(p);void p.catch(()=>{});return p;};
+ const step=(name,fn)=>{const p=(async()=>{calls.push(name);const r=await fn();(entered[name]??=deferred()).resolve();if(o.held===name)await gate.promise;if(o.lost===name&&ordinal<=2)throw Error('PRIVATE_GRANT_SQL_ACK');return r;})().catch(e=>{calls.push('original-rejection:'+name+':'+e.message);throw e;});pending.push(p);void p.catch(()=>{});return p;};
  const prisma={user:{findUnique:q=>sql.db.user.findUnique(q)},$transaction(fn,options){const n=++ordinal;assert.equal(JSON.stringify(options),JSON.stringify({maxWait:5000,timeout:15000}));return step(n===1?'admission-commit':'effect-commit',()=>sql.db.$transaction(tx=>fn({
   $queryRaw(strings,...values){const text=strings.join('?').replace(/\s+/g,' ').trim();let stage;
    if(text.startsWith('INSERT INTO admin_manual_grant_attempts')){assert.equal(values[1],base.id);assert.equal(values[4],targetId);assert.equal(values[5],targetEmail);stage='admission-create';}
