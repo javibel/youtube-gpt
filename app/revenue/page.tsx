@@ -1,334 +1,45 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+ 'use client';
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
-
-type Lang = 'es' | 'en';
-
-interface CountryRow { country: string; views: number; watchTime: number; cpm: number; estimatedRevenue: number }
-interface VideoRevenue { videoId: string; title: string; views: number; watchTime: number; estimatedRevenue: number; thumbnail: string }
-interface MonthData { month: string; views: number; watchTime: number; estimatedRevenue: number }
-
-interface RevenueData {
-  hasRealRevenue: boolean;
-  revenue28d: number;
-  weightedCPM: number;
-  totalViews28: number;
-  totalWatchTime28: number;
-  countries: CountryRow[];
-  videos: VideoRevenue[];
-  months: MonthData[];
-  projection: { daily: number; monthly: number; yearly: number };
-  aiInsights: {
-    optimizationPotential: string;
-    missedRevenue: string;
-    tips: string[];
-    cpmStrategy: string;
-  } | null;
-  channelName: string;
-}
-
-const COUNTRY_FLAGS: Record<string, string> = {
-  US: '🇺🇸', CA: '🇨🇦', GB: '🇬🇧', AU: '🇦🇺', DE: '🇩🇪', FR: '🇫🇷', NL: '🇳🇱',
-  SE: '🇸🇪', NO: '🇳🇴', DK: '🇩🇰', CH: '🇨🇭', AT: '🇦🇹', BE: '🇧🇪', IE: '🇮🇪',
-  JP: '🇯🇵', KR: '🇰🇷', SG: '🇸🇬', NZ: '🇳🇿', FI: '🇫🇮', IT: '🇮🇹', ES: '🇪🇸',
-  PT: '🇵🇹', BR: '🇧🇷', MX: '🇲🇽', AR: '🇦🇷', CO: '🇨🇴', CL: '🇨🇱', PE: '🇵🇪',
-  IN: '🇮🇳', PH: '🇵🇭', ID: '🇮🇩', TH: '🇹🇭', VN: '🇻🇳', PK: '🇵🇰',
-  PL: '🇵🇱', CZ: '🇨🇿', RO: '🇷🇴', HU: '🇭🇺', TR: '🇹🇷', RU: '🇷🇺',
-  ZA: '🇿🇦', EG: '🇪🇬', NG: '🇳🇬', KE: '🇰🇪',
-};
-
-function fmt$(n: number | null | undefined): string {
-  const v = n ?? 0;
-  return v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : `$${v.toFixed(2)}`;
-}
-
-function fmtNum(n: number | null | undefined): string {
-  const v = n ?? 0;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
-  return String(v);
-}
-
+import { useRevenueAnalysis } from '@/lib/use-revenue-analysis';
 export default function RevenuePage() {
-  const { data: session, status } = useSession();
-  const lang = useLang();
-  const [data, setData] = useState<RevenueData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const t = (es: string, en: string) => lang === 'en' ? en : es;
-
-  useEffect(() => {
-    if (status !== 'authenticated') return;
-    setLoading(true);
-    fetch(`/api/youtube/revenue?lang=${lang}`)
-      .then(r => {
-        if (!r.ok) return r.json().catch(() => ({ error: `HTTP ${r.status}` }));
-        return r.json();
-      })
-      .then(json => {
-        if (!json || json.error) {
-          const err = json?.error || 'unknown';
-          if (err === 'pro_required') setError(t('Plan Pro requerido.', 'Pro plan required.'));
-          else if (err === 'youtube_not_connected') setError('youtube_not_connected');
-          else if (err === 'token_expired' || err === 'unauthorized') setError(t('Sesión expirada. Reconecta tu canal.', 'Session expired. Reconnect your channel.'));
-          else setError(err);
-        } else {
-          setData(json);
-        }
-      })
-      .catch(() => setError(t('Error de conexión', 'Connection error')))
-      .finally(() => setLoading(false));
-  }, [status, lang]);
-
-  if (status === 'loading' || loading) {
-    return (
-      <DashboardShell>
-        <div className="yv-page">
-          <div className="flex items-center justify-center py-24">
-            <div className="text-center">
-              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
-              <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Estimando ingresos...', 'Estimating revenue...')}</p>
-            </div>
-          </div>
-        </div>
-      </DashboardShell>
-    );
-  }
-
-  if (status === 'unauthenticated') {
-    return (
-      <DashboardShell>
-        <div className="yv-page">
-          <div className="flex items-center justify-center py-24">
-            <div className="text-center">
-              <h1 className="font-display font-bold text-3xl text-white mb-4">{t('Revenue Estimator', 'Revenue Estimator')}</h1>
-              <p className="mb-6 font-mono-jb text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('Inicia sesión para ver tus estimaciones.', 'Sign in to view your estimates.')}</p>
-              <a href="/login" className="btn-offset inline-flex px-8 py-3 text-sm font-display">{t('Iniciar sesión', 'Sign in')}</a>
-            </div>
-          </div>
-        </div>
-      </DashboardShell>
-    );
-  }
-
-  const countries = data?.countries ?? [];
-  const videos = data?.videos ?? [];
-  const months = data?.months ?? [];
-  const maxRevCountry = countries.length ? Math.max(...countries.map(c => c.estimatedRevenue), 1) : 1;
-  const maxRevVideo = videos.length ? Math.max(...videos.map(v => v.estimatedRevenue), 1) : 1;
-  const maxMonthRev = months.length ? Math.max(...months.map(m => m.estimatedRevenue), 1) : 1;
-
-  return (
-    <DashboardShell>
-      {/* Header */}
-      <div className="yv-page">
-        <div className="yv-page-header">
-          <div className="yv-page-header__left">
-            <span className="yv-page-header__eyebrow">
-              {t('ESTIMADOR DE INGRESOS', 'REVENUE ESTIMATOR')}
-            </span>
-            <h1 className="yv-page-header__title">
-              {data?.channelName || t('Tu canal', 'Your channel')}
-            </h1>
-            {data && !data.hasRealRevenue && (
-              <p className="yv-page-header__desc font-mono-jb text-[13px]">
-                {t('Estimaciones basadas en CPM por país. Los datos reales aparecerán si el canal está monetizado.', 'Estimates based on country CPM. Real data will appear if channel is monetized.')}
-                {' '}{t('Cálculo propio de YTubViral — no es un dato oficial de YouTube.', 'YTubViral\'s own calculation — not an official YouTube figure.')}
-              </p>
-            )}
-            {data?.hasRealRevenue && (
-              <p className="font-mono-jb text-[13px] text-green-400/80">
-                {t('Datos de ingresos reales de YouTube Analytics', 'Real revenue data from YouTube Analytics')}
-              </p>
-            )}
-          </div>
-        </div>
+  const { data: session, status } = useSession(), lang = useLang();
+  const [currency, setCurrency] = useState<'USD' | 'EUR'>('USD'), [rpm, setRpm] = useState('');
+  const scenarioRpm = rpm === '' ? undefined : /^\d{1,4}(?:\.\d{1,4})?$/.test(rpm) && Number(rpm) <= 1000 ? Number(rpm) : NaN;
+  const analysis = useRevenueAnalysis(session, status, { lang, currency, ...(scenarioRpm === undefined ? {} : { scenarioRpm }) });
+  const t = (es: string, en: string) => lang === 'en' ? en : es, data = analysis.data;
+  const money = (n: number) => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'es-ES', { style: 'currency', currency: data?.revenue.currency ?? currency }).format(n);
+  const number = (n: number) => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'es-ES').format(n);
+  if (status === 'unauthenticated') return <DashboardShell><div className="yv-page"><h1>{t('Ingresos de YouTube', 'YouTube revenue')}</h1><a href="/login">{t('Iniciar sesión', 'Sign in')}</a></div></DashboardShell>;
+  const errors: Record<string, string> = {
+    pro_required: t('Plan Pro requerido.', 'Pro plan required.'), youtube_not_connected: t('Conecta tu canal primero.', 'Connect your channel first.'),
+    token_expired: t('Reconecta tu canal para autorizar otra consulta.', 'Reconnect your channel to authorize another query.'), no_activity_data: t('YouTube no devolvió datos de actividad.', 'YouTube returned no activity data.'),
+  };
+  return <DashboardShell><div className="yv-page space-y-6">
+    <header className="yv-page-header"><div className="yv-page-header__left"><span className="yv-page-header__eyebrow">{t('INGRESOS Y ESCENARIOS', 'REVENUE AND SCENARIOS')}</span>
+      <h1 className="yv-page-header__title">{data?.channel.name ?? t('Tu canal', 'Your channel')}</h1>
+      <p className="yv-page-header__desc">{t('Estimaciones reportadas por YouTube y supuestos manuales separados.', 'YouTube-reported estimates and separate manual assumptions.')}</p></div></header>
+    <div className="yv-card flex flex-wrap items-end gap-4">
+      <label className="text-sm">{t('Moneda', 'Currency')}<select aria-label={t('Moneda', 'Currency')} value={currency} onChange={e => setCurrency(e.target.value as 'USD' | 'EUR')} className="block border rounded p-2 bg-transparent"><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
+      <label className="text-sm">{t('RPM neto supuesto (opcional, 0–1000)', 'Assumed net RPM (optional, 0–1000)')}<input aria-label="RPM" value={rpm} onChange={e => setRpm(e.target.value)} inputMode="decimal" placeholder="0.00" className="block border rounded p-2 bg-transparent" /></label>
+      <button onClick={analysis.analyze} disabled={!analysis.canAnalyze || analysis.loading || status !== 'authenticated'} className="btn-offset px-6 py-3">{analysis.loading ? t('Consultando…', 'Loading…') : t('Consultar ingresos', 'Analyze revenue')}</button>
+      <p className="text-xs w-full">{t('El RPM es tu supuesto de ingresos netos por 1000 vistas, en la moneda elegida. No se infiere un CPM por país.', 'RPM is your assumed net revenue per 1,000 views in the selected currency. Country CPM is not inferred.')}</p>
+    </div>
+    {Number.isNaN(scenarioRpm) && <p role="alert">{t('Introduce un RPM válido o deja el campo vacío.', 'Enter a valid RPM or leave it blank.')}</p>}
+    {analysis.error && <p role="alert" className="text-red-400">{errors[analysis.error] ?? t('No se pudo confirmar la consulta. No se ha reintentado.', 'The analysis could not be confirmed. It has not been retried.')}</p>}
+    {data && <>
+      <p className="text-sm">{t('Intervalo solicitado:', 'Requested range:')} {data.revenueAnalysis.requestedStartDate} — {data.revenueAnalysis.requestedEndDate}. {t('28 días incluidos. La cobertura efectiva y la frescura no están informadas; los informes se leen por separado.', '28 inclusive days. Actual coverage and freshness are not reported; reports are read separately.')}</p>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="yv-card"><h2>{t('Estimación reportada por YouTube', 'YouTube-reported estimate')}</h2><p className="text-2xl">{data.revenue.amount === null ? t('No disponible', 'Unavailable') : money(data.revenue.amount)}</p><p className="text-xs">{data.revenue.status === 'reported-estimate' ? t('Suma de los días devueltos. Sujeta a ajustes; no es una liquidación.', 'Sum of returned days. Subject to adjustment; not settled earnings.') : t('No se interpreta como cero ni como prueba de que el canal no monetiza.', 'This does not mean zero revenue or establish that the channel is not monetized.')}</p></div>
+        <div className="yv-card"><h2>{t('Vistas reportadas del canal', 'Reported channel views')}</h2><p className="text-2xl">{number(data.traffic.views)}</p><p>{number(data.traffic.watchMinutes)} {t('minutos de visionado', 'watch minutes')}</p></div>
+        <div className="yv-card"><h2>{t('Escenario manual', 'Manual scenario')}</h2><p className="text-2xl">{data.scenario ? money(data.scenario.amount) : t('Sin supuesto de RPM', 'No RPM assumption')}</p><p className="text-xs">{t('Vistas reportadas × tu RPM / 1000. Es un escenario, no ingresos observados ni una previsión.', 'Reported views × your RPM / 1,000. A scenario, not observed earnings or a forecast.')}</p></div>
       </div>
-
-      <div className="yv-page">
-        {error && (
-          <div className="text-center py-12">
-            <p className="text-red-400 font-mono-jb text-sm">{error}</p>
-            {error.includes('youtube_not_connected') && (
-              <a href="/dashboard" className="btn-offset inline-flex px-6 py-2 text-sm font-display mt-4">{t('Conectar canal', 'Connect channel')}</a>
-            )}
-          </div>
-        )}
-
-        {data && (
-          <>
-            {/* Projection cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-              {[
-                { label: t('Ingresos 28d', 'Revenue 28d'), value: fmt$(data.revenue28d ?? 0), color: '#22c55e' },
-                { label: t('Proyección mensual', 'Monthly projection'), value: fmt$(data.projection?.monthly ?? 0), color: '#3b82f6' },
-                { label: t('Proyección anual', 'Yearly projection'), value: fmt$(data.projection?.yearly ?? 0), color: '#a855f7' },
-                { label: t('CPM medio', 'Avg CPM'), value: `$${(data.weightedCPM ?? 0).toFixed(2)}`, color: '#eab308' },
-              ].map((card, i) => (
-                <div key={i} className="yv-card p-4">
-                  <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{card.label}</p>
-                  <p className="font-display font-bold text-xl md:text-2xl" style={{ color: card.color }}>{card.value}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {/* Revenue by country */}
-              <div className="yv-card">
-                <h2 className="font-display font-bold text-white text-sm mb-4">{t('Ingresos por país', 'Revenue by Country')}</h2>
-                <div className="space-y-2">
-                  {countries.slice(0, 12).map(c => (
-                    <div key={c.country} className="flex items-center gap-2">
-                      <span className="text-sm w-6 text-center">{COUNTRY_FLAGS[c.country] || '🌍'}</span>
-                      <span className="font-mono-jb text-[13px] w-8" style={{ color: 'var(--yv-text-2)' }}>{c.country}</span>
-                      <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${Math.max(2, (c.estimatedRevenue / maxRevCountry) * 100)}%`,
-                            background: 'linear-gradient(90deg, #22c55e, #16a34a)',
-                          }}
-                        />
-                      </div>
-                      <span className="font-mono-jb text-[13px] text-green-400 w-16 text-right">{fmt$(c.estimatedRevenue)}</span>
-                      <span className="font-mono-jb text-[13px] w-14 text-right" style={{ color: 'var(--yv-text-4)' }}>${c.cpm} CPM</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Monthly trend */}
-              <div className="yv-card">
-                <h2 className="font-display font-bold text-white text-sm mb-4">{t('Tendencia mensual', 'Monthly Trend')}</h2>
-                {months.length > 0 ? (
-                  <div className="space-y-3">
-                    {months.map(m => (
-                      <div key={m.month}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{m.month}</span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(m.views)} views</span>
-                            <span className="font-mono-jb text-[13px] text-green-400 font-bold">{fmt$(m.estimatedRevenue)}</span>
-                          </div>
-                        </div>
-                        <div className="h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.max(2, (m.estimatedRevenue / maxMonthRev) * 100)}%`,
-                              background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-4)' }}>{t('Sin datos mensuales suficientes', 'Not enough monthly data')}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Top videos by revenue */}
-            <div className="yv-card mb-8">
-              <h2 className="font-display font-bold text-white text-sm mb-4">{t('Top vídeos por ingresos (28d)', 'Top Videos by Revenue (28d)')}</h2>
-              <div className="space-y-2">
-                {videos.map((v, i) => (
-                  <div key={v.videoId} className="flex items-center gap-3 group">
-                    <span className="font-mono-jb text-[13px] w-5 text-right" style={{ color: 'var(--yv-text-4)' }}>{i + 1}</span>
-                    {v.thumbnail && (
-                      <img src={v.thumbnail} alt="" className="w-16 h-9 rounded object-cover flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <a
-                        href={`https://youtube.com/watch?v=${v.videoId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono-jb text-[13px] text-white hover:text-green-400 transition truncate block"
-                      >
-                        {v.title}
-                      </a>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} views</span>
-                        <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{((v.watchTime ?? 0) / 60).toFixed(0)}h watch</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-3 rounded-full overflow-hidden hidden md:block" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${Math.max(3, (v.estimatedRevenue / maxRevVideo) * 100)}%`,
-                            background: 'linear-gradient(90deg, #22c55e, #16a34a)',
-                          }}
-                        />
-                      </div>
-                      <span className="font-mono-jb text-[13px] text-green-400 font-bold w-16 text-right">{fmt$(v.estimatedRevenue)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* AI Insights */}
-            {data.aiInsights && (
-              <div className="yv-card mb-8" style={{ borderColor: 'rgba(168,85,247,0.2)', background: 'rgba(168,85,247,0.04)' }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  <h2 className="font-display font-bold text-white text-sm">{t('AI: Potencial de optimización', 'AI: Optimization Potential')}</h2>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4 mb-4">
-                  <div className="yv-card p-3">
-                    <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{t('Potencial', 'Potential')}</p>
-                    <p className="font-mono-jb text-[13px] text-white leading-relaxed">{data.aiInsights.optimizationPotential}</p>
-                  </div>
-                  <div className="yv-card p-3">
-                    <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-1" style={{ color: 'var(--yv-text-3)' }}>{t('Ingresos que dejas de ganar', 'Revenue left on the table')}</p>
-                    <p className="font-mono-jb text-[14px] text-yellow-400 font-bold">{data.aiInsights.missedRevenue}</p>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Estrategia CPM', 'CPM Strategy')}</p>
-                  <p className="font-mono-jb text-[13px] text-purple-300/80 leading-relaxed">{data.aiInsights.cpmStrategy}</p>
-                </div>
-
-                <div>
-                  <p className="font-mono-jb text-[13px] uppercase tracking-wider mb-2" style={{ color: 'var(--yv-text-3)' }}>{t('Tips de monetización', 'Monetization Tips')}</p>
-                  <div className="space-y-1.5">
-                    {data.aiInsights.tips.map((tip, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="font-mono-jb text-[13px] text-green-400 mt-0.5">{i + 1}.</span>
-                        <p className="font-mono-jb text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>{tip}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Summary stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { label: t('Views 28d', 'Views 28d'), value: fmtNum(data.totalViews28 ?? 0) },
-                { label: t('Watch time 28d', 'Watch time 28d'), value: `${((data.totalWatchTime28 ?? 0) / 60).toFixed(0)}h` },
-                { label: t('Ingresos/día', 'Revenue/day'), value: fmt$(data.projection?.daily ?? 0) },
-                { label: t('Ingresos/1K views', 'Revenue/1K views'), value: (data.totalViews28 ?? 0) > 0 ? fmt$((data.revenue28d ?? 0) / ((data.totalViews28 ?? 0) / 1000)) : '$0' },
-              ].map((s, i) => (
-                <div key={i} className="yv-card p-3 text-center">
-                  <p className="font-mono-jb text-[13px] uppercase tracking-wider" style={{ color: 'var(--yv-text-4)' }}>{s.label}</p>
-                  <p className="font-mono-jb text-[14px] text-white font-bold mt-1">{s.value}</p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </DashboardShell>
-  );
+      <div className="grid md:grid-cols-2 gap-4"><section className="yv-card"><h2>{t('Países por vistas (hasta 20)', 'Countries by views (up to 20)')}</h2><ul>{data.traffic.countries.map(c => <li key={c.country}>{c.country}: {number(c.views)} {t('vistas', 'views')}</li>)}</ul><p className="text-xs">{t('La lista limitada no equivale al total del canal.', 'The capped list is not the channel total.')}</p></section>
+      <section className="yv-card"><h2>{t('Vídeos por vistas (hasta 15)', 'Videos by views (up to 15)')}</h2><ul>{data.traffic.videos.map(v => <li key={v.videoId}><a href={`https://www.youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noopener noreferrer">{v.title}</a>: {number(v.views)}</li>)}</ul><p className="text-xs">{t('No se reparten ingresos del canal entre vídeos por su número de vistas.', 'Channel revenue is not allocated to videos by view count.')}</p></section></div>
+      <section className="yv-card"><h2>{t('Días devueltos por YouTube', 'Days returned by YouTube')}</h2><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr><th>{t('Fecha', 'Date')}</th><th>{t('Vistas', 'Views')}</th><th>{t('Minutos', 'Minutes')}</th></tr></thead><tbody>{data.traffic.days.map(d => <tr key={d.date}><td>{d.date}</td><td>{number(d.views)}</td><td>{number(d.watchMinutes)}</td></tr>)}</tbody></table></div><p className="text-xs">{t('Los días ausentes no se rellenan con ceros ni se usan para extrapolar ingresos.', 'Missing days are not filled with zeros or used to extrapolate revenue.')}</p></section>
+      {data.insights ? <section className="yv-card"><h2>{t('IA: ideas que puedes investigar', 'AI: ideas to investigate')}</h2><ul>{data.insights.tips.map((tip, i) => <li key={i}>{tip}</li>)}</ul><h3>{t('Límites de los datos', 'Data limitations')}</h3><ul>{data.insights.limitations.map((tip, i) => <li key={i}>{tip}</li>)}</ul></section> : <p>{t('Consejos de IA no disponibles. Los datos anteriores permanecen separados de cualquier escenario.', 'AI tips unavailable. The data above remains separate from any scenario.')}</p>}
+    </>}
+  </div></DashboardShell>;
 }
