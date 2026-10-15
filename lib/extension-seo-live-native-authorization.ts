@@ -5,7 +5,7 @@ import { scoreSeoLiveInput } from '@/lib/extension-seo-live-score';
 declare const extensionSeoLiveBrand: unique symbol;
 export type ExtensionSeoLiveSession = { readonly [extensionSeoLiveBrand]: true };
 type Owner = Readonly<{ id: string; email: string; name: string | null }>;
-const originals = new WeakMap<object, { owner: Owner; token: string; tokenId: string; expires: number; used: boolean }>();
+const originals = new WeakMap<object, { owner: Owner; token: string; tokenId: string; verifiedAt: number; expires: number; startedAt: number; deadline: number; horizon: number; used: boolean }>();
 const emailPattern = /^[^\s@,;<>"\x00-\x1f\x7f]+@[^\s@,;<>"\x00-\x1f\x7f]+\.[^\s@,;<>"\x00-\x1f\x7f]+$/;
 export const validExtensionReadRef = (value: unknown): value is string => typeof value === 'string'
   && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
@@ -24,24 +24,29 @@ function eligible(row: Awaited<ReturnType<typeof lookup>>, token: string) {
 }
 const lookup = (token: string) => prisma.extensionToken.findUnique({ where: { token }, include: { user: { select: selectUser } } });
 export async function authorizeExtensionSeoLive(request: Request): Promise<ExtensionSeoLiveSession | null> {
+  const startedAt = Date.now(), deadline = performance.now() + 25_000;
   const header = request.headers.get('Authorization');
   if (!header || !/^Bearer [a-f0-9]{64}$/.test(header)) return null;
   const token = header.slice(7), row = await lookup(token);
-  if (!eligible(row, token) || !row || !row.user.email) return null;
+  if (!eligible(row, token) || !row || !row.user.email || Date.now() < startedAt || performance.now() >= deadline) return null;
   const original = Object.freeze({}) as ExtensionSeoLiveSession;
   originals.set(original, { owner: Object.freeze({ id: row.user.id, email: row.user.email, name: row.user.name }),
-    token, tokenId: row.id, expires: row.expiresAt.getTime(), used: false });
+    token, tokenId: row.id, verifiedAt: row.user.emailVerified!.getTime(), expires: row.expiresAt.getTime(), startedAt, deadline,
+    horizon: Math.min(row.expiresAt.getTime(), startedAt + 25_000), used: false });
   return original;
 }
 function retained(original: ExtensionSeoLiveSession) {
   const own = original && typeof original === 'object' ? originals.get(original) : undefined;
-  if (!own || own.expires <= Date.now()) throw Error('Extension identity unconfirmed');
+  if (!own || Date.now() < own.startedAt || own.horizon <= Date.now() || performance.now() >= own.deadline) throw Error('Extension identity unconfirmed');
   return own;
 }
 export function checkExtensionSeoLive(original: ExtensionSeoLiveSession): void { retained(original); }
-export async function analyzeExtensionSeoLive(original: ExtensionSeoLiveSession, input: SeoLiveInput, readRef: string, beforeStep: () => void) {
+export async function analyzeExtensionSeoLive(original: ExtensionSeoLiveSession, input: SeoLiveInput, readRef: string, beforeStep: () => void, view?: Readonly<{ viewRef: string; language: 'es' | 'en' }>) {
   const own = retained(original);
-  if (own.used || !validExtensionReadRef(readRef) || !validSeoLiveInput(input)) throw Error('Extension identity unconfirmed');
+  if (own.used || !validExtensionReadRef(readRef) || !validSeoLiveInput(input)
+    || view && (!validExtensionReadRef(view.viewRef) || !['es','en'].includes(view.language))) throw Error('Extension identity unconfirmed');
+  const captured = Object.freeze({ title: input.title, description: input.description, tags: Object.freeze([...input.tags]) });
+  const binding = view && Object.freeze({ viewRef: view.viewRef, language: view.language });
   own.used = true;
   const check = () => { retained(original); beforeStep(); };
   check();
@@ -51,7 +56,8 @@ export async function analyzeExtensionSeoLive(original: ExtensionSeoLiveSession,
   check();
   if (!eligible(current, own.token) || !current || current.id !== own.tokenId
     || current.userId !== own.owner.id || current.user.email !== own.owner.email
-    || current.expiresAt.getTime() !== own.expires) throw Error('Extension identity unconfirmed');
-  const result = { ...scoreSeoLiveInput(input), readRef, expiresAt:own.expires };
+    || current.user.emailVerified?.getTime() !== own.verifiedAt || current.expiresAt.getTime() !== own.expires) throw Error('Extension identity unconfirmed');
+  const result = { ...scoreSeoLiveInput(captured), readRef, expiresAt:own.horizon,
+    ...(binding ? { seoLive: Object.freeze({ readRef, ...binding, userId:own.owner.id, input:captured, expiresAt:own.horizon }) } : {}) };
   check(); return result;
 }

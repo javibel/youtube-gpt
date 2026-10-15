@@ -1550,38 +1550,36 @@ function getStudioTags(scope = document) {
   return Array.from(chips).map(c => c.textContent.trim()).filter(Boolean);
 }
 
-let studioSeoSessionRevision = 0;
-chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.hasOwn(changes,'ytv_token'))studioSeoSessionRevision++;});
-function createStudioSeoLiveUpdate(scope,panel,bodyEl) {
-  let revision=0;
-  return {
-    invalidate(){revision++;},
-    async run(){
-      const ownRevision=revision,sessionRevision=studioSeoSessionRevision,deadline=performance.now()+30000;
-      const titleEl=scope.querySelector(SELECTORS.studio.titleField),descEl=scope.querySelector(SELECTORS.studio.descField);
-      const chips=Array.from(scope.querySelectorAll(SELECTORS.studio.tagChips));
-      const title=getStudioTitle(scope),description=getStudioDescription(scope),tags=getStudioTags(scope);
-      if(!title&&!description)return;
-      const current=()=>{
-        const nowChips=Array.from(scope.querySelectorAll(SELECTORS.studio.tagChips));
-        return performance.now()<deadline&&revision===ownRevision&&studioSeoSessionRevision===sessionRevision
-          &&panel.isConnected&&panel.contains(bodyEl)&&scope.querySelector(SELECTORS.studio.titleField)===titleEl
-          &&scope.querySelector(SELECTORS.studio.descField)===descEl&&nowChips.length===chips.length&&nowChips.every((x,i)=>x===chips[i])
-          &&getStudioTitle(scope)===title&&getStudioDescription(scope)===description&&JSON.stringify(getStudioTags(scope))===JSON.stringify(tags);
-      };
-      if(!current())return;
-      let timer;
-      try {
-        // The actual Chrome message keeps its own completion after local wait
-        // retirement. Only this captured DOM/input revision may apply its score.
-        const original=sendMsg({type:'SEO_LIVE',title,description,tags});
-        const live=await Promise.race([original,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('SEO Live unconfirmed')),30000);})]);
-        if(!current())return;
-        bodyEl.innerHTML=renderStudioScore(live.score,live.checks,live.titleLength);
-      } catch { /* Preserve the previous score; never retry or apply late output. */ }
-      finally { clearTimeout(timer); }
-    },
-  };
+// A score belongs to one native Studio document, metadata selection and view.
+const studioSeoDisplays=new Map(),studioSeoReceipts=new WeakMap();let studioSeoSessionRevision=0;
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang'))){studioSeoSessionRevision++;for(const own of studioSeoDisplays.values())own.retire();}});
+for(const event of ['yt-navigate-finish','input','change'])document.addEventListener(event,()=>{for(const own of studioSeoDisplays.values())if(!own.scope())own.retire();});
+function paintStudioSeoLive(bodyEl,data){const own=data&&studioSeoReceipts.get(data);if(!own||own.bodyEl!==bodyEl||!own.closed)return false;try{own.check();bodyEl.innerHTML=renderStudioScore(data.score,data.checks,data.titleLength);own.nodes.push(...bodyEl.children);return true;}catch{return false;}}
+function createStudioSeoLiveUpdate(scope,panel,bodyEl){
+ let revision=0,active=null;
+ return{
+  invalidate(){revision++;active?.retire();},
+  async run(){
+   const ownRevision=revision,sessionRevision=studioSeoSessionRevision,language=_lang,href=location.href,titleEl=scope.querySelector(SELECTORS.studio.titleField),descEl=scope.querySelector(SELECTORS.studio.descField),chips=Array.from(scope.querySelectorAll(SELECTORS.studio.tagChips));
+   const input=Object.freeze({title:getStudioTitle(scope),description:getStudioDescription(scope),tags:Object.freeze(getStudioTags(scope))});if(!input.title&&!input.description)return;
+   const coherent=()=>{const now=Array.from(scope.querySelectorAll(SELECTORS.studio.tagChips));return revision===ownRevision&&sessionRevision===studioSeoSessionRevision&&location.href===href&&_lang===language&&scope.isConnected!==false&&panel.isConnected&&panel.contains(bodyEl)&&scope.querySelector(SELECTORS.studio.titleField)===titleEl&&scope.querySelector(SELECTORS.studio.descField)===descEl&&now.length===chips.length&&now.every((x,i)=>x===chips[i])&&getStudioTitle(scope)===input.title&&getStudioDescription(scope)===input.description&&JSON.stringify(getStudioTags(scope))===JSON.stringify(input.tags);};
+   if(active&&!active.retired&&!active.closed&&active.scope())return active.wait;
+   active?.retire();const old=studioSeoDisplays.get(bodyEl);if(old&&old!==active)old.retire();
+   const own={bodyEl,viewRef:crypto.randomUUID(),revision:ownRevision,startedAt:Date.now(),deadline:performance.now()+30000,expiresAt:Date.now()+30000,closed:false,retired:false,nodes:[]};active=own;studioSeoDisplays.set(bodyEl,own);
+   let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+   own.scope=()=>studioSeoDisplays.get(bodyEl)===own&&coherent();
+   own.retire=()=>{if(!own.retired){own.retired=true;void sendMsg({type:'SEO_LIVE_RETIRE',viewRef:own.viewRef}).catch(()=>{});clearTimeout(own.timer);own.observer?.disconnect();for(const n of own.nodes)n.remove();rejectWait(Error('seo_live_unconfirmed'));}};
+   own.check=()=>{if(own.retired||!own.scope()||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt){own.retire();throw Error('seo_live_unconfirmed');}};
+   own.timer=setTimeout(own.retire,30000);own.observer=new MutationObserver(()=>{if(!own.scope())own.retire();});own.observer.observe(document.body,{childList:true,subtree:true,characterData:true});
+   own.wait=(async()=>{try{
+    own.check();const data=await Promise.race([sendMsg({type:'SEO_LIVE',...input,lang:language,viewRef:own.viewRef}),stopped]);own.check();
+    if(!data||data.error||data.viewRef!==own.viewRef||!data.readRef||data.language!==language||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.startedAt+30000||data.titleLength!==input.title.length||!Number.isSafeInteger(data.score)||!Array.isArray(data.checks))throw Error('seo_live_unconfirmed');
+    const result=Object.freeze({...data,checks:Object.freeze(data.checks.map(x=>Object.freeze({...x})))});own.expiresAt=Math.min(own.expiresAt,data.expiresAt);own.check();
+    const ack=await Promise.race([sendMsg({type:'SEO_LIVE_ACK',readRef:data.readRef,viewRef:own.viewRef}),stopped]);own.check();if(!ack||ack.closed!==true||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef)throw Error('seo_live_unconfirmed');
+    own.closed=true;studioSeoReceipts.set(result,own);if(!paintStudioSeoLive(bodyEl,result))throw Error('seo_live_unconfirmed');clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),own.expiresAt-Date.now())));return result;
+   }catch{own.retire();return undefined;}})();return own.wait;
+  },
+ };
 }
 
 function setStudioField(selector, text) {
