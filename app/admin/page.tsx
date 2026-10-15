@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useAdminStats } from '@/lib/use-admin-stats';
 import { useAdminReviews } from '@/lib/use-admin-reviews';
 import { useAdminFeedback } from '@/lib/use-admin-feedback';
+import { useAdminReviewModeration } from '@/lib/use-admin-review-moderation';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos', description: 'Descripciones', caption: 'Captions',
@@ -50,9 +51,9 @@ export default function AdminPage() {
   const reviewRead=useAdminReviews(session,status);
   const reviews=reviewRead.data?.reviews??[];
   const reviewsLoading=reviewRead.loading;
+  const reviewModeration=useAdminReviewModeration(session,status,reviewRead.data,reviewRead.refresh);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [moderating, setModerating] = useState<string | null>(null);
   const feedbackRead=useAdminFeedback(session,status);
   const feedbacks=feedbackRead.data?.feedbacks??[];
   const feedbacksLoading=feedbackRead.loading;
@@ -111,15 +112,6 @@ export default function AdminPage() {
       else setGrantMsg({ ok: false, text: d.error ?? 'Error' });
     } catch { setGrantMsg({ ok: false, text: 'Error de conexión' }); }
     finally { setGranting(false); }
-  }
-
-  async function handleModerateReview(id: string, newStatus: 'approved' | 'rejected') {
-    setModerating(id);
-    try {
-      const res = await fetch('/api/admin/reviews', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: newStatus }) });
-      const d = await res.json();
-      if (d.ok) reviewRead.refresh();
-    } finally { setModerating(null); }
   }
 
   async function handleDeleteUser(userId: string) {
@@ -381,6 +373,8 @@ export default function AdminPage() {
               <span style={{ color: '#22c55e' }}>{reviews.filter(r => r.status === 'approved').length} aprobadas</span>
             </div>
           </div>
+          <p className="text-[13px] mb-3" style={{ color: 'var(--text-faint)' }}>Una reseña moderada no puede cambiarse desde esta vista.</p>
+          {reviewModeration.message && <p role="status" className="text-sm mb-3">{reviewModeration.message}</p>}
           {reviewsLoading ? <p className="text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>Cargando...</p> : reviewRead.error ? (
             <p role="alert" className="text-sm" style={{ color: 'var(--text-faint)' }}>{reviewRead.error}</p>
           ) : reviews.length === 0 ? (
@@ -401,14 +395,14 @@ export default function AdminPage() {
                       </div>
                       <p className="text-sm leading-relaxed" style={{ color: 'var(--text-dim)' }}>{r.text}</p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      {r.status !== 'approved' && (
-                        <button onClick={() => handleModerateReview(r.id, 'approved')} disabled={moderating === r.id}
+                    <div className="flex gap-2 shrink-0" aria-busy={reviewModeration.pendingId===r.id}>
+                      {r.status === 'pending' && (
+                        <button type="button" onClick={() => reviewModeration.moderate(r.id, 'approved')} disabled={!reviewModeration.canModerate(r.id)}
                           className="text-[13px] px-3 py-1.5 rounded-lg disabled:opacity-50"
                           style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>Aprobar</button>
                       )}
-                      {r.status !== 'rejected' && (
-                        <button onClick={() => handleModerateReview(r.id, 'rejected')} disabled={moderating === r.id}
+                      {r.status === 'pending' && (
+                        <button type="button" onClick={() => reviewModeration.moderate(r.id, 'rejected')} disabled={!reviewModeration.canModerate(r.id)}
                           className="text-[13px] px-3 py-1.5 rounded-lg disabled:opacity-50"
                           style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>Rechazar</button>
                       )}
