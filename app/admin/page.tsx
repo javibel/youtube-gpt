@@ -5,6 +5,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAdminStats } from '@/lib/use-admin-stats';
+import { useAdminReviews } from '@/lib/use-admin-reviews';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos', description: 'Descripciones', caption: 'Captions',
@@ -51,10 +52,11 @@ export default function AdminPage() {
   const router = useRouter();
   const stats=useAdminStats(session,status);
   const {data,loading,error}=stats;
+  const reviewRead=useAdminReviews(session,status);
+  const reviews=reviewRead.data?.reviews??[];
+  const reviewsLoading=reviewRead.loading;
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [reviews, setReviews] = useState<{ id: string; rating: number; text: string; status: string; createdAt: string; user: { email: string; name: string | null } }[]>([]);
-  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [moderating, setModerating] = useState<string | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [feedbackPending, setFeedbackPending] = useState(0);
@@ -77,11 +79,6 @@ export default function AdminPage() {
     if (status === 'unauthenticated') { router.push('/login'); return; }
     if (status === 'authenticated' && !(session?.user as { isAdmin?: boolean })?.isAdmin) { router.push('/dashboard'); return; }
     if (status === 'authenticated') {
-      fetch('/api/admin/reviews')
-        .then(r => r.json())
-        .then(d => { if (d.reviews) setReviews(d.reviews); })
-        .catch(() => {})
-        .finally(() => setReviewsLoading(false));
       fetch('/api/admin/feedback')
         .then(r => r.json())
         .then(d => { if (d.feedbacks) { setFeedbacks(d.feedbacks); setFeedbackPending(d.pending ?? 0); } })
@@ -133,7 +130,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/reviews', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: newStatus }) });
       const d = await res.json();
-      if (d.ok) setReviews(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+      if (d.ok) reviewRead.refresh();
     } finally { setModerating(null); }
   }
 
@@ -383,13 +380,17 @@ export default function AdminPage() {
         <div className="yv-card p-5">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <p className="text-sm font-display font-semibold">Reseñas de usuarios</p>
+            <button type="button" onClick={reviewRead.refresh} disabled={reviewsLoading}
+              className="text-[13px] px-3 py-1.5 rounded-lg disabled:opacity-50">Actualizar reseñas</button>
             <div className="flex gap-3 text-[13px] font-mono-jb">
               <span style={{ color: '#fbbf24' }}>{reviews.filter(r => r.status === 'pending').length} pendientes</span>
               <span style={{ color: 'var(--line-2)' }}>·</span>
               <span style={{ color: '#22c55e' }}>{reviews.filter(r => r.status === 'approved').length} aprobadas</span>
             </div>
           </div>
-          {reviewsLoading ? <p className="text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>Cargando...</p> : reviews.length === 0 ? (
+          {reviewsLoading ? <p className="text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>Cargando...</p> : reviewRead.error ? (
+            <p role="alert" className="text-sm" style={{ color: 'var(--text-faint)' }}>{reviewRead.error}</p>
+          ) : reviews.length === 0 ? (
             <p className="text-sm" style={{ color: 'var(--text-faint)' }}>No hay reseñas aún.</p>
           ) : (
             <ul className="space-y-3">
@@ -402,7 +403,7 @@ export default function AdminPage() {
                         <span className="text-[13px] font-mono-jb truncate" style={{ color: 'var(--text-faint)' }}>{r.user.email}</span>
                         <span className="text-[13px] font-mono-jb px-2 py-0.5 rounded"
                           style={{ background: r.status === 'approved' ? 'rgba(34,197,94,0.12)' : r.status === 'rejected' ? 'rgba(239,68,68,0.12)' : 'rgba(251,191,36,0.12)', color: r.status === 'approved' ? '#22c55e' : r.status === 'rejected' ? '#f87171' : '#fbbf24' }}>
-                          {r.status === 'approved' ? 'Aprobada' : r.status === 'rejected' ? 'Rechazada' : 'Pendiente'}
+                          {r.status === 'approved' ? 'Aprobada' : r.status === 'rejected' ? 'Rechazada' : r.status === 'pending' ? 'Pendiente' : r.status}
                         </span>
                       </div>
                       <p className="text-sm leading-relaxed" style={{ color: 'var(--text-dim)' }}>{r.text}</p>
