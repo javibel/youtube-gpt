@@ -78,6 +78,8 @@ export async function applyNativeAdminManualGrant(original: NativeAdminManualGra
   commands.set(own.commandRef, own); targets.set(own.command.email, own);
   try {
     own.phase = 'admission';
+    // Raw Date parameters are timestamptz; normalize explicitly to UTC for the
+    // timestamp columns, including intervals crossing the host's DST boundary.
     // A separate COMMIT must acknowledge admission before subscription dispatch.
     // Capture and lock the native target before persisting its negative fence.
     const admitted = await prisma.$transaction(async tx => {
@@ -100,7 +102,7 @@ export async function applyNativeAdminManualGrant(original: NativeAdminManualGra
       own.targetId = targetId;
       const rows = await tx.$queryRaw<{ id: string }[]>`INSERT INTO admin_manual_grant_attempts
         (id,"userId",email,"sessionRef","targetUserId","targetEmail","subscriptionId",plan,"durationDays","createdAt","periodEnd",state)
-        VALUES (${own.commandRef},${own.id},${own.email},${own.sessionRef},${targetId},${own.command.email},${own.subscriptionId},${own.command.plan},${own.command.durationDays},${new Date(own.startedAt)},${new Date(own.periodEnd)},'pending') RETURNING id`;
+        VALUES (${own.commandRef},${own.id},${own.email},${own.sessionRef},${targetId},${own.command.email},${own.subscriptionId},${own.command.plan},${own.command.durationDays},(CAST(${new Date(own.startedAt)} AS timestamptz) AT TIME ZONE 'UTC'),(CAST(${new Date(own.periodEnd)} AS timestamptz) AT TIME ZONE 'UTC'),'pending') RETURNING id`;
       retained(original); if (rows.length !== 1 || rows[0].id !== own.commandRef) throw Error('Admin manual grant unconfirmed');
       return { kind: 'admitted' as const };
     }, { maxWait: 5000, timeout: 15000 });
@@ -119,7 +121,7 @@ export async function applyNativeAdminManualGrant(original: NativeAdminManualGra
       const pending = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM admin_manual_grant_attempts WHERE id=${own.commandRef}
         AND "userId"=${own.id} AND email=${own.email} AND "sessionRef"=${own.sessionRef} AND "targetUserId"=${targetId}
         AND "targetEmail"=${own.command.email} AND "subscriptionId"=${own.subscriptionId} AND plan=${own.command.plan}
-        AND "durationDays"=${own.command.durationDays} AND "createdAt"=${new Date(own.startedAt)} AND "periodEnd"=${new Date(own.periodEnd)}
+        AND "durationDays"=${own.command.durationDays} AND "createdAt"=(CAST(${new Date(own.startedAt)} AS timestamptz) AT TIME ZONE 'UTC') AND "periodEnd"=(CAST(${new Date(own.periodEnd)} AS timestamptz) AT TIME ZONE 'UTC')
         AND state='pending' AND "completedAt" IS NULL FOR UPDATE`;
       retained(original); if (pending.length !== 1 || pending[0].id !== own.commandRef) throw Error('Admin manual grant unconfirmed');
       const existing = await tx.subscription.findUnique({ where: { userId: targetId }, select: { id: true } });
@@ -135,11 +137,11 @@ export async function applyNativeAdminManualGrant(original: NativeAdminManualGra
         || !(value.currentPeriodEnd instanceof Date) || value.currentPeriodEnd.getTime() !== own.periodEnd) throw Error('Admin manual grant unconfirmed');
       // Completion is part of this same effect transaction, never a new effect
       // or recovery after dispatch. Both changes roll back if its ACK mismatches.
-      const completed = await tx.$queryRaw<{ id: string }[]>`UPDATE admin_manual_grant_attempts SET state='completed',"completedAt"=CURRENT_TIMESTAMP
+      const completed = await tx.$queryRaw<{ id: string }[]>`UPDATE admin_manual_grant_attempts SET state='completed',"completedAt"=(CURRENT_TIMESTAMP AT TIME ZONE 'UTC')
         WHERE id=${own.commandRef} AND "userId"=${own.id} AND email=${own.email} AND "sessionRef"=${own.sessionRef}
         AND "targetUserId"=${targetId} AND "targetEmail"=${own.command.email} AND "subscriptionId"=${own.subscriptionId}
-        AND plan=${own.command.plan} AND "durationDays"=${own.command.durationDays} AND "createdAt"=${new Date(own.startedAt)}
-        AND "periodEnd"=${new Date(own.periodEnd)} AND state='pending' AND "completedAt" IS NULL RETURNING id`;
+        AND plan=${own.command.plan} AND "durationDays"=${own.command.durationDays} AND "createdAt"=(CAST(${new Date(own.startedAt)} AS timestamptz) AT TIME ZONE 'UTC')
+        AND "periodEnd"=(CAST(${new Date(own.periodEnd)} AS timestamptz) AT TIME ZONE 'UTC') AND state='pending' AND "completedAt" IS NULL RETURNING id`;
       if (completed.length !== 1 || completed[0].id !== own.commandRef) throw Error('Admin manual grant unconfirmed');
       return { kind: 'created' as const };
     }, { maxWait: 5000, timeout: 15000 });
