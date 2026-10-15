@@ -2,7 +2,12 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{createRequire}=require('node:module'),{EventEmitter}=require('node:events'),{PassThrough}=require('node:stream');
 function load(relative,overrides={}){
  const file=path.resolve(__dirname,'../..',relative),entry={exports:{}},requireFile=createRequire(file);
- vm.runInNewContext(fs.readFileSync(file,'utf8'),{module:entry,exports:entry.exports,require:name=>Object.hasOwn(overrides,name)?overrides[name]:requireFile(name),structuredClone,Buffer,AbortSignal,AbortController,Headers,ReadableStream,Promise},{filename:file});return entry.exports;
+ const guardedRequire=name=>{
+  if(Object.hasOwn(overrides,name))return overrides[name];
+  if(name==='node:https'||name==='https'||name.endsWith('/anthropic-https.cjs'))throw Error('Synthetic HTTPS replacement required before loading provider transport');
+  return requireFile(name);
+ };
+ vm.runInNewContext(fs.readFileSync(file,'utf8'),{module:entry,exports:entry.exports,require:guardedRequire,structuredClone,Buffer,AbortSignal,AbortController,Headers,ReadableStream,Promise},{filename:file});return entry.exports;
 }
 function fixture(options={}){
  const calls=[],agents=[],sends=[],resolutions=[];let current;
@@ -13,7 +18,7 @@ function fixture(options={}){
   request.end=body=>{sends.push(body);const response=new PassThrough();response.statusCode=options.status??200;response.headers={'content-type':'application/json',...options.headers};current.response=response;queueMicrotask(()=>{if(request.destroyed){response.destroy();return;}onResponse(response);if(!options.holdBody){response.complete=true;response.end(options.body??JSON.stringify(wire()));}});};
   current={request,socket,configuration};calls.push(current);queueMicrotask(()=>{request.emit('socket',socket);if(!options.holdTLS)socket.emit('secureConnect');});return request;
  }};
- const adapter=load('lib/ai/adapters/anthropic-https.cjs',{'node:https':native}),factory=load('lib/ai/adapters/anthropic-transport.cjs',{'./adapters/anthropic-https.cjs':adapter});
+ const adapter=load('lib/ai/adapters/anthropic-https.cjs',{'node:https':native}),factory=load('lib/ai/adapters/anthropic-transport.cjs',{'./anthropic-https.cjs':adapter});
  const resolveAddress=async value=>{resolutions.push(value);if(options.resolve)return options.resolve(value);return options.address??'93.184.216.34';};
  return{adapter,factory,resolveAddress,calls,agents,sends,resolutions,wire,current:()=>current,createFetch:extra=>adapter.createAnthropicHttpsFetch({resolveAddress,apiVersion:'2023-06-01',maxRequestBytes:8192,...extra})};
 }

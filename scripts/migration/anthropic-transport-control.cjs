@@ -7,6 +7,10 @@ const {createControlStore}=require('../../contracts/ai/v1/control-store.cjs');
 const {createConfigurationService}=require('../../lib/ai/configuration-service.cjs');
 module.exports=async({pool,prefix,test})=>{
  const client=await pool.connect(),roles={reader:'ytv_ai_test_reader',activator:'ytv_ai_test_activator',executor:'ytv_ai_test_executor'},budgetId=prefix+'_anthropic_wire_budget';
+ // Defense in depth: a missing VM replacement cannot escape through a native
+ // HTTP/TLS call. PostgreSQL uses its already owned, non-TLS local client.
+ const https=require('node:https'),http=require('node:http'),tls=require('node:tls'),held=[[https,'request'],[https,'get'],[http,'request'],[http,'get'],[tls,'connect']].map(([owner,key])=>({owner,key,original:owner[key]}));let nativeAttempts=0;
+ for(const {owner,key}of held)owner[key]=()=>{nativeAttempts++;throw Error('Native provider network is forbidden in this SQL contract');};
  const database=role=>({role,async transaction(work){await client.query('SET LOCAL ROLE '+roles[role]);try{return await work({query:async(sql,args)=>(await client.query(sql,args)).rows});}finally{await client.query('RESET ROLE');}}});
  const ledger=async()=>{const b=(await client.query('SELECT reserved_micros,settled_micros,blocked FROM ytv_ai_test_v1.budgets WHERE budget_id=$1',[budgetId])).rows[0];return {reserved:Number(b.reserved_micros),settled:Number(b.settled_micros),blocked:b.blocked};};
  try{
@@ -44,5 +48,6 @@ module.exports=async({pool,prefix,test})=>{
    const before=await ledger(),r=fixture(),c=await make(r,{preflight:async()=>({upperBoundMicros:11,currency:'EUR',priceVersion:'synthetic-wire-v1'})}),n=credentials;
    for(let i=0;i<2;i++)await assert.rejects((await c.factory(identity('preflight'))).create(parameters),e=>e.result?.error?.code==='quota');assert.equal(credentials,n);assert.equal(r.resolutions.length,0);assert.equal(r.calls.length,0);assert.deepEqual(await ledger(),before);
   });
- }finally{await client.query('ROLLBACK');client.release();}
+ }finally{try{await client.query('ROLLBACK');}finally{client.release();for(const {owner,key,original}of held)owner[key]=original;}}
+ assert.equal(nativeAttempts,0,'A synthetic provider contract attempted a native connection');
 };
