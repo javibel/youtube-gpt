@@ -2,7 +2,11 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),bcrypt=require('bcryptjs'),{PrismaClient}=require('@prisma/client');
 const {load}=require('./route-harness.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs');
 const root=path.resolve(__dirname,'../../..'),config=JSON.parse(fs.readFileSync(path.join(root,'migration-config.json'))),checked=require('./isolation.cjs').validate(config,{root,operationalRoots:['C:/Users/jimen/youtube-gpt/youtube-gpt','C:/Users/jimen/youtube-gpt/local-agent'],environment:process.env});
-const db=new PrismaClient({datasources:{db:{url:config.databaseUrl}}}),pool=new(require('pg').Pool)({connectionString:config.databaseUrl}),owners=[],bindings=[];
+// Prisma DateTime stores UTC in timestamp-without-zone columns. node-postgres's
+// default 1114 decoder assumes the host zone; the independent oracle must read
+// those same stored instants as UTC, without changing a row or its declared date.
+const pg=require('pg'),oracleTypes={getTypeParser(oid,format){return oid===1114&&format!=='binary'?value=>new Date(value+'Z'):pg.types.getTypeParser(oid,format);}};
+const db=new PrismaClient({datasources:{db:{url:config.databaseUrl}}}),pool=new pg.Pool({connectionString:config.databaseUrl,types:oracleTypes}),owners=[],bindings=[];
 const readers=['total-users','paid-subscriptions','new-users-month','new-users-last','total-generations','generations-month','generations-last','recent-users','recent-generations','templates','daily'];
 const origin='http://127.0.0.1:4300',secret='synthetic-native-admin-stats-pg-not-operational',password='synthetic-admin-stats-password';let passwordHash;
 async function bound(o={}){
@@ -11,6 +15,7 @@ async function bound(o={}){
  const id=crypto.randomUUID(),email='admin-stats-'+id+'@example.invalid',at=Date.now(),calls=[],queries=[],responses=[],actions=[],entered={},gates={},timers=new Map(),env={AUTH_URL:origin,STRIPE_PRO_YEARLY_PRICE_ID:'synthetic-yearly'};let incoming=new Headers(),options,offset=0,elapsed=0,serial=0,accountReads=0,decodes=0;
  assert.equal(await db.user.count({where:{id}}),0);owners.push(id);
  await db.user.create({data:{id,email,name:'Synthetic native admin',password:passwordHash,emailVerified:o.unverified?null:new Date(at-10000),createdAt:new Date(at-1000)}});
+ assert.equal((await pool.query('SELECT "createdAt" FROM users WHERE id=$1',[id])).rows[0].createdAt.getTime(),at-1000);
  if(o.rows)await seedRows(id,at);
  if(o.held)gates[o.held]=deferred();
  const step=(name,fn)=>{const p=(async()=>{calls.push(name);const value=await fn();(entered[name]??=deferred()).resolve();if(o.held===name)await gates[name].promise;if(o.lost===name)throw Error('PRIVATE_ADMIN_SQL_ACK');return value;})();queries.push(p);void p.catch(()=>{});return p;};
@@ -54,6 +59,7 @@ async function oracle(b){
 }
 function compare(actual,expected){const plain=x=>JSON.parse(JSON.stringify(x));for(const key of ['thisMonth','daily'])assert.deepEqual(actual[key],expected[key]);const a={...actual.overview},e={...expected.overview};assert(Math.abs(a.mrr-e.mrr)<1e-8);delete a.mrr;delete e.mrr;assert.deepEqual(a,e);for(const key of ['templateBreakdown','recentUsers','recentGenerations'])assert.deepEqual([...actual[key]].sort((a,b)=>String(a.id??a.template).localeCompare(String(b.id??b.template))),plain(expected[key]).sort((a,b)=>String(a.id??a.template).localeCompare(String(b.id??b.template))));assert.deepEqual(actual.dataQuality,{source:'stored-admin-aggregates',freshness:'unconfirmed',mrr:'fixed-price-estimate',billingReconciliation:'not-assessed'});}
 async function run(){
+ assert.equal(oracleTypes.getTypeParser(1114,'text')('2026-10-14 23:30:00').toISOString(),'2026-10-14T23:30:00.000Z');
  const identity=(await pool.query("SELECT current_database() AS db,current_setting('data_directory') AS directory,host(inet_server_addr()) AS address,inet_server_port() AS port")).rows[0];assert.equal(identity.db,'ytubviral_migration_test');assert.equal(path.resolve(identity.directory).toLowerCase(),path.resolve(checked.paths.database).toLowerCase());assert.equal(identity.address,'127.0.0.1');assert.equal(identity.port,55432);
  const tables=(await pool.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")).rows.map(x=>x.tablename);assert.equal(tables.length,99);
  async function snapshot(exclude=[]){const result={};for(const table of tables){assert.match(table,/^[a-z_]+$/);const rows=(await pool.query('SELECT row_to_json(t) AS row FROM "'+table+'" t ORDER BY row_to_json(t)::text')).rows.filter(x=>!exclude.includes(x.row.id)&&!exclude.includes(x.row.userId));result[table]={count:rows.length,sha256:crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex')};}return result;}
