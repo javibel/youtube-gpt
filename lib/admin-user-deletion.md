@@ -7,7 +7,8 @@ the selected id/email. It never lists/cancels Stripe or invokes another provider
 
 Every current User relation must be absent, including stored OAuth credentials,
 sessions, content, billing, shared memberships and permanent effect attempts.
-Referral links and verification/reset tokens or admissions also deny deletion.
+Referral links (including another account's scalar reference), affiliate
+commissions and verification/reset tokens or admissions also deny deletion.
 A new SDK relation fails closed until reviewed. Accounts containing data require
 a separate retention/billing/deletion contract; this is not a general data purge.
 

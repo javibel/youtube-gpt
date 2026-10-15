@@ -94,6 +94,8 @@ export async function applyNativeAdminUserDeletion(original:NativeAdminUserDelet
         UNION ALL SELECT 1 FROM verification_tokens WHERE identifier=${targetEmail}
         UNION ALL SELECT 1 FROM password_reset_request_admissions WHERE email=${targetEmail}
         UNION ALL SELECT 1 FROM email_verification_resend_admissions WHERE email=${targetEmail}
+        UNION ALL SELECT 1 FROM affiliate_commissions WHERE referred_user_id=${targetId}
+        UNION ALL SELECT 1 FROM users WHERE "referredBy"=${targetId}
       ) AS blocked`;
       retained(original);if(credentials.length!==1||typeof credentials[0].blocked!=='boolean')throw Error('Admin user deletion unconfirmed');
       return credentials[0].blocked?'blocked' as const:'empty' as const;
