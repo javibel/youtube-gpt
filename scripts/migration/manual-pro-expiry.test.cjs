@@ -19,7 +19,7 @@ async function run(){
 
  let accesses=0;
  const database=new Proxy({},{get(){accesses++;throw Error('No business access from legacy public gate');}});
- const route=load('app/api/admin/grant-pro/route.ts',{'next/server':{NextResponse:Response},'@/lib/prisma':{prisma:database},'@/lib/auth-guards':{requireAdmin:async()=>({ok:true})}});
+ const route=load('app/api/admin/grant-pro/route.ts',{'next/server':{NextResponse:Response},'@/lib/prisma':{prisma:database},'@/lib/auth-guards':{requireAdmin:async()=>({ok:true})}},{AbortController,Headers,TextEncoder});
  const post=async body=>route.POST(new Request('https://example.invalid/api/admin/grant-pro',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));
  // Legacy public-gate/marker-based mutation assertions are replaced by the
  // own native-purpose suite. Reader expiry assertions above stay unchanged.
