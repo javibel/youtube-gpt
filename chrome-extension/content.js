@@ -541,6 +541,28 @@ function wireShellScorecard(root, scorecardData, videoId, loggedIn) {
   }
 }
 
+// Channel statistics are private to an original document/account/view.
+const channelStatsDisplays=new Map(),channelStatsReceipts=new WeakMap();let channelStatsRevision=0;
+function channelStatsViewCurrent(data,owner){const own=data&&channelStatsReceipts.get(data);if(!own||owner&&own.owner!==owner||!own.closed)return false;try{own.check();return true;}catch{return false;}}
+function retireChannelStatsDisplay(){channelStatsRevision++;for(const own of channelStatsDisplays.values())own.retire();shellRendered.channel=false;}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang')))retireChannelStatsDisplay();});
+document.addEventListener('yt-navigate-finish',()=>{for(const own of channelStatsDisplays.values())if(!own.scope())own.retire();});
+function freezeChannelStats(value){if(value&&typeof value==='object'){for(const x of Object.values(value))freezeChannelStats(x);Object.freeze(value);}return value;}
+function paintChannelStatsForView(owner,data,html,append=false){const own=data&&channelStatsReceipts.get(data);if(!channelStatsViewCurrent(data,owner)||typeof html!=='string')return false;const previous=new Set(owner.children);if(append)owner.insertAdjacentHTML('beforeend',html);else owner.innerHTML=html;const added=Array.from(owner.children).filter(n=>!previous.has(n));own.nodes=append?[...own.nodes.filter(n=>owner.contains(n)),...added]:added;own.painted=true;return true;}
+function requestChannelStatsForDisplay(owner,surface='channel',coherent=()=>true){
+ if(!owner?.isConnected||surface!=='channel')return Promise.reject(Error('channel_stats_unconfirmed'));
+ const previous=channelStatsDisplays.get(owner),language=_lang;
+ if(previous&&!previous.retired&&!previous.closed&&previous.surface===surface&&previous.scope())return previous.wait;previous?.retire();
+ const own={owner,surface,language,viewRef:crypto.randomUUID(),href:location.href,revision:channelStatsRevision,startedAt:Date.now(),deadline:performance.now()+30000,expiresAt:Date.now()+30000,closed:false,retired:false,nodes:[],painted:false};channelStatsDisplays.set(owner,own);
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>channelStatsDisplays.get(owner)===own&&owner.isConnected&&own.revision===channelStatsRevision&&location.href===own.href&&_lang===language&&coherent();
+ own.retire=()=>{if(!own.retired){own.retired=true;shellRendered.channel=false;dailyIdeasDisplays.get(owner)?.retire();void sendMsg({type:'CHANNEL_STATS_RETIRE',viewRef:own.viewRef}).catch(()=>{});clearTimeout(own.timer);own.observer?.disconnect();for(const node of own.nodes)node.remove();if(channelStatsDisplays.get(owner)===own)channelStatsDisplays.delete(owner);rejectWait(Error('channel_stats_unconfirmed'));}};
+ own.check=()=>{if(own.retired||!own.scope()||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt){own.retire();throw Error('channel_stats_unconfirmed');}};
+ own.timer=setTimeout(own.retire,Math.max(1,Math.min(30000,own.expiresAt-Date.now())));own.observer=new MutationObserver(()=>{if(!own.scope()||own.painted&&own.nodes.some(n=>!owner.contains(n)))own.retire();});own.observer.observe(document.body,{childList:true,subtree:true,attributes:true});
+ own.wait=(async()=>{try{own.check();const data=await Promise.race([sendMsg({type:'CHANNEL_STATS',viewRef:own.viewRef,surface,lang:language}),stopped]);own.check();if(!data||data.error||!['available','not-connected'].includes(data.outcome)||data.viewRef!==own.viewRef||typeof data.readRef!=='string'||! /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(data.readRef)||data.surface!==surface||data.language!==language||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.startedAt+30000)throw Error(data?.error==='not_logged_in'?'not_logged_in':'channel_stats_unconfirmed');own.expiresAt=Math.min(own.expiresAt,data.expiresAt);const result=freezeChannelStats(data);own.check();const ack=await Promise.race([sendMsg({type:'CHANNEL_STATS_ACK',readRef:data.readRef,viewRef:own.viewRef,surface}),stopped]);own.check();if(!ack||ack.closed!==true||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef||ack.surface!==surface)throw Error('channel_stats_unconfirmed');own.closed=true;channelStatsReceipts.set(result,own);clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),own.expiresAt-Date.now())));return result;}catch(e){own.retire();throw e;}})();return own.wait;
+}
+const channelStatsRenderAttempts=new WeakMap();
+
 // Stored daily batches are private to an original document/account/day/view.
 const dailyIdeasDisplays=new Map(),dailyIdeasReceipts=new WeakMap();let dailyIdeasRevision=0;
 function dailyIdeasViewCurrent(data,owner){const own=data&&dailyIdeasReceipts.get(data);if(!own||owner&&own.owner!==owner||!own.closed)return false;try{own.check();return true;}catch{return false;}}
@@ -565,27 +587,15 @@ function renderDailyIdeasMeta(data){if(!dailyIdeasViewCurrent(data))return '';re
 
 // ── "Tu canal" tab ───────────────────────────────────────────────
 async function renderShellChannelTab(body) {
-  body.innerHTML = renderLoading(t('Cargando stats...', 'Loading stats...'));
+  const attempt={},language=_lang,href=location.href;channelStatsRenderAttempts.set(body,attempt);
+  body.innerHTML=renderLoading(t('Cargando stats...','Loading stats...'));
   let data;
-  try {
-    data = await sendMsg({ type: 'CHANNEL_STATS' });
-  } catch (e) {
-    if (e.message === 'not_logged_in') { body.innerHTML = shellLoggedOutCta(); return; }
-    if (e.message === 'youtube_not_connected') {
-      body.innerHTML = `<div class="ytv-shell-cta">
-        <p>${t('Conecta tu canal de YouTube para ver aquí tus suscriptores, vistas y progreso de monetización.', 'Connect your YouTube channel to see your subscribers, views and monetization progress here.')}</p>
-        <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=shell" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Conectar canal →', 'Connect channel →')}</a>
-      </div>`;
-      return;
-    }
-    body.innerHTML = renderError(e.message);
-    return;
-  }
-  body.innerHTML = renderChannelStatsWidget(data);
-  shellRendered.channel = true; // cache only a successful render
-  requestDailyIdeasForDisplay(body,'channel',()=>shellState.open&&shellState.tab==='channel').then((ideaData) => {
-    if (ideaData?.ideas?.length) paintDailyIdeasForView(body,ideaData,renderDailyIdeasMeta(ideaData)+renderDailyIdeasMini(ideaData),true);
-  }).catch(() => {});
+  try { data=await requestChannelStatsForDisplay(body,'channel',()=>shellState.open&&shellState.tab==='channel'); }
+  catch(e){if(channelStatsRenderAttempts.get(body)===attempt&&body.isConnected&&shellState.open&&shellState.tab==='channel'&&_lang===language&&location.href===href)body.innerHTML=e.message==='not_logged_in'?shellLoggedOutCta():renderError(t('No se pudieron confirmar las estadísticas.','Channel statistics could not be confirmed.'));return;}
+  if(!channelStatsViewCurrent(data,body)||channelStatsRenderAttempts.get(body)!==attempt)return;
+  const html=data.outcome==='not-connected'?'<div class="ytv-shell-cta"><p>'+t('Conecta tu canal de YouTube para ver tus estadísticas guardadas.','Connect your YouTube channel to see your stored statistics.')+'</p><a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=shell" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">'+t('Conectar canal →','Connect channel →')+'</a></div>':renderChannelStatsWidget(data);
+  if(!paintChannelStatsForView(body,data,html))return;shellRendered.channel=true;
+  if(data.outcome==='available')requestDailyIdeasForDisplay(body,'channel',()=>channelStatsViewCurrent(data,body)).then(ideas=>{if(ideas?.ideas?.length&&channelStatsViewCurrent(data,body))paintDailyIdeasForView(body,ideas,renderDailyIdeasMeta(ideas)+renderDailyIdeasMini(ideas),true);}).catch(()=>{});
 }
 
 // ── "Ideas" tab ──────────────────────────────────────────────────
@@ -1408,6 +1418,7 @@ async function loadComments(container, videoId) {
 // ============================================================
 
 function renderChannelStatsWidget(d) {
+  if(!channelStatsViewCurrent(d)||d.outcome!=='available')return '';
   const ch = d.channel;
   const g = d.growth;
   const m = d.monetization;

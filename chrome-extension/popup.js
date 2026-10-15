@@ -1,7 +1,7 @@
 'use strict';
 let popupIdeasRevision=0;
 const popupIdeasSessionObserved=typeof chrome.storage?.onChanged?.addListener==='function';
-if(popupIdeasSessionObserved)chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang'))){popupIdeasRevision++;popupIdeasOwn?.retire();}});
+if(popupIdeasSessionObserved)chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang'))){popupIdeasRevision++;popupIdeasOwn?.retire();if(typeof popupStatsOwn!=='undefined')popupStatsOwn?.retire();}});
 
 const viewLogin = document.getElementById('view-login');
 const viewUser  = document.getElementById('view-user');
@@ -111,9 +111,32 @@ function showUserView(user) {
 }
 
 function showLoginView() {
+  popupStatsOwn?.retire();popupIdeasOwn?.retire();
   viewUser.classList.add('hidden');
   viewLogin.classList.remove('hidden');
   hideError();
+}
+
+// A native stats document ACK precedes momentum or connection controls.
+let popupStatsOwn=null;const popupStatsReceipts=new WeakMap();
+function popupChannelStatsCurrent(data){const own=data&&popupStatsReceipts.get(data);if(!own||!own.closed)return false;try{own.check();return true;}catch{return false;}}
+async function loadPopupChannelStats(){
+ popupStatsOwn?.retire();if(!popupIdeasSessionObserved)return;
+ const language=lang,own={viewRef:crypto.randomUUID(),language,revision:popupIdeasRevision,href:location.href,startedAt:Date.now(),deadline:performance.now()+30000,expiresAt:Date.now()+30000,retired:false,closed:false,nodes:[]};popupStatsOwn=own;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.retire=()=>{if(!own.retired){own.retired=true;void sendMsg({type:'CHANNEL_STATS_RETIRE',viewRef:own.viewRef}).catch(()=>{});clearTimeout(own.timer);own.observer?.disconnect();for(const n of own.nodes)n.remove();popMomentum.classList.add('hidden');rejectWait(Error('channel_stats_unconfirmed'));}};
+ own.check=()=>{if(own.retired||popupStatsOwn!==own||own.revision!==popupIdeasRevision||!popMomentum.isConnected||typeof viewUser!=='undefined'&&viewUser.classList.contains('hidden')||own.painted&&own.nodes.some(n=>!popMomentum.contains(n))||location.href!==own.href||lang!==language||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt){own.retire();throw Error('channel_stats_unconfirmed');}};
+ own.timer=setTimeout(own.retire,30000);own.observer=new MutationObserver(()=>{try{own.check();}catch{}});own.observer.observe(document.body,{childList:true,subtree:true,attributes:true});
+ try{own.check();const data=await Promise.race([sendMsg({type:'CHANNEL_STATS',viewRef:own.viewRef,surface:'popup',lang:language}),stopped]);own.check();if(!data||data.error||!['available','not-connected'].includes(data.outcome)||data.viewRef!==own.viewRef||!data.readRef||data.surface!=='popup'||data.language!==language||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.startedAt+30000)throw Error('channel_stats_unconfirmed');own.expiresAt=Math.min(own.expiresAt,data.expiresAt);Object.freeze(data);const ack=await Promise.race([sendMsg({type:'CHANNEL_STATS_ACK',readRef:data.readRef,viewRef:own.viewRef,surface:'popup'}),stopped]);own.check();if(!ack||ack.closed!==true||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef||ack.surface!=='popup')throw Error('channel_stats_unconfirmed');own.closed=true;popupStatsReceipts.set(data,own);clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),own.expiresAt-Date.now())));if(!popupChannelStatsCurrent(data))throw Error('channel_stats_unconfirmed');popMomentum.innerHTML=renderPopupChannelStats(data);own.nodes=[...popMomentum.children];own.painted=true;popMomentum.classList.remove('hidden');return data;
+ }catch{own.retire();return undefined;}
+}
+window.addEventListener('pagehide',()=>popupStatsOwn?.retire());
+
+function renderPopupChannelStats(data){
+ if(!popupChannelStatsCurrent(data))return '';
+ if(data.outcome==='not-connected')return '<div class="pop-block-title">'+t('Tu canal','Your channel')+'</div><a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=popupdash" target="_blank" class="pop-link">'+t('Conéctalo para ver tus estadísticas guardadas →','Connect it to see your stored statistics →')+'</a>';
+ const g=data.growth,q=data.dataQuality;
+ return '<div class="pop-block-title">'+t('Semana histórica','Historical week')+'</div><div class="pop-momentum-row"><span>'+(q.growth7dAvailable?fmtNum(g.subs7d):'—')+' subs</span><span>'+(q.growth7dAvailable?fmtNum(g.views7d):'—')+' '+t('vistas','views')+'</span><span class="pop-dim">'+q.metricsAsOf.slice(0,10)+' · '+t('actualidad sin confirmar','freshness unconfirmed')+'</span></div>';
 }
 
 // No public batch/date/actor can close or paint a popup view.
@@ -139,24 +162,7 @@ async function loadDashboard() {
   popMomentum.classList.add('hidden');
   popIdeas.classList.add('hidden');
 
-  sendMsg({ type: 'CHANNEL_STATS' }).then((d) => {
-    const g = d?.growth;
-    if (!g) return;
-    popMomentum.innerHTML = `
-      <div class="pop-block-title">${t('Semana histórica', 'Historical week')}</div>
-      <div class="pop-momentum-row">
-        <span>${d.dataQuality?.growth7dAvailable ? fmtNum(g.subs7d) : '—'} subs</span>
-        <span>${d.dataQuality?.growth7dAvailable ? fmtNum(g.views7d) : '—'} ${t('vistas', 'views')}</span>
-        <span class="pop-dim">${d.dataQuality?.metricsAsOf?.slice(0,10) || '—'} · ${t('actualidad sin confirmar', 'freshness unconfirmed')}</span>
-      </div>`;
-    popMomentum.classList.remove('hidden');
-  }).catch((e) => {
-    if (e.message === 'youtube_not_connected') {
-      popMomentum.innerHTML = `<div class="pop-block-title">${t('Tu canal', 'Your channel')}</div>
-        <a href="https://ytubviral.com/dashboard?utm_source=extension&utm_medium=popupdash" target="_blank" class="pop-link">${t('Conéctalo para ver tu progreso →', 'Connect it to see your progress →')}</a>`;
-      popMomentum.classList.remove('hidden');
-    }
-  });
+  void loadPopupChannelStats();
 
   void loadPopupDailyIdeas();
 }

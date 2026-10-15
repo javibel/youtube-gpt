@@ -4,7 +4,7 @@ const API_BASE = 'https://ytubviral.com';
 const FETCH_TIMEOUT_MS = 15000;
 chrome.storage.onChanged.addListener((changes,area)=>{
   if(area==='local'&&Object.hasOwn(changes,'ytv_token')) { identityRevision++; retireExtensionIdentity(); }
-  if(area==='local'&&Object.hasOwn(changes,'ytv_lang')) { keywordsOriginal?.retire(); generationOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); coachOriginal?.retire(); coachConversation=null; }
+  if(area==='local'&&Object.hasOwn(changes,'ytv_lang')) { keywordsOriginal?.retire(); generationOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); channelStatsOriginal?.retire(); coachOriginal?.retire(); coachConversation=null; }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -615,56 +615,54 @@ async function acknowledgeAbCreate(msg,sender){
  })();void own.acknowledging.catch(()=>{own.retire();clearTimeout(own.timer);});return own.acknowledging;
 }
 
-let channelStatsOriginal = null;
-async function getChannelStats() {
-  if (channelStatsOriginal) return channelStatsOriginal.wait;
-  const original = { revision:identityRevision, retire:null, wait:null };
-  channelStatsOriginal = original;
-  const deadline = performance.now() + 30_000;
-  let retired = false, rejectWait, httpOriginal = null;
-  const stopped = new Promise((_,reject)=>{rejectWait=reject;});
-  const retire = () => { if (!retired) { retired=true; rejectWait(Error('No se pudieron confirmar las estadísticas del canal.')); } };
-  original.retire=retire;
-  const timer=setTimeout(retire,30_000);
-  const check=()=>{if(performance.now()>=deadline || original.revision!==identityRevision || passwordLoginOriginal || tokenMutationOriginal || channelStatsOriginal!==original)retire();if(retired)throw Error('No se pudieron confirmar las estadísticas del canal.');};
-  const producer=(async()=>{
-    const pending=await chrome.storage.local.get([IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]);check();
-    if(Object.hasOwn(pending,IDENTITY_WRITE_PENDING)||Object.hasOwn(pending,PASSWORD_LOGIN_PENDING))throw Error('No se pudo confirmar la cuenta.');
-    const token=await getToken();check();if(typeof token!=='string'||! /^[a-f0-9]{64}$/.test(token))throw Error('not_logged_in');
-    const readRef=crypto.randomUUID();
-    const {res,data}=await apiFetch(API_BASE+'/api/extension/channel-stats',{
-      method:'POST',timeoutMs:25_000,maxResponseBytes:32*1024,credentials:'omit',cache:'no-store',observeOriginal:promise=>{httpOriginal=promise;},
-      headers:{Authorization:'Bearer '+token,'X-YTV-Read-Ref':readRef,'Content-Type':'application/json'},body:'{}',
-    });check();
-    if(data?.readRef!==readRef)throw Error('No se pudieron confirmar las estadísticas del canal.');
-    if(res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');
-    if(res.status===400&&data.code==='youtube_not_connected')throw Error('youtube_not_connected');
+let channelStatsOriginal=null;
+function channelStatsCheck(own){if(channelStatsOriginal!==own||own.retired||own.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||own.identity&&identityReadReceipts.get(own.identity)!==own.identityReceipt){own.retire();throw Error('channel_stats_unconfirmed');}}
+async function channelStatsIdentityMarkers(check){for(const key of[IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]){const row=await chrome.storage.local.get(key);check();if(Object.hasOwn(row,key))throw Error('channel_stats_unconfirmed');}}
+function channelStatsProjection(data,own){
+ const e=data?.channelStats,fail=()=>{throw Error('channel_stats_unconfirmed');};
+ if(!data||!e||Object.keys(e).length!==6||e.readRef!==own.readRef||e.viewRef!==own.viewRef||e.language!==own.lang||e.surface!==own.surface||e.userId!==own.identity.id||e.expiresAt!==data.expiresAt||data.readRef!==own.readRef||typeof data.isPro!=='boolean'||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.identityReceipt.expiresAt||data.expiresAt>own.postStartedAt+30000||data.expiresAt>Date.now()+25000)fail();
+ if(data.code==='youtube_not_connected'&&data.error==='youtube_not_connected'){if(Object.keys(data).length!==6)fail();return Object.freeze({outcome:'not-connected',isPro:data.isPro});}
+ if(Object.keys(data).length!==9)fail();
     const c=data.channel,g=data.growth,m=data.monetization,q=data.dataQuality,points=data.sparkline;
     const count=n=>Number.isSafeInteger(n)&&n>=0,percent=n=>count(n)&&n<=100;
     const date=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v&&Date.parse(v)<=Date.now();
-    if(res.status!==200||!c||typeof c.name!=='string'||c.name.length>512||typeof c.thumb!=='string'||c.thumb.length>2048
+    if(!c||typeof c.name!=='string'||c.name.length>512||typeof c.thumb!=='string'||c.thumb.length>2048
       || !['subs','totalViews','videoCount'].every(k=>count(c[k])) || !g || !['subs7d','subs30d','views7d','views30d'].every(k=>Number.isSafeInteger(g[k]))
       || !m||!percent(m.subsPct)||!percent(m.watchPct)||!count(m.estWatchHours)||!(m.subsEtaDays===null||count(m.subsEtaDays))
       || !q||q.source!=='cached-channel-history'||q.freshness!=='unconfirmed'||!date(q.cachedAt)||!date(q.metricsAsOf)
       || typeof q.growth7dAvailable!=='boolean'||typeof q.growth30dAvailable!=='boolean'||q.watchHours!=='view-based-estimate'||q.eligibility!=='not-assessed'
       || !(q.rateIntervalDays===null||Number.isFinite(q.rateIntervalDays)&&q.rateIntervalDays>=27&&q.rateIntervalDays<=33)
       || !Array.isArray(points)||points.length>30||points.some(x=>!x||!count(x.subs)||!count(x.views)||typeof x.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.date)||!date(x.date+'T00:00:00.000Z'))
-      || typeof data.isPro!=='boolean'||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now())throw Error('No se pudieron confirmar las estadísticas del canal.');
+      || typeof data.isPro!=='boolean'||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now())throw Error('channel_stats_unconfirmed');
     if(points.some((x,i)=>i>0&&x.date<points[i-1].date)||m.subsPct!==Math.min(100,Math.round(c.subs/1000*100))
       ||m.estWatchHours!==Math.round(c.totalViews*.067)||m.watchPct!==Math.min(100,Math.round(m.estWatchHours/4000*100))
       ||q.growth30dAvailable!==(q.rateIntervalDays!==null)||(!q.growth7dAvailable&&(g.subs7d!==0||g.views7d!==0))
-      ||(!q.growth30dAvailable&&(g.subs30d!==0||g.views30d!==0)))throw Error('No se pudieron confirmar las estadísticas del canal.');
+      ||(!q.growth30dAvailable&&(g.subs30d!==0||g.views30d!==0)))throw Error('channel_stats_unconfirmed');
     const eta=c.subs<1000&&g.subs30d>0&&q.rateIntervalDays!==null?Math.ceil((1000-c.subs)*q.rateIntervalDays/g.subs30d):null;
-    if(m.subsEtaDays!==eta)throw Error('No se pudieron confirmar las estadísticas del canal.');
-    if(c.thumb){let url;try{url=new URL(c.thumb);}catch{throw Error('No se pudieron confirmar las estadísticas del canal.');}if(url.protocol!=='https:'||url.username||url.password||url.port||!['yt3.ggpht.com','yt3.googleusercontent.com','lh3.googleusercontent.com','i.ytimg.com'].includes(url.hostname))throw Error('No se pudieron confirmar las estadísticas del canal.');}
-    const current=await getToken();check();if(current!==token||data.expiresAt<=Date.now())throw Error('No se pudieron confirmar las estadísticas del canal.');
-    return data;
-  })();
-  // A retired local wait cannot replace its still-running original. Reads have
-  // no token/cache/event writes, no automatic retry and no stored authority.
-  void producer.finally(async()=>{if(httpOriginal)await Promise.allSettled([httpOriginal]);if(channelStatsOriginal===original)channelStatsOriginal=null;}).catch(()=>{});
-  original.wait=Promise.race([producer,stopped]).finally(()=>{retired=true;clearTimeout(timer);});
-  return original.wait;
+    if(m.subsEtaDays!==eta)throw Error('channel_stats_unconfirmed');
+    if(c.thumb){let url;try{url=new URL(c.thumb);}catch{throw Error('channel_stats_unconfirmed');}if(url.protocol!=='https:'||url.username||url.password||url.port||!['yt3.ggpht.com','yt3.googleusercontent.com','lh3.googleusercontent.com','i.ytimg.com'].includes(url.hostname))throw Error('channel_stats_unconfirmed');}
+
+ return Object.freeze({outcome:'available',isPro:data.isPro,channel:Object.freeze({name:c.name,thumb:c.thumb,subs:c.subs,totalViews:c.totalViews,videoCount:c.videoCount}),growth:Object.freeze({subs7d:g.subs7d,subs30d:g.subs30d,views7d:g.views7d,views30d:g.views30d}),monetization:Object.freeze({subsPct:m.subsPct,watchPct:m.watchPct,subsEtaDays:m.subsEtaDays,estWatchHours:m.estWatchHours}),sparkline:Object.freeze(points.map(({subs,views,date})=>Object.freeze({subs,views,date}))),dataQuality:Object.freeze({source:q.source,freshness:q.freshness,cachedAt:q.cachedAt,metricsAsOf:q.metricsAsOf,growth7dAvailable:q.growth7dAvailable,growth30dAvailable:q.growth30dAvailable,rateIntervalDays:q.rateIntervalDays,watchHours:q.watchHours,eligibility:q.eligibility})});
+}
+function retireChannelStatsFromView(msg,sender){const own=channelStatsOriginal,caller=dailyIdeasCaller(sender);if(own&&caller&&caller.document===own.document&&msg.viewRef===own.viewRef)own.retire();return{retired:!!own?.retired};}
+async function getChannelStats(msg,sender){
+ const caller=dailyIdeasCaller(sender);if(!caller||!abUuid(msg.viewRef)||!['es','en'].includes(msg.lang)||!['channel','popup'].includes(msg.surface)||caller.popup!==(msg.surface==='popup'))throw Error('channel_stats_unconfirmed');
+ const snapshot=JSON.stringify([msg.lang,msg.surface]);if(channelStatsOriginal){const own=channelStatsOriginal;if(!own.retired&&own.scope===caller.scope&&own.snapshot===snapshot&&own.viewRef===msg.viewRef){channelStatsCheck(own);return own.wait;}throw Error('channel_stats_unconfirmed');}
+ if(passwordLoginOriginal||tokenMutationOriginal)throw Error('channel_stats_unconfirmed');
+ const own={scope:caller.scope,document:caller.document,lang:msg.lang,surface:msg.surface,viewRef:msg.viewRef,snapshot,readRef:crypto.randomUUID(),revision:identityRevision,startedAt:Date.now(),deadline:performance.now()+30000,expiresAt:Date.now()+30000,controller:new AbortController(),retired:false,ready:false,drained:false,http:null};channelStatsOriginal=own;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});const release=()=>{if(own.retired&&own.drained&&channelStatsOriginal===own){channelStatsOriginal=null;clearTimeout(own.timer);}};own.retire=()=>{if(!own.retired){own.retired=true;own.controller.abort();rejectWait(Error('channel_stats_unconfirmed'));}release();};own.timer=setTimeout(own.retire,30000);const check=()=>channelStatsCheck(own);
+ const producer=(async()=>{
+  await channelStatsIdentityMarkers(check);const identity=await getExtensionIdentity();check();const receipt=identity&&identityReadReceipts.get(identity);if(!receipt||receipt.revision!==own.revision)throw Error('not_logged_in');own.identity=identity;own.identityReceipt=receipt;own.expiresAt=Math.min(own.expiresAt,receipt.expiresAt);check();const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==receipt.token)throw Error('channel_stats_unconfirmed');
+  own.postStartedAt=Date.now();const{res,data}=await apiFetch(API_BASE+'/api/extension/channel-stats',{method:'POST',body:'{}',signal:own.controller.signal,timeoutMs:Math.min(25000,Math.max(1,Math.floor(own.deadline-performance.now()))),maxResponseBytes:64*1024,credentials:'omit',cache:'no-store',observeOriginal:p=>{own.http=p;},headers:{Authorization:'Bearer '+receipt.token,'X-YTV-Read-Ref':own.readRef,'X-YTV-View-Ref':own.viewRef,'X-YTV-Language':own.lang,'X-YTV-Surface':own.surface,'Content-Type':'application/json'}});check();if(data?.readRef===own.readRef&&res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');if(!(res.status===200&&!data?.code||res.status===400&&data?.code==='youtube_not_connected'))throw Error('channel_stats_unconfirmed');
+  await channelStatsIdentityMarkers(check);const projected=channelStatsProjection(data,own);own.expiresAt=Math.min(own.expiresAt,data.expiresAt);const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('channel_stats_unconfirmed');own.data=Object.freeze({readRef:own.readRef,viewRef:own.viewRef,language:own.lang,surface:own.surface,expiresAt:own.expiresAt,...projected});own.ready=true;check();return own.data;
+ })();
+ // Read-only purpose: no persistent journal or dated cache is authority. Only
+ // genuine producer+HTTP completion releases a retired original for a fresh read.
+ void producer.catch(()=>own.retire()).finally(async()=>{if(own.http)await Promise.allSettled([own.http]);own.drained=true;release();}).catch(()=>{});own.wait=Promise.race([producer,stopped]);return own.wait;
+}
+async function acknowledgeChannelStats(msg,sender){
+ const own=channelStatsOriginal,caller=dailyIdeasCaller(sender);if(!own||!own.ready||!caller||caller.scope!==own.scope||msg.readRef!==own.readRef||msg.viewRef!==own.viewRef||msg.surface!==own.surface)throw Error('channel_stats_unconfirmed');const check=()=>channelStatsCheck(own);check();if(own.acknowledging)return own.acknowledging;
+ own.acknowledging=(async()=>{await channelStatsIdentityMarkers(check);const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('channel_stats_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();const last=await chrome.storage.local.get('ytv_token');check();if(last.ytv_token!==own.identityReceipt.token)throw Error('channel_stats_unconfirmed');await channelStatsIdentityMarkers(check);clearTimeout(own.timer);channelStatsOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,surface:own.surface,closed:true});})().catch(e=>{own.retire();throw e;});return own.acknowledging;
 }
 
 let seoLiveOriginal = null;
@@ -1066,7 +1064,9 @@ async function handleMessage(msg,sender) {
   if (msg.type === 'SEO_LIVE') return runSeoLive(msg,sender);
   if (msg.type === 'SEO_LIVE_ACK') return acknowledgeSeoLive(msg,sender);
   if (msg.type === 'SEO_LIVE_RETIRE') return retireSeoLiveFromView(msg,sender);
-  if (msg.type === 'CHANNEL_STATS') return getChannelStats();
+  if (msg.type === 'CHANNEL_STATS') return getChannelStats(msg,sender);
+  if (msg.type === 'CHANNEL_STATS_ACK') return acknowledgeChannelStats(msg,sender);
+  if (msg.type === 'CHANNEL_STATS_RETIRE') return retireChannelStatsFromView(msg,sender);
   if (msg.type === 'SEO_QUICK') return runSeoQuick(msg);
   if (msg.type === 'COMMENTS') return runComments(msg);
   if (msg.type === 'VIDEO_BATCH') return runVideoBatch(msg);
