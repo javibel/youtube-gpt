@@ -679,12 +679,13 @@ function seoLiveCheck(own){
 function retireSeoLiveFromView(msg,sender){const own=seoLiveOriginal;if(own&&bestTimeCaller(sender)&&JSON.stringify([sender.tab.id,sender.frameId,sender.documentId])===own.documentScope&&msg.viewRef===own.viewRef)own.retire();return{retired:!!own?.retired};}
 function seoLiveProjection(data,own){
  const fail=()=>{throw Error('seo_live_unconfirmed');},binding=data?.seoLive;
- if(!data||Object.keys(data).length!==6||data.readRef!==own.readRef||!binding||Object.keys(binding).length!==6||binding.readRef!==own.readRef||binding.viewRef!==own.viewRef||binding.language!==own.lang||binding.userId!==own.identity.id||JSON.stringify(binding.input)!==own.body||binding.expiresAt!==data.expiresAt||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.identityReceipt.expiresAt||data.expiresAt>own.postStartedAt+25000)fail();
+ if(!data||Object.keys(data).length!==6||data.readRef!==own.readRef||!binding||Object.keys(binding).length!==6||binding.readRef!==own.readRef||binding.viewRef!==own.viewRef||binding.language!==own.lang||binding.userId!==own.identity.id||JSON.stringify(binding.input)!==own.body||binding.expiresAt!==data.expiresAt||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.identityReceipt.expiresAt||data.expiresAt>own.postStartedAt+30000||data.expiresAt>Date.now()+25000)fail();
  const schema=[['title_length',8],['title_number',5],['title_caps',4],['title_emoji',3],['title_power',4],['desc_length',10],['desc_links',5],['desc_timestamps',7],['desc_hashtags',4],['desc_cta',3],['tags_count',8],['tags_long',4]];
  if(!Number.isSafeInteger(data.score)||data.score<0||data.score>100||data.titleLength!==own.input.title.length||!Array.isArray(data.checks)||data.checks.length!==schema.length||data.checks.some((x,i)=>!x||Object.keys(x).length!==3||x.key!==schema[i][0]||x.w!==schema[i][1]||typeof x.ok!=='boolean'))fail();
  const max=data.checks.reduce((n,x)=>n+x.w,0),raw=data.checks.filter(x=>x.ok).reduce((n,x)=>n+x.w,0);if(Math.round(raw/max*100)!==data.score)fail();
  return Object.freeze({score:data.score,titleLength:data.titleLength,checks:Object.freeze(data.checks.map(({key,w,ok})=>Object.freeze({key,w,ok})))});
 }
+async function seoLiveIdentityMarkers(check){for(const key of[IDENTITY_WRITE_PENDING,PASSWORD_LOGIN_PENDING]){const row=await chrome.storage.local.get(key);check();if(Object.hasOwn(row,key))throw Error('seo_live_unconfirmed');}}
 async function runSeoLive(msg,sender){
  const scope=bestTimeCaller(sender),input=seoLiveInput(msg);if(!scope||new URL(sender.url).origin!=='https://studio.youtube.com'||!abUuid(msg.viewRef)||!['es','en'].includes(msg.lang))throw Error('seo_live_unconfirmed');
  const body=JSON.stringify(input),snapshot=JSON.stringify([body,msg.lang]);
@@ -695,11 +696,12 @@ async function runSeoLive(msg,sender){
  const release=()=>{if(own.retired&&own.drained&&seoLiveOriginal===own){seoLiveOriginal=null;clearTimeout(own.timer);}};
  own.retire=()=>{if(!own.retired){own.retired=true;own.controller.abort();rejectWait(Error('seo_live_unconfirmed'));}release();};own.timer=setTimeout(own.retire,30000);const check=()=>seoLiveCheck(own);
  const producer=(async()=>{
+  await seoLiveIdentityMarkers(check);
   const identity=await getExtensionIdentity();check();const receipt=identity&&identityReadReceipts.get(identity);if(!receipt||receipt.revision!==own.revision)throw Error('not_logged_in');own.identity=identity;own.identityReceipt=receipt;own.expiresAt=Math.min(own.expiresAt,receipt.expiresAt);check();
   const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==receipt.token)throw Error('seo_live_unconfirmed');
   own.postStartedAt=Date.now();const{res,data}=await apiFetch(API_BASE+'/api/extension/seo-live',{method:'POST',signal:own.controller.signal,timeoutMs:Math.min(25000,Math.max(1,Math.floor(own.deadline-performance.now()))),maxResponseBytes:128*1024,credentials:'omit',cache:'no-store',observeOriginal:p=>{own.http=p;},headers:{Authorization:'Bearer '+receipt.token,'X-YTV-Read-Ref':own.readRef,'X-YTV-View-Ref':own.viewRef,'X-YTV-Language':own.lang,'Content-Type':'application/json'},body});check();
   if(res.status!==200){if(data?.readRef===own.readRef&&res.status===401&&data.code==='not_logged_in')throw Error('not_logged_in');throw Error('seo_live_unconfirmed');}
-  const score=seoLiveProjection(data,own);own.expiresAt=Math.min(own.expiresAt,data.expiresAt);const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('seo_live_unconfirmed');
+  await seoLiveIdentityMarkers(check);const score=seoLiveProjection(data,own);own.expiresAt=Math.min(own.expiresAt,data.expiresAt);const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('seo_live_unconfirmed');
   own.data=Object.freeze({readRef:own.readRef,viewRef:own.viewRef,language:own.lang,expiresAt:own.expiresAt,...score});own.ready=true;check();return own.data;
  })();
  // This purpose only reads and scores. Retirement releases exclusion only after
@@ -708,7 +710,7 @@ async function runSeoLive(msg,sender){
 }
 async function acknowledgeSeoLive(msg,sender){
  const own=seoLiveOriginal;if(!own||!own.ready||bestTimeCaller(sender)!==own.scope||msg.readRef!==own.readRef||msg.viewRef!==own.viewRef)throw Error('seo_live_unconfirmed');const check=()=>seoLiveCheck(own);check();if(own.acknowledging)return own.acknowledging;
- own.acknowledging=(async()=>{const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('seo_live_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('seo_live_unconfirmed');clearTimeout(own.timer);seoLiveOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,closed:true});})().catch(error=>{own.retire();throw error;});return own.acknowledging;
+ own.acknowledging=(async()=>{await seoLiveIdentityMarkers(check);const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('seo_live_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('seo_live_unconfirmed');await seoLiveIdentityMarkers(check);clearTimeout(own.timer);seoLiveOriginal=null;return Object.freeze({readRef:own.readRef,viewRef:own.viewRef,closed:true});})().catch(error=>{own.retire();throw error;});return own.acknowledging;
 }
 
 let dailyIdeasOriginal = null;
