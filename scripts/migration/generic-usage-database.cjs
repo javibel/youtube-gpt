@@ -1,13 +1,13 @@
 'use strict';
 const assert=require('node:assert/strict'),crypto=require('node:crypto'),{load}=require('./route-harness.cjs');
 module.exports=async function(prisma,results){
- const users=await Promise.all(Array.from({length:4},()=>prisma.user.create({data:{email:'generic-usage-'+crypto.randomUUID()+'@example.invalid'}})));
+ const accounts=await require('./native-generation-account-fixture.cjs')(prisma,'generic-usage',4),users=accounts.users;
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),quota=require('./generation-quota-fixture.cjs')(prisma),{TEMPLATES}=load('utils/prompts.js');
  try{
-  await prisma.subscription.createMany({data:users.map(user=>({userId:user.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});
+  await prisma.subscription.createMany({data:users.map(user=>({userId:user.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});await accounts.issue();
   for(let i=0;i<users.length;i++){
    const user=users[i],extension=i>=2,keyed=i%2===1;let reply,models=0;
-   const route=load('app/api/generate/route.ts',{'node:crypto':crypto,'@/auth':{auth:async()=>extension?null:{user:{id:user.id,email:user.email}}},'@/lib/extension-auth':{getExtensionUser:async()=>extension?{user,isPro:true}:null},'@/lib/prisma':{prisma},'@/lib/plans':plans,'@/lib/generation-quota':quota,'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(prisma,plans),'@/utils/prompts':{TEMPLATES},'@/lib/channel-context':{getChannelContext:async()=>null},'@/lib/lifecycle-trigger':{triggerConversionEmail:async()=>{}},'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async()=>{models++;return reply;}})}});
+   const original=load('app/api/generate/route.ts',{'node:crypto':crypto,'@/auth':{auth:async()=>extension?null:{user:{id:user.id,email:user.email}}},'@/lib/prisma':{prisma},'@/lib/plans':plans,'@/lib/generation-quota':quota,'@/lib/text-generation-attempt':require('./text-generation-attempt-fixture.cjs')(prisma,plans),'@/utils/prompts':{TEMPLATES},'@/lib/channel-context':{getChannelContext:async()=>null},'@/lib/lifecycle-trigger':{triggerConversionEmail:async()=>{}},'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async()=>{models++;return reply;}})}},{Date,Headers,TextEncoder,AbortController});const route={POST:request=>original.POST(extension?accounts.request(user,request):request)};
    const request=key=>new Request('https://example.invalid/api/generate',{method:'POST',headers:{'content-type':'application/json',...(keyed?{'Idempotency-Key':key}:{})},body:JSON.stringify({template:'title',inputs:{tema:'Synthetic usage'},lang:'en'})});
    let n=0;for(const candidate of [{},{usage:{}},{usage:{output_tokens:null}},{incomplete:true}]){
     reply={content:[{text:'Unknown usage'}],...candidate};const response=await route.POST(request('unknown-'+n)),body=await response.json();n++;
