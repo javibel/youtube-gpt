@@ -221,7 +221,6 @@ const shellState = { open: false, tab: 'page', mounted: false };
 // `channel`/`ideas`/`coach` are booleans (render once per shell lifetime — the
 // Coach keeps its whole conversation for the session).
 const shellRendered = { page: null, channel: false, ideas: false, coach: false };
-const coachHistory = []; // {role:'user'|'assistant', content} — persists across nav within the session
 
 function shellEls() {
   const root = document.getElementById('ytv-shell');
@@ -642,8 +641,37 @@ async function renderShellIdeasTab(body) {
 
 // ── "Coach" tab (P5 of the vidIQ teardown, 2026-09) ─────────────────────────────
 // A Claude chat that knows what you're looking at — vidIQ's is generic GPT with only
-// your own channel. Pro-only (same as the web Coach). Conversation lives in coachHistory
-// for the whole session; the page context is read fresh on every send.
+// your own channel. Pro-only (same as the web Coach). Each conversation is bound
+// to its private native view; page context is captured for each explicit send.
+
+// Coach conversations are private to this document, account revision and view.
+// Public identity/history/key objects never issue a receipt or close an attempt.
+const coachViewDisplays=new Map(),coachViewReceipts=new WeakMap();let coachViewRevision=0;
+function coachViewCurrent(data){const own=data&&coachViewReceipts.get(data);if(!own)return false;try{own.check();return own.closed&&own.data===data;}catch{return false;}}
+function retireCoachDisplays(){coachViewRevision++;for(const own of coachViewDisplays.values())own.retire();}
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang')))retireCoachDisplays();});
+document.addEventListener('yt-navigate-finish',()=>{for(const own of coachViewDisplays.values())if(!own.scope())own.retire();});
+for(const event of ['input','change'])document.addEventListener(event,()=>{for(const own of coachViewDisplays.values())if(!own.scope())own.retire();});
+function paintCoachConversation(owner,data){const own=data&&coachViewReceipts.get(data);if(!coachViewCurrent(data)||own.owner!==owner)return false;owner.innerHTML=own.history.map(m=>coachBubble(m.role,m.content)).join('')+(data.outcome==='rejected'?'<div class="ytv-coach-notice">'+t(data.code==='pro_required'?'El Coach es Pro.':'Vas muy rápido — espera unos segundos.',data.code==='pro_required'?'Coach requires Pro.':'Too fast — wait a few seconds.')+'</div>':'');own.nodes.push(...owner.children);owner.scrollTop=owner.scrollHeight;return true;}
+function coachForView(owner,msg,coherent=()=>true){
+ const old=coachViewDisplays.get(owner),message=typeof msg.message==='string'?msg.message.trim().slice(0,2000):'',mode=msg.mode??'analyze',language=msg.lang??_lang,pageContext=typeof msg.pageContext==='string'?msg.pageContext.trim().slice(0,600):'';
+ if(!message||!['create','analyze','optimize','research'].includes(mode)||!['en','es'].includes(language))return Promise.reject(Error('coach_input_changed'));
+ const intent=JSON.stringify([message,mode,language,pageContext]);if(old&&!old.closed){if(old.intent===intent&&old.scope())return old.wait;return Promise.reject(Error('coach_unconfirmed'));}
+ const retained=old&&!old.retired&&old.scope(),history=retained?old.history:Object.freeze([]),threadRef=retained?old.threadRef:crypto.randomUUID();old?.retire();
+ const input=Object.freeze({message,context:Object.freeze(history.map(m=>Object.freeze({role:m.role,content:m.content.slice(0,2000)}))),mode,lang:language,pageContext}),own={owner,input,intent,history,threadRef,href:location.href,revision:coachViewRevision,viewRef:crypto.randomUUID(),startedAt:Date.now(),deadline:performance.now()+60000,retired:false,closed:false,data:null,nodes:[]};coachViewDisplays.set(owner,own);
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+ own.scope=()=>coachViewDisplays.get(owner)===own&&owner.isConnected&&location.href===own.href&&own.revision===coachViewRevision&&_lang===language&&coherent();
+ own.retire=()=>{if(!own.retired){own.retired=true;void sendMsg({type:'COACH_RETIRE',threadRef:own.threadRef,viewRef:own.viewRef}).catch(()=>{});rejectWait(Error('coach_unconfirmed'));}clearTimeout(own.timer);own.observer?.disconnect();for(const n of own.nodes.splice(0))if(n.isConnected&&owner.contains(n))n.remove();};
+ own.check=()=>{if(!own.scope()||performance.now()>=own.deadline||Date.now()<own.startedAt||own.data&&own.data.expiresAt<=Date.now())own.retire();if(own.retired)throw Error('coach_unconfirmed');};
+ own.timer=setTimeout(own.retire,60000);own.observer=new MutationObserver(()=>{try{own.check();}catch{}});own.observer.observe(document.body,{childList:true,subtree:true});
+ const producer=(async()=>{
+  own.check();const data=await Promise.race([sendMsg({type:'COACH',...input,threadRef:own.threadRef,viewRef:own.viewRef}),stopped]);own.check();
+  if(!data||data.viewRef!==own.viewRef||data.threadRef!==own.threadRef||data.mode!==mode||data.language!==language||typeof data.key!=='string'||!/^ext-[a-f0-9-]{36}$/.test(data.key)||typeof data.readRef!=='string'||!/^[a-f0-9-]{36}$/.test(data.readRef)||!Number.isSafeInteger(data.expiresAt)||data.expiresAt<=Date.now()||data.expiresAt>own.startedAt+60000||!['replied','rejected'].includes(data.outcome)||data.outcome==='replied'&&(typeof data.reply!=='string'||!data.reply.trim()||data.reply.length>64000)||data.outcome==='rejected'&&!['pro_required','throttled'].includes(data.code))throw Error('coach_unconfirmed');
+  Object.freeze(data);own.data=data;own.check();const ack=await Promise.race([sendMsg({type:'COACH_ACK',key:data.key,readRef:data.readRef,viewRef:own.viewRef,threadRef:own.threadRef}),stopped]);own.check();if(!ack||ack.key!==data.key||ack.readRef!==data.readRef||ack.viewRef!==own.viewRef||ack.threadRef!==own.threadRef||ack.closed!==true)throw Error('coach_unconfirmed');
+  own.closed=true;if(data.outcome==='replied')own.history=Object.freeze([...history,Object.freeze({role:'user',content:message}),Object.freeze({role:'assistant',content:data.reply})].slice(-10));coachViewReceipts.set(data,own);clearTimeout(own.timer);own.timer=setTimeout(own.retire,Math.max(1,Math.min(own.deadline-performance.now(),data.expiresAt-Date.now())));return data;
+ })();own.wait=producer.catch(e=>{own.retire();throw e;});return own.wait;
+}
+
 
 function coachPageContext() {
   if (location.hostname === 'studio.youtube.com') return t('El creador está en YouTube Studio.', 'The creator is in YouTube Studio.');
@@ -662,82 +690,22 @@ function coachBubble(role, text) {
   return `<div class="${cls}">${escapeHtml(text).replace(/\n/g, '<br>')}</div>`;
 }
 
-function renderCoachThread(msgsEl) {
-  msgsEl.innerHTML = coachHistory.length
-    ? coachHistory.map((m) => coachBubble(m.role, m.content)).join('')
-    : `<div class="ytv-coach-hint">${t('Pregúntame sobre este vídeo, tu canal o tu estrategia. Sé concreto.', 'Ask me about this video, your channel or your strategy. Be specific.')}</div>`;
-  msgsEl.scrollTop = msgsEl.scrollHeight;
-}
-
 async function renderShellCoachTab(body) {
-  const user = await sendMsg({ type: 'GET_USER' }).catch(() => null);
-  if (!user) {
-    body.innerHTML = shellLoggedOutCta(
-      'Inicia sesión con una cuenta Pro para chatear con el Coach de IA.',
-      'Sign in with a Pro account to chat with the AI Coach.');
-    return;
-  }
-  if (!user.isPro) {
-    body.innerHTML = `<div class="ytv-shell-cta">
-      <p>${t('El Coach de IA es una función Pro — un Claude que conoce el vídeo que estás viendo y tu canal, no un chat genérico.', 'The AI Coach is a Pro feature — a Claude that knows the video you\'re watching and your channel, not a generic chat.')}</p>
-      <a href="https://ytubviral.com/pricing?utm_source=extension&utm_medium=coach" target="_blank" class="ytv-btn ytv-btn-red ytv-btn-sm">${t('Ver Pro — 9,99€/mes →', 'See Pro — €9.99/mo →')}</a>
-    </div>`;
-    return;
-  }
-
   shellRendered.coach = true;
-  body.innerHTML = `
-    <div class="ytv-coach">
-      <div class="ytv-coach-msgs" id="ytv-coach-msgs"></div>
-      <div class="ytv-coach-input">
-        <textarea id="ytv-coach-text" rows="2" placeholder="${t('Escribe tu pregunta...', 'Type your question...')}"></textarea>
-        <button class="ytv-btn ytv-btn-red ytv-btn-sm" id="ytv-coach-send">${t('Enviar', 'Send')}</button>
-      </div>
-    </div>`;
-
-  const msgsEl = body.querySelector('#ytv-coach-msgs');
-  const textEl = body.querySelector('#ytv-coach-text');
-  const sendBtn = body.querySelector('#ytv-coach-send');
-  renderCoachThread(msgsEl);
-
-  async function send() {
-    const q = textEl.value.trim();
-    if (!q) return;
-    textEl.value = '';
-    coachHistory.push({ role: 'user', content: q });
-    renderCoachThread(msgsEl);
-    sendBtn.disabled = true; textEl.disabled = true;
-    const typing = document.createElement('div');
-    typing.className = 'ytv-coach-msg ytv-coach-ai ytv-coach-typing';
-    typing.textContent = t('Pensando…', 'Thinking…');
-    msgsEl.appendChild(typing);
-    msgsEl.scrollTop = msgsEl.scrollHeight;
-    try {
-      const res = await sendMsg({
-        type: 'COACH',
-        message: q,
-        context: coachHistory.slice(-10, -1), // history before this message
-        pageContext: coachPageContext(),
-      });
-      coachHistory.push({ role: 'assistant', content: res.reply || t('Sin respuesta.', 'No reply.') });
-    } catch (e) {
-      const msg = e.message === 'throttled'
-        ? t('Vas muy rápido — espera unos segundos.', 'Too fast — wait a few seconds.')
-        : e.message === 'pro_required'
-          ? t('El Coach es Pro.', 'The Coach is Pro.')
-          : e.message;
-      coachHistory.push({ role: 'assistant', content: '⚠ ' + msg });
-    }
-    typing.remove();
-    renderCoachThread(msgsEl);
-    sendBtn.disabled = false; textEl.disabled = false;
-    textEl.focus();
+  body.innerHTML = '<div class="ytv-coach"><div class="ytv-coach-msgs" id="ytv-coach-msgs"></div><div class="ytv-coach-input"><textarea id="ytv-coach-text" rows="2" maxlength="2000" placeholder="'+t('Escribe tu pregunta...','Type your question...')+'"></textarea><button class="ytv-btn ytv-btn-red ytv-btn-sm" id="ytv-coach-send">'+t('Enviar','Send')+'</button></div><div class="ytv-coach-status" id="ytv-coach-status"></div></div>';
+  const msgsEl=body.querySelector('#ytv-coach-msgs'),textEl=body.querySelector('#ytv-coach-text'),sendBtn=body.querySelector('#ytv-coach-send'),statusEl=body.querySelector('#ytv-coach-status');
+  msgsEl.innerHTML='<div class="ytv-coach-hint">'+t('Pregúntame sobre este vídeo, tu canal o tu estrategia. El Coach requiere Pro.','Ask about this video, your channel or your strategy. Coach requires Pro.')+'</div>';
+  let sending=false,uncertain=false;
+  async function send(){
+    if(sending||uncertain||!body.isConnected)return;const q=textEl.value.trim().slice(0,2000);if(!q)return;
+    const language=_lang,pageContext=coachPageContext().trim().slice(0,600),href=location.href;let draft=q,settled=false;
+    const current=()=>body.isConnected&&body.contains(msgsEl)&&body.contains(textEl)&&location.href===href&&_lang===language&&coachPageContext().trim().slice(0,600)===pageContext&&(settled||textEl.value.trim().slice(0,2000)===draft);
+    sending=true;sendBtn.disabled=true;textEl.disabled=true;statusEl.textContent=t('Pensando…','Thinking…');
+    try{const data=await coachForView(msgsEl,{message:q,mode:'analyze',lang:language,pageContext},current);if(!paintCoachConversation(msgsEl,data))return;statusEl.textContent='';settled=true;draft='';textEl.value='';}
+    catch(e){uncertain=true;if(body.isConnected)statusEl.textContent=e.message==='not_logged_in'?t('Inicia sesión para usar el Coach.','Sign in to use Coach.'):t('Este envío no está confirmado. No se repetirá automáticamente.','This send is unconfirmed. It will not be repeated automatically.');}
+    finally{sending=false;sendBtn.disabled=uncertain;textEl.disabled=uncertain;if(!uncertain&&textEl.isConnected)textEl.focus();}
   }
-
-  sendBtn.addEventListener('click', send);
-  textEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-  });
+  sendBtn.addEventListener('click',send);textEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void send();}});
 }
 
 // Genuine review collection (G2 ASO lever #1): after a user has loaded the scorecard a few times

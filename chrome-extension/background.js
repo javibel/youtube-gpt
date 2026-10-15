@@ -4,7 +4,7 @@ const API_BASE = 'https://ytubviral.com';
 const FETCH_TIMEOUT_MS = 15000;
 chrome.storage.onChanged.addListener((changes,area)=>{
   if(area==='local'&&Object.hasOwn(changes,'ytv_token')) { identityRevision++; retireExtensionIdentity(); }
-  if(area==='local'&&Object.hasOwn(changes,'ytv_lang')) { keywordsOriginal?.retire(); generationOriginal?.retire(); }
+  if(area==='local'&&Object.hasOwn(changes,'ytv_lang')) { keywordsOriginal?.retire(); generationOriginal?.retire(); coachOriginal?.retire(); coachConversation=null; }
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -167,7 +167,7 @@ const IDENTITY_WRITE_PENDING = 'ytv_identity_write_pending';
 let identityReadOriginal = null;
 let identityRevision = 0;
 const identityReadReceipts = new WeakMap();
-function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); competitorOriginal?.retire(); keywordsOriginal?.retire(); generationOriginal?.retire(); }
+function retireExtensionIdentity() { identityReadOriginal?.retire(); channelStatsOriginal?.retire(); seoLiveOriginal?.retire(); dailyIdeasOriginal?.retire(); bestTimeOriginal?.retire(); bestTimeUseOriginal?.retire(); abCreateOriginal?.retire(); competitorOriginal?.retire(); keywordsOriginal?.retire(); generationOriginal?.retire(); coachOriginal?.retire(); coachConversation=null; }
 async function getExtensionIdentity() {
   if (identityReadOriginal) return identityReadOriginal.wait;
   if (passwordLoginOriginal || tokenMutationOriginal) throw Error('No se pudo confirmar la cuenta.');
@@ -998,7 +998,51 @@ async function acknowledgeGeneration(msg,sender){
  own.acknowledging=(async()=>{const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('generation_unconfirmed');const row=await chrome.storage.local.get(GENERATION_PENDING);check();if(!own.markerMatches(row[GENERATION_PENDING]))throw Error('generation_unconfirmed');await chrome.storage.local.remove(GENERATION_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('generation_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();clearTimeout(own.timer);generationOriginal=null;return Object.freeze({key:own.key,readRef:own.readRef,viewRef:own.viewRef,closed:true});})().catch(error=>{own.retire();clearTimeout(own.timer);throw error;});return own.acknowledging;
 }
 
+const COACH_PENDING='ytv_coach_pending';let coachOriginal=null,coachConversation=null;
+function coachInput(msg){
+ if(typeof msg.message!=='string'||!msg.message.trim()||msg.message.length>2000||!['create','analyze','optimize','research'].includes(msg.mode)||!['en','es'].includes(msg.lang)||typeof msg.pageContext!=='string'||msg.pageContext.length>600||!Array.isArray(msg.context)||msg.context.length>10||msg.context.some(m=>!m||!['user','assistant'].includes(m.role)||typeof m.content!=='string'||m.content.length>2000)||msg.context[0]?.role==='assistant')throw Error('coach_input_changed');
+ const input=Object.freeze({message:msg.message.trim(),context:Object.freeze(msg.context.map(m=>Object.freeze({role:m.role,content:m.content}))),mode:msg.mode,lang:msg.lang,pageContext:msg.pageContext.trim()});const body=JSON.stringify(input);if(new TextEncoder().encode(body).length>131072)throw Error('coach_input_changed');return {input,body,snapshot:body};
+}
+function coachCheck(own){
+ if(coachOriginal!==own||own.retired||own.revision!==identityRevision||passwordLoginOriginal||tokenMutationOriginal||performance.now()>=own.deadline||Date.now()<own.startedAt||Date.now()>=own.expiresAt||own.identity&&identityReadReceipts.get(own.identity)!==own.identityReceipt){own.retire();throw Error('coach_unconfirmed');}
+}
+function retireCoachFromView(msg,sender){const own=coachOriginal;if(own&&bestTimeCaller(sender)&&JSON.stringify([sender.tab.id,sender.frameId,sender.documentId])===own.documentScope&&msg.viewRef===own.viewRef&&msg.threadRef===own.threadRef)own.retire();return {retired:!!own?.retired};}
+async function sendCoachFromDocument(msg,sender){
+ const scope=bestTimeCaller(sender);if(!scope||!abUuid(msg.viewRef)||!abUuid(msg.threadRef))throw Error('coach_unconfirmed');const {input,body,snapshot}=coachInput(msg);
+ if(coachOriginal){const own=coachOriginal;if(!own.retired&&own.scope===scope&&own.viewRef===msg.viewRef&&own.threadRef===msg.threadRef&&own.snapshot===snapshot){coachCheck(own);return own.wait;}throw Error('coach_unconfirmed');}
+ if(passwordLoginOriginal||tokenMutationOriginal)throw Error('coach_unconfirmed');
+ const own={scope,documentScope:JSON.stringify([sender.tab.id,sender.frameId,sender.documentId]),input,body,snapshot,viewRef:msg.viewRef,threadRef:msg.threadRef,readRef:crypto.randomUUID(),key:'ext-'+crypto.randomUUID(),revision:identityRevision,startedAt:Date.now(),deadline:performance.now()+60000,expiresAt:Date.now()+60000,controller:new AbortController(),retired:false,attempted:false,ready:false,http:null,identity:null};coachOriginal=own;
+ let rejectWait;const stopped=new Promise((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});own.retire=()=>{if(!own.retired){own.retired=true;own.controller.abort();rejectWait(Error('coach_unconfirmed'));}};own.timer=setTimeout(own.retire,60000);const check=()=>coachCheck(own),markerMatches=row=>row?.key===own.key&&row?.readRef===own.readRef&&row?.viewRef===own.viewRef&&row?.threadRef===own.threadRef;
+ own.markerMatches=markerMatches;
+ const producer=(async()=>{
+  const prior=await chrome.storage.local.get(COACH_PENDING);check();if(Object.hasOwn(prior,COACH_PENDING))throw Error('coach_unconfirmed');
+  const identity=await getExtensionIdentity();check();const receipt=identity&&identityReadReceipts.get(identity);if(!receipt||receipt.revision!==own.revision)throw Error('not_logged_in');own.identity=identity;own.identityReceipt=receipt;own.expiresAt=Math.min(own.expiresAt,receipt.expiresAt);check();
+  const previous=coachConversation;own.previous=previous;
+  if(previous&&previous.threadRef===own.threadRef){if(previous.scope!==scope||previous.revision!==own.revision||previous.token!==receipt.token||previous.ownerId!==identity.id||previous.lang!==input.lang||JSON.stringify(previous.history)!==JSON.stringify(input.context))throw Error('coach_unconfirmed');}
+  else if(input.context.length)throw Error('coach_unconfirmed');
+  const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==receipt.token)throw Error('coach_unconfirmed');
+  own.attempted=true;await chrome.storage.local.set({[COACH_PENDING]:{key:own.key,readRef:own.readRef,viewRef:own.viewRef,threadRef:own.threadRef}});check();const row=await chrome.storage.local.get(COACH_PENDING);check();if(!markerMatches(row[COACH_PENDING]))throw Error('coach_unconfirmed');
+  const {res,data}=await apiFetch(API_BASE+'/api/coach',{method:'POST',credentials:'omit',cache:'no-store',signal:own.controller.signal,timeoutMs:Math.min(55000,Math.max(1,Math.floor(own.deadline-performance.now()))),maxResponseBytes:256*1024,observeOriginal:p=>{own.http=p;},headers:{'Content-Type':'application/json',Authorization:'Bearer '+receipt.token,'Idempotency-Key':own.key,'X-YTV-Read-Ref':own.readRef},body});check();
+  const current=await chrome.storage.local.get('ytv_token');check();if(current.ytv_token!==receipt.token)throw Error('coach_unconfirmed');
+  // Server expiry is a negative bound on this HTTP result, not an extension
+  // of the client horizon captured before ME. A slow ME consumes that horizon.
+  const g=data?.coach;if(!g||g.readRef!==own.readRef||g.operationKey!==own.key||g.userId!==identity.id||g.mode!==input.mode||g.language!==input.lang||!Number.isSafeInteger(g.expiresAt)||g.expiresAt<=Date.now()||g.expiresAt>Date.now()+55000||g.expiresAt>receipt.expiresAt)throw Error('coach_unconfirmed');
+  own.expiresAt=Math.min(own.expiresAt,g.expiresAt);let result;
+  if(res.status===200){if(typeof data.reply!=='string'||!data.reply.trim()||data.reply.length>64000||Object.keys(data).some(k=>!['reply','coach'].includes(k)))throw Error('coach_unconfirmed');result={outcome:'replied',reply:data.reply};}
+  else {const known={pro_required:403,throttled:429};if(!Object.hasOwn(known,data.error)||known[data.error]!==res.status||Object.keys(data).some(k=>!['error','coach'].includes(k)))throw Error('coach_unconfirmed');result={outcome:'rejected',code:data.error};}
+  own.data=Object.freeze({key:own.key,readRef:own.readRef,viewRef:own.viewRef,threadRef:own.threadRef,mode:input.mode,language:input.lang,expiresAt:own.expiresAt,...result});own.ready=true;check();return own.data;
+ })();
+ void producer.catch(()=>{own.retire();clearTimeout(own.timer);}).finally(async()=>{if(own.http)await Promise.allSettled([own.http]);if(coachOriginal===own&&!own.attempted){coachOriginal=null;clearTimeout(own.timer);}}).catch(()=>{});own.wait=Promise.race([producer,stopped]);return own.wait;
+}
+async function acknowledgeCoach(msg,sender){
+ const own=coachOriginal;if(!own||!own.ready||bestTimeCaller(sender)!==own.scope||msg.key!==own.key||msg.readRef!==own.readRef||msg.viewRef!==own.viewRef||msg.threadRef!==own.threadRef)throw Error('coach_unconfirmed');const check=()=>coachCheck(own);check();if(own.acknowledging)return own.acknowledging;
+ own.acknowledging=(async()=>{const token=await chrome.storage.local.get('ytv_token');check();if(token.ytv_token!==own.identityReceipt.token)throw Error('coach_unconfirmed');const row=await chrome.storage.local.get(COACH_PENDING);check();if(!own.markerMatches(row[COACH_PENDING]))throw Error('coach_unconfirmed');await chrome.storage.local.remove(COACH_PENDING);check();const finalToken=await chrome.storage.local.get('ytv_token');check();if(finalToken.ytv_token!==own.identityReceipt.token)throw Error('coach_unconfirmed');if(own.http)await Promise.allSettled([own.http]);check();if(coachConversation!==own.previous)throw Error('coach_unconfirmed');coachConversation=Object.freeze({scope:own.scope,threadRef:own.threadRef,revision:own.revision,token:own.identityReceipt.token,ownerId:own.identity.id,lang:own.input.lang,history:own.data.outcome==='replied'?Object.freeze([...own.input.context,{role:'user',content:own.input.message},{role:'assistant',content:own.data.reply.slice(0,2000)}].slice(-10).map(m=>Object.freeze({...m}))):own.input.context});clearTimeout(own.timer);coachOriginal=null;return Object.freeze({key:own.key,readRef:own.readRef,viewRef:own.viewRef,threadRef:own.threadRef,closed:true});})().catch(error=>{own.retire();clearTimeout(own.timer);throw error;});return own.acknowledging;
+}
+
 async function handleMessage(msg,sender) {
+  if (msg.type === 'COACH') return sendCoachFromDocument(msg,sender);
+  if (msg.type === 'COACH_ACK') return acknowledgeCoach(msg,sender);
+  if (msg.type === 'COACH_RETIRE') return retireCoachFromView(msg,sender);
   if (msg.type === 'GENERATE') return generateFromDocument(msg,sender);
   if (msg.type === 'GENERATE_ACK') return acknowledgeGeneration(msg,sender);
   if (msg.type === 'GENERATE_RETIRE') return retireGenerationFromView(msg,sender);
@@ -1060,34 +1104,6 @@ async function handleMessage(msg,sender) {
       return { ok: true };
     }
 
-    case 'COACH': {
-      // P5 — AI Coach chat. Raw error codes (pro_required / throttled) so content.js
-      // paints the right card. `pageContext` = what the user is looking at on YouTube.
-      const token = await getToken();
-      if (!token) throw new Error('not_logged_in');
-      let res, data;
-      try {
-        ({ res, data } = await apiFetch(`${API_BASE}/api/coach`, {
-          method: 'POST',
-          // The Coach calls Claude for a full (non-streamed) reply — routinely 15-40s.
-          // The default 15s abort was firing before the answer came back ("tardó demasiado").
-          // Server route caps at maxDuration=60, so wait just under that.
-          timeoutMs: 55000,
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            message: msg.message,
-            context: msg.context || [],
-            pageContext: msg.pageContext || '',
-            mode: msg.mode || 'analyze',
-            lang: msg.lang || lang,
-          }),
-        }));
-      } catch (err) { throw new Error(connErrorMessage(err, lang, err.message)); }
-      if (res.status === 403 && data.error === 'pro_required') throw new Error('pro_required');
-      if (res.status === 429) throw new Error('throttled');
-      if (!res.ok) throw new Error(data.error || (lang === 'en' ? 'Coach error' : 'Error del Coach'));
-      return data;
-    }
 
     default:
       throw new Error('Unknown message: ' + msg.type);
