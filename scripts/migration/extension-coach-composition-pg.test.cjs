@@ -1,6 +1,6 @@
 'use strict';
 const crypto=require('node:crypto'),path=require('node:path'),assert=require('node:assert/strict');
-const {load}=require('./route-harness.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs'),sql=require('./extension-competitor-pg.test.cjs'),{worker,view,node,pending}=require('./extension-coach-client.test.cjs');
+const {load}=require('./route-harness.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs'),sql=require('./extension-competitor-pg.test.cjs'),{worker,view,pending}=require('./extension-coach-client.test.cjs'),{node}=require('./extension-best-time-client.test.cjs');
 let db=sql.prisma;const bindings=[],rateKeys=[];
 async function bound(o={}){
  const issued=await sql.bound({plan:o.plan??'pro'}),id=issued.id,calls=[],queries=[],http=[],responses=[],models=[],factories=[],mail=[],sources=[],entered={},gates={},timers=new Map();let serial=0,elapsed=0,offset=0,ordinal=0;
