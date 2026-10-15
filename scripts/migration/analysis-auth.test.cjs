@@ -5,8 +5,8 @@ const {randomUUID}=require('node:crypto');
 // Explicit route list: this checks entry authorization, not full AI behavior.
 const entries=[
  ['app/api/generate-thumbnail/route.ts','POST'],['app/api/thumbnail-background/route.ts','POST'],
- ...['ab-test/suggest','thumbnail-preview','optimize','seo-score','retention','revenue'].map(name=>['app/api/youtube/'+name+'/route.ts','POST']),
- ...['analytics','audit','best-time','competitor-intel','subscribers'].map(name=>['app/api/youtube/'+name+'/route.ts','GET']),
+ ...['ab-test/suggest','thumbnail-preview','optimize','seo-score','retention','revenue','subscribers'].map(name=>['app/api/youtube/'+name+'/route.ts','POST']),
+ ...['analytics','audit','best-time','competitor-intel'].map(name=>['app/api/youtube/'+name+'/route.ts','GET']),
  ['app/api/youtube/best-time/route.ts','POST'],['app/api/youtube/optimize/route.ts','GET'],['app/api/youtube/optimize/route.ts','PUT'],['app/api/youtube/seo-score/route.ts','GET'],
 ];
 const results=[];
@@ -15,9 +15,9 @@ const results=[];
   const effects=[];
   const forbidden=new Proxy(function(){effects.push('unexpected dependency call');throw Error('Unexpected effect before authentication');},{get:()=>forbidden});
   try{
-   const nativeAnalysis=['app/api/youtube/retention/route.ts','app/api/youtube/revenue/route.ts'].includes(file),nativeName=file.includes('/revenue/')?'revenue':'retention';
+   const nativeAnalysis=['app/api/youtube/retention/route.ts','app/api/youtube/revenue/route.ts','app/api/youtube/subscribers/route.ts'].includes(file),nativeName=file.includes('/subscribers/')?'subscribers':file.includes('/revenue/')?'revenue':'retention';
    const globals={Error,Date,Headers,TextEncoder,AbortController,process:{env:{AUTH_URL:'http://127.0.0.1:4300'}},fetch:forbidden};
-   const contract=nativeName==='revenue'?load('lib/revenue-contract.ts',{'@/lib/retention-contract':load('lib/retention-contract.ts',{},globals)},globals):load('lib/retention-contract.ts',{},globals);
+   const contract=nativeName!=='retention'?load('lib/'+nativeName+'-contract.ts',{'@/lib/retention-contract':load('lib/retention-contract.ts',{},globals)},globals):load('lib/retention-contract.ts',{},globals);
    const analysisOriginal=nativeAnalysis?load('lib/'+nativeName+'-original.ts',{'@/auth':{readNativeSessionCookie:async()=>session},'@/lib/prisma':{prisma:forbidden},'@/lib/ai/task-runtime':{getMessagesTask:forbidden},['@/lib/'+nativeName+'-contract']:contract},globals):null;
    const route=load(file,{
     ...(analysisOriginal?{['@/lib/'+nativeName+'-original']:analysisOriginal}:{}),
