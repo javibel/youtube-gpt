@@ -10,6 +10,7 @@ import { useAdminFeedback } from '@/lib/use-admin-feedback';
 import { useAdminReviewModeration } from '@/lib/use-admin-review-moderation';
 import { useAdminUserCreation } from '@/lib/use-admin-user-creation';
 import { useAdminManualGrant } from '@/lib/use-admin-manual-grant';
+import { useAdminUserDeletion } from '@/lib/use-admin-user-deletion';
 
 const TEMPLATE_LABELS: Record<string, string> = {
   title: 'Títulos', description: 'Descripciones', caption: 'Captions',
@@ -54,8 +55,7 @@ export default function AdminPage() {
   const reviews=reviewRead.data?.reviews??[];
   const reviewsLoading=reviewRead.loading;
   const reviewModeration=useAdminReviewModeration(session,status,reviewRead.data,reviewRead.refresh);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const userDeletion=useAdminUserDeletion(session,status,data,stats.refresh);
   const feedbackRead=useAdminFeedback(session,status);
   const feedbacks=feedbackRead.data?.feedbacks??[];
   const feedbacksLoading=feedbackRead.loading;
@@ -84,17 +84,6 @@ export default function AdminPage() {
   }
 
   function handleGrantPlan(e:React.FormEvent){e.preventDefault();manualGrant.grant();}
-
-  async function handleDeleteUser(userId: string) {
-    setDeleting(userId);
-    try {
-      const res = await fetch('/api/admin/delete-user', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
-      const result = await res.json();
-      if (result.error) { alert(result.error); return; }
-      stats.refresh();
-    } catch { alert('Error al eliminar'); }
-    finally { setDeleting(null); setConfirmDeleteId(null); }
-  }
 
   if (status === 'loading' || loading) {
     return (
@@ -226,18 +215,20 @@ export default function AdminPage() {
               <p className="text-sm font-display font-semibold">Últimos registros</p>
               <span className="text-[13px] font-mono-jb" style={{ color: 'var(--text-faint)' }}>{overview.totalUsers} total</span>
             </div>
+            <p className="text-[13px] mb-2" style={{color:'var(--text-faint)'}}>Solo se eliminan cuentas vacías, sin suscripción, credenciales guardadas ni vínculos compartidos.</p>
+            {userDeletion.message&&<p role="status" className="text-[13px] mb-2">{userDeletion.message}</p>}
             <ul className="space-y-2">
               {recentUsers.map(u => (
                 <li key={u.id} className="py-2" style={{ borderBottom: '1px solid var(--line)' }}>
-                  {confirmDeleteId === u.id ? (
+                  {userDeletion.confirmId === u.id ? (
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <p className="text-[13px]" style={{ color: '#f87171' }}>¿Eliminar <strong>{u.email}</strong>?</p>
                       <div className="flex gap-2">
-                        <button onClick={() => handleDeleteUser(u.id)} disabled={deleting === u.id}
+                        <button onClick={() => userDeletion.confirm(u.id)} disabled={userDeletion.pendingId === u.id}
                           className="text-[13px] px-3 py-1 rounded-lg" style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
-                          {deleting === u.id ? '...' : 'Confirmar'}
+                          Confirmar
                         </button>
-                        <button onClick={() => setConfirmDeleteId(null)}
+                        <button onClick={userDeletion.cancel}
                           className="text-[13px] px-3 py-1 rounded-lg" style={{ background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--text-dim)' }}>
                           Cancelar
                         </button>
@@ -258,7 +249,7 @@ export default function AdminPage() {
                           ? <span className="text-[13px] font-mono-jb font-bold px-2 py-0.5 rounded" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>PRO</span>
                           : <span className="text-[13px] font-mono-jb px-2 py-0.5 rounded" style={{ background: 'var(--ink-3)', color: 'var(--text-faint)' }}>Free</span>}
                         {u.email !== session?.user?.email && (
-                          <button onClick={() => setConfirmDeleteId(u.id)}
+                          <button onClick={() => userDeletion.choose(u.id)} disabled={!userDeletion.canChoose(u.id)}
                             className="text-[13px] px-2 py-1 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
                             Eliminar
                           </button>
