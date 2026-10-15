@@ -15,10 +15,15 @@ const {PrismaClient}=require('@prisma/client');
 const prisma=new PrismaClient({datasources:{db:{url:config.databaseUrl}}});
 const results=[],contractTimings=[];
 let activeContract=null;
-async function runContract(file,...args){activeContract=file;const began=performance.now();await require(file)(...args);contractTimings.push({file,elapsedMs:Math.round(performance.now()-began)});activeContract=null;}
+async function runContract(file,...args){activeContract=file;armCompletionWatchdog();const began=performance.now();await require(file)(...args);contractTimings.push({file,elapsedMs:Math.round(performance.now()-began)});activeContract=null;armCompletionWatchdog();}
 // A pending Promise alone does not keep Node alive. Fail rather than let an
 // unfinished database contract exit zero without its terminal report.
-const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts did not produce a terminal report within 120 seconds; active contract: ' + activeContract);process.exit(1);},120_000);
+// The suite has grown beyond two minutes (104 remaining contracts alone took
+// 117 seconds). Keep the same strict limit for each original contract and the
+// final inline checks, rather than abort healthy progress halfway through.
+let completionWatchdog;
+function armCompletionWatchdog(){clearTimeout(completionWatchdog);completionWatchdog=setTimeout(()=>{console.error('FAIL: database contract did not finish within 120 seconds; active contract: ' + (activeContract??'final inline checks'));process.exit(1);},120_000);}
+armCompletionWatchdog();
 (async()=>{try{
  const identity=(await prisma.$queryRawUnsafe("SELECT current_database() AS db,current_setting('data_directory') AS directory"))[0];
  assert.equal(identity.db,'ytubviral_migration_test');
@@ -171,7 +176,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   await assert.rejects(prisma.user.create({data:{email}}),error=>error.code==='P2002');results.push('unique email constraint');
   await prisma.chatMessage.createMany({data:Array.from({length:51},(_,i)=>({userId:user.id,role:i%2?'assistant':'user',content:'Synthetic message '+i,createdAt:new Date(Date.UTC(2026,8,1,0,i))}))});
   const {load}=require('./route-harness.cjs');
-  const chat=load('app/api/chat/route.ts',{'@/lib/ai/task-runtime':{getMessagesTask:async()=>{throw Error('GET must not execute a model');}},'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{email}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>{throw Error('GET must not load a plan');}}});
+  const chat=load('app/api/chat/route.ts',{'@/lib/ai/task-runtime':{getMessagesTask:async()=>{throw Error('GET must not execute a model');}},'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:user.id,email}})},'@/lib/prisma':{prisma},'@/lib/plans':{getUserPlan:async()=>{throw Error('GET must not load a plan');}}});
   const history=await (await chat.GET(new Request('https://example.invalid/api/chat'))).json();
   assert.equal(history.messages.length,50);assert.equal(history.messages[0].content,'Synthetic message 1');assert.equal(history.messages.at(-1).content,'Synthetic message 50');
   assert.equal(history.messages.some(message=>message.content==='Synthetic message 0'),false);results.push('real PostgreSQL chat route retains latest fifty in chronological order');
@@ -180,7 +185,7 @@ const completionWatchdog=setTimeout(()=>{console.error('FAIL: database contracts
   try {
    const captures=[];
    const chatPrisma={user:prisma.user,chatMessage:prisma.chatMessage,$queryRaw:async()=>[{hits:1}]};
-   const conversation=load('app/api/chat/route.ts',{'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async payload=>{captures.push(structuredClone(payload.messages));return {content:[{text:'Synthetic answer '+captures.length}]};}})},'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{email:conversationEmail}})},'@/lib/prisma':{prisma:chatPrisma},'@/lib/plans':{getUserPlan:async()=>('free'),getLimits:()=>({chatMessagesPerDay:5}),isPaid:()=>false}});
+   const conversation=load('app/api/chat/route.ts',{'@/lib/ai/task-runtime':{getMessagesTask:async()=>({create:async payload=>{captures.push(structuredClone(payload.messages));return {content:[{text:'Synthetic answer '+captures.length}]};}})},'next/server':{NextResponse:Response},'@/auth':{auth:async()=>({user:{id:conversationUser.id,email:conversationEmail}})},'@/lib/prisma':{prisma:chatPrisma},'@/lib/plans':{getUserPlan:async()=>('free'),getLimits:()=>({chatMessagesPerDay:5}),isPaid:()=>false}});
    const post=async message=>conversation.POST(new Request('https://example.invalid/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message,lang:'es'})}));
    assert.equal((await post('Primera pregunta')).status,200);
    assert.equal((await post('Segunda pregunta')).status,200);
