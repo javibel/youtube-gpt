@@ -3,12 +3,32 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guards";
 import { hasPaidAccess } from "@/lib/plans";
+import { authorizeNativeAdminStats, checkNativeAdminStats, closeNativeAdminStats, runNativeAdminStats, type NativeAdminStats, type AdminStatsRead } from "@/lib/admin-stats-native-authorization";
 
-export async function GET() {
-  const gate = await requireAdmin();
-  if (!gate.ok) return gate.response;
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
+export async function GET(request: Request) {
+  const startedAt=Date.now(),deadline=performance.now()+25000,signal=request.signal,controller=new AbortController();
+  const cookie=request.headers.get('cookie'),captured={signal:controller.signal,headers:new Headers(cookie?{cookie}:{})} as Request;
+  const yearlyPriceId=process.env.STRIPE_PRO_YEARLY_PRICE_ID;
+  let retired=false,rejectWait!:(error:Error)=>void,original:NativeAdminStats|null=null;
+  const stopped=new Promise<never>((_,reject)=>{rejectWait=reject;});void stopped.catch(()=>{});
+  const retire=()=>{if(!retired){retired=true;controller.abort();rejectWait(Error('Admin statistics unconfirmed'));}};
+  const timer=setTimeout(retire,25000);signal.addEventListener('abort',retire,{once:true});
+  const check=()=>{if(signal.aborted||Date.now()<startedAt||performance.now()>=deadline)retire();if(retired)throw Error('Admin statistics unconfirmed');if(original)checkNativeAdminStats(original);};
+  const run=async<T,>(operation:()=>Promise<T>)=>{check();const pending=Promise.resolve().then(()=>{check();return operation();});void pending.catch(()=>{});const value=await Promise.race([pending,stopped]);check();return value;};
+  const json=(value:unknown,status=200)=>NextResponse.json(value,{status,headers:{'Cache-Control':'no-store'}});
+  try{
+    const gate=await run(()=>requireAdmin());if(!gate.ok)return gate.response;
+    original=await run(()=>authorizeNativeAdminStats(captured));if(!original)return json({error:'No autorizado'},403);
+    const result=await run(()=>runNativeAdminStats(original!,context=>readAdminStats(context,yearlyPriceId)));
+    check();const response=json(result);check();return response;
+  }catch{return json({error:'admin_stats_unconfirmed'},503);}
+  finally{clearTimeout(timer);signal.removeEventListener('abort',retire);if(original)closeNativeAdminStats(original);controller.abort();}
+}
 
-  const now = new Date();
+async function readAdminStats(context: AdminStatsRead, yearlyPriceId: string | undefined) {
+  const now = new Date(context.asOf);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const startOfWeek = new Date(now);
@@ -29,35 +49,35 @@ export async function GET() {
     dailyGenerations,
   ] = await Promise.all([
     // Usuarios totales
-    prisma.user.count(),
+    context.step(() => prisma.user.count()),
 
     // Suscripciones Pro activas (con priceId para calcular MRR correctamente)
-    prisma.subscription.findMany({
+    context.step(() => prisma.subscription.findMany({
       where: { status: "active" },
       select: { status: true, stripeCustomerId: true, stripePriceId: true, currentPeriodEnd: true },
-    }),
+    })),
 
     // Nuevos usuarios este mes
-    prisma.user.count({ where: { createdAt: { gte: startOfMonth } } }),
+    context.step(() => prisma.user.count({ where: { createdAt: { gte: startOfMonth } } })),
 
     // Nuevos usuarios mes pasado
-    prisma.user.count({
+    context.step(() => prisma.user.count({
       where: { createdAt: { gte: startOfLastMonth, lt: startOfMonth } },
-    }),
+    })),
 
     // Total generaciones
-    prisma.generation.count(),
+    context.step(() => prisma.generation.count()),
 
     // Generaciones este mes
-    prisma.generation.count({ where: { createdAt: { gte: startOfMonth } } }),
+    context.step(() => prisma.generation.count({ where: { createdAt: { gte: startOfMonth } } })),
 
     // Generaciones mes pasado
-    prisma.generation.count({
+    context.step(() => prisma.generation.count({
       where: { createdAt: { gte: startOfLastMonth, lt: startOfMonth } },
-    }),
+    })),
 
     // Últimos 10 usuarios
-    prisma.user.findMany({
+    context.step(() => prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
       select: {
@@ -68,10 +88,10 @@ export async function GET() {
         subscription: { select: { status: true, plan: true, stripeCustomerId: true, currentPeriodEnd: true } },
         _count: { select: { generations: true } },
       },
-    }),
+    })),
 
     // Últimas 10 generaciones
-    prisma.generation.findMany({
+    context.step(() => prisma.generation.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
       select: {
@@ -81,22 +101,22 @@ export async function GET() {
         tokensUsed: true,
         user: { select: { email: true } },
       },
-    }),
+    })),
 
     // Breakdown por template (este mes)
-    prisma.generation.groupBy({
+    context.step(() => prisma.generation.groupBy({
       by: ["template"],
       where: { createdAt: { gte: startOfMonth } },
       _count: { template: true },
       orderBy: { _count: { template: "desc" } },
-    }),
+    })),
 
     // Generaciones por día últimos 7 días
-    prisma.generation.findMany({
+    context.step(() => prisma.generation.findMany({
       where: { createdAt: { gte: startOfWeek } },
       select: { createdAt: true },
       orderBy: { createdAt: "asc" },
-    }),
+    })),
   ]);
 
   // Agrupar generaciones por día
@@ -121,7 +141,7 @@ export async function GET() {
   const freeUsers = totalUsers - proUsers;
   const conversionRate = totalUsers > 0 ? (proUsers / totalUsers) * 100 : 0;
 
-  return NextResponse.json({
+  return {
     overview: {
       totalUsers,
       proUsers,
@@ -157,5 +177,6 @@ export async function GET() {
       tokensUsed: historyOutputTokens(g.tokensUsed),
       userEmail: g.user.email,
     })),
-  });
+    dataQuality: { source: 'stored-admin-aggregates', freshness: 'unconfirmed', mrr: 'fixed-price-estimate', billingReconciliation: 'not-assessed' },
+  };
 }
