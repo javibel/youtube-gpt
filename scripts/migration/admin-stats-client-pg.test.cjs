@@ -4,7 +4,7 @@ const sql=require('./admin-stats-native-pg.test.cjs'),{harness}=require('./admin
 const bindings=[],readers=['total-users','paid-subscriptions','new-users-month','new-users-last','total-generations','generations-month','generations-last','recent-users','recent-generations','templates','daily'];
 const closed=d=>({ok:true,status:200,redirected:false,headers:new Headers({'cache-control':'no-store'}),json:async()=>d,text:async()=>JSON.stringify(d)});
 async function bound(o={}){
- const b=await sql.bound(o),h=harness(),bridge=[],bodies=[],entered={headers:deferred(),text:deferred()},gate=deferred(),responses=[];
+ const b=await sql.bound(o);assert.equal(typeof b.route?.GET,'function','Original native route must be explicitly exposed by fixture');const h=harness(),bridge=[],bodies=[],entered={headers:deferred(),text:deferred()},gate=deferred(),responses=[];
  h.state.id=b.id;h.state.email=b.email;
  if(o.clientOwner)h.state.id=o.clientOwner;
  if(o.clientEmail)h.state.email=o.clientEmail;
