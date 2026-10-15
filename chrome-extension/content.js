@@ -548,7 +548,7 @@ function retireDailyIdeasDisplay(){dailyIdeasRevision++;for(const own of dailyId
 chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(Object.hasOwn(changes,'ytv_token')||Object.hasOwn(changes,'ytv_lang')))retireDailyIdeasDisplay();});
 document.addEventListener('yt-navigate-finish',()=>{for(const own of dailyIdeasDisplays.values())if(!own.scope())own.retire();});
 function freezeDailyIdeas(value){if(value&&typeof value==='object'){for(const x of Object.values(value))freezeDailyIdeas(x);Object.freeze(value);}return value;}
-function paintDailyIdeasForView(owner,data,html,append=false){const own=data&&dailyIdeasReceipts.get(data);if(!dailyIdeasViewCurrent(data,owner)||typeof html!=='string')return false;const previous=new Set(owner.children);if(append)owner.insertAdjacentHTML('beforeend',html);else owner.innerHTML=html;own.nodes.push(...Array.from(owner.children).filter(n=>!previous.has(n)));own.painted=true;return true;}
+function paintDailyIdeasForView(owner,data,html,append=false){const own=data&&dailyIdeasReceipts.get(data);if(!dailyIdeasViewCurrent(data,owner)||typeof html!=='string')return false;const previous=new Set(owner.children);if(append)owner.insertAdjacentHTML('beforeend',html);else owner.innerHTML=html;const added=Array.from(owner.children).filter(n=>!previous.has(n));own.nodes=append?[...own.nodes.filter(n=>owner.contains(n)),...added]:added;own.painted=true;return true;}
 function requestDailyIdeasForDisplay(owner,surface='ideas',coherent=()=>true){
  if(!owner?.isConnected||!['ideas','channel'].includes(surface))return Promise.reject(Error('daily_ideas_unconfirmed'));
  const previous=dailyIdeasDisplays.get(owner),day=new Date(Date.now()).toISOString().slice(0,10),language=_lang;
