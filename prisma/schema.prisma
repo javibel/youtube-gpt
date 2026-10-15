@@ -196,6 +196,21 @@ model EmailLog {
   @@map("email_logs")
 }
 
+// Purpose-specific permanent command/target denial. No row can resume or grant
+// a native moderation invocation; no cascade/TTL may erase an uncertain fence.
+model AdminReviewModerationAttempt {
+  id String @id
+  userId String
+  email String
+  sessionRef String
+  reviewId String @unique
+  status String
+  state String @default("pending")
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  @@map("admin_review_moderation_attempts")
+}
+
 model Review {
   id        String   @id @default(cuid())
   userId    String   @unique

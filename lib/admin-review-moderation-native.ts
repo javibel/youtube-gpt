@@ -6,12 +6,13 @@ declare const adminReviewModerationBrand: unique symbol;
 export type NativeAdminReviewModeration = { readonly [adminReviewModerationBrand]: true };
 type Original = { id: string; email: string; sessionRef: string; issuedAt: number; tokenExpires: number;
   verifiedAt: number; startedAt: number; deadline: number; expiresAt: number; signal: AbortSignal; origin: string; used: boolean; command:Command; commandRef:string; closed:boolean;
-  effectEntered:boolean; mutationEntered:boolean; databaseAcknowledged:boolean; phase:'new'|'transaction'|'database-ack'|'response-created'|'uncertain'|'denied' };
+  effectEntered:boolean; admitted:boolean; mutationEntered:boolean; databaseAcknowledged:boolean; phase:'new'|'admission'|'transaction'|'database-ack'|'response-created'|'uncertain'|'denied' };
 type Command = Readonly<{id:string;status:'approved'|'rejected'}>;
 type AdminRow = {id:string;email:string|null;emailVerified:Date|null};
 const originals = new WeakMap<object, Original>();
-// Process-local denial reservations only. They neither recover an operation nor
-// coordinate workers/restarts; durable coordination remains an activation gate.
+// Fast negative gates only. The unique durable command AND target fences below
+// survive workers/restarts and remain after completion. Neither row state nor
+// a matching DTO can originate or resume the private original invocation.
 const commands = new Map<string,Original>(), targets = new Map<string,Original>();
 const uuid = (value: unknown): value is string => typeof value === 'string'
   && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
@@ -58,7 +59,7 @@ export async function authorizeNativeAdminReviewModeration(request: Request, inp
     || typeof iat !== 'number' || !Number.isSafeInteger(iat) || iat < 0 || iat > Date.now() / 1000
     || typeof exp !== 'number' || !Number.isSafeInteger(exp) || !Number.isSafeInteger(exp * 1000) || iat >= exp || exp * 1000 <= Date.now()) return null;
   const own: Original = { id, email, sessionRef: authSessionRef, issuedAt: iat, tokenExpires: exp,
-    verifiedAt: 0, startedAt, deadline, expiresAt: Math.min(startedAt + 25_000, exp * 1000), signal, origin, used:false,command,commandRef,closed:false,effectEntered:false,mutationEntered:false,databaseAcknowledged:false,phase:'new' };
+    verifiedAt: 0, startedAt, deadline, expiresAt: Math.min(startedAt + 25_000, exp * 1000), signal, origin, used:false,command,commandRef,closed:false,effectEntered:false,admitted:false,mutationEntered:false,databaseAcknowledged:false,phase:'new' };
   check(own);
   const row = await account(id); check(own);
   if (!eligible(row, id, email) || !row) return null;
@@ -75,7 +76,11 @@ export function closeNativeAdminReviewModeration(original: NativeAdminReviewMode
 }
 
 
-// The fixed transaction owns its original completion after update invocation.
+// Admission commits independently BEFORE the business transaction. A lost ACK,
+// rollback of the later effect, completion, or JSON failure never clears it.
+// This deliberately permits only one admitted moderation per review. A later
+// decision needs a separately specified native change contract, not a reset.
+// The fixed effect transaction owns its original completion after update invocation.
 // The HTTP waiter can retire; that never proves rollback, permits replay, or
 // clears an uncertain target. No stored key/phase can resume this capability.
 export async function applyNativeAdminReviewModeration(original:NativeAdminReviewModeration){
@@ -83,17 +88,41 @@ export async function applyNativeAdminReviewModeration(original:NativeAdminRevie
   if(commands.has(own.commandRef)||targets.has(own.command.id)||commands.size>=10000)throw Error('Admin review moderation unconfirmed');
   commands.set(own.commandRef,own);targets.set(own.command.id,own);
   try{
-    retained(original);own.effectEntered=true;own.phase='transaction';
-    const changed=await prisma.$transaction(async tx=>{
+    retained(original);own.effectEntered=true;own.phase='admission';
+    const fence={id:own.commandRef,userId:own.id,email:own.email,sessionRef:own.sessionRef,
+      reviewId:own.command.id,status:own.command.status,state:'pending',createdAt:new Date(own.startedAt)};
+    const matches=(row:{id:string;userId:string;email:string;sessionRef:string;reviewId:string;status:string;state:string;createdAt:Date;completedAt:Date|null}|null)=>!!row
+      &&row.id===fence.id&&row.userId===fence.userId&&row.email===fence.email&&row.sessionRef===fence.sessionRef
+      &&row.reviewId===fence.reviewId&&row.status===fence.status&&row.state==='pending'
+      &&row.createdAt instanceof Date&&row.createdAt.getTime()===own.startedAt&&row.completedAt===null;
+    const admitted=await prisma.$transaction(async tx=>{
       retained(original);
       const rows=await tx.$queryRaw<AdminRow[]>`SELECT id,email,"emailVerified" FROM users WHERE id=${own.id} FOR UPDATE`;
       retained(original);const row=rows[0];
       if(rows.length!==1||!row||!eligible(row,own.id,own.email)||row.emailVerified?.getTime()!==own.verifiedAt)throw Error('Admin review moderation unconfirmed');
+      retained(original);
+      // Unique id/reviewId constrain every worker. No prior row is adopted,
+      // no upsert, catch-and-read, retry, deletion or expiration is available.
+      const created=await tx.adminReviewModerationAttempt.create({data:fence});
+      retained(original);if(!matches(created))throw Error('Admin review moderation unconfirmed');
+      return true;
+    },{maxWait:5000,timeout:15000});
+    retained(original);if(admitted!==true)throw Error('Admin review moderation unconfirmed');
+    own.admitted=true;own.phase='transaction';
+    const changed=await prisma.$transaction(async tx=>{
+      retained(original);if(!own.admitted)throw Error('Admin review moderation unconfirmed');
+      const rows=await tx.$queryRaw<AdminRow[]>`SELECT id,email,"emailVerified" FROM users WHERE id=${own.id} FOR UPDATE`;
+      retained(original);const row=rows[0];
+      if(rows.length!==1||!row||!eligible(row,own.id,own.email)||row.emailVerified?.getTime()!==own.verifiedAt)throw Error('Admin review moderation unconfirmed');
+      const pending=await tx.adminReviewModerationAttempt.findUnique({where:{id:own.commandRef}});
+      retained(original);if(!matches(pending))throw Error('Admin review moderation unconfirmed');
       // No asynchronous gap between the last retained check and this exact
       // update. The locked native account cannot change before SQL commit.
       retained(original);own.mutationEntered=true;
       const updated=await tx.review.update({where:{id:own.command.id},data:{status:own.command.status},select:{id:true,status:true}});
       if(!updated||updated.id!==own.command.id||updated.status!==own.command.status)throw Error('Admin review moderation unconfirmed');
+      const completed=await tx.adminReviewModerationAttempt.updateMany({where:fence,data:{state:'completed',completedAt:new Date()}});
+      if(completed.count!==1)throw Error('Admin review moderation unconfirmed');
       // After dispatch there is no dependent action or late auth refresh. Let
       // this same SQL producer complete atomically even if HTTP has retired.
       return{id:updated.id,status:updated.status};
@@ -109,9 +138,9 @@ export async function applyNativeAdminReviewModeration(original:NativeAdminRevie
   }
 }
 // Acknowledges only the original SQL ACK plus successfully constructed response,
-// never delivery to a browser. The reference remains a permanent negative key.
+// never delivery to a browser. Both durable fences remain permanent denials.
 export function confirmNativeAdminReviewModeration(original:NativeAdminReviewModeration):void{
   const own=retained(original);
   if(own.phase!=='database-ack'||!own.databaseAcknowledged||targets.get(own.command.id)!==own)throw Error('Admin review moderation unconfirmed');
-  own.phase='response-created';targets.delete(own.command.id);
+  own.phase='response-created';
 }
