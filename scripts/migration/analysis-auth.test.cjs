@@ -1,6 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {load}=require('./route-harness.cjs');
+const {randomUUID}=require('node:crypto');
 // Explicit route list: this checks entry authorization, not full AI behavior.
 const entries=[
  ['app/api/generate-thumbnail/route.ts','POST'],['app/api/thumbnail-background/route.ts','POST'],
@@ -14,7 +15,11 @@ const results=[];
   const effects=[];
   const forbidden=new Proxy(function(){effects.push('unexpected dependency call');throw Error('Unexpected effect before authentication');},{get:()=>forbidden});
   try{
+   const nativeRetention=file==='app/api/youtube/retention/route.ts';
+   const globals={Error,Date,Headers,TextEncoder,AbortController,process:{env:{AUTH_URL:'http://127.0.0.1:4300'}},fetch:forbidden};
+   const retention=nativeRetention?load('lib/retention-original.ts',{'@/auth':{readNativeSessionCookie:async()=>session},'@/lib/prisma':{prisma:forbidden},'@/lib/ai/task-runtime':{getMessagesTask:forbidden},'@/lib/retention-contract':load('lib/retention-contract.ts',{},globals)},globals):null;
    const route=load(file,{
+    ...(retention?{'@/lib/retention-original':retention}:{}),
     'next/server':{NextRequest:Request,NextResponse:Response},'@/lib/image/background-upload':{uploadBackgroundReceipt:()=>{throw Error('Unexpected keyed upload');}},'@/lib/image/background-image-attempt':{keyedBackgroundImage:()=>{throw Error('Unexpected keyed image');}},'@/auth':{auth:async()=>session},
     '@/lib/prisma':{prisma:forbidden},'@/lib/plans':{getUserPlan:forbidden,getLimits:forbidden,isPaid:forbidden},
     '@/lib/youtube-auth':{getAccessToken:forbidden},'@/lib/parse-fenced-json':{parseFencedJson:forbidden},
@@ -23,9 +28,11 @@ const results=[];
     '@/lib/rate-limit-db':{rateLimitDb:forbidden},
     '@/lib/image/background-image-provider':{backgroundImageAvailable:forbidden,generateBackgroundImage:forbidden},
     'sharp':forbidden,'@vercel/blob':{put:forbidden},'@anthropic-ai/sdk':class {constructor(){this.messages=forbidden;}},
-   },{process:{env:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}},fetch:forbidden});
+   },globals);
    assert.equal(typeof route[method],'function');
-   const request=new Request('https://example.invalid/api/test',{method,...(method==='POST'?{body:'{}',headers:{'content-type':'application/json'}}:{})});
+   // Negative decoder fixtures never authorize retention. The real native
+   // original must reject them before any SQL/YouTube/model dependency.
+   const request=nativeRetention?new Request('http://127.0.0.1:4300/api/youtube/retention',{method,body:'{"lang":"es"}',headers:{origin:'http://127.0.0.1:4300',cookie:'negative-not-a-session','content-type':'application/json','idempotency-key':randomUUID()}}):new Request('https://example.invalid/api/test',{method,...(method==='POST'?{body:'{}',headers:{'content-type':'application/json'}}:{})});
    const response=await route[method](request);
    assert.equal(response.status,401);assert.equal(effects.length,0);
    results.push({file,method,session:session?'missing identity':'anonymous',status:'PASS'});
