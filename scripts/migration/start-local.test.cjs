@@ -1,9 +1,12 @@
 'use strict';
 const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
 const {plan,paymentFixtures}=require('./start-local.cjs');
 const {connectLocalFixture,cancellationFixture}=require('../../lib/migration/local-fixture.cjs');
 (async()=>{
  const task=plan({PATH:process.env.PATH,UNRELATED:'discard'});
+ const prerender=JSON.parse(fs.readFileSync(path.join(task.cwd,'.next/prerender-manifest.json'),'utf8'));
+ assert(!Object.hasOwn(prerender.routes,'/admin/ai-configuration'),'Admin configuration must resolve the incoming native session, not a prerendered build-time denial');
  assert.equal(task.host,'127.0.0.1');assert.equal(task.port,4300);
  assert.equal(task.env.UNRELATED,undefined);assert.equal(task.env.YTV_MIGRATION_WEB_TEST,'1');
  assert.equal(task.env.AUTH_URL,'http://127.0.0.1:4300');

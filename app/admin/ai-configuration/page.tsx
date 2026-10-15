@@ -1,9 +1,12 @@
 import Link from 'next/link';
+import { connection } from 'next/server';
 import DashboardShell from '@/components/DashboardShell';
 import { requireAdmin } from '@/lib/auth-guards';
 import ConfigurationPanel from './configuration-panel';
 
 export default async function ConfigurationPage() {
+  // Resolve this request's permissions; never cache the build-time denial.
+  await connection();
   const gate = await requireAdmin();
   if (!gate.ok) return <p className="p-8">Necesitas acceso de administración para abrir esta página.</p>;
   return <DashboardShell><div className="mx-auto max-w-5xl p-6 space-y-6">
