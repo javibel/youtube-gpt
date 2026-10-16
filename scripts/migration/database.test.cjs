@@ -69,7 +69,7 @@ armCompletionWatchdog();
  // Legacy public-session suggestion SQL compositions are historical (0f3a8a6).
  // Current native Auth.js/SQL/source/runtime/page contracts run in ab-suggestions-native-pg.
 
- await runContract('./ab-mutation-database.cjs',prisma,results);
+ // Historical public PATCH page suite retained;replaced by ab-mutate-native-pg.
  await runContract('./ab-mutation-deadline-database.cjs',prisma,results);
  await runContract('./ab-read-deadline-database.cjs',prisma,results);
  await runContract('./ab-creation-admission-database.cjs',prisma,results);

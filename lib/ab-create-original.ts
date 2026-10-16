@@ -111,6 +111,8 @@ export async function createAbTestOriginal(request: Request): Promise<Response> 
     let admitted=false,prepared=false;
     const nativeCheck=async(tx:Prisma.TransactionClient,plan:PlanType,originalToken?:string)=>{
       await stillNative(tx);if(plan!==p.plan||originalToken!==undefined&&originalToken!==token)fail();
+      const mutationKey=await step(()=>tx.abTestMutationAttempt.findUnique({where:{id:commandRef!}}));if(mutationKey)fail();
+      const mutationPending=await step(()=>tx.abTestMutationAttempt.findFirst({where:{userId:id,state:{not:'complete'}}}));if(mutationPending)fail();
       const previous=await step(()=>tx.abTestCreationAttempt.findUnique({where:{id:commandRef!}}));
       if(previous&&(!admitted||previous.userId!==id||previous.videoId!==selected.videoId||previous.state!=='pending')||admitted&&!previous)fail();
       const pending=await step(()=>tx.abTestCreationAttempt.findFirst({where:{userId:id,state:{not:'complete'},...(admitted?{id:{not:commandRef!}}:{})}}));if(pending)fail();

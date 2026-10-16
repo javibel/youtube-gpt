@@ -34,7 +34,7 @@ function harness(options={}){
  const youtube=options.oauth?source('lib/youtube-auth.ts',{'@/lib/prisma':{prisma:db}},globals):{getAccessToken:(id,guard)=>{captures.push({tokenOwner:id,guard:typeof guard});return step('token');}};
  const plans={getUserPlan:id=>{captures.push({planOwner:id});return step('plan');},isPaid:p=>p!=='free',getLimits:()=>({abTestsSimultaneous:3})};
  const helper=source('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},globals);
- const route=source(kind==='create'?'scripts/migration/ab-create-legacy-http-fixture.ts':'app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:()=>step('auth')},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},globals);
+ const route=source(kind==='create'?'scripts/migration/ab-create-legacy-http-fixture.ts':'scripts/migration/ab-mutation-legacy-http-fixture.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:()=>step('auth')},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},globals);
  const request=new Request('https://example.invalid/api/youtube/ab-test',{method,body:'{}',signal:controller.signal});request.json=()=>step('body');if(options.preAborted)controller.abort();
  const original=options.directHelper?helper.createAbTest('owner',state.body):route[method](request);
  return{kind,method,action,original,state,calls,captures,gates,entered,timers,controller,helper,route,request,advance(ms,fire=true){now+=ms;if(fire)for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}}};

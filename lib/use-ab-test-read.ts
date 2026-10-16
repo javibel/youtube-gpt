@@ -13,8 +13,8 @@ export interface AbTest {
   initialViews: number; switchViews: number | null; endViews: number | null;
   winner: string | null; aiInsight: { es: string; en: string } | null;
 }
-type Data = { connected: boolean; videos: AbVideo[]; tests: AbTest[]; hasMore: boolean; unavailable: number };
-const empty: Data = { connected: false, videos: [], tests: [], hasMore: false, unavailable: 0 };
+type Data = { channelId:string|null; connected: boolean; videos: AbVideo[]; tests: AbTest[]; hasMore: boolean; unavailable: number };
+const empty: Data = { channelId:null,connected: false, videos: [], tests: [], hasMore: false, unavailable: 0 };
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const number = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
 const nullable = (v: unknown, check: (v: unknown) => boolean) => v === null || check(v);
@@ -56,7 +56,7 @@ export function useAbTestRead(userId: string, email: string, lang: 'es' | 'en', 
         const decoded = selection.display(selectedReceipt), list = history.display(receipt);
         if (!decoded || !list) throw Error('Unconfirmed original read');
         scope.receipt = receipt; scope.selectionReceipt = selectedReceipt;
-        setStore({scope,status:'ready',data:{connected:decoded.connected,videos:decoded.videos,tests:list,hasMore:decoded.hasMore,unavailable:decoded.unavailableVideoIds.length}});
+        setStore({scope,status:'ready',data:{channelId:decoded.channelId,connected:decoded.connected,videos:decoded.videos,tests:list,hasMore:decoded.hasMore,unavailable:decoded.unavailableVideoIds.length}});
       } catch { history.retire(); selection.retire(); if (current()) setStore({scope,status:'error',data:empty}); }
       finally { scope.flight = null; }
     })();

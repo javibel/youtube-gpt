@@ -207,6 +207,8 @@ export async function countActiveAbTests(userId: string): Promise<number> {
   });
 }
 
+export type AbMutationNativeGuard={attemptId:string;check:(tx:Prisma.TransactionClient)=>Promise<void>;admitted:()=>void};
+
 type MutationTest = NonNullable<Awaited<ReturnType<typeof prisma.abTest.findFirst>>>;
 type MutationAdmission =
   | { ok: false }
@@ -227,8 +229,9 @@ export function beginAbTestMutation(
   expected: MutationTest,
   action: 'cancel' | 'apply_winner',
   beforeStep?: () => void,
+  nativeGuard?: AbMutationNativeGuard,
 ): Promise<MutationAdmission> {
-  return admitMutation(userId, expected, action, beforeStep);
+  return admitMutation(userId, expected, action, beforeStep, undefined, nativeGuard);
 }
 
 async function admitMutation(
@@ -237,12 +240,13 @@ async function admitMutation(
   action: 'cancel' | 'apply_winner' | 'switch_variant' | 'complete_test',
   beforeStep?: () => void,
   transition?: Transition,
+  nativeGuard?: AbMutationNativeGuard,
 ): Promise<MutationAdmission> {
   try {
     const test = { ...expected, startedAt: expected.startedAt && new Date(expected.startedAt.getTime()),
       switchedAt: expected.switchedAt && new Date(expected.switchedAt.getTime()), completedAt: expected.completedAt && new Date(expected.completedAt.getTime()) };
     if (test.userId !== userId || !test.videoId || test.status === 'cancelled') return { ok: false };
-    if (action === 'apply_winner' && (test.status !== 'completed' || !['A', 'B'].includes(test.winner ?? ''))) return { ok: false };
+    if (action === 'apply_winner' && (test.status !== 'completed' || !(nativeGuard ? ['A','B','tie'] : ['A','B']).includes(test.winner ?? ''))) return { ok: false };
     // Capture transition inputs before any await; they are business data, never
     // an identifier that can resume a pending original invocation.
     const change = transition && { ...transition, at: new Date(transition.at.getTime()) };
@@ -263,13 +267,14 @@ async function admitMutation(
     const dates = ['startedAt', 'switchedAt', 'completedAt'] as const;
     const unchanged = (row: MutationTest | null) => row !== null && fields.every(field => row[field] === test[field])
       && dates.every(field => row[field]?.getTime() === test[field]?.getTime());
-    const id = randomUUID();
+    const id = nativeGuard?.attemptId ?? randomUUID();
     beforeStep?.();
     const reserved = await prisma.$transaction(async tx => {
       beforeStep?.();
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       beforeStep?.();
       if (owner.length !== 1 || owner[0].id !== userId) throw Error('Mutation unavailable');
+      if(nativeGuard){await nativeGuard.check(tx);beforeStep?.();}
       const current = await tx.abTest.findFirst({ where: { id: test.id, userId } });
       beforeStep?.();
       if (!unchanged(current)) return null;
@@ -296,7 +301,13 @@ async function admitMutation(
     }, { maxWait: 10_000, timeout: 15_000 });
     if (!reserved || reserved.id !== id || reserved.userId !== userId || reserved.videoId !== test.videoId
       || reserved.testId !== test.id || reserved.action !== action || reserved.state !== 'pending') return { ok: false };
+    nativeGuard?.admitted();
     beforeStep?.();
+    if(nativeGuard){await prisma.$transaction(async tx=>{
+      const owner=await tx.$queryRawUnsafe<Array<{id:string}>>('SELECT id FROM users WHERE id=$1 FOR UPDATE',userId);
+      beforeStep?.();if(owner.length!==1||owner[0].id!==userId)throw Error('Dispatch unavailable');
+      await nativeGuard.check(tx);beforeStep?.();
+    },{maxWait:10000,timeout:15000});beforeStep?.();}
     return { ok: true, complete: () => {
       return prisma.$transaction(async tx => {
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
@@ -306,7 +317,7 @@ async function admitMutation(
         || pending.action !== action || pending.state !== 'pending') throw Error('Completion unavailable');
       const current = await tx.abTest.findFirst({ where: { id: test.id, userId } });
       if (!unchanged(current)) throw Error('Completion unavailable');
-      const result = action === 'cancel' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'cancelled', completedAt: new Date() } })
+      const result = action === 'cancel' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'cancelled', completedAt: nativeGuard ? new Date(Date.now()) : new Date() } })
         : change?.action === 'switch_variant' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'variant_b', switchedAt: change.at, switchViews: change.views } })
         : change?.action === 'complete_test' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'completed', completedAt: change.at, endViews: change.views, winner: change.winner } }) : test;
       const completed = await tx.abTestMutationAttempt.updateMany({ where: { id, userId, testId: test.id, action, state: 'pending' }, data: { state: 'complete' } });

@@ -27,7 +27,7 @@ module.exports=async(prisma,results)=>{
    };
    const youtube={getAccessToken:async userId=>{assert.equal(userId,owner.id);return'synthetic-title-token';}};
    const helper=load('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},{fetch:transport});
-   const route=load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},{fetch:transport});
+   const route=load('scripts/migration/ab-mutation-legacy-http-fixture.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},{fetch:transport});
    h.state.send=request=>{
     if(request.url.endsWith('/selection'))return defaults(request);
     assert.equal(request.url,'/api/youtube/ab-test');assert.equal(request.owner,owner.id);

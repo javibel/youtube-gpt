@@ -5,7 +5,7 @@ import { useAbTestRead, type AbVideo as Video, type AbTest } from '@/lib/use-ab-
 import { useAbNativeSuggestions } from '@/lib/use-ab-native-suggestions';
 import { observeAbWindows } from '@/lib/ab-observation';
 import { useAbNativeCreations } from '@/lib/use-ab-native-creations';
-import { useAbMutation } from '@/lib/use-ab-mutation';
+import { useAbNativeMutations } from '@/lib/use-ab-native-mutations';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
 import { useLang } from '@/components/LangProvider';
@@ -53,12 +53,14 @@ export default function AbTestPage() {
 function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: string; email: string; lang: Lang; native: { sessionRef: string; expiresAt: number; eligible: boolean }; isCurrent: () => boolean }) {
   const read = useAbTestRead(userId, email, lang, native);
   const { videos, connected: channelConnected } = read;
-  const mutations = useAbMutation(userId, email);
+  const mutations = useAbNativeMutations(userId,email,lang,native,isCurrent);
   const creations = useAbNativeCreations(userId,email,lang,native,isCurrent);
   const [created,setCreated]=useState<{scope:string;rows:AbTest[]}>({scope:native.sessionRef,rows:[]});
-  // Original acknowledgments can supply a missing row after remount. A newer
+  const commandView=useRef({status:read.status,channelId:read.channelId,rows:read.tests});
+  commandView.current={status:read.status,channelId:read.channelId,rows:[...read.tests,...(created.scope===native.sessionRef?created.rows:[])]};
+  // Only this view’s native acknowledgments supply historical rows. A newer
   // terminal GET row wins over the original creation; GET never releases a send.
-  const acknowledged = new Map([...(created.scope===native.sessionRef?created.rows:[]),...mutations.confirmed].map(test => [test.id, test]));
+  const acknowledged = new Map([...(created.scope===native.sessionRef?created.rows:[]),...(mutations.received?[mutations.received]:[])].map(test => [test.id, test]));
   const tests = read.tests.map(test => {
     const ack = acknowledged.get(test.id); acknowledged.delete(test.id);
     return ack?.status === 'cancelled' && ['variant_a', 'variant_b'].includes(test.status) ? ack : test;
@@ -122,7 +124,7 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
   async function cancelTest(testId: string) {
     if (!isCurrent() || read.status !== 'ready' || mutations.blocked) return;
     const test = tests.find(test => test.id === testId && ['variant_a', 'variant_b'].includes(test.status));
-    if (test) { setError(''); await mutations.start({ kind: 'cancel', test, lang }); }
+    if (test && read.channelId) { setError(''); await mutations.start({ action:'cancel',test,channelId:read.channelId,lang },()=>isCurrent()&&commandView.current.status==='ready'&&commandView.current.channelId===read.channelId&&commandView.current.rows.find(row=>row.id===test.id)===test); }
   }
 
   return (
@@ -150,19 +152,9 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
         {/* Error */}
         {creations.status==='invalid'&&<p role="alert">{t('Revisa los dos títulos: deben ser distintos y tener entre 1 y 100 caracteres sin etiquetas.', 'Check both titles: they must differ and contain 1 to 100 characters without markup.')}</p>}
         {creations.status==='sending'&&<p role="status">{t('Creando test...', 'Creating test...')}</p>}
-        {creations.status==='unconfirmed'&&<p role="status">{t('La creación del test no está confirmada. No se enviará otra modificación.', 'Test creation is unconfirmed. Another mutation will not be sent.')}</p>}
-        {mutations.mutation && ['sending', 'unconfirmed', 'storage-unavailable'].includes(mutations.status) && <p role="status">{mutations.mutation.kind === 'create'
-          ? t('Creación original: ', 'Original creation: ') + mutations.mutation.video.title
-          : t('Cancelación original: ', 'Original cancellation: ') + mutations.mutation.test.originalTitle} ({mutations.mutation.lang})</p>}
-        {mutations.status === 'sending' && mutations.mutation?.kind === 'cancel' && <p role="status">{t('Cancelando test...', 'Cancelling test...')}</p>}
-        {['unconfirmed', 'lost', 'storage-unavailable'].includes(mutations.status) && <p role="status">{mutations.received
-          ? t('Cambio recibido. La continuidad está bloqueada y no se enviará otra modificación.', 'Change received. Continuity is blocked and another mutation will not be sent.')
-          : t('El cambio del test no está confirmado. No se enviará otra modificación.', 'The test change is unconfirmed. Another mutation will not be sent.')}</p>}
-        {mutations.status === 'rejected' && <p role="alert">{mutations.error === 'pro_required' ? t('Necesitas el plan Pro.', 'You need the Pro plan.')
-          : mutations.error === 'youtube_not_connected' ? t('Conecta tu canal de YouTube primero.', 'Connect your YouTube channel first.')
-          : mutations.error === 'active_test_exists' ? t('Este vídeo ya tiene un test activo.', 'This video already has an active test.')
-          : mutations.error === 'max_active_tests' ? t('Máximo 3 tests activos a la vez.', 'Maximum 3 active tests at a time.')
-          : t('No se pudo modificar el test. Comprueba tu acceso y los datos.', 'The test could not be changed. Check your access and data.')}</p>}
+        {mutations.status==='sending'&&<p role="status">{t('Cancelando test...', 'Cancelling test...')}</p>}
+        {(mutations.status==='unconfirmed'||creations.status==='unconfirmed')&&mutations.status!=='sending'&&creations.status!=='sending'&&<p role="status">{t('El cambio del test no está confirmado. No se enviará otra modificación.', 'The test change is unconfirmed. Another mutation will not be sent.')}</p>}
+        {mutations.status==='invalid'&&<p role="alert">{t('Los datos del test no permiten este cambio.', 'The test data does not allow this change.')}</p>}
         {suggestions.selection && ['sending', 'unconfirmed', 'storage-unavailable'].includes(suggestions.status) && <p role="status">{t('Petición original: ', 'Original request: ')}{suggestions.selection.video.title} ({suggestions.selection.lang})</p>}
         {read.status === 'error' && <div role="alert"><p>{t('No se pudieron cargar el canal y los tests. Reintenta la lectura.', 'Channel and tests could not be loaded. Retry the read.')}</p><button onClick={() => { if (isCurrent()) void read.retry(); }}>{t('Reintentar lectura', 'Retry read')}</button></div>}
         {['unconfirmed', 'lost', 'storage-unavailable'].includes(suggestions.status) && <p role="status">{suggestions.variants
