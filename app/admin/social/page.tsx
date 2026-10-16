@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import DashboardShell from '@/components/DashboardShell';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 type SocialPost = {
   id: string; platform: string; content: string; status: string;
@@ -74,6 +74,7 @@ export default function SocialAdminPage() {
   const [data, setData] = useState<AdminData | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
+  const actionInFlight=useRef(false);
   const [preview, setPreview] = useState<Record<string, string | null> | null>(null);
 
   const addLog = useCallback((type: LogEntry['type'], msg: string) => {
@@ -99,11 +100,15 @@ export default function SocialAdminPage() {
   }, [fetchData]);
 
   const runAction = async (action: string, type?: string) => {
+    if(actionInFlight.current)return;
+    actionInFlight.current=true;
     setLoading(action);
     addLog('info', `Ejecutando ${action}${type ? ` (${type})` : ''}...`);
     try {
-      const res = await fetch('/api/agent/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, type }) });
+      const commandRef=action==='test'?crypto.randomUUID():null;
+      const res = await fetch('/api/agent/run', { method: 'POST', headers: { 'Content-Type': 'application/json',...(commandRef?{'x-ytv-social-preview-command':commandRef}:{}) }, body: JSON.stringify({ action, type }) });
       const result = await res.json();
+      if(action==='test'&&result.ok&&(!res.ok||result.socialPreview?.commandRef!==commandRef||typeof result.preview?.facebook!=='string'||!result.preview.facebook.trim()||typeof result.preview?.instagram!=='string'||!result.preview.instagram.trim()))throw Error('No se pudo confirmar el preview solicitado');
       if (result.ok) {
         addLog('success', `✓ ${action} completado`);
         if (action === 'test' && result.preview) setPreview(result.preview);
@@ -113,7 +118,7 @@ export default function SocialAdminPage() {
       }
     } catch (err) {
       addLog('error', `✗ Red: ${err instanceof Error ? err.message : String(err)}`);
-    } finally { setLoading(null); }
+    } finally { actionInFlight.current=false;setLoading(null); }
   };
 
   if (status === 'loading') {

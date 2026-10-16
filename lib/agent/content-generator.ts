@@ -2,6 +2,7 @@ import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { prisma } from '@/lib/prisma';
 import { randomUUID } from 'node:crypto';
 import { runCronSocialPost, type NativeCronSocialPost } from '@/lib/cron-dispatch-original';
+import { runNativeAdminSocialPreview, type NativeAdminSocialPreview } from '@/lib/admin-social-preview-native';
 
 export type Platform = 'facebook' | 'instagram' | 'tiktok' | 'twitter';
 export type PostType = 'morning' | 'evening';
@@ -228,6 +229,34 @@ export function generateSocialPost(
       SELECT id FROM completed`,...args,content,pillar.id);
     if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==1||saved[0].id!==id)throw Error('social_post_unconfirmed');
     return content;
+  });
+}
+
+export function generateAdminSocialPreview(original?:NativeAdminSocialPreview){
+  return runNativeAdminSocialPreview(original,async own=>{
+    const result={facebook:'',instagram:'',tiktok:null,twitter:null};
+    for(const platform of ['facebook','instagram'] as const){
+      own.check();const since=new Date(own.at-14*86400000),rows=await prisma.$queryRawUnsafe<{source:SocialSource}[]>('SELECT '+sourceSql.replaceAll('$3','$1').replaceAll('$6','$2')+' AS source',platform,since);own.check();
+      if(!Array.isArray(rows)||rows.length!==1||!validSource(rows[0].source,platform))throw Error('social_preview_unconfirmed');
+      const source=rows[0].source,pillar=pickPillar(source.pillars.map(v=>v.pillar)),context=getNarrativeContext(source),system=context?`${VOZ}\n\n${context}`:VOZ,prompt=buildPrompt(platform,pillar),id=randomUUID();
+      const args=[id,own.commandRef,platform,own.type,JSON.stringify(source),since,own.actorId,own.email,own.verifiedAt,own.sessionRef];
+      const actor=`EXISTS(SELECT 1 FROM users WHERE id=$7 AND email=$8 AND "emailVerified"=timezone('UTC',$9::timestamptz))`;
+      const pending=`id=$1 AND "commandRef"=$2 AND platform=$3 AND type=$4 AND "userId"=$7 AND email=$8 AND "sessionRef"=$10 AND state='pending'`;
+      own.check();const admitted=await prisma.$queryRawUnsafe<{id:string;commandRef:string;platform:string;type:string;userId:string;state:string}[]>(`
+        INSERT INTO admin_social_preview_attempts(id,"commandRef",platform,type,"userId",email,"sessionRef")
+        SELECT $1,$2,$3,$4,$7,$8,$10 WHERE ${sourceSql}=$5::jsonb AND ${actor}
+        ON CONFLICT("commandRef",platform) DO NOTHING RETURNING id,"commandRef",platform,type,"userId",state`,...args);own.check();
+      if(!Array.isArray(admitted)||admitted.length!==1||Object.keys(admitted[0]).length!==6||admitted[0].id!==id||admitted[0].commandRef!==own.commandRef||admitted[0].platform!==platform||admitted[0].type!==own.type||admitted[0].userId!==own.actorId||admitted[0].state!=='pending')throw Error('social_preview_unconfirmed');
+      const task=await getMessagesTask({operationKey:id,serviceId:'brand-agent',taskType:'brand.social-post',language:'es',instructionsVersion:'brand.social-post-v1',requiredCapabilities:['prompt_cache']});own.check();
+      const negative=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_preview_attempts WHERE ${pending} AND ${sourceSql}=$5::jsonb AND ${actor}) AS eligible`,...args);own.check();
+      if(!Array.isArray(negative)||negative.length!==1||Object.keys(negative[0]).length!==1||negative[0].eligible!==true)throw Error('social_preview_unconfirmed');
+      const generated=await task.create({max_tokens:1200,messages:[{role:'user',content:prompt}],system,...(pillar.useWebSearch?{tools:[{name:'web_search' as const,maxCalls:3}]}:{})});
+      if(!Array.isArray(generated.content)||generated.content.length!==1||generated.content[0]?.type!=='text'||typeof generated.content[0].text!=='string'||!generated.content[0].text.trim()||generated.content[0].text.length>20000)throw Error('social_preview_unconfirmed');
+      const content=generated.content[0].text,saved=await prisma.$queryRawUnsafe<{id:string}[]>(`UPDATE admin_social_preview_attempts SET state='completed',content=$11,pillar=$12,"completedAt"=timezone('UTC',clock_timestamp()) WHERE ${pending} AND ${sourceSql}=$5::jsonb AND ${actor} RETURNING id`,...args,content,pillar.id);
+      if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==1||saved[0].id!==id)throw Error('social_preview_unconfirmed');
+      result[platform]=content;own.check();
+    }
+    return result;
   });
 }
 
