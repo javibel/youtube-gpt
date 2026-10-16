@@ -3,7 +3,7 @@
   "files": {
     "instrumentation.ts": "61c0509af0d83ca3ca3e759321ca0213b9c6b9555dc92073e9e11c419b23eaca",
     "postcss.config.mjs": "7b299d3d3b16699ddda397c0b2373b3af4f25f8fc9ccc9b3d9e64ef083bc1c21",
-    "next.config.ts": "c0f79d80fe740ea1166d82ec957b41cbb24b9f355f013c440d244b68c5e967a2",
+    "next.config.ts": "32d056f01c7b7ba1ccee0393aa37b592c0b50bcf8108ab610a2dc1523863b727",
     "node_modules/next/dist/build/index.js": "00dfe2e8887f882868b2e55f2ce194243e8fec83029df6036ff4e4864aa36101",
     "node_modules/next/dist/cli/next-build.js": "a2a0ac9d05c13b41d66c8cb2d50612999a91e7d1db16397f2831c208c998f4fa",
     "node_modules/next/dist/bin/next": "c5e4fa65d671193eb91b1da347295cfa8a9f06833b771bc179e15324b1da1631"
