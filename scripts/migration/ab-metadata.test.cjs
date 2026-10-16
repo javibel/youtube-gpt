@@ -1,4 +1,7 @@
 'use strict';
+// Creation cases using ab-create-legacy-http-fixture exercise only the shared
+// producer/metadata/deadline contract. Native POST authority is independently
+// exercised by ab-create-native and ab-create-native-pg with the actual cookie.
 const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs'),fixture=require('./ab-metadata-fixture.cjs'),web=require('./ab-mutation-deadline.test.cjs'),processor=require('./ab-processor-deadline.test.cjs'),extension=require('./extension-ab-create-native.test.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs');
 const calls=[],globals={fetch:async(url,init)=>{calls.push({url,init});assert.equal(init.cache,'no-store');assert.equal(init.redirect,'error');const u=new URL(url);assert.equal(u.origin,'https://www.googleapis.com');return response(url,init);}};let response=()=>{throw Error('Unbound original transport');};const mod=load('lib/ab-title-metadata.ts',{},globals),videoId='abcdefghijk';
 async function run(){const results=[];async function test(name,fn){if(results.some(v=>v.status==='FAIL'))return;calls.length=0;try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.stack});}}

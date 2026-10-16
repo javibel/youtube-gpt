@@ -1,10 +1,11 @@
+import { createAbTestOriginal } from '@/lib/ab-create-original';
 import { readAbHistoryOriginal } from '@/lib/ab-history-original';
 import { captureAbTitleMetadata,readAbVideoOriginal,publishAbTitleOriginal,type AbTitlePayload } from '@/lib/ab-title-metadata';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
-import { createAbTest, beginAbTestMutation } from '@/lib/ab-test';
+import { beginAbTestMutation } from '@/lib/ab-test';
 
 export const maxDuration = 60;
 
@@ -52,27 +53,7 @@ export async function GET(req: NextRequest) { return readAbHistoryOriginal(req);
 
 // ── POST — create new test ─────────────────────────────────────────────────
 
-export async function POST(req: NextRequest) {
-  return bounded(req, wait => createTest(req, wait));
-}
-async function createTest(req: NextRequest, wait: ReturnType<typeof httpWait>) {
-  const session = await wait.run(() => auth());
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const userId = session.user.id;
-  let body;
-  try { body = await wait.run(() => req.json()); }
-  catch { wait.check(); return NextResponse.json({ error: 'Missing fields' }, { status: 400 }); }
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
-  const input = { videoId: body.videoId, variantA: body.variantA, variantB: body.variantB, hoursPerVariant: body.hoursPerVariant };
-  const result = await wait.run(() => createAbTest(userId, input, wait.check));
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error, limit: result.limit }, { status: result.status });
-  }
-  return NextResponse.json({ test: result.test }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
-}
+export const POST = createAbTestOriginal;
 
 // ── PATCH — cancel test / apply winner ─────────────────────────────────────
 

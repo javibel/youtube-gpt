@@ -1,4 +1,7 @@
 'use strict';
+// Creation cases using ab-create-legacy-http-fixture exercise only the shared
+// producer/metadata/deadline contract. Native POST authority is independently
+// exercised by ab-create-native and ab-create-native-pg with the actual cookie.
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),path=require('node:path'),{execFile}=require('node:child_process');
 const fixture=require('./ab-creation-fixture.cjs');
 async function within(p,label){let timer;try{return await Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Missing native '+label)),10000);})]);}finally{clearTimeout(timer);}}

@@ -1,4 +1,7 @@
 'use strict';
+// Creation cases using ab-create-legacy-http-fixture exercise only the shared
+// producer/metadata/deadline contract. Native POST authority is independently
+// exercised by ab-create-native and ab-create-native-pg with the actual cookie.
 const metadata=require('./ab-metadata-fixture.cjs');
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs');
 const {deferred}=require('./calendar-http-read-deadline.test.cjs');
@@ -32,7 +35,7 @@ module.exports=async(prisma,results)=>{
    const youtube=load('lib/youtube-auth.ts',{'@/lib/prisma':{prisma:db}},globals),realHelper=load('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},globals);
    function own(original){units.push(original);void original.catch(()=>{});return original;}
    const helper={...realHelper,createAbTest:(...args)=>own(realHelper.createAbTest(...args)),beginAbTestMutation:(...args)=>own(realHelper.beginAbTestMutation(...args).then(admission=>admission.ok?{...admission,complete:()=>own(admission.complete())}:admission))};
-   const route=load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},globals);
+   const route=load(kind==='create'?'scripts/migration/ab-create-legacy-http-fixture.ts':'app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/ab-test':helper},globals);
    const request=new Request('https://example.invalid/api/youtube/ab-test',{method:kind==='create'?'POST':'PATCH',signal:controller.signal,headers:{'content-type':'application/json'},body:JSON.stringify(kind==='create'?{videoId:'video',variantA:'A synthetic',variantB:'B synthetic',hoursPerVariant:48}:{testId:seed.id,action:kind==='cancel'?'cancel':'apply_winner'})});
    const original=route[request.method](request);
    try{

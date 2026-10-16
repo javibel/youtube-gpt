@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAbTestRead, type AbVideo as Video, type AbTest } from '@/lib/use-ab-test-read';
 import { useAbNativeSuggestions } from '@/lib/use-ab-native-suggestions';
 import { observeAbWindows } from '@/lib/ab-observation';
+import { useAbNativeCreations } from '@/lib/use-ab-native-creations';
 import { useAbMutation } from '@/lib/use-ab-mutation';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
@@ -53,20 +54,22 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
   const read = useAbTestRead(userId, email, lang, native);
   const { videos, connected: channelConnected } = read;
   const mutations = useAbMutation(userId, email);
+  const creations = useAbNativeCreations(userId,email,lang,native,isCurrent);
+  const [created,setCreated]=useState<{scope:string;rows:AbTest[]}>({scope:native.sessionRef,rows:[]});
   // Original acknowledgments can supply a missing row after remount. A newer
   // terminal GET row wins over the original creation; GET never releases a send.
-  const acknowledged = new Map(mutations.confirmed.map(test => [test.id, test]));
+  const acknowledged = new Map([...(created.scope===native.sessionRef?created.rows:[]),...mutations.confirmed].map(test => [test.id, test]));
   const tests = read.tests.map(test => {
     const ack = acknowledged.get(test.id); acknowledged.delete(test.id);
     return ack?.status === 'cancelled' && ['variant_a', 'variant_b'].includes(test.status) ? ack : test;
   }).concat([...acknowledged.values()]);
   const suggestions = useAbNativeSuggestions(userId,email,lang,native,isCurrent);
-  const capturedCreate = mutations.mutation?.kind === 'create' && mutations.mutation.lang === lang ? mutations.mutation : null;
+  const capturedCreate = creations.selection?.lang===lang?creations.selection:null;
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(() => capturedCreate?.video ?? (suggestions.selection?.lang === lang ? suggestions.selection.video : null));
   const [variantA, setVariantA] = useState(() => capturedCreate?.variantA ?? '');
   const [variantB, setVariantB] = useState(() => capturedCreate?.variantB ?? '');
   const [hours, setHours] = useState(() => capturedCreate?.hours ?? 48);
-  const loading = mutations.status === 'sending' && mutations.mutation?.kind === 'create';
+  const loading = creations.status === 'sending';
   const [error, setError] = useState('');
   const selection = useRef<object>(capturedCreate?.token ?? suggestions.selection?.token ?? {});
   const selected = useRef(selectedVideo); selected.current = selectedVideo;
@@ -88,11 +91,12 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
   }, [suggestions.selection, suggestions.variants, lang, isCurrent]);
 
   useEffect(() => {
-    if (isCurrent() && mutations.received && capturedCreate && selection.current === capturedCreate.token) {
+    if (isCurrent() && creations.received && capturedCreate && selection.current === capturedCreate.token) {
+      const row=creations.received;setCreated(s=>({scope:native.sessionRef,rows:[row,...(s.scope===native.sessionRef?s.rows:[]).filter(t=>t.id!==row.id)]}));
       selection.current = {}; selected.current = null;
       setSelectedVideo(null); setVariantA(''); setVariantB('');
     }
-  }, [mutations.received, capturedCreate, lang, isCurrent]);
+  }, [creations.received, capturedCreate, lang, isCurrent,native.sessionRef]);
 
   const activeTests = tests.filter(t => t.status === 'variant_a' || t.status === 'variant_b');
   const pastTests = tests.filter(t => t.status === 'completed' || t.status === 'cancelled');
@@ -108,10 +112,11 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
   }
 
   async function createTest() {
-    if (!isCurrent() || read.status !== 'ready' || mutations.blocked || !selectedVideo || selected.current !== selectedVideo
+    if (!isCurrent() || read.status !== 'ready' || mutations.blocked || creations.blocked || !selectedVideo || selected.current !== selectedVideo
       || selection.current !== visibleSelection || !variantA.trim() || !variantB.trim() || variantA.trim() === variantB.trim()) return;
     setError('');
-    await mutations.start({ kind: 'create', video: selectedVideo, variantA: variantA.trim(), variantB: variantB.trim(), hours, lang, token: selection.current });
+    const capturedVideo=selectedVideo,capturedToken=selection.current;
+    await creations.start({video:capturedVideo,variantA:variantA.trim(),variantB:variantB.trim(),hours,lang,token:capturedToken},()=>selection.current===capturedToken&&selected.current===capturedVideo);
   }
 
   async function cancelTest(testId: string) {
@@ -143,6 +148,9 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
         </div>
 
         {/* Error */}
+        {creations.status==='invalid'&&<p role="alert">{t('Revisa los dos títulos: deben ser distintos y tener entre 1 y 100 caracteres sin etiquetas.', 'Check both titles: they must differ and contain 1 to 100 characters without markup.')}</p>}
+        {creations.status==='sending'&&<p role="status">{t('Creando test...', 'Creating test...')}</p>}
+        {creations.status==='unconfirmed'&&<p role="status">{t('La creación del test no está confirmada. No se enviará otra modificación.', 'Test creation is unconfirmed. Another mutation will not be sent.')}</p>}
         {mutations.mutation && ['sending', 'unconfirmed', 'storage-unavailable'].includes(mutations.status) && <p role="status">{mutations.mutation.kind === 'create'
           ? t('Creación original: ', 'Original creation: ') + mutations.mutation.video.title
           : t('Cancelación original: ', 'Original cancellation: ') + mutations.mutation.test.originalTitle} ({mutations.mutation.lang})</p>}
@@ -307,7 +315,7 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
                     {/* Start button */}
                     <button
                       onClick={createTest}
-                      disabled={mutations.blocked || !variantA.trim() || !variantB.trim() || variantA.trim() === variantB.trim()}
+                      disabled={mutations.blocked || creations.blocked || !variantA.trim() || !variantB.trim() || variantA.trim() === variantB.trim()}
                       className="btn-offset inline-flex items-center gap-2 px-8 py-3 text-sm font-display disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (

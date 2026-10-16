@@ -1,4 +1,7 @@
 'use strict';
+// Creation cases using ab-create-legacy-http-fixture exercise only the shared
+// producer/metadata/deadline contract. Native POST authority is independently
+// exercised by ab-create-native and ab-create-native-pg with the actual cookie.
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),fixture=require('./ab-creation-fixture.cjs'),processor=require('./ab-processor-fixture.cjs'),{deferred}=require('./calendar-http-read-deadline.test.cjs');
 async function within(p,label){let timer;try{return await Promise.race([p,new Promise((_,reject)=>timer=setTimeout(()=>reject(Error('Missing '+label)),10000))]);}finally{clearTimeout(timer);}}
 module.exports=async(prisma,results)=>{const hs=[],gates=[],originals=[],owners=[];const track=p=>{originals.push(p);void p.catch(()=>{});return p;};

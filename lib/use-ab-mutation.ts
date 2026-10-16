@@ -1,4 +1,5 @@
 'use client';
+import { abCreationClientBlocked } from '@/lib/ab-create-negative';
 
 import { useEffect, useMemo, useState } from 'react';
 import { decodeAbTest, type AbTest, type AbVideo } from './use-ab-test-read';
@@ -28,7 +29,7 @@ function coordinator(account: string, userId: string) {
     subscribe(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn); }; },
     start(input: Mutation) {
       observe();
-      if (blocked(snapshot.status) || (input.kind === 'cancel' && snapshot.confirmed.some(t => t.id === input.test.id && t.status === 'cancelled'))) return null;
+      if (abCreationClientBlocked(userId) || blocked(snapshot.status) || (input.kind === 'cancel' && snapshot.confirmed.some(t => t.id === input.test.id && t.status === 'cancelled'))) return null;
       try { window.sessionStorage.setItem(marker, 'unconfirmed'); }
       catch { publish({ status: 'storage-unavailable' }); return null; }
       const mutation: Mutation = input.kind === 'create'
@@ -94,5 +95,11 @@ export function useAbMutation(userId: string, email: string) {
   }, [account, userId]);
   const [, render] = useState(0);
   useEffect(() => { const stop = live.subscribe(() => render(x => x + 1)); live.observe(); render(x => x + 1); return stop; }, [live]);
-  return { ...live.snapshot(), start: live.start, blocked: blocked(live.snapshot().status) };
+  return { ...live.snapshot(), start: live.start, blocked: blocked(live.snapshot().status)||abCreationClientBlocked(userId) };
+}
+
+// Only vetoes a new native command,including the same ID with changed email.
+export function anyUnconfirmedAbMutationForUser(id:string):boolean{
+ try{for(const [account,value]of accounts){const who=JSON.parse(account);if(Array.isArray(who)&&who[0]===id){value.observe();if(blocked(value.snapshot().status))return true;}}
+ const prefix='ytubviral.ab-mutation.pending:';for(let i=0;i<window.sessionStorage.length;i++){const k=window.sessionStorage.key(i);if(k?.startsWith(prefix)){const who=JSON.parse(k.slice(prefix.length));if(!Array.isArray(who)||who[0]===id)return true;}}return false;}catch{return true;}
 }

@@ -24,6 +24,9 @@ export type AbCreationNativeGuard = {
   attemptId: string;
   check: (tx: Prisma.TransactionClient, plan: PlanType, youtubeToken?: string) => Promise<void>;
   admitted: () => void;
+  // Only a live native HTTP closure supplies its already checked sources.
+  // This does not replace the fresh durable reservation/dispatch ACK below.
+  prepare?: () => Promise<{ plan: PlanType; token: string; video: Record<string, unknown> }>;
 };
 
 export async function createAbTest(
@@ -37,7 +40,9 @@ export async function createAbTest(
     if (!input || typeof input !== 'object') return { ok: false, status: 400, error: 'Missing fields' };
     const { videoId, variantA, variantB, hoursPerVariant = 48 } = input;
     beforeStep?.();
-    const plan = await getUserPlan(userId);
+    const prepared = nativeGuard?.prepare ? await nativeGuard.prepare() : undefined;
+    beforeStep?.();
+    const plan = prepared ? prepared.plan : await getUserPlan(userId);
     beforeStep?.();
     if (!isPaid(plan)) {
       return { ok: false, status: 403, error: 'pro_required' };
@@ -46,7 +51,7 @@ export async function createAbTest(
     if (nativeGuard) await prisma.$transaction(tx => nativeGuard.check(tx, plan), { maxWait: 10_000, timeout: 15_000 });
     beforeStep?.();
 
-    const token = await getAccessToken(userId, beforeStep);
+    const token = prepared ? prepared.token : await getAccessToken(userId, beforeStep);
     beforeStep?.();
     if (!token) {
       return { ok: false, status: 400, error: 'youtube_not_connected' };
@@ -74,7 +79,7 @@ export async function createAbTest(
       return { ok: false, status: 400, error: 'max_active_tests', limit: maxTests };
     }
 
-    const video = await readAbVideoOriginal(token, videoId);
+    const video = prepared ? prepared.video : await readAbVideoOriginal(token, videoId);
     beforeStep?.();
     if (!video) {
       return { ok: false, status: 404, error: 'video_not_found' };

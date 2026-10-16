@@ -12,7 +12,7 @@ module.exports=async(prisma,results)=>{
   await prisma.generation.create({data:{userId:neighbor.id,template:'title',inputs:{},output:'Neighbor synthetic output',tokensUsed:0}});
   const subscriptions=await prisma.subscription.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}});
   const neighborTest=await prisma.abTest.create({data:{userId:neighbor.id,videoId:'neighbor',originalTitle:'Neighbor original',variantA:'Neighbor A',variantB:'Neighbor B'}}),neighborGenerations=await prisma.generation.findMany({where:{userId:neighbor.id}});
-  for(const[index,mode]of ['create-headers','create-JSON','cancel-headers','cancel-JSON','cancel-rejected'].entries()){
+  for(const[index,mode]of ['cancel-headers','cancel-JSON','cancel-rejected'].entries()){
    const owner=users[index],kind=mode.startsWith('create')?'create':'cancel',held=mode.endsWith('JSON')?'JSON':'headers',h=create({realClock:true}),gate=deferred(),entered=deferred(),finished=deferred(),reads=[],owned=[],provider=[],nativeWrites=[];
    harnesses.push(h);h.state.user=owner.id;h.state.email=owner.email;const historyReader=await nativeHistory.bound({account:owner,db:prisma});readers.push(historyReader);h.state.authSessionRef=historyReader.decoded.authSessionRef;h.state.expires=new Date(historyReader.decoded.exp*1000).toISOString();
    const seed=kind==='cancel'?await prisma.abTest.create({data:{userId:owner.id,videoId:'abcdefghijk',originalTitle:'Original synthetic video',variantA:'Native A',variantB:'Native B'}}):null;
