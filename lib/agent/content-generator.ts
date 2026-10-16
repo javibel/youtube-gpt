@@ -353,15 +353,27 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
       let postId:string;
       if(instagram){
         // Only this original's responses issue its container/status/publish.
-        // Unfinished status remains uncertain;no poll/retry from stored IDs.
+        // Only IN_PROGRESS may continue in this live call. No new container,
+        // recovered ID, deadline extension or retry of an uncertain request.
         const base=`https://graph.instagram.com/${version}`,caption=Array.from(message).slice(0,2200).join(''),credentials={access_token:token,...(proof?{appsecret_proof:proof}:{})};
         const json=async(response:Response):Promise<Record<string,unknown>>=>{const raw:unknown=await response.json();if(!response.ok||response.redirected||!raw||typeof raw!=='object'||Array.isArray(raw)||'error'in raw)throw Error('social_publish_unconfirmed');return raw as Record<string,unknown>;};
         await validate();config();
         const container=await json(await fetch(`${base}/${page}/media`,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_url:intent!.imageUrl,caption,...credentials}),signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
         if(typeof container.id!=='string'||!/^\d{1,32}$/.test(container.id))throw Error('social_publish_unconfirmed');const creationId=container.id;
-        await validate();config();
-        const status=await json(await fetch(`${base}/${creationId}?`+new URLSearchParams({fields:'status_code',...credentials}),{method:'GET',redirect:'error',signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
-        if(status.id!==creationId||status.status_code!=='FINISHED')throw Error('social_publish_unconfirmed');
+        // Local bounded cadence,not a provider guarantee:up to ten reads with
+        // five seconds between acknowledged IN_PROGRESS responses. A full wait
+        // must fit the remaining original lifetime;never shorten/restart it.
+        for(let read=0;read<10;read++){
+          await validate();config();
+          const status=await json(await fetch(`${base}/${creationId}?`+new URLSearchParams({fields:'status_code',...credentials}),{method:'GET',redirect:'error',signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
+          config();if(status.id!==creationId)throw Error('social_publish_unconfirmed');
+          if(status.status_code==='FINISHED')break;
+          if(status.status_code!=='IN_PROGRESS'||read===9)throw Error('social_publish_unconfirmed');
+          await validate();config();
+          if(own.remainingBeforeDispatch()<=5000)throw Error('social_publish_unconfirmed');
+          await new Promise<void>(resolve=>setTimeout(resolve,5000));
+          await validate();config();
+        }
         await validate();config();
         const ack=await json(await fetch(`${base}/${page}/media_publish`,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({creation_id:creationId,...credentials}),signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
         if(typeof ack.id!=='string'||!/^\d{1,32}$/.test(ack.id))throw Error('social_publish_unconfirmed');postId=ack.id;
