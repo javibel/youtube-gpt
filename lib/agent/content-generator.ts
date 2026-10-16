@@ -202,7 +202,7 @@ function validSource(s:SocialSource,platform:string):boolean {
 declare const cronSocialImagePrompt:unique symbol;
 export type CronSocialImagePrompt={readonly[cronSocialImagePrompt]:true};
 type CronImageSource={id:string;date:string;platform:string;slot:string;content:string;validate:()=>Promise<void>;remaining:()=>number;prompt?:Promise<CronSocialImagePrompt>};
-type PreparedCronPrompt={source:CronImageSource;prompt:string;use?:Promise<unknown>};
+type PreparedCronPrompt={source:CronImageSource;prompt:string;imageAttemptId:string;validate:()=>Promise<void>;use?:Promise<unknown>};
 const cronImageSources=new WeakMap<object,CronImageSource>(),cronImagePrompts=new WeakMap<object,PreparedCronPrompt>();
 
 export function generateSocialPost(
@@ -250,24 +250,41 @@ export function generateSocialPost(
 }
 
 // This produces only the textual image prompt. Binary image generation,
-// daily cache ownership,upload and publication require separate native ACKs.
+// daily cache completion,upload and publication require separate native ACKs.
 export function generateCronSocialImagePrompt(original?:NativeCronSocialPost):Promise<CronSocialImagePrompt>{
   const own=original&&cronImageSources.get(original);if(!own)return Promise.reject(Error('daily_brand_image_unconfirmed'));
   return own.prompt??=Promise.resolve().then(async()=>{
-    await own.validate();const signal=AbortSignal.timeout(own.remaining());
-    const task=await getMessagesTask({operationKey:own.id+':image-prompt',serviceId:'brand-agent',taskType:'brand.image-prompt',language:'en',instructionsVersion:'brand-image-prompt-v1'},{signal});
+    await own.validate();const imageAttemptId=randomUUID();
+    // The first native source to obtain this INSERT ACK owns the UTC day.
+    // Existing claims/cache only veto;never return or adopt their prompt/URL.
+    const imageArgs=[imageAttemptId,own.date,own.id,own.platform,own.slot];
+    const admitted=await prisma.$queryRawUnsafe<{id:string;date:string;sourceId:string;platform:string;slot:string;state:string}[]>(`
+      INSERT INTO cron_daily_brand_image_attempts(id,date,"sourceId",platform,slot)
+      SELECT $1,$2,$3,$4,$5 WHERE NOT EXISTS(SELECT 1 FROM daily_brand_image WHERE image_date=$2::date)
+      ON CONFLICT(date) DO NOTHING RETURNING id,date,"sourceId",platform,slot,state`,...imageArgs);
     await own.validate();
+    if(!Array.isArray(admitted)||admitted.length!==1||Object.keys(admitted[0]).length!==6||admitted[0].id!==imageAttemptId
+      ||admitted[0].date!==own.date||admitted[0].sourceId!==own.id||admitted[0].platform!==own.platform||admitted[0].slot!==own.slot||admitted[0].state!=='admitted')throw Error('daily_brand_image_unconfirmed');
+    const validate=async()=>{
+      await own.validate();const rows=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM cron_daily_brand_image_attempts
+        WHERE id=$1 AND date=$2 AND "sourceId"=$3 AND platform=$4 AND slot=$5 AND state='admitted'
+        AND NOT EXISTS(SELECT 1 FROM daily_brand_image WHERE image_date=$2::date)) AS eligible`,...imageArgs);
+      await own.validate();if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||rows[0].eligible!==true)throw Error('daily_brand_image_unconfirmed');
+    };
+    await validate();const signal=AbortSignal.timeout(own.remaining());
+    const task=await getMessagesTask({operationKey:own.id+':image-prompt',serviceId:'brand-agent',taskType:'brand.image-prompt',language:'en',instructionsVersion:'brand-image-prompt-v1'},{signal});
+    await validate();
     const result=await task.create({max_tokens:100,messages:[{role:'user',content:`Given this social media post about YouTube:\n"${own.content.slice(0,300)}"\n\nWrite a concise image generation prompt (max 200 chars) for a 1:1 social media visual.\nThe image should be eye-catching and related to the post's topic.\n\nRULES:\n- NO text, NO words, NO letters, NO numbers in the image\n- Focus on a strong visual scene/metaphor related to the topic\n- Modern, premium, editorial photography or 3D render style\n- Dramatic lighting, rich colors, professional composition\n- Think: what image would make someone stop scrolling?\n\nReturn ONLY the image prompt, nothing else.`}]},{signal});
     // The invoked common task owns its accounting/completion. Retirement or an
     // uncertain result cannot issue an image/download/upload continuation.
     if(result.incomplete===true||!Array.isArray(result.content)||result.content.length!==1||result.content[0]?.type!=='text'||typeof result.content[0].text!=='string')throw Error('daily_brand_image_unconfirmed');
     const prompt=result.content[0].text.trim();if(!prompt||Array.from(prompt).length>200)throw Error('daily_brand_image_unconfirmed');
-    await own.validate();const cap=Object.freeze({})as CronSocialImagePrompt;cronImagePrompts.set(cap,{source:own,prompt});return cap;
+    await validate();const cap=Object.freeze({})as CronSocialImagePrompt;cronImagePrompts.set(cap,{source:own,prompt,imageAttemptId,validate});return cap;
   });
 }
-export function consumeCronSocialImagePrompt<T>(receipt:CronSocialImagePrompt|undefined,run:(prompt:Readonly<{id:string;date:string;platform:string;slot:string;content:string;prompt:string;validateBeforeDispatch:()=>Promise<void>;remainingBeforeDispatch:()=>number}>)=>Promise<T>):Promise<T>{
+export function consumeCronSocialImagePrompt<T>(receipt:CronSocialImagePrompt|undefined,run:(prompt:Readonly<{id:string;date:string;platform:string;slot:string;content:string;prompt:string;imageAttemptId:string;validateBeforeDispatch:()=>Promise<void>;remainingBeforeDispatch:()=>number}>)=>Promise<T>):Promise<T>{
   const own=receipt&&cronImagePrompts.get(receipt);if(!own)return Promise.reject(Error('daily_brand_image_unconfirmed'));
-  return (own.use??=Promise.resolve().then(async()=>{await own.source.validate();const result=await run(Object.freeze({id:own.source.id,date:own.source.date,platform:own.source.platform,slot:own.source.slot,content:own.source.content,prompt:own.prompt,validateBeforeDispatch:own.source.validate,remainingBeforeDispatch:own.source.remaining}));await own.source.validate();return result;}))as Promise<T>;
+  return (own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({id:own.source.id,date:own.source.date,platform:own.source.platform,slot:own.source.slot,content:own.source.content,prompt:own.prompt,imageAttemptId:own.imageAttemptId,validateBeforeDispatch:own.validate,remainingBeforeDispatch:own.source.remaining}));await own.validate();return result;}))as Promise<T>;
 }
 
 export function generateAdminSocialPreview(original?:NativeAdminSocialPreview){
