@@ -45,7 +45,7 @@ export default function AbTestPage() {
   useEffect(() => { scope.active = true; return () => { scope.active = false; }; }, [scope]);
   const isCurrent = () => active.current === scope && scope.active && eligible && Date.now() < expiresAt;
   if (status === 'loading') return <p>{lang === 'en' ? 'Loading...' : 'Cargando...'}</p>;
-  if (status !== 'authenticated' || !userId || !email) return <DashboardShell><p>{lang === 'en' ? 'Sign in to use A/B testing.' : 'Inicia sesión para usar A/B testing.'}</p><a href="/login">{lang === 'en' ? 'Sign in' : 'Iniciar sesión'}</a></DashboardShell>;
+  if (status !== 'authenticated' || !userId || !email || !eligible) return <DashboardShell><p>{lang === 'en' ? 'Sign in to use A/B testing.' : 'Inicia sesión para usar A/B testing.'}</p><a href="/login">{lang === 'en' ? 'Sign in' : 'Iniciar sesión'}</a></DashboardShell>;
   return <AbTestSession key={JSON.stringify([userId, email])} userId={userId} email={email} lang={lang} native={{ sessionRef, expiresAt, eligible }} isCurrent={isCurrent} />;
 }
 
