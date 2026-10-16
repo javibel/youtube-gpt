@@ -266,7 +266,7 @@ export type AdminSocialDraftResult={readonly[adminSocialDraftResult]:true};
 type DraftDetails={id:string;commandRef:string;userId:string;sessionRef:string;platform:'facebook'|'instagram';type:PostType;content:string;pillar:string};
 type FacebookPublication=Readonly<{platform:'facebook';recordId:string;postId:string}>;
 type InstagramPublication=Readonly<{platform:'instagram';recordId:string;postId:string}>;
-type PreparedDraft=DraftDetails&{validate:()=>Promise<void>;publish:(image?:boolean)=>Promise<FacebookPublication|InstagramPublication>;purpose?:'consume'|'facebook-text'|'facebook-infographic'|'instagram-infographic';use?:Promise<unknown>};
+type PreparedDraft=DraftDetails&{validate:()=>Promise<void>;validatePublished:(source:boolean)=>Promise<void>;publish:(image?:boolean)=>Promise<FacebookPublication|InstagramPublication>;purpose?:'consume'|'facebook-text'|'facebook-infographic'|'instagram-infographic';use?:Promise<unknown>};
 const preparedDrafts=new WeakMap<object,PreparedDraft>();
 
 async function readManualSocialBody(response:Response,limit:number,remaining:()=>number):Promise<Buffer>{
@@ -383,7 +383,21 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
       published={postId,historyId:completed[0].historyId};await validate();config();
       return Object.freeze({platform,recordId:id,postId});
     };
-    const cap=Object.freeze({})as AdminSocialDraftResult;preparedDrafts.set(cap,{id,commandRef:own.commandRef,userId:own.actorId,sessionRef:own.sessionRef,platform,type,content,pillar:pillar.id,validate,publish});return cap;
+    // Final batch checks may inspect this exact publisher's own artifacts after
+    // its sibling completes. They cannot replay publication or adopt a row.
+    // The last sibling also retains the complete narrative source veto; its
+    // source already includes the first sibling's acknowledged publication.
+    const validatePublished=async(withSource:boolean)=>{
+      if(!published||!intent)throw Error('social_publish_unconfirmed');
+      await own.validateBeforeDispatch();
+      const rows=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE id=$1 AND "commandRef"=$2 AND platform=$3 AND type=$4 AND "userId"=$5 AND email=$6 AND "sessionRef"=$8 AND state='completed' AND content=$9 AND pillar=$10 AND "completedAt" IS NOT NULL
+        AND EXISTS(SELECT 1 FROM users WHERE id=$5 AND email=$6 AND "emailVerified"=timezone('UTC',$7::timestamptz))
+        AND EXISTS(SELECT 1 FROM social_posts WHERE id=$11 AND platform=$3 AND content=$9 AND status='published' AND "bufferId"=$13 AND "publishedAt" IS NOT NULL AND "imageUrl" IS NOT DISTINCT FROM $14::text AND "errorMsg" IS NULL)
+        AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$12::integer AND channel=$3 AND pillar=$10)) AS eligible`,id,own.commandRef,platform,type,own.actorId,own.email,own.verifiedAt,own.sessionRef,content,pillar.id,id,published.historyId,published.postId,intent.imageUrl);
+      check();if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||rows[0].eligible!==true)throw Error('social_publish_unconfirmed');
+      await own.validateBeforeDispatch();if(withSource)await validate();
+    };
+    const cap=Object.freeze({})as AdminSocialDraftResult;preparedDrafts.set(cap,{id,commandRef:own.commandRef,userId:own.actorId,sessionRef:own.sessionRef,platform,type,content,pillar:pillar.id,validate,validatePublished,publish});return cap;
   });
 }
 
@@ -409,6 +423,13 @@ export function publishAdminFacebookInfographic(receipt:AdminSocialDraftResult|u
 export function publishAdminInstagramInfographic(receipt:AdminSocialDraftResult|undefined):Promise<InstagramPublication>{
   const own=receipt&&preparedDrafts.get(receipt);if(!own||own.platform!=='instagram'||own.purpose&&own.purpose!=='instagram-infographic')return Promise.reject(Error('social_publish_unconfirmed'));own.purpose='instagram-infographic';
   return (own.use??=Promise.resolve().then(()=>own.publish(true)))as Promise<InstagramPublication>;
+}
+
+// Negative only: the private draft and its original publisher completion are
+// mandatory. Neither an HTTP DTO nor a SQL post/claim ID can recreate them.
+export async function validateAdminSocialPublishedDraft(receipt:AdminSocialDraftResult|undefined,withSource=false):Promise<void>{
+  const own=receipt&&preparedDrafts.get(receipt);if(!own||!own.use||!own.purpose||own.purpose==='consume')throw Error('social_publish_unconfirmed');
+  await own.validatePublished(withSource);
 }
 
 export async function generateYoutubeReply(
