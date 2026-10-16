@@ -5,7 +5,7 @@ const {create,ready,defaults,inputs,pick}=require('./ab-page-client.test.cjs');
 const {form,start,writes}=require('./ab-mutation-client.test.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs');
 module.exports=async(prisma,results)=>{
  const nativeHistory=require('./ab-history-native.test.cjs'),readers=[];
- const users=await Promise.all(['create-headers','create-JSON','cancel-headers','cancel-JSON','cancel-rejected','neighbor'].map(name=>prisma.user.create({data:{email:'ab-mutation-'+name+'-'+randomUUID()+'@example.invalid',emailVerified:new Date(Date.now()-10000)}}))),neighbor=users.at(-1),harnesses=[];
+ const users=await Promise.all(['create-headers','create-JSON','cancel-headers','cancel-JSON','cancel-rejected','neighbor'].map(name=>prisma.user.create({data:{email:'ab-mutation-'+name.toLowerCase()+'-'+randomUUID()+'@example.invalid',emailVerified:new Date(Date.now()-10000)}}))),neighbor=users.at(-1),harnesses=[];
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
  try{
   await prisma.subscription.createMany({data:users.map(u=>({userId:u.id,status:'active',plan:'pro',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});

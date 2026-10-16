@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{
 const {create,ready,defaults,pick,posts,values}=require('./ab-page-client.test.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs');
 module.exports=async(prisma,results)=>{
  const nativeHistory=require('./ab-history-native.test.cjs'),readers=[];
- const users=await Promise.all(['read','JSON','headers','remount','neighbor'].map(name=>prisma.user.create({data:{email:'ab-page-'+name+'-'+randomUUID()+'@example.invalid',emailVerified:new Date(Date.now()-10000)}}))),neighbor=users.at(-1),harnesses=[];
+ const users=await Promise.all(['read','JSON','headers','remount','neighbor'].map(name=>prisma.user.create({data:{email:'ab-page-'+name.toLowerCase()+'-'+randomUUID()+'@example.invalid',emailVerified:new Date(Date.now()-10000)}}))),neighbor=users.at(-1),harnesses=[];
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
  const noWrite=()=>{throw Error('No real title or mutation effect permitted in read fixture');};
  const listFor=async owner=>{const b=await nativeHistory.bound({account:owner,db:prisma});readers.push(b);return b.start();};
