@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import DashboardShell from '@/components/DashboardShell';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useAdminSocialPreview } from '@/lib/use-admin-social-preview';
 
 type SocialPost = {
   id: string; platform: string; content: string; status: string;
@@ -75,7 +76,7 @@ export default function SocialAdminPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const actionInFlight=useRef(false);
-  const [preview, setPreview] = useState<Record<string, string | null> | null>(null);
+  const preview = useAdminSocialPreview(session,status,actionInFlight);
 
   const addLog = useCallback((type: LogEntry['type'], msg: string) => {
     setLogs(prev => [{ type, msg, ts: new Date().toLocaleTimeString('es-ES') }, ...prev].slice(0, 100));
@@ -105,13 +106,10 @@ export default function SocialAdminPage() {
     setLoading(action);
     addLog('info', `Ejecutando ${action}${type ? ` (${type})` : ''}...`);
     try {
-      const commandRef=action==='test'?crypto.randomUUID():null;
-      const res = await fetch('/api/agent/run', { method: 'POST', headers: { 'Content-Type': 'application/json',...(commandRef?{'x-ytv-social-preview-command':commandRef}:{}) }, body: JSON.stringify({ action, type }) });
+      const res = await fetch('/api/agent/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, type }) });
       const result = await res.json();
-      if(action==='test'&&result.ok&&(!res.ok||result.socialPreview?.commandRef!==commandRef||typeof result.preview?.facebook!=='string'||!result.preview.facebook.trim()||typeof result.preview?.instagram!=='string'||!result.preview.instagram.trim()))throw Error('No se pudo confirmar el preview solicitado');
       if (result.ok) {
         addLog('success', `✓ ${action} completado`);
-        if (action === 'test' && result.preview) setPreview(result.preview);
         await fetchData();
       } else {
         addLog('error', `✗ ${result.error ?? 'Error desconocido'}`);
@@ -133,7 +131,7 @@ export default function SocialAdminPage() {
 
   return (
     <DashboardShell>
-      {preview && <PreviewModal data={preview} onClose={() => setPreview(null)} />}
+      {preview.data && <PreviewModal data={preview.data} onClose={preview.close} />}
 
       <div className="yv-page yv-page--wide space-y-8">
 
@@ -179,10 +177,11 @@ export default function SocialAdminPage() {
             <button onClick={() => runAction('messages')} disabled={loading === 'messages'} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl">
               {loading === 'messages' ? 'Revisando...' : 'Revisar mensajes'}
             </button>
-            <button onClick={() => runAction('test', 'morning')} disabled={loading === 'test'} className="px-5 py-2.5 text-sm rounded-xl font-semibold transition" style={{ background: 'var(--ink-3)', border: '1px solid var(--line-2)', color: 'var(--text-dim)' }}>
+            <button onClick={preview.start} disabled={!preview.canStart} className="px-5 py-2.5 text-sm rounded-xl font-semibold transition" style={{ background: 'var(--ink-3)', border: '1px solid var(--line-2)', color: 'var(--text-dim)' }}>
               Test (sin publicar)
             </button>
           </div>
+          {preview.message && <p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{preview.message}</p>}
         </section>
 
         {/* Publicaciones */}

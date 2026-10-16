@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { runGmailAgent } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { requireAdmin } from '@/lib/auth-guards';
-import { authorizeNativeAdminSocialPreview, checkNativeAdminSocialPreview, closeNativeAdminSocialPreview } from '@/lib/admin-social-preview-native';
+import { authorizeNativeAdminSocialPreview, checkNativeAdminSocialPreview, closeNativeAdminSocialPreview, acknowledgeNativeAdminSocialPreview } from '@/lib/admin-social-preview-native';
 import { generateAdminSocialPreview } from '@/lib/agent/content-generator';
 
 export const maxDuration=60;
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       if(!original)return NextResponse.json({ok:false,error:'social_preview_unconfirmed'},{status:403,headers:{'Cache-Control':'no-store'}});
       try{
         const preview=await generateAdminSocialPreview(original);checkNativeAdminSocialPreview(original);
-        const response=NextResponse.json({ok:true,preview,socialPreview:{commandRef:request.headers.get('x-ytv-social-preview-command')}},{headers:{'Cache-Control':'no-store'}});
+        const response=NextResponse.json({ok:true,preview,socialPreview:acknowledgeNativeAdminSocialPreview(original)},{headers:{'Cache-Control':'no-store'}});
         checkNativeAdminSocialPreview(original);return response;
       }catch{return NextResponse.json({ok:false,error:'social_preview_unconfirmed'},{status:503,headers:{'Cache-Control':'no-store'}});}
       finally{closeNativeAdminSocialPreview(original);}

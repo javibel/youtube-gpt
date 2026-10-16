@@ -6,7 +6,7 @@ declare const nativeAdminSocialPreview: unique symbol;
 export type NativeAdminSocialPreview={readonly[nativeAdminSocialPreview]:true};
 type Preview={facebook:string;instagram:string;tiktok:null;twitter:null};
 type Own={request:Request;url:string;cookie:string;commandRef:string;origin:string;headerOrigin:string;contentType:string;config:string;adminConfig:string|undefined;secret:string|undefined;
-  actorId:string;email:string;sessionRef:string;verifiedAt:number;type:'morning'|'evening';at:number;until:number;started:number;deadline:number;closed:boolean;promise?:Promise<Preview>};
+  actorId:string;email:string;sessionRef:string;verifiedAt:number;type:'morning'|'evening';at:number;until:number;started:number;deadline:number;closed:boolean;completed?:boolean;promise?:Promise<Preview>};
 const originals=new WeakMap<object,Own>(),requests=new WeakMap<Request,Promise<NativeAdminSocialPreview|null>>();
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(v);
 function check(own:Own){
@@ -42,7 +42,13 @@ export function authorizeNativeAdminSocialPreview(request:Request):Promise<Nativ
 export function runNativeAdminSocialPreview(original:NativeAdminSocialPreview|undefined,
   run:(context:{actorId:string;email:string;sessionRef:string;verifiedAt:Date;commandRef:string;type:'morning'|'evening';at:number;check:()=>void})=>Promise<Preview>):Promise<Preview>{
   const own=original&&originals.get(original);if(!own)return Promise.reject(Error('social_preview_unconfirmed'));
-  return own.promise??=Promise.resolve().then(async()=>{await checkAccount(own);const result=await run({actorId:own.actorId,email:own.email,sessionRef:own.sessionRef,verifiedAt:new Date(own.verifiedAt),commandRef:own.commandRef,type:own.type,at:own.at,check:()=>check(own)});await checkAccount(own);return result;});
+  return own.promise??=Promise.resolve().then(async()=>{await checkAccount(own);const result=await run({actorId:own.actorId,email:own.email,sessionRef:own.sessionRef,verifiedAt:new Date(own.verifiedAt),commandRef:own.commandRef,type:own.type,at:own.at,check:()=>check(own)});await checkAccount(own);own.completed=true;return result;});
+}
+// An observation of this completed original only; this JSON cannot authorize,
+// resume or adopt another invocation and does not disclose its session secret.
+export function acknowledgeNativeAdminSocialPreview(original:NativeAdminSocialPreview){
+  const own=original&&originals.get(original);if(!own||!own.completed)throw Error('social_preview_unconfirmed');check(own);
+  return Object.freeze({commandRef:own.commandRef,userId:own.actorId,email:own.email,type:own.type,asOf:own.at,expiresAt:own.until});
 }
 export function checkNativeAdminSocialPreview(original:NativeAdminSocialPreview){const own=original&&originals.get(original);if(!own)throw Error('social_preview_unconfirmed');check(own);}
 export function closeNativeAdminSocialPreview(original:NativeAdminSocialPreview){const own=originals.get(original);if(own)own.closed=true;}
