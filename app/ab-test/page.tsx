@@ -179,6 +179,7 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
         )}
 
         {/* Create new test */}
+        {read.status === 'ready' && channelConnected && <p className="text-sm" style={{color:'var(--yv-text-4)'}}>{t('Selección de hasta 20 elementos de la primera página de subidas; no es el historial completo. Las métricas ausentes se muestran como —.','Selection of up to 20 items from the first uploads page; this is not a complete history. Missing metrics are shown as —.')} {read.hasMore && t('Hay más páginas sin consultar.','More pages have not been read.')} {read.unavailable > 0 && t('Algunos vídeos seleccionados no devolvieron metadatos.','Some selected videos returned no metadata.')}</p>}
         {activeTests.length < 3 && read.status !== 'error' && (
           <div className="yv-card mb-10">
             <h2 className="font-display font-bold text-lg text-white mb-6">{t('Nuevo test', 'New test')}</h2>
@@ -219,7 +220,7 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-white font-medium truncate">{v.title}</p>
-                        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.views)} views</p>
+                        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{v.views === null ? '—' : fmtNum(v.views)} views</p>
                       </div>
                     </button>
                   ))}

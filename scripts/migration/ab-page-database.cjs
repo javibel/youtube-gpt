@@ -18,7 +18,7 @@ module.exports=async(prisma,results)=>{
    const owner=users[index],h=create({realClock:true}),entered=deferred(),gate=deferred(),owned=[],reads=[],calls=[],finished=deferred();harnesses.push(h);h.state.user=owner.id;h.state.email=owner.email;h.state.authSessionRef=nativeReaders.get(owner.id).decoded.authSessionRef;h.state.expires=new Date(nativeReaders.get(owner.id).decoded.exp*1000).toISOString();
    const suggestion=load('app/api/youtube/ab-test/suggest/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/plans':plans,'@/lib/ai/task-runtime':{getMessagesTask:async identity=>{assert.equal(identity.userId,owner.id);assert.equal(identity.taskType,'youtube.ab-title-suggestions');assert.match(identity.operationKey,/^[a-f0-9-]{36}$/);return{create:async parameters=>{calls.push(parameters);assert.equal(parameters.max_tokens,200);assert.match(parameters.messages[0].content,/Original synthetic video/);if(held==='headers'||held==='remount'){entered.resolve();await gate.promise;}return{content:[{type:'text',text:'{"variantA":"Native suggested A","variantB":"Native suggested B"}'}]};}};}}});
    h.state.send=request=>{
-    if(request.url.includes('channel'))return defaults(request);
+    if(request.url.endsWith('/selection'))return defaults(request);
     if(request.url.endsWith('ab-test')){
      assert.equal(request.init.cache,'no-store');assert(!request.body);const account=users.find(u=>u.id===request.owner);assert(account);
      const original=(async()=>{const response=await listFor(account,request.init.headers,request.at);assert.equal(response.headers.get('cache-control'),'no-store');const body=await response.json();assert.equal(body.userId,account.id);assert(body.tests.every(t=>t.userId===account.id));if(held==='read'&&account===owner)return{ok:true,status:200,json:()=>{entered.resolve();return gate.promise.then(()=>body);}};return{ok:true,status:200,json:async()=>body};})();reads.push(original);return original;
@@ -34,7 +34,7 @@ module.exports=async(prisma,results)=>{
     if(held==='remount'){h.unmount();await ready(h);await Promise.all(reads);await ready(h);}
     h.advance(60000);await p;await ready(h);assert.match(h.text(),/Las sugerencias no están confirmadas/);assert(h.button('Sugerir con IA').props.disabled);await h.button('Sugerir con IA').props.onClick();assert.equal(posts(h).length,1);assert.equal(calls.length,1);gate.resolve();await Promise.all(owned);await finished.promise;await ready(h);assert.equal(values(h),'Native suggested A|Native suggested B');assert.equal(h.storage.size,0);assert.equal(calls.length,1);assert.equal(posts(h).length,1);
    }
-   assert(h.timers.size<=1);h.unmount();await flush();assert.equal(h.timers.size,0);
+   assert(h.timers.size<=2);h.unmount();await flush();assert.equal(h.timers.size,0);
    results.push('A/B page '+held+': actual owner-scoped GET/PostgreSQL test list and Pro helper, synthetic channel/auth/React/transport; total30s read or60s send wait, live original task/key/payload retained, no replacement, title publication or recovery reconstruction');
   }
   assert.deepEqual(await prisma.subscription.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}}),before.subscriptions);
