@@ -1,3 +1,4 @@
+import { authorizeCronDispatch, runCronDispatch } from '@/lib/cron-dispatch-original';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
@@ -21,12 +22,6 @@ import { generateDailyIdeas } from '@/lib/daily-ideas';
 import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 120;
-
-function verifyCronSecret(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return request.headers.get('authorization') === `Bearer ${secret}`;
-}
 
 function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
@@ -63,10 +58,12 @@ Responde SOLO con JSON en este formato exacto, sin texto adicional:
 
 
 export async function GET(request: Request) {
-  if (!verifyCronSecret(request)) {
+  const original = authorizeCronDispatch(request, 'morning');
+  if (!original) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  return runCronDispatch(original, async step => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -88,26 +85,26 @@ export async function GET(request: Request) {
     results.onboarding = 'disabled_2026-07-01_dup_lifecycle';
 
     // 0b. Verification reminders to unverified signups (gated by VERIFY_REMINDER_ENABLED)
-    const verifyReminders = await sendVerificationReminders().catch(err => {
+    const verifyReminders = await step(() => sendVerificationReminders()).catch(err => {
       errors.push(`VerifyReminder: ${err instanceof Error ? err.message : err}`);
       return 0;
     });
     results.verifyReminders = verifyReminders;
 
     // 0c. Re-engagement emails to dormant activated users (gated by REENGAGEMENT_ENABLED)
-    const reengaged = await sendReengagementEmails().catch(err => {
+    const reengaged = await step(() => sendReengagementEmails()).catch(err => {
       errors.push(`Reengagement: ${err instanceof Error ? err.message : err}`);
       return 0;
     });
     results.reengaged = reengaged;
 
     // 1. Generate daily tip
-    await generateAndSaveDailyTip().catch(err =>
+    await step(() => generateAndSaveDailyTip()).catch(err =>
       errors.push(`Daily tip: ${err instanceof Error ? err.message : err}`)
     );
 
     // 1b. Generate personalized daily ideas for Pro users
-    const ideasGenerated = await generateDailyIdeas().catch(err => {
+    const ideasGenerated = await step(() => generateDailyIdeas()).catch(err => {
       errors.push(`Daily ideas: ${err instanceof Error ? err.message : err}`);
       return 0;
     });
@@ -116,7 +113,7 @@ export async function GET(request: Request) {
     // 1c. Deliver those ideas. Without this the cron writes them to the database and
     // nobody ever sees them — which is why users who connected a channel stopped
     // returning (docs: memory project-daily-ideas-briefing).
-    const ideasEmailed = await sendDailyIdeasEmails().catch(err => {
+    const ideasEmailed = await step(() => sendDailyIdeasEmails()).catch(err => {
       errors.push(`Daily ideas email: ${err instanceof Error ? err.message : err}`);
       return 0;
     });
@@ -124,8 +121,8 @@ export async function GET(request: Request) {
 
     // 2. Generate content for Facebook + Instagram (LinkedIn + Twitter desactivados)
     const [facebook, instagram] = await Promise.allSettled([
-      generateSocialPost('facebook', 'morning'),
-      generateSocialPost('instagram', 'morning'),
+      step(() => generateSocialPost('facebook', 'morning')),
+      step(() => generateSocialPost('instagram', 'morning')),
     ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;
@@ -138,13 +135,13 @@ export async function GET(request: Request) {
     // 3. One shared AI image for the whole day (FB + IG + the local-agent Twitter
     //    post all reuse it) to avoid duplicate Ideogram generations. Falls back to a
     //    per-platform Satori infographic only if Ideogram itself fails.
-    const sharedAiUrl = (fb || ig) ? await getOrCreateDailyBrandImage((fb || ig) as string) : null;
+    const sharedAiUrl = (fb || ig) ? await step(() => getOrCreateDailyBrandImage((fb || ig) as string)) : null;
     const fbImageUrl = fb ? (sharedAiUrl ?? buildInfographicUrl(fb)) : null;
     const igImageUrl = ig ? (sharedAiUrl ?? buildInfographicUrl(ig)) : null;
 
     // 3a. Publish Facebook with AI image (via Graph API)
     if (fb && fbImageUrl) {
-      const fbResult = await publishToFacebookWithImage(fb, fbImageUrl);
+      const fbResult = await step(() => publishToFacebookWithImage(fb, fbImageUrl));
       results.facebook = fbResult;
       if (!fbResult.success && !fbResult.skipped) errors.push(`Facebook: ${fbResult.error}`);
     }
@@ -154,7 +151,7 @@ export async function GET(request: Request) {
 
     if (ig) {
       socialPublishTasks.push((async () => {
-        const igResult = await publishToInstagram(ig, igImageUrl ?? undefined);
+        const igResult = await step(() => publishToInstagram(ig, igImageUrl ?? undefined));
         results.instagram = igResult;
         if (!igResult.success && !igResult.skipped) errors.push(`Instagram: ${igResult.error}`);
       })());
@@ -177,17 +174,18 @@ export async function GET(request: Request) {
     // );
 
     if (errors.length > 0) {
-      await sendNotificationEmail(
+      await step(() => sendNotificationEmail(
         '[YTubViral Agent] Errores en cron matutino',
         errors.join('\n')
-      ).catch(() => {});
+      )).catch(() => {});
     }
 
     return NextResponse.json({ ok: true, results, errors });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[cron/morning]', msg);
-    await sendNotificationEmail('[YTubViral Agent] Error critico cron matutino', msg).catch(() => {});
+    await step(() => sendNotificationEmail('[YTubViral Agent] Error critico cron matutino', msg)).catch(() => {});
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
+  }).catch(() => NextResponse.json({ ok: false, error: 'cron_invocation_unconfirmed' }, { status: 503 }));
 }
