@@ -19,6 +19,7 @@ export async function readAbHistoryOriginal(request: Request): Promise<Response>
   const requestedAt = Date.now(), deadline = performance.now() + 25_000, commandRef = randomUUID();
   const configured = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
   const cookie = request.headers.get('cookie'), incomingOrigin = request.headers.get('origin');
+  const readRef = request.headers.get('X-YTV-Read-Ref');
   const bearer = request.headers.has('authorization'), url = new URL(request.url);
   const controller = new AbortController();
   let expiresAt = requestedAt + 25_000, retired = false, rejectStop!: (e: Error) => void;
@@ -38,7 +39,7 @@ export async function readAbHistoryOriginal(request: Request): Promise<Response>
   try {
     check();
     if (request.method !== 'GET' || url.pathname !== '/api/youtube/ab-test' || url.search || url.hash
-      || request.headers.has('x-ytv-recovery') || request.headers.has('x-ytv-resume')) fail('invalid_input');
+      || request.headers.has('x-ytv-recovery') || request.headers.has('x-ytv-resume') || readRef !== null && !sessionRef(readRef)) fail('invalid_input');
     if (!configured || !cookie || bearer) fail('unauthorized');
     const origin = new URL(configured);
     if (origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash
@@ -96,7 +97,7 @@ export async function readAbHistoryOriginal(request: Request): Promise<Response>
     });
     if (new Set(tests.map(row => row.id)).size !== tests.length) fail();
     await current();
-    const response = json({ userId: id, tests, historyRead: { commandRef, sessionRef: authSessionRef,
+    const response = json({ userId: id, tests, historyRead: { commandRef, readRef, email: address, sessionRef: authSessionRef, sessionExpiresAt: exp * 1000,
       requestedAt, expiresAt, coverage: 'latest-up-to-20-stored-records', sourceOwnership: 'not-verified', operationalFreshness: 'not-verified' } });
     check(); return response;
   } catch (error) {

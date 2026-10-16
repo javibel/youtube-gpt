@@ -37,17 +37,20 @@ export default function AbTestPage() {
   const lang = useLang();
   const userId = session?.user?.id;
   const email = session?.user?.email;
-  const scope = useMemo(() => ({ active: true }), [userId, email, status, lang]);
+  const nativeUser = session?.user as { authSessionRef?: string; requiresVerification?: boolean; requiresTotp?: boolean } | undefined;
+  const sessionRef = nativeUser?.authSessionRef ?? '', expiresAt = Date.parse(session?.expires ?? '');
+  const eligible = status === 'authenticated' && nativeUser?.requiresVerification === false && nativeUser.requiresTotp === false && !!sessionRef && expiresAt > Date.now();
+  const scope = useMemo(() => ({ active: true }), [userId, email, status, lang, sessionRef, expiresAt, eligible]);
   const active = useRef(scope); active.current = scope;
   useEffect(() => { scope.active = true; return () => { scope.active = false; }; }, [scope]);
-  const isCurrent = () => active.current === scope && scope.active && status === 'authenticated';
+  const isCurrent = () => active.current === scope && scope.active && eligible && Date.now() < expiresAt;
   if (status === 'loading') return <p>{lang === 'en' ? 'Loading...' : 'Cargando...'}</p>;
   if (status !== 'authenticated' || !userId || !email) return <DashboardShell><p>{lang === 'en' ? 'Sign in to use A/B testing.' : 'Inicia sesión para usar A/B testing.'}</p><a href="/login">{lang === 'en' ? 'Sign in' : 'Iniciar sesión'}</a></DashboardShell>;
-  return <AbTestSession key={JSON.stringify([userId, email])} userId={userId} email={email} lang={lang} isCurrent={isCurrent} />;
+  return <AbTestSession key={JSON.stringify([userId, email])} userId={userId} email={email} lang={lang} native={{ sessionRef, expiresAt, eligible }} isCurrent={isCurrent} />;
 }
 
-function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; email: string; lang: Lang; isCurrent: () => boolean }) {
-  const read = useAbTestRead(userId, email, lang);
+function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: string; email: string; lang: Lang; native: { sessionRef: string; expiresAt: number; eligible: boolean }; isCurrent: () => boolean }) {
+  const read = useAbTestRead(userId, email, lang, native);
   const { videos, connected: channelConnected } = read;
   const mutations = useAbMutation(userId, email);
   // Original acknowledgments can supply a missing row after remount. A newer

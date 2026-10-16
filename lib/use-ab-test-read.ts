@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClientReadWait } from './client-read-wait';
+import { beginAbHistoryRead, type AbHistoryDisplay } from '@/lib/ab-history-client';
 
 export interface AbVideo { videoId: string; title: string; thumbnail: string; publishedAt: string; views: number; likes: number }
 export interface AbTest {
@@ -36,21 +37,21 @@ export function decodeAbTest(v: unknown, owner: string): AbTest | null {
       && nullable(v.winner, x => ['A', 'B', 'tie'].includes(x as string))
       && nullable(v.aiInsight, x => object(x) && string(x.es) && string(x.en)) ? v as unknown as AbTest : null;
 }
-function tests(value: unknown, owner: string) {
-  if (!object(value) || value.userId !== owner || !Array.isArray(value.tests)
-    || !value.tests.every(v => decodeAbTest(v, owner))) throw Error('Invalid tests identity or data');
-  return value.tests as AbTest[];
-}
-
-export function useAbTestRead(userId: string, email: string, lang: 'es' | 'en') {
-  const scope = useMemo(() => ({ active: true, flight: null as Promise<void> | null, wait: null as ReturnType<typeof createClientReadWait> | null }), [userId, email, lang]);
+export function useAbTestRead(userId: string, email: string, lang: 'es' | 'en', native: { sessionRef: string; expiresAt: number; eligible: boolean }) {
+  const scope = useMemo(() => ({ active: true, flight: null as Promise<void> | null, wait: null as ReturnType<typeof createClientReadWait> | null, history: null as ReturnType<typeof beginAbHistoryRead> | null, receipt: null as AbHistoryDisplay | null }), [userId, email, lang, native.sessionRef, native.expiresAt, native.eligible]);
   const active = useRef(scope); active.current = scope;
   const [store, setStore] = useState({ scope, status: 'loading', data: empty });
-  const current = () => active.current === scope && scope.active;
+  const current = () => active.current === scope && scope.active && native.eligible && Date.now() < native.expiresAt;
   const read = () => {
     if (!current()) return Promise.resolve();
     if (scope.flight) return scope.flight;
+    scope.history?.retire(); scope.receipt = null;
     const wait = createClientReadWait(); scope.wait = wait;
+    let history: ReturnType<typeof beginAbHistoryRead>;
+    history = beginAbHistoryRead({ id: userId, email, sessionRef: native.sessionRef, expiresAt: native.expiresAt }, current, () => {
+      void Promise.resolve().then(() => { if (active.current === scope && scope.active && scope.history === history) { scope.receipt = null; wait.cancel(); setStore({ scope, status: 'error', data: empty }); } });
+    });
+    scope.history = history;
     setStore({ scope, status: 'loading', data: empty });
     const json = async (url: string) => {
       if (!current()) throw Error('Retired read');
@@ -60,26 +61,24 @@ export function useAbTestRead(userId: string, email: string, lang: 'es' | 'en') 
     };
     scope.flight = (async () => {
       try {
-        const [ch, ab] = await Promise.all([json('/api/youtube/channel'), json('/api/youtube/ab-test')]);
+        const [ch, receipt] = await Promise.all([json('/api/youtube/channel'), history.original]);
         if (!current()) return;
         let decoded = channel(ch, userId);
-        const list = tests(ab, userId);
+        const list = history.display(receipt); if (!list) throw Error('Unconfirmed history');
+        scope.receipt = receipt;
         if (decoded.connected && decoded.videos.length === 0) decoded = channel(await json('/api/youtube/channel?fresh=1'), userId);
         if (current()) setStore({ scope, status: 'ready', data: { ...decoded, tests: list } });
-      } catch { if (current()) setStore({ scope, status: 'error', data: empty }); }
+      } catch { history.retire(); if (current()) setStore({ scope, status: 'error', data: empty }); }
       finally { wait.finish(); scope.wait = null; scope.flight = null; }
     })();
     return scope.flight;
   };
   useEffect(() => {
     scope.active = true; void read();
-    return () => { scope.active = false; void Promise.resolve().then(() => { if (!scope.active) scope.wait?.cancel(); }); };
+    return () => { scope.active = false; void Promise.resolve().then(() => { if (!scope.active) { scope.wait?.cancel(); scope.history?.retire(); } }); };
   }, [scope]); // Each immutable scope owns its read and cleanup.
+  const history = scope.history?.display(scope.receipt) ?? null;
   const visible = store.scope === scope ? store : { scope, status: 'loading', data: empty };
-  return { ...visible.data, status: visible.status, retry: read,
-    updateTests(update: (value: AbTest[]) => AbTest[]) {
-      if (current()) setStore(value => value.scope === scope && value.status === 'ready'
-        ? { ...value, data: { ...value.data, tests: update(value.data.tests) } } : value);
-    },
-  };
+  const valid = visible.status !== 'ready' || history !== null;
+  return { ...(valid ? visible.data : empty), tests: history ?? [], status: native.eligible && valid ? visible.status : 'error', retry: read };
 }
