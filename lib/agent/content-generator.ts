@@ -265,7 +265,8 @@ declare const adminSocialDraftResult: unique symbol;
 export type AdminSocialDraftResult={readonly[adminSocialDraftResult]:true};
 type DraftDetails={id:string;commandRef:string;userId:string;sessionRef:string;platform:'facebook'|'instagram';type:PostType;content:string;pillar:string};
 type FacebookPublication=Readonly<{platform:'facebook';recordId:string;postId:string}>;
-type PreparedDraft=DraftDetails&{validate:()=>Promise<void>;facebook:(image?:boolean)=>Promise<FacebookPublication>;purpose?:'consume'|'facebook-text'|'facebook-infographic';use?:Promise<unknown>};
+type InstagramPublication=Readonly<{platform:'instagram';recordId:string;postId:string}>;
+type PreparedDraft=DraftDetails&{validate:()=>Promise<void>;publish:(image?:boolean)=>Promise<FacebookPublication|InstagramPublication>;purpose?:'consume'|'facebook-text'|'facebook-infographic'|'instagram-infographic';use?:Promise<unknown>};
 const preparedDrafts=new WeakMap<object,PreparedDraft>();
 
 async function readManualSocialBody(response:Response,limit:number,remaining:()=>number):Promise<Buffer>{
@@ -308,13 +309,16 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
       await own.validateBeforeDispatch();const result=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='completed' AND content=$11 AND pillar=$12 AND "completedAt" IS NOT NULL AND ${published?retainedSource:sourceSql}=$5::jsonb AND ${actor}${published?` AND EXISTS(SELECT 1 FROM social_posts WHERE id=$13 AND platform=$3 AND content=$11 AND status='published' AND "bufferId"=$15 AND "publishedAt" IS NOT NULL AND "imageUrl" IS NOT DISTINCT FROM $16::text AND "errorMsg" IS NULL) AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$14::integer AND channel=$3 AND pillar=$12)`:intent?` AND EXISTS(SELECT 1 FROM social_posts WHERE id=$1 AND platform=$3 AND content=$11 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NOT DISTINCT FROM $13::text AND "errorMsg" IS NULL)`:''}) AS eligible`,...args,content,pillar.id,...(published?[id,published.historyId,published.postId,intent!.imageUrl]:intent?[intent.imageUrl]:[]));
       check();if(!Array.isArray(result)||result.length!==1||Object.keys(result[0]).length!==1||result[0].eligible!==true)throw Error('social_publish_unconfirmed');await own.validateBeforeDispatch();
     };
-    const facebook=async(image=false):Promise<FacebookPublication>=>{
-      if(platform!=='facebook')throw Error('social_publish_unconfirmed');
-      const page=process.env.META_PAGE_ID,token=process.env.META_PAGE_ACCESS_TOKEN,secret=process.env.META_APP_SECRET;
+    const publish=async(image=false):Promise<FacebookPublication|InstagramPublication>=>{
+      const instagram=platform==='instagram';if(instagram&&!image)throw Error('social_publish_unconfirmed');
+      const page=instagram?process.env.INSTAGRAM_ACCOUNT_ID:process.env.META_PAGE_ID,token=instagram?process.env.INSTAGRAM_ACCESS_TOKEN:process.env.META_PAGE_ACCESS_TOKEN,secret=process.env.META_APP_SECRET;
+      // Trusted server version only;no legacy version,host or token fallback.
+      const version=instagram?process.env.INSTAGRAM_GRAPH_API_VERSION:undefined;
       if(!page||!/^\d{1,32}$/.test(page)||!token||/[\x00-\x1f\x7f]/.test(token))throw Error('social_publish_unconfirmed');
+      if(instagram&&(!version||!/^v[1-9]\d{0,2}\.0$/.test(version)))throw Error('social_publish_unconfirmed');
       const blobToken=image?process.env.BLOB_READ_WRITE_TOKEN:undefined,store=image?blobToken?.match(/^vercel_blob_rw_([a-zA-Z0-9]+)_[a-zA-Z0-9]+$/)?.[1]:undefined;
       if(image&&!store)throw Error('social_publish_unconfirmed');
-      const config=()=>{check();if(process.env.META_PAGE_ID!==page||process.env.META_PAGE_ACCESS_TOKEN!==token||process.env.META_APP_SECRET!==secret||image&&process.env.BLOB_READ_WRITE_TOKEN!==blobToken)throw Error('social_publish_unconfirmed');};
+      const config=()=>{check();if((instagram?process.env.INSTAGRAM_ACCOUNT_ID:process.env.META_PAGE_ID)!==page||(instagram?process.env.INSTAGRAM_ACCESS_TOKEN:process.env.META_PAGE_ACCESS_TOKEN)!==token||process.env.META_APP_SECRET!==secret||instagram&&process.env.INSTAGRAM_GRAPH_API_VERSION!==version||image&&process.env.BLOB_READ_WRITE_TOKEN!==blobToken)throw Error('social_publish_unconfirmed');};
       await validate();config();
       // The draft's UUID is also this one publication's record ID. INSERT ACK
       // never authorizes adoption of an existing pending/failed/published row.
@@ -331,35 +335,55 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
         const {renderManualSocialInfographic}=await import('@/lib/agent/manual-social-infographic');await validate();config();
         const rendered=renderManualSocialInfographic(content),png=await readManualSocialBody(rendered,5*1024*1024,own.remainingBeforeDispatch);config();
         if(!rendered.ok||rendered.headers.get('content-type')!=='image/png'||png.length<33||!png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||png.readUInt32BE(16)!==1080||png.readUInt32BE(20)!==1080)throw Error('social_publish_unconfirmed');
-        await validate();config();const pathname=`social-manual/${id}.png`;
+        let bytes=png;
+        if(instagram){const {encodeManualSocialJpeg}=await import('@/lib/agent/manual-social-jpeg');await validate();config();bytes=await encodeManualSocialJpeg(png);await validate();config();if(bytes.length<4||bytes.length>5*1024*1024||bytes.readUInt16BE(0)!==0xffd8||bytes.readUInt16BE(bytes.length-2)!==0xffd9)throw Error('social_publish_unconfirmed');}
+        await validate();config();const pathname=`social-manual/${id}.${instagram?'jpg':'png'}`,contentType=instagram?'image/jpeg':'image/png';
         // Installed Blob protocol12,but one native PUT only:no SDK retry,
         // ambient API/OIDC override,overwrite,lookup or URL-based adoption.
-        const uploaded=await fetch('https://vercel.com/api/blob/?'+new URLSearchParams({pathname}),{method:'PUT',redirect:'error',headers:{authorization:'Bearer '+blobToken,'x-vercel-blob-store-id':store!,'x-api-version':'12','x-api-blob-request-id':`${store}:${own.at}:${id}`,'x-api-blob-request-attempt':'0','x-vercel-blob-access':'public','x-add-random-suffix':'0','x-allow-overwrite':'0','x-content-type':'image/png','x-content-length':String(png.length)},body:Uint8Array.from(png),signal:AbortSignal.timeout(own.remainingBeforeDispatch())});
+        const uploaded=await fetch('https://vercel.com/api/blob/?'+new URLSearchParams({pathname}),{method:'PUT',redirect:'error',headers:{authorization:'Bearer '+blobToken,'x-vercel-blob-store-id':store!,'x-api-version':'12','x-api-blob-request-id':`${store}:${own.at}:${id}`,'x-api-blob-request-attempt':'0','x-vercel-blob-access':'public','x-add-random-suffix':'0','x-allow-overwrite':'0','x-content-type':contentType,'x-content-length':String(bytes.length)},body:Uint8Array.from(bytes),signal:AbortSignal.timeout(own.remainingBeforeDispatch())});
         // This same invoked upload may record only its own URL after retirement.
         const raw:unknown=await uploaded.json();
-        if(!uploaded.ok||uploaded.redirected||!raw||typeof raw!=='object'||Array.isArray(raw)||!('url'in raw)||typeof raw.url!=='string'||raw.url!==`https://${store!.toLowerCase()}.public.blob.vercel-storage.com/${pathname}`||!('pathname'in raw)||raw.pathname!==pathname||!('contentType'in raw)||raw.contentType!=='image/png')throw Error('social_publish_unconfirmed');
+        if(!uploaded.ok||uploaded.redirected||!raw||typeof raw!=='object'||Array.isArray(raw)||!('url'in raw)||typeof raw.url!=='string'||raw.url!==`https://${store!.toLowerCase()}.public.blob.vercel-storage.com/${pathname}`||!('pathname'in raw)||raw.pathname!==pathname||!('contentType'in raw)||raw.contentType!==contentType)throw Error('social_publish_unconfirmed');
         const imageUrl=raw.url,savedImage=await prisma.$queryRawUnsafe<{id:string;imageUrl:string}[]>(`UPDATE social_posts SET "imageUrl"=$4 WHERE id=$1 AND platform=$2 AND content=$3 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NULL AND "errorMsg" IS NULL RETURNING id,"imageUrl"`,id,platform,content,imageUrl);
         if(!Array.isArray(savedImage)||savedImage.length!==1||Object.keys(savedImage[0]).length!==2||savedImage[0].id!==id||savedImage[0].imageUrl!==imageUrl)throw Error('social_publish_unconfirmed');
         intent.imageUrl=imageUrl;await validate();config();
       }
       const message=content.replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1').replace(/__(.*?)__/g,'$1').replace(/_(.*?)_/g,'$1').replace(/`(.*?)`/g,'$1').replace(/#{1,6}\s/g,'');
       const proof=secret?createHmac('sha256',secret).update(token).digest('hex'):undefined;
+      let postId:string;
+      if(instagram){
+        // Only this original's responses issue its container/status/publish.
+        // Unfinished status remains uncertain;no poll/retry from stored IDs.
+        const base=`https://graph.instagram.com/${version}`,caption=Array.from(message).slice(0,2200).join(''),credentials={access_token:token,...(proof?{appsecret_proof:proof}:{})};
+        const json=async(response:Response):Promise<Record<string,unknown>>=>{const raw:unknown=await response.json();if(!response.ok||response.redirected||!raw||typeof raw!=='object'||Array.isArray(raw)||'error'in raw)throw Error('social_publish_unconfirmed');return raw as Record<string,unknown>;};
+        await validate();config();
+        const container=await json(await fetch(`${base}/${page}/media`,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_url:intent!.imageUrl,caption,...credentials}),signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
+        if(typeof container.id!=='string'||!/^\d{1,32}$/.test(container.id))throw Error('social_publish_unconfirmed');const creationId=container.id;
+        await validate();config();
+        const status=await json(await fetch(`${base}/${creationId}?`+new URLSearchParams({fields:'status_code',...credentials}),{method:'GET',redirect:'error',signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
+        if(status.id!==creationId||status.status_code!=='FINISHED')throw Error('social_publish_unconfirmed');
+        await validate();config();
+        const ack=await json(await fetch(`${base}/${page}/media_publish`,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({creation_id:creationId,...credentials}),signal:AbortSignal.timeout(own.remainingBeforeDispatch())}));
+        if(typeof ack.id!=='string'||!/^\d{1,32}$/.test(ack.id))throw Error('social_publish_unconfirmed');postId=ack.id;
+      }else{
       // One already-invoked publisher may settle only its own SQL completion.
       // Lost/rejected ACK leaves `publishing`; no retry, fallback or row recovery.
       const response=await fetch(`https://graph.facebook.com/v19.0/${page}/${image?'photos':'feed'}`,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({...image?{caption:message,url:intent.imageUrl}:{message},access_token:token,...(proof?{appsecret_proof:proof}:{})}),signal:AbortSignal.timeout(own.remainingBeforeDispatch())});
       const ack:unknown=await response.json();
       const remoteId=ack&&typeof ack==='object'&&!Array.isArray(ack)?image?('post_id'in ack?ack.post_id:undefined):('id'in ack?ack.id:undefined):undefined;
       if(!response.ok||response.redirected||!ack||typeof ack!=='object'||Array.isArray(ack)||typeof remoteId!=='string'||!/^\d{1,32}_\d{1,32}$/.test(remoteId)||!remoteId.startsWith(page+'_')||'error'in ack)throw Error('social_publish_unconfirmed');
-      const postId=remoteId,completed=await prisma.$queryRawUnsafe<{id:string;postId:string;historyId:number}[]>(`WITH updated AS(
+        postId=remoteId;
+      }
+      const completed=await prisma.$queryRawUnsafe<{id:string;postId:string;historyId:number}[]>(`WITH updated AS(
         UPDATE social_posts SET status='published',"publishedAt"=timezone('UTC',clock_timestamp()),"bufferId"=$5
           WHERE id=$1 AND platform=$2 AND content=$3 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NOT DISTINCT FROM $6::text AND "errorMsg" IS NULL RETURNING id),
         history AS(INSERT INTO social_pillar_history(channel,pillar) SELECT $2,$4 FROM updated RETURNING id)
         SELECT updated.id,$5::text AS "postId",history.id AS "historyId" FROM updated CROSS JOIN history`,id,platform,content,pillar.id,postId,intent.imageUrl);
       if(!Array.isArray(completed)||completed.length!==1||Object.keys(completed[0]).length!==3||completed[0].id!==id||completed[0].postId!==postId||!Number.isSafeInteger(completed[0].historyId))throw Error('social_publish_unconfirmed');
       published={postId,historyId:completed[0].historyId};await validate();config();
-      return Object.freeze({platform:'facebook',recordId:id,postId});
+      return Object.freeze({platform,recordId:id,postId});
     };
-    const cap=Object.freeze({})as AdminSocialDraftResult;preparedDrafts.set(cap,{id,commandRef:own.commandRef,userId:own.actorId,sessionRef:own.sessionRef,platform,type,content,pillar:pillar.id,validate,facebook});return cap;
+    const cap=Object.freeze({})as AdminSocialDraftResult;preparedDrafts.set(cap,{id,commandRef:own.commandRef,userId:own.actorId,sessionRef:own.sessionRef,platform,type,content,pillar:pillar.id,validate,publish});return cap;
   });
 }
 
@@ -374,12 +398,17 @@ export function consumeAdminSocialDraft<T>(receipt:AdminSocialDraftResult|undefi
 // stays closed until images, Instagram and the native client/response are bound.
 export function publishAdminFacebookDraft(receipt:AdminSocialDraftResult|undefined):Promise<FacebookPublication>{
   const own=receipt&&preparedDrafts.get(receipt);if(!own||own.platform!=='facebook'||own.purpose&&own.purpose!=='facebook-text')return Promise.reject(Error('social_publish_unconfirmed'));own.purpose='facebook-text';
-  return (own.use??=Promise.resolve().then(()=>own.facebook()))as Promise<FacebookPublication>;
+  return (own.use??=Promise.resolve().then(()=>own.publish()))as Promise<FacebookPublication>;
 }
 
 export function publishAdminFacebookInfographic(receipt:AdminSocialDraftResult|undefined):Promise<FacebookPublication>{
   const own=receipt&&preparedDrafts.get(receipt);if(!own||own.platform!=='facebook'||own.purpose&&own.purpose!=='facebook-infographic')return Promise.reject(Error('social_publish_unconfirmed'));own.purpose='facebook-infographic';
-  return (own.use??=Promise.resolve().then(()=>own.facebook(true)))as Promise<FacebookPublication>;
+  return (own.use??=Promise.resolve().then(()=>own.publish(true)))as Promise<FacebookPublication>;
+}
+
+export function publishAdminInstagramInfographic(receipt:AdminSocialDraftResult|undefined):Promise<InstagramPublication>{
+  const own=receipt&&preparedDrafts.get(receipt);if(!own||own.platform!=='instagram'||own.purpose&&own.purpose!=='instagram-infographic')return Promise.reject(Error('social_publish_unconfirmed'));own.purpose='instagram-infographic';
+  return (own.use??=Promise.resolve().then(()=>own.publish(true)))as Promise<InstagramPublication>;
 }
 
 export async function generateYoutubeReply(
