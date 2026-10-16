@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAbTestRead, type AbVideo as Video, type AbTest } from '@/lib/use-ab-test-read';
-import { useAbSuggestions } from '@/lib/use-ab-suggestions';
+import { useAbNativeSuggestions } from '@/lib/use-ab-native-suggestions';
 import { observeAbWindows } from '@/lib/ab-observation';
 import { useAbMutation } from '@/lib/use-ab-mutation';
 import { useSession } from 'next-auth/react';
@@ -60,7 +60,7 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
     const ack = acknowledged.get(test.id); acknowledged.delete(test.id);
     return ack?.status === 'cancelled' && ['variant_a', 'variant_b'].includes(test.status) ? ack : test;
   }).concat([...acknowledged.values()]);
-  const suggestions = useAbSuggestions(JSON.stringify([userId, email]));
+  const suggestions = useAbNativeSuggestions(userId,email,lang,native,isCurrent);
   const capturedCreate = mutations.mutation?.kind === 'create' && mutations.mutation.lang === lang ? mutations.mutation : null;
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(() => capturedCreate?.video ?? (suggestions.selection?.lang === lang ? suggestions.selection.video : null));
   const [variantA, setVariantA] = useState(() => capturedCreate?.variantA ?? '');
@@ -101,7 +101,8 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
   async function suggestTitles() {
     if (!isCurrent() || read.status !== 'ready' || !selectedVideo || selected.current !== selectedVideo || suggestions.blocked) return;
     setError('');
-    const wait = suggestions.start({ video: selectedVideo, lang, token: selection.current });
+    const capturedToken=selection.current,capturedVideo=selectedVideo;
+    const wait = suggestions.start({ video: capturedVideo, lang, token: capturedToken },()=>selection.current===capturedToken&&selected.current===capturedVideo);
     if (wait) applied.current = null;
     await wait;
   }
@@ -159,7 +160,6 @@ function AbTestSession({ userId, email, lang, native, isCurrent }: { userId: str
         {['unconfirmed', 'lost', 'storage-unavailable'].includes(suggestions.status) && <p role="status">{suggestions.variants
           ? t('Sugerencias recibidas. La continuidad está bloqueada y no se enviará otra petición.', 'Suggestions received. Continuity is blocked and another request will not be sent.')
           : t('Las sugerencias no están confirmadas. No se enviará otra petición.', 'Suggestions are unconfirmed. Another request will not be sent.')}</p>}
-        {suggestions.status === 'rejected' && <p role="alert">{t('No se pudieron generar sugerencias. Comprueba tu acceso y el título.', 'Suggestions could not be generated. Check your access and title.')}</p>}
         {error && (
           <div className="mb-8 p-4 rounded-lg border border-red-500/30" style={{ background: 'rgba(232,77,91,0.08)' }}>
             <p className="text-sm text-red-400 font-mono-jb">{error}</p>

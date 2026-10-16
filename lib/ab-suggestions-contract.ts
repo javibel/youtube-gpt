@@ -18,3 +18,8 @@ export function abSuggestedVariants(value: unknown, originalTitle: string): Read
     || [value.variantA, value.variantB].some(v => comparable(v) === comparable(originalTitle))) throw Error('ab_suggestions_unconfirmed');
   return Object.freeze({ variantA: value.variantA, variantB: value.variantB });
 }
+
+export function abNativeSuggestionInput(value:unknown): Readonly<{title:string;lang:'es'|'en';videoId:string;channelId:string}> {
+  if(!object(value)||Object.keys(value).sort().join(',')!=='channelId,lang,title,videoId'||typeof value.videoId!=='string'||!/^[A-Za-z0-9_-]{11}$/.test(value.videoId)||typeof value.channelId!=='string'||!/^UC[A-Za-z0-9_-]{22}$/.test(value.channelId))throw Error('invalid_input');
+  const v=abSuggestionInput({title:value.title,lang:value.lang});return Object.freeze({...v,videoId:value.videoId,channelId:value.channelId});
+}

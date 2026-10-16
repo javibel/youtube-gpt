@@ -86,3 +86,16 @@ export function useAbSuggestions(account: string) {
   useEffect(() => { const stop = coordinator.subscribe(() => render(x => x + 1)); coordinator.observe(); render(x => x + 1); return stop; }, [coordinator]);
   return { ...coordinator.snapshot(), start: coordinator.start, blocked: blocked(coordinator.snapshot().status) };
 }
+
+// Legacy state is only a veto for the native flow. No new caller adopts its
+// selection, producer, variants or marker as execution authority.
+export function anyUnconfirmedAbSuggestions(account:string):boolean {
+  const v=accounts.get(account);v?.observe();
+  try{return !!v&&blocked(v.snapshot().status)||window.sessionStorage.getItem('ytubviral.ab-suggestions.pending:'+account)!==null;}catch{return true;}
+}
+
+export function anyUnconfirmedAbSuggestionsForUser(id:string):boolean {
+  try{for(const [account,value] of accounts){const owner=JSON.parse(account);if(Array.isArray(owner)&&owner[0]===id){value.observe();if(blocked(value.snapshot().status))return true;}}
+    const prefix='ytubviral.ab-suggestions.pending:';for(let i=0;i<window.sessionStorage.length;i++){const k=window.sessionStorage.key(i);if(k?.startsWith(prefix)){const owner=JSON.parse(k.slice(prefix.length));if(!Array.isArray(owner)||owner[0]===id)return true;}}return false;
+  }catch{return true;}
+}

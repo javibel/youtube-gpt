@@ -66,8 +66,9 @@ armCompletionWatchdog();
  await runContract('./coach-plan-database.cjs',prisma,results);
  await runContract('./coach-send-client-database.cjs',prisma,results);
  await runContract('./coach-send-deadline-database.cjs',prisma,results);
- await runContract('./ab-suggest-deadline-database.cjs',prisma,results);
- await runContract('./ab-page-database.cjs',prisma,results);
+ // Legacy public-session suggestion SQL compositions are historical (0f3a8a6).
+ // Current native Auth.js/SQL/source/runtime/page contracts run in ab-suggestions-native-pg.
+
  await runContract('./ab-mutation-database.cjs',prisma,results);
  await runContract('./ab-mutation-deadline-database.cjs',prisma,results);
  await runContract('./ab-read-deadline-database.cjs',prisma,results);
