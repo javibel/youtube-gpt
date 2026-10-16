@@ -51,6 +51,8 @@ async function main(){
   protectResponse(response);
   if(request.headers.host!=='127.0.0.1:4300'||!request.url?.startsWith('/')||request.url.startsWith('//')){response.writeHead(400);response.end('Invalid local request');return;}
   delete request.headers['x-forwarded-host'];request.headers['x-forwarded-proto']='http';
+  // Analytics is outside this fixture story;do not mutate inherited tracking counters.
+  if(request.url.split('?')[0]==='/api/track'){response.writeHead(204);response.end();return;}
   try{lifecycle.check();await lifecycle.runWork(()=>handler(request,response));}catch(error){console.error('Local fixture request failed:',error.message);if(!response.headersSent)response.writeHead(503);response.end('Local test request unconfirmed');}
  });
  server.listen(task.port,task.host,()=>{try{lifecycle.check();console.log('Synthetic local web ready at http://127.0.0.1:4300/admin/ai-configuration');}catch{/* Stop during startup never reports readiness. */}});

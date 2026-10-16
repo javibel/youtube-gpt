@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  // Preserve the exact loopback origin for native request checks in the isolated
+  // fixture.NextRequest otherwise rewrites127.0.0.1 to localhost before routes.
+  ...((process.env.YTV_MIGRATION_COMPILE === '1' || process.env.YTV_MIGRATION_WEB_TEST === '1')
+    ? { skipProxyUrlNormalize: true } : {}),
   // Keep PostCSS/loaders in the same guarded thread model as the compiler.
   // The native child-process pool has failed before connecting its IPC socket.
   // Normal application configuration and startup remain unchanged.
