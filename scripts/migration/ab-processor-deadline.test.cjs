@@ -1,4 +1,5 @@
 'use strict';
+// Historical processor snapshot: shared producer/deadline regression only; native cron is tested separately.
 const metadata=require('./ab-metadata-fixture.cjs');
 const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs'),{deferred}=require('./calendar-http-read-deadline.test.cjs');
 const flush=async()=>{for(let n=0;n<120;n++)await Promise.resolve();};
@@ -15,7 +16,7 @@ function harness(options={}){
   assert.equal(user,row.userId);assert.equal(snapshot.id,row.id);await step('admission');guard();pending=true;await step('admissionAck');
   return {ok:true,complete:async insight=>{await step('sql');saved=true;pending=false;completed.resolve({transition,insight});return {...row,status:phase==='variant_a'?'variant_b':'completed'};}};
  }};
- const mod=load('lib/ab-test-processor.ts',{'@/lib/prisma':{prisma:{abTest:{findMany:q=>step(q.where.status==='variant_a'?'scanA':'scanB')}}},'@/lib/youtube-auth':{getAccessToken:()=>step('token')},'@/lib/ab-test':helper,'@/lib/ai/task-runtime':{getMessagesTask:()=>step('taskSetup')}},{performance:{now:()=>now},setTimeout(fn,ms){const id=++next;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,init={})=>{assert.match(url,/^https:\/\/www.googleapis.com\/youtube\/v3\/videos\?/);if(init.method==='PUT')lastTitle=JSON.parse(init.body);return step(init.method==='PUT'?'title':'videoHeaders');}});
+ const mod=load('scripts/migration/ab-processor-legacy-fixture.ts',{'@/lib/prisma':{prisma:{abTest:{findMany:q=>step(q.where.status==='variant_a'?'scanA':'scanB')}}},'@/lib/youtube-auth':{getAccessToken:()=>step('token')},'@/lib/ab-test':helper,'@/lib/ai/task-runtime':{getMessagesTask:()=>step('taskSetup')}},{performance:{now:()=>now},setTimeout(fn,ms){const id=++next;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,init={})=>{assert.match(url,/^https:\/\/www.googleapis.com\/youtube\/v3\/videos\?/);if(init.method==='PUT')lastTitle=JSON.parse(init.body);return step(init.method==='PUT'?'title':'videoHeaders');}});
  const original=mod.processAbTests();void original.then(r=>{result=r;},e=>{error=e;});
  return {original,completed,state,calls,gates,entered,timers,get result(){return result;},get error(){return error;},get lastTitle(){return lastTitle;},get pending(){return pending;},get saved(){return saved;},advance(ms,fire=true){now+=ms;if(fire)for(const[id,t]of [...timers])if(t.at<=now){timers.delete(id);t.fn();}},release(stage,reject=false){if(reject)gates[stage].reject(Error('Private late '+stage));else gates[stage].resolve(state[stage]);},close(){for(const stage of stages)gates[stage].resolve(state[stage]);}};
 }

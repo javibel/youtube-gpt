@@ -218,8 +218,8 @@ type Transition =
   | { action: 'switch_variant'; at: Date; views: number }
   | { action: 'complete_test'; at: Date; views: number; winner: 'A' | 'B' | 'tie' };
 
-export function beginAbTestTransition(userId: string, expected: MutationTest, transition: Transition, beforeStep?: () => void): Promise<MutationAdmission> {
-  return admitMutation(userId, expected, transition.action, beforeStep, transition);
+export function beginAbTestTransition(userId: string, expected: MutationTest, transition: Transition, beforeStep?: () => void, nativeGuard?: AbMutationNativeGuard): Promise<MutationAdmission> {
+  return admitMutation(userId, expected, transition.action, beforeStep, transition, nativeGuard);
 }
 
 // Only a fresh, acknowledged reservation returns a live completion closure.

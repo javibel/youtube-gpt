@@ -7,18 +7,14 @@ import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
 import { runYoutubeAgent } from '@/lib/agent/youtube-agent';
 import { runFeedbackAgent } from '@/lib/agent/feedback-agent';
 import { processAbTests } from '@/lib/ab-test-processor';
+import { authorizeNativeAbProcessor } from '@/lib/ab-processor-original';
 import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 60;
 
-function verifyCronSecret(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return request.headers.get('authorization') === `Bearer ${secret}`;
-}
-
 export async function GET(request: Request) {
-  if (!verifyCronSecret(request)) {
+  const abOriginal=authorizeNativeAbProcessor(request);
+  if (!abOriginal) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -26,6 +22,11 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
 
   try {
+    // Consume the native A/B original before unrelated jobs use its budget.
+    const abResult = await processAbTests(abOriginal);
+    results.abTests = abResult;
+    errors.push(...abResult.errors);
+
     // 1. Generate Instagram content + run agents in parallel (evening = Instagram only)
     // Gmail agent disabled here — YCML (local PM2 agent) handles inbox every 30min
     const [instagram, youtubeResult] =
@@ -72,16 +73,6 @@ export async function GET(request: Request) {
       // un "[YTubViral Agent] Errores en cron vespertino" falso (silenciado 03/09).
       if (!igResult.success && !igResult.skipped) errors.push(`Instagram: ${igResult.error}`);
     }
-
-    // Process A/B tests (switch variants, complete tests)
-    const abResult = await processAbTests().catch(err => ({
-      switched: 0,
-      completed: 0,
-      unconfirmed: true,
-      errors: [`A/B test processor: ${err instanceof Error ? err.message : String(err)}`],
-    }));
-    results.abTests = { switched: abResult.switched, completed: abResult.completed, unconfirmed: abResult.unconfirmed === true };
-    errors.push(...abResult.errors);
 
     if (errors.length > 0) {
       await sendNotificationEmail(
