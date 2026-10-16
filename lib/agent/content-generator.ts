@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { randomUUID } from 'node:crypto';
 import { runCronSocialPost, type NativeCronSocialPost } from '@/lib/cron-dispatch-original';
 import { runNativeAdminSocialPreview, type NativeAdminSocialPreview } from '@/lib/admin-social-preview-native';
+import { runNativeAdminSocialDraft, type NativeAdminSocialDraft } from '@/lib/admin-social-publish-native';
 
 export type Platform = 'facebook' | 'instagram' | 'tiktok' | 'twitter';
 export type PostType = 'morning' | 'evening';
@@ -258,6 +259,49 @@ export function generateAdminSocialPreview(original?:NativeAdminSocialPreview){
     }
     return result;
   });
+}
+
+declare const adminSocialDraftResult: unique symbol;
+export type AdminSocialDraftResult={readonly[adminSocialDraftResult]:true};
+type PreparedDraft={id:string;commandRef:string;userId:string;sessionRef:string;platform:'facebook'|'instagram';type:PostType;content:string;pillar:string;validate:()=>Promise<void>;use?:Promise<unknown>};
+const preparedDrafts=new WeakMap<object,PreparedDraft>();
+
+// Separate from a preview and from the cron: only this native draft child may
+// admit and complete this command's own SQL/model work. Rows never issue a child.
+export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:PostType,original?:NativeAdminSocialDraft):Promise<AdminSocialDraftResult>{
+  return runNativeAdminSocialDraft(original,platform,type,async own=>{
+    const check=own.checkBeforeDispatch;await own.validateBeforeDispatch();
+    const since=new Date(own.at-14*86400000),rows=await prisma.$queryRawUnsafe<{source:SocialSource}[]>('SELECT '+sourceSql.replaceAll('$3','$1').replaceAll('$6','$2')+' AS source',platform,since);check();
+    if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||!validSource(rows[0].source,platform))throw Error('social_publish_unconfirmed');
+    const source=rows[0].source,sourceJson=JSON.stringify(source),pillar=pickPillar(source.pillars.map(v=>v.pillar)),context=getNarrativeContext(source),system=context?`${VOZ}\n\n${context}`:VOZ,prompt=buildPrompt(platform,pillar),id=randomUUID();
+    const args=[id,own.commandRef,platform,type,sourceJson,since,own.actorId,own.email,own.verifiedAt,own.sessionRef];
+    const actor=`EXISTS(SELECT 1 FROM users WHERE id=$7 AND email=$8 AND "emailVerified"=timezone('UTC',$9::timestamptz))`;
+    const ownRow=`id=$1 AND "commandRef"=$2 AND platform=$3 AND type=$4 AND "userId"=$7 AND email=$8 AND "sessionRef"=$10`;
+    await own.validateBeforeDispatch();const admitted=await prisma.$queryRawUnsafe<{id:string;commandRef:string;platform:string;type:string;userId:string;state:string}[]>(`
+      INSERT INTO admin_social_draft_attempts(id,"commandRef",platform,type,"userId",email,"sessionRef")
+      SELECT $1,$2,$3,$4,$7,$8,$10 WHERE ${sourceSql}=$5::jsonb AND ${actor}
+      ON CONFLICT("commandRef",platform) DO NOTHING RETURNING id,"commandRef",platform,type,"userId",state`,...args);check();
+    if(!Array.isArray(admitted)||admitted.length!==1||Object.keys(admitted[0]).length!==6||admitted[0].id!==id||admitted[0].commandRef!==own.commandRef||admitted[0].platform!==platform||admitted[0].type!==type||admitted[0].userId!==own.actorId||admitted[0].state!=='pending')throw Error('social_publish_unconfirmed');
+    const task=await getMessagesTask({operationKey:id,serviceId:'brand-agent',taskType:'brand.social-post',language:'es',instructionsVersion:'brand.social-post-v1',requiredCapabilities:['prompt_cache']});check();
+    await own.validateBeforeDispatch();const eligible=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='pending' AND ${sourceSql}=$5::jsonb AND ${actor}) AS eligible`,...args);check();
+    if(!Array.isArray(eligible)||eligible.length!==1||Object.keys(eligible[0]).length!==1||eligible[0].eligible!==true)throw Error('social_publish_unconfirmed');
+    const generated=await task.create({max_tokens:1200,messages:[{role:'user',content:prompt}],system,...(pillar.useWebSearch?{tools:[{name:'web_search' as const,maxCalls:3}]}:{})});
+    if(!Array.isArray(generated.content)||generated.content.length!==1||generated.content[0]?.type!=='text'||typeof generated.content[0].text!=='string'||!generated.content[0].text.trim()||generated.content[0].text.length>20000)throw Error('social_publish_unconfirmed');
+    // The already invoked model may settle only its own completion after caller
+    // retirement. No later platform/consumer/HTTP ACK is admitted after retirement.
+    const content=generated.content[0].text,saved=await prisma.$queryRawUnsafe<{id:string}[]>(`UPDATE admin_social_draft_attempts SET state='completed',content=$11,pillar=$12,"completedAt"=timezone('UTC',clock_timestamp()) WHERE ${ownRow} AND state='pending' AND ${sourceSql}=$5::jsonb AND ${actor} RETURNING id`,...args,content,pillar.id);
+    if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==1||saved[0].id!==id)throw Error('social_publish_unconfirmed');
+    await own.validateBeforeDispatch();
+    const validate=async()=>{await own.validateBeforeDispatch();const result=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='completed' AND content=$11 AND pillar=$12 AND "completedAt" IS NOT NULL AND ${sourceSql}=$5::jsonb AND ${actor}) AS eligible`,...args,content,pillar.id);check();if(!Array.isArray(result)||result.length!==1||Object.keys(result[0]).length!==1||result[0].eligible!==true)throw Error('social_publish_unconfirmed');await own.validateBeforeDispatch();};
+    const cap=Object.freeze({})as AdminSocialDraftResult;preparedDrafts.set(cap,{id,commandRef:own.commandRef,userId:own.actorId,sessionRef:own.sessionRef,platform,type,content,pillar:pillar.id,validate});return cap;
+  });
+}
+
+// One live continuation can consume the exact completed result. This is not an
+// external publication ACK, and no serialized draft or SQL lookup can recreate it.
+export function consumeAdminSocialDraft<T>(receipt:AdminSocialDraftResult|undefined,run:(draft:Readonly<Omit<PreparedDraft,'validate'|'use'>>&{validateBeforeDispatch:()=>Promise<void>})=>Promise<T>):Promise<T>{
+  const own=receipt&&preparedDrafts.get(receipt);if(!own)return Promise.reject(Error('social_publish_unconfirmed'));
+  return (own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({id:own.id,commandRef:own.commandRef,userId:own.userId,sessionRef:own.sessionRef,platform:own.platform,type:own.type,content:own.content,pillar:own.pillar,validateBeforeDispatch:own.validate}));await own.validate();return result;}))as Promise<T>;
 }
 
 export async function generateYoutubeReply(
