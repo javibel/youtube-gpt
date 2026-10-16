@@ -408,8 +408,8 @@ export function consumeAdminSocialDraft<T>(receipt:AdminSocialDraftResult|undefi
   return (own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({id:own.id,commandRef:own.commandRef,userId:own.userId,sessionRef:own.sessionRef,platform:own.platform,type:own.type,content:own.content,pillar:own.pillar,validateBeforeDispatch:own.validate}));await own.validate();return result;}))as Promise<T>;
 }
 
-// Partial manual publication composition: text-only Facebook. The public route
-// stays closed until images, Instagram and the native client/response are bound.
+// Text-only Facebook component. The manual route composes the infographic
+// publishers below, with its own daily admission and native HTTP continuation.
 export function publishAdminFacebookDraft(receipt:AdminSocialDraftResult|undefined):Promise<FacebookPublication>{
   const own=receipt&&preparedDrafts.get(receipt);if(!own||own.platform!=='facebook'||own.purpose&&own.purpose!=='facebook-text')return Promise.reject(Error('social_publish_unconfirmed'));own.purpose='facebook-text';
   return (own.use??=Promise.resolve().then(()=>own.publish()))as Promise<FacebookPublication>;

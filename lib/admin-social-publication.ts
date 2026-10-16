@@ -63,8 +63,7 @@ export function runAdminSocialPublication<T>(original:NativeAdminSocialPublish|u
   });
 }
 
-// Prepared HTTP composition. The public route stays503 until its native click
-// client and physical closed-transport flow are composed. No ACK builder accepts
+// Native HTTP composition, reached by the manual route. No ACK builder accepts
 // caller-supplied results: only this original's live responder can emit success.
 export function handleAdminSocialPublication(request:Request):Promise<Response>{
   const previous=requests.get(request);if(previous)return previous;

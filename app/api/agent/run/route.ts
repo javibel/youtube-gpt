@@ -11,7 +11,9 @@ export async function POST(request: Request) {
   const gate = await requireAdmin();
   if (!gate.ok) return gate.response;
 
-  const { action } = await request.clone().json();
+  let action: unknown;
+  try { ({ action } = await request.clone().json()); }
+  catch { return NextResponse.json({ok:false,error:'invalid_social_action'},{status:400,headers:{'Cache-Control':'no-store'}}); }
   // action: 'publish' | 'messages' | 'test'
   // type: 'morning' | 'evening' (for publish/test)
 
@@ -27,7 +29,8 @@ export async function POST(request: Request) {
       finally{closeNativeAdminSocialPreview(original);}
     }
     if (action === 'publish') {
-      return NextResponse.json({ok:false,error:'social_post_cron_invocation_required'},{status:503});
+      const { handleAdminSocialPublication } = await import('@/lib/admin-social-publication');
+      return handleAdminSocialPublication(request);
     }
 
     if (action === 'messages') {

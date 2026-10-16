@@ -6,7 +6,11 @@ function plan(environment=process.env,args=[]){
  const base=compilePlan(environment,args);
  if(!fs.existsSync(path.join(base.cwd,'.next/BUILD_ID')))throw Error('ISOLATION_BLOCKED: protected local build required');
  const config=JSON.parse(fs.readFileSync(path.join(base.cwd,'../migration-config.json'),'utf8'));
- return {cwd:base.cwd,host:'127.0.0.1',port:4300,env:{...base.env,DATABASE_URL:config.databaseUrl,DATABASE_URL_DIRECT:config.databaseUrl,AUTH_URL:'http://127.0.0.1:4300',AUTH_SECRET:'synthetic-local-server-secret-with-no-real-account',AUTH_TRUST_HOST:'true',ADMIN_EMAIL:fixture.email,YTV_MIGRATION_WEB_TEST:'1',STRIPE_PRO_PRICE_ID:'price_synthetic_monthly',TEMP:path.join(base.cwd,'.migration-tmp'),TMP:path.join(base.cwd,'.migration-tmp')}};
+ return {cwd:base.cwd,host:'127.0.0.1',port:4300,env:{...base.env,DATABASE_URL:config.databaseUrl,DATABASE_URL_DIRECT:config.databaseUrl,AUTH_URL:'http://127.0.0.1:4300',AUTH_SECRET:'synthetic-local-server-secret-with-no-real-account',AUTH_TRUST_HOST:'true',ADMIN_EMAIL:fixture.email,YTV_MIGRATION_WEB_TEST:'1',STRIPE_PRO_PRICE_ID:'price_synthetic_monthly',
+   // Fixed dummy values admit native configuration checks only. The runtime
+   // guard still denies every Blob/Meta transport; no real credentials enter.
+   META_PAGE_ID:'123456',META_PAGE_ACCESS_TOKEN:'closed-meta-token',INSTAGRAM_ACCOUNT_ID:'654321',INSTAGRAM_ACCESS_TOKEN:'closed-instagram-token',INSTAGRAM_GRAPH_API_VERSION:'v25.0',BLOB_READ_WRITE_TOKEN:'vercel_blob_rw_closedstore_closedsecret',
+   TEMP:path.join(base.cwd,'.migration-tmp'),TMP:path.join(base.cwd,'.migration-tmp')}};
 }
 function paymentFixtures(){
  const userId=fixture.userId;

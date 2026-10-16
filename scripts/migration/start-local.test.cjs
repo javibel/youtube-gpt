@@ -12,6 +12,7 @@ const {connectLocalFixture,cancellationFixture}=require('../../lib/migration/loc
  assert.equal(task.env.AUTH_URL,'http://127.0.0.1:4300');
  assert.equal(task.env.ADMIN_EMAIL,'migration-admin@example.invalid');
  assert.equal(task.env.STRIPE_PRO_PRICE_ID,'price_synthetic_monthly');
+ assert.deepEqual(Object.fromEntries(['META_PAGE_ID','META_PAGE_ACCESS_TOKEN','INSTAGRAM_ACCOUNT_ID','INSTAGRAM_ACCESS_TOKEN','INSTAGRAM_GRAPH_API_VERSION','BLOB_READ_WRITE_TOKEN'].map(k=>[k,task.env[k]])),{META_PAGE_ID:'123456',META_PAGE_ACCESS_TOKEN:'closed-meta-token',INSTAGRAM_ACCOUNT_ID:'654321',INSTAGRAM_ACCESS_TOKEN:'closed-instagram-token',INSTAGRAM_GRAPH_API_VERSION:'v25.0',BLOB_READ_WRITE_TOKEN:'vercel_blob_rw_closedstore_closedsecret'});
  assert.deepEqual(paymentFixtures().map(item=>item.operation),['customers.create','checkout.sessions.create','subscriptions.list','subscriptions.update']);
  assert.equal(paymentFixtures()[1].result.url,'https://example.invalid/checkout');
  assert.equal(paymentFixtures()[2].args[0].customer,cancellationFixture.customerId);
