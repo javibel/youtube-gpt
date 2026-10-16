@@ -3,6 +3,7 @@
 // ya existen en BD. La primera regla que dispara (y no está en `skip`) gana.
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
+import { nextActionFixtureFetch } from '@/lib/migration/ab-fixture.cjs';
 
 export interface NextAction {
   id: string;
@@ -37,7 +38,8 @@ async function getRecentUploads(ctx: Ctx, channelId: string): Promise<{ videoId:
   const token = await ctx.read(() => getAccessToken(ctx.userId, ctx.check, { checkRefreshStep: ctx.check }));
   if (!token) throw Error('Actions unavailable');
   const uploadsPlaylistId = 'UU' + channelId.slice(2);
-  const res = await ctx.read(() => fetch(
+  const sourceFetch = nextActionFixtureFetch(ctx.userId, token, fetch);
+  const res = await ctx.read(() => sourceFetch(
     'https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=' + uploadsPlaylistId + '&maxResults=5',
     { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' },
   ), false);
