@@ -10,7 +10,7 @@ type Platform='facebook'|'instagram';
 type Slot='morning'|'evening';
 type Own={request:Request;url:string;cookie:string;commandRef:string;origin:string;contentType:string;config:string;adminConfig:string|undefined;secret:string|undefined;
   actorId:string;email:string;sessionRef:string;verifiedAt:number;type:Slot;at:number;until:number;started:number;deadline:number;closed:boolean;promise?:Promise<unknown>};
-type Context={actorId:string;email:string;sessionRef:string;verifiedAt:Date;commandRef:string;type:Slot;platform:Platform;at:number;checkBeforeDispatch:()=>void;validateBeforeDispatch:()=>Promise<void>};
+type Context={actorId:string;email:string;sessionRef:string;verifiedAt:Date;commandRef:string;type:Slot;platform:Platform;at:number;checkBeforeDispatch:()=>void;remainingBeforeDispatch:()=>number;validateBeforeDispatch:()=>Promise<void>};
 type Draft={own:Own;platform:Platform;check:()=>void;promise?:Promise<unknown>};
 const originals=new WeakMap<object,Own>(),requests=new WeakMap<Request,Promise<NativeAdminSocialPublish|null>>(),drafts=new WeakMap<object,Draft>();
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(v);
@@ -71,7 +71,8 @@ export function runNativeAdminSocialDraft<T>(original:NativeAdminSocialDraft|und
   const child=original&&drafts.get(original);if(!child||child.platform!==platform||child.own.type!==type)return Promise.reject(Error('social_publish_unconfirmed'));
   return (child.promise??=Promise.resolve().then(async()=>{
     const own=child.own,validateBeforeDispatch=async()=>{child.check();await checkAccount(own);child.check();};
-    await validateBeforeDispatch();const result=await run({actorId:own.actorId,email:own.email,sessionRef:own.sessionRef,verifiedAt:new Date(own.verifiedAt),commandRef:own.commandRef,type:own.type,platform:child.platform,at:own.at,checkBeforeDispatch:child.check,validateBeforeDispatch});
+    const remainingBeforeDispatch=()=>{child.check();return Math.max(1,Math.floor(Math.min(own.until-Date.now(),own.deadline-performance.now())));};
+    await validateBeforeDispatch();const result=await run({actorId:own.actorId,email:own.email,sessionRef:own.sessionRef,verifiedAt:new Date(own.verifiedAt),commandRef:own.commandRef,type:own.type,platform:child.platform,at:own.at,checkBeforeDispatch:child.check,remainingBeforeDispatch,validateBeforeDispatch});
     await validateBeforeDispatch();return result;
   }))as Promise<T>;
 }

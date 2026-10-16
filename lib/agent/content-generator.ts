@@ -1,6 +1,6 @@
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { prisma } from '@/lib/prisma';
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHmac } from 'node:crypto';
 import { runCronSocialPost, type NativeCronSocialPost } from '@/lib/cron-dispatch-original';
 import { runNativeAdminSocialPreview, type NativeAdminSocialPreview } from '@/lib/admin-social-preview-native';
 import { runNativeAdminSocialDraft, type NativeAdminSocialDraft } from '@/lib/admin-social-publish-native';
@@ -263,7 +263,9 @@ export function generateAdminSocialPreview(original?:NativeAdminSocialPreview){
 
 declare const adminSocialDraftResult: unique symbol;
 export type AdminSocialDraftResult={readonly[adminSocialDraftResult]:true};
-type PreparedDraft={id:string;commandRef:string;userId:string;sessionRef:string;platform:'facebook'|'instagram';type:PostType;content:string;pillar:string;validate:()=>Promise<void>;use?:Promise<unknown>};
+type DraftDetails={id:string;commandRef:string;userId:string;sessionRef:string;platform:'facebook'|'instagram';type:PostType;content:string;pillar:string};
+type FacebookPublication=Readonly<{platform:'facebook';recordId:string;postId:string}>;
+type PreparedDraft=DraftDetails&{validate:()=>Promise<void>;facebook:()=>Promise<FacebookPublication>;purpose?:'consume'|'facebook-text';use?:Promise<unknown>};
 const preparedDrafts=new WeakMap<object,PreparedDraft>();
 
 // Separate from a preview and from the cron: only this native draft child may
@@ -292,16 +294,62 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
     const content=generated.content[0].text,saved=await prisma.$queryRawUnsafe<{id:string}[]>(`UPDATE admin_social_draft_attempts SET state='completed',content=$11,pillar=$12,"completedAt"=timezone('UTC',clock_timestamp()) WHERE ${ownRow} AND state='pending' AND ${sourceSql}=$5::jsonb AND ${actor} RETURNING id`,...args,content,pillar.id);
     if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==1||saved[0].id!==id)throw Error('social_publish_unconfirmed');
     await own.validateBeforeDispatch();
-    const validate=async()=>{await own.validateBeforeDispatch();const result=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='completed' AND content=$11 AND pillar=$12 AND "completedAt" IS NOT NULL AND ${sourceSql}=$5::jsonb AND ${actor}) AS eligible`,...args,content,pillar.id);check();if(!Array.isArray(result)||result.length!==1||Object.keys(result[0]).length!==1||result[0].eligible!==true)throw Error('social_publish_unconfirmed');await own.validateBeforeDispatch();};
-    const cap=Object.freeze({})as AdminSocialDraftResult;preparedDrafts.set(cap,{id,commandRef:own.commandRef,userId:own.actorId,sessionRef:own.sessionRef,platform,type,content,pillar:pillar.id,validate});return cap;
+    // Only this exact publication's acknowledged post/history may be excluded
+    // from its original source veto. Foreign writes still invalidate the source.
+    let published:{postId:string;historyId:number}|undefined;
+    const retainedSource=sourceSql.replace('WHERE channel=$3','WHERE channel=$3 AND id<>$14::integer').replace("WHERE status='published'","WHERE status='published' AND id<>$13");
+    const validate=async()=>{
+      await own.validateBeforeDispatch();const result=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='completed' AND content=$11 AND pillar=$12 AND "completedAt" IS NOT NULL AND ${published?retainedSource:sourceSql}=$5::jsonb AND ${actor}${published?` AND EXISTS(SELECT 1 FROM social_posts WHERE id=$13 AND platform=$3 AND content=$11 AND status='published' AND "bufferId"=$15 AND "publishedAt" IS NOT NULL AND "imageUrl" IS NULL AND "errorMsg" IS NULL) AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$14::integer AND channel=$3 AND pillar=$12)`:''}) AS eligible`,...args,content,pillar.id,...(published?[id,published.historyId,published.postId]:[]));
+      check();if(!Array.isArray(result)||result.length!==1||Object.keys(result[0]).length!==1||result[0].eligible!==true)throw Error('social_publish_unconfirmed');await own.validateBeforeDispatch();
+    };
+    const facebook=async():Promise<FacebookPublication>=>{
+      if(platform!=='facebook')throw Error('social_publish_unconfirmed');
+      const page=process.env.META_PAGE_ID,token=process.env.META_PAGE_ACCESS_TOKEN,secret=process.env.META_APP_SECRET;
+      if(!page||!/^\d{1,32}$/.test(page)||!token||/[\x00-\x1f\x7f]/.test(token))throw Error('social_publish_unconfirmed');
+      const config=()=>{check();if(process.env.META_PAGE_ID!==page||process.env.META_PAGE_ACCESS_TOKEN!==token||process.env.META_APP_SECRET!==secret)throw Error('social_publish_unconfirmed');};
+      await validate();config();
+      // The draft's UUID is also this one publication's record ID. INSERT ACK
+      // never authorizes adoption of an existing pending/failed/published row.
+      const admitted=await prisma.$queryRawUnsafe<{id:string}[]>(`INSERT INTO social_posts(id,platform,content,status)
+        SELECT $1,$3,$11,'publishing' WHERE EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='completed' AND content=$11 AND pillar=$12)
+          AND ${sourceSql}=$5::jsonb AND ${actor}
+        ON CONFLICT(id) DO NOTHING RETURNING id`,...args,content,pillar.id);
+      config();if(!Array.isArray(admitted)||admitted.length!==1||Object.keys(admitted[0]).length!==1||admitted[0].id!==id)throw Error('social_publish_unconfirmed');
+      await validate();const eligible=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM social_posts WHERE id=$1 AND platform=$2 AND content=$3 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NULL AND "errorMsg" IS NULL) AS eligible`,id,platform,content);
+      config();if(!Array.isArray(eligible)||eligible.length!==1||Object.keys(eligible[0]).length!==1||eligible[0].eligible!==true)throw Error('social_publish_unconfirmed');
+      await validate();config();
+      const message=content.replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1').replace(/__(.*?)__/g,'$1').replace(/_(.*?)_/g,'$1').replace(/`(.*?)`/g,'$1').replace(/#{1,6}\s/g,'');
+      const proof=secret?createHmac('sha256',secret).update(token).digest('hex'):undefined;
+      // One already-invoked publisher may settle only its own SQL completion.
+      // Lost/rejected ACK leaves `publishing`; no retry, fallback or row recovery.
+      const response=await fetch(`https://graph.facebook.com/v19.0/${page}/feed`,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,access_token:token,...(proof?{appsecret_proof:proof}:{})}),signal:AbortSignal.timeout(own.remainingBeforeDispatch())});
+      const ack:unknown=await response.json();
+      if(!response.ok||response.redirected||!ack||typeof ack!=='object'||Array.isArray(ack)||!('id'in ack)||typeof ack.id!=='string'||!/^\d{1,32}_\d{1,32}$/.test(ack.id)||!ack.id.startsWith(page+'_')||'error'in ack)throw Error('social_publish_unconfirmed');
+      const postId=ack.id,completed=await prisma.$queryRawUnsafe<{id:string;postId:string;historyId:number}[]>(`WITH updated AS(
+        UPDATE social_posts SET status='published',"publishedAt"=timezone('UTC',clock_timestamp()),"bufferId"=$5
+          WHERE id=$1 AND platform=$2 AND content=$3 AND status='publishing' AND "publishedAt" IS NULL AND "bufferId" IS NULL AND "imageUrl" IS NULL AND "errorMsg" IS NULL RETURNING id),
+        history AS(INSERT INTO social_pillar_history(channel,pillar) SELECT $2,$4 FROM updated RETURNING id)
+        SELECT updated.id,$5::text AS "postId",history.id AS "historyId" FROM updated CROSS JOIN history`,id,platform,content,pillar.id,postId);
+      if(!Array.isArray(completed)||completed.length!==1||Object.keys(completed[0]).length!==3||completed[0].id!==id||completed[0].postId!==postId||!Number.isSafeInteger(completed[0].historyId))throw Error('social_publish_unconfirmed');
+      published={postId,historyId:completed[0].historyId};await validate();config();
+      return Object.freeze({platform:'facebook',recordId:id,postId});
+    };
+    const cap=Object.freeze({})as AdminSocialDraftResult;preparedDrafts.set(cap,{id,commandRef:own.commandRef,userId:own.actorId,sessionRef:own.sessionRef,platform,type,content,pillar:pillar.id,validate,facebook});return cap;
   });
 }
 
 // One live continuation can consume the exact completed result. This is not an
 // external publication ACK, and no serialized draft or SQL lookup can recreate it.
-export function consumeAdminSocialDraft<T>(receipt:AdminSocialDraftResult|undefined,run:(draft:Readonly<Omit<PreparedDraft,'validate'|'use'>>&{validateBeforeDispatch:()=>Promise<void>})=>Promise<T>):Promise<T>{
-  const own=receipt&&preparedDrafts.get(receipt);if(!own)return Promise.reject(Error('social_publish_unconfirmed'));
+export function consumeAdminSocialDraft<T>(receipt:AdminSocialDraftResult|undefined,run:(draft:Readonly<DraftDetails>&{validateBeforeDispatch:()=>Promise<void>})=>Promise<T>):Promise<T>{
+  const own=receipt&&preparedDrafts.get(receipt);if(!own||own.purpose&&own.purpose!=='consume')return Promise.reject(Error('social_publish_unconfirmed'));own.purpose='consume';
   return (own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({id:own.id,commandRef:own.commandRef,userId:own.userId,sessionRef:own.sessionRef,platform:own.platform,type:own.type,content:own.content,pillar:own.pillar,validateBeforeDispatch:own.validate}));await own.validate();return result;}))as Promise<T>;
+}
+
+// Partial manual publication composition: text-only Facebook. The public route
+// stays closed until images, Instagram and the native client/response are bound.
+export function publishAdminFacebookDraft(receipt:AdminSocialDraftResult|undefined):Promise<FacebookPublication>{
+  const own=receipt&&preparedDrafts.get(receipt);if(!own||own.platform!=='facebook'||own.purpose&&own.purpose!=='facebook-text')return Promise.reject(Error('social_publish_unconfirmed'));own.purpose='facebook-text';
+  return (own.use??=Promise.resolve().then(own.facebook))as Promise<FacebookPublication>;
 }
 
 export async function generateYoutubeReply(
