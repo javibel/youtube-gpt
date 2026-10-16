@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { AbVideo } from './use-ab-test-read';
+import { abSuggestionInput, abSuggestedVariants } from '@/lib/ab-suggestions-contract';
 
 type Status = 'idle' | 'sending' | 'unconfirmed' | 'confirmed' | 'rejected' | 'lost' | 'storage-unavailable';
 interface Selection { video: AbVideo; lang: 'es' | 'en'; token: object }
@@ -28,12 +29,15 @@ function createSuggestions(account: string) {
     start(selection: Selection) {
       observe();
       if (blocked(snapshot.status)) return null;
+      const captured = { ...selection, video: { ...selection.video } };
+      let input: ReturnType<typeof abSuggestionInput>;
+      try { input = abSuggestionInput({ title: captured.video.title, lang: captured.lang }); }
+      catch { publish({ status: 'rejected', selection: captured, variants: null }); return null; }
       let key: string;
       try { key = crypto.randomUUID(); window.sessionStorage.setItem(marker, 'unconfirmed'); }
       catch { publish({ status: 'storage-unavailable' }); return null; }
       // Copy the original selection; caller edits cannot change its payload.
-      const captured = { ...selection, video: { ...selection.video } };
-      const body = JSON.stringify({ title: captured.video.title, lang: captured.lang });
+      const body = JSON.stringify(input);
       const owner = {}; original = owner;
       let done!: () => void;
       const wait = new Promise<void>(resolve => { done = resolve; });
@@ -49,16 +53,17 @@ function createSuggestions(account: string) {
           });
           const data = await response.json();
           if (original !== owner) return;
-          const confirmed = response.status === 200 && response.ok && data
-            && typeof data.variantA === 'string' && !!data.variantA.trim()
-            && typeof data.variantB === 'string' && !!data.variantB.trim();
+          let variants: ReturnType<typeof abSuggestedVariants> | null = null;
+          if (response.status === 200 && response.ok) {
+            try { variants = abSuggestedVariants(data, captured.video.title); } catch { /* Keep uncertainty. */ }
+          }
+          const confirmed = variants !== null;
           const rejected = !response.ok && data && (
             (response.status === 400 && ['Title required', 'Invalid operation key'].includes(data.error))
             || (response.status === 401 && data.error === 'Unauthorized')
             || (response.status === 403 && data.error === 'pro_required')
           );
           if (!confirmed && !rejected) { uncertain(); return; }
-          const variants = confirmed ? { variantA: data.variantA, variantB: data.variantB } : null;
           try { window.sessionStorage.removeItem(marker); }
           catch { publish({ status: 'storage-unavailable', variants }); done(); return; }
           original = null;

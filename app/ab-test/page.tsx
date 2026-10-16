@@ -270,6 +270,10 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
                       {t('Sugerir con IA', 'AI suggestions')}
                     </button>
 
+                    <p className="text-[13px] mb-4" style={{ color: 'var(--yv-text-4)' }}>
+                      {t('Las sugerencias son alternativas editoriales sin validar. Revisa que sean veraces; no se ha demostrado una mejora de clics o vistas.', 'Suggestions are untested editorial alternatives. Check their factual accuracy; improved clicks or views have not been demonstrated.')}
+                    </p>
+
                     {/* Duration selector */}
                     <div className="mb-6">
                       <label className="font-mono-jb text-[13px] uppercase tracking-wider block mb-2" style={{ color: 'var(--yv-text-3)' }}>

@@ -22,7 +22,7 @@ function harness(options={}){
    return {create:async parameters=>{calls.push(parameters);return facade.create(parameters);}};
   }},
  },{process:{env:{ANTHROPIC_API_KEY:'synthetic-not-a-key'}}});
- async function run(body={title:'Synthetic original',lang:'es'}){const r=await route.POST(new Request('https://example.invalid/api/youtube/ab-test/suggest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
+ async function run(body={title:'Synthetic original',lang:'es'}){const r=await route.POST(new Request('https://example.invalid/api/youtube/ab-test/suggest',{method:'POST',headers:{'content-type':'application/json','Idempotency-Key':'synthetic-original'},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()};}
  return {run,calls,events};
 }
 const results=[];
@@ -31,13 +31,13 @@ async function test(name,fn,known=false){try{await fn();results.push({name,statu
  for(const [name,options,status] of [['anonymous blocked',{anonymous:true},401],['free plan blocked',{free:true},403]])await test(name,async()=>{const h=harness(options);assert.equal((await h.run()).status,status);assert.equal(h.calls.length,0);});
  for(const body of [{},{title:''},{title:' '},{title:42},{title:{}},{title:[]},null])await test('invalid title rejected: '+JSON.stringify(body),async()=>{const h=harness();assert.equal((await h.run(body)).status,400);assert.equal(h.calls.length,0);});
  await test('response contract preserved',async()=>assert.deepEqual(await harness().run(),{status:200,body:variants}));
- await test('Spanish instructions',async()=>{const h=harness();await h.run();assert.match(h.calls[0].messages[0].content,/Eres un experto/);});
- await test('English instructions',async()=>{const h=harness();await h.run({title:'Synthetic original',lang:'en'});assert.match(h.calls[0].messages[0].content,/You are a YouTube SEO expert/);});
+ await test('Spanish instructions',async()=>{const h=harness();await h.run();assert.match(h.calls[0].messages[0].content,/Escribe dos alternativas/);});
+ await test('English instructions',async()=>{const h=harness();await h.run({title:'Synthetic original',lang:'en'});assert.match(h.calls[0].messages[0].content,/Write two editorial/);});
  await test('original title included',async()=>{const h=harness();await h.run();assert.match(h.calls[0].messages[0].content,/Synthetic original/);});
  await test('output token allowance preserved',async()=>{const h=harness();await h.run();assert.equal(h.calls[0].max_tokens,200);});
  await test('markdown JSON parsed',async()=>assert.deepEqual((await harness({text:'```json\n'+JSON.stringify(variants)+'\n```'}).run()).body,variants));
  await test('malformed JSON controlled',async()=>assert.equal((await harness({text:'invalid JSON'}).run()).status,503));
- await test('partial variants preserve existing fallback',async()=>{assert.deepEqual((await harness({text:JSON.stringify({variantA:'Synthetic A'})}).run()).body,{variantA:'Synthetic A',variantB:'Synthetic original'});});
+ await test('partial variants never substitute the original title',async()=>{assert.equal((await harness({text:JSON.stringify({variantA:'Synthetic A'})}).run()).status,503);});
  await test('non-text block results in parse error',async()=>{assert.equal((await harness({reply:{content:[{type:'tool_use'}]}}).run()).status,503);});
  await test('valid JSON null controlled by parse boundary',async()=>{assert.equal((await harness({text:'null'}).run()).status,503);});
  await test('valid whitespace around JSON',async()=>assert.deepEqual((await harness({text:' \n'+JSON.stringify(variants)+'\n '}).run()).body,variants));
