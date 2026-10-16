@@ -44,7 +44,13 @@ try {
             if ($arguments[0] -ne 'node' -or $arguments.Count -lt 2 -or ($arguments | Where-Object { $_ -notmatch '^[-A-Za-z0-9_./]+$' }) -or ($arguments[1] -split '/') -contains '..' -or [IO.Path]::IsPathRooted($arguments[1])) { throw 'Expected an explicit local Node verification entry' }
             Add-Content -LiteralPath $logFile -Value "$suite :: $part"
             $outputOffset = [IO.File]::ReadAllText($logFile).Length
-            & $nodeExe @($arguments[1..($arguments.Count - 1)]) *>> $logFile
+            $executionArguments = @($arguments[1..($arguments.Count - 1)])
+            # execArgv changes inside build-local only reach its workers. These
+            # flags must also be present when the main Node process starts.
+            if ($arguments[1] -eq 'scripts/migration/build-local.cjs') {
+                $executionArguments = @('--trace-exit','--trace-uncaught','--unhandled-rejections=strict') + $executionArguments
+            }
+            & $nodeExe @executionArguments *>> $logFile
             if ($LASTEXITCODE -ne 0) { $failed = $true; break }
             if ($arguments[1] -eq 'scripts/migration/database.test.cjs') {
                 # Exit zero alone cannot prove a Promise-based contract finished.
