@@ -58,7 +58,9 @@ export function beginAbNativeCreation(owner: AbNativeCreationOwner, candidate: A
     if(!row||!/^[A-Za-z0-9_-]{1,128}$/.test(row.id)||row.videoId!==input.videoId||row.originalTitle!==input.originalTitle||row.variantA!==input.variantA||row.variantB!==input.variantB||row.hoursPerVariant!==input.hoursPerVariant||row.status!=='variant_a'||new Date(row.startedAt).toISOString()!==row.startedAt||Date.parse(row.startedAt)<startedAt||Date.parse(row.startedAt)>Date.now()||!count(row.initialViews)||row.initialViews>2147483647||row.switchedAt!==null||row.completedAt!==null||row.switchViews!==null||row.endViews!==null||row.winner!==null||row.aiInsight!==null||row.thumbnail!==null&&(!row.thumbnail.startsWith('https://i.ytimg.com/vi/'+input.videoId+'/')||row.thumbnail.length>2048))throw Error('ab_creation_unconfirmed');
     const data:AbNativeCreationResult={request:selected,test:row,analysis:ack as AbNativeCreationResult['analysis']};check();
     reservation.complete();
-    displayExpiresAt=Math.min(captured.expiresAt,data.analysis.sessionExpiresAt);completed = true; clearTimeout(timer); timer = setTimeout(retire, Math.max(0, Math.min(captured.expiresAt,data.analysis.sessionExpiresAt) - Date.now()));
+    // HTML timers take a signed 32-bit delay. A normal 30-day session must not
+    // overflow into an immediate retirement of this original acknowledgement.
+    displayExpiresAt=Math.min(captured.expiresAt,data.analysis.sessionExpiresAt);completed = true; clearTimeout(timer); timer = setTimeout(retire, Math.min(2147483647, Math.max(0, displayExpiresAt - Date.now())));
     const freeze = (v: unknown): void => { if (v && typeof v === 'object') { for (const child of Object.values(v)) freeze(child); Object.freeze(v); } };
     freeze(data);
     const receipt = Object.freeze({}) as AbNativeCreationReceipt; receipts.set(receipt, { owner: own, data }); return receipt;

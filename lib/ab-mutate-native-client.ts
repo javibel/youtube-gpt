@@ -60,7 +60,9 @@ export function beginAbNativeMutation(owner: AbNativeMutationOwner, candidate: A
     if(Object.entries(expected).some(([k,v])=>row[k as keyof AbTest]!==v)||input.action==='cancel'&&(!row.completedAt||Date.parse(row.completedAt)<startedAt||Date.parse(row.completedAt)>Date.now()))throw Error('ab_mutation_unconfirmed');
     const data:AbNativeMutationResult={request:selected,test:row,analysis:ack as AbNativeMutationResult['analysis']};check();
     reservation.complete();
-    displayExpiresAt=Math.min(captured.expiresAt,data.analysis.sessionExpiresAt);completed = true; clearTimeout(timer); timer = setTimeout(retire, Math.max(0, Math.min(captured.expiresAt,data.analysis.sessionExpiresAt) - Date.now()));
+    // HTML timers take a signed 32-bit delay. A normal 30-day session must not
+    // overflow into an immediate retirement of this original acknowledgement.
+    displayExpiresAt=Math.min(captured.expiresAt,data.analysis.sessionExpiresAt);completed = true; clearTimeout(timer); timer = setTimeout(retire, Math.min(2147483647, Math.max(0, displayExpiresAt - Date.now())));
     const freeze = (v: unknown): void => { if (v && typeof v === 'object') { for (const child of Object.values(v)) freeze(child); Object.freeze(v); } };
     freeze(data);
     const receipt = Object.freeze({}) as AbNativeMutationReceipt; receipts.set(receipt, { owner: own, data }); return receipt;

@@ -55,7 +55,9 @@ export function beginAbNativeSuggestion(owner: AbNativeSuggestionOwner, candidat
       ||!count(ack.asOf)||ack.asOf<startedAt||ack.asOf>Date.now()||!count(ack.expiresAt)||ack.expiresAt<=Date.now()||ack.expiresAt-ack.asOf>55000||!count(ack.sessionExpiresAt)||ack.sessionExpiresAt<ack.expiresAt||ack.sourceOwnership!=='matched-native-channel'||ack.quality!=='untested-editorial-alternatives')throw Error('ab_suggestions_unconfirmed');
     const data:AbNativeSuggestionResult={request:selected,variants:abSuggestedVariants(parsed.variants,input.title),analysis:ack as AbNativeSuggestionResult['analysis']};check();
     try{if(pendingUsers.get(account)!==own)throw Error('ab_suggestions_unconfirmed');sessionStorage.removeItem(storageKey);pendingUsers.delete(account);}catch{deniedUsers.add(account);}
-    displayExpiresAt=Math.min(captured.expiresAt,data.analysis.sessionExpiresAt);completed = true; clearTimeout(timer); timer = setTimeout(retire, Math.max(0, Math.min(captured.expiresAt,data.analysis.sessionExpiresAt) - Date.now()));
+    // HTML timers take a signed 32-bit delay. A normal 30-day session must not
+    // overflow into an immediate retirement of this original acknowledgement.
+    displayExpiresAt=Math.min(captured.expiresAt,data.analysis.sessionExpiresAt);completed = true; clearTimeout(timer); timer = setTimeout(retire, Math.min(2147483647, Math.max(0, displayExpiresAt - Date.now())));
     const freeze = (v: unknown): void => { if (v && typeof v === 'object') { for (const child of Object.values(v)) freeze(child); Object.freeze(v); } };
     freeze(data);
     const receipt = Object.freeze({}) as AbNativeSuggestionReceipt; receipts.set(receipt, { owner: own, data }); return receipt;
