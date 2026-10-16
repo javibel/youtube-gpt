@@ -8,6 +8,7 @@ import ExitIntentPopup from '@/components/ExitIntentPopup';
 import ExtensionInstallBanner from '@/components/ExtensionInstallBanner';
 import PublicNav from '@/components/PublicNav';
 import { ImageIcon, LinkIcon, VideoIcon } from '@/components/icons';
+import PrivateVideoReviewPanel from '@/components/PrivateVideoReviewPanel';
 
 type Lang = 'es' | 'en';
 
@@ -195,11 +196,7 @@ function SeoScoreContent() {
   const [urlResult, setUrlResult] = useState<VideoScore | null>(null);
   const [urlError, setUrlError] = useState('');
 
-  const [channelLoading, setChannelLoading] = useState(false);
-  const [channelScores, setChannelScores] = useState<VideoScore[]>([]);
-  const [channelError, setChannelError] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [hasLoadedChannel, setHasLoadedChannel] = useState(false);
 
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
@@ -212,17 +209,6 @@ function SeoScoreContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (!isAuthed) return;
-    fetch('/api/youtube/seo-score')
-      .then(r => r.json())
-      .then(data => {
-        if (data.scores?.length) setChannelScores(data.scores);
-        setHasLoadedChannel(true);
-      })
-      .catch(() => setHasLoadedChannel(true));
-  }, [isAuthed]);
 
   async function handleUrlAnalyze(e?: React.FormEvent, overrideUrl?: string) {
     e?.preventDefault();
@@ -256,39 +242,7 @@ function SeoScoreContent() {
     }
   }
 
-  async function handleChannelAnalyze() {
-    setChannelLoading(true);
-    setChannelError('');
-    try {
-      const res = await fetch('/api/youtube/seo-score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.error === 'pro_required') {
-          setChannelError(t('Esta función requiere el plan Pro.', 'This feature requires the Pro plan.'));
-        } else if (data.error === 'youtube_not_connected') {
-          setChannelError(t('Conecta tu canal de YouTube primero desde el Dashboard.', 'Connect your YouTube channel first from the Dashboard.'));
-        } else {
-          setChannelError(data.error || 'Error');
-        }
-        return;
-      }
-      setChannelScores(data.scores || []);
-    } catch {
-      setChannelError(t('Error de conexión', 'Connection error'));
-    } finally {
-      setChannelLoading(false);
-    }
-  }
-
-  const allScores = [
-    ...(urlResult ? [urlResult] : []),
-    ...channelScores.filter(s => s.videoId !== urlResult?.videoId),
-  ];
-  const avgScore = allScores.length ? Math.round(allScores.reduce((s, v) => s + v.score, 0) / allScores.length) : 0;
+  const allScores = urlResult ? [urlResult] : [];
 
   return (
     <div className="yv-page">
@@ -349,45 +303,9 @@ function SeoScoreContent() {
         </div>
       )}
 
-      {isAuthed && (
-        <div className="mb-8 flex items-center gap-4">
-          <button
-            onClick={handleChannelAnalyze}
-            disabled={channelLoading}
-            className="yv-btn yv-btn--ghost text-sm font-mono-jb tracking-wider"
-          >
-            {channelLoading ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {t('Analizando canal...', 'Analyzing channel...')}
-              </span>
-            ) : (
-              t('Analizar mis vídeos (Pro)', 'Analyze my videos (Pro)')
-            )}
-          </button>
-          {allScores.length > 0 && (
-            <div className="flex items-center gap-3">
-              <div
-                className="px-4 py-2 rounded-lg font-mono-jb text-sm font-bold"
-                style={{ background: scoreBg(avgScore), color: scoreColor(avgScore), boxShadow: `inset 0 1px 0 ${scoreColor(avgScore)}55` }}
-              >
-                {t('Media', 'Average')}: {avgScore}/100
-              </div>
-              <span className="text-[13px] font-mono-jb" style={{ color: 'var(--yv-text-4)' }}>
-                {allScores.length} {t('vídeos', 'videos')}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+      {isAuthed && <PrivateVideoReviewPanel />}
 
-      {channelError && (
-        <div className="yv-note yv-note--error">
-          {channelError}
-        </div>
-      )}
-
-      {!urlResult && (!isAuthed || (hasLoadedChannel && channelScores.length === 0)) && !urlLoading && !channelLoading && (
+      {!urlResult && !urlLoading && (
         <div className="text-center py-20">
           <div className="mb-4"><img src="/icons/target.webp" alt="" width={56} height={56} className="inline-block object-contain" /></div>
           <p className="font-mono-jb text-sm" style={{ color: 'var(--yv-text-2)' }}>
