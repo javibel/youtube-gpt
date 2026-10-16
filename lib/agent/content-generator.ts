@@ -201,8 +201,9 @@ function validSource(s:SocialSource,platform:string):boolean {
 }
 declare const cronSocialImagePrompt:unique symbol;
 export type CronSocialImagePrompt={readonly[cronSocialImagePrompt]:true};
-type CronImageSource={id:string;date:string;platform:string;slot:string;content:string;validate:()=>Promise<void>;remaining:()=>number;prompt?:Promise<CronSocialImagePrompt>};
-type PreparedCronPrompt={source:CronImageSource;prompt:string;imageAttemptId:string;validate:()=>Promise<void>;use?:Promise<unknown>};
+type CacheAck={date:string;url:string;source:string;stamp:string};
+type CronImageSource={id:string;date:string;platform:string;slot:string;content:string;validate:()=>Promise<void>;remaining:()=>number;writeCache:(imageAttemptId:string,url:string,source:string)=>Promise<CacheAck[]>;prompt?:Promise<CronSocialImagePrompt>};
+type PreparedCronPrompt={source:CronImageSource;prompt:string;imageAttemptId:string;validate:()=>Promise<void>;cache?:CacheAck;use?:Promise<unknown>};
 const cronImageSources=new WeakMap<object,CronImageSource>(),cronImagePrompts=new WeakMap<object,PreparedCronPrompt>();
 
 export function generateSocialPost(
@@ -244,7 +245,14 @@ export function generateSocialPost(
     };
     // Only this producer's own completed SQL/history ACK issues an image source.
     // Its private native lifetime remains captured;rows never recreate it.
-    check();cronImageSources.set(original!,{id,date,platform,slot:type,content,validate,remaining});
+    const writeCache=(imageAttemptId:string,url:string,cacheSource:string)=>prisma.$queryRawUnsafe<CacheAck[]>(`
+      INSERT INTO daily_brand_image(image_date,url,source)
+      SELECT $2::date,$10,$11 WHERE EXISTS(SELECT 1 FROM social_post_generation_attempts WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='completed'
+        AND content=$7 AND pillar=$8 AND "completedAt" IS NOT NULL AND ${retainedSource}=$5::jsonb AND ${noPriorSocialPost}
+        AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$9::integer AND channel=$3 AND pillar=$8))
+      AND EXISTS(SELECT 1 FROM cron_daily_brand_image_attempts WHERE id=$12 AND date=$2 AND "sourceId"=$1 AND platform=$3 AND slot=$4 AND state='admitted')
+      ON CONFLICT(image_date) DO NOTHING RETURNING image_date::text AS date,url,source,created_at::text AS stamp`,...args,content,pillar.id,historyId,url,cacheSource,imageAttemptId);
+    check();cronImageSources.set(original!,{id,date,platform,slot:type,content,validate,remaining,writeCache});
     return content;
   });
 }
@@ -265,10 +273,11 @@ export function generateCronSocialImagePrompt(original?:NativeCronSocialPost):Pr
     await own.validate();
     if(!Array.isArray(admitted)||admitted.length!==1||Object.keys(admitted[0]).length!==6||admitted[0].id!==imageAttemptId
       ||admitted[0].date!==own.date||admitted[0].sourceId!==own.id||admitted[0].platform!==own.platform||admitted[0].slot!==own.slot||admitted[0].state!=='admitted')throw Error('daily_brand_image_unconfirmed');
+    let prepared:PreparedCronPrompt|undefined;
     const validate=async()=>{
-      await own.validate();const rows=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM cron_daily_brand_image_attempts
+      const cache=prepared?.cache;await own.validate();const rows=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM cron_daily_brand_image_attempts
         WHERE id=$1 AND date=$2 AND "sourceId"=$3 AND platform=$4 AND slot=$5 AND state='admitted'
-        AND NOT EXISTS(SELECT 1 FROM daily_brand_image WHERE image_date=$2::date)) AS eligible`,...imageArgs);
+        AND ${cache?'EXISTS(SELECT 1 FROM daily_brand_image WHERE image_date=$2::date AND url=$6 AND source=$7 AND created_at::text=$8)':'NOT EXISTS(SELECT 1 FROM daily_brand_image WHERE image_date=$2::date)'}) AS eligible`,...imageArgs,...(cache?[cache.url,cache.source,cache.stamp]:[]));
       await own.validate();if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||rows[0].eligible!==true)throw Error('daily_brand_image_unconfirmed');
     };
     await validate();const signal=AbortSignal.timeout(own.remaining());
@@ -279,12 +288,41 @@ export function generateCronSocialImagePrompt(original?:NativeCronSocialPost):Pr
     // uncertain result cannot issue an image/download/upload continuation.
     if(result.incomplete===true||!Array.isArray(result.content)||result.content.length!==1||result.content[0]?.type!=='text'||typeof result.content[0].text!=='string')throw Error('daily_brand_image_unconfirmed');
     const prompt=result.content[0].text.trim();if(!prompt||Array.from(prompt).length>200)throw Error('daily_brand_image_unconfirmed');
-    await validate();const cap=Object.freeze({})as CronSocialImagePrompt;cronImagePrompts.set(cap,{source:own,prompt,imageAttemptId,validate});return cap;
+    await validate();const cap=Object.freeze({})as CronSocialImagePrompt;prepared={source:own,prompt,imageAttemptId,validate};cronImagePrompts.set(cap,prepared);return cap;
   });
 }
 export function consumeCronSocialImagePrompt<T>(receipt:CronSocialImagePrompt|undefined,run:(prompt:Readonly<{id:string;date:string;platform:string;slot:string;content:string;prompt:string;imageAttemptId:string;validateBeforeDispatch:()=>Promise<void>;remainingBeforeDispatch:()=>number}>)=>Promise<T>):Promise<T>{
   const own=receipt&&cronImagePrompts.get(receipt);if(!own)return Promise.reject(Error('daily_brand_image_unconfirmed'));
   return (own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({id:own.source.id,date:own.source.date,platform:own.source.platform,slot:own.source.slot,content:own.source.content,prompt:own.prompt,imageAttemptId:own.imageAttemptId,validateBeforeDispatch:own.validate,remainingBeforeDispatch:own.source.remaining}));await own.validate();return result;}))as Promise<T>;
+}
+
+// Only an already invoked native Blob PUT's private ACK may complete this cache.
+// A cache row,URL,serialized claim or a fresh GET can never recreate that ACK.
+declare const cronBrandImageCache:unique symbol;
+export type NativeCronBrandImageCache={readonly[cronBrandImageCache]:true};
+const cacheAttempts=new WeakMap<object,Promise<NativeCronBrandImageCache>>(),completedCaches=new WeakMap<object,{ack:CacheAck;validate:()=>Promise<void>;use?:Promise<unknown>}>();
+export function completeCronBrandImageCache(upload?:import('./cron-brand-image').NativeUploadedCronBrandImage):Promise<NativeCronBrandImageCache>{
+  if(!upload||typeof upload!=='object')return Promise.reject(Error('daily_brand_image_unconfirmed'));
+  const previous=cacheAttempts.get(upload);if(previous)return previous;
+  const pending=Promise.resolve().then(async()=>{
+    const {consumeUploadedCronBrandImage}=await import('./cron-brand-image');
+    return consumeUploadedCronBrandImage(upload,async image=>{
+      const own=cronImagePrompts.get(image.promptReceipt);
+      if(!own||own.imageAttemptId!==image.imageAttemptId||own.source.id!==image.id||own.source.date!==image.date)throw Error('daily_brand_image_unconfirmed');
+      await image.validateBeforeDispatch();await own.validate();
+      const source='cron-native-v1:'+own.imageAttemptId,rows=await own.source.writeCache(own.imageAttemptId,image.url,source);
+      // Set the lexical exception only from this INSERT's own complete ACK.
+      // Lost/ambiguous ACKs retain uncertainty and never adopt a row afterwards.
+      if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==4||rows[0].date!==own.source.date||rows[0].url!==image.url||rows[0].source!==source||typeof rows[0].stamp!=='string'||!rows[0].stamp)throw Error('daily_brand_image_unconfirmed');
+      own.cache=Object.freeze({...rows[0]});await image.validateBeforeDispatch();await own.validate();
+      const cap=Object.freeze({})as NativeCronBrandImageCache;completedCaches.set(cap,{ack:own.cache,validate:image.validateBeforeDispatch});return cap;
+    });
+  }).then(cap=>{if(!cap||typeof cap!=='object'||!completedCaches.has(cap))throw Error('daily_brand_image_unconfirmed');return cap;});
+  cacheAttempts.set(upload,pending);return pending;
+}
+export function consumeCronBrandImageCache<T>(receipt:NativeCronBrandImageCache|undefined,run:(image:Readonly<{date:string;url:string;source:string}>)=>Promise<T>):Promise<T>{
+  const own=receipt&&completedCaches.get(receipt);if(!own)return Promise.reject(Error('daily_brand_image_unconfirmed'));
+  return(own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({date:own.ack.date,url:own.ack.url,source:own.ack.source}));await own.validate();return result;}))as Promise<T>;
 }
 
 export function generateAdminSocialPreview(original?:NativeAdminSocialPreview){
