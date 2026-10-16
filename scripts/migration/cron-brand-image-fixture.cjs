@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs'),{fixture}=require('./social-post-original-fixture.cjs');
+function imageFixture(o={}){
+ const b=fixture(o);b.env.BRAND_IMAGE_DOWNLOAD_HOSTS='images.example.invalid';
+ const runtime=o.binaryRuntime??{getMessagesTask:(identity,options)=>b.stage('binary-task',async()=>{assert.equal(identity.serviceId,'brand-agent');assert.equal(identity.taskType,'brand.image-generation');assert.equal(identity.instructionsVersion,'brand-image-generation-v1');assert.equal(identity.language,'en');assert.deepEqual([...identity.requiredCapabilities],['image_generation']);assert.match(identity.operationKey,/^[0-9a-f-]{36}:image$/);assert(options.signal instanceof AbortSignal);return{create:(params,opts)=>b.stage('binary-model',async()=>{assert.equal(params.max_tokens,2048);assert(opts.signal instanceof AbortSignal);assert(params.messages[0].content);return o.binaryResult??{content:[{type:'text',text:JSON.stringify({kind:'brand-image-reference-v1',url:'https://images.example.invalid/own.png'})}]};})};})};
+ const mocks={'@/lib/ai/task-runtime':runtime,'@/lib/ai/brand-image-reference.cjs':require('../../lib/ai/brand-image-reference.cjs'),'./content-generator':b.mod,'@/lib/image/cron-brand-image-download':{prepareCronBrandImageDownload:()=>{const hosts=b.env.BRAND_IMAGE_DOWNLOAD_HOSTS;return{check:()=>{if(hosts!==b.env.BRAND_IMAGE_DOWNLOAD_HOSTS)throw Error('Changed download config');},download:(_url,_remaining,_validate)=>b.stage('binary-download',async()=>Buffer.from('Original bounded download'))};}},'@/lib/image/cron-brand-image-codec':{decodeCronBrandImage:()=>b.stage('binary-decode',async()=>Buffer.from([255,216,255,217]))}};
+ b.image=load('lib/agent/cron-brand-image.ts',mocks,b.globals);
+ b.beginImage=run=>b.begin('facebook','morning',async cap=>{await b.mod.generateSocialPost('facebook','morning',cap);b.prompt=await b.mod.generateCronSocialImagePrompt(cap);const image=await b.image.generateCronBrandImage(b.prompt);b.imageCap=image;return run?run(image):image;});return b;
+}
+module.exports={imageFixture};
