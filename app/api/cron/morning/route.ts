@@ -1,5 +1,5 @@
 import { authorizeCronDispatch, runCronDispatch } from '@/lib/cron-dispatch-original';
-import { getMessagesTask } from '@/lib/ai/task-runtime';
+import { generateDailyTipOriginal } from '@/lib/daily-tip-original';
 import { NextResponse } from 'next/server';
 import { generateSocialPost } from '@/lib/agent/content-generator';
 import {
@@ -19,43 +19,8 @@ import { sendVerificationReminders } from '@/lib/agent/verification-reminder';
 import { sendReengagementEmails } from '@/lib/agent/reengagement-email';
 import { sendDailyIdeasEmails } from '@/lib/daily-ideas-email';
 import { generateDailyIdeas } from '@/lib/daily-ideas';
-import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 120;
-
-function todayUTC(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-async function generateAndSaveDailyTip(): Promise<{ skipped: boolean }> {
-  const date = todayUTC();
-  const existing = await prisma.dailyTip.findUnique({ where: { date } });
-  if (existing) return { skipped: true };
-
-  const task = await getMessagesTask({ serviceId: 'morning-cron', taskType: 'site.daily-tip', language: 'es', instructionsVersion: 'daily-tip-v1',
-    outputSchema: { type: 'object', required: ['es', 'en'], additionalProperties: false, properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
-  });
-  const result = await task.create({ max_tokens: 300, messages: [{ role: 'user', content: `Genera un tip práctico y específico para YouTubers sobre cómo mejorar su canal (títulos, thumbnails, SEO, retención, monetización, algoritmo, etc.).
-
-El tip debe:
-- Ser concreto y accionable, no genérico
-- Incluir un dato o porcentaje real si es posible
-- Tener máximo 2 frases
-- Variar el tema respecto a tips comunes (sé creativo)
-
-Responde SOLO con JSON en este formato exacto, sin texto adicional:
-{"es": "tip en español aquí", "en": "tip in english here"}` }] });
-  const { es, en } = JSON.parse(result.content[0].text) as { es: string; en: string };
-
-  await prisma.dailyTip.upsert({
-    where: { date },
-    create: { date, es, en },
-    update: { es, en },
-  });
-
-  return { skipped: false };
-}
-
 
 export async function GET(request: Request) {
   const original = authorizeCronDispatch(request, 'morning');
@@ -63,7 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async step => {
+  return runCronDispatch(original, async (step, issueDailyTip) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -99,7 +64,7 @@ export async function GET(request: Request) {
     results.reengaged = reengaged;
 
     // 1. Generate daily tip
-    await step(() => generateAndSaveDailyTip()).catch(err =>
+    await step(() => generateDailyTipOriginal(issueDailyTip())).catch(err =>
       errors.push(`Daily tip: ${err instanceof Error ? err.message : err}`)
     );
 
