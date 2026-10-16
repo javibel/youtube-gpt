@@ -1,3 +1,4 @@
+import { observeAbWindows } from '@/lib/ab-observation';
 import { captureAbTitleMetadata,readAbVideoOriginal,publishAbTitleOriginal,reportedAbViews } from '@/lib/ab-title-metadata';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -204,11 +205,11 @@ export async function countActiveAbTests(userId: string): Promise<number> {
 type MutationTest = NonNullable<Awaited<ReturnType<typeof prisma.abTest.findFirst>>>;
 type MutationAdmission =
   | { ok: false }
-  | { ok: true; complete: (insight?: { es: string; en: string }) => Promise<MutationTest> };
+  | { ok: true; complete: () => Promise<MutationTest> };
 
 type Transition =
   | { action: 'switch_variant'; at: Date; views: number }
-  | { action: 'complete_test'; at: Date; views: number; winner: 'A' | 'B' };
+  | { action: 'complete_test'; at: Date; views: number; winner: 'A' | 'B' | 'tie' };
 
 export function beginAbTestTransition(userId: string, expected: MutationTest, transition: Transition, beforeStep?: () => void): Promise<MutationAdmission> {
   return admitMutation(userId, expected, transition.action, beforeStep, transition);
@@ -248,7 +249,10 @@ async function admitMutation(
       if (!start || !Number.isFinite(start.getTime()) || change.at.getTime() < start.getTime() + test.hoursPerVariant * 3600_000) return { ok: false };
       if (action === 'switch_variant' ? test.status !== 'variant_a' || change.views < test.initialViews
         : test.status !== 'variant_b' || !Number.isSafeInteger(test.switchViews) || test.switchViews! < test.initialViews || change.views < test.switchViews!) return { ok: false };
-      if (change.action === 'complete_test' && change.winner !== (test.switchViews! - test.initialViews >= change.views - test.switchViews! ? 'A' : 'B')) return { ok: false };
+      if (change.action === 'complete_test') {
+        const observation = observeAbWindows({ ...test, endViews: change.views, completedAt: change.at });
+        if (!observation || change.winner !== observation.leadingWindow) return { ok: false };
+      }
     }
     const fields = ['id', 'userId', 'videoId', 'status', 'winner', 'originalTitle', 'variantA', 'variantB', 'hoursPerVariant', 'initialViews', 'switchViews', 'endViews'] as const;
     const dates = ['startedAt', 'switchedAt', 'completedAt'] as const;
@@ -288,9 +292,7 @@ async function admitMutation(
     if (!reserved || reserved.id !== id || reserved.userId !== userId || reserved.videoId !== test.videoId
       || reserved.testId !== test.id || reserved.action !== action || reserved.state !== 'pending') return { ok: false };
     beforeStep?.();
-    return { ok: true, complete: insight => {
-      const capturedInsight = action === 'complete_test' && insight && typeof insight.es === 'string' && insight.es.trim()
-        && typeof insight.en === 'string' && insight.en.trim() ? { es: insight.es, en: insight.en } : undefined;
+    return { ok: true, complete: () => {
       return prisma.$transaction(async tx => {
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       if (owner.length !== 1 || owner[0].id !== userId) throw Error('Completion unavailable');
@@ -301,7 +303,7 @@ async function admitMutation(
       if (!unchanged(current)) throw Error('Completion unavailable');
       const result = action === 'cancel' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'cancelled', completedAt: new Date() } })
         : change?.action === 'switch_variant' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'variant_b', switchedAt: change.at, switchViews: change.views } })
-        : change?.action === 'complete_test' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'completed', completedAt: change.at, endViews: change.views, winner: change.winner, aiInsight: capturedInsight } }) : test;
+        : change?.action === 'complete_test' ? await tx.abTest.update({ where: { id: test.id }, data: { status: 'completed', completedAt: change.at, endViews: change.views, winner: change.winner } }) : test;
       const completed = await tx.abTestMutationAttempt.updateMany({ where: { id, userId, testId: test.id, action, state: 'pending' }, data: { state: 'complete' } });
       if (completed.count !== 1) throw Error('Completion unavailable');
       return result;

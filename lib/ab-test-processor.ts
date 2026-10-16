@@ -1,12 +1,12 @@
 import { captureAbTitleMetadata,readAbVideoOriginal,publishAbTitleOriginal,reportedAbViews } from '@/lib/ab-title-metadata';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
-import { getMessagesTask } from '@/lib/ai/task-runtime';
+import { observeAbWindows } from '@/lib/ab-observation';
 import { beginAbTestTransition } from '@/lib/ab-test';
 
 type ProcessorResult = { switched: number; completed: number; errors: string[]; unconfirmed?: true };
 
-// This budget retires only the caller. The original title, insight and SQL
+// This budget retires only the caller. The original title and SQL
 // promises stay observed; a pending durable reservation never authorizes replay.
 export async function processAbTests(beforeStep?: () => void): Promise<ProcessorResult> {
   const deadline = performance.now() + 55_000;
@@ -125,50 +125,25 @@ async function runAbTests(beforeStep: () => void): Promise<ProcessorResult> {
       }
 
       const endViews=reportedAbViews(video);if(endViews===null){errors.push('A/B source views unavailable');continue;}
-      const viewsA = (test.switchViews ?? 0) - test.initialViews;
-      const viewsB = endViews - (test.switchViews ?? 0);
-
-      // Determine winner
-      const winner = viewsA > viewsB ? 'A' : viewsB > viewsA ? 'B' : 'A';
-      const winningTitle = winner === 'A' ? test.variantA : test.variantB;
-      const payload=captureAbTitleMetadata(video,test.videoId,winningTitle);
+      const observation = observeAbWindows({ ...test, endViews, completedAt: now });
+      if (!observation) { errors.push('A/B observation incomplete or inconsistent'); continue; }
+      const winner = observation.leadingWindow;
+      const selectedTitle = observation.selectedVariant === 'A' ? test.variantA : test.variantB;
+      const payload=captureAbTitleMetadata(video,test.videoId,selectedTitle);
       const admission = await beginAbTestTransition(test.userId, test, { action: 'complete_test', at: now, views: endViews, winner }, beforeStep);
       if (!admission.ok) { errors.push(`A/B test ${test.id}: completion unconfirmed`); continue; }
       beforeStep?.();
 
-      // Set winning title
+      // Existing policy selects the larger raw delta, keeping A on a tie.
+      // Neither this policy nor the sequential observations prove title efficacy.
       if (!(await publishAbTitleOriginal(token,payload)).ok) {
-        errors.push(`A/B test ${test.id}: failed to apply winning title`);
+        errors.push(`A/B test ${test.id}: failed to apply selected title`);
         continue;
       }
 
-      // AI insight
-      let aiInsight: { es: string; en: string } | null = null;
-      try {
-        beforeStep?.();
-        const prompt = `A/B test results for a YouTube video:
-Original title: "${test.originalTitle}"
-Variant A: "${test.variantA}" — ${viewsA} views in ${test.hoursPerVariant}h
-Variant B: "${test.variantB}" — ${viewsB} views in ${test.hoursPerVariant}h
-Winner: Variant ${winner}
-
-Give a brief insight (1-2 sentences) about why the winning title likely performed better and what the creator can learn. Respond as JSON: {"es":"...","en":"..."}`;
-
-        const task = await getMessagesTask({ userId: test.userId, taskType: 'youtube.ab-result-insight', language: 'es', instructionsVersion: 'ab-result-insight-v1',
-          outputSchema: { type: 'object', required: ['es', 'en'], additionalProperties: false, properties: { es: { type: 'string', minLength: 1 }, en: { type: 'string', minLength: 1 } } },
-        });
-        beforeStep?.();
-        const msg = await task.create({
-          max_tokens: 200,
-          messages: [{ role: 'user', content: prompt }],
-        });
-        const text = msg.content[0].type === 'text' ? msg.content[0].text : '';
-        aiInsight = JSON.parse(text);
-      } catch {
-        // Non-critical
-      }
-
-      await admission.complete(aiInsight ?? undefined);
+      // No model can infer a cause or CTR from these lifetime-view counters.
+      // The same invoked publisher still owns mandatory SQL after caller retirement.
+      await admission.complete();
       completed++;
     } catch (err) {
       errors.push(`A/B test ${test.id}: ${err instanceof Error ? err.message : String(err)}`);

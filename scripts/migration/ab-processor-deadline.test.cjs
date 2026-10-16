@@ -4,7 +4,7 @@ const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs')
 const flush=async()=>{for(let n=0;n<120;n++)await Promise.resolve();};
 function harness(options={}){
  const phase=options.phase??'variant_a',calls=[],gates={},entered={},timers=new Map(),completed=deferred();let now=0,next=0,result,error,pending=false,saved=false,lastTitle;
- const stages=['scanA','scanB','token','videoHeaders','videoJSON','admission','admissionAck','title','taskSetup','insight','sql'];
+ const stages=['scanA','scanB','token','videoHeaders','videoJSON','admission','admissionAck','title','sql'];
  const row={id:'synthetic-test',userId:'synthetic-owner',videoId:'synthetic-video',status:phase,startedAt:new Date(Date.now()-3*3600000),switchedAt:phase==='variant_b'?new Date(Date.now()-2*3600000):null,hoursPerVariant:1,initialViews:0,switchViews:10,variantA:'Original A',variantB:'Original B',originalTitle:'Original'};
  const state={scanA:phase==='variant_a'?[row]:[],scanB:phase==='variant_b'?[row]:[],token:'synthetic-token',videoJSON:metadata.list(row.videoId,{views:40}),title:{ok:true},insight:{content:[{type:'text',text:'{"es":"Sintético","en":"Synthetic"}'}]}};
  for(const stage of stages){gates[stage]=deferred();entered[stage]=deferred();}
@@ -23,14 +23,14 @@ async function entry(h,stage){let timer;try{await Promise.race([h.entered[stage]
 async function retired(h){await flush();assert(h.result,'Processor caller did not retire');assert.equal(h.result.unconfirmed,true);assert.equal(h.result.switched,0);assert.equal(h.result.completed,0);assert.equal(h.result.errors.join(','),'ab_processor_unconfirmed');assert.equal(h.error,undefined);assert.equal(h.timers.size,0);}
 async function run(){
  const results=[];async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.message});}}
- const phases={variant_a:['scanA','token','videoHeaders','videoJSON','admission','admissionAck','title','sql','scanB'],variant_b:['scanB','token','videoHeaders','videoJSON','admission','admissionAck','title','taskSetup','insight','sql']};
+ const phases={variant_a:['scanA','token','videoHeaders','videoJSON','admission','admissionAck','title','sql','scanB'],variant_b:['scanB','token','videoHeaders','videoJSON','admission','admissionAck','title','sql']};
  for(const[phase,stages]of Object.entries(phases))for(const stage of stages)for(const mode of ['deadline','late-before-timer','late-rejection'])await test(phase+' '+stage+' '+mode+' retires only caller; prerequisites cannot start effects; invoked producers stay observed',async()=>{
   const h=harness({phase,held:stage});try{
    await entry(h,stage);h.advance(55000,mode!=='late-before-timer');if(mode==='late-before-timer')h.release(stage);
    await retired(h);const response=h.result;if(mode!=='late-before-timer')h.release(stage,mode==='late-rejection');await flush();
-   assert.equal(h.result,response);assert.equal(h.timers.size,0);assert.equal(h.calls.filter(s=>s==='title').length,['title','taskSetup','insight','sql'].includes(stage)||phase==='variant_a'&&stage==='scanB'?1:0);
-   assert.equal(h.calls.filter(s=>s==='insight').length,stage==='insight'||phase==='variant_b'&&stage==='sql'?1:0);
-   const retain=['title','taskSetup','insight','sql'].includes(stage),prior=phase==='variant_a'&&stage==='scanB';
+   assert.equal(h.result,response);assert.equal(h.timers.size,0);assert.equal(h.calls.filter(s=>s==='title').length,['title','sql'].includes(stage)||phase==='variant_a'&&stage==='scanB'?1:0);
+   assert.equal(h.calls.filter(s=>s==='insight'||s==='taskSetup').length,0);
+   const retain=['title','sql'].includes(stage),prior=phase==='variant_a'&&stage==='scanB';
    const failedMutation=mode==='late-rejection'&&['title','sql'].includes(stage);
    assert.equal(h.saved,prior||retain&&!failedMutation);assert.equal(h.pending,(retain&&failedMutation)||stage==='admissionAck');
   }finally{h.close();await flush();}

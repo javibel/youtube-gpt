@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAbTestRead, type AbVideo as Video, type AbTest } from '@/lib/use-ab-test-read';
 import { useAbSuggestions } from '@/lib/use-ab-suggestions';
+import { observeAbWindows } from '@/lib/ab-observation';
 import { useAbMutation } from '@/lib/use-ab-mutation';
 import { useSession } from 'next-auth/react';
 import DashboardShell from '@/components/DashboardShell';
@@ -11,7 +12,7 @@ import { useLang } from '@/components/LangProvider';
 type Lang = 'es' | 'en';
 
 function fmtNum(n: number | null | undefined): string {
-  if (n == null || isNaN(n)) return '0';
+  if (n == null || !Number.isFinite(n) || n < 0) return '—';
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
   return n.toLocaleString();
@@ -125,13 +126,13 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
           <div className="yv-page-header__left">
             <span className="yv-page-header__eyebrow">A/B TESTING</span>
             <h1 className="yv-page-header__title">
-              {t('Encuentra el ', 'Find the ')}
-              <span style={{ color: 'var(--yv-brand)' }}>{t('título ganador.', 'winning title.')}</span>
+              {t('Compara ', 'Compare ')}
+              <span style={{ color: 'var(--yv-brand)' }}>{t('dos títulos.', 'two titles.')}</span>
             </h1>
             <p className="yv-page-header__desc">
               {t(
-                'Prueba 2 variantes de título en un vídeo real. El sistema cambia automáticamente entre ellas y mide cuál consigue más vistas.',
-                'Test 2 title variants on a real video. The system automatically switches between them and measures which gets more views.',
+                'Observa incrementos de vistas acumuladas en dos periodos sucesivos. El sistema selecciona el título del periodo con mayor incremento bruto; en empate conserva A. Los periodos pueden durar más de lo programado. No es una prueba aleatoria, una medición de CTR ni evidencia del efecto del título.',
+                'Observe lifetime-view increases in two successive periods. The system selects the title from the period with the larger raw increase; a tie keeps A. Periods can run longer than scheduled. This is not a randomized test, a CTR measurement or evidence of the title’s effect.',
               )}
             </p>
           </div>
@@ -354,8 +355,8 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
             </h3>
             <p className="font-mono-jb text-sm max-w-md mx-auto" style={{ color: 'var(--yv-text-3)' }}>
               {t(
-                'Selecciona un vídeo arriba para probar 2 títulos diferentes y descubrir cuál consigue más vistas.',
-                'Select a video above to test 2 different titles and discover which gets more views.',
+                'Selecciona un vídeo para observar dos títulos en periodos sucesivos.',
+                'Select a video to observe two titles in successive periods.',
               )}
             </p>
           </div>
@@ -474,8 +475,11 @@ function PastTestCard({
   t: (es: string, en: string) => string;
 }) {
   const cancelled = test.status === 'cancelled';
-  const viewsA = (test.switchViews ?? 0) - test.initialViews;
-  const viewsB = (test.endViews ?? 0) - (test.switchViews ?? 0);
+  const observation = cancelled ? null : observeAbWindows(test);
+  const leading = observation?.leadingWindow;
+  const viewsA = observation?.viewsA;
+  const viewsB = observation?.viewsB;
+  const observedAt = (value: string) => new Date(value).toLocaleString(lang === 'en' ? 'en-GB' : 'es-ES');
 
   return (
     <div className="yv-card">
@@ -492,7 +496,7 @@ function PastTestCard({
                 color: cancelled ? '#52525b' : 'var(--yv-brand)',
               }}
             >
-              {cancelled ? t('CANCELADO', 'CANCELLED') : `${t('GANADOR', 'WINNER')}: ${test.winner}`}
+              {cancelled ? t('CANCELADO', 'CANCELLED') : !observation ? t('OBSERVACIÓN INCOMPLETA', 'INCOMPLETE OBSERVATION') : leading === 'tie' ? t('IGUAL INCREMENTO', 'EQUAL INCREASE') : `${t('MAYOR INCREMENTO BRUTO', 'LARGER RAW INCREASE')}: ${leading}`}
             </span>
           </div>
         </div>
@@ -511,14 +515,14 @@ function PastTestCard({
           <div
             className="p-3 rounded-lg border"
             style={{
-              borderColor: test.winner === 'A' ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.06)',
-              background: test.winner === 'A' ? 'rgba(34,197,94,0.05)' : 'transparent',
+              borderColor: leading === 'A' ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.06)',
+              background: leading === 'A' ? 'rgba(34,197,94,0.05)' : 'transparent',
             }}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="font-mono-jb text-[13px] font-bold" style={{ color: 'var(--yv-text-3)' }}>A</span>
-              <span className="font-mono-jb text-[13px] font-bold" style={{ color: test.winner === 'A' ? '#22c55e' : '#71717a' }}>
-                +{fmtNum(viewsA)} views
+              <span className="font-mono-jb text-[13px] font-bold" style={{ color: leading === 'A' ? '#22c55e' : '#71717a' }}>
+                {viewsA === undefined ? '—' : `+${viewsA.toLocaleString()}`} {t('vistas', 'views')}
               </span>
             </div>
             <p className="text-sm text-white">{test.variantA}</p>
@@ -526,14 +530,14 @@ function PastTestCard({
           <div
             className="p-3 rounded-lg border"
             style={{
-              borderColor: test.winner === 'B' ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.06)',
-              background: test.winner === 'B' ? 'rgba(34,197,94,0.05)' : 'transparent',
+              borderColor: leading === 'B' ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.06)',
+              background: leading === 'B' ? 'rgba(34,197,94,0.05)' : 'transparent',
             }}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="font-mono-jb text-[13px] font-bold" style={{ color: 'var(--yv-text-3)' }}>B</span>
-              <span className="font-mono-jb text-[13px] font-bold" style={{ color: test.winner === 'B' ? '#22c55e' : '#71717a' }}>
-                +{fmtNum(viewsB)} views
+              <span className="font-mono-jb text-[13px] font-bold" style={{ color: leading === 'B' ? '#22c55e' : '#71717a' }}>
+                {viewsB === undefined ? '—' : `+${viewsB.toLocaleString()}`} {t('vistas', 'views')}
               </span>
             </div>
             <p className="text-sm text-white">{test.variantB}</p>
@@ -547,19 +551,14 @@ function PastTestCard({
         </p>
       )}
 
-      {/* AI insight */}
-      {test.aiInsight && !cancelled && (
-        <div className="p-3 rounded-lg border border-purple-500/20" style={{ background: 'rgba(168,85,247,0.05)' }}>
-          <div className="flex items-start gap-2">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" className="mt-0.5 flex-shrink-0">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-            </svg>
-            <p className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-2)' }}>
-              {lang === 'en' ? test.aiInsight.en : test.aiInsight.es}
-            </p>
-          </div>
-        </div>
-      )}
+      {!cancelled && <div className="text-[13px] leading-relaxed" style={{ color: 'var(--yv-text-3)' }}>
+        {observation ? <>
+          <p>A: {observedAt(observation.start)} → {observedAt(observation.switch)} ({observation.hoursA.toFixed(2)}h)</p>
+          <p>B: {observedAt(observation.switch)} → {observedAt(observation.end)} ({observation.hoursB.toFixed(2)}h)</p>
+          <p>{t('Fechas de los registros; no prueban exposición continua. Los periodos son sucesivos y pueden tener distinta duración. Tráfico, edad del vídeo y otros cambios pueden influir. No se midieron impresiones, CTR ni significación estadística y no se atribuye el incremento al título.', 'Record timestamps do not prove continuous exposure. Periods are successive and can differ in duration. Traffic, video age and other changes can affect counts. Impressions, CTR and statistical significance were not measured; the increase is not attributed to the title.')}</p>
+        </> : <p>{t('Faltan contadores o fechas coherentes para comparar periodos; los valores ausentes no son cero.', 'Coherent counters or timestamps are missing; absent values are not zero.')}</p>}
+        {test.aiInsight && <p>{t('El comentario de IA heredado se conserva en el registro y se omite aquí porque no demuestra una causa.', 'The inherited AI comment remains in the record and is omitted here because it does not establish a cause.')}</p>}
+      </div>}
     </div>
   );
 }
