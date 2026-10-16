@@ -12,7 +12,7 @@ const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{
 // Session metadata/current() can veto only. The server's native cookie and
 // original producer keep all authority. One transport, body and response read;
 // no injectable fetch, status lookup, retry, reset or recovered receipt.
-export function beginAdminSocialPreview(owner:AdminStatsOwner,type:'morning'|'evening',current:()=>boolean,onRetire:()=>void){
+export function beginAdminSocialPreview(owner:AdminStatsOwner&Readonly<{authSessionRef:string}>,type:'morning'|'evening',current:()=>boolean,onRetire:()=>void){
   const own={},captured=Object.freeze({...owner}),at=Date.now(),started=performance.now(),controller=new AbortController(),transport=fetch;
   let expiresAt=Math.min(at+55000,captured.expiresAt),retired=false,timer:ReturnType<typeof setTimeout>|undefined,rejectStop!:(error:Error)=>void;
   const stopped=new Promise<never>((_,reject)=>{rejectStop=reject;});void stopped.catch(()=>{});
@@ -22,7 +22,7 @@ export function beginAdminSocialPreview(owner:AdminStatsOwner,type:'morning'|'ev
   timer=setTimeout(retire,Math.max(0,expiresAt-at));
   const original=(async()=>{try{
     const commandRef=crypto.randomUUID();
-    if(typeof captured.id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(captured.id)||typeof captured.email!=='string'||captured.email.length>254||!/^\S+@\S+\.\S+$/.test(captured.email)||!integer(captured.expiresAt)||!['morning','evening'].includes(type)||!uuid(commandRef))throw Error('Unconfirmed social preview');
+    if(typeof captured.id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(captured.id)||typeof captured.email!=='string'||captured.email.length>254||!/^\S+@\S+\.\S+$/.test(captured.email)||!integer(captured.expiresAt)||!uuid(captured.authSessionRef)||!['morning','evening'].includes(type)||!uuid(commandRef))throw Error('Unconfirmed social preview');
     const body=JSON.stringify({action:'test',type});
     const response=await wait(()=>transport('/api/agent/run',{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',headers:{'Content-Type':'application/json','x-ytv-social-preview-command':commandRef},body,signal:controller.signal}));
     if(response.status!==200||!response.ok||response.redirected||response.headers.get('cache-control')!=='no-store')throw Error('Unconfirmed social preview');
@@ -30,7 +30,7 @@ export function beginAdminSocialPreview(owner:AdminStatsOwner,type:'morning'|'ev
     const value:unknown=JSON.parse(raw);check();
     if(!object(value,['ok','preview','socialPreview'])||value.ok!==true)throw Error('Unconfirmed social preview');
     const ack=value.socialPreview,p=value.preview;
-    if(!object(ack,['commandRef','userId','email','type','asOf','expiresAt'])||ack.commandRef!==commandRef||ack.userId!==captured.id||ack.email!==captured.email||ack.type!==type
+    if(!object(ack,['commandRef','userId','email','sessionRef','type','asOf','expiresAt'])||ack.commandRef!==commandRef||ack.userId!==captured.id||ack.email!==captured.email||ack.sessionRef!==captured.authSessionRef||ack.type!==type
       ||!integer(ack.asOf)||ack.asOf<at||ack.asOf>Date.now()||!integer(ack.expiresAt)||ack.expiresAt<=ack.asOf||ack.expiresAt-ack.asOf>55000
       ||!object(p,['facebook','instagram','tiktok','twitter'])||!text(p.facebook)||!text(p.instagram)||p.tiktok!==null||p.twitter!==null)throw Error('Unconfirmed social preview');
     expiresAt=Math.min(expiresAt,ack.expiresAt);check();clearTimeout(timer);timer=setTimeout(retire,Math.max(0,expiresAt-Date.now()));

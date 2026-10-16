@@ -48,7 +48,7 @@ export function runNativeAdminSocialPreview(original:NativeAdminSocialPreview|un
 // resume or adopt another invocation and does not disclose its session secret.
 export function acknowledgeNativeAdminSocialPreview(original:NativeAdminSocialPreview){
   const own=original&&originals.get(original);if(!own||!own.completed)throw Error('social_preview_unconfirmed');check(own);
-  return Object.freeze({commandRef:own.commandRef,userId:own.actorId,email:own.email,type:own.type,asOf:own.at,expiresAt:own.until});
+  return Object.freeze({commandRef:own.commandRef,userId:own.actorId,email:own.email,sessionRef:own.sessionRef,type:own.type,asOf:own.at,expiresAt:own.until});
 }
 export function checkNativeAdminSocialPreview(original:NativeAdminSocialPreview){const own=original&&originals.get(original);if(!own)throw Error('social_preview_unconfirmed');check(own);}
 export function closeNativeAdminSocialPreview(original:NativeAdminSocialPreview){const own=originals.get(original);if(own)own.closed=true;}

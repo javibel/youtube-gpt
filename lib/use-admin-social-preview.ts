@@ -1,14 +1,14 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { beginAdminSocialPreview, type SocialPreviewReceipt } from '@/lib/admin-social-preview-client';
-type Session={user?:{id?:string;email?:string|null;isAdmin?:boolean;requiresTotp?:boolean;requiresVerification?:boolean};expires?:string}|null;
+type Session={user?:{id?:string;email?:string|null;authSessionRef?:string;isAdmin?:boolean;requiresTotp?:boolean;requiresVerification?:boolean};expires?:string}|null;
 type Writer=ReturnType<typeof beginAdminSocialPreview>;
 type Scope={key:string;mounted:boolean;writer:Writer|null;running:boolean;blocked:boolean;current:()=>boolean};
 const unconfirmed='No se pudo confirmar el preview. No se ha reintentado.';
 export function useAdminSocialPreview(session:Session,status:string,busy:{current:boolean}){
-  const u=session?.user,id=u?.id,email=u?.email,expiresAt=Date.parse(session?.expires??'');
-  const eligible=status==='authenticated'&&u?.isAdmin===true&&u.requiresTotp===false&&u.requiresVerification===false&&!!id&&!!email&&expiresAt>Date.now();
-  const key=JSON.stringify([id,email,session?.expires,status,u?.isAdmin,u?.requiresTotp,u?.requiresVerification]);
+  const u=session?.user,id=u?.id,email=u?.email,authSessionRef=u?.authSessionRef,expiresAt=Date.parse(session?.expires??'');
+  const eligible=status==='authenticated'&&u?.isAdmin===true&&u.requiresTotp===false&&u.requiresVerification===false&&!!id&&!!email&&typeof authSessionRef==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(authSessionRef)&&expiresAt>Date.now();
+  const key=JSON.stringify([id,email,authSessionRef,session?.expires,status,u?.isAdmin,u?.requiresTotp,u?.requiresVerification]);
   const live=useRef({key,eligible});live.current={key,eligible};const active=useRef<Scope|null>(null),lockOwner=useRef<Scope|null>(null);
   const [view,setView]=useState<{scope:Scope|null;writer:Writer|null;receipt:SocialPreviewReceipt|null;phase:'idle'|'pending'|'confirmed'|'unconfirmed'}>({scope:null,writer:null,receipt:null,phase:'idle'});
   useEffect(()=>{
@@ -26,7 +26,7 @@ export function useAdminSocialPreview(session:Session,status:string,busy:{curren
     visible.writer?.retire();visible.running=true;busy.current=true;lockOwner.current=visible;
     const unlock=()=>{if(lockOwner.current===visible){lockOwner.current=null;busy.current=false;}};
     let writer:Writer;
-    writer=beginAdminSocialPreview({id:id!,email:email!,expiresAt},'morning',()=>visible.current()&&(!writer||visible.writer===writer),()=>{void Promise.resolve().then(()=>{
+    writer=beginAdminSocialPreview({id:id!,email:email!,authSessionRef:authSessionRef!,expiresAt},'morning',()=>visible.current()&&(!writer||visible.writer===writer),()=>{void Promise.resolve().then(()=>{
       if(visible.writer!==writer)return;
       if(visible.running)visible.blocked=true;
       visible.running=false;unlock();
