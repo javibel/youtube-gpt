@@ -4,7 +4,8 @@ const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{
 const {create,ready,defaults,inputs,pick}=require('./ab-page-client.test.cjs');
 const {form,start,writes}=require('./ab-mutation-client.test.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs');
 module.exports=async(prisma,results)=>{
- const users=await Promise.all(['create-headers','create-JSON','cancel-headers','cancel-JSON','cancel-rejected','neighbor'].map(name=>prisma.user.create({data:{email:'ab-mutation-'+name+'-'+randomUUID()+'@example.invalid'}}))),neighbor=users.at(-1),harnesses=[];
+ const nativeHistory=require('./ab-history-native.test.cjs'),readers=[];
+ const users=await Promise.all(['create-headers','create-JSON','cancel-headers','cancel-JSON','cancel-rejected','neighbor'].map(name=>prisma.user.create({data:{email:'ab-mutation-'+name+'-'+randomUUID()+'@example.invalid',emailVerified:new Date(Date.now()-10000)}}))),neighbor=users.at(-1),harnesses=[];
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
  try{
   await prisma.subscription.createMany({data:users.map(u=>({userId:u.id,status:'active',plan:'pro',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});
@@ -30,7 +31,7 @@ module.exports=async(prisma,results)=>{
    h.state.send=request=>{
     if(request.url.includes('channel'))return defaults(request);
     assert.equal(request.url,'/api/youtube/ab-test');assert.equal(request.owner,owner.id);
-    if(!request.init.method){const original=(async()=>{const response=await route.GET(),body=await response.json();assert.equal(body.userId,owner.id);return{ok:response.ok,status:response.status,json:async()=>body};})();reads.push(original);return original;}
+    if(!request.init.method){const original=(async()=>{const b=await nativeHistory.bound({account:owner,db:prisma});readers.push(b);const response=await b.start(),body=await response.json();assert.equal(body.userId,owner.id);return{ok:response.ok,status:response.status,json:async()=>body};})();reads.push(original);return original;}
     assert.equal(request.init.signal,undefined);
     const original=(async()=>{try{const response=await route[request.init.method](new Request('https://example.invalid/api/youtube/ab-test',{method:request.init.method,headers:request.init.headers,body:JSON.stringify(request.body)})),body=await response.json();assert.equal(response.headers.get('cache-control'),'no-store');finished.resolve();return{ok:response.ok,status:response.status,json:()=>{if(held==='JSON'){entered.resolve();return gate.promise.then(()=>body);}return Promise.resolve(body);}};}catch(e){finished.reject(e);throw e;}})();owned.push(original);return original;
    };
@@ -48,5 +49,5 @@ module.exports=async(prisma,results)=>{
   assert.deepEqual(await prisma.subscription.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}}),subscriptions);
   assert.deepEqual(await prisma.abTest.findUnique({where:{id:neighborTest.id}}),neighborTest);
   assert.deepEqual(await prisma.generation.findMany({where:{userId:neighbor.id}}),neighborGenerations);
- }finally{for(const h of harnesses)h.unmount();await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});await flush();}
+ }finally{for(const b of readers)await nativeHistory.drain(b);for(const h of harnesses)h.unmount();await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});await flush();}
 };

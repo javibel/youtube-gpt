@@ -2,10 +2,11 @@
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs');
 const {create,ready,defaults,pick,posts,values}=require('./ab-page-client.test.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs');
 module.exports=async(prisma,results)=>{
- const users=await Promise.all(['read','JSON','headers','remount','neighbor'].map(name=>prisma.user.create({data:{email:'ab-page-'+name+'-'+randomUUID()+'@example.invalid'}}))),neighbor=users.at(-1),harnesses=[];
+ const nativeHistory=require('./ab-history-native.test.cjs'),readers=[];
+ const users=await Promise.all(['read','JSON','headers','remount','neighbor'].map(name=>prisma.user.create({data:{email:'ab-page-'+name+'-'+randomUUID()+'@example.invalid',emailVerified:new Date(Date.now()-10000)}}))),neighbor=users.at(-1),harnesses=[];
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
  const noWrite=()=>{throw Error('No real title or mutation effect permitted in read fixture');};
- const listFor=owner=>load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:owner.id}})},'@/lib/prisma':{prisma},'@/lib/youtube-auth':{getAccessToken:noWrite},'@/lib/ab-test':{createAbTest:noWrite}});
+ const listFor=async owner=>{const b=await nativeHistory.bound({account:owner,db:prisma});readers.push(b);return b.start();};
  try{
   await prisma.subscription.createMany({data:users.map(u=>({userId:u.id,status:'active',plan:'pro',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+86400000)}))});
   await prisma.abTest.createMany({data:users.map(u=>({userId:u.id,videoId:'own-'+u.id,originalTitle:'Own native history '+u.id,variantA:'Own A '+u.id,variantB:'Own B',status:'cancelled'}))});
@@ -18,7 +19,7 @@ module.exports=async(prisma,results)=>{
     if(request.url.includes('channel'))return defaults(request);
     if(request.url.endsWith('ab-test')){
      assert.equal(request.init.cache,'no-store');assert(!request.body);const account=users.find(u=>u.id===request.owner);assert(account);
-     const original=(async()=>{const response=await listFor(account).GET();assert.equal(response.headers.get('cache-control'),'no-store');const body=await response.json();assert.equal(body.userId,account.id);assert(body.tests.every(t=>t.userId===account.id));if(held==='read'&&account===owner)return{ok:true,status:200,json:()=>{entered.resolve();return gate.promise.then(()=>body);}};return{ok:true,status:200,json:async()=>body};})();reads.push(original);return original;
+     const original=(async()=>{const response=await listFor(account);assert.equal(response.headers.get('cache-control'),'no-store');const body=await response.json();assert.equal(body.userId,account.id);assert(body.tests.every(t=>t.userId===account.id));if(held==='read'&&account===owner)return{ok:true,status:200,json:()=>{entered.resolve();return gate.promise.then(()=>body);}};return{ok:true,status:200,json:async()=>body};})();reads.push(original);return original;
     }
     assert.equal(request.url,'/api/youtube/ab-test/suggest');assert.equal(request.owner,owner.id);assert.equal(request.init.signal,undefined);
     const original=(async()=>{const response=await suggestion.POST(new Request('https://example.invalid/api/youtube/ab-test/suggest',{method:'POST',headers:request.init.headers,body:JSON.stringify(request.body)}));const body=await response.json();finished.resolve();if(held==='JSON')return{ok:response.ok,status:response.status,json:()=>{entered.resolve();return gate.promise.then(()=>body);}};return{ok:response.ok,status:response.status,json:async()=>body};})();owned.push(original);return original;
@@ -37,5 +38,5 @@ module.exports=async(prisma,results)=>{
   assert.deepEqual(await prisma.subscription.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}}),before.subscriptions);
   assert.deepEqual(await prisma.abTest.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}}),before.tests);
   assert.deepEqual(await prisma.generation.findMany({where:{userId:{in:users.map(u=>u.id)}},orderBy:{id:'asc'}}),before.generations);
- }finally{for(const h of harnesses)h.unmount();await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});await flush();}
+ }finally{for(const b of readers)await nativeHistory.drain(b);for(const h of harnesses)h.unmount();await prisma.user.deleteMany({where:{id:{in:users.map(u=>u.id)}}});await flush();}
 };
