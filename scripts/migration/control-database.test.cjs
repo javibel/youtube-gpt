@@ -306,7 +306,7 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   try{
   // Auth.js/SQL establishes this original. A repeated native command is a
   // denial, never a saved-ledger response adopted as a new HTTP receipt.
-  const invoke=(title='Native original title',command=key)=>original.start(original.make({headers:{'idempotency-key':command},body:JSON.stringify({title,lang:'es',videoId:nativeServer.videoId,channelId:nativeServer.channelId})}));
+  const invoke=(title='Native original title',command=key)=>original.start(original.make({headers:{'Idempotency-Key':command},body:JSON.stringify({title,lang:'es',videoId:nativeServer.videoId,channelId:nativeServer.channelId})}));
   const result=await invoke();assert.equal(result.status,200);const data=await result.json();assert.deepEqual(data.variants,{variantA:'Synthetic A',variantB:'Synthetic B'});assert.equal(data.analysis.userId,nativeBase.id);assert.equal(data.analysis.sessionRef,original.decoded.authSessionRef);assert.equal(data.analysis.commandRef,key);
   assert.equal((await invoke()).status,503);assert.equal(calls,1);
   assert.equal((await invoke('Changed synthetic input')).status,503);assert.equal(calls,1);
