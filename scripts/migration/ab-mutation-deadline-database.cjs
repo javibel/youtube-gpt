@@ -1,4 +1,5 @@
 'use strict';
+const metadata=require('./ab-metadata-fixture.cjs');
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs');
 const {deferred}=require('./calendar-http-read-deadline.test.cjs');
 const flush=async()=>{for(let i=0;i<100;i++)await Promise.resolve();};
@@ -24,8 +25,8 @@ module.exports=async(prisma,results)=>{
    const globals={Date:class extends Date{static now(){return now;}},performance:{now:()=>now},setTimeout(fn,ms){const id=++sequence;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,init={})=>{
     if(url==='https://oauth2.googleapis.com/token'){assert.equal(init.method,'POST');assert.equal(JSON.parse(init.body).refresh_token,'synthetic-refresh');return tracked('refresh',async()=>Response.json({access_token:'rotated-synthetic',expires_in:3600}));}
     assert.match(url,/^https:\/\/www.googleapis.com\/youtube\/v3\/videos\?/);assert.match(init.headers.Authorization,/^Bearer (synthetic-token|rotated-synthetic)$/);
-    if(init.method==='PUT'){const body=JSON.parse(init.body);assert.equal(body.id,'video');assert.equal(body.snippet.title,kind==='cancel'?'Original synthetic':'A synthetic');return tracked('title',async()=>Response.json({id:'video'}));}
-    return tracked('snippet',async()=>Response.json({items:[{snippet:{title:'Original synthetic',categoryId:'22',thumbnails:{}},statistics:{viewCount:'12'}}]}));
+    if(init.method==='PUT'){const body=JSON.parse(init.body);assert.equal(body.id,'video');assert.equal(body.snippet.title,kind==='cancel'?'Original synthetic':'A synthetic');return tracked('title',async()=>Response.json(metadata.ack(body)));}
+    return tracked('snippet',async()=>Response.json(metadata.list('video',{title:'Original synthetic'})));
    }};
    const realPlans=load('lib/plans.ts',{'@/lib/prisma':{prisma}}),plans={...realPlans,getUserPlan:id=>{assert.equal(id,owner.id);return tracked('plan',()=>realPlans.getUserPlan(id));}};
    const youtube=load('lib/youtube-auth.ts',{'@/lib/prisma':{prisma:db}},globals),realHelper=load('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},globals);
