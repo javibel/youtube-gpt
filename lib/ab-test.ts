@@ -155,7 +155,7 @@ export async function createAbTest(
     }
     // Once the original title write starts, its SQL record and result remain
     // part of that producer, even if the HTTP waiter retires in the meantime.
-    const result = await publishAbTitleOriginal(token, payload);
+    const result = await publishAbTitleOriginal(token, payload, userId);
     if (!result.ok) {
       if (result.status === 403) {
         return { ok: false, status: 403, error: 'youtube_reconnect_required' };

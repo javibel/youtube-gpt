@@ -146,7 +146,7 @@ export async function processAbTests(original?: NativeAbProcessor | null, before
                         throw Error('ab_processor_unconfirmed');
                     // No retiring HTTP/cron check is allowed between an invoked PUT and its
                     // own mandatory SQL completion. A failed ACK keeps its pending exclusion.
-                    const ack = await publishAbTitleOriginal(token, payload);
+                    const ack = await publishAbTitleOriginal(token, payload, test.userId);
                     if (!ack.ok)
                         throw Error('ab_processor_unconfirmed');
                     const completed = await admission.complete();

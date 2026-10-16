@@ -1,3 +1,4 @@
+import { abFixtureFetch } from '@/lib/migration/ab-fixture.cjs';
 // Source projection is data, never an admission, recovery grant or permission
 // to publish. The caller must retain its own original authorization/admission.
 export type AbTitlePayload = Readonly<{ id:string;channelId:string;snippet:Readonly<{title:string;description:string;tags:readonly string[];categoryId:string;defaultLanguage?:string}> }>;
@@ -25,10 +26,10 @@ export async function readAbVideoOriginal(token:string,videoId:string):Promise<R
  if(!object(data)||data.kind!=='youtube#videoListResponse'||!Array.isArray(data.items)||data.items.length>1||data.nextPageToken)throw Error('ab_metadata_unconfirmed');
  if(!data.items.length)return null;const video=data.items[0];if(!object(video)||video.kind!=='youtube#video'||video.id!==videoId)throw Error('ab_metadata_unconfirmed');return video;
 }
-export async function publishAbTitleOriginal(token:string,payload:AbTitlePayload):Promise<{ok:boolean;status:number}>{
+export async function publishAbTitleOriginal(token:string,payload:AbTitlePayload,userId?:string):Promise<{ok:boolean;status:number}>{
  // Called only after the fresh admission ACK. Once entered,the same fetch/body
  // remains with its caller's mandatory SQL producer after HTTP retirement.
- const originalFetch=fetch;if(!token||token.length>8192||/[\r\n]/.test(token))throw Error('ab_metadata_unconfirmed');
+ const originalFetch=abFixtureFetch(userId,token,fetch);if(!token||token.length>8192||/[\r\n]/.test(token))throw Error('ab_metadata_unconfirmed');
  const response=await originalFetch('https://www.googleapis.com/youtube/v3/videos?part=snippet',{method:'PUT',cache:'no-store',redirect:'error',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({id:payload.id,snippet:payload.snippet})});
  if(response.status!==200||!response.ok){if(response.body)await bodyText(response);return{ok:false,status:response.status};}
  const value=await json(response);if(!object(value)||value.kind!=='youtube#video'||value.id!==payload.id||!object(value.snippet))return{ok:false,status:503};const s=value.snippet,p=payload.snippet;

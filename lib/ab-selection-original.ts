@@ -1,3 +1,4 @@
+import { abFixtureFetch } from '@/lib/migration/ab-fixture.cjs';
 import { randomUUID } from 'node:crypto';
 import { readNativeSessionCookie } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -79,9 +80,10 @@ export async function readAbSelectionOriginal(request: Request): Promise<Respons
         if (!t || t.id !== tokenId || t.userId !== id || t.channelId !== channelId || t.accessToken !== token || !date(t.expiresAt) || t.expiresAt.getTime() !== tokenExpiresAt) fail();
         check();
       };
+      const sourceFetch=abFixtureFetch(id,token,nativeFetch);
       const source = async (path: string, params: Record<string,string>) => {
         await stillNative(); const endpoint = new URL(path,'https://www.googleapis.com'); endpoint.search = new URLSearchParams(params).toString();
-        const response = await step(() => nativeFetch(endpoint.href,{headers:{Authorization:'Bearer '+token},cache:'no-store',redirect:'error',signal:controller.signal}));
+        const response = await step(() => sourceFetch(endpoint.href,{headers:{Authorization:'Bearer '+token},cache:'no-store',redirect:'error',signal:controller.signal}));
         if (response.status !== 200 || !response.ok || response.redirected || !/^application\/json(?:;|$)/i.test(response.headers.get('content-type') ?? '') || !response.body) fail();
         const reader=response.body.getReader(), decoder=new TextDecoder('utf-8',{fatal:true}); let bytes=0,body='';
         try { for (;;) { const part=await step(() => reader.read()); if(part.done)break; bytes+=part.value.byteLength; if(bytes>1048576)fail(); body+=decoder.decode(part.value,{stream:true}); } body+=decoder.decode(); }

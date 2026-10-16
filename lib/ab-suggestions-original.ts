@@ -1,3 +1,4 @@
+import { abFixtureFetch } from '@/lib/migration/ab-fixture.cjs';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { abNativeSuggestionInput,abSuggestedVariants } from '@/lib/ab-suggestions-contract';
 import { readNativeSessionCookie } from '@/auth';
@@ -85,8 +86,9 @@ export async function suggestAbTitlesOriginal(request: Request): Promise<Respons
     clearTimeout(timer);timer=setTimeout(retire,Math.max(0,Math.min(expiresAt-Date.now(),deadline-performance.now())));check();
     const stillNative=async()=>{await current();const q=await planRead();if(!q||JSON.stringify([q.id,q.plan,q.status,q.stripeCustomerId,q.currentPeriodEnd?.getTime()])!==planSnapshot)fail('pro_required');
       const t=await tokenRead();if(!t||t.id!==tokenId||t.userId!==id||t.channelId!==channelId||t.accessToken!==token||!date(t.expiresAt)||t.expiresAt.getTime()!==tokenExpiry)fail();check();};
+    const sourceFetch=abFixtureFetch(id,token,nativeFetch);
     const source=async(path:string,params:Record<string,string>)=>{await stillNative();const u=new URL(path,'https://www.googleapis.com');u.search=new URLSearchParams(params).toString();
-      const r=await step(()=>nativeFetch(u.href,{headers:{Authorization:'Bearer '+token},cache:'no-store',redirect:'error',signal:controller.signal}));
+      const r=await step(()=>sourceFetch(u.href,{headers:{Authorization:'Bearer '+token},cache:'no-store',redirect:'error',signal:controller.signal}));
       if(r.status!==200||!r.ok||r.redirected||!/^application\/json(?:;|$)/i.test(r.headers.get('content-type')??'')||!r.body)fail();
       const reader=r.body.getReader(),decode=new TextDecoder('utf-8',{fatal:true});let n=0,value='';try{for(;;){const x=await step(()=>reader.read());if(x.done)break;n+=x.value.byteLength;if(n>1048576)fail();value+=decode.decode(x.value,{stream:true});}value+=decode.decode();}finally{void reader.cancel().catch(()=>{});}return objectValue(JSON.parse(value));};
     const mine=await source('/youtube/v3/channels',{part:'id',mine:'true',maxResults:'50'});
