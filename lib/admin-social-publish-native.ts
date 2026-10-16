@@ -11,7 +11,7 @@ type Slot='morning'|'evening';
 type Own={request:Request;url:string;cookie:string;commandRef:string;origin:string;contentType:string;config:string;adminConfig:string|undefined;secret:string|undefined;
   actorId:string;email:string;sessionRef:string;verifiedAt:number;type:Slot;at:number;until:number;started:number;deadline:number;closed:boolean;promise?:Promise<unknown>};
 type Context={actorId:string;email:string;sessionRef:string;verifiedAt:Date;commandRef:string;type:Slot;platform:Platform;at:number;checkBeforeDispatch:()=>void;remainingBeforeDispatch:()=>number;validateBeforeDispatch:()=>Promise<void>};
-type Draft={own:Own;platform:Platform;check:()=>void;promise?:Promise<unknown>};
+type Draft={own:Own;platform:Platform;check:()=>void;veto?:()=>Promise<void>;promise?:Promise<unknown>};
 const originals=new WeakMap<object,Own>(),requests=new WeakMap<Request,Promise<NativeAdminSocialPublish|null>>(),drafts=new WeakMap<object,Draft>();
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(v);
 function check(own:Own){
@@ -57,23 +57,29 @@ export function authorizeNativeAdminSocialPublish(request:Request):Promise<Nativ
   }catch{return null;}})();requests.set(request,promise);return promise;
 }
 
-export function runNativeAdminSocialPublish<T>(original:NativeAdminSocialPublish|undefined,run:(issueDraft:(platform:Platform)=>NativeAdminSocialDraft)=>Promise<T>):Promise<T>{
+export function runNativeAdminSocialPublish<T>(original:NativeAdminSocialPublish|undefined,run:(issueDraft:(platform:Platform)=>NativeAdminSocialDraft,context:Omit<Context,'platform'>)=>Promise<T>):Promise<T>{
   const own=original&&originals.get(original);if(!own)return Promise.reject(Error('social_publish_unconfirmed'));
   return (own.promise??=Promise.resolve().then(async()=>{
     let retired=false;const issued=new Set<Platform>(),live=()=>{check(own);if(retired)throw Error('social_publish_unconfirmed');};
     const issueDraft=(platform:Platform)=>{live();if(!['facebook','instagram'].includes(platform)||issued.has(platform))throw Error('social_publish_unconfirmed');issued.add(platform);
       const child=Object.freeze({})as NativeAdminSocialDraft;drafts.set(child,{own,platform,check:live});return child;};
-    try{await checkAccount(own);const result=await run(issueDraft);await checkAccount(own);return result;}
+    const validateBeforeDispatch=async()=>{live();await checkAccount(own);live();},remainingBeforeDispatch=()=>{live();return Math.max(1,Math.floor(Math.min(own.until-Date.now(),own.deadline-performance.now())));};
+    try{await validateBeforeDispatch();const result=await run(issueDraft,{actorId:own.actorId,email:own.email,sessionRef:own.sessionRef,verifiedAt:new Date(own.verifiedAt),commandRef:own.commandRef,type:own.type,at:own.at,checkBeforeDispatch:live,remainingBeforeDispatch,validateBeforeDispatch});await validateBeforeDispatch();return result;}
     finally{retired=true;}
   }))as Promise<T>;
 }
 export function runNativeAdminSocialDraft<T>(original:NativeAdminSocialDraft|undefined,platform:Platform,type:Slot,run:(context:Context)=>Promise<T>):Promise<T>{
   const child=original&&drafts.get(original);if(!child||child.platform!==platform||child.own.type!==type)return Promise.reject(Error('social_publish_unconfirmed'));
   return (child.promise??=Promise.resolve().then(async()=>{
-    const own=child.own,validateBeforeDispatch=async()=>{child.check();await checkAccount(own);child.check();};
+    const own=child.own,validateBeforeDispatch=async()=>{child.check();await checkAccount(own);child.check();if(child.veto)await child.veto();child.check();};
     const remainingBeforeDispatch=()=>{child.check();return Math.max(1,Math.floor(Math.min(own.until-Date.now(),own.deadline-performance.now())));};
     await validateBeforeDispatch();const result=await run({actorId:own.actorId,email:own.email,sessionRef:own.sessionRef,verifiedAt:new Date(own.verifiedAt),commandRef:own.commandRef,type:own.type,platform:child.platform,at:own.at,checkBeforeDispatch:child.check,remainingBeforeDispatch,validateBeforeDispatch});
     await validateBeforeDispatch();return result;
   }))as Promise<T>;
+}
+// A controller may add one negative veto before this child begins. It cannot
+// issue a child,extend its lifetime or replace any native account/request check.
+export function constrainNativeAdminSocialDraft(original:NativeAdminSocialDraft,veto:()=>Promise<void>):void{
+  const child=drafts.get(original);if(!child||child.promise||child.veto||typeof veto!=='function')throw Error('social_publish_unconfirmed');child.check();child.veto=veto;
 }
 export function closeNativeAdminSocialPublish(original:NativeAdminSocialPublish){const own=originals.get(original);if(own)own.closed=true;}
