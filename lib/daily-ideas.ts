@@ -1,85 +1,48 @@
+import { randomUUID } from 'node:crypto';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
-/**
- * Generates the personalized daily video ideas for creators with a connected channel.
- *
- * Lives in lib/ rather than inside the cron route so it can be run on its own —
- * the route is just one caller. Suggested titles are graded by the Title Analyzer
- * rubric (lib/title-score.ts); keep the rules below in sync with it.
- */
 import { prisma } from '@/lib/prisma';
 import { isInternalAccount } from '@/lib/internal-accounts';
+import { runCronDailyIdeas, type NativeCronDailyIdeas } from '@/lib/cron-dispatch-original';
 
-function todayUTC(): string {
-  return new Date().toISOString().slice(0, 10);
+const select = { id:true,userId:true,channelId:true,channelName:true,subscribers:true,videoCount:true,user:{select:{email:true}} } as const;
+function read(userId:string) { return prisma.youtubeToken.findUnique({where:{userId},select}); }
+type Source = NonNullable<Awaited<ReturnType<typeof read>>>;
+function eligible(user:Source) {
+  const email=(user.user?.email??'').trim().toLowerCase();
+  return !!user.id && !!user.userId && !!user.channelId && !!email
+    && (email==='ytbeviral@gmail.com' || !isInternalAccount(email));
 }
+function same(a:Source,b:Source|null) {
+  return !!b && eligible(b) && a.id===b.id && a.userId===b.userId && a.channelId===b.channelId
+    && a.channelName===b.channelName && a.subscribers===b.subscribers && a.videoCount===b.videoCount && a.user.email===b.user.email;
+}
+const currentSource = `EXISTS(SELECT 1 FROM youtube_tokens y JOIN users u ON u.id=y."userId"
+  WHERE y."userId"=$2 AND u.email=$4 AND y.id=$5 AND y."channelId"=$6
+    AND y."channelName" IS NOT DISTINCT FROM $7 AND y.subscribers IS NOT DISTINCT FROM $8 AND y."videoCount" IS NOT DISTINCT FROM $9)`;
 
-export async function generateDailyIdeas(): Promise<number> {
-  const date = todayUTC();
+async function produce(user:Source,date:string,check:()=>void):Promise<void> {
+  check(); if(!same(user,await read(user.userId)))throw Error('daily_ideas_unconfirmed'); check();
+  const recentGens=await prisma.generation.findMany({where:{userId:user.userId,template:{in:['title','description']}},orderBy:{createdAt:'desc'},take:10,select:{output:true}});
+  check();
+  const recentTitles=recentGens.map(g=>g.output.slice(0,80)).join('\n');
+  const subs=user.subscribers?parseInt(user.subscribers,10):0,vids=user.videoCount?parseInt(user.videoCount,10):0;
+  if(!Number.isFinite(subs)||!Number.isFinite(vids))throw Error('daily_ideas_unconfirmed');
+  const attemptId=randomUUID(),ideaId=randomUUID(),args=[attemptId,user.userId,date,user.user.email,user.id,user.channelId,user.channelName,user.subscribers,user.videoCount];
+  check();
+  const admitted=await prisma.$queryRawUnsafe<{id:string;userId:string;date:string;state:string}[]>(`
+    INSERT INTO daily_idea_generation_attempts(id,"userId",date)
+    SELECT $1,$2,$3 WHERE ${currentSource} AND NOT EXISTS(SELECT 1 FROM daily_ideas WHERE "userId"=$2 AND date=$3)
+    ON CONFLICT("userId",date) DO NOTHING RETURNING id,"userId",date,state`,...args);
+  if(!Array.isArray(admitted)||admitted.length!==1||Object.keys(admitted[0]).length!==4||admitted[0].id!==attemptId||admitted[0].userId!==user.userId||admitted[0].date!==date||admitted[0].state!=='pending')throw Error('daily_ideas_unconfirmed');
+  // Only this INSERT's own ACK admits this producer. Old/lost markers veto.
+  check();if(!same(user,await read(user.userId)))throw Error('daily_ideas_unconfirmed');check();
+  const task=await getMessagesTask({operationKey:attemptId,userId:user.userId,taskType:'creator.daily-ideas',language:'es',instructionsVersion:'daily-ideas-v1',outputSchema:{type:'array',minItems:1,maxItems:5,items:{type:'object',additionalProperties:false,required:['title_es','title_en','idea_es','idea_en'],properties:{title_es:{type:'string',minLength:1},title_en:{type:'string',minLength:1},idea_es:{type:'string',minLength:1},idea_en:{type:'string',minLength:1}}}}});
+  check();if(!same(user,await read(user.userId)))throw Error('daily_ideas_unconfirmed');check();
+  // Retain the same invoked model and its own SQL completion after retirement.
+  const result=await task.create({max_tokens:2000,messages:[{role:'user',content: `You are a YouTube growth advisor. Generate 5 personalized video ideas for this creator.
 
-  // Find users with connected YouTube channel who don't have ideas for today.
-  // Gratis desde 13/07 (decisión Javier) — ya no se filtra por plan de pago,
-  // ver project_channel_connect_free.md.
-  const candidates = await prisma.youtubeToken.findMany({
-    where: {
-      channelId: { not: null },
-      user: {
-        dailyIdeas: { none: { date } },
-      },
-    },
-    select: {
-      userId: true,
-      channelName: true,
-      subscribers: true,
-      videoCount: true,
-      user: { select: { email: true } },
-    },
-  });
-
-  // Las cuentas internas/de prueba (Javier, QA, correo de marca) tienen canal
-  // conectado pero generarles ideas cada día es puro gasto de API sin retorno.
-  // EXCEPCIÓN: la cuenta de marca genera ideas igualmente para poder probar la
-  // pestaña "Ideas" de la extensión con datos reales. El email a esa cuenta sigue
-  // bloqueado en lib/daily-ideas-email.ts (isInternalAccount), así que esto solo
-  // escribe la fila de DailyIdea — sin envío, sin coste de Resend.
-  const IDEAS_GEN_ALLOWLIST = new Set(['ytbeviral@gmail.com']);
-  const users = candidates.filter(u => {
-    const email = (u.user?.email || '').trim().toLowerCase();
-    return IDEAS_GEN_ALLOWLIST.has(email) || !isInternalAccount(email);
-  });
-
-  if (users.length === 0) return 0;
-
-  // 02/09/2026: el prompt no decia en que año estamos, asi que el modelo caia en el
-  // de su entrenamiento: el 9% de los titulos generados desde el 25/08 decian "2025"
-  // y solo el 1% "2026". Un creador que recibe "Guia 2025" en septiembre de 2026
-  // descarta la herramienta de un vistazo. La fecha se inyecta ahora en el prompt.
-
-  let generated = 0;
-
-  for (const user of users) {
-    try {
-      // Fetch user's recent video titles for context
-      const recentGens = await prisma.generation.findMany({
-        where: { userId: user.userId, template: { in: ['title', 'description'] } },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        select: { output: true },
-      });
-      const recentTitles = recentGens.map(g => g.output.slice(0, 80)).join('\n');
-
-      const subs = user.subscribers ? parseInt(user.subscribers, 10) : 0;
-      const vids = user.videoCount ? parseInt(user.videoCount, 10) : 0;
-
-      const task = await getMessagesTask({ userId: user.userId, taskType: 'creator.daily-ideas', language: 'es', instructionsVersion: 'daily-ideas-v1',
-        outputSchema: { type: 'array', minItems: 1, maxItems: 5, items: { type: 'object', additionalProperties: false,
-          required: ['title_es', 'title_en', 'idea_es', 'idea_en'], properties: {
-            title_es: { type: 'string', minLength: 1 }, title_en: { type: 'string', minLength: 1 }, idea_es: { type: 'string', minLength: 1 }, idea_en: { type: 'string', minLength: 1 },
-          } } },
-      });
-      const result = await task.create({ max_tokens: 2000, messages: [{ role: 'user', content: `You are a YouTube growth advisor. Generate 5 personalized video ideas for this creator.
-
-Today is ${new Date().toISOString().slice(0, 10)} — the current year is ${new Date().getUTCFullYear()}.
-NEVER put a past year in a title. If a title needs a year, it must be ${new Date().getUTCFullYear()}.
+Today is ${date} — the current year is ${date.slice(0,4)}.
+NEVER put a past year in a title. If a title needs a year, it must be ${date.slice(0,4)}.
 
 Channel: ${user.channelName || 'Unknown'}
 Subscribers: ${subs}
@@ -108,24 +71,41 @@ published videos and cannot fully judge a title on its own. Aim for 85+:
 - A search-intent hook: start with how/why/what, or end with "?" (10 pts)
 
 Respond ONLY with JSON array, no other text:
-[{"title_es":"título sugerido","title_en":"suggested title","idea_es":"explicación breve","idea_en":"brief explanation"}]` }] });
-      const ideas = JSON.parse(result.content[0].text);
+[{"title_es":"título sugerido","title_en":"suggested title","idea_es":"explicación breve","idea_en":"brief explanation"}]`}]});
+  if(!Array.isArray(result.content)||result.content.length!==1||result.content[0]?.type!=='text'||typeof result.content[0].text!=='string')throw Error('daily_ideas_unconfirmed');
+  const ideas=JSON.parse(result.content[0].text) as unknown;
+  if(!Array.isArray(ideas)||ideas.length<1||ideas.length>5||!ideas.every((v:unknown)=>{
+    if(!v||typeof v!=='object'||Array.isArray(v))return false;
+    const row=v as Record<string,unknown>;
+    return Object.keys(row).sort().join(',')==='idea_en,idea_es,title_en,title_es' && Object.values(row).every(x=>typeof x==='string'&&x.trim().length>0&&x.length<=2000);
+  }))throw Error('daily_ideas_unconfirmed');
+  const saved=await prisma.$queryRawUnsafe<{ideaId:string;attemptId:string}[]>(`
+    WITH own AS MATERIALIZED(SELECT id FROM daily_idea_generation_attempts WHERE id=$1 AND "userId"=$2 AND date=$3 AND state='pending' FOR UPDATE),
+    saved AS(INSERT INTO daily_ideas(id,"userId",date,ideas,"createdAt") SELECT $10,$2,$3,$11::jsonb,timezone('UTC',clock_timestamp()) FROM own WHERE ${currentSource}
+      ON CONFLICT("userId",date) DO NOTHING RETURNING id),
+    completed AS(UPDATE daily_idea_generation_attempts SET state='completed',"completedAt"=timezone('UTC',clock_timestamp()) WHERE id=$1 AND "userId"=$2 AND date=$3 AND state='pending' AND EXISTS(SELECT 1 FROM saved) RETURNING id)
+    SELECT s.id AS "ideaId",c.id AS "attemptId" FROM saved s CROSS JOIN completed c`,...args,ideaId,JSON.stringify(ideas));
+  if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==2||saved[0].ideaId!==ideaId||saved[0].attemptId!==attemptId)throw Error('daily_ideas_unconfirmed');
+}
 
-      await prisma.dailyIdea.create({
-        data: {
-          userId: user.userId,
-          date,
-          ideas: ideas as unknown as import('@prisma/client').Prisma.InputJsonValue,
-        },
-      });
-      generated++;
-    } catch (err) {
-      // Antes tragaba el error sin loguear nada — con 0 filas de DailyIdea
-      // en toda la historia de producción (11/07/2026) era imposible saber
-      // por qué. Ahora queda rastro para el próximo cron (07:15 UTC).
-      console.error(`[daily-ideas] Unexpected error for user ${user.userId}: ${err instanceof Error ? err.message : err}`);
+export type DailyIdeasScan={generated:number;scanned:number;pages:number;unconfirmed:number;hasMore:boolean;coverage:'pages-within-original-budget'};
+export function generateDailyIdeas(original?:NativeCronDailyIdeas):Promise<DailyIdeasScan> {
+  return runCronDailyIdeas(original,async({date,checkBeforeDispatch:check})=>{
+    const result:DailyIdeasScan={generated:0,scanned:0,pages:0,unconfirmed:0,hasMore:false,coverage:'pages-within-original-budget'};
+    let cursor:string|undefined;const seen=new Set<string>();
+    // At most32 bounded queries of25 candidates. Cursor stays lexical/private;
+    // hasMore preserves coverage uncertainty. No serialized resume or new budget.
+    for(let page=0;page<32;page++){
+      check();const users=await prisma.youtubeToken.findMany({where:{...(cursor?{userId:{gt:cursor}}:{}),channelId:{not:null},user:{dailyIdeas:{none:{date}}}},orderBy:{userId:'asc'},take:25,select});check();
+      if(!Array.isArray(users)||users.length>25)throw Error('daily_ideas_unconfirmed');
+      result.pages++;result.hasMore=users.length===25;
+      for(const user of users){check();if(!user.userId||seen.has(user.userId))throw Error('daily_ideas_unconfirmed');seen.add(user.userId);cursor=user.userId;result.scanned++;
+        if(!eligible(user))continue;
+        try{await produce(user,date,check);result.generated++;}catch{result.unconfirmed++;check();}
+        check();
+      }
+      if(!result.hasMore)return result;
     }
-  }
-
-  return generated;
+    return result;
+  });
 }

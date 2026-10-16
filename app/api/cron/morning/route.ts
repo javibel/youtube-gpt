@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, issueDailyTip) => {
+  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -69,11 +69,12 @@ export async function GET(request: Request) {
     );
 
     // 1b. Generate personalized daily ideas for Pro users
-    const ideasGenerated = await step(() => generateDailyIdeas()).catch(err => {
+    const ideasGenerated = await step(() => generateDailyIdeas(issueDailyIdeas())).catch(err => {
       errors.push(`Daily ideas: ${err instanceof Error ? err.message : err}`);
       return 0;
     });
-    results.dailyIdeas = ideasGenerated;
+    results.dailyIdeas = typeof ideasGenerated === 'number' ? ideasGenerated : ideasGenerated.generated;
+    if (typeof ideasGenerated !== 'number') results.dailyIdeasCoverage = ideasGenerated;
 
     // 1c. Deliver those ideas. Without this the cron writes them to the database and
     // nobody ever sees them — which is why users who connected a channel stopped
