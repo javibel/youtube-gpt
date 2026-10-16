@@ -22,6 +22,7 @@ export async function createAbTestOriginal(request: Request): Promise<Response> 
   const requestedAt = Date.now(), deadline = performance.now() + 55_000, commandRef = request.headers.get('idempotency-key');
   const configured = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
   const cookie = request.headers.get('cookie'), incomingOrigin = request.headers.get('origin');
+  const expectedHeader=request.headers.get('x-ytv-ab-expectation');
   const contentType = request.headers.get('content-type'), length = request.headers.get('content-length');
   const nativeFetch = fetch;
   const bearer = request.headers.has('authorization'), url = new URL(request.url);
@@ -44,6 +45,13 @@ export async function createAbTestOriginal(request: Request): Promise<Response> 
     check();
     if (request.method !== 'POST' || url.pathname !== '/api/youtube/ab-test' || url.search || url.hash
       || request.headers.has('x-ytv-recovery') || request.headers.has('x-ytv-resume') || !sessionRef(commandRef) || contentType !== 'application/json' || length !== null && (!/^(0|[1-9][0-9]*)$/.test(length) || Number(length) > 4096)) fail('invalid_input');
+    // Public expectation can only deny a cookie/account/session replacement.
+    // It is never authentication or authority to recover a producer.
+    let expected:Readonly<{userId:string;email:string;sessionRef:string}>;
+    try{if(!expectedHeader||expectedHeader.length>4096)fail('invalid_input');const e:unknown=JSON.parse(decodeURIComponent(expectedHeader));
+      if(!object(e)||Object.keys(e).sort().join(',')!=='email,sessionRef,userId'||!identifier(e.userId)||!email(e.email)||!sessionRef(e.sessionRef))fail('invalid_input');
+      expected=Object.freeze({userId:e.userId,email:e.email,sessionRef:e.sessionRef});
+    }catch{fail('invalid_input');}
     if (!configured || !cookie || bearer) fail('unauthorized');
     const origin = new URL(configured);
     if (origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash
@@ -60,7 +68,7 @@ export async function createAbTestOriginal(request: Request): Promise<Response> 
     })));
     if (!object(decoded)) fail('unauthorized');
     const { id, sub, email: address, authSessionRef, iat, exp, requiresVerification, requiresTotp } = decoded;
-    if (!identifier(id) || sub !== id || !email(address) || !sessionRef(authSessionRef) || requiresVerification !== false || requiresTotp !== false
+    if (!identifier(id) || sub !== id || !email(address) || !sessionRef(authSessionRef) || id!==expected.userId || address!==expected.email || authSessionRef!==expected.sessionRef || requiresVerification !== false || requiresTotp !== false
       || typeof iat !== 'number' || !Number.isSafeInteger(iat) || iat < 0 || iat > requestedAt / 1000
       || typeof exp !== 'number' || !Number.isSafeInteger(exp) || !Number.isSafeInteger(exp * 1000) || exp <= iat || exp * 1000 <= Date.now()) fail('unauthorized');
     expiresAt = Math.min(expiresAt, exp * 1000); check();

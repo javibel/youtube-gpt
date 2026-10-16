@@ -39,7 +39,7 @@ export function beginAbNativeCreation(owner: AbNativeCreationOwner, candidate: A
     if (!command(commandRef) || !command(captured.sessionRef) || !/^[A-Za-z0-9_-]{1,128}$/.test(captured.id)
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(captured.email) || !count(captured.expiresAt)) throw Error('ab_creation_unconfirmed');
     const response = await wait(() => fetch('/api/youtube/ab-test', { method: 'POST', credentials: 'same-origin', cache: 'no-store', redirect: 'error',
-      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandRef }, body: JSON.stringify(input), signal: controller.signal }));
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandRef,'X-YTV-AB-Expectation':encodeURIComponent(JSON.stringify({userId:captured.id,email:captured.email,sessionRef:captured.sessionRef})) }, body: JSON.stringify(input), signal: controller.signal }));
     if (response.redirected || response.headers.get('cache-control') !== 'no-store') throw Error('ab_creation_unconfirmed');
     if (!response.body) throw Error('ab_creation_unconfirmed');
     const reader = response.body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
