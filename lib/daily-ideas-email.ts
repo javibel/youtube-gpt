@@ -10,7 +10,9 @@
  * asking does not work (53 sends, 0 returns). This one carries the product itself.
  */
 import { prisma } from '@/lib/prisma';
-import { sendTransactionalEmail } from '@/lib/send-email';
+import { randomUUID } from 'node:crypto';
+import { prepareDomainEmailOriginal, dispatchDomainEmailOriginal } from '@/lib/send-email';
+import { runCronDailyIdeasEmail, type NativeCronDailyIdeasEmail } from '@/lib/cron-dispatch-original';
 import { signUnsubscribe } from '@/lib/email-token';
 import { analyzeTitle, detectCreatorLang, type Lang } from '@/lib/title-score';
 import { isInternalAccount } from '@/lib/internal-accounts';
@@ -94,7 +96,7 @@ function ideaCard(idea: DailyIdea, lang: Lang, isLast: boolean): string {
 }
 
 export function buildDailyIdeasEmail(
-  ideas: DailyIdea[], lang: Lang, connectedAt: Date, unsubUrl: string,
+  ideas: DailyIdea[], lang: Lang, connectedAt: Date, unsubUrl: string, asOf = new Date(),
 ): { subject: string; html: string } {
   const t = T[lang];
   const lead = pickTitle(ideas[0], lang);
@@ -105,7 +107,7 @@ export function buildDailyIdeasEmail(
   <tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
       <tr><td style="background:#111111;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:40px;">
-        <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">${formatDate(new Date(), lang)}</p>
+        <p style="margin:0 0 16px;font-size:11px;font-weight:600;color:#e84d5b;text-transform:uppercase;letter-spacing:0.15em;font-family:monospace;">${formatDate(asOf, lang)}</p>
         <p style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ffffff;">${t.heading(ideas.length)}</p>
         <p style="margin:0 0 12px;font-size:15px;color:#a1a1aa;line-height:1.7;">${t.why}</p>
         <p style="margin:0 0 28px;font-size:15px;color:#a1a1aa;line-height:1.7;">${t.scoreLine(t.toolName, `${BASE}/title-analyzer`)}</p>
@@ -131,67 +133,81 @@ export function buildDailyIdeasEmail(
   return { subject, html };
 }
 
-/** Sends today's briefing. Returns how many went out. */
-export async function sendDailyIdeasEmails(opts: { dryRun?: boolean; onlyUserIds?: string[] } = {}): Promise<number> {
-  // Last line of defence: never let a batch go out with dead links, whatever BASE
-  // ends up being.
-  if (!opts.dryRun && !/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}/i.test(BASE)) {
-    throw new Error(`[daily-ideas-email] Refusing to send: BASE is not a public URL (${BASE})`);
-  }
-  const today = new Date().toISOString().slice(0, 10);
-  const rows = await prisma.dailyIdea.findMany({
-    where: { date: today, ...(opts.onlyUserIds ? { userId: { in: opts.onlyUserIds } } : {}) },
-    include: { user: { select: { id: true, email: true, lang: true, marketingOptOut: true } } },
+const sourceSelect={id:true,userId:true,date:true,ideas:true,createdAt:true,user:{select:{id:true,email:true,lang:true,emailVerified:true,marketingOptOut:true,youtubeToken:{select:{id:true,channelId:true,createdAt:true}}}}} as const;
+const readSource=(id:string)=>prisma.dailyIdea.findUnique({where:{id},select:sourceSelect});
+type Source=NonNullable<Awaited<ReturnType<typeof readSource>>>;
+function validIdeas(value:unknown):value is DailyIdea[] {
+  return Array.isArray(value)&&value.length>0&&value.length<=5&&value.every(v=>!!v&&typeof v==='object'&&!Array.isArray(v)
+    &&Object.keys(v).sort().join(',')==='idea_en,idea_es,title_en,title_es'&&Object.values(v).every(x=>typeof x==='string'&&x.trim().length>0&&x.length<=2000));
+}
+function eligible(row:Source,date:string) {
+  const u=row.user,t=u?.youtubeToken;
+  return !!row.id&&row.date===date&&u?.id===row.userId&&!!u.email&&u.marketingOptOut===false
+    &&u.emailVerified instanceof Date&&Number.isFinite(u.emailVerified.getTime())&&!isInternalAccount(u.email)
+    &&!!t?.id&&!!t.channelId&&Number.isFinite(t.createdAt.getTime())&&Number.isFinite(row.createdAt.getTime())&&validIdeas(row.ideas);
+}
+function same(a:Source,b:Source|null,date:string) {
+  return !!b&&eligible(b,date)&&a.id===b.id&&a.userId===b.userId&&a.date===b.date&&a.createdAt.getTime()===b.createdAt.getTime()
+    &&JSON.stringify(a.ideas)===JSON.stringify(b.ideas)&&a.user.email===b.user.email&&a.user.lang===b.user.lang
+    &&a.user.emailVerified?.getTime()===b.user.emailVerified?.getTime()&&a.user.youtubeToken?.id===b.user.youtubeToken?.id
+    &&a.user.youtubeToken?.channelId===b.user.youtubeToken?.channelId&&a.user.youtubeToken?.createdAt.getTime()===b.user.youtubeToken?.createdAt.getTime();
+}
+const sourceCondition=`EXISTS(SELECT 1 FROM daily_ideas i JOIN users u ON u.id=i."userId" JOIN youtube_tokens t ON t."userId"=u.id
+  WHERE i.id=$4 AND i."userId"=$2 AND i.date=$3 AND i.ideas=$5::jsonb AND i."createdAt"=timezone('UTC',$6::timestamptz)
+    AND u.email=$7 AND u.lang=$8 AND u."emailVerified"=timezone('UTC',$9::timestamptz) AND u."marketingOptOut"=false
+    AND t.id=$10 AND t."channelId"=$11 AND t."createdAt"=timezone('UTC',$12::timestamptz))`;
+const noPriorLog=`NOT EXISTS(SELECT 1 FROM email_logs WHERE "userId"=$2 AND sequence='daily-ideas' AND step=$3)`;
+
+async function deliver(row:Source,date:string,at:number,check:()=>void):Promise<boolean> {
+  check();const channel=row.user.youtubeToken;if(!eligible(row,date)||!channel||!same(row,await readSource(row.id),date))throw Error('daily_ideas_email_unconfirmed');check();
+  const recent=await prisma.generation.findMany({where:{userId:row.userId,template:{in:['title','description']}},orderBy:{createdAt:'desc'},take:10,select:{output:true}});check();
+  const lang=detectCreatorLang(recent.map(r=>r.output).filter(Boolean),row.user.lang),unsubUrl=BASE+'/api/email/unsubscribe?token='+signUnsubscribe(row.userId);
+  const {subject,html}=buildDailyIdeasEmail(row.ideas as unknown as DailyIdea[],lang,channel.createdAt,unsubUrl,new Date(at));
+  const attemptId=randomUUID();let admitted=false,armed=false,issued=false;
+  const mail=prepareDomainEmailOriginal({to:row.user.email,subject,html,isTransactional:false,idempotencyKey:attemptId},()=>{
+    check();if(!admitted||!armed||issued)throw Error('daily_ideas_email_unconfirmed');issued=true;
   });
-
-  let sent = 0;
-  for (const row of rows) {
-    const u = row.user;
-    if (!u?.email || u.marketingOptOut) continue;
-    if (isInternalAccount(u.email)) continue; // cuentas internas/de prueba — no gastar envío
-
-    const ideas = (Array.isArray(row.ideas) ? row.ideas : []) as unknown as DailyIdea[];
-    if (!ideas.length) continue;
-
-    const token = await prisma.youtubeToken.findUnique({ where: { userId: u.id }, select: { createdAt: true } });
-    if (!token) continue; // ideas only make sense for a connected channel
-
-    // Judge language by what the creator actually publishes, not by User.lang,
-    // which defaults to "es" for every account that never changed it.
-    const recent = await prisma.generation.findMany({
-      where: { userId: u.id, template: { in: ['title', 'description'] } },
-      orderBy: { createdAt: 'desc' }, take: 10, select: { output: true },
-    });
-    const lang = detectCreatorLang(recent.map(r => r.output).filter(Boolean), u.lang);
-
-    const unsubUrl = `${BASE}/api/email/unsubscribe?token=${signUnsubscribe(u.id)}`;
-    const { subject, html } = buildDailyIdeasEmail(ideas, lang, token.createdAt, unsubUrl);
-
-    if (opts.dryRun) {
-      console.log(`[daily-ideas-email] DRY-RUN ${u.email} [${lang}] — ${subject}`);
-      sent++;
-      continue;
+  if(!mail)throw Error('daily_ideas_email_unconfirmed');
+  const args=[attemptId,row.userId,date,row.id,JSON.stringify(row.ideas),row.createdAt,row.user.email,row.user.lang,row.user.emailVerified,channel.id,channel.channelId,channel.createdAt];
+  check();
+  const admission=await prisma.$queryRawUnsafe<{id:string;userId:string;date:string;ideaId:string;state:string}[]>(`
+    INSERT INTO daily_ideas_email_attempts(id,"userId",date,"ideaId")
+    SELECT $1,$2,$3,$4 WHERE ${sourceCondition} AND ${noPriorLog}
+    ON CONFLICT("userId",date) DO NOTHING RETURNING id,"userId",date,"ideaId",state`,...args);
+  if(!Array.isArray(admission)||admission.length!==1||Object.keys(admission[0]).length!==5||admission[0].id!==attemptId||admission[0].userId!==row.userId||admission[0].date!==date||admission[0].ideaId!==row.id||admission[0].state!=='pending')throw Error('daily_ideas_email_unconfirmed');
+  admitted=true;check();
+  const negative=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM daily_ideas_email_attempts a
+    WHERE a.id=$1 AND a."userId"=$2 AND a.date=$3 AND a."ideaId"=$4 AND a.state='pending'
+      AND ${sourceCondition} AND ${noPriorLog}) AS eligible`,...args);check();
+  if(!Array.isArray(negative)||negative.length!==1||Object.keys(negative[0]).length!==1||negative[0].eligible!==true||!same(row,await readSource(row.id),date))throw Error('daily_ideas_email_unconfirmed');check();
+  armed=true;
+  // The transport checks this same live original immediately before native HTTP.
+  // Keep its exact HTTP/body promise; no cancellation/retry/lookup can replace it.
+  const outcome=await dispatchDomainEmailOriginal(mail);
+  if(outcome!=='provider-accepted')return false;
+  const closed=await prisma.$queryRawUnsafe<{id:string}[]>(`
+    WITH own AS MATERIALIZED(SELECT id FROM daily_ideas_email_attempts WHERE id=$1 AND "userId"=$2 AND date=$3 AND "ideaId"=$4 AND state='pending' FOR UPDATE),
+    accepted AS(INSERT INTO email_logs(id,"userId",sequence,step,"sentAt") SELECT id,$2,'daily-ideas',$3,timezone('UTC',clock_timestamp()) FROM own
+      ON CONFLICT("userId",sequence,step) DO NOTHING RETURNING id),
+    completed AS(UPDATE daily_ideas_email_attempts SET state='provider-accepted',"acceptedAt"=timezone('UTC',clock_timestamp())
+      WHERE id=$1 AND "userId"=$2 AND date=$3 AND "ideaId"=$4 AND state='pending' AND EXISTS(SELECT 1 FROM accepted WHERE id=$1) RETURNING id)
+    SELECT id FROM completed`,attemptId,row.userId,date,row.id);
+  if(!Array.isArray(closed)||closed.length!==1||Object.keys(closed[0]).length!==1||closed[0].id!==attemptId)throw Error('daily_ideas_email_unconfirmed');
+  return true;
+}
+export type DailyIdeasEmailScan={providerAccepted:number;unconfirmed:number;scanned:number;pages:number;hasMore:boolean;coverage:'pages-within-original-budget';acceptance:'provider-only-not-delivery'};
+export function sendDailyIdeasEmails(original?:NativeCronDailyIdeasEmail):Promise<DailyIdeasEmailScan> {
+  return runCronDailyIdeasEmail(original,async({date,at,checkBeforeDispatch:check})=>{
+    const result:DailyIdeasEmailScan={providerAccepted:0,unconfirmed:0,scanned:0,pages:0,hasMore:false,coverage:'pages-within-original-budget',acceptance:'provider-only-not-delivery'};
+    let cursor:string|undefined;const seen=new Set<string>();
+    for(let page=0;page<32;page++){
+      check();const rows=await prisma.dailyIdea.findMany({where:{date,...(cursor?{id:{gt:cursor}}:{}),user:{marketingOptOut:false,emailVerified:{not:null},emailLogs:{none:{sequence:'daily-ideas',step:date}}}},orderBy:{id:'asc'},take:25,select:sourceSelect});check();
+      if(!Array.isArray(rows)||rows.length>25)throw Error('daily_ideas_email_unconfirmed');result.pages++;result.hasMore=rows.length===25;
+      for(const row of rows){check();if(!row.id||seen.has(row.id))throw Error('daily_ideas_email_unconfirmed');seen.add(row.id);cursor=row.id;result.scanned++;if(!eligible(row,date))continue;
+        try{if(await deliver(row,date,at,check))result.providerAccepted++;else result.unconfirmed++;}catch{result.unconfirmed++;check();}check();
+      }
+      if(!result.hasMore)return result;
     }
-
-    // Claim the slot BEFORE sending. EmailLog is unique on (userId, sequence, step),
-    // so a second run on the same day loses the race and skips instead of sending a
-    // duplicate — a daily briefing that arrives twice reads as broken.
-    try {
-      await prisma.emailLog.create({ data: { userId: u.id, sequence: 'daily-ideas', step: today } });
-    } catch {
-      console.log(`[daily-ideas-email] Already sent to ${u.email} today — skipping`);
-      continue;
-    }
-
-    try {
-      await sendTransactionalEmail({ to: u.email, subject, html });
-      console.log(`[daily-ideas-email] Sent to ${u.email} [${lang}]`);
-      sent++;
-    } catch (err) {
-      // Release the slot so the next run can retry.
-      await prisma.emailLog.deleteMany({ where: { userId: u.id, sequence: 'daily-ideas', step: today } }).catch(() => {});
-      console.error(`[daily-ideas-email] Failed for ${u.email}:`, err instanceof Error ? err.message : err);
-    }
-  }
-  return sent;
+    return result;
+  });
 }

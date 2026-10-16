@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas) => {
+  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -79,11 +79,12 @@ export async function GET(request: Request) {
     // 1c. Deliver those ideas. Without this the cron writes them to the database and
     // nobody ever sees them — which is why users who connected a channel stopped
     // returning (docs: memory project-daily-ideas-briefing).
-    const ideasEmailed = await step(() => sendDailyIdeasEmails()).catch(err => {
+    const ideasEmailed = await step(() => sendDailyIdeasEmails(issueDailyIdeasEmail())).catch(err => {
       errors.push(`Daily ideas email: ${err instanceof Error ? err.message : err}`);
       return 0;
     });
-    results.dailyIdeasEmailed = ideasEmailed;
+    results.dailyIdeasEmailed = typeof ideasEmailed === 'number' ? ideasEmailed : ideasEmailed.providerAccepted;
+    if (typeof ideasEmailed !== 'number') results.dailyIdeasEmailCoverage = ideasEmailed;
 
     // 2. Generate content for Facebook + Instagram (LinkedIn + Twitter desactivados)
     const [facebook, instagram] = await Promise.allSettled([
