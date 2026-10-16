@@ -359,8 +359,8 @@ export function generateAdminSocialDraft(platform:'facebook'|'instagram',type:Po
       await validate();config();
       // The draft's UUID is also this one publication's record ID. INSERT ACK
       // never authorizes adoption of an existing pending/failed/published row.
-      const admitted=await prisma.$queryRawUnsafe<{id:string}[]>(`INSERT INTO social_posts(id,platform,content,status)
-        SELECT $1,$3,$11,'publishing' WHERE EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='completed' AND content=$11 AND pillar=$12)
+      const admitted=await prisma.$queryRawUnsafe<{id:string}[]>(`INSERT INTO social_posts(id,platform,content,status,"createdAt")
+        SELECT $1,$3,$11,'publishing',timezone('UTC',clock_timestamp()) WHERE EXISTS(SELECT 1 FROM admin_social_draft_attempts WHERE ${ownRow} AND state='completed' AND content=$11 AND pillar=$12)
           AND ${sourceSql}=$5::jsonb AND ${actor}
         ON CONFLICT(id) DO NOTHING RETURNING id`,...args,content,pillar.id);
       config();if(!Array.isArray(admitted)||admitted.length!==1||Object.keys(admitted[0]).length!==1||admitted[0].id!==id)throw Error('social_publish_unconfirmed');

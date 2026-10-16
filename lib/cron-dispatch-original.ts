@@ -115,9 +115,9 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     if (!['facebook','instagram'].includes(platform) || (own.slot==='evening' && platform!=='instagram') || platforms.has(platform)) throw Error('social_post_unconfirmed');
     platforms.add(platform);
     const child=Object.freeze({}) as NativeCronSocialPost, date=new Date(own.at).toISOString().slice(0,10);
-    socialPosts.set(child,{date,at:own.at,slot:own.slot,platform,remaining:()=>{check();return Math.max(1,Math.floor(Math.min(own.until-Date.now(),own.deadline-performance.now())));},check:()=>{
-      check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('social_post_unconfirmed');
-    }});
+    const checkSocial=()=>{check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('social_post_unconfirmed');};
+    socialPosts.set(child,{date,at:own.at,slot:own.slot,platform,check:checkSocial,
+      remaining:()=>{checkSocial();return Math.max(1,Math.floor(Math.min(own.until-Date.now(),own.deadline-performance.now())));}});
     return child;
   };
   try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost); check(); return result; }
