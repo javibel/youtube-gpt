@@ -13,6 +13,13 @@ const id = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{1,128}$
 const count = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
 const ids = (v: unknown): v is string[] => Array.isArray(v) && v.every(id) && new Set(v).size === v.length;
 const confirmed = (o?: IntelOutcome) => o?.status === 'rejected' || o?.status === 'deferred' || o?.status === 'ready' && o.data.opportunitiesStatus !== 'unavailable';
+// Veto only: the replacement UI cannot use an old marker/result as authority
+// or clear an uncertain legacy inference by changing session or selection.
+export function legacyIntelBlocked(userId: string): boolean {
+  const key = 'ytubviral:competitor-intel:' + JSON.stringify([userId]);
+  try { return denied.has(key) || (owners.get(key) ?? []).some(r => r.pending || !confirmed(r.outcome)) || sessionStorage.getItem(key) !== null; }
+  catch { return true; }
+}
 export const intelRetryAllowed = (read: IntelRead) => !read.pending && confirmed(read.outcome)
   && !denied.has('ytubviral:competitor-intel:' + JSON.stringify([read.owner.userId]));
 

@@ -80,8 +80,6 @@ armCompletionWatchdog();
  await runContract('./competitor-create-client-database.cjs',prisma,results);
  await runContract('./outliers-database.cjs',prisma,results);
  await runContract('./outlier-read-client-database.cjs',prisma,results);
- await runContract('./competitor-intel-database.cjs',prisma,results);
- await runContract('./competitor-intel-client-database.cjs',prisma,results);
  await runContract('./competitor-analysis-track-database.cjs',prisma,results);
  await runContract('./competitor-analysis-database.cjs',prisma,results);
  await runContract('./competitor-analysis-client-database.cjs',prisma,results);

@@ -14,12 +14,9 @@ import { beginCompetitorCreation, competitorCreationBlocked, mergeCompetitorCrea
 import type { CreationAttempt, CreationOutcome } from '@/lib/competitor-create-client';
 import { beginOutlierRead } from '@/lib/outlier-read-client';
 import type { OutlierRead, OutlierOutcome } from '@/lib/outlier-read-client';
-import { beginCompetitorIntel, intelRetryAllowed } from '@/lib/competitor-intel-client';
-import type { IntelRead, IntelOutcome } from '@/lib/competitor-intel-client';
 
 type Lang = 'es' | 'en';
 
-type IntelTab = 'trending' | 'new' | 'opportunities';
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
@@ -88,16 +85,6 @@ export default function CompetitorTrackingPage() {
   const [outlierState, setOutlierState] = useState<{ scope: string; values: Record<string, OutlierView> }>({ scope: outlierScope, values: {} });
   const outlierMap = outlierState.scope === outlierScope ? outlierState.values : {};
   const [expandedOutliers, setExpandedOutliers] = useState<string | null>(null);
-  const [intelTab, setIntelTab] = useState<IntelTab>('trending');
-  const intelScope = JSON.stringify([ownerKey, lang, channels]);
-  const currentIntel = useRef<{ scope: string; read: IntelRead | null }>({ scope: intelScope, read: null });
-  if (currentIntel.current.scope !== intelScope) currentIntel.current = { scope: intelScope, read: null };
-  type IntelView = { read: IntelRead; outcome: IntelOutcome | { status: 'pending' } };
-  const [intelState, setIntelState] = useState<{ scope: string; value: IntelView | null }>({ scope: intelScope, value: null });
-  const intel = intelState.scope === intelScope ? intelState.value : null;
-  const intelData = intel?.outcome.status === 'ready' ? intel.outcome.data : null;
-  const trending = intelData?.trending ?? [], newUploads = intelData?.newUploads ?? [], opportunities = intelData?.opportunities ?? [];
-  const intelLoading = !intel || intel.outcome.status === 'pending';
   const t = (es: string, en: string) => lang === 'en' ? en : es;
 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -197,28 +184,6 @@ export default function CompetitorTrackingPage() {
     for (const channelId of channels) observeOutlier(channelId, () => active);
     return () => { active = false; };
   }, [outlierScope]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function observeIntel(alive: () => boolean = () => true, retry?: IntelRead) {
-    const capturedOwner = ownerKey, capturedScope = intelScope;
-    if (status !== 'authenticated' || !owner.userId || !channels.length || listOwner !== capturedOwner || !mounted.current
-      || currentOwner.current !== capturedOwner || currentIntel.current.scope !== capturedScope) return;
-    if (retry && (currentIntel.current.read !== retry || !intelRetryAllowed(retry))) return;
-    const read = beginCompetitorIntel(owner, { language: lang, channelIds: channels }, retry);
-    currentIntel.current.read = read;
-    const apply = (outcome: IntelView['outcome']) => {
-      if (!alive() || !mounted.current || currentOwner.current !== capturedOwner || currentIntel.current.scope !== capturedScope
-        || currentIntel.current.read !== read) return;
-      setIntelState({ scope: capturedScope, value: { read, outcome } });
-    };
-    apply(read.outcome ?? read.waitOutcome ?? { status: 'pending' });
-    void read.original.then(apply);
-    void read.waiter.then(outcome => { if (!read.outcome) apply(outcome); });
-  }
-  useEffect(() => {
-    let active = true;
-    observeIntel(() => active);
-    return () => { active = false; };
-  }, [intelScope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function addCompetitor() {
     const capturedOwner = ownerKey;
@@ -487,218 +452,7 @@ export default function CompetitorTrackingPage() {
           ))}
         </div>
 
-        {/* Competitor Intelligence v2 */}
-        {channels.length > 0 && (
-          <div className="mt-10 space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono-jb text-[13px] tracking-[0.3em] uppercase mb-1" style={{ color: '#818cf8' }}>
-                  {t('INTELIGENCIA COMPETITIVA', 'COMPETITIVE INTELLIGENCE')}
-                </p>
-                <h2 className="font-display font-bold text-2xl text-white">
-                  {t('¿Qué hacen tus competidores?', 'What are your competitors doing?')}
-                </h2>
-              </div>
-              <button type="button" aria-label={t('Actualizar inteligencia', 'Refresh intelligence')}
-                disabled={!intel || !intelRetryAllowed(intel.read)} onClick={() => { if (intel) observeIntel(() => true, intel.read); }}
-                className="btn-offset px-4 py-2 text-sm disabled:opacity-50">{t('Actualizar', 'Refresh')}</button>
-            </div>
-
-            {intel?.outcome.status === 'unconfirmed' && <p role="status" className="text-sm text-amber-300">
-              {t('El análisis no está confirmado. Conservamos la solicitud original; no se repetirá automáticamente.', 'The analysis is unconfirmed. The original request is retained and will not be repeated automatically.')}
-            </p>}
-            {intel?.outcome.status === 'deferred' && <p role="status" className="text-sm text-amber-300">
-              {t('El análisis anterior ha terminado. Pulsa Actualizar para analizar esta selección.', 'The previous analysis has finished. Press Refresh to analyze this selection.')}
-            </p>}
-            {intel?.outcome.status === 'rejected' && <p role="status" className="text-sm text-amber-300">
-              {intel.outcome.error === 'pro_required' ? t('La inteligencia competitiva requiere el plan Pro.', 'Competitive intelligence requires the Pro plan.')
-                : intel.outcome.error === 'selection_changed' ? t('La selección de competidores ha cambiado. Recarga la lista antes de actualizar el análisis.', 'The competitor selection changed. Reload the list before refreshing the analysis.')
-                : t('No se pudo iniciar el análisis de competidores.', 'The competitor analysis could not be started.')}
-            </p>}
-            {intel?.outcome.status === 'rejected' && intel.outcome.error === 'selection_changed' && <button type="button"
-              onClick={readCompetitors} disabled={currentRead.current.entry?.pending} className="btn-offset px-4 py-2 text-sm disabled:opacity-50">
-              {t('Recargar selección', 'Reload selection')}</button>}
-            {intelData?.collectionStatus === 'partial' && <p role="status" className="text-sm text-amber-300">
-              {t('Cobertura parcial: algunos canales no están disponibles. Los resultados solo incluyen los canales consultados correctamente.', 'Partial coverage: some channels are unavailable. Results only include successfully queried channels.')}
-            </p>}
-            {intelData && intelData.analyzedChannelIds.length < intelData.channelIds.length && <p className="text-sm text-amber-300">
-              {t('Este análisis incluye los primeros 10 canales de la selección.', 'This analysis includes the first 10 channels in the selection.')}
-            </p>}
-
-            {/* Intel tabs */}
-            <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line)' }}>
-              {([
-                { key: 'trending' as IntelTab, label: t('Trending', 'Trending'), count: trending.length },
-                { key: 'new' as IntelTab, label: t('Nuevos', 'New'), count: newUploads.length },
-                { key: 'opportunities' as IntelTab, label: t('Oportunidades', 'Opportunities'), count: opportunities.length },
-              ]).map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setIntelTab(tab.key)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg font-mono-jb text-[13px] tracking-wider transition-all"
-                  style={{
-                    background: intelTab === tab.key ? 'rgba(255,255,255,0.08)' : 'transparent',
-                    color: intelTab === tab.key ? '#fff' : 'var(--text-dim)',
-                    border: intelTab === tab.key ? '1px solid rgba(255,255,255,0.12)' : '1px solid transparent',
-                  }}
-                >
-                  {tab.label}
-                  {tab.count > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[13px]" style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {intelLoading && (
-              <div className="flex items-center gap-3 py-10 justify-center">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-3)' }}>{t('Analizando competidores...', 'Analyzing competitors...')}</span>
-              </div>
-            )}
-
-            {/* Trending videos */}
-            {!intelLoading && intelTab === 'trending' && trending.length > 0 && (
-              <div className="yv-card overflow-hidden">
-                <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--line)' }}>
-                  <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase" style={{ color: 'var(--yv-text-3)' }}>
-                    {t('VÍDEOS TRENDING DE COMPETIDORES (7 DÍAS)', 'COMPETITOR TRENDING VIDEOS (7 DAYS)')}
-                  </p>
-                </div>
-                <div className="divide-y" style={{ borderColor: 'var(--line)' }}>
-                  {trending.map((v, i) => (
-                    <a key={v.videoId} href={`https://youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition group">
-                      <span className="font-display font-bold text-lg w-6 flex-shrink-0 text-center" style={{ color: i < 3 ? '#818cf8' : 'var(--text-faint)' }}>
-                        {i + 1}
-                      </span>
-                      <img src={v.thumbnail} alt="" className="w-20 h-11 rounded object-cover flex-shrink-0" style={{ border: '1px solid var(--line)' }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-white line-clamp-1 group-hover:text-zinc-200">{v.title}</p>
-                        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{v.channelName} · {fmtHours(v.ageHours, lang)}</p>
-                      </div>
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        <div className="text-right">
-                          <p className="font-display font-bold text-sm" style={{ color: '#818cf8' }}>{fmtNum(v.vph)}</p>
-                          <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>VPH</p>
-                        </div>
-                        <div className="text-right hidden sm:block">
-                          <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-2)' }}>{fmtNum(v.views)}</p>
-                          <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{t('vistas', 'views')}</p>
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* New uploads */}
-            {!intelLoading && intelTab === 'new' && newUploads.length > 0 && (
-              <div className="yv-card overflow-hidden">
-                <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--line)' }}>
-                  <p className="font-mono-jb text-[13px] tracking-[0.2em] uppercase" style={{ color: 'var(--yv-text-3)' }}>
-                    {t('NUEVOS VÍDEOS (ÚLTIMAS 48H)', 'NEW UPLOADS (LAST 48H)')}
-                  </p>
-                </div>
-                <div className="divide-y" style={{ borderColor: 'var(--line)' }}>
-                  {newUploads.map(v => (
-                    <a key={v.videoId} href={`https://youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition group">
-                      <div className="relative flex-shrink-0">
-                        <img src={v.thumbnail} alt="" className="w-20 h-11 rounded object-cover" style={{ border: '1px solid var(--line)' }} />
-                        {v.ageHours <= 6 && (
-                          <span className="absolute -top-1 -left-1 px-1.5 py-0.5 rounded-full font-mono-jb text-[8px] font-bold" style={{ background: '#22c55e', color: '#000' }}>
-                            NEW
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-white line-clamp-1 group-hover:text-zinc-200">{v.title}</p>
-                        <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{v.channelName} · {fmtHours(v.ageHours, lang)}</p>
-                      </div>
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        <div className="text-right">
-                          <p className="font-display font-bold text-sm text-white">{fmtNum(v.views)}</p>
-                          <p className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>{fmtNum(v.vph)} VPH</p>
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {intelData && intelTab === 'trending' && trending.length === 0 && <div className="yv-card p-8 text-center">
-              <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('No se encontraron vídeos trending en los canales consultados.', 'No trending videos were found in the queried channels.')}</p>
-            </div>}
-            {/* Empty new uploads */}
-            {intelData && intelTab === 'new' && newUploads.length === 0 && (
-              <div className="yv-card p-8 text-center">
-                <p className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{t('No se encontraron vídeos de las últimas 48 horas en los canales consultados.', 'No videos from the last 48 hours were found in the queried channels.')}</p>
-              </div>
-            )}
-
-            {/* Missed opportunities */}
-            {!intelLoading && intelTab === 'opportunities' && opportunities.length > 0 && (
-              <div className="grid gap-3">
-                {opportunities.map((opp, i) => (
-                  <div key={i} className="yv-card p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-mono-jb text-[13px] font-bold" style={{ background: 'rgba(129,140,248,0.15)', color: '#818cf8' }}>
-                            {i + 1}
-                          </span>
-                          <h4 className="font-display font-bold text-white text-sm">{opp.topic}</h4>
-                        </div>
-                        <p className="text-[13px] leading-relaxed mb-2" style={{ color: 'var(--yv-text-2)' }}>{opp.suggestion}</p>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <span className="font-mono-jb text-[13px]" style={{ color: 'var(--yv-text-4)' }}>
-                            {t('Cubierto por:', 'Covered by:')}
-                          </span>
-                          {opp.coveredBy.map(ch => (
-                            <span key={ch} className="font-mono-jb text-[13px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line)', color: 'var(--text-dim)' }}>
-                              {ch}
-                            </span>
-                          ))}
-                          {opp.totalViews > 0 && (
-                            <span className="font-mono-jb text-[13px]" style={{ color: '#818cf8' }}>
-                              {fmtNum(opp.totalViews)} {t('vistas', 'views')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <a
-                        href={`/generate?prefill=${encodeURIComponent(opp.topic)}`}
-                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono-jb text-[13px] tracking-wider hover:bg-white/[0.06] transition"
-                        style={{ border: '1px solid var(--line)', color: 'var(--text-dim)' }}
-                      >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
-                        </svg>
-                        {t('Crear', 'Create')}
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Empty opportunities */}
-            {intelData && intelTab === 'opportunities' && opportunities.length === 0 && (
-              <div className="yv-card p-8 text-center">
-                <p role="status" className="text-sm" style={{ color: 'var(--yv-text-3)' }}>{intelData.opportunitiesStatus === 'unavailable'
-                  ? t('Las oportunidades no están disponibles. La generación no se repetirá desde esta lectura.', 'Opportunities are unavailable. Generation will not be repeated from this read.')
-                  : intelData.opportunitiesStatus === 'not_applicable'
-                    ? t('No hay suficientes vídeos para analizar oportunidades.', 'There are not enough videos to analyze opportunities.')
-                    : t('No se encontraron oportunidades en este análisis.', 'No opportunities were found in this analysis.')}</p>
-              </div>
-            )}
-          </div>
-        )}
+        {channels.length > 0 && <section className="yv-card mt-8"><h2>{t('Inteligencia de canales seguidos', 'Tracked channel intelligence')}</h2><p>{t('Consulta muestras y estadísticas públicas mediante una solicitud explícita.', 'Analyze publication samples and public statistics with an explicit request.')}</p><a href={'/competitors/intelligence?channels=' + encodeURIComponent(channels.join(','))}>{t('Abrir inteligencia de canales', 'Open channel intelligence')}</a></section>}
 
         {/* Link to one-off analysis */}
         {competitors.length > 0 && (
