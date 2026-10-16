@@ -8,6 +8,8 @@ declare const nativeCronDailyIdeas: unique symbol;
 export type NativeCronDailyIdeas = { readonly [nativeCronDailyIdeas]: true };
 declare const nativeCronDailyIdeasEmail: unique symbol;
 export type NativeCronDailyIdeasEmail = { readonly [nativeCronDailyIdeasEmail]: true };
+declare const nativeCronSocialPost: unique symbol;
+export type NativeCronSocialPost = { readonly [nativeCronSocialPost]: true };
 type Slot = 'morning' | 'evening';
 type Original = { request: Request; url: string; slot: Slot; secret: string; configured: string; header: string;
   at: number; until: number; started: number; deadline: number; used: boolean };
@@ -15,6 +17,7 @@ const originals = new WeakMap<object, Original>();
 const dailyTips = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 const dailyIdeas = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 const dailyIdeasEmails = new WeakMap<object, { date: string; at: number; check: () => void; promise?: Promise<unknown> }>();
+const socialPosts = new WeakMap<object, { date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; check: () => void; promise?: Promise<string> }>();
 
 export function authorizeCronDispatch(request: Request, slot: Slot): NativeCronDispatch | null {
   try {
@@ -42,7 +45,8 @@ export function authorizeCronDispatch(request: Request, slot: Slot): NativeCronD
 // its own native producer/receipt retains responsibility for completion.
 export async function runCronDispatch<T>(original: NativeCronDispatch | null,
   run: (step: <V>(work: () => Promise<V>) => Promise<V>, issueDailyTip: () => NativeCronDailyTip, issueDailyIdeas: () => NativeCronDailyIdeas,
-    issueDailyIdeasEmail: () => NativeCronDailyIdeasEmail) => Promise<T>): Promise<T> {
+    issueDailyIdeasEmail: () => NativeCronDailyIdeasEmail,
+    issueSocialPost: (platform: 'facebook'|'instagram') => NativeCronSocialPost) => Promise<T>): Promise<T> {
   const own = original && originals.get(original);
   if (!own || own.used) throw Error('cron_invocation_unconfirmed');
   own.used = true;
@@ -105,8 +109,26 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     } });
     return child;
   };
-  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail); check(); return result; }
+  const platforms = new Set<string>();
+  const issueSocialPost = (platform: 'facebook'|'instagram'): NativeCronSocialPost => {
+    check();
+    if (!['facebook','instagram'].includes(platform) || (own.slot==='evening' && platform!=='instagram') || platforms.has(platform)) throw Error('social_post_unconfirmed');
+    platforms.add(platform);
+    const child=Object.freeze({}) as NativeCronSocialPost, date=new Date(own.at).toISOString().slice(0,10);
+    socialPosts.set(child,{date,at:own.at,slot:own.slot,platform,check:()=>{
+      check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('social_post_unconfirmed');
+    }});
+    return child;
+  };
+  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost); check(); return result; }
   finally { retired = true; }
+}
+
+export function runCronSocialPost(original: NativeCronSocialPost|undefined, platform: string, slot: string,
+  run: (context:{date:string;at:number;platform:'facebook'|'instagram';slot:Slot;checkBeforeDispatch:()=>void})=>Promise<string>):Promise<string> {
+  const own=original&&socialPosts.get(original);
+  if(!own || own.platform!==platform || own.slot!==slot)return Promise.reject(Error('social_post_unconfirmed'));
+  return own.promise??=Promise.resolve().then(()=>{own.check();return run({date:own.date,at:own.at,platform:own.platform,slot:own.slot,checkBeforeDispatch:own.check});});
 }
 
 export function runCronDailyIdeasEmail<T>(original: NativeCronDailyIdeasEmail | undefined,

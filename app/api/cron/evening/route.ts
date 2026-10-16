@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async step => {
+  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     // Gmail agent disabled here — YCML (local PM2 agent) handles inbox every 30min
     const [instagram, youtubeResult] =
       await Promise.allSettled([
-        step(() => generateSocialPost('instagram', 'evening')),
+        step(() => generateSocialPost('instagram', 'evening', issueSocialPost('instagram'))),
         step(() => runYoutubeAgent()),
       ]);
 

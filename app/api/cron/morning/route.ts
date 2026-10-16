@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail) => {
+  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -88,8 +88,8 @@ export async function GET(request: Request) {
 
     // 2. Generate content for Facebook + Instagram (LinkedIn + Twitter desactivados)
     const [facebook, instagram] = await Promise.allSettled([
-      step(() => generateSocialPost('facebook', 'morning')),
-      step(() => generateSocialPost('instagram', 'morning')),
+      step(() => generateSocialPost('facebook', 'morning', issueSocialPost('facebook'))),
+      step(() => generateSocialPost('instagram', 'morning', issueSocialPost('instagram'))),
     ]);
 
     const fb = facebook.status === 'fulfilled' ? facebook.value : null;

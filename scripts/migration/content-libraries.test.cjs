@@ -3,8 +3,8 @@ const metadata=require('./ab-metadata-fixture.cjs');
 const assert=require('node:assert/strict');const {load}=require('./route-harness.cjs');const {taskFixture}=require('./task-fixture.cjs');
 function brand(options={}){
  const calls=[];const runtimes=Object.fromEntries(['brand.social-post','brand.youtube-reply','brand.gmail-reply'].map(taskType=>[taskType,taskFixture({taskType,serviceId:'brand-agent',controlUnavailable:options.noControl,respond:async payload=>{calls.push({taskType,payload});return {content:[{type:'text',text:options.text??'Synthetic content'}],stop_reason:options.stopReason??'end_turn'};}})]));
- const math=Object.create(Math);math.random=()=>options.news?.valueOf()?0.99:0;
- const mod=load('lib/agent/content-generator.ts',{'@/lib/ai/task-runtime':{getMessagesTask:i=>runtimes[i.taskType].getMessagesTask(i)},'@/lib/prisma':{prisma:{$queryRaw:async()=>[{value:'Synthetic narrative'}],$queryRawUnsafe:async()=>[],$executeRawUnsafe:async()=>0,socialPost:{findMany:async()=>[]}}}},{Math:math});return {mod,calls};
+ const b=require('./social-post-original-fixture.cjs').fixture({news:options.news,runtime:{getMessagesTask:i=>runtimes[i.taskType].getMessagesTask(i)}});
+ const mod={...b.mod,generateSocialPost:(platform,slot)=>b.begin(platform,slot)};return {mod,calls};
 }
 const idea={title_es:'Título sintético',title_en:'Synthetic title',idea_es:'Idea sintética',idea_en:'Synthetic idea'};
 function ideas(options={}){
@@ -19,7 +19,7 @@ function ab(options={}){
 const results=[];async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.message});}}
 (async()=>{
  await test('brand social prompt retains cached instructions',async()=>{const h=brand();assert.equal(await h.mod.generateSocialPost('facebook','morning'),'Synthetic content');assert.equal(h.calls[0].taskType,'brand.social-post');assert.match(h.calls[0].payload.system[0].text,/Synthetic narrative/);assert.equal(h.calls[0].payload.system[0].cache_control.type,'ephemeral');});
- await test('news pillar uses bounded search through adapter',async()=>{const h=brand({news:true});await h.mod.generateSocialPost('twitter','morning');assert.equal(h.calls[0].payload.tools[0].max_uses,3);assert.equal(h.calls[0].payload.max_tokens,1500);});
+ await test('news pillar uses bounded search through adapter from native Facebook cron',async()=>{const h=brand({news:true});await h.mod.generateSocialPost('facebook','morning');assert.equal(h.calls[0].payload.tools[0].max_uses,3);assert.equal(h.calls[0].payload.max_tokens,1200);});
  await test('reply tasks remain separate and preserve source content',async()=>{const h=brand();await h.mod.generateYoutubeReply('Synthetic comment','Synthetic author');await h.mod.generateGmailReply('Synthetic subject','Synthetic body','Synthetic sender');assert.deepEqual(h.calls.map(c=>c.taskType),['brand.youtube-reply','brand.gmail-reply']);assert.match(h.calls[0].payload.messages[0].content[0].text,/Synthetic comment/);assert.match(h.calls[1].payload.messages[0].content[0].text,/Synthetic subject/);});
  for(const options of [{noControl:true},{text:''},{stopReason:'max_tokens'}])await test('invalid brand result is not returned '+JSON.stringify(options),async()=>{await assert.rejects(brand(options).mod.generateYoutubeReply('Synthetic','Synthetic'));});
  await test('daily ideas preserve ownership, context and current date',async()=>{const h=ideas();assert.equal((await h.mod.generateDailyIdeas()).generated,1);assert.equal(h.saved[0].userId,'synthetic');assert.equal(h.saved[0].date,new Date().toISOString().slice(0,10));assert.deepEqual(JSON.parse(JSON.stringify(h.saved[0].ideas)),[idea]);assert.match(h.calls[0].messages[0].content[0].text,/Synthetic previous title/);});

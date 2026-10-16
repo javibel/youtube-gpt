@@ -1,5 +1,7 @@
 import { getMessagesTask } from '@/lib/ai/task-runtime';
 import { prisma } from '@/lib/prisma';
+import { randomUUID } from 'node:crypto';
+import { runCronSocialPost, type NativeCronSocialPost } from '@/lib/cron-dispatch-original';
 
 export type Platform = 'facebook' | 'instagram' | 'tiktok' | 'twitter';
 export type PostType = 'morning' | 'evening';
@@ -7,28 +9,13 @@ export type PostType = 'morning' | 'evening';
 
 // ── Memoria narrativa ─────────────────────────────────────────────────────────
 
-async function getNarrativeContext(): Promise<string> {
-  try {
-    const since = new Date();
-    since.setDate(since.getDate() - 14);
-
-    const [bibleRows, recentPosts] = await Promise.all([
-      prisma.$queryRaw<{ value: string }[]>`
-        SELECT value FROM narrative_bible WHERE key = 'main' LIMIT 1
-      `,
-      prisma.socialPost.findMany({
-        where: { status: 'published', publishedAt: { gte: since } },
-        orderBy: { publishedAt: 'desc' },
-        select: { platform: true, content: true, publishedAt: true },
-        take: 20,
-      }),
-    ]);
-
-    const bible = bibleRows[0]?.value ?? '';
+type SocialSource={pillars:{id:number;channel:string;pillar:string;created_at:string}[];bible:{key:string;value:string}[];posts:{id:string;platform:string;content:string;publishedAt:string}[]};
+function getNarrativeContext(source:SocialSource): string {
+    const bible = source.bible[0]?.value ?? '', recentPosts=source.posts;
 
     const postsContext = recentPosts.length > 0
       ? recentPosts.map(p =>
-          `[${p.platform} - ${p.publishedAt?.toLocaleDateString('es-ES')}]\n${p.content.slice(0, 300)}${p.content.length > 300 ? '...' : ''}`
+          `[${p.platform} - ${new Date(p.publishedAt).toLocaleDateString('es-ES')}]\n${p.content.slice(0, 300)}${p.content.length > 300 ? '...' : ''}`
         ).join('\n\n')
       : 'Aún no hay posts publicados.';
 
@@ -40,9 +27,6 @@ ${bible}
 NO repitas el mismo arranque, el mismo ejemplo, la misma cifra, el mismo formato ni el mismo tema que estos. Si ves un patrón en ellos, rómpelo.
 ${postsContext}
 `.trim();
-  } catch {
-    return '';
-  }
 }
 
 /**
@@ -148,43 +132,10 @@ const PILLARS: Pillar[] = [
 
 // Anti-repetición: registra el pilar usado por canal y excluye los 2 últimos
 // al elegir, para que no salga el mismo pilar dos veces seguidas (ni A-B-A).
-async function ensurePillarHistoryTable(): Promise<void> {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS social_pillar_history (
-      id SERIAL PRIMARY KEY,
-      channel TEXT NOT NULL,
-      pillar TEXT NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-}
-
-async function pickPillar(channel: string): Promise<Pillar> {
-  let recent: string[] = [];
-  try {
-    await ensurePillarHistoryTable();
-    const rows = await prisma.$queryRawUnsafe<{ pillar: string }[]>(
-      `SELECT pillar FROM social_pillar_history WHERE channel = $1 ORDER BY created_at DESC LIMIT 2`,
-      channel,
-    );
-    recent = rows.map(r => r.pillar);
-  } catch {
-    // DB hiccup — fall back to pure random, never block posting
-  }
-
+function pickPillar(recent:string[]): Pillar {
   const pool = PILLARS.filter(p => !recent.includes(p.id));
   const arr = pool.length ? pool : PILLARS;
-  const choice = arr[Math.floor(Math.random() * arr.length)];
-
-  try {
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO social_pillar_history (channel, pillar) VALUES ($1, $2)`,
-      channel, choice.id,
-    );
-  } catch {
-    // best effort
-  }
-  return choice;
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 // Sugerencias de formato — se eligen al azar y NO son obligatorias: la naturalidad manda.
@@ -232,17 +183,52 @@ Recuerda la regla innegociable: cero invención. Devuelve SOLO el texto del post
 
 // ── Public functions ──────────────────────────────────────────────────────────
 
-export async function generateSocialPost(
+const sourceSql=`jsonb_build_object(
+  'pillars',COALESCE((SELECT jsonb_agg(to_jsonb(h) ORDER BY h.created_at DESC,h.id DESC) FROM
+    (SELECT id,channel,pillar,created_at FROM social_pillar_history WHERE channel=$3 ORDER BY created_at DESC,id DESC LIMIT 2) h),'[]'::jsonb),
+  'bible',COALESCE((SELECT jsonb_agg(to_jsonb(b) ORDER BY b.key) FROM (SELECT key,value FROM narrative_bible WHERE key='main') b),'[]'::jsonb),
+  'posts',COALESCE((SELECT jsonb_agg(to_jsonb(p) ORDER BY p."publishedAt" DESC,p.id DESC) FROM
+    (SELECT id,platform,content,"publishedAt" FROM social_posts WHERE status='published' AND "publishedAt">=timezone('UTC',$6::timestamptz)
+      ORDER BY "publishedAt" DESC,id DESC LIMIT 20) p),'[]'::jsonb))`;
+const noPriorSocialPost=`NOT EXISTS(SELECT 1 FROM social_posts WHERE platform=$3 AND "createdAt">=$2::date AND "createdAt"<($2::date+1))`;
+function validSource(s:SocialSource,platform:string):boolean {
+  return !!s&&Object.keys(s).sort().join(',')==='bible,pillars,posts'&&Array.isArray(s.pillars)&&s.pillars.length<=2
+    &&s.pillars.every(v=>Number.isInteger(v.id)&&v.channel===platform&&typeof v.pillar==='string'&&Number.isFinite(Date.parse(v.created_at)))
+    &&Array.isArray(s.bible)&&s.bible.length<=1&&s.bible.every(v=>v.key==='main'&&typeof v.value==='string'&&v.value.length<=100000)
+    &&Array.isArray(s.posts)&&s.posts.length<=20&&s.posts.every(v=>typeof v.id==='string'&&typeof v.platform==='string'&&typeof v.content==='string'&&v.content.length<=20000&&Number.isFinite(Date.parse(v.publishedAt)));
+}
+export function generateSocialPost(
   platform: Platform,
-  _type: PostType,
+  type: PostType,
+  original?: NativeCronSocialPost,
 ): Promise<string> {
-  const pillar = await pickPillar(platform);
-  const context = await getNarrativeContext();
-  const prompt = buildPrompt(platform, pillar);
-
-  const systemPrompt = context ? `${VOZ}\n\n${context}` : VOZ;
-  const tokens = platform === 'twitter' ? 1500 : 1200;
-  return runContentTask('brand.social-post', prompt, tokens, systemPrompt, pillar.useWebSearch === true);
+  return runCronSocialPost(original,platform,type,async({date,at,checkBeforeDispatch:check})=>{
+    check();const since=new Date(at-14*86400000),rows=await prisma.$queryRawUnsafe<{source:SocialSource}[]>('SELECT '+sourceSql.replaceAll('$3','$1').replaceAll('$6','$2')+' AS source',platform,since);check();
+    if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||!validSource(rows[0].source,platform))throw Error('social_post_unconfirmed');
+    const source=rows[0].source,sourceJson=JSON.stringify(source),pillar=pickPillar(source.pillars.map(v=>v.pillar)),context=getNarrativeContext(source),prompt=buildPrompt(platform,pillar),systemPrompt=context?`${VOZ}\n\n${context}`:VOZ;
+    const id=randomUUID(),args=[id,date,platform,type,sourceJson,since];check();
+    const admission=await prisma.$queryRawUnsafe<{id:string;date:string;platform:string;slot:string;state:string}[]>(`
+      INSERT INTO social_post_generation_attempts(id,date,platform,slot)
+      SELECT $1,$2,$3,$4 WHERE ${sourceSql}=$5::jsonb AND ${noPriorSocialPost}
+      ON CONFLICT(date,platform,slot) DO NOTHING RETURNING id,date,platform,slot,state`,...args);
+    if(!Array.isArray(admission)||admission.length!==1||Object.keys(admission[0]).length!==5||admission[0].id!==id||admission[0].date!==date||admission[0].platform!==platform||admission[0].slot!==type||admission[0].state!=='pending')throw Error('social_post_unconfirmed');check();
+    const task=await getMessagesTask({operationKey:id,serviceId:'brand-agent',taskType:'brand.social-post',language:'es',instructionsVersion:'brand.social-post-v1',requiredCapabilities:['prompt_cache']});check();
+    const negative=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM social_post_generation_attempts WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='pending' AND ${sourceSql}=$5::jsonb AND ${noPriorSocialPost}) AS eligible`,...args);check();
+    if(!Array.isArray(negative)||negative.length!==1||Object.keys(negative[0]).length!==1||negative[0].eligible!==true)throw Error('social_post_unconfirmed');
+    // The exact invoked model promise may finish its own SQL completion after retirement.
+    const result=await task.create({max_tokens:1200,messages:[{role:'user',content:prompt}],system:systemPrompt,...(pillar.useWebSearch?{tools:[{name:'web_search' as const,maxCalls:3}]}:{})});
+    if(!Array.isArray(result.content)||result.content.length!==1||result.content[0]?.type!=='text'||typeof result.content[0].text!=='string'||!result.content[0].text.trim()||result.content[0].text.length>20000)throw Error('social_post_unconfirmed');
+    const content=result.content[0].text;
+    const saved=await prisma.$queryRawUnsafe<{id:string}[]>(`
+      WITH own AS MATERIALIZED(SELECT id FROM social_post_generation_attempts WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='pending'
+        AND ${sourceSql}=$5::jsonb AND ${noPriorSocialPost} FOR UPDATE),
+      history AS(INSERT INTO social_pillar_history(channel,pillar) SELECT $3,$8 FROM own RETURNING id),
+      completed AS(UPDATE social_post_generation_attempts SET state='completed',content=$7,pillar=$8,"completedAt"=timezone('UTC',clock_timestamp())
+        WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='pending' AND EXISTS(SELECT 1 FROM history) RETURNING id)
+      SELECT id FROM completed`,...args,content,pillar.id);
+    if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==1||saved[0].id!==id)throw Error('social_post_unconfirmed');
+    return content;
+  });
 }
 
 export async function generateYoutubeReply(
