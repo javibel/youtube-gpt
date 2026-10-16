@@ -6,7 +6,7 @@ function source(path,q){
  const selected=q.get('mine')==='true'?channelId:q.get('id');
  if(path==='/youtube/v3/channels')return{kind:'youtube#channelListResponse',items:[{kind:'youtube#channel',id:selected,snippet:{title:selected===channelId?'Synthetic own channel':'Synthetic tracked channel'}}]};
  if(path==='/youtube/v3/search'){const own=q.get('channelId')===channelId;return{kind:'youtube#searchListResponse',nextPageToken:'unread-page',items:(own?['aaaaaaaaaaa']:['a','b','c'].map(last=>q.get('channelId')[2].repeat(10)+last)).map(id=>({kind:'youtube#searchResult',id:{kind:'youtube#video',videoId:id},snippet:{channelId:q.get('channelId')}}))};}
- assert.equal(path,'/youtube/v3/videos');return{kind:'youtube#videoListResponse',items:q.get('id').split(',').map(id=>({kind:'youtube#video',id,snippet:{channelId:'UC'+id[0].repeat(22),title:'Synthetic video '+id,publishedAt:new Date(Date.now()-7200000).toISOString()},statistics:{viewCount:'1000',likeCount:'5'}}))};
+ assert.equal(path,'/youtube/v3/videos');assert(!q.has('maxResults'));assert(!q.has('pageToken'));assert(q.get('id').split(',').length<=5);return{kind:'youtube#videoListResponse',items:q.get('id').split(',').map(id=>({kind:'youtube#video',id,snippet:{channelId:'UC'+id[0].repeat(22),title:'Synthetic video '+id,publishedAt:new Date(Date.now()-7200000).toISOString()},statistics:{viewCount:'1000',likeCount:'5'}}))};
 }
 async function bound(o={}){
  const f=o.nativeBase??await fixture({adminEmail:'unrelated-admin@example.invalid'});if(!o.nativeBase)await f.login();

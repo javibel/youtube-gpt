@@ -128,7 +128,7 @@ export async function trackedIntelOriginal(request: Request): Promise<TrackedInt
       if (new Set(ids).size !== ids.length) fail();
       let videos: TrackedSample['videos'] = [];
       if (ids.length) {
-        const details = await json('/youtube/v3/videos', { part: 'snippet,statistics', id: ids.join(','), maxResults: '5' });
+        const details = await json('/youtube/v3/videos', { part: 'snippet,statistics', id: ids.join(',') });
         if (details.kind !== 'youtube#videoListResponse' || !Array.isArray(details.items) || details.items.length > ids.length || details.nextPageToken) fail();
         videos = details.items.map(v => trackedIntelVideo(v, selectedId, startedAt - 7 * 86400000, startedAt));
         if (new Set(videos.map(v => v.videoId)).size !== videos.length || videos.some(v => !ids.includes(v.videoId))) fail();
