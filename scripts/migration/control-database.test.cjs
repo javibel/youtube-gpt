@@ -291,32 +291,37 @@ const stats=async id=>(await pool.query('SELECT * FROM ytv_ai_test_v1.budgets WH
   const out=await createTaskRunner({store:cstore('executor'),registry:codingRegistry,executor:'coding'}).run(input,{runId:prefix+'_coding',budgetId:await budget('coding')});
   assert.equal(out.result.status,'completed');assert.equal((await pool.query('SELECT snapshot FROM ytv_ai_test_v1.runs WHERE run_id=$1',[out.result.runId])).rows[0].snapshot.executor,'coding');assert.equal(calls,1);
  });
- await test('actual AB route uses installed server factory and PostgreSQL ledger',async()=>{
+ await test('actual native AB cookie/account/plan/token/source route uses installed server factory and PostgreSQL ledger;command replay denied',async()=>{
   const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');
   const actualRegistry=createRegistry();let calls=0;
   actualRegistry.register(createAnthropicAdapter({models:{'test-model':{verified:true,executors:['ai'],capabilities:['text','json']}},credentialRef:'test:fixture',preflight:async()=>({upperBoundMicros:60,currency:'EUR',priceVersion:'test-v1'}),priceUsage:async()=>({costMicros:7,currency:'EUR',priceVersion:'test-v1',estimated:true}),transport:{create:async()=>{calls++;return {content:[{type:'text',text:'{"variantA":"Synthetic A","variantB":"Synthetic B"}'}],stop_reason:'end_turn',usage:{input_tokens:10,output_tokens:5}};}}}));
   const actualStore=role=>createControlStore(database(role),actualRegistry);const config=cfg('web-route','anthropic');config.profiles.default={'youtube.ab-title-suggestions':{providerId:'anthropic',model:'test-model'}};
   await actualStore('activator').publish(config,{actor:'test-admin'});await actualStore('activator').activate(config.revision,{expectedRevision:cfg('coding').revision,actor:'test-admin',reason:'synthetic HTTP integration'});
   const budgetId=await budget('actual-route');const runtime=load('lib/ai/task-runtime.ts');
-  runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'youtube.ab-title-suggestions':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:200,deadlineMs:3000}}},authorize:async({userId,taskType})=>userId==='synthetic'&&taskType==='youtube.ab-title-suggestions'?{budgetId}:null}));
-  const route=load('app/api/youtube/ab-test/suggest/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>({user:{id:'synthetic'}})},'@/lib/plans':{getUserPlan:async()=>'pro',isPaid:()=>true},'@/lib/ai/task-runtime':runtime});
-  // Each independent test owns a fresh fixture key; retries within this test keep it unchanged.
-  // A prior interrupted test's retained ledger is never reset or reclaimed.
-  const invoke=(title='Synthetic original',key=prefix+'_ab_retry')=>route.POST(new Request('https://example.invalid/api/youtube/ab-test/suggest',{method:'POST',headers:{'content-type':'application/json','idempotency-key':key},body:JSON.stringify({title,lang:'es'})}));
-  const result=await invoke();assert.equal(result.status,200);assert.deepEqual(await result.json(),{variantA:'Synthetic A',variantB:'Synthetic B'});
-  const replay=await invoke();assert.equal(replay.status,200);assert.deepEqual(await replay.json(),{variantA:'Synthetic A',variantB:'Synthetic B'});assert.equal(calls,1);
+  const nativeSQL=require('./admin-feedback-native-pg.test.cjs'),nativeServer=require('./ab-suggestions-native.test.cjs'),nativeBase=await nativeSQL.bound();
+  await nativeSQL.db.subscription.create({data:{userId:nativeBase.id,plan:'pro',status:'active',stripeCustomerId:'manual_admin',currentPeriodEnd:new Date(Date.now()+3600000)}});
+  await nativeSQL.db.youtubeToken.create({data:{userId:nativeBase.id,channelId:nativeServer.channelId,accessToken:'closed-selection-token',refreshToken:'closed-refresh-never-used',expiresAt:new Date(Date.now()+3600000)}});
+  runtime.installTaskRuntime(createTaskFactory({runner:createTaskRunner({registry:actualRegistry,store:actualStore('executor')}),policies:{'youtube.ab-title-suggestions':{maxToolCalls:0,budget:{currency:'EUR',maxCostMicros:60,maxOutputTokens:200,deadlineMs:3000}}},authorize:async({userId,taskType})=>userId===nativeBase.id&&taskType==='youtube.ab-title-suggestions'?{budgetId}:null}));
+  const original=await nativeServer.bound({nativeBase,db:nativeSQL.db,runtime}),key=require('node:crypto').randomUUID();
+  try{
+  // Auth.js/SQL establishes this original. A repeated native command is a
+  // denial, never a saved-ledger response adopted as a new HTTP receipt.
+  const invoke=(title='Native original title',command=key)=>original.start(original.make({headers:{'idempotency-key':command},body:JSON.stringify({title,lang:'es',videoId:nativeServer.videoId,channelId:nativeServer.channelId})}));
+  const result=await invoke();assert.equal(result.status,200);const data=await result.json();assert.deepEqual(data.variants,{variantA:'Synthetic A',variantB:'Synthetic B'});assert.equal(data.analysis.userId,nativeBase.id);assert.equal(data.analysis.sessionRef,original.decoded.authSessionRef);assert.equal(data.analysis.commandRef,key);
+  assert.equal((await invoke()).status,503);assert.equal(calls,1);
   assert.equal((await invoke('Changed synthetic input')).status,503);assert.equal(calls,1);
-  assert.equal((await invoke('Synthetic original','invalid key with spaces')).status,400);assert.equal(calls,1);
+  assert.equal((await invoke('Native original title','invalid key with spaces')).status,400);assert.equal(calls,1);
+  const runs=(await pool.query('SELECT r.run_id,r.status,r.revision,r.snapshot FROM ytv_ai_test_v1.runs r JOIN ytv_ai_test_v1.reservations h ON h.run_id=r.run_id WHERE h.budget_id=$1',[budgetId])).rows;assert.equal(runs.length,1);assert.equal(runs[0].status,'completed');assert.equal(runs[0].revision,config.revision);
   assert.equal(Number((await stats(budgetId)).reserved_micros),0);assert.equal(Number((await stats(budgetId)).settled_micros),7);
   await test('operator service activates and rolls back through role-bound PostgreSQL',async()=>{
    const {createConfigurationService}=require('../../lib/ai/configuration-service.cjs');
    const operator=createConfigurationService({registry:actualRegistry,reader:actualStore('reader'),activator:actualStore('activator'),taskCatalog:{'youtube.ab-title-suggestions':{executor:'ai',capabilities:['text','json'],runtimeIds:['web','agent']}},getActor:async()=> 'synthetic-operator',getRuntimes:async()=>['web','agent'].map(id=>({id,contractVersions:['1.0'],adapters:{anthropic:'messages-v1'}})),checkCredential:async({credentialRef})=>credentialRef==='test:fixture'});
    const next={...config,revision:prefix+'_operator_candidate'};const preview=await operator.preview(next,{reason:'Synthetic operator activation'});assert.equal((await actualStore('reader').active()).revision,config.revision);await operator.activate(preview.previewId);assert.equal((await actualStore('reader').active()).revision,next.revision);
-   assert.equal((await invoke()).status,200);assert.equal(calls,1);
+   assert.equal((await invoke()).status,503);assert.equal(calls,1);
    await operator.activate((await operator.previewRollback(config.revision,{reason:'Synthetic operator rollback'})).previewId);assert.equal((await actualStore('reader').active()).revision,config.revision);
    const events=(await pool.query('SELECT actor,reason FROM ytv_ai_test_v1.switch_events WHERE revision=$1',[next.revision])).rows;assert.equal(events[0].actor,'synthetic-operator');assert.equal(events[0].reason,'Synthetic operator activation');
   });
-
+  }finally{await nativeServer.drain(original);await nativeSQL.close();}
  });
  await test('calendar lost-response retry recovers one result and one settlement; changed context never redispatches',async()=>{
   const {load}=require('./route-harness.cjs');const {createTaskFactory}=require('../../lib/ai/task-factory.cjs');const {createAnthropicAdapter}=require('../../lib/ai/adapters/anthropic.cjs');const {createRetryOperation}=require('../../lib/ai/retry-operation.cjs');
