@@ -17,7 +17,7 @@ const originals = new WeakMap<object, Original>();
 const dailyTips = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 const dailyIdeas = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 const dailyIdeasEmails = new WeakMap<object, { date: string; at: number; check: () => void; promise?: Promise<unknown> }>();
-const socialPosts = new WeakMap<object, { date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; check: () => void; promise?: Promise<string> }>();
+const socialPosts = new WeakMap<object, { date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; remaining: () => number; check: () => void; promise?: Promise<string> }>();
 
 export function authorizeCronDispatch(request: Request, slot: Slot): NativeCronDispatch | null {
   try {
@@ -115,7 +115,7 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     if (!['facebook','instagram'].includes(platform) || (own.slot==='evening' && platform!=='instagram') || platforms.has(platform)) throw Error('social_post_unconfirmed');
     platforms.add(platform);
     const child=Object.freeze({}) as NativeCronSocialPost, date=new Date(own.at).toISOString().slice(0,10);
-    socialPosts.set(child,{date,at:own.at,slot:own.slot,platform,check:()=>{
+    socialPosts.set(child,{date,at:own.at,slot:own.slot,platform,remaining:()=>{check();return Math.max(1,Math.floor(Math.min(own.until-Date.now(),own.deadline-performance.now())));},check:()=>{
       check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('social_post_unconfirmed');
     }});
     return child;
@@ -125,10 +125,10 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
 }
 
 export function runCronSocialPost(original: NativeCronSocialPost|undefined, platform: string, slot: string,
-  run: (context:{date:string;at:number;platform:'facebook'|'instagram';slot:Slot;checkBeforeDispatch:()=>void})=>Promise<string>):Promise<string> {
+  run: (context:{date:string;at:number;platform:'facebook'|'instagram';slot:Slot;checkBeforeDispatch:()=>void;remainingBeforeDispatch:()=>number})=>Promise<string>):Promise<string> {
   const own=original&&socialPosts.get(original);
   if(!own || own.platform!==platform || own.slot!==slot)return Promise.reject(Error('social_post_unconfirmed'));
-  return own.promise??=Promise.resolve().then(()=>{own.check();return run({date:own.date,at:own.at,platform:own.platform,slot:own.slot,checkBeforeDispatch:own.check});});
+  return own.promise??=Promise.resolve().then(()=>{own.check();return run({date:own.date,at:own.at,platform:own.platform,slot:own.slot,checkBeforeDispatch:own.check,remainingBeforeDispatch:own.remaining});});
 }
 
 export function runCronDailyIdeasEmail<T>(original: NativeCronDailyIdeasEmail | undefined,

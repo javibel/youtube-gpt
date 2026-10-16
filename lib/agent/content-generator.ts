@@ -199,12 +199,18 @@ function validSource(s:SocialSource,platform:string):boolean {
     &&Array.isArray(s.bible)&&s.bible.length<=1&&s.bible.every(v=>v.key==='main'&&typeof v.value==='string'&&v.value.length<=100000)
     &&Array.isArray(s.posts)&&s.posts.length<=20&&s.posts.every(v=>typeof v.id==='string'&&typeof v.platform==='string'&&typeof v.content==='string'&&v.content.length<=20000&&Number.isFinite(Date.parse(v.publishedAt)));
 }
+declare const cronSocialImagePrompt:unique symbol;
+export type CronSocialImagePrompt={readonly[cronSocialImagePrompt]:true};
+type CronImageSource={id:string;date:string;platform:string;slot:string;content:string;validate:()=>Promise<void>;remaining:()=>number;prompt?:Promise<CronSocialImagePrompt>};
+type PreparedCronPrompt={source:CronImageSource;prompt:string;use?:Promise<unknown>};
+const cronImageSources=new WeakMap<object,CronImageSource>(),cronImagePrompts=new WeakMap<object,PreparedCronPrompt>();
+
 export function generateSocialPost(
   platform: Platform,
   type: PostType,
   original?: NativeCronSocialPost,
 ): Promise<string> {
-  return runCronSocialPost(original,platform,type,async({date,at,checkBeforeDispatch:check})=>{
+  return runCronSocialPost(original,platform,type,async({date,at,checkBeforeDispatch:check,remainingBeforeDispatch:remaining})=>{
     check();const since=new Date(at-14*86400000),rows=await prisma.$queryRawUnsafe<{source:SocialSource}[]>('SELECT '+sourceSql.replaceAll('$3','$1').replaceAll('$6','$2')+' AS source',platform,since);check();
     if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||!validSource(rows[0].source,platform))throw Error('social_post_unconfirmed');
     const source=rows[0].source,sourceJson=JSON.stringify(source),pillar=pickPillar(source.pillars.map(v=>v.pillar)),context=getNarrativeContext(source),prompt=buildPrompt(platform,pillar),systemPrompt=context?`${VOZ}\n\n${context}`:VOZ;
@@ -221,16 +227,47 @@ export function generateSocialPost(
     const result=await task.create({max_tokens:1200,messages:[{role:'user',content:prompt}],system:systemPrompt,...(pillar.useWebSearch?{tools:[{name:'web_search' as const,maxCalls:3}]}:{})});
     if(!Array.isArray(result.content)||result.content.length!==1||result.content[0]?.type!=='text'||typeof result.content[0].text!=='string'||!result.content[0].text.trim()||result.content[0].text.length>20000)throw Error('social_post_unconfirmed');
     const content=result.content[0].text;
-    const saved=await prisma.$queryRawUnsafe<{id:string}[]>(`
+    const saved=await prisma.$queryRawUnsafe<{id:string;historyId:number}[]>(`
       WITH own AS MATERIALIZED(SELECT id FROM social_post_generation_attempts WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='pending'
         AND ${sourceSql}=$5::jsonb AND ${noPriorSocialPost} FOR UPDATE),
       history AS(INSERT INTO social_pillar_history(channel,pillar) SELECT $3,$8 FROM own RETURNING id),
       completed AS(UPDATE social_post_generation_attempts SET state='completed',content=$7,pillar=$8,"completedAt"=timezone('UTC',clock_timestamp())
         WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='pending' AND EXISTS(SELECT 1 FROM history) RETURNING id)
-      SELECT id FROM completed`,...args,content,pillar.id);
-    if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==1||saved[0].id!==id)throw Error('social_post_unconfirmed');
+      SELECT completed.id,history.id AS "historyId" FROM completed CROSS JOIN history`,...args,content,pillar.id);
+    if(!Array.isArray(saved)||saved.length!==1||Object.keys(saved[0]).length!==2||saved[0].id!==id||!Number.isSafeInteger(saved[0].historyId))throw Error('social_post_unconfirmed');
+    const historyId=saved[0].historyId,retainedSource=sourceSql.replace('WHERE channel=$3','WHERE channel=$3 AND id<>$9::integer');
+    const validate=async()=>{
+      check();const rows=await prisma.$queryRawUnsafe<{eligible:boolean}[]>(`SELECT EXISTS(SELECT 1 FROM social_post_generation_attempts WHERE id=$1 AND date=$2 AND platform=$3 AND slot=$4 AND state='completed'
+        AND content=$7 AND pillar=$8 AND "completedAt" IS NOT NULL AND ${retainedSource}=$5::jsonb AND ${noPriorSocialPost}
+        AND EXISTS(SELECT 1 FROM social_pillar_history WHERE id=$9::integer AND channel=$3 AND pillar=$8)) AS eligible`,...args,content,pillar.id,historyId);
+      check();if(!Array.isArray(rows)||rows.length!==1||Object.keys(rows[0]).length!==1||rows[0].eligible!==true)throw Error('daily_brand_image_unconfirmed');
+    };
+    // Only this producer's own completed SQL/history ACK issues an image source.
+    // Its private native lifetime remains captured;rows never recreate it.
+    check();cronImageSources.set(original!,{id,date,platform,slot:type,content,validate,remaining});
     return content;
   });
+}
+
+// This produces only the textual image prompt. Binary image generation,
+// daily cache ownership,upload and publication require separate native ACKs.
+export function generateCronSocialImagePrompt(original?:NativeCronSocialPost):Promise<CronSocialImagePrompt>{
+  const own=original&&cronImageSources.get(original);if(!own)return Promise.reject(Error('daily_brand_image_unconfirmed'));
+  return own.prompt??=Promise.resolve().then(async()=>{
+    await own.validate();const signal=AbortSignal.timeout(own.remaining());
+    const task=await getMessagesTask({operationKey:own.id+':image-prompt',serviceId:'brand-agent',taskType:'brand.image-prompt',language:'en',instructionsVersion:'brand-image-prompt-v1'},{signal});
+    await own.validate();
+    const result=await task.create({max_tokens:100,messages:[{role:'user',content:`Given this social media post about YouTube:\n"${own.content.slice(0,300)}"\n\nWrite a concise image generation prompt (max 200 chars) for a 1:1 social media visual.\nThe image should be eye-catching and related to the post's topic.\n\nRULES:\n- NO text, NO words, NO letters, NO numbers in the image\n- Focus on a strong visual scene/metaphor related to the topic\n- Modern, premium, editorial photography or 3D render style\n- Dramatic lighting, rich colors, professional composition\n- Think: what image would make someone stop scrolling?\n\nReturn ONLY the image prompt, nothing else.`}]},{signal});
+    // The invoked common task owns its accounting/completion. Retirement or an
+    // uncertain result cannot issue an image/download/upload continuation.
+    if(result.incomplete===true||!Array.isArray(result.content)||result.content.length!==1||result.content[0]?.type!=='text'||typeof result.content[0].text!=='string')throw Error('daily_brand_image_unconfirmed');
+    const prompt=result.content[0].text.trim();if(!prompt||Array.from(prompt).length>200)throw Error('daily_brand_image_unconfirmed');
+    await own.validate();const cap=Object.freeze({})as CronSocialImagePrompt;cronImagePrompts.set(cap,{source:own,prompt});return cap;
+  });
+}
+export function consumeCronSocialImagePrompt<T>(receipt:CronSocialImagePrompt|undefined,run:(prompt:Readonly<{id:string;date:string;platform:string;slot:string;content:string;prompt:string;validateBeforeDispatch:()=>Promise<void>;remainingBeforeDispatch:()=>number}>)=>Promise<T>):Promise<T>{
+  const own=receipt&&cronImagePrompts.get(receipt);if(!own)return Promise.reject(Error('daily_brand_image_unconfirmed'));
+  return (own.use??=Promise.resolve().then(async()=>{await own.source.validate();const result=await run(Object.freeze({id:own.source.id,date:own.source.date,platform:own.source.platform,slot:own.source.slot,content:own.source.content,prompt:own.prompt,validateBeforeDispatch:own.source.validate,remainingBeforeDispatch:own.source.remaining}));await own.source.validate();return result;}))as Promise<T>;
 }
 
 export function generateAdminSocialPreview(original?:NativeAdminSocialPreview){
