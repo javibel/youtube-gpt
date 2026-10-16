@@ -336,7 +336,7 @@ function AbTestSession({ userId, email, lang, isCurrent }: { userId: string; ema
         {/* Past tests */}
         {pastTests.length > 0 && (
           <div>
-            <h2 className="font-display font-bold text-lg text-white mb-4">{t('Historial', 'History')}</h2>
+            <h2 className="font-display font-bold text-lg text-white mb-4">{t('Historial', 'History')}</h2><p className="text-[13px] mb-4" style={{ color: 'var(--yv-text-4)' }}>{t('Hasta 20 registros almacenados más recientes. Estas fechas y estados no confirman actividad actual en YouTube ni permiten repetir un cambio pendiente.', 'Up to 20 most recent stored records. These dates and states do not confirm current YouTube activity or permit repeating a pending change.')}</p>
             <div className="space-y-4">
               {pastTests.map(test => (
                 <PastTestCard key={test.id} test={test} lang={lang} t={t} />

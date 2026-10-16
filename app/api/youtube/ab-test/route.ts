@@ -1,3 +1,4 @@
+import { readAbHistoryOriginal } from '@/lib/ab-history-original';
 import { captureAbTitleMetadata,readAbVideoOriginal,publishAbTitleOriginal,type AbTitlePayload } from '@/lib/ab-title-metadata';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
@@ -47,29 +48,7 @@ async function bounded(req: NextRequest, operation: (wait: ReturnType<typeof htt
 
 // ── GET — list tests ───────────────────────────────────────────────────────
 
-export async function GET(req: NextRequest) {
-  // This read has a shorter budget than the client's total 30s list/channel
-  // wait. Retiring HTTP never cancels or duplicates its original SQL reader.
-  const wait = httpWait(req?.signal, 25_000);
-  try {
-    const session = await wait.run(() => auth());
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
-    }
-
-    const userId = session.user.id;
-    const tests = await wait.run(() => prisma.abTest.findMany({
-      where: { userId },
-      orderBy: { startedAt: 'desc' },
-      take: 20,
-    }));
-
-    const response = NextResponse.json({ userId, tests }, { headers: { 'Cache-Control': 'no-store' } });
-    wait.check(); return response;
-  } catch {
-    return NextResponse.json({ error: 'ab_read_unconfirmed' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
-  } finally { wait.close(); }
-}
+export async function GET(req: NextRequest) { return readAbHistoryOriginal(req); }
 
 // ── POST — create new test ─────────────────────────────────────────────────
 
