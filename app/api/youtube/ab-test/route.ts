@@ -1,3 +1,4 @@
+import { captureAbTitleMetadata,readAbVideoOriginal,publishAbTitleOriginal,type AbTitlePayload } from '@/lib/ab-title-metadata';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -42,47 +43,6 @@ async function bounded(req: NextRequest, operation: (wait: ReturnType<typeof htt
     wait.check(); response.headers.set('Cache-Control', 'no-store'); return response;
   } catch { return unconfirmed(); }
   finally { wait.close(); }
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-// fetchVideoSnippet/updateVideoTitle usados por PATCH (cancel/apply_winner)
-// viven en lib/ab-test.ts para POST; PATCH los necesita también, así que se
-// mantiene una copia mínima local hasta que PATCH se extraiga.
-
-async function fetchVideoSnippet(token: string, videoId: string) {
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  const data = await res.json();
-  return data.items?.[0] ?? null;
-}
-
-async function updateVideoTitle(
-  token: string,
-  videoId: string,
-  newTitle: string,
-  categoryId: string,
-): Promise<{ ok: boolean; status: number; error?: string }> {
-  const res = await fetch(
-    'https://www.googleapis.com/youtube/v3/videos?part=snippet',
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: videoId,
-        snippet: { title: newTitle, categoryId },
-      }),
-    },
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    return { ok: false, status: res.status, error: text };
-  }
-  return { ok: true, status: res.status };
 }
 
 // ── GET — list tests ───────────────────────────────────────────────────────
@@ -166,20 +126,20 @@ async function changeTest(req: NextRequest, wait: ReturnType<typeof httpWait>) {
   const token = await wait.run(() => getAccessToken(userId, wait.check));
 
   if (action === 'cancel') {
-    let categoryId: string | null = null;
+    let payload:AbTitlePayload|null=null;
     if (test.status === 'variant_a' || test.status === 'variant_b') {
       if (!token) return unconfirmed();
-      const video = await wait.run(() => fetchVideoSnippet(token, test.videoId));
-      if (!video || typeof video.snippet?.categoryId !== 'string' || !video.snippet.categoryId.trim()) return unconfirmed();
-      categoryId = video.snippet.categoryId;
+      const video = await wait.run(() => readAbVideoOriginal(token, test.videoId));
+      if(!video)return unconfirmed();
+      payload=captureAbTitleMetadata(video,test.videoId,test.originalTitle);
     }
     const admission = await wait.run(() => beginAbTestMutation(userId, test, 'cancel', wait.check));
     if (!admission.ok) return unconfirmed();
     // The original restoration and its SQL completion stay together. A late
     // restoration must not be stranded by discarding its persistence reader.
     return wait.run(async () => {
-      if (categoryId !== null) {
-        const restored = await updateVideoTitle(token!, test.videoId, test.originalTitle, categoryId);
+      if (payload !== null) {
+        const restored = await publishAbTitleOriginal(token!,payload);
         if (!restored.ok) return unconfirmed();
       }
       const cancelled = await admission.complete();
@@ -189,12 +149,13 @@ async function changeTest(req: NextRequest, wait: ReturnType<typeof httpWait>) {
 
   if (action === 'apply_winner' && test.status === 'completed' && test.winner && token) {
     const winningTitle = test.winner === 'A' ? test.variantA : test.variantB;
-    const video = await wait.run(() => fetchVideoSnippet(token, test.videoId));
-    if (!video || typeof video.snippet?.categoryId !== 'string' || !video.snippet.categoryId.trim()) return unconfirmed();
+    const video = await wait.run(() => readAbVideoOriginal(token, test.videoId));
+    if(!video)return unconfirmed();
+    const payload=captureAbTitleMetadata(video,test.videoId,winningTitle);
     const admission = await wait.run(() => beginAbTestMutation(userId, test, 'apply_winner', wait.check));
     if (!admission.ok) return unconfirmed();
     return wait.run(async () => {
-      const applied = await updateVideoTitle(token, test.videoId, winningTitle, video.snippet.categoryId);
+      const applied = await publishAbTitleOriginal(token,payload);
       if (!applied.ok) return unconfirmed();
       await admission.complete();
       return NextResponse.json({ ok: true });

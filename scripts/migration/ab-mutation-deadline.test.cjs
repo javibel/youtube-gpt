@@ -1,4 +1,5 @@
 'use strict';
+const metadata=require('./ab-metadata-fixture.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),{load}=require('./route-harness.cjs');
 const {deferred}=require('./calendar-http-read-deadline.test.cjs');
 const flush=async()=>{for(let n=0;n<100;n++)await Promise.resolve();};
@@ -12,14 +13,14 @@ function harness(options={}){
  let now=0,next=0;const timers=new Map(),calls=[],captures=[],gates={},entered={},controller=new AbortController();
  const row={id:'native-test',userId:'owner',videoId:'video',originalTitle:'Original title',variantA:'Original A',variantB:'Original B',status:kind==='winner'?'completed':'variant_a',winner:kind==='winner'?'A':null};
  const state={auth:options.anonymous?null:{user:{id:'owner'}},body:Object.hasOwn(options,'body')?options.body:method==='POST'?{videoId:'video',variantA:'A title',variantB:'B title',hoursPerVariant:48}:{testId:row.id,action},plan:options.free?'free':'pro',token:options.noToken?null:'synthetic-token',active:options.active?row:null,count:options.max?3:0,find:options.foreign?null:row,
-  snippetJSON:{items:options.noVideo?[]:[{snippet:{title:'Original title',categoryId:options.noCategory?null:'22',thumbnails:{}},statistics:{viewCount:'12'}}]},putError:'Synthetic title rejected',createSQL:{...row,status:'variant_a'},updateSQL:{...row,status:'cancelled',completedAt:new Date()},
+  snippetJSON:options.noVideo?{kind:'youtube#videoListResponse',items:[]}:metadata.list(row.videoId,{title:'Original title',categoryId:options.noCategory?null:'22'}),putError:'Synthetic title rejected',createSQL:{...row,status:'variant_a'},updateSQL:{...row,status:'cancelled',completedAt:new Date()},
   tokenLookup:{userId:'owner',accessToken:'stale',refreshToken:'original-refresh',expiresAt:new Date(0)},refreshJSON:options.refreshFails?{error:'temporary'}:{access_token:'rotated',expires_in:3600},tokenSQL:{userId:'owner'}};
  const stages=['auth','body','plan','token','active','count','find','snippetHeaders','snippetJSON','putHeaders','putError','createSQL','updateSQL','tokenLookup','refreshHeaders','refreshJSON','tokenSQL'];
  for(const s of stages){gates[s]=deferred();entered[s]=deferred();}
  const held=s=>options.held===s||Array.isArray(options.held)&&options.held.includes(s);
  const step=s=>{calls.push(s);entered[s].resolve();if(options.fail===s)return Promise.reject(Error('Private '+s));return held(s)?gates[s].promise:Promise.resolve(state[s]);};
- state.snippetHeaders={ok:true,status:200,json:()=>step('snippetJSON')};state.putHeaders={ok:!options.providerStatus,status:options.providerStatus??200,text:()=>step('putError')};state.refreshHeaders={ok:true,status:200,json:()=>step('refreshJSON')};
- const globals={Date:class extends Date{static now(){return now;}},performance:{now:()=>now},setTimeout(fn,ms){const id=++next;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,init={})=>{captures.push({url,init});return step(url==='https://oauth2.googleapis.com/token'?'refreshHeaders':init.method==='PUT'?'putHeaders':'snippetHeaders');}};
+ state.snippetHeaders=metadata.response(()=>step('snippetJSON'));state.putHeaders=metadata.response(()=>options.providerStatus?step('putError'):metadata.ack(JSON.parse(captures.findLast(v=>v.init?.method==='PUT').init.body)),options.providerStatus??200);state.refreshHeaders={ok:true,status:200,json:()=>step('refreshJSON')};
+ const globals={Date:class extends Date{static now(){return now;}},performance:{now:()=>now},setTimeout(fn,ms){const id=++next;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:(url,init={})=>{captures.push({url,init});if(url==='https://oauth2.googleapis.com/token')return step('refreshHeaders');return step(init.method==='PUT'?'putHeaders':'snippetHeaders').then(()=>init.method==='PUT'?metadata.response(()=>options.providerStatus?step('putError'):metadata.ack(JSON.parse(init.body)),options.providerStatus??200):metadata.response(()=>step('snippetJSON')));}};
  const db={abTest:{findFirst:args=>{captures.push({query:args});return step(method==='POST'?'active':'find');},count:args=>{captures.push({countOwner:args.where.userId});return step('count');},create:args=>{captures.push({create:args});state.createSQL={...row,...args.data};return step('createSQL');},update:args=>{captures.push({update:args});state.updateSQL={...row,...args.data};return step('updateSQL');}},youtubeToken:{findUnique:args=>{captures.push({tokenOwner:args.where.userId});return step('tokenLookup');},update:args=>{captures.push({tokenUpdate:args});return step('tokenSQL');}}};
  let admission;
  const stored=structuredClone(row);let mutation;

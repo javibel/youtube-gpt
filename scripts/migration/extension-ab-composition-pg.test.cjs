@@ -1,4 +1,5 @@
 'use strict';
+const metadata=require('./ab-metadata-fixture.cjs');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict'),bcrypt=require('bcryptjs');
 const {PrismaClient}=require('@prisma/client'),{load}=require('./route-harness.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs');
 const {worker,view}=require('./extension-ab-create-client.test.cjs'),{node}=require('./extension-best-time-client.test.cjs');
@@ -17,8 +18,8 @@ async function bound(o={}) {
  const observedDate=new Proxy(Date,{get(t,k,r){if(k!=='now')return Reflect.get(t,k,r);return()=>{const at=Date.now();clock.push({at,caller:new Error().stack.split('\n')[2].trim()});return at;};}});
  const globals={Date:observedDate,Headers,Buffer,performance:{now:()=>elapsed},process:{env:{}},setTimeout(fn,ms){const n=++serial;timers.set(n,{fn,at:elapsed+ms});return n;},clearTimeout:n=>timers.delete(n),fetch:async(url,init={})=>{
   assert.match(url,/^https:\/\/www.googleapis.com\/youtube\/v3\/videos\?/);assert.equal(init.headers.Authorization,'Bearer closed-ab-youtube');
-  if(init.method==='PUT'){const input=JSON.parse(init.body);assert.equal(input.id,'abcdefghijk');assert.equal(input.snippet.title,'Own title A');await step('title',()=>undefined);return{ok:!o.titleStatus,status:o.titleStatus??200,text:async()=> 'closed rejection'};}
-  await step('snippet',()=>undefined);return{ok:true,status:200,json:()=>step('snippet-json',()=>({items:[{snippet:{title:'Synthetic original',categoryId:'22',thumbnails:{}},statistics:{viewCount:'12'}}]}))};
+  if(init.method==='PUT'){const input=JSON.parse(init.body);assert.equal(input.id,'abcdefghijk');assert.equal(input.snippet.title,'Own title A');await step('title',()=>undefined);return o.titleStatus?new Response('closed rejection',{status:o.titleStatus}):Response.json(metadata.ack(input));}
+  await step('snippet',()=>undefined);return metadata.response(()=>step('snippet-json',()=>metadata.list('abcdefghijk',{title:'Synthetic original'})));
  }};
  const issuerPlans=load('lib/plans.ts',{'@/lib/prisma':{prisma}},globals);
  const issuer=load('lib/extension-token-native-authorization.ts',{'node:crypto':crypto,'@/lib/prisma':{prisma},'@/lib/native-user-session':{readNativeVerifiedUser(){throw Error('No cookie recovery');}},'@/lib/plans':issuerPlans,bcryptjs:bcrypt,'@/lib/admin-email':{ADMIN_EMAIL:'other-admin@example.invalid'}},globals);

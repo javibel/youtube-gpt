@@ -1,3 +1,4 @@
+import { captureAbTitleMetadata,readAbVideoOriginal,publishAbTitleOriginal,reportedAbViews } from '@/lib/ab-title-metadata';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
 import { getMessagesTask } from '@/lib/ai/task-runtime';
@@ -38,31 +39,6 @@ export async function processAbTests(beforeStep?: () => void): Promise<Processor
   } finally { clearTimeout(timer); }
 }
 
-async function fetchVideoData(token: string, videoId: string) {
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.items?.[0] ?? null;
-}
-
-async function updateTitle(token: string, videoId: string, title: string, categoryId: string) {
-  const res = await fetch(
-    'https://www.googleapis.com/youtube/v3/videos?part=snippet',
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: videoId, snippet: { title, categoryId } }),
-    },
-  );
-  return res.ok;
-}
-
 async function runAbTests(beforeStep: () => void): Promise<ProcessorResult> {
   const errors: string[] = [];
   let switched = 0;
@@ -90,25 +66,22 @@ async function runAbTests(beforeStep: () => void): Promise<ProcessorResult> {
         continue;
       }
 
-      const video = await fetchVideoData(token, test.videoId);
+      const video = await readAbVideoOriginal(token, test.videoId);
       beforeStep?.();
       if (!video) {
         errors.push(`A/B test ${test.id}: video not found`);
         continue;
       }
 
-      const currentViews = parseInt(video.statistics?.viewCount ?? '0', 10);
-      if (typeof video.snippet?.categoryId !== 'string' || !video.snippet.categoryId.trim()
-        || !/^\d+$/.test(String(video.statistics?.viewCount ?? '0'))) {
-        errors.push(`A/B test ${test.id}: invalid video data`); continue;
-      }
+      const currentViews=reportedAbViews(video);if(currentViews===null){errors.push('A/B source views unavailable');continue;}
+      const payload=captureAbTitleMetadata(video,test.videoId,test.variantB);
       const admission = await beginAbTestTransition(test.userId, test, { action: 'switch_variant', at: now, views: currentViews }, beforeStep);
       if (!admission.ok) { errors.push(`A/B test ${test.id}: switch unconfirmed`); continue; }
       beforeStep?.();
 
       // Switch title to variant B
-      const ok = await updateTitle(token, test.videoId, test.variantB, video.snippet.categoryId);
-      if (!ok) {
+      const ack=await publishAbTitleOriginal(token,payload);
+      if (!ack.ok) {
         errors.push(`A/B test ${test.id}: failed to update title to variant B`);
         continue;
       }
@@ -144,30 +117,27 @@ async function runAbTests(beforeStep: () => void): Promise<ProcessorResult> {
         continue;
       }
 
-      const video = await fetchVideoData(token, test.videoId);
+      const video = await readAbVideoOriginal(token, test.videoId);
       beforeStep?.();
       if (!video) {
         errors.push(`A/B test ${test.id}: video not found for completion`);
         continue;
       }
 
-      const endViews = parseInt(video.statistics?.viewCount ?? '0', 10);
-      if (typeof video.snippet?.categoryId !== 'string' || !video.snippet.categoryId.trim()
-        || !/^\d+$/.test(String(video.statistics?.viewCount ?? '0'))) {
-        errors.push(`A/B test ${test.id}: invalid completion data`); continue;
-      }
+      const endViews=reportedAbViews(video);if(endViews===null){errors.push('A/B source views unavailable');continue;}
       const viewsA = (test.switchViews ?? 0) - test.initialViews;
       const viewsB = endViews - (test.switchViews ?? 0);
 
       // Determine winner
       const winner = viewsA > viewsB ? 'A' : viewsB > viewsA ? 'B' : 'A';
+      const winningTitle = winner === 'A' ? test.variantA : test.variantB;
+      const payload=captureAbTitleMetadata(video,test.videoId,winningTitle);
       const admission = await beginAbTestTransition(test.userId, test, { action: 'complete_test', at: now, views: endViews, winner }, beforeStep);
       if (!admission.ok) { errors.push(`A/B test ${test.id}: completion unconfirmed`); continue; }
       beforeStep?.();
 
       // Set winning title
-      const winningTitle = winner === 'A' ? test.variantA : test.variantB;
-      if (!await updateTitle(token, test.videoId, winningTitle, video.snippet.categoryId)) {
+      if (!(await publishAbTitleOriginal(token,payload)).ok) {
         errors.push(`A/B test ${test.id}: failed to apply winning title`);
         continue;
       }

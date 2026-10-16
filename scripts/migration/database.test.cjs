@@ -74,6 +74,7 @@ armCompletionWatchdog();
  await runContract('./ab-creation-admission-database.cjs',prisma,results);
  await runContract('./ab-mutation-admission-database.cjs',prisma,results);
  await runContract('./ab-processor-admission-database.cjs',prisma,results);
+ await runContract('./ab-metadata-database.cjs',prisma,results);
  await runContract('./competitor-delete-database.cjs',prisma,results);
  await runContract('./competitor-read-database.cjs',prisma,results);
  await runContract('./competitor-create-database.cjs',prisma,results);

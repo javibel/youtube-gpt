@@ -1,4 +1,5 @@
 'use strict';
+const metadata=require('./ab-metadata-fixture.cjs');
 const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs');
 const {deferred}=require('./calendar-http-read-deadline.test.cjs');
 // Real helper/route/plan/transactions. Only auth, time and title transport are
@@ -25,11 +26,11 @@ module.exports=function fixture(prisma,owner,options={}){
  const plans=load('lib/plans.ts',{'@/lib/prisma':{prisma}});
  const globals={performance:{now:()=>now},setTimeout(fn,ms){const id=++sequence;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),fetch:async(url,init={})=>{
   assert.match(url,/^https:\/\/www.googleapis.com\/youtube\/v3\/videos\?/);assert.equal(init.headers.Authorization,'Bearer synthetic-title-token');
-  if(init.method!=='PUT'){await options.onSnippet?.();return Response.json({items:[{snippet:{title:'Original synthetic',categoryId:options.invalidCategory?null:'22',thumbnails:{}},statistics:{viewCount:String(options.views??12)}}]});}
+  if(init.method!=='PUT'){await options.onSnippet?.();const value=metadata.list(new URL(url).searchParams.get('id'),{title:'Original synthetic',categoryId:options.invalidCategory?null:'22',views:options.views??12});options.modifySource?.(value);return Response.json(value);}
   const body=JSON.parse(init.body);assert.match(body.id,/^synthetic-admission-/);assert.equal(body.snippet.title,options.expectedTitle??'A synthetic');puts.push(body);entered.resolve();
   options.onTitle?.();if(options.holdTitle)await gate.promise;
   if(options.titleThrows)throw Error('Synthetic title acknowledgement lost');
-  return new Response(options.titleStatus?'Synthetic rejection':null,{status:options.titleStatus??200});
+  if(options.titleStatus)return new Response('Synthetic rejection',{status:options.titleStatus});const ack=metadata.ack(body);options.modifyAck?.(ack);return metadata.response(async()=>{await options.onAckBody?.();return ack;});
  }};
  const originalHelper=load('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},globals);
  const track=p=>{producers.push(p);void p.catch(()=>{});return p;};

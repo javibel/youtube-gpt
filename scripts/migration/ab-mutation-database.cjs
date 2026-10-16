@@ -1,4 +1,5 @@
 'use strict';
+const metadata=require('./ab-metadata-fixture.cjs');
 const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{load}=require('./route-harness.cjs');
 const {create,ready,defaults,inputs,pick}=require('./ab-page-client.test.cjs');
 const {form,start,writes}=require('./ab-mutation-client.test.cjs'),{deferred,flush}=require('./chat-widget-harness.cjs');
@@ -18,10 +19,10 @@ module.exports=async(prisma,results)=>{
    db.$transaction=(fn,options)=>prisma.$transaction(tx=>fn({$queryRawUnsafe:(...args)=>tx.$queryRawUnsafe(...args),optimizeUpdateAttempt:tx.optimizeUpdateAttempt,abTestCreationAttempt:tx.abTestCreationAttempt,abTestMutationAttempt:tx.abTestMutationAttempt,abTest:{findFirst:args=>tx.abTest.findFirst(args),count:args=>tx.abTest.count(args),create:args=>{assert.equal(args.data.userId,owner.id);nativeWrites.push('create');return tx.abTest.create(args);},update:args=>{assert.equal(args.where.id,seed.id);nativeWrites.push('cancel');return tx.abTest.update(args);}}}),options);
    const transport=async(url,init={})=>{
     assert.match(url,/^https:\/\/www.googleapis.com\/youtube\/v3\/videos\?/);assert.equal(init.headers.Authorization,'Bearer synthetic-title-token');provider.push({url,init});
-    if(init.method!=='PUT')return Response.json({items:[{id:'Original',snippet:{title:'Original synthetic video',categoryId:'22',thumbnails:{}},statistics:{viewCount:'12'}}]});
+    if(init.method!=='PUT')return Response.json(metadata.list(new URL(url).searchParams.get('id'),{title:'Original synthetic video'}));
     const body=JSON.parse(init.body);assert.equal(body.id,'Original');assert.equal(body.snippet.title,'Original synthetic video');
     if(held==='headers'){entered.resolve();await gate.promise;}
-    return mode==='cancel-rejected'?new Response('Synthetic provider rejection',{status:403}):Response.json({id:'Original'});
+    return mode==='cancel-rejected'?new Response('Synthetic provider rejection',{status:403}):Response.json(metadata.ack(body));
    };
    const youtube={getAccessToken:async userId=>{assert.equal(userId,owner.id);return'synthetic-title-token';}};
    const helper=load('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':youtube,'@/lib/plans':plans},{fetch:transport});

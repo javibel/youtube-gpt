@@ -1,3 +1,4 @@
+import { captureAbTitleMetadata,readAbVideoOriginal,publishAbTitleOriginal,reportedAbViews } from '@/lib/ab-title-metadata';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getAccessToken } from '@/lib/youtube-auth';
@@ -7,42 +8,6 @@ import { randomUUID } from 'node:crypto';
 // Extraída de app/api/youtube/ab-test/route.ts (POST) para que la ruta web
 // (sesión NextAuth) y la ruta de extensión (token propio) compartan la
 // misma lógica — dos copias que escriben títulos en YouTube divergirían mal.
-
-async function fetchVideoSnippet(token: string, videoId: string) {
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  const data = await res.json();
-  return data.items?.[0] ?? null;
-}
-
-async function updateVideoTitle(
-  token: string,
-  videoId: string,
-  newTitle: string,
-  categoryId: string,
-): Promise<{ ok: boolean; status: number; error?: string }> {
-  const res = await fetch(
-    'https://www.googleapis.com/youtube/v3/videos?part=snippet',
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: videoId,
-        snippet: { title: newTitle, categoryId },
-      }),
-    },
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    return { ok: false, status: res.status, error: text };
-  }
-  return { ok: true, status: res.status };
-}
 
 export type CreateAbTestResult =
   | { ok: true; status: 201; test: Awaited<ReturnType<typeof prisma.abTest.create>> }
@@ -108,18 +73,17 @@ export async function createAbTest(
       return { ok: false, status: 400, error: 'max_active_tests', limit: maxTests };
     }
 
-    const video = await fetchVideoSnippet(token, videoId);
+    const video = await readAbVideoOriginal(token, videoId);
     beforeStep?.();
     if (!video) {
       return { ok: false, status: 404, error: 'video_not_found' };
     }
 
-    const originalTitle = video.snippet.title;
-    const categoryId = video.snippet.categoryId;
-    const thumbnail = video.snippet.thumbnails?.medium?.url ?? null;
-    const initialViews = parseInt(video.statistics?.viewCount ?? '0', 10);
-    if (typeof originalTitle !== 'string' || typeof categoryId !== 'string' || !categoryId.trim()
-      || !Number.isSafeInteger(initialViews) || initialViews < 0) return uncertain();
+    const payload=captureAbTitleMetadata(video,videoId,variantA),snippet=video.snippet as Record<string,unknown>;
+    const originalTitle=snippet.title as string;
+    const thumbs=snippet.thumbnails as {medium?:{url?:unknown}}|undefined,candidate=thumbs?.medium?.url;
+    const thumbnail=typeof candidate==='string'&&candidate.length<=2048&&candidate.startsWith('https://i.ytimg.com/vi/'+videoId+'/')?candidate:null;
+    const initialViews=reportedAbViews(video);if(initialViews===null)return uncertain();
     const hours = Math.max(12, Math.min(168, hoursPerVariant));
     if (!Number.isInteger(hours)) return { ok: false, status: 400, error: 'Missing fields' };
 
@@ -185,7 +149,7 @@ export async function createAbTest(
     }
     // Once the original title write starts, its SQL record and result remain
     // part of that producer, even if the HTTP waiter retires in the meantime.
-    const result = await updateVideoTitle(token, videoId, variantA, categoryId);
+    const result = await publishAbTitleOriginal(token, payload);
     if (!result.ok) {
       if (result.status === 403) {
         return { ok: false, status: 403, error: 'youtube_reconnect_required' };

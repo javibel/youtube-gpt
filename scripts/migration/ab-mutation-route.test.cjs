@@ -1,4 +1,5 @@
 'use strict';
+const metadata=require('./ab-metadata-fixture.cjs');
 const assert=require('node:assert/strict'),{load}=require('./route-harness.cjs'),{testRow}=require('./ab-page-client.test.cjs'),{deferred}=require('./chat-widget-harness.cjs');
 const results=[];async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',error:e.message});}}
 function fixture({token='synthetic',video=true,provider=200,dbFailure=false}={}){
@@ -7,7 +8,7 @@ function fixture({token='synthetic',video=true,provider=200,dbFailure=false}={})
  for(const field of ['startedAt','switchedAt','completedAt'])if(row[field])row[field]=new Date(row[field]);
  let mutation;const db={abTest:{findFirst:async args=>{calls.push(['find',args]);return args.where.userId==='owner'&&args.where.id===row.id?row:null;},update:async args=>{calls.push(['update',args]);if(dbFailure)throw Error('Synthetic SQL failure');return{...row,...args.data};}},optimizeUpdateAttempt:{findFirst:async()=>null},abTestCreationAttempt:{findFirst:async()=>null},abTestMutationAttempt:{findFirst:async()=>null,create:async args=>(mutation={...args.data}),findUnique:async()=>mutation,updateMany:async()=>({count:1})},$queryRawUnsafe:async()=>[{id:'owner'}]};db.$transaction=async fn=>fn(db);
  const realHelper=load('lib/ab-test.ts',{'node:crypto':require('node:crypto'),'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':{},'@/lib/plans':{}});
- const route=load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>session},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':{getAccessToken:async id=>{calls.push(['token',id]);return token;}},'@/lib/ab-test':{...realHelper,createAbTest:async(id,body)=>{calls.push(['create',id,body]);return{ok:true,test:{...row,userId:id},status:201};}}},{fetch:async(url,init={})=>{calls.push(['fetch',url,init]);return init.method==='PUT'?new Response('',{status:provider}):Response.json({items:video?[{snippet:{categoryId:'22'}}]:[]});}});
+ const route=load('app/api/youtube/ab-test/route.ts',{'next/server':{NextRequest:Request,NextResponse:Response},'@/auth':{auth:async()=>session},'@/lib/prisma':{prisma:db},'@/lib/youtube-auth':{getAccessToken:async id=>{calls.push(['token',id]);return token;}},'@/lib/ab-test':{...realHelper,createAbTest:async(id,body)=>{calls.push(['create',id,body]);return{ok:true,test:{...row,userId:id},status:201};}}},{fetch:async(url,init={})=>{calls.push(['fetch',url,init]);return init.method==='PUT'?(provider===200?Response.json(metadata.ack(JSON.parse(init.body))):new Response('Rejected',{status:provider})):Response.json(video?metadata.list(row.videoId):{kind:'youtube#videoListResponse',items:[]});}});
  return{route,session,calls,row};
 }
 const request=body=>new Request('https://example.invalid/api/youtube/ab-test',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
