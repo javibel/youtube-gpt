@@ -30,10 +30,11 @@ export function authorizeNativeAbProcessor(request: Request): NativeAbProcessor 
         return null;
     }
 }
-// Only a live native cron request may enter once. Serialized fields, clocks,
-// command IDs and database rows cannot reconstruct or resume this invocation.
+// Only a live native request enters once. Limits can only retire it earlier;
+// dates,serialized fields and database rows cannot create or resume an original.
 export async function runNativeAbProcessor<T>(original: NativeAbProcessor | null | undefined, run: (context: {
     check: () => void;
+    shortenLifetime: (until: number) => void;
     at: number;
     signal: AbortSignal;
     command: string;
@@ -42,22 +43,26 @@ export async function runNativeAbProcessor<T>(original: NativeAbProcessor | null
     if (!own || own.used)
         return unconfirmed;
     own.used = true;
-    let retired = false, rejectStop!: (e: Error) => void;
+    let retired = false, rejectStop!: (e: Error) => void, timer: ReturnType<typeof setTimeout> | undefined, until = own.at + 55000, deadline = own.deadline;
     const stop = new Promise<never>((_, reject) => { rejectStop = reject; });
     void stop.catch(() => { });
     const retire = () => { if (!retired) {
         retired = true;
         rejectStop(Error('ab_processor_unconfirmed'));
     } };
-    const check = () => { if (retired || own.request.signal.aborted || Date.now() < own.at || Date.now() >= own.at + 55000 || performance.now() >= own.deadline || process.env.CRON_SECRET !== own.secret || (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL) !== own.configured || own.request.headers.get('authorization') !== own.header) {
+    const check = () => { if (retired || own.request.signal.aborted || Date.now() < own.at || Date.now() >= until || performance.now() >= deadline || process.env.CRON_SECRET !== own.secret || (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL) !== own.configured || own.request.headers.get('authorization') !== own.header) {
         retire();
         throw Error('ab_processor_unconfirmed');
     } };
-    const timer = setTimeout(retire, Math.max(0, Math.min(own.at + 55000 - Date.now(), own.deadline - performance.now())));
+    const arm = () => { if (timer !== undefined)
+        clearTimeout(timer); timer = setTimeout(retire, Math.max(0, Math.min(until - Date.now(), deadline - performance.now()))); };
+    const shortenLifetime = (expiry: number) => { check(); if (!Number.isFinite(expiry))
+        throw Error('ab_processor_unconfirmed'); until = Math.min(until, expiry); deadline = Math.min(deadline, performance.now() + Math.max(0, expiry - Date.now())); check(); arm(); };
+    arm();
     own.request.signal.addEventListener('abort', retire, { once: true });
     try {
         check();
-        const producer = Promise.resolve().then(() => { check(); return run({ check, at: own.at, signal: own.request.signal, command: own.command }); });
+        const producer = Promise.resolve().then(() => { check(); return run({ check, shortenLifetime, at: own.at, signal: own.request.signal, command: own.command }); });
         void producer.catch(() => { });
         const result = await Promise.race([producer, stop]);
         check();
@@ -67,7 +72,8 @@ export async function runNativeAbProcessor<T>(original: NativeAbProcessor | null
         return unconfirmed;
     }
     finally {
-        clearTimeout(timer);
+        if (timer !== undefined)
+            clearTimeout(timer);
         own.request.signal.removeEventListener('abort', retire);
         retire();
     }
