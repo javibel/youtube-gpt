@@ -30,8 +30,9 @@ async function run(){
  });
  await test('new reviewed v2 covers both tasks without editing old v1 snapshots',async()=>{
   const registry=createFixtureRegistry(),old={contractVersion:'1.0',revision:'migration-ui-fixture-v1',fallback:'none',activeProfile:'Prueba Anthropic',profiles:{'Prueba Anthropic':{[fixture.taskType]:{providerId:'anthropic',model:'synthetic-only'}}},exceptions:[]},before=JSON.stringify(old),candidate=initialConfiguration(fixture.taskType);
-  assert.equal(candidate.revision,'migration-ui-fixture-v2');assert.equal(candidate.fallback,'none');assert.deepEqual(Object.keys(taskCatalog).sort(),[fixture.taskType,bestTimeFixture.taskType].sort());
-  for(const activeProfile of Object.keys(candidate.profiles))for(const taskType of Object.keys(taskCatalog))assert.equal(registry.resolve({...candidate,activeProfile},{taskType,requiredCapabilities:['text','json']}).model,'synthetic-only');
+  assert.equal(candidate.revision,'migration-ui-fixture-v2');assert.equal(candidate.fallback,'none');assert.deepEqual(Object.keys(taskCatalog).sort(),[fixture.taskType,bestTimeFixture.taskType,'brand.social-post'].sort());
+  for(const activeProfile of Object.keys(candidate.profiles))for(const taskType of [fixture.taskType,bestTimeFixture.taskType])assert.equal(registry.resolve({...candidate,activeProfile},{taskType,requiredCapabilities:['text','json']}).model,'synthetic-only');
+  assert.throws(()=>registry.resolve(candidate,{taskType:'brand.social-post',requiredCapabilities:['text','prompt_cache']}));
   assert.throws(()=>registry.resolve(old,{taskType:bestTimeFixture.taskType,requiredCapabilities:['text','json']}));assert.equal(JSON.stringify(old),before);
  });
  return {status:results.every(r=>r.status==='PASS')?'PASS':'FAIL',scope:'Compiled fixture task policies, adapter concurrency and immutable profile upgrade; no real transport or operational acceptance.',results};

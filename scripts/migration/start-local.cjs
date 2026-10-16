@@ -43,7 +43,10 @@ async function main(){
  // reset, admission recovery or serialized receipt is accepted as authority.
  if(process.connected)process.on('message',message=>{if(message==='ytv-local-fixture-stop')void stop();});
  try{
- const {connectLocalFixture}=require('../../lib/migration/local-fixture.cjs');const prepared=await lifecycle.openResource(()=>connectLocalFixture({seed:true}));await lifecycle.closeResource(prepared);lifecycle.check();
+ const {connectLocalFixture}=require('../../lib/migration/local-fixture.cjs');const prepared=await lifecycle.openResource(()=>connectLocalFixture({seed:true}));
+ console.log('Synthetic social preview preparation: '+JSON.stringify(prepared.socialPreviewPreparation));
+ if(process.connected)process.send({type:'fixture-social-preview-preparation',receipt:prepared.socialPreviewPreparation});
+ await lifecycle.closeResource(prepared);lifecycle.check();
  require('../../lib/migration-payments.cjs').installFixtures(paymentFixtures());
  app=require('next')({dev:false,dir:task.cwd,hostname:task.host,port:task.port});await lifecycle.runWork(()=>app.prepare());lifecycle.check();
  const handler=app.getRequestHandler(),{protectResponse}=require('./runtime-http-policy.cjs');
