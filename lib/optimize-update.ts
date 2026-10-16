@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 type Entry = { field: string; oldValue: string; newValue: string; scoreBefore: number; scoreAfter: number; viewsBefore: number | null };
 type Admission = { ok: false; error: 'unconfirmed' | 'youtube_not_connected' }
@@ -8,7 +9,7 @@ const identity = (s: string) => typeof s === 'string' && /^[\w-]{1,128}$/.test(s
 
 // No identifier lookup can return this closure. Admission acknowledgement must
 // arrive on this same live invocation, within its original HTTP budget.
-export async function beginOptimizeUpdate(userId: string, videoId: string, key: string, beforeStep: () => void): Promise<Admission> {
+export async function beginOptimizeUpdate(userId: string, videoId: string, key: string, beforeStep: () => void, nativeCheck?: (tx: Prisma.TransactionClient) => Promise<void>): Promise<Admission> {
   try {
     if (!identity(userId) || !identity(videoId) || !identity(key)) return { ok: false, error: 'unconfirmed' };
     const id = randomUUID();
@@ -17,6 +18,7 @@ export async function beginOptimizeUpdate(userId: string, videoId: string, key: 
       beforeStep();
       const owner = await tx.$queryRawUnsafe<Array<{ id: string }>>('SELECT id FROM users WHERE id=$1 FOR UPDATE', userId);
       beforeStep(); if (owner.length !== 1 || owner[0].id !== userId) throw Error('Admission unavailable');
+      if(nativeCheck) await nativeCheck(tx); beforeStep();
       const previous = await tx.optimizeUpdateAttempt.findFirst({ where: { userId, OR: [{ key }, { videoId, state: { not: 'complete' } }] } });
       beforeStep(); if (previous) return null;
       const active = await tx.abTest.findFirst({ where: { userId, videoId, status: { in: ['variant_a', 'variant_b'] } } });

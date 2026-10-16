@@ -92,3 +92,12 @@ export function beginOptimizeSave(owner: ScoreOwner, input: OptimizeSaveInput): 
   })();
   return a;
 }
+
+// A new editor may consult old uncertainty only as a veto,including an email
+// change. This never exposes or adopts a prior producer or clears its marker.
+export function anyUnconfirmedOptimizeSave(userId:string,videoId:string):boolean {
+ const matches=(key:string)=>{try{const data=JSON.parse(key.slice('ytubviral:optimize-save:'.length));return Array.isArray(data)&&data[0]===userId&&data[2]===videoId;}catch{return false;}};
+ for(const[key,value]of attempts)if(matches(key)&&(!value.outcome||value.outcome.status==='unconfirmed'))return true;
+ for(const key of denied)if(matches(key))return true;
+ try{for(let i=0;i<sessionStorage.length;i++){const key=sessionStorage.key(i);if(key?.startsWith('ytubviral:optimize-save:')&&matches(key))return true;}return false;}catch{return true;}
+}
