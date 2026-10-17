@@ -59,9 +59,9 @@ const noLog=`NOT EXISTS(SELECT 1 FROM email_logs WHERE "userId"=$2 AND sequence=
 const sourceCondition=`EXISTS(SELECT 1 FROM users u LEFT JOIN verify_reminders vr ON vr.user_id=u.id
  WHERE u.id=$2 AND u.email=$4 AND u.name IS NOT DISTINCT FROM $5::text AND u.lang=$6
  AND u."createdAt"=timezone('UTC',$7::timestamptz) AND u."emailVerified" IS NULL AND u."marketingOptOut"=false
- AND COALESCE(vr.reminders_sent,0)=$8::integer AND vr.last_sent_at IS NOT DISTINCT FROM $9::timestamptz
+ AND COALESCE(vr.reminders_sent,0)=$8::integer AND vr.last_sent_at::text IS NOT DISTINCT FROM $9::text
  AND (($3::integer=1 AND $8::integer=0 AND u."createdAt"<=timezone('UTC',$10::timestamptz)-INTERVAL '2 hours' AND u."createdAt">=timezone('UTC',$10::timestamptz)-INTERVAL '5 days')
- OR ($3::integer=2 AND $8::integer=1 AND u."createdAt">=timezone('UTC',$10::timestamptz)-INTERVAL '14 days' AND vr.last_sent_at<=$10::timestamptz-INTERVAL '48 hours')))`;
+ OR ($3::integer=2 AND $8::integer=1 AND u."createdAt">=timezone('UTC',$10::timestamptz)-INTERVAL '14 days' AND vr.last_sent_at<=timezone('UTC',$10::timestamptz)-INTERVAL '48 hours')))`;
 const read=async(id:string)=>{const rows=await prisma.$queryRawUnsafe<Source[]>(`/* verify-reminder:read */ `+select+' WHERE u.id=$1',id);if(!Array.isArray(rows)||rows.length>1)throw Error('verification_reminder_unconfirmed');return rows[0]??null;};
 const email=(value:unknown):value is string=>typeof value==='string'&&value.length<=254&&/^[^\s@,;<>"\x00-\x1f\x7f]+@[^\s@,;<>"\x00-\x1f\x7f]+\.[^\s@,;<>"\x00-\x1f\x7f]+$/.test(value);
 function eligible(row:Source,at:number):boolean {
@@ -100,11 +100,11 @@ async function deliver(row:Source,at:number,check:()=>void):Promise<boolean>{
   return tx.$queryRawUnsafe<{noticeId:string}[]>(`/* verify-reminder:complete */
    WITH own AS MATERIALIZED(SELECT "userId","noticeId" FROM lifecycle_email_admissions WHERE "userId"=$2 AND "noticeId"=$1 AND sequence='verify-reminder' AND step=$3::text FOR UPDATE),
    updated AS(INSERT INTO verify_reminders(user_id,reminders_sent,last_sent_at)
-    SELECT $2,$3::integer,clock_timestamp() FROM own WHERE `+noLog+` AND
+    SELECT $2,$3::integer,timezone('UTC',clock_timestamp()) FROM own WHERE `+noLog+` AND
      (($4::integer=0 AND NOT EXISTS(SELECT 1 FROM verify_reminders WHERE user_id=$2))
-      OR EXISTS(SELECT 1 FROM verify_reminders WHERE user_id=$2 AND reminders_sent=$4::integer AND last_sent_at IS NOT DISTINCT FROM $5::timestamptz))
+      OR EXISTS(SELECT 1 FROM verify_reminders WHERE user_id=$2 AND reminders_sent=$4::integer AND last_sent_at::text IS NOT DISTINCT FROM $5::text))
     ON CONFLICT(user_id) DO UPDATE SET reminders_sent=EXCLUDED.reminders_sent,last_sent_at=EXCLUDED.last_sent_at
-     WHERE verify_reminders.reminders_sent=$4::integer AND verify_reminders.last_sent_at IS NOT DISTINCT FROM $5::timestamptz RETURNING user_id),
+     WHERE verify_reminders.reminders_sent=$4::integer AND verify_reminders.last_sent_at::text IS NOT DISTINCT FROM $5::text RETURNING user_id),
    accepted AS(INSERT INTO email_logs(id,"userId",sequence,step,"sentAt") SELECT $1,$2,'verify-reminder',$3::text,timezone('UTC',clock_timestamp()) FROM updated
     ON CONFLICT("userId",sequence,step) DO NOTHING RETURNING id)
    DELETE FROM lifecycle_email_admissions WHERE "userId"=$2 AND "noticeId"=$1 AND sequence='verify-reminder' AND step=$3::text AND EXISTS(SELECT 1 FROM accepted WHERE id=$1) RETURNING "noticeId"`,id,row.id,String(ordinal),row.sent,row.lastSentStamp);
@@ -121,7 +121,7 @@ export function sendVerificationReminders(original?:NativeCronVerificationRemind
    for(let page=0;page<32;page++){
     check();const rows=await prisma.$queryRawUnsafe<Source[]>(`/* verify-reminder:scan */ `+select+` WHERE u.id>$1 AND u."emailVerified" IS NULL AND u."marketingOptOut"=false
      AND ((COALESCE(vr.reminders_sent,0)=0 AND u."createdAt"<=timezone('UTC',$2::timestamptz)-INTERVAL '2 hours' AND u."createdAt">=timezone('UTC',$2::timestamptz)-INTERVAL '5 days')
-      OR(COALESCE(vr.reminders_sent,0)=1 AND u."createdAt">=timezone('UTC',$2::timestamptz)-INTERVAL '14 days' AND vr.last_sent_at<=$2::timestamptz-INTERVAL '48 hours'))
+      OR(COALESCE(vr.reminders_sent,0)=1 AND u."createdAt">=timezone('UTC',$2::timestamptz)-INTERVAL '14 days' AND vr.last_sent_at<=timezone('UTC',$2::timestamptz)-INTERVAL '48 hours'))
      AND NOT EXISTS(SELECT 1 FROM email_logs l WHERE l."userId"=u.id AND l.sequence='verify-reminder' AND l.step=(COALESCE(vr.reminders_sent,0)+1)::text)
      ORDER BY u.id ASC LIMIT 25`,cursor,new Date(at));check();
     if(!Array.isArray(rows)||rows.length>25)throw Error('verification_reminder_unconfirmed');result.pages++;result.hasMore=rows.length===25;
