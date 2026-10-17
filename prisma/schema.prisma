@@ -1570,3 +1570,17 @@ model SnapshotCollectionAttempt {
   @@unique([kind, entityId, date])
   @@map("snapshot_collection_attempts")
 }
+
+model ChannelSnapshotAttempt {
+  id String @id
+  userId String
+  date String
+  source Json
+  state String @default("pending")
+  snapshotId String?
+  statistics Json?
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  @@unique([userId, date])
+  @@map("channel_snapshot_attempts")
+}
