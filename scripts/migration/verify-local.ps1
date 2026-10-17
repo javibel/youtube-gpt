@@ -38,6 +38,7 @@ try {
         if (-not $command) { throw "Missing verification suite: $suite" }
         $started = Get-Date
         $failed = $false
+        $programResults = @()
         Write-Output "Checking $suite"
         foreach ($part in ($command -split ' && ')) {
             $arguments = $part -split ' '
@@ -50,8 +51,23 @@ try {
             if ($arguments[1] -eq 'scripts/migration/build-local.cjs') {
                 $executionArguments = @('--trace-exit','--trace-uncaught','--unhandled-rejections=strict') + $executionArguments
             }
+            $programStarted = Get-Date
             & $nodeExe @executionArguments *>> $logFile
-            if ($LASTEXITCODE -ne 0) { $failed = $true; break }
+            # Capture the actual original exit before any other native command.
+            # Stage metadata describes a failure only; it cannot prove completion.
+            $programExitCode = $LASTEXITCODE
+            $programResult = @{ entry=$arguments[1]; exitCode=$programExitCode; elapsedMs=[int]((Get-Date)-$programStarted).TotalMilliseconds }
+            if ($programExitCode -ne 0 -and $arguments[1] -eq 'scripts/migration/build-local.cjs') {
+                try {
+                    $buildDiagnostic = Get-Content -LiteralPath (Join-Path $repo '.next/diagnostics/build-diagnostics.json') -Raw | ConvertFrom-Json -ErrorAction Stop
+                    $programResult.buildStage = $buildDiagnostic.buildStage
+                } catch { $programResult.buildStage = 'unconfirmed' }
+            }
+            $programResults += $programResult
+            if ($programExitCode -ne 0) {
+                Add-Content -LiteralPath $logFile -Value ('Original native program terminal: '+($programResult | ConvertTo-Json -Compress))
+                $failed = $true; break
+            }
             if ($arguments[1] -eq 'scripts/migration/database.test.cjs') {
                 # Exit zero alone cannot prove a Promise-based contract finished.
                 $databaseOutput = [IO.File]::ReadAllText($logFile).Substring($outputOffset).Trim()
@@ -65,7 +81,7 @@ try {
             }
         }
         $status = if ($failed) { 'FAIL' } else { 'PASS' }
-        $results += @{ suite=$suite; status=$status; elapsedMs=[int]((Get-Date)-$started).TotalMilliseconds }
+        $results += @{ suite=$suite; status=$status; elapsedMs=[int]((Get-Date)-$started).TotalMilliseconds; programs=$programResults }
         Write-Output "$status $suite"
         if ($failed) { break }
     }
@@ -73,7 +89,7 @@ try {
     $unexpectedFailure = $true
     Add-Content -LiteralPath $logFile -Value "$activeSuite :: unexpected verifier error: $($_.Exception.Message)"
     if ($activeSuite -and -not ($results | Where-Object { $_.suite -eq $activeSuite })) {
-        $results += @{ suite=$activeSuite; status='FAIL'; elapsedMs=0 }
+        $results += @{ suite=$activeSuite; status='FAIL'; elapsedMs=0; programs=$programResults }
     }
     Write-Output "FAIL $activeSuite"
 } finally { Pop-Location }
