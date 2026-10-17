@@ -259,6 +259,11 @@ export function generateSocialPost(
 
 // This produces only the textual image prompt. Binary image generation,
 // daily cache completion,upload and publication require separate native ACKs.
+export async function validateCronSocialImageSource(original?:NativeCronSocialPost):Promise<void>{
+  const own=original&&cronImageSources.get(original);
+  if(!own)throw Error('daily_brand_image_unconfirmed');
+  await own.validate();
+}
 export function generateCronSocialImagePrompt(original?:NativeCronSocialPost):Promise<CronSocialImagePrompt>{
   const own=original&&cronImageSources.get(original);if(!own)return Promise.reject(Error('daily_brand_image_unconfirmed'));
   return own.prompt??=Promise.resolve().then(async()=>{

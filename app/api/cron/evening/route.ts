@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost) => {
+  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost, issueBrandImageRead) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -61,8 +61,8 @@ export async function GET(request: Request) {
     // Keep the same evening source and original 55-second lifetime.
     if (ig) {
       try {
-        const image=await step(()=>getOrCreateDailyBrandImage(instagramOriginal));
-        results.brandImage=await step(()=>consumeDailyBrandImage(image,async own=>({date:own.date,cacheCompleted:true})));
+        const image=await step(()=>getOrCreateDailyBrandImage(instagramOriginal,issueBrandImageRead()));
+        results.brandImage=await step(()=>consumeDailyBrandImage(image,async own=>own.producerAcknowledged?{date:own.date,cacheCompleted:true}:{date:own.date,cacheResourceRead:true,producerAcknowledged:false}));
       } catch {
         return NextResponse.json({ok:false,error:'daily_brand_image_unconfirmed',results,errors},{status:503});
       }

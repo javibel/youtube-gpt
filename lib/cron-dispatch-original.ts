@@ -19,8 +19,8 @@ const originals = new WeakMap<object, Original>();
 const dailyTips = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 const dailyIdeas = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 const dailyIdeasEmails = new WeakMap<object, { date: string; at: number; check: () => void; promise?: Promise<unknown> }>();
-const socialPosts = new WeakMap<object, { date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; remaining: () => number; check: () => void; promise?: Promise<string> }>();
-const imageReads = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
+const socialPosts = new WeakMap<object, { parent: Original; date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; remaining: () => number; check: () => void; promise?: Promise<string> }>();
+const imageReads = new WeakMap<object, { parent: Original; date: string; check: () => void; promise?: Promise<unknown> }>();
 
 export function authorizeCronDispatch(request: Request, slot: Slot): NativeCronDispatch | null {
   try {
@@ -120,7 +120,7 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     platforms.add(platform);
     const child=Object.freeze({}) as NativeCronSocialPost, date=new Date(own.at).toISOString().slice(0,10);
     const checkSocial=()=>{check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('social_post_unconfirmed');};
-    socialPosts.set(child,{date,at:own.at,slot:own.slot,platform,check:checkSocial,
+    socialPosts.set(child,{parent:own,date,at:own.at,slot:own.slot,platform,check:checkSocial,
       remaining:()=>{checkSocial();return Math.max(1,Math.floor(Math.min(own.until-Date.now(),own.deadline-performance.now())));}});
     return child;
   };
@@ -131,7 +131,7 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     imageReadIssued = true;
     const child = Object.freeze({}) as NativeCronBrandImageRead;
     const date = new Date(own.at).toISOString().slice(0, 10);
-    imageReads.set(child, { date, check: () => {
+    imageReads.set(child, { parent: own, date, check: () => {
       check();
       if (new Date(Date.now()).toISOString().slice(0, 10) !== date) throw Error('daily_brand_image_read_unconfirmed');
     } });
@@ -151,6 +151,14 @@ export function runCronBrandImageRead<T>(original: NativeCronBrandImageRead | un
     own.check();
     return run({ date: own.date, checkBeforeRead: own.check });
   })) as Promise<T>;
+}
+
+// Identity of two live children of this very invocation;not equality of request
+// metadata or a way to bind a new read purpose to an older producer.
+export function validateCronImageReadSource(source: NativeCronSocialPost | undefined, read: NativeCronBrandImageRead | undefined): void {
+  const post = source && socialPosts.get(source), image = read && imageReads.get(read);
+  if (!post || !image || post.parent !== image.parent) throw Error('daily_brand_image_unconfirmed');
+  post.check(); image.check();
 }
 
 export function runCronSocialPost(original: NativeCronSocialPost|undefined, platform: string, slot: string,

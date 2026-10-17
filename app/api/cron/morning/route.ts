@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost) => {
+  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -93,12 +93,12 @@ export async function GET(request: Request) {
     if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
     if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
 
-    // The source that actually completed owns prompt,image,upload and cache.
-    // A raw URL or completed image is never publication authority.
+    // A sibling read purpose supplies persisted resource data only. A miss
+    // enters the completed source's native producer;neither permits publication.
     if (fb || ig) {
       try {
-        const image=await step(()=>getOrCreateDailyBrandImage(fb?facebookOriginal:instagramOriginal));
-        results.brandImage=await step(()=>consumeDailyBrandImage(image,async own=>({date:own.date,cacheCompleted:true})));
+        const image=await step(()=>getOrCreateDailyBrandImage(fb?facebookOriginal:instagramOriginal,issueBrandImageRead()));
+        results.brandImage=await step(()=>consumeDailyBrandImage(image,async own=>own.producerAcknowledged?{date:own.date,cacheCompleted:true}:{date:own.date,cacheResourceRead:true,producerAcknowledged:false}));
       } catch {
         return NextResponse.json({ok:false,error:'daily_brand_image_unconfirmed',results,errors},{status:503});
       }
