@@ -7,6 +7,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useEffect, useState, useRef } from 'react';
 import { useAdminSocialPreview } from '@/lib/use-admin-social-preview';
 import { useAdminSocialPublication } from '@/lib/use-admin-social-publication';
+import { useAdminGmailReview } from '@/lib/use-admin-gmail-review';
 import { useAdminGmailDraft } from '@/lib/use-admin-gmail-draft';
 import { useAdminYoutubeDraft } from '@/lib/use-admin-youtube-draft';
 import { useAdminSocialMessages } from '@/lib/use-admin-social-messages';
@@ -84,6 +85,7 @@ export default function SocialAdminPage() {
   const preview = useAdminSocialPreview(session,status,actionInFlight);
   const publication = useAdminSocialPublication(session,status,actionInFlight);
   const messages = useAdminSocialMessages(session,status,actionInFlight);
+  const gmailReview=useAdminGmailReview(session,status,actionInFlight);
   const gmailDraft=useAdminGmailDraft(session,status,actionInFlight);
   const youtubeDraft=useAdminYoutubeDraft(session,status,actionInFlight);
 
@@ -151,6 +153,9 @@ export default function SocialAdminPage() {
             <button onClick={messages.start} disabled={!messages.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl">
               {messages.running ? 'Revisando...' : 'Revisar mensajes'}
             </button>
+            <button onClick={gmailReview.start} disabled={!gmailReview.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
+              {gmailReview.running?'Leyendo Gmail…':'Revisar textos Gmail'}
+            </button>
             <button onClick={gmailDraft.start} disabled={!gmailDraft.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
               {gmailDraft.running?'Preparando borrador…':'Preparar borrador Gmail'}
             </button>
@@ -182,6 +187,21 @@ export default function SocialAdminPage() {
               </div>
             </section>
           )}
+          {gmailReview.message&&<p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{gmailReview.message}</p>}
+          {gmailReview.data&&<section aria-label="Textos Gmail para revisión manual" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
+            <h2 className="font-semibold" style={{color:'var(--text)'}}>Textos Gmail para revisión manual</h2>
+            <p>{gmailReview.data.scanned} mensajes examinados; {gmailReview.data.read} con texto legible y {gmailReview.data.skipped} sin extraer.</p>
+            <p>Esta lectura no prepara borradores ni envía respuestas.</p>
+            {gmailReview.data.skipped>0&&<GmailExclusionSummary counts={gmailReview.data.exclusions}/>}
+            {gmailReview.data.hasMore&&<p>Hay más mensajes fuera de esta lectura.</p>}
+            {gmailReview.data.messages.length===0&&<p>No hay textos seleccionables en esta lectura.</p>}
+            {gmailReview.data.messages.map((message,index)=><article key={index} className="rounded-xl p-4 space-y-2" style={{background:'var(--ink-3)',border:'1px solid var(--line)'}}>
+              <h3 className="font-semibold" style={{color:'var(--text)'}}>Mensaje {index+1}</h3>
+              <p>De: {message.from}</p><p>Asunto: {message.subject||'(Sin asunto)'}</p>
+              <div className="whitespace-pre-wrap break-words max-h-72 overflow-auto">{message.text||'(Texto vacío)'}</div>
+            </article>)}
+            <p>La revisión completa sigue pendiente.</p>
+          </section>}
           {gmailDraft.message&&<p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{gmailDraft.message}</p>}
           {gmailDraft.data?.kind==='no-eligible-source'&&<section aria-label="Borrador Gmail no disponible" className="yv-card mt-3 p-4 space-y-2 text-sm" style={{color:'var(--text-dim)'}}>
             <h2 className="font-semibold" style={{color:'var(--text)'}}>Borrador Gmail no disponible</h2>
