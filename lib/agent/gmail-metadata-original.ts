@@ -14,7 +14,7 @@ export type GmailMetadataWindow = Readonly<{ configured: boolean; pages: number;
   content: 'selected-headers-only-no-body-or-attachments'; acceptance: 'read-only-not-draft-send-consent-or-operative-freshness' }>;
 type Context = Readonly<{ at: number; signal: AbortSignal; checkBeforeRead: () => void; remainingBeforeRead: () => number }>;
 const requests = new WeakMap<object, Promise<GmailMetadataRead>>();
-const reads = new WeakMap<object, { original: object; context: Context; window: GmailMetadataWindow; full?:(source:GmailMetadataSource,remaining:number)=>Promise<GmailTextSource|null>; promise?: Promise<unknown> }>();
+const reads = new WeakMap<object, { original: object; context: Context; window: GmailMetadataWindow; full?:(source:GmailMetadataSource,remaining:number)=>Promise<GmailTextSource|GmailTextSkipReason>; promise?: Promise<unknown> }>();
 const raw = Object.freeze({ GMAIL_READ_ENABLED: process.env.GMAIL_READ_ENABLED, GMAIL_TEXT_READ_ENABLED:process.env.GMAIL_TEXT_READ_ENABLED, GMAIL_READ_MAILBOX: process.env.GMAIL_READ_MAILBOX,
   GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN });
 const nativeFetch = globalThis.fetch, scope = 'https://www.googleapis.com/auth/gmail.readonly';
@@ -87,7 +87,7 @@ export function readGmailMetadata(original?: NativeAdminGmailMetadata): Promise<
       const configured = raw.GMAIL_READ_ENABLED === 'true' && typeof mailbox === 'string' && mailbox.length <= 254
         && /^[a-z0-9.!#$%&'*+\/=?^_\x60{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(mailbox)
         && credential(raw.GMAIL_CLIENT_ID) && credential(raw.GMAIL_CLIENT_SECRET) && credential(raw.GMAIL_REFRESH_TOKEN);
-      let full:((source:GmailMetadataSource,remaining:number)=>Promise<GmailTextSource|null>)|undefined;
+      let full:((source:GmailMetadataSource,remaining:number)=>Promise<GmailTextSource|GmailTextSkipReason>)|undefined;
       let receiptContext: Context = context; let pages = 0, hasMore = false; const messages: GmailMetadataSource[] = [];
       if (configured) {
         const tokenAt = Date.now(), tokenStarted = performance.now();
@@ -108,13 +108,13 @@ export function readGmailMetadata(original?: NativeAdminGmailMetadata): Promise<
           // plain multipart/mixed tree allow a data mask at that single depth.
           url.searchParams.set('fields',textFields());
           const before=plainShape(await json(url.toString(),{method:'GET',headers},authorized),source,undefined,remaining);live();
-          if(!before)return null;
+          if('excluded' in before)return before.excluded;
           url.searchParams.set('fields',textFields(before.depth));
           const value=await json(url.toString(),{method:'GET',headers},authorized);live();
           const after=plainShape(value,source,before.depth,remaining);
           // A changed representation is a veto,not a fresh source or permission.
           // Encoded bytes can have arrived before this veto;never decode them.
-          if(!after||after.signature!==before.signature)throw Error('gmail_text_unconfirmed');
+          if('excluded' in after||after.signature!==before.signature)throw Error('gmail_text_unconfirmed');
           return decodePlain(after,source);
         };
         const profile = await json(base + '/profile', { method: 'GET', headers }, authorized); live();
@@ -157,7 +157,10 @@ export function validateGmailMetadataRead(receipt: GmailMetadataRead | undefined
 declare const gmailTextRead:unique symbol;
 export type GmailTextRead={readonly [gmailTextRead]:true};
 export type GmailTextSource=Readonly<{source:GmailMetadataSource;text:string;bytes:number;parts:readonly Readonly<{partId:string;path:readonly number[];text:string;bytes:number}>[]}>;
-export type GmailTextWindow=Readonly<{configured:boolean;read:number;skipped:number;messages:readonly GmailTextSource[];
+// One primary exclusion per message, chosen from body-free metadata only.
+export type GmailTextSkipReason='attachment'|'alternative'|'html'|'otherMime'|'encoding'|'structure';
+export type GmailTextExclusions=Readonly<Record<GmailTextSkipReason,number>>;
+export type GmailTextWindow=Readonly<{configured:boolean;read:number;skipped:number;exclusions:GmailTextExclusions;messages:readonly GmailTextSource[];
   coverage:'at-most-ten-root-or-uniform-plain-mixed-messages';content:'utf8-or-ascii-plain-mixed-no-html-alternatives-or-attachments';acceptance:'data-only-not-draft-send-consent-or-operative-freshness'}>;
 const textRequests=new WeakMap<object,Promise<GmailTextRead>>(),textReads=new WeakMap<object,{original:object;context:Context;window:GmailTextWindow;promise?:Promise<unknown>}>();
 // Field masks select all siblings. Data is requested only at the single leaf
@@ -167,9 +170,10 @@ function textFields(dataDepth?:number):string{
   return 'id,threadId,labelIds,payload('+part(0)+')';
 }
 type PlainLeaf={body:Record<string,unknown>;utf8:boolean;partId:string;path:readonly number[]};
-function plainShape(value:unknown,source:GmailMetadataSource,dataDepth:number|undefined,remaining:number){
+type PlainShape={leaves:PlainLeaf[];depth:number;bytes:number;signature:string};
+function plainShape(value:unknown,source:GmailMetadataSource,dataDepth:number|undefined,remaining:number):PlainShape|{excluded:GmailTextSkipReason}{
   if(!object(value)||Object.keys(value).some(k=>!['id','threadId','labelIds','payload'].includes(k))||!object(value.payload))throw Error('gmail_text_unconfirmed');
-  let nodes=0,headerCount=0,unsupported=false;const ids=new Set<string>(),leaves:PlainLeaf[]=[];
+  let nodes=0,headerCount=0;const reasons=new Set<GmailTextSkipReason>();const ids=new Set<string>(),leaves:PlainLeaf[]=[];
   const headers=(rows:unknown,root:boolean)=>{
     if(rows===undefined&&!root)return [];
     if(!Array.isArray(rows)||rows.length>128||(headerCount+=rows.length)>256)throw Error('gmail_text_unconfirmed');
@@ -191,27 +195,33 @@ function plainShape(value:unknown,source:GmailMetadataSource,dataDepth:number|un
       ||Object.keys(p.body).some(k=>!(depth===dataDepth?['size','data','attachmentId']:['size','attachmentId']).includes(k))
       ||!Number.isSafeInteger(p.body.size)||(p.body.size as number)<0||p.parts!==undefined&&(!Array.isArray(p.parts)||p.parts.length>8))throw Error('gmail_text_unconfirmed');
     const partId=typeof p.partId==='string'?p.partId:'';
-    if(partId){if(ids.has(partId))throw Error('gmail_text_unconfirmed');ids.add(partId);}else if(depth)unsupported=true;
+    if(partId){if(ids.has(partId))throw Error('gmail_text_unconfirmed');ids.add(partId);}else if(depth)reasons.add('structure');
     const h=depth?headers(p.headers,false):rootHeaders,ct=h.find(v=>v.name.toLowerCase()==='content-type')?.value,disposition=h.find(v=>v.name.toLowerCase()==='content-disposition')?.value;
-    if(p.filename||p.body.attachmentId!==undefined||disposition!==undefined&&!/^inline$/i.test(disposition))unsupported=true;
+    if(p.filename||p.body.attachmentId!==undefined||disposition!==undefined&&!/^inline$/i.test(disposition))reasons.add('attachment');
     const children=(p.parts??[]) as unknown[],mime=p.mimeType.toLowerCase();
     if(mime==='text/plain'){
       const charset=ct?.match(/^text\/plain(?:\s*;\s*charset\s*=\s*(?:"(utf-8|us-ascii)"|(utf-8|us-ascii)))?\s*$/i);
-      if(children.length||ct!==undefined&&!charset)unsupported=true;
+      if(children.length)reasons.add('structure');
+      if(ct!==undefined&&!charset)reasons.add('encoding');
       leaves.push({body:p.body,utf8:(charset?.[1]??charset?.[2])?.toLowerCase()==='utf-8',partId,path:Object.freeze([...position])});
     }else if(mime==='multipart/mixed'){
-      if(!children.length||p.body.size!==0||ct!==undefined&&!/^multipart\/mixed(?:\s*;\s*boundary\s*=\s*(?:"[^"\r\n]{1,200}"|[A-Za-z0-9'()+_,.\/:=?-]{1,200}))?\s*$/i.test(ct))unsupported=true;
-    }else unsupported=true;
+      if(!children.length||p.body.size!==0||ct!==undefined&&!/^multipart\/mixed(?:\s*;\s*boundary\s*=\s*(?:"[^"\r\n]{1,200}"|[A-Za-z0-9'()+_,.\/:=?-]{1,200}))?\s*$/i.test(ct))reasons.add('structure');
+    }else reasons.add(mime==='multipart/alternative'?'alternative':mime==='text/html'?'html':'otherMime');
     const parts=children.map((child,i)=>walk(child,[...position,i]));
     return {partId,mimeType:p.mimeType,filename:p.filename??'',headers:hs(h),size:p.body.size,parts};
   };
   const shape=walk(value.payload,[]);if(leaves.length>8)throw Error('gmail_text_unconfirmed');
-  if(unsupported||!leaves.length||new Set(leaves.map(v=>v.path.length)).size!==1)return null;
+  if(!leaves.length||new Set(leaves.map(v=>v.path.length)).size!==1)reasons.add('structure');
+  // Priority is explicit: overlapping features never inflate skipped counts.
+  // A classification is not permission to fetch bodies, convert or draft.
+  for(const reason of ['attachment','alternative','html','otherMime','encoding','structure'] as const){
+    if(reasons.has(reason))return {excluded:reason};
+  }
   const bytes=leaves.reduce((sum,p)=>sum+(p.body.size as number),0)+2*(leaves.length-1);
   if(!Number.isSafeInteger(bytes)||bytes>16384||bytes>remaining)throw Error('gmail_text_unconfirmed');
   return {leaves,depth:leaves[0].path.length,bytes,signature:JSON.stringify({id:source.id,threadId:source.threadId,labels:[...current.labels].sort(),shape})};
 }
-function decodePlain(shape:NonNullable<ReturnType<typeof plainShape>>,source:GmailMetadataSource):GmailTextSource{
+function decodePlain(shape:PlainShape,source:GmailMetadataSource):GmailTextSource{
   const parts=shape.leaves.map(leaf=>{
     const size=leaf.body.size,data=leaf.body.data??(size===0?'':undefined);
     if(typeof data!=='string'||data.length>21848||!/^[-_A-Za-z0-9]*={0,2}$/.test(data))throw Error('gmail_text_unconfirmed');
@@ -233,11 +243,11 @@ export function readGmailText(original?:NativeAdminGmailText):Promise<GmailTextR
       const own=reads.get(native.metadataRead);if(!own||own.original!==native.metadataPurpose)throw Error('gmail_text_unconfirmed');
       const check=()=>{native.checkBeforeRead();own.context.checkBeforeRead();checkConfiguration();};check();
       const configured=raw.GMAIL_TEXT_READ_ENABLED==='true'&&own.window.configured;
-      const messages:GmailTextSource[]=[];let skipped=0,bytes=0;
+      const messages:GmailTextSource[]=[],exclusions={attachment:0,alternative:0,html:0,otherMime:0,encoding:0,structure:0};let skipped=0,bytes=0;
       if(configured){if(!own.full)throw Error('gmail_text_unconfirmed');
-        for(const source of own.window.messages){check();const row=await own.full(source,65536-bytes);check();if(row){bytes+=row.bytes;messages.push(row);}else skipped++;}
+        for(const source of own.window.messages){check();const row=await own.full(source,65536-bytes);check();if(typeof row==='string'){exclusions[row]++;skipped++;}else{bytes+=row.bytes;messages.push(row);}}
       }
-      check();const window:GmailTextWindow=Object.freeze({configured,read:messages.length,skipped,messages:Object.freeze(messages),coverage:'at-most-ten-root-or-uniform-plain-mixed-messages',content:'utf8-or-ascii-plain-mixed-no-html-alternatives-or-attachments',acceptance:'data-only-not-draft-send-consent-or-operative-freshness'});
+      check();const window:GmailTextWindow=Object.freeze({configured,read:messages.length,skipped,exclusions:Object.freeze(exclusions),messages:Object.freeze(messages),coverage:'at-most-ten-root-or-uniform-plain-mixed-messages',content:'utf8-or-ascii-plain-mixed-no-html-alternatives-or-attachments',acceptance:'data-only-not-draft-send-consent-or-operative-freshness'});
       const receipt=Object.freeze({}) as GmailTextRead;textReads.set(receipt,{original,context:Object.freeze({...own.context,checkBeforeRead:check}),window});return receipt;
     });
   })().then(receipt=>{if(!receipt||typeof receipt!=='object'||textReads.get(receipt)?.original!==original)throw Error('gmail_text_unconfirmed');return receipt;}).catch(()=>{throw Error('gmail_text_unconfirmed');});

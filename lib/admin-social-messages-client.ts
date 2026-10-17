@@ -1,6 +1,7 @@
+import type {GmailTextExclusions} from '@/lib/agent/gmail-metadata-original';
 export type SocialMessagesOwner = Readonly<{ id: string; email: string; authSessionRef: string; expiresAt: number }>;
 export type SocialMessagesPartialData = Readonly<{ youtube: Readonly<{ status: 'unavailable' }> | Readonly<{ status: 'read-only'; pages: number; scanned: number; hasMore: boolean }>;
-  gmail: Readonly<{ status: 'unavailable' }> | Readonly<{ status: 'read-only-metadata'; scanned: number; hasMore: boolean; text?:Readonly<{read:number;skipped:number}> }> }>;
+  gmail: Readonly<{ status: 'unavailable' }> | Readonly<{ status: 'read-only-metadata'; scanned: number; hasMore: boolean; text?:Readonly<{read:number;skipped:number;exclusions:GmailTextExclusions}> }> }>;
 declare const messagesPartialView: unique symbol;
 export type SocialMessagesPartialView = { readonly [messagesPartialView]: true };
 const views = new WeakMap<object, { own: object; data: SocialMessagesPartialData }>();
@@ -31,11 +32,14 @@ function partial(value: Record<string, unknown>): SocialMessagesPartialData {
   }
   if(Object.hasOwn(value,'gmailText')){
     const t=value.gmailText;
-    if(g.status!=='read-only-metadata'||!object(t,['configured','read','skipped','coverage','content','acceptance'])||t.configured!==true
+    if(g.status!=='read-only-metadata'||!object(t,['configured','read','skipped','exclusions','coverage','content','acceptance'])||t.configured!==true
       ||!integer(t.read)||!integer(t.skipped)||t.read+t.skipped!==g.scanned||t.read+t.skipped>10
       ||t.coverage!=='at-most-ten-root-or-uniform-plain-mixed-messages'||t.content!=='utf8-or-ascii-plain-mixed-no-html-alternatives-or-attachments'
       ||t.acceptance!=='data-only-not-draft-send-consent-or-operative-freshness')throw Error('Unconfirmed social messages');
-    g=Object.freeze({...g,text:Object.freeze({read:t.read,skipped:t.skipped})});
+    const e=t.exclusions,keys=['attachment','alternative','html','otherMime','encoding','structure'];
+    if(!object(e,keys)||!Object.values(e).every(integer)||Object.values(e).reduce<number>((sum,n)=>sum+(n as number),0)!==t.skipped)throw Error('Unconfirmed social messages');
+    const exclusions:GmailTextExclusions=Object.freeze({attachment:e.attachment as number,alternative:e.alternative as number,html:e.html as number,otherMime:e.otherMime as number,encoding:e.encoding as number,structure:e.structure as number});
+    g=Object.freeze({...g,text:Object.freeze({read:t.read,skipped:t.skipped,exclusions})});
   }
   if (y.status === 'unavailable' && g.status === 'unavailable') throw Error('Unconfirmed social messages');
   return Object.freeze({ youtube: y, gmail: g });
