@@ -169,10 +169,22 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
         validateYoutubeCommentsRead=reader.validateYoutubeCommentsRead;validateDraftSource=reader.validateAdminYoutubeDraftComment;
       }
       if(isYoutube){
-        if(!receipt||!youtubeSource||!coverage?.configured)return unavailable();
+        if(!receipt||!coverage?.configured)return unavailable();
         const live=()=>{check();validateYoutubeCommentsRead!(receipt!);};
         const validateBeforeGenerate=async()=>{live();const row=await prisma.user.findUnique({where:{id},select:{id:true,email:true,emailVerified:true}});live();if(!row||row.id!==id||row.email!==email||!(row.emailVerified instanceof Date)||row.emailVerified.getTime()!==verifiedAt)throw Error('youtube_draft_unconfirmed');};
         await wait(validateBeforeGenerate);
+        if(!youtubeSource){
+          if(coverage.eligible!==0)return unavailable();
+          // An authenticated bounded read without an eligible comment grants
+          // no input,admission,model,reply or retry. The final account veto above
+          // applies even to this aggregate-only explanation.
+          const response=Response.json({ok:false,error:'social_youtube_draft_unavailable',
+            youtubeDraftUnavailable:{platform:'youtube',reason:'no-eligible-source',pages:coverage.pages,scanned:coverage.scanned,eligible:0,hasMore:coverage.hasMore,
+              coverage:'at-most-three-pages-within-original-budget',acceptance:'read-scope-only-not-complete-review-reply-or-operative-acceptance'},
+            youtubeDraftRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt:until}},
+            {status:503,headers:{'Cache-Control':'no-store'}});live();return response;
+        }
+        if(coverage.eligible<1)return unavailable();
         const source=youtubeSource,purpose=Object.freeze({})as NativeAdminYoutubeDraft;
         youtubeDraftPurposes.set(purpose,{context:Object.freeze({actorId:id,email,sessionRef:authSessionRef,commandRef:command,verifiedAt,source,at,signal:request.signal,checkBeforeRead:live,remainingBeforeRead:()=>{live();return Math.min(until-Date.now(),started+55000-performance.now());},validateBeforeGenerate,validateSource:()=>validateDraftSource!(receipt!,source)})});
         const producer=await wait(()=>import('@/lib/agent/youtube-draft-original'));
@@ -181,7 +193,9 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
           const source=draft.comment,points=Array.from(source.authorName),author=points.length>512?points.slice(0,512).join('')+'…':source.authorName;
           return Object.freeze({summary:Object.freeze({generated:1,platform:'youtube',acceptance:'private-draft-only-no-reply-or-operative-acceptance'}),view:Object.freeze({platform:'youtube',source:Object.freeze({channelId:source.channelId,commentId:source.commentId,threadId:source.threadId,videoId:source.videoId,author,text:source.text,publishedAt:source.publishedAt,updatedAt:source.updatedAt}),content:draft.content,acceptance:'private-draft-view-only-no-reply-or-operative-acceptance'})});
         }));
-        live();const body=JSON.stringify({ok:false,error:'social_youtube_draft_unavailable',youtubeDraft:projection.summary,youtubeDraftView:projection.view,youtubeDraftRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt:until}});
+        live();const body=JSON.stringify({ok:false,error:'social_youtube_draft_unavailable',youtubeDraft:projection.summary,youtubeDraftView:projection.view,
+          youtubeDraftCoverage:{pages:coverage.pages,scanned:coverage.scanned,eligible:coverage.eligible,hasMore:coverage.hasMore,
+            coverage:'at-most-three-pages-within-original-budget',acceptance:'read-scope-only-not-complete-review-reply-or-operative-acceptance'},youtubeDraftRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt:until}});
         if(new TextEncoder().encode(body).byteLength>65536)return unavailable();
         live();const response=new Response(body,{status:503,headers:{'Cache-Control':'no-store','Content-Type':'application/json'}});live();return response;
       }

@@ -1,11 +1,24 @@
 export type YoutubeDraftOwner=Readonly<{id:string;email:string;authSessionRef:string;expiresAt:number}>;
-export type YoutubeDraftViewData=Readonly<{author:string;publishedAt:string;sourceText:string;content:string}>;
+export type YoutubeDraftReadCoverage=Readonly<{pages:number;scanned:number;eligible:number;hasMore:boolean}>;
+export type YoutubeDraftViewData=Readonly<{kind:'draft';author:string;publishedAt:string;sourceText:string;content:string;coverage:YoutubeDraftReadCoverage}>|Readonly<{kind:'no-eligible-source';coverage:YoutubeDraftReadCoverage}>;
 declare const youtubeDraftView:unique symbol;
 export type YoutubeDraftView={readonly[youtubeDraftView]:true};
 const views=new WeakMap<object,{own:object;data:YoutubeDraftViewData}>();
 const object=(value:unknown,keys:string[]):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===keys.length&&keys.every(k=>Object.hasOwn(value,k));
 const integer=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
 function text(value:unknown,bytes:number):value is string{return typeof value==='string'&&new TextEncoder().encode(value).byteLength<=bytes&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)&&new TextDecoder('utf-8',{fatal:true}).decode(new TextEncoder().encode(value))===value;}
+function readCoverage(value:unknown,positive:boolean):YoutubeDraftReadCoverage{
+ if(!object(value,['pages','scanned','eligible','hasMore','coverage','acceptance'])||!integer(value.pages)||value.pages<1||value.pages>3
+   ||!integer(value.scanned)||value.scanned>value.pages*20||!integer(value.eligible)||value.eligible>value.scanned
+   ||(positive?value.eligible<1:value.eligible!==0)||typeof value.hasMore!=='boolean'||value.hasMore&&value.pages!==3
+   ||value.coverage!=='at-most-three-pages-within-original-budget'||value.acceptance!=='read-scope-only-not-complete-review-reply-or-operative-acceptance')throw Error('Unconfirmed YouTube draft');
+ return Object.freeze({pages:value.pages,scanned:value.scanned,eligible:value.eligible,hasMore:value.hasMore});
+}
+function noSourceData(value:Record<string,unknown>):YoutubeDraftViewData{
+ const v=value.youtubeDraftUnavailable;
+ if(!object(v,['platform','reason','pages','scanned','eligible','hasMore','coverage','acceptance'])||v.platform!=='youtube'||v.reason!=='no-eligible-source')throw Error('Unconfirmed YouTube draft');
+ return Object.freeze({kind:'no-eligible-source',coverage:readCoverage({pages:v.pages,scanned:v.scanned,eligible:v.eligible,hasMore:v.hasMore,coverage:v.coverage,acceptance:v.acceptance},false)});
+}
 function draftData(value:Record<string,unknown>,asOf:number):YoutubeDraftViewData{
  const count=value.youtubeDraft,v=value.youtubeDraftView;
  const id=(v:unknown):v is string=>typeof v==='string'&&v.length>0&&v.length<=256&&!/[\s\x00-\x1f\x7f]/.test(v);
@@ -16,7 +29,7 @@ function draftData(value:Record<string,unknown>,asOf:number):YoutubeDraftViewDat
  ||!text(v.source.author,2051)||!v.source.author||Array.from(v.source.author).length>513||!text(v.source.text,40000)||!v.source.text.trim()||v.source.text.length>10000
  ||!time(v.source.publishedAt)||!time(v.source.updatedAt)||Date.parse(v.source.updatedAt)<Date.parse(v.source.publishedAt)
  ||!text(v.content,4096)||!v.content.trim()||v.content.length>2000||v.content.trim().split(/\s+/u).length>80||v.content.includes('\r'))throw Error('Unconfirmed YouTube draft');
- return Object.freeze({author:v.source.author,publishedAt:v.source.publishedAt,sourceText:v.source.text,content:v.content});
+ return Object.freeze({kind:'draft',author:v.source.author,publishedAt:v.source.publishedAt,sourceText:v.source.text,content:v.content,coverage:readCoverage(value.youtubeDraftCoverage,true)});
 }
 
 type Own = { sent: boolean; finished: boolean; pending: number };
@@ -73,14 +86,15 @@ export function beginAdminYoutubeDraft(owner: YoutubeDraftOwner, current: () => 
         }
       } else { throw error(); }
       check(); const value: unknown = JSON.parse(raw); check();
-      if (!object(value, ['ok','error','youtubeDraft','youtubeDraftView','youtubeDraftRead']) || value.ok !== false || value.error !== 'social_youtube_draft_unavailable') throw error();
+      const noSource=!!value&&typeof value==='object'&&Object.hasOwn(value,'youtubeDraftUnavailable');
+      if (!object(value,noSource?['ok','error','youtubeDraftUnavailable','youtubeDraftRead']:['ok','error','youtubeDraft','youtubeDraftView','youtubeDraftCoverage','youtubeDraftRead']) || value.ok !== false || value.error !== 'social_youtube_draft_unavailable') throw error();
       const binding = value.youtubeDraftRead;
       if (!object(binding, ['commandRef','userId','email','sessionRef','asOf','expiresAt']) || binding.commandRef !== command || binding.userId !== captured.id
         || binding.email !== captured.email || binding.sessionRef !== captured.authSessionRef || !integer(binding.asOf) || binding.asOf < at || binding.asOf > Date.now()
         || !integer(binding.expiresAt) || binding.expiresAt <= binding.asOf || binding.expiresAt - binding.asOf > 55000) throw error();
       until = Math.min(until, binding.expiresAt);deadline=Math.min(deadline,started+binding.expiresAt-at); check(); clearTimeout(timer);
       timer = setTimeout(retire, Math.max(0, Math.min(until - Date.now(), deadline - performance.now())));
-      const data = draftData(value,binding.asOf); check(); const handle = Object.freeze({}) as YoutubeDraftView; views.set(handle, { own, data }); return handle;
+      const data = noSource?noSourceData(value):draftData(value,binding.asOf); check(); const handle = Object.freeze({}) as YoutubeDraftView; views.set(handle, { own, data }); return handle;
     } catch { retire(); throw error(); }
     finally { own.finished = true; drained(); }
   })(); void original.catch(() => {});

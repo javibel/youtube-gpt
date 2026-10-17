@@ -209,9 +209,21 @@ export default function SocialAdminPage() {
             <p>La revisión completa sigue pendiente.</p>
           </section>}
           {youtubeDraft.message&&<p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{youtubeDraft.message}</p>}
-          {youtubeDraft.data&&<section aria-label="Borrador YouTube para revisión" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
+          {youtubeDraft.data?.kind==='no-eligible-source'&&<section aria-label="Borrador YouTube no disponible" className="yv-card mt-3 p-4 space-y-2 text-sm" style={{color:'var(--text-dim)'}}>
+            <h2 className="font-semibold" style={{color:'var(--text)'}}>Borrador YouTube no disponible</h2>
+            <p>No hay un comentario elegible para preparar un borrador en esta lectura.</p>
+            <p>{youtubeDraft.data.coverage.scanned} comentarios examinados en {youtubeDraft.data.coverage.pages} páginas; no se ha generado ningún borrador.</p>
+            {youtubeDraft.data.coverage.hasMore&&<p>Hay más comentarios fuera de esta lectura.</p>}
+            <p>La revisión completa sigue pendiente.</p>
+          </section>}
+          {youtubeDraft.data?.kind==='draft'&&<section aria-label="Borrador YouTube para revisión" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
             <h2 className="font-semibold" style={{color:'var(--text)'}}>Borrador YouTube para revisión</h2>
             <p>No publicado. Comprueba el comentario de origen y la respuesta antes de cualquier publicación.</p>
+            <div aria-label="Alcance de la lectura del borrador YouTube">
+              <p>Lectura que acompaña a este borrador: {youtubeDraft.data.coverage.scanned} comentarios examinados en {youtubeDraft.data.coverage.pages} páginas; {youtubeDraft.data.coverage.eligible} elegibles para preparar un borrador.</p>
+              <p>Esta propuesta corresponde a un único comentario de esa lectura.</p>
+              {youtubeDraft.data.coverage.hasMore&&<p>Hay más comentarios fuera de esta lectura.</p>}
+            </div>
             <p className="break-words">Autor: {youtubeDraft.data.author}</p>
             <p>Publicado: {fmt(youtubeDraft.data.publishedAt)}</p>
             <div className="grid gap-4 lg:grid-cols-2">
