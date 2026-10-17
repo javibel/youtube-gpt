@@ -1,6 +1,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path');
 const {plan:compilePlan}=require('./compile-only.cjs');
+const {environment:messagesEnvironment}=require('../../lib/migration/messages-fixture-transport.cjs');
 const {fixture,cancellationFixture}=require('../../lib/migration/local-fixture.cjs');
 function plan(environment=process.env,args=[]){
  const base=compilePlan(environment,args);
@@ -9,7 +10,7 @@ function plan(environment=process.env,args=[]){
  return {cwd:base.cwd,host:'127.0.0.1',port:4300,env:{...base.env,DATABASE_URL:config.databaseUrl,DATABASE_URL_DIRECT:config.databaseUrl,AUTH_URL:'http://127.0.0.1:4300',AUTH_SECRET:'synthetic-local-server-secret-with-no-real-account',AUTH_TRUST_HOST:'true',ADMIN_EMAIL:fixture.email,YTV_MIGRATION_WEB_TEST:'1',STRIPE_PRO_PRICE_ID:'price_synthetic_monthly',
    // Fixed dummy values admit native configuration checks only. The runtime
    // guard still denies every Blob/Meta transport; no real credentials enter.
-   META_PAGE_ID:'123456',META_PAGE_ACCESS_TOKEN:'closed-meta-token',INSTAGRAM_ACCOUNT_ID:'654321',INSTAGRAM_ACCESS_TOKEN:'closed-instagram-token',INSTAGRAM_GRAPH_API_VERSION:'v25.0',BLOB_READ_WRITE_TOKEN:'vercel_blob_rw_closedstore_closedsecret',
+   ...messagesEnvironment,META_PAGE_ID:'123456',META_PAGE_ACCESS_TOKEN:'closed-meta-token',INSTAGRAM_ACCOUNT_ID:'654321',INSTAGRAM_ACCESS_TOKEN:'closed-instagram-token',INSTAGRAM_GRAPH_API_VERSION:'v25.0',BLOB_READ_WRITE_TOKEN:'vercel_blob_rw_closedstore_closedsecret',
    TEMP:path.join(base.cwd,'.migration-tmp'),TMP:path.join(base.cwd,'.migration-tmp')}};
 }
 function paymentFixtures(){
@@ -48,6 +49,7 @@ async function main(){
  if(process.connected)process.on('message',message=>{if(message==='ytv-local-fixture-stop')void stop();});
  try{
  const {connectLocalFixture}=require('../../lib/migration/local-fixture.cjs');const prepared=await lifecycle.openResource(()=>connectLocalFixture({seed:true}));
+ console.log('Synthetic message preparation: '+JSON.stringify(prepared.messagesPreparation));
  console.log('Synthetic social preview preparation: '+JSON.stringify(prepared.socialPreviewPreparation));
  if(process.connected)process.send({type:'fixture-social-preview-preparation',receipt:prepared.socialPreviewPreparation});
  await lifecycle.closeResource(prepared);lifecycle.check();

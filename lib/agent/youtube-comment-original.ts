@@ -1,3 +1,4 @@
+import {getMessagesFixtureTransport} from '@/lib/migration/messages-fixture-entry';
 /** Native cron or authenticated manual comment read only. The private result owns its original
  * GET/body/window;it is data,never permission to generate or publish a reply.
  * API shape: https://developers.google.com/youtube/v3/docs/commentThreads/list
@@ -31,7 +32,7 @@ function parse(value:unknown,context:Context):{comments:YoutubeCommentSource[];n
 async function page(url:string,context:Context):Promise<unknown>{
  context.checkBeforeRead();const controller=new AbortController(),abort=()=>controller.abort(Error('youtube_comments_unconfirmed')),timer=setTimeout(abort,Math.max(1,Math.floor(context.remainingBeforeRead())));timer.unref?.();context.signal.addEventListener('abort',abort,{once:true});let reader:ReadableStreamDefaultReader<Uint8Array>|undefined,cancel:Promise<void>|undefined,finished=false;
  const cancelRead=()=>{if(reader)cancel=reader.cancel().catch(()=>{});};controller.signal.addEventListener('abort',cancelRead,{once:true});
- try{context.checkBeforeRead();if(controller.signal.aborted||context.signal.aborted)throw Error('youtube_comments_unconfirmed');const response=await nativeFetch(url,{method:'GET',headers:{Accept:'application/json'},redirect:'error',cache:'no-store',signal:controller.signal});context.checkBeforeRead();
+ try{context.checkBeforeRead();if(controller.signal.aborted||context.signal.aborted)throw Error('youtube_comments_unconfirmed');const response=await (getMessagesFixtureTransport()??nativeFetch)(url,{method:'GET',headers:{Accept:'application/json'},redirect:'error',cache:'no-store',signal:controller.signal});context.checkBeforeRead();
   if(controller.signal.aborted||response.status!==200||response.ok!==true||response.redirected||response.url&&response.url!==url||!response.headers.get('content-type')?.toLowerCase().includes('application/json')||!response.body)throw Error('youtube_comments_unconfirmed');
   reader=response.body.getReader();if(controller.signal.aborted)throw Error('youtube_comments_unconfirmed');const decoder=new TextDecoder('utf-8',{fatal:true});let content='',bytes=0;
   while(true){context.checkBeforeRead();const part=await reader.read();context.checkBeforeRead();if(controller.signal.aborted)throw Error('youtube_comments_unconfirmed');if(part.done){finished=true;break;}bytes+=part.value.byteLength;if(bytes>1048576)throw Error('youtube_comments_unconfirmed');content+=decoder.decode(part.value,{stream:true});}

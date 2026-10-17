@@ -1,3 +1,4 @@
+import {getMessagesFixtureTransport} from '@/lib/migration/messages-fixture-entry';
 /** Authenticated manual Gmail metadata read. The opaque live receipt is data;
  * it grants no draft,send,mark-read,continuation or operative freshness consent.
  * API contracts: developers.google.com/workspace/gmail/api/reference/rest/v1/
@@ -39,7 +40,7 @@ async function json(url: string, settings: RequestInit, context: Context): Promi
   controller.signal.addEventListener('abort', cancelRead, { once: true });
   try {
     context.checkBeforeRead(); if (controller.signal.aborted || context.signal.aborted) throw Error('gmail_metadata_unconfirmed');
-    const response = await nativeFetch(url, { ...settings, cache: 'no-store', redirect: 'error', credentials: 'omit', signal: controller.signal });
+    const response = await (getMessagesFixtureTransport()??nativeFetch)(url, { ...settings, cache: 'no-store', redirect: 'error', credentials: 'omit', signal: controller.signal });
     context.checkBeforeRead();
     if (controller.signal.aborted || response.status !== 200 || response.ok !== true || response.redirected
       || response.url && response.url !== url || !/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type') ?? '') || !response.body) throw Error('gmail_metadata_unconfirmed');

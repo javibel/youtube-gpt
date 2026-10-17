@@ -1,3 +1,5 @@
+import {installMessagesFixtureTransport} from './messages-fixture-entry';
+import {createMessagesFixtureTransport} from './messages-fixture-transport.cjs';
 import 'server-only';
 import { connectLocalFixture } from './local-fixture.cjs';
 import { installSharedRuntime } from '@/lib/ai/shared-runtime';
@@ -16,6 +18,7 @@ export function installLocalFixture(): Promise<void> {
       lifecycle.check();
       await lifecycle.runWork(() => installSharedRuntime(composition.runtimeDependencies, {checkBeforeInstall:lifecycle.check}));
       lifecycle.check();
+      installMessagesFixtureTransport(createMessagesFixtureTransport(lifecycle.check));
       const owner = Object.freeze({ id: bestTimeFixture.userId, email: bestTimeFixture.email });
       const transport = createBestTimeFixtureTransport();
       installBestTimeFixtureEntry(request => lifecycle.runOriginal(() => runBoundBestTimeOriginal(request,

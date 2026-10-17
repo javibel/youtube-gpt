@@ -9,16 +9,18 @@ async function fixture(o={}){
  const native=load('lib/admin-social-messages.ts',mocks,globals),route=load('app/api/agent/run/route.ts',{'next/server':{NextResponse:Response},'@/lib/auth-guards':o.gate??f.guard,'@/lib/admin-social-messages':native,'@/lib/admin-social-preview-native':{},'@/lib/agent/content-generator':{}},globals);
  mocks['@/lib/admin-social-messages']=native;
  mocks['@/lib/cron-dispatch-original']=load('lib/cron-dispatch-original.ts',{'node:crypto':crypto},globals);
+ if(o.fixtureTransport){globals.__ytvRuntimeGuard=true;const entry=load('lib/migration/messages-fixture-entry.ts',{'server-only':{}},globals);entry.installMessagesFixtureTransport(o.fixtureTransport);mocks['@/lib/migration/messages-fixture-entry']=entry;}
  const reader=load('lib/agent/youtube-comment-original.ts',mocks,globals);
  mocks['@/lib/agent/youtube-comment-original']=reader;
  const gmail=load('lib/agent/gmail-metadata-original.ts',mocks,globals);
  mocks['@/lib/agent/gmail-metadata-original']=gmail;
  mocks['node:crypto']=crypto;mocks['@/lib/ai/task-runtime']={getMessagesTask:i=>stage('draft-task',()=>{if(!o.task)throw Error('Unbound model task');return o.task(i,stage);})};
+ const taskRuntime=mocks['@/lib/ai/task-runtime'];
  const draftGeneration=load('lib/agent/gmail-draft-generation.ts',mocks,globals);mocks['@/lib/agent/gmail-draft-generation']=draftGeneration;
  const youtubeDraft=load('lib/agent/youtube-draft-original.ts',mocks,globals);mocks['@/lib/agent/youtube-draft-original']=youtubeDraft;
  const draftInput=load('lib/agent/gmail-draft-original.ts',mocks,globals);mocks['@/lib/agent/gmail-draft-original']=draftInput;
  const make=(x={})=>new Request(x.url??env.AUTH_URL+'/api/agent/run',{method:x.method??'POST',headers:{cookie:f.headers().get('cookie')??'',origin:env.AUTH_URL,'content-type':'application/json',[x.youtube?'x-ytv-social-youtube-draft-command':x.generate?'x-ytv-social-messages-draft-command':x.draft?'x-ytv-social-messages-draft-source-command':'x-ytv-social-messages-command']:x.command??command,...x.headers},body:x.method==='GET'?undefined:x.raw??JSON.stringify(x.body??(x.youtube?{action:'messages-youtube-draft',platform:'youtube'}:x.generate?{action:'messages-draft',platform:'gmail'}:x.draft?{action:'messages-draft-source',platform:'gmail'}:{action:'messages'})),signal:controller.signal});
- return{f,native,reader,gmail,draftInput,draftGeneration,youtubeDraft,route,calls,pending,entered,clock,controller,env,command,timers,make,release:()=>gate.resolve(),advance(ms){clock.offset+=ms;clock.elapsed+=ms;for(const[id,t]of[...timers])if(t.at<=clock.elapsed){timers.delete(id);t.fn();}},start(req=make()){const p=route.POST(req);pending.push(p);void p.catch(()=>{});return p;}};
+ return{f,native,reader,gmail,taskRuntime,draftInput,draftGeneration,youtubeDraft,route,calls,pending,entered,clock,controller,env,command,timers,make,release:()=>gate.resolve(),advance(ms){clock.offset+=ms;clock.elapsed+=ms;for(const[id,t]of[...timers])if(t.at<=clock.elapsed){timers.delete(id);t.fn();}},start(req=make()){const p=route.POST(req);pending.push(p);void p.catch(()=>{});return p;}};
 }
 async function reached(b,name){let timer;try{await Promise.race([(b.entered[name]??=deferred()).promise,new Promise((_,reject)=>timer=setTimeout(()=>reject(Error('Missing messages stage '+name)),5000))]);}finally{clearTimeout(timer);}}
 async function drain(b){b.release();let count;do{count=b.pending.length;await Promise.allSettled(b.pending);await flush();}while(count!==b.pending.length);assert.equal(b.timers.size,0);}
