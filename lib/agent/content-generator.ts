@@ -451,6 +451,55 @@ export function consumeCronFacebookPublication<T>(receipt:NativeCronFacebookPubl
   return(own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({...own.details,validateBeforeResponse:own.validate}));await own.validate();return result;}))as Promise<T>;
 }
 
+declare const nativeCronInstagramPublication:unique symbol;
+export type NativeCronInstagramPublication={readonly[nativeCronInstagramPublication]:true};
+type CronInstagramPublicationDetails=Readonly<{platform:'instagram';date:string;recordId:string;containerId:string;postId:string}>;
+const instagramPublicationAttempts=new WeakMap<object,{read:NativeCronBrandImageRead|undefined;promise:Promise<NativeCronInstagramPublication>}>();
+const instagramPublications=new WeakMap<object,{original:NativeCronSocialPost;details:CronInstagramPublicationDetails;validate:()=>Promise<void>;use?:Promise<unknown>}>();
+
+// Native component only. GET integration remains separate work.
+// Source/image/target/day/HTTP/SQL each retain their original continuation;no
+// serialized URL,remote ID or persisted post can construct this final receipt.
+export function publishCronInstagramPhoto(original:NativeCronSocialPost|undefined,read?:NativeCronBrandImageRead):Promise<NativeCronInstagramPublication>{
+  const own=original&&cronImageSources.get(original);
+  if(!original||!own||own.platform!=='instagram'||!['morning','evening'].includes(own.slot))return Promise.reject(Error('social_publish_unconfirmed'));
+  const previous=instagramPublicationAttempts.get(original);if(previous)return previous.read===read?previous.promise:Promise.reject(Error('social_publish_unconfirmed'));
+  const pending=Promise.resolve().then(async()=>{
+    const helper=await import('./ideogram-image'),{prepareCronInstagramPhotoTransport}=await import('./cron-instagram-photo-transport');
+    await own.validate();if(read!==undefined)validateCronImageReadSource(original,read);
+    let shared:CronPublicationAdmission|undefined,image:import('./ideogram-image').NativeDailyBrandImage|undefined;
+    const validate=async()=>{
+      if(!shared||shared.source!==own)throw Error('social_publish_unconfirmed');
+      target.check();await shared.validate();if(image)await helper.validateDailyBrandImageSource(original,image);target.check();await shared.validate();
+    };
+    const target=prepareCronInstagramPhotoTransport({signal:own.signal,remaining:own.remaining,validate});target.check();
+    return runCronSocialPublication(original,async context=>{
+      shared=cronPublicationAdmissions.get(original);
+      if(!shared||shared.source!==own||target.accountId!==context.accountId)throw Error('social_publish_unconfirmed');
+      // Occupy the common day before any image prompt/model/download/PUT.
+      await validate();image=await helper.getOrCreateDailyBrandImage(original,read);await validate();
+      const outcome=Object.freeze({});let acknowledged:CronInstagramPublicationDetails|undefined;
+      const result=await helper.consumeDailyBrandImage(image,async resource=>{
+        if(resource.date!==own.date)throw Error('social_publish_unconfirmed');await validate();
+        await own.writePublicationIntent(resource.url,shared!);await validate();
+        const ack=await target.publish({date:own.date,caption:own.content,imageUrl:resource.url});await validate();
+        await own.writePublication(ack.postId,shared!);await validate();
+        acknowledged=Object.freeze({platform:'instagram',date:own.date,recordId:own.id,containerId:ack.containerId,postId:ack.postId});return outcome;
+      });
+      // A previously consumed image cannot substitute a different callback's
+      // result;only THIS callback's exact awaited outcome may issue a receipt.
+      if(result!==outcome||!acknowledged)throw Error('social_publish_unconfirmed');await validate();
+      const cap=Object.freeze({})as NativeCronInstagramPublication;instagramPublications.set(cap,{original,details:acknowledged,validate});return cap;
+    });
+  }).then(cap=>{if(!cap||typeof cap!=='object'||instagramPublications.get(cap)?.original!==original)throw Error('social_publish_unconfirmed');return cap;});
+  instagramPublicationAttempts.set(original,{read,promise:pending});return pending;
+}
+export function consumeCronInstagramPublication<T>(receipt:NativeCronInstagramPublication|undefined,run:(publication:CronInstagramPublicationDetails&{validateBeforeResponse:()=>Promise<void>})=>Promise<T>):Promise<T>{
+  const own=receipt&&instagramPublications.get(receipt);if(!own)return Promise.reject(Error('social_publish_unconfirmed'));
+  return(own.use??=Promise.resolve().then(async()=>{await own.validate();const result=await run(Object.freeze({...own.details,validateBeforeResponse:own.validate}));await own.validate();return result;}))as Promise<T>;
+}
+
+
 export function generateAdminSocialPreview(original?:NativeAdminSocialPreview){
   return runNativeAdminSocialPreview(original,async own=>{
     const result={facebook:'',instagram:'',tiktok:null,twitter:null};
