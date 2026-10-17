@@ -12,7 +12,7 @@ export function useAdminGmailDraft(session: Session, status: string, busy: { cur
   const live = useRef({key,eligible}); live.current = {key,eligible};
   const active = useRef<Scope|null>(null), lock = useRef<Scope|null>(null);
   const owner: GmailDraftOwner = {id:id ?? '',email:email ?? '',authSessionRef:authSessionRef ?? '',expiresAt};
-  const [view,setView] = useState<{scope:Scope|null;phase:'idle'|'pending'|'unconfirmed'|'draft';read?:GmailDraftView}>({scope:null,phase:'idle'});
+  const [view,setView] = useState<{scope:Scope|null;phase:'idle'|'pending'|'unconfirmed'|'result';read?:GmailDraftView}>({scope:null,phase:'idle'});
   useEffect(() => {
     const scope: Scope = {key,mounted:true,running:false,writer:null,current:()=>false}; active.current = scope;
     scope.current = () => scope.mounted && active.current === scope && live.current.key === key && live.current.eligible && document.visibilityState === 'visible' && document.hasFocus();
@@ -36,14 +36,14 @@ export function useAdminGmailDraft(session: Session, status: string, busy: { cur
     visible.writer=writer;setView({scope:visible,phase:'pending'});
     void writer.original.then(read=>{
       if(visible.writer!==writer||!visible.current()||!writer.display(read)){writer.retire();return;}
-      setView({scope:visible,phase:'draft',read});
+      setView({scope:visible,phase:'result',read});
     }).catch(()=>writer.retire()).finally(()=>{
       if(visible.writer!==writer)return;visible.running=false;unlockUnissued(writer);
       if(!writer.sent()&&visible.current())setView({scope:visible,phase:'unconfirmed'});
     });
   };
   const shown = visible && view.scope===visible ? view : null;
-  const data=shown?.phase==='draft'?shown.scope?.writer?.display(shown.read)??null:null;
+  const data=shown?.phase==='result'?shown.scope?.writer?.display(shown.read)??null:null;
   return {start,data,running:shown?.phase==='pending',canStart:!!visible&&visible.current()&&!visible.running&&!busy.current&&!adminGmailDraftBlocked(owner),
     message:shown?.phase==='pending'?'Preparando borrador Gmail…':shown?.phase==='unconfirmed'?'No se pudo confirmar el borrador. No se ha reintentado.':''};
 }

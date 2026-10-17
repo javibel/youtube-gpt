@@ -207,6 +207,18 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
       check();
       if(receipt)validateYoutubeCommentsRead!(receipt); validateGmailMetadataRead(gmailReceipt);if(textReceipt)validateGmailTextRead(textReceipt);
       if(isDraft){
+        if(isGeneration&&textReceipt&&textCoverage?.configured&&textCoverage.read===0&&!draftSource){
+          // A successful bounded read with no eligible source is a private
+          // explanation only. Never enter admission,task,model or draft input.
+          const expiresAt=Math.min(until,gmailTextViewExpiresAt(textReceipt));
+          const response=Response.json({ok:false,error:'social_messages_draft_unavailable',
+            gmailDraftUnavailable:{platform:'gmail',reason:'no-eligible-source',scanned:gmail.scanned,hasMore:gmail.hasMore,
+              exclusions:textCoverage.exclusions,coverage:'at-most-ten-unread-inbox-messages-one-list-page',
+              acceptance:'private-coverage-only-no-draft-send-or-operative-acceptance'},
+            gmailDraftRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt}},
+            {status:503,headers:{'Cache-Control':'no-store'}});
+          check();validateGmailMetadataRead(gmailReceipt);validateGmailTextRead(textReceipt);return response;
+        }
         if(!textReceipt||!draftSource||textEnabled!=='true')return unavailable();
         const live=()=>{check();validateGmailMetadataRead(gmailReceipt);validateGmailTextRead(textReceipt);};
         const validateBeforePrepare=async()=>{live();const row=await prisma.user.findUnique({where:{id},select:{id:true,email:true,emailVerified:true}});live();if(!row||row.id!==id||row.email!==email||!(row.emailVerified instanceof Date)||row.emailVerified.getTime()!==verifiedAt)throw Error('gmail_draft_source_unconfirmed');};

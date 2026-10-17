@@ -1,5 +1,6 @@
+import type {GmailTextExclusions} from '@/lib/agent/gmail-metadata-original';
 export type GmailDraftOwner=Readonly<{id:string;email:string;authSessionRef:string;expiresAt:number}>;
-export type GmailDraftViewData=Readonly<{from:string;subject:string;sourceText:string;content:string}>;
+export type GmailDraftViewData=Readonly<{kind:'draft';from:string;subject:string;sourceText:string;content:string}>|Readonly<{kind:'no-eligible-source';scanned:number;hasMore:boolean;exclusions:GmailTextExclusions}>;
 declare const gmailDraftView:unique symbol;
 export type GmailDraftView={readonly[gmailDraftView]:true};
 const views=new WeakMap<object,{own:object;data:GmailDraftViewData}>();
@@ -12,7 +13,16 @@ function draftData(value:Record<string,unknown>):GmailDraftViewData{
  ||!object(v,['platform','source','content','acceptance'])||v.platform!=='gmail'||v.acceptance!=='private-draft-view-only-no-send-or-operative-acceptance'||!object(v.source,['from','subject','text'])
  ||!text(v.source.from,2051)||!v.source.from||Array.from(v.source.from).length>513||/[\r\n\t]/.test(v.source.from)||!text(v.source.subject,2051)||Array.from(v.source.subject).length>513||/[\r\n\t]/.test(v.source.subject)
  ||!text(v.source.text,16384)||!text(v.content,8192)||!v.content.trim()||v.content.length>6000||v.content.trim().split(/\s+/u).length>200||v.content.includes('\r'))throw Error('Unconfirmed Gmail draft');
- return Object.freeze({from:v.source.from,subject:v.source.subject,sourceText:v.source.text,content:v.content});
+ return Object.freeze({kind:'draft',from:v.source.from,subject:v.source.subject,sourceText:v.source.text,content:v.content});
+}
+function noSourceData(value:Record<string,unknown>):GmailDraftViewData{
+ const v=value.gmailDraftUnavailable,keys=['attachment','alternative','html','otherMime','encoding','structure'];
+ if(!object(v,['platform','reason','scanned','hasMore','exclusions','coverage','acceptance'])||v.platform!=='gmail'||v.reason!=='no-eligible-source'
+   ||!integer(v.scanned)||v.scanned>10||typeof v.hasMore!=='boolean'||v.coverage!=='at-most-ten-unread-inbox-messages-one-list-page'
+   ||v.acceptance!=='private-coverage-only-no-draft-send-or-operative-acceptance'||!object(v.exclusions,keys))throw Error('Unconfirmed Gmail draft');
+ const e=v.exclusions;if(!Object.values(e).every(integer)||Object.values(e).reduce<number>((sum,n)=>sum+(n as number),0)!==v.scanned)throw Error('Unconfirmed Gmail draft');
+ const exclusions:GmailTextExclusions=Object.freeze({attachment:e.attachment as number,alternative:e.alternative as number,html:e.html as number,otherMime:e.otherMime as number,encoding:e.encoding as number,structure:e.structure as number});
+ return Object.freeze({kind:'no-eligible-source',scanned:v.scanned,hasMore:v.hasMore,exclusions});
 }
 type Own = { sent: boolean; finished: boolean; pending: number };
 const attempted = new Set<string>(), unsettled = new Set<Own>();
@@ -68,14 +78,15 @@ export function beginAdminGmailDraft(owner: GmailDraftOwner, current: () => bool
         }
       } else { throw error(); }
       check(); const value: unknown = JSON.parse(raw); check();
-      if (!object(value, ['ok','error','gmailDraft','gmailDraftView','gmailDraftRead']) || value.ok !== false || value.error !== 'social_messages_draft_unavailable') throw error();
+      const noSource=!!value&&typeof value==='object'&&Object.hasOwn(value,'gmailDraftUnavailable');
+      if (!object(value,noSource?['ok','error','gmailDraftUnavailable','gmailDraftRead']:['ok','error','gmailDraft','gmailDraftView','gmailDraftRead']) || value.ok !== false || value.error !== 'social_messages_draft_unavailable') throw error();
       const binding = value.gmailDraftRead;
       if (!object(binding, ['commandRef','userId','email','sessionRef','asOf','expiresAt']) || binding.commandRef !== command || binding.userId !== captured.id
         || binding.email !== captured.email || binding.sessionRef !== captured.authSessionRef || !integer(binding.asOf) || binding.asOf < at || binding.asOf > Date.now()
         || !integer(binding.expiresAt) || binding.expiresAt <= binding.asOf || binding.expiresAt - binding.asOf > 55000) throw error();
       until = Math.min(until, binding.expiresAt);deadline=Math.min(deadline,started+binding.expiresAt-at); check(); clearTimeout(timer);
       timer = setTimeout(retire, Math.max(0, Math.min(until - Date.now(), deadline - performance.now())));
-      const data = draftData(value); check(); const handle = Object.freeze({}) as GmailDraftView; views.set(handle, { own, data }); return handle;
+      const data = noSource?noSourceData(value):draftData(value); check(); const handle = Object.freeze({}) as GmailDraftView; views.set(handle, { own, data }); return handle;
     } catch { retire(); throw error(); }
     finally { own.finished = true; drained(); }
   })(); void original.catch(() => {});

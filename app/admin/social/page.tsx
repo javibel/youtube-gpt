@@ -1,6 +1,6 @@
 'use client';
 
-import type {GmailTextSkipReason} from '@/lib/agent/gmail-metadata-original';
+import type {GmailTextSkipReason,GmailTextExclusions} from '@/lib/agent/gmail-metadata-original';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import DashboardShell from '@/components/DashboardShell';
@@ -11,6 +11,16 @@ import { useAdminGmailDraft } from '@/lib/use-admin-gmail-draft';
 import { useAdminYoutubeDraft } from '@/lib/use-admin-youtube-draft';
 import { useAdminSocialMessages } from '@/lib/use-admin-social-messages';
 import { useAdminSocialState } from '@/lib/use-admin-social-state';
+
+function GmailExclusionSummary({counts}:{counts:GmailTextExclusions}){
+  return <div><p>Mensajes pendientes de revisión manual, agrupados por un único motivo principal:</p>
+    <ul className="list-disc pl-5">
+      {Object.entries({attachment:'Adjuntos o contenido separado',alternative:'Versiones alternativas',html:'Contenido HTML',otherMime:'Otros formatos',encoding:'Codificación o cabeceras de texto no admitidas',structure:'Estructura no seleccionable con seguridad'}).map(([reason,label])=>{
+        const count=counts[reason as GmailTextSkipReason];return count?<li key={reason}>{label}: {count}</li>:null;
+      })}
+    </ul>
+  </div>;
+}
 
 type LogEntry = { type: 'info' | 'success' | 'error'; msg: string; ts: string };
 
@@ -166,22 +176,22 @@ export default function SocialAdminPage() {
                   'Gmail: '+messages.data.gmail.scanned+' '+(messages.data.gmail.scanned===1?'mensaje':'mensajes')+' (sólo cabeceras).'}</p>
                 {messages.data.gmail.status==='read-only-metadata'&&messages.data.gmail.text&&<div>
                   <p>Texto plano simple: {messages.data.gmail.text.read} leídos. Otros formatos sin extraer: {messages.data.gmail.text.skipped}.</p>
-                  {messages.data.gmail.text.skipped>0&&<div>
-                    <p>Mensajes pendientes de revisión manual, agrupados por un único motivo principal:</p>
-                    <ul className="list-disc pl-5">
-                      {Object.entries({attachment:'Adjuntos o contenido separado',alternative:'Versiones alternativas',html:'Contenido HTML',otherMime:'Otros formatos',encoding:'Codificación o cabeceras de texto no admitidas',structure:'Estructura no seleccionable con seguridad'}).map(([reason,label])=>{
-                        const count=messages.data?.gmail.status==='read-only-metadata'?messages.data.gmail.text?.exclusions[reason as GmailTextSkipReason]:0;
-                        return count?<li key={reason}>{label}: {count}</li>:null;
-                      })}
-                    </ul>
-                  </div>}
+                  {messages.data.gmail.text.skipped>0&&<GmailExclusionSummary counts={messages.data.gmail.text.exclusions}/>}
                 </div>}
                 {messages.data.gmail.status==='read-only-metadata'&&messages.data.gmail.hasMore&&<p>Hay más mensajes fuera de esta lectura.</p>}
               </div>
             </section>
           )}
           {gmailDraft.message&&<p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{gmailDraft.message}</p>}
-          {gmailDraft.data&&<section aria-label="Borrador Gmail para revisión" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
+          {gmailDraft.data?.kind==='no-eligible-source'&&<section aria-label="Borrador Gmail no disponible" className="yv-card mt-3 p-4 space-y-2 text-sm" style={{color:'var(--text-dim)'}}>
+            <h2 className="font-semibold" style={{color:'var(--text)'}}>Borrador Gmail no disponible</h2>
+            <p>No hay una fuente legible para preparar el borrador en esta lectura.</p>
+            <p>{gmailDraft.data.scanned} mensajes examinados; no se ha generado ningún borrador.</p>
+            {gmailDraft.data.scanned>0&&<GmailExclusionSummary counts={gmailDraft.data.exclusions}/>}
+            {gmailDraft.data.hasMore&&<p>Hay más mensajes fuera de esta lectura.</p>}
+            <p>La revisión completa sigue pendiente.</p>
+          </section>}
+          {gmailDraft.data?.kind==='draft'&&<section aria-label="Borrador Gmail para revisión" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
             <h2 className="font-semibold" style={{color:'var(--text)'}}>Borrador Gmail para revisión</h2>
             <p>No enviado. Comprueba el mensaje de origen y la respuesta antes de cualquier envío.</p>
             <p className="break-words">De: {gmailDraft.data.from}</p>
