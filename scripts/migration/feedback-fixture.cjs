@@ -29,7 +29,7 @@ function fixture(options={}){
  const admin=load('app/api/admin/send-feedback/route.ts',{'next/server':{NextResponse:Response},'@/lib/prisma':{prisma},'@/lib/feedback-email-original':api,'@/lib/auth-guards':{requireAdmin:async()=>options.unauthorized?{ok:false,response:Response.json({error:'No autorizado'},{status:403})}:{ok:true,email:'synthetic-admin@example.invalid'}}},globals);
  function dispatch(expected=account.email,before){const o=api.prepareFeedbackOriginal(account.id,expected,before),p=api.dispatchFeedbackOriginal(o);pending.push(p);return p;}
  function post(value={email:account.email},signal){const p=admin.POST(new Request('https://example.invalid/api/admin/send-feedback',{method:'POST',body:JSON.stringify(value),headers:{'content-type':'application/json'},signal}));pending.push(p);return p;}
- return{api,agent,agentModule,native,clock,controller,begin,make,admin,account,prisma,mail,records,markers,writes,pending,queries,calls,entered,gates,deps,globals,dispatch,post,
+ return{track,api,agent,agentModule,native,clock,controller,begin,make,admin,account,prisma,mail,records,markers,writes,pending,queries,calls,entered,gates,deps,globals,dispatch,post,
   async reach(stage){for(let i=0;i<500&&!entered[stage];i++)await new Promise(r=>setTimeout(r,2));assert(entered[stage]);},
   async finish(){for(const g of Object.values(gates))g.resolve();await Promise.allSettled(pending);}};
 }
