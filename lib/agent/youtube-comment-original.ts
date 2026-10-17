@@ -67,3 +67,8 @@ export function runYoutubeReplySource<T>(receipt:YoutubeCommentRead|undefined,pu
  const validateSource=async(row:YoutubeCommentSource)=>{check();if(!own.window.comments.includes(row)||!row.canReply)throw Error('youtube_reply_unconfirmed');const url=new URL(endpoint);url.searchParams.set('part','snippet');url.searchParams.set('id',row.threadId);url.searchParams.set('textFormat','plainText');url.searchParams.set('key',key!);const value=parse(await page(url.toString(),own.context),own.context);check();if(value.next||value.comments.length!==1||JSON.stringify(value.comments[0])!==JSON.stringify(row))throw Error('youtube_reply_unconfirmed');};
  const result=await run(own.window,Object.freeze({at:own.context.at,signal:own.context.signal,checkBeforeEffect:check,remainingBeforeEffect:own.context.remainingBeforeRead,validateSource}));check();return result;});
 }
+
+// Final projection veto after the original manual POST waits on its SQL source.
+export function validateYoutubeCommentsRead(receipt: YoutubeCommentRead | undefined): void {
+ const own=receipt&&reads.get(receipt);if(!own)throw Error('youtube_comments_unconfirmed');own.context.checkBeforeRead();
+}

@@ -4,8 +4,11 @@ import { ADMIN_EMAIL } from '@/lib/admin-email';
 
 declare const nativeAdminYoutubeComments: unique symbol;
 export type NativeAdminYoutubeComments = { readonly [nativeAdminYoutubeComments]: true };
+declare const nativeAdminGmailMetadata: unique symbol;
+export type NativeAdminGmailMetadata = { readonly [nativeAdminGmailMetadata]: true };
 type YoutubeReadContext = Readonly<{ at: number; signal: AbortSignal; checkBeforeRead: () => void; remainingBeforeRead: () => number }>;
 const youtubePurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
+const gmailPurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
 const requests = new WeakMap<Request, Promise<Response>>();
 
 // A callback may consume only a purpose already issued inside the authenticated
@@ -13,6 +16,14 @@ const requests = new WeakMap<Request, Promise<Response>>();
 export function runAdminYoutubeComments<T>(purpose: NativeAdminYoutubeComments | undefined, run: (context: YoutubeReadContext) => Promise<T>): Promise<T> {
   const own = purpose && youtubePurposes.get(purpose);
   if (!own) return Promise.reject(Error('youtube_comments_unconfirmed'));
+  return (own.promise ??= Promise.resolve().then(async () => {
+    own.context.checkBeforeRead(); const value = await run(own.context); own.context.checkBeforeRead(); return value;
+  })) as Promise<T>;
+}
+// A distinct child of this POST carries metadata-read authority only.
+export function runAdminGmailMetadata<T>(purpose: NativeAdminGmailMetadata | undefined, run: (context: YoutubeReadContext) => Promise<T>): Promise<T> {
+  const own = purpose && gmailPurposes.get(purpose);
+  if (!own) return Promise.reject(Error('gmail_metadata_unconfirmed'));
   return (own.promise ??= Promise.resolve().then(async () => {
     own.context.checkBeforeRead(); const value = await run(own.context); own.context.checkBeforeRead(); return value;
   })) as Promise<T>;
@@ -97,20 +108,28 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
       const purpose = Object.freeze({}) as NativeAdminYoutubeComments;
       youtubePurposes.set(purpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,
         remainingBeforeRead: () => { check(); return Math.min(until - Date.now(), started + 55000 - performance.now()); } }) });
-      const { readAdminYoutubeComments, consumeYoutubeComments } = await wait(() => import('@/lib/agent/youtube-comment-original'));
+      const { readAdminYoutubeComments, consumeYoutubeComments, validateYoutubeCommentsRead } = await wait(() => import('@/lib/agent/youtube-comment-original'));
       const receipt = await wait(() => readAdminYoutubeComments(purpose));
       // The private live receipt is consumed before this POST retires. Its JSON
       // projection is read-only coverage, never a reply or recovery capability.
       const coverage = await wait(() => consumeYoutubeComments(receipt, async ({ comments: _comments, ...window }) => Object.freeze(window)));
-      if (!coverage.configured) return unavailable();
+      const gmailPurpose = Object.freeze({}) as NativeAdminGmailMetadata;
+      gmailPurposes.set(gmailPurpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,
+        remainingBeforeRead: () => { check(); return Math.min(until - Date.now(), started + 55000 - performance.now()); } }) });
+      const { readGmailMetadata, consumeGmailMetadata, validateGmailMetadataRead } = await wait(() => import('@/lib/agent/gmail-metadata-original'));
+      const gmailReceipt = await wait(() => readGmailMetadata(gmailPurpose));
+      const gmail = await wait(() => consumeGmailMetadata(gmailReceipt, async ({ messages: _messages, ...window }) => Object.freeze(window)));
+      if (!coverage.configured && !gmail.configured) return unavailable();
       // Re-reading the original account is a veto after network/body waits. It
       // cannot renew the session, verification date or original request budget.
       const current = await wait(() => prisma.user.findUnique({ where: { id }, select: { id: true, email: true, emailVerified: true } }));
       if (!current || current.id !== id || current.email !== email || !(current.emailVerified instanceof Date)
         || current.emailVerified.getTime() !== verifiedAt) return denied();
       check();
+      validateYoutubeCommentsRead(receipt); validateGmailMetadataRead(gmailReceipt);
       const response = Response.json({ ok: false, error: 'social_messages_unavailable',
-        youtube: { status: 'read-only', coverage }, gmail: { status: 'unavailable' } },
+        youtube: coverage.configured ? { status: 'read-only', coverage } : { status: 'unavailable' },
+        gmail: gmail.configured ? { status: 'read-only-metadata', coverage: gmail } : { status: 'unavailable' } },
         { status: 503, headers: { 'Cache-Control': 'no-store' } });
       check(); return response;
     } catch { return unavailable(); }
