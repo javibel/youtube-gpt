@@ -12,6 +12,9 @@ declare const nativeCronSocialPost: unique symbol;
 export type NativeCronSocialPost = { readonly [nativeCronSocialPost]: true };
 declare const nativeCronBrandImageRead: unique symbol;
 export type NativeCronBrandImageRead = { readonly [nativeCronBrandImageRead]: true };
+declare const nativeCronMorningSocial: unique symbol;
+export type NativeCronMorningSocial = { readonly [nativeCronMorningSocial]: true };
+type MorningSocialContext=Readonly<{facebook:NativeCronSocialPost;instagram:NativeCronSocialPost;facebookRead:NativeCronBrandImageRead;instagramRead:NativeCronBrandImageRead;checkBeforeDispatch:()=>void}>;
 type Slot = 'morning' | 'evening';
 type Original = { request: Request; url: string; slot: Slot; secret: string; configured: string; header: string;
   at: number; until: number; started: number; deadline: number; used: boolean };
@@ -20,7 +23,8 @@ const dailyTips = new WeakMap<object, { date: string; check: () => void; promise
 const dailyIdeas = new WeakMap<object, { date: string; check: () => void; promise?: Promise<unknown> }>();
 const dailyIdeasEmails = new WeakMap<object, { date: string; at: number; check: () => void; promise?: Promise<unknown> }>();
 const socialPosts = new WeakMap<object, { parent: Original; date: string; at: number; slot: Slot; platform: 'facebook'|'instagram'; remaining: () => number; check: () => void; promise?: Promise<string> }>();
-const imageReads = new WeakMap<object, { parent: Original; date: string; check: () => void; promise?: Promise<unknown> }>();
+const imageReads = new WeakMap<object, { parent: Original; source?:NativeCronSocialPost; date: string; check: () => void; promise?: Promise<unknown> }>();
+const morningSocials=new WeakMap<object,{context:MorningSocialContext;promise?:Promise<unknown>}>();
 
 export function authorizeCronDispatch(request: Request, slot: Slot): NativeCronDispatch | null {
   try {
@@ -50,7 +54,8 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
   run: (step: <V>(work: () => Promise<V>) => Promise<V>, issueDailyTip: () => NativeCronDailyTip, issueDailyIdeas: () => NativeCronDailyIdeas,
     issueDailyIdeasEmail: () => NativeCronDailyIdeasEmail,
     issueSocialPost: (platform: 'facebook'|'instagram') => NativeCronSocialPost,
-    issueBrandImageRead: () => NativeCronBrandImageRead) => Promise<T>): Promise<T> {
+    issueBrandImageRead: () => NativeCronBrandImageRead,
+    issueMorningSocial: () => NativeCronMorningSocial) => Promise<T>): Promise<T> {
   const own = original && originals.get(original);
   if (!own || own.used) throw Error('cron_invocation_unconfirmed');
   own.used = true;
@@ -125,19 +130,27 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     return child;
   };
   let imageReadIssued = false;
-  const issueBrandImageRead = (): NativeCronBrandImageRead => {
+  const createBrandImageRead = (source?:NativeCronSocialPost): NativeCronBrandImageRead => {
     check();
-    if (imageReadIssued) throw Error('daily_brand_image_read_unconfirmed');
-    imageReadIssued = true;
     const child = Object.freeze({}) as NativeCronBrandImageRead;
     const date = new Date(own.at).toISOString().slice(0, 10);
-    imageReads.set(child, { parent: own, date, check: () => {
+    imageReads.set(child, { parent: own, source, date, check: () => {
       check();
       if (new Date(Date.now()).toISOString().slice(0, 10) !== date) throw Error('daily_brand_image_read_unconfirmed');
     } });
     return child;
   };
-  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead); check(); return result; }
+  const issueBrandImageRead=()=>{check();if(imageReadIssued)throw Error('daily_brand_image_read_unconfirmed');imageReadIssued=true;return createBrandImageRead();};
+  // A morning-only lexical owner issues exactly these two sources and two
+  // source-bound data readers. It cannot mix with separately issued children.
+  const issueMorningSocial=():NativeCronMorningSocial=>{
+    check();if(own.slot!=='morning'||platforms.size||imageReadIssued)throw Error('social_publish_unconfirmed');
+    const facebook=issueSocialPost('facebook'),instagram=issueSocialPost('instagram');imageReadIssued=true;
+    const facebookRead=createBrandImageRead(facebook),instagramRead=createBrandImageRead(instagram),cap=Object.freeze({})as NativeCronMorningSocial;
+    const checkBeforeDispatch=()=>{check();validateCronImageReadSource(facebook,facebookRead);validateCronImageReadSource(instagram,instagramRead);};
+    morningSocials.set(cap,{context:Object.freeze({facebook,instagram,facebookRead,instagramRead,checkBeforeDispatch})});return cap;
+  };
+  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead, issueMorningSocial); check(); return result; }
   finally { retired = true; }
 }
 
@@ -157,8 +170,15 @@ export function runCronBrandImageRead<T>(original: NativeCronBrandImageRead | un
 // metadata or a way to bind a new read purpose to an older producer.
 export function validateCronImageReadSource(source: NativeCronSocialPost | undefined, read: NativeCronBrandImageRead | undefined): void {
   const post = source && socialPosts.get(source), image = read && imageReads.get(read);
-  if (!post || !image || post.parent !== image.parent) throw Error('daily_brand_image_unconfirmed');
+  if (!post || !image || post.parent !== image.parent || (image.source!==undefined&&image.source!==source)) throw Error('daily_brand_image_unconfirmed');
   post.check(); image.check();
+}
+
+// A date, DTO, row or a pair of independently authorized Requests cannot issue
+// this owner. Only the same live morning invocation may enter its one promise.
+export function runCronMorningSocial<T>(original:NativeCronMorningSocial|undefined,run:(context:MorningSocialContext)=>Promise<T>):Promise<T>{
+  const own=original&&morningSocials.get(original);if(!own)return Promise.reject(Error('social_publish_unconfirmed'));
+  return(own.promise??=Promise.resolve().then(async()=>{own.context.checkBeforeDispatch();const result=await run(own.context);own.context.checkBeforeDispatch();return result;}))as Promise<T>;
 }
 
 export function runCronSocialPost(original: NativeCronSocialPost|undefined, platform: string, slot: string,

@@ -1,11 +1,11 @@
 import { authorizeCronDispatch, runCronDispatch } from '@/lib/cron-dispatch-original';
 import { generateDailyTipOriginal } from '@/lib/daily-tip-original';
 import { NextResponse } from 'next/server';
-import { generateSocialPost } from '@/lib/agent/content-generator';
-import { getOrCreateDailyBrandImage, consumeDailyBrandImage } from '@/lib/agent/ideogram-image';
+import { publishCronMorningSocial, consumeCronMorningPublication } from '@/lib/agent/content-generator';
+
 // Twitter API desactivada — publicación migrada a Puppeteer en local-agent (brand-twitter-post.js)
 // import { publishThreadToTwitter } from '@/lib/agent/twitter-agent';
-import { sendNotificationEmail } from '@/lib/agent/gmail-agent';
+
 // import { sendDailyReport } from '@/lib/agent/reports-agent'; // reporte diario desactivado 2026-08-30 (redundante con el Manager)
 // sendOnboardingEmails DESACTIVADO 2026-07-01 (duplicaba lifecycle) — ver bloque "0." abajo.
 // import { sendOnboardingEmails } from '@/lib/agent/onboarding-email';
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead) => {
+  return runCronDispatch(original, async (step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, _issueSocialPost, _issueBrandImageRead, issueMorningSocial) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -80,56 +80,24 @@ export async function GET(request: Request) {
     results.dailyIdeasEmailed = typeof ideasEmailed === 'number' ? ideasEmailed : ideasEmailed.providerAccepted;
     if (typeof ideasEmailed !== 'number') results.dailyIdeasEmailCoverage = ideasEmailed;
 
-    // 2. Generate content for Facebook + Instagram (LinkedIn + Twitter desactivados)
-    const facebookOriginal=issueSocialPost('facebook'),instagramOriginal=issueSocialPost('instagram');
-    const [facebook, instagram] = await Promise.allSettled([
-      step(() => generateSocialPost('facebook', 'morning', facebookOriginal)),
-      step(() => generateSocialPost('instagram', 'morning', instagramOriginal)),
-    ]);
-
-    const fb = facebook.status === 'fulfilled' ? facebook.value : null;
-    const ig = instagram.status === 'fulfilled' ? instagram.value : null;
-
-    if (facebook.status === 'rejected') errors.push(`Facebook content: ${facebook.reason}`);
-    if (instagram.status === 'rejected') errors.push(`Instagram content: ${instagram.reason}`);
-
-    // A sibling read purpose supplies persisted resource data only. A miss
-    // enters the completed source's native producer;neither permits publication.
-    if (fb || ig) {
-      try {
-        const image=await step(()=>getOrCreateDailyBrandImage(fb?facebookOriginal:instagramOriginal,issueBrandImageRead()));
-        results.brandImage=await step(()=>consumeDailyBrandImage(image,async own=>own.producerAcknowledged?{date:own.date,cacheCompleted:true}:{date:own.date,cacheResourceRead:true,producerAcknowledged:false}));
-      } catch {
-        return NextResponse.json({ok:false,error:'daily_brand_image_unconfirmed',results,errors},{status:503});
-      }
-      // The native cron publisher is still pending. Do not enter legacy Meta,
-      // a fallback image,notifications or an uncertain publication retry.
-      if(fb)results.facebook={success:false,error:'social_publish_unconfirmed'};
-      if(ig)results.instagram={success:false,error:'social_publish_unconfirmed'};
-      return NextResponse.json({ok:false,error:'social_publish_unconfirmed',results,errors},{status:503});
+    // The native morning owner sequences both sources and publications. Only
+    // the final private consumer can expose their jointly validated response.
+    try {
+      const receipt=await step(()=>publishCronMorningSocial(issueMorningSocial()));
+      return await step(()=>consumeCronMorningPublication(receipt,async published=>{
+        await published.validateBeforeResponse();
+        const response=NextResponse.json({ok:errors.length===0,...(errors.length?{error:'cron_jobs_unconfirmed'}:{}),results:{...results,brandImage:published.brandImage,facebook:published.facebook,instagram:published.instagram},errors},{status:errors.length?503:200});
+        await published.validateBeforeResponse();return response;
+      }));
+    } catch(error) {
+      const message=(error as {message?:unknown}|null)?.message;
+      const code=message==='daily_brand_image_unconfirmed'||message==='daily_brand_image_read_unconfirmed'?'daily_brand_image_unconfirmed':'social_publish_unconfirmed';
+      return NextResponse.json({ok:false,error:code,results,errors},{status:503});
     }
-
-    // 6. Reporte diario al owner — DESACTIVADO 2026-08-30 (decisión Javier).
-    //    Era el segundo reporte diario redundante (el otro, local-agent/reports.js,
-    //    se apagó el 28/08). El Reporte Ejecutivo del Manager (03:15) ya cubre
-    //    posts sociales y gmail; las secciones de LinkedIn/YCML llevan meses en
-    //    "sin datos" (personas abandonadas). Código intacto en lib/agent/reports-agent.ts.
-    // await sendDailyReport().catch(err =>
-    //   errors.push(`Daily report: ${err instanceof Error ? err.message : err}`)
-    // );
-
-    if (errors.length > 0) {
-      await step(() => sendNotificationEmail(
-        '[YTubViral Agent] Errores en cron matutino',
-        errors.join('\n')
-      )).catch(() => {});
-    }
-
-    return NextResponse.json({ ok: true, results, errors });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[cron/morning]', msg);
-    await step(() => sendNotificationEmail('[YTubViral Agent] Error critico cron matutino', msg)).catch(() => {});
+
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
   }).catch(() => NextResponse.json({ ok: false, error: 'cron_invocation_unconfirmed' }, { status: 503 }));
