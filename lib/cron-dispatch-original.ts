@@ -22,6 +22,9 @@ declare const nativeCronYoutubeComments:unique symbol;
 export type NativeCronYoutubeComments={readonly[nativeCronYoutubeComments]:true};
 declare const nativeCronYoutubeReplies:unique symbol;
 export type NativeCronYoutubeReplies={readonly[nativeCronYoutubeReplies]:true};
+declare const nativeCronFeedback:unique symbol;
+export type NativeCronFeedback={readonly[nativeCronFeedback]:true};
+
 type MorningSocialContext=Readonly<{facebook:NativeCronSocialPost;instagram:NativeCronSocialPost;facebookRead:NativeCronBrandImageRead;instagramRead:NativeCronBrandImageRead;checkBeforeDispatch:()=>void}>;
 type Slot = 'morning' | 'evening';
 type Original = { request: Request; url: string; slot: Slot; secret: string; configured: string; header: string;
@@ -34,6 +37,7 @@ const socialPosts = new WeakMap<object, { parent: Original; date: string; at: nu
 const imageReads = new WeakMap<object, { parent: Original; source?:NativeCronSocialPost; date: string; check: () => void; promise?: Promise<unknown> }>();
 const youtubeReplies=new WeakMap<object,{readPurpose:NativeCronYoutubeComments;check:()=>void;promise?:Promise<unknown>}>();
 const youtubeComments=new WeakMap<object,{parent:Original;at:number;signal:AbortSignal;check:()=>void;remaining:()=>number;promise?:Promise<unknown>}>();
+const feedbacks=new WeakMap<object,{at:number;check:()=>void;promise?:Promise<unknown>}>();
 const reengagements=new WeakMap<object,{at:number;check:()=>void;promise?:Promise<unknown>}>();
 const verificationReminders=new WeakMap<object,{at:number;check:()=>void;promise?:Promise<unknown>}>();
 const morningSocials=new WeakMap<object,{context:MorningSocialContext;promise?:Promise<unknown>}>();
@@ -67,7 +71,7 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
     issueDailyIdeasEmail: () => NativeCronDailyIdeasEmail,
     issueSocialPost: (platform: 'facebook'|'instagram') => NativeCronSocialPost,
     issueBrandImageRead: () => NativeCronBrandImageRead,
-    issueMorningSocial: () => NativeCronMorningSocial, issueVerificationReminders:()=>NativeCronVerificationReminders,issueReengagement:()=>NativeCronReengagement,issueYoutubeComments:()=>NativeCronYoutubeComments,issueYoutubeReplies:(read:NativeCronYoutubeComments)=>NativeCronYoutubeReplies) => Promise<T>): Promise<T> {
+    issueMorningSocial: () => NativeCronMorningSocial, issueVerificationReminders:()=>NativeCronVerificationReminders,issueReengagement:()=>NativeCronReengagement,issueYoutubeComments:()=>NativeCronYoutubeComments,issueYoutubeReplies:(read:NativeCronYoutubeComments)=>NativeCronYoutubeReplies,issueFeedback:()=>NativeCronFeedback) => Promise<T>): Promise<T> {
   const own = original && originals.get(original);
   if (!own || own.used) throw Error('cron_invocation_unconfirmed');
   own.used = true;
@@ -170,7 +174,9 @@ export async function runCronDispatch<T>(original: NativeCronDispatch | null,
   const issueYoutubeComments=():NativeCronYoutubeComments=>{check();if(own.slot!=='evening'||youtubeCommentsIssued)throw Error('youtube_comments_unconfirmed');youtubeCommentsIssued=true;const cap=Object.freeze({})as NativeCronYoutubeComments,date=new Date(own.at).toISOString().slice(0,10),live=()=>{check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('youtube_comments_unconfirmed');};youtubeComments.set(cap,{parent:own,at:own.at,signal:own.request.signal,check:live,remaining:()=>{live();return Math.min(own.until-Date.now(),own.deadline-performance.now());}});return cap;};
   let youtubeRepliesIssued=false;
   const issueYoutubeReplies=(readPurpose:NativeCronYoutubeComments):NativeCronYoutubeReplies=>{check();const read=readPurpose&&youtubeComments.get(readPurpose);if(own.slot!=='evening'||youtubeRepliesIssued||!read||read.parent!==own)throw Error('youtube_reply_unconfirmed');read.check();youtubeRepliesIssued=true;const cap=Object.freeze({})as NativeCronYoutubeReplies;youtubeReplies.set(cap,{readPurpose,check:read.check});return cap;};
-  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead, issueMorningSocial,issueVerificationReminders,issueReengagement,issueYoutubeComments,issueYoutubeReplies); check(); return result; }
+  let feedbackIssued=false;
+  const issueFeedback=():NativeCronFeedback=>{check();if(own.slot!=='evening'||feedbackIssued)throw Error('feedback_batch_unconfirmed');feedbackIssued=true;const cap=Object.freeze({})as NativeCronFeedback,date=new Date(own.at).toISOString().slice(0,10);feedbacks.set(cap,{at:own.at,check:()=>{check();if(new Date(Date.now()).toISOString().slice(0,10)!==date)throw Error('feedback_batch_unconfirmed');}});return cap;};
+  try { check(); const result = await run(step, issueDailyTip, issueDailyIdeas, issueDailyIdeasEmail, issueSocialPost, issueBrandImageRead, issueMorningSocial,issueVerificationReminders,issueReengagement,issueYoutubeComments,issueYoutubeReplies,issueFeedback); check(); return result; }
   finally { retired = true; }
 }
 
@@ -260,4 +266,9 @@ export function runCronYoutubeComments<T>(original:NativeCronYoutubeComments|und
 export function runCronYoutubeReplies<T>(original:NativeCronYoutubeReplies|undefined,run:(context:Readonly<{readPurpose:NativeCronYoutubeComments;checkBeforeEffect:()=>void}>)=>Promise<T>):Promise<T>{
  const own=original&&youtubeReplies.get(original);if(!own)return Promise.reject(Error('youtube_reply_unconfirmed'));
  return(own.promise??=Promise.resolve().then(async()=>{own.check();const result=await run(Object.freeze({readPurpose:own.readPurpose,checkBeforeEffect:own.check}));own.check();return result;}))as Promise<T>;
+}
+
+export function runCronFeedback<T>(original:NativeCronFeedback|undefined,run:(context:Readonly<{at:number;checkBeforeDispatch:()=>void}>)=>Promise<T>):Promise<T>{
+ const own=original&&feedbacks.get(original);if(!own)return Promise.reject(Error('feedback_batch_unconfirmed'));
+ return(own.promise??=Promise.resolve().then(async()=>{own.check();const value=await run(Object.freeze({at:own.at,checkBeforeDispatch:own.check}));own.check();return value;}))as Promise<T>;
 }

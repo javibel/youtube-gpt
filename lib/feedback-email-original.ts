@@ -52,7 +52,7 @@ export function dispatchFeedbackOriginal(original: FeedbackOriginal): Promise<Fe
             AND u."feedbackEmailSentAt" IS NULL AND u."createdAt"<=clock.now-INTERVAL '3 days'
             AND NOT EXISTS(SELECT 1 FROM user_feedbacks f WHERE f."userId"=u.id)
             AND NOT EXISTS(SELECT 1 FROM email_logs l WHERE l."userId"=u.id
-              AND l.sequence IN ('conv','onboarding','react','feedback') AND l."sentAt">clock.now-INTERVAL '1 day')
+              AND l.sequence IN ('conv','onboarding','react','feedback','reengagement') AND l."sentAt">clock.now-INTERVAL '1 day')
           ON CONFLICT ("userId") DO NOTHING RETURNING "userId","noticeId"
         ), created AS (
           INSERT INTO user_feedbacks (id,"userId",token,lang,"createdAt")

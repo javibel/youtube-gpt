@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost, issueBrandImageRead, _morningSocial, _verify, _reengagement, issueYoutubeComments, issueYoutubeReplies) => {
+  return runCronDispatch(original, async (step, _tip, _ideas, _email, issueSocialPost, issueBrandImageRead, _morningSocial, _verify, _reengagement, issueYoutubeComments, issueYoutubeReplies, issueFeedback) => {
   const errors: string[] = [];
   const results: Record<string, unknown> = {};
 
@@ -42,12 +42,12 @@ export async function GET(request: Request) {
     results.facebookRetry={success:false,error:'social_publish_unconfirmed'};
 
     // 0. Send feedback emails to users registered 3 days ago
-    const feedbackResult = await step(() => runFeedbackAgent()).catch(err => ({
+    const feedbackResult = await step(() => runFeedbackAgent(issueFeedback())).catch(() => ({
       sent: 0,
-      errors: [`Feedback agent: ${err instanceof Error ? err.message : err}`],
+      errors: ['feedback_batch_unconfirmed'],
     }));
     errors.push(...feedbackResult.errors);
-    results.feedback = { sent: feedbackResult.sent };
+    results.feedback = { sent: feedbackResult.sent,...('coverage' in feedbackResult?{coverage:feedbackResult.coverage,scanned:feedbackResult.scanned,hasMore:feedbackResult.hasMore,disabled:feedbackResult.disabled,excluded:feedbackResult.excluded,unconfirmed:feedbackResult.unconfirmed}:{}) };
 
     // YouTube agent results
     const youtube = youtubeResult.status === 'fulfilled'
