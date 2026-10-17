@@ -132,6 +132,6 @@ export function sendVerificationReminders(original?:NativeCronVerificationRemind
    }
   }
   check();const receipt=Object.freeze(result);scans.set(receipt,original);return receipt;
- }).then(value=>{if(!value||typeof value!=='object'||scans.get(value)!==original)throw Error('verification_reminder_unconfirmed');return value;});
+ }).then(value=>{if(!value||typeof value!=='object'||scans.get(value)!==original)throw Error('verification_reminder_unconfirmed');return value;}).catch(()=>{throw Error('verification_reminder_unconfirmed');});
  originals.set(original,pending);return pending;
 }
