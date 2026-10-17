@@ -1,7 +1,8 @@
 import { readNativeSessionCookie } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { ADMIN_EMAIL } from '@/lib/admin-email';
-import type { GmailMetadataRead, GmailTextRead, GmailTextWindow } from '@/lib/agent/gmail-metadata-original';
+import type { YoutubeCommentRead, YoutubeCommentWindow } from '@/lib/agent/youtube-comment-original';
+import type { GmailMetadataRead, GmailTextRead, GmailTextWindow, GmailTextSource } from '@/lib/agent/gmail-metadata-original';
 
 declare const nativeAdminYoutubeComments: unique symbol;
 export type NativeAdminYoutubeComments = { readonly [nativeAdminYoutubeComments]: true };
@@ -15,10 +16,22 @@ export function runAdminGmailText<T>(purpose:NativeAdminGmailText|undefined,run:
   const own=purpose&&gmailTextPurposes.get(purpose);if(!own)return Promise.reject(Error('gmail_text_unconfirmed'));
   return(own.promise??=Promise.resolve().then(async()=>{own.context.checkBeforeRead();const value=await run(own.context);own.context.checkBeforeRead();return value;})) as Promise<T>;
 }
+
+// Explicit draft-source preparation is distinct from read,model and send.
+// Only this native POST can mint the child;callbacks or a read receipt cannot.
+declare const nativeAdminGmailDraft:unique symbol;
+export type NativeAdminGmailDraftSource={readonly[nativeAdminGmailDraft]:true};
+type DraftSourceContext=YoutubeReadContext&Readonly<{actorId:string;email:string;sessionRef:string;commandRef:string;source:GmailTextSource;validateBeforePrepare:()=>Promise<void>}>;
+const gmailDraftPurposes=new WeakMap<object,{context:DraftSourceContext;promise?:Promise<unknown>}>();
+export function runAdminGmailDraftSource<T>(purpose:NativeAdminGmailDraftSource|undefined,run:(context:DraftSourceContext)=>Promise<T>):Promise<T>{
+ const own=purpose&&gmailDraftPurposes.get(purpose);if(!own)return Promise.reject(Error('gmail_draft_source_unconfirmed'));
+ return(own.promise??=Promise.resolve().then(async()=>{await own.context.validateBeforePrepare();const value=await run(own.context);await own.context.validateBeforePrepare();return value;}))as Promise<T>;
+}
+
 type YoutubeReadContext = Readonly<{ at: number; signal: AbortSignal; checkBeforeRead: () => void; remainingBeforeRead: () => number }>;
 const youtubePurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
 const gmailPurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
-const requests = new WeakMap<Request, Promise<Response>>();
+const requests = new WeakMap<Request, Promise<Response>>(),draftRequests=new WeakMap<Request,Promise<Response>>();
 
 // A callback may consume only a purpose already issued inside the authenticated
 // POST below. Neither callbacks nor serialized selectors can create that purpose.
@@ -39,17 +52,21 @@ export function runAdminGmailMetadata<T>(purpose: NativeAdminGmailMetadata | und
 }
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
 const denied = () => Response.json({ ok: false, error: 'social_messages_unconfirmed' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
-const unavailable = () => Response.json({ ok: false, error: 'social_messages_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+const messagesUnavailable = () => Response.json({ ok: false, error: 'social_messages_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
 
 // This POST issues only its own read purpose after native authentication and SQL
 // source checks. It cannot issue a cron purpose, reply/send intent or full review.
-export function handleAdminSocialMessages(request: Request): Promise<Response> {
-  const previous = requests.get(request);
+export function handleAdminSocialMessages(request:Request):Promise<Response>{return handleMessages(request,false);}
+export function handleAdminSocialMessagesDraftSource(request:Request):Promise<Response>{return handleMessages(request,true);}
+function handleMessages(request:Request,isDraft:boolean):Promise<Response>{
+  const originals=isDraft?draftRequests:requests,commandHeader=isDraft?'x-ytv-social-messages-draft-source-command':'x-ytv-social-messages-command';
+  const unavailable=isDraft?()=>Response.json({ok:false,error:'social_messages_draft_source_unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}):messagesUnavailable;
+  const previous = originals.get(request);
   if (previous) return previous;
   const promise = (async () => {
     const at = Date.now(), started = performance.now(), config = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
-    const adminConfig = process.env.ADMIN_EMAIL, secret = process.env.AUTH_SECRET, textEnabled=process.env.GMAIL_TEXT_READ_ENABLED;
-    const cookie = request.headers.get('cookie'), command = request.headers.get('x-ytv-social-messages-command');
+    const adminConfig = process.env.ADMIN_EMAIL, secret = process.env.AUTH_SECRET, textEnabled=process.env.GMAIL_TEXT_READ_ENABLED,draftEnabled=process.env.MESSAGES_DRAFT_PREPARE_ENABLED;
+    const cookie = request.headers.get('cookie'), command = request.headers.get(commandHeader);
     const headerOrigin = request.headers.get('origin'), contentType = request.headers.get('content-type'), url = request.url;
     let until = at + 55000, retired = false, timer: ReturnType<typeof setTimeout> | undefined, rejectStop!: (error: Error) => void;
     const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
@@ -57,10 +74,11 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
     const retire = () => { if (retired) return; retired = true; clearTimeout(timer); rejectStop(Error('social_messages_unconfirmed')); };
     const check = () => {
       if (retired || request.signal.aborted || Date.now() < at || Date.now() >= until || performance.now() < started || performance.now() >= started + 55000
+        || isDraft&&process.env.MESSAGES_DRAFT_PREPARE_ENABLED!==draftEnabled
         || (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL) !== config || process.env.ADMIN_EMAIL !== adminConfig || process.env.AUTH_SECRET !== secret || process.env.GMAIL_TEXT_READ_ENABLED !== textEnabled
         || request.method !== 'POST' || request.url !== url || request.headers.get('cookie') !== cookie || request.headers.get('origin') !== headerOrigin
-        || request.headers.get('content-type') !== contentType || request.headers.get('x-ytv-social-messages-command') !== command
-        || ['x-ytv-resume','x-ytv-recovery','x-ytv-social-preview-command','x-ytv-social-publish-command'].some(key => request.headers.has(key))) throw Error('social_messages_unconfirmed');
+        || request.headers.get('content-type') !== contentType || request.headers.get(commandHeader) !== command
+        || ['x-ytv-resume','x-ytv-recovery','x-ytv-social-preview-command','x-ytv-social-publish-command',isDraft?'x-ytv-social-messages-command':'x-ytv-social-messages-draft-source-command'].some(key => request.headers.has(key))) throw Error('social_messages_unconfirmed');
     };
     const arm = () => { clearTimeout(timer); timer = setTimeout(retire, Math.max(0, Math.min(until - Date.now(), started + 55000 - performance.now()))); };
     const wait = async <T,>(run: () => Promise<T>): Promise<T> => {
@@ -100,7 +118,9 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
       const raw = new Uint8Array(bytes); let position = 0;
       for (const chunk of chunks) { raw.set(chunk, position); position += chunk.byteLength; }
       const input: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw));
-      if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).join(',') !== 'action' || (input as {action:unknown}).action !== 'messages') return denied();
+      if(!input||typeof input!=='object'||Array.isArray(input))return denied();
+      if(isDraft){if(Object.keys(input).sort().join(',')!=='action,platform'||(input as {action:unknown}).action!=='messages-draft-source'||(input as {platform:unknown}).platform!=='gmail')return denied();}
+      else if(Object.keys(input).join(',')!=='action'||(input as {action:unknown}).action!=='messages')return denied();
       const native = await wait(() => readNativeSessionCookie(new Request(new URL('/api/auth/session', origin.origin), { headers: { cookie }, signal: request.signal })));
       if (!native || typeof native !== 'object' || Array.isArray(native)) return denied();
       const { id, sub, email, authSessionRef, iat, exp, isAdmin, requiresVerification, requiresTotp } = native;
@@ -114,27 +134,29 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
         || !Number.isFinite(account.emailVerified.getTime()) || account.emailVerified.getTime() < 0 || account.emailVerified.getTime() > at) return denied();
       const verifiedAt = account.emailVerified.getTime();
       check();
-      const purpose = Object.freeze({}) as NativeAdminYoutubeComments;
-      youtubePurposes.set(purpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,
-        remainingBeforeRead: () => { check(); return Math.min(until - Date.now(), started + 55000 - performance.now()); } }) });
-      const { readAdminYoutubeComments, consumeYoutubeComments, validateYoutubeCommentsRead } = await wait(() => import('@/lib/agent/youtube-comment-original'));
-      const receipt = await wait(() => readAdminYoutubeComments(purpose));
-      // The private live receipt is consumed before this POST retires. Its JSON
-      // projection is read-only coverage, never a reply or recovery capability.
-      const coverage = await wait(() => consumeYoutubeComments(receipt, async ({ comments: _comments, ...window }) => Object.freeze(window)));
+      if(isDraft&&draftEnabled!=='true')return unavailable();
+      let receipt:YoutubeCommentRead|undefined,coverage:Omit<YoutubeCommentWindow,'comments'>|undefined,validateYoutubeCommentsRead:((value:YoutubeCommentRead)=>void)|undefined;
+      if(!isDraft){
+        const purpose=Object.freeze({})as NativeAdminYoutubeComments;
+        youtubePurposes.set(purpose,{context:Object.freeze({at,signal:request.signal,checkBeforeRead:check,remainingBeforeRead:()=>{check();return Math.min(until-Date.now(),started+55000-performance.now());}})});
+        const reader=await wait(()=>import('@/lib/agent/youtube-comment-original'));
+        receipt=await wait(()=>reader.readAdminYoutubeComments(purpose));
+        coverage=await wait(()=>reader.consumeYoutubeComments(receipt,async({comments:_comments,...window})=>Object.freeze(window)));
+        validateYoutubeCommentsRead=reader.validateYoutubeCommentsRead;
+      }
       const gmailPurpose = Object.freeze({}) as NativeAdminGmailMetadata;
       gmailPurposes.set(gmailPurpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,
         remainingBeforeRead: () => { check(); return Math.min(until - Date.now(), started + 55000 - performance.now()); } }) });
       const { readGmailMetadata, consumeGmailMetadata, validateGmailMetadataRead, readGmailText, consumeGmailText, validateGmailTextRead } = await wait(() => import('@/lib/agent/gmail-metadata-original'));
       const gmailReceipt = await wait(() => readGmailMetadata(gmailPurpose));
       const gmail = await wait(() => consumeGmailMetadata(gmailReceipt, async ({ messages: _messages, ...window }) => Object.freeze(window)));
-      if (!coverage.configured && !gmail.configured) return unavailable();
-      let textReceipt:GmailTextRead|undefined,textCoverage:Omit<GmailTextWindow,'messages'>|undefined;
+      if (!coverage?.configured && !gmail.configured) return unavailable();
+      let textReceipt:GmailTextRead|undefined,textCoverage:Omit<GmailTextWindow,'messages'>|undefined,textPurpose:NativeAdminGmailText|undefined,draftSource:GmailTextSource|undefined;
       if(textEnabled==='true'&&gmail.configured){
-        const textPurpose=Object.freeze({}) as NativeAdminGmailText;
+        textPurpose=Object.freeze({}) as NativeAdminGmailText;
         gmailTextPurposes.set(textPurpose,{context:Object.freeze({...gmailPurposes.get(gmailPurpose)!.context,metadataPurpose:gmailPurpose,metadataRead:gmailReceipt})});
-        textReceipt=await wait(()=>readGmailText(textPurpose));
-        textCoverage=await wait(()=>consumeGmailText(textReceipt,async({messages:_messages,...window})=>Object.freeze(window)));
+        textReceipt=await wait(()=>readGmailText(textPurpose!));
+        textCoverage=await wait(()=>consumeGmailText(textReceipt,async({messages,...window})=>{if(isDraft)draftSource=messages[0];return Object.freeze(window);}));
       }
       // Re-reading the original account is a veto after network/body waits. It
       // cannot renew the session, verification date or original request budget.
@@ -142,9 +164,23 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
       if (!current || current.id !== id || current.email !== email || !(current.emailVerified instanceof Date)
         || current.emailVerified.getTime() !== verifiedAt) return denied();
       check();
-      validateYoutubeCommentsRead(receipt); validateGmailMetadataRead(gmailReceipt);if(textReceipt)validateGmailTextRead(textReceipt);
+      if(receipt)validateYoutubeCommentsRead!(receipt); validateGmailMetadataRead(gmailReceipt);if(textReceipt)validateGmailTextRead(textReceipt);
+      if(isDraft){
+        if(!textReceipt||!draftSource||textEnabled!=='true')return unavailable();
+        const live=()=>{check();validateGmailMetadataRead(gmailReceipt);validateGmailTextRead(textReceipt);};
+        const validateBeforePrepare=async()=>{live();const row=await prisma.user.findUnique({where:{id},select:{id:true,email:true,emailVerified:true}});live();if(!row||row.id!==id||row.email!==email||!(row.emailVerified instanceof Date)||row.emailVerified.getTime()!==verifiedAt)throw Error('gmail_draft_source_unconfirmed');};
+        const purpose=Object.freeze({})as NativeAdminGmailDraftSource;
+        gmailDraftPurposes.set(purpose,{context:Object.freeze({actorId:id,email,sessionRef:authSessionRef,commandRef:command,source:draftSource,at,signal:request.signal,checkBeforeRead:live,remainingBeforeRead:()=>{live();return Math.min(until-Date.now(),started+55000-performance.now());},validateBeforePrepare})});
+        const preparer=await wait(()=>import('@/lib/agent/gmail-draft-original'));
+        const inputReceipt=await wait(()=>preparer.prepareGmailDraftInput(purpose));
+        const inputCoverage=await wait(()=>preparer.consumeGmailDraftInput(inputReceipt,async()=>Object.freeze({prepared:1,platform:'gmail',acceptance:'source-only-no-model-draft-send-or-operative-acceptance'})));
+        live();
+        // Source readiness is not a generated draft or review success. The
+        // future model producer must own its admission and original result.
+        const response=Response.json({ok:false,error:'social_messages_draft_source_unavailable',gmailDraft:inputCoverage},{status:503,headers:{'Cache-Control':'no-store'}});live();return response;
+      }
       const response = Response.json({ ok: false, error: 'social_messages_unavailable',
-        youtube: coverage.configured ? { status: 'read-only', coverage } : { status: 'unavailable' },
+        youtube: coverage?.configured ? { status: 'read-only', coverage } : { status: 'unavailable' },
         gmail: gmail.configured ? { status: 'read-only-metadata', coverage: gmail } : { status: 'unavailable' },
         ...(textCoverage?{gmailText:textCoverage}:{}),
         messagesRead: { commandRef: command, userId: id, email, sessionRef: authSessionRef, asOf: at, expiresAt: until } },
@@ -153,5 +189,5 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
     } catch { return unavailable(); }
     finally { retire(); request.signal.removeEventListener('abort', retire); }
   })();
-  requests.set(request, promise); return promise;
+  originals.set(request, promise); return promise;
 }

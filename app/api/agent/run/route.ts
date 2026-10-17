@@ -6,6 +6,7 @@ import { generateAdminSocialPreview } from '@/lib/agent/content-generator';
 export const maxDuration=60;
 
 export async function POST(request: Request) {
+  if(request.headers.has('x-ytv-social-messages-draft-source-command')){const{handleAdminSocialMessagesDraftSource}=await import('@/lib/admin-social-messages');return handleAdminSocialMessagesDraftSource(request);}
   if (request.headers.has('x-ytv-social-messages-command')) {
     const { handleAdminSocialMessages } = await import('@/lib/admin-social-messages');
     return handleAdminSocialMessages(request);
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
       return handleAdminSocialPublication(request);
     }
 
+    if(action==='messages-draft-source'){const{handleAdminSocialMessagesDraftSource}=await import('@/lib/admin-social-messages');return handleAdminSocialMessagesDraftSource(request);}
     if (action === 'messages') {
       const { handleAdminSocialMessages } = await import('@/lib/admin-social-messages');
       return handleAdminSocialMessages(request);

@@ -13,8 +13,9 @@ async function fixture(o={}){
  mocks['@/lib/agent/youtube-comment-original']=reader;
  const gmail=load('lib/agent/gmail-metadata-original.ts',mocks,globals);
  mocks['@/lib/agent/gmail-metadata-original']=gmail;
- const make=(x={})=>new Request(x.url??env.AUTH_URL+'/api/agent/run',{method:x.method??'POST',headers:{cookie:f.headers().get('cookie')??'',origin:env.AUTH_URL,'content-type':'application/json','x-ytv-social-messages-command':x.command??command,...x.headers},body:x.method==='GET'?undefined:x.raw??JSON.stringify(x.body??{action:'messages'}),signal:controller.signal});
- return{f,native,reader,gmail,route,calls,pending,entered,clock,controller,env,command,timers,make,release:()=>gate.resolve(),advance(ms){clock.offset+=ms;clock.elapsed+=ms;for(const[id,t]of[...timers])if(t.at<=clock.elapsed){timers.delete(id);t.fn();}},start(req=make()){const p=route.POST(req);pending.push(p);void p.catch(()=>{});return p;}};
+ const draftInput=load('lib/agent/gmail-draft-original.ts',mocks,globals);mocks['@/lib/agent/gmail-draft-original']=draftInput;
+ const make=(x={})=>new Request(x.url??env.AUTH_URL+'/api/agent/run',{method:x.method??'POST',headers:{cookie:f.headers().get('cookie')??'',origin:env.AUTH_URL,'content-type':'application/json',[x.draft?'x-ytv-social-messages-draft-source-command':'x-ytv-social-messages-command']:x.command??command,...x.headers},body:x.method==='GET'?undefined:x.raw??JSON.stringify(x.body??(x.draft?{action:'messages-draft-source',platform:'gmail'}:{action:'messages'})),signal:controller.signal});
+ return{f,native,reader,gmail,draftInput,route,calls,pending,entered,clock,controller,env,command,timers,make,release:()=>gate.resolve(),advance(ms){clock.offset+=ms;clock.elapsed+=ms;for(const[id,t]of[...timers])if(t.at<=clock.elapsed){timers.delete(id);t.fn();}},start(req=make()){const p=route.POST(req);pending.push(p);void p.catch(()=>{});return p;}};
 }
 async function reached(b,name){let timer;try{await Promise.race([(b.entered[name]??=deferred()).promise,new Promise((_,reject)=>timer=setTimeout(()=>reject(Error('Missing messages stage '+name)),5000))]);}finally{clearTimeout(timer);}}
 async function drain(b){b.release();let count;do{count=b.pending.length;await Promise.allSettled(b.pending);await flush();}while(count!==b.pending.length);assert.equal(b.timers.size,0);}
