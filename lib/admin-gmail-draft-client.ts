@@ -1,19 +1,30 @@
 import type {GmailTextExclusions} from '@/lib/agent/gmail-metadata-original';
 export type GmailDraftOwner=Readonly<{id:string;email:string;authSessionRef:string;expiresAt:number}>;
-export type GmailDraftViewData=Readonly<{kind:'draft';from:string;subject:string;sourceText:string;content:string}>|Readonly<{kind:'no-eligible-source';scanned:number;hasMore:boolean;exclusions:GmailTextExclusions}>;
+export type GmailDraftReadCoverage=Readonly<{scanned:number;read:number;skipped:number;hasMore:boolean;exclusions:GmailTextExclusions}>;
+export type GmailDraftViewData=Readonly<{kind:'draft';from:string;subject:string;sourceText:string;content:string;coverage:GmailDraftReadCoverage}>|Readonly<{kind:'no-eligible-source';scanned:number;hasMore:boolean;exclusions:GmailTextExclusions}>;
 declare const gmailDraftView:unique symbol;
 export type GmailDraftView={readonly[gmailDraftView]:true};
 const views=new WeakMap<object,{own:object;data:GmailDraftViewData}>();
 const object=(value:unknown,keys:string[]):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===keys.length&&keys.every(k=>Object.hasOwn(value,k));
 const integer=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
 function text(value:unknown,bytes:number):value is string{return typeof value==='string'&&new TextEncoder().encode(value).byteLength<=bytes&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)&&new TextDecoder('utf-8',{fatal:true}).decode(new TextEncoder().encode(value))===value;}
+function draftCoverage(value:unknown):GmailDraftReadCoverage{
+ const keys=['attachment','alternative','html','otherMime','encoding','structure'];
+ if(!object(value,['scanned','read','skipped','hasMore','exclusions','coverage','acceptance'])||!integer(value.scanned)||value.scanned>10
+   ||!integer(value.read)||value.read<1||!integer(value.skipped)||value.read+value.skipped!==value.scanned||typeof value.hasMore!=='boolean'
+   ||value.coverage!=='at-most-ten-unread-inbox-messages-one-list-page'||value.acceptance!=='read-scope-only-not-complete-review-send-or-operative-acceptance'
+   ||!object(value.exclusions,keys))throw Error('Unconfirmed Gmail draft');
+ const e=value.exclusions;if(!Object.values(e).every(integer)||Object.values(e).reduce<number>((sum,n)=>sum+(n as number),0)!==value.skipped)throw Error('Unconfirmed Gmail draft');
+ const exclusions:GmailTextExclusions=Object.freeze({attachment:e.attachment as number,alternative:e.alternative as number,html:e.html as number,otherMime:e.otherMime as number,encoding:e.encoding as number,structure:e.structure as number});
+ return Object.freeze({scanned:value.scanned,read:value.read,skipped:value.skipped,hasMore:value.hasMore,exclusions});
+}
 function draftData(value:Record<string,unknown>):GmailDraftViewData{
  const count=value.gmailDraft,v=value.gmailDraftView;
  if(!object(count,['generated','platform','acceptance'])||count.generated!==1||count.platform!=='gmail'||count.acceptance!=='private-draft-only-no-send-or-operative-acceptance'
  ||!object(v,['platform','source','content','acceptance'])||v.platform!=='gmail'||v.acceptance!=='private-draft-view-only-no-send-or-operative-acceptance'||!object(v.source,['from','subject','text'])
  ||!text(v.source.from,2051)||!v.source.from||Array.from(v.source.from).length>513||/[\r\n\t]/.test(v.source.from)||!text(v.source.subject,2051)||Array.from(v.source.subject).length>513||/[\r\n\t]/.test(v.source.subject)
  ||!text(v.source.text,16384)||!text(v.content,8192)||!v.content.trim()||v.content.length>6000||v.content.trim().split(/\s+/u).length>200||v.content.includes('\r'))throw Error('Unconfirmed Gmail draft');
- return Object.freeze({kind:'draft',from:v.source.from,subject:v.source.subject,sourceText:v.source.text,content:v.content});
+ return Object.freeze({kind:'draft',from:v.source.from,subject:v.source.subject,sourceText:v.source.text,content:v.content,coverage:draftCoverage(value.gmailDraftCoverage)});
 }
 function noSourceData(value:Record<string,unknown>):GmailDraftViewData{
  const v=value.gmailDraftUnavailable,keys=['attachment','alternative','html','otherMime','encoding','structure'];
@@ -79,7 +90,7 @@ export function beginAdminGmailDraft(owner: GmailDraftOwner, current: () => bool
       } else { throw error(); }
       check(); const value: unknown = JSON.parse(raw); check();
       const noSource=!!value&&typeof value==='object'&&Object.hasOwn(value,'gmailDraftUnavailable');
-      if (!object(value,noSource?['ok','error','gmailDraftUnavailable','gmailDraftRead']:['ok','error','gmailDraft','gmailDraftView','gmailDraftRead']) || value.ok !== false || value.error !== 'social_messages_draft_unavailable') throw error();
+      if (!object(value,noSource?['ok','error','gmailDraftUnavailable','gmailDraftRead']:['ok','error','gmailDraft','gmailDraftView','gmailDraftCoverage','gmailDraftRead']) || value.ok !== false || value.error !== 'social_messages_draft_unavailable') throw error();
       const binding = value.gmailDraftRead;
       if (!object(binding, ['commandRef','userId','email','sessionRef','asOf','expiresAt']) || binding.commandRef !== command || binding.userId !== captured.id
         || binding.email !== captured.email || binding.sessionRef !== captured.authSessionRef || !integer(binding.asOf) || binding.asOf < at || binding.asOf > Date.now()

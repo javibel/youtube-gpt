@@ -194,6 +194,12 @@ export default function SocialAdminPage() {
           {gmailDraft.data?.kind==='draft'&&<section aria-label="Borrador Gmail para revisión" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
             <h2 className="font-semibold" style={{color:'var(--text)'}}>Borrador Gmail para revisión</h2>
             <p>No enviado. Comprueba el mensaje de origen y la respuesta antes de cualquier envío.</p>
+            <div aria-label="Alcance de la lectura del borrador Gmail">
+              <p>Lectura que acompaña a este borrador: {gmailDraft.data.coverage.scanned} mensajes examinados; {gmailDraft.data.coverage.read} con texto legible y {gmailDraft.data.coverage.skipped} sin extraer.</p>
+              <p>Este borrador corresponde a un único mensaje de esa lectura.</p>
+              {gmailDraft.data.coverage.skipped>0&&<GmailExclusionSummary counts={gmailDraft.data.coverage.exclusions}/>}
+              {gmailDraft.data.coverage.hasMore&&<p>Hay más mensajes fuera de esta lectura.</p>}
+            </div>
             <p className="break-words">De: {gmailDraft.data.from}</p>
             <p className="break-words">Asunto: {gmailDraft.data.subject||'Sin asunto'}</p>
             <div className="grid gap-4 lg:grid-cols-2">

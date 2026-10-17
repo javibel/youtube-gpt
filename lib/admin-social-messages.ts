@@ -219,7 +219,7 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
             {status:503,headers:{'Cache-Control':'no-store'}});
           check();validateGmailMetadataRead(gmailReceipt);validateGmailTextRead(textReceipt);return response;
         }
-        if(!textReceipt||!draftSource||textEnabled!=='true')return unavailable();
+        if(!textReceipt||!draftSource||!textCoverage?.configured||textCoverage.read<1||textEnabled!=='true')return unavailable();
         const live=()=>{check();validateGmailMetadataRead(gmailReceipt);validateGmailTextRead(textReceipt);};
         const validateBeforePrepare=async()=>{live();const row=await prisma.user.findUnique({where:{id},select:{id:true,email:true,emailVerified:true}});live();if(!row||row.id!==id||row.email!==email||!(row.emailVerified instanceof Date)||row.emailVerified.getTime()!==verifiedAt)throw Error('gmail_draft_source_unconfirmed');};
         if(isGeneration){
@@ -232,7 +232,12 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
             return Object.freeze({summary:Object.freeze({generated:1,platform:'gmail',acceptance:'private-draft-only-no-send-or-operative-acceptance'}),view:Object.freeze({platform:'gmail',source:Object.freeze({from:header('from'),subject:header('subject'),text:draft.message.text}),content:draft.content,acceptance:'private-draft-view-only-no-send-or-operative-acceptance'})});
           }));
           live();const expiresAt=Math.min(until,gmailTextViewExpiresAt(textReceipt));
-          const body=JSON.stringify({ok:false,error:'social_messages_draft_unavailable',gmailDraft:projection.summary,gmailDraftView:projection.view,gmailDraftRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt}});
+          const body=JSON.stringify({ok:false,error:'social_messages_draft_unavailable',gmailDraft:projection.summary,gmailDraftView:projection.view,
+            // Counts describe this same private read,not additional drafts or
+            // authority to select/adopt a different source after model waits.
+            gmailDraftCoverage:{scanned:gmail.scanned,read:textCoverage.read,skipped:textCoverage.skipped,hasMore:gmail.hasMore,
+              exclusions:textCoverage.exclusions,coverage:'at-most-ten-unread-inbox-messages-one-list-page',
+              acceptance:'read-scope-only-not-complete-review-send-or-operative-acceptance'},gmailDraftRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt}});
           if(new TextEncoder().encode(body).byteLength>65536)return unavailable();
           live();const response=new Response(body,{status:503,headers:{'Cache-Control':'no-store','Content-Type':'application/json'}});live();return response;
         }
