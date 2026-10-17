@@ -2,14 +2,27 @@ import { readNativeSessionCookie } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { ADMIN_EMAIL } from '@/lib/admin-email';
 
+declare const nativeAdminYoutubeComments: unique symbol;
+export type NativeAdminYoutubeComments = { readonly [nativeAdminYoutubeComments]: true };
+type YoutubeReadContext = Readonly<{ at: number; signal: AbortSignal; checkBeforeRead: () => void; remainingBeforeRead: () => number }>;
+const youtubePurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
 const requests = new WeakMap<Request, Promise<Response>>();
+
+// A callback may consume only a purpose already issued inside the authenticated
+// POST below. Neither callbacks nor serialized selectors can create that purpose.
+export function runAdminYoutubeComments<T>(purpose: NativeAdminYoutubeComments | undefined, run: (context: YoutubeReadContext) => Promise<T>): Promise<T> {
+  const own = purpose && youtubePurposes.get(purpose);
+  if (!own) return Promise.reject(Error('youtube_comments_unconfirmed'));
+  return (own.promise ??= Promise.resolve().then(async () => {
+    own.context.checkBeforeRead(); const value = await run(own.context); own.context.checkBeforeRead(); return value;
+  })) as Promise<T>;
+}
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
 const denied = () => Response.json({ ok: false, error: 'social_messages_unconfirmed' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
 const unavailable = () => Response.json({ ok: false, error: 'social_messages_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
 
-// This ingress owns only eligibility for its original HTTP request. No manual
-// Gmail/YouTube producer has been bound to it: it cannot mint cron purposes,
-// reserve work, send mail, adopt a result or acknowledge a successful review.
+// This POST issues only its own read purpose after native authentication and SQL
+// source checks. It cannot issue a cron purpose, reply/send intent or full review.
 export function handleAdminSocialMessages(request: Request): Promise<Response> {
   const previous = requests.get(request);
   if (previous) return previous;
@@ -79,7 +92,27 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
       const account = await wait(() => prisma.user.findUnique({ where: { id }, select: { id: true, email: true, emailVerified: true } }));
       if (!account || account.id !== id || account.email !== email || !(account.emailVerified instanceof Date)
         || !Number.isFinite(account.emailVerified.getTime()) || account.emailVerified.getTime() < 0 || account.emailVerified.getTime() > at) return denied();
-      check(); const response = unavailable(); check(); return response;
+      const verifiedAt = account.emailVerified.getTime();
+      check();
+      const purpose = Object.freeze({}) as NativeAdminYoutubeComments;
+      youtubePurposes.set(purpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,
+        remainingBeforeRead: () => { check(); return Math.min(until - Date.now(), started + 55000 - performance.now()); } }) });
+      const { readAdminYoutubeComments, consumeYoutubeComments } = await wait(() => import('@/lib/agent/youtube-comment-original'));
+      const receipt = await wait(() => readAdminYoutubeComments(purpose));
+      // The private live receipt is consumed before this POST retires. Its JSON
+      // projection is read-only coverage, never a reply or recovery capability.
+      const coverage = await wait(() => consumeYoutubeComments(receipt, async ({ comments: _comments, ...window }) => Object.freeze(window)));
+      if (!coverage.configured) return unavailable();
+      // Re-reading the original account is a veto after network/body waits. It
+      // cannot renew the session, verification date or original request budget.
+      const current = await wait(() => prisma.user.findUnique({ where: { id }, select: { id: true, email: true, emailVerified: true } }));
+      if (!current || current.id !== id || current.email !== email || !(current.emailVerified instanceof Date)
+        || current.emailVerified.getTime() !== verifiedAt) return denied();
+      check();
+      const response = Response.json({ ok: false, error: 'social_messages_unavailable',
+        youtube: { status: 'read-only', coverage }, gmail: { status: 'unavailable' } },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } });
+      check(); return response;
     } catch { return unavailable(); }
     finally { retire(); request.signal.removeEventListener('abort', retire); }
   })();

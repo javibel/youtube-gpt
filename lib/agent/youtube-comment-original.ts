@@ -1,15 +1,16 @@
-/** Native evening comment read only. The private result owns its original
+/** Native cron or authenticated manual comment read only. The private result owns its original
  * GET/body/window;it is data,never permission to generate or publish a reply.
  * API shape: https://developers.google.com/youtube/v3/docs/commentThreads/list
  * https://developers.google.com/youtube/v3/docs/commentThreads
  */
 import {runCronYoutubeComments,runCronYoutubeReplies,type NativeCronYoutubeReplies,type NativeCronYoutubeComments} from '@/lib/cron-dispatch-original';
+import type {NativeAdminYoutubeComments} from '@/lib/admin-social-messages';
 declare const youtubeCommentRead:unique symbol;
 export type YoutubeCommentRead={readonly[youtubeCommentRead]:true};
 export type YoutubeCommentSource=Readonly<{threadId:string;commentId:string;channelId:string;videoId:string|null;authorChannelId:string|null;authorName:string;text:string;publishedAt:string;updatedAt:string;canReply:boolean}>;
 export type YoutubeCommentWindow=Readonly<{configured:boolean;pages:number;scanned:number;eligible:number;hasMore:boolean;comments:readonly YoutubeCommentSource[];coverage:'at-most-three-pages-within-original-budget';acceptance:'read-only-not-reply-consent-or-operative-freshness'}>;
 type Context=Readonly<{at:number;signal:AbortSignal;checkBeforeRead:()=>void;remainingBeforeRead:()=>number}>;
-const requests=new WeakMap<object,Promise<YoutubeCommentRead>>(),reads=new WeakMap<object,{original:object;context:Context;window:YoutubeCommentWindow;replyUsed?:boolean;promise?:Promise<unknown>}>();
+const requests=new WeakMap<object,Promise<YoutubeCommentRead>>(),manualRequests=new WeakMap<object,Promise<YoutubeCommentRead>>(),reads=new WeakMap<object,{original:object;context:Context;window:YoutubeCommentWindow;replyUsed?:boolean;promise?:Promise<unknown>}>();
 const KEY=process.env.YOUTUBE_API_KEY,CHANNEL=process.env.YOUTUBE_CHANNEL_ID,key=KEY?.trim(),channel=CHANNEL?.trim(),nativeFetch=globalThis.fetch;
 const endpoint='https://www.googleapis.com/youtube/v3/commentThreads';
 const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
@@ -38,14 +39,21 @@ async function page(url:string,context:Context):Promise<unknown>{
  }finally{clearTimeout(timer);context.signal.removeEventListener('abort',abort);controller.signal.removeEventListener('abort',cancelRead);if(cancel)await cancel;if(reader&&!finished)await reader.cancel().catch(()=>{});controller.abort();reader?.releaseLock();}
 }
 export function readYoutubeComments(original?:NativeCronYoutubeComments):Promise<YoutubeCommentRead>{
- if(!original||typeof original!=='object')return Promise.reject(Error('youtube_comments_unconfirmed'));const previous=requests.get(original);if(previous)return previous;
- const pending=runCronYoutubeComments(original,async native=>{const check=()=>{native.checkBeforeRead();if(process.env.YOUTUBE_API_KEY!==KEY||process.env.YOUTUBE_CHANNEL_ID!==CHANNEL)throw Error('youtube_comments_unconfirmed');},context=Object.freeze({...native,checkBeforeRead:check});check();
+ return readComments(original,requests,run=>runCronYoutubeComments(original,run));
+}
+// Distinct native issuer: no fake cron Request, bearer secret or DTO conversion.
+export function readAdminYoutubeComments(original?:NativeAdminYoutubeComments):Promise<YoutubeCommentRead>{
+ return readComments(original,manualRequests,async run=>{const {runAdminYoutubeComments}=await import('@/lib/admin-social-messages');return runAdminYoutubeComments(original,run);});
+}
+function readComments(original:object|undefined,owners:WeakMap<object,Promise<YoutubeCommentRead>>,authorize:(run:(context:Context)=>Promise<YoutubeCommentRead>)=>Promise<YoutubeCommentRead>):Promise<YoutubeCommentRead>{
+ if(!original||typeof original!=='object')return Promise.reject(Error('youtube_comments_unconfirmed'));const previous=owners.get(original);if(previous)return previous;
+ const pending=authorize(async native=>{const check=()=>{native.checkBeforeRead();if(process.env.YOUTUBE_API_KEY!==KEY||process.env.YOUTUBE_CHANNEL_ID!==CHANNEL)throw Error('youtube_comments_unconfirmed');},context=Object.freeze({...native,checkBeforeRead:check});check();
  const configured=!!key&&key.length<=4096&&!/[\r\n]/.test(key)&&channelId(channel),comments:YoutubeCommentSource[]=[],tokens=new Set<string>(),ids=new Set<string>();let pages=0,next:string|undefined;
  if(configured)do{check();const url=new URL(endpoint);url.searchParams.set('part','snippet');url.searchParams.set('allThreadsRelatedToChannelId',channel!);url.searchParams.set('order','time');url.searchParams.set('maxResults','20');url.searchParams.set('textFormat','plainText');url.searchParams.set('key',key!);if(next)url.searchParams.set('pageToken',next);
   const value=parse(await page(url.toString(),context),context);check();pages++;for(const row of value.comments){if(ids.has(row.commentId))throw Error('youtube_comments_unconfirmed');ids.add(row.commentId);comments.push(row);}next=value.next;if(next){if(tokens.has(next))throw Error('youtube_comments_unconfirmed');tokens.add(next);}
  }while(next&&pages<3);
  check();const window:YoutubeCommentWindow=Object.freeze({configured,pages,scanned:comments.length,eligible:comments.filter(c=>c.canReply).length,hasMore:!!next,comments:Object.freeze(comments),coverage:'at-most-three-pages-within-original-budget',acceptance:'read-only-not-reply-consent-or-operative-freshness'}),receipt=Object.freeze({})as YoutubeCommentRead;reads.set(receipt,{original,context,window});return receipt;
- }).then(value=>{if(!value||typeof value!=='object'||reads.get(value)?.original!==original)throw Error('youtube_comments_unconfirmed');return value;}).catch(()=>{throw Error('youtube_comments_unconfirmed');});requests.set(original,pending);return pending;
+ }).then(value=>{if(!value||typeof value!=='object'||reads.get(value)?.original!==original)throw Error('youtube_comments_unconfirmed');return value;}).catch(()=>{throw Error('youtube_comments_unconfirmed');});owners.set(original,pending);return pending;
 }
 export function consumeYoutubeComments<T>(receipt:YoutubeCommentRead|undefined,run:(window:YoutubeCommentWindow)=>Promise<T>):Promise<T>{
  const own=receipt&&reads.get(receipt);if(!own||own.replyUsed)return Promise.reject(Error('youtube_comments_unconfirmed'));
