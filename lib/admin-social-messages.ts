@@ -177,8 +177,13 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
         youtubeDraftPurposes.set(purpose,{context:Object.freeze({actorId:id,email,sessionRef:authSessionRef,commandRef:command,verifiedAt,source,at,signal:request.signal,checkBeforeRead:live,remainingBeforeRead:()=>{live();return Math.min(until-Date.now(),started+55000-performance.now());},validateBeforeGenerate,validateSource:()=>validateDraftSource!(receipt!,source)})});
         const producer=await wait(()=>import('@/lib/agent/youtube-draft-original'));
         const result=await wait(()=>producer.generateAdminYoutubeDraft(purpose));
-        const summary=await wait(()=>producer.consumeAdminYoutubeDraft(result,async()=>Object.freeze({generated:1,platform:'youtube',acceptance:'private-draft-only-no-reply-or-operative-acceptance'})));
-        live();const response=Response.json({ok:false,error:'social_youtube_draft_unavailable',youtubeDraft:summary},{status:503,headers:{'Cache-Control':'no-store'}});live();return response;
+        const projection=await wait(()=>producer.consumeAdminYoutubeDraft(result,async draft=>{
+          const source=draft.comment,points=Array.from(source.authorName),author=points.length>512?points.slice(0,512).join('')+'…':source.authorName;
+          return Object.freeze({summary:Object.freeze({generated:1,platform:'youtube',acceptance:'private-draft-only-no-reply-or-operative-acceptance'}),view:Object.freeze({platform:'youtube',source:Object.freeze({channelId:source.channelId,commentId:source.commentId,threadId:source.threadId,videoId:source.videoId,author,text:source.text,publishedAt:source.publishedAt,updatedAt:source.updatedAt}),content:draft.content,acceptance:'private-draft-view-only-no-reply-or-operative-acceptance'})});
+        }));
+        live();const body=JSON.stringify({ok:false,error:'social_youtube_draft_unavailable',youtubeDraft:projection.summary,youtubeDraftView:projection.view,youtubeDraftRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt:until}});
+        if(new TextEncoder().encode(body).byteLength>65536)return unavailable();
+        live();const response=new Response(body,{status:503,headers:{'Cache-Control':'no-store','Content-Type':'application/json'}});live();return response;
       }
       const gmailPurpose = Object.freeze({}) as NativeAdminGmailMetadata;
       gmailPurposes.set(gmailPurpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,

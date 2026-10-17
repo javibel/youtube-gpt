@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAdminSocialPreview } from '@/lib/use-admin-social-preview';
 import { useAdminSocialPublication } from '@/lib/use-admin-social-publication';
 import { useAdminGmailDraft } from '@/lib/use-admin-gmail-draft';
+import { useAdminYoutubeDraft } from '@/lib/use-admin-youtube-draft';
 import { useAdminSocialMessages } from '@/lib/use-admin-social-messages';
 import { useAdminSocialState } from '@/lib/use-admin-social-state';
 
@@ -73,6 +74,7 @@ export default function SocialAdminPage() {
   const publication = useAdminSocialPublication(session,status,actionInFlight);
   const messages = useAdminSocialMessages(session,status,actionInFlight);
   const gmailDraft=useAdminGmailDraft(session,status,actionInFlight);
+  const youtubeDraft=useAdminYoutubeDraft(session,status,actionInFlight);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -141,6 +143,9 @@ export default function SocialAdminPage() {
             <button onClick={gmailDraft.start} disabled={!gmailDraft.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
               {gmailDraft.running?'Preparando borrador…':'Preparar borrador Gmail'}
             </button>
+            <button onClick={youtubeDraft.start} disabled={!youtubeDraft.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
+              {youtubeDraft.running?'Preparando borrador…':'Preparar borrador YouTube'}
+            </button>
             <button onClick={preview.start} disabled={!preview.canStart} className="px-5 py-2.5 text-sm rounded-xl font-semibold transition" style={{ background: 'var(--ink-3)', border: '1px solid var(--line-2)', color: 'var(--text-dim)' }}>
               Test (sin publicar)
             </button>
@@ -172,6 +177,18 @@ export default function SocialAdminPage() {
             <div className="grid gap-4 lg:grid-cols-2">
               <div><h3 className="font-semibold mb-2">Mensaje de origen (texto plano)</h3><pre className="whitespace-pre-wrap break-words overflow-auto max-h-72 font-sans text-sm">{gmailDraft.data.sourceText}</pre></div>
               <div><h3 className="font-semibold mb-2">Respuesta propuesta</h3><pre className="whitespace-pre-wrap break-words overflow-auto max-h-72 font-sans text-sm">{gmailDraft.data.content}</pre></div>
+            </div>
+            <p>La revisión completa sigue pendiente.</p>
+          </section>}
+          {youtubeDraft.message&&<p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{youtubeDraft.message}</p>}
+          {youtubeDraft.data&&<section aria-label="Borrador YouTube para revisión" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
+            <h2 className="font-semibold" style={{color:'var(--text)'}}>Borrador YouTube para revisión</h2>
+            <p>No publicado. Comprueba el comentario de origen y la respuesta antes de cualquier publicación.</p>
+            <p className="break-words">Autor: {youtubeDraft.data.author}</p>
+            <p>Publicado: {fmt(youtubeDraft.data.publishedAt)}</p>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div><h3 className="font-semibold mb-2">Comentario de origen (texto plano)</h3><pre className="whitespace-pre-wrap break-words overflow-auto max-h-72 font-sans text-sm">{youtubeDraft.data.sourceText}</pre></div>
+              <div><h3 className="font-semibold mb-2">Respuesta propuesta</h3><pre className="whitespace-pre-wrap break-words overflow-auto max-h-72 font-sans text-sm">{youtubeDraft.data.content}</pre></div>
             </div>
             <p>La revisión completa sigue pendiente.</p>
           </section>}
