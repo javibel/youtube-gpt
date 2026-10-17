@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { adminSocialMessagesBlocked, beginAdminSocialMessages, type SocialMessagesOwner } from '@/lib/admin-social-messages-client';
+import { adminSocialMessagesBlocked, beginAdminSocialMessages, type SocialMessagesOwner, type SocialMessagesPartialView } from '@/lib/admin-social-messages-client';
 type Session = { user?: { id?: string; email?: string|null; authSessionRef?: string; isAdmin?: boolean; requiresTotp?: boolean; requiresVerification?: boolean }; expires?: string } | null;
 type Writer = ReturnType<typeof beginAdminSocialMessages>;
 type Scope = { key: string; mounted: boolean; running: boolean; writer: Writer|null; current: () => boolean };
@@ -12,7 +12,7 @@ export function useAdminSocialMessages(session: Session, status: string, busy: {
   const live = useRef({key,eligible}); live.current = {key,eligible};
   const active = useRef<Scope|null>(null), lock = useRef<Scope|null>(null);
   const owner: SocialMessagesOwner = {id:id ?? '',email:email ?? '',authSessionRef:authSessionRef ?? '',expiresAt};
-  const [view,setView] = useState<{scope:Scope|null;phase:'idle'|'pending'|'unconfirmed'}>({scope:null,phase:'idle'});
+  const [view,setView] = useState<{scope:Scope|null;phase:'idle'|'pending'|'unconfirmed'|'partial';read?:SocialMessagesPartialView}>({scope:null,phase:'idle'});
   useEffect(() => {
     const scope: Scope = {key,mounted:true,running:false,writer:null,current:()=>false}; active.current = scope;
     scope.current = () => scope.mounted && active.current === scope && live.current.key === key && live.current.eligible && document.visibilityState === 'visible' && document.hasFocus();
@@ -34,12 +34,16 @@ export function useAdminSocialMessages(session: Session, status: string, busy: {
       if(visible.mounted&&active.current===visible&&live.current.key===visible.key)setView({scope:visible,phase:'unconfirmed'});
     });});
     visible.writer=writer;setView({scope:visible,phase:'pending'});
-    void writer.original.catch(()=>writer.retire()).finally(()=>{
+    void writer.original.then(read=>{
+      if(visible.writer!==writer||!visible.current()||!writer.display(read)){writer.retire();return;}
+      setView({scope:visible,phase:'partial',read});
+    }).catch(()=>writer.retire()).finally(()=>{
       if(visible.writer!==writer)return;visible.running=false;unlockUnissued(writer);
       if(!writer.sent()&&visible.current())setView({scope:visible,phase:'unconfirmed'});
     });
   };
   const shown = visible && view.scope===visible ? view : null;
-  return {start,running:shown?.phase==='pending',canStart:!!visible&&visible.current()&&!visible.running&&!busy.current&&!adminSocialMessagesBlocked(owner),
+  const data=shown?.phase==='partial'?shown.scope?.writer?.display(shown.read)??null:null;
+  return {start,data,running:shown?.phase==='pending',canStart:!!visible&&visible.current()&&!visible.running&&!busy.current&&!adminSocialMessagesBlocked(owner),
     message:shown?.phase==='pending'?'Revisando mensajes…':shown?.phase==='unconfirmed'?'No se pudo confirmar la revisión. No se ha reintentado.':''};
 }

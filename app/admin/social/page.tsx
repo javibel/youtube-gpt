@@ -167,6 +167,22 @@ export default function SocialAdminPage() {
             </button>
           </div>
           {messages.message && <p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{messages.message}</p>}
+          {messages.data && (
+            <section aria-label="Lectura parcial de mensajes" role="status" className="yv-card mt-3 p-4 space-y-2 text-sm" style={{color:'var(--text-dim)'}}>
+              <h2 className="font-semibold" style={{color:'var(--text)'}}>Lectura parcial</h2>
+              <p>La revisión completa sigue pendiente.</p>
+              <div>
+                <p>{messages.data.youtube.status==='unavailable'?'YouTube: lectura no disponible.':
+                  'YouTube: '+messages.data.youtube.scanned+' '+(messages.data.youtube.scanned===1?'comentario leído':'comentarios leídos')+' en '+messages.data.youtube.pages+' '+(messages.data.youtube.pages===1?'página.':'páginas.')}</p>
+                {messages.data.youtube.status==='read-only'&&messages.data.youtube.hasMore&&<p>Hay más comentarios fuera de esta lectura.</p>}
+              </div>
+              <div>
+                <p>{messages.data.gmail.status==='unavailable'?'Gmail: lectura no disponible.':
+                  'Gmail: '+messages.data.gmail.scanned+' '+(messages.data.gmail.scanned===1?'mensaje':'mensajes')+' (sólo cabeceras).'}</p>
+                {messages.data.gmail.status==='read-only-metadata'&&messages.data.gmail.hasMore&&<p>Hay más mensajes fuera de esta lectura.</p>}
+              </div>
+            </section>
+          )}
           {preview.message && <p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{preview.message}</p>}
           {publication.message && <p role="status" className="mt-3 text-sm" style={{color:publication.data?'#22c55e':'var(--text-dim)'}}>{publication.message}</p>}
         </section>

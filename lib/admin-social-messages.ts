@@ -129,7 +129,8 @@ export function handleAdminSocialMessages(request: Request): Promise<Response> {
       validateYoutubeCommentsRead(receipt); validateGmailMetadataRead(gmailReceipt);
       const response = Response.json({ ok: false, error: 'social_messages_unavailable',
         youtube: coverage.configured ? { status: 'read-only', coverage } : { status: 'unavailable' },
-        gmail: gmail.configured ? { status: 'read-only-metadata', coverage: gmail } : { status: 'unavailable' } },
+        gmail: gmail.configured ? { status: 'read-only-metadata', coverage: gmail } : { status: 'unavailable' },
+        messagesRead: { commandRef: command, userId: id, email, sessionRef: authSessionRef, asOf: at, expiresAt: until } },
         { status: 503, headers: { 'Cache-Control': 'no-store' } });
       check(); return response;
     } catch { return unavailable(); }
