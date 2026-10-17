@@ -51,6 +51,7 @@ export function runAdminYoutubeDraft<T>(purpose:NativeAdminYoutubeDraft|undefine
 type YoutubeReadContext = Readonly<{ at: number; signal: AbortSignal; checkBeforeRead: () => void; remainingBeforeRead: () => number }>;
 const youtubePurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
 const gmailPurposes = new WeakMap<object, { context: YoutubeReadContext; promise?: Promise<unknown> }>();
+const youtubeReviewRequests=new WeakMap<Request,Promise<Response>>();
 const reviewRequests=new WeakMap<Request,Promise<Response>>();
 const requests = new WeakMap<Request, Promise<Response>>(),draftRequests=new WeakMap<Request,Promise<Response>>(),generationRequests=new WeakMap<Request,Promise<Response>>(),youtubeDraftRequests=new WeakMap<Request,Promise<Response>>();
 
@@ -81,11 +82,12 @@ export function handleAdminSocialMessages(request:Request):Promise<Response>{ret
 export function handleAdminSocialMessagesDraftSource(request:Request):Promise<Response>{return handleMessages(request,'source');}
 export function handleAdminSocialMessagesDraft(request:Request):Promise<Response>{return handleMessages(request,'generate');}
 export function handleAdminSocialYoutubeDraft(request:Request):Promise<Response>{return handleMessages(request,'youtube');}
+export function handleAdminYoutubeReview(request:Request):Promise<Response>{return handleMessages(request,'youtube-review');}
 export function handleAdminGmailReview(request:Request):Promise<Response>{return handleMessages(request,'review');}
-function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube'|'review'):Promise<Response>{
-  const isReview=mode==='review',isDraft=mode!=='read'&&!isReview,isGeneration=mode==='generate',isYoutube=mode==='youtube';
-  const originals=isReview?reviewRequests:isYoutube?youtubeDraftRequests:isGeneration?generationRequests:isDraft?draftRequests:requests,commandHeader=isReview?'x-ytv-social-gmail-review-command':isYoutube?'x-ytv-social-youtube-draft-command':isGeneration?'x-ytv-social-messages-draft-command':isDraft?'x-ytv-social-messages-draft-source-command':'x-ytv-social-messages-command';
-  const unavailable=isReview?()=>Response.json({ok:false,error:'social_gmail_review_unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}):isDraft?()=>Response.json({ok:false,error:isYoutube?'social_youtube_draft_unavailable':isGeneration?'social_messages_draft_unavailable':'social_messages_draft_source_unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}):messagesUnavailable;
+function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube'|'review'|'youtube-review'):Promise<Response>{
+  const isYoutubeReview=mode==='youtube-review',isReview=mode==='review',isDraft=mode!=='read'&&!isReview&&!isYoutubeReview,isGeneration=mode==='generate',isYoutube=mode==='youtube';
+  const originals=isYoutubeReview?youtubeReviewRequests:isReview?reviewRequests:isYoutube?youtubeDraftRequests:isGeneration?generationRequests:isDraft?draftRequests:requests,commandHeader=isYoutubeReview?'x-ytv-social-youtube-review-command':isReview?'x-ytv-social-gmail-review-command':isYoutube?'x-ytv-social-youtube-draft-command':isGeneration?'x-ytv-social-messages-draft-command':isDraft?'x-ytv-social-messages-draft-source-command':'x-ytv-social-messages-command';
+  const unavailable=isYoutubeReview?()=>Response.json({ok:false,error:'social_youtube_review_unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}):isReview?()=>Response.json({ok:false,error:'social_gmail_review_unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}):isDraft?()=>Response.json({ok:false,error:isYoutube?'social_youtube_draft_unavailable':isGeneration?'social_messages_draft_unavailable':'social_messages_draft_source_unavailable'},{status:503,headers:{'Cache-Control':'no-store'}}):messagesUnavailable;
   const previous = originals.get(request);
   if (previous) return previous;
   const promise = (async () => {
@@ -103,7 +105,7 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
         || (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL) !== config || process.env.ADMIN_EMAIL !== adminConfig || process.env.AUTH_SECRET !== secret || process.env.GMAIL_TEXT_READ_ENABLED !== textEnabled
         || request.method !== 'POST' || request.url !== url || request.headers.get('cookie') !== cookie || request.headers.get('origin') !== headerOrigin
         || request.headers.get('content-type') !== contentType || request.headers.get(commandHeader) !== command
-        || ['x-ytv-resume','x-ytv-recovery','x-ytv-social-preview-command','x-ytv-social-publish-command','x-ytv-social-messages-command','x-ytv-social-messages-draft-source-command','x-ytv-social-messages-draft-command','x-ytv-social-youtube-draft-command','x-ytv-social-gmail-review-command'].some(key => key!==commandHeader&&request.headers.has(key))) throw Error('social_messages_unconfirmed');
+        || ['x-ytv-resume','x-ytv-recovery','x-ytv-social-preview-command','x-ytv-social-publish-command','x-ytv-social-messages-command','x-ytv-social-messages-draft-source-command','x-ytv-social-messages-draft-command','x-ytv-social-youtube-draft-command','x-ytv-social-gmail-review-command','x-ytv-social-youtube-review-command'].some(key => key!==commandHeader&&request.headers.has(key))) throw Error('social_messages_unconfirmed');
     };
     const arm = () => { clearTimeout(timer); timer = setTimeout(retire, Math.max(0, Math.min(until - Date.now(), started + 55000 - performance.now()))); };
     const wait = async <T,>(run: () => Promise<T>): Promise<T> => {
@@ -144,7 +146,7 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
       for (const chunk of chunks) { raw.set(chunk, position); position += chunk.byteLength; }
       const input: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw));
       if(!input||typeof input!=='object'||Array.isArray(input))return denied();
-      if(isDraft||isReview){if(Object.keys(input).sort().join(',')!=='action,platform'||(input as {action:unknown}).action!==(isReview?'messages-gmail-review':isYoutube?'messages-youtube-draft':isGeneration?'messages-draft':'messages-draft-source')||(input as {platform:unknown}).platform!==(isYoutube?'youtube':'gmail'))return denied();}
+      if(isDraft||isReview||isYoutubeReview){if(Object.keys(input).sort().join(',')!=='action,platform'||(input as {action:unknown}).action!==(isYoutubeReview?'messages-youtube-review':isReview?'messages-gmail-review':isYoutube?'messages-youtube-draft':isGeneration?'messages-draft':'messages-draft-source')||(input as {platform:unknown}).platform!==(isYoutube||isYoutubeReview?'youtube':'gmail'))return denied();}
       else if(Object.keys(input).join(',')!=='action'||(input as {action:unknown}).action!=='messages')return denied();
       const native = await wait(() => readNativeSessionCookie(new Request(new URL('/api/auth/session', origin.origin), { headers: { cookie }, signal: request.signal })));
       if (!native || typeof native !== 'object' || Array.isArray(native)) return denied();
@@ -160,15 +162,29 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'|'youtube
       const verifiedAt = account.emailVerified.getTime();
       check();
       if(isReview&&textEnabled!=='true'||mode==='source'&&draftEnabled!=='true'||isGeneration&&generationEnabled!=='true'||isYoutube&&youtubeDraftEnabled!=='true')return unavailable();
-      let youtubeSource:YoutubeCommentSource|undefined,validateDraftSource:((receipt:YoutubeCommentRead,source:YoutubeCommentSource)=>Promise<void>)|undefined;
+      let youtubeReviewSources:readonly YoutubeCommentSource[]=[];let youtubeSource:YoutubeCommentSource|undefined,validateDraftSource:((receipt:YoutubeCommentRead,source:YoutubeCommentSource)=>Promise<void>)|undefined;
       let receipt:YoutubeCommentRead|undefined,coverage:Omit<YoutubeCommentWindow,'comments'>|undefined,validateYoutubeCommentsRead:((value:YoutubeCommentRead)=>void)|undefined;
       if(!isDraft&&!isReview||isYoutube){
         const purpose=Object.freeze({})as NativeAdminYoutubeComments;
         youtubePurposes.set(purpose,{context:Object.freeze({at,signal:request.signal,checkBeforeRead:check,remainingBeforeRead:()=>{check();return Math.min(until-Date.now(),started+55000-performance.now());}})});
         const reader=await wait(()=>import('@/lib/agent/youtube-comment-original'));
         receipt=await wait(()=>reader.readAdminYoutubeComments(purpose));
-        coverage=await wait(()=>reader.consumeYoutubeComments(receipt,async({comments,...window})=>{if(isYoutube)youtubeSource=comments.find(v=>v.canReply);return Object.freeze(window);}));
+        coverage=await wait(()=>reader.consumeYoutubeComments(receipt,async({comments,...window})=>{if(isYoutube)youtubeSource=comments.find(v=>v.canReply);if(isYoutubeReview)youtubeReviewSources=comments.filter(v=>v.canReply);return Object.freeze(window);}));
         validateYoutubeCommentsRead=reader.validateYoutubeCommentsRead;validateDraftSource=reader.validateAdminYoutubeDraftComment;
+      }
+      if(isYoutubeReview){
+        if(!receipt||!coverage?.configured||youtubeReviewSources.length!==coverage.eligible)return unavailable();
+        const live=()=>{check();validateYoutubeCommentsRead!(receipt!);};
+        const row=await wait(()=>prisma.user.findUnique({where:{id},select:{id:true,email:true,emailVerified:true}}));live();
+        if(!row||row.id!==id||row.email!==email||!(row.emailVerified instanceof Date)||row.emailVerified.getTime()!==verifiedAt)return denied();
+        const comments=youtubeReviewSources.map(source=>{const points=Array.from(source.authorName);return Object.freeze({author:points.length>512?points.slice(0,512).join('')+'…':source.authorName,text:source.text});});
+        // Data from this one original read only;no identifiers,source selection,
+        // draft/reply purpose,model,send or recovery authority from this JSON.
+        const body=JSON.stringify({ok:false,error:'social_youtube_review_unavailable',youtubeReview:{pages:coverage.pages,scanned:coverage.scanned,eligible:coverage.eligible,hasMore:coverage.hasMore,comments,
+          coverage:'at-most-three-pages-within-original-budget',acceptance:'private-read-only-not-draft-reply-or-operative-acceptance'},
+          youtubeReviewRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt:until}});
+        if(new TextEncoder().encode(body).byteLength>3145728)return unavailable();
+        live();const response=new Response(body,{status:503,headers:{'Cache-Control':'no-store','Content-Type':'application/json'}});live();return response;
       }
       if(isYoutube){
         if(!receipt||!coverage?.configured)return unavailable();

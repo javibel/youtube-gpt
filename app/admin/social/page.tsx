@@ -7,6 +7,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useEffect, useState, useRef } from 'react';
 import { useAdminSocialPreview } from '@/lib/use-admin-social-preview';
 import { useAdminSocialPublication } from '@/lib/use-admin-social-publication';
+import { useAdminYoutubeReview } from '@/lib/use-admin-youtube-review';
 import { useAdminGmailReview } from '@/lib/use-admin-gmail-review';
 import { useAdminGmailDraft } from '@/lib/use-admin-gmail-draft';
 import { useAdminYoutubeDraft } from '@/lib/use-admin-youtube-draft';
@@ -85,6 +86,7 @@ export default function SocialAdminPage() {
   const preview = useAdminSocialPreview(session,status,actionInFlight);
   const publication = useAdminSocialPublication(session,status,actionInFlight);
   const messages = useAdminSocialMessages(session,status,actionInFlight);
+  const youtubeReview=useAdminYoutubeReview(session,status,actionInFlight);
   const gmailReview=useAdminGmailReview(session,status,actionInFlight);
   const gmailDraft=useAdminGmailDraft(session,status,actionInFlight);
   const youtubeDraft=useAdminYoutubeDraft(session,status,actionInFlight);
@@ -153,6 +155,9 @@ export default function SocialAdminPage() {
             <button onClick={messages.start} disabled={!messages.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl">
               {messages.running ? 'Revisando...' : 'Revisar mensajes'}
             </button>
+            <button onClick={youtubeReview.start} disabled={!youtubeReview.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
+              {youtubeReview.running?'Leyendo YouTube…':'Revisar comentarios YouTube'}
+            </button>
             <button onClick={gmailReview.start} disabled={!gmailReview.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
               {gmailReview.running?'Leyendo Gmail…':'Revisar textos Gmail'}
             </button>
@@ -187,6 +192,19 @@ export default function SocialAdminPage() {
               </div>
             </section>
           )}
+          {youtubeReview.message&&<p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{youtubeReview.message}</p>}
+          {youtubeReview.data&&<section aria-label="Comentarios YouTube para revisión manual" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
+            <h2 className="font-semibold" style={{color:'var(--text)'}}>Comentarios YouTube para revisión manual</h2>
+            <p>{youtubeReview.data.scanned} comentarios examinados en {youtubeReview.data.pages} páginas; {youtubeReview.data.eligible} seleccionables y {youtubeReview.data.scanned-youtubeReview.data.eligible} sin seleccionar.</p>
+            <p>Esta lectura no prepara borradores ni envía respuestas.</p>
+            {youtubeReview.data.hasMore&&<p>Hay más comentarios fuera de esta lectura.</p>}
+            {youtubeReview.data.comments.length===0&&<p>No hay comentarios seleccionables en esta lectura.</p>}
+            {youtubeReview.data.comments.map((comment,index)=><article key={index} className="rounded-xl p-4 space-y-2" style={{background:'var(--ink-3)',border:'1px solid var(--line)'}}>
+              <h3 className="font-semibold" style={{color:'var(--text)'}}>Comentario {index+1}</h3>
+              <p>Autor: {comment.author}</p><div className="whitespace-pre-wrap break-words max-h-72 overflow-auto">{comment.text}</div>
+            </article>)}
+            <p>La revisión completa sigue pendiente.</p>
+          </section>}
           {gmailReview.message&&<p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{gmailReview.message}</p>}
           {gmailReview.data&&<section aria-label="Textos Gmail para revisión manual" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
             <h2 className="font-semibold" style={{color:'var(--text)'}}>Textos Gmail para revisión manual</h2>

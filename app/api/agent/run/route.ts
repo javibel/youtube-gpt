@@ -6,6 +6,7 @@ import { generateAdminSocialPreview } from '@/lib/agent/content-generator';
 export const maxDuration=60;
 
 export async function POST(request: Request) {
+  if(request.headers.has('x-ytv-social-youtube-review-command')){const{handleAdminYoutubeReview}=await import('@/lib/admin-social-messages');return handleAdminYoutubeReview(request);}
   if(request.headers.has('x-ytv-social-gmail-review-command')){const{handleAdminGmailReview}=await import('@/lib/admin-social-messages');return handleAdminGmailReview(request);}
   if(request.headers.has('x-ytv-social-youtube-draft-command')){const{handleAdminSocialYoutubeDraft}=await import('@/lib/admin-social-messages');return handleAdminSocialYoutubeDraft(request);}
   if(request.headers.has('x-ytv-social-messages-draft-command')){const{handleAdminSocialMessagesDraft}=await import('@/lib/admin-social-messages');return handleAdminSocialMessagesDraft(request);}
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
       return handleAdminSocialPublication(request);
     }
 
+    if(action==='messages-youtube-review'){const{handleAdminYoutubeReview}=await import('@/lib/admin-social-messages');return handleAdminYoutubeReview(request);}
     if(action==='messages-gmail-review'){const{handleAdminGmailReview}=await import('@/lib/admin-social-messages');return handleAdminGmailReview(request);}
     if(action==='messages-youtube-draft'){const{handleAdminSocialYoutubeDraft}=await import('@/lib/admin-social-messages');return handleAdminSocialYoutubeDraft(request);}
     if(action==='messages-draft'){const{handleAdminSocialMessagesDraft}=await import('@/lib/admin-social-messages');return handleAdminSocialMessagesDraft(request);}
