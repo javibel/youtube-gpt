@@ -159,7 +159,7 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'):Promise
       const gmailPurpose = Object.freeze({}) as NativeAdminGmailMetadata;
       gmailPurposes.set(gmailPurpose, { context: Object.freeze({ at, signal: request.signal, checkBeforeRead: check,
         remainingBeforeRead: () => { check(); return Math.min(until - Date.now(), started + 55000 - performance.now()); } }) });
-      const { readGmailMetadata, consumeGmailMetadata, validateGmailMetadataRead, readGmailText, consumeGmailText, validateGmailTextRead } = await wait(() => import('@/lib/agent/gmail-metadata-original'));
+      const { readGmailMetadata, consumeGmailMetadata, validateGmailMetadataRead, readGmailText, consumeGmailText, validateGmailTextRead, gmailTextViewExpiresAt } = await wait(() => import('@/lib/agent/gmail-metadata-original'));
       const gmailReceipt = await wait(() => readGmailMetadata(gmailPurpose));
       const gmail = await wait(() => consumeGmailMetadata(gmailReceipt, async ({ messages: _messages, ...window }) => Object.freeze(window)));
       if (!coverage?.configured && !gmail.configured) return unavailable();
@@ -186,8 +186,14 @@ function handleMessages(request:Request,mode:'read'|'source'|'generate'):Promise
           gmailGenerationPurposes.set(purpose,{context:Object.freeze({actorId:id,email,sessionRef:authSessionRef,commandRef:command,source:draftSource,verifiedAt,mailbox:process.env.GMAIL_READ_MAILBOX!,at,signal:request.signal,checkBeforeRead:live,remainingBeforeRead:()=>{live();return Math.min(until-Date.now(),started+55000-performance.now());},validateBeforePrepare})});
           const producer=await wait(()=>import('@/lib/agent/gmail-draft-generation'));
           const result=await wait(()=>producer.generateGmailDraft(purpose));
-          const summary=await wait(()=>producer.consumeGmailDraft(result,async()=>Object.freeze({generated:1,platform:'gmail',acceptance:'private-draft-only-no-send-or-operative-acceptance'})));
-          live();const response=Response.json({ok:false,error:'social_messages_draft_unavailable',gmailDraft:summary},{status:503,headers:{'Cache-Control':'no-store'}});live();return response;
+          const projection=await wait(()=>producer.consumeGmailDraft(result,async draft=>{
+            const header=(name:string)=>{const value=draft.message.source.headers.find(v=>v.name.toLowerCase()===name)?.value??'',points=Array.from(value);return points.length>512?points.slice(0,512).join('')+'…':value;};
+            return Object.freeze({summary:Object.freeze({generated:1,platform:'gmail',acceptance:'private-draft-only-no-send-or-operative-acceptance'}),view:Object.freeze({platform:'gmail',source:Object.freeze({from:header('from'),subject:header('subject'),text:draft.message.text}),content:draft.content,acceptance:'private-draft-view-only-no-send-or-operative-acceptance'})});
+          }));
+          live();const expiresAt=Math.min(until,gmailTextViewExpiresAt(textReceipt));
+          const body=JSON.stringify({ok:false,error:'social_messages_draft_unavailable',gmailDraft:projection.summary,gmailDraftView:projection.view,gmailDraftRead:{commandRef:command,userId:id,email,sessionRef:authSessionRef,asOf:at,expiresAt}});
+          if(new TextEncoder().encode(body).byteLength>65536)return unavailable();
+          live();const response=new Response(body,{status:503,headers:{'Cache-Control':'no-store','Content-Type':'application/json'}});live();return response;
         }
         const purpose=Object.freeze({})as NativeAdminGmailDraftSource;
         gmailDraftPurposes.set(purpose,{context:Object.freeze({actorId:id,email,sessionRef:authSessionRef,commandRef:command,source:draftSource,at,signal:request.signal,checkBeforeRead:live,remainingBeforeRead:()=>{live();return Math.min(until-Date.now(),started+55000-performance.now());},validateBeforePrepare})});

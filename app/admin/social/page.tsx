@@ -6,6 +6,7 @@ import DashboardShell from '@/components/DashboardShell';
 import { useEffect, useState, useRef } from 'react';
 import { useAdminSocialPreview } from '@/lib/use-admin-social-preview';
 import { useAdminSocialPublication } from '@/lib/use-admin-social-publication';
+import { useAdminGmailDraft } from '@/lib/use-admin-gmail-draft';
 import { useAdminSocialMessages } from '@/lib/use-admin-social-messages';
 import { useAdminSocialState } from '@/lib/use-admin-social-state';
 
@@ -71,6 +72,7 @@ export default function SocialAdminPage() {
   const preview = useAdminSocialPreview(session,status,actionInFlight);
   const publication = useAdminSocialPublication(session,status,actionInFlight);
   const messages = useAdminSocialMessages(session,status,actionInFlight);
+  const gmailDraft=useAdminGmailDraft(session,status,actionInFlight);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -136,6 +138,9 @@ export default function SocialAdminPage() {
             <button onClick={messages.start} disabled={!messages.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl">
               {messages.running ? 'Revisando...' : 'Revisar mensajes'}
             </button>
+            <button onClick={gmailDraft.start} disabled={!gmailDraft.canStart} className="btn-offset-ghost px-5 py-2.5 text-sm rounded-xl disabled:opacity-40">
+              {gmailDraft.running?'Preparando borrador…':'Preparar borrador Gmail'}
+            </button>
             <button onClick={preview.start} disabled={!preview.canStart} className="px-5 py-2.5 text-sm rounded-xl font-semibold transition" style={{ background: 'var(--ink-3)', border: '1px solid var(--line-2)', color: 'var(--text-dim)' }}>
               Test (sin publicar)
             </button>
@@ -158,6 +163,18 @@ export default function SocialAdminPage() {
               </div>
             </section>
           )}
+          {gmailDraft.message&&<p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{gmailDraft.message}</p>}
+          {gmailDraft.data&&<section aria-label="Borrador Gmail para revisión" className="yv-card mt-3 p-4 space-y-3 text-sm" style={{color:'var(--text-dim)'}}>
+            <h2 className="font-semibold" style={{color:'var(--text)'}}>Borrador Gmail para revisión</h2>
+            <p>No enviado. Comprueba el mensaje de origen y la respuesta antes de cualquier envío.</p>
+            <p className="break-words">De: {gmailDraft.data.from}</p>
+            <p className="break-words">Asunto: {gmailDraft.data.subject||'Sin asunto'}</p>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div><h3 className="font-semibold mb-2">Mensaje de origen (texto plano)</h3><pre className="whitespace-pre-wrap break-words overflow-auto max-h-72 font-sans text-sm">{gmailDraft.data.sourceText}</pre></div>
+              <div><h3 className="font-semibold mb-2">Respuesta propuesta</h3><pre className="whitespace-pre-wrap break-words overflow-auto max-h-72 font-sans text-sm">{gmailDraft.data.content}</pre></div>
+            </div>
+            <p>La revisión completa sigue pendiente.</p>
+          </section>}
           {preview.message && <p role="status" className="mt-3 text-sm" style={{color:'var(--text-dim)'}}>{preview.message}</p>}
           {publication.message && <p role="status" className="mt-3 text-sm" style={{color:publication.data?'#22c55e':'var(--text-dim)'}}>{publication.message}</p>}
         </section>

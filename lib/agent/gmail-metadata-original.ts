@@ -247,3 +247,6 @@ export function consumeGmailText<T>(receipt:GmailTextRead|undefined,run:(window:
   return(own.promise??=Promise.resolve().then(async()=>{own.context.checkBeforeRead();const value=await run(own.window);own.context.checkBeforeRead();return value;})) as Promise<T>;
 }
 export function validateGmailTextRead(receipt:GmailTextRead|undefined):void{const own=receipt&&textReads.get(receipt);if(!own)throw Error('gmail_text_unconfirmed');own.context.checkBeforeRead();}
+
+// Negative display deadline on this exact private original;never a fresh read.
+export function gmailTextViewExpiresAt(receipt:GmailTextRead|undefined):number{const own=receipt&&textReads.get(receipt);if(!own)throw Error('gmail_text_unconfirmed');own.context.checkBeforeRead();const at=Date.now(),remaining=own.context.remainingBeforeRead();own.context.checkBeforeRead();return Math.floor(at+remaining);}
