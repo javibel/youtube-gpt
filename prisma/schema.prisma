@@ -1554,3 +1554,19 @@ model TrendGenerationAttempt {
  @@unique([userId,date])
  @@map("trend_generation_attempts")
 }
+// Native snapshot fence;prior rows are exclusion only,never recovery authority.
+model SnapshotCollectionAttempt {
+  id String @id
+  kind String
+  entityId String
+  userId String
+  date String
+  source Json
+  state String @default("pending")
+  snapshotId String?
+  statistics Json?
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  @@unique([kind, entityId, date])
+  @@map("snapshot_collection_attempts")
+}
